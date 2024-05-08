@@ -33,7 +33,7 @@ def main():
     user_name = form.getvalue('first-last')
     institution = form.getvalue('institution')
     user_email = form.getvalue('email')
-    user_pass = form.getvalue('password1')
+    user_pass = form.getvalue('password')
     colorblind_mode = form.getvalue('colorblind_mode')  # checkbox
     get_updates = form.getvalue('email_updates')
     remember_me = 'yes'  # Leaving here in case we want to add it back to the form
@@ -67,8 +67,10 @@ def main():
     """
 
     if user_already_exists(user_email, cursor) == True:
-       result['error'] = "User already exists"
-       result['session_id'] = -1
+        result['error'] = "User already exists"
+        result['success'] = 0
+        result['session_id'] = -1
+        print(json.dumps(result))
     else:
         print("DEBUG: adding user to database", file=sys.stderr)
         try:
@@ -80,7 +82,7 @@ def main():
             result['session_id'] = session_id
             cursor.execute(add_session_sql, (user_id, session_id))
         except Exception as e:
-            result['error'] = "There was an error adding the user to the database."
+            result['error'] = "There was an error adding the user to the database. {0}".format(e)
             print(json.dumps(result))
             return
 

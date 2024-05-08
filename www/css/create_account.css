@@ -5,6 +5,10 @@ div#password-requirements-c ul {
     margin-left: 1em;
     margin-top: 0.5em;
 }
+h2 {
+    font-weight: bold;
+    margin: 0 0 0.5em 0;
+}
 span#password-note {
     font-size: 80%;
 }

@@ -35,18 +35,8 @@ window.onload=function() {
         } else if (e.target.id === 'btn-email-verification-submit') {
             e.preventDefault();
 
+            // This returns false no matter what. await/sync (or developer) issue, so UI code shifted within
             const account_created = await createAccount(verification_uuid);
-            console.log("Account created: " + account_created);
-
-            if (account_created == false) {
-                // TODO: Handle UI display here.
-                createToast("There was an error creating your account. Please try again later.");
-                return false;
-            } else {
-                // TODO: Handle UI display here.
-                //createToast("Account created!", "is-success");
-            }
-
             return false;
         }
 
@@ -103,6 +93,19 @@ async function createAccount(verification_uuid) {
     }));
 
     console.log(`Account creation status: ${data['success']}`);
+    console.log('error: ' + data['error'])
+
+    if (data['success']) {
+        document.getElementById('account-info-c').classList.add('is-hidden');
+        document.getElementById('email-verification-c').classList.add('is-hidden');
+        document.getElementById('account-creation-success-c').classList.remove('is-hidden');
+    } else {
+        document.getElementById('account-info-c').classList.add('is-hidden');
+        document.getElementById('email-verification-c').classList.add('is-hidden');
+        document.getElementById('account-creation-failure-c').classList.remove('is-hidden');
+        console.log('error: ' + data['error'])
+        return false;
+    }
 
     return Boolean(data["success"]);
 }
