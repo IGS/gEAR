@@ -113,14 +113,10 @@ class UI {
     clusteringToggleElt = "#toggle-clustering"   // Temporary
     clusteringSectionElt = "#clustering-s"
     clusteringBtnElt = "#btn-clustering"
-    editClusteringSectionElt = "#edit-clustering-s"
-    editClusteringBtnElt = "#btn-edit-clustering"
-    resolutionElts = ".js-clustering-resolution"
-    nNeighborsElt = "#clustering-n-neighbors"
+    resolutionElt = "#clustering-resolution"
+    clusteringNNeighborsElt = "#clustering-n-neighbors"
     clusterTsnePlotElt = "#cluster-tsne-plot-c"
     clusterUmapPlotElt = "#cluster-umap-plot-c"
-    clusterTsnePlotEditElt = "#cluster-tsne-plot-edit-c"
-    clusterUmapPlotEditElt = "#cluster-umap-plot-edit-c"
     clusteringInstructionsElt = "#analysis-clustering .tool-instructions"
 
     // Marker Genes
@@ -142,6 +138,15 @@ class UI {
     clusterGroupLabelsTableBodyElt = "#cluster-group-labels tbody"
     clusterGroupLabelsInputElts = '#cluster-group-labels td.group-user-label input'
 
+    // Clustering (edit mode)
+    clusteringToggleElt = "#toggle-clustering-edit"   // Temporary
+    editClusteringSectionElt = "#edit-clustering-s"
+    editClusteringBtnElt = "#btn-edit-clustering"
+    // -- using resolutionElts values from the non-edit clustering
+    // -- using clusterNNeighborsElt values from the non-edit clustering
+    clusterTsnePlotEditElt = "#cluster-tsne-plot-edit-c"
+    clusterUmapPlotEditElt = "#cluster-umap-plot-edit-c"
+    clusteringEditInstructionsElt = "#analysis-clustering-edit .tool-instructions"
     // Compare Genes
     compareGenesToggleElt = "#toggle-compare-genes"   // Temporary
     geneComparisonSectionElt = "#gene-comparison-s"
@@ -160,7 +165,6 @@ class UI {
     compareGenesViolinRevContainer = "#compare-genes-violin-rev-c"
     compareGenesInstructionsElt = "#analysis-compare-genes .tool-instructions"
     compareGenesResultsContainer = "#compare-genes-results-c"
-
 
 }
 
@@ -191,6 +195,7 @@ class Analysis {
         this.tsne = new AnalysisSteptSNE(this);
         this.clustering = new AnalysisStepClustering(this); // The old "louvain" step, which is now done with "leiden"
         this.markerGenes = new AnalysisStepMarkerGenes(this);
+        this.clusteringEdit = new AnalysisStepClusteringEdit(this, "edit");
         this.compareGenes = new AnalysisStepCompareGenes(this);
 
         this.groupLabels = groupLabels;
@@ -437,6 +442,10 @@ class Analysis {
         analysis.clustering.updateUIWithResults(analysis);
 
         analysis.markerGenes = AnalysisStepMarkerGenes.loadFromJson(data.markerGenes, analysis);
+
+        analysis.clusteringEdit = AnalysisStepClusteringEdit.loadFromJson(data.clustering, analysis);
+        analysis.clusteringEdit.mode = "edit";
+
         analysis.compareGenes = AnalysisStepCompareGenes.loadFromJson(data.compareGenes, analysis);
 
         return analysis;
@@ -611,8 +620,8 @@ class Analysis {
 class AnalysisStepPrimaryFilter {
     constructor(analysis) {
         this.reset();
-
         this.analysis = analysis;
+        this.irreversible = true;
     }
 
     /**
@@ -749,8 +758,8 @@ class AnalysisStepPrimaryFilter {
 class AnalysisStepQCByMito {
     constructor(analysis) {
         this.reset();
-
         this.analysis = analysis;
+        this.irreversible = false;   // If "saved", then this is true as filtering happens in the backend
     }
 
     /**
@@ -864,8 +873,10 @@ class AnalysisStepQCByMito {
 class AnalysisStepSelectVariableGenes {
     constructor(analysis) {
         this.reset();
-
         this.analysis = analysis;
+        this.irreversible = false;  // TODO: Add "adata.layers["counts"] = adata.X.copy()" to the backend
+        // At this step, we theoretically could save original counts to a layer before normalizing
+        // Then if we want to back up to this step, we could have a script to restore the original counts
     }
 
     /**
@@ -1007,8 +1018,8 @@ class AnalysisStepSelectVariableGenes {
 class AnalysisStepPCA {
     constructor(analysis) {
         this.reset();
-
         this.analysis = analysis;
+        this.irreversible = false;
     }
 
     /**
@@ -1069,14 +1080,14 @@ class AnalysisStepPCA {
         document.querySelector(UI.instructionsElt).classList.add("is-hidden");
 
         const params = {
-             'analysis_id': ana.id,
-             'analysis_name': 'pca',
-             'analysis_type': ana.type,
-             'dataset_id': ana.datasetId,
-             'session_id': ana.userSessionId,
-             // this saves the user from getting a cached image each time
-             'datetime': (new Date()).getTime()
-         }
+            'analysis_id': ana.id,
+            'analysis_name': 'pca',
+            'analysis_type': ana.type,
+            'dataset_id': ana.datasetId,
+            'session_id': ana.userSessionId,
+            // this saves the user from getting a cached image each time
+            'datetime': (new Date()).getTime()
+        }
 
         ana.placeAnalysisImage(
             {'params': params, 'title': 'PCA scatter', 'target': UI.pcaScatterContainer});
@@ -1093,8 +1104,10 @@ class AnalysisStepPCA {
     }
 }
 class AnalysisSteptSNE {
-    constructor() {
+    constructor(analysis) {
         this.reset();
+        this.analysis = analysis;
+        this.irreversible = false;
     }
 
     static loadFromJson(data, analysis) {
@@ -1197,11 +1210,20 @@ class AnalysisSteptSNE {
     }
 }
 class AnalysisStepClustering {
-    constructor(analysis) {
+    constructor(analysis, mode="initial") {
         this.reset();   // TODO: split into two potentially for each step
 
         this.analysis = analysis;
-        this.mode = "initial";  // initial, edit
+        this.irreversible = false;
+        this.mode = mode;  // initial, edit
+        if (!(["initial", "edit"].includes(mode))) {
+            logErrorInConsole("Invalid mode for AnalysisStepClustering. Defaulting to 'initial'.");
+            this.mode = "initial";
+        }
+        if (mode == "edit") {
+            this.calculated = true;
+            this.irreversible = true;
+        }
 
     }
 
@@ -1237,9 +1259,7 @@ class AnalysisStepClustering {
     resetUI() {
 
         // Reset resolution input back to default
-        for (const elt of document.querySelectorAll(UI.resolutionElts)) {
-            elt.value = 1.3;
-        }
+        document.querySelector(UI.resolutionElt).value = 1.3;
 
         // TODO: On page js file, add click listener to sync the resolution inputs
 
@@ -1267,10 +1287,9 @@ class AnalysisStepClustering {
         if (this.calculated) {
             document.querySelector(UI.clusterToggleElt).classList.checked = true
 
-            document.querySelector(UI.nNeighborsElt).value = this.nNeighbors;
-            for (const elt of document.querySelectorAll(UI.resolutionElts)) {
-                elt.value = this.resolution;
-            }
+            document.querySelector(UI.clusteringNNeighborsElt).value = this.nNeighbors;
+            document.querySelector(UI.resolutionElt).value = this.resolution;
+
         }
 
         const params = {
@@ -1309,9 +1328,9 @@ class AnalysisStepClustering {
 class AnalysisStepMarkerGenes {
     constructor(analysis) {
         this.reset();
-
         this.analysis = analysis;
 
+        this.irreversible = false;
     }
 
     /**
@@ -1528,9 +1547,8 @@ class AnalysisStepMarkerGenes {
 class AnalysisStepCompareGenes {
     constructor(analysis) {
         this.reset();
-
         this.analysis = analysis;
-
+        this.irreversible = false;
     }
 
     /**
