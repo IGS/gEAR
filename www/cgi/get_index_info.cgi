@@ -25,7 +25,6 @@ def main():
         'dataset_count': 0,
         'user_count': 0,
         'newest_public_datasets': None,
-        "projectr_enabled":0
     }
 
     cnx = geardb.Connection()
@@ -36,9 +35,6 @@ def main():
 
     result['dataset_count'] = geardb.get_dataset_count()
     result['user_count'] = geardb.get_user_count()
-
-    if this.servercfg['projectR_service']['enable_link'].startswith("1"):
-        result["projectr_enabled"] = 1
 
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))
