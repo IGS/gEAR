@@ -82,23 +82,30 @@ class UI {
     btnDoAnalysisSelectVariableGenesElt = "#btn-do-analysis-select-variable-genes"
     asvgSaveOptionsElts = ".asvg-save-options"
     asvgPlotContainer = "#asvg-plot-c"
+    asvgPlotNormContainer = "#asvg-plot-norm-c"
     asvgInstructionsElt = "#analysis-select-variable-genes .tool-instructions"
 
     // PCA
     pcaToggleElt = "#toggle-pca"   // Temporary
     pcaSectionElt = "#pca-s"
-    pcaBtnElt = "#btn-pca"
+    btnPcaRunElt = "#btn-pca-run"
     genesToColorElt = "#pca-genes-to-color"
     pcaOptionsGroupElt = "#pca-options-group"
     topPcaGenesElt = "#pca-top-genes"
     pcaInstructionsElt = "#analysis-pca .tool-instructions"
     pcaScatterContainer = "#pca-scatter-c"
     pcaVarianceContainer = "#pca-variance-c"
+    pcaMissingGeneContainer = "#pca-missing-gene-c"
+    pcaMissingGeneElt = "#pca-missing-gene"
+    pcaImageResultContainers = "#analysis-pca div.image-result-c"
+    pcaOptionsGroupElt = "#pca-options-g"
+    weightedGeneCartGroupElt = "#weighted-gene-cart-g"
+
 
     // tSNE
     tsneToggleElt = "#toggle-tsne"   // Temporary
     tsneSectionElt = "#tsne-s"
-    tsneBtnElt = "#btn-tsne"
+    btnTsneRunElt = "#btn-tsne-run"
     tsneGenesToColorElt = "#tsne-genes-to-color"
     dimReductionNNeighborsElt = "#dredux-n-neighbors"
     tsneNPcsElt = "#tsne-n-pcs"
@@ -108,32 +115,44 @@ class UI {
     tsneInstructionsElt = "#analysis-tsne .tool-instructions"
     tsnePlotContainer = "#tsne-plot-c"
     umapPlotContainer = "#umap-plot-c"
+    tsneMissingGeneContainer = "#tsne-missing-gene-c"
+    tsneUseScaledElt = "#tsne-use-scaled"
 
     // Clustering
     clusteringToggleElt = "#toggle-clustering"   // Temporary
     clusteringSectionElt = "#clustering-s"
-    clusteringBtnElt = "#btn-clustering"
+    btnClusteringRunElt = "#btn-clustering-run"
+    btnClusteringRerunWithGroupsElt = "#btn-clustering-rerun-with-groups"
     resolutionElt = "#clustering-resolution"
     clusteringNNeighborsElt = "#clustering-n-neighbors"
     clusterTsnePlotElt = "#cluster-tsne-plot-c"
     clusterUmapPlotElt = "#cluster-umap-plot-c"
     clusteringInstructionsElt = "#analysis-clustering .tool-instructions"
+    clusteringImageResultContainers = "#analysis-clustering div.image-result-c"
 
     // Marker Genes
     markerGenesToggleElt = "#toggle_marker_genes"   // Temporary
+    btnMarkerGenesRunElt = "#btn-marker-genes-run"
     visualMarkerGenesSectionElt = "#visualize-marker-genes-s"
     visualizeMarkerGenesBtnElt = "#btn-visualize-marker-genes"
     downloadMarkerGenesBtnElt = "#btn-download-marker-genes"
     markerGenesNGenesElt = "#marker-genes-n-genes"
+    markerGenesTableElt = "#marker-genes-table"
     markerGenesTableHeadTmpl = "#marker-genes-table-head-tmpl"
-    markerGenesTableHeadRowElt = "#marker-genes-table thead tr"
+    markerGenesTableHeadRowElt = `${markerGenesTableElt} thead tr`
     markerGenesTableBodyTmpl = "#marker-genes-table-body-tmpl"
-    markerGenesTableBodyElt = "#marker-genes-table tbody"
-    groupLabelsContainer = "#group-labels-c"
+    markerGenesTableBodyElt = `${markerGenesTableElt} tbody`
     markerGenesTableHeader = "#marker-genes-table-header"
     markerGenesPlotContainer = "#marker-genes-plot-c"
     markerGenesVisualizationContainer = "#marker-genes-visualization-c"
+    markerGenesDotplotContainer = "#marker-genes-dotplot-c"
+    markerGenesViolinContainer = "#marker-genes-violin-c"
+    markerGenesManuallyEnteredElt = "#marker-genes-manually-entered"
+    markerGenesSelectedCountElt = "#marker-genes-selected-count"
+    markerGenesEnteredCountElt = "#marker-genes-entered-count"
+    markerGenesUniqueCountElt = "#marker-genes-unique-count"
 
+    groupLabelsContainer = "#group-labels-c"
     clusterGroupLabelsTmpl = "#cluster-group-labels-tmpl"
     clusterGroupLabelsTableBodyElt = "#cluster-group-labels tbody"
     clusterGroupLabelsInputElts = '#cluster-group-labels td.group-user-label input'
@@ -165,6 +184,7 @@ class UI {
     compareGenesViolinRevContainer = "#compare-genes-violin-rev-c"
     compareGenesInstructionsElt = "#analysis-compare-genes .tool-instructions"
     compareGenesResultsContainer = "#compare-genes-results-c"
+    compareGenesImagesResultsContainers = `${compareGenesResultsContainer} div.image-result-c`
 
 }
 
@@ -815,6 +835,70 @@ class AnalysisStepQCByMito {
         document.querySelector(UI.btnDoAnalysisQcByMitoElt).classList.remove("is-hidden");
     }
 
+    /**
+     * Runs the analysis.
+     *
+     * @param {boolean} saveDataset - Indicates whether to save the dataset.
+     * @returns {Promise<void>} - A promise that resolves when the analysis is complete.
+     * @throws {Error} - If there is an error during the analysis.
+     */
+    async runAnalysis(saveDataset) {
+        disableAndHideElement(document.querySelector(UI.btnQbmSaveElt));
+        if (Boolean(saveDataset)) {
+            createToast("Applying mitochondrial filter", "is-info");
+            document.querySelector(UI.btnQbmSaveElt).textContent = 'Saving';
+        } else {
+            document.querySelector(UI.btnQbmSaveElt).classlist.remove("is-hidden");
+            createToast("Analyzing mitochondrial genes", "is-info");
+        }
+
+        // Clear the images
+        document.querySelector(UI.qbmViolinContainer).replaceChildren();
+        document.querySelector(UI.qbmScatterPercentMitoContainer).replaceChildren();
+        document.querySelector(UI.qbmScatterNGenesContainer).replaceChildren();
+
+        this.genePrefix = document.querySelector(UI.qbmGenePrefixElt).value;
+        this.filterMitoPercent = document.querySelector(UI.qbmFilterMitoPercElt).value;
+        this.filterMitoCount = document.querySelector(UI.qbmFilterMitoCountElt).value;
+
+        try {
+            const {data} = await axios.post("./cgi/h5ad_qc_by_mito.cgi", {
+                dataset_id: this.analysis.datasetId,
+                analysis_id: this.analysis.id,
+                analysis_type: this.analysis.type,
+                session_id: this.analysis.userSessionId,
+                genes_prefix: this.genePrefix,
+                filter_mito_perc: this.filterMitoPercent,
+                filter_mito_count: this.filterMitoCount,
+                save_dataset: saveDataset
+            });
+
+            if (!data.success || data.success < 1) {
+                const error = data.error || "Unknown error. Please contact gEAR support.";
+                throw new Error(error);
+            }
+
+            this.nGenes = data.n_genes;
+            this.nObs = data.n_obs;
+
+            document.querySelector(UI.btnQbmSaveElt).disabled = false;
+            this.calculated = false;
+            if (Boolean(saveDataset)) {
+                document.querySelector(UI.btnQbmSaveElt).disabled = true;
+                this.calculated = true;
+            }
+
+            this.updateUIWithResults(this.calculated, data);
+            createToast("Mitochondrial plot displayed", "is-success");
+            // TODO - Show next step collapsable
+
+        } catch (error) {
+            createToast(`Error doing QC analysis: ${error.message}`);
+        } finally {
+            document.querySelector(UI.btnDoAnalysisQcByMitoElt).disabled = false;
+        }
+
+    }
 
     /**
      * Updates the UI with the results of the analysis.
@@ -945,6 +1029,76 @@ class AnalysisStepSelectVariableGenes {
     }
 
     /**
+     * Runs the analysis for identifying variable genes.
+     *
+     * @param {boolean} saveDataset - Indicates whether to save the dataset.
+     * @returns {Promise<void>} - A promise that resolves when the analysis is complete.
+     */
+    async runAnalysis(saveDataset) {
+        if (Boolean(saveDataset)) {
+            createToast("Saving variable genes", "is-info");
+        } else {
+            createToast("Analyzing variable genes", "is-info");
+        }
+
+        document.querySelector(UI.asvgPlotContainerElt).replaceChildren();
+        document.querySelector(UI.asvgPlotNormContainerElt).replaceChildren();
+        disableAndHideElement(document.querySelector(UI.btnAsvgSaveElt));
+
+        this.normCountsPerCell = document.querySelector(UI.asvgNormCountsPerCellElt).value;
+        this.flavor = document.querySelector(UI.asvgFlavorElt).value;
+        this.nTopGenes = document.querySelector(UI.asvgNTopGenesElt).value;
+        this.minMean = document.querySelector(UI.asvgMinMeanElt).value;
+        this.maxMean = document.querySelector(UI.asvgMaxMeanElt).value;
+        this.minDispersion = document.querySelector(UI.asvgMinDispersionElt).value;
+
+        this.regressOut = document.querySelector(UI.asvgRegressOutElt).checked;
+        this.scaleUnitVariance = document.querySelector(UI.asvgScaleUnitVarianceElt).checked;
+
+        const params = {
+            'dataset_id': this.analysis.datasetId,
+            'analysis_id': this.analysis.id,
+            'analysis_type': this.analysis.type,
+            'session_id': this.analysis.userSessionId,
+            'norm_counts_per_cell': this.normCountsPerCell,
+            'flavor': this.flavor,
+            'n_top_genes': this.nTopGenes,
+            'min_mean': this.minMean,
+            'max_mean': this.maxMean,
+            'min_dispersion': this.minDispersion,
+            'regress_out': this.regressOut,
+            'scale_unit_variance': this.scaleUnitVariance,
+            'save_dataset': saveDataset
+        }
+
+        try {
+            const {data} = await axios.post("./cgi/h5ad_identify_variable_genes.cgi", params);
+
+            if (!data.success || data.success < 1) {
+                const error = data.error || "Unknown error. Please contact gEAR support.";
+                throw new Error(error);
+            }
+
+            this.calculated = Boolean(saveDataset);
+
+            this.updateUIWithResults(data, this.calculated);
+            createToast("Variable genes image created", "is-success");
+
+            document.querySelector(UI.asvgResultCountElt).textContent = `(${data['n_genes']})`;
+            enableAndShowElement(document.querySelector(UI.btnAsvgSaveElt));
+            document.querySelector(UI.topGenesElt).textContent = `Suggested highly-variable genes:\n${data['top_genes']}`;
+            document.querySelector(UI.topGenesElt).classList.remove("is-hidden");
+            // TODO:  $('#asvg_options_c .js-next-step').show();  // auto-select the next collapsable dropdown
+
+            document.querySelector(UI.btnDoAnalysisSelectVariableGenesElt).classList.add("is-hidden");
+        } catch (error) {
+            createToast(`Error identifying variable genes: ${error.message}`);
+        } finally {
+            document.querySelector(UI.btnDoAnalysisSelectVariableGenesElt).disabled = false;
+        }
+    }
+
+    /**
      * Updates the UI with the results of the analysis.
      *
      * @param {boolean} [resultsSaved=false] - Indicates whether the results have been saved.
@@ -1062,6 +1216,94 @@ class AnalysisStepPCA {
     }
 
     /**
+     * Runs the analysis by computing principal components and variance plot.
+     *
+     * @returns {Promise<void>} A promise that resolves when the analysis is completed.
+     * @throws {Error} If there is an error running the PCA.
+     */
+    async runAnalysis() {
+        createToast("Computing principal components and variance plot", "is-info");
+        document.querySelector(UI.pcaMissingGeneElt).classList.add("is-hidden");
+
+        for (const container of document.querySelector(UI.pcaImageResultContainers)) {
+            container.replaceChildren();
+        }
+
+        const computePCA = this.calculated ? false : true;
+
+        try {
+            const {data} = await axios.post("./cgi/h5ad_generate_pca.cgi", {
+                dataset_id: this.analysis.datasetId,
+                analysis_id: this.analysis.id,
+                analysis_type: this.analysis.type,
+                session_id: this.analysis.userSessionId,
+                genes_to_color: document.querySelector(UI.genesToColorElt).value,
+                compute_pca: computePCA
+            });
+            if (!data.success || data.success < 1) {
+                document.querySelector(UI.pcaMissingGeneElt).textContent = data['missing_gene'] || "";
+
+                const error = data.error || "Unknown error. Please contact gEAR support.";
+                throw new Error(error);
+            }
+
+            this.calculated = true;
+            this.genesToColor = document.querySelector(UI.genesToColorElt).value;
+            this.updateUIWithResults();
+            createToast("PCA and variance computed", "is-success");
+
+            document.querySelector(UI.pcaOptionsElt).classList.remove("is-hidden");
+            document.querySelector(UI.weightedGeneCartElt).classList.remove("is-hidden");
+            // TODO:  $('#pca_options_c .js-next-step').show();  // auto-select the next collapsable dropdown
+
+        } catch (error) {
+            createToast(`Error running PCA: ${error.message}`);
+            document.querySelector(UI.pcaMissingGeneContainer).classList.remove("is-hidden");
+
+        } finally {
+            document.querySelector(UI.btnPcaRunElt).disabled = false;
+        }
+    }
+
+    /**
+     * Runs the analysis to compute the top genes for principal components.
+     *
+     * @async
+     * @function runAnalysisTopGenes
+     * @memberof analysis.v2
+     * @returns {Promise<void>} A Promise that resolves when the analysis is complete.
+     * @throws {Error} If there is an error computing the top PCA genes.
+     */
+    async runAnalysisTopGenes() {
+        createToast("Computing top genes for principal components", "is-info");
+        document.querySelector(UI.pcaTopGenesContainer).replaceChildren();
+
+        try {
+
+            const {data} = await axios.post("./cgi/h5ad_top_pca_genes.cgi", {
+                dataset_id: this.analysis.datasetId,
+                analysis_id: this.analysis.id,
+                analysis_type: this.analysis.type,
+                session_id: this.analysis.userSessionId,
+                pcs: document.querySelector(UI.topPcaGenesElt).value
+            });
+
+            if (!data.success || data.success < 1) {
+                const error = data.error || "Unknown error. Please contact gEAR support.";
+                throw new Error(error);
+            }
+
+            this.updateUIWithResultsTopGenes(data);
+            createToast("Top PCA genes computed", "is-success");
+
+        } catch (error) {
+            createToast(`Error computing top PCA genes: ${error.message}`);
+        } finally {
+            document.querySelector(UI.btnPcaTopGenesElt).disabled = false;
+        }
+    }
+
+    /**
      * Updates the UI with analysis images based on the given analysis object.
      * If no analysis object is provided, it uses the analysis object stored in the class.
      *
@@ -1103,6 +1345,7 @@ class AnalysisStepPCA {
         document.querySelector(UI.pcaOptionsDivElt).classList.remove("is-hidden");
     }
 }
+
 class AnalysisSteptSNE {
     constructor(analysis) {
         this.reset();
@@ -1122,12 +1365,15 @@ class AnalysisSteptSNE {
         step.nPcs = data['n_pcs'];
         step.nNeighbors = data['n_neighbors'];
         step.randomState = data['random_state'];
-        step.doPlotTsne = data['plot_tsne'];
-        step.doPlotUmap = data['plot_umap'];
+        step.plotTsne = data['plot_tsne'];
+        step.plotUmap = data['plot_umap'];
 
         return step;
     }
 
+    /**
+     * Resets the state of the analysis object.
+     */
     reset() {
         this.calculated = false;
         this.neighborsCalculated = false;
@@ -1137,11 +1383,14 @@ class AnalysisSteptSNE {
         this.nPcs = null;
         this.nNeighbors = null;
         this.randomState = null;
-        this.doPlotTsne = 0;
-        this.doPlotUmap = 0;
+        this.plotTsne = 0;
+        this.plotUmap = 0;
         this.resetUI();
     }
 
+    /**
+     * Resets the UI by clearing the values of various input elements.
+     */
     resetUI() {
         document.querySelector(UI.tsneGenesToColorElt).value = '';
         document.querySelector(UI.dimReductionNNeighborsElt).value = '';
@@ -1149,6 +1398,131 @@ class AnalysisSteptSNE {
         document.querySelector(UI.tsneRandomStateElt).value = 2;
         document.querySelector(UI.dimReductionMethodTsneElt).checked = false;
         document.querySelector(UI.dimReductionMethodUmapElt).checked = true;
+    }
+
+    async runAnalysis() {
+        createToast("Computing tSNE/UMAP and generating plot", "is-info");
+
+        document.querySelector(UI.tsneMissingGeneContainer).classList.add("is-hidden");
+        document.querySelector(UI.tsnePlotContainerElt).replaceChildren();
+        document.querySelector(UI.umapPlotContainerElt).replaceChildren();
+
+        // Anytime we run this there are three things which might need to be computed depending on what
+        //  has happened.  neighborhood, tSNE and UMAP need to be done if it's the first time or if
+        //  the settings have changed.
+        // Also, both tSNE and UMAP can be replotted (with different gene coloring) and not recomputed
+
+        let computeNeighbors = 1;
+        let computeTsne = 0;
+        let computeUmap = 0;
+        let plotTsne = 0;
+        let plotUmap = 0;
+
+        const tsneChecked = document.querySelector(UI.dimReductionMethodTsneElt).checked;
+        const umapChecked = document.querySelector(UI.dimReductionMethodUmapElt).checked;
+
+        if (tsneChecked) {
+            computeTsne = 1;
+            plotTsne = 1;
+        }
+
+        if (umapChecked) {
+            computeUmap = 1;
+            plotUmap = 1;
+        }
+
+        // We don't have to recompute if none of the plotting parameters have changed.  This allows
+        //  us to just do something like recolor.
+        if (this.neighborsCalculated) {
+            if (this.nPcs === document.querySelector(UI.tsneNPcsElt).value &&
+                this.nNeighbors === document.querySelector(UI.dimReductionNNeighborsElt).value &&
+                this.randomState === document.querySelector(UI.tsneRandomStateElt).value) {
+                computeNeighbors = 0;
+            }
+        }
+
+        // don't recompute tSNE if we already have and nothing has changed
+        if (this.tsneCalculated) {
+            if (this.nPcs === document.querySelector(UI.tsneNPcsElt).value &&
+                this.randomState === document.querySelector(UI.tsneRandomStateElt).value) {
+                computeTsne = 0;
+            }
+        }
+
+        // Don't recompute UMAP if we already have
+        if (this.umapCalculated) {
+            computeUmap = 0;
+        }
+
+        // If plotting of either is requested and neighbors are being recomputed, we need to
+        //  also recompute tSNE/UMAP
+        if (computeNeighbors === 1) {
+            if (plotUmap === 1) {
+                computeUmap = 1;
+            }
+
+            if (plotTsne === 1) {
+                computeTsne = 1;
+            }
+        }
+
+        const useScaled = document.querySelector(UI.tsneUseScaledElt).checked;
+
+        const params = {
+            'dataset_id': this.analysis.datasetId,
+            'analysis_id': this.analysis.id,
+            'analysis_type': this.analysis.type,
+            'session_id': this.analysis.userSessionId,
+            'genes_to_color': document.querySelector(UI.tsneGenesToColorElt).value,
+            'n_pcs': document.querySelector(UI.tsneNPcsElt).value,
+            'n_neighbors': document.querySelector(UI.dimReductionNNeighborsElt).value,
+            'random_state': document.querySelector(UI.tsneRandomStateElt).value,
+            'use_scaled': useScaled,
+            'compute_neighbors': computeNeighbors,
+            'compute_tsne': computeTsne,
+            'compute_umap': computeUmap,
+            'plot_tsne': plotTsne,
+            'plot_umap': plotUmap
+        }
+
+        try {
+            const {data} = await axios.post("./cgi/h5ad_generate_tsne.cgi", params);
+
+            if (!data.success || data.success < 1) {
+                document.querySelector(UI.tsneMissingGeneContainer).textContent = data['missing_gene'] || "";
+                const error = data.error || "Unknown error. Please contact gEAR support.";
+                throw new Error(error);
+            }
+
+            this.calculated = true;
+            this.neighborsCalculated = true;
+            this.tsneCalculated = Boolean(computeTsne);
+            this.umapCalculated = Boolean(computeUmap);
+            this.genesToColor = document.querySelector(UI.tsneGenesToColorElt).value;
+            this.plotTsne = plotTsne;
+            this.plotUmap = plotUmap;
+            this.updateUIWithResults();
+
+            if (computeTsne === 1) {
+                this.tsneCalculated = 1;
+            }
+            if (computeUmap === 1) {
+                this.umapCalculated = 1;
+            }
+
+            createToast("tSNE/UMAP computed and displayed", "is-success");
+            // TODO:  $('#tsne_options_c .js-next-step').show();  // Reveal next collapsable dropdown
+
+
+        } catch (error) {
+            createToast(`Error generating tSNE: ${error.message}`);
+
+            document.querySelector(UI.tsneMissingGeneContainer).classList.remove("is-hidden");
+
+        } finally {
+            document.querySelector(UI.btnTsneRunElt).disabled = false;
+        }
+
     }
 
     updateUIWithResults(ana=null) {
@@ -1174,12 +1548,12 @@ class AnalysisSteptSNE {
         document.querySelector(UI.tsneRandomStateElt).value = this.randomState;
 
         document.querySelector(UI.dimReductionMethodTsneElt).checked = false;
-        if (Boolean(this.doPlotTsne)) {
+        if (Boolean(this.plotTsne)) {
             document.querySelector(UI.dimReductionMethodTsneElt).checked = true;
         }
 
         document.querySelector(UI.dimReductionMethodUmapElt).checked = false;
-        if (Boolean(this.doPlotUmap)) {
+        if (Boolean(this.plotUmap)) {
             document.querySelector(UI.dimReductionMethodUmapElt).checked = true;
         }
 
@@ -1193,12 +1567,12 @@ class AnalysisSteptSNE {
             'datetime': (new Date()).getTime()
         }
 
-        if (Boolean(this.doPlotTsne)) {
+        if (Boolean(this.plotTsne)) {
             ana.placeAnalysisImage(
                 {'params': params, 'title': 'tSNE plot', 'target': UI.tsnePlotContainer});
         }
 
-        if (Boolean(this.doPlotUmap)) {
+        if (Boolean(this.plotUmap)) {
             params['analysis_name'] = 'umap'
             ana.placeAnalysisImage(
                 {'params': params, 'title': 'UMAP plot', 'target': UI.umapPlotContainer});
@@ -1227,6 +1601,12 @@ class AnalysisStepClustering {
 
     }
 
+    /**
+     * Loads data from a JSON object and creates a new instance of AnalysisStepClustering.
+     * @param {Object} data - The JSON object containing the data to load.
+     * @param {Analysis} analysis - The analysis object to associate with the new instance.
+     * @returns {AnalysisStepClustering} - The newly created instance of AnalysisStepClustering.
+     */
     static loadFromJson(data, analysis) {
         const step = new AnalysisStepClustering(analysis);
         if (!step) return step;
@@ -1240,6 +1620,9 @@ class AnalysisStepClustering {
         return step;
     }
 
+    /**
+     * Resets the state of the analysis object.
+     */
     reset() {
         this.calculated = false;
         this.nNeighbors = null;
@@ -1263,6 +1646,114 @@ class AnalysisStepClustering {
 
         // TODO: On page js file, add click listener to sync the resolution inputs
 
+    }
+
+    /**
+     * Runs the analysis by computing Louvain clusters and updating the UI with the results.
+     *
+     * @returns {Promise<void>} A promise that resolves when the analysis is completed.
+     * @throws {Error} If there is an error generating clusters.
+     */
+    async runAnalysis() {
+        // TODO: Fine-tune this based on if type is initial or edit
+
+        createToast("Computing Louvain clusters", "is-info");
+        for (const container of document.querySelector(UI.clusteringImageResultContainers)) {
+            container.replaceChildren();
+        }
+
+        document.querySelector(UI.btnClusteringRunElt).disabled = true;
+        if (this.type == "edit") {
+            document.querySelector(UI.btnClusteringRerunWithGroupsElt).disabled = true;
+        }
+
+        const isSameLouvainParams = (this.nNeighbors == document.querySelector(UI.clusteringNNeighborsElt).value
+            && this.resolution == document.querySelector(UI.resolutionElt).value);
+
+        let computeClustering = true;
+
+        const oldLabels = [...this.groupLabels];  // shallow-copy
+        const newLabels = [];
+        const keptLabels = [];
+
+        // It is not safe to reuse group labels if the clustering params were changed
+        if (isSameLouvainParams) {
+            for (const glElt of clusterGroupLabelsHtml.querySelector(".group-user-label input")) {
+                newLabels.push(glElt.value);
+                const thisRow = glElt.closest("tr");
+                const thisCheck = thisRow.querySelector(".group-keep-chk input");
+                keptLabels.push(thisCheck.checked);
+            }
+        }
+
+        const clusterInfo = [];
+
+        if (isSameLouvainParams && this.calculated && this.type == "edit") {
+            computeClustering = false;
+            this.groupLabels.forEach((v, i) => {
+                clusterInfo.push({
+                    "old_label": oldLabels[i]
+                    , "new_label": newLabels[i]
+                    , "keep": keptLabels[i]
+                })
+            });
+        }
+
+        if (computeClustering) {
+            document.querySelector(UI.groupLabelsContainer).classList.add("is-hidden");
+        }
+
+        const plotTsne = (document.querySelector(UI.dimReductionMethodTsneElt).checked ? 1 : 0);
+        const plotUmap = (document.querySelector(UI.dimReductionMethodUmapElt).checked ? 1 : 0);
+
+        try {
+            const {data} = await axios.post("./cgi/h5ad_generate_clusters.cgi", {
+                dataset_id: this.analysis.datasetId,
+                analysis_id: this.analysis.id,
+                analysis_type: this.analysis.type,
+                session_id: this.analysis.userSessionId,
+                resolution: document.querySelector(UI.resolutionElt).value,
+                compute_clusters: computeClustering,
+                plot_tsne: plotTsne,
+                plot_umap: plotUmap,
+                cluster_info: JSON.stringify(clusterInfo)
+            });
+
+            if (!data.success || data.success < 1) {
+                const error = data.error || "Unknown error. Please contact gEAR support.";
+                throw new Error(error);
+            }
+
+            this.calculated = true;
+            this.nNeighbors = document.querySelector(UI.clusteringNNeighborsElt).value;
+            this.resolution = document.querySelector(UI.resolutionElt).value;
+            this.plotTsne = plotTsne;
+            this.plotUmap = plotUmap;
+            this.updateUIWithResults();
+
+            if (data["group_labels"].length) {
+                // Update the group labels for the analysis, marker genes, and gene comparison
+                this.analysis.groupLabels = []
+                this.analysis.markerGenes.populateMarkerGenesLabels(data)
+
+                // Now update the labels so they work with gene comparison
+                this.analysis.groupLabels = data['group_labels'].map(x => x.genes);
+                this.analysis.geneComparison.populateGroupSelectors(this.analysis.groupLabels);
+            }
+
+            createToast("Louvain clusters computed", "is-success");
+            // TODO:  $('#clustering_options_c .js-next-step').show();  // auto-select the next collapsable dropdown
+
+
+        } catch (error) {
+            createToast(`Error generating clusters: ${error.message}`);
+
+        } finally {
+            document.querySelector(UI.btnClusteringRunElt).disabled = false;
+            if (this.type == "edit") {
+                document.querySelector(UI.btnClusteringRerunWithGroupsElt).disabled = false;
+            }
+        }
     }
 
     /**
@@ -1400,6 +1891,56 @@ class AnalysisStepMarkerGenes {
     }
 
     /**
+     * Performs marker gene visualization by making a POST request to the server and updating the UI with the results.
+     * @async
+     * @function performMarkerGeneVisualization
+     * @memberof analysis.v2
+     * @throws {Error} If there is an error during the visualization process.
+     */
+    async performMarkerGeneVisualization() {
+
+        document.querySelector(UI.markerGenesDotplotContainer).replaceChildren();
+        document.querySelector(UI.markerGenesViolinContainer).replaceChildren();
+
+        try {
+            const data = await axios.post("./cgi/h5ad_generate_marker_gene_visualization.cgi", {
+                'dataset_id': this.analysis.datasetId,
+                'analysis_id': this.analysis.id,
+                'analysis_type': this.analysis.type,
+                'session_id': this.analysis.userSessionId,
+                'marker_genes': JSON.stringify([...this.genesOfInterest])
+            });
+
+            if ((!data.success) || (data.success < 1)) {
+                const error = data.error || "Unknown error. Please contact gEAR support.";
+                throw new Error(error);
+            }
+
+            const params = {
+                'analysis_id': this.analysis.id,
+                'analysis_name': 'dotplot_goi',
+                'analysis_type': this.analysis.type,
+                'dataset_id': this.analysis.datasetId,
+                'session_id': this.analysis.userSessionId,
+                // this saves the user from getting a cached image each time
+                datetime: (new Date()).getTime()
+            }
+
+            this.analysis.placeAnalysisImage(
+                {'params': params, 'title': 'Marker genes (dotplot)', 'target': UI.markerGenesDotplotContainer}
+            );
+
+            params['analysis_name'] = 'stacked_violin_goi';
+            this.analysis.placeAnalysisImage(
+                {'params': params, 'title': 'Marker genes (stacked violin)', 'target': UI.markerGenesViolinContainer}
+            );
+
+        } catch {
+            createToast("Error visualizing marker genes");
+        }
+    }
+
+    /**
      * Populates the marker genes labels in the analysis.
      *
      * @param {Object} data - The data containing the group labels.
@@ -1490,16 +2031,82 @@ class AnalysisStepMarkerGenes {
 
     }
 
+    /**
+     * Resets the analysis state.
+     */
     reset() {
         this.calculated = false;
+        this.genesOfInterest = new Set();
         this.nGenes = false;
         this.resetUI();
     }
 
+    /**
+     * Resets the user interface.
+     */
     resetUI() {
         document.querySelector(UI.markerGenesNGenesElt).value = 5;
     }
 
+    /**
+     * Runs the analysis to compute marker genes.
+     *
+     * @returns {Promise<void>} A promise that resolves when the analysis is complete.
+     * @throws {Error} If there is an error computing marker genes.
+     */
+    async runAnalysis() {
+        createToast("Computing marker genes", "is-info");
+        document.querySelector(UI.btnMarkerGenesRunElt).disabled = true;
+        document.querySelector(UI.markerGenesPlotContainer).replaceChildren();
+        document.querySelector(UI.markerGenesTableElt).replaceChildren();
+
+        document.querySelector(UI.markerGenesManuallyEnteredElt).value = '';
+        document.querySelector(UI.markerGenesSelectedCountElt).textContent = 0;
+        document.querySelector(UI.markerGenesEnteredCountElt).textContent = 0;
+        document.querySelector(UI.markerGenesUniqueCountElt).textContent = 0;
+
+        this.genesOfInterest = new Set();
+        this.clickedMarkerGenes = new Set();
+        this.enteredMarkerGenes = new Set();
+
+        const computeMarkerGenes = true
+        if (this.calculated && this.nGenes == document.querySelector(UI.markerGenesNGenesElt).value) {
+            computeMarkerGenes = false;
+        }
+
+        try {
+            const {data} = await axios.post("./cgi/h5ad_find_marker_genes.cgi", {
+                'dataset_id': this.analysis.datasetId,
+                'analysis_id': this.analysis.id,
+                'analysis_type': this.analysis.type,
+                'session_id': this.analysis.userSessionId,
+                'n_genes': document.querySelector(UI.markerGenesNGenesElt).value,
+                'compute_marker_genes': computeMarkerGenes
+            });
+
+            if (!data.success || data.success < 1) {
+                const error = data.error || "Unknown error. Please contact gEAR support.";
+                throw new Error(error);
+            }
+
+            this.calculated = true;
+            this.nGenes = document.querySelector(UI.markerGenesNGenesElt).value;
+            this.updateUIWithResults(data);
+            this.groupLabels = data['group_labels'].map(x => x.group_label);
+        } catch (error) {
+            createToast(`Error computing marker genes: ${error.message}`);
+        } finally {
+            document.querySelector(UI.btnMarkerGenesRunElt).disabled = false;
+        }
+    }
+
+    /**
+     * Updates the UI with the results of the analysis.
+     *
+     * @param {Object} data - The data containing the analysis results.
+     * @param {Object} [ana=null] - The analysis object. If not provided, the method uses the analysis object of the class instance.
+     * @returns {void}
+     */
     updateUIWithResults(data, ana=null) {
         if (!ana) {
             ana = this.analysis;
@@ -1677,6 +2284,57 @@ class AnalysisStepCompareGenes {
     }
 
     /**
+     * Runs the analysis by sending a POST request to the server and updating the UI with the results.
+     *
+     * @async
+     * @returns {Promise<void>} A promise that resolves when the analysis is completed.
+     * @throws {Error} If there is an error computing the comparison.
+     */
+    async runAnalysis() {
+        createToast("Computing comparison", "is-info");
+        for (const container of document.querySelectorAll(UI.compareGenesResultsContainers)) {
+            container.replaceChildren();
+        }
+
+        const computeGeneComparison = this.calculated ? 1 : 0;
+
+        try {
+            const {data} = await axios.post("./cgi/h5ad_compare_genes.cgi", {
+                'dataset_id': this.analysis.datasetId,
+                'analysis_id': this.analysis.id,
+                'analysis_type': this.analysis.type,
+                'session_id': this.analysis.userSessionId,
+                'n_genes': document.querySelector(UI.compareGenesNGenesElt).value,
+                'compute_gene_comparison': computeGeneComparison,
+                'group_labels': JSON.stringify(this.analysis.groupLabels),
+                'query_cluster': document.querySelector(UI.queryClusterSelectElt).value,
+                'reference_cluster': document.querySelector(UI.referenceClusterSelectElt).value,
+                'method': document.querySelector(UI.compareGenesMethodElt).value,
+                'corr_method': document.querySelector(UI.comapreGenesCorrMethodElt).value
+            });
+
+            if (!data.success || data.success < 1) {
+                const error = data.error || "Unknown error. Please contact gEAR support.";
+                throw new Error(error);
+            }
+
+            document.querySelector(UI.compareGenesInstructionsElt).classList.add("is-hidden");
+            document.querySelector(UI.compareGenesResultsContainer).classList.remove("is-hidden");
+
+            this.calculated = true;
+            this.nGenes = document.querySelector(UI.compareGenesNGenesElt).value;
+            this.queryCluster = document.querySelector(UI.queryClusterSelectElt).value;
+            this.referenceCluster = document.querySelector(UI.referenceClusterSelectElt).value;
+            this.method = document.querySelector(UI.compareGenesMethodElt).value;
+            this.corrMethod = document.querySelector(UI.comapreGenesCorrMethodElt).value;
+            this.updateUIWithResults(data);
+            createToast("Comparison computed", "is-success");
+        } catch (error) {
+            createToast(`Error computing comparison: ${error.message}`);
+        }
+    }
+
+    /**
      * Updates the UI with the analysis results.
      *
      * @param {Object} data - The analysis data.
@@ -1705,7 +2363,6 @@ class AnalysisStepCompareGenes {
 
             // the query and reference cluster values have to be loaded after the option lists
         }
-
 
         const params = {
             'analysis_id': ana.id,
