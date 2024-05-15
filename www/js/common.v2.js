@@ -287,9 +287,13 @@ const checkForLogin = async () => {
  * @function doLogin
  * @returns {Promise<void>}
  */
-const doLogin = async () => {
+const doLogin = async (do_reload) => {
     const formdata = new FormData(document.getElementById("login-form"));
     const data = await apiCallsMixin.login(formdata);
+
+    if (do_reload === undefined) {
+        do_reload = true;
+    }
 
     if (data.session_id == 0) {
         // user name wasn't found at all
@@ -314,7 +318,9 @@ const doLogin = async () => {
         apiCallsMixin.colorblindMode = CURRENT_USER.colorblind_mode;
 
         // refresh the page
-        location.reload();
+        if (do_reload) {
+            window.location.reload();
+        }
 
     } else {
         // Something went wrong

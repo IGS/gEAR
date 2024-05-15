@@ -99,6 +99,11 @@ async function createAccount(verification_uuid) {
         document.getElementById('account-info-c').classList.add('is-hidden');
         document.getElementById('email-verification-c').classList.add('is-hidden');
         document.getElementById('account-creation-success-c').classList.remove('is-hidden');
+
+        // populate the login form, then log the user in
+        document.getElementById('user-email').value = document.getElementById('email').value;
+        document.getElementById('user-password').value = document.getElementById('password1').value;
+        doLogin(false);
     } else {
         document.getElementById('account-info-c').classList.add('is-hidden');
         document.getElementById('email-verification-c').classList.add('is-hidden');
