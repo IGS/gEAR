@@ -11,8 +11,12 @@ window.onload=function() {
         if (e.target.id === 'btn-account-creation-submit') {
             e.preventDefault();
 
+            // disable the button so the user doesn't click it again
+            document.getElementById('btn-account-creation-submit').classList.add('is-loading');
+
             // Validate form's completion. Exit if it contains errors and alert user
             if (validateAccountCreationForm() == false){
+                document.getElementById('btn-account-creation-submit').classList.remove('is-loading');
                 return false;
             }
 
@@ -23,6 +27,7 @@ window.onload=function() {
             if (email_sent == false) {
                 // TODO: Handle UI display here.
                 alert("There was an error sending the verification email. Please try again later.");
+                document.getElementById('btn-account-creation-submit').classList.remove('is-loading');
                 return false;
             }
 
@@ -70,10 +75,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
  * @returns {Promise<boolean>} - A promise that resolves to `true` if the account creation is successful, otherwise `false`.
  */
 async function createAccount(verification_uuid) {
-    /*
-    colorblind_mode = form.getvalue('colorblind_mode')  # checkbox
-    remember_me = form.getvalue('rememberMe')
-    */
+    // disable the button so it's not clicked again
+    document.getElementById('btn-email-verification-submit').classList.add('is-loading');
 
     // get the value of the colorblind mode checkbox, if it's checked
     const colorblind_mode = document.getElementById('colorblind-mode').checked ? 'yes' : 0;
@@ -92,9 +95,6 @@ async function createAccount(verification_uuid) {
         email_updates,
     }));
 
-    console.log(`Account creation status: ${data['success']}`);
-    console.log('error: ' + data['error'])
-
     if (data['success']) {
         document.getElementById('account-info-c').classList.add('is-hidden');
         document.getElementById('email-verification-c').classList.add('is-hidden');
@@ -109,6 +109,7 @@ async function createAccount(verification_uuid) {
         document.getElementById('email-verification-c').classList.add('is-hidden');
         document.getElementById('account-creation-failure-c').classList.remove('is-hidden');
         console.log('error: ' + data['error'])
+        document.getElementById('btn-email-verification-submit').classList.remove('is-loading');
         return false;
     }
 
