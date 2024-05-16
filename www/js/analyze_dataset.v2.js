@@ -1,17 +1,17 @@
 "use strict";
 
-let currentAnalysis = null;
+import UI from './classes/analysis.v2.js';  // ! Take out import when we add to CDN
+
+let currentAnalysis = new Analysis();
 let clickedMarkerGenes = new Set();
 let enteredMarkerGenes = new Set();
 let currentLabel = null;
-let analysisLabels = new Set();
 
 // TODO:  Check font sizes on all instruction blocks
 // TODO:  Check if mitochrondrial QC actually returned anything
 // TODO:  Complete work on limiting the gene count
 // TODO:  Louvain options are escaping their box
 // TODO:  Make sure all plotting buttons either disable or show something else while the compute runs
-
 
 /**
  * Represents a dataset tree.
@@ -35,18 +35,126 @@ const datasetTree = new DatasetTree({
         document.getElementById("current-dataset-post").textContent = e.node.title;
 
         const newDatasetId = e.node.data.dataset_id;
-        organismId = e.node.data.organism_id;
+        const organismId = e.node.data.organism_id;
 
         // We don't want to needless run this if the same dataset was clicked
         if (newDatasetId === datasetId) {
             return;
         }
 
+        createToast("Loading dataset", "is-info");
+
         datasetId = newDatasetId;
 
-        // TODO: reset_workbench() here
+        resetWorkbench();
+
+        currentAnalysis = new Analysis({datasetId, type: "primary", datasetIsRaw: true});
+
+        document.querySelector(UI.initialInstructionsElt).classList.add("is-hidden");
+
+        // Technically these could load asynchronously, but logically the progress logs make more sense sequentially
+        await getDatasetInfo(datasetId);
+        await loadPreliminaryFigures(datasetId);
     })
 });
+
+    /**
+     * Counts and highlights duplicate values in the clustering group labels step.
+     * @returns {number} The number of duplicate values found.
+     */
+    const countAndHighlightDuplicates = () => {
+        const allValues = [];
+        const dupValues = [];
+
+        // first remove any duplicate-labeled ones
+        for (const elt of document.querySelectorAll(UI.clusterGroupLabelsInputElts)) {
+            elt.classList.remove('duplicate');
+
+            const clusterLabel = elt.value.trim();
+
+            // this means it WAS found
+            if (allValues.includes(clusterLabel)) {
+                dupValues.push(clusterLabel);
+                elt.classList.add('duplicate');
+            } else {
+                allValues.push(clusterLabel);
+            }
+        }
+
+        return dupValues.length;
+    }
+
+/**
+ * Downloads the table data as an Excel file.
+ *
+ * @param {string} tableId - The ID of the table element.
+ * @param {string} filename - The name of the downloaded file.
+ */
+const downloadTableAsExcel = (tableId, filename) => {
+    const tableStr = '';
+
+    // Loop through the table header and add each column to the table string
+    for (const elt of document.querySelector(`#${tableId} thead tr th`)){
+        tableStr += `${elt.textContent}\t`;
+    }
+    tableStr = `${tableStr.trim()}\n`;
+
+    // Loop through the table body and add each row to the table string
+    for (const row of document.querySelector(`#${tableId} tbody tr`)){
+        for (const cell of row.querySelectorAll('td')){
+            tableStr += `${cell.textContent}\t`;
+        }
+        tableStr = `${tableStr.trim()}\n`;
+    }
+
+    // Create a link element, set the href to the table string, and download it
+    const element = document.createElement('a');
+    element.setAttribute('href', `data:text/plain;charset=utf-8,${encodeURIComponent(tableStr)}`);
+    element.setAttribute('download', filename);
+    element.classList.add('is-hidden');
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+}
+
+/**
+ * Retrieves dataset information and performs necessary UI updates.
+ *
+ * @param {string} datasetId - The ID of the dataset to retrieve information for.
+ * @returns {Promise<void>} - A promise that resolves when the dataset information is retrieved and UI updates are complete.
+ */
+const getDatasetInfo = async (datasetId) => {
+    document.querySelector("#stored_analyses_c").classList.add("is-hidden");
+
+    try {
+        const data = await apiCallsMixin.getDatasetInfo(datasetId);
+
+        const ds = new Dataset(data);
+
+        // TODO: make Analysis.dataset the replacement for Analysis.dataset_id
+        currentAnalysis.dataset = ds;
+
+        // TODO: set dataset title and shape in the UI
+
+        document.querySelector("#dataset_info").classList.remove("is-hidden");
+        document.querySelector("#analysis_list_c").classList.remove("is-hidden");
+        analysisLabels = currentAnalysis.getSavedAnalysesList(ds.id, 0, 'sc_workbench');
+        createToast("Dataset loaded", "is-success");
+    } catch (error) {
+        createToast("Failed to access dataset");
+        logErrorInConsole(`Failed ID was: ${datasetId} because msg: ${error.message}`);
+    }
+}
+
+/**
+ * Retrieves an array of genes from a collection of cells.
+ *
+ * @param {NodeList} cells - The collection of cells.
+ * @returns {string[]} An array of genes extracted from the cells.
+ */
+function getGenesFromCells(cells) {
+    return [...cells].map(cell => cell.textContent.trim());
+}
 
 /**
  * Loads the dataset tree by fetching dataset information from the curator API.
@@ -102,6 +210,67 @@ const loadDatasetTree = async () => {
 }
 
 /**
+ * Resets the manual marker gene entries.
+ *
+ * @returns {void}
+ */
+function resetManualMarkerGeneEntries() {
+    clickedMarkerGenes = new Set();
+
+    // remember which GOI are from the table
+    for (const elt of document.querySelectorAll(UI.markerGenesTableHighlightedElts)) {
+        clickedMarkerGenes.add(elt.textContent);
+    }
+}
+
+function resetWorkbench() {
+    // Performs all the steps needed to reset the workbench if the input dataset changes
+
+    // handle any data structures
+    currentAnalysis.reset();
+
+    // Reset the analysis tool fields and some display labels
+    //$("form.reset_on_change").trigger("reset");
+    for (const elt of document.querySelectorAll('.reset-on-change')) {
+        // TODO - replace
+        elt.classList.add("is-hidden");
+    }
+
+    for (const elt of document.querySelectorAll('.empty-on-change')) {
+        // TODO - replace
+        elt.replaceChildren();
+    }
+    document.querySelector(UI.newAnalysisLabelElt).textContent = '';
+    document.querySelector(UI.asvgTopGenesListElt).replaceChildren();
+
+    // Hide any non-analysis-flow steps
+    document.querySelector(UI.labeledTsneElt).classList.add("is-hidden");
+    document.querySelector(UI.groupLabelsContainer).classList.add("is-hidden");
+
+    // Toggle the tool buttons to hide them in the UI
+    //$('.tooltoggle').bootstrapToggle('off');
+
+    // Disable those analysis steps which have previous requirements
+    //$('.tooltoggle').bootstrapToggle('disable');
+}
+
+/**
+ * Updates the highlight status of an element and performs additional actions on the specified genes.
+ *
+ * @param {HTMLElement} element - The element to update the highlight status for.
+ * @param {Array<string>} genes - The genes to perform additional actions on.
+ * @param {boolean} addHighlight - A flag indicating whether to add or remove the highlight.
+ */
+function updateHighlightStatus(element, genes, addHighlight) {
+    const method = addHighlight ? 'add' : 'remove';
+    element.classList[method]('highlighted');
+    for (const gene of genes) {
+        clickedMarkerGenes[method](gene);
+        currentAnalysis[`${method}GeneOfInterest`](gene);
+    };
+}
+
+/**
  * Updates the manual marker gene entries based on the provided gene string.
  *
  * @param {string} geneString - The gene string to update the marker gene entries with.
@@ -121,6 +290,17 @@ const updateManualMarkerGeneEntries = (geneString) => {
     document.querySelector(UI.markerGenesUniqueCountElt).textContent = counterSet.size;
     document.querySelector(UI.markerGenesEnteredCountElt).textContent = enteredMarkerGenes.size;
 }
+
+/**
+ * Validates the gene selection and updates the gene cart save button accordingly.
+ */
+function validateMarkerGeneSelection() {
+    currentAnalysis.genes_of_interest = new Set([...enteredMarkerGenes, ...clickedMarkerGenes]);
+    // Only allow saving of gene cart if genes are selected
+    document.querySelector(UI.btnSaveMarkerGeneCartElt).disabled = !currentAnalysis.genes_of_interest.size;
+}
+
+/* -- page entrypoint -- */
 
 /**
  * Handles page-specific login UI updates (after the login event is triggered).
@@ -167,14 +347,364 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 /* Event listenters for elements already loaded */
 
-document.querySelector(UI.visualizeMarkerGenesBtnElt).addEventListener("click", async (event) => {
+// General
+
+document.querySelector(UI.btnDeleteSavedAnalysisElt).addEventListener("click", async (event) => {
+    // Delete the current analysis
+    await currentAnalysis.delete();
+});
+
+document.querySelector(UI.btnMakePublicCopy).addEventListener("click", async (event) => {
+    // Make a public copy of the current analysis
+    await currentAnalysis.makePublicCopy();
+});
+
+document.querySelector(UI.btnSaveAnalysisElt).addEventListener("click", async (event) => {
+    // Save the current analysis to the user area
+    event.target.textContent = "Saving ...";
+    event.target.disabled = true;
+    await currentAnalysis.saveToUserArea();
+
+});
+
+document.querySelector(UI.btnNewAnalysisLabelSaveElt).addEventListener("click", async (event) => {
+    // Save the new label to the current analysis
+    currentAnalysis.label = document.querySelector(UI.btnNewAnalysisLabelElt).textContent;
+    await currentAnalysis.save();
+    document.querySelector(UI.btnNewAnalysisLabelContainer).classList.add("is-hidden");
+});
+
+document.querySelector(UI.btnNewAnalysisLabelCancelElt).addEventListener("click", async (event) => {
+    // Reset the label to the current analysis label
+    document.querySelector(UI.btnNewAnalysisLabelElt).textContent = currentAnalysis.label;
+    document.querySelector(UI.btnNewAnalysisLabelContainer).classList.add("is-hidden");
+});
+
+document.querySelector(UI.analysisSelectElt).addEventListener("change", async (event) => {
+    // Handle the analysis selection change
+
+    // Grab the dataset ID from the current analysis to reuse it
+    const datasetId = currentAnalysis.dataset.id;
+
+    resetWorkbench();
+    // The first analysis ID is the blank 'New' one
+    if (event.target.dataset.analysisId === "0") {
+
+        document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
+        document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
+        document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
+        document.querySelector(UI.analysisStatusInfoElt).textContent = "";
+        document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
+        document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.add("is-hidden");
+        document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.add("is-hidden");
+
+        currentAnalysis = new Analysis({'datasetId': datasetId,
+            'type': 'primary',
+            'datasetIsRaw': true});
+        // Need to reload prelim step so qc_by_mito toggle will work
+        document.querySelector(UI.datasetInfoElt).classList.remove("is-hidden");
+        loadPreliminaryFigures($("#dataset_id").val());
+
+        // TODO: Update UI to match select state
+        document.querySelector(UI.storedAnalysisContainer).classList.remove("is-hidden");
+        return;
+    }
+    createToast("Loading stored analysis", "is-info");
+
+    document.querySelector(UI.btnNewAnalysisLabelContainer).classList.add("is-hidden");
+
+    currentAnalysis.type = event.target.dataset.analysisType;
+    currentAnalysis.id = event.target.dataset.analysisId;
+    currentAnalysis.datasetId = event.target.dataset.datasetId;
+    currentAnalysis.getStoredAnalysis();
+
+    if (currentAnalysis.type == 'primary') {
+        document.querySelector(UI.analysisPrimaryNotificationElt).classList.remove("is-hidden");
+        document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
+        document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
+        document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
+        document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.add("is-hidden");
+        document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.add("is-hidden");
+    }
+    if (currentAnalysis.type == 'user_saved') {
+        document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
+        document.querySelector(UI.analysisActionContainer).classList.remove("is-hidden");
+        document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
+        document.querySelector(UI.analysisStatusInfoElt).textContent = "This analysis is stored in your profile.";
+        document.querySelector(UI.btnMakePublicCopyElt).classList.remove("is-hidden");
+        document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.remove("is-hidden");
+        document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.add("is-hidden");
+    }
+    if (currentAnalysis.type == 'user_unsaved') {
+        document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
+        document.querySelector(UI.analysisActionContainer).classList.remove("is-hidden");
+        document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
+        document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
+        document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.add("is-hidden");
+        document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.remove("is-hidden");
+    }
+    if (currentAnalysis.type == 'public') {
+        document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
+        document.querySelector(UI.analysisActionContainer).classList.remove("is-hidden");
+        document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
+        document.querySelector(UI.analysisStatusInfoElt).textContent = "Changes made to this public analysis will spawn a local copy within your profile.";
+        document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
+        document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.add("is-hidden");
+        document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.add("is-hidden");
+    }
+});
+
+// Primary Filter
+
+document.querySelector(UI.btnApplyPrimaryFilterElt).addEventListener("click", async (event) => {
+    // Apply the primary filter to the dataset
+    await currentAnalysis.primaryFilter.applyPrimaryFilter();
+});
+
+// QC by Mito
+
+document.querySelector(UI.btnDoAnalysisQcByMitoElt).addEventListener("click", async (event) => {
+    // Run the QC by Mito analysis
+    await currentAnalysis.qcByMito.runAnalysis(0);
+});
+
+document.querySelector(UI.btnQbmSaveElt).addEventListener("click", async (event) => {
+    // Save the QC by Mito analysis
+    await currentAnalysis.qcByMito.runAnalysis(1);
+    disableAndHideElement(document.querySelector(UI.btnDoAnalysisQcByMitoElt));
+    event.target.textContent = "Saved";
+    event.target.disabled = true;
+});
+
+document.querySelector(UI.newAnalysisLabelElt).addEventListener("focus", (event) => {
+    // Reset the new analysis label
+    currentLabel = event.target.textContent;
+});
+
+document.querySelector(UI.newAnalysisLabelElt).addEventListener("keyup", (event) => {
+    // Update the new analysis label if it is not a duplicate
+    if (analysisLabels.has(event.target.textContent)) {
+        if (event.target.textContent !== currentLabel) {
+            event.target.classList.add("duplicate");
+            document.querySelector(UI.btnNewAnalysisLabelSaveElt).disabled = true;
+            document.querySelector(UI.duplicateLabelWarningElt).classList.remove("is-hidden");
+        }
+        return;
+    }
+
+    document.querySelector(UI.duplicateLabelWarningElt).classList.add("is-hidden");
+    event.target.classList.remove("duplicate");
+    document.querySelector(UI.btnNewAnalysisLabelSaveElt).disabled = false;
+});
+
+// Select Variable Genes
+
+document.querySelector(UI.btnDoAnalysisSelectVariableGenesElt).addEventListener("click", async (event) => {
+    // Run the select variable genes analysis
+    await currentAnalysis.selectMarkerGenes.runAnalysis(0);
+});
+
+document.querySelector(UI.btnAsvgSaveElt).addEventListener("click", async (event) => {
+    // Save the select variable genes analysis
+    await currentAnalysis.selectVariableGenes.runAnalysis(1);
+    disableAndHideElement(document.querySelector(UI.btnDoAnalysisSelectVariableGenesElt));
+    event.target.textContent = "Saved";
+    event.target.disabled = true;
+});
+
+// PCA
+
+document.querySelector(UI.btnPcaRunElt).addEventListener("click", (event) => {
+    // Run the PCA analysis
+    currentAnalysis.checkDependenciesAndRun(currentAnalysis.pca.runAnalysis);
+});
+
+document.querySelector(UI.btnPcaTopGenesElt).addEventListener("click", (event) => {
+    // Run the PCA top genes
+    currentAnalysis.checkDependenciesAndRun(currentAnalysis.pca.runAnalysisTopGenes);
+});
+
+// tSNE
+
+document.querySelector(UI.btnTsneRunElt).addEventListener("click", (event) => {
+    // Run the tSNE analysis (and/or UMAP)
+    currentAnalysis.checkDependenciesAndRun(currentAnalysis.tsne.runAnalysis);
+});
+
+// Clustering
+
+document.querySelector(UI.btnClusteringRunElt).addEventListener("click", (event) => {
+    // Run the clustering analysis
+    currentAnalysis.checkDependenciesAndRun(currentAnalysis.clustering.runAnalysis);
+});
+
+document.querySelector(UI.btnClusteringEditRunElt).addEventListener("click", (event) => {
+    // Check for duplicate labels and run the clustering edit analysis
+    //  if there are none (or if the user has selected to merge clusters)
+
+    // Remove any duplicate labels
+    for (const elt of document.querySelectorAll(UI.clusterGroupLabelsInputElts)) {
+        elt.classList.remove("duplicate");
+    }
+
+    // If the user has selected to merge clusters, run the clustering edit analysis
+    if (document.querySelector(UI.clusteringMergeClustersElt).checked) {
+        currentAnalysis.checkDependenciesAndRun(currentAnalysis.clusteringEdit.runAnalysis);
+        return;
+    }
+
+    // Otherwise, check for duplicates and run the clustering analysis if there are none
+    const duplicateCount = countAndHighlightDuplicates();
+    if (duplicateCount === 0) {
+        currentAnalysis.checkDependenciesAndRun(currentAnalysis.clusteringEdit.runAnalysis);
+    }
+});
+
+// Marker Genes
+
+document.querySelector(UI.btnMarkerGenesRunElt).addEventListener("click", (event) => {
+    // Run the marker genes analysis
+    currentAnalysis.checkDependenciesAndRun(currentAnalysis.markerGenes.runAnalysis);
+});
+
+document.querySelector(UI.btnVisualizeMarkerGenesElt).addEventListener("click", async (event) => {
+    // Visualize the marker genes
     await performMarkerGeneVisualization();
 });
 
 document.querySelector(UI.markerGenesManuallyEnteredElt).addEventListener("keyup", (event) => {
+    // Update the manual marker gene entries based on the entered gene string
     const geneString = event.target.value;
     updateManualMarkerGeneEntries(geneString);
 });
+
+document.querySelector(UI.btnDownloadMarkerGenesElt).addEventListener("click", (event) => {
+    // Download the marker genes table
+    currentAnalysis.markerGenes.downloadMarkerGenesTable();
+});
+
+document.querySelector(UI.markerGenesTableElt).addEventListener("onmouseover", (event) => {
+    // Add the clickable class to the table cells
+    event.target.classList.add("is-clickable");
+    // ? could just put this directly in html template
+});
+
+document.querySelector(UI.markerGenesTableElt).addEventListener("click", (event) => {
+    // Handle the marker genes table cell clicks
+
+    let clickedCell = event.target.closest("td");
+    const geneOfInterest = clickedCell.textContent.trim();
+
+    if (event.target.classList.contains("js-col-idx")) {
+        clickedCell = event.target.closest("th");
+    }
+
+    const isHighlighted = clickedCell.classList.contains("highlighted");
+    let genesOfInterest;
+
+    switch (true) {
+        // Check if the clicked cell is a row index cell
+        case clickedCell.classList.contains("js-row-idx"):
+            const rowCells = [...clickedCell.parentNode.children].filter(child => child !== el);
+            genesOfInterest = getGenesFromCells(rowCells);
+            updateHighlightStatus(clickedCell, genesOfInterest, !isHighlighted);
+            break;
+
+        // Check if the clicked cell is a column index cell
+        case clickedCell.classList.contains("js-col-idx"):
+            const clickedHeaderIndex = clickedCell.cellIndex + 1;
+            const colCells = document.querySelectorAll(`table tr td:nth-child(${clickedHeaderIndex})`);
+            genesOfInterest = getGenesFromCells(colCells);
+            updateHighlightStatus(clickedCell, genesOfInterest, !isHighlighted);
+            break;
+
+        // Check if the clicked cell is a data cell
+        default:
+            updateHighlightStatus(clickedCell, [geneOfInterest], !isHighlighted);
+            break;
+    }
+
+    clickedMarkerGenes.delete("");
+
+    document.querySelector(UI.markerGenesSelectedCountElt).textContent = clickedMarkerGenes.size;
+    const counterSet = new Set([...enteredMarkerGenes, ...clickedMarkerGenes]);
+    document.querySelector(UI.markerGenesUniqueCountElt).textContent = counterSet.size;
+});
+
+document.querySelector(UI.markerGenesManuallyEnteredElt).addEventListener("focus", (event) => {
+    // Reset the manual marker gene entries
+    resetManualMarkerGeneEntries();
+});
+
+document.querySelector(UI.markerGenesManuallyEnteredElt).addEventListener("change", (event) => {
+    // Process the manual marker gene entries
+    validateMarkerGeneSelection();
+});
+
+// Compare Genes
+
+document.querySelector(UI.btnCompareGenesRunElt).addEventListener("click", async (event) => {
+    // Run the compare genes analysis
+    await currentAnalysis.compareGenes.runAnalysis();
+});
+
+document.querySelector(UI.btnCompareGenesDownloadTableFElt).addEventListener("click", (event) => {
+    // Download the compare genes table for the forward comparison
+    const queryId = document.querySelector(UI.queryClusterSelectElt).value;
+    const referenceId = document.querySelector(UI.referenceClusterSelectElt).value;
+
+    downloadTableAsExcel("compare_genes_table_f", `cluster_comparison_${queryId}_vs_${referenceId}.xls`);
+});
+
+document.querySelector(UI.btnCompareGenesDownloadTableRElt).addEventListener("click", (event) => {
+    // Download the compare genes table for the reverse comparison
+    const queryId = document.querySelector(UI.queryClusterSelectElt).value;
+    const referenceId = document.querySelector(UI.referenceClusterSelectElt).value;
+
+    downloadTableAsExcel("compare_genes_table_r", `cluster_comparison_${referenceId}_vs_${queryId}.xls`);
+});
+
+document.querySelector(UI.btnCompareGenesShowTableFElt).addEventListener("click", (event) => {
+    // Show or hide the compare genes table for the forward comparison
+    if (document.querySelector(UI.compareGenesTableFElt).classList.contains("is-hidden")) {
+        document.querySelector(UI.compareGenesTableFElt).classList.remove("is-hidden");
+        event.target.textContent = "Hide table";
+        // TODO: Change mdi eye to mdi eye-off
+    } else {
+        document.querySelector(UI.compareGenesTableFElt).classList.add("is-hidden");
+        event.target.textContent = "Show table";
+        // TODO: Change mdi eye-off to mdi eye
+    }
+});
+
+document.querySelector(UI.btnCompareGenesShowTableRElt).addEventListener("click", (event) => {
+    // Show or hide the compare genes table for the reverse comparison
+    if (document.querySelector(UI.compareGenesTableRElt).classList.contains("is-hidden")) {
+        document.querySelector(UI.compareGenesTableRElt).classList.remove("is-hidden");
+        event.target.textContent = "Hide table";
+    } else {
+        document.querySelector(UI.compareGenesTableRElt).classList.add("is-hidden");
+        event.target.textContent = "Show table";
+    }
+});
+
+document.querySelector(UI.compareGenesMethodSelectElt).addEventListener("change", (event) => {
+    // Show or hide the p-value correction method select element based on the selected method
+    /*
+        p-value correction method. Used only for ‘t-test’, ‘t-test_overestim_var’,
+        and ‘wilcoxon’ methods.
+
+        The only other option is 'logreg'
+    */
+    if (event.target.value === "logreg") {
+        document.querySelector(UI.compareGenesCorrMethodSelectElt).classList.add("is-hidden");
+        document.querySelector(UI.compareGenesCorrMethodSelectElt).value = "";
+    } else {
+        document.querySelector(UI.compareGenesCorrMethodSelectElt).classList.remove("is-hidden");
+    }
+
+});
+
 
 /* -------------------------------------------------------- */
 
@@ -193,161 +723,6 @@ window.onload=() => {
     });
 
 
-    $( "#dataset_id" ).on('change', async () => {
-        show_working("Loading dataset");
-
-        $('.js-next-step').hide();
-
-        if (currentAnalysis != null) {
-            reset_workbench();
-        }
-
-        currentAnalysis = new Analysis({'dataset_id': $("#dataset_id").val(),
-                                         'type': 'primary',
-                                         'dataset_is_raw': true});
-
-        $(".initial_instructions").hide();
-        // Technically these could load asynchronously, but logically the progress logs make more sense sequentially
-        await get_dataset_info($("#dataset_id").val());
-        load_preliminary_figures($("#dataset_id").val());
-
-    });
-
-    // This series traps the <enter> key within each form and fires a click event on
-    //  the corresponding button instead.
-    catch_enter_and_instead_click('primary_filter_options_f', 'btn_apply_primary_filter');
-    catch_enter_and_instead_click('qc_mito_options_f', 'btn_do_analysis_qc_by_mito');
-    catch_enter_and_instead_click('asvg_options_f', 'btn_do_analysis_select_variable_genes');
-    catch_enter_and_instead_click('pca_options_f', 'btn_pca_run');
-    catch_enter_and_instead_click('tsne_options_f', 'btn_tsne_run');
-    catch_enter_and_instead_click('louvain_options_f', 'btn_louvain_run');
-    catch_enter_and_instead_click('marker_genes_options_f', 'btn_marker_genes_run');
-
-    $("#btn_apply_primary_filter").on('click', function() {
-        apply_primary_filter();
-    });
-
-    $("#btn_asvg_save").on('click', function() {
-        run_analysis_select_variable_genes(1);
-        $("#btn_do_analysis_select_variable_genes").hide();
-        $(this).text('Saved');
-        $(this).prop("disabled", true);
-    });
-
-    $("#btn_compare_genes_run").on('click', function() {
-        check_dependencies_and_run(run_analysis_compare_genes);
-    });
-
-    $("#btn_download_marker_genes").on('click', function() {
-        download_marker_genes_table();
-    });
-
-    $(".btn_delete_analysis").on('click', function() {
-        currentAnalysis.delete();
-    });
-
-    $("#btn_do_analysis_qc_by_mito").on('click', function() {
-        run_analysis_qc_by_mito(0);
-    });
-
-    $("#btn_do_analysis_select_variable_genes").on('click', function() {
-        run_analysis_select_variable_genes(0);
-    });
-
-    $("#btn_louvain_run").on('click', function() {
-        check_dependencies_and_run(run_analysis_louvain);
-    });
-
-    $("#btn_make_public_copy").on('click', function() {
-        currentAnalysis.make_public_copy();
-    });
-
-    $("#btn_marker_genes_run").on('click', function() {
-        check_dependencies_and_run(run_analysis_marker_genes);
-    });
-
-    $("#btn_pca_run").on('click', function() {
-        check_dependencies_and_run(run_analysis_pca);
-    });
-
-    $("#btn_pca_top_genes").on('click', function() {
-       check_dependencies_and_run(run_analysis_pca_top_genes);
-    });
-
-    $("#btn_louvain_rerun_with_groups").on('click', function() {
-        $('#marker_genes_group_labels td.group_user_label input').removeClass('duplicate');
-        if ($("#louvain_merge_clusters").is(':checked') ) {
-            check_dependencies_and_run(run_analysis_louvain);
-            return;
-        }
-
-        const duplicate_count = currentAnalysis.marker_genes.count_and_highlight_duplicates();
-        if (duplicate_count == 0) {
-            check_dependencies_and_run(run_analysis_louvain);
-        }
-    });
-
-    $("#btn_qbm_save").on('click', function() {
-        run_analysis_qc_by_mito(1);
-        $("#btn_do_analysis_qc_by_mito").hide();
-    });
-
-    $("#btn_save_analysis").on('click', function() {
-        $(this).prop("disabled", true);
-        $(this).text('Saving ...');
-        currentAnalysis.save_to_user_area();
-    });
-
-    $("#btn_tsne_run").on('click', function() {
-        check_dependencies_and_run(run_analysis_tsne);
-    });
-
-    $('#cg_download_table_f').on('click', () => {
-        const qry_id = $('#query_cluster').val();
-        const ref_id = $('#reference_cluster').val();
-
-        download_table_as_excel('compare_genes_table_f',
-                                `cluster_comparison_${qry_id}_vs_` +
-                                ref_id + '.xls');
-    });
-
-    $('#cg_download_table_r').on('click', () => {
-        const qry_id = $('#query_cluster').val();
-        const ref_id = $('#reference_cluster').val();
-
-        download_table_as_excel('compare_genes_table_r',
-                                `cluster_comparison_${ref_id}_vs_` +
-                                qry_id + '.xls');
-    });
-
-    $("#cg_show_table_f").on('click', () => {
-        if ($("#compare_genes_table_f").is(":visible")) {
-            $("#compare_genes_table_f").hide(500);
-            $("#cg_show_table_f").html(' Show table');
-            $("#cg_show_table_f").removeClass('fa-eye-slash');
-            $("#cg_show_table_f").addClass('fa-eye');
-            return;
-        }
-        $("#compare_genes_table_f").show(500);
-        $("#cg_show_table_f").html(' Hide table');
-        $("#cg_show_table_f").addClass('fa-eye-slash');
-        $("#cg_show_table_f").removeClass('fa-eye');
-    });
-
-    $("#cg_show_table_r").on('click', () => {
-        if ($("#compare_genes_table_r").is(":visible")) {
-            $("#compare_genes_table_r").hide(500);
-            $("#cg_show_table_r").html(' Show table');
-            $("#cg_show_table_r").removeClass('fa-eye-slash');
-            $("#cg_show_table_r").addClass('fa-eye');
-            return;
-        }
-        $("#compare_genes_table_r").show(500);
-        $("#cg_show_table_r").html(' Hide table');
-        $("#cg_show_table_r").addClass('fa-eye-slash');
-        $("#cg_show_table_r").removeClass('fa-eye');
-    });
-
     $('.tooltoggle').change( function() {
         const analysis_block_id = `#analysis_${$(this).data('analysis-name')}`;
 
@@ -356,182 +731,6 @@ window.onload=() => {
         } else {
             $(analysis_block_id).hide();
         }
-    });
-
-    $('select#analysis_id').on('change', function() {
-        // The first analysis ID is the blank 'New' one
-        if ($(this).find(':selected').data('analysis-id') == "0") {
-            reset_workbench();
-
-            $("#primary_analysis_notification").hide();
-            $("#analysis_action_c").hide();
-            $("#analysis_status_info").text("");
-            $("#analysis_status_info_c").hide();
-            $("#btn_make_public_copy").hide();
-            $("#btn_delete_saved_analysis").hide();
-            $("#btn_delete_unsaved_analysis").hide();
-
-            currentAnalysis = new Analysis({'dataset_id': $("#dataset_id").val(),
-            'type': 'primary',
-            'dataset_is_raw': true});
-            // Need to reload prelim step so qc_by_mito toggle will work
-            $("#dataset_info").show();
-            load_preliminary_figures($("#dataset_id").val());
-
-            $('#analysis_id').selectpicker('refresh');
-            $("#stored_analyses_c").show(10);
-
-            return;
-        }
-        show_working("Loading stored analysis");
-
-        $('#new_analysis_label_c').hide();
-        reset_workbench();
-
-        const analysis_type = $(this).find(':selected').data('analysis-type');
-
-        load_stored_analysis($(this).find(':selected').data('analysis-id'),
-            analysis_type,
-            $(this).find(':selected').data('dataset-id')
-        );
-
-        if (analysis_type == 'user_unsaved') {
-            $("#primary_analysis_notification").hide();
-            $("#analysis_action_c").show();
-            $("#analysis_status_info_c").hide();
-            $("#btn_make_public_copy").hide();
-            $("#btn_delete_saved_analysis").hide();
-            $("#btn_delete_unsaved_analysis").show();
-            return;
-        }
-        if (analysis_type == 'user_saved') {
-            $("#primary_analysis_notification").hide();
-            $("#analysis_action_c").hide();
-            $("#analysis_status_info").text("This analysis is stored in your profile.");
-            $("#analysis_status_info_c").show();
-            $("#btn_make_public_copy").show();
-            $("#btn_delete_saved_analysis").show();
-            $("#btn_delete_unsaved_analysis").hide();
-            return;
-        }
-        if (analysis_type == 'public') {
-            $("#primary_analysis_notification").hide();
-            $("#analysis_action_c").hide();
-            $("#analysis_status_info").text("Changes made to this public analysis will spawn a local copy within your profile.");
-            $("#analysis_status_info_c").show();
-            $("#btn_make_public_copy").hide();
-            $("#btn_delete_saved_analysis").hide();
-            $("#btn_delete_unsaved_analysis").hide();
-            return;
-        }
-        if (analysis_type == 'primary') {
-            $("#primary_analysis_notification").show();
-            $("#analysis_action_c").hide();
-            $("#analysis_status_info_c").hide();
-            $("#btn_make_public_copy").hide();
-            $("#btn_delete_saved_analysis").hide();
-            $("#btn_delete_unsaved_analysis").hide();
-        }
-    });
-
-    $('select#compare_genes_method').on('change', function() {
-        /*
-           p-value correction method. Used only for ‘t-test’, ‘t-test_overestim_var’,
-           and ‘wilcoxon’ methods.
-
-           The only other option is 'logreg'
-        */
-        if (this.value === 'logreg') {
-            $("#compare_genes_corr_method_c").hide();
-        } else {
-            $("#compare_genes_corr_method_c").show();
-        }
-    });
-
-    $("#marker_genes_table").mouseover(function(e) {
-        $(this).css("cursor", "pointer");
-    });
-
-    $("#marker_genes_table").click(function(e) {
-        let clicked_cell = $(e.target).closest("td");
-        const goi = clicked_cell.text().trim(); // goi = genes of interest
-
-        if ($(e.target).hasClass("js-col-idx")) {
-            clicked_cell = $(e.target).closest("th");
-        }
-
-        // If row index was clicked, operate on whole row. Otherwise, just on individual cells.
-        if (clicked_cell.hasClass('js-row-idx')) {
-            const row_cells = clicked_cell.siblings();
-            // note - jQuery map, not array.prototype map
-            const gois = row_cells.map((i, el) => el.innerText.trim()).get();
-            if (clicked_cell.hasClass('highlighted')) {
-                // unhighlight all cells in row
-                row_cells.removeClass("highlighted");
-                clicked_cell.removeClass("highlighted");
-                gois.forEach(el => {
-                    clickedMarkerGenes.delete(el);
-                    currentAnalysis.remove_gene_of_interest(el);
-                });
-            } else {
-                row_cells.addClass("highlighted");
-                clicked_cell.addClass("highlighted");
-                gois.forEach(el => {
-                    clickedMarkerGenes.add(el);
-                    currentAnalysis.add_gene_of_interest(el);
-                });
-            }
-        } else if (clicked_cell.hasClass("js-col-idx")){
-            // get nth element in each row +1 (for the row idx)
-            const clicked_header_idx = clicked_cell.index()+1;
-            const col_cells = $('table tr td:nth-child(' + clicked_header_idx + ')');
-            // note - jQuery map, not array.prototype map
-            const gois = col_cells.map((i, el) => el.innerText.trim()).get();
-            if (clicked_cell.hasClass('highlighted')) {
-                // unhighlight all cells in row
-                col_cells.removeClass("highlighted");
-                clicked_cell.removeClass("highlighted");
-                gois.forEach(el => {
-                    clickedMarkerGenes.delete(el);
-                    currentAnalysis.remove_gene_of_interest(el);
-                });
-            } else {
-                col_cells.addClass("highlighted");
-                clicked_cell.addClass("highlighted");
-                gois.forEach(el => {
-                    clickedMarkerGenes.add(el);
-                    currentAnalysis.add_gene_of_interest(el);
-                });
-            }
-        } else if (clicked_cell.hasClass('highlighted')) {
-            clicked_cell.removeClass("highlighted");
-            clickedMarkerGenes.delete(goi);
-            currentAnalysis.remove_gene_of_interest(goi);
-        } else {
-            clicked_cell.addClass("highlighted");
-            clickedMarkerGenes.add(goi);
-            currentAnalysis.add_gene_of_interest(goi);
-        }
-
-        // Occasionally an empty string finds its way in here, which can throw off counts.
-        clickedMarkerGenes.delete('');
-
-
-        $('#marker_genes_selected_count').text(clickedMarkerGenes.size);
-        const counter_set = new Set([...enteredMarkerGenes, ...clickedMarkerGenes]);
-        $('#marker_genes_unique_count').text(counter_set.size);
-    });
-
-    $("#new_analysis_label_cancel").click(function(e) {
-        // Set the label back to what it currently is, then hide
-        $("#new_analysis_label").val(currentAnalysis.label);
-        $("#new_analysis_label_c").hide(500);
-    });
-
-    $("#new_analysis_label_save").click(function(e) {
-        currentAnalysis.label = $("#new_analysis_label").val();
-        currentAnalysis.save();
-        $("#new_analysis_label_c").hide(500);
     });
 
     $("#btn_sbs_tsne_run").click(async function(e) {
@@ -582,36 +781,6 @@ window.onload=() => {
         e.preventDefault();
     });
 
-
-    $('#marker_genes_manually_entered').focus(function() {
-        reset_manual_marker_gene_entries();
-    });
-
-    $('#marker_genes_manually_entered').change(function() {
-        process_manual_marker_gene_entries();
-    });
-
-
-    $('#new_analysis_label').focus(function() {
-        currentLabel = $(this).val();
-    });
-    $('#new_analysis_label').keyup(function() {
-        if ( analysisLabels.has($(this).val()) ) {
-            // it's also OK if the current value was what it was when the user started to edit
-            if ( $(this).val() != currentLabel ) {
-                // turn red, disable save, and show dup message
-                $(this).addClass('duplicate');
-                $('#new_analysis_label_save').prop("disabled", true);
-                $('#duplicate_label_warning').show(500);
-            }
-            return;
-
-        }
-        // clear duplication message, remove red, and enable save
-        $('#duplicate_label_warning').hide(500);
-        $(this).removeClass('duplicate');
-        $('#new_analysis_label_save').prop("disabled", false);
-    });
 
 	$("#save_weighted_gene_cart").on("click", () => {
 		$("#save_weighted_gene_cart").prop("disabled", true);
@@ -778,211 +947,8 @@ function get_tsne_image_data(gene_symbol, config) {
     }); // end axios
 }
 
-function apply_primary_filter() {
-    show_working("Applying dataset filters");
-    $("#dataset_info .empty_on_change").empty();
 
-    // If a user redoes the primary filters, it's assumed they want to do this on the primary
-    //  datasource again.  This allows them to lessen the stringency of a filter.
-    const original_analysis_type = currentAnalysis.type
-    currentAnalysis.type = 'primary'
-
-    if ($('#filter_cells_lt_n_genes_selected').is(":checked")) {
-        currentAnalysis.primary_filter.filter_cells_lt_n_genes_selected = true
-        currentAnalysis.primary_filter.filter_cells_lt_n_genes = $("#filter_cells_lt_n_genes").val();
-    } else {
-        currentAnalysis.primary_filter.filter_cells_lt_n_genes_selected = false
-    }
-
-
-    if ($('#filter_cells_gt_n_genes_selected').is(":checked")) {
-        currentAnalysis.primary_filter.filter_cells_gt_n_genes_selected = true
-        currentAnalysis.primary_filter.filter_cells_gt_n_genes = $("#filter_cells_gt_n_genes").val();
-    } else {
-        currentAnalysis.primary_filter.filter_cells_gt_n_genes_selected = false
-    }
-
-    if ($('#filter_genes_lt_n_cells_selected').is(":checked")) {
-        currentAnalysis.primary_filter.filter_genes_lt_n_cells_selected = true
-        currentAnalysis.primary_filter.filter_genes_lt_n_cells = $("#filter_genes_lt_n_cells").val();
-    } else {
-        currentAnalysis.primary_filter.filter_genes_lt_n_cells_selected = false
-    }
-
-    if ($('#filter_genes_gt_n_cells_selected').is(":checked")) {
-        currentAnalysis.primary_filter.filter_genes_gt_n_cells_selected = true
-        currentAnalysis.primary_filter.filter_genes_gt_n_cells = $("#filter_genes_gt_n_cells").val();
-    } else {
-        currentAnalysis.primary_filter.filter_genes_gt_n_cells_selected = false
-    }
-
-    $.ajax({
-        type: "POST",
-        url: "./cgi/h5ad_apply_primary_filter.cgi",
-        data: {'analysis_id': currentAnalysis.id,
-               'analysis_type': currentAnalysis.type,
-               'dataset_id': currentAnalysis.dataset_id,
-               'session_id': currentAnalysis.user_session_id,
-               'using_primary_datasource': currentAnalysis.using_primary_datasource,
-               'filter_cells_lt_n_genes': currentAnalysis.primary_filter.filter_cells_lt_n_genes,
-               'filter_cells_gt_n_genes': currentAnalysis.primary_filter.filter_cells_gt_n_genes,
-               'filter_genes_lt_n_cells': currentAnalysis.primary_filter.filter_genes_lt_n_cells,
-               'filter_genes_gt_n_cells': currentAnalysis.primary_filter.filter_genes_gt_n_cells
-              },
-        dataType: "json",
-        success: function(data) {
-            currentAnalysis.primary_filter.filtered_gene_count = data['n_genes'];
-            currentAnalysis.primary_filter.filtered_cell_count = data['n_obs'];
-
-            if (data['success'] == 1) {
-                $("#selected_dataset_shape_filtered").html(data['n_genes'] + " genes x " + data['n_obs'] + " obs");
-                $("#selected_dataset_shape_filtered_c").show(500);
-
-                if (original_analysis_type == 'primary') {
-                    currentAnalysis.type = 'user_unsaved'
-                } else {
-                    currentAnalysis.type = original_analysis_type
-                }
-
-                currentAnalysis.primary_filter.calculated = true;
-                currentAnalysis.primary_filter.update_ui(currentAnalysis);
-                done_working("Data filters applied");
-                $('#primary_filter_options_c .js-next-step').show();  // Show that next toggle can be clicked
-            } else {
-                if (data['n_genes'] == 0) {
-                    report_error("Filter reduced genes to 0. Try less stringent cutoffs");
-                } else if (data['n_obs'] == 0) {
-                    report_error("Filter reduced genes to 0. Try less stringent cutoffs");
-                } else {
-                    report_error("There was an error filtering this dataset");
-                }
-            }
-
-            $('#btn_apply_primary_filter').attr("disabled", false);
-        },
-        error: function(xhr, status, msg) {
-            report_error("Error filtering dataset: " + msg);
-            $('#btn_apply_primary_filter').attr("disabled", false);
-        }
-    });
-}
-
-function catch_enter_and_instead_click(form_id, button_id) {
-    /*
-      Each analysis tool has a series of form elements and at least one submit button.  This
-      function allows a quick way to override the default form submission when the user
-      hits <enter> and instead simulates the click of a chosen button.
-      */
-    $('#' + form_id).on('submit', function(e) {
-        e.preventDefault();
-    });
-
-    $('#' + form_id).keypress(function (e) {
-        if (e.which == 13) {
-            $("#" + button_id).click();
-        }
-    });
-}
-
-function check_dependencies_and_run(callback, opts) {
-    if (currentAnalysis.type == 'public') {
-        currentAnalysis.copy_to_user_unsaved(callback, opts);
-    } else {
-        callback(opts);
-    }
-}
-
-function done_working(msg, do_save) {
-    $("#action_log li.working").remove();
-    if (msg) {
-        $("<li>" + msg + "</li>").prependTo("#action_log");
-    }
-
-    if (do_save == null || do_save == true) {
-        if (currentAnalysis.type != 'primary') {
-            if ( $('select#analysis_id').find(':selected').data('analysis-id') == "0") {
-                currentAnalysis.label = $('#new_analysis_label').val();
-            }
-            currentAnalysis.save();
-
-            if (currentAnalysis.type == 'user_unsaved') {
-                $("#analysis_action_c").show();
-                $("#analysis_status_info_c").hide();
-            } else if (currentAnalysis.type == 'user_saved') {
-                $("#analysis_action_c").hide();
-                $("#analysis_status_info_c").show();
-            }
-        }
-    }
-}
-
-function download_marker_genes_table() {
-    /*
-      This builds a file in-memory for the user to download which is a the marker genes table
-      in tab-delimited form.
-     */
-    var file_contents = '';
-
-    // Do the header row
-    var row = [];
-    $("table#marker_genes_table thead th").each(function(){
-        if ( row.length == 0) {
-            row.push('');
-        } else {
-            row.push($(this).text());
-        }
-    });
-    file_contents += row.join("\t") + "\n";
-
-    // Now all the other rows
-    $("table#marker_genes_table tbody tr").each(function(){
-        row = [];
-
-        $(this).find('td').each(function(){
-            row.push($(this).text());
-        });
-
-        file_contents += row.join("\t") + "\n";
-    });
-
-    const element = document.createElement('a');
-    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(file_contents));
-    element.setAttribute('download', 'marker_genes.xls');
-    element.style.display = 'none';
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-}
-
-//TODO: move this into a generic utils module
-async function get_dataset_info(dataset_id) {
-    $("#stored_analyses_c").hide();
-
-    await $.ajax({
-        type: "POST",
-        url: "./cgi/get_dataset_info.cgi",
-        data: {'dataset_id': dataset_id, 'include_shape': 1},
-        dataType: "json"
-    }).done((data) => {
-        const ds = new Dataset(data);
-
-        $('#new_analysis_label').val(currentAnalysis.label);
-
-        // TODO: make Analysis.dataset the replacement for Analysis.dataset_id
-        currentAnalysis.dataset = ds;
-
-        update_selected_dataset(ds);
-        $("#dataset_info").show();
-        $("#analysis_list_c").show();
-        analysisLabels = currentAnalysis.get_saved_analyses_list(ds.id, 0, 'sc_workbench');
-        done_working();
-    }).fail((xhr, status, msg) => {
-        report_error("Failed to access dataset");
-        report_error(`Failed ID was: ${dataset_id} because msg: ${msg}`);
-    });
-}
-
-function load_preliminary_figures(dataset_id) {
+function loadPreliminaryFigures(dataset_id) {
     $("#stored_analyses_c").hide();
 
     $.ajax({
@@ -1010,85 +976,3 @@ function load_preliminary_figures(dataset_id) {
         report_error(`Failed ID was: ${dataset_id} because msg: ${msg}`);
     });
 }
-
-function load_stored_analysis(analysis_id, analysis_type, dataset_id) {
-    $.ajax({
-        type: "POST",
-        url: "./cgi/get_stored_analysis.cgi",
-        data: {'analysis_id': analysis_id,
-               'analysis_type': analysis_type,
-               'session_id': CURRENT_USER.session_id,
-               'dataset_id': dataset_id
-              },
-        dataType: "json",
-        success: function(data) {
-            const ana = Analysis.load_from_json(data);
-            ana.dataset = currentAnalysis.dataset;
-            currentAnalysis = ana;
-
-            if (data['tsne']['tsne_calculated']) {
-                $("#analysis_sbs_tsne").show();
-            } else {
-                $("#analysis_sbs_tsne").hide();
-            }
-
-            done_working("Analysis loaded", false);
-        },
-        error: function(xhr, status, msg) {
-            report_error("Failed to load stored analysis: " + msg);
-        }
-    });
-}
-
-$(document).on("build_jstrees", () => populate_dataset_selection());
-
-
-function process_manual_marker_gene_entries() {
-    currentAnalysis.genes_of_interest = new Set([...enteredMarkerGenes, ...clickedMarkerGenes]);
-    // Only allow saving of gene cart if genes are selected
-    $("#save_marker_gene_cart").prop("disabled", true);
-    if (currentAnalysis.genes_of_interest.size) {
-		$("#save_marker_gene_cart").prop("disabled", false);
-
-    }
-}
-
-function reset_manual_marker_gene_entries() {
-    clickedMarkerGenes = new Set();
-
-    // remember which GOI are from the table
-    $.each(
-        $('#marker_genes_table td.highlighted'),
-        function() {
-            clickedMarkerGenes.add($(this).text());
-        }
-    );
-}
-
-function reset_workbench() {
-    // Performs all the steps needed to reset the workbench if the input dataset changes
-
-    // handle any data structures
-    currentAnalysis.reset();
-
-    // Reset the analysis tool fields and some display labels
-    $("form.reset_on_change").trigger("reset");
-    $("p.reset_on_change").hide();
-    $("span.empty_on_change").empty();
-    $("div.empty_on_change").empty();
-    $("tbody.empty_on_change").empty();
-    $("input#new_analysis_label").val('');
-    $('#top_genes strong').empty();
-
-    // Hide any non-analysis-flow steps
-    $("#analysis_sbs_tsne").hide();
-    $("#group_labels_c").hide();
-
-    // Toggle the tool buttons to hide them in the UI
-    $('.tooltoggle').bootstrapToggle('off');
-
-    // Disable those analysis steps which have previous requirements
-    $('.tooltoggle').bootstrapToggle('disable');
-}
-
-

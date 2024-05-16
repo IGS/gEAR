@@ -816,6 +816,15 @@ const apiCallsMixin = {
         return data;
     },
     /**
+     * Fetches all datasets asynchronously.
+     * @returns {Promise<any>} The fetched data.
+     */
+    async fetchAllDatasets() {
+        const payload = {session_id: this.sessionId};
+        const {data} = await axios.post("cgi/get_h5ad_dataset_list.cgi", convertToFormData(payload));
+        return data;
+    },
+    /**
      * Fetches dataset comparison data.
      *
      * @param {string} datasetId - The ID of the dataset.
@@ -845,12 +854,13 @@ const apiCallsMixin = {
 		return data;
     },
     /**
-     * Fetches all datasets asynchronously.
-     * @returns {Promise<any>} The fetched data.
+     * Fetches dataset information from the server.
+     * @param {string} datasetId - The ID of the dataset to fetch information for.
+     * @returns {Promise<Object>} - A promise that resolves to the dataset information.
      */
-    async fetchAllDatasets() {
-        const payload = {session_id: this.sessionId};
-        const {data} = await axios.post("cgi/get_h5ad_dataset_list.cgi", convertToFormData(payload));
+    async fetchDatasetInfo(datasetId) {
+        const params = {dataset_id: datasetId, include_shape: 1};
+        const {data} = await axios.post("cgi/get_dataset_info.cgi", convertToFormData(params));
         return data;
     },
     /**
