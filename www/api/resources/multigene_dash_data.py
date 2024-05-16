@@ -322,6 +322,8 @@ class MultigeneDashData(Resource):
         selected.obs['composite_index'] = selected.obs['composite_index'].astype('category')
         columns.append("composite_index")
 
+        import sys
+
         # Filter dataframe on the chosen observation filters
         if filters:
             # reorder filter key the same order as sort_order if key exists
@@ -342,6 +344,14 @@ class MultigeneDashData(Resource):
             if filtered_composite_indexes:
                 condition_filter = selected.obs["filters_composite"].isin(filtered_composite_indexes)
                 selected = selected[condition_filter, :]
+
+            # sort by the filters
+            sort_fields = list(filters.keys())
+            for key in sort_fields:
+                col = selected.obs[key]
+                reordered_col = col.cat.reorder_categories(
+                    filters[key], ordered=True)
+                selected.obs[key] = reordered_col
 
         var_index = selected.var.index.name
 
