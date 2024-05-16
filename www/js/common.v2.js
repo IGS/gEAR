@@ -282,18 +282,13 @@ const checkForLogin = async () => {
 }
 
 /**
- * Performs the login process.
- * @async
- * @function doLogin
- * @returns {Promise<void>}
+ * Performs a login operation.
+ * @param {boolean} [doReload=true] - Indicates whether to reload the page after successful login.
+ * @returns {Promise<void>} - A promise that resolves when the login operation is complete.
  */
-const doLogin = async (do_reload) => {
+const doLogin = async (doReload=true) => {
     const formdata = new FormData(document.getElementById("login-form"));
     const data = await apiCallsMixin.login(formdata);
-
-    if (do_reload === undefined) {
-        do_reload = true;
-    }
 
     if (data.session_id == 0) {
         // user name wasn't found at all
@@ -318,7 +313,7 @@ const doLogin = async (do_reload) => {
         apiCallsMixin.colorblindMode = CURRENT_USER.colorblind_mode;
 
         // refresh the page
-        if (do_reload) {
+        if (doReload) {
             window.location.reload();
         }
 
