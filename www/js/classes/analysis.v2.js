@@ -8,7 +8,7 @@
 
 let analysisLabels = new Set();
 
-// TODO; Standardize runAnalysis() steps and similar functions in terms of UI manipulation
+// TODO; Standardize runAnalysis() steps and similar functions in terms of UI manipulation (i.e. disable/hide buttons)
 
 class Analysis {
     constructor ({

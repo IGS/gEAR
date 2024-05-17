@@ -1,9 +1,9 @@
 #!/opt/bin/python3
 
 """
-Used by analyze_dataset.html, this script gets a list of the H5AD datasets the user can view.
+Used by sc_workbench.html, this script gets a list of the H5AD datasets the user can view.
 
-Returns four keyed sets 'primary', 'public', 'user_saved' (if a user can be pulled from the 
+Returns four keyed sets 'primary', 'public', 'user_saved' (if a user can be pulled from the
 session) and 'user_unsaved'
 """
 

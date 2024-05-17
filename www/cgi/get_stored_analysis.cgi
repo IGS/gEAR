@@ -1,7 +1,7 @@
 #!/opt/bin/python3
 
 """
-Used by analyze_dataset.html, this script gets the JSON for a single stored analysis
+Used by sc_workbench.html, this script gets the JSON for a single stored analysis
 """
 
 import cgi

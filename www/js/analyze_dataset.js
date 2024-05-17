@@ -1155,11 +1155,11 @@ function run_analysis_louvain() {
 
     $.ajax({
         type: "POST",
-        url: "./cgi/h5ad_generate_louvain.cgi",
+        url: "./cgi/h5ad_generate_clusters.cgi",
         data: {'dataset_id': current_analysis.dataset_id, 'analysis_id': current_analysis.id,
                 'analysis_type': current_analysis.type, 'session_id': current_analysis.user_session_id,
                 'resolution': $("#louvain_resolution").val(),
-                'compute_louvain': compute_louvain,
+                'compute_clusters': compute_louvain,
                 'plot_tsne': plot_tsne,
                 'plot_umap': plot_umap,
                 'cluster_info': JSON.stringify(cluster_info),

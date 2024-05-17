@@ -13,6 +13,7 @@ itsdangerous==2.1.2 # See -> https://stackoverflow.com/a/71206978
 jupyterlab==4.0.5
 jupyter==1.0.0
 kaleido==0.2.1
+leidenalg==0.10.2
 llvmlite==0.41.1
 matplotlib==3.8.3
 mod-wsgi==4.9.4

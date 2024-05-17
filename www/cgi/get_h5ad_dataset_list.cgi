@@ -1,7 +1,7 @@
 #!/opt/bin/python3
 
 """
-Used by analyze_dataset.html, this script gets a list of the H5AD datasets the user can view.
+Used by sc_workbench.html, this script gets a list of the H5AD datasets the user can view.
 Returns two sets 'public' and 'user' (if a user can be pulled from the session)
 """
 
@@ -25,7 +25,7 @@ def main():
         user = geardb.get_user_from_session_id(session_id)
     else:
         user = None
-    
+
     result = {'user': [], 'public': [], 'shared_with_user': []}
 
     public_collection = geardb.DatasetCollection()
@@ -39,7 +39,7 @@ def main():
         public_collection.get_public(has_h5ad=1, types=['microarray', 'bulk-rnaseq', 'singlecell-h5ad', 'single-cell-rnaseq', 'svg-expression', 'violin-standard'])
     elif for_page == 'projection':
         public_collection.get_public(has_h5ad=1, types=['microarray', 'bulk-rnaseq', 'singlecell-h5ad', 'single-cell-rnaseq'])
-        
+
     result['public'] = public_collection
 
     shared_with_user_collection = geardb.DatasetCollection()
@@ -66,7 +66,7 @@ def main():
     #  collections.  If not, manually add it.
     if include_dataset_id:
         ds_found = False
-        
+
         for colname in ['user', 'public', 'shared_with_user']:
             for ds in result[colname].datasets:
                 if ds.id == include_dataset_id:
@@ -75,7 +75,7 @@ def main():
         if not ds_found:
             included_ds = geardb.get_dataset_by_id(id=include_dataset_id)
             result['shared_with_user'].datasets.append(included_ds)
-    
+
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))
 

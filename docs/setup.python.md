@@ -43,6 +43,7 @@ fixed paths have worked fine for decades.
       jupyterlab==4.0.5 \
       jupyter==1.0.0 \
       kaleido==0.2.1 \
+      leidenalg==0.10.2 \
       llvmlite==0.41.1 \
       matplotlib==3.8.3 \
       mod-wsgi==4.9.4 \

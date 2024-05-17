@@ -84,7 +84,7 @@ def check_verification_code(long_form, short_form):
 def get_verification_code_short_form(long_form):
     """
     Get the hashed/short form of the full verification code. If you want to ensure
-    anyone who can see the repo in GitHub can't script account creation still, you 
+    anyone who can see the repo in GitHub can't script account creation still, you
     can just modify the string this function returns for your own site.
     """
     return ''.join([x[0] for x in long_form.split('-')])
@@ -397,7 +397,7 @@ def get_user_by_id(user_id):
     cursor.execute(qry, (user_id, ) )
 
     user = None
-    for (id, user_name, email, institution, password, updates_wanted, is_admin, default_org_id, is_curator, validation_code, is_validated, help_id) in cursor:
+    for (id, user_name, email, institution, password, updates_wanted, is_admin, default_org_id, is_curator, help_id) in cursor:
         user = User(id=id, user_name=user_name, email=email, institution=institution,
                     password=password, updates_wanted=updates_wanted, is_admin=is_admin,
                     default_org_id=default_org_id, is_curator=is_curator, help_id=help_id)
@@ -658,7 +658,6 @@ class Analysis:
             return Exception("ERROR: Attempted to call Analysis.discover_vetting() without an owner assigned to the analysis")
 
         current_user = get_user_by_id(current_user_id)
-
 
         # if the user who created it is a gear curator, return that
         if current_user.is_curator:

@@ -9,7 +9,7 @@ l = profile/layout ID
 m = multi-gene view? (truthy value, default is 0)
 p = page to send to:
     null = expression.html (default)
-    a = analyze_dataset.html
+    a = sc_workbench.html
 s = dataset_share_id
 id = id from identifiers.org, in the format like d.a59037e8 or p.bfd178f5
 
@@ -38,6 +38,7 @@ def main():
 
     if page == 'a':
         main_page = 'analyze_dataset.html'
+        #main_page = 'sc_workbench.html'
 
     url = url_base + '/' + main_page
 
