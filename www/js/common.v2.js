@@ -282,12 +282,11 @@ const checkForLogin = async () => {
 }
 
 /**
- * Performs the login process.
- * @async
- * @function doLogin
- * @returns {Promise<void>}
+ * Performs a login operation.
+ * @param {boolean} [doReload=true] - Indicates whether to reload the page after successful login.
+ * @returns {Promise<void>} - A promise that resolves when the login operation is complete.
  */
-const doLogin = async () => {
+const doLogin = async (doReload=true) => {
     const formdata = new FormData(document.getElementById("login-form"));
     const data = await apiCallsMixin.login(formdata);
 
@@ -314,7 +313,9 @@ const doLogin = async () => {
         apiCallsMixin.colorblindMode = CURRENT_USER.colorblind_mode;
 
         // refresh the page
-        location.reload();
+        if (doReload) {
+            window.location.reload();
+        }
 
     } else {
         // Something went wrong
@@ -816,6 +817,15 @@ const apiCallsMixin = {
         return data;
     },
     /**
+     * Fetches all datasets asynchronously.
+     * @returns {Promise<any>} The fetched data.
+     */
+    async fetchAllDatasets() {
+        const payload = {session_id: this.sessionId};
+        const {data} = await axios.post("cgi/get_h5ad_dataset_list.cgi", convertToFormData(payload));
+        return data;
+    },
+    /**
      * Fetches dataset comparison data.
      *
      * @param {string} datasetId - The ID of the dataset.
@@ -845,12 +855,13 @@ const apiCallsMixin = {
 		return data;
     },
     /**
-     * Fetches all datasets asynchronously.
-     * @returns {Promise<any>} The fetched data.
+     * Fetches dataset information from the server.
+     * @param {string} datasetId - The ID of the dataset to fetch information for.
+     * @returns {Promise<Object>} - A promise that resolves to the dataset information.
      */
-    async fetchAllDatasets() {
-        const payload = {session_id: this.sessionId};
-        const {data} = await axios.post("cgi/get_h5ad_dataset_list.cgi", convertToFormData(payload));
+    async fetchDatasetInfo(datasetId) {
+        const params = {dataset_id: datasetId, include_shape: 1};
+        const {data} = await axios.post("cgi/get_dataset_info.cgi", convertToFormData(params));
         return data;
     },
     /**

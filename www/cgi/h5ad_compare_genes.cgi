@@ -171,6 +171,10 @@ def main():
         # Yuk.
         ensembl_id_list = np.concatenate(adata.uns['rank_genes_groups']['names'].tolist()).ravel().tolist()
 
+        # Copilot-proposed solution
+        #import itertools
+        #ensembl_id_list = list(itertools.chain.from_iterable(adata.uns['rank_genes_groups']['names'].tolist()))
+
         result['table_json_r'] = pd.DataFrame({
             'names': adata.var.loc[ensembl_id_list]['gene_symbol'].tolist(),
             'log2FC':adata.uns['rank_genes_groups']['logfoldchanges'],
