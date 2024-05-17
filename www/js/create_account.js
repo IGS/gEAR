@@ -68,12 +68,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Nothing to do here at the moment
 }
 
-/**
- * Creates a user account with the provided verification UUID.
- *
- * @param {string} verification_uuid - The verification UUID for the account.
- * @returns {Promise<boolean>} - A promise that resolves to `true` if the account creation is successful, otherwise `false`.
- */
 async function createAccount(verification_uuid) {
     // disable the button so it's not clicked again
     document.getElementById('btn-email-verification-submit').classList.add('is-loading');
