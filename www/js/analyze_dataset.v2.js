@@ -1,7 +1,5 @@
 "use strict";
 
-import UI from './classes/analysis.v2.js';  // ! Take out import when we add to CDN
-
 let currentAnalysis = new Analysis();
 let clickedMarkerGenes = new Set();
 let enteredMarkerGenes = new Set();
@@ -54,7 +52,7 @@ const datasetTree = new DatasetTree({
 
         // Technically these could load asynchronously, but logically the progress logs make more sense sequentially
         await getDatasetInfo(datasetId);
-        await loadPreliminaryFigures(datasetId);
+        await currentAnalysis.loadPreliminaryFigures();
     })
 });
 
@@ -146,14 +144,48 @@ const getDatasetInfo = async (datasetId) => {
     }
 }
 
+const getEmbeddedTsneDisplay = async (datasetId) => {
+    const {data} = await axios.post("./cgi/get_embedded_tsne_display.cgi", { dataset_id: datasetId });
+    return data;
+}
+
 /**
  * Retrieves an array of genes from a collection of cells.
  *
  * @param {NodeList} cells - The collection of cells.
  * @returns {string[]} An array of genes extracted from the cells.
  */
-function getGenesFromCells(cells) {
+const getGenesFromCells = (cells) => {
     return [...cells].map(cell => cell.textContent.trim());
+}
+
+/**
+ * Retrieves the t-SNE image data for a given gene symbol and configuration.
+ *
+ * @param {string} geneSymbol - The gene symbol to retrieve t-SNE image data for.
+ * @param {object} config - The configuration object.
+ * @returns {Promise<string>} - The t-SNE image data.
+ */
+const getTsneImageData = async (geneSymbol, config) => {
+    config.colorblind_mode = CURRENT_USER.colorblind_mode;
+
+    const {data} = await axios.post(`/api/plot/${currentAnalysis.dataset_id}/tsne`, {
+        gene_symbol: geneSymbol,
+        analysis: currentAnalysis,
+        colorize_legend_by: config.colorize_legend_by,
+        plot_type: 'tsne_static',
+        plot_by_group: config.plot_by_group,
+        max_columns: config.max_columns,
+        horizontal_legend: config.horizontal_legend,
+        x_axis: config.x_axis,
+        y_axis: config.y_axis,
+        analysis_owner_id: currentAnalysis.user_id,
+        colors: config.colors,
+        colorblind_mode: config.colorblind_mode,
+        timestamp: new Date().getTime()
+    });
+
+    return data.image;
 }
 
 /**
@@ -214,7 +246,7 @@ const loadDatasetTree = async () => {
  *
  * @returns {void}
  */
-function resetManualMarkerGeneEntries() {
+const resetManualMarkerGeneEntries = () => {
     clickedMarkerGenes = new Set();
 
     // remember which GOI are from the table
@@ -223,7 +255,7 @@ function resetManualMarkerGeneEntries() {
     }
 }
 
-function resetWorkbench() {
+const resetWorkbench = () => {
     // Performs all the steps needed to reset the workbench if the input dataset changes
 
     // handle any data structures
@@ -231,6 +263,7 @@ function resetWorkbench() {
 
     // Reset the analysis tool fields and some display labels
     //$("form.reset_on_change").trigger("reset");
+
     for (const elt of document.querySelectorAll('.reset-on-change')) {
         // TODO - replace
         elt.classList.add("is-hidden");
@@ -247,11 +280,88 @@ function resetWorkbench() {
     document.querySelector(UI.labeledTsneElt).classList.add("is-hidden");
     document.querySelector(UI.groupLabelsContainer).classList.add("is-hidden");
 
-    // Toggle the tool buttons to hide them in the UI
+    // TODO Toggle the tool buttons to hide them in the UI
     //$('.tooltoggle').bootstrapToggle('off');
 
     // Disable those analysis steps which have previous requirements
     //$('.tooltoggle').bootstrapToggle('disable');
+}
+
+/**
+ * Saves the marker gene list.
+ * @returns {void}
+ */
+const saveMarkerGeneList = () => {
+    // must have access to USER_SESSION_ID
+    const gc = new GeneList({
+        session_id: CURRENT_USER.session_id,
+        label: document.querySelector(UI.markerGenesListNameElt).value,
+        gctype: 'unweighted-list',
+        organism_id: currentAnalysis.dataset.organism_id,
+        is_public: 0
+    });
+
+    for (const geneId of currentAnalysis.genes_of_interest) {
+        const gene = new Gene({
+            //id: geneId,    // TODO: figure out how to get ensembl ID for this
+            gene_symbol: geneId,
+        });
+        gc.add_gene(gene);
+    };
+
+    gc.save(updateUiAfterMarkerGeneListSaveSuccess, updateUiAfterMarkerGeneListSaveFailure);
+}
+
+/**
+ * Saves the PCA gene list.
+ *
+ * @async
+ * @function savePcaGeneList
+ * @returns {Promise<void>} A promise that resolves when the PCA gene list is saved successfully.
+ * @throws {Error} If there is an error saving the PCA gene list.
+ */
+const savePcaGeneList = async () => {
+
+    try {
+        const {data} = await axios.post("./cgi/get_PCs_from_anndata.cgi", {
+            'dataset_id': currentAnalysis.dataset.id,
+            'analysis_id': currentAnalysis.id,
+            'analysis_type': currentAnalysis.type,
+            'session_id': currentAnalysis.userSessionId,
+        });
+
+        if (!data.success || data.success < 1) {
+            const message = data.msg || "Unknown error";
+            throw new Error(message);
+        }
+
+        const weightLabels = data.pc_data.columns;
+
+        const geneList = new WeightedGeneList({
+                session_id: CURRENT_USER.session_id,
+                label: document.querySelector(UI.pcaGeneListNameElt).value,
+                gctype: 'weighted-list',
+                organism_id: currentAnalysis.dataset.organism_id,
+                is_public: 0
+            }, weightLabels
+        );
+
+        data.pc_data.index.forEach((geneId, i) => {
+            const weights = data.pc_data.data[i];
+            const gene = new WeightedGene({
+                id: geneId,
+                gene_symbol: data.gene_symbols[i]
+            }, weights
+            );
+            geneList.add_gene(gene);
+        });
+
+        geneList.save(updateUiAfterPcaGeneListSaveSuccess, updateUiAfterPcaGeneListSaveFailure);
+
+    } catch (error) {
+        createToast(`Error saving PCs as gene list: ${error.message}`);
+        document.querySelector(UI.btnSavePcaGeneListElt).disabled = false;
+    }
 }
 
 /**
@@ -261,7 +371,7 @@ function resetWorkbench() {
  * @param {Array<string>} genes - The genes to perform additional actions on.
  * @param {boolean} addHighlight - A flag indicating whether to add or remove the highlight.
  */
-function updateHighlightStatus(element, genes, addHighlight) {
+const updateHighlightStatus = (element, genes, addHighlight) => {
     const method = addHighlight ? 'add' : 'remove';
     element.classList[method]('highlighted');
     for (const gene of genes) {
@@ -292,12 +402,70 @@ const updateManualMarkerGeneEntries = (geneString) => {
 }
 
 /**
- * Validates the gene selection and updates the gene cart save button accordingly.
+ * Updates the UI after a marker gene list is successfully saved.
+ *
+ * @param {Object} geneCart - The saved marker gene list object.
  */
-function validateMarkerGeneSelection() {
+const updateUiAfterMarkerGeneListSaveSuccess = (geneCart) => {
+    document.querySelector("#saved-marker-gene-list-info-c > p").textContent = `Cart "${geneCart.label}" successfully saved.`;
+    document.querySelector("#saved-marker-gene-list-info-c > p").classList.remove("text-danger");
+    document.querySelector("#saved-marker-gene-list-info-c > p").classList.add("text-success");
+    document.querySelector("#saved-marker-gene-list-info-c").classList.remove("is-hidden");
+    createToast("Saved marker gene list", "is-success");
+}
+
+/**
+ * Updates the UI after a failure to save the marker gene list.
+ *
+ * @param {Object} geneCart - The marker gene list object.
+ * @param {string} message - The error message.
+ */
+const updateUiAfterMarkerGeneListSaveFailure = (geneCart, message) => {
+    document.querySelector("#saved-marker-gene-list-info-c > p").textContent = "There was an issue saving the marker gene list.";
+    document.querySelector("#saved-marker-gene-list-info-c > p").classList.remove("text-success");
+    document.querySelector("#saved-marker-gene-list-info-c > p").classList.add("text-danger");
+    document.querySelector("#saved-marker-gene-list-info-c").classList.remove("is-hidden");
+    createToast(`Error saving gene list: ${geneCart.label}`);
+    logErrorInConsole(message);
+    document.querySelector(UI.btnSaveMarkerGeneListElt).disabled = false;
+}
+
+/**
+ * Updates the UI after successfully saving the PCA gene list.
+ *
+ * @param {Object} geneCart - The saved gene list object.
+ */
+const updateUiAfterPcaGeneListSaveSuccess = (geneCart) => {
+    document.querySelector("#saved-pca-gene-list-info-c > p").textContent = `Cart "${geneCart.label}" successfully saved.`;
+    document.querySelector("#saved-pca-gene-list-info-c > p").classList.remove("text-danger");
+    document.querySelector("#saved-pca-gene-list-info-c > p").classList.add("text-success");
+    document.querySelector("#saved-pca-gene-list-info-c").classList.remove("is-hidden");
+    createToast("Saved weighted gene list", "is-success");
+}
+
+/**
+ * Updates the UI after a failure to save the weighted gene list.
+ *
+ * @param {Object} geneCart - The gene list object.
+ * @param {string} message - The error message.
+ */
+const updateUiAfterPcaGeneListSaveFailure = (geneCart, message) => {
+    document.querySelector("#saved-pca-gene-list-info-c > p").textContent = "There was an issue saving the weighted gene list.";
+    document.querySelector("#saved-pca-gene-list-info-c > p").classList.remove("text-success");
+    document.querySelector("#saved-pca-gene-list-info-c > p").classList.add("text-danger");
+    document.querySelector("#saved-pca-gene-list-info-c").classList.remove("is-hidden");
+    createToast(`Error saving gene list: ${geneCart.label}`);
+    logErrorInConsole(message);
+    document.querySelector(UI.btnSavePcaGeneListElt).disabled = false;
+}
+
+/**
+ * Validates the gene selection and updates the gene list save button accordingly.
+ */
+const validateMarkerGeneSelection = () => {
     currentAnalysis.genes_of_interest = new Set([...enteredMarkerGenes, ...clickedMarkerGenes]);
-    // Only allow saving of gene cart if genes are selected
-    document.querySelector(UI.btnSaveMarkerGeneCartElt).disabled = !currentAnalysis.genes_of_interest.size;
+    // Only allow saving of gene list if genes are selected
+    document.querySelector(UI.btnSaveMarkerGeneListElt).disabled = !currentAnalysis.genes_of_interest.size;
 }
 
 /* -- page entrypoint -- */
@@ -403,7 +571,7 @@ document.querySelector(UI.analysisSelectElt).addEventListener("change", async (e
             'datasetIsRaw': true});
         // Need to reload prelim step so qc_by_mito toggle will work
         document.querySelector(UI.datasetInfoElt).classList.remove("is-hidden");
-        loadPreliminaryFigures($("#dataset_id").val());
+        await currentAnalysis.loadPreliminaryFigures();
 
         // TODO: Update UI to match select state
         document.querySelector(UI.storedAnalysisContainer).classList.remove("is-hidden");
@@ -524,6 +692,15 @@ document.querySelector(UI.btnPcaTopGenesElt).addEventListener("click", (event) =
     currentAnalysis.checkDependenciesAndRun(currentAnalysis.pca.runAnalysisTopGenes);
 });
 
+document.querySelector(UI.btnSavePcaGeneListElt).addEventListener("click", async (event) => {
+    event.target.disabled = true;
+    if (CURRENT_USER) {
+        savePcaGeneList();
+    } else {
+        createToast("You must be signed in to save a PCA gene list.");
+    }
+});
+
 // tSNE
 
 document.querySelector(UI.btnTsneRunElt).addEventListener("click", (event) => {
@@ -641,6 +818,15 @@ document.querySelector(UI.markerGenesManuallyEnteredElt).addEventListener("chang
     validateMarkerGeneSelection();
 });
 
+document.querySelector(UI.btnSaveMarkerGeneListElt).addEventListener("click", async (event) => {
+    event.target.disabled = true;
+    if (CURRENT_USER) {
+        saveMarkerGeneList();
+    } else {
+        createToast("You must be signed in to save a marker gene list.");
+    }
+});
+
 // Compare Genes
 
 document.querySelector(UI.btnCompareGenesRunElt).addEventListener("click", async (event) => {
@@ -705,9 +891,39 @@ document.querySelector(UI.compareGenesMethodSelectElt).addEventListener("change"
 
 });
 
+// Labeled tSNE
+
+document.querySelector(btnLabeledTsneRunElt).addEventListener("click", async (event) => {
+    document.querySelector(UI.labeledTsnePlotContainerElt).replaceChildren();
+    document.querySelector(UI.labeledTsnePlotContainerElt).classList.remove("is-hidden");
+    document.querySelector(UI.labeledTsneGeneNotFoundElt).classList.add("is-hidden");
+
+    createToast("Generating labeled tSNE plot", "is-info");
+
+    const dataset = currentAnalysis.dataset;
+    const data = await getEmbeddedTsneDisplay(dataset.id);
+    const config = data.plotly_config;
+
+    const img = document.createElement('img');
+    img.className = 'image'
+
+    const image = await getTsneImageData(document.querySelector(UI.labeledTsneGeneSymbolElt).value, config);
+    if (typeof image === 'object' || typeof image === "undefined") {
+        document.querySelector(UI.labeledTsneGeneNotFoundElt).classList.remove("is-hidden");
+    } else {
+        img.src = `data:image/png;base64,${image}`;
+        document.querySelector(UI.labeledTsnePlotContainerElt).appendChild(img);
+    }
+
+    document.querySelector(UI.btnLabeledTsneRunElt).disabled = false;
+    createToast("Labeled tSNE plot generated", "is-success");
+});
+
 
 /* -------------------------------------------------------- */
 
+/*
+TODO: Update the tooltip stuff
 window.onload=() => {
     $('[data-toggle="tooltip"]').tooltip()
 
@@ -733,246 +949,10 @@ window.onload=() => {
         }
     });
 
-    $("#btn_sbs_tsne_run").click(async function(e) {
-        /*
-          When the user clicks to search a gene for tSNE display,
-          generate a tSNE image based on the default layout.
-        */
-        e.preventDefault();
-        $("#sbs_tsne_plot_c").empty();
-        $("#sbs_tsne_gene_not_found").hide();
-        $('#sbs_tsne_plot_c').show();
-
-        show_working("Generating tSNE display");
-        const ds = currentAnalysis.dataset;
-        const dsp = new DatasetPanel({...ds});
-
-        const data = await dsp.get_embedded_tsne_display(dsp.id);
-        dsp.config = data.plotly_config;
-
-        const img = document.createElement('img');
-        img.className = 'img-fluid';
-
-        get_tsne_image_data($("#sbs_tsne_gene_symbol").val(), dsp.config).then(
-            data => {
-                if (typeof data === 'object' || typeof data === "undefined") {
-                    // If this is true, there was an error
-                    $("#sbs_tsne_gene_not_found").show();
-                } else {
-                    // place image
-                    img.src = `data:image/png;base64,${data}`
-                    document.getElementById('sbs_tsne_plot_c').appendChild(img);
-                }
-            }
-        );
-
-        $("#btn_sbs_tsne_run").prop('disabled', false);
-
-        done_working("tSNE visualized", false);
-    });
-
     $(".show_analysis_renamer").click(function(e) {
         $("#new_analysis_label").val(currentAnalysis.label);
         $("#new_analysis_label_c").show(500);
     });
 
-    // Handling all buttons manually
-    $("button").click(function(e) {
-        e.preventDefault();
-    });
-
-
-	$("#save_weighted_gene_cart").on("click", () => {
-		$("#save_weighted_gene_cart").prop("disabled", true);
-		if (CURRENT_USER) {
-			save_weighted_gene_cart();
-		} else {
-			alert("You must be signed in to do that.");
-		}
-	});
-
-    $("#save_marker_gene_cart").on("click", () => {
-		$("#save_marker_gene_cart").prop("disabled", true);
-		if (CURRENT_USER) {
-			save_marker_gene_cart();
-		} else {
-			alert("You must be signed in to do that.");
-		}
-	});
-
-    // Create observer to watch if user changes (ie. successful login does not refresh page)
-    // See: https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
-
-    // But we need to wait for navigation_bar to load first (in common.js) so do some polling
-    // See: https://stackoverflow.com/q/38881301
-
-    // Select the node that will be observed for mutations
-    const target_node = document.getElementById('loggedin_controls');
-    const safer_node = document.getElementById("navigation_bar");   // Empty div until loaded
-    // Create an observer instance linked to the callback function
-    const observer = new MutationObserver(function(mutationList, observer) {
-        if (target_node) {
-            populate_dataset_selection();
-            this.disconnect();  // Don't need to reload once the trees are updated
-        }
-    });
-    // For the "config" settings, do not monitor the subtree of nodes as that will trigger the callback multiple times.
-    // Just seeing #loggedin_controls go from hidden (not logged in) to shown (logged in) is enough to trigger.
-    observer.observe(target_node || safer_node , { attributes: true });
 }
-
-function save_marker_gene_cart() {
-    // must have access to USER_SESSION_ID
-    const gc = new GeneCart({
-        session_id: CURRENT_USER.session_id,
-        label: $("#marker_gene_cart_name").val(),
-        gctype: 'unweighted-list',
-        organism_id: $("#dataset_id").data('organism-id'),
-        is_public: 0
-    });
-
-    currentAnalysis.genes_of_interest.forEach((gene_id) => {
-        const gene = new Gene({
-            //id: gene_id,    // TODO: figure out how to get ensembl ID for this
-            gene_symbol: gene_id,
-        });
-        gc.add_gene(gene);
-    });
-
-    gc.save(update_ui_after_marker_gene_cart_save_success, update_ui_after_marker_gene_cart_save_failure);
-
-}
-
-function update_ui_after_marker_gene_cart_save_success(gc) {
-	$("#saved_marker_gene_cart_info_c > p").html(`Cart "${gc.label}" successfully saved.`);
-	$("#saved_marker_gene_cart_info_c > p").removeClass("text-danger").addClass("text-success");
-	$("#saved_marker_gene_cart_info_c").show();
-    done_working("Saved marker gene cart", false);
-}
-
-function update_ui_after_marker_gene_cart_save_failure(gc, message) {
-	$("#saved_marker_gene_cart_info_c > p").html("There was an issue saving the marker gene cart.");
-	$("#saved_marker_gene_cart_info_c > p").removeClass("text-success").addClass("text-danger");
-	$("#saved_marker_gene_cart_info_c").show();
-    report_error(`Error saving gene cart: ${gc.label}`);
-    report_error(message);
-    $('#save_marker_gene_cart').attr("disabled", false);
-}
-
-function save_weighted_gene_cart() {
-    // Return PC data from Anndata object
-    $.ajax({
-        type: "POST",
-        url: "./cgi/get_PCs_from_anndata.cgi",
-        data: {
-            'dataset_id': currentAnalysis.dataset_id,
-            'analysis_id': currentAnalysis.id,
-            'analysis_type': currentAnalysis.type,
-            'session_id': currentAnalysis.user_session_id,
-        },
-        datatype: "json",
-    }).done((data) => {
-        if (! data.success) {
-            report_error(`Error getting PCs for saving: ${data.msg}`);
-            $('#save_weighted_gene_cart').attr("disabled", false);
-            return;
-        }
-
-        const weight_labels = data.pc_data.columns;
-
-        // must have access to USER_SESSION_ID
-        const gc = new WeightedGeneCart({
-            session_id: CURRENT_USER.session_id,
-            label: $("#weighted_gene_cart_name").val(),
-            gctype: 'weighted-list',
-            organism_id: $("#dataset_id").data('organism-id'),
-            is_public: 0
-        }, weight_labels
-        );
-
-        data.pc_data.index.forEach((gene_id, i) => {
-            const weights = data.pc_data.data[i];
-            const gene = new WeightedGene({
-                id: gene_id,
-                gene_symbol: data.gene_symbols[i]
-            }, weights
-            );
-            gc.add_gene(gene);
-        });
-
-        gc.save(update_ui_after_weighted_gene_cart_save_success, update_ui_after_weighted_gene_cart_save_failure);
-    }).fail((xhr, status, msg) => {
-        report_error(`Error saving gene cart: ${msg}`);
-        $('#save_weighted_gene_cart').attr("disabled", false);
-    });
-
-}
-
-function update_ui_after_weighted_gene_cart_save_success(gc) {
-	$("#saved_weighted_gene_cart_info_c > p").html(`Cart "${gc.label}" successfully saved.`);
-	$("#saved_weighted_gene_cart_info_c > p").removeClass("text-danger").addClass("text-success");
-	$("#saved_weighted_gene_cart_info_c").show();
-    done_working("Saved weighted gene cart", false);
-}
-
-function update_ui_after_weighted_gene_cart_save_failure(gc, message) {
-	$("#saved_weighted_gene_cart_info_c > p").html("There was an issue saving the weighted gene cart.");
-	$("#saved_weighted_gene_cart_info_c > p").removeClass("text-success").addClass("text-danger");
-	$("#saved_weighted_gene_cart_info_c").show();
-    report_error(`Error saving gene cart: ${gc.label}`);
-    report_error(message);
-    $('#save_weighted_gene_cart').attr("disabled", false);
-}
-
-function get_tsne_image_data(gene_symbol, config) {
-    config.colorblind_mode = CURRENT_USER.colorblind_mode;
-    // then craziness: https://stackoverflow.com/a/48980526
-    return axios.post(`/api/plot/${currentAnalysis.dataset_id}/tsne`, {
-        gene_symbol,
-        analysis: currentAnalysis,
-        colorize_legend_by: config.colorize_legend_by,
-        plot_type: 'tsne_static',
-        plot_by_group: config.plot_by_group,
-        max_columns: config.max_columns,
-        horizontal_legend: config.horizontal_legend,
-        x_axis: config.x_axis,
-        y_axis: config.y_axis,
-        analysis_owner_id: currentAnalysis.user_id,
-        colors: config.colors,
-        colorblind_mode: config.colorblind_mode,
-        // helps stop caching issues
-        timestamp: new Date().getTime()
-    }).then(response => {
-        return response.data.image
-    }); // end axios
-}
-
-
-function loadPreliminaryFigures(dataset_id) {
-    $("#stored_analyses_c").hide();
-
-    $.ajax({
-        type: "POST",
-        url: "./cgi/h5ad_preview_primary_filter.cgi",
-        data: {'dataset_id': currentAnalysis.dataset_id, 'analysis_id': currentAnalysis.id,
-               'analysis_type': currentAnalysis.type, 'session_id': currentAnalysis.user_session_id
-              },
-        dataType: "json"
-    }).done((data) => {
-        $("#primary_initial_plot_loading_c").hide();
-
-        if (data['success'] == 1) {
-            $('#primary_initial_violin_c').html(`<a target="_blank" href="./datasets/${dataset_id}.prelim_violin.png"><img src="./datasets/` + dataset_id + '.prelim_violin.png" class="img-fluid img-zoomed" /></a>');
-            $('#primary_initial_scatter_c').html(`<a target="_blank" href="./datasets/${dataset_id}.prelim_n_genes.png"><img src="./datasets/` + dataset_id + '.prelim_n_genes.png" class="img-fluid img-zoomed" /></a>');
-            done_working("Prelim plots displayed");
-        } else {
-            $('#primary_initial_violin_c').html('Preliminary plots not yet generated. Continue your analysis.');
-            done_working("Prelim figures missing.");
-        }
-
-        $("#primary_initial_plot_c").show(500);
-    }).fail((xhr, status, msg) => {
-        report_error("Failed to access dataset");
-        report_error(`Failed ID was: ${dataset_id} because msg: ${msg}`);
-    });
-}
+*/
