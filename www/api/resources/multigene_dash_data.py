@@ -346,7 +346,6 @@ class MultigeneDashData(Resource):
                 selected = selected[condition_filter, :]
 
             # sort by the filters
-            sort_fields = list(filters.keys())
             for key in sort_fields:
                 col = selected.obs[key]
                 reordered_col = col.cat.reorder_categories(
