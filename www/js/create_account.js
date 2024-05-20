@@ -15,7 +15,8 @@ window.onload=function() {
             document.getElementById('btn-account-creation-submit').classList.add('is-loading');
 
             // Validate form's completion. Exit if it contains errors and alert user
-            if (validateAccountCreationForm() == false){
+            const form_data_valid = await validateAccountCreationForm();
+            if (form_data_valid == false){
                 document.getElementById('btn-account-creation-submit').classList.remove('is-loading');
                 return false;
             }
