@@ -5,6 +5,7 @@ import dash_bio as dashbio
 import diffxpy.api as de
 import numpy as np
 import pandas as pd
+import anndata as ad
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -539,8 +540,8 @@ def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val,
     de_filter3 = adata.obs[key].isin([control_val])
     selected3 = adata[de_filter3, :]
     # Query needs to be appended onto ref to ensure the test results are not flipped
-    de_selected1 = selected3.concatenate(selected1)
-    de_selected2 = selected3.concatenate(selected2)
+    de_selected1 = ad.concat([selected3, selected1], merge="same")
+    de_selected2 = ad.concat([selected3, selected2], merge="same")
 
     if not is_log10:
         de_selected1.X = de_selected1.X + LOG_COUNT_ADJUSTER
@@ -736,7 +737,7 @@ def create_violin_plot(df, groupby_filters, is_log10=False, colorscale=None, rev
     groupby = ["gene_symbol"]
     groupby.extend(groupby_filters)
     # Create groupings for traces
-    grouped = df.groupby(groupby)
+    grouped = df.groupby(groupby, observed=True)
 
     # Name is a tuple of groupings, or a string if grouped by only 1 dataseries
     # Group is the 'groupby' dataframe
@@ -999,7 +1000,7 @@ def prep_volcano_dataframe(adata, key, query_val, ref_val, de_test_algo="ttest",
         de_filter2 = adata.obs[key].isin([ref_val])
         selected2 = adata[de_filter2, :]
     # Query needs to be appended onto ref to ensure the test results are not flipped
-    de_selected = selected2.concatenate(selected1)
+    de_selected = ad.concat([selected2, selected1], merge="same")
 
     if not is_log10:
         de_selected.X = de_selected.X + LOG_COUNT_ADJUSTER

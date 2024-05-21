@@ -288,9 +288,9 @@ class MultigeneDashData(Resource):
             sorted_ensm = map(lambda x: gene_to_ensm[x], normalized_genes_list)
 
         # Reorder the categorical values in the observation dataframe
+        sort_fields = []
         if sort_order:
             # Ensure selected primary and secondary columns are in the correct order
-            sort_fields = []
             if primary_col:
                 sort_fields.append(primary_col)
             if secondary_col and secondary_col != primary_col:
@@ -470,7 +470,7 @@ class MultigeneDashData(Resource):
             # drop Ensembl ID index since it may not aggregate and throw warnings
             df.drop(columns=[var_index], inplace=True)
 
-            grouped = df.groupby(groupby)
+            grouped = df.groupby(groupby, observed=True)
             df = grouped.agg(['mean', 'count', ('percent', percent)]) \
                 .fillna(0) \
                 .reset_index()
