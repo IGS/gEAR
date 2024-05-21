@@ -282,11 +282,13 @@ const curatorApiCallsMixin = {
         }
     },
 
+
     /**
      * Fetches gene symbols for a given dataset and analysis.
      * @param {string} datasetId - The ID of the dataset.
      * @param {string} analysisId - The ID of the analysis.
-     * @returns {Array<string>} - An array of unique gene symbols.
+     * @returns {Promise<string[]>} - A promise that resolves to an array of unique gene symbols.
+     * @throws {Error} - If the gene symbols cannot be fetched, an error is thrown.
      */
     async fetchGeneSymbols(datasetId, analysisId) {
         try {
@@ -523,6 +525,8 @@ const chooseNewDisplay = async (event) => {
 
     document.getElementById("plot-type-select").disabled = false;
 
+    document.getElementById("current-plot-type-c").classList.add("is-hidden");
+
     // update genes, analysis, and plot type selects in parallel
     await Promise.all([
         updateDatasetGenes(),
@@ -573,7 +577,6 @@ const choosePlotType = async (event) => {
     // Reset sortable lists
     document.getElementById("order-section").classList.add("is-hidden");
     document.getElementById("order-container").replaceChildren();
-
 
     await includePlotParamOptions();
     document.getElementById("gene-s").click();
@@ -721,7 +724,6 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
 
     const {aggregations, total_count:totalCount} = await curatorApiCallsMixin.fetchAggregations(datasetId, analysisId, filters);
     document.getElementById("num-selected").textContent = totalCount;
-
 
     const facetWidget = new FacetWidget({
         aggregations,
@@ -1051,12 +1053,17 @@ const loadDatasetTree = async () => {
 const plotTypeSelectUpdate = async (analysisId=null) => {
     // NOTE: Believe updating "disabled" properties triggers the plotTypeSelect "change" element
     try {
-        plotTypeSelect.clear();
+        // Clear selected options  Need this incase a plot type was selected previously (i.e. cloned display)
+        //plotTypeSelect.clear();
+
         const availablePlotTypes = await curatorApiCallsMixin.fetchAvailablePlotTypes(datasetId, analysisId, isMultigene);
         for (const plotType in availablePlotTypes) {
             const isAllowed = availablePlotTypes[plotType];
             setPlotTypeDisabledState(plotType, isAllowed);
         }
+
+        // set plot type to first option
+        setSelectBoxByValue("plot-type-select", "nope");
         plotTypeSelect.update();
     } catch (error) {
         document.getElementById("plot-type-s-failed").classList.remove("is-hidden");
@@ -1305,7 +1312,7 @@ const setPlotTypeDisabledState = (plotType, isAllowed) => {
 }
 
 /**
- * Sets the selected option in a select box by its value.
+ * Sets the selected option in a select box by its value. Assumes single selection
  * @param {string} eid - The ID of the select box element.
  * @param {string} val - The value of the option to be selected.
  */
@@ -1313,6 +1320,10 @@ const setSelectBoxByValue = (eid, val) => {
     // Modified to set value and "selected" so nice-select2 extractData() will catch it
     // Taken from https://stackoverflow.com/a/20662180
     const elt = document.getElementById(eid);
+
+    // Clear selected attribute from the selected value (if multiple, only the first value)
+    elt.options[elt.selectedIndex].removeAttribute("selected");
+
     for (const i in elt.options) {
         if (elt.options[i].value === val) {
             // By using "selected" instead of "value", we can account for the "multiple" property
