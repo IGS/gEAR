@@ -236,7 +236,7 @@ class PlotlyHandler extends PlotHandler {
             // Input is either color mapping or just the series
             this.plotConfig["colors"] = {};
             [...colorElts].map((field) => {
-                const group = field.id.replace("_color", "");
+                const group = field.id.replace("-color", "");
                 this.plotConfig["colors"][group] = field.value;
             })
         }
