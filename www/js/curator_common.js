@@ -526,6 +526,10 @@ const chooseNewDisplay = async (event) => {
     document.getElementById("plot-type-select").disabled = false;
 
     document.getElementById("current-plot-type-c").classList.add("is-hidden");
+    document.getElementById("plot-type-s-success").classList.add("is-hidden");
+    document.getElementById("plot-type-select-c-success").classList.add("is-hidden");
+    document.getElementById("plot-type-select-c-failed").classList.remove("is-hidden");
+    document.getElementById("plot-options-s-success").classList.add("is-hidden");
 
     // update genes, analysis, and plot type selects in parallel
     await Promise.all([
