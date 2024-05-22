@@ -718,6 +718,14 @@ const curatorSpecifcDatasetTreeCallback = async () => {
     //pass
 }
 
+/**
+ * Callback function for selecting a specific facet item in the curator.
+ * @param {string} seriesName - The name of the series.
+ */
+const curatorSpecifcFacetItemSelectCallback = (seriesName) => {
+    // pass
+}
+
 const curatorSpecificNavbarUpdates = () => {
 	// Update with current page info
 	document.getElementById("page-header-label").textContent = "Multi-gene Displays";

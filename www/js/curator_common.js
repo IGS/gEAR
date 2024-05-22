@@ -732,7 +732,7 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
     const facetWidget = new FacetWidget({
         aggregations,
         filters,
-        onFilterChange: async (filters) => {
+        onFilterChange: async (filters, seriesName) => {
             if (filters) {
                 try {
                     const {aggregations, total_count:totalCount} = await curatorApiCallsMixin.fetchAggregations(datasetId, analysisId, filters);
@@ -747,6 +747,13 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
             }
             // Sortable lists need to reflect groups filtered out or unfiltered
             updateOrderSortable();
+
+            // Update levels for based on chosen filter groups
+            for (const filterGroup of Object.keys(facetWidget.filters)) {
+                levels[filterGroup] = facetWidget.filters[filterGroup];
+            }
+
+            curatorSpecifcFacetItemSelectCallback(seriesName);
         }
     });
     document.getElementById("selected-facets-loader").classList.add("is-hidden")

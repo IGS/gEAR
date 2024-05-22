@@ -184,7 +184,9 @@ class FacetWidget {
         const escapedFilterName = CSS.escape(filterName);
         const loadingSelector = document.querySelector(`#filter-${escapedFilterName} .loader`);
         loadingSelector.classList.remove("is-hidden")
-        await this.onFilterChange(this.filters);
+        if (this.onFilterChange) {
+            await this.onFilterChange(this.filters, filterName);
+        }
         this.toggleSelectedTag(item.name, filterName, isChecked);
         loadingSelector.classList.add("is-hidden")
 

@@ -878,6 +878,14 @@ const curatorSpecifcDatasetTreeCallback = () => {
 }
 
 /**
+ * Callback function for selecting a specific facet item in the curator.
+ * @param {string} seriesName - The name of the series.
+ */
+const curatorSpecifcFacetItemSelectCallback = (seriesName) => {
+    renderColorPicker(seriesName);
+}
+
+/**
  * Updates the curator-specific navbar with the current page information.
  */
 const curatorSpecificNavbarUpdates = () => {
