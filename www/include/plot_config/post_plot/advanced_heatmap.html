@@ -1,6 +1,27 @@
-<section id="clustering-section-post" class="js-plot-config-section py-3 mb-1">
+<div class="dropdown mb-3" id="heatmap-param-dropdown">
+    <div class="dropdown-trigger">
+        <button class="button" aria-haspopup="true" aria-controls="dropdown-menu">
+            <span>Select parameters to edit </span>
+            <span class="icon is-small">
+                <i class="mdi mdi-chevron-down" aria-hidden="true"></i>
+            </span>
+        </button>
+    </div>
+    <div class="dropdown-menu" id="dropdown-menu" role="menu">
+        <div class="dropdown-content">
+            <a href="#" class="dropdown-item">
+                Clustering
+            </a>
+            <a href="#" class="dropdown-item">
+                Miscellaneous
+            </a>
+        </div>
+    </div>
+</div>
+
+<section id="clustering-section-post" class="js-plot-config-section is-hidden">
     <span class="subtitle is-4 is-underlined">Clustering</span>
-    <p class="is-flex is-justify-content-space-between pr-3">
+    <p class="content is-flex is-justify-content-space-between pr-3">
         <span class="has-text-weight-medium">Distance metric</span>
         <span class="select is-small">
             <select class="js-dash-distance-metric" id="distance-select-post">
@@ -27,10 +48,10 @@
     <p class="help">NOTE: Disables sorting by genes</p>
 </section>
 
-<section id="misc-section-post" class="js-plot-config-section py-3">
+<section id="misc-section-post" class="js-plot-config-section is-hidden">
     <span class="subtitle is-4 is-underlined">Miscellaneous</span>
 
-    <p class="pr-3">
+    <p class="content pr-3">
         <span class="has-text-weight-medium is-underlined">Add clusterbar groups</span>
         <div class="control js-dash-clusterbar" id="clusterbar-c-post">
             <!-- Add clusterbar group checkboxes here -->

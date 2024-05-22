@@ -303,6 +303,33 @@ class GenesAsAxisHandler extends PlotHandler {
                 updateOrderSortable();
             });
         }
+
+        // Setup the dropdown menu on for heatmap options
+        if (this.plotType === "heatmap") {
+            const heatmapDropdown = document.getElementById("heatmap-param-dropdown");
+            heatmapDropdown.addEventListener("click", (event) => {
+                event.stopPropagation();    // This prevents the document from being clicked as well.
+                heatmapDropdown.classList.toggle("is-active");
+            })
+
+            // Close dropdown if it is clicked off of, or ESC is pressed
+            // https://siongui.github.io/2018/01/19/bulma-dropdown-with-javascript/#footnote-1
+            document.addEventListener('click', () => {
+                heatmapDropdown.classList.remove("is-active");
+            });
+            document.addEventListener('keydown', (event) => {
+                if (event.key === "Escape") {
+                    heatmapDropdown.classList.remove("is-active");
+                }
+            });
+
+            const heatmapDropdownMenuItems = document.querySelectorAll("#heatmap-param-dropdown .dropdown-item");
+            for (const item of heatmapDropdownMenuItems) {
+                item.addEventListener("click", showPostHeatmapParamSubsection);
+            }
+
+        }
+
     }
 
 }
@@ -956,6 +983,26 @@ const saveWeightedGeneCart = () => {
     };
 
 	gc.save(updateUIAfterGeneCartSaveSuccess, updateUIAfterGeneCartSaveFailure);
+}
+
+/**
+ * Shows the corresponding subsection based on the selected option in the plot configuration menu.
+ * @param {Event} event - The event triggered by the user's selection.
+ */
+const showPostHeatmapParamSubsection = (event) => {
+    for (const subsection of document.getElementsByClassName("js-plot-config-section")) {
+        subsection.classList.add("is-hidden");
+    }
+
+    switch (event.target.textContent.trim()) {
+        case "Clustering":
+            document.getElementById("clustering-section-post").classList.remove("is-hidden");
+            break;
+        default:
+            document.getElementById("misc-section-post").classList.remove("is-hidden");
+            break;
+    }
+    event.preventDefault(); // Prevent "link" clicking from "a" elements
 }
 
 // Taken from https://www.w3schools.com/howto/howto_js_sort_table.asp
