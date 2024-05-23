@@ -687,7 +687,7 @@ const plotDataToGraph = (data) => {
 	const plotlyNote = document.createElement("div");
 	plotlyNote.id = "tip-on-editing";
 	plotlyNote.classList.add("notification", "content", "is-info", "is-light");
-	plotlyNote.innerHTML = `<p><strong>Tip:</strong> Use the Plotly box and lasso select tools (upper-right) to select genes to view as a table.</p>
+	plotlyNote.innerHTML = `<p><strong>Tip:</strong> Use the Plotly box and lasso select tools (upper-right) to select genes to view as a table. Double-clicking clears any selections.</p>
 
 	<p>You can also click the plot title or axis labels to edit them. Hit Enter to apply edit.</p>`;
 	plotlyPreview.append(plotlyNote);
