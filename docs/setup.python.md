@@ -65,7 +65,7 @@ fixed paths have worked fine for decades.
       scanpy[louvain]==1.9.8 \
       scikit-learn==1.0.2 \
       scipy==1.11.04 \
-      seaborn==0.12.2 \
+      seaborn==0.13.0 \
       SQLAlchemy==1.4.32 \
       tables==3.9.2 \
       xlrd==1.2.0
