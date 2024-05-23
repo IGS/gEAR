@@ -57,7 +57,7 @@ def main():
     if statistical_test:
         perform_ranking = True
 
-    adata = sc.read(h5_path)
+    adata = sc.read_h5ad(h5_path)
 
     filters = json.loads(filters)
     # Filter by obs filters

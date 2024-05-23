@@ -148,7 +148,13 @@ const appendGeneTagButton = (geneTagElt) => {
 		selected_genes.delete(gene);
 		event.target.parentNode.remove();
 
-		// Remove checkmark from gene lists dropdown
+		// Remove gene from manually entered genes textbox
+		manuallyEnteredGenes.delete(gene);
+		document.getElementById("genes-manually-entered").value = Array.from(manuallyEnteredGenes).join(" ");
+
+		// Update graph
+		updatePlotAnnotations(Array.from(selected_genes).sort());
+
         // Remove checkmark from gene lists dropdown
         const geneListLabel = document.querySelector(`#dropdown-content-genes .gene-item-label[text="${gene}"]`);
         if (!geneListLabel) {
@@ -162,6 +168,8 @@ const appendGeneTagButton = (geneTagElt) => {
         geneListI.classList.replace("mdi-check", "mdi-plus");
         geneListI.classList.replace("gene-list-item-remove", "gene-list-item-add");
         geneListElt.classList.remove("is-selected");
+
+
     });
 }
 
@@ -216,6 +224,10 @@ const clearGenes = (event) => {
 	document.getElementById("gene-tags").replaceChildren();
 	selected_genes.clear();
 	document.getElementById("dropdown-gene-list-cancel").click();	// clear the dropdown
+	// Remove gene from manually entered genes textbox
+	manuallyEnteredGenes.clear();
+	document.getElementById("genes-manually-entered").value = "";
+
 	updatePlotAnnotations([]);
     document.getElementById("clear-genes-btn").classList.remove("is-loading");
 }
@@ -982,7 +994,6 @@ const updatePlotAnnotations = (genes) => {
 	}
 
 	genes.forEach((gene) => {
-		let found = false;
 		for (const trace of plotData) {
 			trace.id.forEach((element, i) => {
 				if (gene.toLowerCase() !== element.toLowerCase() ) {
@@ -1006,7 +1017,6 @@ const updatePlotAnnotations = (genes) => {
 				// change trace dot to match annotation
 				trace.marker.color[i] = annotationColor;
 
-				found = true;
 			});
 		}
 	});
@@ -1184,6 +1194,8 @@ for (const classElt of document.getElementsByClassName("js-plot-btn")) {
 
 document.getElementById("edit-params").addEventListener("click", (event) => {
     event.target.classList.add("is-loading");
+	// Clear existing plot annotations
+	clearGenes();
     // Hide this view
     document.getElementById("content-c").classList.remove("is-hidden");
     // Generate and display "post-plotting" view/container
