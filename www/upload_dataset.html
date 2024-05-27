@@ -6,320 +6,105 @@
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-        <title>Data upload page</title>
+        <title>Upload a dataset</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta http-equiv="Pragma" content="no-cache">
         <meta http-equiv="Expires" content="-1">
         <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
-        <meta name="description" content="">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
 
         <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
              to be changed for any hosts where gEAR is not at the webserver root.
           -->
         <base href="/" />
 
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
-
-        <link rel="stylesheet" href="css/jquery.fileupload.css" />
-        <link rel="stylesheet" href="css/vendor/bs-stepper.20190106.min.css" />
+        <link rel="stylesheet" href="css/gear-theme-purple.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css" />
 
         <!-- Ensures we always get a new version (during our current active development cycles) -->
-        <script>document.write('<link rel="stylesheet" href="css/common.' + (new Date()).getTime() + '.css" />');</script>
-        <script>document.write('<link rel="stylesheet" href="css/upload_dataset.' + (new Date()).getTime() + '.css" />');</script>
+        <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
 
-        <script src="js/vendor/modernizr-2.6.2-respond-1.1.0.min.js"></script>
+        <!--Page-specific CSS here -->
+        <script>document.write('<link rel="stylesheet" href="css/upload_dataset.' + (new Date()).getTime() + '.css" />');</script>
     </head>
     <body>
+      <div id="main-layout-c" class="columns is-fullheight">
 
-        <!--[if lt IE 7]>
-            <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
-        <![endif]-->
- <div id="body_c">
-    <div id="navigation_bar">
-      <!-- content here inserted via JQuery -->
-    </div> <!-- end navigation_bar -->
-    <div class="col-12 alert-container">
-      <!-- CONTAINER FOR ALERTS - INSERTED BY JQUERY -->
-    </div>
+        <!--#include virtual="/include/primary_nav.html" -->
 
-    <div id="login_checking">
-      <h2><img id="checking_indicator" src="img/loading_search.gif" alt="checking">Checking login status</h2>
-    </div>
+        <section id="main-c" class="column pl-0 pt-0">
 
-    <div id="login_warning">
-      <h2>Login required</h2>
-      <p>
-        You must be logged in to upload datasets.  Please use the login form in the top-right.
-      </p>
-    </div>
+          <!--#include virtual="/include/header_bar.html" -->
 
-    <div id="main_content" class="container-fluid">
-      <div id='main_row' class="row">
-        <div class="col-12">
-          <h2>Dataset uploader</h2>
-          <form id='upload_form' name='upload_form'>
-            <input type="hidden" id="dataset_uid" name="dataset_uid" value="">
-            <input type="hidden" id="share_uid" name="share_uid" value="">
-            <input type="hidden" id="uploaded_metadata_name" name="uploaded_metadata_name" value="">
-            <input type="hidden" id="uploaded_expression_name" name="uploaded_expression_name" value="">
-            <!-- <input type="hidden" id="uploaded_svg_name" name="uploaded_svg_name" value=""> -->
-            <input type="hidden" id="uploaded_schematic_name" name="uploaded_schematic_name" value="">
-            <input type="hidden" id="session_id" name="session_id" value="">
-            <input type="hidden" id="default_plot_type" name="default_plot_type" value="">
-            <!-- valid values: svg-expression, bargraph-standard -->
-            <!-- <input type="hidden" id="dataset_type" name="dataset_type" value=""> -->
-            <!-- <input type="hidden" id="spreadsheet_data_format" name="spreadsheet_data_format" value=""> -->
-            <!-- <input type="hidden" id="default_data_format" name="default_data_format" value=""> -->
-          </form>
+          <section id="content-c" class="m-3">
+            <div id="not-logged-in-c" class="is-hidden">
+              <h1>Not logged in</h1>
+              <p>
+                You must be logged in to upload a dataset. Please log in (upper right) or <a href="./create_account.html"> create an account!</a>.
+              </p>
+            </div>
 
-          <div id='stepper_c' class='row'>
-            <div class='col-12'>
-              <div class="bs-stepper">
-                <div class="bs-stepper-header" role="tablist">
-                  <!-- the steps go here -->
-                  <div class="step" data-target="#metadata-part">
-                    <button type="button" class="btn btn-link step-trigger" role="tab" aria-controls="metadata-part" id="metadata-part-trigger">
-                      <span class="bs-stepper-circle">1</span>
-                      <span class="bs-stepper-label">Upload metadata</span>
-                    </button>
-                  </div>
-                  <div class="line"></div>
-                  <div class="step" data-target="#expression-part">
-                    <button type="button" class="btn btn-link step-trigger" role="tab" aria-controls="expression-part" id="expression-part-trigger">
-                      <span class="bs-stepper-circle">2</span>
-                      <span class="bs-stepper-label">Upload expression data</span>
-                    </button>
-                  </div>
-                  <div class="line"></div>
-                  <div class="step" data-target="#curator-part">
-                    <button type="button" class="btn btn-link step-trigger" role="tab" aria-controls="curator-part" id="curator-part-trigger">
-                      <span class="bs-stepper-circle">3</span>
-                      <span class="bs-stepper-label">Curate your views</span>
-                    </button>
-                  </div>
-                </div> <!-- end .bs-stepper-header -->
-                <div class="bs-stepper-content">
-                  <!-- the steps content here -->
+            <div id="logged-in-c" class="is-hidden">
+              <h1>Upload a dataset</h1>
+              <p>
+                Please upload a dataset to get started. You can upload a dataset in CSV, TSV, or Excel format. The dataset should be in a tabular format with the first row containing the column names. The dataset should not contain any missing values.
+              </p>
+            </div>
 
-                  <!--------------------->
-                  <!-- METADATA step -->
-                  <div id="metadata-part" class="content" role="tabpanel" aria-labelledby="metadata-part-trigger">
-                    <div id='metadata_c' class='row'>
-                      <div class='col-12'>
-                        <div id="metadata_upload_c">
-                          <div class='row'>
-                            <div class='col-2' align='center'>
-                              <a href="user_templates/metadata_template.xlsx" download><i class='fa fa-file-text-o fa-5x'></i><br />Download</a>
-                            </div>
-                            <div class='col-10'>
-                              <p>
-                                To upload your data we first need a metadata document describing your data.  Download the template
-                                on the right, be sure to fill out at least all fields marked as required, and then use the button
-                                below to upload your saved file.
-                              </p>
-                            </div>
-                          </div>
-                          <div class='row'>
-                            <div class='col-12'>
-                              <span id="metadata_upload_controller" class="btn btn-success fileinput-button">
-                                <i class="fa fa-plus"></i>
-                                <span>Upload metadata file</span>
-                                <!-- The file input field used as target for the file upload widget -->
-                                <input id="metadata_upload" type="file" name="files[]">
-                              </span>
-                            </div>
-                          </div>
-                        </div> <!-- end metadata_upload_c-->
-                        <div id='metadata_processing_c'>
-                          <h2 id='metadata_uploading'>Uploading metadata file </h2>
-                          <h2 id='metadata_validating'>Validating metadata </h2>
-                          <div class='upload_spinner'>
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                          </div>
-                        </div> <!-- end #metadata_processing_c-->
-                        <div id="metadata_preview_c">
-                          <p>Please review the following table. If necessary, make corrections to your metadata file. Once the corrections are made, click 'Go back' and load the corrected file.</p>
-                          <table id="metadata_preview" class="table table-hover">
-                            <!-- Populate validation messages(errors) here -->
-                          </table>
-                        </div> <!-- end #metada_preview_c-->
-                      </div> <!-- end .col-12-->
-                    </div> <!-- end #metadata_c -->
-                  </div> <!-- end #metadata-part -->
-
-                  <!--------------------->
-                  <!-- EXPRESSION step -->
-                  <div id="expression-part" class="content" role="tabpanel" aria-labelledby="expression-part-trigger">
-                    <div id='expression_c' class='row'>
-                      <div class='col-12'>
-                        <!-- <h3>Upload your expression data</h3> -->
-                        <div id='expression_upload_c'>
-                          <div id="expression_instructions_c">
-                            <p>
-                              If your expression data is formatted properly, upload it here. Examples of how data needs to be formatted are listed below.
-                            </p>
-                            <ul class='list-inline'>
-                              <li>
-                                <span style="padding-left:20px;">Excel:</span>
-                              </li>
-                              <li>
-                                <span style="padding-left:20px;">
-                                  <a href="user_templates/example_celltype_cond_devstage_reps.xlsx" download><b>Cell-type, Conditions, Development Stage, &amp; Replicates</b></a>
-                                </span>
-                              </li>
-                              <li>
-                                <span style="padding-left:20px;">
-                                  <a href="user_templates/example_timeseries.xlsx" download><b>Time series</b></a>
-                                </span>
-                              </li>
-                              <li>
-                                <span style="padding-left:20px;">
-                                  <a href="user_templates/example_singlecell.xlsx" download><b>Single-cell</b></a>
-                                </span>
-                              </li>
-                            </ul>
-                            <ul class='list-inline'>
-                              <li>
-                                <span style="padding-left:20px;">MEX:</span>
-                              </li>
-                              <li>
-                                <span style="padding-left:20px;">
-                                  <a href="user_templates/example_mex.tar" download><b>Example</b></a>
-                                </span>
-                              </li>
-                            </ul>
-                            <ul class='list-inline'>
-                              <li>
-                                <span style="padding-left:20px;">3 tab file tarball (plain text)</span>
-                              </li>
-                              <li>
-                                <span style="padding-left:20px;">
-                                  <a href="user_templates/example_3tab.tar.gz" download><b>Example</b></a>
-                                </span>
-                              </li>
-                            </ul>
-                          </div>
-                          <span id="expression_upload_controller" class="btn btn-success fileinput-button">
-                            <i class="fa fa-plus"></i>
-                            <span>Select expression file</span>
-                            <!-- The file input field used as target for the file upload widget -->
-                            <input id="expression_upload" type="file" name="files[]">
+            <div class="columns is-multiline is-variable is-3 is-hidden">
+              <div class="column is-12">
+                <div class="columns is-multiline is-variable is-3">
+                  <div class="column is-12">
+                    <!-- useful file upload control code-->
+                    <div class="field">
+                      <label class="label">Upload a file</label>
+                      <div class="file has-name is-fullwidth">
+                        <label class="file-label">
+                          <input class="file-input  is-fullwidth" type="file" name="resume">
+                          <span class="file-cta">
+                            <span class="file-icon">
+                              <i class="mdi mdi-upload"></i>
+                            </span>
+                            <span class="file-label">
+                              Choose a file…
+                            </span>
                           </span>
-                        </div><!-- end #expression_upload_c -->
-                        <div id='expression_processing_c' class='hide_after_error'>
-                          <h2 id='expression_uploading'>Uploading and validating expression file ... please wait ...</h2>
-                          <div class='upload_spinner'>
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                          </div>
-                        </div> <!-- end #expression_processing_c-->
-                        <div id="expression_preview_c">
-                          <h3>Expression data processed</h3>
-                          <h3>Your dataset stats</h3>
-                          <div id="expression_preview_shape"></div>
-                        </div> <!-- end #expression_preview_c-->
-                      </div> <!-- end .col-12 -->
-                    </div> <!-- end #expression_c -->
-                  </div> <!-- end #expression-part -->
-
-                  <!--------------------->
-                  <!-- CURATOR step -->
-                  <div id="curator-part" class="content" role="tabpanel" aria-labelledby="curator-part-trigger">
-                    <div class='row'>
-                      <div class='col-6'>
-                        <p>
-                          Now that you're dataset is loaded it's time to specify how you'd like it to look
-                          to users by default.  The <a class='curator_link' href=''>Dataset Curator</a> allows you to customize this next.
-                        </p>
-                        <button id="goto_curator" type="button" class="btn btn-secondary form-control">Curate this dataset</button>
-                      </div>
-                      <div class='col-6'>
-                        <a class='curator_link' href=''>
-                          <img class="img-fluid" alt='Curator preview' src='img/gear_plot_type_examples.png' />
-                        </a>
+                          <span class="file-name">
+                            No file chosen
+                          </span>
+                        </label>
                       </div>
                     </div>
-                  </div> <!-- end #curator-part -->
-                </div> <!-- end .bs-stepper-content -->
-              </div> <!-- end .bs-stepper -->
-            </div> <!-- end .col-12 -->
-          </div> <!-- end #stepper_c -->
-
-          <div class="modal fade" id="user_help_modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
-            <div id="modal_manual_excerpt" class="modal-dialog" role="document">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                  <h4 class="modal-title" id="user_help_modal_title">Manual Excerpt</h4>
-                </div>
-                <div id="user_help_modal_body" class="modal-body">
-                  ...
+                  </div>
+                  <div class="column is-12">
+                    <div class="field">
+                      <div class="control">
+                        <button class="button is-primary">Upload</button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-        </div> <!-- end #.col-12 -->
-      </div> <!-- end #main_row -->
+          </section><!-- end #content-c -->
 
-      <div id="upload_controls_c">
-        <div class="row">
-          <div id="goback_c" class="form-group col-3 pull-left">
-            <button id="goback_spreadsheet_processing" type="button" class="btn btn-secondary form-control">Go back</button>
-          </div>
-          <div id="continue_c" class="form-group col-4 pull-right">
-            <button id="continue_spreadsheet_processing" data-confirm-step="0" type="button" class="btn btn-success form-control">Continue</button>
-          </div>
-          <div id="submit_upload_c" class="form-group col-5 pull-right">
-            <button id="submit_upload" class="btn btn-default btn-success form-control" type="submit">Submit</button>
-          </div>
+        </section> <!-- end #main-c -->
+      </div>
+      <footer>
+        <div>
+          <!-- content here TO BE inserted via common.js -->
         </div>
-      </div>
+      </footer>
 
-    </div> <!-- end #main_content -->
+      <script src="js/vendor/js.cookie.js"></script>
 
-    <div id='account_creation_c' class='row'>
-      <!-- content inserted via common.js-->
-    </div>
-
-    <div style="clear: both;">&nbsp;</div>
-
-    <footer>
-      <div id='funding'>
-        <!-- content here inserted via JQuery -->
-      </div>
-    </footer>
-</div> <!-- /body_c -->
-        <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
-        <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
-
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
-        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
-
-        <script src="js/vendor/js.cookie.js"></script>
-        <script src="js/vendor/jquery.iframe-transport.js"></script>
-        <script src="js/vendor/jquery.fileupload.js"></script>
-        <script src="//cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.0/bootstrap3-editable/js/bootstrap-editable.min.js"></script>
-
-        <!-- https://github.com/Johann-S/bs-stepper -->
-        <script src="js/vendor/bs-stepper.20190106.min.js"></script>
-
-        <script src="js/vendor/jsrender.20181003.min.js"></script>
-
-        <!-- Plotly JS-->
-        <script src="https://cdn.plot.ly/plotly-1.54.1.min.js"></script>
-
-        <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-        <script>document.write('<script src="js/classes/user.' + (new Date()).getTime() + '.js"><\/script>');</script>
-        <script>document.write('<script src="js/common.' + (new Date()).getTime() + '.js"><\/script>');</script>
-        <script>document.write('<script src="js/upload_dataset.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+      <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+      <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      
+      <!-- Page-specific JS file here -->
+      <script>document.write('<script src="js/upload_dataset.' + (new Date()).getTime() + '.js"><\/script>');</script>
     </body>
 </html>
