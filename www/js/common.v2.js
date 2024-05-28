@@ -529,7 +529,7 @@ const createToast = (msg, levelClass="is-danger") => {
     }
 
     // For a success message, remove it after 3 seconds
-    if (levelClass === "is-success") {
+    if (["is-success", "is-info"].includes(levelClass)) {
         const notifications = document.querySelectorAll(".js-toast.notification")
         const notification = notifications[notifications.length - 1];
         notification.classList.remove("animate__fadeInUp");
