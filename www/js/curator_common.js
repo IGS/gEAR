@@ -1051,6 +1051,9 @@ const loadDatasetTree = async () => {
         datasetTree.domainDatasets = domainDatasets;
         datasetTree.generateTree();
     } catch (error) {
+        logErrorInConsole(error);
+        const msg = "Could not fetch datasets. Please contact the gEAR team."
+        createToast(msg);
         document.getElementById("dataset-s-failed").classList.remove("is-hidden");
     }
 

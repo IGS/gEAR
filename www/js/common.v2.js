@@ -88,10 +88,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Handles tooltips for elements with the class 'icon-image-part'.
+     * Handles the tooltips for the primary navigation icons.
      * @param {boolean} add - Indicates whether to add or remove tooltips.
      */
-    const handleTooltips = (add) => {
+    const handlePrimaryNavTooltips = (add) => {
         document.querySelectorAll('span.icon-image-part').forEach((element) => {
             if (add) {
                 const text = element.parentNode.querySelector('span.icon-text-part').textContent;
@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
             element.classList.remove('shown-sidenavbar');
         });
 
-        handleTooltips(true);
+        handlePrimaryNavTooltips(true);
     }
 
     /**
@@ -141,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
             element.classList.remove('hidden-sidenavbar');
         });
 
-        handleTooltips(false);
+        handlePrimaryNavTooltips(false);
     }
 
     const navbarToggler = document.querySelector('#navbar-toggler');
@@ -279,6 +279,17 @@ const checkForLogin = async () => {
             console.error(error);
         }
     }
+}
+
+/**
+ * Returns the current date and time in the format "YYYY-MM-DD HH:MM:SS".
+ * @returns {string} The current date and time.
+ */
+const commonDateTime = () => {
+    const today = new Date();
+    const date = `${today.getFullYear()}-${today.getMonth()+1}-${today.getDate()}`;
+    const time = `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()}`;
+    return `${date} ${time}`;
 }
 
 /**
