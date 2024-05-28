@@ -92,6 +92,9 @@ const datasetTree = new DatasetTree({
 			elt.classList.add("is-hidden");
 		}
 
+        // collapse tree
+        e.node.tree.expandAll(false);
+
 		const compareSeriesElt = document.getElementById("compare-series");
 		compareSeriesElt.parentElement.classList.add("is-loading");
 

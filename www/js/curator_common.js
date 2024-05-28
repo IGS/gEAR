@@ -434,6 +434,9 @@ const datasetTree = new DatasetTree({
             elt.classList.add("is-hidden");
         }
 
+        // collapse tree
+        e.node.tree.expandAll(false);
+
         document.getElementById("dataset-s-success").classList.remove("is-hidden");
 
         // displays
@@ -528,6 +531,7 @@ const chooseNewDisplay = async (event) => {
     document.getElementById("current-plot-type-c").classList.add("is-hidden");
     document.getElementById("plot-type-s-success").classList.add("is-hidden");
     document.getElementById("plot-type-select-c-success").classList.add("is-hidden");
+    document.getElementById("analysis-type-select-c-failed").classList.add("is-hidden");
     document.getElementById("plot-type-select-c-failed").classList.remove("is-hidden");
     document.getElementById("plot-options-s-success").classList.add("is-hidden");
 
