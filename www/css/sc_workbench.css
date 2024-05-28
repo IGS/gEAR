@@ -1,0 +1,10 @@
+/* The 'size' attribute for Input tags with 'number' type is not valid. Adjust width instead */
+input.input-length-2 {
+    width: 2em;
+}
+input.input-length-4 {
+    width: 4em;
+}
+input.input-length-6 {
+    width: 6em;
+}

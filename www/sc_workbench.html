@@ -2,43 +2,550 @@
 <!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-        <title>gEAR dataset curator page</title>
-        <meta name="description" content="">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta http-equiv="Pragma" content="no-cache">
-        <meta http-equiv="Expires" content="-1">
-        <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
+<!--[if gt IE 8]><!-->
+<html class="no-js"> <!--<![endif]-->
 
-        <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>gEAR single-cell workbench page</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="-1">
+    <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
+
+    <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
              to be changed for any hosts where gEAR is not at the webserver root.
           -->
-        <base href="/" />
+    <base href="/" />
 
-        <link rel="stylesheet" href="css/gear-theme-purple.css" />
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
+    <link rel="stylesheet" href="css/gear-theme-purple.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
 
-        <!-- Fancy animation effects -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <!-- Fancy animation effects -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
 
-        <!-- Fancy select elements -->
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nice-select2@2.1.0/dist/css/nice-select2.min.css">
+    <!-- Tree view/grid -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mar10/wunderbaum@v0.5.1/dist/wunderbaum.css">
 
-        <!-- Tree view/grid -->
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.0/font/bootstrap-icons.css">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mar10/wunderbaum@v0.5.1/dist/wunderbaum.css">
+    <!-- Ensures we always get a new version (during our current active development cycles) -->
+    <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
 
-        <!-- Ensures we always get a new version (during our current active development cycles) -->
-        <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
-
-        <!--Page-specific CSS here -->
-            <script>document.write('<link rel="stylesheet" href="css/sc_workbench.' + (new Date()).getTime() + '.css" />');</script>
-    </head>
+    <!--Page-specific CSS here -->
+    <script>document.write('<link rel="stylesheet" href="css/sc_workbench.' + (new Date()).getTime() + '.css" />');</script>
+</head>
 
 <body>
+    <!--[if lt IE 7]>
+            <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+
+    <div id="main-layout-c" class="columns is-fullheight">
+        <!--#include virtual="/include/primary_nav.html" -->
+        <section id="main-c" class="column pl-0 pt-0">
+            <!--#include virtual="/include/header_bar.html" -->
+            <section id="content-c" class="m-3">
+                <!-- This is the section to be populated for new pages -->
+                <header class="columns section">
+                    <div id="tool-desc-c" class="column is-4">
+                        <h3 class="title is-3">
+                            Find clusters and marker genes in single-cell RNA-seq data
+                        </h3>
+                        <p>The single-cell workbench allows for users to run a complete
+                            Seurat analysis pipeline and save this analysis for use in
+                            the single-gene or multi-gene curator tools.</p>
+                    </div>
+                    <div id="guides-outer-c" class="column is-offset-2 has-background-white-bis notification">
+                        <h3 class="mt-4 mb-4">
+                            <span>GUIDES</span>
+                            <span class="icon is-pulled-right delete">
+                                <i class="mdi mdi-close"></i>
+                            </span>
+                        </h3>
+                        <div id="guides-inner-c" class="columns">
+                            <div class="column">
+                                <div class="guide-element pr-3">
+                                    <div><!-- without the 2nd level div here the images disappears-->
+                                        <div class="media">
+                                            <div class="media-left">
+                                                <figure class="image is-96x96">
+                                                    <img src="/img/guide_image_mag_dna.png" alt="Placeholder image">
+                                                </figure>
+                                            </div>
+                                            <div class="media-content is-size-7 has-text-weight-semibold">
+                                                <p>
+                                                    Learn how to use the single-cell workbench
+                                                </p>
+                                                <p class="mt-2"><a class="is-unselectable">Try now (coming soon)</a></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <div class="columns">
+                    <section class="has-background-light section column is-half" id="dataset-s">
+                        <!-- Dataset selection -->
+                        <h5 class="title is-5">
+                            <span class="icon">
+                                <i class="mdi mdi-text-box-search-outline"></i> <!-- Not quite the correct icon -->
+                            </span>
+                            <span>Select a dataset</span>
+                            <span id="dataset-s-success" class="js-step-success icon has-text-success-dark is-hidden">
+                                <i class="mdi mdi-check-circle"></i>
+                            </span>
+                            <span id="dataset-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
+                                <i class="mdi mdi-close-circle"></i>
+                            </span>
+                            <span class="icon is-pulled-right">
+                                <i class="mdi mdi-chevron-up"></i>
+                            </span>
+                        </h5>
+                        <div id="current-dataset-c">
+                            Current dataset:
+                            <span id="current-dataset">None selected</span>
+                        </div>
+                        <div class="mt-3" id="dataset-c">
+                            <input class="input" id="dataset-query" type="text" placeholder="Enter a dataset"
+                              autofocus="" />
+                            <div id="dataset-tree" class="wb-skeleton wb-initializing">
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="has-background-light section column is-half" id="analysis-s">
+                        <h5 class="title is-5">
+                            <span class="icon">
+                                <i class="mdi mdi-chart-scatter-plot"></i> <!-- Not quite the correct icon -->
+                            </span>
+                            <span>Select new or saved analysis</span>
+                            <span id="analysis-type-select-c-success"
+                              class="js-step-success icon has-text-success-dark is-hidden">
+                                <i class="mdi mdi-check-circle"></i>
+                            </span>
+                            <span id="analysis-type-select-c-failed"
+                              class="js-step-success icon has-text-danger-dark is-hidden">
+                                <i class="mdi mdi-close-circle"></i>
+                            </span>
+                        </h5>
+                        <div id="current-analysis-c">
+                            Current analysis:
+                            <span id="current-analysis">None selected</span>
+                        </div>
+                        <div class="mt-3" id="analysis-c">
+                            <div class="select is-fullwidth">
+                                <select id="analysis-select" disabled>
+                                    <option data-analysis-id="0" value="0">New</option>
+                                    <optgroup id="analyses-primary" label="Imported analysis"></optgroup>
+                                    <optgroup id="analyses-public" label="Public saved analyses"></optgroup>
+                                    <optgroup id="analyses-saved" label="Your saved analyses"></optgroup>
+                                    <optgroup id="analyses-unsaved" label="Your recent unsaved analyses"></optgroup>
+                                </select>
+                            </div>
+                            <div id="new-analysis-label-c" class="field is-hidden">
+                                <label for="new-analysis-label" class="label">Label for this analysis</label>
+                                <input type="text" id="new-analysis-label" class="input" value="Unlabeled" />
+                                <div id="duplicate-label-warning" class='is-hidden'>
+                                    This analysis label has already been used.
+                                </div>
+                                <div class="field has-addons">
+                                    <button id="btn-new-analysis-label-save" class="button is-primary"
+                                      title="Save this label">
+                                        <span class="icon is-small">
+                                            <i class="mdi mdi-content-save"></i>
+                                        </span>
+                                    </button>
+                                    <button id="btn-new-analysis-label-cancel" class="button"
+                                      title="Cancel this label update">
+                                        <span class="icon is-small">
+                                            <i class="mdi mdi-ban"></i>
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="analysis-action-c" class="field has-addons">
+                                <p class="control">
+                                    <button class="button js-show-rename-input">
+                                        <span class="icon is-small">
+                                            <i class="mdi mdi-pencil-box"></i>
+                                        </span>
+                                        <span>Rename</span>
+                                    </button>
+                                </p>
+                                <p class="control">
+                                    <button id="btn-save-analysis" class="button is-primary">
+                                        <span class="icon is-small">
+                                            <i class="mdi mdi-content-save"></i>
+                                        </span>
+                                        <span>Save</span>
+                                    </button>
+                                </p>
+                                <p class="control">
+                                    <button id="btn-delete-unsaved-analysis" class="button is-danger">
+                                        <span class="icon is-small">
+                                            <i class="mdi mdi-delete"></i>
+                                        </span>
+                                        <span>Delete</span>
+                                    </button>
+                                </p>
+                            </div>
+                            <div id="analysis-status-info-c" class="field has-addons is-hidden">
+                                <p class="control">
+                                    <button class="button js-show-rename-input">
+                                        <span class="icon is-small">
+                                            <i class="mdi mdi-pencil-box"></i>
+                                        </span>
+                                        <span>Rename</span>
+                                    </button>
+                                </p>
+                                <p class="control">
+                                    <button id="btn-make-public-copy" class="button">
+                                        <span class="icon is-small">
+                                            <i class="mdi mdi-earth"></i>
+                                        </span>
+                                        <span>Make a public copy</span>
+                                    </button>
+                                </p>
+                                <p class="control">
+                                    <button id="btn-delete-saved-analysis" class="button is-danger">
+                                        <span class="icon is-small">
+                                            <i class="mdi mdi-delete"></i>
+                                        </span>
+                                        <span>Delete</span>
+                                    </button>
+                                </p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <section class="has-background-white-bis section is-hidden" id="labeled-tsne-s">
+                    <h5 class="title is-5">
+                        <span class="icon">
+                            <i class="mdi mdi-file-upload-outline"></i> <!-- Not quite the correct icon -->
+                        </span>
+                        <span>Create a labeled tSNE </span>
+                    </h5>
+                    <div class=" mt-3" id="labeled-tsne-c">
+                    </div>
+                </section>
+
+                <div id="analysis-workflow" class="is-hidden">
+                    <section class="has-background-white-bis section js-step" id="primary-filter-s">
+                        <h5 class="title is-5">
+                            <span class="icon">
+                                <i class="mdi mdi-file-upload-outline"></i> <!-- Not quite the correct icon -->
+                            </span>
+                            <span>Primary dataset filtering</span>
+                            <span id="primary-filter-s-success"
+                              class="js-step-success icon has-text-success-dark is-hidden">
+                                <i class="mdi mdi-check-circle"></i>
+                            </span>
+                            <span id="primary-filter-s-failed"
+                              class="js-step-success icon has-text-danger-dark is-hidden">
+                                <i class="mdi mdi-close-circle"></i>
+                            </span>
+                            <span class="icon is-pulled-right">
+                                <i class="mdi mdi-chevron-down"></i>
+                            </span>
+                        </h5>
+                        <div class="js-step-collapsable mt-3" id="primary-filter-collapsable">
+                            <div class="columns is-variable is-8"> <!-- gapped columns -->
+                                <div class="column is-5">
+                                    <div class="block">
+                                        <p class="has-text-weight-semibold">Initial shape: <span
+                                              id='selected-dataset-shape-initial' class="has-text-weight-normal"></span>
+                                        </p>
+                                        <p id='selected-dataset-shape-filtered-c'
+                                          class="is-hidden has-text-weight-semibold">Filtered shape: <span
+                                              id='selected-dataset-shape-filtered'
+                                              class="js-resetable has-text-weight-normal"></span></p>
+                                        <p class="has-text-weight-semibold">
+                                            Apply filters as desired.
+                                            <span class="icon has-tooltip-right has-tooltip-arrow"
+                                              data-tooltip="The initial dataset contains many observations (cells), some of which may hold no significant value to the downstream analysis.
+            Here you can perform multiple filtering steps to remove empty captures, doublets and genes not expressed in this dataset."><i
+                                                  class="mdi mdi-information-slab-circle"></i></span>
+                                        </p>
+                                    </div>
+                                    <div id='primary-filter-options-c'>
+                                        <div class="field">
+                                            <div class="control">
+                                                <label class="checkbox">
+                                                    <input id='filter-cells-lt-n-genes-selected' type="checkbox">
+                                                    Exclude cells with &lt;
+                                                </label>
+                                                <input type="number" class="input is-small input-length-4"
+                                                  id="filter-cells-lt-n-genes" size="4" value="300" min="1" /> genes
+                                            </div>
+                                        </div>
+                                        <div class="field">
+                                            <div class="control">
+                                                <label class="checkbox">
+                                                    <input id='filter-cells-gt-n-genes-selected' type="checkbox">
+                                                    Exclude cells with &gt;
+                                                </label>
+                                                <input type="number" class="input is-small input-length-4"
+                                                  id="filter-cells-gt-n-genes" size="4" min="1" /> genes
+                                            </div>
+                                        </div>
+                                        <div class="field">
+                                            <div class="control">
+                                                <label class="checkbox">
+                                                    <input id='filter-genes-lt-n-cells-selected' type="checkbox">
+                                                    Exclude genes in &lt;
+                                                </label>
+                                                <input type="number" class="input is-small input-length-4"
+                                                  id="filter-genes-lt-n-cells" size="4" value="3" min="1" /> cells
+                                            </div>
+                                        </div>
+                                        <div class="field">
+                                            <div class="control">
+                                                <label class="checkbox">
+                                                    <input id='filter-genes-gt-n-cells-selected' type="checkbox">
+                                                    Exclude genes in &gt;
+                                                </label>
+                                                <input type="number" class="input is-small input-length-4"
+                                                  id="filter-genes-gt-n-cells" size="4" min="1" /> cells
+                                            </div>
+                                        </div>
+                                        <div class="field">
+                                            <div class="control">
+                                                <button id='btn-apply-primary-filter' type='button'
+                                                  class='button is-primary is-small'>Apply filters</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="column is-7">
+                                    <div id="primary-initial-plot-c" class="is-hidden">
+                                        <h5>Initial composition</h5>
+                                        <div id="primary-initial-plot"><img class="image"
+                                              src="../img/loading_search.gif" alt="Loading" /> Loading initial gene/cell
+                                            count plots</div>
+                                        <div id="primary_initial-violin-c" class="js-resetable"></div>
+                                        <div id="primary-initial-scatter-c" class="js-resetable"></div>
+                                    </div>
+                                    <div id="primary-top-genes-plot-c" class="is-hidden">
+                                        <h5>Genes with highest fraction of counts per cell</h5>
+                                        <div id='primary-top-genes-c' class='js-resetable'></div>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                        </div>
+                    </section>
+
+                    <section class="has-background-white-bis section js-step" id="qc-by-mito-s">
+                        <h5 class="title is-5">
+                            <span class="icon">
+                                <i class="mdi mdi-file-upload-outline"></i> <!-- Not quite the correct icon -->
+                            </span>
+                            <span>QC - filter out mitochondrial content </span>
+                            <span id="qc-by-mito-s-success"
+                              class="js-step-success icon has-text-success-dark is-hidden">
+                                <i class="mdi mdi-check-circle"></i>
+                            </span>
+                            <span id="qc-by-mito-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
+                                <i class="mdi mdi-close-circle"></i>
+                            </span>
+                            <span class="icon is-pulled-right">
+                                <i class="mdi mdi-chevron-down"></i>
+                            </span>
+                        </h5>
+                        <div class="js-step-collapsable mt-3" id="qc-by-mito-collapsable">
+                        </div>
+                    </section>
+
+                    <section class="has-background-white-bis section js-step" id="select-variable-genes-s">
+                        <h5 class="title is-5">
+                            <span class="icon">
+                                <i class="mdi mdi-file-upload-outline"></i> <!-- Not quite the correct icon -->
+                            </span>
+                            <span>Identify highly-variable genes </span>
+                            <span id="select-variable-genes-s-success"
+                              class="js-step-success icon has-text-success-dark is-hidden">
+                                <i class="mdi mdi-check-circle"></i>
+                            </span>
+                            <span id="select-variable-genes-s-failed"
+                              class="js-step-success icon has-text-danger-dark is-hidden">
+                                <i class="mdi mdi-close-circle"></i>
+                            </span>
+                            <span class="icon is-pulled-right">
+                                <i class="mdi mdi-chevron-down"></i>
+                            </span>
+                        </h5>
+                        <div class="js-step-collapsable mt-3" id="select-variable-genes-collapsable">
+                        </div>
+                    </section>
+
+                    <section class="has-background-white-bis section js-step" id="pca-s">
+                        <h5 class="title is-5">
+                            <span class="icon">
+                                <i class="mdi mdi-file-upload-outline"></i> <!-- Not quite the correct icon -->
+                            </span>
+                            <span>Perform Principal Component Analysis (PCA) </span>
+                            <span id="pca-s-success" class="js-step-success icon has-text-success-dark is-hidden">
+                                <i class="mdi mdi-check-circle"></i>
+                            </span>
+                            <span id="pca-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
+                                <i class="mdi mdi-close-circle"></i>
+                            </span>
+                            <span class="icon is-pulled-right">
+                                <i class="mdi mdi-chevron-down"></i>
+                            </span>
+                        </h5>
+                        <div class="js-step-collapsable mt-3" id="pca-collapsable">
+                        </div>
+                    </section>
+
+                    <section class="has-background-white-bis section js-step" id="tsne-s">
+                        <h5 class="title is-5">
+                            <span class="icon">
+                                <i class="mdi mdi-file-upload-outline"></i> <!-- Not quite the correct icon -->
+                            </span>
+                            <span>Perform tSNE or UMAP analysis </span>
+                            <span id="tsne-s-success" class="js-step-success icon has-text-success-dark is-hidden">
+                                <i class="mdi mdi-check-circle"></i>
+                            </span>
+                            <span id="tsne-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
+                                <i class="mdi mdi-close-circle"></i>
+                            </span>
+                            <span class="icon is-pulled-right">
+                                <i class="mdi mdi-chevron-down"></i>
+                            </span>
+                        </h5>
+                        <div class="js-step-collapsable mt-3" id="tsne-collapsable">
+                        </div>
+                    </section>
+
+                    <section class="has-background-white-bis section js-step" id="clustering-s">
+                        <h5 class="title is-5">
+                            <span class="icon">
+                                <i class="mdi mdi-file-upload-outline"></i> <!-- Not quite the correct icon -->
+                            </span>
+                            <span>Perform clustering </span>
+                            <span id="clustering-s-success"
+                              class="js-step-success icon has-text-success-dark is-hidden">
+                                <i class="mdi mdi-check-circle"></i>
+                            </span>
+                            <span id="clustering-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
+                                <i class="mdi mdi-close-circle"></i>
+                            </span>
+                            <span class="icon is-pulled-right">
+                                <i class="mdi mdi-chevron-down"></i>
+                            </span>
+                        </h5>
+                        <div class="js-step-collapsable mt-3" id="clustering-collapsable">
+                        </div>
+                    </section>
+
+                    <section class="has-background-white-bis section js-step" id="marker-genes-s">
+                        <h5 class="title is-5">
+                            <span class="icon">
+                                <i class="mdi mdi-file-upload-outline"></i> <!-- Not quite the correct icon -->
+                            </span>
+                            <span>Find marker genes </span>
+                            <span id="marker-genes-s-success"
+                              class="js-step-success icon has-text-success-dark is-hidden">
+                                <i class="mdi mdi-check-circle"></i>
+                            </span>
+                            <span id="marker-genes-s-failed"
+                              class="js-step-success icon has-text-danger-dark is-hidden">
+                                <i class="mdi mdi-close-circle"></i>
+                            </span>
+                            <span class="icon is-pulled-right">
+                                <i class="mdi mdi-chevron-down"></i>
+                            </span>
+                        </h5>
+                        <div class="js-step-collapsable mt-3" id="marker-genes-collapsable">
+                        </div>
+                    </section>
+
+                    <section class="has-background-white-bis section js-step" id="clustering-edit-s">
+                        <h5 class="title is-5">
+                            <span class="icon">
+                                <i class="mdi mdi-file-upload-outline"></i> <!-- Not quite the correct icon -->
+                            </span>
+                            <span>Rename, merge, or delete clusters </span>
+                            <span id="clustering-edit-s-success"
+                              class="js-step-success icon has-text-success-dark is-hidden">
+                                <i class="mdi mdi-check-circle"></i>
+                            </span>
+                            <span id="clustering-edit-s-failed"
+                              class="js-step-success icon has-text-danger-dark is-hidden">
+                                <i class="mdi mdi-close-circle"></i>
+                            </span>
+                            <span class="icon is-pulled-right">
+                                <i class="mdi mdi-chevron-down"></i>
+                            </span>
+                        </h5>
+                        <div class="js-step-collapsable mt-3" id="clustering-edit-collapsable">
+                        </div>
+                    </section>
+
+                    <section class="has-background-white-bis section js-step" id="compare-genes-s">
+                        <h5 class="title is-5">
+                            <span class="icon">
+                                <i class="mdi mdi-file-upload-outline"></i> <!-- Not quite the correct icon -->
+                            </span>
+                            <span>Compare genes and clusters </span>
+                            <span id="ompare-genes-s-success"
+                              class="js-step-success icon has-text-success-dark is-hidden">
+                                <i class="mdi mdi-check-circle"></i>
+                            </span>
+                            <span id="ompare-genes-s-failed"
+                              class="js-step-success icon has-text-danger-dark is-hidden">
+                                <i class="mdi mdi-close-circle"></i>
+                            </span>
+                            <span class="icon is-pulled-right">
+                                <i class="mdi mdi-chevron-down"></i>
+                            </span>
+                        </h5>
+                        <div class="js-step-collapsable mt-3" id="ompare-genes-collapsable">
+                        </div>
+                    </section>
+                </div>
+            </section>
+        </section>
+    </div>
+
+    <!-- Tree view/grid -->
+    <script src="https://cdn.jsdelivr.net/gh/mar10/wunderbaum@v0.5.1/dist/wunderbaum.umd.min.js"></script>
+
+    <!-- Promise based HTTP client for the browser  -->
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+    <script src="js/vendor/js.cookie.js"></script>
+
+    <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+    <script>document.write('<script src="js/classes/tree.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+    <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+    <script>document.write('<script src="js/classes/analysis-ui.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
+    <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+    <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
+    <!-- Page-specific JS file here -->
+    <script>document.write('<script src="js/classes/analysis.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+    <script>document.write('<script src="js/sc_workbench.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'UA-59916932-1');
+    </script>
 
 </body>
+
 </html>

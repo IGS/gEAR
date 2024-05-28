@@ -1,9 +1,10 @@
 "use strict";
 
-let currentAnalysis = new Analysis();
+let currentAnalysis;
 let clickedMarkerGenes = new Set();
 let enteredMarkerGenes = new Set();
 let currentLabel = null;
+let datasetId = null;
 
 // TODO:  Check font sizes on all instruction blocks
 // TODO:  Check if mitochrondrial QC actually returned anything
@@ -28,9 +29,8 @@ const datasetTree = new DatasetTree({
         if (e.node.type !== "dataset") {
             return;
         }
-        document.getElementById("current-dataset-c").classList.remove("is-hidden");
-        document.getElementById("current-dataset").textContent = e.node.title;
-        document.getElementById("current-dataset-post").textContent = e.node.title;
+        //document.querySelector(UI.currentDatasetContainer).classList.remove("is-hidden");
+        document.querySelector(UI.currentDatasetElt).textContent = e.node.title;
 
         const newDatasetId = e.node.data.dataset_id;
         const organismId = e.node.data.organism_id;
@@ -42,13 +42,14 @@ const datasetTree = new DatasetTree({
 
         createToast("Loading dataset", "is-info");
 
-        datasetId = newDatasetId;
+        const datasetId = newDatasetId;
 
         resetWorkbench();
 
         currentAnalysis = new Analysis({datasetId, type: "primary", datasetIsRaw: true});
 
         document.querySelector(UI.initialInstructionsElt).classList.add("is-hidden");
+        document.querySelector(UI.analysisSelect).disabled = false;
 
         // Technically these could load asynchronously, but logically the progress logs make more sense sequentially
         await getDatasetInfo(datasetId);
@@ -236,7 +237,7 @@ const loadDatasetTree = async () => {
         logErrorInConsole(error);
         const msg = "Could not fetch datasets. Please contact the gEAR team."
         createToast(msg);
-        throw new Error(msg);
+        document.getElementById("dataset-s-failed").classList.remove("is-hidden");
     }
 
 }
@@ -475,6 +476,7 @@ const validateMarkerGeneSelection = () => {
  * @param {Event} event - The event object.
  * @returns {Promise<void>} - A promise that resolves when the UI updates are complete.
  */
+
 const handlePageSpecificLoginUIUpdates = async (event) => {
 	document.getElementById("page-header-label").textContent = "Single Cell Workbench";
 
@@ -488,8 +490,12 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     const sessionId = CURRENT_USER.session_id;
     if (! sessionId ) {
         createToast("Not logged in so saving analyses is disabled.", "is-warning");
+        document.querySelector(UI.btnSaveAnalysisElt).disabled = true;
+
         // TODO: Other actions
     }
+
+    currentAnalysis = new Analysis();
 
 	try {
 		await loadDatasetTree()
@@ -513,7 +519,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 }
 
-/* Event listenters for elements already loaded */
+/* Event listeners for elements already loaded */
 
 // General
 
@@ -548,7 +554,7 @@ document.querySelector(UI.btnNewAnalysisLabelCancelElt).addEventListener("click"
     document.querySelector(UI.btnNewAnalysisLabelContainer).classList.add("is-hidden");
 });
 
-document.querySelector(UI.analysisSelectElt).addEventListener("change", async (event) => {
+document.querySelector(UI.analysisSelect).addEventListener("change", async (event) => {
     // Handle the analysis selection change
 
     // Grab the dataset ID from the current analysis to reuse it
@@ -570,7 +576,6 @@ document.querySelector(UI.analysisSelectElt).addEventListener("change", async (e
             'type': 'primary',
             'datasetIsRaw': true});
         // Need to reload prelim step so qc_by_mito toggle will work
-        document.querySelector(UI.datasetInfoElt).classList.remove("is-hidden");
         await currentAnalysis.loadPreliminaryFigures();
 
         // TODO: Update UI to match select state
@@ -629,8 +634,9 @@ document.querySelector(UI.btnApplyPrimaryFilterElt).addEventListener("click", as
     await currentAnalysis.primaryFilter.applyPrimaryFilter();
 });
 
-// QC by Mito
+try {
 
+// QC by Mito
 document.querySelector(UI.btnDoAnalysisQcByMitoElt).addEventListener("click", async (event) => {
     // Run the QC by Mito analysis
     await currentAnalysis.qcByMito.runAnalysis(0);
@@ -919,15 +925,16 @@ document.querySelector(btnLabeledTsneRunElt).addEventListener("click", async (ev
     createToast("Labeled tSNE plot generated", "is-success");
 });
 
+} catch (error) {
+    // have not been implemented yet
+}
 
 /* -------------------------------------------------------- */
 
 /*
 TODO: Update the tooltip stuff
 window.onload=() => {
-    $('[data-toggle="tooltip"]').tooltip()
 
-    $('.tooltoggle').bootstrapToggle('disable');
 
     $('#asvg_flavor_tooltip').tooltip({
         placement: 'bottom',

@@ -15,7 +15,7 @@ class Analysis {
         id = uuid(),
         datasetId,
         datasetIsRaw = true,
-        label = `Unlabeled ${common_datetime()}`,
+        label = `Unlabeled ${commonDateTime()}`,
         type,
         vetting,
         userSessionId = CURRENT_USER.session_id,
@@ -38,15 +38,16 @@ class Analysis {
             this.labeledTsne = new AnalysisStepLabeledTsne(this);   // Only for "primary" analyses
         } else {
             this.primaryFilter = new AnalysisStepPrimaryFilter(this);
-            this.qcByMito = new AnalysisStepQCByMito(this);
+            /*this.qcByMito = new AnalysisStepQCByMito(this);
             this.selectVariableGenes = new AnalysisStepSelectVariableGenes(this);
             this.pca = new AnalysisStepPCA(this);
             this.tsne = new AnalysisSteptSNE(this);
             this.clustering = new AnalysisStepClustering(this); // The old "louvain" step, which is now done with "leiden"
             this.markerGenes = new AnalysisStepMarkerGenes(this);
             this.clusteringEdit = new AnalysisStepClustering(this, "edit");
+            */
         }
-        this.compareGenes = new AnalysisStepCompareGenes(this);
+        //this.compareGenes = new AnalysisStepCompareGenes(this);
 
 
         this.groupLabels = groupLabels;
@@ -157,7 +158,7 @@ class Analysis {
 
             // Trigger the selection of a 'New' analysis
             document.querySelector(UI.newAnalysisOptionElt).setAttribute("selected", "selected");
-            document.querySelector(UI.analysisSelectElt).dispatchEvent(new Event("change"));
+            document.querySelector(UI.analysisSelect).dispatchEvent(new Event("change"));
             await this.getSavedAnalysesList(this.datasetId, 0);
 
         } catch (error) {
@@ -181,15 +182,15 @@ class Analysis {
             // If tSNE was calculate, show the labeled tSNE section
             // Mainly for primary analyses
             // ? verify claim
-            document.querySelector(UI.labeledTsneElt).classList.add("is-hidden");
+            document.querySelector(UI.labeledTsneSection).classList.add("is-hidden");
             if (this.type === "primary" && data['tsne']['tsne_calculated']) {
-                document.querySelector(UI.labeledTsneElt).classList.remove("is-hidden");
+                document.querySelector(UI.labeledTsneSection).classList.remove("is-hidden");
             }
 
             // Load the analysis data and assign it to the current instance
             const ana = Analysis.loadFromJson(data);
             ana.dataset = currentAnalysis.dataset;
-            this = ana;
+            Object.assign(this, ana);
 
         } catch (error) {
             createToast(`Error getting stored analysis: ${error.message}`);
@@ -321,11 +322,24 @@ class Analysis {
             genesOfInterest: data.genesOfInterest
         });
 
+        document.querySelector(UI.primaryFilterSection).classList.remove("is-hidden");
+        document.querySelector(UI.qcByMitoSection).classList.remove("is-hidden");
+        document.querySelector(UI.selectVariableGenesSection).classList.remove("is-hidden");
+        document.querySelector(UI.pcaSection).classList.remove("is-hidden");
+        document.querySelector(UI.tsneSection).classList.remove("is-hidden");
+        document.querySelector(UI.clusteringSection).classList.remove("is-hidden");
+        document.querySelector(UI.clusteringEditSection).classList.remove("is-hidden");
+
         if (analysis.type == 'primary') {
             // If showing a primary display we only want to show marker genes and gene comparison
             //  tools
-            document.querySelector(UI.markerGenesToggleElt).classList.remove("is-hidden");
-            document.querySelector(UI.datasetInfoElt).classList.add("is-hidden");
+            document.querySelector(UI.primaryFilterSection).classList.add("is-hidden");
+            document.querySelector(UI.qcByMitoSection).classList.add("is-hidden");
+            document.querySelector(UI.selectVariableGenesSection).classList.add("is-hidden");
+            document.querySelector(UI.pcaSection).classList.add("is-hidden");
+            document.querySelector(UI.tsneSection).classList.add("is-hidden");
+            document.querySelector(UI.clusteringSection).classList.add("is-hidden");
+            document.querySelector(UI.clusteringEditSection).classList.add("is-hidden");
             return analysis
         }
 
@@ -356,6 +370,8 @@ class Analysis {
         analysis.clusteringEdit.mode = "edit";
 
         analysis.compareGenes = AnalysisStepCompareGenes.loadFromJson(data.compareGenes, analysis);
+
+        document.querySelector(UI.analysisWorkflowElt).classList.remove("is-hidden");
 
         return analysis;
 
@@ -691,10 +707,10 @@ class AnalysisStepPrimaryFilter {
         document.querySelector(UI.filterGenesLtNCellsSelectedElt).checked = false;
         document.querySelector(UI.filterGenesGtNCellsSelectedElt).checked = false;
 
-        for (const elt of document.querySelector(UI.primaryInitialPlotElts)) {
+        for (const elt of document.querySelectorAll(UI.primaryInitialPlotElts)) {
             elt.classList.remove("is-hidden");
         }
-        document.querySelector(UI.primaryInitialPlotContainerElt).classList.add("is-hidden");
+        document.querySelector(UI.primaryInitialPlotContainer).classList.add("is-hidden");
     }
 
     updateUIWithResults(ana=null) {
@@ -754,11 +770,11 @@ class AnalysisStepPrimaryFilter {
         for (const elt of document.querySelectorAll(UI.primaryInitialPlotElts)) {
             elt.classList.add("is-hidden");
         }
-        document.querySelector(UI.primaryInitialPlotContainerElt).classList.remove("is-hidden");
+        document.querySelector(UI.primaryInitialPlotContainer).classList.remove("is-hidden");
 
-        document.querySelector(UI.qcByMitoToggleElt).classList.remove("is-hidden");
-        document.querySelector(UI.selectVariableGenesToggleElt).classList.remove("is-hidden");
-
+        document.querySelector(UI.qcByMitoSection).click()
+        //document.querySelector(UI.selectVariableGenesToggleElt).classList.remove("is-hidden");
+        // TODO: add success checkmark to UI
     }
 }
 
@@ -788,7 +804,7 @@ class AnalysisStepQCByMito {
         step.nObs = data['n_obs'];
 
         if (step.calculated == true) {
-            document.querySelector(UI.qcByMitoToggleElt).checked = true;
+        // TODO: add success checkmark to UI
             document.querySelector(UI.qbmGenePrefixElt).value = step.genePrefix;
             document.querySelector(UI.qbmFilterMitoPercElt).value = step.filterMitoPercent;
             document.querySelector(UI.qbmFilterMitoCountElt).value = step.filterMitoCount;
@@ -1102,7 +1118,8 @@ class AnalysisStepSelectVariableGenes {
         }
 
         if (this.calculated) {
-            document.querySelector(UI.selectVariableGenesToggleElt).checked = true;
+            // TODO: add success checkmark to UI
+
             document.querySelector(UI.asvgNormCountsPerCellElt).value = this.normCountsPerCell;
             document.querySelector(UI.asvgFlavorElt).value = this.flavor;
             document.querySelector(UI.asvgNTopGenesElt).value = this.nTopGenes;
