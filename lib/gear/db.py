@@ -1,5 +1,9 @@
 import mysql.connector
 from mysql.connector import errorcode
+
+# This resolves some "no localization support" error
+from mysql.connector.locales.eng import client_error
+
 """
 
 """
@@ -25,7 +29,7 @@ class MySQLDB:
         vs. creating new ones each time.
         """
         config = ServerConfig().parse()
-        
+
         try:
             cnx = mysql.connector.connect(user=config['database']['user'], password=config['database']['password'],
                                           host=config['database']['host'], database=config['database']['name'],
