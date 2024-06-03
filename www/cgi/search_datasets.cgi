@@ -46,7 +46,7 @@ def main():
     limit = form.getvalue('limit', str(DEFAULT_MAX_RESULTS))
     sort_by = re.sub("[^[a-z]]", "", form.getvalue('sort_by'))
     user = geardb.get_user_from_session_id(session_id) if session_id else None
-    result = {'success': 0, 'problem': '', 'datasets': []}
+    result = {'success': 1, 'problem': '', 'datasets': []}
 
     if page and not page.isdigit():
         raise ValueError("Page must be a number")
