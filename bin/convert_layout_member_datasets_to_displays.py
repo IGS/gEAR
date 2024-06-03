@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/opt/bin/python3
 
 # This script is used to convert layout member dataset IDs into their corresponding
 # default single- and multi-gene display IDs.
@@ -56,9 +56,9 @@ for row in cursor:
 
 # Determine if we are in "legacy" mode where every member start_col is 1
 legacy = False
-if len(layout.members) > 0:
-    if all([m.start_col == 1 for m in layout.members]):
-        print("Legacy mode found... rebuilding layout member grid positions...", file=sys.stderr)
+if len(layout_members) > 0:
+    if all([m.start_col == 1 for m in layout_members]):
+        #print("Legacy mode found ... rebuilding layout member grid positions...", file=sys.stderr)
         legacy = True
 
 # If "legacy" mode, adjust the start_col and start_row, as well as mg_start_col and mg_start_row
