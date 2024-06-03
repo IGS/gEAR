@@ -57,7 +57,8 @@ for row in cursor:
 # Determine if we are in "legacy" mode where every member start_col is 1
 legacy = False
 if len(layout_members) > 0:
-    if all([m.start_col == 1 for m in layout_members]):
+    # If all members have start_col = 1, then we are in legacy mode
+    if all([m[4] == 1 for m in layout_members]):
         #print("Legacy mode found ... rebuilding layout member grid positions...", file=sys.stderr)
         legacy = True
 
@@ -66,24 +67,30 @@ if legacy:
     current_col = 1
     current_row = 1
     for lm in layout_members:
-        width = lm.grid_width
+        #start_col = lm[4]
+        #grid_width = lm[6]
+        #start_row = lm[8]
+        width = lm[6]
         if current_col + width > 13:
             current_col = 1
             current_row += 1
-        lm.start_col = current_col
-        lm.start_row = current_row
+        lm[4] = current_col
+        lm[8] = current_row
         current_col += width
 
     # Multigene displays now
     current_col = 1
     current_row = 1
     for lm in layout_members:
-        width = lm.mg_grid_width
+        #mg_start_col = lm[5]
+        #mg_grid_width = lm[7]
+        #mg_start_row = lm[9]
+        width = lm[7]
         if current_col + width > 13:
             current_col = 1
             current_row += 1
-        lm.mg_start_col = current_col
-        lm.mg_start_row = current_row
+        lm[5] = current_col
+        lm[9] = current_row
         current_col += width
 
 
