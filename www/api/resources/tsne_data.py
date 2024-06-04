@@ -242,10 +242,16 @@ class TSNEData(Resource):
         high_dpi = req.get('high_dpi', False)
         sc.settings.figdir = '/tmp/'
 
-        if not gene_symbol or not dataset_id:
+        if not dataset_id:
             return {
                 "success": -1,
-                "message": "Request needs both dataset id and gene symbol."
+                "message": "Request needs a dataset id."
+            }
+
+        if not gene_symbol:
+            return {
+                "success": -1,
+                "message": "Request needs a gene symbol."
             }
 
         try:
