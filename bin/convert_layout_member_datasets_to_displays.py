@@ -1,10 +1,13 @@
 #!/opt/bin/python3
 
 # This script is used to convert layout member dataset IDs into their corresponding
-# default single- and multi-gene display IDs.
+# default single- and multi-gene display IDs.  No arguments are required but it must
+# be run from the bin directory.
 
 # This assumes that the dataset-based layout_member table is the original layout member table
 # and that a new display-based "layout_member_new" table has been created.
+
+# ! This will not wipe the layout_displays table, so if you run this script multiple times, it will create duplicate records !
 
 import sys
 
