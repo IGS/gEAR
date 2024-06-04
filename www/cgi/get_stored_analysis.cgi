@@ -20,6 +20,11 @@ def main():
 
     user = geardb.get_user_from_session_id(session_id)
 
+    if not user:
+        print('Content-Type: application/json\n\n')
+        print('{"error": "Invalid session_id"}')
+        return
+
     ana = geardb.Analysis(id=analysis_id, dataset_id=dataset_id,
                           user_id=user.id, session_id=session_id,
                           type=analysis_type)

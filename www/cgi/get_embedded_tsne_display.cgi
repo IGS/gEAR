@@ -1,7 +1,7 @@
 #!/opt/bin/python3
 
 """
-Display entries are usually kept in the database, but for some analysis types (like embedded 
+Display entries are usually kept in the database, but for some analysis types (like embedded
 tSNE) a database entry isn't necessary, as the dataset itself contains the definition.  What
 we need here is a tool which will check for the columns involved and return a JSON structure
 as if it were a plotly_config stored in the database.
@@ -67,8 +67,6 @@ def main():
 
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')
-    #print("DEBUG: Returning this JSON:", file=sys.stderr)
-    print(json.dumps(results), file=sys.stderr)
     print(json.dumps(results))
 
 if __name__ == '__main__':
