@@ -1,16 +1,14 @@
 import mysql.connector
 from mysql.connector import errorcode
 
-# This resolves some "no localization support" error
-from mysql.connector.locales.eng import client_error
+# This resolves some "no localization support for language 'eng'" error
+import mysql.connector.locales.eng.client_error
 
 """
 
 """
 
-import os
 import sys
-import configparser
 
 from gear.serverconfig import ServerConfig
 
@@ -43,4 +41,3 @@ class MySQLDB:
                 print("Database does not exist", file=sys.stderr)
             else:
                 print(err, file=sys.stderr)
-

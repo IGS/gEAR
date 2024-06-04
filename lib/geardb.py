@@ -868,6 +868,7 @@ class Connection:
         self.mysql_cnx.commit()
 
     def close(self):
+        #! Am getting "ImportError: No localization support for language 'eng'" error here. Put suggested solution in db module but not working
         self.mysql_cnx.close()
 
     def get_cursor(self, use_dict=False):
