@@ -63,7 +63,8 @@ def main():
 
     adata = ana.get_adata()
 
-    # primary or public analyses won't be after this
+    # primary or public analysis should not be overwritten
+    # this will alter the analysis object save destination
     if ana.type == 'primary' or ana.type == 'public':
         ana.type = 'user_unsaved'
 
@@ -78,6 +79,9 @@ def main():
         sc.tl.pca(adata, svd_solver='arpack')
         adata.obsm['X_pca'] *= -1  # multiply by -1 to match Seurat R
         adata.write(dest_datafile_path)
+    else:
+        # Get from the dest_datafile_path
+        adata = ana.get_adata()
 
     ## I don't see how to get the save options to specify a directory
     # sc.settings.figdir = 'whateverpathyoulike' # scanpy issue #73

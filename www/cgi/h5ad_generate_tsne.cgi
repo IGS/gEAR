@@ -35,9 +35,6 @@ def main():
     session_id = form.getvalue('session_id')
     user = geardb.get_user_from_session_id(session_id)
 
-    ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
-                          session_id=session_id, user_id=user.id)
-
     n_pcs = int(form.getvalue('n_pcs'))
     n_neighbors = int(form.getvalue('n_neighbors'))
     random_state = int(form.getvalue('random_state'))
@@ -64,7 +61,8 @@ def main():
 
     adata = ana.get_adata()
 
-    # primary or public analyses won't be after this
+    # primary or public analysis should not be overwritten
+    # this will alter the analysis object save destination
     if ana.type == 'primary' or ana.type == 'public':
         ana.type = 'user_unsaved'
 
@@ -79,8 +77,12 @@ def main():
     if compute_umap == 1:
         sc.tl.umap(adata, maxiter=500)
 
+    # If any of the above steps were done, save the adata object
     if compute_neighbors == 1 or compute_tsne == 1 or compute_umap == 1:
         adata.write(dest_datafile_path)
+    else:
+        # Get from the dest_datafile_path
+        adata = ana.get_adata()
 
     ## I don't see how to get the save options to specify a directory
     # sc.settings.figdir = 'whateverpathyoulike' # scanpy issue #73

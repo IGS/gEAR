@@ -43,12 +43,12 @@ def main():
     save_dataset = int(form.getvalue('save_dataset'))
 
     adata = ana.get_adata()
-    dest_datafile_path = None
 
     if n_top_genes is not None:
         n_top_genes = int(n_top_genes)
 
-    # primary or public analyses won't be after this
+    # primary or public analysis should not be overwritten
+    # this will alter the analysis object save destination
     if ana.type == 'primary' or ana.type == 'public':
         ana.type = 'user_unsaved'
 

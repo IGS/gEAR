@@ -41,7 +41,8 @@ def main():
 
     adata = ana.get_adata()
 
-    # primary or public analyses won't be after this
+    # primary or public analysis should not be overwritten
+    # this will alter the analysis object save destination
     if ana.type == 'primary' or ana.type == 'public':
         ana.type = 'user_unsaved'
 

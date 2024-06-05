@@ -46,14 +46,15 @@ def main():
     filter_genes_gt_n_cells = form.getvalue('filter_genes_gt_n_cells')
 
     adata = ana.get_adata()
-    dest_datafile_path = None
 
+    # This step should only be performed on the original dataset.
+    # However the filtering will be saved in a temp directory to avoid overwriting the original dataset.
     if ana.type == 'primary':
         ana.type = 'user_unsaved'
-        dest_datafile_path = ana.dataset_path()
     else:
         raise Exception("ERROR: unsupported analysis type: {0}".format(ana.type))
 
+    dest_datafile_path = ana.dataset_path()
     dest_directory = os.path.dirname(dest_datafile_path)
 
     if not os.path.exists(dest_directory):

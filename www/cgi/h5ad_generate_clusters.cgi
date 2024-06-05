@@ -43,7 +43,8 @@ def main():
 
     adata = ana.get_adata()
 
-    # primary or public analyses won't be after this
+    # primary or public analysis should not be overwritten
+    # this will alter the analysis object save destination
     if ana.type == 'primary' or ana.type == 'public':
         ana.type = 'user_unsaved'
 
@@ -66,6 +67,9 @@ def main():
 
         adata.obs["orig_louvain"] = adata.obs["louvain"].astype(int)   # Copy cluster ID so it's easier to rename categories
         adata.write(dest_datafile_path)
+    else:
+        # Get from the dest_datafile_path
+        adata = ana.get_adata()
 
     ## I don't see how to get the save options to specify a directory
     # sc.settings.figdir = 'whateverpathyoulike' # scanpy issue #73
