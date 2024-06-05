@@ -26,6 +26,7 @@ cursor = conn.get_cursor()
 
 # Get all layout_members
 
+print("Retrieving layout members...", file=sys.stderr)
 layout_member_qry = """
               SELECT lm.layout_id, lm.dataset_id, lm.grid_position, lm.mg_grid_position,
               lm.start_col, lm.mg_start_col, lm.grid_width, lm.mg_grid_width,
@@ -67,6 +68,7 @@ if len(layout_members) > 0:
 
 # If "legacy" mode, adjust the start_col and start_row, as well as mg_start_col and mg_start_row
 if legacy:
+    print("Legacy mode found ... rebuilding layout member grid positions...", file=sys.stderr)
     current_col = 1
     current_row = 1
     for lm in layout_members:
@@ -97,6 +99,7 @@ if legacy:
         current_col += width
 
 
+print("Converted layout members to layout displays...", file=sys.stderr)
 for lm in layout_members:
 
     layout_id = lm[0]
