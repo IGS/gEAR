@@ -55,7 +55,7 @@ for row in cursor:
     if mg_grid_position == 0:
         mg_grid_position = grid_position
 
-    layout_members.append((layout_id, dataset_id, grid_position, mg_grid_position, start_col, mg_start_col, grid_width, mg_grid_width, start_row, mg_start_row, grid_height, mg_grid_height))
+    layout_members.append([layout_id, dataset_id, grid_position, mg_grid_position, start_col, mg_start_col, grid_width, mg_grid_width, start_row, mg_start_row, grid_height, mg_grid_height])
 
 # Determine if we are in "legacy" mode where every member start_col is 1
 legacy = False
