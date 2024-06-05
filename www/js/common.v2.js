@@ -503,11 +503,11 @@ const convertToFormData = (object) => {
  */
 const createToast = (msg, levelClass="is-danger") => {
     const toast = document.createElement("div");
-    toast.classList.add("notification", "js-toast", levelClass, "animate__animated", "animate__fadeInUp", "animate__faster");
+    toast.classList.add("notification", "js-toast", levelClass, "animate__animated", "animate__fadeInUp");
     const toastButton = document.createElement("button");
     toastButton.classList.add("delete");
     toastButton.addEventListener("click", (event) => {
-        const notification = event.target.closest(".js-toast.notification");
+        const notification = event.currentTarget.closest(".js-toast.notification");
         notification.remove(notification);
     });
     toast.appendChild(toastButton);
@@ -532,10 +532,15 @@ const createToast = (msg, levelClass="is-danger") => {
     if (["is-success", "is-info"].includes(levelClass)) {
         const notifications = document.querySelectorAll(".js-toast.notification")
         const notification = notifications[notifications.length - 1];
+        // Requires animate.css classes
         notification.classList.remove("animate__fadeInUp");
-        notification.classList.remove("animate__faster");
-        notification.classList.add("animate__fadeOutDown");
+        notification.classList.add("animate__fadeOutUp");
         notification.classList.add("animate__slower");
+        // Remove the toast after 3 seconds (since the user can't dismiss it manually most likely)
+        // This also prevents the toast from stacking up
+        setTimeout(() => {
+            notification.remove();
+        }, 2000);
     }
 
     // remove the toast
