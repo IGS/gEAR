@@ -13,7 +13,7 @@ let analysisLabels = new Set();
 class Analysis {
     constructor ({
         id = uuid(),
-        datasetId,
+        datasetObj = null,
         datasetIsRaw = true,
         label = `Unlabeled ${commonDateTime()}`,
         type,
@@ -24,18 +24,20 @@ class Analysis {
     } = {}) {
         this.id = id;
         this.userSessionId = userSessionId;
-        // TODO: this.datasetId should be replaced by this.dataset.id
-        this.datasetId = datasetId;
-        this.dataset = null;    // The dataset object
+        this.dataset = datasetObj;    // The dataset object
         this.type = type;
         this.vetting = vetting;
         this.label = label;
         this.datasetIsRaw = datasetIsRaw;
 
         // A couple of these are duplicated but I wanted to preserve order
-        if (type === 'primary') {
-            this.markerGenes = new AnalysisStepMarkerGenes(this);
+        // All new analysis start as "primary" analyses, but true primary analyses share the same ID as the dataset
+        if (this.id === this.dataset?.id) {
             this.labeledTsne = new AnalysisStepLabeledTsne(this);   // Only for "primary" analyses
+            this.markerGenes = new AnalysisStepMarkerGenes(this);
+
+            // step-based properties
+            this.markerGenes.genesOfInterest = Array.isArray(genesOfInterest) ? new Set(genesOfInterest) : new Set();
         } else {
             this.primaryFilter = new AnalysisStepPrimaryFilter(this);
             /*this.qcByMito = new AnalysisStepQCByMito(this);
@@ -47,25 +49,11 @@ class Analysis {
             this.clusteringEdit = new AnalysisStepClustering(this, "edit");
             */
         }
-        //this.compareGenes = new AnalysisStepCompareGenes(this);
+        this.compareGenes = new AnalysisStepCompareGenes(this);
 
 
         this.groupLabels = groupLabels;
-        this.genesOfInterest = Array.isArray(genesOfInterest) ? new Set(genesOfInterest) : new Set();
-    }
 
-    /**
-     * Adds a gene of interest to the set of genes.
-     *
-     * @param {string} geneSymbol - The symbol of the gene to add.
-     */
-    addGeneOfInterest(geneSymbol) {
-        geneSymbol = geneSymbol.trim();
-        this.genesOfInterest.add(geneSymbol);
-
-        if (this.genesOfInterest.length) {
-            this.markerGenes.btnVisualizeMarkerGenesElt.classList.remove("is-hidden");
-        }
     }
 
     /**
@@ -90,14 +78,14 @@ class Analysis {
     async copyDatasetAnalysis(destType) {
         const params = {
             session_id: this.userSessionId,
-            dataset_id: this.datasetId,
+            dataset_id: this.dataset.id,
             source_analysis_id: this.id,
             dest_analysis_id: this.id,
             source_analysis_type: this.type,
             dest_analysis_type: destType
         }
 
-        const {data} = await axios.post("./cgi/copy_dataset_analysis.cgi", params);
+        const {data} = await axios.post("./cgi/copy_dataset_analysis.cgi", convertToFormData(params));
         return data;
     }
 
@@ -126,7 +114,7 @@ class Analysis {
             document.querySelector(UI.analysisActionContainer).classList.remove("is-hidden");
             document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
 
-            await this.getSavedAnalysesList(this.datasetId, newAnalysisId);
+            await this.getSavedAnalysesList(this.dataset.id, newAnalysisId);
 
             if (callback) {
                 await callback(opts);
@@ -144,12 +132,12 @@ class Analysis {
     async delete() {
 
         try {
-            const {data} = await axios.post("./cgi/delete_dataset_analysis.cgi", {
+            const {data} = await axios.post("./cgi/delete_dataset_analysis.cgi", convertToFormData({
                 session_id: this.userSessionId,
-                dataset_id: this.datasetId,
+                dataset_id: this.dataset.id,
                 analysis_id: this.id,
                 analysis_type: this.type
-            });
+            }));
 
             if (!data.success || data.success < 1) {
                 const error = data.error || "Unknown error. Please contact gEAR support.";
@@ -159,7 +147,7 @@ class Analysis {
             // Trigger the selection of a 'New' analysis
             document.querySelector(UI.newAnalysisOptionElt).setAttribute("selected", "selected");
             document.querySelector(UI.analysisSelect).dispatchEvent(new Event("change"));
-            await this.getSavedAnalysesList(this.datasetId, 0);
+            await this.getSavedAnalysesList(this.dataset.id, 0);
 
         } catch (error) {
             createToast(`Error deleting analysis: ${error.message}`);
@@ -171,13 +159,23 @@ class Analysis {
      * @returns {Promise<void>} A promise that resolves when the analysis data is retrieved.
      */
     async getStoredAnalysis() {
+
+        // Some dataset info (like organism ID) may be lost when loading an analysis from JSON
+        const datasetObj = this.dataset;
+
         try {
-            const {data} = await axios.post("./cgi/get_stored_analysis.cgi", {
+            const {data} = await axios.post("./cgi/get_stored_analysis.cgi", convertToFormData({
                 analysis_id: this.id,
                 analysis_type: this.type,
                 session_id: this.userSessionId,
-                dataset_id: this.datasetId
-            });
+                dataset_id: this.dataset.id
+            }));
+
+            // Load the analysis data and assign it to the current instance
+            const ana = Analysis.loadFromJson(data);
+            Object.assign(this, ana);
+
+            this.dataset = datasetObj;
 
             // If tSNE was calculate, show the labeled tSNE section
             // Mainly for primary analyses
@@ -187,13 +185,9 @@ class Analysis {
                 document.querySelector(UI.labeledTsneSection).classList.remove("is-hidden");
             }
 
-            // Load the analysis data and assign it to the current instance
-            const ana = Analysis.loadFromJson(data);
-            ana.dataset = currentAnalysis.dataset;
-            Object.assign(this, ana);
-
         } catch (error) {
-            createToast(`Error getting stored analysis: ${error.message}`);
+            logErrorInConsole(`Failed ID was: ${datasetId} because msg: ${error}`);
+            createToast(`Error getting stored analysis`);
         }
     }
 
@@ -208,31 +202,36 @@ class Analysis {
      */
     async getSavedAnalysesList(datasetId, selectedAnalysisId, forPage) {
         try {
-            const {data} = await axios.post("./cgi/get_stored_analysis_list.cgi", {
+            const {data} = await axios.post("./cgi/get_stored_analysis_list.cgi", convertToFormData({
                 dataset_id: datasetId,
                 session_id: this.userSessionId
-            });
+            }));
 
-            const emptyAnalysisListHtml = document.querySelector(UI.emptyAnalysisOptionTmpl).content.cloneNode(true);
+            // Create an empty option for the analysis select element
+            const emptyAnalysisOption = document.createElement("option");
+            emptyAnalysisOption.value = "";
+            emptyAnalysisOption.disabled = true;
+            emptyAnalysisOption.textContent = "None found";
+
             const thisAnalysisLabels = new Set();
 
             /*
-                'primary' analysis is too vague.  That could include clustering and/or
+                ? 'primary' analysis is too vague.  That could include clustering and/or
                 dimensionality reduction.  The workbench needs clustering to be present,
                 while the curator can do fine with just UMAP.  Whether 'primary analysis'
                 is added to the menu needs to take this into effect.
             */
 
-            const appendAnalysisOption = (template, parentSelector, analysis) => {
-                const analysisOptionHtml = document.querySelector(template).content.cloneNode(true);
-                const option = analysisOptionHtml.querySelector("option");
+            const appendAnalysisOption = (parentSelector, analysis) => {
+                const option = document.createElement("option");
                 option.dataset.analysisId = analysis.id;
                 option.dataset.analysisType = analysis.type;
                 option.dataset.datasetId = analysis.dataset_id;
-                option.textContent = analysis.label;
+                option.textContent = analysis.label || "Unlabeled"
+                // ? Using standard HTML, cannot add icons to options, so making icons by vetting status is not possible
 
                 // Add to analysis optgroup
-                document.querySelector(parentSelector).appendChild(analysisOptionHtml);
+                document.querySelector(parentSelector).appendChild(option);
             }
 
             // primary
@@ -241,65 +240,62 @@ class Analysis {
                     if (data.primary[0].louvain.calculated) {
                         for (const analysis of data.primary) {
                             thisAnalysisLabels.add(analysis.label);
-                            appendAnalysisOption(UI.analysisOptionTmpl, UI.analysisPrimaryElt, analysis);
+                            appendAnalysisOption(UI.analysisPrimaryElt, analysis);
 
                         }
                     } else {
-                        document.querySelector(UI.analysisPrimaryElt).appendChild(emptyAnalysisListHtml);
+                        document.querySelector(UI.analysisPrimaryElt).appendChild(emptyAnalysisOption.cloneNode(true));
                     }
                 } else {
 
                     for (const analysis of data.primary) {
                         thisAnalysisLabels.add(analysis.label);
-                        appendAnalysisOption(UI.analysisOptionTmpl, UI.analysisPrimaryElt, analysis);
+                        appendAnalysisOption(UI.analysisPrimaryElt, analysis);
                     }
                 }
             } else {
-                document.querySelector(UI.analysisPrimaryElt).appendChild(emptyAnalysisListHtml);
+                document.querySelector(UI.analysisPrimaryElt).appendChild(emptyAnalysisOption.cloneNode(true));
             }
 
             // unsaved
             if (data.user_unsaved.length) {
                 for (const analysis of data.user_unsaved) {
                     thisAnalysisLabels.add(analysis.label);
-                    appendAnalysisOption(UI.analysisOptionTmpl, UI.analysisUnsavedElt, analysis);
+                    appendAnalysisOption(UI.analysisUnsavedElt, analysis);
                 }
             } else {
-                document.querySelector(UI.analysisUnsavedElt).appendChild(emptyAnalysisListHtml);
+                document.querySelector(UI.analysisUnsavedElt).appendChild(emptyAnalysisOption.cloneNode(true));
             }
 
             // saved
             if (data.user_saved.length) {
                 for (const analysis of data.user_saved) {
                     thisAnalysisLabels.add(analysis.label);
-                    appendAnalysisOption(UI.analysisOptionTmpl, UI.analysisSavedElt, analysis);
+                    appendAnalysisOption(UI.analysisSavedElt, analysis);
                 }
             } else {
-                document.querySelector(UI.analysisSavedElt).appendChild(emptyAnalysisListHtml);
+                document.querySelector(UI.analysisSavedElt).appendChild(emptyAnalysisOption.cloneNode(true));
             }
 
             // public
             if (data.public.length) {
                 for (const analysis of data.public) {
                     thisAnalysisLabels.add(analysis.label);
-                    appendAnalysisOption(UI.analysisOptionTmpl, UI.analysisPublicElt, analysis);
+                    appendAnalysisOption(UI.analysisPublicElt, analysis);
                 }
             } else {
-                document.querySelector(UI.analysisPublicElt).appendChild(emptyAnalysisListHtml);
+                document.querySelector(UI.analysisPublicElt).appendChild(emptyAnalysisOption.cloneNode(true));
             }
 
             // preselect any analysis ID
-            document.querySelector(`#analysis-id option[data-analysis-id="${selectedAnalysisId}"]`).setAttribute("selected", "selected");
-
-            // TODO: Update UI to match select state
-            document.querySelector(UI.storedAnalysesContainer).classList.remove("is-hidden");
+            document.querySelector(`#analysis-select option[data-analysis-id="${selectedAnalysisId}"]`).setAttribute("selected", "selected");
 
             analysisLabels = thisAnalysisLabels;
 
 
         } catch (error) {
-            createToast(`Error getting saved analyses: ${error.message}`);
-            logErrorInConsole(`Failed ID was: ${datasetId} because msg: ${error.message}`);
+            createToast(`Error getting saved analyses: ${error}`);
+            logErrorInConsole(`Failed ID was: ${datasetId} because msg: ${error}`);
         }
 
     }
@@ -313,24 +309,16 @@ class Analysis {
     static loadFromJson(data) {
         const analysis = new Analysis({
             id: data.id,
-            datasetId: data.dataset_id,
+            datasetObj: data.dataset,
             datasetIsRaw: data.dataset_is_raw,
             label: data.label,
             type: data.type,
-            userSessionId: data.user_session_id,
+            userSessionId: data.user_session_id || CURRENT_USER.session_id,
             groupLabels: data.group_labels,
             genesOfInterest: data.genesOfInterest
         });
 
-        document.querySelector(UI.primaryFilterSection).classList.remove("is-hidden");
-        document.querySelector(UI.qcByMitoSection).classList.remove("is-hidden");
-        document.querySelector(UI.selectVariableGenesSection).classList.remove("is-hidden");
-        document.querySelector(UI.pcaSection).classList.remove("is-hidden");
-        document.querySelector(UI.tsneSection).classList.remove("is-hidden");
-        document.querySelector(UI.clusteringSection).classList.remove("is-hidden");
-        document.querySelector(UI.clusteringEditSection).classList.remove("is-hidden");
-
-        if (analysis.type == 'primary') {
+        if (this.id === this.dataset?.id) {
             // If showing a primary display we only want to show marker genes and gene comparison
             //  tools
             document.querySelector(UI.primaryFilterSection).classList.add("is-hidden");
@@ -342,6 +330,14 @@ class Analysis {
             document.querySelector(UI.clusteringEditSection).classList.add("is-hidden");
             return analysis
         }
+
+        document.querySelector(UI.primaryFilterSection).classList.remove("is-hidden");
+        document.querySelector(UI.qcByMitoSection).classList.remove("is-hidden");
+        document.querySelector(UI.selectVariableGenesSection).classList.remove("is-hidden");
+        document.querySelector(UI.pcaSection).classList.remove("is-hidden");
+        document.querySelector(UI.tsneSection).classList.remove("is-hidden");
+        document.querySelector(UI.clusteringSection).classList.remove("is-hidden");
+        document.querySelector(UI.clusteringEditSection).classList.remove("is-hidden");
 
         analysis.primaryFilter = AnalysisStepPrimaryFilter.loadFromJson(data.primaryFilter, analysis);
         analysis.primaryFilter.updateUIWithResults(analysis);
@@ -386,27 +382,27 @@ class Analysis {
      * @throws {Error} If failed to access the dataset.
      * @returns {Promise<void>} A promise that resolves when the preliminary figures are loaded.
      */
-    async loadPreliminaryFigures () {
-        document.querySelector(UI.storedAnalysisContainer).classList.add("is-hidden");
+    async loadPreliminaryFigures() {
 
+        document.querySelector(UI.primaryInitialPlotContainer).classList.remove("is-hidden");
         try {
-            const {data} = await axios.post("./cgi/h5ad_preview_primary_filter.cgi", {
+            const {data} = await axios.post("./cgi/h5ad_preview_primary_filter.cgi", convertToFormData({
                 dataset_id: this.dataset.id,
                 analysis_id: this.id,
                 analysis_type: this.type,
                 session_id: this.userSessionId
-            });
+            }));
 
-            document.querySelector(UI.primaryInitialPlotsContainer).classList.remove("is-hidden");
+            document.querySelector(UI.primaryInitialLoadingPlotElt).classList.add("is-hidden");
 
             if (!data.success || data.success < 1) {
                 document.querySelector(UI.primaryInitialViolinContainer).textContent = "Preliminary figures not yet generated. Continue your analysis.";
-                createToast("Prelim figures missing.");
+                createToast("Preliminary figures not found. You can still continue the analysis though.", "is-warning");
+                return;
             }
-
             document.querySelector(UI.primaryInitialViolinContainer).innerHTML = `<a target="_blank" href="./datasets/${this.dataset.id}.prelim_violin.png"><img src="./datasets/${this.dataset.id}.prelim_violin.png" class="img-fluid img-zoomed" /></a>`;
             document.querySelector(UI.primaryInitialScatterContainer).innerHTML = `<a target="_blank" href="./datasets/${this.dataset.id}.prelim_n_genes.png"><img src="./datasets/${this.dataset.id}.prelim_n_genes.png" class="img-fluid img-zoomed" /></a>`;
-            createToast("Prelim plots displayed", "is-success");
+            createToast("Preliminary plots displayed", "is-success");
 
         } catch (error) {
             createToast("Failed to access dataset");
@@ -444,7 +440,7 @@ class Analysis {
             document.querySelector(UI.btnDeleteSavedAnalysis).classList.add("is-hidden");
             document.querySelector(UI.btnDeleteUnsavedAnalysis).classList.add("is-hidden");
 
-            await this.getSavedAnalysesList(this.datasetId, this.id);
+            await this.getSavedAnalysesList(this.dataset.id, this.id);
         } catch (error) {
             createToast(`Error making analysis public: ${error.message}`);
         }
@@ -452,39 +448,26 @@ class Analysis {
     }
 
     /**
-     * Grabs an image from the server, usually generated temporarily by a module like scanpy,
-     * and places it into the target location as a binary stream.
-     * This prevents us from having to keep a lot of temporary images on the server
-     * and also ensures the user never gets a cached image.
+     * Places an analysis image in the specified target element.
      *
-     * @async
      * @param {Object} options - The options for placing the analysis image.
-     * @param {Object} options.params - The parameters for the image request.
+     * @param {Object} options.params - The parameters to be sent with the request.
      * @param {string} options.title - The title of the image.
-     * @param {HTMLElement} [options.target] - The target element where the image will be placed.
-     * @returns {Promise<void>} A promise that resolves when the image is placed.
+     * @param {string} options.target - The CSS selector for the target element.
+     * @returns {Promise<void>} - A promise that resolves when the image is placed successfully.
      */
-    async placeAnalysisImage ({params, title, target = []} = {}) {
-        const imgSrc = await axios.get("./cgi/get_analysis_image.cgi", {
-            params
-        });
-        const html = `<a target="_blank" href="${imgSrc}"><img src="${imgSrc}" class="image" alt="${title}" /></a>`;
-        target.appendChild(html);
-    }
+    async placeAnalysisImage({params, title, target} = {}) {
+        const url = "./cgi/get_analysis_image.cgi";
+        const response = await axios.get(url, { params });
 
-    /**
-     * Removes a gene of interest from the set of genes.
-     *
-     * @param {string} geneSymbol - The symbol of the gene to be removed.
-     */
-    removeGeneOfInterest(geneSymbol) {
-        this.genesOfInterest.delete(geneSymbol);
-
-        if (!this.genesOfInterest.length) {
-            this.markerGenes.btnVisualizeMarkerGenesElt.classList.add("is-hidden");
+        if (response.status === 200) {
+            const imgSrc = response.request.responseURL;
+            const html = `<a target="_blank" href="${imgSrc}"><img src="${imgSrc}" class="image" alt="${title}" /></a>`;
+            document.querySelector(target).innerHTML = html;
+        } else {
+            console.error(`Error: ${response.status}`);
         }
     }
-
 
     /**
      * Resets the Analysis instance to its initial state.
@@ -492,14 +475,15 @@ class Analysis {
      * and resets all existing components.
      */
     reset() {
-        this.clustering.reset();
-        this.markerGenes.reset();
-        this.pca.reset();
-        this.tsne.reset();
-        this.primaryFilter.reset();
-        this.qcByMito.reset();
-        this.selectVariableGenes.reset();
-        this.compareGenes.reset();
+
+        // For each step, if it exists, call its reset method
+        // This allows us to worry about
+        for (const step of Object.values(this)) {
+            if (step?.reset) {
+                step.reset();
+            }
+        }
+
         this.datasetIsRaw = true;
         this.id = uuid();
         this.label = null;
@@ -512,26 +496,32 @@ class Analysis {
         const state = JSON.stringify(this);
 
         try {
-            const {data} = await axios.post("./cgi/save_dataset_analysis.cgi", {
+            const {data} = await axios.post("./cgi/save_dataset_analysis.cgi", convertToFormData({
                 session_id: this.userSessionId,
-                dataset_id: this.datasetId,
+                dataset_id: this.dataset.id,
                 analysis_id: this.id,
                 analysis_type: this.type,
                 analysis_vetting: this.vetting,
                 label: this.label,
                 state
-            });
+            }));
             if ((!data.success) || (data.success < 1)) {
                 const error = data.error || "Unknown error. Please contact gEAR support.";
                 throw new Error(error);
             }
 
-            await this.getSavedAnalysesList(this.datasetId, this.id);
+            await this.getSavedAnalysesList(this.dataset.id, this.id);
         } catch (error) {
             createToast(`Error saving analysis: ${error.message}`);
         }
     }
 
+    /**
+     * Saves the analysis to the user's area.
+     *
+     * @returns {Promise<void>} A promise that resolves when the analysis is saved successfully.
+     * @throws {Error} If there is an error saving the analysis.
+     */
     async saveToUserArea() {
 
         try {
@@ -551,7 +541,7 @@ class Analysis {
             document.querySelector(UI.btnMakePublicCopy).classList.remove("is-hidden");
             document.querySelector(UI.newAnalysisLabelContainer).classList.add("is-hidden");
 
-            await this.getSavedAnalysesList(this.datasetId, this.id);
+            await this.getSavedAnalysesList(this.dataset.id, this.id);
         } catch (error) {
             createToast(`Error saving analysis: ${error.message}`);
         }
@@ -560,6 +550,32 @@ class Analysis {
 }
 
 /* Putting these in order of the workbench steps */
+
+class AnalysisStepLabeledTsne {
+    /* Special case... this only happens in primary analyses */
+    constructor(analysis) {
+        this.reset();
+        this.analysis = analysis;
+        this.irreversible = false;
+    }
+
+    reset() {
+        this.resetUI();
+    }
+
+    resetUI() {
+        document.querySelector(UI.labeledTsneSection).classList.add("is-hidden");
+    }
+
+    async runAnalysis() {
+
+    }
+
+    updateUIWithResults() {
+
+    }
+}
+
 
 class AnalysisStepPrimaryFilter {
     constructor(analysis) {
@@ -600,17 +616,17 @@ class AnalysisStepPrimaryFilter {
         }
 
         try {
-            const {data} = await axios.post("./cgi/h5ad_apply_primary_filter.cgi", {
+            const {data} = await axios.post("./cgi/h5ad_apply_primary_filter.cgi", convertToFormData({
                 analysis_id: this.analysis.id,
                 analysis_type: this.analysis.type,
-                dataset_id: this.analysis.datasetId,
+                dataset_id: this.analysis.dataset.id,
                 session_id: this.analysis.userSessionId,
                 using_primary_datasource: this.analysis.usingPrimaryDatasource,
                 filter_cells_lt_n_genes: this.filterCellsLtNGenes,
                 filter_cells_gt_n_genes: this.filterCellsGtNGenes,
                 filter_genes_lt_n_cells: this.filterGenesLtNCells,
                 filter_genes_gt_n_cells: this.filterGenesGtNCells
-            });
+            }));
 
             if (!data.success || data.success < 1) {
                 let error = data.error || "Unknown error. Please contact gEAR support.";
@@ -625,6 +641,7 @@ class AnalysisStepPrimaryFilter {
             document.querySelector(UI.selectedDatasetShapeFilteredElt).textContent = `${data.n_genes} genes x ${data.n_obs} obs`;
             document.querySelector(UI.selectedDatasetShapeFilteredContainer).classList.remove("is-hidden");
 
+            // After this step, we are now working with a curated dataset
             this.analysis.type = originalAnalysisType;
             if(originalAnalysisType === 'primary') {
                 this.analysis.type = 'user_unsaved';
@@ -758,7 +775,7 @@ class AnalysisStepPrimaryFilter {
             'analysis_id': ana.id,
             'analysis_name': 'highest_expr_genes',
             'analysis_type': ana.type,
-            'dataset_id': ana.datasetId,
+            'dataset_id': ana.dataset.id,
             'session_id': ana.userSessionId,
             // this saves the user from getting a cached image each time
             datetime: (new Date()).getTime()
@@ -865,8 +882,8 @@ class AnalysisStepQCByMito {
         this.filterMitoCount = document.querySelector(UI.qbmFilterMitoCountElt).value;
 
         try {
-            const {data} = await axios.post("./cgi/h5ad_qc_by_mito.cgi", {
-                dataset_id: this.analysis.datasetId,
+            const {data} = await axios.post("./cgi/h5ad_qc_by_mito.cgi", convertToFormData({
+                dataset_id: this.analysis.dataset.id,
                 analysis_id: this.analysis.id,
                 analysis_type: this.analysis.type,
                 session_id: this.analysis.userSessionId,
@@ -874,7 +891,7 @@ class AnalysisStepQCByMito {
                 filter_mito_perc: this.filterMitoPercent,
                 filter_mito_count: this.filterMitoCount,
                 save_dataset: saveDataset
-            });
+            }));
 
             if (!data.success || data.success < 1) {
                 const error = data.error || "Unknown error. Please contact gEAR support.";
@@ -935,7 +952,7 @@ class AnalysisStepQCByMito {
             'analysis_id': ana.id,
             'analysis_name': 'violin_qc_by_mito',
             'analysis_type': ana.type,
-            'dataset_id': ana.datasetId,
+            'dataset_id': ana.dataset.id,
             'session_id': ana.userSessionId,
             // this saves the user from getting a cached image each time
             'datetime': (new Date()).getTime()
@@ -1017,6 +1034,7 @@ class AnalysisStepSelectVariableGenes {
         document.querySelector(UI.asvgNormCountsPerCellElt).value = '1e4';
         document.querySelector(UI.asvgFlavorElt).value = 'seurat';
         document.querySelector(UI.asvgNTopGenesElt).value = '';
+        document.querySelector(UI.asvgTopGenesListElt).replaceChildren();
         document.querySelector(UI.asvgMinMeanElt).value = 0.0125;
         document.querySelector(UI.asvgMaxMeanElt).value = 3;
         document.querySelector(UI.asvgMinDispersionElt).value = 0.5;
@@ -1059,7 +1077,7 @@ class AnalysisStepSelectVariableGenes {
         this.scaleUnitVariance = document.querySelector(UI.asvgScaleUnitVarianceElt).checked;
 
         const params = {
-            'dataset_id': this.analysis.datasetId,
+            'dataset_id': this.analysis.dataset.id,
             'analysis_id': this.analysis.id,
             'analysis_type': this.analysis.type,
             'session_id': this.analysis.userSessionId,
@@ -1075,7 +1093,7 @@ class AnalysisStepSelectVariableGenes {
         }
 
         try {
-            const {data} = await axios.post("./cgi/h5ad_identify_variable_genes.cgi", params);
+            const {data} = await axios.post("./cgi/h5ad_identify_variable_genes.cgi", convertToFormData(params));
 
             if (!data.success || data.success < 1) {
                 const error = data.error || "Unknown error. Please contact gEAR support.";
@@ -1158,7 +1176,7 @@ class AnalysisStepSelectVariableGenes {
             'analysis_id': ana.id,
             'analysis_name': 'filter_genes_dispersion',
             'analysis_type': ana.type,
-            'dataset_id': ana.datasetId,
+            'dataset_id': ana.dataset.id,
             'session_id': ana.userSessionId,
 
             // this saves the user from getting a cached image each time
@@ -1236,14 +1254,14 @@ class AnalysisStepPCA {
         const computePCA = this.calculated ? false : true;
 
         try {
-            const {data} = await axios.post("./cgi/h5ad_generate_pca.cgi", {
-                dataset_id: this.analysis.datasetId,
+            const {data} = await axios.post("./cgi/h5ad_generate_pca.cgi", convertToFormData({
+                dataset_id: this.analysis.dataset.id,
                 analysis_id: this.analysis.id,
                 analysis_type: this.analysis.type,
                 session_id: this.analysis.userSessionId,
                 genes_to_color: document.querySelector(UI.genesToColorElt).value,
                 compute_pca: computePCA
-            });
+            }));
             if (!data.success || data.success < 1) {
                 document.querySelector(UI.pcaMissingGeneElt).textContent = data['missing_gene'] || "";
 
@@ -1284,13 +1302,13 @@ class AnalysisStepPCA {
 
         try {
 
-            const {data} = await axios.post("./cgi/h5ad_top_pca_genes.cgi", {
-                dataset_id: this.analysis.datasetId,
+            const {data} = await axios.post("./cgi/h5ad_top_pca_genes.cgi", convertToFormData({
+                dataset_id: this.analysis.dataset.id,
                 analysis_id: this.analysis.id,
                 analysis_type: this.analysis.type,
                 session_id: this.analysis.userSessionId,
                 pcs: document.querySelector(UI.topPcaGenesElt).value
-            });
+            }));
 
             if (!data.success || data.success < 1) {
                 const error = data.error || "Unknown error. Please contact gEAR support.";
@@ -1329,7 +1347,7 @@ class AnalysisStepPCA {
             'analysis_id': ana.id,
             'analysis_name': 'pca',
             'analysis_type': ana.type,
-            'dataset_id': ana.datasetId,
+            'dataset_id': ana.dataset.id,
             'session_id': ana.userSessionId,
             // this saves the user from getting a cached image each time
             'datetime': (new Date()).getTime()
@@ -1473,7 +1491,7 @@ class AnalysisSteptSNE {
         const useScaled = document.querySelector(UI.tsneUseScaledElt).checked;
 
         const params = {
-            'dataset_id': this.analysis.datasetId,
+            'dataset_id': this.analysis.dataset.id,
             'analysis_id': this.analysis.id,
             'analysis_type': this.analysis.type,
             'session_id': this.analysis.userSessionId,
@@ -1490,7 +1508,7 @@ class AnalysisSteptSNE {
         }
 
         try {
-            const {data} = await axios.post("./cgi/h5ad_generate_tsne.cgi", params);
+            const {data} = await axios.post("./cgi/h5ad_generate_tsne.cgi", convertToFormData(params));
 
             if (!data.success || data.success < 1) {
                 document.querySelector(UI.tsneMissingGeneContainer).textContent = data['missing_gene'] || "";
@@ -1565,7 +1583,7 @@ class AnalysisSteptSNE {
             'analysis_id': ana.id,
             'analysis_name': 'tsne',
             'analysis_type': ana.type,
-            'dataset_id': ana.datasetId,
+            'dataset_id': ana.dataset.id,
             'session_id': ana.userSessionId,
             // this saves the user from getting a cached image each time
             'datetime': (new Date()).getTime()
@@ -1711,8 +1729,8 @@ class AnalysisStepClustering {
         const plotUmap = (document.querySelector(UI.dimReductionMethodUmapElt).checked ? 1 : 0);
 
         try {
-            const {data} = await axios.post("./cgi/h5ad_generate_clusters.cgi", {
-                dataset_id: this.analysis.datasetId,
+            const {data} = await axios.post("./cgi/h5ad_generate_clusters.cgi", convertToFormData({
+                dataset_id: this.analysis.dataset.id,
                 analysis_id: this.analysis.id,
                 analysis_type: this.analysis.type,
                 session_id: this.analysis.userSessionId,
@@ -1721,7 +1739,7 @@ class AnalysisStepClustering {
                 plot_tsne: plotTsne,
                 plot_umap: plotUmap,
                 cluster_info: JSON.stringify(clusterInfo)
-            });
+            }));
 
             if (!data.success || data.success < 1) {
                 const error = data.error || "Unknown error. Please contact gEAR support.";
@@ -1791,7 +1809,7 @@ class AnalysisStepClustering {
             'analysis_id': ana.id,
             'analysis_name': 'tsne_clustering',
             'analysis_type': ana.type,
-            'dataset_id': ana.datasetId,
+            'dataset_id': ana.dataset.id,
             'session_id': ana.userSessionId,
             // this saves the user from getting a cached image each time
             'datetime': (new Date()).getTime()
@@ -1824,8 +1842,25 @@ class AnalysisStepMarkerGenes {
     constructor(analysis) {
         this.reset();
         this.analysis = analysis;
-
         this.irreversible = false;
+    }
+
+    /**
+     * Adds or removes gene symbols to/from the genes of interest.
+     * @param {Array<string>} geneSymbols - An array of gene symbols to add or remove.
+     * @param {boolean} doAdd - A boolean indicating whether to add or remove the gene symbols.
+     */
+    addRemoveGenesOfInterest(geneSymbols, doAdd) {
+        for (const gene of geneSymbols) {
+            if (doAdd) {
+                this.genesOfInterest.add(gene.trim());
+            } else {
+                this.genesOfInterest.delete(gene.trim());
+            }
+        }
+
+        document.querySelector(UI.btnVisualizeMarkerGenesElt).disabled = !this.genesOfInterest.size;
+
     }
 
     /**
@@ -1836,7 +1871,7 @@ class AnalysisStepMarkerGenes {
         // Do the header row
         let row = [];
 
-        for (const elt in document.querySelectorAll(UI.markerGenesTableHeaderElts)) {
+        for (const elt in document.querySelectorAll(UI.markerGenesTableHeadCellElts)) {
             row.push(elt.textContent);
         }
         const fileContentsheaders = row.join("\t") + "\n";
@@ -1867,14 +1902,14 @@ class AnalysisStepMarkerGenes {
      * @throws {Error} If the request fails or returns an error.
      */
     async fetchMarkerGenes() {
-        const {data} = await axios.post("./cgi/h5ad_find_marker_genes.cgi", {
-            'dataset_id': this.analysis.datasetId,
+        const {data} = await axios.post("./cgi/h5ad_find_marker_genes.cgi", convertToFormData({
+            'dataset_id': this.analysis.dataset.id,
             'analysis_id': this.analysis.id,
             'analysis_type': this.analysis.type,
             'session_id': this.analysis.userSessionId,
             'n_genes': this.nGenes,
-            'compute_marker_genes': true
-        });
+            'compute_marker_genes': this.computeMarkerGenes
+        }));
 
         if ((!data.success) || (data.success < 1)) {
             const error = data.error || "Unknown error. Please contact gEAR support.";
@@ -1912,13 +1947,13 @@ class AnalysisStepMarkerGenes {
         document.querySelector(UI.markerGenesViolinContainer).replaceChildren();
 
         try {
-            const data = await axios.post("./cgi/h5ad_generate_marker_gene_visualization.cgi", {
-                'dataset_id': this.analysis.datasetId,
+            const {data} = await axios.post("./cgi/h5ad_generate_marker_gene_visualization.cgi", convertToFormData({
+                'dataset_id': this.analysis.dataset.id,
                 'analysis_id': this.analysis.id,
                 'analysis_type': this.analysis.type,
                 'session_id': this.analysis.userSessionId,
                 'marker_genes': JSON.stringify([...this.genesOfInterest])
-            });
+            }));
 
             if ((!data.success) || (data.success < 1)) {
                 const error = data.error || "Unknown error. Please contact gEAR support.";
@@ -1929,7 +1964,7 @@ class AnalysisStepMarkerGenes {
                 'analysis_id': this.analysis.id,
                 'analysis_name': 'dotplot_goi',
                 'analysis_type': this.analysis.type,
-                'dataset_id': this.analysis.datasetId,
+                'dataset_id': this.analysis.dataset.id,
                 'session_id': this.analysis.userSessionId,
                 // this saves the user from getting a cached image each time
                 datetime: (new Date()).getTime()
@@ -1944,17 +1979,18 @@ class AnalysisStepMarkerGenes {
                 {'params': params, 'title': 'Marker genes (stacked violin)', 'target': UI.markerGenesViolinContainer}
             );
 
-        } catch {
+        } catch (error) {
             createToast("Error visualizing marker genes");
+            logErrorInConsole(error);
         }
     }
 
     /**
      * Populates the marker genes labels in the analysis.
      *
-     * @param {Object} data - The data containing the group labels.
+     * @param {Array} groupLabels - The array of group labels.
      */
-    populateMarkerGenesLabels(data) {
+    populateClusterEditLabels(groupLabels) {
         this.groupLabels = [];
 
         // If the user has saved labels before, put them in the table here.  Else leave it
@@ -1962,12 +1998,12 @@ class AnalysisStepMarkerGenes {
         let i = 0;
         if (this.analysis.groupLabels.length > 0) {
             for (i=0; i < this.analysis.groupLabels.length; i++) {
-                data['group_labels'][i]['new_group_label'] = this.analysis.groupLabels[i];
+                groupLabels[i]['new_group_label'] = this.analysis.groupLabels[i];
                 this.groupLabels.push(this.analysis.groupLabels[i]);
             }
         } else {
-            for (i=0; i < data['group_labels'].length; i++) {
-                data['group_labels'][i]['new_group_label'] = data['group_labels'][i]['genes'];
+            for (i=0; i < groupLabels.length; i++) {
+                groupLabels[i]['new_group_label'] = groupLabels[i]['genes'];
                 // For the overall labels, do the group number rather than gene since that's what's
                 //  displayed by scanpy in the images
                 this.groupLabels.push(i);
@@ -1975,7 +2011,7 @@ class AnalysisStepMarkerGenes {
         }
 
         // show the abbreviated table in the louvain analysis block
-        for (const group of data['group_labels']) {
+        for (const group of groupLabels) {
             const clusterGroupLabelsHtml = document.querySelector(UI.clusterGroupLabelsTmpl).cloneNode(true);
             clusterGroupLabelsHtml.querySelector(".group-orig-label").textContent = group['group_label'];
             clusterGroupLabelsHtml.querySelector(".group-num-cells").value = group['num_cells'];
@@ -1994,12 +2030,17 @@ class AnalysisStepMarkerGenes {
      * @throws {Error} - If there is an error retrieving the marker genes data.
      */
     async populateMarkerGenesTable(table) {
-        try {
+        document.querySelector(UI.markerGenesSectionSuccessElt).classList.add("is-hidden");
+        document.querySelector(UI.markerGenesSectionFailedElt).classList.add("is-hidden");
 
+        try {
             if (!table) {
+                this.computeMarkerGenes = true;
                 const data = await this.fetchMarkerGenes();
-                table = data['table'];
+                table = data.table;
+                this.computeMarkerGenes = false;
             }
+
 
             // Add the first th element (empty)
             const markerGenesHeaderHtml = document.querySelector(UI.markerGenesTableHeadTmpl).content.cloneNode(true);
@@ -2007,35 +2048,38 @@ class AnalysisStepMarkerGenes {
             document.querySelector(UI.markerGenesTableHeadRowElt).appendChild(markerGenesHeaderHtml);
 
             // add the table header
-            for (const column of data['table']['columns']) {
+            for (const column of table.columns) {
                 const markerGenesHeaderHtml = document.querySelector(UI.markerGenesTableHeadTmpl).content.cloneNode(true);
-                markerGenesHeaderHtml.querySelector("th").textContent = column;
+                markerGenesHeaderHtml.querySelector("th").textContent = column.label;
                 document.querySelector(UI.markerGenesTableHeadRowElt).appendChild(markerGenesHeaderHtml);
             }
 
             // add the table rows
-            for (const row of data['table']['rows']) {
+            for (const row of table.rows) {
                 // Create the row label
-                const markerGenesBodyHtml = document.querySelector(UI.markerGenesTableBodyTmpl).content.cloneNode(true);
-                markerGenesBodyHtml.querySelector(".js-row-idx").textContent = row["rowid"]
+                const markerGenesRowHtml = document.querySelector(UI.markerGenesTableRowTmpl).content.cloneNode(true);
+                markerGenesRowHtml.querySelector(".js-row-idx").textContent = row.rowid
+                const currRow = markerGenesRowHtml.querySelector("tr");
 
                 // create new td objects for each column
-                for (const column of row["columns"]) {
-                    const cellElt = document.createElement("td");
-                    cellElt.textContent = column["label"]
-                    markerGenesBodyHtml.appendChild(cellElt)
-                }
 
-                document.querySelector(UI.markerGenesTableBodyElt).appendChild(markerGenesBodyHtml);
+                for (const column of row.columns) {
+                    const cellElt = document.createElement("td");
+                    cellElt.textContent = column.label
+                    currRow.appendChild(cellElt)
+                }
+                document.querySelector(UI.markerGenesTableBodyElt).appendChild(markerGenesRowHtml);
+
+
             }
 
-            this.populateMarkerGenesLabels(data);
-            const groupLabels = data['group_labels'].map(x => x.group_label);
-            this.analysis.compareGenes.populateGroupSelectors(groupLabels);
+            // Show the table and
+            document.querySelector(UI.markerGenesTableContainer).classList.remove("is-hidden");
 
-            document.querySelector(UI.btnDownloadMarkerGenesElt).classList.remove("is-hidden");
         } catch (error) {
+            document.querySelector(UI.markerGenesSectionFailedElt).classList.remove("is-hidden");
             createToast(`Error getting marker genes: ${error.message}`);
+            logErrorInConsole(error);
         }
 
     }
@@ -2046,6 +2090,7 @@ class AnalysisStepMarkerGenes {
     reset() {
         this.calculated = false;
         this.genesOfInterest = new Set();
+        this.groupLabels = [];
         this.nGenes = false;
         this.resetUI();
     }
@@ -2055,6 +2100,9 @@ class AnalysisStepMarkerGenes {
      */
     resetUI() {
         document.querySelector(UI.markerGenesNGenesElt).value = 5;
+
+        // Affects the clustering block
+        document.querySelector(UI.groupLabelsContainer).classList.add("is-hidden");
     }
 
     /**
@@ -2065,9 +2113,11 @@ class AnalysisStepMarkerGenes {
      */
     async runAnalysis() {
         createToast("Computing marker genes", "is-info");
-        document.querySelector(UI.btnMarkerGenesRunElt).disabled = true;
         document.querySelector(UI.markerGenesPlotContainer).replaceChildren();
-        document.querySelector(UI.markerGenesTableElt).replaceChildren();
+
+        // Clear the table
+        document.querySelector(UI.markerGenesTableHeadRowElt).replaceChildren();
+        document.querySelector(UI.markerGenesTableBodyElt).replaceChildren();
 
         document.querySelector(UI.markerGenesManuallyEnteredElt).value = '';
         document.querySelector(UI.markerGenesSelectedCountElt).textContent = 0;
@@ -2078,20 +2128,15 @@ class AnalysisStepMarkerGenes {
         this.clickedMarkerGenes = new Set();
         this.enteredMarkerGenes = new Set();
 
-        const computeMarkerGenes = true
-        if (this.calculated && this.nGenes == document.querySelector(UI.markerGenesNGenesElt).value) {
-            computeMarkerGenes = false;
+        this.computeMarkerGenes = true
+        if (this.calculated && this.nGenes === document.querySelector(UI.markerGenesNGenesElt).value) {
+            this.computeMarkerGenes = false;
         }
 
+        this.nGenes = document.querySelector(UI.markerGenesNGenesElt).value;
+
         try {
-            const {data} = await axios.post("./cgi/h5ad_find_marker_genes.cgi", {
-                'dataset_id': this.analysis.datasetId,
-                'analysis_id': this.analysis.id,
-                'analysis_type': this.analysis.type,
-                'session_id': this.analysis.userSessionId,
-                'n_genes': document.querySelector(UI.markerGenesNGenesElt).value,
-                'compute_marker_genes': computeMarkerGenes
-            });
+            const data = await this.fetchMarkerGenes();
 
             if (!data.success || data.success < 1) {
                 const error = data.error || "Unknown error. Please contact gEAR support.";
@@ -2099,13 +2144,11 @@ class AnalysisStepMarkerGenes {
             }
 
             this.calculated = true;
-            this.nGenes = document.querySelector(UI.markerGenesNGenesElt).value;
             this.updateUIWithResults(data);
-            this.groupLabels = data['group_labels'].map(x => x.group_label);
+            this.analysis.groupLabels = data.group_labels.map(x => x.group_label);
         } catch (error) {
             createToast(`Error computing marker genes: ${error.message}`);
-        } finally {
-            document.querySelector(UI.btnMarkerGenesRunElt).disabled = false;
+            logErrorInConsole(error);
         }
     }
 
@@ -2130,56 +2173,37 @@ class AnalysisStepMarkerGenes {
             'analysis_id': ana.id,
             'analysis_name': `rank_genes_groups_${data['cluster_label']}`,
             'analysis_type': ana.type,
-            'dataset_id': ana.datasetId,
+            'dataset_id': ana.dataset.id,
             'session_id': ana.userSessionId,
             // this saves the user from getting a cached image each time
             'datetime': (new Date()).getTime()
         }
 
         document.querySelector(UI.markerGenesNGenesElt).value = this.nGenes;
-        document.querySelector(UI.markerGenesTableHeader).classList.remove("is-hidden");
 
         ana.placeAnalysisImage(
             {'params': params, 'title': 'Marker genes', 'target': UI.markerGenesPlotContainer});
 
         if (data['table']) {
-            this.populateMarkerGenesTable(data['table']);
-
-            this.populateMarkerGenesLabels(data);
-            const groupLabels = data['group_labels'].map(x => x.group_label);
-            ana.gene_comparison.populateGroupSelectors(groupLabels);
+            this.populateMarkerGenesTable(data.table);
         } else {
             this.populateMarkerGenesTable();    // This will fetch the data
         }
 
+        const groupLabels = data.group_labels.map(x => x.group_label);
+
+        // This can only be done with a non-primary analysis
+        if (ana.type != "primary") {
+            this.populateClusterEditLabels(data.group_labels);
+        }
+
+        document.querySelector(UI.markerGenesSectionSuccessElt).classList.remove("is-hidden");
+
         document.querySelector(UI.markerGenesVisualizationContainer).classList.remove("is-hidden");
+        document.querySelector(UI.markerGenesListContainer).classList.remove("is-hidden");
 
         // marker gene calculation enables cluster comparison
-        document.querySelector(UI.compareGenesToggleElt).classList.remove("is-hidden");
-
-    }
-}
-
-class AnalysisStepLabeledTsne {
-    constructor(analysis) {
-        this.reset();
-        this.analysis = analysis;
-        this.irreversible = false;
-    }
-
-    reset() {
-
-    }
-
-    resetUI() {
-
-    }
-
-    async runAnalysis() {
-
-    }
-
-    updateUIWithResults() {
+        this.analysis.compareGenes.populateGroupSelectors(groupLabels);
 
     }
 }
@@ -2246,10 +2270,15 @@ class AnalysisStepCompareGenes {
      * @param {Array<Array<string>>} tableJson - The JSON data representing the table rows and cells.
      */
     populateComparisonTable(tableId, tableJson) {
-        const tableElt = document.querySelector(`#${tableId} tbody`);
+        const tableElt = document.querySelector(`${tableId} tbody`);
+        tableElt.replaceChildren();
 
         for (const row of tableJson) {
             const rowElt = document.createElement("tr");
+            // Append the key as the first cell
+            const keyElt = document.createElement("th");
+            keyElt.textContent = row[0];
+
             for (const cell of row) {
                 const cellElt = document.createElement("td");
                 cellElt.textContent = cell;
@@ -2266,19 +2295,14 @@ class AnalysisStepCompareGenes {
      */
     populateGroupSelectors(groupLabels) {
 
-        let groupNum = 0;
-
         for (const label of groupLabels) {
 
-            const clusterOptionHtml = document.querySelector(UI.clusterOptsTmpl).content.cloneNode(true);
-            const option = clusterOptionHtml.querySelector("option");
+            const option = document.createElement("option");
             option.textContent = label;
-            option.value = groupNum;
+            option.value = label;
 
-            document.querySelector(UI.queryClusterOptionsElt).appendChild(clusterOptionHtml);
-            document.querySelector(UI.referenceClusterOptionsElt).appendChild(clusterOptionHtml);
-
-            groupNum++;
+            document.querySelector(UI.queryClusterOptionsElt).appendChild(option);
+            document.querySelector(UI.referenceClusterOptionsElt).appendChild(option.cloneNode(true));
         }
 
         document.querySelector(UI.queryClusterSelectElt).value = this.queryCluster;
@@ -2290,7 +2314,6 @@ class AnalysisStepCompareGenes {
      */
     reset() {
         this.calculated = false;
-        this.resetUI();
         this.nGenes = 0;
         this.queryCluster = null;
         this.referenceCluster = null;
@@ -2298,6 +2321,8 @@ class AnalysisStepCompareGenes {
         this.corrMethod = 'benjamini-hochberg';
         this.tableJsonF = null;
         this.tableJsonR = null;
+        this.resetUI(); // last to ensure the cluster select values are reset correctly
+
     }
 
     /**
@@ -2305,10 +2330,10 @@ class AnalysisStepCompareGenes {
      */
     resetUI() {
 
-        document.querySelector(UI.queryClusterSelectElt).value = null;
+        document.querySelector(UI.queryClusterSelectElt).value = "";
         document.querySelector(UI.referenceClusterSelectElt).value = "all-reference-clusters";
 
-        document.querySelector(UI.compareGenesNGenesElt).value = null;
+        document.querySelector(UI.compareGenesNGenesElt).value = 7;
         document.querySelector(UI.compareGenesMethodSelectElt).value = "t-test_overestim_var";
         document.querySelector(UI.comapreGenesCorrMethodSelectElt).value = "benjamini-hochberg";
 
@@ -2325,15 +2350,22 @@ class AnalysisStepCompareGenes {
      */
     async runAnalysis() {
         createToast("Computing comparison", "is-info");
-        for (const container of document.querySelectorAll(UI.compareGenesResultsContainers)) {
+
+        // Hide things
+        document.querySelector(UI.compareGenesSectionSuccessElt).classList.add("is-hidden");
+        document.querySelector(UI.compareGenesSectionFailedElt).classList.add("is-hidden");
+        document.querySelector(UI.compareGenesResultsContainer).classList.add("is-hidden");
+
+        // Reset the plots
+        for (const container of document.querySelectorAll(UI.compareGenesResetableElts)) {
             container.replaceChildren();
         }
 
         const computeGeneComparison = this.calculated ? 1 : 0;
 
         try {
-            const {data} = await axios.post("./cgi/h5ad_compare_genes.cgi", {
-                'dataset_id': this.analysis.datasetId,
+            const {data} = await axios.post("./cgi/h5ad_compare_genes.cgi", convertToFormData({
+                'dataset_id': this.analysis.dataset.id,
                 'analysis_id': this.analysis.id,
                 'analysis_type': this.analysis.type,
                 'session_id': this.analysis.userSessionId,
@@ -2344,7 +2376,7 @@ class AnalysisStepCompareGenes {
                 'reference_cluster': document.querySelector(UI.referenceClusterSelectElt).value,
                 'method': document.querySelector(UI.compareGenesMethodSelectElt).value,
                 'corr_method': document.querySelector(UI.comapreGenesCorrMethodSelectElt).value
-            });
+            }));
 
             if (!data.success || data.success < 1) {
                 const error = data.error || "Unknown error. Please contact gEAR support.";
@@ -2362,8 +2394,11 @@ class AnalysisStepCompareGenes {
             this.corrMethod = document.querySelector(UI.comapreGenesCorrMethodSelectElt).value;
             this.updateUIWithResults(data);
             createToast("Comparison computed", "is-success");
+            document.querySelector(compareGenesSectionSuccessElt).classList.remove("is-hidden");
         } catch (error) {
             createToast(`Error computing comparison: ${error.message}`);
+            logErrorInConsole(error);
+            document.querySelector(UI.compareGenesSectionFailedElt).classList.remove("is-hidden");
         }
     }
 
@@ -2388,7 +2423,6 @@ class AnalysisStepCompareGenes {
         document.querySelector(UI.compareGenesRankedContainer).classList.remove("is-hidden");
 
         if (this.calculated ) {
-            document.querySelector(UI.compareGenesToggleElt).checked = true;
 
             document.querySelector(UI.compareGenesNGenesElt).value = this.nGenes;
             document.querySelector(UI.compareGenesMethodSelectElt).value = this.method;
@@ -2401,7 +2435,7 @@ class AnalysisStepCompareGenes {
             'analysis_id': ana.id,
             'analysis_name': `rank_genes_groups_${data['cluster_label']}_comp_ranked`,
             'analysis_type': ana.type,
-            'dataset_id': ana.datasetId,
+            'dataset_id': ana.dataset.id,
             'session_id': ana.userSessionId,
             // this saves the user from getting a cached image each time
             'datetime': (new Date()).getTime()
@@ -2409,30 +2443,32 @@ class AnalysisStepCompareGenes {
 
         ana.placeAnalysisImage({'params': params, 'title': 'Comparison with a cluster', 'target': UI.compareGenesRankedContainer});
 
-        params['analysis_name'] = `rank_genes_groups_${data['cluster_label']}_${this.queryCluster}_comp_violin`
+        params['analysis_name'] = `rank_genes_groups_${data.cluster_label}_${this.queryCluster}_comp_violin`
 
         ana.placeAnalysisImage({'params': params, 'title': 'Comparison with a cluster', 'target': UI.compareGenesViolinContainer});
 
         if (data.hasOwnProperty('table_json_f')) {
-            this.tableJsonF = data['table_json_f'];
-            data['table_json_f'] = JSON.parse(data['table_json_f']);
-            this.populateComparisonTable('compare_genes_table_f', data['table_json_f']['data']);
+            this.tableJsonF = data.table_json_f;
+            data.table_json_f = JSON.parse(data.table_json_f);
+            this.populateComparisonTable(UI.compareGenesTableFElt, data.table_json_f.data);
         }
+
+        if (this.referenceCluster == 'all-reference-clusters') {
+            return;
+        }
+
+        // Now do the reverse comparison
+        params['analysis_name'] =`rank_genes_groups_${data.cluster_label}_comp_ranked_rev`
+        ana.placeAnalysisImage({'params': params, 'title': 'Comparison with a cluster', 'target': UI.compareGenesRankedRevContainer});
+
+        params["analysis_name"] = `rank_genes_groups_${data.cluster_label}_${this.referenceCluster}_comp_violin_rev`
+        ana.placeAnalysisImage({'params': params, 'title': 'Comparison with a cluster', 'target': UI.compareGenesViolinRevContainer});
 
         if (data.hasOwnProperty('table_json_r')) {
-            this.tableJsonR = data['table_json_r'];
-            data['table_json_r'] = JSON.parse(data['table_json_r']);
-            this.populateComparisonTable('compare_genes_table_r', data['table_json_r']['data']);
+            this.tableJsonR = data.table_json_r;
+            data.table_json_r = JSON.parse(data.table_json_r);
+            this.populateComparisonTable(UI.compareGenesTableRElt, data.table_json_r.data);
         }
-
-        if (this.referenceCluster != 'all-reference-clusters') {
-            params['analysis_name'] =`rank_genes_groups_${data['cluster_label']}_comp_ranked_rev`
-            ana.placeAnalysisImage({'params': params, 'title': 'Comparison with a cluster', 'target': UI.compareGenesRankedRevContainer});
-
-            params["analysis_name"] = `rank_genes_groups_${data['cluster_label']}_${this.referenceCluster}_comp_violin_rev`
-            ana.placeAnalysisImage({'params': params, 'title': 'Comparison with a cluster', 'target': UI.compareGenesViolinRevContainer});
-        }
-
 
     }
 }

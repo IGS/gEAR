@@ -49,15 +49,27 @@
             <section id="content-c" class="m-3">
                 <!-- This is the section to be populated for new pages -->
                 <header class="columns section">
-                    <div id="tool-desc-c" class="column is-4">
+                    <div id="tool-desc-c" class="column is-5 content">
                         <h3 class="title is-3">
                             Find clusters and marker genes in single-cell RNA-seq data
                         </h3>
-                        <p>The single-cell workbench allows for users to run a complete
-                            Seurat analysis pipeline and save this analysis for use in
-                            the single-gene or multi-gene curator tools.</p>
+                        <p>
+                            <strong>The workbench for single cell RNAseq (scRNAseq)</strong> is designed to allow
+                            biologists meaningful access to single cell data, even with limited informatics training.
+                            The workbench begins by selecting a dataset for analysis, and then offers analysis tools
+                            following several standard pre-processing steps.
+                        </p>
+
+                        <p>
+                            <strong>Start by choosing a dataset in the left dropdown.</strong>
+                            <span class="icon has-tooltip-right has-tooltip-arrow" data-tooltip="The dropdown on the left allows you to choose a dataset for analysis in the single cell work bench.
+Information about the individual datasets can be found in the dataset explorer."><i
+                                  class="mdi mdi-information-slab-circle"></i>
+                            </span>
+
+                        </p>
                     </div>
-                    <div id="guides-outer-c" class="column is-offset-2 has-background-white-bis notification">
+                    <div id="guides-outer-c" class="column is-offset-1 has-background-white-bis notification">
                         <h3 class="mt-4 mb-4">
                             <span>GUIDES</span>
                             <span class="icon is-pulled-right delete">
@@ -102,9 +114,6 @@
                             <span id="dataset-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
                                 <i class="mdi mdi-close-circle"></i>
                             </span>
-                            <span class="icon is-pulled-right">
-                                <i class="mdi mdi-chevron-up"></i>
-                            </span>
                         </h5>
                         <div id="current-dataset-c">
                             Current dataset:
@@ -129,7 +138,7 @@
                                 <i class="mdi mdi-check-circle"></i>
                             </span>
                             <span id="analysis-type-select-c-failed"
-                              class="js-step-success icon has-text-danger-dark is-hidden">
+                              class="js-step-failure icon has-text-danger-dark is-hidden">
                                 <i class="mdi mdi-close-circle"></i>
                             </span>
                         </h5>
@@ -140,6 +149,7 @@
                         <div class="mt-3" id="analysis-c">
                             <div class="select is-fullwidth">
                                 <select id="analysis-select" disabled>
+                                    <option data-analysis-id="-1" value="" disabled selected>Select an analysis</option>
                                     <option data-analysis-id="0" value="0">New</option>
                                     <optgroup id="analyses-primary" label="Imported analysis"></optgroup>
                                     <optgroup id="analyses-public" label="Public saved analyses"></optgroup>
@@ -168,7 +178,7 @@
                                     </button>
                                 </div>
                             </div>
-                            <div id="analysis-action-c" class="field has-addons">
+                            <div id="analysis-action-c" class="field has-addons is-hidden">
                                 <p class="control">
                                     <button class="button js-show-rename-input">
                                         <span class="icon is-small">
@@ -194,48 +204,116 @@
                                     </button>
                                 </p>
                             </div>
-                            <div id="analysis-status-info-c" class="field has-addons is-hidden">
-                                <p class="control">
-                                    <button class="button js-show-rename-input">
-                                        <span class="icon is-small">
-                                            <i class="mdi mdi-pencil-box"></i>
-                                        </span>
-                                        <span>Rename</span>
-                                    </button>
+                            <div id="analysis-status-info-c" class="is-hidden">
+                                <p id="analysis-status-info">
+                                    This analysis is stored in your profile.
                                 </p>
-                                <p class="control">
-                                    <button id="btn-make-public-copy" class="button">
-                                        <span class="icon is-small">
-                                            <i class="mdi mdi-earth"></i>
-                                        </span>
-                                        <span>Make a public copy</span>
-                                    </button>
-                                </p>
-                                <p class="control">
-                                    <button id="btn-delete-saved-analysis" class="button is-danger">
-                                        <span class="icon is-small">
-                                            <i class="mdi mdi-delete"></i>
-                                        </span>
-                                        <span>Delete</span>
-                                    </button>
-                                </p>
+                                <div class="field has-addons">
+                                    <p class="control">
+                                        <button class="button js-show-rename-input">
+                                            <span class="icon is-small">
+                                                <i class="mdi mdi-pencil-box"></i>
+                                            </span>
+                                            <span>Rename</span>
+                                        </button>
+                                    </p>
+                                    <p class="control">
+                                        <button id="btn-make-public-copy" class="button">
+                                            <span class="icon is-small">
+                                                <i class="mdi mdi-earth"></i>
+                                            </span>
+                                            <span>Make a public copy</span>
+                                        </button>
+                                    </p>
+                                    <p class="control">
+                                        <button id="btn-delete-saved-analysis" class="button is-danger">
+                                            <span class="icon is-small">
+                                                <i class="mdi mdi-delete"></i>
+                                            </span>
+                                            <span>Delete</span>
+                                        </button>
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </section>
                 </div>
 
-                <section class="has-background-white-bis section is-hidden" id="labeled-tsne-s">
+                <section class="has-background-light section is-hidden" id="initial-info-s">
                     <h5 class="title is-5">
                         <span class="icon">
                             <i class="mdi mdi-file-upload-outline"></i> <!-- Not quite the correct icon -->
                         </span>
-                        <span>Create a labeled tSNE </span>
+                        <span>Preliminary dataset information </span>
                     </h5>
-                    <div class=" mt-3" id="labeled-tsne-c">
+                    <div class="mt-3 content" id="initial-info-c">
+                        <p class="has-text-weight-semibold">Initial shape: <span id='selected-dataset-shape-initial'
+                              class="has-text-weight-normal"></span>
+                        </p>
+                        <div id="initial-plot-c" class="is-hidden">
+                            <h6 class="subtitle is-6 has-text-centered">Initial composition plots</h6>
+                            <div id="initial-loading-plot"><img class="image" src="../img/loading_search.gif"
+                                  alt="Loading" /> Loading initial gene/cell
+                                count plots</div>
+                            <div class="columns">
+                                <div id="initial-violin-c" class="column is-6 js-resetable"></div>
+                                <div id="initial-scatter-c" class="column is-6 js-resetable"></div>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
                 <div id="analysis-workflow" class="is-hidden">
+                    <article id='analysis-primary-notification' class='is-hidden message is-info'>
+                        <div class="message-header">
+                            <p>Primary analysis selected</p>
+                        </div>
+                        <div class="message-body">
+                            You have a selected an analysis bundled with the dataset itself, usually created by the
+                            dataset
+                            author outside of this workbench. You can use the workbench to perform actions below
+                            provided by the analyses the authors have uploaded, but all other "de novo" analysis steps
+                            will be disabled
+                            until you create an entirely new analysis.
+                        </div>
+                    </article>
+
+                    <section class="has-background-white-bis section is-hidden" id="labeled-tsne-s">
+                        <h5 class="title is-5">
+                            <span class="icon">
+                                <i class="mdi mdi-file-upload-outline"></i> <!-- Not quite the correct icon -->
+                            </span>
+                            <span>Create a labeled tSNE </span>
+                        </h5>
+                        <div class="mt-3 content" id="labeled-tsne-c">
+                            <div class="tool-instructions">
+                                <p>
+                                    Enter a gene of interest to see its tSNE colored both by expression and cluster /
+                                    cell type.
+                                </p>
+                            </div>
+
+                            <div class="columns">
+                                <div class="field column is-one-quarter">
+                                    <label for="labeled-tsne-gene-symbol" class="label">Gene symbol</label>
+                                    <div class="control">
+                                        <input type="text" class="input" id="labeled-tsne-gene-symbol" size="7" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="field">
+                                <div class="control">
+                                    <button id='btn-labeled-tsne-run' type='button'
+                                      class='button is-primary'>Search</button>
+                                </div>
+                            </div>
+
+                            <div id="labeled-tsne-plot-c" class="is-hidden"></div>
+
+                        </div>
+                    </section>
+
                     <section class="has-background-white-bis section js-step" id="primary-filter-s">
                         <h5 class="title is-5">
                             <span class="icon">
@@ -247,7 +325,7 @@
                                 <i class="mdi mdi-check-circle"></i>
                             </span>
                             <span id="primary-filter-s-failed"
-                              class="js-step-success icon has-text-danger-dark is-hidden">
+                              class="js-step-failure icon has-text-danger-dark is-hidden">
                                 <i class="mdi mdi-close-circle"></i>
                             </span>
                             <span class="icon is-pulled-right">
@@ -258,9 +336,6 @@
                             <div class="columns is-variable is-8"> <!-- gapped columns -->
                                 <div class="column is-5">
                                     <div class="block">
-                                        <p class="has-text-weight-semibold">Initial shape: <span
-                                              id='selected-dataset-shape-initial' class="has-text-weight-normal"></span>
-                                        </p>
                                         <p id='selected-dataset-shape-filtered-c'
                                           class="is-hidden has-text-weight-semibold">Filtered shape: <span
                                               id='selected-dataset-shape-filtered'
@@ -270,7 +345,8 @@
                                             <span class="icon has-tooltip-right has-tooltip-arrow"
                                               data-tooltip="The initial dataset contains many observations (cells), some of which may hold no significant value to the downstream analysis.
             Here you can perform multiple filtering steps to remove empty captures, doublets and genes not expressed in this dataset."><i
-                                                  class="mdi mdi-information-slab-circle"></i></span>
+                                                  class="mdi mdi-information-slab-circle"></i>
+                                            </span>
                                         </p>
                                     </div>
                                     <div id='primary-filter-options-c'>
@@ -280,7 +356,7 @@
                                                     <input id='filter-cells-lt-n-genes-selected' type="checkbox">
                                                     Exclude cells with &lt;
                                                 </label>
-                                                <input type="number" class="input is-small input-length-4"
+                                                <input type="number" class="input input-length-4"
                                                   id="filter-cells-lt-n-genes" size="4" value="300" min="1" /> genes
                                             </div>
                                         </div>
@@ -290,7 +366,7 @@
                                                     <input id='filter-cells-gt-n-genes-selected' type="checkbox">
                                                     Exclude cells with &gt;
                                                 </label>
-                                                <input type="number" class="input is-small input-length-4"
+                                                <input type="number" class="input input-length-4"
                                                   id="filter-cells-gt-n-genes" size="4" min="1" /> genes
                                             </div>
                                         </div>
@@ -300,7 +376,7 @@
                                                     <input id='filter-genes-lt-n-cells-selected' type="checkbox">
                                                     Exclude genes in &lt;
                                                 </label>
-                                                <input type="number" class="input is-small input-length-4"
+                                                <input type="number" class="input input-length-4"
                                                   id="filter-genes-lt-n-cells" size="4" value="3" min="1" /> cells
                                             </div>
                                         </div>
@@ -310,33 +386,24 @@
                                                     <input id='filter-genes-gt-n-cells-selected' type="checkbox">
                                                     Exclude genes in &gt;
                                                 </label>
-                                                <input type="number" class="input is-small input-length-4"
+                                                <input type="number" class="input input-length-4"
                                                   id="filter-genes-gt-n-cells" size="4" min="1" /> cells
                                             </div>
                                         </div>
                                         <div class="field">
                                             <div class="control">
                                                 <button id='btn-apply-primary-filter' type='button'
-                                                  class='button is-primary is-small'>Apply filters</button>
+                                                  class='button is-primary'>Apply filters</button>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div class="column is-7">
-                                    <div id="primary-initial-plot-c" class="is-hidden">
-                                        <h5>Initial composition</h5>
-                                        <div id="primary-initial-plot"><img class="image"
-                                              src="../img/loading_search.gif" alt="Loading" /> Loading initial gene/cell
-                                            count plots</div>
-                                        <div id="primary_initial-violin-c" class="js-resetable"></div>
-                                        <div id="primary-initial-scatter-c" class="js-resetable"></div>
-                                    </div>
                                     <div id="primary-top-genes-plot-c" class="is-hidden">
                                         <h5>Genes with highest fraction of counts per cell</h5>
                                         <div id='primary-top-genes-c' class='js-resetable'></div>
                                     </div>
-
                                 </div>
                             </div>
 
@@ -353,7 +420,7 @@
                               class="js-step-success icon has-text-success-dark is-hidden">
                                 <i class="mdi mdi-check-circle"></i>
                             </span>
-                            <span id="qc-by-mito-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
+                            <span id="qc-by-mito-s-failed" class="js-step-failure icon has-text-danger-dark is-hidden">
                                 <i class="mdi mdi-close-circle"></i>
                             </span>
                             <span class="icon is-pulled-right">
@@ -375,7 +442,7 @@
                                 <i class="mdi mdi-check-circle"></i>
                             </span>
                             <span id="select-variable-genes-s-failed"
-                              class="js-step-success icon has-text-danger-dark is-hidden">
+                              class="js-step-failure icon has-text-danger-dark is-hidden">
                                 <i class="mdi mdi-close-circle"></i>
                             </span>
                             <span class="icon is-pulled-right">
@@ -395,7 +462,7 @@
                             <span id="pca-s-success" class="js-step-success icon has-text-success-dark is-hidden">
                                 <i class="mdi mdi-check-circle"></i>
                             </span>
-                            <span id="pca-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
+                            <span id="pca-s-failed" class="js-step-failure icon has-text-danger-dark is-hidden">
                                 <i class="mdi mdi-close-circle"></i>
                             </span>
                             <span class="icon is-pulled-right">
@@ -415,7 +482,7 @@
                             <span id="tsne-s-success" class="js-step-success icon has-text-success-dark is-hidden">
                                 <i class="mdi mdi-check-circle"></i>
                             </span>
-                            <span id="tsne-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
+                            <span id="tsne-s-failed" class="js-step-failure icon has-text-danger-dark is-hidden">
                                 <i class="mdi mdi-close-circle"></i>
                             </span>
                             <span class="icon is-pulled-right">
@@ -436,7 +503,7 @@
                               class="js-step-success icon has-text-success-dark is-hidden">
                                 <i class="mdi mdi-check-circle"></i>
                             </span>
-                            <span id="clustering-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
+                            <span id="clustering-s-failed" class="js-step-failure icon has-text-danger-dark is-hidden">
                                 <i class="mdi mdi-close-circle"></i>
                             </span>
                             <span class="icon is-pulled-right">
@@ -458,14 +525,105 @@
                                 <i class="mdi mdi-check-circle"></i>
                             </span>
                             <span id="marker-genes-s-failed"
-                              class="js-step-success icon has-text-danger-dark is-hidden">
+                              class="js-step-failure icon has-text-danger-dark is-hidden">
                                 <i class="mdi mdi-close-circle"></i>
                             </span>
                             <span class="icon is-pulled-right">
                                 <i class="mdi mdi-chevron-down"></i>
                             </span>
                         </h5>
-                        <div class="js-step-collapsable mt-3" id="marker-genes-collapsable">
+                        <div class="js-step-collapsable mt-3 content" id="marker-genes-collapsable">
+
+                            <div class="tool-instructions">
+                                <p>
+                                    This analysis step will show you the marker genes within each group of cells as defined by the clustering method used.
+                                    You can adjust the number of genes you would like to see for each cluster by adjusting the 'N genes' value.
+                                </p>
+                            </div>
+
+                            <div class="columns">
+                                <div id="marker-genes-options-c" class="field column is-one-quarter">
+                                    <label for="marker-genes-n-genes" class="label">N genes</label>
+                                    <div class="control">
+                                        <input type="number" class="input input-length-4" id="marker-genes-n-genes" size="2" value="5" min="1" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <div class="control">
+                                    <button id='btn-marker-genes-run' type='button' class='button is-primary'>Compute</button>
+                                </div>
+                            </div>
+
+                            <div id="marker-genes-plot-c" class="content"></div>
+
+                            <div id="marker-genes-table-c" class="is-hidden">
+                                <h5 id='marker-genes-table-header' class='subtitle is-5'>
+                                    Top ranked genes per cluster
+                                    <button id='btn-download-marker-genes' class='is-pulled-right is-hidden button is-primary'>Download</button>
+                                </h5>
+                                <p class="help">Click to select genes of interest. You can select individual genes as well as entire rows and columns.</p>
+                                <div class="table-container">
+                                    <table id="marker-genes-table" class="table is-bordered is-narrow is-hoverable is-fullwidth is-clickable">
+                                        <thead>
+                                            <tr></tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                                <template id="marker-genes-table-head-tmpl">
+                                    <th class="js-col-idx" scope="col"></th>
+                                </template>
+                                <template id="marker-genes-table-row-tmpl">
+                                    <tr>
+                                        <th class="js-row-idx"></th>
+                                    </tr>
+                                </template>
+                            </div>
+
+                            <div id="marker-genes-visualization-c" class="is-hidden content">
+                                <h5 class="subtitle is-5">Marker gene visualization</h5>
+                                <p>Select desired marker genes in the table above and/or type gene symbols in the field below to visualize</p>
+
+                                <div class="columns">
+                                    <div class="field column is-one-third">
+                                        <label for="marker-genes-manually-entered" class="label">Enter gene symbols (comma-separated)</label>
+                                        <div class="control">
+                                            <input type="text" id="marker-genes-manually-entered" class="input" size="60" value="" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <ul>
+                                    <li>Unique marker genes selected in table: <span id='marker-genes-selected-count'>0</span></li>
+                                    <li>Unique marker genes manually entered: <span id='marker-genes-entered-count'>0</span></li>
+                                    <li>Total unique genes selected: <span id='marker-genes-unique-count'>0</span></li>
+                                </ul>
+                                <button id='btn-visualize-marker-genes' type='button' class='button is-primary' disabled>Visualize</button>
+                                <div id="marker-genes-results-c">
+                                    <div class="columns">
+                                        <div id="marker-genes-dotplot-c" class="column is-6"></div>
+                                        <div id="marker-genes-violin-c" class="column is-6"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="marker-gene-list-c" class="is-hidden">
+                                <h5 class="subtitle is-5">Save New Unweighted Gene List</h5>
+                                <div class="columns">
+                                    <div class="field column is-one-third">
+                                        <label for="marker-gene-list-name" class="label">Enter name of gene list</label>
+                                        <div class="control">
+                                            <input type="text" id="marker-gene-list-name" class="input" value="" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="field">
+                                    <div class="control">
+                                        <button id="btn-save-marker-gene-list" type="button" class="button is-primary" disabled>Save Selected</button>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
                     </section>
 
@@ -480,7 +638,7 @@
                                 <i class="mdi mdi-check-circle"></i>
                             </span>
                             <span id="clustering-edit-s-failed"
-                              class="js-step-success icon has-text-danger-dark is-hidden">
+                              class="js-step-failure icon has-text-danger-dark is-hidden">
                                 <i class="mdi mdi-close-circle"></i>
                             </span>
                             <span class="icon is-pulled-right">
@@ -488,6 +646,43 @@
                             </span>
                         </h5>
                         <div class="js-step-collapsable mt-3" id="clustering-edit-collapsable">
+
+                            <div id="group-labels-c" class="is-hidden">
+                                <div class="field">
+                                    <label for="clustering-merge-clusters" class="label">Check to merge clusters with duplicate labels</label>
+                                    <div class="control">
+                                        <input type="checkbox" id="clustering-merge-clusters" />
+                                    </div>
+                                </div>
+                                <table id="cluster-group-labels" class="table is-bordered is-hoverable">
+                                  <thead>
+                                    <tr>
+                                      <th scope="col">Group</th>
+                                      <th scope="col">Num Cells</th>
+                                      <th scope="col">Markers</th>
+                                      <th scope="col">New label</th>
+                                      <th scope="col">Keep</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody></tbody>
+                                </table>
+                                <template id="cluster-group-labels-tmpl">
+                                    <tr>
+                                        <td class="group-orig-label"></td>
+                                        <td class="group-num-cells"></td>
+                                        <td class="group-marker"></td>
+                                        <td class="group-user-label"></td>
+                                        <td class="group-keep-chk">
+                                            <input class="input" type="checkbox" checked />
+                                        </td>
+                                    </tr>
+                                </template>
+                                <div class="field">
+                                    <div class="control">
+                                        <button id='btn-clustering-edit' type='button' class="button is-primary">Rerun with labels</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </section>
 
@@ -502,14 +697,153 @@
                                 <i class="mdi mdi-check-circle"></i>
                             </span>
                             <span id="ompare-genes-s-failed"
-                              class="js-step-success icon has-text-danger-dark is-hidden">
+                              class="js-step-failure icon has-text-danger-dark is-hidden">
                                 <i class="mdi mdi-close-circle"></i>
                             </span>
                             <span class="icon is-pulled-right">
                                 <i class="mdi mdi-chevron-down"></i>
                             </span>
                         </h5>
-                        <div class="js-step-collapsable mt-3" id="ompare-genes-collapsable">
+                        <div class="js-step-collapsable mt-3" id="compare-genes-collapsable">
+
+                            <div class="tool-instructions">
+                                <p>
+                                  The method dropdown menu lists the available statistical tests for your comparison. The
+                                  “t-test overestimated variance” option may help in situations where clusters contain few
+                                  cells and variance is difficult to estimate directly, otherwise for robust clusters
+                                  choose “t-test” (Assumes normally distributed data). The “Wilcoxon-Rank-Sum” option is
+                                  a non-parametric test and may be helpful when a dataset includes a few genes with very
+                                  high expression (outliers) or data distribution is not known. Multiple testing correction
+                                  can be performed either by Benjamini-Hochberg or Bonferroni methods, where Bonferroni is
+                                  more conservative.
+                                </p>
+                              </div>
+
+
+                            <div class="columns is-variable is-8"> <!-- gapped columns -->
+                                <div class="column is-4">
+
+                                    <div class="field">
+                                        <label for="compare-genes-n-genes" class="label">N genes</label>
+                                        <div class="control">
+                                            <input type="number" class="input input-length-4" id="compare-genes-n-genes" size="2" value="7" min="1" />
+                                        </div>
+                                    </div>
+
+                                    <div class="field">
+                                        <label for="query-cluster" class="label">Query cluster</label>
+                                        <div class="control">
+                                            <div class="select is-fullwidth">
+                                                <select id="query-cluster">
+                                                    <option value="">Choose one</option>
+                                                    <optgroup id="query-cluster-options" label="Marker gene or label:"></optgroup>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="field">
+                                        <label for="reference-cluster" class="label">Reference (comparison) cluster</label>
+                                        <div class="control">
+                                            <div class="select is-fullwidth">
+                                                <select id="reference-cluster">
+                                                    <option value="all-reference-clusters">All</option>
+                                                    <optgroup id="reference-cluster-options" label="Marker gene or label:"></optgroup>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="field">
+                                        <label for="compare-genes-method" class="label">Method</label>
+                                        <div class="control">
+                                            <div class="select is-fullwidth">
+                                                <select id="compare-genes-method">
+                                                    <option value="t-test_overestim_var" selected>T-test (overestimated variance)</option>
+                                                    <option value="t-test">T-test</option>
+                                                    <option value="logreg">Logistic regression</option> <!-- this was commented out for some reason -->
+                                                    <option value="wilcoxon">Wilcoxon rank-sum</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div id="compare-genes-corr-method-c" class="field">
+                                        <label for="compare-genes-corr-method" class="label">P-value correction method</label>
+                                        <div class="control">
+                                            <div class="select is-fullwidth">
+                                                <select id="compare-genes-corr-method">
+                                                    <option value="benjamini-hochberg" selected>Benjamini-Hochberg</option>
+                                                    <option value="bonferroni">Bonferroni</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div id='compare-genes-submission-c' class="field">
+                                        <div class="control">
+                                            <button id='btn-compare-genes-run' type='button' class='button is-primary'>Run</button>
+                                        </div>
+                                    </div>
+
+                                </div>
+                                <div id="compare-genes-visualization-c" class="column is-8 is-hidden content">
+                                    <div class="columns">
+                                        <div class="column is-6 js-resetable" id='compare-genes-ranked-c'></div>
+                                        <div class="column is-6 js-resetable" id='compare-genes-violin-c'></div>
+                                    </div>
+
+                                    <div class="buttons">
+                                        <button type="button" id="btn-compare-genes-show-table-f" class="button is-primary">Show table</button>
+                                        <button type="button" id="btn-compare-genes-download-table-f" class="button is-primary">Download table</button>
+                                    </div>
+
+                                    <div class="table-container">
+                                        <table id="compare-genes-table-f" class="is-hidden table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>log2FC</th>
+                                                    <th>P-value</th>
+                                                    <th>FDR</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <td colspan="4">No data to display</td>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="columns">
+                                        <div class="column is-6 js-resetable" id='compare-genes-ranked-rev-c'></div>
+                                        <div class="column is-6 js-resetable" id='compare-genes-violin-rev-c'></div>
+                                    </div>
+
+                                    <div class="buttons">
+                                        <button type="button" id="btn-compare-genes-show-table-r" class="button is-primary">Show table</button>
+                                        <button type="button" id="btn-compare-genes-download-table-r" class="button is-primary">Download table</button>
+                                    </div>
+
+                                    <div class="table-container">
+                                        <table id="compare-genes-table-r" class="is-hidden table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>log2FC</th>
+                                                    <th>P-value</th>
+                                                    <th>FDR</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <td colspan="4">No data to display</td>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+
+                                </div>
+                            </div>
+
                         </div>
                     </section>
                 </div>
@@ -526,6 +860,9 @@
     <script src="js/vendor/js.cookie.js"></script>
 
     <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+    <script>document.write('<script src="js/classes/dataset.' + (new Date()).getTime() + '.js"><\/script>');</script>
+    <script>document.write('<script src="js/classes/gene.' + (new Date()).getTime() + '.js"><\/script>');</script>
+    <script>document.write('<script src="js/classes/genecart.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
     <script>document.write('<script src="js/classes/tree.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
     <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
     <script>document.write('<script src="js/classes/analysis-ui.' + (new Date()).getTime() + '.js"><\/script>');</script>

@@ -2,7 +2,7 @@
 
 let currentAnalysis;
 let clickedMarkerGenes = new Set();
-let enteredMarkerGenes = new Set();
+let typedMarkerGenes = new Set();
 let currentLabel = null;
 let datasetId = null;
 
@@ -42,18 +42,38 @@ const datasetTree = new DatasetTree({
 
         createToast("Loading dataset", "is-info");
 
-        const datasetId = newDatasetId;
+        datasetId = newDatasetId;
 
-        resetWorkbench();
+        // Clear "success/failure" icons
+        for (const elt of document.getElementsByClassName("js-step-success")) {
+            elt.classList.add("is-hidden");
+        }
+        for (const elt of document.getElementsByClassName("js-step-failure")) {
+            elt.classList.add("is-hidden");
+        }
 
-        currentAnalysis = new Analysis({datasetId, type: "primary", datasetIsRaw: true});
+        // collapse tree
+        e.node.tree.expandAll(false);
 
-        document.querySelector(UI.initialInstructionsElt).classList.add("is-hidden");
-        document.querySelector(UI.analysisSelect).disabled = false;
+
+        if (currentAnalysis) {
+            resetWorkbench();
+        }
+
+        document.querySelector(UI.currentAnalysisElt).textContent = "None selected";
+
+        // This is a placeholder to retrieve preliminary figures which are stored in the "primary" directory
+        currentAnalysis = new Analysis({id: datasetId, type: "primary", datasetIsRaw: true});
 
         // Technically these could load asynchronously, but logically the progress logs make more sense sequentially
-        await getDatasetInfo(datasetId);
-        await currentAnalysis.loadPreliminaryFigures();
+        try {
+            await getDatasetInfo(datasetId);
+            await currentAnalysis.loadPreliminaryFigures();
+        } catch (error) {
+            logErrorInConsole(error);
+            // pass
+        }
+
     })
 });
 
@@ -90,16 +110,16 @@ const datasetTree = new DatasetTree({
  * @param {string} filename - The name of the downloaded file.
  */
 const downloadTableAsExcel = (tableId, filename) => {
-    const tableStr = '';
+    let tableStr = '';
 
     // Loop through the table header and add each column to the table string
-    for (const elt of document.querySelector(`#${tableId} thead tr th`)){
+    for (const elt of document.querySelectorAll(`${tableId} thead tr th`)){
         tableStr += `${elt.textContent}\t`;
     }
     tableStr = `${tableStr.trim()}\n`;
 
     // Loop through the table body and add each row to the table string
-    for (const row of document.querySelector(`#${tableId} tbody tr`)){
+    for (const row of document.querySelectorAll(`${tableId} tbody tr`)){
         for (const cell of row.querySelectorAll('td')){
             tableStr += `${cell.textContent}\t`;
         }
@@ -123,10 +143,10 @@ const downloadTableAsExcel = (tableId, filename) => {
  * @returns {Promise<void>} - A promise that resolves when the dataset information is retrieved and UI updates are complete.
  */
 const getDatasetInfo = async (datasetId) => {
-    document.querySelector("#stored_analyses_c").classList.add("is-hidden");
+    document.querySelector(UI.analysisSelect).disabled = true;
 
     try {
-        const data = await apiCallsMixin.getDatasetInfo(datasetId);
+        const data = await apiCallsMixin.fetchDatasetInfo(datasetId);
 
         const ds = new Dataset(data);
 
@@ -135,18 +155,24 @@ const getDatasetInfo = async (datasetId) => {
 
         // TODO: set dataset title and shape in the UI
 
-        document.querySelector("#dataset_info").classList.remove("is-hidden");
-        document.querySelector("#analysis_list_c").classList.remove("is-hidden");
-        analysisLabels = currentAnalysis.getSavedAnalysesList(ds.id, 0, 'sc_workbench');
+        document.querySelector(UI.primaryFilterSection).classList.remove("is-hidden");
+        analysisLabels = currentAnalysis.getSavedAnalysesList(ds.id, -1, 'sc_workbench');   // select first "selct an analysis" option
+
+        document.querySelector(UI.primaryInitialInfoSection).classList.remove("is-hidden");
+        document.querySelector(UI.selectedDatasetShapeInitialElt).textContent = currentAnalysis.dataset.shape();
+
+        document.querySelector(UI.analysisSelect).disabled = false;
         createToast("Dataset loaded", "is-success");
     } catch (error) {
         createToast("Failed to access dataset");
         logErrorInConsole(`Failed ID was: ${datasetId} because msg: ${error.message}`);
+        document.querySelector(UI.analysisSelect).disabled = true;
+
     }
 }
 
 const getEmbeddedTsneDisplay = async (datasetId) => {
-    const {data} = await axios.post("./cgi/get_embedded_tsne_display.cgi", { dataset_id: datasetId });
+    const {data} = await axios.post("./cgi/get_embedded_tsne_display.cgi", convertToFormData({ dataset_id: datasetId }));
     return data;
 }
 
@@ -169,23 +195,22 @@ const getGenesFromCells = (cells) => {
  */
 const getTsneImageData = async (geneSymbol, config) => {
     config.colorblind_mode = CURRENT_USER.colorblind_mode;
+    config.gene_symbol = geneSymbol;
 
-    const {data} = await axios.post(`/api/plot/${currentAnalysis.dataset_id}/tsne`, {
-        gene_symbol: geneSymbol,
-        analysis: currentAnalysis,
-        colorize_legend_by: config.colorize_legend_by,
-        plot_type: 'tsne_static',
-        plot_by_group: config.plot_by_group,
-        max_columns: config.max_columns,
-        horizontal_legend: config.horizontal_legend,
-        x_axis: config.x_axis,
-        y_axis: config.y_axis,
-        analysis_owner_id: currentAnalysis.user_id,
-        colors: config.colors,
-        colorblind_mode: config.colorblind_mode,
-        timestamp: new Date().getTime()
-    });
+    // in order to avoid circular references (since analysis is referenced in the individual step objects),
+    //  we need to create a smaller analysis object to pass to the API
 
+    const analysis = {
+        "id": currentAnalysis.id,
+        "type": currentAnalysis.type,
+    }
+
+    const data = await apiCallsMixin.fetchTsneImage(currentAnalysis.dataset.id, analysis, "tsne_static", config);
+
+    if (!data.success || data.success < 1) {
+        const message = data.message || "Unknown error";
+        throw new Error(message);
+    }
     return data.image;
 }
 
@@ -200,7 +225,7 @@ const loadDatasetTree = async () => {
     const sharedDatasets = [];
     const domainDatasets = [];
     try {
-        const {data: datasetData} = await apiCallsMixin.fetchAllDatasets();
+        const datasetData = await apiCallsMixin.fetchAllDatasets();
 
         let counter = 0;
 
@@ -260,11 +285,10 @@ const resetWorkbench = () => {
     // Performs all the steps needed to reset the workbench if the input dataset changes
 
     // handle any data structures
+    // ? Is this necessary - new instance should clear this. Maybe we only do the UI reset?
     currentAnalysis.reset();
 
-    // Reset the analysis tool fields and some display labels
-    //$("form.reset_on_change").trigger("reset");
-
+    /*
     for (const elt of document.querySelectorAll('.reset-on-change')) {
         // TODO - replace
         elt.classList.add("is-hidden");
@@ -274,18 +298,8 @@ const resetWorkbench = () => {
         // TODO - replace
         elt.replaceChildren();
     }
+    */
     document.querySelector(UI.newAnalysisLabelElt).textContent = '';
-    document.querySelector(UI.asvgTopGenesListElt).replaceChildren();
-
-    // Hide any non-analysis-flow steps
-    document.querySelector(UI.labeledTsneElt).classList.add("is-hidden");
-    document.querySelector(UI.groupLabelsContainer).classList.add("is-hidden");
-
-    // TODO Toggle the tool buttons to hide them in the UI
-    //$('.tooltoggle').bootstrapToggle('off');
-
-    // Disable those analysis steps which have previous requirements
-    //$('.tooltoggle').bootstrapToggle('disable');
 }
 
 /**
@@ -294,7 +308,7 @@ const resetWorkbench = () => {
  */
 const saveMarkerGeneList = () => {
     // must have access to USER_SESSION_ID
-    const gc = new GeneList({
+    const gc = new GeneCart({
         session_id: CURRENT_USER.session_id,
         label: document.querySelector(UI.markerGenesListNameElt).value,
         gctype: 'unweighted-list',
@@ -302,12 +316,12 @@ const saveMarkerGeneList = () => {
         is_public: 0
     });
 
-    for (const geneId of currentAnalysis.genes_of_interest) {
+    for (const geneId of currentAnalysis.markerGenes.genesOfInterest) {
         const gene = new Gene({
             //id: geneId,    // TODO: figure out how to get ensembl ID for this
             gene_symbol: geneId,
         });
-        gc.add_gene(gene);
+        gc.addGene(gene);
     };
 
     gc.save(updateUiAfterMarkerGeneListSaveSuccess, updateUiAfterMarkerGeneListSaveFailure);
@@ -322,14 +336,15 @@ const saveMarkerGeneList = () => {
  * @throws {Error} If there is an error saving the PCA gene list.
  */
 const savePcaGeneList = async () => {
+    // ? Move to PCA class?
 
     try {
-        const {data} = await axios.post("./cgi/get_PCs_from_anndata.cgi", {
+        const {data} = await axios.post("./cgi/get_PCs_from_anndata.cgi", convertToFormData({
             'dataset_id': currentAnalysis.dataset.id,
             'analysis_id': currentAnalysis.id,
             'analysis_type': currentAnalysis.type,
             'session_id': currentAnalysis.userSessionId,
-        });
+        }));
 
         if (!data.success || data.success < 1) {
             const message = data.msg || "Unknown error";
@@ -338,7 +353,7 @@ const savePcaGeneList = async () => {
 
         const weightLabels = data.pc_data.columns;
 
-        const geneList = new WeightedGeneList({
+        const geneList = new WeightedGeneCart({
                 session_id: CURRENT_USER.session_id,
                 label: document.querySelector(UI.pcaGeneListNameElt).value,
                 gctype: 'weighted-list',
@@ -354,7 +369,7 @@ const savePcaGeneList = async () => {
                 gene_symbol: data.gene_symbols[i]
             }, weights
             );
-            geneList.add_gene(gene);
+            geneList.addGene(gene);
         });
 
         geneList.save(updateUiAfterPcaGeneListSaveSuccess, updateUiAfterPcaGeneListSaveFailure);
@@ -366,19 +381,27 @@ const savePcaGeneList = async () => {
 }
 
 /**
- * Updates the highlight status of an element and performs additional actions on the specified genes.
- *
- * @param {HTMLElement} element - The element to update the highlight status for.
- * @param {Array<string>} genes - The genes to perform additional actions on.
- * @param {boolean} addHighlight - A flag indicating whether to add or remove the highlight.
+ * Updates the highlight status of an element or a collection of elements.
+ * @param {HTMLElement|HTMLElement[]} element - The element or collection of elements to update.
+ * @param {string[]} genes - The genes associated with the element(s).
+ * @param {boolean} addHighlight - Indicates whether to add or remove the highlight.
  */
 const updateHighlightStatus = (element, genes, addHighlight) => {
-    const method = addHighlight ? 'add' : 'remove';
-    element.classList[method]('highlighted');
+    const classlistMethod = addHighlight ? 'add' : 'remove';
+
+    // If element is an array, it is a collection of elements
+    if (Array.isArray(element)) {
+        for (const elt of element) {
+            elt.classList[classlistMethod]('js-highlighted', "has-background-info", "has-text-white");
+        }
+    } else {
+        element.classList[classlistMethod]('js-highlighted', "has-background-info", "has-text-white");
+    }
     for (const gene of genes) {
-        clickedMarkerGenes[method](gene);
-        currentAnalysis[`${method}GeneOfInterest`](gene);
+        const setMethod = addHighlight ? 'add' : 'delete';
+        clickedMarkerGenes[setMethod](gene);
     };
+    currentAnalysis.markerGenes.addRemoveGenesOfInterest(genes, addHighlight);
 }
 
 /**
@@ -387,19 +410,19 @@ const updateHighlightStatus = (element, genes, addHighlight) => {
  * @param {string} geneString - The gene string to update the marker gene entries with.
  */
 const updateManualMarkerGeneEntries = (geneString) => {
-    enteredMarkerGenes = new Set();
+    typedMarkerGenes = new Set();
     const geneSyms = geneString.split(',');
 
     for (let geneSym of geneSyms) {
         geneSym = geneSym.trim();
         if (geneSym) {
-            enteredMarkerGenes.add(geneSym);
+            typedMarkerGenes.add(geneSym);
         }
     }
 
-    const counterSet = new Set([...enteredMarkerGenes, ...clickedMarkerGenes]);
+    const counterSet = new Set([...typedMarkerGenes, ...clickedMarkerGenes]);
     document.querySelector(UI.markerGenesUniqueCountElt).textContent = counterSet.size;
-    document.querySelector(UI.markerGenesEnteredCountElt).textContent = enteredMarkerGenes.size;
+    document.querySelector(UI.markerGenesEnteredCountElt).textContent = typedMarkerGenes.size;
 }
 
 /**
@@ -408,10 +431,6 @@ const updateManualMarkerGeneEntries = (geneString) => {
  * @param {Object} geneCart - The saved marker gene list object.
  */
 const updateUiAfterMarkerGeneListSaveSuccess = (geneCart) => {
-    document.querySelector("#saved-marker-gene-list-info-c > p").textContent = `Cart "${geneCart.label}" successfully saved.`;
-    document.querySelector("#saved-marker-gene-list-info-c > p").classList.remove("text-danger");
-    document.querySelector("#saved-marker-gene-list-info-c > p").classList.add("text-success");
-    document.querySelector("#saved-marker-gene-list-info-c").classList.remove("is-hidden");
     createToast("Saved marker gene list", "is-success");
 }
 
@@ -422,10 +441,6 @@ const updateUiAfterMarkerGeneListSaveSuccess = (geneCart) => {
  * @param {string} message - The error message.
  */
 const updateUiAfterMarkerGeneListSaveFailure = (geneCart, message) => {
-    document.querySelector("#saved-marker-gene-list-info-c > p").textContent = "There was an issue saving the marker gene list.";
-    document.querySelector("#saved-marker-gene-list-info-c > p").classList.remove("text-success");
-    document.querySelector("#saved-marker-gene-list-info-c > p").classList.add("text-danger");
-    document.querySelector("#saved-marker-gene-list-info-c").classList.remove("is-hidden");
     createToast(`Error saving gene list: ${geneCart.label}`);
     logErrorInConsole(message);
     document.querySelector(UI.btnSaveMarkerGeneListElt).disabled = false;
@@ -437,10 +452,6 @@ const updateUiAfterMarkerGeneListSaveFailure = (geneCart, message) => {
  * @param {Object} geneCart - The saved gene list object.
  */
 const updateUiAfterPcaGeneListSaveSuccess = (geneCart) => {
-    document.querySelector("#saved-pca-gene-list-info-c > p").textContent = `Cart "${geneCart.label}" successfully saved.`;
-    document.querySelector("#saved-pca-gene-list-info-c > p").classList.remove("text-danger");
-    document.querySelector("#saved-pca-gene-list-info-c > p").classList.add("text-success");
-    document.querySelector("#saved-pca-gene-list-info-c").classList.remove("is-hidden");
     createToast("Saved weighted gene list", "is-success");
 }
 
@@ -451,22 +462,21 @@ const updateUiAfterPcaGeneListSaveSuccess = (geneCart) => {
  * @param {string} message - The error message.
  */
 const updateUiAfterPcaGeneListSaveFailure = (geneCart, message) => {
-    document.querySelector("#saved-pca-gene-list-info-c > p").textContent = "There was an issue saving the weighted gene list.";
-    document.querySelector("#saved-pca-gene-list-info-c > p").classList.remove("text-success");
-    document.querySelector("#saved-pca-gene-list-info-c > p").classList.add("text-danger");
-    document.querySelector("#saved-pca-gene-list-info-c").classList.remove("is-hidden");
     createToast(`Error saving gene list: ${geneCart.label}`);
     logErrorInConsole(message);
     document.querySelector(UI.btnSavePcaGeneListElt).disabled = false;
 }
 
 /**
- * Validates the gene selection and updates the gene list save button accordingly.
+ * Validates the marker gene selection and updates the UI accordingly.
+ *
+ * @returns {boolean} - Returns true if there are marker genes selected, false otherwise.
  */
 const validateMarkerGeneSelection = () => {
-    currentAnalysis.genes_of_interest = new Set([...enteredMarkerGenes, ...clickedMarkerGenes]);
+    currentAnalysis.markerGenes.genesOfInterest = new Set([...typedMarkerGenes, ...clickedMarkerGenes]);
     // Only allow saving of gene list if genes are selected
-    document.querySelector(UI.btnSaveMarkerGeneListElt).disabled = !currentAnalysis.genes_of_interest.size;
+    document.querySelector(UI.btnSaveMarkerGeneListElt).disabled = !currentAnalysis.markerGenes.genesOfInterest.size;
+    return Boolean(currentAnalysis.markerGenes.genesOfInterest.size)
 }
 
 /* -- page entrypoint -- */
@@ -495,8 +505,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         // TODO: Other actions
     }
 
-    currentAnalysis = new Analysis();
-
 	try {
 		await loadDatasetTree()
         // If brought here by the "gene search results" page, curate on the dataset ID that referred us
@@ -513,6 +521,10 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
                 throw new Error(error);
             }
         }
+
+        // ? This could be used to pre-select an analysis
+        //currentAnalysis = new Analysis();
+
 	} catch (error) {
 		logErrorInConsole(error);
 	}
@@ -528,7 +540,7 @@ document.querySelector(UI.btnDeleteSavedAnalysisElt).addEventListener("click", a
     await currentAnalysis.delete();
 });
 
-document.querySelector(UI.btnMakePublicCopy).addEventListener("click", async (event) => {
+document.querySelector(UI.btnMakePublicCopyElt).addEventListener("click", async (event) => {
     // Make a public copy of the current analysis
     await currentAnalysis.makePublicCopy();
 });
@@ -543,26 +555,37 @@ document.querySelector(UI.btnSaveAnalysisElt).addEventListener("click", async (e
 
 document.querySelector(UI.btnNewAnalysisLabelSaveElt).addEventListener("click", async (event) => {
     // Save the new label to the current analysis
-    currentAnalysis.label = document.querySelector(UI.btnNewAnalysisLabelElt).textContent;
+    currentAnalysis.label = document.querySelector(UI.newAnalysisLabelElt).textContent;
     await currentAnalysis.save();
-    document.querySelector(UI.btnNewAnalysisLabelContainer).classList.add("is-hidden");
+    document.querySelector(UI.newAnalysisLabelContainer).classList.add("is-hidden");
 });
 
 document.querySelector(UI.btnNewAnalysisLabelCancelElt).addEventListener("click", async (event) => {
     // Reset the label to the current analysis label
-    document.querySelector(UI.btnNewAnalysisLabelElt).textContent = currentAnalysis.label;
-    document.querySelector(UI.btnNewAnalysisLabelContainer).classList.add("is-hidden");
+    document.querySelector(UI.newAnalysisLabelElt).textContent = currentAnalysis.label;
+    document.querySelector(UI.newAnalysisLabelContainer).classList.add("is-hidden");
 });
 
+// Handle the analysis selection change
 document.querySelector(UI.analysisSelect).addEventListener("change", async (event) => {
-    // Handle the analysis selection change
 
     // Grab the dataset ID from the current analysis to reuse it
-    const datasetId = currentAnalysis.dataset.id;
+    const datasetObj = currentAnalysis.dataset;
 
-    resetWorkbench();
-    // The first analysis ID is the blank 'New' one
-    if (event.target.dataset.analysisId === "0") {
+
+    document.querySelector(UI.currentAnalysisElt).textContent = event.target.selectedOptions[0].textContent;
+
+    // Analysis ID -1 is "select an analysis"
+    if (event.target.value === "-1") {
+        document.querySelector(UI.analysisWorkflowElt).classList.add("is-hidden");
+        return;
+    }
+
+    document.querySelector(UI.analysisWorkflowElt).classList.remove("is-hidden");
+
+    // Analysis ID 0 is the blank 'New' one
+    if (event.target.value === "0") {
+        resetWorkbench();
 
         document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
         document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
@@ -572,24 +595,23 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
         document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.add("is-hidden");
         document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.add("is-hidden");
 
-        currentAnalysis = new Analysis({'datasetId': datasetId,
-            'type': 'primary',
-            'datasetIsRaw': true});
-        // Need to reload prelim step so qc_by_mito toggle will work
-        await currentAnalysis.loadPreliminaryFigures();
+        currentAnalysis = new Analysis({
+            "datasetObj": datasetObj,
+            'type': 'primary',  // This is to start with the original dataset, but will eventually change to 'user_unsaved'
+            'datasetIsRaw': true}
+        );
 
-        // TODO: Update UI to match select state
-        document.querySelector(UI.storedAnalysisContainer).classList.remove("is-hidden");
         return;
     }
     createToast("Loading stored analysis", "is-info");
 
-    document.querySelector(UI.btnNewAnalysisLabelContainer).classList.add("is-hidden");
+    document.querySelector(UI.newAnalysisLabelContainer).classList.add("is-hidden");
+    resetWorkbench();
 
-    currentAnalysis.type = event.target.dataset.analysisType;
-    currentAnalysis.id = event.target.dataset.analysisId;
-    currentAnalysis.datasetId = event.target.dataset.datasetId;
-    currentAnalysis.getStoredAnalysis();
+    const selectedOption = event.target.selectedOptions[0];
+    currentAnalysis.type = selectedOption.dataset.analysisType;
+    currentAnalysis.id = selectedOption.dataset.analysisId;
+    currentAnalysis.getStoredAnalysis();    // await-able
 
     if (currentAnalysis.type == 'primary') {
         document.querySelector(UI.analysisPrimaryNotificationElt).classList.remove("is-hidden");
@@ -625,6 +647,47 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
         document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.add("is-hidden");
         document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.add("is-hidden");
     }
+});
+
+// Labeled tSNE
+
+document.querySelector(UI.btnLabeledTsneRunElt).addEventListener("click", async (event) => {
+    document.querySelector(UI.labeledTsnePlotContainer).replaceChildren();
+    document.querySelector(UI.labeledTsnePlotContainer).classList.remove("is-hidden");
+
+    createToast("Generating labeled tSNE plot", "is-info");
+
+    // ? Should this be in the LabeledTsne class?
+
+    document.querySelector(UI.btnLabeledTsneRunElt).classList.add("is-loading");
+
+    const dataset = currentAnalysis.dataset;
+    const data = await getEmbeddedTsneDisplay(dataset.id);
+    const config = data.plotly_config;
+
+    const img = document.createElement('img');
+    img.className = 'image'
+
+    try {
+        const image = await getTsneImageData(document.querySelector(UI.labeledTsneGeneSymbolElt).value, config);
+        if (typeof image === 'object' || typeof image === "undefined") {
+            throw new Error("No image data returned");
+        } else {
+            img.src = `data:image/png;base64,${image}`;
+            document.querySelector(UI.labeledTsnePlotContainer).appendChild(img);
+        }
+
+        createToast("Labeled tSNE plot generated", "is-success");
+
+    } catch (error) {
+        createToast(`Error generating tSNE plot: ${error.message}`);
+    } finally {
+        document.querySelector(UI.btnLabeledTsneRunElt).classList.remove("is-loading");
+
+        document.querySelector(UI.btnLabeledTsneRunElt).disabled = false;
+    }
+
+
 });
 
 // Primary Filter
@@ -690,38 +753,45 @@ document.querySelector(UI.btnAsvgSaveElt).addEventListener("click", async (event
 
 document.querySelector(UI.btnPcaRunElt).addEventListener("click", (event) => {
     // Run the PCA analysis
-    currentAnalysis.checkDependenciesAndRun(currentAnalysis.pca.runAnalysis);
+    currentAnalysis.checkDependenciesAndRun(currentAnalysis.pca.runAnalysis.bind(currentAnalysis.pca));
 });
 
 document.querySelector(UI.btnPcaTopGenesElt).addEventListener("click", (event) => {
     // Run the PCA top genes
-    currentAnalysis.checkDependenciesAndRun(currentAnalysis.pca.runAnalysisTopGenes);
+    currentAnalysis.checkDependenciesAndRun(currentAnalysis.pca.runAnalysisTopGenes.bind(currentAnalysis.pca));
 });
 
 document.querySelector(UI.btnSavePcaGeneListElt).addEventListener("click", async (event) => {
-    event.target.disabled = true;
+    event.target.classList.add("is-loading");
     if (CURRENT_USER) {
         savePcaGeneList();
     } else {
         createToast("You must be signed in to save a PCA gene list.");
     }
+    event.target.classList.remove("is-loading");
 });
 
 // tSNE
 
 document.querySelector(UI.btnTsneRunElt).addEventListener("click", (event) => {
+    event.target.classList.add("is-loading");
     // Run the tSNE analysis (and/or UMAP)
-    currentAnalysis.checkDependenciesAndRun(currentAnalysis.tsne.runAnalysis);
+    currentAnalysis.checkDependenciesAndRun(currentAnalysis.tsne.runAnalysis.bind(currentAnalysis.tsne));
+    event.target.classList.remove("is-loading");
 });
 
 // Clustering
 
 document.querySelector(UI.btnClusteringRunElt).addEventListener("click", (event) => {
+    event.target.classList.add("is-loading");
     // Run the clustering analysis
-    currentAnalysis.checkDependenciesAndRun(currentAnalysis.clustering.runAnalysis);
+    currentAnalysis.checkDependenciesAndRun(currentAnalysis.clustering.runAnalysis.bind(currentAnalysis.clustering));
+    event.target.classList.remove("is-loading");
 });
 
 document.querySelector(UI.btnClusteringEditRunElt).addEventListener("click", (event) => {
+    event.target.classList.add("is-loading");
+
     // Check for duplicate labels and run the clustering edit analysis
     //  if there are none (or if the user has selected to merge clusters)
 
@@ -732,27 +802,38 @@ document.querySelector(UI.btnClusteringEditRunElt).addEventListener("click", (ev
 
     // If the user has selected to merge clusters, run the clustering edit analysis
     if (document.querySelector(UI.clusteringMergeClustersElt).checked) {
-        currentAnalysis.checkDependenciesAndRun(currentAnalysis.clusteringEdit.runAnalysis);
+        currentAnalysis.checkDependenciesAndRun(currentAnalysis.clusteringEdit.runAnalysis.bind(currentAnalysis.clusteringEdit));
         return;
     }
 
     // Otherwise, check for duplicates and run the clustering analysis if there are none
     const duplicateCount = countAndHighlightDuplicates();
     if (duplicateCount === 0) {
-        currentAnalysis.checkDependenciesAndRun(currentAnalysis.clusteringEdit.runAnalysis);
+        currentAnalysis.checkDependenciesAndRun(currentAnalysis.clusteringEdit.runAnalysis.bind(currentAnalysis.clusteringEdit));
     }
+
+    event.target.classList.remove("is-loading");
 });
+
+} catch (error) {
+    // This is to catch buttons that have not been implemented yet
+}
 
 // Marker Genes
 
-document.querySelector(UI.btnMarkerGenesRunElt).addEventListener("click", (event) => {
+document.querySelector(UI.btnMarkerGenesRunElt).addEventListener("click", async (event) => {
+    event.target.classList.add("is-loading");
     // Run the marker genes analysis
-    currentAnalysis.checkDependenciesAndRun(currentAnalysis.markerGenes.runAnalysis);
+    await currentAnalysis.checkDependenciesAndRun(currentAnalysis.markerGenes.runAnalysis.bind(currentAnalysis.markerGenes));
+    event.target.classList.remove("is-loading");
+
 });
 
 document.querySelector(UI.btnVisualizeMarkerGenesElt).addEventListener("click", async (event) => {
+    event.target.classList.add("is-loading");
     // Visualize the marker genes
-    await performMarkerGeneVisualization();
+    await currentAnalysis.markerGenes.performMarkerGeneVisualization();
+    event.target.classList.remove("is-loading");
 });
 
 document.querySelector(UI.markerGenesManuallyEnteredElt).addEventListener("keyup", (event) => {
@@ -766,43 +847,49 @@ document.querySelector(UI.btnDownloadMarkerGenesElt).addEventListener("click", (
     currentAnalysis.markerGenes.downloadMarkerGenesTable();
 });
 
-document.querySelector(UI.markerGenesTableElt).addEventListener("onmouseover", (event) => {
-    // Add the clickable class to the table cells
-    event.target.classList.add("is-clickable");
-    // ? could just put this directly in html template
-});
-
 document.querySelector(UI.markerGenesTableElt).addEventListener("click", (event) => {
     // Handle the marker genes table cell clicks
 
-    let clickedCell = event.target.closest("td");
-    const geneOfInterest = clickedCell.textContent.trim();
+    const clickedCell = event.target.classList.contains("js-col-idx") || event.target.classList.contains("js-row-idx") ? event.target.closest("th") : event.target.closest("td");
 
-    if (event.target.classList.contains("js-col-idx")) {
-        clickedCell = event.target.closest("th");
-    }
-
-    const isHighlighted = clickedCell.classList.contains("highlighted");
+    const isHighlighted = clickedCell.classList.contains("js-highlighted");
     let genesOfInterest;
 
     switch (true) {
         // Check if the clicked cell is a row index cell
         case clickedCell.classList.contains("js-row-idx"):
-            const rowCells = [...clickedCell.parentNode.children].filter(child => child !== el);
+            const rowCells = [...clickedCell.parentNode.children].filter(child => child !== clickedCell);
             genesOfInterest = getGenesFromCells(rowCells);
-            updateHighlightStatus(clickedCell, genesOfInterest, !isHighlighted);
+
+            // highlight all cells in the row
+            updateHighlightStatus(rowCells, genesOfInterest, !isHighlighted);
+
+            // highlight clicked cell so toggle works
+            updateHighlightStatus(clickedCell, [], !isHighlighted);
+
             break;
 
         // Check if the clicked cell is a column index cell
         case clickedCell.classList.contains("js-col-idx"):
+            // if this cell is the first one, it overlaps with the row indexes and should be ignored
+            if (clickedCell.cellIndex === 0) {
+                break;
+            }
             const clickedHeaderIndex = clickedCell.cellIndex + 1;
             const colCells = document.querySelectorAll(`table tr td:nth-child(${clickedHeaderIndex})`);
             genesOfInterest = getGenesFromCells(colCells);
-            updateHighlightStatus(clickedCell, genesOfInterest, !isHighlighted);
+
+            // highlight all cells in the column
+            updateHighlightStatus([...colCells], genesOfInterest, !isHighlighted);
+
+            // highlight clicked cell so toggle works
+            updateHighlightStatus(clickedCell, [], !isHighlighted);
+
             break;
 
         // Check if the clicked cell is a data cell
         default:
+            const geneOfInterest = clickedCell.textContent.trim();
             updateHighlightStatus(clickedCell, [geneOfInterest], !isHighlighted);
             break;
     }
@@ -810,7 +897,7 @@ document.querySelector(UI.markerGenesTableElt).addEventListener("click", (event)
     clickedMarkerGenes.delete("");
 
     document.querySelector(UI.markerGenesSelectedCountElt).textContent = clickedMarkerGenes.size;
-    const counterSet = new Set([...enteredMarkerGenes, ...clickedMarkerGenes]);
+    const counterSet = new Set([...typedMarkerGenes, ...clickedMarkerGenes]);
     document.querySelector(UI.markerGenesUniqueCountElt).textContent = counterSet.size;
 });
 
@@ -824,20 +911,36 @@ document.querySelector(UI.markerGenesManuallyEnteredElt).addEventListener("chang
     validateMarkerGeneSelection();
 });
 
+document.querySelector(UI.markerGenesListNameElt).addEventListener("input", (event) => {
+    // enable the save button if there are genes to save and a name is entered
+    document.querySelector(UI.btnSaveMarkerGeneListElt).disabled = true;
+    if (event.target.value && validateMarkerGeneSelection()) {
+        document.querySelector(UI.btnSaveMarkerGeneListElt).disabled = false;
+    }
+});
+
 document.querySelector(UI.btnSaveMarkerGeneListElt).addEventListener("click", async (event) => {
-    event.target.disabled = true;
+    event.target.classList.add("is-loading");
     if (CURRENT_USER) {
         saveMarkerGeneList();
     } else {
         createToast("You must be signed in to save a marker gene list.");
     }
+    event.target.classList.remove("is-loading");
 });
 
 // Compare Genes
 
+document.querySelector(UI.queryClusterSelectElt).addEventListener("change", (event) => {
+    // If it has value, enable the compare genes button
+    document.querySelector(UI.btnCompareGenesRunElt).disabled = !event.target.value;
+});
+
 document.querySelector(UI.btnCompareGenesRunElt).addEventListener("click", async (event) => {
+    event.target.classList.add("is-loading");
     // Run the compare genes analysis
     await currentAnalysis.compareGenes.runAnalysis();
+    event.target.classList.remove("is-loading");
 });
 
 document.querySelector(UI.btnCompareGenesDownloadTableFElt).addEventListener("click", (event) => {
@@ -845,7 +948,7 @@ document.querySelector(UI.btnCompareGenesDownloadTableFElt).addEventListener("cl
     const queryId = document.querySelector(UI.queryClusterSelectElt).value;
     const referenceId = document.querySelector(UI.referenceClusterSelectElt).value;
 
-    downloadTableAsExcel("compare_genes_table_f", `cluster_comparison_${queryId}_vs_${referenceId}.xls`);
+    downloadTableAsExcel(UI.compareGenesTableFElt, `cluster_comparison_${queryId}_vs_${referenceId}.xls`);
 });
 
 document.querySelector(UI.btnCompareGenesDownloadTableRElt).addEventListener("click", (event) => {
@@ -853,7 +956,7 @@ document.querySelector(UI.btnCompareGenesDownloadTableRElt).addEventListener("cl
     const queryId = document.querySelector(UI.queryClusterSelectElt).value;
     const referenceId = document.querySelector(UI.referenceClusterSelectElt).value;
 
-    downloadTableAsExcel("compare_genes_table_r", `cluster_comparison_${referenceId}_vs_${queryId}.xls`);
+    downloadTableAsExcel(UI.compareGenesTableRElt, `cluster_comparison_${referenceId}_vs_${queryId}.xls`);
 });
 
 document.querySelector(UI.btnCompareGenesShowTableFElt).addEventListener("click", (event) => {
@@ -896,38 +999,6 @@ document.querySelector(UI.compareGenesMethodSelectElt).addEventListener("change"
     }
 
 });
-
-// Labeled tSNE
-
-document.querySelector(btnLabeledTsneRunElt).addEventListener("click", async (event) => {
-    document.querySelector(UI.labeledTsnePlotContainerElt).replaceChildren();
-    document.querySelector(UI.labeledTsnePlotContainerElt).classList.remove("is-hidden");
-    document.querySelector(UI.labeledTsneGeneNotFoundElt).classList.add("is-hidden");
-
-    createToast("Generating labeled tSNE plot", "is-info");
-
-    const dataset = currentAnalysis.dataset;
-    const data = await getEmbeddedTsneDisplay(dataset.id);
-    const config = data.plotly_config;
-
-    const img = document.createElement('img');
-    img.className = 'image'
-
-    const image = await getTsneImageData(document.querySelector(UI.labeledTsneGeneSymbolElt).value, config);
-    if (typeof image === 'object' || typeof image === "undefined") {
-        document.querySelector(UI.labeledTsneGeneNotFoundElt).classList.remove("is-hidden");
-    } else {
-        img.src = `data:image/png;base64,${image}`;
-        document.querySelector(UI.labeledTsnePlotContainerElt).appendChild(img);
-    }
-
-    document.querySelector(UI.btnLabeledTsneRunElt).disabled = false;
-    createToast("Labeled tSNE plot generated", "is-success");
-});
-
-} catch (error) {
-    // have not been implemented yet
-}
 
 /* -------------------------------------------------------- */
 

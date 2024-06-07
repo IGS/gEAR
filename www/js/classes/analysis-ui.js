@@ -3,6 +3,9 @@
 class AnalysisUI {
     // This class is a singleton that manages the UI elements of the analysis pipeline.
 
+    // TODO: Reorganize these elements into logical groups beyond the steps of the analysis pipeline.
+    // This would be something like section, container, button, element, etc.
+
     // dataset elemnents
     datasetSection = "#dataset-s"
     datasetContainer = "#dataset-c"
@@ -16,8 +19,7 @@ class AnalysisUI {
     // general analysis
     analysisSection = "#analysis-s"
     analysisContainer = "#analysis-c"
-    emptyAnalysisOptionTmpl = "#analyses-list-empty-tmpl"
-    analysisOptionTmpl = "#analyses-list-tmpl"
+    currentAnalysisElt = "#current-analysis"
     analysisSelect = "#analysis-select"
     newAnalysisOptionElt = `${this.analysisSelect} option[data-analysis-id='0']`
     newAnalysisLabelContainer = "#new-analysis-label-c"
@@ -26,7 +28,7 @@ class AnalysisUI {
     btnNewAnalysisLabelCancelElt = "#btn-new-analysis-label-cancel"
     duplicateLabelWarningElt = "#duplicate-label-warning"
     analysisPrimaryElt = "#analyses-primary"
-    analysisPrimaryNotificationElt = "#analyses-primary-notification"
+    analysisPrimaryNotificationElt = "#analysis-primary-notification"
     analysisUnsavedElt = "#analyses-unsaved"
     analysisSavedElt = "#analyses-saved"
     analysisPublicElt = "#analyses-public"
@@ -36,11 +38,25 @@ class AnalysisUI {
     btnDeleteUnsavedAnalysisElt = "#btn-delete-unsaved-analysis"
     analysisStatusInfoContainer = "#analysis-status-info-c"
     analysisStatusInfoElt = "#analysis-status-info"
-    btnMakePublicCopy = "#btn-make-public-copy"
+    btnMakePublicCopyElt = "#btn-make-public-copy"
     btnDeleteSavedAnalysisElt = "#btn-delete-saved-analysis"
     storedAnalysesContainer = "#stored-analyses-c"
-    initialInstructionsElt = ".initial-instructions"
     analysisWorkflowElt = "#analysis-workflow"
+
+    // Initial info
+    primaryInitialInfoSection = "#initial-info-s"
+    primaryInitialPlotContainer = "#initial-plot-c"
+    primaryInitialLoadingPlotElt = "#initial-loading-plot"
+    primaryInitialScatterContainer = "#initial-scatter-c"
+    primaryInitialViolinContainer = "#initial-violin-c"
+    selectedDatasetShapeInitialElt = "#selected-dataset-shape-initial"
+
+    // labeled tSNE
+    labeledTsneSection = "#labeled-tsne-s"
+    labeledTsneContainer = "#labeled-tsne-c"
+    btnLabeledTsneRunElt = "#btn-labeled-tsne-run"
+    labeledTsnePlotContainer = "#labeled-tsne-plot-c"
+    labeledTsneGeneSymbolElt = "#labeled-tsne-gene-symbol"
 
     // primary filter
     primaryFilterSection = "#primary-filter-s"
@@ -58,9 +74,7 @@ class AnalysisUI {
     filterGenesLtNCellsSelectedElt = "#filter-genes-lt-n-cells-selected"
     selectedDatasetShapeFilteredElt = "#selected-dataset-shape-filtered"
     selectedDatasetShapeFilteredContainer = "#selected-dataset-shape-filtered-c"
-    primaryInitialPlotContainer = "#primary-initial-plot-c"
-    primaryInitialScatterContainer = "#primary-initial-scatter-c"
-    primaryInitialViolinContainer = "#primary-initial-violin-c"
+
     primaryTopGenesContainer = "#primary-top-genes-c"
     primaryTopGenesPlotContainer = "#primary-top-genes-plot-c"
     primaryInitialPlotElts = ".primary-initial-plot"
@@ -85,7 +99,6 @@ class AnalysisUI {
     qbmResetableElts = `${this.qcByMitoSection} .js-resetable`
 
     // select variable genes
-    //selectVariableGenesToggleElt = "#toggle-select-variable-genes"  // Temporary
     selectVariableGenesSection = "#select-variable-genes-s"
     selectVariableGenesSectionSuccessElt = "#select-variable-genes-s-success"
     selectVariableGenesSectionFailedElt = "#select-variable-genes-s-failed"
@@ -106,7 +119,6 @@ class AnalysisUI {
     asvgTopGenesListElt = "#asvg-top-genes-list"
 
     // PCA
-    //pcaToggleElt = "#toggle-pca"   // Temporary
     pcaSection = "#pca-s"
     pcaSectionSuccessElt = "#pca-s-success"
     pcaSectionFailedElt = "#pca-s-failed"
@@ -122,12 +134,10 @@ class AnalysisUI {
     pcaMissingGeneContainer = "#pca-missing-gene-c"
     pcaMissingGeneElt = "#pca-missing-gene"
     pcaResetableElts  = `1#analysis-pca .js-resetable`
-    pcaOptionsGroupElt = "#pca-options-g"
-    weightedGeneListGroupElt = "#weighted-gene-list-g"
-
+    pcaOptionsGroupElt = "#pca-options-c"
+    weightedGeneListGroupElt = "#weighted-gene-list-c"
 
     // tSNE
-    //tsneToggleElt = "#toggle-tsne"   // Temporary
     tsneSection = "#tsne-s"
     tsneSectionSuccessElt = "#tsne-s-success"
     tsneSectionFailedElt = "#tsne-s-failed"
@@ -145,7 +155,6 @@ class AnalysisUI {
     tsneUseScaledElt = "#tsne-use-scaled"
 
     // Clustering
-    //clusteringToggleElt = "#toggle-clustering"   // Temporary
     clusteringSection = "#clustering-s"
     clusteringSectionSuccessElt = "#clustering-s-success"
     clusteringSectionFailedElt = "#clustering-s-failed"
@@ -159,26 +168,22 @@ class AnalysisUI {
     clusteringResetableElts = `#analysis-clustering .js-resetable`
 
     // Marker Genes
-    //markerGenesToggleElt = "#toggle_marker_genes"   // Temporary
     markerGenesSection = "#marker-genes-s"
     markerGenesSectionSuccessElt = "#marker-genes-s-success"
     markerGenesSectionFailedElt = "#marker-genes-s-failed"
     btnMarkerGenesRunElt = "#btn-marker-genes-run"
-    visualMarkerGenesSection = "#visualize-marker-genes-s"
     btnVisualizeMarkerGenesElt = "#btn-visualize-marker-genes"
     btnDownloadMarkerGenesElt = "#btn-download-marker-genes"
     btnSaveMarkerGeneListElt = "#btn-save-marker-gene-list"
-    markerGenesListNameElt = "#marker-gene-list-name"
     markerGenesNGenesElt = "#marker-genes-n-genes"
+    markerGenesTableContainer = "#marker-genes-table-c"
     markerGenesTableElt = "#marker-genes-table"
     markerGenesTableHeadTmpl = "#marker-genes-table-head-tmpl"
     markerGenesTableHeadRowElt = `${this.markerGenesTableElt} thead tr`
-    markerGenesTableHeaderElts = `${this.markerGenesTableElt} thead th`
-    markerGenesTableBodyTmpl = "#marker-genes-table-body-tmpl"
+    markerGenesTableHeadCellElts = `${this.markerGenesTableElt} thead th`
+    markerGenesTableRowTmpl = "#marker-genes-table-row-tmpl"
     markerGenesTableBodyElt = `${this.markerGenesTableElt} tbody`
-    markerGenesTableBodyRowElts = `${this.markerGenesTableBodyElt} tr`
-    markerGenesTableHighlightedElts = `${this.markerGenesTableElt} td.highlighted`
-    markerGenesTableHeader = "#marker-genes-table-header"
+    markerGenesTableHighlightedElts = `${this.markerGenesTableElt} td.js-highlighted`
     markerGenesPlotContainer = "#marker-genes-plot-c"
     markerGenesVisualizationContainer = "#marker-genes-visualization-c"
     markerGenesDotplotContainer = "#marker-genes-dotplot-c"
@@ -187,11 +192,12 @@ class AnalysisUI {
     markerGenesSelectedCountElt = "#marker-genes-selected-count"
     markerGenesEnteredCountElt = "#marker-genes-entered-count"
     markerGenesUniqueCountElt = "#marker-genes-unique-count"
+    markerGenesListContainer = "#marker-gene-list-c"
+    markerGenesListNameElt = "#marker-gene-list-name"
 
     // Clustering (edit mode)
-    //clusteringToggleElt = "#toggle-clustering-edit"   // Temporary
-    clusteringEditSection = "#edit-clustering-s"
-    btnClusteringEditRunElt = "#btn-edit-clustering"
+    clusteringEditSection = "#clustering-edit-s"
+    btnClusteringEditRunElt = "#btn-clustering-edit"
     // -- using resolutionElts values from the non-edit clustering
     // -- using clusterNNeighborsElt values from the non-edit clustering
     clusterTsnePlotEditElt = "#cluster-tsne-plot-edit-c"
@@ -203,12 +209,16 @@ class AnalysisUI {
     clusterGroupLabelsInputElts = '#cluster-group-labels td.group-user-label input'
     clusteringMergeClustersElt = "#clustering-merge-clusters"
 
-
     // Compare Genes
-    //compareGenesToggleElt = "#toggle-compare-genes"   // Temporary
     compareGenesSection = "#compare-genes-s"
+    compareGenesSectionSuccessElt = "#compare-genes-s-success"
+    compareGenesSectionFailedElt = "#compare-genes-s-failed"
     btnCompareGenesRunElt = "#btn-compare-genes-run"
-    clusterOptsTmpl = "#cluster-list-tmpl"
+    btnCompareGenesShowTableFElt = "#btn-compare-genes-show-table-f"
+    btnCompareGenesShowTableRElt = "#btn-compare-genes-show-table-r"
+    btnCompareGenesDownloadTableFElt = "#btn-compare-genes-download-table-f"
+    btnCompareGenesDownloadTableRElt = "#btn-compare-genes-download-table-r"
+    compareGenesCollapsableElt = "#compare-genes-collapsable"
     queryClusterOptionsElt = "#query-cluster-options"
     referenceClusterOptionsElt = "#reference-cluster-options"
     queryClusterSelectElt = "#query-cluster"
@@ -220,22 +230,12 @@ class AnalysisUI {
     compareGenesViolinContainer = "#compare-genes-violin-c"
     compareGenesRankedRevContainer = "#compare-genes-ranked-rev-c"
     compareGenesViolinRevContainer = "#compare-genes-violin-rev-c"
-    compareGenesInstructionsElt = "#analysis-compare-genes .tool-instructions"
-    compareGenesResultsContainer = "#compare-genes-results-c"
-    compareGenesResetableElts = `${this.compareGenesResultsContainer} .js-resetable`
-    btnCompareGenesDownloadTableFElt = "#btn-compare-genes-download-table-f"
-    btnCompareGenesDownloadTableRElt = "#btn-compare-genes-download-table-r"
-    btnCompareGenesShowTableFElt = "#btn-compare-genes-show-table-f"
-    btnCompareGenesShowTableRElt = "#btn-compare-genes-show-table-r"
+    compareGenesTableFElt = "#compare-genes-table-f"
+    compareGenesTableRElt = "#compare-genes-table-r"
+    compareGenesInstructionsElt = `${this.compareGenesCollapsableElt} .tool-instructions`
+    compareGenesResultsContainer = "#compare-genes-visualization-c"
+    compareGenesResetableElts = `${this.compareGenesCollapsableElt} .js-resetable`
 
-    // labeled tSNE
-    labeledTsneSection = "#labeled-tsne-s"
-    labeledTsneContainer = "#labeled-tsne-c"
-    //labeledTsneElt = "#analysis-sbs-tsne"
-    btnLabeledTsneRunElt = "#btn-labeled-tsne-run"
-    labeledTsnePlotContainer = "#labeled-tsne-plot-c"
-    labeledTsneGeneNotFoundElt = "#labeled-tsne-gene-not-found"
-    labeledTsneGeneSymbolElt = "#labeled-tsne-gene-symbol"
 }
 
 // Singleton instance of the AnalysisUI class

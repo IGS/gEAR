@@ -22,7 +22,7 @@ class GeneCart {
         */
 
         try {
-            const {data} = await axios.post("./cgi/save_new_genecart_json.cgi", gc);
+            const {data} = await axios.post("./cgi/save_new_genecart_json.cgi", this);
             this.id = data.id
             if (callback) callback(this);
         } catch (error) {
