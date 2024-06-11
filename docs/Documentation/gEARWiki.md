@@ -16,8 +16,8 @@ The gEAR is maintained by a team at the University of Maryland School of Medicin
 - New navigation panel on the left hand sidebar (follows from page to page)
 - Renaming of various items/pages
   - Single-gene and Multi-gene curators are now called Single-Gene and Multi-gene Displays
-  - dataset collections are now called Dataset Collections
-  - gene lists are now called Gene Lists
+  - profiles are now called Dataset Collections
+  - gene carts are now called Gene Lists
 - Home page has been changed to "My Workspace" Dashboard
 - Resume where you left off history when logged in from the My Workspace Dashboard
 - More customizations on panel size for Dataset Collections
