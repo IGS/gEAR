@@ -179,7 +179,7 @@ Similar to how dataset collections are used on gEAR to collect datasets, gene li
 
 gene lists can be created manually, via upload, or directly from analysis outputs:
 * **Manually/ via upload:**
-Open the gene list manager by clicking on your username in the top right of the page and selecting gene list Manager. The gene list Manager follows a similar layout as the dataset explorer where you can search for other public or private gene lists. To create a new cart, click on the create new cart button on the left side of the window. To upload from a file, choose the upload gene list option and select the file you wish to upload (file must be comma or space separated gene symbols). To add genes (either by copy/paste or manual entry, choose paste gene list. In addition to the genes you wish to add, give the list a name, description, and select the organism and privacy you wish for the cart (gene lists are private by default). 
+Open the gene list manager by clicking Gene Lists on the navigation panel on the left side of the page. The gene list Manager follows a similar layout as the dataset explorer where you can search for other public or private gene lists. To create a new list, click on the create new gene list button on the left side of the window. To upload from a file, choose the upload gene list option and select the file you wish to upload (file must be comma or space separated gene symbols). To add genes (either by copy/paste or manual entry, choose paste gene list. In addition to the genes you wish to add, give the list a name, description, and select the organism and privacy you wish for the cart (gene lists are private by default). 
 
 * **More information coming soon on weighted gene lists**
 
@@ -190,7 +190,7 @@ Open the gene list manager by clicking on your username in the top right of the 
 
 * **From the RNAseq comparison tool:**
 
-In the RNAseq comparison tool, you can create a new gene list containing your genes of interest directly from the plotting or statistical results. After making a plot, click and drag to select genes of interest (genes selected will show on the right side of the page). To download a text file listing all the genes use the download icon while the cart icon adds all the selected genes to a new gene list which can be used elsewhere. 
+In the RNAseq comparison tool, you can create a new gene list containing your genes of interest directly from the plotting or statistical results. After making a plot, click and drag to select genes of interest.  Click on View and save selected genes to proceed. To download a text file listing all the genes use the download button (found next to save)) while the save button adds all the selected genes to a new gene list (You must provide a name to proceed) which can be used elsewhere. 
 
 <img width="1281" alt="Screen Shot 2022-04-26 at 10 51 31 AM" src="https://user-images.githubusercontent.com/28451557/165328652-2eef196d-7cd9-4764-aa3b-999166d31121.png">
 
@@ -198,11 +198,11 @@ In the RNAseq comparison tool, you can create a new gene list containing your ge
 
 * **Using created or public gene lists**
 
-gene lists can be used in the multigene display and gene expression tools. To use in the multigene viewer (and create your own visualiations), choose the dataset you wish to view and then under step 3, use the dropdown menu next to 'load from gene list' to add your genes. 
+gene lists can be used in the multigene display and gene expression tools. To use in the multigene viewer (and create your own visualiations), choose the dataset you wish to view and then under , use the dropdown menu "Quick search using Gene Lists" under select genes to select a gene list or individual genes from the lists to add your genes. 
 
 <img width="700" alt="Screen Shot 2022-04-25 at 3 30 54 PM" src="https://user-images.githubusercontent.com/28451557/165160753-90686dce-3d3e-4fb2-8552-632c2b81a2f5.png">
 
-gene lists can be used on already created visualizations using the gene expression tool on the homepage. First, click the strand of DNA to change the search type from single to multigene (icon is two DNA strands). The click on the cart to select what gene list you would like to add. Press search to search for gene list visualizations of your genes of interest (Note: not all dataset collections have multigene visualizations, the multigene viewer tool can be used to create new visualizations). 
+gene lists can be used on already created visualizations using the gene expression tool on the My Workspace Dashboard. First, click the Multi-gene Display radio button to change the search type from single to multigene. Then click on the "Quick search using Gene Lists" to select what gene list you would like to add. Press search to search for gene list visualizations of your genes of interest (Note: not all dataset collections have multigene visualizations, the multi-gene Displays tool can be used to create new visualizations). 
 
 <img width="700" alt="Screen Shot 2022-04-25 at 3 36 15 PM" src="https://user-images.githubusercontent.com/28451557/165161517-c97580b9-f6b4-449a-b442-8e3f2b92e886.png">
 
@@ -210,6 +210,7 @@ Multigene displays can also be toggled on the results page:
 
 <img width="700" alt="Screen Shot 2022-04-25 at 3 42 29 PM" src="https://user-images.githubusercontent.com/28451557/165162494-304abec6-c3e9-4bb0-8899-9375adc0d9e9.png">
 
+# TODO Upload Data wiki rewrite (waiting for Upload Data to complete)
 # Upload data
 
 For more information on how to upload different types of data into gEAR, see our [upload documentation](https://github.com/IGS/gEAR/blob/main/docs/Documentation/UploadingOverview.md).
@@ -223,25 +224,25 @@ Currently gEAR supports the upload of:
 
 The ability to create a variety of visualizations for the same dataset is one of the major strengths of the gEAR platform. In addition to the displays created by the initial uploader, if there are visualizations that are better suited to your question about a dataset you can quickly create new custom displays based on either your own analysis or primary analysis done by the uploader. 
 
-Besides for visualizations created in the multigene curator or analysis tools (see above), custom displays can be added to dataset collections. To open a dataset in the curation tool (the same tool you see following initial dataset upload), click the dropdown menu for the dataset you wish to make a new display for and choose the curate display option (If you are searching in the dataset explorer, you will need to select the particular dataset you wish to use with the eye icon first). 
+Besides for visualizations created in the Multi-Gene Displays curator or analysis tools (see above), custom displays can be added to dataset collections. To open a dataset in the curation tool (the same tool you see following initial dataset upload), click the Single-Gene or Multi-gene Displays on the left hand navigation bar and choose the dataset you wish to make a new display for and select create new display on the second step.  Continue on each step selecting options necessary for your visualization. 
 
 <img width="700" alt="Screen Shot 2022-04-26 at 10 19 28 AM" src="https://user-images.githubusercontent.com/28451557/165321852-32433436-ac4e-4722-9531-36edac62838f.png">
 
-In the curation display window, you will see all the displays that are public or owned/shared with you. The current default view will be denoted by a default tag in the corner of the plot image. To create a new display click the add display box.
+You can see displays shared and owned by you for a dataset when in a dataset collection.  First select the 3 dots at the upper right section of the dataset, and click on choose display. In the curation display window, you will see all the displays that are public or owned/shared with you. The current default view will be denoted by a blue box. To curate a new display once again click on the three dots and select whichever curator you're interested in.
 
 <img width="700" alt="Screen Shot 2022-04-26 at 10 23 05 AM" src="https://user-images.githubusercontent.com/28451557/165322281-8487e0cc-3e92-4390-aaec-625b9b18c728.png">
 
-Choosing add display will open a new window which will have two choices for Dataset Type (Primary Data and Stored Analysis). Primary Data allows for plotting of data directly from the information uploaded (i.e. UMAP/tSNE coordinates or counts provided by the uploading individual). Choosing stored analysis allows for plotting from data that has been processed from the raw data in some way. Depending on the dataset, this could be an analysis uploaded by the dataset authors or a saved analysis you have conducted in one of the analysis tools (e.g. single cell workbench). Note: not all datasets will have a stored analysis (but you can create one).
+Choosing one of the curators will navigate to the curator tool. You will first have to choose whether to curate a new display or clone a previously curated display.
 
-After selecting the data source, the next step is to select the type of display you wish to create.  Some choices may not be available depending on observations in the particular dataset you are interested in. 
+You will then have two choices for Dataset Type (Primary Data and Stored Analysis). Primary Data allows for plotting of data directly from the information uploaded (i.e. UMAP/tSNE coordinates or counts provided by the uploading individual). Choosing stored analysis allows for plotting from data that has been processed from the raw data in some way. Depending on the dataset, this could be an analysis uploaded by the dataset authors or a saved analysis you have conducted in one of the analysis tools (e.g. single cell workbench). Note: not all datasets will have a stored analysis (but you can create one).
 
-After adding the plot option you wish and a name for the plot, selecting create plot will bring you back to the display selection screen where you can choose what plot to make as the default for that dataset.
+After adding the analysis type and type of plot you wish to curate, you'll have other options based on your plot-type.  Fill these out as necessary and click plot where you can refine any options and see your visualization.
 
 <img width="500" alt="Screen Shot 2022-04-26 at 10 31 33 AM" src="https://user-images.githubusercontent.com/28451557/165324083-a328679f-505b-4e69-86bb-089a9829108e.png">
 
 ## Editing dataset information after upload
 
-The dataset information shown in the dataset explore can be edited by the dataset's owner following upload. To edit, click the expand button in the dataset explore then the pencil icon. On this page you can edit the dataset title, description, as well as add a Pubmed or GEO id. Note: Special characters cannot be used in the dataset title or descriptions.
+The dataset information shown in the dataset explore can be edited by the dataset's owner following upload. To edit, first click on the list view option at the top of the page.  Then click the pencil icon next to the dataset you wish to edit. On this page you can edit the dataset title, description, as well as add a Pubmed or GEO id. Note: Special characters cannot be used in the dataset title or descriptions.
 
 <img width="1572" alt="Screen Shot 2022-07-15 at 8 20 16 AM" src="https://user-images.githubusercontent.com/28451557/179221840-90231c6d-0b97-4770-b9b9-6ced3ed86586.png">
 
