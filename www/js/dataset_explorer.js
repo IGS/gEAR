@@ -839,7 +839,6 @@ const changeDatasetCollectionCallback = async (datasetCollectionData=null) => {
         }
     }
 
-    const imageUrls = {"single":{}, "multi":{}};
     const titles = {};
     for (const dataset of datasetData.datasets) {
         titles[dataset.dataset_id] = dataset.title;
@@ -879,8 +878,8 @@ const changeDatasetCollectionCallback = async (datasetCollectionData=null) => {
 
     // JSON parse every layout member
     const layoutMembers = collection.members;
-    const singleLayoutMembers = collection.singlegene_members;
-    const multiLayoutMembers = collection.multigene_members;
+    const singleLayoutMembers = collection.singlegene_members || [];
+    const multiLayoutMembers = collection.multigene_members || [];
 
     // Legacy mode - if all tiles have startCol = 1, then we are in legacy mode
     // These layouts were generated only with a "width" property
