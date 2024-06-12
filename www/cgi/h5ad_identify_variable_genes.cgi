@@ -34,7 +34,7 @@ def main():
 
     norm_counts_per_cell = float(form.getvalue('norm_counts_per_cell'))
     flavor = form.getvalue('flavor')
-    n_top_genes = form.getvalue('n_top_genes')
+    n_top_genes = form.getvalue('n_top_genes', None)
     min_mean = float(form.getvalue('min_mean'))
     max_mean = float(form.getvalue('max_mean'))
     min_dispersion = float(form.getvalue('min_dispersion'))
@@ -44,7 +44,7 @@ def main():
 
     adata = ana.get_adata()
 
-    if n_top_genes is not None:
+    if n_top_genes:
         n_top_genes = int(n_top_genes)
 
     # primary or public analysis should not be overwritten
