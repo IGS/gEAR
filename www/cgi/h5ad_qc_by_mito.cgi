@@ -72,6 +72,7 @@ def main():
         adata.obs['n_counts'] = np.sum(adata.X, axis=1)
 
     os.chdir(os.path.dirname(dest_datafile_path))
+
     axs = sc.pl.violin(adata, ['n_genes', 'n_counts', 'percent_mito'],
                        jitter=0.4, multi_panel=True, save="_qc_by_mito.png")
 

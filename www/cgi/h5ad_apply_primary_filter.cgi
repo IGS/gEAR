@@ -63,15 +63,13 @@ def main():
     adata.var_names_make_unique()
     adata.obs_names_make_unique()
 
-    was_filtered = False
+    was_filtered = False    # Need this to check if the "n_genes" and "n_cells" columns are present
 
     # API documentation states one filter param per call
     if filter_genes_lt_n_cells:
-        was_filtered = True
         sc.pp.filter_genes(adata, min_cells=int(filter_genes_lt_n_cells))
 
     if filter_genes_gt_n_cells:
-        was_filtered = True
         sc.pp.filter_genes(adata, max_cells=int(filter_genes_gt_n_cells))
 
     if filter_cells_lt_n_genes:
