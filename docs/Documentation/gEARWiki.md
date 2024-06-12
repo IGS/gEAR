@@ -32,19 +32,19 @@ To create an account, click the "Log In" dropdown button at the top right of the
 
 ## Home page 
 The gEAR homepage ([umgear.org](https://umgear.org/)) has changed to a "My Workspace" Dashboard. Links to the most commonly used tools and utilities on the gEAR. At any time on the site, you can return to the homepage by clicking the gEAR icon in the top left corner. 
-
- NEED TO CHANGE THIS!!
-<img width="700" alt="Screen Shot 2022-04-25 at 8 35 42 AM" src="https://user-images.githubusercontent.com/28451557/165090152-58143d40-3165-4e32-a79f-e4587f9ab010.png">
+ 
+<img width="700" alt="Screen Shot 2022-04-25 at 8 35 42 AM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/ScreenshotDashboard.png">
 
 ## Navigation Panel
 There is now a navigation panel on the left hand side of the gEAR.  This navigation panel will follow between pages and allow the user to quickly access different modules within the gEAR.  As a user becomes more familiar with the symbols on the navigation panel, they can choose to minimize the panel to only display the symbols (without any text) by clicking on the arrow in the upper right hand corner of the navigation panel.
 
-*Picture Needed*
+<img width="200" alt="Screen Shot 2022-04-25 at 8 35 42 AM" 
+src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/ScreenshotNavBar.png">
 
 ## Searching for genes of interest
-Searching for genes of interest in public datasets is one of the most common uses of the gEAR platform. A good place to start searching is on the homepage. To search for your gene of interest, put your gene name in the gene expression search bar (see below) and press search.
+Searching for genes of interest in public datasets is one of the most common uses of the gEAR platform. A good place to start searching is on the homepage. To search for your gene of interest, put your gene name in the gene expression search bar that appears about mid-page on the My Workspace Dashboard and press search.
 
-<img width="700" alt="Screen Shot 2022-04-25 at 7 48 24 AM" src="https://user-images.githubusercontent.com/28451557/165085274-6b9f8261-b0df-4a19-9d37-bb2e77f47c1d.png">
+<img width="700" alt="Screen Shot 2022-04-25 at 7 48 24 AM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/ScreenshotGeneExpressionSearch.png">
 
 For more information about searching for genes of interest and other basic functions in gEAR see:
 * [Walkthrough Video](https://www.youtube.com/watch?v=sr_kvm7W4OE)
@@ -52,11 +52,10 @@ For more information about searching for genes of interest and other basic funct
 
 ## Finding datasets
 If you wish to look at results for a particular dataset or explore what datasets are available, you can either search by clicking on the "Explore Datasets" tab on the My Workspace Dashboard or on "Datasets" tab on the Naviagation panel.
-<img width="1270" alt="Screen Shot 2022-04-25 at 9 17 19 AM" src="https://user-images.githubusercontent.com/28451557/165096966-65a4ce7a-0819-4c1b-bd33-690f8f1b1a65.png">
 
 Once in the dataset explorer you can refine your search by type of data, date, organism, etc. by choosing options on the left side of the page. To search for genes within a particular dataset, click on the list view button at the top of the page (under "View:" the three lines button), click on the eye symbol and enter your gene/genes of interest in the search box.
 
-<img width="700" alt="Screen Shot 2022-04-25 at 9 40 16 AM" src="https://user-images.githubusercontent.com/28451557/165101613-7d987c0b-e072-413c-8ab0-ade31d72f749.png">
+<img width="700" alt="Screen Shot 2022-04-25 at 9 40 16 AM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/ScreenshotDataSetExplorer.png">
 
 
 ## Gene annotations
