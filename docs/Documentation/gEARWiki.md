@@ -70,15 +70,18 @@ Gene annotations can be viewed on the gEAR platform in several ways. After searc
 
 * **Functional annotation:**
     * Clicking on the functional annotation text will expand the window to show additional information for the gene of choice including: GO terms, full names, and any aliases. 
-<img width="700" alt="Screen Shot 2022-04-25 at 8 58 21 AM" src="https://user-images.githubusercontent.com/28451557/165094332-c56b29e5-c644-4255-aec2-38ba1dde3959.png">
+<img width="700" alt="Screen Shot 2022-04-25 at 8 58 21 AM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/ScreenshotAnnotation.png">
 
 ## Viewing dataset information
 There are two ways of viewing the information associated with a dataset:
 1. Within the dataset explorer, click the list view expand button (in the View: section the open box) located at the top of the page.
-<img width="700" alt="Screen Shot 2022-04-25 at 12 33 48 PM" src="https://user-images.githubusercontent.com/28451557/165133610-6ee0ad79-44c4-4309-86c8-140287591540.png">
+<img width="700" alt="Screen Shot 2022-04-25 at 12 33 48 PM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/ScreenshotDatasetInformation.png">
 
 *Still needs to be implemented working on it -- below*
 2. When viewing a dataset collection (e.g. after searching for a gene), open the dropdown menu and click info for a popup window with additional information to appear.
+
+*Need to change screenshot*
+
 <img width="700" alt="Screen Shot 2022-04-25 at 12 36 38 PM" src="https://user-images.githubusercontent.com/28451557/165134122-80917bbd-d0e1-499d-a6b8-f7fc2edcb3be.png">
 
 ## Dataset Collections
@@ -88,7 +91,7 @@ dataset collections are gEAR's way of collecting together datasets around a simi
 
 To select a dataset collection you wish to search within, use the dropdown menu in the gene expression viewer to pick a dataset collection (you will see options for highlighted dataset collections, dataset collections you own, dataset collections you've recently visited, dataset collections from groups you are a part of, and dataset collections shared with you. 
 
-<img width="700" alt="Screen Shot 2022-04-25 at 12 46 25 PM" src="https://user-images.githubusercontent.com/28451557/165135535-232403f8-8f71-4351-92f9-966296987164.png">
+<img width="700" alt="Screen Shot 2022-04-25 at 12 46 25 PM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/ScreenshotDatasetCollection_FromGeneExpression.png">
 
 The default dataset collection (Hearing) contains 10 datasets that offer a broad overview of gene expression while other dataset collections may be devoted to specific organisms (e.g. zebrafish) or collections of displays used in individual publications. dataset collections can be created and modified in the Dataset Explorer (Note: you can't directly modify dataset collections owned by others but feel free to make duplicates with any modifications you wish). 
 
