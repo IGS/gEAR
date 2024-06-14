@@ -99,7 +99,7 @@ def main():
 
     top_genes = ", ".join(highly_variable_genes)
 
-    result = {'n_obs': n_obs, 'n_genes': n_genes, 'top_genes': top_genes}
+    result = {"success": 1, 'n_obs': n_obs, 'n_genes': n_genes, 'top_genes': top_genes}
 
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')
