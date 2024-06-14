@@ -236,6 +236,13 @@ class PlotlyData(Resource):
         # Filter by obs filters
         if filters:
             for col, values in filters.items():
+                # if there is an "NA" value in the filters but no "NA" in the dataframe
+                # check if it is a missing value, and if so, impute it
+                if "NA" in values and "NA" not in selected.obs[col].cat.categories:
+                    values.remove("NA")
+                    selected.obs[col].cat.add_categories("NA")
+                    selected.obs[col].fillna("NA", inplace=True)
+
                 selected_filter = selected.obs[col].isin(values)
                 selected = selected[selected_filter, :]
 
