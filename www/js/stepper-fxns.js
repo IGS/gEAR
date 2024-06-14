@@ -29,8 +29,8 @@ const failStep = (selector) => {
  * @param {string} selectorHref - The href value of the anchor element to modify.
  */
 const passStepWithHref = (selectorHref) => {
-    document.querySelector(`a[href='${selectorHref}']`).parentElement.classList.remove("is-active")
-    document.querySelector(`a[href='${selectorHref}']`).classList.remove("is-dashed", "is-danger")
+    document.querySelector(`a[href='${selectorHref}']`).parentElement.classList.remove("is-active", "is-dashed")
+    document.querySelector(`a[href='${selectorHref}']`).classList.remove("is-danger")
     document.querySelector(`a[href='${selectorHref}']`).classList.add("is-hollow")
 }
 
@@ -41,8 +41,8 @@ const passStepWithHref = (selectorHref) => {
  * @param {string} selector - The CSS selector of the element to modify.
  */
 const passStep = (selector) => {
-    document.querySelector(selector).parentElement.classList.remove("is-active")
-    document.querySelector(selector).classList.remove("is-dashed", "is-danger")
+    document.querySelector(selector).parentElement.classList.remove("is-active", "is-dashed")
+    document.querySelector(selector).classList.remove("is-danger")
     document.querySelector(selector).classList.add("is-hollow")
 
 }
@@ -60,7 +60,7 @@ const openNextStepHrefs = (selectorHrefs, activeSelectorHref=null, clickActive=f
     }
 
     for (const href of selectorHrefs) {
-        document.querySelector(`a[href='${href}']`).classList.add("is-dashed")
+        document.querySelector(`a[href='${href}']`).parentElement.classList.add("is-dashed")
         if (href !== activeSelectorHref) {
             document.querySelector(`a[href='${href}']`).classList.add("is-hollow")
         }
@@ -90,7 +90,7 @@ const openNextSteps = (selectors, activeSelector=null) => {
     }
 
     for (const selector of selectors) {
-        document.querySelector(selector).classList.add("is-dashed");
+        document.querySelector(selector).parentElement.classList.add("is-dashed");
 
         if (selector !== activeSelector) {
             document.querySelector(selector).classList.add("is-hollow")
