@@ -1,5 +1,13 @@
+div.step-c {
+	margin-top: 20px;
+}
 h1 {
 	font-size: 130%;
 	font-weight: bold;
 	margin-bottom: 10px;
+}
+.stick-to-top {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
 }

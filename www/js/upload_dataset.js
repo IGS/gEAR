@@ -46,3 +46,16 @@ function guid(uid_length) {
         return _p8();
     }
 }
+
+
+/*  From Shaun, used to toggle element's stickiness */
+// if scrolling makes #summar-s go above top of screen, make it sticky
+/*
+window.addEventListener("scroll", (event) => {
+    const summary = document.querySelector("<<whatever you want here>>");
+    summary.classList.remove("stick-to-top");
+    if (summary.getBoundingClientRect().top < 0) {
+        summary.classList.add("stick-to-top");
+    }
+});
+*/

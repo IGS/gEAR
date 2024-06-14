@@ -3,6 +3,29 @@
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
 <!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+
+<!--
+  Uploading process:
+  - Upload metadata file
+  - Scan metadata file for issues
+  - Report any issues, show user processed metadata
+
+  - Show data file format choices
+    - 3-tab / MEX
+    - Rdata file / Seurat object
+    - H5AD / AnnData
+  - Provide upload controls:
+    - File upload
+    - URL upload
+  - Do dataset validations
+    - 3-tab / MEX
+      - Check for missing values
+      - Check for non-numeric values
+      - Check for non-unique row names
+      - Check for non-unique column names
+      - Check for non-unique cell values
+
+-->
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
@@ -20,6 +43,8 @@
 
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css" />
+        
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/octoshrimpy/bulma-o-steps@master/bulma-steps.min.css">
 
         <!-- Ensures we always get a new version (during our current active development cycles) -->
         <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
@@ -45,11 +70,62 @@
             </div>
 
             <div id="logged-in-c" class="is-hidden">
-              <h1>Upload a dataset</h1>
-              <p>
-                Please upload a dataset to get started. You can upload a dataset in CSV, TSV, or Excel format. The dataset should be in a tabular format with the first row containing the column names. The dataset should not contain any missing values.
-              </p>
-            </div>
+              <div id="step-graphic-c">
+                <ul class="steps has-content-centered">
+                  <li class="steps-segment">
+                    <span class="steps-marker">
+                      <span class="icon">
+                        <i class="mdi mdi-check-bold"></i>
+                      </span>
+                    </span>
+                    <div class="steps-content">
+                      <p class="is-size-4">Upload metadata</p>
+                      <p>Use the provided template to create and upload a metadata file for your dataset.</p>
+                    </div>
+                  </li>
+                  <li class="steps-segment is-active">
+                    <span class="steps-marker is-light">
+                      <span class="icon">
+                        <i class="mdi mdi-wrench"></i>
+                      </span>
+                    </span>
+                    <div class="steps-content">
+                      <p class="is-size-4">Validate metadata</p>
+                      <p>Check and correct the content of your metadata file.</p>
+                    </div>
+                  </li>
+                  <li class="steps-segment">
+                    <span class="steps-marker"></span>
+                    <div class="steps-content">
+                      <p class="is-size-4">Upload dataset</p>
+                      <p>Choose your dataset format and upload directly or provide a supported URL.</p>
+                    </div>
+                  </li>
+                  <li class="steps-segment">
+                    <span class="steps-marker"></span>
+                    <div class="steps-content">
+                      <p class="is-size-4">Curate dataset</p>
+                      <p>Get the most out of your dataset by doing curation steps here.</p>
+                    </div>
+                  </li>
+                  <li class="steps-segment">
+                    <span class="steps-marker"></span>
+                    <div class="steps-content">
+                      <p class="is-size-4">Final submission</p>
+                      <p>Your dataset gets fully processed and integrated into the system here.</p>
+                    </div>
+                  </li>
+                </ul>
+              </div> <!-- end #step-c -->
+              <hr />
+              <div id="step-upload-metadata-c" class="step-c">
+                <h1>Step - Upload metadata</h1>
+                <p>
+                  The 'metadata' is the data describing your dataset, including things like title, authorship, sequencing 
+                  protocols used, etc. This is the first step in uploading a dataset to the portal.
+                </p>
+              </div>
+            </div> <!-- end #logged-in-c -->
 
             <div class="columns is-multiline is-variable is-3 is-hidden">
               <div class="column is-12">
