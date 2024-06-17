@@ -12,7 +12,7 @@
 // Active step
 // parent.is-active: Line marker up to the current step
 // is-light: The current step
-// i.mdi-edit: The icon for the active step
+// i.mdi-pencil: The icon for the active step
 
 // Failed step
 // is-danger: Failed step
@@ -27,7 +27,7 @@ const failStepWithHref = (selectorHref) => {
     document.querySelector(`a[href='${selectorHref}']`).parentElement.classList.add("is-active")
     document.querySelector(`a[href='${selectorHref}']`).classList.remove("is-light")
     document.querySelector(`a[href='${selectorHref}']`).classList.add("is-danger")
-    document.querySelector(`a[href='${selectorHref} i`).classList.remove("mdi-check")
+    document.querySelector(`a[href='${selectorHref}'] i`).classList.remove("mdi-check")
 }
 
 
@@ -50,7 +50,7 @@ const passStepWithHref = (selectorHref) => {
     document.querySelector(`a[href='${selectorHref}']`).parentElement.classList.remove("is-active")
     document.querySelector(`a[href='${selectorHref}']`).parentElement.classList.add("is-dashed")
     document.querySelector(`a[href='${selectorHref}']`).classList.remove("is-danger", "is-light")
-    document.querySelector(`a[href='${selectorHref}'] i`).classList.remove("mdi-edit")
+    document.querySelector(`a[href='${selectorHref}'] i`).classList.remove("mdi-pencil")
     document.querySelector(`a[href='${selectorHref}'] i`).classList.add("mdi-check")
 }
 
@@ -62,7 +62,7 @@ const passStep = (selector) => {
     document.querySelector(selector).parentElement.classList.remove("is-active")
     document.querySelector(selector).parentElement.classList.add("is-dashed")
     document.querySelector(selector).classList.remove("is-danger", "is-light")
-    document.querySelector(`${selector} i`).classList.remove("mdi-edit")
+    document.querySelector(`${selector} i`).classList.remove("mdi-pencil")
     document.querySelector(`${selector} i`).classList.add("mdi-check")
 }
 
@@ -81,7 +81,7 @@ const openNextStepHrefs = (selectorHrefs, activeSelectorHref=null, clickActive=f
 
     for (const href of selectorHrefs) {
         document.querySelector(`a[href='${href}']`).classList.add("is-light")
-        document.querySelector(`a[href='${href} i']`).classList.add("mdi-edit")
+        document.querySelector(`a[href='${href}'] i`).classList.add("mdi-pencil")
     }
 
     if (activeSelectorHref) {
@@ -109,7 +109,7 @@ const openNextSteps = (selectors, activeSelector=null) => {
 
     for (const selector of selectors) {
         document.querySelector(selector).classList.add("is-light");
-        document.querySelector(`${selector} i`).classList.add("mdi-edit")
+        document.querySelector(`${selector} i`).classList.add("mdi-pencil")
     }
 
     if (activeSelector) {
