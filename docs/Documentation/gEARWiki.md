@@ -137,7 +137,7 @@ If you would like custom permalinks , please contact our curator team for assist
 # Analysis tools
 gEAR incorporates several tools for analyzing data with the goal of improving the reusability of genomic data. Graphical interfaces are built around common analysis tools (e.g. a Seurat pipeline for single-cell data) to make the tools more accessible for those without coding experience or the need to download data. The tools can be accessed from the navigation panel or by clicking on the analysis tools dropdowns in the dataset explorer found with each dataset.
 
-<img width="700" alt="Screen Shot 2022-04-25 at 2 20 00 PM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/AnalysisToolsFromNavBar.png">
+<img width="200" alt="Screen Shot 2022-04-25 at 2 20 00 PM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/AnalysisToolsFromNavBar.png">
 <img width="700" alt="Screen Shot 2022-04-25 at 2 20 00 PM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/AnalysisToolsFromDatasetExplorer.png">
 
 ## Comparison tool
@@ -145,7 +145,7 @@ The comparison tool is designed for comparing differences in gene expression (e.
 
 To get started with the RNAseq comparison tool, select the dataset you wish to use in the dropdown menu and the condition you would like to compare on your x and y axis. Groups can be included or excluded from the analysis using the dropdown and toggle menus.  There is a final dropdown for selecting comparison options that is optional, but allows you to configure the comparison further. After clicking the plot button, you will notice that genes less than 2 fold change are omitted from the plot (to increase plotting speed), this setting can be changed by increasing or decreasing the fold change cutoff option on the previous page by clicking on "Edit Parameters". Similarly, there are options for colorizing or only including genes on the plot which reach a set threshold for significance between groups. In order to perform statistical testing, the dataset must have a column named "replicate" with the replicate ID number for each sample.
 
-<img width="1594" alt="Screen Shot 2022-04-26 at 2 41 17 PM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/CompareTool.png">
+<img width="700" alt="Screen Shot 2022-04-26 at 2 41 17 PM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/CompareTool.png">
 
 
 ## TODO edit single cell workbench below
@@ -195,7 +195,11 @@ Open the gene list manager by clicking Gene Lists on the navigation panel on the
 
 In the RNAseq comparison tool, you can create a new gene list containing your genes of interest directly from the plotting or statistical results. After making a plot, click and drag to select genes of interest.  Click on View and save selected genes to proceed. To download a text file listing all the genes use the download button (found next to save)) while the save button adds all the selected genes to a new gene list (You must provide a name to proceed) which can be used elsewhere. 
 
-<img width="1281" alt="Screen Shot 2022-04-26 at 10 51 31 AM" src="https://user-images.githubusercontent.com/28451557/165328652-2eef196d-7cd9-4764-aa3b-999166d31121.png">
+<img width="700" alt="Screen Shot 2022-04-26 at 10 51 31 AM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/CompareToolSelectGenes.png">
+
+
+<img width="500" alt="Screen Shot 2022-04-26 at 10 51 31 AM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/CompareToolMakeGeneList.png">
+
 
 
 
@@ -203,15 +207,17 @@ In the RNAseq comparison tool, you can create a new gene list containing your ge
 
 gene lists can be used in the multigene display and gene expression tools. To use in the multigene viewer (and create your own visualiations), choose the dataset you wish to view and then under , use the dropdown menu "Quick search using Gene Lists" under select genes to select a gene list or individual genes from the lists to add your genes. 
 
-<img width="700" alt="Screen Shot 2022-04-25 at 3 30 54 PM" src="https://user-images.githubusercontent.com/28451557/165160753-90686dce-3d3e-4fb2-8552-632c2b81a2f5.png">
+<img width="700" alt="Screen Shot 2022-04-25 at 3 30 54 PM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/UsingGeneListInMultiGeneCurator.png">
 
 gene lists can be used on already created visualizations using the gene expression tool on the My Workspace Dashboard. First, click the Multi-gene Display radio button to change the search type from single to multigene. Then click on the "Quick search using Gene Lists" to select what gene list you would like to add. Press search to search for gene list visualizations of your genes of interest (Note: not all dataset collections have multigene visualizations, the multi-gene Displays tool can be used to create new visualizations). 
 
-<img width="700" alt="Screen Shot 2022-04-25 at 3 36 15 PM" src="https://user-images.githubusercontent.com/28451557/165161517-c97580b9-f6b4-449a-b442-8e3f2b92e886.png">
+<img width="700" alt="Screen Shot 2022-04-25 at 3 30 54 PM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/SearchDataSetCollectionForMultiGeneDisplay.png">
+
+<img width="700" alt="Screen Shot 2022-04-25 at 3 30 54 PM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/SearchGeneExpressionUsingGeneList.png">
 
 Multigene displays can also be toggled on the results page:
 
-<img width="700" alt="Screen Shot 2022-04-25 at 3 42 29 PM" src="https://user-images.githubusercontent.com/28451557/165162494-304abec6-c3e9-4bb0-8899-9375adc0d9e9.png">
+<img width="700" alt="Screen Shot 2022-04-25 at 3 42 29 PM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/ToggleToMultiGeneDisplaysWithGeneList.png">
 
 # TODO Upload Data wiki rewrite (waiting for Upload Data to complete)
 # Upload data
@@ -229,11 +235,11 @@ The ability to create a variety of visualizations for the same dataset is one of
 
 Besides for visualizations created in the Multi-Gene Displays curator or analysis tools (see above), custom displays can be added to dataset collections. To open a dataset in the curation tool (the same tool you see following initial dataset upload), click the Single-Gene or Multi-gene Displays on the left hand navigation bar and choose the dataset you wish to make a new display for and select create new display on the second step.  Continue on each step selecting options necessary for your visualization. 
 
-<img width="700" alt="Screen Shot 2022-04-26 at 10 19 28 AM" src="https://user-images.githubusercontent.com/28451557/165321852-32433436-ac4e-4722-9531-36edac62838f.png">
+<img width="700" alt="Screen Shot 2022-04-26 at 10 19 28 AM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/OpenCuratorFromGeneExpression.png">
 
-You can see displays shared and owned by you for a dataset when in a dataset collection.  First select the 3 dots at the upper right section of the dataset, and click on choose display. In the curation display window, you will see all the displays that are public or owned/shared with you. The current default view will be denoted by a blue box. To curate a new display once again click on the three dots and select whichever curator you're interested in.
+You can see displays shared and owned by you for a dataset when in a dataset collection.  First select the 3 dots at the upper right section of the dataset, and click on choose display. In the curation display window, you will see all the displays that are public or owned/shared with you. The current default view will be denoted greying out the selection "Set to Default". To curate a new display, click on curate new display at the top of the display selection dropdown and continue with other options.
 
-<img width="700" alt="Screen Shot 2022-04-26 at 10 23 05 AM" src="https://user-images.githubusercontent.com/28451557/165322281-8487e0cc-3e92-4390-aaec-625b9b18c728.png">
+<img width="700" alt="Screen Shot 2022-04-26 at 10 23 05 AM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/Single-GeneCurator-FromGeneExpression.png">
 
 Choosing one of the curators will navigate to the curator tool. You will first have to choose whether to curate a new display or clone a previously curated display.
 
@@ -241,13 +247,13 @@ You will then have two choices for Dataset Type (Primary Data and Stored Analysi
 
 After adding the analysis type and type of plot you wish to curate, you'll have other options based on your plot-type.  Fill these out as necessary and click plot where you can refine any options and see your visualization.
 
-<img width="500" alt="Screen Shot 2022-04-26 at 10 31 33 AM" src="https://user-images.githubusercontent.com/28451557/165324083-a328679f-505b-4e69-86bb-089a9829108e.png">
+<img width="500" alt="Screen Shot 2022-04-26 at 10 31 33 AM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/SingleGeneCurator.png">
 
 ## Editing dataset information after upload
 
 The dataset information shown in the dataset explore can be edited by the dataset's owner following upload. To edit, first click on the list view option at the top of the page.  Then click the pencil icon next to the dataset you wish to edit. On this page you can edit the dataset title, description, as well as add a Pubmed or GEO id. Note: Special characters cannot be used in the dataset title or descriptions.
 
-<img width="1572" alt="Screen Shot 2022-07-15 at 8 20 16 AM" src="https://user-images.githubusercontent.com/28451557/179221840-90231c6d-0b97-4770-b9b9-6ced3ed86586.png">
+<img width="700" alt="Screen Shot 2022-07-15 at 8 20 16 AM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/EditDataSetInfoAfterUpload.png">
 
 
 # Downloading data
