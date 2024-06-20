@@ -41,11 +41,35 @@ def main():
     session_id = form.getvalue('session_id')
     user = geardb.get_user_from_session_id(session_id)
 
+    if not user:
+        result = {'success': 0, 'error': 'Invalid session'}
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+
+    source_analysis_id = secure_filename(source_analysis_id)
+    dest_analysis_id = secure_filename(dest_analysis_id)
+
     source_ana = geardb.Analysis(id=source_analysis_id, type=source_analysis_type, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
     dest_ana = geardb.Analysis(id=dest_analysis_id, type=dest_analysis_type, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
 
-    source_pipeline_base = secure_filename(source_ana.base_path())
-    dest_pipeline_base = secure_filename(dest_ana.base_path())
+    if not source_ana:
+        result = {'success': 0, 'error': 'Source analysis does not exist'}
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+
+    if not dest_ana:
+        result = {'success': 0, 'error': 'Destination analysis does not exist'}
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+
+    source_pipeline_base = source_ana.base_path()
+    dest_pipeline_base = dest_ana.base_path()
 
     if source_analysis_type == 'user_unsaved' and dest_analysis_type == 'user_saved':
         shutil.move(source_pipeline_base, dest_pipeline_base, copy_function=open_perm_changing_copy)
