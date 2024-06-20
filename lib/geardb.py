@@ -724,8 +724,15 @@ class Analysis:
         """
         Returns an Analyis object from a JSON object with the same attributes
         """
+
+        # Dataset ID is now saved only in the dataset object, but some analyses may have it as a top-level attribute
+        try:
+            dataset_id = jsn["dataset"]["id"]
+        except:
+            dataset_id = jsn["dataset_id"]
+
         ana = Analysis(
-            id=jsn['id'], dataset_id=jsn['dataset_id'], label=jsn['label'], session_id=jsn['user_session_id'],
+            id=jsn['id'], dataset_id=dataset_id, label=jsn['label'], session_id=jsn['user_session_id'],
             user_id=None, type=jsn['type']
         )
 

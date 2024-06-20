@@ -52,6 +52,11 @@ const datasetTree = new DatasetTree({
             elt.classList.add("is-hidden");
         }
 
+        // Hide Steppers
+        for (const elt of document.querySelectorAll(UI.stepsElts)) {
+            elt.classList.add("is-hidden");
+        }
+
         // collapse tree
         e.node.tree.expandAll(false);
 
@@ -535,6 +540,48 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 // General
 
+// if scrolling makes #summary-s go above top of screen, make it sticky
+window.addEventListener("scroll", (event) => {
+    const summary = document.querySelector(UI.summarySection);
+    summary.classList.remove("stick-to-top");
+    if (summary.getBoundingClientRect().top < 0) {
+        summary.classList.add("stick-to-top");
+    }
+});
+
+// Handle the "click" event for the steps
+for (const step of document.querySelectorAll(UI.stepSegmentElts)) {
+    step.addEventListener("click", (event) => {
+        event.preventDefault(); // stop normal click behavior
+        const summary = document.querySelector(UI.summarySection);
+
+        // if the summary is not already sticky, make it so
+        // Then scroll to under the sticky header
+        if (!summary.classList.contains("stick-to-top")) {
+            summary.classList.add("stick-to-top");
+        }
+
+        // get height of anchor href and scroll to it (minus the height of the sticky summary section)
+        const href = step.querySelector(".steps-marker").getAttribute("href");
+        const hrefHeight = document.querySelector(href).offsetTop - summary.offsetHeight;
+        window.scrollTo(0, hrefHeight);
+
+    });
+}
+
+for (const step of document.querySelectorAll(".js-step h5")) {
+    step.addEventListener("click", (event) => {
+        event.preventDefault(); // stop normal click behavior
+
+        const summary = document.querySelector(UI.summarySection);
+
+        // get height of this step container and scroll to it (minus the height of the sticky summary section)
+        const stepHeight = event.target.parentNode.offsetTop - summary.offsetHeight;
+        window.scrollTo(0, stepHeight);
+
+    });
+}
+
 document.querySelector(UI.btnDeleteSavedAnalysisElt).addEventListener("click", async (event) => {
     // Delete the current analysis
     await currentAnalysis.delete();
@@ -553,9 +600,24 @@ document.querySelector(UI.btnSaveAnalysisElt).addEventListener("click", async (e
 
 });
 
+for (const button of document.querySelectorAll(UI.analysisDeleteElts)) {
+    button.addEventListener("click", (event) => {
+        // Delete the current analysis
+        currentAnalysis.delete();
+    })
+}
+
+// Show the "rename" analysis label input when the button is clicked
+for (const button of document.querySelectorAll(UI.analysisRenameElts)) {
+    button.addEventListener("click", (event) => {
+        document.querySelector(UI.newAnalysisLabelElt).value = currentAnalysis.label;
+        document.querySelector(UI.newAnalysisLabelContainer).classList.remove("is-hidden");
+    });
+}
+
 document.querySelector(UI.btnNewAnalysisLabelSaveElt).addEventListener("click", async (event) => {
     // Save the new label to the current analysis
-    currentAnalysis.label = document.querySelector(UI.newAnalysisLabelElt).textContent;
+    currentAnalysis.label = document.querySelector(UI.newAnalysisLabelElt).value;
     await currentAnalysis.save();
     document.querySelector(UI.newAnalysisLabelContainer).classList.add("is-hidden");
 });
@@ -574,6 +636,9 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
 
 
     document.querySelector(UI.currentAnalysisElt).textContent = event.target.selectedOptions[0].textContent;
+
+    document.querySelector(UI.deNovoStepsElt).classList.add("is-hidden");
+    document.querySelector(UI.primaryStepsElt).classList.add("is-hidden");
 
     // Analysis ID -1 is "select an analysis"
     if (event.target.value === "-1") {
@@ -601,6 +666,10 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
             'datasetIsRaw': true}
         );
 
+        document.querySelector(UI.deNovoStepsElt).classList.remove("is-hidden");
+        // Jump to the primary filter step
+        document.querySelector(UI.primaryFilterSection).click();
+        document.querySelector(`a[href='${UI.primaryFilterSection}']`).click();
         return;
     }
     createToast("Loading stored analysis", "is-info");
@@ -618,104 +687,35 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
         document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
         document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
         document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
-        document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.add("is-hidden");
-        document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.add("is-hidden");
+        document.querySelector(UI.primaryStepsElt).classList.remove("is-hidden");
     }
+
     if (currentAnalysis.type == 'user_saved') {
         document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
-        document.querySelector(UI.analysisActionContainer).classList.remove("is-hidden");
+        document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
         document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
         document.querySelector(UI.analysisStatusInfoElt).textContent = "This analysis is stored in your profile.";
         document.querySelector(UI.btnMakePublicCopyElt).classList.remove("is-hidden");
-        document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.remove("is-hidden");
-        document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.add("is-hidden");
+        document.querySelector(UI.deNovoStepsElt).classList.remove("is-hidden");
     }
+
     if (currentAnalysis.type == 'user_unsaved') {
         document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
         document.querySelector(UI.analysisActionContainer).classList.remove("is-hidden");
         document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
         document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
-        document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.add("is-hidden");
-        document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.remove("is-hidden");
+        document.querySelector(UI.deNovoStepsElt).classList.remove("is-hidden");
     }
+
     if (currentAnalysis.type == 'public') {
         document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
-        document.querySelector(UI.analysisActionContainer).classList.remove("is-hidden");
-        document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
+        document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
+        document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
         document.querySelector(UI.analysisStatusInfoElt).textContent = "Changes made to this public analysis will spawn a local copy within your profile.";
         document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
-        document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.add("is-hidden");
-        document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.add("is-hidden");
-    }
-});
-
-// Labeled tSNE
-
-document.querySelector(UI.btnLabeledTsneRunElt).addEventListener("click", async (event) => {
-    document.querySelector(UI.labeledTsnePlotContainer).replaceChildren();
-    document.querySelector(UI.labeledTsnePlotContainer).classList.remove("is-hidden");
-
-    createToast("Generating labeled tSNE plot", "is-info");
-
-    // ? Should this be in the LabeledTsne class?
-
-    document.querySelector(UI.btnLabeledTsneRunElt).classList.add("is-loading");
-
-    const dataset = currentAnalysis.dataset;
-    const data = await getEmbeddedTsneDisplay(dataset.id);
-    const config = data.plotly_config;
-
-    const img = document.createElement('img');
-    img.className = 'image'
-
-    try {
-        const image = await getTsneImageData(document.querySelector(UI.labeledTsneGeneSymbolElt).value, config);
-        if (typeof image === 'object' || typeof image === "undefined") {
-            throw new Error("No image data returned");
-        } else {
-            img.src = `data:image/png;base64,${image}`;
-            document.querySelector(UI.labeledTsnePlotContainer).appendChild(img);
-        }
-
-        createToast("Labeled tSNE plot generated", "is-success");
-
-    } catch (error) {
-        createToast(`Error generating tSNE plot: ${error.message}`);
-    } finally {
-        document.querySelector(UI.btnLabeledTsneRunElt).classList.remove("is-loading");
-
-        document.querySelector(UI.btnLabeledTsneRunElt).disabled = false;
+        document.querySelector(UI.deNovoStepsElt).classList.remove("is-hidden");
     }
 
-
-});
-
-// Primary Filter
-
-document.querySelector(UI.btnApplyPrimaryFilterElt).addEventListener("click", async (event) => {
-    // Apply the primary filter to the dataset
-    await currentAnalysis.primaryFilter.applyPrimaryFilter();
-});
-
-try {
-
-// QC by Mito
-document.querySelector(UI.btnDoAnalysisQcByMitoElt).addEventListener("click", async (event) => {
-    // Run the QC by Mito analysis
-    await currentAnalysis.qcByMito.runAnalysis(0);
-});
-
-document.querySelector(UI.btnQbmSaveElt).addEventListener("click", async (event) => {
-    // Save the QC by Mito analysis
-    await currentAnalysis.qcByMito.runAnalysis(1);
-    disableAndHideElement(document.querySelector(UI.btnDoAnalysisQcByMitoElt));
-    event.target.textContent = "Saved";
-    event.target.disabled = true;
-});
-
-document.querySelector(UI.newAnalysisLabelElt).addEventListener("focus", (event) => {
-    // Reset the new analysis label
-    currentLabel = event.target.textContent;
 });
 
 document.querySelector(UI.newAnalysisLabelElt).addEventListener("keyup", (event) => {
@@ -734,37 +734,97 @@ document.querySelector(UI.newAnalysisLabelElt).addEventListener("keyup", (event)
     document.querySelector(UI.btnNewAnalysisLabelSaveElt).disabled = false;
 });
 
+document.querySelector(UI.newAnalysisLabelElt).addEventListener("focus", (event) => {
+    // Reset the new analysis label
+    currentLabel = event.target.textContent;
+});
+
+// Labeled tSNE
+
+document.querySelector(UI.btnLabeledTsneRunElt).addEventListener("click", async (event) => {
+    document.querySelector(UI.labeledTsnePlotContainer).replaceChildren();
+    document.querySelector(UI.labeledTsnePlotContainer).classList.remove("is-hidden");
+
+    createToast("Generating labeled tSNE plot", "is-info");
+
+    document.querySelector(UI.btnLabeledTsneRunElt).classList.add("is-loading");
+    currentAnalysis.labeledTsne.runAnalysis();
+
+    document.querySelector(UI.btnLabeledTsneRunElt).classList.remove("is-loading");
+
+});
+
+// Primary Filter
+
+document.querySelector(UI.btnApplyPrimaryFilterElt).addEventListener("click", async (event) => {
+    event.target.classList.add("is-loading");
+    // Apply the primary filter to the dataset
+    await currentAnalysis.primaryFilter.applyPrimaryFilter();
+    event.target.classList.remove("is-loading");
+});
+
+// QC by Mito
+document.querySelector(UI.btnDoAnalysisQcByMitoElt).addEventListener("click", async (event) => {
+    event.target.classList.add("is-loading");
+    // Run the QC by Mito analysis
+    await currentAnalysis.qcByMito.runAnalysis(0);
+    event.target.classList.remove("is-loading");
+});
+
+document.querySelector(UI.btnQbmSaveElt).addEventListener("click", async (event) => {
+    event.target.classList.add("is-loading");
+    disableAndHideElement(document.querySelector(UI.btnDoAnalysisQcByMitoElt));
+    // Save the QC by Mito analysis
+    await currentAnalysis.qcByMito.runAnalysis(1);
+    event.target.classList.remove("is-loading");
+});
+
 // Select Variable Genes
 
 document.querySelector(UI.btnDoAnalysisSelectVariableGenesElt).addEventListener("click", async (event) => {
+    event.target.classList.add("is-loading");
     // Run the select variable genes analysis
-    await currentAnalysis.selectMarkerGenes.runAnalysis(0);
+    await currentAnalysis.selectVariableGenes.runAnalysis(0);
+    event.target.classList.remove("is-loading");
 });
 
 document.querySelector(UI.btnAsvgSaveElt).addEventListener("click", async (event) => {
+    event.target.classList.add("is-loading");
+    disableAndHideElement(document.querySelector(UI.btnDoAnalysisSelectVariableGenesElt));
+
     // Save the select variable genes analysis
     await currentAnalysis.selectVariableGenes.runAnalysis(1);
-    disableAndHideElement(document.querySelector(UI.btnDoAnalysisSelectVariableGenesElt));
-    event.target.textContent = "Saved";
-    event.target.disabled = true;
+    event.target.classList.remove("is-loading");
 });
 
 // PCA
 
-document.querySelector(UI.btnPcaRunElt).addEventListener("click", (event) => {
+document.querySelector(UI.btnPcaRunElt).addEventListener("click", async (event) => {
+    event.target.classList.add("is-loading");
     // Run the PCA analysis
-    currentAnalysis.checkDependenciesAndRun(currentAnalysis.pca.runAnalysis.bind(currentAnalysis.pca));
+    await currentAnalysis.checkDependenciesAndRun(currentAnalysis.pca.runAnalysis.bind(currentAnalysis.pca));
+    event.target.classList.remove("is-loading");
 });
 
-document.querySelector(UI.btnPcaTopGenesElt).addEventListener("click", (event) => {
+document.querySelector(UI.btnPcaTopGenesElt).addEventListener("click", async (event) => {
+    event.target.classList.add("is-loading");
     // Run the PCA top genes
-    currentAnalysis.checkDependenciesAndRun(currentAnalysis.pca.runAnalysisTopGenes.bind(currentAnalysis.pca));
+    await currentAnalysis.checkDependenciesAndRun(currentAnalysis.pca.runAnalysisTopGenes.bind(currentAnalysis.pca));
+    event.target.classList.remove("is-loading");
+});
+
+document.querySelector(UI.pcaGeneListNameElt).addEventListener("input", (event) => {
+    // enable the save button if a name is entered
+    document.querySelector(UI.btnSavePcaGeneListElt).disabled = true;
+    if (event.target.value) {
+        document.querySelector(UI.btnSavePcaGeneListElt).disabled = false;
+    }
 });
 
 document.querySelector(UI.btnSavePcaGeneListElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
     if (CURRENT_USER) {
-        savePcaGeneList();
+        await savePcaGeneList();
     } else {
         createToast("You must be signed in to save a PCA gene list.");
     }
@@ -773,23 +833,23 @@ document.querySelector(UI.btnSavePcaGeneListElt).addEventListener("click", async
 
 // tSNE
 
-document.querySelector(UI.btnTsneRunElt).addEventListener("click", (event) => {
+document.querySelector(UI.btnTsneRunElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
     // Run the tSNE analysis (and/or UMAP)
-    currentAnalysis.checkDependenciesAndRun(currentAnalysis.tsne.runAnalysis.bind(currentAnalysis.tsne));
+    await currentAnalysis.checkDependenciesAndRun(currentAnalysis.tsne.runAnalysis.bind(currentAnalysis.tsne));
     event.target.classList.remove("is-loading");
 });
 
 // Clustering
 
-document.querySelector(UI.btnClusteringRunElt).addEventListener("click", (event) => {
+document.querySelector(UI.btnClusteringRunElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
     // Run the clustering analysis
-    currentAnalysis.checkDependenciesAndRun(currentAnalysis.clustering.runAnalysis.bind(currentAnalysis.clustering));
+    await currentAnalysis.checkDependenciesAndRun(currentAnalysis.clustering.runAnalysis.bind(currentAnalysis.clustering));
     event.target.classList.remove("is-loading");
 });
 
-document.querySelector(UI.btnClusteringEditRunElt).addEventListener("click", (event) => {
+document.querySelector(UI.btnClusteringEditRunElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
 
     // Check for duplicate labels and run the clustering edit analysis
@@ -802,22 +862,18 @@ document.querySelector(UI.btnClusteringEditRunElt).addEventListener("click", (ev
 
     // If the user has selected to merge clusters, run the clustering edit analysis
     if (document.querySelector(UI.clusteringMergeClustersElt).checked) {
-        currentAnalysis.checkDependenciesAndRun(currentAnalysis.clusteringEdit.runAnalysis.bind(currentAnalysis.clusteringEdit));
+        await currentAnalysis.checkDependenciesAndRun(currentAnalysis.clusteringEdit.runAnalysis.bind(currentAnalysis.clusteringEdit));
         return;
     }
 
     // Otherwise, check for duplicates and run the clustering analysis if there are none
     const duplicateCount = countAndHighlightDuplicates();
     if (duplicateCount === 0) {
-        currentAnalysis.checkDependenciesAndRun(currentAnalysis.clusteringEdit.runAnalysis.bind(currentAnalysis.clusteringEdit));
+        await currentAnalysis.checkDependenciesAndRun(currentAnalysis.clusteringEdit.runAnalysis.bind(currentAnalysis.clusteringEdit));
     }
 
     event.target.classList.remove("is-loading");
 });
-
-} catch (error) {
-    // This is to catch buttons that have not been implemented yet
-}
 
 // Marker Genes
 
@@ -922,7 +978,7 @@ document.querySelector(UI.markerGenesListNameElt).addEventListener("input", (eve
 document.querySelector(UI.btnSaveMarkerGeneListElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
     if (CURRENT_USER) {
-        saveMarkerGeneList();
+        await saveMarkerGeneList();
     } else {
         createToast("You must be signed in to save a marker gene list.");
     }
@@ -1026,11 +1082,5 @@ window.onload=() => {
             $(analysis_block_id).hide();
         }
     });
-
-    $(".show_analysis_renamer").click(function(e) {
-        $("#new_analysis_label").val(currentAnalysis.label);
-        $("#new_analysis_label_c").show(500);
-    });
-
 }
 */

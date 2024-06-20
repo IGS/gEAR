@@ -122,14 +122,14 @@ def main():
         adata.write(dest_datafile_path)
 
         if plot_tsne == 1:
-            ax = sc.pl.tsne(adata, color='louvain', legend_loc='on data', save="_louvain.png")
+            ax = sc.pl.tsne(adata, color='louvain', legend_loc='on data', save="_clustering.png")
         if plot_umap == 1:
-            ax = sc.pl.umap(adata, color='louvain', legend_loc='on data', save="_louvain.png")
+            ax = sc.pl.umap(adata, color='louvain', legend_loc='on data', save="_clustering.png")
     else:
         if plot_tsne == 1:
-            ax = sc.pl.tsne(adata, color='louvain', save="_louvain.png")
+            ax = sc.pl.tsne(adata, color='louvain', save="_clustering.png")
         if plot_umap == 1:
-            ax = sc.pl.umap(adata, color='louvain', save="_louvain.png")
+            ax = sc.pl.umap(adata, color='louvain', save="_clustering.png")
 
     result = {'success': 1, "group_labels":group_labels}
 

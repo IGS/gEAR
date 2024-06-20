@@ -34,23 +34,24 @@ class Analysis {
         // All new analysis start as "primary" analyses, but true primary analyses share the same ID as the dataset
         if (this.id === this.dataset?.id) {
             this.labeledTsne = new AnalysisStepLabeledTsne(this);   // Only for "primary" analyses
-            this.markerGenes = new AnalysisStepMarkerGenes(this);
-
-            // step-based properties
-            this.markerGenes.genesOfInterest = Array.isArray(genesOfInterest) ? new Set(genesOfInterest) : new Set();
+            // marker genes next
+            // compare genes next
         } else {
             this.primaryFilter = new AnalysisStepPrimaryFilter(this);
-            /*this.qcByMito = new AnalysisStepQCByMito(this);
+            this.qcByMito = new AnalysisStepQCByMito(this);
             this.selectVariableGenes = new AnalysisStepSelectVariableGenes(this);
             this.pca = new AnalysisStepPCA(this);
             this.tsne = new AnalysisSteptSNE(this);
             this.clustering = new AnalysisStepClustering(this); // The old "louvain" step, which is now done with "leiden"
-            this.markerGenes = new AnalysisStepMarkerGenes(this);
+            // marker genes next
             this.clusteringEdit = new AnalysisStepClustering(this, "edit");
-            */
+            // compare genes next
         }
-        this.compareGenes = new AnalysisStepCompareGenes(this);
+        this.markerGenes = new AnalysisStepMarkerGenes(this);
+        // step-based properties
+        this.markerGenes.genesOfInterest = Array.isArray(genesOfInterest) ? new Set(genesOfInterest) : new Set();
 
+        this.compareGenes = new AnalysisStepCompareGenes(this);
 
         this.groupLabels = groupLabels;
 
@@ -68,6 +69,22 @@ class Analysis {
         } else {
             await callback(opts);
         }
+    }
+
+    /**
+     * Converts a camelCase object to a snake_case object.
+     * @param {Object} camelCaseObj - The camelCase object to be converted.
+     * @returns {Object} - The snake_case object.
+     */
+    static convertToJson(camelCaseObj) {
+        const toSnakeCase = (str) => {
+            return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+        }
+
+        return Object.keys(camelCaseObj).reduce((result, key) => {
+            result[toSnakeCase(key)] = camelCaseObj[key];
+            return result;
+        }, {});
     }
 
     /**
@@ -234,6 +251,12 @@ class Analysis {
                 document.querySelector(parentSelector).appendChild(option);
             }
 
+            // Clear the analysis optgroups
+            document.querySelector(UI.analysisPrimaryElt).replaceChildren();
+            document.querySelector(UI.analysisUnsavedElt).replaceChildren();
+            document.querySelector(UI.analysisSavedElt).replaceChildren();
+            document.querySelector(UI.analysisPublicElt).replaceChildren();
+
             // primary
             if (data.primary.length) {
                 if (forPage == 'sc_workbench') {
@@ -318,7 +341,7 @@ class Analysis {
             genesOfInterest: data.genesOfInterest
         });
 
-        if (this.id === this.dataset?.id) {
+        if (analysis.id === analysis.dataset?.id) {
             // If showing a primary display we only want to show marker genes and gene comparison
             //  tools
             document.querySelector(UI.primaryFilterSection).classList.add("is-hidden");
@@ -330,14 +353,6 @@ class Analysis {
             document.querySelector(UI.clusteringEditSection).classList.add("is-hidden");
             return analysis
         }
-
-        document.querySelector(UI.primaryFilterSection).classList.remove("is-hidden");
-        document.querySelector(UI.qcByMitoSection).classList.remove("is-hidden");
-        document.querySelector(UI.selectVariableGenesSection).classList.remove("is-hidden");
-        document.querySelector(UI.pcaSection).classList.remove("is-hidden");
-        document.querySelector(UI.tsneSection).classList.remove("is-hidden");
-        document.querySelector(UI.clusteringSection).classList.remove("is-hidden");
-        document.querySelector(UI.clusteringEditSection).classList.remove("is-hidden");
 
         analysis.primaryFilter = AnalysisStepPrimaryFilter.loadFromJson(data.primaryFilter, analysis);
         analysis.primaryFilter.updateUIWithResults(analysis);
@@ -362,7 +377,7 @@ class Analysis {
 
         // labeled tSNE does not have a data object section. Only needs dataset ID.
 
-        analysis.clusteringEdit = AnalysisStepClusteringEdit.loadFromJson(data.clustering, analysis);
+        analysis.clusteringEdit = AnalysisStepClustering.loadFromJson(data.clustering, analysis);
         analysis.clusteringEdit.mode = "edit";
 
         analysis.compareGenes = AnalysisStepCompareGenes.loadFromJson(data.compareGenes, analysis);
@@ -487,13 +502,49 @@ class Analysis {
         this.datasetIsRaw = true;
         this.id = uuid();
         this.label = null;
+
+        // Hide tSNE section
+        document.querySelector(UI.labeledTsneSection).classList.add("is-hidden");
+
     }
 
     async save() {
-        /*
-          Saves the current analysis parameters to disk.
-         */
-        const state = JSON.stringify(this);
+
+        // clone this object in such a way to not
+        // include the "analysis" property for each step due to circular reference
+        const clone = JSON.parse(JSON.stringify(this, (key, value) => {
+            if (key === "analysis") {
+                return undefined;
+            }
+            return value;
+        }));
+
+        // delete the "analysis" key from each step
+        for (const step of Object.values(clone)) {
+            if (step?.analysis) {
+                delete step.analysis;
+            }
+        }
+
+        // Save the current analysis parameters to disk
+        // they must be in snake_case, the inverse of the loadFromJson method
+        // Also do this for nested objects
+
+        const state = Analysis.convertToJson(clone);
+        for (const key in state) {
+            if (typeof state[key] === 'object') {
+                state[key] = Analysis.convertToJson(state[key]);
+            }
+        }
+
+        // Some legacy things to change around
+        state.dataset_id = state.dataset.id;
+        if (state.qc_by_mito) {
+            state.qc_by_mito.filter_mito_perc = state.qc_by_mito.filter_mito_percent;
+            delete state.qc_by_mito.filter_mito_percent;
+
+            delete state.clustering_edit;   // Same core info as "clustering", at least for reloading purposes
+        }
 
         try {
             const {data} = await axios.post("./cgi/save_dataset_analysis.cgi", convertToFormData({
@@ -510,9 +561,12 @@ class Analysis {
                 throw new Error(error);
             }
 
+            createToast("Analysis saved", "is-success");
+
             await this.getSavedAnalysesList(this.dataset.id, this.id);
         } catch (error) {
             createToast(`Error saving analysis: ${error.message}`);
+            logErrorInConsole(error);
         }
     }
 
@@ -547,6 +601,23 @@ class Analysis {
         }
     }
 
+    /**
+     * Toggles the visibility of analysis buttons based on the analysis type.
+     */
+    showHideAnalysisButtons() {
+        // Unhide delete buttons, which were hidden for new analyses
+        document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.remove("is-hidden");
+        document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.remove("is-hidden");
+
+        if (this.type === 'user_unsaved') {
+            document.querySelector(UI.analysisActionContainer).classList.remove("is-hidden");
+            document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
+        } else if (this.type === 'user_saved') {
+            document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
+            document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
+        }
+    }
+
 }
 
 /* Putting these in order of the workbench steps */
@@ -564,15 +635,40 @@ class AnalysisStepLabeledTsne {
     }
 
     resetUI() {
-        document.querySelector(UI.labeledTsneSection).classList.add("is-hidden");
+        document.querySelector(UI.labeledTsneSection).classList.remove("is-hidden");
     }
 
     async runAnalysis() {
 
+        // Get the tSNE config
+        const dataset = this.analysis.dataset;
+        const data = await getEmbeddedTsneDisplay(dataset.id);
+        const config = data.plotly_config;
+
+        const img = document.createElement('img');
+        img.className = 'image'
+
+        // Generate the tSNE plot
+        try {
+            const image = await getTsneImageData(document.querySelector(UI.labeledTsneGeneSymbolElt).value, config);
+            if (typeof image === 'object' || typeof image === "undefined") {
+                throw new Error("No image data returned");
+            } else {
+                img.src = `data:image/png;base64,${image}`;
+                document.querySelector(UI.labeledTsnePlotContainer).appendChild(img);
+            }
+
+            createToast("Labeled tSNE plot generated", "is-success");
+
+        } catch (error) {
+            createToast(`Error generating tSNE plot: ${error.message}`);
+            logErrorInConsole(error);
+            failStepWithHref(UI.labeledTsneSection);
+        }
     }
 
     updateUIWithResults() {
-
+        // pass
     }
 }
 
@@ -585,8 +681,12 @@ class AnalysisStepPrimaryFilter {
     }
 
     async applyPrimaryFilter() {
+
+        document.querySelector(UI.primaryFilterSectionFailedElt).classList.add("is-hidden");
+        document.querySelector(UI.primaryFilterSectionSuccessElt).classList.add("is-hidden");
+
         createToast("Applying dataset filters", "is-info");
-        for (const elt of UI.datasetInfoResetableElts) {
+        for (const elt of document.querySelectorAll(UI.datasetInfoResetableElts)) {
             elt.replaceChildren();
         }
 
@@ -596,21 +696,25 @@ class AnalysisStepPrimaryFilter {
         this.analysis.type = 'primary';
 
         this.filterCellsLtNGenesSelected = document.querySelector(UI.filterCellsLtNGenesSelectedElt).checked;
+        this.filterCellsLtNGenes = null;
         if (this.filterCellsLtNGenesSelected) {
             this.filterCellsLtNGenes = document.querySelector(UI.filterCellsLtNGenesElt).value;
         }
 
         this.filterCellsGtNGenesSelected = document.querySelector(UI.filterCellsGtNGenesSelectedElt).checked;
+        this.filterCellsGtNGenes = null;
         if (this.filterCellsGtNGenesSelected) {
             this.filterCellsGtNGenes = document.querySelector(UI.filterCellsGtNGenesElt).value;
         }
 
         this.filterGenesLtNCellsSelected = document.querySelector(UI.filterGenesLtNCellsSelectedElt).checked;
+        this.filterGenesLtNCells = null;
         if (this.filterGenesLtNCellsSelected) {
             this.filterGenesLtNCells = document.querySelector(UI.filterGenesLtNCellsElt).value;
         }
 
         this.filterGenesGtNCellsSelected = document.querySelector(UI.filterGenesGtNCellsSelectedElt).checked;
+        this.filterGenesGtNCells = null;
         if (this.filterGenesGtNCellsSelected) {
             this.filterGenesGtNCells = document.querySelector(UI.filterGenesGtNCellsElt).value;
         }
@@ -621,11 +725,10 @@ class AnalysisStepPrimaryFilter {
                 analysis_type: this.analysis.type,
                 dataset_id: this.analysis.dataset.id,
                 session_id: this.analysis.userSessionId,
-                using_primary_datasource: this.analysis.usingPrimaryDatasource,
-                filter_cells_lt_n_genes: this.filterCellsLtNGenes,
-                filter_cells_gt_n_genes: this.filterCellsGtNGenes,
-                filter_genes_lt_n_cells: this.filterGenesLtNCells,
-                filter_genes_gt_n_cells: this.filterGenesGtNCells
+                filter_cells_lt_n_genes: this.filterCellsLtNGenes || "",
+                filter_cells_gt_n_genes: this.filterCellsGtNGenes || "",
+                filter_genes_lt_n_cells: this.filterGenesLtNCells || "",
+                filter_genes_gt_n_cells: this.filterGenesGtNCells || ""
             }));
 
             if (!data.success || data.success < 1) {
@@ -638,8 +741,8 @@ class AnalysisStepPrimaryFilter {
                 throw new Error(error);
             }
 
-            document.querySelector(UI.selectedDatasetShapeFilteredElt).textContent = `${data.n_genes} genes x ${data.n_obs} obs`;
-            document.querySelector(UI.selectedDatasetShapeFilteredContainer).classList.remove("is-hidden");
+            this.filteredGeneCount = data.n_genes;
+            this.filteredCellCount = data.n_obs;
 
             // After this step, we are now working with a curated dataset
             this.analysis.type = originalAnalysisType;
@@ -651,12 +754,13 @@ class AnalysisStepPrimaryFilter {
             this.updateUIWithResults();
             createToast("Data filters applied", "is-success");
 
-            //TODO: $('#primary_filter_options_c .js-next-step').show();  // Go to next section
-
         } catch (error) {
             createToast(`Error applying primary filters: ${error.message}`);
+            logErrorInConsole(error);
+            failStepWithHref("#primary-filter-s")
+            document.querySelector(UI.primaryFilterSectionFailedElt).classList.remove("is-hidden");
         } finally {
-            document.querySelector(UI.btnApplyPrimaryFilterElt).disabled = false;
+            this.analysis.save();
         }
 
     }
@@ -682,7 +786,7 @@ class AnalysisStepPrimaryFilter {
         step.filterGenesLtNCells = data['filter_genes_lt_n_cells'];
         step.filterGenesLtNCellsSelected = data['filter_genes_lt_n_cells_selected'];
 
-        step.filteredGeneCound = data['filtered_gene_count'];
+        step.filteredGeneCount = data['filtered_gene_count'];
         step.filteredCellCount = data['filtered_cell_count'];
 
         return step;
@@ -694,17 +798,17 @@ class AnalysisStepPrimaryFilter {
      */
     reset() {
         this.calculated = false;
-        this.filterCellsGtNGenes = null;
-        this.filterCellsGtNGenesSelected = null;
+        this.filterCellsGtNGenes = 300;
+        this.filterCellsGtNGenesSelected = false;
         this.filterCellsLtNGenes = null;
-        this.filterCellsLtNGenesSelected = null;
+        this.filterCellsLtNGenesSelected = false;
 
         this.filterGenesGtNCells = null;
-        this.filterGenesGtNCellsSelected = null;
-        this.filterGenesLtNCells = null;
-        this.filterGenesLtNCellsSelected = null;
+        this.filterGenesGtNCellsSelected = false;
+        this.filterGenesLtNCells = 3;
+        this.filterGenesLtNCellsSelected = false;
 
-        this.filteredGeneCound = null;
+        this.filteredGeneCount = null;
         this.filteredCellCount = null;
         this.resetUI();
     }
@@ -714,20 +818,28 @@ class AnalysisStepPrimaryFilter {
      * and modifying the visibility of certain elements.
      */
     resetUI() {
-        document.querySelector(UI.filterCellsGtNGenesElt).value = 300;
-        document.querySelector(UI.filterCellsLtNGenesElt).value = '';
-        document.querySelector(UI.filterGenesLtNCellsElt).value = 3;
-        document.querySelector(UI.filterGenesGtNCellsElt).value = '';
+        document.querySelector(UI.primaryFilterSection).classList.remove("is-hidden");
 
-        document.querySelector(UI.filterCellsLtNGenesSelectedElt).checked = false;
-        document.querySelector(UI.filterCellsGtNGenesSelectedElt).checked = false;
-        document.querySelector(UI.filterGenesLtNCellsSelectedElt).checked = false;
-        document.querySelector(UI.filterGenesGtNCellsSelectedElt).checked = false;
+        document.querySelector(UI.filterCellsGtNGenesElt).value = this.filterCellsGtNGenes;
+        document.querySelector(UI.filterCellsLtNGenesElt).value = this.filterCellsLtNGenes
+        document.querySelector(UI.filterGenesLtNCellsElt).value = this.filterGenesLtNCells;
+        document.querySelector(UI.filterGenesGtNCellsElt).value = this.filterGenesGtNCells;
+
+        document.querySelector(UI.filterCellsGtNGenesSelectedElt).checked = this.filterCellsGtNGenesSelected;
+        document.querySelector(UI.filterCellsLtNGenesSelectedElt).checked = this.filterCellsLtNGenesSelected;
+        document.querySelector(UI.filterGenesGtNCellsSelectedElt).checked = this.filterGenesGtNCellsSelected;
+        document.querySelector(UI.filterGenesLtNCellsSelectedElt).checked = this.filterGenesLtNCellsSelected;
 
         for (const elt of document.querySelectorAll(UI.primaryInitialPlotElts)) {
             elt.classList.remove("is-hidden");
         }
-        document.querySelector(UI.primaryInitialPlotContainer).classList.add("is-hidden");
+        document.querySelector(UI.primaryTopGenesPlotContainer).classList.add("is-hidden");
+
+        // hide previous shown elements
+        document.querySelector(UI.selectedDatasetShapeFilteredContainer).classList.add("is-hidden");
+
+        // show the instructions
+        document.querySelector(UI.primaryFilterInstructionsElt).classList.remove("is-hidden");
     }
 
     updateUIWithResults(ana=null) {
@@ -762,11 +874,11 @@ class AnalysisStepPrimaryFilter {
             }
 
             document.querySelector(UI.filterCellsLtNGenesElt).value = this.filterCellsLtNGenes;
-            document.querySelector(UI.filterCellsGtNGenesElt).value = this.filterCellsGtNGenes;
-            document.querySelector(UI.filterGenesLtNCellsElt).value = this.filterGenesLtNCells;
+            document.querySelector(UI.filterCellsGtNGenesElt).value = this.filterCellsGtNGenes || 300;
+            document.querySelector(UI.filterGenesLtNCellsElt).value = this.filterGenesLtNCells || 3;
             document.querySelector(UI.filterGenesGtNCellsElt).value = this.filterGenesGtNCells;
 
-            document.querySelector(UI.selectedDatasetShapeFilteredElt).textContent = `${this.filteredGeneCound} genes x ${this.filteredCellCount} obs`;
+            document.querySelector(UI.selectedDatasetShapeFilteredElt).textContent = `${this.filteredGeneCount} genes x ${this.filteredCellCount} obs`;
             document.querySelector(UI.selectedDatasetShapeFilteredContainer).classList.remove("is-hidden");
 
         }
@@ -784,14 +896,15 @@ class AnalysisStepPrimaryFilter {
         ana.placeAnalysisImage(
             {'params': params, 'title': 'Highest expressed genes', 'target': UI.primaryTopGenesContainer});
 
-        for (const elt of document.querySelectorAll(UI.primaryInitialPlotElts)) {
-            elt.classList.add("is-hidden");
-        }
-        document.querySelector(UI.primaryInitialPlotContainer).classList.remove("is-hidden");
+        document.querySelector(UI.primaryTopGenesPlotContainer).classList.remove("is-hidden");
 
-        document.querySelector(UI.qcByMitoSection).click()
-        //document.querySelector(UI.selectVariableGenesToggleElt).classList.remove("is-hidden");
-        // TODO: add success checkmark to UI
+        // Now we can potentially save the analysis if it is a user one
+        ana.showHideAnalysisButtons();
+
+        passStepWithHref(UI.primaryFilterSection);
+        openNextStepHrefs([UI.qcByMitoSection], null, true);
+
+        document.querySelector(UI.primaryFilterSectionSuccessElt).classList.remove("is-hidden");
     }
 }
 
@@ -821,7 +934,6 @@ class AnalysisStepQCByMito {
         step.nObs = data['n_obs'];
 
         if (step.calculated == true) {
-        // TODO: add success checkmark to UI
             document.querySelector(UI.qbmGenePrefixElt).value = step.genePrefix;
             document.querySelector(UI.qbmFilterMitoPercElt).value = step.filterMitoPercent;
             document.querySelector(UI.qbmFilterMitoCountElt).value = step.filterMitoCount;
@@ -848,11 +960,19 @@ class AnalysisStepQCByMito {
      * Resets the user interface for analysis.
      */
     resetUI() {
+        document.querySelector(UI.qcByMitoSection).classList.remove("is-hidden");
+
         document.querySelector(UI.qbmGenePrefixElt).value = 'mt-';
         disableAndHideElement(document.querySelector(UI.btnQbmSaveElt));
+        disableAndHideElement(document.querySelector(UI.qbmSaveWarningElt));
         document.querySelector(UI.btnQbmSaveElt).textContent = 'Save these genes';
 
         document.querySelector(UI.btnDoAnalysisQcByMitoElt).classList.remove("is-hidden");
+
+        // hide previous shown elements
+        document.querySelector(UI.qbmPostShapeContainer).classList.add("is-hidden");
+        // show the instructions
+        document.querySelector(UI.qbmInstructionsElt).classList.remove("is-hidden");
     }
 
     /**
@@ -863,12 +983,16 @@ class AnalysisStepQCByMito {
      * @throws {Error} - If there is an error during the analysis.
      */
     async runAnalysis(saveDataset) {
-        disableAndHideElement(document.querySelector(UI.btnQbmSaveElt));
+        document.querySelector(UI.btnQbmSaveElt).disabled = true;
+        document.querySelector(UI.qbmSaveWarningElt).classList.add("is-hidden");
+
+        // reset success and failure icons
+        document.querySelector(UI.qcByMitoSectionSuccessElt).classList.add("is-hidden");
+        document.querySelector(UI.qcByMitoSectionFailedElt).classList.add("is-hidden");
+
         if (Boolean(saveDataset)) {
             createToast("Applying mitochondrial filter", "is-info");
-            document.querySelector(UI.btnQbmSaveElt).textContent = 'Saving';
         } else {
-            document.querySelector(UI.btnQbmSaveElt).classlist.remove("is-hidden");
             createToast("Analyzing mitochondrial genes", "is-info");
         }
 
@@ -898,24 +1022,23 @@ class AnalysisStepQCByMito {
                 throw new Error(error);
             }
 
-            this.nGenes = data.n_genes;
-            this.nObs = data.n_obs;
+            this.nGenes = saveDataset ? data.n_genes.toString() : null;
+            this.nObs = saveDataset ? data.n_obs.toString() : null;
 
+            this.calculated = Boolean(saveDataset);
             document.querySelector(UI.btnQbmSaveElt).disabled = false;
-            this.calculated = false;
-            if (Boolean(saveDataset)) {
-                document.querySelector(UI.btnQbmSaveElt).disabled = true;
-                this.calculated = true;
-            }
 
-            this.updateUIWithResults(this.calculated, data);
+            this.updateUIWithResults(this.calculated);
             createToast("Mitochondrial plot displayed", "is-success");
             // TODO - Show next step collapsable
 
         } catch (error) {
             createToast(`Error doing QC analysis: ${error.message}`);
+            logErrorInConsole(error);
+            failStepWithHref(UI.qcByMitoSection);
+            document.querySelector(UI.qcByMitoSectionFailedElt).classList.remove("is-hidden");
         } finally {
-            document.querySelector(UI.btnDoAnalysisQcByMitoElt).disabled = false;
+            this.analysis.save();
         }
 
     }
@@ -935,18 +1058,18 @@ class AnalysisStepQCByMito {
             return;
         }
 
-        enableAndShowElement(UI.btnQbmSaveElt);
+        enableAndShowElement(document.querySelector(UI.btnQbmSaveElt));
+        document.querySelector(UI.qbmSaveWarningElt).classList.remove("is-hidden");
 
         if (resultsSaved) {
             document.querySelector(UI.btnDoAnalysisQcByMitoElt).classList.add("is-hidden");
             document.querySelector(UI.btnQbmSaveElt).disabled = true;
             document.querySelector(UI.btnQbmSaveElt).textContent = 'Saved';
-            document.querySelector(UI.qbmPostShapeElt).classList.remove("is-hidden");
+            document.querySelector(UI.qbmPostShapeContainer).classList.remove("is-hidden");
         }
 
         document.querySelector(UI.qbmInstructionsElt).classList.add("is-hidden");
-        document.querySelector(UI.qbmGeneCountElt).textContent = this.nGenes;
-        document.querySelector(UI.qbmObsCountElt).textContent = this.nObs;
+        document.querySelector(UI.qbmPostShapeElt).textContent = `${this.nGenes} genes x ${this.nObs} obs`;
 
         const params = {
             'analysis_id': ana.id,
@@ -972,8 +1095,16 @@ class AnalysisStepQCByMito {
             {'params': params, 'title': 'QC by mito - Scatter N genes',
              'target': UI.qbmScatterNGenesContainer});
 
+        // Only pass the step if the results have been saved
+        if (resultsSaved) {
+            document.querySelector(UI.qcByMitoSectionSuccessElt).classList.remove("is-hidden");
+            passStepWithHref(UI.qcByMitoSection);
+            openNextStepHrefs([UI.selectVariableGenesSection], null, true);
+        }
     }
 }
+
+
 class AnalysisStepSelectVariableGenes {
     constructor(analysis) {
         this.reset();
@@ -1019,11 +1150,13 @@ class AnalysisStepSelectVariableGenes {
         this.normCountsPerCell = null;
         this.flavor = 'seurat';
         this.nTopGenes = null;
+        this.nGenes = null;
+        this.nObs = null;
         this.minMean = null;
         this.maxMean = null;
         this.minDispersion = null;
-        this.regressOut = true;
-        this.scaleUnitVariance = true;
+        this.regressOut = true; // no options to change
+        this.scaleUnitVariance = true; // no options to change
         this.resetUI();
     }
 
@@ -1031,22 +1164,25 @@ class AnalysisStepSelectVariableGenes {
      * Resets the UI elements to their default values.
      */
     resetUI() {
+        document.querySelector(UI.selectVariableGenesSection).classList.remove("is-hidden");
+
         document.querySelector(UI.asvgNormCountsPerCellElt).value = '1e4';
         document.querySelector(UI.asvgFlavorElt).value = 'seurat';
-        document.querySelector(UI.asvgNTopGenesElt).value = '';
+        document.querySelector(UI.asvgNTopGenesElt).value = "";
         document.querySelector(UI.asvgTopGenesListElt).replaceChildren();
         document.querySelector(UI.asvgMinMeanElt).value = 0.0125;
         document.querySelector(UI.asvgMaxMeanElt).value = 3;
         document.querySelector(UI.asvgMinDispersionElt).value = 0.5;
-        document.querySelector(UI.asvgRegressOutElt).checked = true;
-        document.querySelector(UI.asvgScaleUnitVarianceElt).checked = true;
 
         disableAndHideElement(document.querySelector(UI.btnAsvgSaveElt));
         document.querySelector(UI.btnAsvgSaveElt).textContent = 'Save these genes';
         document.querySelector(UI.btnDoAnalysisSelectVariableGenesElt).classList.remove("is-hidden");
-        for (const elt of document.querySelectorAll(UI.asvgSaveOptionsElts)) {
-            elt.classList.add("is-hidden");
-        }
+
+        // Hide preious shown elements
+        document.querySelector(UI.asvgPostShapeContainer).classList.add("is-hidden");
+        document.querySelector(UI.asvgTopGenesContainer).classList.add("is-hidden");
+        // show the instructions
+        document.querySelector(UI.asvgInstructionsElt).classList.remove("is-hidden");
     }
 
     /**
@@ -1056,15 +1192,16 @@ class AnalysisStepSelectVariableGenes {
      * @returns {Promise<void>} - A promise that resolves when the analysis is complete.
      */
     async runAnalysis(saveDataset) {
+        document.querySelector(UI.btnAsvgSaveElt).disabled = true;
+        document.querySelector(UI.asvgSaveWarningElt).classList.add("is-hidden");
+
         if (Boolean(saveDataset)) {
             createToast("Saving variable genes", "is-info");
         } else {
             createToast("Analyzing variable genes", "is-info");
         }
 
-        document.querySelector(UI.asvgPlotContainerElt).replaceChildren();
-        document.querySelector(UI.asvgPlotNormContainerElt).replaceChildren();
-        disableAndHideElement(document.querySelector(UI.btnAsvgSaveElt));
+        document.querySelector(UI.asvgPlotContainer).replaceChildren();
 
         this.normCountsPerCell = document.querySelector(UI.asvgNormCountsPerCellElt).value;
         this.flavor = document.querySelector(UI.asvgFlavorElt).value;
@@ -1072,9 +1209,6 @@ class AnalysisStepSelectVariableGenes {
         this.minMean = document.querySelector(UI.asvgMinMeanElt).value;
         this.maxMean = document.querySelector(UI.asvgMaxMeanElt).value;
         this.minDispersion = document.querySelector(UI.asvgMinDispersionElt).value;
-
-        this.regressOut = document.querySelector(UI.asvgRegressOutElt).checked;
-        this.scaleUnitVariance = document.querySelector(UI.asvgScaleUnitVarianceElt).checked;
 
         const params = {
             'dataset_id': this.analysis.dataset.id,
@@ -1100,22 +1234,30 @@ class AnalysisStepSelectVariableGenes {
                 throw new Error(error);
             }
 
+            this.nGenes = saveDataset ? data.n_genes.toString() : null;
+            this.nObs = saveDataset ? data.n_obs.toString() : null;
+
             this.calculated = Boolean(saveDataset);
 
-            this.updateUIWithResults(data, this.calculated);
-            createToast("Variable genes image created", "is-success");
+            document.querySelector(UI.btnAsvgSaveElt).disabled = false;
+            if (this.calculated) {
+                document.querySelector(UI.btnAsvgSaveElt).disabled = true;
+            }
 
-            document.querySelector(UI.asvgResultCountElt).textContent = `(${data['n_genes']})`;
-            enableAndShowElement(document.querySelector(UI.btnAsvgSaveElt));
-            document.querySelector(UI.topGenesElt).textContent = `Suggested highly-variable genes:\n${data['top_genes']}`;
-            document.querySelector(UI.topGenesElt).classList.remove("is-hidden");
-            // TODO:  $('#asvg_options_c .js-next-step').show();  // auto-select the next collapsable dropdown
+            document.querySelector(UI.btnAsvgSaveElt).disabled = false;
+            this.updateUIWithResults(this.calculated);
+            createToast("Variable genes plot created", "is-success");
 
-            document.querySelector(UI.btnDoAnalysisSelectVariableGenesElt).classList.add("is-hidden");
+            document.querySelector(UI.asvgTopGenesListElt).textContent = `${data['top_genes']}`;
+            document.querySelector(UI.asvgTopGenesContainer).classList.remove("is-hidden");
+
         } catch (error) {
             createToast(`Error identifying variable genes: ${error.message}`);
+            logErrorInConsole(error);
+            document.getElementById(UI.selectVariableGenesSectionFailedElt).classList.remove("is-hidden");
+            failStepWithHref(UI.selectVariableGenesSection);
         } finally {
-            document.querySelector(UI.btnDoAnalysisSelectVariableGenesElt).disabled = false;
+            this.analysis.save();
         }
     }
 
@@ -1135,42 +1277,26 @@ class AnalysisStepSelectVariableGenes {
             return;
         }
 
-        if (this.calculated) {
-            // TODO: add success checkmark to UI
 
-            document.querySelector(UI.asvgNormCountsPerCellElt).value = this.normCountsPerCell;
-            document.querySelector(UI.asvgFlavorElt).value = this.flavor;
-            document.querySelector(UI.asvgNTopGenesElt).value = this.nTopGenes;
-            document.querySelector(UI.asvgMinMeanElt).value = this.minMean;
-            document.querySelector(UI.asvgMaxMeanElt).value = this.maxMean;
-            document.querySelector(UI.asvgMinDispersionElt).value = this.minDispersion;
+        document.querySelector(UI.asvgNormCountsPerCellElt).value = this.normCountsPerCell;
+        document.querySelector(UI.asvgFlavorElt).value = this.flavor;
+        document.querySelector(UI.asvgNTopGenesElt).value = this.nTopGenes;
+        document.querySelector(UI.asvgMinMeanElt).value = this.minMean;
+        document.querySelector(UI.asvgMaxMeanElt).value = this.maxMean;
+        document.querySelector(UI.asvgMinDispersionElt).value = this.minDispersion;
 
-            document.querySelector(UI.asvgRegressOutElt).checked = false;
-            if (this.regressOut) {
-                document.querySelector(UI.asvgRegressOutElt).checked = true;
-            }
+        enableAndShowElement(document.querySelector(UI.btnAsvgSaveElt));
+        document.querySelector(UI.asvgSaveWarningElt).classList.remove("is-hidden");
 
-            document.querySelector(UI.asvgScaleUnitVarianceElt).checked = false;
-            if (this.scaleUnitVariance) {
-                document.querySelector(UI.asvgScaleUnitVarianceElt).checked = true;
-            }
-
-            enableAndShowElement(document.querySelector(UI.btnAsvgSaveElt));
-            if (resultsSaved) {
-                document.querySelector(UI.btnAsvgSaveElt).disabled = true;
-                document.querySelector(UI.btnAsvgSaveElt).textContent = 'Saved';
-
-            }
+        if (resultsSaved) {
+            document.querySelector(UI.btnAsvgSaveElt).disabled = true;
+            document.querySelector(UI.btnAsvgSaveElt).textContent = 'Saved';
+            document.querySelector(UI.asvgPostShapeContainer).classList.remove("is-hidden");
             document.querySelector(UI.btnDoAnalysisSelectVariableGenesElt).classList.add("is-hidden");
-
-
-            // Variable gene calculation enables PCA
-            document.querySelector(UI.pcaToggleElt).classList.remove("is-hidden");
-
-            for (const elt of document.querySelectorAll(UI.asvgSaveOptionsElts)) {
-                elt.classList.remove("is-hidden");
-            }
         }
+
+        document.querySelector(UI.asvgPostShapeElt).textContent = `${this.nGenes} genes x ${this.nObs} obs`;
+
 
         const params = {
             'analysis_id': ana.id,
@@ -1186,8 +1312,14 @@ class AnalysisStepSelectVariableGenes {
         ana.placeAnalysisImage(
             {'params': params, 'title': 'Variable genes', 'target': UI.asvgPlotContainer});
 
-        UI.asvgInstructionsElt.classList.add("is-hidden");
+        document.querySelector(UI.asvgInstructionsElt).classList.add("is-hidden");
 
+        // Only pass the step if the results have been saved
+        if (resultsSaved) {
+            document.querySelector(UI.selectVariableGenesSectionSuccessElt).classList.remove("is-hidden");
+            passStepWithHref(UI.selectVariableGenesSection);
+            openNextStepHrefs([UI.pcaSection], null, true);
+        }
 
     }
 }
@@ -1225,16 +1357,25 @@ class AnalysisStepPCA {
      */
     reset() {
         this.calculated = false;
-        this.genesToColor = false;
+        this.genesToColor = null;
         this.resetUI();
     }
 
     /**
-     * Resets the user interface by clearing the values of the genesToColorElt and topPcaGenesElt elements.
+     * Resets the user interface by clearing the values of the pcaGenesToColorElt and topPcaGenesElt elements.
      */
     resetUI() {
-        document.querySelector(UI.genesToColorElt).value = null;
+        document.querySelector(UI.pcaSection).classList.remove("is-hidden");
+
+        document.querySelector(UI.pcaGenesToColorElt).value = this.genesToColor;
         document.querySelector(UI.topPcaGenesElt).value = null;
+
+        // hide previously shown elements
+        document.querySelector(UI.pcaMissingGeneContainer).classList.add("is-hidden");
+        document.querySelector(UI.pcaPcToTopGenesContainer).classList.add("is-hidden");
+        document.querySelector(UI.pcaGeneListContainer).classList.add("is-hidden");
+        // show the instructions
+        document.querySelector(UI.pcaInstructionsElt).classList.remove("is-hidden");
     }
 
     /**
@@ -1247,7 +1388,12 @@ class AnalysisStepPCA {
         createToast("Computing principal components and variance plot", "is-info");
         document.querySelector(UI.pcaMissingGeneElt).classList.add("is-hidden");
 
-        for (const container of document.querySelector(UI.pcaResetableElts)) {
+        document.querySelector(UI.pcaSectionSuccessElt).classList.add("is-hidden");
+        document.querySelector(UI.pcaSectionFailedElt).classList.add("is-hidden");
+
+        document.querySelector(UI.pcaMissingGeneContainer).classList.add("is-hidden");
+
+        for (const container of document.querySelectorAll(UI.pcaResetableElts)) {
             container.replaceChildren();
         }
 
@@ -1259,7 +1405,7 @@ class AnalysisStepPCA {
                 analysis_id: this.analysis.id,
                 analysis_type: this.analysis.type,
                 session_id: this.analysis.userSessionId,
-                genes_to_color: document.querySelector(UI.genesToColorElt).value,
+                genes_to_color: document.querySelector(UI.pcaGenesToColorElt).value,
                 compute_pca: computePCA
             }));
             if (!data.success || data.success < 1) {
@@ -1270,20 +1416,23 @@ class AnalysisStepPCA {
             }
 
             this.calculated = true;
-            this.genesToColor = document.querySelector(UI.genesToColorElt).value;
+            this.genesToColor = document.querySelector(UI.pcaGenesToColorElt).value;
             this.updateUIWithResults();
             createToast("PCA and variance computed", "is-success");
 
-            document.querySelector(UI.pcaOptionsElt).classList.remove("is-hidden");
-            document.querySelector(UI.weightedGeneListElt).classList.remove("is-hidden");
-            // TODO:  $('#pca_options_c .js-next-step').show();  // auto-select the next collapsable dropdown
+            // Reveals more UI form elements
+            document.querySelector(UI.pcaPcToTopGenesContainer).classList.remove("is-hidden");
+            document.querySelector(UI.pcaGeneListContainer).classList.remove("is-hidden");
 
         } catch (error) {
             createToast(`Error running PCA: ${error.message}`);
+            logErrorInConsole(error);
             document.querySelector(UI.pcaMissingGeneContainer).classList.remove("is-hidden");
+            failStepWithHref(UI.pcaSection);
+            document.querySelector(UI.pcaSectionFailedElt).classList.remove("is-hidden");
 
         } finally {
-            document.querySelector(UI.btnPcaRunElt).disabled = false;
+            this.analysis.save();
         }
     }
 
@@ -1298,11 +1447,11 @@ class AnalysisStepPCA {
      */
     async runAnalysisTopGenes() {
         createToast("Computing top genes for principal components", "is-info");
-        document.querySelector(UI.pcaTopGenesContainer).replaceChildren();
+        document.querySelector(UI.pcaTopGenesPlotContainer).replaceChildren();
 
         try {
 
-            const {data} = await axios.post("./cgi/h5ad_top_pca_genes.cgi", convertToFormData({
+            const {data} = await axios.post("./api/analysis/plotTopGenesPCA", convertToFormData({
                 dataset_id: this.analysis.dataset.id,
                 analysis_id: this.analysis.id,
                 analysis_type: this.analysis.type,
@@ -1315,11 +1464,26 @@ class AnalysisStepPCA {
                 throw new Error(error);
             }
 
-            this.updateUIWithResultsTopGenes(data);
-            createToast("Top PCA genes computed", "is-success");
+            const params = {
+                'analysis_id': this.analysis.id,
+                'analysis_name': 'pca_loadings',
+                'analysis_type': this.analysis.type,
+                'dataset_id': this.analysis.dataset.id,
+                'session_id': this.analysis.userSessionId,
+                datetime: (new Date()).getTime()
+            }
 
+            this.analysis.placeAnalysisImage({
+                'params': params,
+                'title': 'Top PCA Genes',
+                'target': UI.pcaTopGenesPlotContainer
+            });
+
+            document.querySelector(UI.pcaTopGenesPlotContainer).classList.remove("is-hidden");
+            createToast("Top PCA genes computed", "is-success");
         } catch (error) {
             createToast(`Error computing top PCA genes: ${error.message}`);
+            logErrorInConsole(error);
         } finally {
             document.querySelector(UI.btnPcaTopGenesElt).disabled = false;
         }
@@ -1341,7 +1505,7 @@ class AnalysisStepPCA {
             return;
         }
 
-        document.querySelector(UI.instructionsElt).classList.add("is-hidden");
+        document.querySelector(UI.pcaInstructionsElt).classList.add("is-hidden");
 
         const params = {
             'analysis_id': ana.id,
@@ -1361,10 +1525,13 @@ class AnalysisStepPCA {
             {'params': params, 'title': 'PCA variance', 'target': UI.pcaVarianceContainer});
 
         // PCA calculation enables tSNE/UMAP
-        document.querySelector(UI.tsneToggleElt).classList.remove("is-hidden");
-        document.querySelector(UI.pcaToggleElt).checked = true;
-        document.querySelector(UI.genesToColorElt).value = step.genesToColor;
-        document.querySelector(UI.pcaOptionsDivElt).classList.remove("is-hidden");
+        document.querySelector(UI.pcaGenesToColorElt).value = this.genesToColor;
+        document.querySelector(UI.tsneGenesToColorElt).value = this.genesToColor;   // obvious 1st choice
+        document.querySelector(UI.pcaPcToTopGenesContainer).classList.remove("is-hidden");
+
+        document.querySelector(UI.pcaSectionSuccessElt).classList.remove("is-hidden");
+        passStepWithHref(UI.pcaSection);
+        openNextStepHrefs([UI.tsneSection], null, true);
     }
 }
 
@@ -1402,9 +1569,10 @@ class AnalysisSteptSNE {
         this.tsneCalculated = false;
         this.umapCalculated = false;
         this.genesToColor = false;
-        this.nPcs = null;
-        this.nNeighbors = null;
-        this.randomState = null;
+        this.nPcs = 2;
+        this.nNeighbors = 5;
+        this.randomState = 2;   // no option to change
+        this.useScaled = false; // no option to change
         this.plotTsne = 0;
         this.plotUmap = 0;
         this.resetUI();
@@ -1414,20 +1582,32 @@ class AnalysisSteptSNE {
      * Resets the UI by clearing the values of various input elements.
      */
     resetUI() {
+        document.querySelector(UI.tsneSection).classList.remove("is-hidden");
+
         document.querySelector(UI.tsneGenesToColorElt).value = '';
-        document.querySelector(UI.dimReductionNNeighborsElt).value = '';
-        document.querySelector(UI.tsneNPcsElt).value = '';
-        document.querySelector(UI.tsneRandomStateElt).value = 2;
+        document.querySelector(UI.dimReductionNNeighborsElt).value = this.nNeighbors;
+        document.querySelector(UI.tsneNPcsElt).value = this.nPcs;
         document.querySelector(UI.dimReductionMethodTsneElt).checked = false;
         document.querySelector(UI.dimReductionMethodUmapElt).checked = true;
+
+        // hide elements that were revealed by previous steps
+        document.querySelector(UI.tsneMissingGeneContainer).classList.add("is-hidden");
+        // show the instructions
+        document.querySelector(UI.tsneInstructionsElt).classList.remove("is-hidden");
     }
 
     async runAnalysis() {
         createToast("Computing tSNE/UMAP and generating plot", "is-info");
 
+        // Reset success and failure icons
+        document.querySelector(UI.tsneSectionSuccessElt).classList.add("is-hidden");
+        document.querySelector(UI.tsneSectionFailedElt).classList.add("is-hidden");
+
         document.querySelector(UI.tsneMissingGeneContainer).classList.add("is-hidden");
-        document.querySelector(UI.tsnePlotContainerElt).replaceChildren();
-        document.querySelector(UI.umapPlotContainerElt).replaceChildren();
+
+        for (const container of document.querySelectorAll(UI.tsneResetableElts)) {
+            container.replaceChildren();
+        }
 
         // Anytime we run this there are three things which might need to be computed depending on what
         //  has happened.  neighborhood, tSNE and UMAP need to be done if it's the first time or if
@@ -1488,8 +1668,6 @@ class AnalysisSteptSNE {
             }
         }
 
-        const useScaled = document.querySelector(UI.tsneUseScaledElt).checked;
-
         const params = {
             'dataset_id': this.analysis.dataset.id,
             'analysis_id': this.analysis.id,
@@ -1498,8 +1676,8 @@ class AnalysisSteptSNE {
             'genes_to_color': document.querySelector(UI.tsneGenesToColorElt).value,
             'n_pcs': document.querySelector(UI.tsneNPcsElt).value,
             'n_neighbors': document.querySelector(UI.dimReductionNNeighborsElt).value,
-            'random_state': document.querySelector(UI.tsneRandomStateElt).value,
-            'use_scaled': useScaled,
+            'random_state': this.randomState,
+            'use_scaled': this.useScaled,
             'compute_neighbors': computeNeighbors,
             'compute_tsne': computeTsne,
             'compute_umap': computeUmap,
@@ -1533,16 +1711,17 @@ class AnalysisSteptSNE {
             }
 
             createToast("tSNE/UMAP computed and displayed", "is-success");
-            // TODO:  $('#tsne_options_c .js-next-step').show();  // Reveal next collapsable dropdown
-
 
         } catch (error) {
             createToast(`Error generating tSNE: ${error.message}`);
+            logErrorInConsole(error);
+            failStepWithHref(UI.tsneSection);
+            document.querySelector(UI.tsneSectionFailedElt).classList.remove("is-hidden");
 
             document.querySelector(UI.tsneMissingGeneContainer).classList.remove("is-hidden");
 
         } finally {
-            document.querySelector(UI.btnTsneRunElt).disabled = false;
+            this.analysis.save();
         }
 
     }
@@ -1563,11 +1742,9 @@ class AnalysisSteptSNE {
             console.info("No tSNE or UMAP calculated yet so cannot update UI.")
             return;
         }
-        document.querySelector(UI.tsneToggleElt).classList.remove("is-hidden");
         document.querySelector(UI.tsneGenesToColorElt).value = this.genesToColor;
         document.querySelector(UI.dimReductionNNeighborsElt).value = this.nNeighbors;
         document.querySelector(UI.tsneNPcsElt).value = this.nPcs;
-        document.querySelector(UI.tsneRandomStateElt).value = this.randomState;
 
         document.querySelector(UI.dimReductionMethodTsneElt).checked = false;
         if (Boolean(this.plotTsne)) {
@@ -1601,7 +1778,9 @@ class AnalysisSteptSNE {
         }
 
         // dimensionality reduction enables clustering
-        document.querySelector(UI.clusterToggleElt).classList.remove("is-hidden");
+        document.querySelector(UI.tsneSectionSuccessElt).classList.remove("is-hidden");
+        passStepWithHref(UI.tsneSection);
+        openNextStepHrefs([UI.clusteringSection], null, true);
 
     }
 }
@@ -1634,7 +1813,6 @@ class AnalysisStepClustering {
         if (!step) return step;
 
         step.calculated = data['calculated'];
-        step.nNeighbors = data['n_neighbors'];
         step.resolution = data['resolution'];
         step.plotTsne = data['plot_tsne'];
         step.plotUmap = data['plot_umap'];
@@ -1647,8 +1825,7 @@ class AnalysisStepClustering {
      */
     reset() {
         this.calculated = false;
-        this.nNeighbors = null;
-        this.resolution = null;
+        this.resolution = 1.3;
         this.plotUmap = 0;
         this.plotTsne = 0;
         this.resetUI();
@@ -1663,11 +1840,18 @@ class AnalysisStepClustering {
      */
     resetUI() {
 
+        document.querySelector(UI.clusteringSection).classList.remove("is-hidden");
+        document.querySelector(UI.clusteringEditSection).classList.remove("is-hidden");
+
         // Reset resolution input back to default
-        document.querySelector(UI.resolutionElt).value = 1.3;
+        document.querySelector(UI.resolutionElt).value = this.resolution;
 
-        // TODO: On page js file, add click listener to sync the resolution inputs
+        // Hide elements that were revealed by previous steps
+        this.moda === "edit" && document.querySelector(UI.groupLabelsContainer).classList.add("is-hidden");
 
+        // Show the instructions
+        this.mode === "initial" && document.querySelector(UI.clusteringInstructionsElt).classList.remove("is-hidden");
+        this.mode === "edit" && document.querySelector(UI.clusteringEditInstructionsElt).classList.remove("is-hidden");
     }
 
     /**
@@ -1679,27 +1863,33 @@ class AnalysisStepClustering {
     async runAnalysis() {
         // TODO: Fine-tune this based on if type is initial or edit
 
-        createToast("Computing Louvain clusters", "is-info");
-        for (const container of document.querySelector(UI.clusteringResetableElts)) {
+        // Reset success and failed icons
+        if (this.mode === "initial") {
+            document.querySelector(UI.clusteringSectionSuccessElt).classList.add("is-hidden");
+            document.querySelector(UI.clusteringSectionFailedElt).classList.add("is-hidden");
+        } else if (this.mode === "edit") {
+            document.querySelector(UI.clusteringEditSectionSuccessElt).classList.add("is-hidden");
+            document.querySelector(UI.clusteringEditSectionFailedElt).classList.add("is-hidden");
+        }
+
+        createToast("Computing clusters using Leiden algorithm", "is-info");
+
+        const uiToReset = (this.mode === "initial") ? UI.clusteringResetableElts : UI.clusteringEditResetableElts;
+
+        for (const container of document.querySelectorAll(uiToReset)) {
             container.replaceChildren();
         }
 
-        document.querySelector(UI.btnClusteringRunElt).disabled = true;
-        if (this.type == "edit") {
-            document.querySelector(UI.btnClusteringRerunWithGroupsElt).disabled = true;
-        }
-
-        const isSameLouvainParams = (this.nNeighbors == document.querySelector(UI.clusteringNNeighborsElt).value
-            && this.resolution == document.querySelector(UI.resolutionElt).value);
+        const hasMatchingClusteringParams = this.resolution === document.querySelector(UI.resolutionElt).value;
 
         let computeClustering = true;
 
-        const oldLabels = [...this.groupLabels];  // shallow-copy
+        const oldLabels = [...this.analysis.groupLabels];  // shallow-copy
         const newLabels = [];
         const keptLabels = [];
 
         // It is not safe to reuse group labels if the clustering params were changed
-        if (isSameLouvainParams) {
+        if (hasMatchingClusteringParams) {
             for (const glElt of clusterGroupLabelsHtml.querySelector(".group-user-label input")) {
                 newLabels.push(glElt.value);
                 const thisRow = glElt.closest("tr");
@@ -1710,9 +1900,9 @@ class AnalysisStepClustering {
 
         const clusterInfo = [];
 
-        if (isSameLouvainParams && this.calculated && this.type == "edit") {
+        if (hasMatchingClusteringParams && this.calculated && this.type == "edit") {
             computeClustering = false;
-            this.groupLabels.forEach((v, i) => {
+            this.analysis.groupLabels.forEach((v, i) => {
                 clusterInfo.push({
                     "old_label": oldLabels[i]
                     , "new_label": newLabels[i]
@@ -1747,7 +1937,6 @@ class AnalysisStepClustering {
             }
 
             this.calculated = true;
-            this.nNeighbors = document.querySelector(UI.clusteringNNeighborsElt).value;
             this.resolution = document.querySelector(UI.resolutionElt).value;
             this.plotTsne = plotTsne;
             this.plotUmap = plotUmap;
@@ -1769,12 +1958,17 @@ class AnalysisStepClustering {
 
         } catch (error) {
             createToast(`Error generating clusters: ${error.message}`);
+            logErrorInConsole(error);
+            if (this.mode === "initial") {
+                failStepWithHref(UI.clusteringSection);
+                document.querySelector(UI.clusteringSectionFailedElt).classList.remove("is-hidden");
+            } else if (this.mode === "edit") {
+                failStepWithHref(UI.clusteringEditSection);
+                document.querySelector(UI.clusteringEditSectionFailedElt).classList.remove("is-hidden");
+            }
 
         } finally {
-            document.querySelector(UI.btnClusteringRunElt).disabled = false;
-            if (this.type == "edit") {
-                document.querySelector(UI.btnClusteringRerunWithGroupsElt).disabled = false;
-            }
+            this.analysis.save();
         }
     }
 
@@ -1795,14 +1989,11 @@ class AnalysisStepClustering {
             return;
         }
 
-        document.querySelector(UI.clusterInstructionsElt).classList.add("is-hidden");
+        const toolInstructions = (this.mode === "initial") ? UI.clusteringInstructionsElt : UI.clusteringEditInstructionsElt;
+        document.querySelector(toolInstructions).classList.add("is-hidden");
 
         if (this.calculated) {
-            document.querySelector(UI.clusterToggleElt).classList.checked = true
-
-            document.querySelector(UI.clusteringNNeighborsElt).value = this.nNeighbors;
             document.querySelector(UI.resolutionElt).value = this.resolution;
-
         }
 
         const params = {
@@ -1816,11 +2007,11 @@ class AnalysisStepClustering {
         }
 
         // Need to ensure targets are different for the two different clustering steps
-        let tsneTarget = UI.clusterTsnePlotElt;
-        let umapTarget = UI.clusterUmapPlotElt;
-        if (this.mode == "edit") {
-            tsneTarget += UI.clusterTsnePlotEditElt;
-            umapTarget += UI.clusterUmapPlotEditElt;
+        let tsneTarget = UI.clusteringTsnePlotElt;
+        let umapTarget = UI.clusteringUmapPlotElt;
+        if (this.mode === "edit") {
+            tsneTarget += UI.clusteringTsnePlotEditElt;
+            umapTarget += UI.clusteringUmapPlotEditElt;
         }
 
         if (Boolean(this.plotTsne)) {
@@ -1834,8 +2025,15 @@ class AnalysisStepClustering {
                 {'params': params, 'title': 'Cluster groups', 'target': umapTarget});
         }
 
-        // clustering enables marker gene identification
-        document.querySelector(UI.markerGenesToggleElt).classList.remove("is-hidden");
+        if (this.mode === "initial") {
+            document.querySelector(UI.clusteringSectionSuccessElt).classList.remove("is-hidden");
+            passStepWithHref(UI.clusteringSection);
+            openNextStepHrefs([UI.markerGenesSection], null, true);
+        } else if (this.mode === "edit") {
+            document.querySelector(UI.clusteringEditSectionSuccessElt).classList.remove("is-hidden");
+            passStepWithHref(UI.clusteringEditSection);
+            openNextStepHrefs([UI.markerGenesSection], null, true);
+        }
     }
 }
 class AnalysisStepMarkerGenes {
@@ -1924,10 +2122,9 @@ class AnalysisStepMarkerGenes {
 
         step.calculated = data['calculated']
         step.nGenes = data['n_genes']
-        step.groupNames = data['group_names']
+        step.groupLabels = data['group_labels']
 
         if (step.calculated ) {
-            document.querySelector(UI.markerGenesToggleElt).checked = true;
             step.updateUIWithResults(data);
         }
 
@@ -2030,9 +2227,6 @@ class AnalysisStepMarkerGenes {
      * @throws {Error} - If there is an error retrieving the marker genes data.
      */
     async populateMarkerGenesTable(table) {
-        document.querySelector(UI.markerGenesSectionSuccessElt).classList.add("is-hidden");
-        document.querySelector(UI.markerGenesSectionFailedElt).classList.add("is-hidden");
-
         try {
             if (!table) {
                 this.computeMarkerGenes = true;
@@ -2040,7 +2234,6 @@ class AnalysisStepMarkerGenes {
                 table = data.table;
                 this.computeMarkerGenes = false;
             }
-
 
             // Add the first th element (empty)
             const markerGenesHeaderHtml = document.querySelector(UI.markerGenesTableHeadTmpl).content.cloneNode(true);
@@ -2073,11 +2266,10 @@ class AnalysisStepMarkerGenes {
 
             }
 
-            // Show the table and
+            // Show the table and associated stuff
             document.querySelector(UI.markerGenesTableContainer).classList.remove("is-hidden");
 
         } catch (error) {
-            document.querySelector(UI.markerGenesSectionFailedElt).classList.remove("is-hidden");
             createToast(`Error getting marker genes: ${error.message}`);
             logErrorInConsole(error);
         }
@@ -2099,10 +2291,20 @@ class AnalysisStepMarkerGenes {
      * Resets the user interface.
      */
     resetUI() {
+        document.querySelector(UI.markerGenesSection).classList.remove("is-hidden");
+
+
         document.querySelector(UI.markerGenesNGenesElt).value = 5;
 
         // Affects the clustering block
         document.querySelector(UI.groupLabelsContainer).classList.add("is-hidden");
+
+        // hide elements that were revealed by previous steps
+        document.querySelector(UI.markerGenesVisualizationContainer).classList.add("is-hidden");
+        document.querySelector(UI.markerGenesListContainer).classList.add("is-hidden");
+
+        // show the instructions
+        document.querySelector(UI.markerGenesInstructionsElt).classList.remove("is-hidden");
     }
 
     /**
@@ -2114,6 +2316,9 @@ class AnalysisStepMarkerGenes {
     async runAnalysis() {
         createToast("Computing marker genes", "is-info");
         document.querySelector(UI.markerGenesPlotContainer).replaceChildren();
+
+        document.querySelector(UI.markerGenesSectionSuccessElt).classList.add("is-hidden");
+        document.querySelector(UI.markerGenesSectionFailedElt).classList.add("is-hidden");
 
         // Clear the table
         document.querySelector(UI.markerGenesTableHeadRowElt).replaceChildren();
@@ -2146,9 +2351,17 @@ class AnalysisStepMarkerGenes {
             this.calculated = true;
             this.updateUIWithResults(data);
             this.analysis.groupLabels = data.group_labels.map(x => x.group_label);
+
         } catch (error) {
             createToast(`Error computing marker genes: ${error.message}`);
             logErrorInConsole(error);
+            document.querySelector(UI.markerGenesSectionFailedElt).classList.remove("is-hidden");
+
+            // mark in stepper
+            failStepWithHref(UI.markerGenesSection)
+
+        } finally {
+            this.analysis.save();
         }
     }
 
@@ -2192,18 +2405,33 @@ class AnalysisStepMarkerGenes {
 
         const groupLabels = data.group_labels.map(x => x.group_label);
 
-        // This can only be done with a non-primary analysis
-        if (ana.type != "primary") {
-            this.populateClusterEditLabels(data.group_labels);
-        }
-
-        document.querySelector(UI.markerGenesSectionSuccessElt).classList.remove("is-hidden");
-
         document.querySelector(UI.markerGenesVisualizationContainer).classList.remove("is-hidden");
         document.querySelector(UI.markerGenesListContainer).classList.remove("is-hidden");
 
         // marker gene calculation enables cluster comparison
-        this.analysis.compareGenes.populateGroupSelectors(groupLabels);
+        ana.compareGenes.populateGroupSelectors(groupLabels);
+
+        // mark success
+        document.querySelector(UI.markerGenesSectionSuccessElt).classList.remove("is-hidden");
+
+
+        const nextSteps = [UI.compareGenesSection]
+
+        // This can only be done with a non-primary analysis
+        if (ana.type != "primary") {
+            this.populateClusterEditLabels(data.group_labels);
+            nextSteps.push(UI.clusteringEditSection)
+        }
+
+        // move stepper to next step
+        passStepWithHref(UI.markerGenesSection)
+        openNextStepHrefs(nextSteps, UI.compareGenesSection)
+
+        /*if (ana.type === "primary") {
+            document.querySelector(UI.compareGenesSection).click();
+        } else {
+            document.querySelector(UI.clusteringEditSection).click();
+        }*/
 
     }
 }
@@ -2329,6 +2557,7 @@ class AnalysisStepCompareGenes {
      * Resets the UI elements to their default values.
      */
     resetUI() {
+        document.querySelector(UI.compareGenesSection).classList.remove("is-hidden");
 
         document.querySelector(UI.queryClusterSelectElt).value = "";
         document.querySelector(UI.referenceClusterSelectElt).value = "all-reference-clusters";
@@ -2337,8 +2566,11 @@ class AnalysisStepCompareGenes {
         document.querySelector(UI.compareGenesMethodSelectElt).value = "t-test_overestim_var";
         document.querySelector(UI.comapreGenesCorrMethodSelectElt).value = "benjamini-hochberg";
 
-        document.querySelector(UI.compareGenesInstructionsElt).classList.remove("is-hidden");
+        // Hide elements that were revealed by previous steps
         document.querySelector(UI.compareGenesRankedContainer).classList.add("is-hidden");
+
+        // show the instructions
+        document.querySelector(UI.compareGenesInstructionsElt).classList.remove("is-hidden");
     }
 
     /**
@@ -2394,11 +2626,12 @@ class AnalysisStepCompareGenes {
             this.corrMethod = document.querySelector(UI.comapreGenesCorrMethodSelectElt).value;
             this.updateUIWithResults(data);
             createToast("Comparison computed", "is-success");
-            document.querySelector(compareGenesSectionSuccessElt).classList.remove("is-hidden");
         } catch (error) {
             createToast(`Error computing comparison: ${error.message}`);
             logErrorInConsole(error);
             document.querySelector(UI.compareGenesSectionFailedElt).classList.remove("is-hidden");
+        } finally {
+            this.analysis.save();
         }
     }
 
@@ -2469,6 +2702,9 @@ class AnalysisStepCompareGenes {
             data.table_json_r = JSON.parse(data.table_json_r);
             this.populateComparisonTable(UI.compareGenesTableRElt, data.table_json_r.data);
         }
+
+        // mark success
+        document.querySelector(UI.compareGenesSectionSuccessElt).classList.remove("is-hidden");
 
     }
 }
