@@ -99,7 +99,7 @@ The default dataset collection (Hearing) contains 10 datasets that offer a broad
 
 In the dataset explorer, open collection management (on the top portion of the left bar) and choose the plus icon to create a new dataset collection. Add a dataset collection name and click add. After you click add, you will see the new dataset collection name in the dropdown menu. To add datasets to this dataset collection, click on list view under View, click the plus sign shown in the entry for each dataset, to remove already added datasets use the minus icon. If you want to add the same dataset multiple times just click the plus icon (This is useful for displaying the same dataset in two different visuals).  To see what dataset collections are currently in the dataset collection, click the eye icon. If you wish to make another dataset collection your default on the homepage (i.e. a dataset collection other than the default Hearing dataset collection) click the blue thumbs up arrow. 
 
-<img width="700" alt="Screen Shot 2022-04-25 at 12 49 32 PM" src="https://user-images.githubusercontent.com/28451557/165136184-6968ff4b-c72e-44d5-bca9-1fc9bff3096b.png">
+<img width="700" alt="Screen Shot 2022-04-25 at 12 49 32 PM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/ScreenshotCreateNewCollection.png">
 
 ### Arranging a collection
 
@@ -111,7 +111,7 @@ Next click on the arrangement view button (top center of page looks like a serie
 
 By dragging, you can rearrange the order and size of each dataset within the dataset collection.  You can now move the panels to be anywhere on the page, and sizing can be to make it larger/smaller or wider/narrower. Make sure to hit save when finished.
 
-<img width="700" alt="Screen Shot 2022-06-10 at 8 48 31 AM" src="https://user-images.githubusercontent.com/28451557/173068186-38b7a9e9-ee96-4771-9225-4e10669c4053.png">
+<img width="700" alt="Screen Shot 2022-06-10 at 8 48 31 AM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/ArrangeDatasetCollection.png">
 
 
 ## EpiViz displays
@@ -130,21 +130,22 @@ If you wish to share datasets or collections with a group of individuals (functi
 
 If you would like custom permalinks , please contact our curator team for assistance.
 
-<img width="700" alt="Screen Shot 2022-05-20 at 9 26 36 AM" src="https://user-images.githubusercontent.com/28451557/169538177-9b130082-9070-43d8-b11e-696404317783.png">
+<img width="700" alt="Screen Shot 2022-05-20 at 9 26 36 AM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/ShareDatasetOrCollection.png">
 
 
 
 # Analysis tools
 gEAR incorporates several tools for analyzing data with the goal of improving the reusability of genomic data. Graphical interfaces are built around common analysis tools (e.g. a Seurat pipeline for single-cell data) to make the tools more accessible for those without coding experience or the need to download data. The tools can be accessed from the navigation panel or by clicking on the analysis tools dropdowns in the dataset explorer found with each dataset.
 
-<img width="700" alt="Screen Shot 2022-04-25 at 2 20 00 PM" src="https://user-images.githubusercontent.com/28451557/165150136-7ed4a9a1-3171-443f-bd3d-970ce243a26f.png">
+<img width="700" alt="Screen Shot 2022-04-25 at 2 20 00 PM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/AnalysisToolsFromNavBar.png">
+<img width="700" alt="Screen Shot 2022-04-25 at 2 20 00 PM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/AnalysisToolsFromDatasetExplorer.png">
 
 ## Comparison tool
 The comparison tool is designed for comparing differences in gene expression (e.g. bulk RNAseq) between two groups of samples and testing for statistical differences in expression (Note: If the dataset does not have replicates, statistical tests will be unavailable. For more in depth instruction of how to use this tool, see the instructions on the tool page (Need to update link) ([Link](https://umgear.org/compare_datasets.html)).
 
 To get started with the RNAseq comparison tool, select the dataset you wish to use in the dropdown menu and the condition you would like to compare on your x and y axis. Groups can be included or excluded from the analysis using the dropdown and toggle menus.  There is a final dropdown for selecting comparison options that is optional, but allows you to configure the comparison further. After clicking the plot button, you will notice that genes less than 2 fold change are omitted from the plot (to increase plotting speed), this setting can be changed by increasing or decreasing the fold change cutoff option on the previous page by clicking on "Edit Parameters". Similarly, there are options for colorizing or only including genes on the plot which reach a set threshold for significance between groups. In order to perform statistical testing, the dataset must have a column named "replicate" with the replicate ID number for each sample.
 
-<img width="1594" alt="Screen Shot 2022-04-26 at 2 41 17 PM" src="https://user-images.githubusercontent.com/28451557/165370187-adefa082-acc8-4ab3-8f2a-07ba2b4a2815.png">
+<img width="1594" alt="Screen Shot 2022-04-26 at 2 41 17 PM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/CompareTool.png">
 
 
 ## TODO edit single cell workbench below
@@ -174,7 +175,7 @@ Many of these options can be changed on the next page as well.
 6. Create plot.
 After creating the plot, the display can either be saved as a display for the dataset used (Save New Display), or downloaded as an image. Note: if you make a multigene display the default view for a dataset, it will only be used as the default view if 'Multigene display' is toggled on during a search. Also during this step, you can create a new gene list from the genes selected to be included in the plot.
 
-<img width="700" alt="Screen Shot 2022-04-26 at 10 11 12 AM" src="https://user-images.githubusercontent.com/28451557/165319419-bd8b76f4-00c2-4fbd-a182-dfd1a6f8ddc0.png">
+<img width="700" alt="Screen Shot 2022-04-26 at 10 11 12 AM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/MultiGeneDisplays.png">
 
 ## Gene lists
 Similar to how dataset collections are used on gEAR to collect datasets, gene lists are used to make comparisons of multiple genes easier across multiple analyses. gene lists have various functions throughout the site but their most common use is to create user defined lists of genes that can be  added into multigene plots or other plotting functions. For example, if you find a set of genes in one analysis (or from a manuscript) and want to view how they differ between treatment groups in another dataset, you could either manually add the gene names each time you wish to use them or store them together in a gene list and be able to quickly access and share your gene lists with others. 
@@ -185,9 +186,9 @@ Open the gene list manager by clicking Gene Lists on the navigation panel on the
 
 * **More information coming soon on weighted gene lists**
 
-<img width="700" alt="Screen Shot 2022-04-25 at 3 01 02 PM" src="https://user-images.githubusercontent.com/28451557/165156447-8488580f-ba6a-475d-aca7-879d6b09f981.png">
+<img width="700" alt="Screen Shot 2022-04-25 at 3 01 02 PM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/GeneListManager.png">
 
-<img width="700" alt="Screen Shot 2022-04-25 at 3 21 43 PM" src="https://user-images.githubusercontent.com/28451557/165159258-a062ffbe-1634-4cd4-ba32-7487ab893340.png">
+<img width="700" alt="Screen Shot 2022-04-25 at 3 21 43 PM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/CreateNewGeneList.png">
 
 
 * **From the RNAseq comparison tool:**
@@ -257,7 +258,7 @@ Public data in the gEAR platform can be downloaded in two ways:
 
 To download a dataset, search a gene in the public dataset collection of interest then use the dropdown menu to select which download option you prefer.
 
-<img width="700" alt="Screen Shot 2022-06-09 at 9 31 35 AM" src="https://user-images.githubusercontent.com/28451557/172859524-bb846ccf-3918-4cb8-86d0-92d1cef6cdaa.png">
+<img width="700" alt="Screen Shot 2022-06-09 at 9 31 35 AM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/DownloadData.png">
 
 
 
