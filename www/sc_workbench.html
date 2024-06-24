@@ -155,7 +155,7 @@ Information about the individual datasets can be found in the dataset explorer."
                             <div id="new-analysis-label-c" class="field is-hidden">
                                 <label for="new-analysis-label" class="label">Label for this analysis</label>
                                 <input type="text" id="new-analysis-label" class="input" value="Unlabeled" />
-                                <div id="duplicate-label-warning" class='is-hidden'>
+                                <div id="duplicate-label-warning" class='is-hidden has-text-danger-dark'>
                                     This analysis label has already been used.
                                 </div>
                                 <div class="field has-addons">
@@ -253,8 +253,8 @@ Information about the individual datasets can be found in the dataset explorer."
                                   alt="Loading" /> Loading initial gene/cell
                                 count plots</div>
                             <div class="columns">
-                                <div id="initial-violin-c" class="column is-6 js-resetable"></div>
-                                <div id="initial-scatter-c" class="column is-6 js-resetable"></div>
+                                <div id="initial-violin-c" class="column is-6"></div>
+                                <div id="initial-scatter-c" class="column is-6"></div>
                             </div>
                         </div>
                     </div>
@@ -427,12 +427,10 @@ Information about the individual datasets can be found in the dataset explorer."
                             <p>Primary analysis selected</p>
                         </div>
                         <div class="message-body">
-                            You have a selected an analysis bundled with the dataset itself, usually created by the
-                            dataset
+                            You have a selected an analysis bundled with the dataset itself, usually created by the dataset
                             author outside of this workbench. You can use the workbench to perform actions below
                             provided by the analyses the authors have uploaded, but all other "de novo" analysis steps
-                            will be disabled
-                            until you create an entirely new analysis.
+                            will be disabled until you create an entirely new analysis.
                         </div>
                     </article>
 
@@ -587,10 +585,10 @@ Information about the individual datasets can be found in the dataset explorer."
                         <div class="js-step-collapsable container mt-3" id="qc-by-mito-collapsable">
                             <div class="tool-instructions">
                                 <p>
-                                    <strong>Press on the plot button</strong> to see plots of (a) the number of genes in each cell; (b) number of read counts
+                                    <strong>Press on the "Compute and plot" button</strong> to see plots of (a) the number of genes in each cell; (b) number of read counts
                                     per cell; and (c) percent mitochondrial content. The general recommendation is to maintain
                                     percent mitochondrial content below 0.05% to focus on living cells. Based on the data in these
-                                    plots you may wish to change some of the criteria in your previous step. <strong>Press ‘save these
+                                    plots you may wish to change some of the criteria in your previous step. <strong>Press ‘Save these
                                     genes’ before moving to the next step</strong>.
                                 </p>
                             </div>
@@ -696,7 +694,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                     increasing the Min mean you increase the minimal expression value of genes that may be
                                     considered as highly variable. We suggest that you change the parameters and observe the
                                     plot to further guide your selection parameters. <strong>At the completion of this step press on
-                                    ‘save these genes’.</strong>
+                                    ‘Save these genes’.</strong>
                                 </p>
                             </div>
                             <div class="columns is-variable is-8"> <!-- gapped columns -->
@@ -1190,12 +1188,14 @@ At the completion of this step press on ‘save these genes’.
                                 <div class="column is-one-third">
                                     <div id="group-labels-c" class="is-hidden">
                                         <div class="field">
-                                            <label for="clustering-merge-clusters" class="label">Check to merge clusters with duplicate labels</label>
                                             <div class="control">
-                                                <input type="checkbox" id="clustering-merge-clusters" />
+                                                <label class="checkbox">
+                                                    <input type="checkbox" id="clustering-merge-clusters" />
+                                                    Check to merge clusters with duplicate labels
+                                                </label>
                                             </div>
                                         </div>
-                                        <table id="cluster-group-labels" class="table is-bordered is-hoverable">
+                                        <table id="cluster-group-labels" class="table is-bordered is-hoverable is-narrow">
                                           <thead>
                                             <tr>
                                               <th scope="col">Group</th>
@@ -1212,17 +1212,21 @@ At the completion of this step press on ‘save these genes’.
                                                 <td class="group-orig-label"></td>
                                                 <td class="group-num-cells"></td>
                                                 <td class="group-marker"></td>
-                                                <td class="group-user-label"></td>
+                                                <td class="group-user-label">
+                                                    <input class="input" type="text" />
+                                                </td>
                                                 <td class="group-keep-chk">
-                                                    <input class="input" type="checkbox" checked />
+                                                    <input type="checkbox" checked />
                                                 </td>
                                             </tr>
                                         </template>
+
                                         <div class="field">
                                             <div class="control">
                                                 <button id='btn-clustering-edit' type='button' class="button is-primary">Rerun with labels</button>
                                             </div>
                                         </div>
+
                                     </div>
                                 </div>
                                 <div class="column is-two-thirds">

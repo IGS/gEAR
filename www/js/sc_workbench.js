@@ -6,12 +6,6 @@ let typedMarkerGenes = new Set();
 let currentLabel = null;
 let datasetId = null;
 
-// TODO:  Check font sizes on all instruction blocks
-// TODO:  Check if mitochrondrial QC actually returned anything
-// TODO:  Complete work on limiting the gene count
-// TODO:  Louvain options are escaping their box
-// TODO:  Make sure all plotting buttons either disable or show something else while the compute runs
-
 /**
  * Represents a dataset tree.
  *
@@ -60,6 +54,9 @@ const datasetTree = new DatasetTree({
         // collapse tree
         e.node.tree.expandAll(false);
 
+        // We only want to reset these plots only if the dataset changes.
+        document.querySelector(UI.primaryInitialScatterContainer).replaceChildren();
+        document.querySelector(UI.primaryInitialViolinContainer).replaceChildren();
 
         if (currentAnalysis) {
             resetWorkbench();
@@ -92,14 +89,14 @@ const datasetTree = new DatasetTree({
 
         // first remove any duplicate-labeled ones
         for (const elt of document.querySelectorAll(UI.clusterGroupLabelsInputElts)) {
-            elt.classList.remove('duplicate');
+            elt.classList.remove('has-background-danger');
 
             const clusterLabel = elt.value.trim();
 
             // this means it WAS found
             if (allValues.includes(clusterLabel)) {
                 dupValues.push(clusterLabel);
-                elt.classList.add('duplicate');
+                elt.classList.add('has-background-danger');
             } else {
                 allValues.push(clusterLabel);
             }
@@ -155,10 +152,7 @@ const getDatasetInfo = async (datasetId) => {
 
         const ds = new Dataset(data);
 
-        // TODO: make Analysis.dataset the replacement for Analysis.dataset_id
         currentAnalysis.dataset = ds;
-
-        // TODO: set dataset title and shape in the UI
 
         document.querySelector(UI.primaryFilterSection).classList.remove("is-hidden");
         analysisLabels = currentAnalysis.getSavedAnalysesList(ds.id, -1, 'sc_workbench');   // select first "selct an analysis" option
@@ -304,7 +298,7 @@ const resetWorkbench = () => {
         elt.replaceChildren();
     }
     */
-    document.querySelector(UI.newAnalysisLabelElt).textContent = '';
+    document.querySelector(UI.newAnalysisLabelElt).value = '';
 }
 
 /**
@@ -666,6 +660,9 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
             'datasetIsRaw': true}
         );
 
+        // Reset the stepper
+        resetStepperWithHrefs("#primary-filter-s");
+
         document.querySelector(UI.deNovoStepsElt).classList.remove("is-hidden");
         // Jump to the primary filter step
         document.querySelector(UI.primaryFilterSection).click();
@@ -675,44 +672,51 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
     createToast("Loading stored analysis", "is-info");
 
     document.querySelector(UI.newAnalysisLabelContainer).classList.add("is-hidden");
+
     resetWorkbench();
+
 
     const selectedOption = event.target.selectedOptions[0];
     currentAnalysis.type = selectedOption.dataset.analysisType;
     currentAnalysis.id = selectedOption.dataset.analysisId;
-    currentAnalysis.getStoredAnalysis();    // await-able
 
-    if (currentAnalysis.type == 'primary') {
+    await currentAnalysis.getStoredAnalysis();    // await-able
+
+    if (currentAnalysis.type === 'primary') {
         document.querySelector(UI.analysisPrimaryNotificationElt).classList.remove("is-hidden");
         document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
         document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
         document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
+        resetStepperWithHrefs("#marker-genes-s");
         document.querySelector(UI.primaryStepsElt).classList.remove("is-hidden");
     }
 
-    if (currentAnalysis.type == 'user_saved') {
+    if (currentAnalysis.type === 'user_saved') {
         document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
         document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
         document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
         document.querySelector(UI.analysisStatusInfoElt).textContent = "This analysis is stored in your profile.";
         document.querySelector(UI.btnMakePublicCopyElt).classList.remove("is-hidden");
+        resetStepperWithHrefs("#primary-filter-s");
         document.querySelector(UI.deNovoStepsElt).classList.remove("is-hidden");
     }
 
-    if (currentAnalysis.type == 'user_unsaved') {
+    if (currentAnalysis.type === 'user_unsaved') {
         document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
         document.querySelector(UI.analysisActionContainer).classList.remove("is-hidden");
         document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
         document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
+        resetStepperWithHrefs("#primary-filter-s");
         document.querySelector(UI.deNovoStepsElt).classList.remove("is-hidden");
     }
 
-    if (currentAnalysis.type == 'public') {
+    if (currentAnalysis.type === 'public') {
         document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
         document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
         document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
         document.querySelector(UI.analysisStatusInfoElt).textContent = "Changes made to this public analysis will spawn a local copy within your profile.";
         document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
+        resetStepperWithHrefs("#primary-filter-s");
         document.querySelector(UI.deNovoStepsElt).classList.remove("is-hidden");
     }
 
@@ -720,8 +724,8 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
 
 document.querySelector(UI.newAnalysisLabelElt).addEventListener("keyup", (event) => {
     // Update the new analysis label if it is not a duplicate
-    if (analysisLabels.has(event.target.textContent)) {
-        if (event.target.textContent !== currentLabel) {
+    if (analysisLabels.has(event.target.value.trim())) {
+        if (event.target.value.trim() !== currentLabel) {
             event.target.classList.add("duplicate");
             document.querySelector(UI.btnNewAnalysisLabelSaveElt).disabled = true;
             document.querySelector(UI.duplicateLabelWarningElt).classList.remove("is-hidden");
@@ -736,7 +740,7 @@ document.querySelector(UI.newAnalysisLabelElt).addEventListener("keyup", (event)
 
 document.querySelector(UI.newAnalysisLabelElt).addEventListener("focus", (event) => {
     // Reset the new analysis label
-    currentLabel = event.target.textContent;
+    currentLabel = event.target.value.trim();
 });
 
 // Labeled tSNE
@@ -857,12 +861,13 @@ document.querySelector(UI.btnClusteringEditRunElt).addEventListener("click", asy
 
     // Remove any duplicate labels
     for (const elt of document.querySelectorAll(UI.clusterGroupLabelsInputElts)) {
-        elt.classList.remove("duplicate");
+        elt.classList.remove("has-background-danger");
     }
 
     // If the user has selected to merge clusters, run the clustering edit analysis
     if (document.querySelector(UI.clusteringMergeClustersElt).checked) {
         await currentAnalysis.checkDependenciesAndRun(currentAnalysis.clusteringEdit.runAnalysis.bind(currentAnalysis.clusteringEdit));
+        event.target.classList.remove("is-loading");
         return;
     }
 
@@ -1055,32 +1060,3 @@ document.querySelector(UI.compareGenesMethodSelectElt).addEventListener("change"
     }
 
 });
-
-/* -------------------------------------------------------- */
-
-/*
-TODO: Update the tooltip stuff
-window.onload=() => {
-
-
-    $('#asvg_flavor_tooltip').tooltip({
-        placement: 'bottom',
-        html: true,
-        trigger: 'hover',
-        // I cannot get this to work, even though I can in this pen:
-        //  https://jsbin.com/gebiju/edit?html,js,output
-        delay: { "show": 100, "hide": 2000 }
-    });
-
-
-    $('.tooltoggle').change( function() {
-        const analysis_block_id = `#analysis_${$(this).data('analysis-name')}`;
-
-        if ( $(this).prop('checked') ) {
-            $(analysis_block_id).show();
-        } else {
-            $(analysis_block_id).hide();
-        }
-    });
-}
-*/

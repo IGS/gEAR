@@ -18,6 +18,35 @@
 // is-danger: Failed step
 // parent.is-active: Line marker up to the failed step
 
+// Irreversible (blocked) steps
+// is-dark: The blocked step
+// i.mdi-cancel: The icon for the irreversible steps
+// parent.is-dashed turned off
+
+// NOTE: These functions make the assumption that the active selector or href is in the same element as the .steps-marker
+
+
+/**
+ * Blocks a step with the specified href.
+ * @param {string} selectorHref - The href of the step to be blocked.
+ */
+const blockStepWithHref = (selectorHref) => {
+    document.querySelector(`a[href='${selectorHref}']`).parentElement.classList.remove("is-dashed", "is-active");
+    document.querySelector(`a[href='${selectorHref}']`).classList.add("is-dark");
+    document.querySelector(`a[href='${selectorHref}'] i`).classList.remove("mdi-check");
+    document.querySelector(`a[href='${selectorHref}'] i`).classList.add("mdi-cancel");
+}
+
+/**
+ * Blocks a step by modifying the CSS classes of the specified selector.
+ * @param {string} selector - The CSS selector of the step element.
+ */
+const blockStep = (selector) => {
+    document.querySelector(selector).parentElement.classList.remove("is-dashed", "is-active");
+    document.querySelector(selector).classList.add("is-dark");
+    document.querySelector(`${selector} i`).classList.remove("mdi-check");
+    document.querySelector(`${selector} i`).classList.add("mdi-cancel");
+}
 
 /**
  * Marks a step as failed by adding appropriate CSS classes to the step element.
@@ -115,4 +144,61 @@ const openNextSteps = (selectors, activeSelector=null) => {
     if (activeSelector) {
         document.querySelector(activeSelector).parentElement.classList.add("is-active")
     }
+}
+
+/**
+ * Resets the stepper by removing classes and icons from each step element.
+ * Optionally, sets a specific step as active based on the provided href.
+ *
+ * @param {string|null} activeSelectorHref - The href of the step to set as active. Default is null.
+ */
+const resetStepperWithHrefs = (activeSelectorHref=null) => {
+    const steps = document.querySelectorAll(".steps-marker")
+    for (const step of steps) {
+        step.classList.remove("is-light", "is-danger");
+        step.parentElement.classList.remove("is-active", "is-dashed");
+        step.querySelector("i").classList.remove("mdi-pencil", "mdi-check");
+    }
+
+
+    if (activeSelectorHref) {
+        // pass all steps before the active step
+        const selectorHrefs = Array.from(document.querySelectorAll(".steps-marker")).map(step => step.getAttribute("href"));
+        const activeIndex = selectorHrefs.indexOf(activeSelectorHref)
+
+        if (activeIndex > 0) {
+            // if found, pass all steps before the active step
+            for (let i = 0; i < activeIndex; i++) {
+                passStepWithHref(selectorHrefs[i])
+            }
+            openNextStepHrefs([activeSelectorHref])
+        }
+    }
+}
+
+/**
+ * Resets the stepper by removing classes and icons from each step element.
+ * Optionally, sets a specific step as active.
+ *
+ * @param {string|null} activeSelector - The selector for the step to set as active. If null, no step will be set as active.
+ */
+const resetStepper = (activeSelector=null) => {
+    const steps = document.querySelectorAll(".steps-marker")
+    for (const step of steps) {
+        step.classList.remove("is-light", "is-danger", "is-dark");
+        step.parentElement.classList.remove("is-active", "is-dashed");
+        step.querySelector("i").classList.remove("mdi-pencil", "mdi-check", "mdi-cancel");
+    }
+
+    if (activeSelector) {
+        // TODO: need to test this
+        // Select all steps before the active step, and pass them
+        const beforeSteps = document.querySelectorAll(`.steps:not(.is-hidden) .steps-marker ~ ${activeSelector}`);
+        for (const step of beforeSteps) {
+            passStep(step);
+        }
+        openNextSteps([activeSelector]);
+
+    }
+
 }

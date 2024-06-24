@@ -30,7 +30,6 @@ class Analysis {
         this.label = label;
         this.datasetIsRaw = datasetIsRaw;
 
-        // A couple of these are duplicated but I wanted to preserve order
         // All new analysis start as "primary" analyses, but true primary analyses share the same ID as the dataset
         if (this.id === this.dataset?.id) {
             this.labeledTsne = new AnalysisStepLabeledTsne(this);   // Only for "primary" analyses
@@ -64,7 +63,7 @@ class Analysis {
      * @param {Object} opts - The options object to be passed to the callback function.
      */
     async checkDependenciesAndRun(callback, opts) {
-        if (this.type == 'public') {
+        if (this.type === 'public') {
             this.copyToUserUnsaved(callback, opts);
         } else {
             await callback(opts);
@@ -259,8 +258,8 @@ class Analysis {
 
             // primary
             if (data.primary.length) {
-                if (forPage == 'sc_workbench') {
-                    if (data.primary[0].louvain.calculated) {
+                if (forPage === 'sc_workbench') {
+                    if (data.primary[0].louvain?.calculated || data.primary[0].clustering?.calculated) {
                         for (const analysis of data.primary) {
                             thisAnalysisLabels.add(analysis.label);
                             appendAnalysisOption(UI.analysisPrimaryElt, analysis);
@@ -282,6 +281,9 @@ class Analysis {
 
             // unsaved
             if (data.user_unsaved.length) {
+                // sort by label
+                data.user_unsaved.sort((a, b) => a.label.localeCompare(b.label));
+
                 for (const analysis of data.user_unsaved) {
                     thisAnalysisLabels.add(analysis.label);
                     appendAnalysisOption(UI.analysisUnsavedElt, analysis);
@@ -292,6 +294,9 @@ class Analysis {
 
             // saved
             if (data.user_saved.length) {
+                // sort by label
+                data.user_saved.sort((a, b) => a.label.localeCompare(b.label));
+
                 for (const analysis of data.user_saved) {
                     thisAnalysisLabels.add(analysis.label);
                     appendAnalysisOption(UI.analysisSavedElt, analysis);
@@ -302,6 +307,9 @@ class Analysis {
 
             // public
             if (data.public.length) {
+                // sort by label
+                data.public.sort((a, b) => a.label.localeCompare(b.label));
+
                 for (const analysis of data.public) {
                     thisAnalysisLabels.add(analysis.label);
                     appendAnalysisOption(UI.analysisPublicElt, analysis);
@@ -451,13 +459,14 @@ class Analysis {
             document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
             document.querySelector(UI.analysisStatusInfoElt).textContent = "Changes made to this public analysis will spawn a local copy within your profile.";
             document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
-            document.querySelector(UI.btnMakePublicCopy).classList.add("is-hidden");
-            document.querySelector(UI.btnDeleteSavedAnalysis).classList.add("is-hidden");
-            document.querySelector(UI.btnDeleteUnsavedAnalysis).classList.add("is-hidden");
+            document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
+            document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.add("is-hidden");
+            document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.add("is-hidden");
 
             await this.getSavedAnalysesList(this.dataset.id, this.id);
         } catch (error) {
             createToast(`Error making analysis public: ${error.message}`);
+            logErrorInConsole(error);
         }
 
     }
@@ -490,6 +499,20 @@ class Analysis {
      * and resets all existing components.
      */
     reset() {
+
+        // Clear plot images and such
+        for (const el of document.getElementsByClassName("js-resetable")) {
+            el.replaceChildren();
+        }
+
+        // Hide success and failed state icons
+        for (const el of document.getElementsByClassName("js-step-success")) {
+            el.classList.add("is-hidden");
+        }
+
+        for (const el of document.getElementsByClassName("js-step-failure")) {
+            el.classList.add("is-hidden");
+        }
 
         // For each step, if it exists, call its reset method
         // This allows us to worry about
@@ -733,9 +756,9 @@ class AnalysisStepPrimaryFilter {
 
             if (!data.success || data.success < 1) {
                 let error = data.error || "Unknown error. Please contact gEAR support.";
-                if (data.n_genes == 0) {
+                if (data.n_genes === 0) {
                     error = "Filter reduced genes to 0. Try less stringent cutoffs";
-                } else if (data.n_obs == 0) {
+                } else if (data.n_obs === 0) {
                     error = "Filter reduced cells to 0. Try less stringent cutoffs";
                 }
                 throw new Error(error);
@@ -788,6 +811,10 @@ class AnalysisStepPrimaryFilter {
 
         step.filteredGeneCount = data['filtered_gene_count'];
         step.filteredCellCount = data['filtered_cell_count'];
+
+        if (step.calculated ) {
+            step.updateUIWithResults();
+        }
 
         return step;
     }
@@ -933,7 +960,7 @@ class AnalysisStepQCByMito {
         step.nGenes = data['n_genes'];
         step.nObs = data['n_obs'];
 
-        if (step.calculated == true) {
+        if (step.calculated === true) {
             document.querySelector(UI.qbmGenePrefixElt).value = step.genePrefix;
             document.querySelector(UI.qbmFilterMitoPercElt).value = step.filterMitoPercent;
             document.querySelector(UI.qbmFilterMitoCountElt).value = step.filterMitoCount;
@@ -948,7 +975,7 @@ class AnalysisStepQCByMito {
      */
     reset() {
         this.calculated = false;
-        this.genePrefix = null;
+        this.genePrefix = "mt-";
         this.filterMitoPercent = null;
         this.filterMitoCount = null;
         this.nGenes = null;
@@ -962,7 +989,7 @@ class AnalysisStepQCByMito {
     resetUI() {
         document.querySelector(UI.qcByMitoSection).classList.remove("is-hidden");
 
-        document.querySelector(UI.qbmGenePrefixElt).value = 'mt-';
+        document.querySelector(UI.qbmGenePrefixElt).value = this.genePrefix;
         disableAndHideElement(document.querySelector(UI.btnQbmSaveElt));
         disableAndHideElement(document.querySelector(UI.qbmSaveWarningElt));
         document.querySelector(UI.btnQbmSaveElt).textContent = 'Save these genes';
@@ -1030,7 +1057,6 @@ class AnalysisStepQCByMito {
 
             this.updateUIWithResults(this.calculated);
             createToast("Mitochondrial plot displayed", "is-success");
-            // TODO - Show next step collapsable
 
         } catch (error) {
             createToast(`Error doing QC analysis: ${error.message}`);
@@ -1098,7 +1124,9 @@ class AnalysisStepQCByMito {
         // Only pass the step if the results have been saved
         if (resultsSaved) {
             document.querySelector(UI.qcByMitoSectionSuccessElt).classList.remove("is-hidden");
+            blockStepWithHref(UI.primaryFilterSection);
             passStepWithHref(UI.qcByMitoSection);
+            blockStepWithHref(UI.qcByMitoSection);
             openNextStepHrefs([UI.selectVariableGenesSection], null, true);
         }
     }
@@ -1147,14 +1175,14 @@ class AnalysisStepSelectVariableGenes {
      */
     reset() {
         this.calculated = false;
-        this.normCountsPerCell = null;
+        this.normCountsPerCell = "1e4";
         this.flavor = 'seurat';
         this.nTopGenes = null;
         this.nGenes = null;
         this.nObs = null;
-        this.minMean = null;
-        this.maxMean = null;
-        this.minDispersion = null;
+        this.minMean = 0.0125;
+        this.maxMean = 3;
+        this.minDispersion = 0.5;
         this.regressOut = true; // no options to change
         this.scaleUnitVariance = true; // no options to change
         this.resetUI();
@@ -1166,13 +1194,13 @@ class AnalysisStepSelectVariableGenes {
     resetUI() {
         document.querySelector(UI.selectVariableGenesSection).classList.remove("is-hidden");
 
-        document.querySelector(UI.asvgNormCountsPerCellElt).value = '1e4';
-        document.querySelector(UI.asvgFlavorElt).value = 'seurat';
-        document.querySelector(UI.asvgNTopGenesElt).value = "";
+        document.querySelector(UI.asvgNormCountsPerCellElt).value = this.normCountsPerCell;
+        document.querySelector(UI.asvgFlavorElt).value = this.flavor;
+        document.querySelector(UI.asvgNTopGenesElt).value = this.nTopGenes;
         document.querySelector(UI.asvgTopGenesListElt).replaceChildren();
-        document.querySelector(UI.asvgMinMeanElt).value = 0.0125;
-        document.querySelector(UI.asvgMaxMeanElt).value = 3;
-        document.querySelector(UI.asvgMinDispersionElt).value = 0.5;
+        document.querySelector(UI.asvgMinMeanElt).value = this.minMean;
+        document.querySelector(UI.asvgMaxMeanElt).value = this.maxMean;
+        document.querySelector(UI.asvgMinDispersionElt).value = this.minDispersion;
 
         disableAndHideElement(document.querySelector(UI.btnAsvgSaveElt));
         document.querySelector(UI.btnAsvgSaveElt).textContent = 'Save these genes';
@@ -1249,6 +1277,8 @@ class AnalysisStepSelectVariableGenes {
             createToast("Variable genes plot created", "is-success");
 
             document.querySelector(UI.asvgTopGenesListElt).textContent = `${data['top_genes']}`;
+            // pre-populate these genes as PCA genes to plot
+            document.querySelector(UI.pcaGenesToColorElt).value = data['top_genes'];
             document.querySelector(UI.asvgTopGenesContainer).classList.remove("is-hidden");
 
         } catch (error) {
@@ -1318,6 +1348,7 @@ class AnalysisStepSelectVariableGenes {
         if (resultsSaved) {
             document.querySelector(UI.selectVariableGenesSectionSuccessElt).classList.remove("is-hidden");
             passStepWithHref(UI.selectVariableGenesSection);
+            blockStepWithHref(UI.selectVariableGenesSection);
             openNextStepHrefs([UI.pcaSection], null, true);
         }
 
@@ -1345,7 +1376,6 @@ class AnalysisStepPCA {
         step.genesToColor = data['genes_to_color'];
 
         if (step.calculated ) {
-
             step.updateUIWithResults();
         }
 
@@ -1556,6 +1586,10 @@ class AnalysisSteptSNE {
         step.randomState = data['random_state'];
         step.plotTsne = data['plot_tsne'];
         step.plotUmap = data['plot_umap'];
+
+        if (step.calculated) {
+            step.updateUIWithResults();
+        }
 
         return step;
     }
@@ -1795,7 +1829,7 @@ class AnalysisStepClustering {
             logErrorInConsole("Invalid mode for AnalysisStepClustering. Defaulting to 'initial'.");
             this.mode = "initial";
         }
-        if (mode == "edit") {
+        if (mode === "edit") {
             this.calculated = true;
             this.irreversible = true;
         }
@@ -1816,6 +1850,10 @@ class AnalysisStepClustering {
         step.resolution = data['resolution'];
         step.plotTsne = data['plot_tsne'];
         step.plotUmap = data['plot_umap'];
+
+        if (step.calculated ) {
+            step.updateUIWithResults();
+        }
 
         return step;
     }
@@ -1861,8 +1899,6 @@ class AnalysisStepClustering {
      * @throws {Error} If there is an error generating clusters.
      */
     async runAnalysis() {
-        // TODO: Fine-tune this based on if type is initial or edit
-
         // Reset success and failed icons
         if (this.mode === "initial") {
             document.querySelector(UI.clusteringSectionSuccessElt).classList.add("is-hidden");
@@ -1883,25 +1919,33 @@ class AnalysisStepClustering {
         const hasMatchingClusteringParams = this.resolution === document.querySelector(UI.resolutionElt).value;
 
         let computeClustering = true;
+        let resolution = document.querySelector(UI.resolutionElt).value;
 
         const oldLabels = [...this.analysis.groupLabels];  // shallow-copy
         const newLabels = [];
         const keptLabels = [];
 
+        // If the clustering params were changed, we need to allow for the marker genes to be recalculated
+        if (hasMatchingClusteringParams && this.mode === "initial") {
+            this.analysis.markerGenes.calculated = false;
+        }
+
+        const clusterInfo = [];
+
         // It is not safe to reuse group labels if the clustering params were changed
-        if (hasMatchingClusteringParams) {
-            for (const glElt of clusterGroupLabelsHtml.querySelector(".group-user-label input")) {
+        if (this.mode === "edit") {
+            computeClustering = false;  // we are just updating the labels
+            resolution = this.resolution;   // we are not changing the resolution
+
+            // Get the new labels and whether they are kept (checked)
+            for (const glElt of document.querySelector(UI.clusterGroupLabelsTableBodyElt).querySelectorAll(".group-user-label input")) {
                 newLabels.push(glElt.value);
                 const thisRow = glElt.closest("tr");
                 const thisCheck = thisRow.querySelector(".group-keep-chk input");
                 keptLabels.push(thisCheck.checked);
             }
-        }
 
-        const clusterInfo = [];
-
-        if (hasMatchingClusteringParams && this.calculated && this.type == "edit") {
-            computeClustering = false;
+            // Create the cluster info object
             this.analysis.groupLabels.forEach((v, i) => {
                 clusterInfo.push({
                     "old_label": oldLabels[i]
@@ -1909,10 +1953,9 @@ class AnalysisStepClustering {
                     , "keep": keptLabels[i]
                 })
             });
-        }
 
-        if (computeClustering) {
             document.querySelector(UI.groupLabelsContainer).classList.add("is-hidden");
+
         }
 
         const plotTsne = (document.querySelector(UI.dimReductionMethodTsneElt).checked ? 1 : 0);
@@ -1924,7 +1967,7 @@ class AnalysisStepClustering {
                 analysis_id: this.analysis.id,
                 analysis_type: this.analysis.type,
                 session_id: this.analysis.userSessionId,
-                resolution: document.querySelector(UI.resolutionElt).value,
+                resolution,
                 compute_clusters: computeClustering,
                 plot_tsne: plotTsne,
                 plot_umap: plotUmap,
@@ -1945,11 +1988,13 @@ class AnalysisStepClustering {
             if (data["group_labels"].length) {
                 // Update the group labels for the analysis, marker genes, and gene comparison
                 this.analysis.groupLabels = []
-                this.analysis.markerGenes.populateMarkerGenesLabels(data)
+                if (this.mode === "edit") {
+                    this.analysis.markerGenes.populateClusterEditLabels(data.group_labels)
+                }
 
                 // Now update the labels so they work with gene comparison
                 this.analysis.groupLabels = data['group_labels'].map(x => x.genes);
-                this.analysis.geneComparison.populateGroupSelectors(this.analysis.groupLabels);
+                this.analysis.compareGenes.populateGroupSelectors(this.analysis.groupLabels);
             }
 
             createToast("Louvain clusters computed", "is-success");
@@ -2010,8 +2055,8 @@ class AnalysisStepClustering {
         let tsneTarget = UI.clusteringTsnePlotElt;
         let umapTarget = UI.clusteringUmapPlotElt;
         if (this.mode === "edit") {
-            tsneTarget += UI.clusteringTsnePlotEditElt;
-            umapTarget += UI.clusteringUmapPlotEditElt;
+            tsneTarget = UI.clusteringTsnePlotEditElt;
+            umapTarget = UI.clusteringUmapPlotEditElt;
         }
 
         if (Boolean(this.plotTsne)) {
@@ -2032,7 +2077,12 @@ class AnalysisStepClustering {
         } else if (this.mode === "edit") {
             document.querySelector(UI.clusteringEditSectionSuccessElt).classList.remove("is-hidden");
             passStepWithHref(UI.clusteringEditSection);
-            openNextStepHrefs([UI.markerGenesSection], null, true);
+            // block all previous steps
+            blockStepWithHref(UI.pcaSection);
+            blockStepWithHref(UI.tsneSection);
+            blockStepWithHref(UI.clusteringSection);
+            blockStepWithHref(UI.markerGenesSection);
+            openNextStepHrefs([UI.compareGenesSection], null, true);
         }
     }
 }
@@ -2200,24 +2250,26 @@ class AnalysisStepMarkerGenes {
             }
         } else {
             for (i=0; i < groupLabels.length; i++) {
-                groupLabels[i]['new_group_label'] = groupLabels[i]['genes'];
+                groupLabels[i].new_group_label = groupLabels[i].genes;
                 // For the overall labels, do the group number rather than gene since that's what's
                 //  displayed by scanpy in the images
                 this.groupLabels.push(i);
             }
         }
 
+        document.querySelector(UI.clusterGroupLabelsTableBodyElt).replaceChildren();
+
         // show the abbreviated table in the louvain analysis block
         for (const group of groupLabels) {
-            const clusterGroupLabelsHtml = document.querySelector(UI.clusterGroupLabelsTmpl).cloneNode(true);
-            clusterGroupLabelsHtml.querySelector(".group-orig-label").textContent = group['group_label'];
-            clusterGroupLabelsHtml.querySelector(".group-num-cells").value = group['num_cells'];
-            clusterGroupLabelsHtml.querySelector(".group-marker").value = group['genes'];
-            clusterGroupLabelsHtml.querySelector(".group-user-label input").value = group['new_group_label'];
+            const clusterGroupLabelsHtml = document.querySelector(UI.clusterGroupLabelsTmpl).content.cloneNode(true);
+            clusterGroupLabelsHtml.querySelector(".group-orig-label").textContent = group.group_label;
+            clusterGroupLabelsHtml.querySelector(".group-num-cells").textContent = group.num_cells;
+            clusterGroupLabelsHtml.querySelector(".group-marker").textContent = group.genes;
+            clusterGroupLabelsHtml.querySelector(".group-user-label input").value = group.new_group_label;
 
             document.querySelector(UI.clusterGroupLabelsTableBodyElt).appendChild(clusterGroupLabelsHtml);
         }
-        this.groupLabelsContainer.classList.remove("is-hidden");
+        document.querySelector(UI.groupLabelsContainer).classList.remove("is-hidden");
     }
 
     /**
@@ -2281,6 +2333,7 @@ class AnalysisStepMarkerGenes {
      */
     reset() {
         this.calculated = false;
+        this.computeMarkerGenes = !this.calculated;
         this.genesOfInterest = new Set();
         this.groupLabels = [];
         this.nGenes = false;
@@ -2333,8 +2386,11 @@ class AnalysisStepMarkerGenes {
         this.clickedMarkerGenes = new Set();
         this.enteredMarkerGenes = new Set();
 
-        this.computeMarkerGenes = true
-        if (this.calculated && this.nGenes === document.querySelector(UI.markerGenesNGenesElt).value) {
+        // If marker genes are run, need to ensure the cluster label is populated with the "marker gene" label.
+        this.analysis.groupLabels = [];
+
+        this.computeMarkerGenes = true;
+        if (this.nGenes === document.querySelector(UI.markerGenesNGenesElt).value) {
             this.computeMarkerGenes = false;
         }
 
@@ -2426,12 +2482,6 @@ class AnalysisStepMarkerGenes {
         // move stepper to next step
         passStepWithHref(UI.markerGenesSection)
         openNextStepHrefs(nextSteps, UI.compareGenesSection)
-
-        /*if (ana.type === "primary") {
-            document.querySelector(UI.compareGenesSection).click();
-        } else {
-            document.querySelector(UI.clusteringEditSection).click();
-        }*/
 
     }
 }
@@ -2686,7 +2736,7 @@ class AnalysisStepCompareGenes {
             this.populateComparisonTable(UI.compareGenesTableFElt, data.table_json_f.data);
         }
 
-        if (this.referenceCluster == 'all-reference-clusters') {
+        if (this.referenceCluster === 'all-reference-clusters') {
             return;
         }
 
@@ -2705,6 +2755,8 @@ class AnalysisStepCompareGenes {
 
         // mark success
         document.querySelector(UI.compareGenesSectionSuccessElt).classList.remove("is-hidden");
+
+        passStepWithHref(UI.compareGenesSection);
 
     }
 }

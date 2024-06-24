@@ -206,6 +206,8 @@ class AnalysisUI {
     // Clustering (edit mode)
     clusteringEditSection = "#clustering-edit-s"
     btnClusteringEditRunElt = "#btn-clustering-edit"
+    clusteringEditSectionSuccessElt = "#clustering-edit-s-success"
+    clusteringEditSectionFailedElt = "#clustering-edit-s-failed"
     // -- using resolutionElts values from the non-edit clustering
     // -- using clusterNNeighborsElt values from the non-edit clustering
     clusteringTsnePlotEditElt = "#clustering-tsne-plot-edit-c"
