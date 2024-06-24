@@ -1,0 +1,43 @@
+div#data-collections-c,
+div#gene-signatures-c,
+div#projection-links-c {
+    margin-top: 10px;
+    margin-left: 20px;
+}
+.figure-c {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+.figure-title, .figure-text {
+    font-size: 90%;
+}
+.figure-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+h1, h2, h3 {
+    font-weight: bold;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+h1 {
+    font-size: 130%;
+}
+h2 {
+    font-size: 120%;
+}
+h2 {
+    font-size: 110%;
+}
+ol {
+    margin: 10px 10px 10px 20px;
+}
+table {
+    margin: 20px;
+    border: 1px solid black;
+}
+table td {
+    border: 1px solid black;
+    border-collapse: collapse;
+    padding: 3px;
+}
