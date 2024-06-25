@@ -32,6 +32,10 @@ h2 {
 ol {
     margin: 10px 10px 10px 20px;
 }
+p#author-list {
+    margin-bottom: 10px;
+    font-size: 90%;
+}
 table {
     margin: 20px;
     border: 1px solid black;
@@ -40,4 +44,8 @@ table td {
     border: 1px solid black;
     border-collapse: collapse;
     padding: 3px;
+}
+ul#utility-links {
+    margin: 20px;
+    padding-bottom: 100px;
 }
