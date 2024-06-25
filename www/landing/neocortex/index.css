@@ -15,6 +15,16 @@ div#projection-links-c {
     font-weight: bold;
     margin-bottom: 5px;
 }
+.filled {
+    background-color: black;
+}
+.filled-with-text {
+    color: yellow;
+}
+.filled-with-text-light {
+    background-color: rgb(200,200,200);
+    color: black;
+}
 h1, h2, h3 {
     font-weight: bold;
     margin-top: 10px;
@@ -39,8 +49,14 @@ p#author-list {
 table {
     margin: 20px;
     border: 1px solid black;
+    min-width: 70%;
 }
 table td {
+    border: 1px solid black;
+    border-collapse: collapse;
+    padding: 3px;
+}
+table th {
     border: 1px solid black;
     border-collapse: collapse;
     padding: 3px;
@@ -48,4 +64,8 @@ table td {
 ul#utility-links {
     margin: 20px;
     padding-bottom: 100px;
+}
+.vertical {
+    writing-mode: vertical-rl;
+    transform: rotate(-180deg);
 }
