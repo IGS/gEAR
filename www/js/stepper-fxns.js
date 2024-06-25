@@ -23,6 +23,9 @@
 // i.mdi-cancel: The icon for the irreversible steps
 // parent.is-dashed turned off
 
+// I add `.steps:not(.is-hidden)` to the selectors to avoid selecting hidden steps
+// in the single-cell workbench, there are two steppers that have the same selectors, but one is hidden
+
 // NOTE: These functions make the assumption that the active selector or href is in the same element as the .steps-marker
 
 
@@ -31,10 +34,10 @@
  * @param {string} selectorHref - The href of the step to be blocked.
  */
 const blockStepWithHref = (selectorHref) => {
-    document.querySelector(`a[href='${selectorHref}']`).parentElement.classList.remove("is-dashed", "is-active");
-    document.querySelector(`a[href='${selectorHref}']`).classList.add("is-dark");
-    document.querySelector(`a[href='${selectorHref}'] i`).classList.remove("mdi-check");
-    document.querySelector(`a[href='${selectorHref}'] i`).classList.add("mdi-cancel");
+    document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}']`).parentElement.classList.remove("is-dashed", "is-active");
+    document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}']`).classList.add("is-dark");
+    document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}'] i`).classList.remove("mdi-check");
+    document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}'] i`).classList.add("mdi-cancel");
 }
 
 /**
@@ -42,10 +45,10 @@ const blockStepWithHref = (selectorHref) => {
  * @param {string} selector - The CSS selector of the step element.
  */
 const blockStep = (selector) => {
-    document.querySelector(selector).parentElement.classList.remove("is-dashed", "is-active");
-    document.querySelector(selector).classList.add("is-dark");
-    document.querySelector(`${selector} i`).classList.remove("mdi-check");
-    document.querySelector(`${selector} i`).classList.add("mdi-cancel");
+    document.querySelector(`.steps:not(.is-hidden) ${selector}`).parentElement.classList.remove("is-dashed", "is-active");
+    document.querySelector(`.steps:not(.is-hidden) ${selector}`).classList.add("is-dark");
+    document.querySelector(`.steps:not(.is-hidden) ${selector} i`).classList.remove("mdi-check");
+    document.querySelector(`.steps:not(.is-hidden) ${selector} i`).classList.add("mdi-cancel");
 }
 
 /**
@@ -53,10 +56,10 @@ const blockStep = (selector) => {
  * @param {string} selectorHref - The href attribute value of the step element to mark as failed.
  */
 const failStepWithHref = (selectorHref) => {
-    document.querySelector(`a[href='${selectorHref}']`).parentElement.classList.add("is-active")
-    document.querySelector(`a[href='${selectorHref}']`).classList.remove("is-light")
-    document.querySelector(`a[href='${selectorHref}']`).classList.add("is-danger")
-    document.querySelector(`a[href='${selectorHref}'] i`).classList.remove("mdi-check")
+    document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}']`).parentElement.classList.add("is-active")
+    document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}']`).classList.remove("is-light")
+    document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}']`).classList.add("is-danger")
+    document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}'] i`).classList.remove("mdi-check")
 }
 
 
@@ -65,10 +68,10 @@ const failStepWithHref = (selectorHref) => {
  * @param {string} selector - The CSS selector for the step element.
  */
 const failStep = (selector) => {
-    document.querySelector(selector).parentElement.classList.add("is-active")
-    document.querySelector(selector).classList.remove("is-light")
-    document.querySelector(selector).classList.add("is-danger")
-    document.querySelector(`a[href='${selector}'] i`).classList.remove("mdi-check")
+    document.querySelector(`.steps:not(.is-hidden) ${selector}`).parentElement.classList.add("is-active")
+    document.querySelector(`.steps:not(.is-hidden) ${selector}`).classList.remove("is-light")
+    document.querySelector(`.steps:not(.is-hidden) ${selector}`).classList.add("is-danger")
+    document.querySelector(`.steps:not(.is-hidden) ${selector} i`).classList.remove("mdi-check")
 }
 
 /**
@@ -76,11 +79,11 @@ const failStep = (selector) => {
  * @param {string} selectorHref - The href attribute value of the step element to mark as passed.
  */
 const passStepWithHref = (selectorHref) => {
-    document.querySelector(`a[href='${selectorHref}']`).parentElement.classList.remove("is-active")
-    document.querySelector(`a[href='${selectorHref}']`).parentElement.classList.add("is-dashed")
-    document.querySelector(`a[href='${selectorHref}']`).classList.remove("is-danger", "is-light")
-    document.querySelector(`a[href='${selectorHref}'] i`).classList.remove("mdi-pencil")
-    document.querySelector(`a[href='${selectorHref}'] i`).classList.add("mdi-check")
+    document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}']`).parentElement.classList.remove("is-active")
+    document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}']`).parentElement.classList.add("is-dashed")
+    document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}']`).classList.remove("is-danger", "is-light")
+    document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}'] i`).classList.remove("mdi-pencil")
+    document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}'] i`).classList.add("mdi-check")
 }
 
 /**
@@ -88,11 +91,11 @@ const passStepWithHref = (selectorHref) => {
  * @param {string} selector - The CSS selector for the step element.
  */
 const passStep = (selector) => {
-    document.querySelector(selector).parentElement.classList.remove("is-active")
-    document.querySelector(selector).parentElement.classList.add("is-dashed")
-    document.querySelector(selector).classList.remove("is-danger", "is-light")
-    document.querySelector(`${selector} i`).classList.remove("mdi-pencil")
-    document.querySelector(`${selector} i`).classList.add("mdi-check")
+    document.querySelector(`.steps:not(.is-hidden) ${selector}`).parentElement.classList.remove("is-active")
+    document.querySelector(`.steps:not(.is-hidden) ${selector}`).parentElement.classList.add("is-dashed")
+    document.querySelector(`.steps:not(.is-hidden) ${selector}`).classList.remove("is-danger", "is-light")
+    document.querySelector(`.steps:not(.is-hidden) ${selector} i`).classList.remove("mdi-pencil")
+    document.querySelector(`.steps:not(.is-hidden) ${selector} i`).classList.add("mdi-check")
 }
 
 /**
@@ -109,15 +112,15 @@ const openNextStepHrefs = (selectorHrefs, activeSelectorHref=null, clickActive=f
     }
 
     for (const href of selectorHrefs) {
-        document.querySelector(`a[href='${href}']`).classList.add("is-light")
-        document.querySelector(`a[href='${href}'] i`).classList.add("mdi-pencil")
+        document.querySelector(`.steps:not(.is-hidden) a[href='${href}']`).classList.add("is-light")
+        document.querySelector(`.steps:not(.is-hidden) a[href='${href}'] i`).classList.add("mdi-pencil")
     }
 
     if (activeSelectorHref) {
-        document.querySelector(`a[href='${activeSelectorHref}']`).parentElement.classList.add("is-active")
+        document.querySelector(`.steps:not(.is-hidden) a[href='${activeSelectorHref}']`).parentElement.classList.add("is-active")
         // click the active step
         if (clickActive) {
-            document.querySelector(`a[href='${activeSelectorHref}']`).click()
+            document.querySelector(`.steps:not(.is-hidden) a[href='${activeSelectorHref}']`).click()
         }
     }
 
@@ -137,12 +140,12 @@ const openNextSteps = (selectors, activeSelector=null) => {
     }
 
     for (const selector of selectors) {
-        document.querySelector(selector).classList.add("is-light");
-        document.querySelector(`${selector} i`).classList.add("mdi-pencil")
+        document.querySelector(`.steps:not(.is-hidden) ${selector}`).classList.add("is-light");
+        document.querySelector(`.steps:not(.is-hidden) ${selector} i`).classList.add("mdi-pencil")
     }
 
     if (activeSelector) {
-        document.querySelector(activeSelector).parentElement.classList.add("is-active")
+        document.querySelector(`.steps:not(.is-hidden) ${activeSelector}`).parentElement.classList.add("is-active")
     }
 }
 
@@ -153,7 +156,7 @@ const openNextSteps = (selectors, activeSelector=null) => {
  * @param {string|null} activeSelectorHref - The href of the step to set as active. Default is null.
  */
 const resetStepperWithHrefs = (activeSelectorHref=null) => {
-    const steps = document.querySelectorAll(".steps-marker")
+    const steps = document.querySelectorAll(".steps:not(.is-hidden) .steps-marker")
     for (const step of steps) {
         step.classList.remove("is-light", "is-danger");
         step.parentElement.classList.remove("is-active", "is-dashed");
@@ -163,7 +166,7 @@ const resetStepperWithHrefs = (activeSelectorHref=null) => {
 
     if (activeSelectorHref) {
         // pass all steps before the active step
-        const selectorHrefs = Array.from(document.querySelectorAll(".steps-marker")).map(step => step.getAttribute("href"));
+        const selectorHrefs = Array.from(steps).map(step => step.getAttribute("href"));
         const activeIndex = selectorHrefs.indexOf(activeSelectorHref)
 
         if (activeIndex > 0) {
@@ -173,6 +176,9 @@ const resetStepperWithHrefs = (activeSelectorHref=null) => {
             }
             openNextStepHrefs([activeSelectorHref])
         }
+    } else {
+        // make the first step active
+        document.querySelector(".steps:not(.is-hidden) .steps-marker").parentElement.classList.add("is-active")
     }
 }
 
@@ -183,7 +189,7 @@ const resetStepperWithHrefs = (activeSelectorHref=null) => {
  * @param {string|null} activeSelector - The selector for the step to set as active. If null, no step will be set as active.
  */
 const resetStepper = (activeSelector=null) => {
-    const steps = document.querySelectorAll(".steps-marker")
+    const steps = document.querySelectorAll(".steps:not(.is-hidden) .steps-marker")
     for (const step of steps) {
         step.classList.remove("is-light", "is-danger", "is-dark");
         step.parentElement.classList.remove("is-active", "is-dashed");
@@ -199,6 +205,9 @@ const resetStepper = (activeSelector=null) => {
         }
         openNextSteps([activeSelector]);
 
+    } else {
+        // make the first step active
+        document.querySelector(".steps:not(.is-hidden) .steps-marker").parentElement.classList.add("is-active")
     }
 
 }
