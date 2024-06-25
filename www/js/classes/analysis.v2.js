@@ -362,11 +362,11 @@ class Analysis {
             return analysis
         }
 
-        analysis.primaryFilter = AnalysisStepPrimaryFilter.loadFromJson(data.primaryFilter, analysis);
+        analysis.primaryFilter = AnalysisStepPrimaryFilter.loadFromJson(data.primary_filter, analysis);
         analysis.primaryFilter.updateUIWithResults(analysis);
 
-        analysis.qcByMito = AnalysisStepQCByMito.loadFromJson(data.qcByMito, analysis);
-        analysis.selectVariableGenes = AnalysisStepSelectVariableGenes.loadFromJson(data.selectVariableGenes, analysis);
+        analysis.qcByMito = AnalysisStepQCByMito.loadFromJson(data.qc_by_mito, analysis);
+        analysis.selectVariableGenes = AnalysisStepSelectVariableGenes.loadFromJson(data.select_variable_genes, analysis);
         analysis.pca = AnalysisStepPCA.loadFromJson(data.pca, analysis);
 
         analysis.tsne = AnalysisSteptSNE.loadFromJson(data.tsne, analysis);
@@ -381,14 +381,14 @@ class Analysis {
         analysis.clustering = AnalysisStepClustering.loadFromJson(data.clustering, analysis);
         analysis.clustering.updateUIWithResults(analysis);
 
-        analysis.markerGenes = AnalysisStepMarkerGenes.loadFromJson(data.markerGenes, analysis);
+        analysis.markerGenes = AnalysisStepMarkerGenes.loadFromJson(data.marker_genes, analysis);
 
         // labeled tSNE does not have a data object section. Only needs dataset ID.
 
-        analysis.clusteringEdit = AnalysisStepClustering.loadFromJson(data.clustering, analysis);
-        analysis.clusteringEdit.mode = "edit";
+        const clusteringEditData = data.clustering_edit || data.clustering
+        analysis.clusteringEdit = AnalysisStepClustering.loadFromJson(data.clusteringEditData, analysis);
 
-        analysis.compareGenes = AnalysisStepCompareGenes.loadFromJson(data.compareGenes, analysis);
+        analysis.compareGenes = AnalysisStepCompareGenes.loadFromJson(data.compare_genes, analysis);
 
         document.querySelector(UI.analysisWorkflowElt).classList.remove("is-hidden");
 
@@ -565,8 +565,6 @@ class Analysis {
         if (state.qc_by_mito) {
             state.qc_by_mito.filter_mito_perc = state.qc_by_mito.filter_mito_percent;
             delete state.qc_by_mito.filter_mito_percent;
-
-            delete state.clustering_edit;   // Same core info as "clustering", at least for reloading purposes
         }
 
         try {
