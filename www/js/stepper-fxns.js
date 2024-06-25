@@ -4,53 +4,102 @@
 // Functions ro reduce redundancy in common actions for stepper components
 // This is for https://github.com/octoshrimpy/bulma-o-steps/tree/master
 
+// States
+// Completed steps
+// parent.is-dashed: The past steps that have been completed
+// i.mdi-check: The icon for the completed steps
+
+// Active step
+// parent.is-active: Line marker up to the current step
+// is-light: The current step
+// i.mdi-pencil: The icon for the active step
+
+// Failed step
+// is-danger: Failed step
+// parent.is-active: Line marker up to the failed step
+
+// Irreversible (blocked) steps
+// is-dark: The blocked step
+// i.mdi-cancel: The icon for the irreversible steps
+// parent.is-dashed turned off
+
+// NOTE: These functions make the assumption that the active selector or href is in the same element as the .steps-marker
+
+
 /**
- * Fails a step with the specified href by adding the "is-active" and "is-danger" classes to the corresponding anchor element.
- * @param {string} selectorHref - The href value of the anchor element to be failed.
+ * Blocks a step with the specified href.
+ * @param {string} selectorHref - The href of the step to be blocked.
+ */
+const blockStepWithHref = (selectorHref) => {
+    document.querySelector(`a[href='${selectorHref}']`).parentElement.classList.remove("is-dashed", "is-active");
+    document.querySelector(`a[href='${selectorHref}']`).classList.add("is-dark");
+    document.querySelector(`a[href='${selectorHref}'] i`).classList.remove("mdi-check");
+    document.querySelector(`a[href='${selectorHref}'] i`).classList.add("mdi-cancel");
+}
+
+/**
+ * Blocks a step by modifying the CSS classes of the specified selector.
+ * @param {string} selector - The CSS selector of the step element.
+ */
+const blockStep = (selector) => {
+    document.querySelector(selector).parentElement.classList.remove("is-dashed", "is-active");
+    document.querySelector(selector).classList.add("is-dark");
+    document.querySelector(`${selector} i`).classList.remove("mdi-check");
+    document.querySelector(`${selector} i`).classList.add("mdi-cancel");
+}
+
+/**
+ * Marks a step as failed by adding appropriate CSS classes to the step element.
+ * @param {string} selectorHref - The href attribute value of the step element to mark as failed.
  */
 const failStepWithHref = (selectorHref) => {
     document.querySelector(`a[href='${selectorHref}']`).parentElement.classList.add("is-active")
+    document.querySelector(`a[href='${selectorHref}']`).classList.remove("is-light")
     document.querySelector(`a[href='${selectorHref}']`).classList.add("is-danger")
+    document.querySelector(`a[href='${selectorHref}'] i`).classList.remove("mdi-check")
 }
 
+
 /**
- * Adds the "is-active" and "is-danger" classes to the element with the specified selector.
- * @param {string} selector - The CSS selector of the element to add the classes to.
+ * Marks a step as failed by adding appropriate CSS classes.
+ * @param {string} selector - The CSS selector for the step element.
  */
 const failStep = (selector) => {
     document.querySelector(selector).parentElement.classList.add("is-active")
+    document.querySelector(selector).classList.remove("is-light")
     document.querySelector(selector).classList.add("is-danger")
+    document.querySelector(`a[href='${selector}'] i`).classList.remove("mdi-check")
 }
 
 /**
- * Passes a step by removing the "is-active" and "is-dashed" classes from the anchor element with the specified href,
- * and adds the "is-hollow" class to it.
- *
- * @param {string} selectorHref - The href value of the anchor element to modify.
+ * Marks a step as passed by adding appropriate CSS classes to the step element.
+ * @param {string} selectorHref - The href attribute value of the step element to mark as passed.
  */
 const passStepWithHref = (selectorHref) => {
-    document.querySelector(`a[href='${selectorHref}']`).parentElement.classList.remove("is-active", "is-dashed")
-    document.querySelector(`a[href='${selectorHref}']`).classList.remove("is-danger")
-    document.querySelector(`a[href='${selectorHref}']`).classList.add("is-hollow")
+    document.querySelector(`a[href='${selectorHref}']`).parentElement.classList.remove("is-active")
+    document.querySelector(`a[href='${selectorHref}']`).parentElement.classList.add("is-dashed")
+    document.querySelector(`a[href='${selectorHref}']`).classList.remove("is-danger", "is-light")
+    document.querySelector(`a[href='${selectorHref}'] i`).classList.remove("mdi-pencil")
+    document.querySelector(`a[href='${selectorHref}'] i`).classList.add("mdi-check")
 }
 
 /**
- * Removes the "is-active" and "is-dashed" classes from the element with the specified selector,
- * and adds the "is-hollow" class.
- *
- * @param {string} selector - The CSS selector of the element to modify.
+ * Marks a step as passed by adding appropriate CSS classes.
+ * @param {string} selector - The CSS selector for the step element.
  */
 const passStep = (selector) => {
-    document.querySelector(selector).parentElement.classList.remove("is-active", "is-dashed")
-    document.querySelector(selector).classList.remove("is-danger")
-    document.querySelector(selector).classList.add("is-hollow")
-
+    document.querySelector(selector).parentElement.classList.remove("is-active")
+    document.querySelector(selector).parentElement.classList.add("is-dashed")
+    document.querySelector(selector).classList.remove("is-danger", "is-light")
+    document.querySelector(`${selector} i`).classList.remove("mdi-pencil")
+    document.querySelector(`${selector} i`).classList.add("mdi-check")
 }
 
 /**
- * Adds CSS classes to the specified selector hrefs to control their appearance.
- * @param {string[]} selectorHrefs - An array of selector hrefs.
- * @param {string|null} activeSelectorHref - The active selector href.
+ * Opens the next step hrefs and applies appropriate classes to the elements.
+ * @param {string[]} selectorHrefs - An array of hrefs for the selectors.
+ * @param {string|null} activeSelectorHref - The href of the active selector. Defaults to null.
+ * @param {boolean} clickActive - Specifies whether to click the active step. Defaults to false.
  */
 const openNextStepHrefs = (selectorHrefs, activeSelectorHref=null, clickActive=false) => {
 
@@ -60,10 +109,8 @@ const openNextStepHrefs = (selectorHrefs, activeSelectorHref=null, clickActive=f
     }
 
     for (const href of selectorHrefs) {
-        document.querySelector(`a[href='${href}']`).parentElement.classList.add("is-dashed")
-        if (href !== activeSelectorHref) {
-            document.querySelector(`a[href='${href}']`).classList.add("is-hollow")
-        }
+        document.querySelector(`a[href='${href}']`).classList.add("is-light")
+        document.querySelector(`a[href='${href}'] i`).classList.add("mdi-pencil")
     }
 
     if (activeSelectorHref) {
@@ -79,8 +126,8 @@ const openNextStepHrefs = (selectorHrefs, activeSelectorHref=null, clickActive=f
 /**
  * Opens the next steps in a stepper.
  *
- * @param {string[]} selectors - An array of CSS selectors for the steps to open.
- * @param {string|null} activeSelector - The CSS selector for the currently active step.
+ * @param {string[]} selectors - An array of CSS selectors for the steps.
+ * @param {string|null} activeSelector - The CSS selector for the active step. If null, the first step will be considered active.
  */
 const openNextSteps = (selectors, activeSelector=null) => {
 
@@ -90,14 +137,68 @@ const openNextSteps = (selectors, activeSelector=null) => {
     }
 
     for (const selector of selectors) {
-        document.querySelector(selector).parentElement.classList.add("is-dashed");
-
-        if (selector !== activeSelector) {
-            document.querySelector(selector).classList.add("is-hollow")
-        }
+        document.querySelector(selector).classList.add("is-light");
+        document.querySelector(`${selector} i`).classList.add("mdi-pencil")
     }
 
     if (activeSelector) {
         document.querySelector(activeSelector).parentElement.classList.add("is-active")
     }
+}
+
+/**
+ * Resets the stepper by removing classes and icons from each step element.
+ * Optionally, sets a specific step as active based on the provided href.
+ *
+ * @param {string|null} activeSelectorHref - The href of the step to set as active. Default is null.
+ */
+const resetStepperWithHrefs = (activeSelectorHref=null) => {
+    const steps = document.querySelectorAll(".steps-marker")
+    for (const step of steps) {
+        step.classList.remove("is-light", "is-danger");
+        step.parentElement.classList.remove("is-active", "is-dashed");
+        step.querySelector("i").classList.remove("mdi-pencil", "mdi-check");
+    }
+
+
+    if (activeSelectorHref) {
+        // pass all steps before the active step
+        const selectorHrefs = Array.from(document.querySelectorAll(".steps-marker")).map(step => step.getAttribute("href"));
+        const activeIndex = selectorHrefs.indexOf(activeSelectorHref)
+
+        if (activeIndex > 0) {
+            // if found, pass all steps before the active step
+            for (let i = 0; i < activeIndex; i++) {
+                passStepWithHref(selectorHrefs[i])
+            }
+            openNextStepHrefs([activeSelectorHref])
+        }
+    }
+}
+
+/**
+ * Resets the stepper by removing classes and icons from each step element.
+ * Optionally, sets a specific step as active.
+ *
+ * @param {string|null} activeSelector - The selector for the step to set as active. If null, no step will be set as active.
+ */
+const resetStepper = (activeSelector=null) => {
+    const steps = document.querySelectorAll(".steps-marker")
+    for (const step of steps) {
+        step.classList.remove("is-light", "is-danger", "is-dark");
+        step.parentElement.classList.remove("is-active", "is-dashed");
+        step.querySelector("i").classList.remove("mdi-pencil", "mdi-check", "mdi-cancel");
+    }
+
+    if (activeSelector) {
+        // TODO: need to test this
+        // Select all steps before the active step, and pass them
+        const beforeSteps = document.querySelectorAll(`.steps:not(.is-hidden) .steps-marker ~ ${activeSelector}`);
+        for (const step of beforeSteps) {
+            passStep(step);
+        }
+        openNextSteps([activeSelector]);
+
+    }
+
 }

@@ -33,6 +33,7 @@ class AnalysisUI {
     analysisSavedElt = "#analyses-saved"
     analysisPublicElt = "#analyses-public"
     analysisRenameElts = ".js-show-rename-input"
+    analysisDeleteElts = ".js-delete-analysis"
     analysisActionContainer = "#analysis-action-c"
     btnSaveAnalysisElt = "#btn-save-analysis"
     btnDeleteUnsavedAnalysisElt = "#btn-delete-unsaved-analysis"
@@ -40,8 +41,14 @@ class AnalysisUI {
     analysisStatusInfoElt = "#analysis-status-info"
     btnMakePublicCopyElt = "#btn-make-public-copy"
     btnDeleteSavedAnalysisElt = "#btn-delete-saved-analysis"
-    storedAnalysesContainer = "#stored-analyses-c"
     analysisWorkflowElt = "#analysis-workflow"
+
+    // summary section
+    summarySection = "#summary-s"
+    primaryStepsElt = "#primary-steps"
+    deNovoStepsElt = "#de-novo-steps"
+    stepsElts = "#steps-container .steps"
+    stepSegmentElts = ".steps-segment"
 
     // Initial info
     primaryInitialInfoSection = "#initial-info-s"
@@ -62,7 +69,6 @@ class AnalysisUI {
     primaryFilterSection = "#primary-filter-s"
     primaryFilterSectionSuccessElt = "#primary-filter-s-success"
     primaryFilterSectionFailedElt = "#primary-filter-s-failed"
-    primaryFilterCollapsableElt = "#primary-filter-collapsable"
     btnApplyPrimaryFilterElt = "#btn-apply-primary-filter"
     filterCellsGtNGenesElt = "#filter-cells-gt-n-genes"
     filterCellsLtNGenesElt = "#filter-cells-lt-n-genes"
@@ -77,8 +83,8 @@ class AnalysisUI {
 
     primaryTopGenesContainer = "#primary-top-genes-c"
     primaryTopGenesPlotContainer = "#primary-top-genes-plot-c"
-    primaryInitialPlotElts = ".primary-initial-plot"
-    datasetInfoResetableElts = `${this.primaryFilterCollapsableElt} .js-resetable`
+    primaryFilterInstructionsElt = `${this.primaryFilterSection} .tool-instructions`
+    datasetInfoResetableElts = `${this.primaryFilterSection} .js-resetable`
 
     // QC by mito
     qcByMitoSection = "#qc-by-mito-s"
@@ -88,11 +94,11 @@ class AnalysisUI {
     qbmFilterMitoPercElt = "#qbm-filter-mito-perc"
     qbmFilterMitoCountElt = "#qbm-filter-mito-count"
     btnQbmSaveElt = "#btn-qbm-save"
+    qbmSaveWarningElt = "#qbm-save-warning"
     btnDoAnalysisQcByMitoElt = "#btn-do-analysis-qc-by-mito"
+    qbmPostShapeContainer = "#qbm-post-shape-c"
     qbmPostShapeElt = "#qbm-post-shape"
-    qbmGeneCountElt = "#qbm-gene-count"
-    qbmObsCountElt = "#qbm-obs-count"
-    qbmInstructionsElt = "#analysis-qc-by-mito .tool-instructions"
+    qbmInstructionsElt = `${this.qcByMitoSection} .tool-instructions`
     qbmViolinContainer = "#qbm-violin-c"
     qbmScatterPercentMitoContainer = "#qbm-scatter-percent-mito-c"
     qbmScatterNGenesContainer = "#qbm-scatter-n-genes-c"
@@ -108,14 +114,14 @@ class AnalysisUI {
     asvgMinMeanElt = "#asvg-min-mean"
     asvgMaxMeanElt = "#asvg-max-mean"
     asvgMinDispersionElt = "#asvg-min-dispersion"
-    asvgRegressOutElt = "#asvg-regress-out"
-    asvgScaleUnitVarianceElt = "#asvg-scale-unit-variance"
     btnAsvgSaveElt = "#btn-asvg-save"
     btnDoAnalysisSelectVariableGenesElt = "#btn-do-analysis-select-variable-genes"
-    asvgSaveOptionsElts = ".asvg-save-options"
+    asvgSaveWarningElt = "#asvg-save-warning"
     asvgPlotContainer = "#asvg-plot-c"
-    asvgPlotNormContainer = "#asvg-plot-norm-c"
-    asvgInstructionsElt = "#analysis-select-variable-genes .tool-instructions"
+    asvgPostShapeContainer = "#asvg-post-shape-c"
+    asvgPostShapeElt = "#asvg-post-shape"
+    asvgInstructionsElt = `${this.selectVariableGenesSection} .tool-instructions`
+    asvgTopGenesContainer = "#asvg-top-genes-c"
     asvgTopGenesListElt = "#asvg-top-genes-list"
 
     // PCA
@@ -123,19 +129,20 @@ class AnalysisUI {
     pcaSectionSuccessElt = "#pca-s-success"
     pcaSectionFailedElt = "#pca-s-failed"
     btnPcaRunElt = "#btn-pca-run"
+    btnPcaTopGenesElt = "#btn-pca-top-genes"
     btnSavePcaGeneListElt = "#btn-save-pca-gene-list"
     pcaGeneListNameElt = "#pca-gene-list-name"
-    genesToColorElt = "#pca-genes-to-color"
-    pcaOptionsGroupElt = "#pca-options-group"
+    pcaGenesToColorElt = "#pca-genes-to-color"
     topPcaGenesElt = "#pca-top-genes"
-    pcaInstructionsElt = "#analysis-pca .tool-instructions"
+    pcaInstructionsElt = `${this.pcaSection} .tool-instructions`
     pcaScatterContainer = "#pca-scatter-c"
     pcaVarianceContainer = "#pca-variance-c"
     pcaMissingGeneContainer = "#pca-missing-gene-c"
     pcaMissingGeneElt = "#pca-missing-gene"
-    pcaResetableElts  = `1#analysis-pca .js-resetable`
-    pcaOptionsGroupElt = "#pca-options-c"
-    weightedGeneListGroupElt = "#weighted-gene-list-c"
+    pcaResetableElts  = `${this.pcaSection} .js-resetable`
+    pcaPcToTopGenesContainer = "#pca-pc-to-top-genes-c"
+    pcaTopGenesPlotContainer = "#pca-top-genes-plot-c"
+    pcaGeneListContainer = "#pca-gene-list-c"
 
     // tSNE
     tsneSection = "#tsne-s"
@@ -145,14 +152,14 @@ class AnalysisUI {
     tsneGenesToColorElt = "#tsne-genes-to-color"
     dimReductionNNeighborsElt = "#dredux-n-neighbors"
     tsneNPcsElt = "#tsne-n-pcs"
-    tsneRandomStateElt = "#tsne-random-state"
-    dimensionalityReductionMethodTsneElt = "#dimensionality-reduction-method-tsne"
-    dimensionalityReductionMethodUmapElt = "#dimensionality-reduction-method-umap"
-    tsneInstructionsElt = "#analysis-tsne .tool-instructions"
+    dimReductionMethodTsneElt = "#dimensionality-reduction-method-tsne"
+    dimReductionMethodUmapElt = "#dimensionality-reduction-method-umap"
+    tsneInstructionsElt = `${this.tsneSection} .tool-instructions`
+    tsneResetableElts  = `${this.tsneSection} .js-resetable`
     tsnePlotContainer = "#tsne-plot-c"
     umapPlotContainer = "#umap-plot-c"
     tsneMissingGeneContainer = "#tsne-missing-gene-c"
-    tsneUseScaledElt = "#tsne-use-scaled"
+    tsneMissingGeneElt = "#tsne-missing-gene"
 
     // Clustering
     clusteringSection = "#clustering-s"
@@ -161,11 +168,10 @@ class AnalysisUI {
     btnClusteringRunElt = "#btn-clustering-run"
     btnClusteringRerunWithGroupsElt = "#btn-clustering-rerun-with-groups"
     resolutionElt = "#clustering-resolution"
-    clusteringNNeighborsElt = "#clustering-n-neighbors"
-    clusterTsnePlotElt = "#cluster-tsne-plot-c"
-    clusterUmapPlotElt = "#cluster-umap-plot-c"
-    clusteringInstructionsElt = "#analysis-clustering .tool-instructions"
-    clusteringResetableElts = `#analysis-clustering .js-resetable`
+    clusteringTsnePlotElt = "#clustering-tsne-plot-c"
+    clusteringUmapPlotElt = "#clustering-umap-plot-c"
+    clusteringInstructionsElt = `${this.clusteringSection} .tool-instructions`
+    clusteringResetableElts = `${this.clusteringSection} .js-resetable`
 
     // Marker Genes
     markerGenesSection = "#marker-genes-s"
@@ -194,20 +200,25 @@ class AnalysisUI {
     markerGenesUniqueCountElt = "#marker-genes-unique-count"
     markerGenesListContainer = "#marker-gene-list-c"
     markerGenesListNameElt = "#marker-gene-list-name"
+    markerGenesInstructionsElt = `${this.markerGenesSection} .tool-instructions`
+    markerGenesResetableElts = `${this.markerGenesSection} .js-resetable`
 
     // Clustering (edit mode)
     clusteringEditSection = "#clustering-edit-s"
     btnClusteringEditRunElt = "#btn-clustering-edit"
+    clusteringEditSectionSuccessElt = "#clustering-edit-s-success"
+    clusteringEditSectionFailedElt = "#clustering-edit-s-failed"
     // -- using resolutionElts values from the non-edit clustering
     // -- using clusterNNeighborsElt values from the non-edit clustering
-    clusterTsnePlotEditElt = "#cluster-tsne-plot-edit-c"
-    clusterUmapPlotEditElt = "#cluster-umap-plot-edit-c"
-    clusteringEditInstructionsElt = "#analysis-clustering-edit .tool-instructions"
+    clusteringTsnePlotEditElt = "#clustering-tsne-plot-edit-c"
+    clusteringUmapPlotEditElt = "#clustering-umap-plot-edit-c"
     groupLabelsContainer = "#group-labels-c"
     clusterGroupLabelsTmpl = "#cluster-group-labels-tmpl"
     clusterGroupLabelsTableBodyElt = "#cluster-group-labels tbody"
     clusterGroupLabelsInputElts = '#cluster-group-labels td.group-user-label input'
     clusteringMergeClustersElt = "#clustering-merge-clusters"
+    clusteringEditInstructionsElt = `${this.clusteringEditSection} .tool-instructions`
+    clusteringEditResetableElts = `${this.clusteringEditSection} .js-resetable`
 
     // Compare Genes
     compareGenesSection = "#compare-genes-s"
@@ -218,7 +229,6 @@ class AnalysisUI {
     btnCompareGenesShowTableRElt = "#btn-compare-genes-show-table-r"
     btnCompareGenesDownloadTableFElt = "#btn-compare-genes-download-table-f"
     btnCompareGenesDownloadTableRElt = "#btn-compare-genes-download-table-r"
-    compareGenesCollapsableElt = "#compare-genes-collapsable"
     queryClusterOptionsElt = "#query-cluster-options"
     referenceClusterOptionsElt = "#reference-cluster-options"
     queryClusterSelectElt = "#query-cluster"
@@ -232,9 +242,9 @@ class AnalysisUI {
     compareGenesViolinRevContainer = "#compare-genes-violin-rev-c"
     compareGenesTableFElt = "#compare-genes-table-f"
     compareGenesTableRElt = "#compare-genes-table-r"
-    compareGenesInstructionsElt = `${this.compareGenesCollapsableElt} .tool-instructions`
+    compareGenesInstructionsElt = `${this.compareGenesSection} .tool-instructions`
     compareGenesResultsContainer = "#compare-genes-visualization-c"
-    compareGenesResetableElts = `${this.compareGenesCollapsableElt} .js-resetable`
+    compareGenesResetableElts = `${this.compareGenesSection} .js-resetable`
 
 }
 

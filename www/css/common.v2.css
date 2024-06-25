@@ -141,7 +141,7 @@ p.menu-label {
     position: fixed;
     top: 30px;
     right: 10px;
-    z-index:999;
+    z-index:1001;
 }
 
 /* By default clicking the nice-select2 dropdown search closes it again.  This

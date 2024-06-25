@@ -8,3 +8,21 @@ input.input-length-4 {
 input.input-length-6 {
     width: 6em;
 }
+
+#marker-genes-table-c {
+    display: grid;
+    /* see https://github.com/jgthms/bulma/issues/2572#issuecomment-523173866
+    Addresses issue where table will overflow to right if it's in parent ".column"
+    and some gene names in table cells are long */
+}
+
+.stick-to-top {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+/* steps-marker after is-active should not be clickable */
+.is-active ~ .steps-segment {
+    pointer-events: none;
+}

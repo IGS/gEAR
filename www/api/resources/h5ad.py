@@ -65,6 +65,16 @@ class H5ad(Resource):
         for col in columns:
             try:
                 levels[col] = adata.obs[col].cat.categories.tolist()
+
+                # if there is missing data, add that as a level
+                if adata.obs[col].isnull().sum() > 0 and "NA" not in levels[col]:
+                    levels[col].append("NA")
+
+                # Drop level if it has more than 50 unique values (i.e. barcodes)
+                # Most likely people won't want to filter/sort/plot with them
+                if len(levels[col]) > 50:
+                    del levels[col]
+
             except:
                 pass
                 # If levels are not categorical I don't believe

@@ -78,7 +78,25 @@ def order_by_time_point(obs_df):
     return obs_df
 
 def create_composite_index_column(df, columns):
-    return df.obs[columns].apply(lambda x: ';'.join(map(str,x)), axis=1)
+    """
+    Create a composite index column by joining values from multiple columns.
+
+    Args:
+        df (pandas.DataFrame): The DataFrame containing the columns.
+        columns (list): A list of column names to be joined.
+
+    Returns:
+        pandas.Series: A Series containing the composite index values.
+
+    Example:
+        >>> df = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
+        >>> create_composite_index_column(df, ['A', 'B'])
+        0    1;4
+        1    2;5
+        2    3;6
+        dtype: object
+    """
+    return df.obs[columns].apply(lambda x: ';'.join(map(str, x)), axis=1)
 
 def create_projection_adata(dataset_adata, dataset_id, projection_id):
     # Create AnnData object out of readable CSV file
@@ -197,6 +215,12 @@ class MultigeneDashData(Resource):
         # remove _colors columns
         columns = [col for col in columns if not col.endswith('_colors')]
 
+        # Remove any columns that are have more than 50 unique values
+        # These are likely not categorical columns (i.e. barcodes) and can cause issues with the composite index
+        for col in columns:
+            if len(adata.obs[col].unique()) > 50:
+                columns.remove(col)
+
         if not columns:
             return {
                 "success": -1,
@@ -296,15 +320,6 @@ class MultigeneDashData(Resource):
             if secondary_col and secondary_col != primary_col:
                 sort_fields.append(secondary_col)
 
-            """
-            # Add the rest of the sort order observation keys if any others exist.
-            # Currently this should only consist of the primary and secondary columns, but may be extended in the future.
-            obs_keys = sort_order.keys()
-            for key in obs_keys:
-                if key not in sort_fields:
-                    sort_fields.append(key)
-            """
-
             # Now reorder the dataframe
             for key in sort_fields:
                 col = selected.obs[key]
@@ -329,21 +344,31 @@ class MultigeneDashData(Resource):
             # reorder filter key the same order as sort_order if key exists
             # Mostly for fixing the order of the heatmap clusterbars
             for field in filters.keys():
+                values = filters[field]
+                # if there is an "NA" value in the filters but no "NA" in the dataframe
+                # check if it is a missing value, and if so, impute it
+                if "NA" in values and "NA" not in selected.obs[col].cat.categories:
+                    values.remove("NA")
+                    selected.obs[col].cat.add_categories("NA")
+                    selected.obs[col].fillna("NA", inplace=True)
+
+                mask = selected.obs[field].isin(values)
+                selected = selected[mask, :]
+
                 if sort_order and field in sort_order:
                     filters[field] = sort_order[field]
 
-            # Create a special composite index for the specified filters
+            # if the filters are empty, return an empty dataframe
+            if selected.shape[0] == 0:
+                return {
+                    "success": -1,
+                    "message": "No data found for the selected filters."
+                }
+
+            # For the remaining data, create a special composite index for the specified filters
             selected.obs['filters_composite'] = create_composite_index_column(selected, filters.keys())
             selected.obs['filters_composite'] = selected.obs['filters_composite'].astype('category')
             columns.append("filters_composite")
-            unique_composite_indexes = selected.obs["filters_composite"].unique()
-
-            # Only want to keep indexes that match chosen filters
-            # However if no filters were chosen, just use everything
-            filtered_composite_indexes = mg.create_filtered_composite_indexes(filters, unique_composite_indexes.tolist())
-            if filtered_composite_indexes:
-                condition_filter = selected.obs["filters_composite"].isin(filtered_composite_indexes)
-                selected = selected[condition_filter, :]
 
             # sort by the filters
             for key in sort_fields:

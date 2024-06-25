@@ -1140,19 +1140,6 @@ def create_facet_indexes(groups):
     """Create facet indexes for subplots.  Returns a dict of group names to subplot index number."""
     return {group: idx for idx, group in enumerate(groups, start=1)}
 
-def create_filtered_composite_indexes(filters, composite_indexes):
-    """Create an index based on the 'composite_index' column."""
-    all_vals = [v for k, v in filters.items()]  # List of lists
-
-    # itertools.product returns a combation of every value from every list
-    # Essentially  ((x,y) for x in A for y in B)
-    filter_combinations = product(*all_vals)
-    string_filter_combinations = [";".join(v) for v in filter_combinations]
-
-    # This contains combinations of indexes that may not exist in the dataframe.
-    # Use composite indexes from dataframe to return valid filtered indexes
-    return intersection(string_filter_combinations, composite_indexes)
-
 def create_multicategory_axis_labels(groupby_filters, df):
     """ Creates the multicategory axis labels for a plot."""
     # If only one groupby column, we must flatten the list or else the x-axis will not plot correctly

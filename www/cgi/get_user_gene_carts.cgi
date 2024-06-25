@@ -78,6 +78,7 @@ def main():
     domain_carts = geardb.GeneCartCollection().get_domain()
     user_carts = []
     group_carts = []
+    recent_carts = []
     if current_user:
         user_carts = geardb.GeneCartCollection().get_by_user(user=current_user)
         group_carts = geardb.GeneCartCollection().get_by_user_groups(user=current_user)
