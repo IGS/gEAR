@@ -37,7 +37,7 @@ def main():
     main_page = 'expression.html'
 
     if page == 'a':
-        main_page = 'analyze_dataset.html'
+        main_page = 'sc_workbench.html'
         #main_page = 'sc_workbench.html'
 
     url = url_base + '/' + main_page
