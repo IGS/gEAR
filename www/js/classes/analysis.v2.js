@@ -545,6 +545,11 @@ class Analysis {
 
     async save() {
 
+        if (!this.userSessionId) {
+            console.warn("Cannot save analysis without a user session ID");
+            return;
+        }
+
         // clone this object in such a way to not
         // include the "analysis" property for each step due to circular reference
         const clone = JSON.parse(JSON.stringify(this, (key, value) => {
