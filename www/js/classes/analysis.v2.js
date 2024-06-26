@@ -366,7 +366,9 @@ class Analysis {
 
             // Show the primary analysis stepper
             document.querySelector(UI.primaryStepsElt).classList.remove("is-hidden");
-            resetStepperWithHrefs("#marker-genes-s");
+            resetStepperWithHrefs(UI.markerGenesSection);
+            // This is initially unclickable due to this step being initially unclickable for de novo analyses
+            document.querySelector(UI.markerGenesSection).classList.remove("is-pointer-events-none");
 
             return analysis
         }
@@ -374,7 +376,7 @@ class Analysis {
         // Show the de novo analysis stepper
         // Since the stepper relies on finding the "not hidden" stepper, we need to do this first.
         document.querySelector(UI.deNovoStepsElt).classList.remove("is-hidden");
-        resetStepperWithHrefs("#primary-filter-s");
+        resetStepperWithHrefs(UI.primaryFilterSection);
 
         analysis.primaryFilter = AnalysisStepPrimaryFilter.loadFromJson(data.primary_filter, analysis);
 
@@ -533,6 +535,17 @@ class Analysis {
                 step.reset();
             }
         }
+
+        // Set non-initial steps as unclickable
+        document.querySelector(UI.qcByMitoSection).classList.add("is-pointer-events-none");
+        document.querySelector(UI.selectVariableGenesSection).classList.add("is-pointer-events-none");
+        document.querySelector(UI.pcaSection).classList.add("is-pointer-events-none");
+        document.querySelector(UI.tsneSection).classList.add("is-pointer-events-none");
+        document.querySelector(UI.clusteringSection).classList.add("is-pointer-events-none");
+        document.querySelector(UI.markerGenesSection).classList.add("is-pointer-events-none");
+        document.querySelector(UI.clusteringEditSection).classList.add("is-pointer-events-none");
+        document.querySelector(UI.compareGenesSection).classList.add("is-pointer-events-none");
+
 
         this.datasetIsRaw = true;
         this.id = uuid();
@@ -947,7 +960,7 @@ class AnalysisStepPrimaryFilter {
 
 
         passStepWithHref(UI.primaryFilterSection);
-        openNextStepHrefs([UI.qcByMitoSection], null, true);
+        openNextAnalysisStep([UI.qcByMitoSection], null, true);
 
         document.querySelector(UI.primaryFilterSectionSuccessElt).classList.remove("is-hidden");
     }
@@ -1143,10 +1156,10 @@ class AnalysisStepQCByMito {
         // Only pass the step if the results have been saved
         if (resultsSaved) {
             document.querySelector(UI.qcByMitoSectionSuccessElt).classList.remove("is-hidden");
-            blockStepWithHref(UI.primaryFilterSection);
+            blockAnalysisStep(UI.primaryFilterSection);
             passStepWithHref(UI.qcByMitoSection);
-            blockStepWithHref(UI.qcByMitoSection);
-            openNextStepHrefs([UI.selectVariableGenesSection], null, true);
+            blockAnalysisStep(UI.qcByMitoSection);
+            openNextAnalysisStep([UI.selectVariableGenesSection], null, true);
         }
     }
 }
@@ -1369,8 +1382,8 @@ class AnalysisStepSelectVariableGenes {
         if (resultsSaved) {
             document.querySelector(UI.selectVariableGenesSectionSuccessElt).classList.remove("is-hidden");
             passStepWithHref(UI.selectVariableGenesSection);
-            blockStepWithHref(UI.selectVariableGenesSection);
-            openNextStepHrefs([UI.pcaSection], null, true);
+            blockAnalysisStep(UI.selectVariableGenesSection);
+            openNextAnalysisStep([UI.pcaSection], null, true);
         }
 
     }
@@ -1584,7 +1597,7 @@ class AnalysisStepPCA {
 
         document.querySelector(UI.pcaSectionSuccessElt).classList.remove("is-hidden");
         passStepWithHref(UI.pcaSection);
-        openNextStepHrefs([UI.tsneSection], null, true);
+        openNextAnalysisStep([UI.tsneSection], null, true);
     }
 }
 
@@ -1838,7 +1851,7 @@ class AnalysisSteptSNE {
         // dimensionality reduction enables clustering
         document.querySelector(UI.tsneSectionSuccessElt).classList.remove("is-hidden");
         passStepWithHref(UI.tsneSection);
-        openNextStepHrefs([UI.clusteringSection], null, true);
+        openNextAnalysisStep([UI.clusteringSection], null, true);
 
     }
 }
@@ -2099,16 +2112,16 @@ class AnalysisStepClustering {
         if (this.mode === "initial") {
             document.querySelector(UI.clusteringSectionSuccessElt).classList.remove("is-hidden");
             passStepWithHref(UI.clusteringSection);
-            openNextStepHrefs([UI.markerGenesSection], null, true);
+            openNextAnalysisStep([UI.markerGenesSection], null, true);
         } else if (this.mode === "edit") {
             document.querySelector(UI.clusteringEditSectionSuccessElt).classList.remove("is-hidden");
             passStepWithHref(UI.clusteringEditSection);
             // block all previous steps
-            blockStepWithHref(UI.pcaSection);
-            blockStepWithHref(UI.tsneSection);
-            blockStepWithHref(UI.clusteringSection);
-            blockStepWithHref(UI.markerGenesSection);
-            openNextStepHrefs([UI.compareGenesSection], null, true);
+            blockAnalysisStep(UI.pcaSection);
+            blockAnalysisStep(UI.tsneSection);
+            blockAnalysisStep(UI.clusteringSection);
+            blockAnalysisStep(UI.markerGenesSection);
+            openNextAnalysisStep([UI.compareGenesSection], null, true);
         }
     }
 }
@@ -2513,7 +2526,7 @@ class AnalysisStepMarkerGenes {
 
         // move stepper to next step
         passStepWithHref(UI.markerGenesSection)
-        openNextStepHrefs(nextSteps, UI.compareGenesSection)
+        openNextAnalysisStep(nextSteps, UI.compareGenesSection)
 
     }
 }

@@ -26,3 +26,8 @@ input.input-length-6 {
 .is-active ~ .steps-segment {
     pointer-events: none;
 }
+
+/* blocked steps should not be clickable */
+.steps-segment:has(.steps-marker.is-dark) {
+    pointer-events: none;
+}

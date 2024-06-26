@@ -104,7 +104,7 @@ const passStep = (selector) => {
  * @param {string|null} activeSelectorHref - The href of the active selector. Defaults to null.
  * @param {boolean} clickActive - Specifies whether to click the active step. Defaults to false.
  */
-const openNextStepHrefs = (selectorHrefs, activeSelectorHref=null, clickActive=false) => {
+const openNextStepWithHrefs = (selectorHrefs, activeSelectorHref=null, clickActive=false) => {
 
     // if length of selectorHrefs is 1, then the step is the active step
     if (selectorHrefs.length === 1) {
@@ -174,7 +174,7 @@ const resetStepperWithHrefs = (activeSelectorHref=null) => {
             for (let i = 0; i < activeIndex; i++) {
                 passStepWithHref(selectorHrefs[i])
             }
-            openNextStepHrefs([activeSelectorHref])
+            openNextStepWithHrefs([activeSelectorHref])
         }
     } else {
         // make the first step active
