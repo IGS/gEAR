@@ -250,3 +250,26 @@ class AnalysisUI {
 
 // Singleton instance of the AnalysisUI class
 const UI = new AnalysisUI();
+
+/**
+ * Blocks a step from being opened, such as an irreversible step.
+ * @param {string} selector - The CSS selector for the step element.
+ */
+const blockAnalysisStep = (selector) => {
+    blockStepWithHref(selector);
+    document.querySelector(selector).classList.add("is-pointer-events-none");
+}
+
+/**
+ * Opens the next step in the UI.
+ *
+ * @param {Array} selectors - An array of CSS selectors for the UI elements.
+ * @param {string|null} activeSelectorHref - The href of the active selector. Defaults to null.
+ * @param {boolean} clickActive - Specifies whether to click the active selector. Defaults to false.
+ */
+const openNextAnalysisStep = (selectors, activeSelectorHref=null, clickActive=false) => {
+    for (let selector of selectors) {
+        document.querySelector(selector).classList.remove("is-pointer-events-none");
+    }
+    openNextStepWithHrefs(selectors, activeSelectorHref, clickActive);
+}
