@@ -618,7 +618,7 @@ document.querySelector(UI.btnNewAnalysisLabelSaveElt).addEventListener("click", 
 
 document.querySelector(UI.btnNewAnalysisLabelCancelElt).addEventListener("click", async (event) => {
     // Reset the label to the current analysis label
-    document.querySelector(UI.newAnalysisLabelElt).textContent = currentAnalysis.label;
+    document.querySelector(UI.newAnalysisLabelElt).value = currentAnalysis.label;
     document.querySelector(UI.newAnalysisLabelContainer).classList.add("is-hidden");
 });
 
@@ -660,10 +660,10 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
             'datasetIsRaw': true}
         );
 
+        document.querySelector(UI.deNovoStepsElt).classList.remove("is-hidden");
         // Reset the stepper
         resetStepperWithHrefs("#primary-filter-s");
 
-        document.querySelector(UI.deNovoStepsElt).classList.remove("is-hidden");
         // Jump to the primary filter step
         document.querySelector(UI.primaryFilterSection).click();
         document.querySelector(`a[href='${UI.primaryFilterSection}']`).click();
@@ -687,8 +687,6 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
         document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
         document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
         document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
-        resetStepperWithHrefs("#marker-genes-s");
-        document.querySelector(UI.primaryStepsElt).classList.remove("is-hidden");
     }
 
     if (currentAnalysis.type === 'user_saved') {
@@ -697,8 +695,6 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
         document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
         document.querySelector(UI.analysisStatusInfoElt).textContent = "This analysis is stored in your profile.";
         document.querySelector(UI.btnMakePublicCopyElt).classList.remove("is-hidden");
-        resetStepperWithHrefs("#primary-filter-s");
-        document.querySelector(UI.deNovoStepsElt).classList.remove("is-hidden");
     }
 
     if (currentAnalysis.type === 'user_unsaved') {
@@ -706,8 +702,6 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
         document.querySelector(UI.analysisActionContainer).classList.remove("is-hidden");
         document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
         document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
-        resetStepperWithHrefs("#primary-filter-s");
-        document.querySelector(UI.deNovoStepsElt).classList.remove("is-hidden");
     }
 
     if (currentAnalysis.type === 'public') {
@@ -716,8 +710,6 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
         document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
         document.querySelector(UI.analysisStatusInfoElt).textContent = "Changes made to this public analysis will spawn a local copy within your profile.";
         document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
-        resetStepperWithHrefs("#primary-filter-s");
-        document.querySelector(UI.deNovoStepsElt).classList.remove("is-hidden");
     }
 
 });
@@ -746,15 +738,13 @@ document.querySelector(UI.newAnalysisLabelElt).addEventListener("focus", (event)
 // Labeled tSNE
 
 document.querySelector(UI.btnLabeledTsneRunElt).addEventListener("click", async (event) => {
+    event.target.classList.add("is-loading");
     document.querySelector(UI.labeledTsnePlotContainer).replaceChildren();
     document.querySelector(UI.labeledTsnePlotContainer).classList.remove("is-hidden");
 
     createToast("Generating labeled tSNE plot", "is-info");
-
-    document.querySelector(UI.btnLabeledTsneRunElt).classList.add("is-loading");
-    currentAnalysis.labeledTsne.runAnalysis();
-
-    document.querySelector(UI.btnLabeledTsneRunElt).classList.remove("is-loading");
+    await currentAnalysis.labeledTsne.runAnalysis();
+    event.target.classList.remove("is-loading");
 
 });
 

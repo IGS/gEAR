@@ -707,7 +707,7 @@ class DatasetTile {
                 case "single-cell":
                     // Redirect to single-cell analysis workbench
                     if (hasH5ad) {
-                        const url = `./analyze_dataset.html?dataset_id=${datasetId}`;
+                        const url = `./sc_workbench.html?dataset_id=${datasetId}`;
                         //const url = `./sc_workbench.html?dataset_id=${datasetId}`;
                         item.href = url;
                     } else {

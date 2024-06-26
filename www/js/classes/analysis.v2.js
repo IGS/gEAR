@@ -191,8 +191,6 @@ class Analysis {
             const ana = Analysis.loadFromJson(data);
             Object.assign(this, ana);
 
-            this.dataset = datasetObj;
-
             // If tSNE was calculate, show the labeled tSNE section
             // Mainly for primary analyses
             // ? verify claim
@@ -205,6 +203,10 @@ class Analysis {
             logErrorInConsole(`Failed ID was: ${datasetId} because msg: ${error}`);
             createToast(`Error getting stored analysis`);
         }
+
+        // Restore the dataset object
+        this.dataset = datasetObj;
+
     }
 
     /**
@@ -359,18 +361,30 @@ class Analysis {
             document.querySelector(UI.tsneSection).classList.add("is-hidden");
             document.querySelector(UI.clusteringSection).classList.add("is-hidden");
             document.querySelector(UI.clusteringEditSection).classList.add("is-hidden");
+
+            // labeled tSNE does not have a data object section. Only needs dataset ID.
+
+            // Show the primary analysis stepper
+            document.querySelector(UI.primaryStepsElt).classList.remove("is-hidden");
+            resetStepperWithHrefs("#marker-genes-s");
+
             return analysis
         }
 
+        // Show the de novo analysis stepper
+        // Since the stepper relies on finding the "not hidden" stepper, we need to do this first.
+        document.querySelector(UI.deNovoStepsElt).classList.remove("is-hidden");
+        resetStepperWithHrefs("#primary-filter-s");
+
         analysis.primaryFilter = AnalysisStepPrimaryFilter.loadFromJson(data.primary_filter, analysis);
-        analysis.primaryFilter.updateUIWithResults(analysis);
 
         analysis.qcByMito = AnalysisStepQCByMito.loadFromJson(data.qc_by_mito, analysis);
+
         analysis.selectVariableGenes = AnalysisStepSelectVariableGenes.loadFromJson(data.select_variable_genes, analysis);
+
         analysis.pca = AnalysisStepPCA.loadFromJson(data.pca, analysis);
 
         analysis.tsne = AnalysisSteptSNE.loadFromJson(data.tsne, analysis);
-        analysis.tsne.updateUIWithResults(analysis);
 
         // Generalize the clustering step instead of being specific to louvain
         // Not doing anything with data.clustering yet but would like to
@@ -379,14 +393,12 @@ class Analysis {
         }
 
         analysis.clustering = AnalysisStepClustering.loadFromJson(data.clustering, analysis);
-        analysis.clustering.updateUIWithResults(analysis);
 
         analysis.markerGenes = AnalysisStepMarkerGenes.loadFromJson(data.marker_genes, analysis);
 
-        // labeled tSNE does not have a data object section. Only needs dataset ID.
-
+        // Support legacy data.
         const clusteringEditData = data.clustering_edit || data.clustering
-        analysis.clusteringEdit = AnalysisStepClustering.loadFromJson(data.clusteringEditData, analysis);
+        analysis.clusteringEdit = AnalysisStepClustering.loadFromJson(clusteringEditData, analysis);
 
         analysis.compareGenes = AnalysisStepCompareGenes.loadFromJson(data.compare_genes, analysis);
 
@@ -533,6 +545,11 @@ class Analysis {
 
     async save() {
 
+        if (!this.userSessionId) {
+            console.warn("Cannot save analysis without a user session ID");
+            return;
+        }
+
         // clone this object in such a way to not
         // include the "analysis" property for each step due to circular reference
         const clone = JSON.parse(JSON.stringify(this, (key, value) => {
@@ -612,8 +629,8 @@ class Analysis {
             document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
             document.querySelector(UI.analysisStatusInfoElt).textContent = "This analysis is stored in your profile.";
             document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
-            document.querySelector(UI.btnDeleteSavedAnalysis).classList.remove("is-hidden");
-            document.querySelector(UI.btnMakePublicCopy).classList.remove("is-hidden");
+            document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.remove("is-hidden");
+            document.querySelector(UI.btnMakePublicCopyElt).classList.remove("is-hidden");
             document.querySelector(UI.newAnalysisLabelContainer).classList.add("is-hidden");
 
             await this.getSavedAnalysesList(this.dataset.id, this.id);
@@ -781,7 +798,9 @@ class AnalysisStepPrimaryFilter {
             failStepWithHref("#primary-filter-s")
             document.querySelector(UI.primaryFilterSectionFailedElt).classList.remove("is-hidden");
         } finally {
-            this.analysis.save();
+            if (this.type !== 'primary') {
+                this.analysis.save();
+            }
         }
 
     }
@@ -926,6 +945,7 @@ class AnalysisStepPrimaryFilter {
         // Now we can potentially save the analysis if it is a user one
         ana.showHideAnalysisButtons();
 
+
         passStepWithHref(UI.primaryFilterSection);
         openNextStepHrefs([UI.qcByMitoSection], null, true);
 
@@ -1062,9 +1082,10 @@ class AnalysisStepQCByMito {
             failStepWithHref(UI.qcByMitoSection);
             document.querySelector(UI.qcByMitoSectionFailedElt).classList.remove("is-hidden");
         } finally {
-            this.analysis.save();
+            if (this.type !== 'primary') {
+                this.analysis.save();
+            }
         }
-
     }
 
     /**
@@ -1285,7 +1306,9 @@ class AnalysisStepSelectVariableGenes {
             document.getElementById(UI.selectVariableGenesSectionFailedElt).classList.remove("is-hidden");
             failStepWithHref(UI.selectVariableGenesSection);
         } finally {
-            this.analysis.save();
+            if (this.type !== 'primary') {
+                this.analysis.save();
+            }
         }
     }
 
@@ -1460,7 +1483,9 @@ class AnalysisStepPCA {
             document.querySelector(UI.pcaSectionFailedElt).classList.remove("is-hidden");
 
         } finally {
-            this.analysis.save();
+            if (this.type !== 'primary') {
+                this.analysis.save();
+            }
         }
     }
 
@@ -1753,9 +1778,10 @@ class AnalysisSteptSNE {
             document.querySelector(UI.tsneMissingGeneContainer).classList.remove("is-hidden");
 
         } finally {
-            this.analysis.save();
+            if (this.type !== 'primary') {
+                this.analysis.save();
+            }
         }
-
     }
 
     updateUIWithResults(ana=null) {
@@ -2011,7 +2037,9 @@ class AnalysisStepClustering {
             }
 
         } finally {
-            this.analysis.save();
+            if (this.type !== 'primary') {
+                this.analysis.save();
+            }
         }
     }
 
@@ -2172,9 +2200,13 @@ class AnalysisStepMarkerGenes {
         step.nGenes = data['n_genes']
         step.groupLabels = data['group_labels']
 
-        if (step.calculated ) {
+        // Even if calculated, the cluster label and table were not saved
+        // So need to rerun in order to render those.
+        step.runAnalysis();
+
+        /*if (step.calculated ) {
             step.updateUIWithResults(data);
-        }
+        }*/
 
         return step;
     }
@@ -2415,7 +2447,9 @@ class AnalysisStepMarkerGenes {
             failStepWithHref(UI.markerGenesSection)
 
         } finally {
-            this.analysis.save();
+            if (this.type !== 'primary') {
+                this.analysis.save();
+            }
         }
     }
 
@@ -2679,7 +2713,9 @@ class AnalysisStepCompareGenes {
             logErrorInConsole(error);
             document.querySelector(UI.compareGenesSectionFailedElt).classList.remove("is-hidden");
         } finally {
-            this.analysis.save();
+            if (this.type !== 'primary') {
+                this.analysis.save();
+            }
         }
     }
 
