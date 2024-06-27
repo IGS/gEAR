@@ -79,8 +79,8 @@
                       </span>
                     </span>
                     <div class="steps-content">
-                      <p class="is-size-4">Upload metadata</p>
-                      <p>Use the provided template to create and upload a metadata file for your dataset.</p>
+                      <p class="step-label is-size-5">Enter metadata</p>
+                      <p class="is-size-7">Use the form or provided template to enter metadata for your dataset.</p>
                     </div>
                   </li>
                   <li class="steps-segment is-active">
@@ -90,78 +90,91 @@
                       </span>
                     </span>
                     <div class="steps-content">
-                      <p class="is-size-4">Validate metadata</p>
-                      <p>Check and correct the content of your metadata file.</p>
+                      <p class="step-label is-size-5">Validate metadata</p>
+                      <p class="is-size-7">Check and correct the content of your metadata file.</p>
                     </div>
                   </li>
                   <li class="steps-segment">
                     <span class="steps-marker"></span>
                     <div class="steps-content">
-                      <p class="is-size-4">Upload dataset</p>
-                      <p>Choose your dataset format and upload directly or provide a supported URL.</p>
+                      <p class="step-label is-size-5">Upload dataset</p>
+                      <p class="is-size-7">Choose your dataset format and upload directly or provide a supported URL.</p>
                     </div>
                   </li>
                   <li class="steps-segment">
                     <span class="steps-marker"></span>
                     <div class="steps-content">
-                      <p class="is-size-4">Curate dataset</p>
-                      <p>Get the most out of your dataset by doing curation steps here.</p>
+                      <p class="step-label is-size-5">Curate dataset</p>
+                      <p class="is-size-7">Get the most out of your dataset by doing curation steps here.</p>
                     </div>
                   </li>
                   <li class="steps-segment">
                     <span class="steps-marker"></span>
                     <div class="steps-content">
-                      <p class="is-size-4">Final submission</p>
-                      <p>Your dataset gets fully processed and integrated into the system here.</p>
+                      <p class="step-label is-size-5">Final submission</p>
+                      <p class="is-size-7">Your dataset gets fully processed and integrated into the system here.</p>
                     </div>
                   </li>
                 </ul>
               </div> <!-- end #step-c -->
               <hr />
               <div id="step-upload-metadata-c" class="step-c">
-                <h1>Step - Upload metadata</h1>
+                <h1>Step - Enter metadata</h1>
                 <p>
                   The 'metadata' is the data describing your dataset, including things like title, authorship, sequencing 
                   protocols used, etc. This is the first step in uploading a dataset to the portal.
                 </p>
-              </div>
-            </div> <!-- end #logged-in-c -->
-
-            <div class="columns is-multiline is-variable is-3 is-hidden">
-              <div class="column is-12">
-                <div class="columns is-multiline is-variable is-3">
-                  <div class="column is-12">
-                    <!-- useful file upload control code-->
+                <hr />
+                <p>
+                  Enter the metadata manually below OR fill out and upload from a <a href="./user_templates/metadata_template.xlsx">spreadsheet template</a>.
+                </p>
+                <div class="columns">
+                  <div id="metadata-form-c" class="column is-8 mt-3">
                     <div class="field">
-                      <label class="label">Upload a file</label>
-                      <div class="file has-name is-fullwidth">
-                        <label class="file-label">
-                          <input class="file-input  is-fullwidth" type="file" name="resume">
-                          <span class="file-cta">
-                            <span class="file-icon">
-                              <i class="mdi mdi-upload"></i>
-                            </span>
-                            <span class="file-label">
-                              Choose a file…
-                            </span>
-                          </span>
-                          <span class="file-name">
-                            No file chosen
-                          </span>
-                        </label>
+                      <label class="label">Title</label>
+                      <div class="control">
+                        <input class="input" type="text" placeholder="Title of your dataset">
                       </div>
                     </div>
                   </div>
-                  <div class="column is-12">
-                    <div class="field">
-                      <div class="control">
-                        <button class="button is-primary">Upload</button>
+                  <div class="column is-4">
+                    <div class="columns is-multiline is-variable">
+                      <div class="column is-12">
+                        <!-- useful file upload control code-->
+                        <div class="field">
+                          <label class="label">Upload a metadata file</label>
+                          <div class="file has-name is-fullwidth">
+                            <label class="file-label">
+                              <input class="file-input  is-fullwidth" type="file" name="resume">
+                              <span class="file-cta">
+                                <span class="file-icon">
+                                  <i class="mdi mdi-upload"></i>
+                                </span>
+                                <span class="file-label">
+                                  Choose
+                                </span>
+                              </span>
+                              <span class="file-name">
+                                No file chosen
+                              </span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="column is-12">
+                        <div class="field">
+                          <div class="control">
+                            <button class="button is-primary">Upload</button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
+
               </div>
-            </div>
+              
+            </div> <!-- end #logged-in-c -->
 
           </section><!-- end #content-c -->
 

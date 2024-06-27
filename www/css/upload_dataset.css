@@ -1,3 +1,6 @@
+div#metadata-form-c {
+	
+}
 div.step-c {
 	margin-top: 20px;
 }
@@ -5,6 +8,9 @@ h1 {
 	font-size: 130%;
 	font-weight: bold;
 	margin-bottom: 10px;
+}
+p.step-label {
+	font-weight: bold;
 }
 .stick-to-top {
     position: sticky;
