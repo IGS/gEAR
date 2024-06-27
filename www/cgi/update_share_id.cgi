@@ -123,7 +123,11 @@ def main():
                 if filename.endswith(".h5ad") or filename.endswith(".tab"):
                     # Replace old_id with new_id in the filename
                     new_filename = filename.replace(share_id, new_share_id)
+                    #! This will not work if not owner or if permissions are not set correctly
                     os.rename(filename, new_filename)
+                    # if the old file still exists, log it
+                    if os.path.exists(filename):
+                        print("Could not rename " + filename + " to " + new_filename + " for some reason... skipping", file=sys.stderr)
 
         # rename projections
         # the "by_dataset" directory only needs projections.json files updated
