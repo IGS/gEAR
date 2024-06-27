@@ -9,8 +9,10 @@ html, body {
 }
 
 #main-layout-c {
+    height: 100vh;
+    /* This makes the left column extend to the bottom of the page, but makes content wrap too early
     flex-wrap: wrap;
-    align-items: stretch;
+    align-items: stretch; */
 }
 
 /* Get rid of underlines on the tooltip elements */
