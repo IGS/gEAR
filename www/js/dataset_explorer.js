@@ -306,12 +306,9 @@ const addDatasetListEventListeners = () => {
         classElt.addEventListener("click", (e) => {
 
             const shareId = e.currentTarget.value;
-            const currentUrl = window.location.href;
-            const currentPage = currentUrl.lastIndexOf("dataset_explorer.v2.html");
-            const shareUrl = `${currentUrl.substring(0, currentPage)}p?s=${shareId}`;
-            const datasetId = e.currentTarget.dataset.datasetId;
-
-            showDatasetActionNote(datasetId, shareUrl);
+            const currentPage = getRootUrl();
+            const shareUrl = `${currentPage}/p?s=${shareId}`;
+            copyPermalink(shareUrl);
         });
     }
 
@@ -848,6 +845,7 @@ const changeDatasetCollectionCallback = async (datasetCollectionData=null) => {
     createDeleteCollectionConfirmationPopover();
     createNewCollectionPopover();
     createRenameCollectionPopover();
+    createRenameCollectionPermalinkPopover();
 
     // Update action buttons for the dataset collection or datasets
     updateDatasetCollectionButtons(collection);
@@ -1052,12 +1050,13 @@ const createDeleteDatasetConfirmationPopover = () => {
             });
 
             // Add event listener to confirm button
-            document.getElementById('confirm-dataset-delete').addEventListener('click', async () => {
+            document.getElementById('confirm-dataset-delete').addEventListener('click', async (event) => {
+                event.target.classList.add("is-loading");
 
                 try {
                     const data = await apiCallsMixin.deleteDataset(datasetIdToDelete);
 
-                    if (data['success'] == 1) {
+                    if (data['success'] === 1) {
                         const resultElement = document.getElementById(`result-dataset-id-${datasetIdToDelete}`);
                         resultElement.style.transition = 'opacity 1s';
                         resultElement.style.opacity = 0;
@@ -1075,6 +1074,7 @@ const createDeleteDatasetConfirmationPopover = () => {
                     logErrorInConsole(error);
                     createToast("Failed to delete dataset");
                 } finally {
+                    event.target.classList.remove("is-loading");
                     popoverContent.remove();
                 }
             });
@@ -1082,6 +1082,145 @@ const createDeleteDatasetConfirmationPopover = () => {
     }
 }
 
+/**
+ * Creates a popover for renaming dataset permalink.
+ */
+const createRenameDatasetPermalinkPopover = () => {
+    const permalinkButtons = document.getElementsByClassName("js-edit-dataset-permalink");
+    for (const button of permalinkButtons) {
+        button.addEventListener('click', (e) => {
+            // remove existing popovers
+            const existingPopover = document.getElementById('rename-dataset-link-popover');
+            if (existingPopover) {
+                existingPopover.remove();
+            }
+
+            // Create popover content
+            const popoverContent = document.createElement('article');
+            popoverContent.id = 'rename-dataset-link-popover';
+            popoverContent.classList.add("message", "is-primary");
+            popoverContent.setAttribute("role", "tooltip");
+            popoverContent.innerHTML = `
+                <div class='message-header'>
+                    <p>Rename dataset permalink</p>
+                </div>
+                <div class='message-body'>
+                    <p>Please provide a new name for the dataset short-hand permalink.</p>
+                    <div class='field has-addons'>
+                        <div class='control'>
+                            <a class="button is-static">
+                                ${getRootUrl()}/?s=
+                            </a>
+                        </div>
+                        <div class='control'>
+                            <input id='dataset-link-name' class='input' type='text' placeholder='permalink' value=${e.currentTarget.dataset.shareId}>
+                        </div>
+                    </div>
+                    <div class='field is-grouped' style='width:250px'>
+                        <p class="control">
+                            <button id='confirm-dataset-link-rename' class='button is-primary'>Update</button>
+                        </p>
+                        <p class="control">
+                            <button id='cancel-dataset-link-rename' class='button' value='cancel_rename'>Cancel</button>
+                        </p>
+                    </div>
+                </div>
+                <div id="arrow"></div>
+            `;
+
+            // append element to DOM to get its dimensions
+            document.body.appendChild(popoverContent);
+
+            const arrowElement = document.getElementById('arrow');
+
+            // Create popover (help from https://floating-ui.com/docs/tutorial)
+            computePosition(button, popoverContent, {
+                placement: 'top',
+                middleware: [
+                    flip(), // flip to bottom if there is not enough space on top
+                    shift(), // shift the popover to the right if there is not enough space on the left
+                    offset(5), // offset relative to the button
+                    arrow({ element: arrowElement }) // add an arrow pointing to the button
+                ],
+            }).then(({ x, y, placement, middlewareData }) => {
+                // Position the popover
+                Object.assign(popoverContent.style, {
+                    left: `${x}px`,
+                    top: `${y}px`,
+                });
+                // Accessing the data
+                const { x: arrowX, y: arrowY } = middlewareData.arrow;
+
+                // Position the arrow relative to the popover
+                const staticSide = {
+                    top: 'bottom',
+                    right: 'left',
+                    bottom: 'top',
+                    left: 'right',
+                }[placement.split('-')[0]];
+
+                // Set the arrow position
+                Object.assign(arrowElement.style, {
+                    left: arrowX != null ? `${arrowX}px` : '',
+                    top: arrowY != null ? `${arrowY}px` : '',
+                    right: '',
+                    bottom: '',
+                    [staticSide]: '-4px',
+                });
+            });
+
+            // Show popover
+            document.body.appendChild(popoverContent);
+
+            document.getElementById("dataset-link-name").addEventListener("keyup", () => {
+                const newCollectionName = document.getElementById("dataset-link-name");
+                const confirmAddCollection = document.getElementById("confirm-dataset-link-rename");
+
+                if (newCollectionName.value.length === 0 || newCollectionName.value === e.currentTarget.dataset.shareId) {
+                    confirmAddCollection.disabled = true;
+                    return;
+                }
+                confirmAddCollection.disabled = false;
+            });
+
+            // Add event listener to cancel button
+            document.getElementById('cancel-collection-link-rename').addEventListener('click', () => {
+                popoverContent.remove();
+            });
+
+            // Add event listener to confirm button
+            document.getElementById('confirm-collection-link-rename').addEventListener('click', async (event) => {
+                event.target.classList.add("is-loading");
+                const newShareId = document.getElementById("collection-link-name").value;
+
+                try {
+                    const data = await apiCallsMixin.updateShareId(e.currentTarget.dataset.shareId, newShareId, "dataset");
+
+                    if ((!data.success) || (data.success < 1)) {
+                        const error = data.error || "Unknown error. Please contact gEAR support.";
+                        throw new Error(error);
+                    }
+
+                    createToast("Dataset permalink renamed", "is-success");
+
+                    popoverContent.remove();
+
+                } catch (error) {
+                    logErrorInConsole(error);
+                    createToast("Failed to rename dataset permalink: " + error);
+                } finally {
+                    event.target.classList.add("is-loading");
+                }
+            });
+        });
+    }
+}
+
+
+/**
+ * Creates a confirmation popover for deleting a dataset collection.
+ * @returns {void}
+ */
 const createDeleteCollectionConfirmationPopover = () => {
     const button = document.getElementById("btn-delete-collection");
     button.addEventListener('click', (e) => {
@@ -1164,12 +1303,12 @@ const createDeleteCollectionConfirmationPopover = () => {
         });
 
         // Add event listener to confirm button
-        document.getElementById('confirm-collection-delete').addEventListener('click', async () => {
-
+        document.getElementById('confirm-collection-delete').addEventListener('click', async (event) => {
+            event.target.classList.add("is-loading");
             try {
                 const data = await apiCallsMixin.deleteDatasetCollection(selected_dc_share_id);
 
-                if (data['success'] == 1) {
+                if (data['success'] === 1) {
                     // Re-fetch the dataset collections, which will update in the UI via click events
                     await fetchDatasetCollections()
 
@@ -1191,6 +1330,7 @@ const createDeleteCollectionConfirmationPopover = () => {
                 logErrorInConsole(error);
                 createToast("Failed to delete collection");
             } finally {
+                event.target.classList.remove("is-loading");
                 popoverContent.remove();
 
             }
@@ -1198,6 +1338,16 @@ const createDeleteCollectionConfirmationPopover = () => {
     });
 }
 
+/**
+ * Creates a new collection popover.
+ * This function attaches an event listener to the "Add Collection" button,
+ * which, when clicked, creates a popover with a form to add a new dataset collection.
+ * The popover is positioned relative to the button and includes input fields for collection name,
+ * as well as buttons to confirm or cancel the addition of the collection.
+ * Upon confirming the addition, the function makes an API call to create the dataset collection,
+ * updates the UI, and displays a success message.
+ * If an error occurs during the process, an error message is displayed.
+ */
 const createNewCollectionPopover = () => {
     const button = document.getElementById("btn-add-collection");
     button.addEventListener('click', (e) => {
@@ -1283,7 +1433,7 @@ const createNewCollectionPopover = () => {
             const newCollectionName = document.getElementById("collection-name");
             const confirmAddCollection = document.getElementById("confirm-collection-add");
 
-            if (newCollectionName.value.length == 0) {
+            if (newCollectionName.value.length === 0) {
                 confirmAddCollection.disabled = true;
                 return;
             }
@@ -1296,7 +1446,8 @@ const createNewCollectionPopover = () => {
         });
 
         // Add event listener to confirm button
-        document.getElementById('confirm-collection-add').addEventListener('click', async () => {
+        document.getElementById('confirm-collection-add').addEventListener('click', async (event) => {
+            event.target.classList.add("is-loading");
             const newName = document.getElementById("collection-name").value;
 
             try {
@@ -1318,12 +1469,17 @@ const createNewCollectionPopover = () => {
                 logErrorInConsole(error);
                 createToast("Failed to create new collection");
             } finally {
+                event.target.classList.remove("is-loading");
                 popoverContent.remove();
             }
         });
     });
 }
 
+/**
+ * Creates a popover for renaming a dataset collection.
+ * @returns {void}
+ */
 const createRenameCollectionPopover = () => {
     const button = document.getElementById("btn-rename-collection");
     button.addEventListener('click', (e) => {
@@ -1351,7 +1507,7 @@ const createRenameCollectionPopover = () => {
                 </div>
                 <div class='field is-grouped' style='width:250px'>
                     <p class="control">
-                        <button id='confirm-collection-rename' class='button is-primary'>Add</button>
+                        <button id='confirm-collection-rename' class='button is-primary'>Update</button>
                     </p>
                     <p class="control">
                         <button id='cancel-collection-rename' class='button' value='cancel_rename'>Cancel</button>
@@ -1409,7 +1565,7 @@ const createRenameCollectionPopover = () => {
             const newCollectionName = document.getElementById("collection-name");
             const confirmAddCollection = document.getElementById("confirm-collection-rename");
 
-            if (newCollectionName.value.length == 0) {
+            if (newCollectionName.value.length === 0 || newCollectionName.value === selected_dc_label) {
                 confirmAddCollection.disabled = true;
                 return;
             }
@@ -1422,7 +1578,8 @@ const createRenameCollectionPopover = () => {
         });
 
         // Add event listener to confirm button
-        document.getElementById('confirm-collection-rename').addEventListener('click', async () => {
+        document.getElementById('confirm-collection-rename').addEventListener('click', async (event) => {
+            event.target.classList.add("is-loading");
             const newName = document.getElementById("collection-name").value;
 
             try {
@@ -1444,7 +1601,146 @@ const createRenameCollectionPopover = () => {
                 logErrorInConsole(error);
                 createToast("Failed to rename collection");
             } finally {
+                event.target.classList.remove("is-loading");
                 popoverContent.remove();
+            }
+        });
+    });
+}
+
+/**
+ * Creates a popover for renaming the collection permalink.
+ * @function createRenameCollectionPermalinkPopover
+ * @returns {void}
+ */
+const createRenameCollectionPermalinkPopover = () => {
+    const button = document.getElementById("btn-rename-collection-permalink");
+    button.addEventListener('click', (e) => {
+        // remove existing popovers
+        const existingPopover = document.getElementById('rename-collection-link-popover');
+        if (existingPopover) {
+            existingPopover.remove();
+        }
+
+        // Create popover content
+        const popoverContent = document.createElement('article');
+        popoverContent.id = 'rename-collection-link-popover';
+        popoverContent.classList.add("message", "is-primary");
+        popoverContent.setAttribute("role", "tooltip");
+        popoverContent.innerHTML = `
+            <div class='message-header'>
+                <p>Rename collection permalink</p>
+            </div>
+            <div class='message-body'>
+                <p>Please provide a new name for the dataset collection short-hand permalink.</p>
+                <div class='field has-addons'>
+                    <div class='control'>
+                        <a class="button is-static">
+                            ${getRootUrl()}/?l=
+                        </a>
+                    </div>
+                    <div class='control'>
+                        <input id='collection-link-name' class='input' type='text' placeholder='permalink' value=${selected_dc_share_id}>
+                    </div>
+                </div>
+                <div class='field is-grouped' style='width:250px'>
+                    <p class="control">
+                        <button id='confirm-collection-link-rename' class='button is-primary'>Update</button>
+                    </p>
+                    <p class="control">
+                        <button id='cancel-collection-link-rename' class='button' value='cancel_rename'>Cancel</button>
+                    </p>
+                </div>
+            </div>
+            <div id="arrow"></div>
+        `;
+
+        // append element to DOM to get its dimensions
+        document.body.appendChild(popoverContent);
+
+        const arrowElement = document.getElementById('arrow');
+
+        // Create popover (help from https://floating-ui.com/docs/tutorial)
+        computePosition(button, popoverContent, {
+            placement: 'top',
+            middleware: [
+                flip(), // flip to bottom if there is not enough space on top
+                shift(), // shift the popover to the right if there is not enough space on the left
+                offset(5), // offset relative to the button
+                arrow({ element: arrowElement }) // add an arrow pointing to the button
+            ],
+        }).then(({ x, y, placement, middlewareData }) => {
+            // Position the popover
+            Object.assign(popoverContent.style, {
+                left: `${x}px`,
+                top: `${y}px`,
+            });
+            // Accessing the data
+            const { x: arrowX, y: arrowY } = middlewareData.arrow;
+
+            // Position the arrow relative to the popover
+            const staticSide = {
+                top: 'bottom',
+                right: 'left',
+                bottom: 'top',
+                left: 'right',
+            }[placement.split('-')[0]];
+
+            // Set the arrow position
+            Object.assign(arrowElement.style, {
+                left: arrowX != null ? `${arrowX}px` : '',
+                top: arrowY != null ? `${arrowY}px` : '',
+                right: '',
+                bottom: '',
+                [staticSide]: '-4px',
+            });
+        });
+
+        // Show popover
+        document.body.appendChild(popoverContent);
+
+        document.getElementById("collection-link-name").addEventListener("keyup", () => {
+            const newCollectionName = document.getElementById("collection-link-name");
+            const confirmAddCollection = document.getElementById("confirm-collection-link-rename");
+
+            if (newCollectionName.value.length === 0 || newCollectionName.value === selected_dc_share_id) {
+                confirmAddCollection.disabled = true;
+                return;
+            }
+            confirmAddCollection.disabled = false;
+        });
+
+        // Add event listener to cancel button
+        document.getElementById('cancel-collection-link-rename').addEventListener('click', () => {
+            popoverContent.remove();
+        });
+
+        // Add event listener to confirm button
+        document.getElementById('confirm-collection-link-rename').addEventListener('click', async (event) => {
+            event.target.classList.add("is-loading");
+            const newShareId = document.getElementById("collection-link-name").value;
+
+            try {
+                const data = await apiCallsMixin.updateShareId(selected_dc_share_id, newShareId, "layout");
+
+                if ((!data.success) || (data.success < 1)) {
+                    const error = data.error || "Unknown error. Please contact gEAR support.";
+                    throw new Error(error);
+                }
+
+                // Re-fetch the dataset collections, which will update the UI via click events
+                await fetchDatasetCollections()
+
+                createToast("Dataset collection permalink renamed", "is-success");
+
+                selectDatasetCollection(newShareId); // performs DatasetCollectionSelectorCallback when label is set
+                popoverContent.remove();
+
+            } catch (error) {
+                logErrorInConsole(error);
+                createToast("Failed to rename collection permalink: " + error);
+            } finally {
+                event.target.classList.remove("is-loading");
             }
         });
     });
@@ -1695,6 +1991,8 @@ const processSearchResults = (data) => {
         setElementProperties(listResultsView, ".js-view-dataset", { value: shareId });
         setElementProperties(listResultsView, ".js-view-displays", { dataset: { datasetId, title: label, isPublic } });
         setElementProperties(listResultsView, ".js-delete-dataset", { value: datasetId, dataset: { isOwner } });
+        setElementProperties(listResultsView, ".js-edit-dataset-permalink", { value: datasetId, dataset: { isOwner, shareId } });
+
         setElementProperties(listResultsView, ".js-download-dataset", { id: `${resultDatasetId}-download-dataset`, dataset: { datasetId, isDownloadable, hasH5ad } });
         setElementProperties(listResultsView, ".js-share-dataset", { value: shareId, dataset: { datasetId } });
         setElementProperties(listResultsView, ".js-edit-dataset", { value: datasetId, dataset: { datasetId } });
@@ -1793,6 +2091,7 @@ const processSearchResults = (data) => {
 
     // Initiialize delete dataset popover for each delete button
     createDeleteDatasetConfirmationPopover();
+    createRenameCollectionPermalinkPopover();
 
     // All event listeners for all dataset elements
     addDatasetListEventListeners();
@@ -2007,7 +2306,7 @@ const setupPagination = (pagination) => {
 
         // Update result count and label
         document.getElementById("result-count").textContent = pagination.total_results;
-        document.getElementById("result-label").textContent = pagination.total_results == 1 ? " result" : " results";
+        document.getElementById("result-label").textContent = pagination.total_results === 1 ? " result" : " results";
         document.getElementById("count-label-c").classList.remove("is-hidden");
 
         const firstResult = pagination.total_results > 0 ? (pagination.current_page - 1) * resultsPerPage + 1 : 0;
@@ -2049,7 +2348,7 @@ const setupPagination = (pagination) => {
                 const li = paginationList.appendChild(createPaginationButton(i, null, async () => {
                     await submitSearch(i);
                 }));
-                if (i == pagination.current_page) {
+                if (i === pagination.current_page) {
                     li.firstChild.classList.add("is-current");
                     li.firstChild.classList.remove("is-outlined");
                 }
@@ -2078,24 +2377,19 @@ const setupPagination = (pagination) => {
 /**
  * Displays an action note for a dataset.
  *
- * @param {string} datasetId - The ID of the dataset.
  * @param {string} shareUrl - The URL to be copied to the clipboard.
  * @returns {void}
  */
-const showDatasetActionNote = (datasetId, shareUrl) => {
+const copyPermalink = (shareUrl) => {
     // sanitize shareUrl
     shareUrl = shareUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-    const noteSelector = `#result-dataset-id-${datasetId} span.js-dataset-action-note`;
-    const noteSelecterElt = document.querySelector(noteSelector);
+    if(copyToClipboard(shareUrl)) {
+        createToast("URL copied to clipboard", "is-info");
+    } else {
+        createToast(`Failed to copy to clipboard. URL: ${shareUrl}`);
+    }
 
-    noteSelecterElt.innerHTML = copyToClipboard(shareUrl) ? "URL copied to clipboard" : `Failed to copy to clipboard. URL: ${shareUrl}`;
-    noteSelecterElt.classList.remove("is-hidden");
-
-    setTimeout(() => {
-        noteSelecterElt.classList.add("is-hidden"); // TODO: add animate CSS with fade out
-        noteSelecterElt.innerHTML = "";
-    }, 5000);
 }
 
 /**
@@ -2169,12 +2463,15 @@ const updateDatasetCollectionButtons = (collection=null) => {
     const isOwner = (collection && Boolean(collection.is_owner)) || false;
 
     const collectionRenameButton = document.getElementById("btn-rename-collection");
+    const collectionRenamePermalinkButton = document.getElementById("btn-rename-collection-permalink");
     const collectionDeleteButton = document.getElementById("btn-delete-collection");
 
     enableAndShowElement(collectionRenameButton);
+    enableAndShowElement(collectionRenamePermalinkButton);
     enableAndShowElement(collectionDeleteButton);
     if (!isOwner) {
         disableAndHideElement(collectionRenameButton);
+        disableAndHideElement(collectionRenamePermalinkButton);
         disableAndHideElement(collectionDeleteButton);
     }
 }
@@ -2214,6 +2511,7 @@ const updateDatasetListButtons = () => {
         // The ability to edit and delete and dataset are currently paired
         const deleteButton = classElt.querySelector("button.js-delete-dataset");
         const editButton = classElt.querySelector("button.js-edit-dataset");
+        const editPermalinkButton = classElt.querySelector("button.js-edit-dataset-permalink");
 
         const selectorBase = `#result-dataset-id-${datasetId}`;
 
@@ -2223,6 +2521,7 @@ const updateDatasetListButtons = () => {
             if (deleteButton.dataset.isOwner === "false") {
                 deleteButton.parentElement.remove();
                 editButton.parentElement.remove()
+                editPermalinkButton.parentElement.remove();
 
                 // Remove all editable elements to prevent editing in the DOM
                 for (const editableElt of classElt.querySelectorAll(`${selectorBase} .js-editable-version`)) {
@@ -2565,6 +2864,11 @@ document.getElementById("btn-set-primary-collection").addEventListener("click", 
     } catch (e) {
         createToast(e.message);
     }
+});
 
+document.getElementById("btn-share-collection").addEventListener("click", (e) => {
 
+    const currentPage = getRootUrl();
+    const shareUrl = `${currentPage}/p?l=${selected_dc_share_id}`;
+    copyPermalink(shareUrl);
 });
