@@ -59,8 +59,7 @@ def main():
             return
 
         # Update the share_id
-        dataset.share_id = new_share_id
-        dataset.save()
+        dataset.save_change("share_id", new_share_id)
 
     elif scope == "layout":
         layout = geardb.get_layout_by_share_id(share_id)
@@ -84,8 +83,7 @@ def main():
             return
 
         # Update the share_id
-        layout.share_id = new_share_id
-        layout.save()
+        layout.save_change("share_id", new_share_id)
 
     elif scope == "genecart":
         gene_cart = geardb.get_gene_cart_by_share_id(share_id)
@@ -108,8 +106,7 @@ def main():
             print(json.dumps(result))
             return
 
-        gene_cart.share_id = new_share_id
-        gene_cart.save()
+        gene_cart.save_change("share_id", new_share_id)
 
         # Gene carts are special cases.
         # If this is a weighted gene cart, we need to update the share_id used
