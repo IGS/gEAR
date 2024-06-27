@@ -299,6 +299,8 @@ const setActiveGeneCartCategory = (category) => {
 }
 
 const selectGeneLists = (share_ids) => {
+    console.log('selectGeneLists', share_ids);
+    console.log(gene_cart_genes);
     // reads the gene list share_ids passed and handles any UI and data updates to make
     //   them preselected
     for (const share_id of share_ids) {

@@ -110,14 +110,14 @@ const addGeneListEventListeners = () => {
         classElt.addEventListener("click", (e) => {
             const shareId = e.currentTarget.value;
 
-            let currentPage = getRootUrl();
+            let currentPage = `${getRootUrl()}/p?`;
 
             // if genecart is weighted, can only link to projection.html
-            if (e.currentTarget.dataset.gctypeLabel === "weighted-list") {
-                currentPage += "/projection.html";
+            if (e.currentTarget.dataset.gctypeLabel === "Weighted") {
+                currentPage += "p=p&";
             }
 
-            const shareUrl = `${currentPage}/p?c=${shareId}`;
+            const shareUrl = `${currentPage}c=${shareId}`;
             copyPermalink(shareUrl);
         });
     }
@@ -255,14 +255,14 @@ const addGeneListEventListeners = () => {
     for (const classElt of document.getElementsByClassName("js-view-gc")) {
         classElt.addEventListener("click", (e) => {
 
-            let currentPage = getRootUrl();
+            let currentPage = `${getRootUrl()}/p?`;
 
             // if genecart is weighted, can only link to projection.html
-            if (e.currentTarget.dataset.gctypeLabel === "weighted-list") {
-                currentPage += "/projection.html";
+            if (e.currentTarget.dataset.gctypeLabel === "Weighted") {
+                currentPage += "p=p&";
             }
 
-            window.open(`${currentPage}/p?c=${e.currentTarget.value}`, '_blank');
+            window.open(`${currentPage}c=${e.currentTarget.value}`, '_blank');
         });
     }
 }
@@ -600,10 +600,11 @@ const createRenamePermalinkPopover = () => {
                 existingPopover.remove();
             }
 
-            let currentPage = getRootUrl();
+            let currentPage = `${getRootUrl()}/p?`;
+
             // if genecart is weighted, can only link to projection.html
-            if (e.currentTarget.dataset.gctypeLabel === "weighted-list") {
-                currentPage += "/projection.html";
+            if (e.currentTarget.dataset.gctypeLabel === "Weighted") {
+                currentPage += "p=p&";
             }
 
 
@@ -621,7 +622,7 @@ const createRenamePermalinkPopover = () => {
                     <div class='field has-addons'>
                         <div class='control'>
                             <a class="button is-static">
-                                ${currentPage}/?c=
+                                ${currentPage}c=
                             </a>
                         </div>
                         <div class='control'>
