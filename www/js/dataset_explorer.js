@@ -745,50 +745,6 @@ const buildFilterString = (groupName) => {
 }
 
 /**
- * Clears the results views and hides pagination.
- */
-const clearResultsViews = () => {
-
-    // hide pagination (but keep results were they are)
-    for (const classElt of document.getElementsByClassName("pagination")) {
-        classElt.classList.add("is-invisible");
-    }
-
-    // Clear any existing results
-    const resultsListDiv = document.getElementById("results-list-div");
-    for (const elt of resultsListDiv.querySelectorAll(":not(#results-list-view)")) {
-        elt.remove()
-    }
-
-    const resultsTableBody = document.querySelector("#results-table tbody");
-    for (const elt of resultsTableBody.querySelectorAll(":not(#results-table-view)")) {
-        elt.remove()
-    }
-
-    // remove "no results" message if it exists
-    if (document.getElementById("no-results-message")) {
-        document.getElementById("no-results-message").remove();
-    }
-}
-
-/**
- * Creates a tooltip element and appends it to the body.
- * @param {HTMLElement} referenceElement - The reference element to which the tooltip is associated.
- * @returns {HTMLElement} The created tooltip element.
- */
-const createActionTooltips = (referenceElement) => {
-    // Create tooltip element
-    const tooltip = document.createElement('div');
-    tooltip.className = 'tooltip';
-    tooltip.textContent = referenceElement.dataset.tooltipContent;
-    tooltip.classList.add("has-background-dark", "has-text-white", "is-hidden");
-
-    // Append tooltip to body
-    document.body.appendChild(tooltip);
-    return tooltip;
-}
-
-/**
  * Callback function that is triggered when a new dataset collection is selected.
  * It fetches the dataset collections and collection members from the API,
  * updates the UI based on the selected collection, and handles button actions.
@@ -961,6 +917,68 @@ const changeDatasetCollectionCallback = async (datasetCollectionData=null) => {
 }
 
 /**
+ * Clears the results views and hides pagination.
+ */
+const clearResultsViews = () => {
+
+    // hide pagination (but keep results were they are)
+    for (const classElt of document.getElementsByClassName("pagination")) {
+        classElt.classList.add("is-invisible");
+    }
+
+    // Clear any existing results
+    const resultsListDiv = document.getElementById("results-list-div");
+    for (const elt of resultsListDiv.querySelectorAll(":not(#results-list-view)")) {
+        elt.remove()
+    }
+
+    const resultsTableBody = document.querySelector("#results-table tbody");
+    for (const elt of resultsTableBody.querySelectorAll(":not(#results-table-view)")) {
+        elt.remove()
+    }
+
+    // remove "no results" message if it exists
+    if (document.getElementById("no-results-message")) {
+        document.getElementById("no-results-message").remove();
+    }
+}
+
+/**
+ * Copies a permalink to the clipboard.
+ *
+ * @param {string} shareUrl - The URL to be copied to the clipboard.
+ * @returns {void}
+ */
+const copyPermalink = (shareUrl) => {
+    // sanitize shareUrl
+    shareUrl = shareUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    if(copyToClipboard(shareUrl)) {
+        createToast("URL copied to clipboard", "is-info");
+    } else {
+        createToast(`Failed to copy to clipboard. URL: ${shareUrl}`);
+    }
+
+}
+
+/**
+ * Creates a tooltip element and appends it to the body.
+ * @param {HTMLElement} referenceElement - The reference element to which the tooltip is associated.
+ * @returns {HTMLElement} The created tooltip element.
+ */
+const createActionTooltips = (referenceElement) => {
+    // Create tooltip element
+    const tooltip = document.createElement('div');
+    tooltip.className = 'tooltip';
+    tooltip.textContent = referenceElement.dataset.tooltipContent;
+    tooltip.classList.add("has-background-dark", "has-text-white", "is-hidden");
+
+    // Append tooltip to body
+    document.body.appendChild(tooltip);
+    return tooltip;
+}
+
+/**
  * Creates a confirmation popover for deleting a dataset.
  */
 const createDeleteDatasetConfirmationPopover = () => {
@@ -1118,7 +1136,7 @@ const createRenameDatasetPermalinkPopover = () => {
                     </div>
                     <div class='field is-grouped' style='width:250px'>
                         <p class="control">
-                            <button id='confirm-dataset-link-rename' class='button is-primary'>Update</button>
+                            <button id='confirm-dataset-link-rename' class='button is-primary' disabled>Update</button>
                         </p>
                         <p class="control">
                             <button id='cancel-dataset-link-rename' class='button' value='cancel_rename'>Cancel</button>
@@ -1172,6 +1190,8 @@ const createRenameDatasetPermalinkPopover = () => {
             // Show popover
             document.body.appendChild(popoverContent);
 
+            const shareId = e.currentTarget.dataset.shareId;
+
             document.getElementById("dataset-link-name").addEventListener("keyup", () => {
                 const newLinkName = document.getElementById("dataset-link-name");
                 const confirmRenameLink = document.getElementById("confirm-dataset-link-rename");
@@ -1187,8 +1207,6 @@ const createRenameDatasetPermalinkPopover = () => {
             document.getElementById('cancel-dataset-link-rename').addEventListener('click', () => {
                 popoverContent.remove();
             });
-
-            const shareId = e.currentTarget.dataset.shareId;
 
             // Add event listener to confirm button
             document.getElementById('confirm-dataset-link-rename').addEventListener('click', async (event) => {
@@ -1208,7 +1226,9 @@ const createRenameDatasetPermalinkPopover = () => {
                     // Update the share_id in the button, since the previous share_id is now invalid
                     // find nearest parent .js-edit-dataset-permalink to "e"
                     // (since e.currentTarget is null after confirm button is clicked)
-                    e.target.closest(".js-edit-dataset-permalink").dataset.shareId = newShareId;
+                    e.target.closest(".js-action-links").querySelector(".js-edit-dataset-permalink").dataset.shareId = newShareId;
+                    e.target.closest(".js-action-links").querySelector(".js-view-dataset").value = newShareId;
+                    e.target.closest(".js-action-links").querySelector(".js-share-dataset").value = newShareId;
 
                     popoverContent.remove();
 
@@ -1514,7 +1534,7 @@ const createRenameCollectionPopover = () => {
                 </div>
                 <div class='field is-grouped' style='width:250px'>
                     <p class="control">
-                        <button id='confirm-collection-rename' class='button is-primary'>Update</button>
+                        <button id='confirm-collection-rename' class='button is-primary' disabled>Update</button>
                     </p>
                     <p class="control">
                         <button id='cancel-collection-rename' class='button' value='cancel_rename'>Cancel</button>
@@ -1652,7 +1672,7 @@ const createRenameCollectionPermalinkPopover = () => {
                 </div>
                 <div class='field is-grouped' style='width:250px'>
                     <p class="control">
-                        <button id='confirm-collection-link-rename' class='button is-primary'>Update</button>
+                        <button id='confirm-collection-link-rename' class='button is-primary' disabled>Update</button>
                     </p>
                     <p class="control">
                         <button id='cancel-collection-link-rename' class='button' value='cancel_rename'>Cancel</button>
@@ -2394,24 +2414,6 @@ const setupPagination = (pagination) => {
                 }));
             }
         }
-
-}
-
-/**
- * Displays an action note for a dataset.
- *
- * @param {string} shareUrl - The URL to be copied to the clipboard.
- * @returns {void}
- */
-const copyPermalink = (shareUrl) => {
-    // sanitize shareUrl
-    shareUrl = shareUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-    if(copyToClipboard(shareUrl)) {
-        createToast("URL copied to clipboard", "is-info");
-    } else {
-        createToast(`Failed to copy to clipboard. URL: ${shareUrl}`);
-    }
 
 }
 
