@@ -53,7 +53,7 @@
         <script>document.write('<link rel="stylesheet" href="css/upload_dataset.' + (new Date()).getTime() + '.css" />');</script>
     </head>
     <body>
-      <div id="main-layout-c" class="columns is-fullheight">
+      <div id="main-layout-c" class="columns">
 
         <!--#include virtual="/include/primary_nav.html" -->
 
@@ -119,10 +119,11 @@
               </div> <!-- end #step-c -->
               <hr />
               <div id="step-upload-metadata-c" class="step-c">
-                <h1>Step - Enter metadata</h1>
+                <h1>Step - Enter metadata (via form OR upload)</h1>
                 <p>
                   The 'metadata' is the data describing your dataset, including things like title, authorship, sequencing 
-                  protocols used, etc. This is the first step in uploading a dataset to the portal.
+                  protocols used, etc. This is the first step in uploading a dataset to the portal. All data uploaded
+                  are initially private to only your account (you can change this later in the Dataset Explorer)
                 </p>
                 <hr />
                 <p>
@@ -130,19 +131,315 @@
                 </p>
                 <div class="columns">
                   <div id="metadata-form-c" class="column is-8 mt-3">
+                    <!-- title --> 
                     <div class="field">
-                      <label class="label">Title</label>
+                      <label class="label">
+                        Title
+                        <span class="icon has-tooltip-right has-tooltip-arrow" 
+                              data-tooltip="The title will show above each dataset and should be a single sentence, perhaps even a shortened version of the paper title. Character limit: 255">
+                            <i class="mdi mdi-information"></i>
+                        </span>
+                      </label>
                       <div class="control">
-                        <input class="input" type="text" placeholder="Title of your dataset">
+                        <input class="input" type="text" name="metadata-title" placeholder="Title of your dataset">
+                      </div>
+                    </div>
+                    <!-- long description / summary -->
+                    <div class="field">
+                      <label class="label">
+                        Longer description
+                        <span class="icon has-tooltip-right has-tooltip-arrow" 
+                              data-tooltip="The title will show above each dataset and should be a single sentence, perhaps even a shortened version of the paper title. Character limit: 255">
+                            <i class="mdi mdi-information"></i>
+                        </span>
+                      </label>
+                      <div class="control">
+                        <textarea class="textarea" name="metadata-summary" placeholder="A concise description of the experiments performed. Describing how the data were produced."></textarea>
+                      </div>
+                    </div>
+                    <!-- dataset type --> 
+                    <div class="field">
+                      <label class="label">
+                        Dataset type
+                        <span class="icon has-tooltip-right has-tooltip-arrow" 
+                              data-tooltip="At a high-level, what type of expression data is being uploaded?">
+                            <i class="mdi mdi-information"></i>
+                        </span>
+                      </label>
+                      <div class="control">
+                        <div class="select">
+                          <select name="metadata-dataset-type">
+                            <option value="">Select one</option>
+                            <option value="sc-rna-seq">Single-cell RNA-seq</option>
+                            <option value="bulk-rna-seq">Bulk RNA-seq</option>
+                            <option value="microarray">Microarray</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    <hr />
+                    <h3>Annotation metadata</h3>
+                    <div class="columns">
+                      <div class="column is-6">
+                        <!-- annotation source -->
+                        <div class="field">
+                          <label class="label">
+                            Annotation source
+                            <span class="icon has-tooltip-right has-tooltip-arrow" 
+                                  data-tooltip="Which source of identifiers was used to annotate the data? These should correspond to the row identifiers in your data matrix">
+                                <i class="mdi mdi-information"></i>
+                            </span>
+                          </label>
+                          <div class="control is-expanded">
+                            <div class="select is-fullwidth">
+                              <select name="metadata-annotation-source">
+                                <option value="">Select one</option>
+                                <option value="Ensembl">Ensembl</option>
+                                <option value="ncbi">NCBI</option>
+                                <option value="other">Other / custom</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="column is-6">
+                        <!-- annotation version -->
+                        <div class="field">
+                          <label class="label">
+                            Annotation release name/number
+                            <span class="icon has-tooltip-right has-tooltip-arrow" 
+                                  data-tooltip="Annotation release version name/number. For Ensembl, like '101'. For NCBI, maybe 'hg38'">
+                                <i class="mdi mdi-information"></i>
+                            </span>
+                          </label>
+                          <div class="control">
+                            <input class="input" type="text" name="metadata-annotation-version" placeholder="">
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <hr />
+                    <h3>Contact, organism and instrumentation</h3>
+                    <div class="columns">
+                      <div class="column is-6">
+                        <!-- GEO ID -->
+                        <div class="field">
+                          <label class="label">
+                            GEO ID (optional)
+                            <span class="icon has-tooltip-right has-tooltip-arrow" 
+                                  data-tooltip="If available, autofills the rest of this section">
+                                <i class="mdi mdi-information"></i>
+                            </span>
+                          </label>
+                          <div class="control">
+                            <input class="input" type="text" name="metadata-geo-id" placeholder="">
+                          </div>
+                        </div>
+                      </div>
+                      <div class="column is-6">
+                        <p class="mt-5">
+                          <span class="icon">
+                            <i class="mdi mdi-arrow-left"></i>
+                          </span>
+                          If a GEO ID is available, enter it here and the rest can be autofilled.
+                        </p>
+                      </div>
+                    </div>
+                    <div class="columns">
+                      <div class="column is-6">
+                        <!-- contact name -->
+                        <div class="field">
+                          <label class="label">
+                            Contact name
+                            <span class="icon has-tooltip-right has-tooltip-arrow" 
+                                  data-tooltip="Who should be contacted with questions about this dataset?">
+                                <i class="mdi mdi-information"></i>
+                            </span>
+                          </label>
+                          <div class="control">
+                            <input class="input" type="text" name="metadata-contact-name" placeholder="Dataset contact person">
+                          </div>
+                        </div>
+                      </div>
+                      <div class="column is-6">
+                        <!-- contact email -->
+                        <div class="field">
+                          <label class="label">
+                            Contact e-mail
+                            <span class="icon has-tooltip-right has-tooltip-arrow" 
+                                  data-tooltip="E-mail address for this contact person">
+                                <i class="mdi mdi-information"></i>
+                            </span>
+                          </label>
+                          <div class="control">
+                            <input class="input" type="email" name="metadata-contact-email" placeholder="Dataset contact email">
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <!-- contact institute -->
+                    <div class="field">
+                      <label class="label">
+                        Contact institute
+                        <span class="icon has-tooltip-right has-tooltip-arrow" 
+                              data-tooltip="Institute/company associated with this contact person">
+                            <i class="mdi mdi-information"></i>
+                        </span>
+                      </label>
+                      <div class="control">
+                        <input class="input" type="email" name="metadata-contact-institute" placeholder="Dataset contact institute">
+                      </div>
+                    </div>
+                    <div class="columns">
+                      <div class="column is-6">
+                        <!-- sample taxon ID -->
+                        <div class="field">
+                          <label class="label">
+                            Sample taxonomy ID
+                            <span class="icon has-tooltip-right has-tooltip-arrow" 
+                                  data-tooltip="NCBI taxonomy ID. Use lookup link provided">
+                                <i class="mdi mdi-information"></i>
+                            </span>
+                            <span class="is-pulled-right">
+                              <a href="https://www.ncbi.nlm.nih.gov/taxonomy/" target="_blank">NCBI lookup</a>
+                              <i class="mdi mdi-open-in-new"></i>
+                            </span>
+                            
+                          </label>
+                          <div class="control">
+                            <input class="input" type="text" name="metadata-taxon-id" placeholder="NCBI tax ID">
+                          </div>
+                        </div>
+                      </div>
+                      <div class="column is-6">
+                        <!-- sample organism -->
+                        <div class="field">
+                          <label class="label">
+                            Sample organism
+                            <span class="icon has-tooltip-right has-tooltip-arrow" 
+                                  data-tooltip="Genus/species/strain from which the data originated">
+                                <i class="mdi mdi-information"></i>
+                            </span>
+                            
+                          </label>
+                          <div class="control">
+                            <input class="input" type="text" name="metadata-organism" placeholder="Dataset contact email">
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="columns">
+                      <div class="column is-6">
+                        <!-- Platform ID -->
+                        <div class="field">
+                          <label class="label">
+                            NCBI platform ID
+                            <span class="icon has-tooltip-right has-tooltip-arrow" 
+                                  data-tooltip="GEO platform ID. Format: 'GPLxxxx'">
+                                <i class="mdi mdi-information"></i>
+                            </span>
+                            <span class="is-pulled-right">
+                              <a href="https://www.ncbi.nlm.nih.gov/geo/browse/?view=platforms&tool=findplatform" target="_blank">NCBI lookup</a>
+                              <i class="mdi mdi-open-in-new"></i>
+                            </span>
+                            
+                          </label>
+                          <div class="control">
+                            <input class="input" type="text" name="metadata-platform-id" placeholder="Ex: GPLnnnn">
+                          </div>
+                        </div>
+                      </div>
+                      <div class="column is-6">
+                        <!-- Instrument model -->
+                        <div class="field">
+                          <label class="label">
+                            Instrument model
+                            <span class="icon has-tooltip-right has-tooltip-arrow" 
+                                  data-tooltip="Type of technology used to produce data. Ex: Illumina HiSeq 2000">
+                                <i class="mdi mdi-information"></i>
+                            </span>
+                            
+                          </label>
+                          <div class="control">
+                            <input class="input" type="text" name="metadata-instrument" placeholder="Ex: Illumina HiSeq 2000">
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="columns">
+                      <div class="column is-4">
+                        <!-- Library selection -->
+                        <div class="field">
+                          <label class="label">
+                            Library selection
+                            <span class="icon has-tooltip-right has-tooltip-arrow" 
+                                  data-tooltip="Name of technology used to produce data. Ex: cDNA">
+                                <i class="mdi mdi-information"></i>
+                            </span>
+                          </label>
+                          <div class="control">
+                            <input class="input" type="text" name="metadata-library-selection" placeholder="Ex: cDNA">
+                          </div>
+                        </div>
+                      </div>
+                      <div class="column is-4">
+                        <!-- Library source -->
+                        <div class="field">
+                          <label class="label">
+                            Library source
+                            <span class="icon has-tooltip-right has-tooltip-arrow" 
+                                  data-tooltip="Ex: transcriptomic">
+                                <i class="mdi mdi-information"></i>
+                            </span>
+                          </label>
+                          <div class="control">
+                            <input class="input" type="text" name="metadata-library-source" placeholder="Ex: transcriptomic">
+                          </div>
+                        </div>
+                      </div>
+                      <div class="column is-4">
+                        <!-- Library strategy -->
+                        <div class="field">
+                          <label class="label">
+                            Library strategy
+                            <span class="icon has-tooltip-right has-tooltip-arrow" 
+                                  data-tooltip="Ex: RNA-seq">
+                                <i class="mdi mdi-information"></i>
+                            </span>
+                          </label>
+                          <div class="control">
+                            <input class="input" type="text" name="metadata-library-strategy" placeholder="Ex: RNA-seq">
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="columns">
+                      <div class="column is-6">
+                        <!-- Pubmed ID -->
+                        <div class="field">
+                          <label class="label">
+                            PubMed ID
+                            <span class="icon has-tooltip-right has-tooltip-arrow" 
+                                  data-tooltip="If this is part of a published paper, add PubMed ID here">
+                                <i class="mdi mdi-information"></i>
+                            </span>
+                          </label>
+                          <div class="control">
+                            <input class="input" type="text" name="metadata-pubmed-id" placeholder="Ex: 34172972">
+                          </div>
+                        </div>
+                      </div>
+                      <div class="column is-6">
+                        <!-- nothing here for now -->
                       </div>
                     </div>
                   </div>
                   <div class="column is-4">
                     <div class="columns is-multiline is-variable">
                       <div class="column is-12">
-                        <!-- useful file upload control code-->
+                        <!-- metadata upload file -->
                         <div class="field">
-                          <label class="label">Upload a metadata file</label>
+                          <label class="label">Or upload a metadata file</label>
                           <div class="file has-name is-fullwidth">
                             <label class="file-label">
                               <input class="file-input  is-fullwidth" type="file" name="resume">

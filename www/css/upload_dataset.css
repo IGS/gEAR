@@ -1,11 +1,13 @@
-div#metadata-form-c {
-	
-}
 div.step-c {
 	margin-top: 20px;
 }
 h1 {
 	font-size: 130%;
+	font-weight: bold;
+	margin-bottom: 10px;
+}
+h3 {
+	font-size: 110%;
 	font-weight: bold;
 	margin-bottom: 10px;
 }

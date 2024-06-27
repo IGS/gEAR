@@ -28,10 +28,10 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 }
 
 /**
- * Generates a GUID string.
- * @returns {String} The generated GUID.
+ * Generates a GUID string
+ * @returns {String} The generated GUID
  * @example af8a8416-6e18-a307-bd9c-f2c947bbb3aa
- * @author Slavik Meltser (slavik@meltser.info).
+ * @author Slavik Meltser (slavik@meltser.info)
  * @link http://slavik.meltser.info/?p=142
  */
 function guid(uid_length) {
