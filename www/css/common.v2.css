@@ -10,6 +10,9 @@ html, body {
 
 #main-layout-c {
     height: 100vh;
+    /* This makes the left column extend to the bottom of the page, but makes content wrap too early
+    flex-wrap: wrap;
+    align-items: stretch; */
 }
 
 /* Get rid of underlines on the tooltip elements */
@@ -52,7 +55,7 @@ html, body {
 /* -= Left navbar section =- */
 
 #primary-nav {
-    height: max-content;
+    
 }
 
 #citation-c {
