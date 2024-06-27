@@ -1004,7 +1004,7 @@ const createDeleteDatasetConfirmationPopover = () => {
 
             // Create popover (help from https://floating-ui.com/docs/tutorial)
             computePosition(button, popoverContent, {
-                placement: 'top',
+                placement: 'bottom',
                 middleware: [
                     flip(), // flip to bottom if there is not enough space on top
                     shift(), // shift the popover to the right if there is not enough space on the left
@@ -1135,7 +1135,7 @@ const createRenameDatasetPermalinkPopover = () => {
 
             // Create popover (help from https://floating-ui.com/docs/tutorial)
             computePosition(button, popoverContent, {
-                placement: 'top',
+                placement: 'bottom',
                 middleware: [
                     flip(), // flip to bottom if there is not enough space on top
                     shift(), // shift the popover to the right if there is not enough space on the left
@@ -1173,28 +1173,30 @@ const createRenameDatasetPermalinkPopover = () => {
             document.body.appendChild(popoverContent);
 
             document.getElementById("dataset-link-name").addEventListener("keyup", () => {
-                const newCollectionName = document.getElementById("dataset-link-name");
-                const confirmAddCollection = document.getElementById("confirm-dataset-link-rename");
+                const newLinkName = document.getElementById("dataset-link-name");
+                const confirmRenameLink = document.getElementById("confirm-dataset-link-rename");
 
-                if (newCollectionName.value.length === 0 || newCollectionName.value === e.currentTarget.dataset.shareId) {
-                    confirmAddCollection.disabled = true;
+                if (newLinkName.value.length === 0 || newLinkName.value === shareId) {
+                    confirmRenameLink.disabled = true;
                     return;
                 }
-                confirmAddCollection.disabled = false;
+                confirmRenameLink.disabled = false;
             });
 
             // Add event listener to cancel button
-            document.getElementById('cancel-collection-link-rename').addEventListener('click', () => {
+            document.getElementById('cancel-dataset-link-rename').addEventListener('click', () => {
                 popoverContent.remove();
             });
 
+            const shareId = e.currentTarget.dataset.shareId;
+
             // Add event listener to confirm button
-            document.getElementById('confirm-collection-link-rename').addEventListener('click', async (event) => {
+            document.getElementById('confirm-dataset-link-rename').addEventListener('click', async (event) => {
                 event.target.classList.add("is-loading");
-                const newShareId = document.getElementById("collection-link-name").value;
+                const newShareId = document.getElementById("dataset-link-name").value;
 
                 try {
-                    const data = await apiCallsMixin.updateShareId(e.currentTarget.dataset.shareId, newShareId, "dataset");
+                    const data = await apiCallsMixin.updateShareId(shareId, newShareId, "dataset");
 
                     if ((!data.success) || (data.success < 1)) {
                         const error = data.error || "Unknown error. Please contact gEAR support.";
@@ -1203,13 +1205,18 @@ const createRenameDatasetPermalinkPopover = () => {
 
                     createToast("Dataset permalink renamed", "is-success");
 
+                    // Update the share_id in the button, since the previous share_id is now invalid
+                    // find nearest parent .js-edit-dataset-permalink to "e"
+                    // (since e.currentTarget is null after confirm button is clicked)
+                    e.target.closest(".js-edit-dataset-permalink").dataset.shareId = newShareId;
+
                     popoverContent.remove();
 
                 } catch (error) {
                     logErrorInConsole(error);
                     createToast("Failed to rename dataset permalink: " + error);
                 } finally {
-                    event.target.classList.add("is-loading");
+                    event.target.classList.remove("is-loading");
                 }
             });
         });
@@ -1563,13 +1570,13 @@ const createRenameCollectionPopover = () => {
 
         document.getElementById("collection-name").addEventListener("keyup", () => {
             const newCollectionName = document.getElementById("collection-name");
-            const confirmAddCollection = document.getElementById("confirm-collection-rename");
+            const confirmRenameCollection = document.getElementById("confirm-collection-rename");
 
             if (newCollectionName.value.length === 0 || newCollectionName.value === selected_dc_label) {
-                confirmAddCollection.disabled = true;
+                confirmRenameCollection.disabled = true;
                 return;
             }
-            confirmAddCollection.disabled = false;
+            confirmRenameCollection.disabled = false;
         });
 
         // Add event listener to cancel button
@@ -1700,14 +1707,14 @@ const createRenameCollectionPermalinkPopover = () => {
         document.body.appendChild(popoverContent);
 
         document.getElementById("collection-link-name").addEventListener("keyup", () => {
-            const newCollectionName = document.getElementById("collection-link-name");
-            const confirmAddCollection = document.getElementById("confirm-collection-link-rename");
+            const newLinkName = document.getElementById("collection-link-name");
+            const confirmRenameLink = document.getElementById("confirm-collection-link-rename");
 
-            if (newCollectionName.value.length === 0 || newCollectionName.value === selected_dc_share_id) {
-                confirmAddCollection.disabled = true;
+            if (newLinkName.value.length === 0 || newLinkName.value === selected_dc_share_id) {
+                confirmRenameLink.disabled = true;
                 return;
             }
-            confirmAddCollection.disabled = false;
+            confirmRenameLink.disabled = false;
         });
 
         // Add event listener to cancel button
@@ -2091,7 +2098,7 @@ const processSearchResults = (data) => {
 
     // Initiialize delete dataset popover for each delete button
     createDeleteDatasetConfirmationPopover();
-    createRenameCollectionPermalinkPopover();
+    createRenameDatasetPermalinkPopover();
 
     // All event listeners for all dataset elements
     addDatasetListEventListeners();
@@ -2141,6 +2148,8 @@ const renderDisplaysModal = async (datasetId, title, isPublic) => {
     const ownerDisplaysElt = modalContent.querySelector(".js-modal-owner-displays");
     ownerDisplaysElt.replaceChildren();
 
+
+
     const collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
 
     // Did it this way so we didn't have to pass async/await up the chain
@@ -2163,8 +2172,21 @@ const renderDisplaysModal = async (datasetId, title, isPublic) => {
         closeModal(modalDiv);
     });
 
+    // If there are no displays, display a message
+    if (userDisplays.length === 0 && ownerDisplays.length === 0) {
+        const noDisplaysMessage = document.createElement("p");
+        noDisplaysMessage.className = "has-text-centered";
+        noDisplaysMessage.textContent = "No displays found for this dataset.";
+        const modalContentBox = modalContent.querySelector(".box");
+        modalContentBox.append(noDisplaysMessage);
+        document.body.append(modalHTML);
+        return;
+    }
+
     // Add modal to DOM
     document.body.append(modalHTML);
+
+
 
     // Set state of initial display add/remove buttons based on the initial dataset collection.
     updateDisplayAddRemoveToCollectionButtons(modalDiv.id, collection);
@@ -2175,6 +2197,7 @@ const renderDisplaysModal = async (datasetId, title, isPublic) => {
     // Only creating one set so that they can be reused
     const actionGroupElt = document.querySelector(".js-collection-add-remove-group");
     const tooltips = []
+
     for (const classElt of actionGroupElt.querySelectorAll("[data-tooltip-content]")) {
         tooltips.push(createActionTooltips(classElt))
     }
