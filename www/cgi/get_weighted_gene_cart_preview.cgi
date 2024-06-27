@@ -36,7 +36,7 @@ def main():
         message = "Unable to open file for genecart {}".format(share_id)
         success = -1
         result = { 'preview_json':[], 'num_genes':-1, 'weights':[], 'success': success, 'message': message }
-        print(json.dump(result))
+        print(json.dumps(result))
         sys.exit()
 
     adata.var_names_make_unique()
