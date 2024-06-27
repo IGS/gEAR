@@ -9,7 +9,8 @@ html, body {
 }
 
 #main-layout-c {
-    height: 100vh;
+    flex-wrap: wrap;
+    align-items: stretch;
 }
 
 /* Get rid of underlines on the tooltip elements */
@@ -52,7 +53,7 @@ html, body {
 /* -= Left navbar section =- */
 
 #primary-nav {
-    height: max-content;
+    
 }
 
 #citation-c {
