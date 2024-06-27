@@ -60,6 +60,7 @@ class TileGrid {
         if (this.type === "dataset") {
             const datasetTile = new DatasetTile(this, null, this.datasets[0], isMulti); // default display will be currentDisplayId
             this.applySingleTileGrid(datasetTile, selectorElt);
+            this.tiles = [datasetTile];
             return;
         }
 
@@ -119,6 +120,8 @@ class TileGrid {
 
         const maxRows = Math.max(...this.tiles.map(tile => tile.tile.endRow));
         selectorElt.style.gridTemplateRows = `repeat(${maxRows}, ${this.colHeight}px)`;
+        // if going from single dataset to layout, need to unset gridTemplateColumns. Otherwise the grid will be messed up
+        selectorElt.style.gridTemplateColumns = "";
 
         // Build the CSS grid using the startRow, startCol, endRow, and endCol properties of each tile
         for (const datasetTile of this.tiles) {
@@ -274,7 +277,7 @@ class DatasetTile {
         this.orthologsToPlot = null;    // A flattened list of all orthologs to plot
 
         this.geneSymbol = null;
-        this.currentDisplayId = this.display?.display_id || this.addDefaultDisplay();
+        this.currentDisplayId = this.display?.display_id || this.addDefaultDisplay().then((displayId) => this.currentDisplayId = displayId);
 
         // Projection information
         // modeEnabled: boolean - Indicates whether projection mode is enabled for this tile
@@ -290,16 +293,29 @@ class DatasetTile {
      * @returns {Object} The generated tile object.
      */
     generateTile() {
-        const { display_id, grid_position, grid_width, grid_height, start_row, start_col } = this.display;
+        if (this.display) {
+            const { display_id, grid_position, grid_width, grid_height, start_row, start_col } = this.display;
+            return {
+                gridPosition: grid_position,
+                width: grid_width,
+                // Heights are not bound by the 12-spaced grid, so just use 1, 2, 3, etc.
+                height: grid_height,
+                startRow: start_row,
+                startCol: start_col,
+                tileId: `${display_id}-${grid_position}-${this.type}`,  // Alternatively could use "id" which is layout_displays.id
+            };
+        }
+
+        // This was a single dataset, so use dataset ID instead tile ID
         return {
-            gridPosition: grid_position,
-            width: grid_width,
-            // Heights are not bound by the 12-spaced grid, so just use 1, 2, 3, etc.
-            height: grid_height,
-            startRow: start_row,
-            startCol: start_col,
-            tileId: `${display_id}-${grid_position}-${this.type}`,  // Alternatively could use "id" which is layout_displays.id
+            gridPosition: 1,
+            width: 12,
+            height: 12,
+            startRow: 1,
+            startCol: 1,
+            tileId: `${this.dataset.id}-1-${this.type}`,
         };
+
     }
 
     /**
@@ -1051,7 +1067,10 @@ class DatasetTile {
 
         // There is a chance this display is a member of a dataset collection
         // but not owned by the current user or dataset owner (i.e. curator account made it)
-        const layouts = this.type === "single" ? this.parentTileGrid.layout.single : this.parentTileGrid.layout.multi;
+        let layouts = [];
+        if (this.parentTileGrid.layout) {
+            layouts = this.type === "single" ? this.parentTileGrid.layout.single : this.parentTileGrid.layout.multi;
+        }
         const layoutDisplay = layouts.find((d) => JSON.parse(d).display_id === displayId);
 
         // Try epiviz display if no plotly display was found

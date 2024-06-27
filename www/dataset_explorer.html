@@ -77,6 +77,11 @@
                                             </button>
                                         </p>
                                         <p class="control">
+                                            <button id="btn-rename-collection-permalink" class="button is-small is-outlined is-dark" data-tooltip-content="Rename collection permalink">
+                                                <span class="icon"><i class="mdi mdi-18px mdi-link-edit"></i></span>
+                                            </button>
+                                        </p>
+                                        <p class="control">
                                             <button id="btn-share-collection" class="button is-small is-outlined is-dark" data-tooltip-content="Get shareable link">
                                                 <span class="icon"><i class="mdi mdi-18px mdi-share-variant"></i></span>
                                             </button>
@@ -463,17 +468,6 @@
                                                                     <span class="icon"><i class="mdi mdi-18px mdi-plus-minus-variant"></i></span>
                                                                 </button>
                                                             </p>
-                                                            <!--<p class="control">
-                                                                <button class="button is-small is-outlined is-dark js-collection-add-dataset" data-tooltip-content="Add dataset to current collection">
-                                                                    <span class="icon"><i class="mdi mdi-18px mdi-plus-box-multiple"></i></span>
-                                                                </button>
-                                                            </p>
-                                                            <p class="control">
-                                                                <button class="button is-small is-outlined is-dark js-collection-remove-dataset" data-tooltip-content="Remove dataset from current collection">
-                                                                    <span class="icon"><i class="mdi mdi-18px mdi-minus-box-multiple"></i></span>
-                                                                </button>
-                                                            </p>-->
-
                                                             <p class="control">
                                                                 <button class="button is-small is-danger js-delete-dataset" data-tooltip-content="Delete dataset">
                                                                     <span class="icon"><i class="mdi mdi-18px mdi-delete"></i></span>
@@ -487,6 +481,11 @@
                                                             <p class="control">
                                                                 <button class="button is-small is-outlined is-dark js-share-dataset" data-tooltip-content="Get shareable link">
                                                                     <span class="icon"><i class="mdi mdi-18px mdi-share-variant"></i></span>
+                                                                </button>
+                                                            </p>
+                                                            <p class="control">
+                                                                <button class="button is-small is-outlined is-dark js-edit-dataset-permalink" data-tooltip-content="Edit permalink">
+                                                                    <span class="icon"><i class="mdi mdi-18px mdi-link-edit"></i></span>
                                                                 </button>
                                                             </p>
                                                             <p class="control">
@@ -535,9 +534,6 @@
                                                                 </button>
                                                             </p>
                                                         </div>
-
-                                                        <!-- Info on actions (e.g. "URL copied to clipboard") -->
-                                                        <span class="js-dataset-action-note is-hidden"></span>
                                                     </div> <!-- end .columns -->
 
                                                 </div> <!-- end .columns -->

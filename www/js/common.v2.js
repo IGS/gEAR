@@ -394,6 +394,14 @@ const showNotLoggedInElements = () => {
 }
 
 /**
+ * Returns the root URL of the current web page.
+ * @returns {string} The root URL of the current web page.
+ */
+const getRootUrl = () => {
+    return window.location.protocol + "//" + window.location.hostname + (window.location.port ? ':' + window.location.port: '');
+  }
+
+/**
  * Handles the UI updates for the login functionality.
  */
 const handleLoginUIUpdates = () => {
@@ -948,13 +956,15 @@ const apiCallsMixin = {
         return data;
     },
 
+
     /**
      * Fetches the default display for a dataset.
+     *
      * @param {string} datasetId - The ID of the dataset.
-     * @param {boolean} [isMultigene=false] - Indicates if the dataset is multigene.
+     * @param {number} [isMultigene=0] - Flag indicating if the dataset is multigene (default is 0).
      * @returns {Promise<any>} - A promise that resolves to the fetched data.
      */
-    async fetchDefaultDisplay(datasetId, isMultigene=false) {
+    async fetchDefaultDisplay(datasetId, isMultigene=0) {
         const payload = {session_id: this.sessionId, dataset_id: datasetId, is_multigene: isMultigene};
         const {data} = await axios.post("/cgi/get_default_display.cgi", convertToFormData(payload));
         return data;
@@ -1316,6 +1326,20 @@ const apiCallsMixin = {
     async setUserPrimaryDatasetCollection(layoutShareId) {
         const payload = {session_id: this.sessionId, layout_share_id: layoutShareId};
         const {data} = await axios.post("/cgi/set_primary_layout.cgi", convertToFormData(payload));
+        return data;
+    },
+
+    /**
+     * Updates the share ID with a new share ID.
+     *
+     * @param {string} shareId - The current share ID.
+     * @param {string} newShareId - The new share ID.
+     * @param {string} scope - The scope of the share ID.
+     * @returns {Promise<any>} - A promise that resolves with the updated data.
+     */
+    async updateShareId(shareId, newShareId, scope) {
+        const payload = {session_id: this.sessionId, share_id: shareId, new_share_id: newShareId, scope};
+        const {data} = await axios.post("/cgi/update_share_id.cgi", convertToFormData(payload));
         return data;
     }
 
