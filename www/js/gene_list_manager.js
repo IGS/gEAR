@@ -108,15 +108,11 @@ const addGeneListEventListeners = () => {
 
     for (const classElt of document.getElementsByClassName("js-share-gc")) {
         classElt.addEventListener("click", (e) => {
-
             const shareId = e.currentTarget.value;
-            const currentUrl = window.location.href;
-            const currentPage = currentUrl.lastIndexOf("gene_list_manager.html");
-            const shareUrl = `${currentUrl.substring(0, currentPage)}p?c=${shareId}`;
-            const gcId = e.currentTarget.dataset.gcId;
 
-            showGcActionNote(gcId, shareUrl);
-
+            const currentPage = getRootUrl();
+            const shareUrl = `${currentPage}/p?c=${shareId}`;
+            copyPermalink(shareUrl);
         });
     }
 
@@ -425,6 +421,24 @@ const clearResultsViews = () => {
 }
 
 /**
+ * Copies a permalink to the clipboard.
+ *
+ * @param {string} shareUrl - The URL to be copied to the clipboard.
+ * @returns {void}
+ */
+const copyPermalink = (shareUrl) => {
+    // sanitize shareUrl
+    shareUrl = shareUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    if(copyToClipboard(shareUrl)) {
+        createToast("URL copied to clipboard", "is-info");
+    } else {
+        createToast(`Failed to copy to clipboard. URL: ${shareUrl}`);
+    }
+
+}
+
+/**
  * Creates a tooltip element and appends it to the body.
  * @param {HTMLElement} referenceElement - The reference element to which the tooltip is associated.
  * @returns {HTMLElement} The created tooltip element.
@@ -485,7 +499,7 @@ const createDeleteConfirmationPopover = () => {
 
             // Create popover (help from https://floating-ui.com/docs/tutorial)
             computePosition(button, popoverContent, {
-                placement: 'top',
+                placement: 'bottom',
                 middleware: [
                     flip(), // flip to bottom if there is not enough space on top
                     shift(), // shift the popover to the right if there is not enough space on the left
@@ -531,8 +545,8 @@ const createDeleteConfirmationPopover = () => {
             });
 
             // Add event listener to confirm button
-            document.getElementById('confirm-gc-delete').addEventListener('click', async () => {
-
+            document.getElementById('confirm-gc-delete').addEventListener('click', async (event) => {
+                event.target.classList.add("is-loading");
                 try {
                     const data = await apiCallsMixin.deleteGeneList(gcIdToDelete);
                     if (data['success'] == 1) {
@@ -553,7 +567,153 @@ const createDeleteConfirmationPopover = () => {
                     logErrorInConsole(error);
                     createToast("Failed to delete gene list");
                 } finally {
+                    event.target.classList.remove("is-loading");
                     popoverContent.remove();
+                }
+            });
+        });
+    }
+}
+
+/**
+ * Creates a popover for renaming gene list permalink.
+ */
+const createRenamePermalinkPopover = () => {
+    const permalinkButtons = document.getElementsByClassName("js-edit-gc-permalink");
+    for (const button of permalinkButtons) {
+        button.addEventListener('click', (e) => {
+            // remove existing popovers
+            const existingPopover = document.getElementById('rename-gc-link-popover');
+            if (existingPopover) {
+                existingPopover.remove();
+            }
+
+            // Create popover content
+            const popoverContent = document.createElement('article');
+            popoverContent.id = 'rename-gc-link-popover';
+            popoverContent.classList.add("message", "is-primary");
+            popoverContent.setAttribute("role", "tooltip");
+            popoverContent.innerHTML = `
+                <div class='message-header'>
+                    <p>Rename gene list permalink</p>
+                </div>
+                <div class='message-body'>
+                    <p>Please provide a new name for the gene list short-hand permalink.</p>
+                    <div class='field has-addons'>
+                        <div class='control'>
+                            <a class="button is-static">
+                                ${getRootUrl()}/?c=
+                            </a>
+                        </div>
+                        <div class='control'>
+                            <input id='gc-link-name' class='input' type='text' placeholder='permalink' value=${e.currentTarget.dataset.shareId}>
+                        </div>
+                    </div>
+                    <div class='field is-grouped' style='width:250px'>
+                        <p class="control">
+                            <button id='confirm-gc-link-rename' class='button is-primary' disabled>Update</button>
+                        </p>
+                        <p class="control">
+                            <button id='cancel-gc-link-rename' class='button' value='cancel_rename'>Cancel</button>
+                        </p>
+                    </div>
+                </div>
+                <div id="arrow"></div>
+            `;
+
+            // append element to DOM to get its dimensions
+            document.body.appendChild(popoverContent);
+
+            const arrowElement = document.getElementById('arrow');
+
+            // Create popover (help from https://floating-ui.com/docs/tutorial)
+            computePosition(button, popoverContent, {
+                placement: 'bottom',
+                middleware: [
+                    flip(), // flip to bottom if there is not enough space on top
+                    shift(), // shift the popover to the right if there is not enough space on the left
+                    offset(5), // offset relative to the button
+                    arrow({ element: arrowElement }) // add an arrow pointing to the button
+                ],
+            }).then(({ x, y, placement, middlewareData }) => {
+                // Position the popover
+                Object.assign(popoverContent.style, {
+                    left: `${x}px`,
+                    top: `${y}px`,
+                });
+                // Accessing the data
+                const { x: arrowX, y: arrowY } = middlewareData.arrow;
+
+                // Position the arrow relative to the popover
+                const staticSide = {
+                    top: 'bottom',
+                    right: 'left',
+                    bottom: 'top',
+                    left: 'right',
+                }[placement.split('-')[0]];
+
+                // Set the arrow position
+                Object.assign(arrowElement.style, {
+                    left: arrowX != null ? `${arrowX}px` : '',
+                    top: arrowY != null ? `${arrowY}px` : '',
+                    right: '',
+                    bottom: '',
+                    [staticSide]: '-4px',
+                });
+            });
+
+            // Show popover
+            document.body.appendChild(popoverContent);
+
+            const shareId = e.currentTarget.dataset.shareId;
+
+            document.getElementById("gc-link-name").addEventListener("keyup", () => {
+                const newLinkName = document.getElementById("gc-link-name");
+                const confirmRenameLink = document.getElementById("confirm-gc-link-rename");
+
+                if (newLinkName.value.length === 0 || newLinkName.value === shareId) {
+                    confirmRenameLink.disabled = true;
+                    return;
+                }
+                confirmRenameLink.disabled = false;
+            });
+
+            // Add event listener to cancel button
+            document.getElementById('cancel-gc-link-rename').addEventListener('click', () => {
+                popoverContent.remove();
+            });
+
+            // Add event listener to confirm button
+            document.getElementById('confirm-gc-link-rename').addEventListener('click', async (event) => {
+                event.target.classList.add("is-loading");
+                const newShareId = document.getElementById("gc-link-name").value;
+
+                try {
+                    const data = await apiCallsMixin.updateShareId(shareId, newShareId, "genecart");
+
+                    if ((!data.success) || (data.success < 1)) {
+                        const error = data.error || "Unknown error. Please contact gEAR support.";
+                        throw new Error(error);
+                    }
+
+                    createToast("Gene list permalink renamed", "is-success");
+
+                    // Update the share_id in the button, since the previous share_id is now invalid
+                    // find nearest parent .js-edit-gc-permalink to "e"
+                    // (since e.currentTarget is null after confirm button is clicked)
+                    e.target.closest(".js-action-links").querySelector(".js-edit-gc-permalink").dataset.shareId = newShareId;
+                    e.target.closest(".js-action-links").querySelector(".js-view-gc").value = newShareId;
+                    e.target.closest(".js-action-links").querySelector(".js-share-gc").value = newShareId;
+                    e.target.closest(".js-action-links").querySelector(".js-download-gc").dataset.gcShareId = newShareId;
+
+
+                    popoverContent.remove();
+
+                } catch (error) {
+                    logErrorInConsole(error);
+                    createToast("Failed to rename gene list permalink: " + error);
+                } finally {
+                    event.target.classList.remove("is-loading");
                 }
             });
         });
@@ -871,6 +1031,7 @@ const processSearchResults = (data) => {
         setElementProperties(listResultsView, ".js-delete-gc", { value: geneListId, dataset: { isOwner } });
         setElementProperties(listResultsView, ".js-download-gc", { dataset: { gcShareId: shareId, gcId: geneListId, gcType: gctype } });
         setElementProperties(listResultsView, ".js-share-gc", { value: shareId, dataset: { gcId: geneListId } });
+        setElementProperties(listResultsView, ".js-edit-gc-permalink", { dataset: { isOwner, shareId } });
         setElementProperties(listResultsView, ".js-edit-gc", { value: geneListId, dataset: { gcId: geneListId } });
         setElementProperties(listResultsView, ".js-edit-gc-save", { value: geneListId, dataset: { gcId: geneListId } });
         setElementProperties(listResultsView, ".js-edit-gc-cancel", { value: geneListId, dataset: { gcId: geneListId } });
@@ -941,6 +1102,9 @@ const processSearchResults = (data) => {
 
     // Initiialize delete gene list popover for each delete button
     createDeleteConfirmationPopover();
+
+    // Initialize rename gene list permalink popover for each edit button
+    createRenamePermalinkPopover();
 
     // All event listeners for all gene list elements
     addGeneListEventListeners();
@@ -1183,30 +1347,6 @@ const setupPagination = (pagination) => {
 
 }
 
-
-/**
- * Displays an action note for a gene list.
- *
- * @param {string} gcId - The ID of the gene list.
- * @param {string} shareUrl - The URL to be copied to the clipboard.
- * @returns {void}
- */
-const showGcActionNote = (gcId, shareUrl) => {
-    // sanitize shareUrl
-    shareUrl = shareUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-    const noteSelector = `#result-gc-id-${gcId} span.js-gc-action-note`;
-    const noteSelecterElt = document.querySelector(noteSelector);
-
-    noteSelecterElt.innerHTML = copyToClipboard(shareUrl) ? "URL copied to clipboard" : `Failed to copy to clipboard. URL: ${shareUrl}`;
-    noteSelecterElt.classList.remove("is-hidden");
-
-    setTimeout(() => {
-        noteSelecterElt.classList.add("is-hidden"); // TODO: add animate CSS with fade out
-        noteSelecterElt.innerHTML = "";
-    }, 5000);
-}
-
 /**
  * Submits a search request with the specified search terms and filters.
  *
@@ -1281,10 +1421,12 @@ const updateGeneListListButtons = () => {
         // The ability to edit and delete and dataset are currently paired
         const deleteButton = classElt.querySelector("button.js-delete-gc");
         const editButton = classElt.querySelector("button.js-edit-gc");
+        const editPermalinkButton = classElt.querySelector("button.js-edit-gc-permalink");
 
         if (deleteButton.dataset.isOwner === "false") {
             deleteButton.parentElement.remove();    // remove .control element to prevent heavy line where button was
             editButton.parentElement.remove()
+            editPermalinkButton.parentElement.remove()
 
             const geneListId = classElt.dataset.gcId;
             const selectorBase = `#result-gc-id-${geneListId}`;
