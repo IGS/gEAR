@@ -7,6 +7,17 @@
 let dataset_uid = null;
 let share_uid = null;
 
+let required_metadata_fields = ['metadata-title', 'metadata-summary', 'metadata-dataset-type',
+    'metadata-contact-name', 'metadata-annotation-source', 'metadata-annotation-version',
+    'metadata-contact-name', 'metadata-contact-email',
+    'metadata-taxon-id', 'metadata-organism'
+];
+
+let optional_metadata_fields = ['metadata-contact-institute', 'metadata-platform-id', 
+    'metadata-instrument', 'metadata-library-selection', 'metadata-library-source',
+    'metadata-geo-id', 'metadata-library-strategy', 'metadata-pubmed-id'
+];
+
 window.onload=function() {
     // Set the page title
     document.getElementById('page-header-label').textContent = 'Upload an expression dataset';
@@ -15,8 +26,29 @@ window.onload=function() {
     dataset_uid = guid('long');
     share_uid = guid('short');
 
-    
+    document.getElementById('metadata-form-submit').addEventListener('click', (event) => {
+        event.preventDefault();
+        let fields_missing = validateMetadataForm();
 
+        if (fields_missing.length === 0) {
+            document.getElementById('missing-field-list-c').classList.add('is-hidden');
+        } else {
+            const missing_fields_ul = document.getElementById('missing-field-list');
+            missing_fields_ul.innerHTML = '';
+            fields_missing.forEach((field) => {
+                // we want to transform each field string to something more readable
+                field = field.replace('metadata-', '');
+                field = field.replaceAll('-', ' ');
+                field = field.charAt(0).toUpperCase() + field.slice(1);
+
+                const li = document.createElement('li');
+                li.textContent = field;
+                missing_fields_ul.appendChild(li);
+            });
+
+            document.getElementById('missing-field-list-c').classList.remove('is-hidden');
+        }
+    });
 };
 
 const handlePageSpecificLoginUIUpdates = async (event) => {
@@ -25,6 +57,24 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     } else {
         document.getElementById('not-logged-in-c').classList.remove('is-hidden');
     }
+}
+
+const validateMetadataForm = () => {
+    let fields_missing = [];
+
+    // Each element with a name in required_metadata_fields must have a value
+    for (const field of required_metadata_fields) {
+        const element = document.getElementsByName(field)[0];
+
+        if (!element.value) {
+            element.classList.add('is-danger');
+            fields_missing.push(field);
+        } else {
+            element.classList.remove('is-danger');
+        }
+    }
+
+    return fields_missing;
 }
 
 /**

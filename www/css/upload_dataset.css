@@ -1,3 +1,6 @@
+div#logged-in-c {
+	padding-bottom: 500px;
+}
 div.step-c {
 	margin-top: 20px;
 }
@@ -18,4 +21,10 @@ p.step-label {
     position: sticky;
     top: 0;
     z-index: 1000;
+}
+ul#missing-field-list {
+	margin-left: 3em;
+	margin-top: 1em;
+	list-style-type: circle;
+	padding-left: 0;
 }
