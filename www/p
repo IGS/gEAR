@@ -6,20 +6,20 @@ c = gene cart share ID
 g = gene_symbol to search
 gsem = toggle exact match searching for gene symbols (truthy value)
 l = profile/layout ID
-m = multi-gene view? (truthy value, default is 0)
 p = page to send to:
-    null = expression.html (default)
+    <null> = expression.html (default)
     a = sc_workbench.html
+    de = dataset_explorer.html
+    gcm = gene_list_manager.html
+    p = projection.html
 s = dataset_share_id
+ss = search string (for use in things like dataset/gene cart explorers)
 id = id from identifiers.org, in the format like d.a59037e8 or p.bfd178f5
 
 '''
 
 import cgi
 import os
-import sys
-from urllib.parse import urlparse
-from urllib import request
 
 def main():
     print('Content-Type: text/html\n\n')
@@ -27,18 +27,27 @@ def main():
     gene_cart = form.getvalue('c')
     gene_symbol = form.getvalue('g')
     gene_symbol_exact_match = form.getvalue('gsem')
+    multi = form.getvalue("multi")
+    patterns = form.getvalue("ptrns")
+    algo = form.getvalue("algo")
     layout_share_id = form.getvalue('l')
-    is_multigene = form.getvalue('m')
     page = form.getvalue('p')
     dataset_share_id = form.getvalue('s')
     identifiers_org_id = form.getvalue('id')
+    search_string = form.getvalue('ss') # URL-encoded
 
     url_base = os.environ['REQUEST_SCHEME'] + '://' + os.environ['HTTP_HOST'] + os.environ['REQUEST_URI'].split('p')[0]
     main_page = 'expression.html'
 
-    if page == 'a':
-        main_page = 'sc_workbench.html'
-        #main_page = 'sc_workbench.html'
+    match page:
+        case 'a':
+            main_page = 'sc_workbench.html'
+        case 'de':
+            main_page = 'dataset_explorer.html'
+        case 'gcm':
+            main_page = 'gene_list_manager.html'
+        case 'p':
+            main_page = 'projection.html'
 
     url = url_base + '/' + main_page
 
@@ -50,9 +59,6 @@ def main():
     if layout_share_id is not None:
         params['layout_id'] = layout_share_id
 
-    if is_multigene is not None:
-        params['is_multigene'] = is_multigene
-
     if gene_symbol is not None:
         params['gene_symbol'] = gene_symbol
 
@@ -62,7 +68,25 @@ def main():
         params['gene_symbol_exact_match'] = 1
 
     if gene_cart:
-        params["gene_lists"] = gene_cart
+        key = 'gene_lists'
+        if page == "p":
+            key = 'projection_source'
+        params[key] = gene_cart
+
+    if multi:
+        key = "multigene_plots"
+        if page == "p":
+            key = "multipattern_plots"
+        params[key] = multi
+
+    if patterns and page == "p":
+        params["projection_patterns"] = patterns
+
+    if algo and page == "p":
+        params["projection_algo"] = algo
+
+    if search_string and (page == "de" or page == "gcm"):
+        params["search_string"] = search_string
 
     if identifiers_org_id:
         (id_prefix, identifiers_share_id) = identifiers_org_id.split('.')

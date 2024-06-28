@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // add the manually-entered genes
         // TODO: need to combine selected_genes here to accommodate the case where a gene cart
         //  chosen but the individual genes removed.
-        const manuallyEnteredGenes = Array.from(manually_entered_genes);
+        const manuallyEnteredGenes =  Array.from(new Set([...selected_genes, ...manually_entered_genes]));
         if (manuallyEnteredGenes.length > 0) {
             url.searchParams.append('gene_symbol', manuallyEnteredGenes.join(','));
         }

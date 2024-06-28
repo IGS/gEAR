@@ -1127,7 +1127,7 @@ const createRenameDatasetPermalinkPopover = () => {
                     <div class='field has-addons'>
                         <div class='control'>
                             <a class="button is-static">
-                                ${getRootUrl()}/?s=
+                                ${getRootUrl()}/p?s=
                             </a>
                         </div>
                         <div class='control'>
@@ -1663,7 +1663,7 @@ const createRenameCollectionPermalinkPopover = () => {
                 <div class='field has-addons'>
                     <div class='control'>
                         <a class="button is-static">
-                            ${getRootUrl()}/?l=
+                            ${getRootUrl()}/p?l=
                         </a>
                     </div>
                     <div class='control'>

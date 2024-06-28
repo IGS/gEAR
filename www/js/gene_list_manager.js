@@ -110,8 +110,14 @@ const addGeneListEventListeners = () => {
         classElt.addEventListener("click", (e) => {
             const shareId = e.currentTarget.value;
 
-            const currentPage = getRootUrl();
-            const shareUrl = `${currentPage}/p?c=${shareId}`;
+            let currentPage = `${getRootUrl()}/p?`;
+
+            // if genecart is weighted, can only link to projection.html
+            if (e.currentTarget.dataset.gctypeLabel === "Weighted") {
+                currentPage += "p=p&";
+            }
+
+            const shareUrl = `${currentPage}c=${shareId}`;
             copyPermalink(shareUrl);
         });
     }
@@ -248,8 +254,15 @@ const addGeneListEventListeners = () => {
     // Redirect to gene expression search
     for (const classElt of document.getElementsByClassName("js-view-gc")) {
         classElt.addEventListener("click", (e) => {
-            // ! Currently redirects to blank page
-            window.open(`./p?c=${e.currentTarget.value}`, '_blank');
+
+            let currentPage = `${getRootUrl()}/p?`;
+
+            // if genecart is weighted, can only link to projection.html
+            if (e.currentTarget.dataset.gctypeLabel === "Weighted") {
+                currentPage += "p=p&";
+            }
+
+            window.open(`${currentPage}c=${e.currentTarget.value}`, '_blank');
         });
     }
 }
@@ -272,7 +285,6 @@ const addPreviewGenesToGeneList = (geneListId, gctype, shareId, geneCount) => {
 
     const elt = document.createElement("span");
     elt.id = `btn-gc-${geneListId}-text`;
-    elt.dataset.offState = elt.textContent
     button.append(elt);
 
     if (gctype === "weighted-list") {
@@ -289,7 +301,7 @@ const addPreviewGenesToGeneList = (geneListId, gctype, shareId, geneCount) => {
     } else {
         throw Error(`Invalid gene list type: ${gctype}`);
     }
-
+    elt.dataset.offState = elt.textContent
     geneListPreviewGenesContainer.append(button);
 
 }
@@ -588,6 +600,14 @@ const createRenamePermalinkPopover = () => {
                 existingPopover.remove();
             }
 
+            let currentPage = `${getRootUrl()}/p?`;
+
+            // if genecart is weighted, can only link to projection.html
+            if (e.currentTarget.dataset.gctypeLabel === "Weighted") {
+                currentPage += "p=p&";
+            }
+
+
             // Create popover content
             const popoverContent = document.createElement('article');
             popoverContent.id = 'rename-gc-link-popover';
@@ -602,7 +622,7 @@ const createRenamePermalinkPopover = () => {
                     <div class='field has-addons'>
                         <div class='control'>
                             <a class="button is-static">
-                                ${getRootUrl()}/?c=
+                                ${currentPage}c=
                             </a>
                         </div>
                         <div class='control'>
@@ -1027,11 +1047,11 @@ const processSearchResults = (data) => {
         setElementProperties(listResultsView, ".js-display-date-added span:last-of-type", { textContent: dateAdded });
         setElementProperties(listResultsView, ".js-editable-date-added input", { value: dateAdded });
         // action buttons section
-        setElementProperties(listResultsView, ".js-view-gc", { value: shareId });
+        setElementProperties(listResultsView, ".js-view-gc", { value: shareId, dataset: {gctypeLabel} });
         setElementProperties(listResultsView, ".js-delete-gc", { value: geneListId, dataset: { isOwner } });
         setElementProperties(listResultsView, ".js-download-gc", { dataset: { gcShareId: shareId, gcId: geneListId, gcType: gctype } });
-        setElementProperties(listResultsView, ".js-share-gc", { value: shareId, dataset: { gcId: geneListId } });
-        setElementProperties(listResultsView, ".js-edit-gc-permalink", { dataset: { isOwner, shareId } });
+        setElementProperties(listResultsView, ".js-share-gc", { value: shareId, dataset: { gcId: geneListId, gctypeLabel} });
+        setElementProperties(listResultsView, ".js-edit-gc-permalink", { dataset: { isOwner, shareId, gctypeLabel } });
         setElementProperties(listResultsView, ".js-edit-gc", { value: geneListId, dataset: { gcId: geneListId } });
         setElementProperties(listResultsView, ".js-edit-gc-save", { value: geneListId, dataset: { gcId: geneListId } });
         setElementProperties(listResultsView, ".js-edit-gc-cancel", { value: geneListId, dataset: { gcId: geneListId } });
@@ -1249,6 +1269,7 @@ const setupGeneListToggle = (className, ajaxUrl, handleData) => {
                 } catch (error) {
                     logErrorInConsole(error);
                     createToast("Failed to load gene list preview")
+                    button.classList.add("is-outlined");
                 } finally {
                     button.classList.remove("is-loading");
                 }
