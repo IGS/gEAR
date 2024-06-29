@@ -17,6 +17,9 @@ h3 {
 p.step-label {
 	font-weight: bold;
 }
+span#metadata-geo-lookup-status {
+	font-size: 90%;
+}
 .stick-to-top {
     position: sticky;
     top: 0;

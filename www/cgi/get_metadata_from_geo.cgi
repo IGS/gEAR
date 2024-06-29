@@ -21,7 +21,7 @@ def main():
     form = cgi.FieldStorage()
     geo_id = form.getvalue('geo_id')
     
-    result = { 'success': 0, 'message': '', 'data': None }
+    result = { 'success': 0, 'message': '', 'data': {} }
 
     if geo_id.startswith('GSE'):
         series_content = FromGeo.get_geo_data(geo_id=geo_id)
@@ -51,15 +51,16 @@ def main():
         sample_content = FromGeo.process_geo_data(content=sample_content, json_or_dataframe='json')
         sample_json = json.loads(sample_content)
 
-        series_id = sample_json['series_id']
-        series_content = FromGeo.get_geo_data(geo_id=series_id)
-        series_content = FromGeo.process_geo_data(content=series_content, json_or_dataframe='json')
-        series_json = json.loads(series_content)
+        if 'series_id' in sample_json:
+            series_id = sample_json['series_id']
+            series_content = FromGeo.get_geo_data(geo_id=series_id)
+            series_content = FromGeo.process_geo_data(content=series_content, json_or_dataframe='json')
+            series_json = json.loads(series_content)
 
-        # Add any keys from the series metadata that aren't in the sample metadata
-        for key, value in series_json.items():
-            if key not in sample_json:
-                sample_json[key] = value
+            # Add any keys from the series metadata that aren't in the sample metadata
+            for key, value in series_json.items():
+                if key not in sample_json:
+                    sample_json[key] = value
 
         result['data'] = sample_json
 

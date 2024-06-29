@@ -70,19 +70,23 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 const getGeoData = async () => {
     const geo_id = document.getElementsByName('metadata-geo-id')[0].value;
     const geo_data = await apiCallsMixin.fetchGeoData(geo_id);
-    console.log(geo_data);
 
-    document.getElementsByName('metadata-contact-name')[0].value = geo_data.contact_name;
-    document.getElementsByName('metadata-contact-email')[0].value = geo_data.contact_email;
-    document.getElementsByName('metadata-contact-institute')[0].value = geo_data.contact_institute;
-    document.getElementsByName('metadata-taxon-id')[0].value = geo_data.taxid_ch1;
-    document.getElementsByName('metadata-organism')[0].value = geo_data.organism_ch1;
-    document.getElementsByName('metadata-platform-id')[0].value = geo_data.platform_id;
-    document.getElementsByName('metadata-instrument')[0].value = geo_data.instrument_model;
-    document.getElementsByName('metadata-library-selection')[0].value = geo_data.library_selection;
-    document.getElementsByName('metadata-library-source')[0].value = geo_data.library_source;
-    document.getElementsByName('metadata-library-strategy')[0].value = geo_data.library_strategy;
-    document.getElementsByName('metadata-pubmed-id')[0].value = geo_data.pubmed_id;
+    if (Object.keys(geo_data).length === 0) {
+        document.getElementById('metadata-geo-lookup-status').classList.remove('is-hidden');
+    } else {
+        document.getElementById('metadata-geo-lookup-status').classList.add('is-hidden');
+        document.getElementsByName('metadata-contact-name')[0].value = geo_data.contact_name;
+        document.getElementsByName('metadata-contact-email')[0].value = geo_data.contact_email;
+        document.getElementsByName('metadata-contact-institute')[0].value = geo_data.contact_institute;
+        document.getElementsByName('metadata-taxon-id')[0].value = geo_data.taxid_ch1;
+        document.getElementsByName('metadata-organism')[0].value = geo_data.organism_ch1;
+        document.getElementsByName('metadata-platform-id')[0].value = geo_data.platform_id;
+        document.getElementsByName('metadata-instrument')[0].value = geo_data.instrument_model;
+        document.getElementsByName('metadata-library-selection')[0].value = geo_data.library_selection;
+        document.getElementsByName('metadata-library-source')[0].value = geo_data.library_source;
+        document.getElementsByName('metadata-library-strategy')[0].value = geo_data.library_strategy;
+        document.getElementsByName('metadata-pubmed-id')[0].value = geo_data.pubmed_id;
+    }
 
     let button = document.getElementById('metadata-geo-lookup');
     button.disabled = false;
