@@ -700,7 +700,6 @@ const apiCallsMixin = {
     // TODO: change all server side scripts with "layout id" to "layout share id" or "collection share id"
     // TODO: change all "gene cart" function names to "gene list"
 
-
     /**
      * Adds a display to the collection.
      *
@@ -955,8 +954,6 @@ const apiCallsMixin = {
         const {data} = await axios.post("/cgi/search_datasets.cgi", convertToFormData(payload));
         return data;
     },
-
-
     /**
      * Fetches the default display for a dataset.
      *
@@ -1010,7 +1007,6 @@ const apiCallsMixin = {
         const {data} = await axios.post(`/cgi/search_genes.cgi`, convertToFormData(payload));
         return data;
     },
-
     /**
      * Fetches gene lists based on the provided search criteria.
      *
@@ -1056,6 +1052,16 @@ const apiCallsMixin = {
         let url = `./api/h5ad/${datasetId}/genes`;
         if (analysisId) url += `?analysis_id=${analysisId}`;
         const {data} = await axios.get(url);
+        return data;
+    },
+    /**
+     * Fetches GEO data for a given series or sample ID.
+     * @param {string} geoID - The ID of the dataset.
+     * @returns {Promise<JSON<object>>} - A promise that resolves to a JSON object with GEO data.
+     */
+    async fetchGeoData(geoID) {
+        const payload = {geo_id: geoID};
+        const {data} = await axios.post(`/cgi/get_metadata_from_geo.cgi`, convertToFormData(payload));
         return data;
     },
     /**
