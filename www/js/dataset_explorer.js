@@ -847,13 +847,14 @@ const changeDatasetCollectionCallback = async (datasetCollectionData=null) => {
 
     // TODO: Get layout members from the "get_users_layout_members.cgi" API call
 
+    const maxEndCol = 13;
+
     for (const member of singleLayoutMembers) {
         const displayId = member.display_id;
         const datasetId = member.dataset_id;
 
         const singleMember = new LayoutArrangementMember(singleArrangement, displayId, member.grid_position, member.start_col, member.start_row, member.grid_width, member.grid_height);
 
-        const maxEndCol = 13;
 
         // If in legacy mode, then we need to calculate the startCol and endCol and startRow and endRow
         // so the arrangement view can be displayed correctly
