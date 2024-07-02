@@ -225,14 +225,18 @@
                         <!-- GEO ID -->
                         <div class="field">
                           <label class="label">
-                            GEO ID (optional)
+                            GEO series or sample ID (optional)
                             <span class="icon has-tooltip-right has-tooltip-arrow" 
                                   data-tooltip="If available, autofills the rest of this section">
                                 <i class="mdi mdi-information"></i>
                             </span>
                           </label>
                           <div class="control">
-                            <input class="input" type="text" name="metadata-geo-id" placeholder="">
+                            <input class="input" type="text" name="metadata-geo-id" placeholder="Like GSEnnnnn or GSMnnnnnnn">
+                          </div>
+                          <div class="control pt-1">
+                            <button id="metadata-geo-lookup" class="button is-primary is-small">Lookup</button>
+                            <span id="metadata-geo-lookup-status" class="pt-1 is-pulled-right is-hidden"><i class="mdi mdi-alert-outline"></i> Entry not found</span>
                           </div>
                         </div>
                       </div>
@@ -428,11 +432,26 @@
                             <input class="input" type="text" name="metadata-pubmed-id" placeholder="Ex: 34172972">
                           </div>
                         </div>
+                        <div class="field">
+                          <div class="control">
+                            <button id="metadata-form-submit" class="button is-primary">Submit metadata</button>
+                          </div>
+                        </div>
                       </div>
                       <div class="column is-6">
-                        <!-- nothing here for now -->
+                        <div id="missing-field-list-c" class="is-hidden">
+                          <p>
+                            <span class="icon">
+                              <i class="mdi mdi-alert"></i>
+                            </span>
+                            The following fields are missing. Please check the form above and 
+                            fill these boxes
+                          </p>
+                          <ul id="missing-field-list"></ul>
+                        </div>
                       </div>
                     </div>
+                    
                   </div>
                   <div class="column is-4">
                     <div class="columns is-multiline is-variable">
