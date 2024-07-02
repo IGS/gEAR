@@ -31,7 +31,10 @@ window.onload=function() {
         let fields_missing = validateMetadataForm();
 
         if (fields_missing.length === 0) {
+            // Form looks good!
             document.getElementById('missing-field-list-c').classList.add('is-hidden');
+            storeMetadata();
+
         } else {
             const missing_fields_ul = document.getElementById('missing-field-list');
             missing_fields_ul.innerHTML = '';
@@ -91,6 +94,37 @@ const getGeoData = async () => {
     let button = document.getElementById('metadata-geo-lookup');
     button.disabled = false;
     button.classList.remove('is-loading');
+}
+
+const storeMetadata = async () => {
+    const {data} = await axios.post('./cgi/store_expression_metadata.cgi', convertToFormData({
+        dataset_uid: dataset_uid,
+        share_uid: share_uid,
+        session_id: CURRENT_USER.session_id,
+        title: document.getElementsByName('metadata-title')[0].value,
+        summary: document.getElementsByName('metadata-summary')[0].value,
+        dataset_type: document.getElementsByName('metadata-dataset-type')[0].value,
+        annotation_source: document.getElementsByName('metadata-annotation-source')[0].value,
+        annotation_version: document.getElementsByName('metadata-annotation-version')[0].value,
+        geo_id: document.getElementsByName('metadata-geo-id')[0].value,
+        contact_name: document.getElementsByName('metadata-contact-name')[0].value,
+        contact_email: document.getElementsByName('metadata-contact-email')[0].value,
+        contact_institute: document.getElementsByName('metadata-contact-institute')[0].value,
+        taxon_id: document.getElementsByName('metadata-taxon-id')[0].value,
+        organism: document.getElementsByName('metadata-organism')[0].value,
+        platform_id: document.getElementsByName('metadata-platform-id')[0].value,
+        instrument: document.getElementsByName('metadata-instrument')[0].value,
+        library_selection: document.getElementsByName('metadata-library-selection')[0].value,
+        library_source: document.getElementsByName('metadata-library-source')[0].value,
+        library_strategy: document.getElementsByName('metadata-library-strategy')[0].value,
+        pubmed_id: document.getElementsByName('metadata-pubmed-id')[0].value
+    }));
+
+    if (data.success) {
+        console.log("Metadata saved.");
+    } else {
+        alert('Failed to store metadata');
+    }
 }
 
 const validateMetadataForm = () => {
