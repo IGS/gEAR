@@ -50,7 +50,7 @@ fixed paths have worked fine for decades.
       more_itertools==9.0.0 \
       mysql-connector-python==8.4.0 \
       numba==0.59.1 \
-      numexpr==2.8.1 \
+      numexpr==2.8.4 \
       numpy==1.26.0 \
       opencv-python==4.5.5.64 \
       openpyxl==3.0.10 \
@@ -72,7 +72,7 @@ fixed paths have worked fine for decades.
     $ sudo mkdir /opt/bin
     $ sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/
 
-Check the requirement.txt file in <git_repo_root>/docker for the latest packages that have been tested locally. They work in a Dockerized ubuntu environment so should be able to work on the VMs
+Check the requirement.txt file in <git_repo_root>/docker for the latest packages that have been tested locally. They work in a Dockerized ubuntu environment so should be able to work on the VMs. You can run `./pip3 install -r requirements.txt` as a shortcut.
 
 Scanpy (or dependencies) assumes it can write in several directories which the web server won't be able to write to by default, so this can be fixed with:
 
