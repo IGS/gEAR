@@ -495,69 +495,178 @@
                   Choose the format of your dataset and upload it here. You can also provide a URL to a supported dataset.
                 </p>
                 <hr />
+                
                 <div class="columns">
-                  <div class="column is-8">
-                    <div class="field">
-                      <label class="label">
-                        Dataset format
-                        <span class="icon has-tooltip-right has-tooltip-arrow" 
-                              data-tooltip="Choose the format of your dataset.">
-                            <i class="mdi mdi-information"></i>
-                        </span>
-                      </label>
-                      <div class="control">
-                        <div class="select">
-                          <select name="dataset-format">
-                            <option value="">Select one</option>
-                            <option value="3-tab">3-tab / MEX</option>
-                            <option value="rdata">Rdata / Seurat object</option>
-                            <option value="h5ad">H5AD / AnnData</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="field">
-                      <label class="label">
-                        Upload dataset file
-                        <span class="icon has-tooltip-right has-tooltip-arrow" 
-                              data-tooltip="Choose the file to upload.">
-                            <i class="mdi mdi-information"></i>
-                        </span>
-                      </label>
-                      <div class="file has-name is-fullwidth">
-                        <label class="file-label is-fullwidth">
-                          <input class="file-input is-fullwidth" type="file" name="dataset-file-input">
-                          <span class="file-cta">
-                            <span class="file-icon">
-                              <i class="mdi mdi-upload"></i>
-                            </span>
-                            <span class="file-label is-fullwidth">
-                              Choose
-                            </span>
+                  <div class="column is-3">
+                    <!-- MEX/3-tab -->
+                    <div class="box">
+                      <h3>MEX / 3-tab format</h3>
+                      <p class="format-description">
+                        These are simple, plain-text files in a bundle, usually compressed 
+                        with tar/gzip or zip.
+                      </p>
+                      <p class="format-documentation-header">
+                        Learn more
+                      </p>
+                      <ul class="format-documentation-links">
+                        <li>
+                          <span class="icon-text"><span class="icon"><i class="mdi mdi-open-in-new"></i></span>
+                            <span><a href="https://www.10xgenomics.com/support/software/cell-ranger/latest/analysis/outputs/cr-outputs-mex-matrices" target="_blank">MEX info</a></span>
                           </span>
-                          <span class="file-name">
-                            No file chosen
-                          </span> 
-                        </label>
+                        </li>
+                        <li>
+                          <span class="icon-text"><span class="icon"><i class="mdi mdi-download"></i></span>
+                            <span><a href="./user_templates/example_mex.tar" target="_blank">MEX example</a></span>
+                          </span>
+                        </li>
+                        <li>
+                          <span class="icon-text"><span class="icon"><i class="mdi mdi-open-in-new"></i></span>
+                            <span>3-tab info</span>
+                          </span>
+                        </li>
+                        <li>
+                          <span class="icon-text"><span class="icon"><i class="mdi mdi-download"></i></span>
+                            <span><a href="./user_templates/example_3tab.tar.gz">3-tab example</a></span>
+                          </span>
+                        </li>
+                      </ul>
+                      <div class="control">
+                        <button data-format="mex_3tab" class="button is-primary is-fullwidth format-selector">Choose</button>
                       </div>
                     </div>
-                    <div class="field">
-                      <label class="label">
-                        Or provide a URL
-                        <span class="icon has-tooltip-right has-tooltip-arrow" 
-                              data-tooltip="Provide a URL to a supported dataset.">
-                            <i class="mdi mdi-information"></i>
+                  </div>
+                  <div class="column is-3">
+                    <!-- Excel -->
+                    <div class="box">
+                      <h3>MS Excel</h3>
+                      <p class="format-description">
+                        Similar in format to 3-tab but rather than individual files each is a different 
+                        tab in an Excel spreadsheet. Mostly for bulk RNA-seq data as it doesn't initial-scale
+                        very well for even medium-sized datasets.
+                      </p>
+                      <p class="format-documentation-header">
+                        Learn more
+                      </p>
+                      <ul class="format-documentation-links">
+                        <li>
+                          <span class="icon-text"><span class="icon"><i class="mdi mdi-open-in-new"></i></span>
+                            <span>Excel info</span>
+                          </span>
+                        </li>
+                        <li>
+                          <span class="icon-text"><span class="icon"><i class="mdi mdi-download"></i></span>
+                            <span><a href="./user_templates/example_timeseries.xlsx">Excel example</a></span>
+                          </span>
+                        </li>
+                      </ul>
+                      <div class="control">
+                        <button data-format="excel" class="button is-primary is-fullwidth format-selector">Choose</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="column is-3">
+                    <div class="box">
+                      <h3>Rdata / Seurat</h3>
+                      <p class="format-description">
+                        This is a binary format used by the Seurat package in R. If you've already been 
+                        working with your dataset in R, including clustering and other analyses, this is
+                        the format to choose.
+                      </p>
+                      <p class="format-documentation-header">
+                        <span class="icon-text"><span class="icon"><i class="mdi mdi-school-outline"></i></span>
+                          <span>Learn more</span>
+                        </span> 
+                      </p>
+                      <ul class="format-documentation-links">
+                        <li>
+                          <span class="icon-text"><span class="icon"><i class="mdi mdi-open-in-new"></i></span>
+                            <span><a href="https://bioinformatics.ccr.cancer.gov/docs/getting-started-with-scrna-seq/IntroToR_Seurat/" target="_blank">Rdata info</a></span>
+                          </span>
+                        </li>
+                        <li>
+                          <span class="icon-text"><span class="icon"><i class="mdi mdi-download"></i></span>
+                            <span>Rdata example</span>
+                          </span>
+                        </li>
+                      </ul>
+                      <div class="control">
+                        <button data-format="rdata" class="button is-primary is-fullwidth format-selector">Choose</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="column is-3">
+                    <div class="box">
+                      <h3>H5AD / Python</h3>
+                      <p class="format-description">
+                        Usually created by the Scanpy package in Python, this is a binary format that is
+                        very efficient for large datasets. If you've been working with your dataset in Python,
+                        this is the format to choose.
+                      </p>
+                      <p class="format-documentation-header">
+                        <span class="icon-text"><span class="icon"><i class="mdi mdi-school-outline"></i></span>
+                          <span>Learn more</span>
+                        </span> 
+                      </p>
+                      <ul class="format-documentation-links">
+                        <li>
+                          <span class="icon-text"><span class="icon"><i class="mdi mdi-open-in-new"></i></span>
+                            <span><a href="https://anndata.readthedocs.io/en/latest/" target="_blank">H5AD info</a></span>
+                          </span>
+                        </li>
+                        <li>
+                          <span class="icon-text"><span class="icon"><i class="mdi mdi-download"></i></span>
+                            <span>H5AD example</span>
+                          </span>
+                        </li>
+                      </ul>
+                      <div class="control">
+                        <button data-format="h5ad" class="button is-primary is-fullwidth format-selector">Choose</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              
+                <div class="field">
+                  <label class="label">
+                    Upload dataset file
+                    <span class="icon has-tooltip-right has-tooltip-arrow" 
+                          data-tooltip="Choose the file to upload.">
+                        <i class="mdi mdi-information"></i>
+                    </span>
+                  </label>
+                  <div class="file has-name is-fullwidth">
+                    <label class="file-label is-fullwidth">
+                      <input class="file-input is-fullwidth" type="file" name="dataset-file-input">
+                      <span class="file-cta">
+                        <span class="file-icon">
+                          <i class="mdi mdi-upload"></i>
                         </span>
-                      </label>
-                      <div class="control">
-                        <input class="input" type="text" name="dataset-url" placeholder="URL to dataset">
-                      </div>
-                    </div>
-                    <div class="field">
-                      <div class="control">
-                        <button class="button is-primary">Upload dataset</button>
-                      </div>
-                    </div>
+                        <span class="file-label is-fullwidth">
+                          Choose
+                        </span>
+                      </span>
+                      <span class="file-name">
+                        No file chosen
+                      </span> 
+                    </label>
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="label">
+                    Or provide a URL
+                    <span class="icon has-tooltip-right has-tooltip-arrow" 
+                          data-tooltip="Provide a URL to a supported dataset.">
+                        <i class="mdi mdi-information"></i>
+                    </span>
+                  </label>
+                  <div class="control">
+                    <input class="input" type="text" name="dataset-url" placeholder="URL to dataset">
+                  </div>
+                </div>
+                <div class="field">
+                  <div class="control">
+                    <button class="button is-primary">Upload dataset</button>
                   </div>
                 </div>
               </div>

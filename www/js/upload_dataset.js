@@ -158,6 +158,9 @@ const storeMetadata = async () => {
         document.getElementById('step-upload-metadata-c').classList.add('is-hidden');
         document.getElementById('step-upload-dataset-c').classList.remove('is-hidden');
 
+        // Scroll to the top of the page
+        window.scrollTo(0, 0);
+
     } else {
         alert('Failed to store metadata');
     }
