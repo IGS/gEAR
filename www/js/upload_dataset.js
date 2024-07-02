@@ -121,7 +121,43 @@ const storeMetadata = async () => {
     }));
 
     if (data.success) {
-        console.log("Metadata saved.");
+        // UI for next step:
+        /*
+        // For the current step:
+        <span class="steps-marker">
+            <span class="icon">
+            <i class="mdi mdi-check-bold"></i>
+            </span>
+        </span>
+        // For the next step:
+        <span class="steps-marker is-light">
+            <span class="icon">
+            <i class="mdi mdi-wrench"></i>
+            </span>
+        </span>
+        */
+
+        let metadata_step_li = document.getElementById('step-enter-metadata');
+        let metadata_step_marker = metadata_step_li.firstElementChild;
+        let metadata_step_icon = metadata_step_marker.firstElementChild;
+
+        let upload_step_li = document.getElementById('step-upload-dataset');
+        let upload_step_marker = upload_step_li.firstElementChild;
+        let upload_step_icon = upload_step_marker.firstElementChild;
+
+        metadata_step_li.classList.remove('is-active');
+        upload_step_li.classList.add('is-active');
+
+        metadata_step_marker.classList.remove('is-light');
+        metadata_step_icon.firstElementChild.classList.remove('mdi-wrench');
+        metadata_step_icon.firstElementChild.classList.add('mdi-check-bold');
+
+        upload_step_marker.classList.add('is-light');
+        upload_step_icon.firstElementChild.classList.add('mdi-wrench');
+
+        document.getElementById('step-upload-metadata-c').classList.add('is-hidden');
+        document.getElementById('step-upload-dataset-c').classList.remove('is-hidden');
+
     } else {
         alert('Failed to store metadata');
     }

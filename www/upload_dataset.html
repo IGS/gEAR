@@ -72,10 +72,10 @@
             <div id="logged-in-c" class="is-hidden">
               <div id="step-graphic-c">
                 <ul class="steps has-content-centered">
-                  <li class="steps-segment">
-                    <span class="steps-marker">
+                  <li id='step-enter-metadata' class="steps-segment is-active">
+                    <span class="steps-marker is-light">
                       <span class="icon">
-                        <i class="mdi mdi-check-bold"></i>
+                        <i class="mdi mdi-wrench"></i>
                       </span>
                     </span>
                     <div class="steps-content">
@@ -83,42 +83,42 @@
                       <p class="is-size-7">Use the form or provided template to enter metadata for your dataset.</p>
                     </div>
                   </li>
-                  <li class="steps-segment is-active">
-                    <span class="steps-marker is-light">
+                  <li id="step-upload-dataset" class="steps-segment">
+                    <span class="steps-marker">
                       <span class="icon">
-                        <i class="mdi mdi-wrench"></i>
+                        <i class="mdi"></i>
                       </span>
                     </span>
-                    <div class="steps-content">
-                      <p class="step-label is-size-5">Validate metadata</p>
-                      <p class="is-size-7">Check and correct the content of your metadata file.</p>
-                    </div>
-                  </li>
-                  <li class="steps-segment">
-                    <span class="steps-marker"></span>
                     <div class="steps-content">
                       <p class="step-label is-size-5">Upload dataset</p>
                       <p class="is-size-7">Choose your dataset format and upload directly or provide a supported URL.</p>
                     </div>
                   </li>
-                  <li class="steps-segment">
+                  <li id='step-process-dataset' class="steps-segment is-active">
+                    <span class="steps-marker"></span>
+                    <div class="steps-content">
+                      <p class="step-label is-size-5">Dataset processing</p>
+                      <p class="is-size-7">Your dataset is processed and checked on the server.</p>
+                    </div>
+                  </li>
+                  <li id='step-finalize-dataset' class="steps-segment">
+                    <span class="steps-marker"></span>
+                    <div class="steps-content">
+                      <p class="step-label is-size-5">Finalize submission</p>
+                      <p class="is-size-7">Your dataset gets fully integrated into the system here.</p>
+                    </div>
+                  </li>
+                  <li id="step-curate-dataset" class="steps-segment">
                     <span class="steps-marker"></span>
                     <div class="steps-content">
                       <p class="step-label is-size-5">Curate dataset</p>
                       <p class="is-size-7">Get the most out of your dataset by doing curation steps here.</p>
                     </div>
                   </li>
-                  <li class="steps-segment">
-                    <span class="steps-marker"></span>
-                    <div class="steps-content">
-                      <p class="step-label is-size-5">Final submission</p>
-                      <p class="is-size-7">Your dataset gets fully processed and integrated into the system here.</p>
-                    </div>
-                  </li>
                 </ul>
               </div> <!-- end #step-c -->
               <hr />
-              <div id="step-upload-metadata-c" class="step-c">
+              <div id="step-upload-metadata-c" class="step-c is-hidden">
                 <h1>Step - Enter metadata (via form OR upload)</h1>
                 <p>
                   The 'metadata' is the data describing your dataset, including things like title, authorship, sequencing 
@@ -461,7 +461,7 @@
                           <label class="label">Or upload a metadata file</label>
                           <div class="file has-name is-fullwidth">
                             <label class="file-label">
-                              <input class="file-input  is-fullwidth" type="file" name="resume">
+                              <input class="file-input is-fullwidth" type="file" name="metadata-file-input">
                               <span class="file-cta">
                                 <span class="file-icon">
                                   <i class="mdi mdi-upload"></i>
@@ -480,7 +480,7 @@
                       <div class="column is-12">
                         <div class="field">
                           <div class="control">
-                            <button class="button is-primary">Upload</button>
+                            <button class="button is-primary" disabled>Upload</button>
                           </div>
                         </div>
                       </div>
@@ -489,6 +489,79 @@
                 </div>
 
               </div>
+              <div id="step-upload-dataset-c" class="step-c">
+                <h1>Step - Upload dataset</h1>
+                <p>
+                  Choose the format of your dataset and upload it here. You can also provide a URL to a supported dataset.
+                </p>
+                <hr />
+                <div class="columns">
+                  <div class="column is-8">
+                    <div class="field">
+                      <label class="label">
+                        Dataset format
+                        <span class="icon has-tooltip-right has-tooltip-arrow" 
+                              data-tooltip="Choose the format of your dataset.">
+                            <i class="mdi mdi-information"></i>
+                        </span>
+                      </label>
+                      <div class="control">
+                        <div class="select">
+                          <select name="dataset-format">
+                            <option value="">Select one</option>
+                            <option value="3-tab">3-tab / MEX</option>
+                            <option value="rdata">Rdata / Seurat object</option>
+                            <option value="h5ad">H5AD / AnnData</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="field">
+                      <label class="label">
+                        Upload dataset file
+                        <span class="icon has-tooltip-right has-tooltip-arrow" 
+                              data-tooltip="Choose the file to upload.">
+                            <i class="mdi mdi-information"></i>
+                        </span>
+                      </label>
+                      <div class="file has-name is-fullwidth">
+                        <label class="file-label is-fullwidth">
+                          <input class="file-input is-fullwidth" type="file" name="dataset-file-input">
+                          <span class="file-cta">
+                            <span class="file-icon">
+                              <i class="mdi mdi-upload"></i>
+                            </span>
+                            <span class="file-label is-fullwidth">
+                              Choose
+                            </span>
+                          </span>
+                          <span class="file-name">
+                            No file chosen
+                          </span> 
+                        </label>
+                      </div>
+                    </div>
+                    <div class="field">
+                      <label class="label">
+                        Or provide a URL
+                        <span class="icon has-tooltip-right has-tooltip-arrow" 
+                              data-tooltip="Provide a URL to a supported dataset.">
+                            <i class="mdi mdi-information"></i>
+                        </span>
+                      </label>
+                      <div class="control">
+                        <input class="input" type="text" name="dataset-url" placeholder="URL to dataset">
+                      </div>
+                    </div>
+                    <div class="field">
+                      <div class="control">
+                        <button class="button is-primary">Upload dataset</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               
             </div> <!-- end #logged-in-c -->
 
