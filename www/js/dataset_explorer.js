@@ -853,6 +853,8 @@ const changeDatasetCollectionCallback = async (datasetCollectionData=null) => {
 
         const singleMember = new LayoutArrangementMember(singleArrangement, displayId, member.grid_position, member.start_col, member.start_row, member.grid_width, member.grid_height);
 
+        const maxEndCol = 13;
+
         // If in legacy mode, then we need to calculate the startCol and endCol and startRow and endRow
         // so the arrangement view can be displayed correctly
         if (legacyMode) {
