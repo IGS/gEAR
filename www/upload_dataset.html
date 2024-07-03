@@ -118,7 +118,7 @@
                 </ul>
               </div> <!-- end #step-c -->
               <hr />
-              <div id="step-upload-metadata-c" class="step-c is-hidden">
+              <div id="step-upload-metadata-c" class="step-c">
                 <h1>Step - Enter metadata (via form OR upload)</h1>
                 <p>
                   The 'metadata' is the data describing your dataset, including things like title, authorship, sequencing 
@@ -489,15 +489,16 @@
                 </div>
 
               </div>
-              <div id="step-upload-dataset-c" class="step-c">
+              <div id="step-upload-dataset-c" class="step-c is-hidden">
                 <h1>Step - Upload dataset</h1>
                 <p>
                   Choose the format of your dataset and upload it here. You can also provide a URL to a supported dataset.
                 </p>
+
                 <hr />
                 
                 <div class="columns">
-                  <div class="column is-3">
+                  <div class="column format-column is-3 is-flex">
                     <!-- MEX/3-tab -->
                     <div class="box">
                       <h3>MEX / 3-tab format</h3>
@@ -535,7 +536,7 @@
                       </div>
                     </div>
                   </div>
-                  <div class="column is-3">
+                  <div class="column format-column is-3 is-flex">
                     <!-- Excel -->
                     <div class="box">
                       <h3>MS Excel</h3>
@@ -564,7 +565,8 @@
                       </div>
                     </div>
                   </div>
-                  <div class="column is-3">
+                  <div class="column format-column is-3 is-flex">
+                    <!-- Rdata/Seurat -->
                     <div class="box">
                       <h3>Rdata / Seurat</h3>
                       <p class="format-description">
@@ -594,7 +596,8 @@
                       </div>
                     </div>
                   </div>
-                  <div class="column is-3">
+                  <div class="column format-column is-3 is-flex">
+                    <!-- H5AD/Python -->
                     <div class="box">
                       <h3>H5AD / Python</h3>
                       <p class="format-description">
@@ -626,44 +629,52 @@
                   </div>
                 </div>
 
+                <hr />
+
+                <div class="columns">
+                  <div class="column is-6">
+                    <div class="field">
+                      <label class="label">
+                        Upload dataset file
+                        <span class="icon has-tooltip-right has-tooltip-arrow" 
+                              data-tooltip="Choose the file to upload.">
+                            <i class="mdi mdi-information"></i>
+                        </span>
+                      </label>
+                      <div class="file has-name is-fullwidth">
+                        <label class="file-label is-fullwidth">
+                          <input class="file-input is-fullwidth" type="file" name="dataset-file-input">
+                          <span class="file-cta">
+                            <span class="file-icon">
+                              <i class="mdi mdi-upload"></i>
+                            </span>
+                            <span class="file-label is-fullwidth">
+                              Choose
+                            </span>
+                          </span>
+                          <span class="file-name">
+                            No file chosen
+                          </span> 
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="column is-6">
+                    <div class="field">
+                      <label class="label">
+                        Or provide a URL
+                        <span class="icon has-tooltip-right has-tooltip-arrow" 
+                              data-tooltip="Provide a URL to a supported dataset.">
+                            <i class="mdi mdi-information"></i>
+                        </span>
+                      </label>
+                      <div class="control">
+                        <input class="input" type="text" name="dataset-url" placeholder="URL to dataset">
+                      </div>
+                    </div>
+                  </div>
+                </div>
               
-                <div class="field">
-                  <label class="label">
-                    Upload dataset file
-                    <span class="icon has-tooltip-right has-tooltip-arrow" 
-                          data-tooltip="Choose the file to upload.">
-                        <i class="mdi mdi-information"></i>
-                    </span>
-                  </label>
-                  <div class="file has-name is-fullwidth">
-                    <label class="file-label is-fullwidth">
-                      <input class="file-input is-fullwidth" type="file" name="dataset-file-input">
-                      <span class="file-cta">
-                        <span class="file-icon">
-                          <i class="mdi mdi-upload"></i>
-                        </span>
-                        <span class="file-label is-fullwidth">
-                          Choose
-                        </span>
-                      </span>
-                      <span class="file-name">
-                        No file chosen
-                      </span> 
-                    </label>
-                  </div>
-                </div>
-                <div class="field">
-                  <label class="label">
-                    Or provide a URL
-                    <span class="icon has-tooltip-right has-tooltip-arrow" 
-                          data-tooltip="Provide a URL to a supported dataset.">
-                        <i class="mdi mdi-information"></i>
-                    </span>
-                  </label>
-                  <div class="control">
-                    <input class="input" type="text" name="dataset-url" placeholder="URL to dataset">
-                  </div>
-                </div>
                 <div class="field">
                   <div class="control">
                     <button class="button is-primary">Upload dataset</button>
