@@ -49,7 +49,7 @@ fixed paths have worked fine for decades.
       mod-wsgi==4.9.4 \
       more_itertools==9.0.0 \
       mysql-connector-python==8.4.0 \
-      numba==0.59.1 \
+      numba==0.58.1 \
       numexpr==2.8.4 \
       numpy==1.26.0 \
       opencv-python==4.5.5.64 \

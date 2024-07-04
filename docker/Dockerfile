@@ -130,6 +130,8 @@ COPY ./gear.ini.docker /opt/gEAR/gear.ini
 WORKDIR /opt/Python-${PYTHON_VERSION}/bin
 COPY ./requirements.txt /opt/gEAR/docker/requirements.txt
 RUN ./pip3 install --upgrade pip \
+  # wheel is needed for the installation of biopython
+  && ./pip3 install wheel \
   && ./pip3 install -r /opt/gEAR/docker/requirements.txt \
   && ./python3 -m pip install git+https://github.com/theislab/diffxpy.git@7609ea935936e3739fc4c71b75c8ee8ca57f51ea \
   && apt-get -qq update \
