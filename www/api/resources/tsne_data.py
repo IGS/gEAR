@@ -47,7 +47,7 @@ class PlotError(Exception):
 
 def calculate_figure_height(num_plots):
     """Determine height of tsne plot based on number of group elements."""
-    return (num_plots * 4) + (num_plots -1)
+    return (num_plots * 1) + (num_plots -1)
 
 def calculate_figure_width(num_plots):
     """Determine width of tsne plot based on number of group elements."""
@@ -68,11 +68,10 @@ def create_bluered_colorscale():
 
 def create_colorscale_with_zero_gray(colorscale):
     """Take a predefined colorscale, and change the 0-value color to gray, and return."""
-    from matplotlib import cm
 
     # Create custom colorscale with gray at the 0.0 level
     # Src: https://matplotlib.org/tutorials/colors/colormap-manipulation.html
-    cmap = cm.get_cmap(colorscale, 256)
+    cmap = plt.get_cmap(colorscale, 256)
     newcolors = cmap(np.linspace(0, 1, 256))  # split colormap into 256 parts over 0:1 range
     gray = np.array([192/256, 192/256, 192/256, 1])
     newcolors[0, :] = gray
@@ -405,8 +404,8 @@ class TSNEData(Resource):
         io_fig = None
         try:
             basis = PLOT_TYPE_TO_BASIS[plot_type]
-        except:
-            raise("{} was not a valid plot type".format(plot_type))
+        except ValueError:
+            raise ValueError("{} was not a valid plot type".format(plot_type))
 
         # NOTE: This may change in the future if users want plots by group w/o the colorize_by plot added
         if plot_by_group:
@@ -460,9 +459,13 @@ class TSNEData(Resource):
             "return_fig": True
         }
 
+        num_plots = 1   # single plot
+
         # If colorize_by is passed we need to generate that image first, before the index is reset
         #  for gene symbols, then merge them.
         if colorize_by:
+            num_plots = 2   # gene expression and colorize_by plot
+
             color_category = True if is_categorical(selected.obs[colorize_by]) else False
 
             if color_category:
@@ -541,6 +544,10 @@ class TSNEData(Resource):
         io_fig = sc.pl.embedding(selected, **kwargs)
         ax = io_fig.get_axes()
 
+        # set the figsize based on the number of plots
+        io_fig.set_figheight(calculate_figure_height(num_plots))
+        io_fig.set_figwidth(calculate_figure_width(num_plots))
+
         # rename axes labels
         if type(ax) == list:
             for f in ax:
@@ -582,6 +589,8 @@ class TSNEData(Resource):
             if high_dpi:
                 dpi = max(150, int(df.shape[0] / 100))
                 sc.settings.set_figure_params(dpi_save=dpi)
+                # if high_dpi, double the figsize height
+                io_fig.set_figheight(calculate_figure_height(num_plots) * 2)
                 io_fig.savefig(io_pic, format='png', bbox_inches="tight")
             else:
                 # Moved this to the end to prevent any issues with the dpi setting
