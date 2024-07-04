@@ -159,10 +159,12 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         populateUserHistoryTable();
     }
 
+    document.getElementById("submit-expression-search").classList.add("is-loading");
     await Promise.all([
         fetchGeneCartData(),
         fetchDatasetCollections()
     ]);
+    document.getElementById("submit-expression-search").classList.remove("is-loading");
 
     // Trigger the default dataset collection to be selected in the
     if (CURRENT_USER.default_profile_share_id) {

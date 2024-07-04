@@ -70,10 +70,14 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // add event listener for when the submit-projection-search button is clicked
     document.querySelector('#submit-projection-search').addEventListener('click', async (event) => {
 
+        const currentTarget = event.currentTarget;
+        currentTarget.classList.add("is-loading");
+
         const status = validateProjectionSearchForm();
 
         if (! status) {
             console.info("Aborting search");
+            event.currentTarget.classList.remove("is-loading");
             return;
         }
 
@@ -104,12 +108,13 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         } catch (error) {
             logErrorInConsole(error);
             return;
+        } finally {
+            currentTarget.classList.remove("is-loading");
         }
 
         const url = buildStateUrl();
         // add to state history
         history.pushState(null, '', url);
-
     });
 
     // Change the svg scoring method when select element is changed
@@ -128,6 +133,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     });
 
     // Wait until all pending API calls have completed before checking if we need to search
+    document.getElementById("submit-projection-search").classList.add("is-loading");
     try {
         // SAdkins note - Promise.all fails fast,
         // but Promise.allSettled waits until all resolve/reject and lets you know which ones failed
@@ -141,6 +147,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     } catch (error) {
         logErrorInConsole(error);
+    } finally {
+        document.getElementById("submit-projection-search").classList.remove("is-loading");
     }
 
     // Trigger the default dataset collection to be selected in the
