@@ -2134,7 +2134,7 @@ class DatasetCollection:
                 dataset.organism = row[2]
                 dataset.tags = row[17].split(',')
                 dataset.access = 'access_level'
-                dataset.user_name = get_user_by_id(dataset.owner_id).user_name
+                dataset.user_name = row[10]
 
                 if os.path.exists(dataset.get_tarball_path()):
                     dataset.has_tarball = 1
