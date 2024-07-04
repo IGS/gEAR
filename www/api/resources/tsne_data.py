@@ -47,7 +47,7 @@ class PlotError(Exception):
 
 def calculate_figure_height(num_plots):
     """Determine height of tsne plot based on number of group elements."""
-    return (num_plots * 1) + (num_plots -1)
+    return (num_plots * 2) + (num_plots -1)
 
 def calculate_figure_width(num_plots):
     """Determine width of tsne plot based on number of group elements."""
@@ -535,7 +535,7 @@ class TSNEData(Resource):
                 titles.append(selected_gene)
 
             columns.append(colorize_by)
-            titles.append(None)
+            titles.append(colorize_by)
 
         else:
             columns.append(selected_gene)
@@ -583,6 +583,7 @@ class TSNEData(Resource):
             selected.file.close()
 
         with io.BytesIO() as io_pic:
+            # ? From what I'm reading and seeing, this line does not seem to make a difference if bbox_inches is set to "tight"
             io_fig.tight_layout()   # This crops out much of the whitespace around the plot. The "savefig" line does this with the legend too
 
             # Set the saved figure dpi based on the number of observations in the dataset after filtering
