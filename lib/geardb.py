@@ -7,7 +7,7 @@ import uuid
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 from json import JSONEncoder
 
 gear_lib_path = os.path.dirname(os.path.realpath(__file__))
@@ -1755,11 +1755,11 @@ class FolderCollection:
 
 @dataclass
 class DatasetLink:
-    id: int = None
-    dataset_id: str = None
-    resource: str = None
-    label: str = None
-    url: str = None
+    id: Optional[int] = None
+    dataset_id: Optional[str] = None
+    resource: Optional[str] = None
+    label: Optional[str] = None
+    url: Optional[str] = None
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -1769,12 +1769,12 @@ class DatasetLink:
 
 @dataclass
 class DatasetDisplay:
-    id: int = None
-    dataset_id: str = None
-    user_id: int = None
-    label: str = None
-    plot_type: str = None
-    plotly_config: str = None
+    id: Optional[int] = None
+    dataset_id: Optional[str] = None
+    user_id: Optional[int] = None
+    label: Optional[str] = None
+    plot_type: Optional[str] = None
+    plotly_config: Optional[str] = None
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -1816,41 +1816,42 @@ class DatasetDisplay:
 @dataclass
 class Dataset:
     id: str
-    owner_id: int = None
-    title: str = None
-    organism_id: int = None
-    pubmed_id: str = None
-    geo_id: str = None
-    is_public: int = None
-    is_downloadable: int = None
-    ldesc: str = None
-    date_added: datetime.datetime = None
-    dtype: str = None
-    schematic_image: str = None
-    share_id: str = None
-    math_default: str = None
-    marked_for_removal: int = None
-    load_status: str = None
-    has_h5ad: int = None
-    platform_id: str = None
-    instrument_model: str = None
-    library_selection: str = None
-    library_source: str = None
-    library_strategy: str = None
-    contact_email: str = None
-    contact_institute: str = None
-    contact_name: str = None
-    annotation_source: str = None
-    plot_default: str = None
-    annotation_release: int = None
+    owner_id: Optional[int] = None
+    title: Optional[str] = None
+    organism_id: Optional[int] = None
+    pubmed_id: Optional[str] = None
+    geo_id: Optional[str] = None
+    is_public: Optional[int] = None
+    is_downloadable: Optional[int] = None
+    ldesc: Optional[str] = None
+    date_added: Optional[datetime.datetime] = None
+    dtype: Optional[str] = None
+    schematic_image: Optional[str] = None
+    share_id: Optional[str] = None
+    math_default: Optional[str] = None
+    marked_for_removal: Optional[int] = None
+    load_status: Optional[str] = None
+    has_h5ad: Optional[int] = None
+    platform_id: Optional[str] = None
+    instrument_model: Optional[str] = None
+    library_selection: Optional[str] = None
+    library_source: Optional[str] = None
+    library_strategy: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_institute: Optional[str] = None
+    contact_name: Optional[str] = None
+    annotation_source: Optional[str] = None
+    plot_default: Optional[str] = None
+    annotation_release: Optional[int] = None
     # derived, here for convenience
-    gene_count: int = None
-    obs_count: int = None
+    gene_count: Optional[int] = None
+    obs_count: Optional[int] = None
     has_tarball: int = 0
     displays: List[DatasetDisplay] = field(default_factory=list)
     tags: List[str] = field(default_factory=list)
     layouts: List[Layout] = field(default_factory=list)
     links: List[DatasetLink] = field(default_factory=list)
+    user_name: Optional[str] = None
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -2305,18 +2306,18 @@ class DatasetCollection:
 
 @dataclass
 class Gene:
-    id: int = None
-    ensembl_id: str = None
-    ensembl_version: str = None
-    ensembl_release: int = None
-    genbank_acc: str = None
-    organism_id: int = None
-    molecule: str = None
-    start: int = None
-    stop: int = None
-    gene_symbol: str = None
-    product: str = None
-    biotype: str = None
+    id: Optional[int] = None
+    ensembl_id: Optional[str] = None
+    ensembl_version: Optional[str] = None
+    ensembl_release: Optional[int] = None
+    genbank_acc: Optional[str] = None
+    organism_id: Optional[int] = None
+    molecule: Optional[str] = None
+    start: Optional[int] = None
+    stop: Optional[int] = None
+    gene_symbol: Optional[str] = None
+    product: Optional[str] = None
+    biotype: Optional[str] = None
 
     # derived, not in the relational DB
     go_terms: List[dict] = field(default_factory=list)
