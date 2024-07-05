@@ -658,38 +658,6 @@ class DatasetTile {
                         openModal(modalElt);
                     });
                     break;
-                case "expand":
-                    // Button should not exist for zoomed views
-                    if (this.isZoomed) {
-                        item.remove();
-                        break;
-                    }
-                    // Hide "#result-panel-grid" display and show a new grid with only this tile
-                    item.addEventListener("click", (event) => {
-
-                        document.getElementById("result-panel-grid").classList.add("is-hidden");
-                        document.getElementById("zoomed-panel-grid").replaceChildren();
-                        document.getElementById("zoomed-panel-grid").classList.remove("is-hidden");
-
-                        // Apply single tile grid
-                        this.parentTileGrid.applySingleTileGrid(this, document.getElementById("zoomed-panel-grid"), true);
-
-                    });
-                    break;
-                case "shrink":
-                    // Button should not exist for non-zoomed views
-                    if (!this.isZoomed) {
-                        item.remove();
-                        break;
-                    }
-
-                    // Revert back to "#result-panel-grid" display
-                    item.addEventListener("click", (event) => {
-                        document.getElementById("result-panel-grid").classList.remove("is-hidden");
-                        document.getElementById("zoomed-panel-grid").classList.add("is-hidden");
-
-                    });
-                    break;
                 case "info":
                     // Modal for dataset information
                     item.addEventListener("click", (event) => {
@@ -817,6 +785,27 @@ class DatasetTile {
             divider.classList.add("dropdown-divider");
             downloadBundle.insertAdjacentElement("beforebegin", divider);
         }
+
+        if (this.isZoomed) {
+            tileElement.querySelector('.js-expand-display').classList.add("is-hidden");
+        } else {
+            tileElement.querySelector('.js-shrink-display').classList.add("is-hidden");
+        }
+        tileElement.querySelector('.js-expand-display').addEventListener("click", (event) => {
+            // Apply a zoomed-in display
+            document.getElementById("result-panel-grid").classList.add("is-hidden");
+            document.getElementById("zoomed-panel-grid").replaceChildren();
+            document.getElementById("zoomed-panel-grid").classList.remove("is-hidden");
+
+            // Apply single tile grid
+            this.parentTileGrid.applySingleTileGrid(this, document.getElementById("zoomed-panel-grid"), true);
+
+        });
+        tileElement.querySelector('.js-shrink-display').addEventListener("click", (event) => {
+            // Revert back to "#result-panel-grid" display
+            document.getElementById("result-panel-grid").classList.remove("is-hidden");
+            document.getElementById("zoomed-panel-grid").classList.add("is-hidden");
+        });
 
         // Add event listener to dropdown trigger
         tileElement.querySelector("button.dropdown-trigger").addEventListener("click", (event) => {
