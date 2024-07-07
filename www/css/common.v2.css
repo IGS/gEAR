@@ -8,10 +8,6 @@ html, body {
     height: 100vh;
 }
 
-#main-layout-c {
-    
-}
-
 /* Get rid of underlines on the tooltip elements */
 [data-tooltip] {
     border-bottom-width: 0 !important;
@@ -50,10 +46,6 @@ html, body {
 
 /* -------------------- */
 /* -= Left navbar section =- */
-
-#primary-nav {
-    
-}
 
 #citation-c {
     max-width: 200px;
