@@ -65,6 +65,11 @@ document.addEventListener('DOMContentLoaded', () => {
         betaSiteModal.classList.remove('is-active');
     });
 
+    // Makes the logo clickable as it was in v1
+    document.getElementById('logo-c').addEventListener('click', () => {
+        window.location.replace('./index.html');
+    });
+
 /**
  * Controls for the left navbar visibility
  */
