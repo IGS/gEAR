@@ -157,7 +157,7 @@ After opening the single cell workbench and choosing a dataset, there will be a 
 To start at the beginning of the single cell processing steps (i.e. without using a stored analysis), first pick initial filtering criteria to apply to the data. Next, choose 'Apply filter' before moving to the next step. To advance between steps, use the drop down menus for the specific step.  In many cases, the menus will auto-advance you.  In steps that do not auto-advance this is intentional as some steps may have plots you want to look further into prior to advancing. You can also see what step you are on using the top timeline-like bar.  Clicking on any green step will take you back to that step; however, there are various steps you can't move back to (filtering steps) as the dataset has been altered. In each step of the pipeline, there are general recommendations for criteria to select but these can be changed to better fit your dataset or question. 
 
 
-<img width="700" alt="Screen Shot 2022-04-26 at 2 10 37 PM" src="https://user-images.githubusercontent.com/28451557/165365092-1b526fe0-d173-4882-8d6c-f72378756a93.png">
+<img width="700" alt="Screen Shot 2022-04-26 at 2 10 37 PM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/SCWorkbench.png">
 
 ## Multigene curator
 
@@ -219,7 +219,6 @@ Multigene displays can also be toggled on the results page:
 
 <img width="700" alt="Screen Shot 2022-04-25 at 3 42 29 PM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/ToggleToMultiGeneDisplaysWithGeneList.png">
 
-# TODO Upload Data wiki rewrite (waiting for Upload Data to complete)
 # Upload data
 
 For more information on how to upload different types of data into gEAR, see our [upload documentation](https://github.com/IGS/gEAR/blob/main/docs/Documentation/UploadingOverview.md).
