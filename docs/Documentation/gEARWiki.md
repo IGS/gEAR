@@ -148,13 +148,13 @@ To get started with the RNAseq comparison tool, select the dataset you wish to u
 <img width="700" alt="Screen Shot 2022-04-26 at 2 41 17 PM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/CompareTool.png">
 
 
-## TODO edit single cell workbench below
+
 ## Single Cell Workbench 
 The workbench for single cell RNAseq (scRNAseq) is designed to allow biologists meaningful access to single cell data, even with limited informatics training. The workbench begins by selecting a dataset for analysis, and then offers analysis tools following several standard pre-processing steps. It was designed to mimic the workflow of a standardized Seurat pipeline. For more in depth instruction of how to use this tool, see the instructions on the tool page ([Link](https://umgear.org/analyze_dataset.html)). 
 
 After opening the single cell workbench and choosing a dataset, there will be a choice whether to conduct a new analysis or start from a stored analysis. Stored analysis starts with precomputed results, either uploaded by the dataset owner or from an analysis already conducted and saved on the gEAR platform.
 
-To start at the beginning of the single cell processing steps (i.e. without using a stored analysis), first pick initial filtering criteria to apply to the data. Next, choose 'Apply filter' before moving to the next step. To advance between steps, use the toggle buttons on the left side of the page. In each step of the pipeline, there are general recommendations for criteria to select but these can be changed to better fit your dataset or question. 
+To start at the beginning of the single cell processing steps (i.e. without using a stored analysis), first pick initial filtering criteria to apply to the data. Next, choose 'Apply filter' before moving to the next step. To advance between steps, use the drop down menus for the specific step.  In many cases, the menus will auto-advance you.  In steps that do not auto-advance this is intentional as some steps may have plots you want to look further into prior to advancing. You can also see what step you are on using the top timeline-like bar.  Clicking on any green step will take you back to that step; however, there are various steps you can't move back to (filtering steps) as the dataset has been altered. In each step of the pipeline, there are general recommendations for criteria to select but these can be changed to better fit your dataset or question. 
 
 
 <img width="700" alt="Screen Shot 2022-04-26 at 2 10 37 PM" src="https://user-images.githubusercontent.com/28451557/165365092-1b526fe0-d173-4882-8d6c-f72378756a93.png">
