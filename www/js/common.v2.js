@@ -564,7 +564,7 @@ const createToast = (msg, levelClass="is-danger") => {
     });
 }
 
-const loadPlugin = (pluginName, pageName, pluginImportBasename) => {
+const loadPlugin = async (pluginName, pageName, pluginImportBasename) => {
     const head = document.getElementsByTagName('head')[0];
     const body = document.getElementsByTagName('body')[0];
 
@@ -573,7 +573,7 @@ const loadPlugin = (pluginName, pageName, pluginImportBasename) => {
     const pluginHtmlElement = document.createElement('div');
     pluginHtmlElement.id = `${pluginName}_html_c`;  // TODO: rename in kebab-case, which requires fixing in plugin HTML and JS files
 
-    fetch(pluginImportHtmlUrl)
+    const import_fetch = await fetch(pluginImportHtmlUrl)
         .then(response => {
             return response.text();
         })
