@@ -139,17 +139,26 @@
                     </h3>
                     <div id="annotation-panel-organism-selector-c" class="is-hidden mb-3">
                       <h4 class="mb-1">Organism</h4>
-                      <div id="organism-selector-control" class="control">
-                        <div class="select is-small">
-                          <select id="organism-selector" class="pr-6">
-                            <option value="">Select an organism</option>
-                          </select>
-                          <template id="tmpl-organism-option">
-                            <option value=""></option>
-                          </template>
+                      <div class="field is-grouped">
+                        <div id="organism-selector-control" class="control">
+                          <div class="select is-small">
+                            <select id="organism-selector" class="pr-6">
+                              <option value="">Select an organism</option>
+                            </select>
+                            <template id="tmpl-organism-option">
+                              <option value=""></option>
+                            </template>
+                          </div>
+                        </div>
+                        <div class="control">
+                          <button id="set-default-organism" class="button is-hidden is-primary is-small">
+                            <span class="icon is-small">
+                              <i class="mdi mdi-content-save"></i>
+                            </span>
+                            <span>Set as your default organism</span>
+                          </button>
                         </div>
                       </div>
-                      <span id="set-default-organism" class="is-hidden is-size-7 has-text-weight-bold is-clickable">Set as your default organism?</span>
                     </div>
                     <div id="extended-annotation-panel" class="columns is-hidden ml-1 mr-1 mb-1">
                       <div class="column is-4">
