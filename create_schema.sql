@@ -184,6 +184,7 @@ CREATE TABLE anatomy (
           ON DELETE CASCADE
 ) ENGINE=INNODB;
 
+-- Any changes to lengths here need to be also changed in form validation of upload_dataset.js
 CREATE TABLE dataset (
        id                       VARCHAR(50) PRIMARY KEY,
        owner_id                 INT NOT NULL,

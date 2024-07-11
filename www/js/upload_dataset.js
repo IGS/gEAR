@@ -28,28 +28,28 @@ window.onload=function() {
 
     document.getElementById('metadata-form-submit').addEventListener('click', (event) => {
         event.preventDefault();
-        let fields_missing = validateMetadataForm();
+        let errored_fields = validateMetadataForm();
 
-        if (fields_missing.length === 0) {
+        if (errored_fields.length === 0) {
             // Form looks good!
-            document.getElementById('missing-field-list-c').classList.add('is-hidden');
+            document.getElementById('errored-field-list-c').classList.add('is-hidden');
             storeMetadata();
 
         } else {
-            const missing_fields_ul = document.getElementById('missing-field-list');
-            missing_fields_ul.innerHTML = '';
-            fields_missing.forEach((field) => {
-                // we want to transform each field string to something more readable
-                field = field.replace('metadata-', '');
-                field = field.replaceAll('-', ' ');
-                field = field.charAt(0).toUpperCase() + field.slice(1);
+            const errored_fields_ul = document.getElementById('errored-field-list');
+            errored_fields_ul.innerHTML = '';
+
+            // iterate over the errored fields and display them
+            for (const field in errored_fields) {
+                let field_label = prettifyFieldName(field);
+                let field_msg = errored_fields[field];
 
                 const li = document.createElement('li');
-                li.textContent = field;
-                missing_fields_ul.appendChild(li);
-            });
+                li.textContent = `${field_label}: ${field_msg}`;
+                errored_fields_ul.appendChild(li);
+            };
 
-            document.getElementById('missing-field-list-c').classList.remove('is-hidden');
+            document.getElementById('errored-field-list-c').classList.remove('is-hidden');
         }
     });
 
@@ -94,6 +94,13 @@ const getGeoData = async () => {
     let button = document.getElementById('metadata-geo-lookup');
     button.disabled = false;
     button.classList.remove('is-loading');
+}
+
+const prettifyFieldName = (field) => {
+    field = field.replace('metadata-', '');
+    field = field.replaceAll('-', ' ');
+    field = field.charAt(0).toUpperCase() + field.slice(1);
+    return field;
 }
 
 const storeMetadata = async () => {
@@ -167,7 +174,7 @@ const storeMetadata = async () => {
 }
 
 const validateMetadataForm = () => {
-    let fields_missing = [];
+    let errored_fields = {};
 
     // Each element with a name in required_metadata_fields must have a value
     for (const field of required_metadata_fields) {
@@ -175,13 +182,41 @@ const validateMetadataForm = () => {
 
         if (!element.value) {
             element.classList.add('is-danger');
-            fields_missing.push(field);
+            errored_fields[field] = 'Requires a value';
         } else {
             element.classList.remove('is-danger');
         }
     }
 
-    return fields_missing;
+    // Check SQL length limitations
+    const field_character_limits = {
+        'metadata-title': 255,
+        'metadata-summary': 65535,
+        'metadata-annotation-source': 20,
+        //'metadata-annotation-version': int,
+        'metadata-contact-name': 100,
+        'metadata-contact-email': 100,
+        'metadata-contact-institute': 255,
+        'metadata-platform-id': 255,
+        'metadata-instrument': 255,
+        'metadata-library-selection': 255,
+        'metadata-library-source': 255,
+        'metadata-geo-id': 50,
+        'metadata-library-strategy': 65535,
+        'metadata-pubmed-id': 20
+    };
+    
+    for (const field in field_character_limits) {
+        const element = document.getElementsByName(field)[0];
+        if (element.value.length > field_character_limits[field]) {
+            element.classList.add('is-danger');
+            errored_fields[field] = `Exceeds ${field_character_limits[field]} character limit`;
+        } else {
+            element.classList.remove('is-danger');
+        }
+    }
+
+    return errored_fields;
 }
 
 /**
