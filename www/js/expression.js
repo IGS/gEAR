@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('functional-annotation-toggle').addEventListener('click', (event) => {
-        const annotation_panel = document.getElementById('#extended-annotation-panel');
+        const annotation_panel = document.getElementById('extended-annotation-panel');
         const toggle_icon = document.querySelector('#functional-annotation-toggle i');
 
         if (annotation_panel.classList.contains('is-hidden')) {
