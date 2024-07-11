@@ -97,13 +97,13 @@ function deafness_plugin_gene_change() {
 
 
 // First make the external resource links column smaller
-document.getElementById("annotation-panel-external-links-c").classList.remove("is-9");
-document.getElementById("annotation-panel-external-links-c").classList.add("is-5");
+document.getElementById("annotation-panel-external-links-c").classList.remove("is-12");
+document.getElementById("annotation-panel-external-links-c").classList.add("is-7");
 
 // Add the contents of #deafness_gene_annotation_html_c after the first column under #annotation-panel
-const oselector_c = document.getElementById('annotation-panel-organism-selector-c');
+const external_links_c = document.getElementById('annotation-panel-external-links-c');
 const deafness_gene_annotation_html = document.getElementById('deafness_gene_annotation_html_c').innerHTML;
-oselector_c.insertAdjacentHTML('afterend', deafness_gene_annotation_html);
+external_links_c.insertAdjacentHTML('afterend', deafness_gene_annotation_html);
 
 // then destroy the initial placement
 document.getElementById("deafness_gene_annotation_html_c").remove();
