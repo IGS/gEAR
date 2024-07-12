@@ -489,13 +489,6 @@ const validateMarkerGeneSelection = () => {
 const handlePageSpecificLoginUIUpdates = async (event) => {
 	document.getElementById("page-header-label").textContent = "Single Cell Workbench";
 
-    for (const elt of document.querySelectorAll("#primary-nav .menu-list a.is-active")) {
-        elt.classList.remove("is-active");
-    }
-
-    document.querySelector("a[tool='sc_workbench'").classList.add("is-active");
-
-
     const sessionId = CURRENT_USER.session_id;
     if (! sessionId ) {
         createToast("Not logged in so saving analyses is disabled.", "is-warning");

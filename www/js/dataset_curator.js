@@ -890,12 +890,6 @@ const curatorSpecifcFacetItemSelectCallback = (seriesName) => {
  */
 const curatorSpecificNavbarUpdates = () => {
 	document.getElementById("page-header-label").textContent = "Single-gene Displays";
-
-    for (const elt of document.querySelectorAll("#primary-nav .menu-list a.is-active")) {
-        elt.classList.remove("is-active");
-    }
-
-    document.querySelector("a[tool='sg_curator'").classList.add("is-active");
 }
 
 const curatorSpecificOnLoad = async () => {

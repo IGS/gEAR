@@ -19,6 +19,15 @@ document.addEventListener('DOMContentLoaded', () => {
         document.title = pageTitle.replace("gEAR", SITE_PREFS.domain_short_display_label);
     });
 
+    // set the active primary nav element, deselect the rest
+    for (const elt of document.querySelectorAll("#primary-nav .menu-list a.is-active")) {
+		elt.classList.remove("is-active");
+	}
+    const this_page_tool = document.getElementById("content-c").dataset.navLink;
+    const tool_search_string = "a[tool='" + this_page_tool + "'";
+	document.querySelector(tool_search_string).classList.add("is-active");
+
+
 
     // Add listeners for any elements which have generic close controls
     // NOTE: ".delete" has Bulma CSS associated, which overwrites mdi icon classes

@@ -2602,11 +2602,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 	// User settings has no "active" state for the sidebar
 	document.getElementById("page-header-label").textContent = "Dataset Explorer";
-	for (const elt of document.querySelectorAll("#primary-nav .menu-list a.is-active")) {
-		elt.classList.remove("is-active");
-	}
-
-	document.querySelector("a[tool='search_datasets'").classList.add("is-active");
 
     const sessionId = CURRENT_USER.session_id;
 
