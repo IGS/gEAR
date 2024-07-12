@@ -456,30 +456,35 @@
                     <div class="columns is-multiline is-variable">
                       <div class="column is-12">
                         <!-- metadata upload file -->
-                        <div class="field">
-                          <label class="label">Or upload a metadata file</label>
-                          <div class="file has-name is-fullwidth">
-                            <label class="file-label">
-                              <input class="file-input is-fullwidth" type="file" name="metadata-file-input">
-                              <span class="file-cta">
-                                <span class="file-icon">
-                                  <i class="mdi mdi-upload"></i>
+                        <form id="metadata-upload-form" enctype="multipart/form-data"
+                              action="./cgi/upload_expression_metadata.cgi" method="post">
+                          <div class="field">
+                            <label class="label">Or upload a metadata file</label>
+                            <div class="file has-name is-fullwidth">
+                              <label class="file-label">
+                                <input class="file-input is-fullwidth" type="file" id="metadata-file-input" name="metadata-file-input">
+                                <span class="file-cta">
+                                  <span class="file-icon">
+                                    <i class="mdi mdi-upload"></i>
+                                  </span>
+                                  <span class="file-label">
+                                    Choose
+                                  </span>
                                 </span>
-                                <span class="file-label">
-                                  Choose
+                                <span class="file-name" id="metadata-file-name">
+                                  No file chosen
                                 </span>
-                              </span>
-                              <span class="file-name">
-                                No file chosen
-                              </span>
-                            </label>
+                              </label>
+                            </div>
                           </div>
-                        </div>
+                          <input type="hidden" name="metadata-session-id" value="">
+                          <input type="hidden" name="metadata-dataset-id" value="">
+                        </form>
                       </div>
                       <div class="column is-12">
                         <div class="field">
                           <div class="control">
-                            <button class="button is-primary" disabled>Upload</button>
+                            <button class="button is-primary" id="metadata-upload-submit">Upload</button>
                           </div>
                         </div>
                       </div>

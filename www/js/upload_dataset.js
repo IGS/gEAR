@@ -53,6 +53,17 @@ window.onload=function() {
         }
     });
 
+    document.getElementById('metadata-file-input').addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        document.getElementById('metadata-file-name').textContent = file.name;
+        document.getElementsByName('metadata-session-id')[0].value = CURRENT_USER.session_id;
+        document.getElementsByName('metadata-dataset-id')[0].value = dataset_uid;
+    });
+
+    document.getElementById('metadata-upload-submit').addEventListener('click', (event) => {
+        document.getElementById('metadata-upload-form').submit();
+    });
+
     document.getElementById('metadata-geo-lookup').addEventListener('click', (event) => {
         event.preventDefault();
         let button = document.getElementById('metadata-geo-lookup');
