@@ -98,8 +98,16 @@ p.menu-label {
 
 /* ------------------ */
 /* -= Other styles =- */
+
+.js-step {
+    /* Lets user know that the step is clickable */
+    cursor: pointer;
+}
+
 .js-step-collapsable {
     display: none;
+    /* original (arrow) cursor */
+    cursor: initial;
 }
 
 .step-active .js-step-collapsable {
