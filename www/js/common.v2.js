@@ -1232,10 +1232,14 @@ const apiCallsMixin = {
         return data;
     },
 
+    /**
+     * Parses the metadata file using the provided form data.
+     * @param {FormData} formData - The form data containing the metadata file.
+     * @returns {Promise<any>} - A promise that resolves to the parsed metadata.
+     */
     async parseMetadataFile(formData) {
         formData.append("session_id", this.sessionId);
         const {data} = await axios.post("/cgi/upload_expression_metadata.cgi", formData);
-        console.log("Returning data: ", data);
         return data;
     },
 
