@@ -60,6 +60,12 @@ window.onload=function() {
     });
 
     document.getElementById('metadata-upload-submit').addEventListener('click', (event) => {
+        // change submit button to spinner
+        event.preventDefault();
+        let button = document.getElementById('metadata-upload-submit');
+        button.disabled = true;
+        button.classList.add('is-loading');
+
         populateMetadataFormFromFile();
     });
 
@@ -75,7 +81,33 @@ window.onload=function() {
 const populateMetadataFormFromFile = async () => {
     const formData = new FormData(document.getElementById('metadata-upload-form'));
     const data = await apiCallsMixin.parseMetadataFile(formData);
-    console.log(data);
+
+    // Fill out the form with the data
+    if (data.success) {
+        document.getElementsByName('metadata-title')[0].value = data.metadata.title.value;
+        document.getElementsByName('metadata-summary')[0].value = data.metadata.summary.value;
+        document.getElementsByName('metadata-dataset-type')[0].value = data.metadata.dataset_type.value;
+        document.getElementsByName('metadata-annotation-source')[0].value = data.metadata.annotation_source.value;
+        document.getElementsByName('metadata-annotation-version')[0].value = data.metadata.annotation_release_number.value;
+        document.getElementsByName('metadata-geo-id')[0].value = data.metadata.geo_accession.value;
+
+        document.getElementsByName('metadata-contact-name')[0].value = data.metadata.contact_name.value;
+        document.getElementsByName('metadata-contact-email')[0].value = data.metadata.contact_email.value;
+        document.getElementsByName('metadata-contact-institute')[0].value = data.metadata.contact_institute.value;
+        document.getElementsByName('metadata-taxon-id')[0].value = data.metadata.sample_taxid.value;
+        document.getElementsByName('metadata-organism')[0].value = data.metadata.sample_organism.value;
+        document.getElementsByName('metadata-platform-id')[0].value = data.metadata.platform_id.value;
+        document.getElementsByName('metadata-instrument')[0].value = data.metadata.instrument_model.value;
+        document.getElementsByName('metadata-library-selection')[0].value = data.metadata.library_selection.value;
+        document.getElementsByName('metadata-library-source')[0].value = data.metadata.library_source.value;
+        document.getElementsByName('metadata-library-strategy')[0].value = data.metadata.library_strategy.value;
+        document.getElementsByName('metadata-pubmed-id')[0].value = data.metadata.pubmed_id.value;
+    }
+
+    // change spinner back to submit button
+    let button = document.getElementById('metadata-upload-submit');
+    button.disabled = false;
+    button.classList.remove('is-loading');
 }
 
 const handlePageSpecificLoginUIUpdates = async (event) => {
