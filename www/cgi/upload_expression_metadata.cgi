@@ -43,7 +43,17 @@ def main():
     fh.close()
 
     metadata = Metadata(file_path=dest_filepath)
+    
+    try:
+        metadata.populate_from_geo()
+    except Exception as e:
+        pass
+
     result['metadata'] = json.loads(metadata.write_json())
+
+    # run geo if that property is defined
+
+
     result['success'] = 1
     print_and_go(json.dumps(result))
 
