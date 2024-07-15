@@ -519,11 +519,13 @@ const convertToFormData = (object) => {
 }
 
 /**
- * Creates a toast notification with the given message and level class.
- * @param {string} msg - The message to display in the toast notification.
- * @param {string} [levelClass="is-danger"] - The level class for the toast notification. Defaults to "is-danger".
+ * Creates a toast notification with the given message.
+ *
+ * @param {string} msg - The message to display in the toast.
+ * @param {string} [levelClass="is-danger"] - The CSS class for the toast level. Defaults to "is-danger".
+ * @param {boolean} [closeManually=false] - Indicates whether the toast can be closed manually or after a timeout. Defaults to false.
  */
-const createToast = (msg, levelClass="is-danger") => {
+const createToast = (msg, levelClass="is-danger", closeManually=false) => {
     const toast = document.createElement("div");
     toast.classList.add("notification", "js-toast", levelClass, "animate__animated", "animate__fadeInUp");
     const toastButton = document.createElement("button");
@@ -550,6 +552,10 @@ const createToast = (msg, levelClass="is-danger") => {
         document.getElementById("main-c").prepend(toast);
     }
 
+    if (closeManually) {
+        return;
+    }
+
     // For a success message, remove it after 3 seconds
     if (["is-success", "is-info"].includes(levelClass)) {
         const notifications = document.querySelectorAll(".js-toast.notification")
@@ -562,7 +568,7 @@ const createToast = (msg, levelClass="is-danger") => {
         // This also prevents the toast from stacking up
         setTimeout(() => {
             notification.remove();
-        }, 2000);
+        }, 3000);
     }
 
     // remove the toast

@@ -656,7 +656,6 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
         document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
         document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
         document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
-        document.querySelector(UI.analysisStatusInfoElt).textContent = "";
         document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
         document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.add("is-hidden");
         document.querySelector(UI.btnDeleteUnsavedAnalysisElt).classList.add("is-hidden");
@@ -701,7 +700,7 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
         document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
         document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
         document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
-        document.querySelector(UI.analysisStatusInfoElt).textContent = "This analysis is stored in your profile.";
+        createToast("This analysis is stored in your profile.", "is-info", true);
         document.querySelector(UI.btnMakePublicCopyElt).classList.remove("is-hidden");
     }
 
@@ -716,7 +715,7 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
         document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
         document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
         document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
-        document.querySelector(UI.analysisStatusInfoElt).textContent = "Changes made to this public analysis will spawn a local copy within your profile.";
+        createToast("Changes made to this public analysis will spawn a local copy within your profile.", "is-info", true);
         document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
     }
 
