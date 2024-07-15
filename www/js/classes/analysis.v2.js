@@ -473,7 +473,7 @@ class Analysis {
 
             this.type = 'user_saved';
             document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
-            document.querySelector(UI.analysisStatusInfoElt).textContent = "Changes made to this public analysis will spawn a local copy within your profile.";
+            createToast("Changes made to this public analysis will create a local copy within your profile.", "is-info", true);
             document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
             document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
             document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.add("is-hidden");
@@ -646,7 +646,7 @@ class Analysis {
             this.type = 'user_saved';
             document.querySelector(UI.btnSaveAnalysisElt).textContent = "Saved";
             document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
-            document.querySelector(UI.analysisStatusInfoElt).textContent = "This analysis is stored in your profile.";
+            createToast("This analysis is stored in your profile.", "is-info", true);
             document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
             document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.remove("is-hidden");
             document.querySelector(UI.btnMakePublicCopyElt).classList.remove("is-hidden");
