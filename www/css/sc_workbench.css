@@ -27,11 +27,6 @@ input.input-length-6 {
     pointer-events: none;
 }
 
-/* blocked steps should not be clickable */
-.steps-segment:has(.steps-marker.is-dark) {
-    pointer-events: none;
-}
-
 /* very hacky - match stepper guide colors to stepper */
 
 #progress-guide .icon {

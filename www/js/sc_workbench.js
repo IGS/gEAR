@@ -287,6 +287,11 @@ const resetWorkbench = () => {
     // ? Is this necessary - new instance should clear this. Maybe we only do the UI reset?
     currentAnalysis.reset();
 
+    // re-enable all buttons in the blocked step
+    document.querySelectorAll(".js-step-collapsable button").forEach((button) => {
+        button.disabled = false;
+    });
+
     /*
     for (const elt of document.querySelectorAll('.reset-on-change')) {
         // TODO - replace
@@ -527,6 +532,11 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 // General
 
+// Show/Hide #progress-guide
+document.querySelector(UI.btnProgressGuideElt).addEventListener("click", (event) => {
+    document.querySelector(UI.progressGuideElt).classList.toggle("is-hidden");
+});
+
 // if scrolling makes #summary-s go above top of screen, make it sticky
 window.addEventListener("scroll", (event) => {
     const summary = document.querySelector(UI.summarySection);
@@ -534,11 +544,6 @@ window.addEventListener("scroll", (event) => {
     if (summary.getBoundingClientRect().top < 0) {
         summary.classList.add("stick-to-top");
     }
-});
-
-// Show/Hide #progress-guide
-document.querySelector(UI.btnProgressGuideElt).addEventListener("click", (event) => {
-    document.querySelector(UI.progressGuideElt).classList.toggle("is-hidden");
 });
 
 // Handle the "click" event for the steps
@@ -561,6 +566,7 @@ for (const step of document.querySelectorAll(UI.stepSegmentElts)) {
     });
 }
 
+// TODO: Fix this to scroll to the correct offset height
 for (const step of document.querySelectorAll(".js-step h5")) {
     step.addEventListener("click", (event) => {
         event.preventDefault(); // stop normal click behavior

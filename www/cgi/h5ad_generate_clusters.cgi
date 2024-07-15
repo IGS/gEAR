@@ -59,6 +59,7 @@ def main():
             sc.tl.leiden(adata, resolution=resolution)
 
             # rename the leiden column to louvain to not break things elsewhere
+            # ? perhaps we should rename as "clustering" or something more generic
             adata.obs.rename(columns={"leiden":"louvain"}, inplace=True)
         except Exception as e:
             print("Switching to louvain algorithm, leiden failed", file=sys.stderr)
@@ -121,15 +122,20 @@ def main():
 
         adata.write(dest_datafile_path)
 
+
+        # Rename "louvain" to a generic "clustering" for consistency
+        adata.obs.rename(columns={"louvain":"clustering"}, inplace=True)
+
         if plot_tsne == 1:
-            ax = sc.pl.tsne(adata, color='louvain', legend_loc='on data', save="_clustering.png")
+            ax = sc.pl.tsne(adata, color='clustering', legend_loc='on data', save="_clustering.png")
         if plot_umap == 1:
-            ax = sc.pl.umap(adata, color='louvain', legend_loc='on data', save="_clustering.png")
+            ax = sc.pl.umap(adata, color='clustering', legend_loc='on data', save="_clustering.png")
     else:
+        adata.obs.rename(columns={"louvain":"clustering"}, inplace=True)
         if plot_tsne == 1:
-            ax = sc.pl.tsne(adata, color='louvain', save="_clustering.png")
+            ax = sc.pl.tsne(adata, color='clustering', save="_clustering.png")
         if plot_umap == 1:
-            ax = sc.pl.umap(adata, color='louvain', save="_clustering.png")
+            ax = sc.pl.umap(adata, color='clustering', save="_clustering.png")
 
     result = {'success': 1, "group_labels":group_labels}
 

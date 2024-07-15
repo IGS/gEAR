@@ -861,9 +861,9 @@ class AnalysisStepPrimaryFilter {
      */
     reset() {
         this.calculated = false;
-        this.filterCellsGtNGenes = 300;
+        this.filterCellsGtNGenes = null;
         this.filterCellsGtNGenesSelected = false;
-        this.filterCellsLtNGenes = null;
+        this.filterCellsLtNGenes = 300;
         this.filterCellsLtNGenesSelected = false;
 
         this.filterGenesGtNCells = null;
@@ -1221,8 +1221,8 @@ class AnalysisStepSelectVariableGenes {
         this.minMean = 0.0125;
         this.maxMean = 3;
         this.minDispersion = 0.5;
-        this.regressOut = true; // no options to change
-        this.scaleUnitVariance = true; // no options to change
+        this.regressOut = false; // no options to change
+        this.scaleUnitVariance = false; // no options to change
         this.resetUI();
     }
 
@@ -1446,6 +1446,9 @@ class AnalysisStepPCA {
         document.querySelector(UI.pcaGeneListContainer).classList.add("is-hidden");
         // show the instructions
         document.querySelector(UI.pcaInstructionsElt).classList.remove("is-hidden");
+
+        // disable the "save as gene list" button
+        document.querySelector(UI.btnSavePcaGeneListElt).disabled = true;
     }
 
     /**
@@ -1906,7 +1909,7 @@ class AnalysisStepClustering {
      */
     reset() {
         this.calculated = false;
-        this.resolution = 1.3;
+        this.resolution = 0.5;
         this.plotUmap = 0;
         this.plotTsne = 0;
         this.resetUI();
@@ -1996,8 +1999,6 @@ class AnalysisStepClustering {
                     , "keep": keptLabels[i]
                 })
             });
-
-            document.querySelector(UI.groupLabelsContainer).classList.add("is-hidden");
 
         }
 
@@ -2407,6 +2408,10 @@ class AnalysisStepMarkerGenes {
 
         // show the instructions
         document.querySelector(UI.markerGenesInstructionsElt).classList.remove("is-hidden");
+
+        // disable the "save as gene list" button and "visualize" button
+        document.querySelector(UI.btnSaveMarkerGeneListElt).disabled = true;
+        document.querySelector(UI.btnVisualizeMarkerGenesElt).disabled = true;
     }
 
     /**
@@ -2623,6 +2628,10 @@ class AnalysisStepCompareGenes {
      * @param {Array<string>} groupLabels - The labels of the groups.
      */
     populateGroupSelectors(groupLabels) {
+
+        // Clear the options
+        document.querySelector(UI.queryClusterOptionsElt).replaceChildren();
+        document.querySelector(UI.referenceClusterOptionsElt).replaceChildren();
 
         for (const label of groupLabels) {
 

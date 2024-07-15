@@ -206,62 +206,74 @@ Information about the individual datasets can be found in the dataset explorer."
                                     </button>
                                 </div>
                             </div>
-                            <div id="analysis-action-c" class="field has-addons is-hidden">
-                                <p class="control">
-                                    <button class="button js-show-rename-input">
-                                        <span class="icon is-small">
-                                            <i class="mdi mdi-pencil-box"></i>
-                                        </span>
-                                        <span>Rename</span>
-                                    </button>
-                                </p>
-                                <p class="control">
-                                    <button id="btn-save-analysis" class="button is-primary">
-                                        <span class="icon is-small">
-                                            <i class="mdi mdi-content-save"></i>
-                                        </span>
-                                        <span>Save</span>
-                                    </button>
-                                </p>
-                                <p class="control">
-                                    <button id="btn-delete-unsaved-analysis" class="button is-danger js-delete-analysis">
-                                        <span class="icon is-small">
-                                            <i class="mdi mdi-delete"></i>
-                                        </span>
-                                        <span>Delete</span>
-                                    </button>
-                                </p>
+                            <div id="analysis-action-c" class="field has-addons is-hidden is-pulled-right">
+                                <div class="field-label is-normal">
+                                    <label class="label">Analysis options:</label>
+                                </div>
+                                <div class="field-body">
+                                    <div class="field has-addons">
+                                        <p class="control">
+                                            <button class="button js-show-rename-input">
+                                                <span class="icon is-small">
+                                                    <i class="mdi mdi-pencil-box"></i>
+                                                </span>
+                                                <span>Rename</span>
+                                            </button>
+                                        </p>
+                                        <p class="control">
+                                            <button id="btn-save-analysis" class="button is-primary">
+                                                <span class="icon is-small">
+                                                    <i class="mdi mdi-content-save"></i>
+                                                </span>
+                                                <span>Save</span>
+                                            </button>
+                                        </p>
+                                        <p class="control">
+                                            <button id="btn-delete-unsaved-analysis" class="button is-danger js-delete-analysis">
+                                                <span class="icon is-small">
+                                                    <i class="mdi mdi-delete"></i>
+                                                </span>
+                                                <span>Delete</span>
+                                            </button>
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
-                            <div id="analysis-status-info-c" class="is-hidden">
-                                <p id="analysis-status-info">
+                            <div id="analysis-status-info-c" class="is-hidden is-pulled-right">
+                                <div class="field-label is-normal">
+                                    <label class="label">Analysis options:</label>
+                                </div>
+                                <div class="field-body">
+                                    <div class="field has-addons">
+                                        <p class="control">
+                                            <button class="button js-show-rename-input">
+                                                <span class="icon is-small">
+                                                    <i class="mdi mdi-pencil-box"></i>
+                                                </span>
+                                                <span>Rename</span>
+                                            </button>
+                                        </p>
+                                        <p class="control">
+                                            <button id="btn-make-public-copy" class="button">
+                                                <span class="icon is-small">
+                                                    <i class="mdi mdi-earth"></i>
+                                                </span>
+                                                <span>Make a public copy</span>
+                                            </button>
+                                        </p>
+                                        <p class="control">
+                                            <button id="btn-delete-saved-analysis" class="button is-danger js-delete-analysis">
+                                                <span class="icon is-small">
+                                                    <i class="mdi mdi-delete"></i>
+                                                </span>
+                                                <span>Delete</span>
+                                            </button>
+                                        </p>
+                                    </div>
+                                </div>
+                                <p id="analysis-status-info" class="help">
                                     This analysis is stored in your profile.
                                 </p>
-                                <div class="field has-addons">
-                                    <p class="control">
-                                        <button class="button js-show-rename-input">
-                                            <span class="icon is-small">
-                                                <i class="mdi mdi-pencil-box"></i>
-                                            </span>
-                                            <span>Rename</span>
-                                        </button>
-                                    </p>
-                                    <p class="control">
-                                        <button id="btn-make-public-copy" class="button">
-                                            <span class="icon is-small">
-                                                <i class="mdi mdi-earth"></i>
-                                            </span>
-                                            <span>Make a public copy</span>
-                                        </button>
-                                    </p>
-                                    <p class="control">
-                                        <button id="btn-delete-saved-analysis" class="button is-danger js-delete-analysis">
-                                            <span class="icon is-small">
-                                                <i class="mdi mdi-delete"></i>
-                                            </span>
-                                            <span>Delete</span>
-                                        </button>
-                                    </p>
-                                </div>
                             </div>
                         </div>
 
@@ -422,7 +434,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                 </div>
                             </li>
                         </ul>
-                        <button id="btn-progress-guide" class="button is-primary is-hidden">Toggle icon guide</button>
+                        <button id="btn-progress-guide" class="button is-small is-primary is-hidden">Toggle icon guide</button>
                         <div id="progress-guide" class="content is-hidden">
                             <ul>
                                 <li>
@@ -462,7 +474,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                         <span class="icon is-medium has-background-dark">
                                             <i class="mdi mdi-24px mdi-light mdi-lock"></i>
                                         </span>
-                                        <span>Irreversible step (cannot go back here)</span>
+                                        <span>Irreversible step (view-only step)</span>
                                     </div>
                                 </li>
                             </ul>

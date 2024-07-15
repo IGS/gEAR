@@ -259,7 +259,10 @@ const UI = new AnalysisUI();
  */
 const blockAnalysisStep = (selector) => {
     blockStepWithHref(selector);
-    document.querySelector(selector).classList.add("is-pointer-events-none");
+    // disable all buttons in the blocked step
+    document.querySelectorAll(`${selector} button`).forEach((button) => {
+        button.disabled = true;
+    });
 }
 
 /**
