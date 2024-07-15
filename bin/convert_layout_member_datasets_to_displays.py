@@ -31,7 +31,7 @@ layout_member_qry = """
               SELECT lm.layout_id, lm.dataset_id, lm.grid_position, lm.mg_grid_position,
               lm.start_col, lm.mg_start_col, lm.grid_width, lm.mg_grid_width,
               lm.start_row, lm.mg_start_row, lm.grid_height, lm.mg_grid_height
-              FROM layout_members lm
+              FROM layout_members lm ORDER BY lm.layout_id, lm.grid_position
               """
 
 cursor.execute(layout_member_qry)
@@ -71,10 +71,16 @@ if legacy:
     print("Legacy mode found ... rebuilding layout member grid positions...", file=sys.stderr)
     current_col = 1
     current_row = 1
+    curr_layout = -1
     for lm in layout_members:
         #start_col = lm[4]
         #grid_width = lm[6]
         #start_row = lm[8]
+        if curr_layout != lm[0]:
+            curr_layout = lm[0]
+            current_col = 1
+            current_row = 1
+
         width = lm[6]
         if current_col + width > 13:
             current_col = 1
@@ -86,10 +92,16 @@ if legacy:
     # Multigene displays now
     current_col = 1
     current_row = 1
+    curr_layout = -1
     for lm in layout_members:
         #mg_start_col = lm[5]
         #mg_grid_width = lm[7]
         #mg_start_row = lm[9]
+        if curr_layout != lm[0]:
+            curr_layout = lm[0]
+            current_col = 1
+            current_row = 1
+
         width = lm[7]
         if current_col + width > 13:
             current_col = 1
