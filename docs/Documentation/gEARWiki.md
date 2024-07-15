@@ -114,24 +114,8 @@ By dragging, you can rearrange the order and size of each dataset within the dat
 <img width="700" alt="Screen Shot 2022-06-10 at 8 48 31 AM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/ArrangeDatasetCollection.png">
 
 
-## EpiViz displays
-gEAR offers visualization of functional genomics data through integration with Epiviz ([EpiViz site](https://epiviz.github.io/)). EpiViz displays can be viewed in existing dataset collections or in the dataset explorer (similar to how other datasets are viewed by clicking the eye icon). 
-
-<img width="700" alt="Screen Shot 2022-04-26 at 9 47 35 AM" src="https://user-images.githubusercontent.com/28451557/165314788-83f19996-e2bb-4f71-aeaf-33090ff20822.png">
-
-EpiViz displays are separated into several panels. The top panel displays the genome build for the searched gene of interest (atoh1 in the example below), while the panels below show the expression dataset collections of the various samples present in the dataset. Both panels have various controls for zooming into regions, or changing plot attributes. 
-
-<img width="700" alt="Screen Shot 2022-04-26 at 9 52 32 AM" src="https://user-images.githubusercontent.com/28451557/165315796-05158d65-7c80-41bc-b115-71daaa35751e.png">
-
-## Sharing with others/ Permalinks
-While public collections and datasets are visible to all gEAR users, any dataset or collection (including private) can be shared via a URL. To share, find the dataset or collection in the dataset explorer page and choose the share icon next to either the collection or dataset to copy the URL to your clipboard (see below). A common use of these URLs is to provide a link in manuscript figure captions to allow readers to conduct their own exploration of data used in a manuscript figure.
-
-If you wish to share datasets or collections with a group of individuals (functionality currently in development) contact the curator team for assistance with setting up group permissions.
-
-If you would like custom permalinks , please contact our curator team for assistance.
-
-<img width="700" alt="Screen Shot 2022-05-20 at 9 26 36 AM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/ShareDatasetOrCollection.png">
-
+## EpiViz displays -- Under Construction
+The gEAR team is working on updating this module.  As this module is completed we will add documentation to help users utilize the new page.
 
 
 # Analysis tools
