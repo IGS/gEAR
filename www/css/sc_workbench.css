@@ -31,3 +31,21 @@ input.input-length-6 {
 .steps-segment:has(.steps-marker.is-dark) {
     pointer-events: none;
 }
+
+/* very hacky - match stepper guide colors to stepper */
+
+#progress-guide .icon {
+    border: 1px solid #000000;
+}
+
+#progress-guide .has-background-success {
+    background-color: #23d160 !important;
+}
+
+#progress-guide .has-background-danger {
+    background-color: #ff3860 !important;
+}
+
+#progress-guide .has-background-grey {
+    background-color: #dbdbdb !important;
+}

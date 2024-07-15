@@ -351,6 +351,8 @@ class Analysis {
             genesOfInterest: data.genesOfInterest
         });
 
+        document.querySelector(UI.btnProgressGuideElt).classList.remove("is-hidden");
+
         if (analysis.id === analysis.dataset?.id) {
             // If showing a primary display we only want to show marker genes and gene comparison
             //  tools
@@ -615,6 +617,10 @@ class Analysis {
             createToast("Analysis saved", "is-success");
 
             await this.getSavedAnalysesList(this.dataset.id, this.id);
+
+            // Update the current analysis label
+            document.querySelector(UI.currentAnalysisElt).textContent = this.label;
+
         } catch (error) {
             createToast(`Error saving analysis: ${error.message}`);
             logErrorInConsole(error);
@@ -1881,7 +1887,7 @@ class AnalysisStepClustering {
      */
     static loadFromJson(data, analysis) {
         const step = new AnalysisStepClustering(analysis);
-        if (!step) return step;
+        if (!data) return step;
 
         step.calculated = data['calculated'];
         step.resolution = data['resolution'];

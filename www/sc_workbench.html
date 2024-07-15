@@ -152,6 +152,39 @@ Information about the individual datasets can be found in the dataset explorer."
                                     <optgroup id="analyses-unsaved" label="Your recent unsaved analyses"></optgroup>
                                 </select>
                             </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Initial dataset information -->
+                <section class="has-background-light section is-hidden" id="initial-info-s">
+                    <h5 class="title is-5">
+                        <span class="icon">
+                            <i class="mdi mdi-file-upload-outline"></i> <!-- Not quite the correct icon -->
+                        </span>
+                        <span>Preliminary dataset information </span>
+                    </h5>
+                    <div class="mt-3 content" id="initial-info-c">
+                        <p class="has-text-weight-semibold">
+                            Initial shape:<br>
+                            <span id='selected-dataset-shape-initial' class="has-text-weight-normal"></span>
+                        </p>
+                        <div id="initial-plot-c" class="is-hidden">
+                            <h6 class="subtitle is-6 has-text-centered">Initial composition plots</h6>
+                            <div id="initial-loading-plot"><img class="image" src="../img/loading_search.gif"
+                                  alt="Loading" /> Loading initial gene/cell
+                                count plots</div>
+                            <div class="columns">
+                                <div id="initial-violin-c" class="column is-6"></div>
+                                <div id="initial-scatter-c" class="column is-6"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="summary-s" class="box has-background-primary-light">
+                    <header class="content">
+                        <div id="analysis-optc-c" class="is-pulled-right">
                             <div id="new-analysis-label-c" class="field is-hidden">
                                 <label for="new-analysis-label" class="label">Label for this analysis</label>
                                 <input type="text" id="new-analysis-label" class="input" value="Unlabeled" />
@@ -160,13 +193,13 @@ Information about the individual datasets can be found in the dataset explorer."
                                 </div>
                                 <div class="field has-addons">
                                     <button id="btn-new-analysis-label-save" class="button is-primary"
-                                      title="Save this label">
+                                    title="Save this label">
                                         <span class="icon is-small">
                                             <i class="mdi mdi-content-save"></i>
                                         </span>
                                     </button>
                                     <button id="btn-new-analysis-label-cancel" class="button"
-                                      title="Cancel this label update">
+                                    title="Cancel this label update">
                                         <span class="icon is-small">
                                             <i class="mdi mdi-cancel"></i>
                                         </span>
@@ -231,44 +264,16 @@ Information about the individual datasets can be found in the dataset explorer."
                                 </div>
                             </div>
                         </div>
-                    </section>
-                </div>
 
-                <!-- Initial dataset information -->
-                <section class="has-background-light section is-hidden" id="initial-info-s">
-                    <h5 class="title is-5">
-                        <span class="icon">
-                            <i class="mdi mdi-file-upload-outline"></i> <!-- Not quite the correct icon -->
-                        </span>
-                        <span>Preliminary dataset information </span>
-                    </h5>
-                    <div class="mt-3 content" id="initial-info-c">
-                        <p class="has-text-weight-semibold">
-                            Initial shape:<br>
-                            <span id='selected-dataset-shape-initial' class="has-text-weight-normal"></span>
-                        </p>
-                        <div id="initial-plot-c" class="is-hidden">
-                            <h6 class="subtitle is-6 has-text-centered">Initial composition plots</h6>
-                            <div id="initial-loading-plot"><img class="image" src="../img/loading_search.gif"
-                                  alt="Loading" /> Loading initial gene/cell
-                                count plots</div>
-                            <div class="columns">
-                                <div id="initial-violin-c" class="column is-6"></div>
-                                <div id="initial-scatter-c" class="column is-6"></div>
-                            </div>
+                        <div id="current-dataset-c">
+                            <strong>Current dataset:</strong>
+                            <span id="current-dataset">None selected</span>
                         </div>
-                    </div>
-                </section>
-
-                <section id="summary-s" class="box has-background-primary-light">
-                    <div id="current-dataset-c">
-                        <strong>Current dataset:</strong>
-                        <span id="current-dataset">None selected</span>
-                    </div>
-                    <div id="current-analysis-c">
-                        <strong>Current analysis:</strong>
-                        <span id="current-analysis">None selected</span>
-                    </div>
+                        <div id="current-analysis-c">
+                            <strong>Current analysis:</strong>
+                            <span id="current-analysis">None selected</span>
+                        </div>
+                    </header>
 
                     <!-- Stepper -->
                     <div id="steps-container">
@@ -417,7 +422,51 @@ Information about the individual datasets can be found in the dataset explorer."
                                 </div>
                             </li>
                         </ul>
-
+                        <button id="btn-progress-guide" class="button is-primary is-hidden">Toggle icon guide</button>
+                        <div id="progress-guide" class="content is-hidden">
+                            <ul>
+                                <li>
+                                    <div class="icon-text">
+                                        <span class="icon is-medium has-background-success">
+                                            <i class="mdi mdi-24px mdi-light mdi-check"></i>
+                                        </span>
+                                        <span>Completed step</span>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="icon-text">
+                                        <span class="icon is-medium has-background-light">
+                                            <i class="mdi mdi-24px mdi-pencil"></i>
+                                        </span>
+                                        <span>Current step</span>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="icon-text">
+                                        <span class="icon is-medium has-background-gray">
+                                            <i class="mdi mdi-24px"></i>
+                                        </span>
+                                        <span>Future step</span>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="icon-text">
+                                        <span class="icon is-medium has-background-danger">
+                                            <i class="mdi mdi-24px mdi-light mdi-close"></i>
+                                        </span>
+                                        <span>Failed step</span>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="icon-text">
+                                        <span class="icon is-medium has-background-dark">
+                                            <i class="mdi mdi-24px mdi-light mdi-lock"></i>
+                                        </span>
+                                        <span>Irreversible step (cannot go back here)</span>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                 </section>
 
