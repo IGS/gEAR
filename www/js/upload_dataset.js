@@ -30,7 +30,7 @@ window.onload=function() {
         event.preventDefault();
         let errored_fields = validateMetadataForm();
 
-        if (errored_fields.length === 0) {
+        if (errored_fields && Object.keys(errored_fields).length === 0) {
             // Form looks good!
             document.getElementById('errored-field-list-c').classList.add('is-hidden');
             storeMetadata();
