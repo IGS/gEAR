@@ -54,9 +54,16 @@ window.onload=function() {
     });
 
     document.getElementById('metadata-file-input').addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        document.getElementById('metadata-file-name').textContent = file.name;
-        document.getElementsByName('metadata-dataset-id')[0].value = dataset_uid;
+        // Was a file selected?
+        if (event.target.files.length > 0) {
+            document.getElementById('metadata-upload-submit').disabled = false;
+            const file = event.target.files[0];
+            document.getElementById('metadata-file-name').textContent = file.name;
+            document.getElementsByName('metadata-dataset-id')[0].value = dataset_uid;
+        } else {
+            document.getElementById('metadata-upload-submit').disabled = true;
+            document.getElementById('metadata-file-name').textContent = 'No file selected';
+        }
     });
 
     document.getElementById('metadata-upload-submit').addEventListener('click', (event) => {
