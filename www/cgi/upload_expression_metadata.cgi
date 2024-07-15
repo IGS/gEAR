@@ -27,6 +27,13 @@ def main():
     if user is None:
         result['message'] = 'User ID not found. Please log in to continue.'
         print_and_go(json.dumps(result))
+
+    filename = os.path.basename(fileitem.filename)
+
+    # does the file end in .xls or .xlsx?
+    if not (filename.endswith('.xls') or filename.endswith('.xlsx')):
+        result['message'] = 'Metadata file must be in Excel format (with .xls or .xlsx extension)'
+        print_and_go(json.dumps(result))
     
     #filename = os.path.basename(form.getvalue('metadata-file-input'))
     dest_filepath = os.path.join(user_upload_file_base, "{0}.xlsx".format(dataset_id))
@@ -36,7 +43,17 @@ def main():
     fh.close()
 
     metadata = Metadata(file_path=dest_filepath)
+    
+    try:
+        metadata.populate_from_geo()
+    except Exception as e:
+        pass
+
     result['metadata'] = json.loads(metadata.write_json())
+
+    # run geo if that property is defined
+
+
     result['success'] = 1
     print_and_go(json.dumps(result))
 
