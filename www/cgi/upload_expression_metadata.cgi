@@ -18,7 +18,7 @@ from gear.metadata import Metadata
 def main():
     user_upload_file_base = '/tmp'
     form = cgi.FieldStorage()
-    session_id = form.getvalue('metadata-session-id')
+    session_id = form.getvalue('session_id')
     dataset_id = form.getvalue('metadata-dataset-id')
     fileitem = form['metadata-file-input']
     user = geardb.get_user_from_session_id(session_id)

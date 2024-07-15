@@ -56,12 +56,11 @@ window.onload=function() {
     document.getElementById('metadata-file-input').addEventListener('change', (event) => {
         const file = event.target.files[0];
         document.getElementById('metadata-file-name').textContent = file.name;
-        document.getElementsByName('metadata-session-id')[0].value = CURRENT_USER.session_id;
         document.getElementsByName('metadata-dataset-id')[0].value = dataset_uid;
     });
 
     document.getElementById('metadata-upload-submit').addEventListener('click', (event) => {
-        document.getElementById('metadata-upload-form').submit();
+        populateMetadataFormFromFile();
     });
 
     document.getElementById('metadata-geo-lookup').addEventListener('click', (event) => {
@@ -72,6 +71,12 @@ window.onload=function() {
         let geo_data = getGeoData();
     });
 };
+
+const populateMetadataFormFromFile = async () => {
+    const formData = new FormData(document.getElementById('metadata-upload-form'));
+    const data = await apiCallsMixin.parseMetadataFile(formData);
+    console.log(data);
+}
 
 const handlePageSpecificLoginUIUpdates = async (event) => {
     if (CURRENT_USER.session_id) {
