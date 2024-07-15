@@ -20,7 +20,7 @@
 
 // Irreversible (blocked) steps
 // is-dark: The blocked step
-// i.mdi-cancel: The icon for the irreversible steps
+// i.mdi-lock: The icon for the irreversible steps
 // parent.is-dashed turned off
 
 // I add `.steps:not(.is-hidden)` to the selectors to avoid selecting hidden steps
@@ -37,7 +37,7 @@ const blockStepWithHref = (selectorHref) => {
     document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}']`).parentElement.classList.remove("is-dashed", "is-active");
     document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}']`).classList.add("is-dark");
     document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}'] i`).classList.remove("mdi-check");
-    document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}'] i`).classList.add("mdi-cancel");
+    document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}'] i`).classList.add("mdi-lock");
 }
 
 /**
@@ -48,7 +48,7 @@ const blockStep = (selector) => {
     document.querySelector(`.steps:not(.is-hidden) ${selector}`).parentElement.classList.remove("is-dashed", "is-active");
     document.querySelector(`.steps:not(.is-hidden) ${selector}`).classList.add("is-dark");
     document.querySelector(`.steps:not(.is-hidden) ${selector} i`).classList.remove("mdi-check");
-    document.querySelector(`.steps:not(.is-hidden) ${selector} i`).classList.add("mdi-cancel");
+    document.querySelector(`.steps:not(.is-hidden) ${selector} i`).classList.add("mdi-lock");
 }
 
 /**
@@ -193,7 +193,7 @@ const resetStepper = (activeSelector=null) => {
     for (const step of steps) {
         step.classList.remove("is-light", "is-danger", "is-dark");
         step.parentElement.classList.remove("is-active", "is-dashed");
-        step.querySelector("i").classList.remove("mdi-pencil", "mdi-check", "mdi-cancel");
+        step.querySelector("i").classList.remove("mdi-pencil", "mdi-check", "mdi-lock");
     }
 
     if (activeSelector) {

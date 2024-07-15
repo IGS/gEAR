@@ -49,6 +49,8 @@ class AnalysisUI {
     deNovoStepsElt = "#de-novo-steps"
     stepsElts = "#steps-container .steps"
     stepSegmentElts = ".steps-segment"
+    btnProgressGuideElt = "#btn-progress-guide"
+    progressGuideElt = "#progress-guide"
 
     // Initial info
     primaryInitialInfoSection = "#initial-info-s"

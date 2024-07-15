@@ -536,6 +536,11 @@ window.addEventListener("scroll", (event) => {
     }
 });
 
+// Show/Hide #progress-guide
+document.querySelector(UI.btnProgressGuideElt).addEventListener("click", (event) => {
+    document.querySelector(UI.progressGuideElt).classList.toggle("is-hidden");
+});
+
 // Handle the "click" event for the steps
 for (const step of document.querySelectorAll(UI.stepSegmentElts)) {
     step.addEventListener("click", (event) => {
@@ -599,6 +604,7 @@ for (const button of document.querySelectorAll(UI.analysisRenameElts)) {
     button.addEventListener("click", (event) => {
         document.querySelector(UI.newAnalysisLabelElt).value = currentAnalysis.label;
         document.querySelector(UI.newAnalysisLabelContainer).classList.remove("is-hidden");
+        document.querySelector(UI.currentAnalysisElt).textContent = currentAnalysis.label;
     });
 }
 
@@ -626,6 +632,8 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
 
     document.querySelector(UI.deNovoStepsElt).classList.add("is-hidden");
     document.querySelector(UI.primaryStepsElt).classList.add("is-hidden");
+    document.querySelector(UI.btnProgressGuideElt).classList.add("is-hidden");
+    document.querySelector(UI.progressGuideElt).classList.add("is-hidden");
 
     // Analysis ID -1 is "select an analysis"
     if (event.target.value === "-1") {
@@ -654,6 +662,7 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
         );
 
         document.querySelector(UI.deNovoStepsElt).classList.remove("is-hidden");
+        document.querySelector(UI.btnProgressGuideElt).classList.remove("is-hidden");
         // Reset the stepper
         resetStepperWithHrefs("#primary-filter-s");
 
