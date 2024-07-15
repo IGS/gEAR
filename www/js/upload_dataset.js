@@ -69,10 +69,11 @@ window.onload=function() {
     document.getElementById('metadata-upload-submit').addEventListener('click', (event) => {
         // change submit button to spinner
         event.preventDefault();
+
         let button = document.getElementById('metadata-upload-submit');
         button.disabled = true;
         button.classList.add('is-loading');
-
+        document.getElementById('metadata-upload-status').classList.add('is-hidden');
         populateMetadataFormFromFile();
     });
 
@@ -88,6 +89,7 @@ window.onload=function() {
 const populateMetadataFormFromFile = async () => {
     const formData = new FormData(document.getElementById('metadata-upload-form'));
     const data = await apiCallsMixin.parseMetadataFile(formData);
+    let button = document.getElementById('metadata-upload-submit');
 
     // Fill out the form with the data
     if (data.success) {
@@ -109,11 +111,17 @@ const populateMetadataFormFromFile = async () => {
         document.getElementsByName('metadata-library-source')[0].value = data.metadata.library_source.value;
         document.getElementsByName('metadata-library-strategy')[0].value = data.metadata.library_strategy.value;
         document.getElementsByName('metadata-pubmed-id')[0].value = data.metadata.pubmed_id.value;
+        document.getElementById('metadata-upload-status-message').textContent = "Form populated with uploaded metadata";
+        button.disabled = false;
+
+    } else {
+        // Display error message, and clear out the file selected
+        document.getElementById('metadata-upload-status-message').textContent = data.message;
+        document.getElementById('metadata-file-name').textContent = 'No file selected';
     }
 
     // change spinner back to submit button
-    let button = document.getElementById('metadata-upload-submit');
-    button.disabled = false;
+    document.getElementById('metadata-upload-status').classList.remove('is-hidden');
     button.classList.remove('is-loading');
 }
 
