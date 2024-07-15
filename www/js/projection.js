@@ -73,6 +73,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             return;
         }
 
+        document.getElementById("result-panel-loader").classList.remove('is-hidden');
+
         // update multi/single pattern
         isMulti = document.querySelector('#single-multi-multi').checked;
 
@@ -102,6 +104,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             return;
         } finally {
             currentTarget.classList.remove("is-loading");
+            document.getElementById("result-panel-loader").classList.add('is-hidden');
+
         }
 
         const url = buildStateUrl();
@@ -126,6 +130,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     // Wait until all pending API calls have completed before checking if we need to search
     document.getElementById("submit-projection-search").classList.add("is-loading");
+    document.getElementById("result-panel-loader").classList.remove('is-hidden');
     try {
         // SAdkins note - Promise.all fails fast,
         // but Promise.allSettled waits until all resolve/reject and lets you know which ones failed
@@ -141,6 +146,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         logErrorInConsole(error);
     } finally {
         document.getElementById("submit-projection-search").classList.remove("is-loading");
+        document.getElementById("result-panel-loader").classList.add('is-hidden');
     }
 
     // Trigger the default dataset collection to be selected in the
