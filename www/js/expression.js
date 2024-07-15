@@ -306,13 +306,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Set the page header title
     document.getElementById('page-header-label').textContent = 'Gene Expression Search';
 
-    // Set current sidebar menu item to active
-	for (const elt of document.querySelectorAll("#primary-nav .menu-list a.is-active")) {
-		elt.classList.remove("is-active");
-	}
-
-	document.querySelector("a[tool='search_expression'").classList.add("is-active");
-
     datasetShareId = getUrlParameter('share_id');
     layoutShareId = getUrlParameter('layout_id');
 

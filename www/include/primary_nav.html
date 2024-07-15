@@ -4,6 +4,18 @@
             <img id="navbar-logo-small" class="is-hidden" src="/img/by_domain/gear/logo-main-small.png" style="height: 50px;"/>
           </div>
           <aside class="menu mt-5 pl-3">
+            <!--
+              To manage the active state of the menu items, each below has a "tool" attribute.
+
+              <a class="icon-link-part is-active" tool="upload_dataset"  ...
+
+              The value here needs to match the value at the top of any individual page on
+              the site, found like here:
+
+              <section id="content-c" class="m-3" data-nav-link="upload_dataset">
+
+              Once there, a method on common will match these and set the active icon
+            -->
             <p class="menu-label mb-0 is-capitalized has-text-primary-light has-text-weight-medium">
               <span class="menu-label-text">Menu</span>
               <!-- mdi-chevron-left-box vs.  -->
@@ -13,7 +25,7 @@
             <ul class="menu-list">
               <li>
                 <span class="icon-text is-align-items-center is-flex">
-                  <a class="icon-link-part is-active" tool="workspace" href="./index.html">
+                  <a class="icon-link-part" tool="workspace" href="./index.html">
                     <span class="icon icon-image-part is-medium"><i class="mdi mdi-24px mdi-monitor"></i></span>
                     <span class="icon-text-part">My Workspace</span>
                   </a>

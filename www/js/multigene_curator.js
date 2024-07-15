@@ -756,12 +756,6 @@ const curatorSpecifcFacetItemSelectCallback = (seriesName) => {
 const curatorSpecificNavbarUpdates = () => {
 	// Update with current page info
 	document.getElementById("page-header-label").textContent = "Multi-gene Displays";
-
-    for (const elt of document.querySelectorAll("#primary-nav .menu-list a.is-active")) {
-        elt.classList.remove("is-active");
-    }
-
-    document.querySelector("a[tool='mg_displays'").classList.add("is-active");
 }
 
 const curatorSpecificOnLoad = async () => {

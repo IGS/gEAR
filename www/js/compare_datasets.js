@@ -1268,12 +1268,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 	// Update with current page info
 	document.getElementById("page-header-label").textContent = "Comparison Tool";
-	for (const elt of document.querySelectorAll("#primary-nav .menu-list a.is-active")) {
-		elt.classList.remove("is-active");
-	}
-
-	document.querySelector("a[tool='compare'").classList.add("is-active");
-
     sessionId = CURRENT_USER.session_id;
 
 	if (! sessionId ) {
