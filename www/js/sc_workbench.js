@@ -592,9 +592,9 @@ document.querySelector(UI.btnMakePublicCopyElt).addEventListener("click", async 
 
 document.querySelector(UI.btnSaveAnalysisElt).addEventListener("click", async (event) => {
     // Save the current analysis to the user area
-    event.target.textContent = "Saving ...";
-    event.target.disabled = true;
+    event.target.classList.add("is-loading");
     await currentAnalysis.saveToUserArea();
+    event.target.classList.remove("is-loading");
 
 });
 
