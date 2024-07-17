@@ -999,7 +999,7 @@ const processSearchResults = (data) => {
         const shortDateAdded = new Date(gc.date_added).toISOString().slice(0, 10);
 
         const organismId = gc.organism_id;
-        const geneCount = gc.gene_count;
+        const geneCount = gc.num_genes;
         const userName = gc.user_name;
         const organism = gc.organism;
         const isOwner = gc.is_owner;

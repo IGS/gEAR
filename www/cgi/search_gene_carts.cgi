@@ -151,9 +151,9 @@ def main():
         gc = geardb.GeneCart(id=row[0], gctype=row[2], label=row[3], ldesc=row[4], share_id=row[5],
                              is_public=row[6], date_added=row[7], organism_id=row[10], user_id=row[11])
         gc.user_name = row[1]
-        gc.gene_count = len(gc.genes)
         gc.organism = "{0} {1}".format(row[8], row[9])
         gc.is_owner = True if user and gc.user_id == user.id else False
+        gc.get_genes()
         gene_carts.append(gc)   # this appends as a JSON dumped string
 
     # Get count of total results
