@@ -2548,8 +2548,8 @@ class GeneCart:
             self.share_id = str(uuid.uuid4()).split('-')[0]
 
         # TODO: This should be a reference to a GeneCollection
-        if not genes:
-            self.get_genes()
+        self.genes = list()
+        self.num_genes = len(self.genes)
 
         # The are derived, populated by GeneCartCollection methods
         self.folder_id = folder_id
@@ -2701,6 +2701,9 @@ class GeneCart:
 @dataclass
 class GeneCartCollection:
     carts: List[GeneCart] = field(default_factory=list)
+    
+    # should gene-populating methods called include gene members (lots of overhead)
+    include_genes: bool = True
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -2729,9 +2732,6 @@ class GeneCartCollection:
                     folder_label=row['folder_label']
                 )
 
-        # Extra info
-        cart.get_genes()
-        cart.num_genes = len(cart.genes)
         return cart
 
     def get_by_cart_ids(self, ids=[]):
@@ -2758,6 +2758,10 @@ class GeneCartCollection:
 
             for row in cursor:
                 cart = self._row_to_cart_object(row)
+
+                if self.include_genes == True:
+                    cart.get_genes()
+                
                 self.carts.append(cart)
 
         cursor.close()
@@ -2788,6 +2792,10 @@ class GeneCartCollection:
 
             for row in cursor:
                 cart = self._row_to_cart_object(row)
+
+                if self.include_genes == True:
+                    cart.get_genes()
+                
                 self.carts.append(cart)
 
         cursor.close()
@@ -2817,7 +2825,10 @@ class GeneCartCollection:
 
         for row in cursor:
             cart = self._row_to_cart_object(row)
-            #print("Adding cart with label: {0}".format(cart.label))
+
+            if self.include_genes == True:
+                cart.get_genes()
+                    
             self.carts.append(cart)
 
         cursor.close()
@@ -2854,6 +2865,10 @@ class GeneCartCollection:
 
         for row in cursor:
             cart = self._row_to_cart_object(row)
+
+            if self.include_genes == True:
+                cart.get_genes()
+            
             self.carts.append(cart)
 
         cursor.close()
@@ -2884,6 +2899,10 @@ class GeneCartCollection:
 
         for row in cursor:
             cart = self._row_to_cart_object(row)
+
+            if self.include_genes == True:
+                cart.get_genes()
+            
             self.carts.append(cart)
             rows_returned += 1
 
@@ -2913,6 +2932,10 @@ class GeneCartCollection:
 
         for row in cursor:
             cart = self._row_to_cart_object(row)
+
+            if self.include_genes == True:
+                cart.get_genes()
+            
             self.carts.append(cart)
 
         cursor.close()
@@ -2938,6 +2961,10 @@ class GeneCartCollection:
 
         for row in cursor:
             cart = self._row_to_cart_object(row)
+
+            if self.include_genes == True:
+                cart.get_genes()
+            
             self.carts.append(cart)
 
         cursor.close()

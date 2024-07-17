@@ -184,12 +184,20 @@ const fetchGeneCartData = async (callback) => {
     }
 }
 
-const setActiveGeneCart = (cart_row, mode) => {
+const setActiveGeneCart = async (cart_row, mode) => {
+    // TODO: this needs a spinner while it loads
+
     // clear the current gene list
     document.querySelector('#dropdown-content-genes').innerHTML = '';
 
     // populate the gene list from this cart
-    const genes = cart_row.dataset.genes.split(',');
+    let gene_list_member_data = await apiCallsMixin.fetchGeneCartMembers(cart_row.dataset.shareId);
+    let genes = [];
+
+    for (const member of gene_list_member_data.gene_symbols) {
+        genes.push(member.label);
+    }
+
     const gene_item_template = document.querySelector('#tmpl-gene-item');
 
     for (const gene of genes.sort()) {
@@ -281,7 +289,8 @@ const setActiveGeneCartCategory = (category) => {
         const row = gene_list_item_template.content.cloneNode(true);
         row.querySelector('.gene-list-item-label').textContent = entry.label;
         row.querySelector('.ul-li').dataset.shareId = entry.share_id;
-        row.querySelector('.ul-li').dataset.genes = gene_cart_genes[entry.share_id].join(',');
+        // This is from when we were pre-loading the gene lists, which isn't practical
+        //row.querySelector('.ul-li').dataset.genes = gene_cart_genes[entry.share_id].join(',');
 
 
         if (selected_gene_lists.has(entry.share_id)) {

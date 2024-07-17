@@ -1044,7 +1044,7 @@ const apiCallsMixin = {
      * @returns {Promise<any>} - A promise that resolves to the data of the gene cart members.
      */
     async fetchGeneCartMembers(shareId) {
-        const payload = { session_id: this.sessionId, gene_cart_share_id: shareId };
+        const payload = { session_id: this.sessionId, share_id: shareId };
         const {data} = await axios.post(`/cgi/get_gene_cart_members.cgi`, convertToFormData(payload));
         return data;
     },
@@ -1053,10 +1053,16 @@ const apiCallsMixin = {
      * @param {string} cartType - The type of gene cart to fetch.
      * @returns {Promise<any>} - A promise that resolves to the fetched gene carts data.
      */
-    async fetchGeneCarts(cartType=null) {
+    async fetchGeneCarts(cartType=null, includeMembers=true) {
         const payload = {session_id: this.sessionId};
         if (cartType) {
             payload.cart_type = cartType;
+        }
+
+        if (includeMembers) {
+            payload.include_members = 1;
+        } else {
+            payload.include_members = 0;
         }
 
         const {data} = await axios.post(`/cgi/get_user_gene_carts.cgi`, convertToFormData(payload));
