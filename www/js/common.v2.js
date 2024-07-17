@@ -925,7 +925,7 @@ const apiCallsMixin = {
      * @param {string|null} noDomain - If 1, the domain layout will not be included in the results.
      * @returns {Promise<any>} The response data.
      */
-    async fetchDatasetCollections(layoutShareId=null, noDomain=0, includeMembers=true) {
+    async fetchDatasetCollections({layoutShareId=null, noDomain=0, includeMembers=true}) {
         const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, no_domain: noDomain};
 
         if (includeMembers) {

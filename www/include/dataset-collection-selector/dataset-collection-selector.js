@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 const fetchDatasetCollections = async (callback) => {
     try {
-        dataset_collection_data = await apiCallsMixin.fetchDatasetCollections();
+        dataset_collection_data = await apiCallsMixin.fetchDatasetCollections({includeMembers: false});
         document.querySelector('#dropdown-dc').classList.remove('is-loading');
         document.querySelector('#dropdown-dc').classList.remove('is-disabled');
 

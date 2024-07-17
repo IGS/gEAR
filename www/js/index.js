@@ -148,7 +148,6 @@ const validateExpressionSearchForm = () => {
         return false;
     } else {
         document.querySelector('#dropdown-dc button').classList.remove('is-danger');
-
     }
 
     return true;

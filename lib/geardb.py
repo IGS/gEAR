@@ -1344,31 +1344,13 @@ class LayoutCollection:
         cursor = self._cnx.get_cursor()
 
         qry = """
-              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public,
-                     f.id, f.parent_id, f.label, count(lm.id)
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public
                 FROM layout l
-                     LEFT JOIN layout_displays lm ON lm.layout_id=l.id
-                     LEFT JOIN folder_member fm ON fm.item_id=l.id
-                     LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE l.share_id = %s
-                 AND (fm.item_type = 'layout' or fm.item_type is NULL)
-            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """
         cursor.execute(qry, (share_id,))
 
         for row in cursor:
-            # This layout could appear in multiple places in thet tree, within folders. If foldered,
-            #  make sure it's a folder in this root node.  Else set into the root node.
-            if row[7]:
-                layout_root_node = self._get_root_folder_id(row[7])
-
-                if layout_root_node == int(this.servercfg['folders']['profile_shared_master_id']):
-                    folder_id = row[7]
-                else:
-                    folder_id = int(this.servercfg['folders']['profile_shared_master_id'])
-            else:
-                folder_id = int(this.servercfg['folders']['profile_shared_master_id'])
-
             layout = Layout(
                 id=row[0],
                 label=row[1],
@@ -1376,13 +1358,12 @@ class LayoutCollection:
                 user_id=row[3],
                 share_id=row[4],
                 is_domain=row[5],
-                is_public=row[6],
-                folder_id=folder_id,
-                folder_parent_id=row[8],
-                folder_label=row[9]
+                is_public=row[6]
             )
-            layout.get_members()
-            layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
+
+            if self.include_datasets == True:
+                layout.get_members()
+                layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
 
             self.layouts.append(layout)
 
@@ -1399,31 +1380,13 @@ class LayoutCollection:
         cursor = self._cnx.get_cursor()
 
         qry = """
-              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public,
-                     f.id, f.parent_id, f.label, count(lm.id)
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public
                 FROM layout l
-                     LEFT JOIN layout_displays lm ON lm.layout_id=l.id
-                     LEFT JOIN folder_member fm ON fm.item_id=l.id
-                     LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE l.user_id = %s
-                 AND (fm.item_type = 'layout' or fm.item_type is NULL)
-            GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """
         cursor.execute(qry, (user.id,))
 
         for row in cursor:
-            # This layout could appear in multiple places in thet tree, within folders. If foldered,
-            #  make sure it's a folder in this root node.  Else set into the root node.
-            if row[7]:
-                layout_root_node = self._get_root_folder_id(row[7])
-
-                if layout_root_node == int(this.servercfg['folders']['profile_user_master_id']):
-                    folder_id = row[7]
-                else:
-                    folder_id = int(this.servercfg['folders']['profile_user_master_id'])
-            else:
-                folder_id = int(this.servercfg['folders']['profile_user_master_id'])
-
             layout = Layout(
                 id=row[0],
                 label=row[1],
@@ -1431,14 +1394,12 @@ class LayoutCollection:
                 user_id=row[3],
                 share_id=row[4],
                 is_domain=row[5],
-                is_public=row[6],
-                folder_id=folder_id,
-                folder_parent_id=row[8],
-                folder_label=row[9]
+                is_public=row[6]
             )
 
-            layout.get_members()
-            layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
+            if self.include_datasets == True:
+                layout.get_members()
+                layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
 
             self.layouts.append(layout)
 
@@ -1461,35 +1422,17 @@ class LayoutCollection:
         cursor = self._cnx.get_cursor()
 
         qry = """
-              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public,
-                     f.id, f.parent_id, f.label, count(lm.id)
+              SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public
                 FROM ggroup g
                      JOIN user_group_membership ugm ON ugm.group_id=g.id
                      JOIN guser u ON u.id=ugm.user_id
                      JOIN layout_group_membership lgm ON lgm.group_id=g.id
                      JOIN layout l ON lgm.layout_id=l.id
-                     JOIN layout_displays lm ON lm.layout_id=l.id
-                     LEFT JOIN folder_member fm ON fm.item_id=l.id
-                     LEFT JOIN folder f ON f.id=fm.folder_id
                WHERE u.id = %s
-                 AND (fm.item_type = 'layout' or fm.item_type is NULL)
-              GROUP BY l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public, f.id, f.parent_id, f.label
         """
         cursor.execute(qry, (user.id,))
 
         for row in cursor:
-            # This layout could appear in multiple places in thet tree, within folders. If foldered,
-            #  make sure it's a folder in this root node.  Else set into the root node.
-            if row[7]:
-                layout_root_node = self._get_root_folder_id(row[7])
-
-                if layout_root_node == int(this.servercfg['folders']['profile_group_master_id']):
-                    folder_id = row[7]
-                else:
-                    folder_id = int(this.servercfg['folders']['profile_group_master_id'])
-            else:
-                folder_id = int(this.servercfg['folders']['profile_group_master_id'])
-
             layout = Layout(
                 id=row[0],
                 label=row[1],
@@ -1498,14 +1441,11 @@ class LayoutCollection:
                 share_id=row[4],
                 is_domain=row[5],
                 is_public=row[6],
-                folder_id=folder_id,
-                folder_parent_id=row[8],
-                folder_label=row[9]
             )
 
-            layout.folder_root_id=folder_id
-            layout.get_members()
-            layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
+            if self.include_datasets == True:
+                layout.get_members()
+                layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
 
             self.layouts.append(layout)
 
@@ -1537,7 +1477,7 @@ class LayoutCollection:
                 is_public=row[6]
             )
 
-            if self.include_datasets:
+            if self.include_datasets == True:
                 layout.get_members()
                 layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
             
@@ -1571,7 +1511,7 @@ class LayoutCollection:
                 is_public=row[6]
             )
 
-            if self.include_datasets:
+            if self.include_datasets == True:
                 layout.get_members()
                 layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
 
@@ -2892,10 +2832,7 @@ class GeneCartCollection:
             cart = self._row_to_cart_object(row)
 
             if self.include_genes == True:
-                print("DEBUG: Calling get_genes() from within get_domain()", file=sys.stderr)
                 cart.get_genes()
-            else:
-                print("DEBUG: NOT calling get_genes() from within get_domain() because include_genes is: {0}".format(self.include_genes), file=sys.stderr)
             
             self.carts.append(cart)
 
