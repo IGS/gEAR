@@ -594,10 +594,6 @@ class Analysis {
         for (const key in state) {
             if (typeof state[key] === 'object') {
                 state[key] = Analysis.convertToJson(state[key]);
-            //} else if (typeof state[key] === 'array') {
-            //    state[key] = state[key].map((item) => {
-            //       return item;
-            //    });
             }
         }
 
