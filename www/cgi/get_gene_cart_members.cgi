@@ -27,16 +27,18 @@ def main():
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
     user = geardb.get_user_from_session_id(session_id)
-    gene_cart_id = form.getvalue('gene_cart_id')
+    gene_cart_share_id = form.getvalue('gene_cart_share_id')
     result = { 'gene_symbols':[], 'success': 0 }
 
     if user is None:
         raise Exception("ERROR: failed to get user ID from session_id {0}".format(session_id))
 
     # Determine type of gene cart
-    gc = geardb.get_gene_cart_by_id(gene_cart_id)
+    gc = geardb.get_gene_cart_by_share_id(gene_cart_share_id)
     if gc is None:
-        raise Exception("ERROR: failed to get gene cart ID {0}".format(gene_cart_id))
+        raise Exception("ERROR: failed to get gene cart share ID {0}".format(gene_cart_share_id))
+
+    gene_cart_id = gc.id
 
     if gc.gctype == "unweighted-list":
         gene_cart_query = """

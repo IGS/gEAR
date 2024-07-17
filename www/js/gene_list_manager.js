@@ -58,7 +58,7 @@ const addGeneListEventListeners = () => {
             const shareId = e.currentTarget.dataset.gcShareId;
 
             if (gctype == "unweighted-list") {
-                const {gene_symbols: geneSymbols} = await fetchGeneCartMembers(gcId);
+                const geneSymbols = await fetchGeneCartMembers(shareId);
                 const fileContents = geneSymbols.map(gene => gene.label).join("\n");
 
                 const element = document.createElement("a");
@@ -865,13 +865,13 @@ const createWeightedGeneListPreview = (infoContainer, data) => {
 
 /**
  * Fetches the members of a gene cart.
- * @param {string} geneCartId - The ID of the gene cart.
+ * @param {string} geneCartShareId - The share ID of the gene cart.
  * @returns {Promise<Array<string>>} - A promise that resolves to an array of gene symbols.
  * @throws {Error} - If the gene list members cannot be fetched.
  */
-const fetchGeneCartMembers = async (geneCartId) => {
+const fetchGeneCartMembers = async (geneCartShareId) => {
     try {
-        const {gene_symbols, success} = await apiCallsMixin.fetchGeneCartMembers(geneCartId);
+        const {gene_symbols, success} = await apiCallsMixin.fetchGeneCartMembers(geneCartShareId);
         if (!success) {
             throw new Error("Could not fetch gene list members.");
         }
