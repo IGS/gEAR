@@ -78,6 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        document.getElementById("result-panel-initial-notification").classList.add('is-hidden');
         document.getElementById("result-panel-loader").classList.remove('is-hidden');
 
         // update multigene/single gene
@@ -314,7 +315,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     // Wait until all pending API calls have completed before checking if we need to search
     document.getElementById("submit-expression-search").classList.add("is-loading");
-    document.getElementById("result-panel-loader").classList.remove('is-hidden');
     try {
         // SAdkins note - Promise.all fails fast,
         // but Promise.allSettled waits until all resolve/reject and lets you know which ones failed
@@ -327,7 +327,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         logErrorInConsole(error);
     } finally {
         document.getElementById("submit-expression-search").classList.remove("is-loading");
-        document.getElementById("result-panel-loader").classList.add('is-hidden');
     }
 
     // Trigger the default dataset collection to be selected in the

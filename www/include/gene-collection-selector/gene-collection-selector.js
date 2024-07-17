@@ -191,13 +191,13 @@ const setActiveGeneCart = async (cart_row, mode) => {
     document.querySelector('#dropdown-content-genes').innerHTML = '';
 
     // populate the gene list from this cart
-    let gene_list_member_data = await apiCallsMixin.fetchGeneCartMembersByShareId(cart_row.dataset.shareId);
+    let gene_list_member_data = await apiCallsMixin.fetchGeneCartMembers(cart_row.dataset.shareId);
     let genes = [];
 
     for (const member of gene_list_member_data.gene_symbols) {
         genes.push(member.label);
     }
-    
+
     const gene_item_template = document.querySelector('#tmpl-gene-item');
 
     for (const gene of genes.sort()) {

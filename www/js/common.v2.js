@@ -1040,21 +1040,11 @@ const apiCallsMixin = {
     },
     /**
      * Fetches the members of a gene cart.
-     * @param {string} geneCartId - The ID of the gene cart.
+     * @param {string} shareId - The share ID of the gene list.
      * @returns {Promise<any>} - A promise that resolves to the data of the gene cart members.
      */
-    async fetchGeneCartMembers(geneCartId) {
-        const payload = { session_id: this.sessionId, gene_cart_id: geneCartId };
-        const {data} = await axios.post(`/cgi/get_gene_cart_members.cgi`, convertToFormData(payload));
-        return data;
-    },
-    /**
-     * Fetches the members of a gene cart.
-     * @param {string} geneCartShareId - The share ID of the gene cart.
-     * @returns {Promise<any>} - A promise that resolves to the data of the gene cart members.
-     */
-    async fetchGeneCartMembersByShareId(geneCartShareId) {
-        const payload = { session_id: this.sessionId, share_id: geneCartShareId };
+    async fetchGeneCartMembers(shareId) {
+        const payload = { session_id: this.sessionId, share_id: shareId };
         const {data} = await axios.post(`/cgi/get_gene_cart_members.cgi`, convertToFormData(payload));
         return data;
     },
