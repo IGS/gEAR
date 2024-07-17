@@ -1867,6 +1867,7 @@ class AnalysisStepClustering {
             this.mode = "initial";
         }
         if (this.mode === "edit") {
+            // Don't run clustering again if we are just editing the labels
             this.calculated = true;
         }
 
