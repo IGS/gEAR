@@ -73,10 +73,13 @@ def main():
     include_members = form.getvalue('include_members', 1)
     user = geardb.get_user_from_session_id(session_id)
 
-    folder_ids_found = set()
-
     if no_domain:
         no_domain = int(no_domain)
+
+    if include_members == 0:
+        include_members = False
+    elif include_members == 1:
+        include_members = True
 
     result = { 'user_layouts': [],
                'domain_layouts': [],
@@ -92,25 +95,19 @@ def main():
     if not no_domain:
         result['domain_layouts'] = geardb.LayoutCollection(include_datasets=include_members).get_domains()
 
-    #print(json.dumps(result, default=lambda o: o.__dict__))
-    #sys.exit(0)
-
     if user:
-        result['user_layouts'] = geardb.LayoutCollection().get_by_user(user)
-        result['group_layouts'] =  geardb.LayoutCollection().get_by_users_groups(user)
+        result['user_layouts'] = geardb.LayoutCollection(include_datasets=include_members).get_by_user(user)
+        result['group_layouts'] =  geardb.LayoutCollection(include_datasets=include_members).get_by_users_groups(user)
 
     if layout_share_id:
-        result['shared_layouts'] = geardb.LayoutCollection().get_by_share_id(layout_share_id)
+        result['shared_layouts'] = geardb.LayoutCollection(include_datasets=include_members).get_by_share_id(layout_share_id)
 
-    ## Selected priority (and indexes folder IDs):
+    ## Selected priority:
     ## - A passed share ID
     ## - User has set a saved profile
     ## - Use the site default
     for ltype in ['user', 'domain', 'group', 'shared', 'public']:
         for l in result[ltype + '_layouts']:
-            if l.folder_id:
-                folder_ids_found.add(l.folder_id)
-
             if l.share_id == layout_share_id:
                 result['selected'] = l.share_id
                 break
@@ -126,10 +123,6 @@ def main():
             if l.is_current:
                 result['selected'] = l.share_id
                 break
-
-    result['folders'] = geardb.FolderCollection()
-    result['folders'] = result['folders'].get_tree_by_folder_ids(ids=folder_ids_found,
-                                                                 folder_type='profile')
 
     # for each layout, determine if the user is the owner
     for ltype in ['user', 'domain', 'group', 'shared', 'public']:
