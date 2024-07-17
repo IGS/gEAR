@@ -2530,6 +2530,8 @@ class GeneCart:
         for row in cursor:
             self.genes.append(row[0])
 
+        self.num_genes = len(self.genes)
+
         cursor.close()
         conn.close()
 
