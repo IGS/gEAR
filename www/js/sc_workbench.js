@@ -62,6 +62,11 @@ const datasetTree = new DatasetTree({
             resetWorkbench();
         }
 
+        // Reset to the default state, so that users are forced to choose an analysis.
+        document.querySelector(UI.analysisSelect).querySelector("option[data-analysis-id='-1']").selected = true;
+        document.querySelector(UI.analysisWorkflowElt).classList.add("is-hidden");
+        document.querySelector(UI.btnProgressGuideElt).classList.add("is-hidden");
+
         document.querySelector(UI.currentAnalysisElt).textContent = "None selected";
 
         // This is a placeholder to retrieve preliminary figures which are stored in the "primary" directory

@@ -76,6 +76,11 @@ class Analysis {
      * @returns {Object} - The snake_case object.
      */
     static convertToJson(camelCaseObj) {
+        // If the object is not an object or is null, return it as is
+        if (camelCaseObj === null || typeof camelCaseObj !== 'object') {
+            return camelCaseObj;
+        }
+
         const toSnakeCase = (str) => {
             return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
         }
@@ -815,7 +820,7 @@ class AnalysisStepPrimaryFilter {
             failStepWithHref("#primary-filter-s")
             document.querySelector(UI.primaryFilterSectionFailedElt).classList.remove("is-hidden");
         } finally {
-            if (this.type !== 'primary') {
+            if (this.analysis.type !== 'primary') {
                 this.analysis.save();
             }
         }
@@ -934,8 +939,8 @@ class AnalysisStepPrimaryFilter {
                 document.querySelector(UI.filterGenesGtNCellsSelectedElt).checked = true;
             }
 
-            document.querySelector(UI.filterCellsLtNGenesElt).value = this.filterCellsLtNGenes;
-            document.querySelector(UI.filterCellsGtNGenesElt).value = this.filterCellsGtNGenes || 300;
+            document.querySelector(UI.filterCellsLtNGenesElt).value = this.filterCellsLtNGenes || 300;
+            document.querySelector(UI.filterCellsGtNGenesElt).value = this.filterCellsGtNGenes;
             document.querySelector(UI.filterGenesLtNCellsElt).value = this.filterGenesLtNCells || 3;
             document.querySelector(UI.filterGenesGtNCellsElt).value = this.filterGenesGtNCells;
 
@@ -1098,7 +1103,7 @@ class AnalysisStepQCByMito {
             failStepWithHref(UI.qcByMitoSection);
             document.querySelector(UI.qcByMitoSectionFailedElt).classList.remove("is-hidden");
         } finally {
-            if (this.type !== 'primary') {
+            if (this.analysis.type !== 'primary') {
                 this.analysis.save();
             }
         }
@@ -1319,7 +1324,7 @@ class AnalysisStepSelectVariableGenes {
             document.getElementById(UI.selectVariableGenesSectionFailedElt).classList.remove("is-hidden");
             failStepWithHref(UI.selectVariableGenesSection);
         } finally {
-            if (this.type !== 'primary') {
+            if (this.analysis.type !== 'primary') {
                 this.analysis.save();
             }
         }
@@ -1498,7 +1503,7 @@ class AnalysisStepPCA {
             document.querySelector(UI.pcaSectionFailedElt).classList.remove("is-hidden");
 
         } finally {
-            if (this.type !== 'primary') {
+            if (this.analysis.type !== 'primary') {
                 this.analysis.save();
             }
         }
@@ -1792,7 +1797,7 @@ class AnalysisSteptSNE {
             document.querySelector(UI.tsneMissingGeneContainer).classList.remove("is-hidden");
 
         } finally {
-            if (this.type !== 'primary') {
+            if (this.analysis.type !== 'primary') {
                 this.analysis.save();
             }
         }
@@ -1867,6 +1872,7 @@ class AnalysisStepClustering {
             this.mode = "initial";
         }
         if (this.mode === "edit") {
+            // Don't run clustering again if we are just editing the labels
             this.calculated = true;
         }
 
@@ -2048,7 +2054,7 @@ class AnalysisStepClustering {
             }
 
         } finally {
-            if (this.type !== 'primary') {
+            if (this.analysis.type !== 'primary') {
                 this.analysis.save();
             }
         }
@@ -2453,7 +2459,7 @@ class AnalysisStepMarkerGenes {
             failStepWithHref(UI.markerGenesSection)
 
         } finally {
-            if (this.type !== 'primary') {
+            if (this.analysis.type !== 'primary') {
                 this.analysis.save();
             }
         }
@@ -2729,7 +2735,7 @@ class AnalysisStepCompareGenes {
             logErrorInConsole(error);
             document.querySelector(UI.compareGenesSectionFailedElt).classList.remove("is-hidden");
         } finally {
-            if (this.type !== 'primary') {
+            if (this.analysis.type !== 'primary') {
                 this.analysis.save();
             }
         }
