@@ -339,7 +339,7 @@ class Analysis {
      * @param {Object} data - The JSON data representing the Analysis object.
      * @returns {Analysis} The loaded Analysis object.
      */
-    static loadFromJson(data) {
+    static async loadFromJson(data) {
         const analysis = new Analysis({
             id: data.id,
             datasetObj: data.dataset,
@@ -398,7 +398,7 @@ class Analysis {
 
         analysis.clustering = AnalysisStepClustering.loadFromJson(data.clustering, analysis);
 
-        analysis.markerGenes = AnalysisStepMarkerGenes.loadFromJson(data.marker_genes, analysis);
+        analysis.markerGenes = await AnalysisStepMarkerGenes.loadFromJson(data.marker_genes, analysis);
 
         // Support legacy data.
         const clusteringEditData = data.clustering_edit || data.clustering
@@ -684,7 +684,6 @@ class AnalysisStepLabeledTsne {
     constructor(analysis) {
         this.reset();
         this.analysis = analysis;
-        this.irreversible = false;
     }
 
     reset() {
@@ -734,7 +733,6 @@ class AnalysisStepPrimaryFilter {
     constructor(analysis) {
         this.reset();
         this.analysis = analysis;
-        this.irreversible = true;
     }
 
     async applyPrimaryFilter() {
@@ -976,7 +974,6 @@ class AnalysisStepQCByMito {
     constructor(analysis) {
         this.reset();
         this.analysis = analysis;
-        this.irreversible = false;   // If "saved", then this is true as filtering happens in the backend
     }
 
     /**
@@ -1175,9 +1172,6 @@ class AnalysisStepSelectVariableGenes {
     constructor(analysis) {
         this.reset();
         this.analysis = analysis;
-        this.irreversible = false;  // TODO: Add "adata.layers["counts"] = adata.X.copy()" to the backend
-        // At this step, we theoretically could save original counts to a layer before normalizing
-        // Then if we want to back up to this step, we could have a script to restore the original counts
     }
 
     /**
@@ -1398,7 +1392,6 @@ class AnalysisStepPCA {
     constructor(analysis) {
         this.reset();
         this.analysis = analysis;
-        this.irreversible = false;
     }
 
     /**
@@ -1614,7 +1607,6 @@ class AnalysisSteptSNE {
     constructor(analysis) {
         this.reset();
         this.analysis = analysis;
-        this.irreversible = false;
     }
 
     static loadFromJson(data, analysis) {
@@ -1869,15 +1861,13 @@ class AnalysisStepClustering {
         this.reset();   // TODO: split into two potentially for each step
 
         this.analysis = analysis;
-        this.irreversible = false;
         this.mode = mode;  // initial, edit
         if (!(["initial", "edit"].includes(mode))) {
             logErrorInConsole("Invalid mode for AnalysisStepClustering. Defaulting to 'initial'.");
             this.mode = "initial";
         }
-        if (mode === "edit") {
+        if (this.mode === "edit") {
             this.calculated = true;
-            this.irreversible = true;
         }
 
     }
@@ -1889,7 +1879,8 @@ class AnalysisStepClustering {
      * @returns {AnalysisStepClustering} - The newly created instance of AnalysisStepClustering.
      */
     static loadFromJson(data, analysis) {
-        const step = new AnalysisStepClustering(analysis);
+        const mode = data.mode || "initial";
+        const step = new AnalysisStepClustering(analysis, mode);
         if (!data) return step;
 
         step.calculated = data['calculated'];
@@ -2136,7 +2127,6 @@ class AnalysisStepMarkerGenes {
     constructor(analysis) {
         this.reset();
         this.analysis = analysis;
-        this.irreversible = false;
     }
 
     /**
@@ -2212,21 +2202,18 @@ class AnalysisStepMarkerGenes {
         return data;
     }
 
-    static loadFromJson(data, analysis) {
+    static async loadFromJson(data, analysis) {
         const step = new AnalysisStepMarkerGenes(analysis);
         if (!data) return step;
 
         step.calculated = data['calculated']
         step.nGenes = data['n_genes']
         step.groupLabels = data['group_labels']
+        step.clusterLabel = data['cluster_label'] || "louvain";
 
-        // Even if calculated, the cluster label and table were not saved
-        // So need to rerun in order to render those.
-        step.runAnalysis();
-
-        /*if (step.calculated ) {
-            step.updateUIWithResults(data);
-        }*/
+        if (step.calculated ) {
+            await step.updateUIWithResults(data);
+        }
 
         return step;
     }
@@ -2328,15 +2315,8 @@ class AnalysisStepMarkerGenes {
      * @returns {Promise<void>} - A promise that resolves when the marker genes table is populated.
      * @throws {Error} - If there is an error retrieving the marker genes data.
      */
-    async populateMarkerGenesTable(table) {
+    populateMarkerGenesTable(table) {
         try {
-            if (!table) {
-                this.computeMarkerGenes = true;
-                const data = await this.fetchMarkerGenes();
-                table = data.table;
-                this.computeMarkerGenes = false;
-            }
-
             // Add the first th element (empty)
             const markerGenesHeaderHtml = document.querySelector(UI.markerGenesTableHeadTmpl).content.cloneNode(true);
             markerGenesHeaderHtml.querySelector("th").textContent = "";
@@ -2370,7 +2350,6 @@ class AnalysisStepMarkerGenes {
 
             // Show the table and associated stuff
             document.querySelector(UI.markerGenesTableContainer).classList.remove("is-hidden");
-
         } catch (error) {
             createToast(`Error getting marker genes: ${error.message}`);
             logErrorInConsole(error);
@@ -2383,10 +2362,11 @@ class AnalysisStepMarkerGenes {
      */
     reset() {
         this.calculated = false;
+        this.clusterLabel = "louvain";
         this.computeMarkerGenes = !this.calculated;
         this.genesOfInterest = new Set();
         this.groupLabels = [];
-        this.nGenes = false;
+        this.nGenes = 5;
         this.resetUI();
     }
 
@@ -2458,6 +2438,8 @@ class AnalysisStepMarkerGenes {
                 throw new Error(error);
             }
 
+            this.clusterLabel = data.cluster_label;
+
             this.calculated = true;
             this.updateUIWithResults(data);
             this.analysis.groupLabels = data.group_labels.map(x => x.group_label);
@@ -2484,7 +2466,7 @@ class AnalysisStepMarkerGenes {
      * @param {Object} [ana=null] - The analysis object. If not provided, the method uses the analysis object of the class instance.
      * @returns {void}
      */
-    updateUIWithResults(data, ana=null) {
+    async updateUIWithResults(data, ana=null) {
         if (!ana) {
             ana = this.analysis;
         }
@@ -2496,7 +2478,7 @@ class AnalysisStepMarkerGenes {
 
         const params = {
             'analysis_id': ana.id,
-            'analysis_name': `rank_genes_groups_${data['cluster_label']}`,
+            'analysis_name': `rank_genes_groups_${data.cluster_label}`,
             'analysis_type': ana.type,
             'dataset_id': ana.dataset.id,
             'session_id': ana.userSessionId,
@@ -2509,11 +2491,12 @@ class AnalysisStepMarkerGenes {
         ana.placeAnalysisImage(
             {'params': params, 'title': 'Marker genes', 'target': UI.markerGenesPlotContainer});
 
-        if (data['table']) {
-            this.populateMarkerGenesTable(data.table);
-        } else {
-            this.populateMarkerGenesTable();    // This will fetch the data
-        }
+        // May need to fetch marker gene data to build table if loading from JSON
+        this.computeMarkerGenes = true;
+        data = data?.table ? data : await this.fetchMarkerGenes();
+        this.computeMarkerGenes = false;
+
+        this.populateMarkerGenesTable(data.table);
 
         const groupLabels = data.group_labels.map(x => x.group_label);
 
@@ -2546,7 +2529,6 @@ class AnalysisStepCompareGenes {
     constructor(analysis) {
         this.reset();
         this.analysis = analysis;
-        this.irreversible = false;
     }
 
     /**
@@ -2563,6 +2545,7 @@ class AnalysisStepCompareGenes {
                 "n_genes": 0,
                 "query_cluster": null,
                 "reference_cluster": null,
+                "cluster_label": "louvain",
                 "method": 't-test_overestim_var',
                 "corr_method": 'benjamini-hochberg',
                 "table_json_f": null,
@@ -2574,8 +2557,13 @@ class AnalysisStepCompareGenes {
         step.nGenes = data['n_genes'];
         step.queryCluster = data['query_cluster'];
         step.referenceCluster = data['reference_cluster'];
+        step.clusterLabel = data['cluster_label'];
         step.method = 't-test_overestim_var';
         step.corrMethod = 'benjamini-hochberg';
+
+        if (data.hasOwnProperty('cluster_label')) {
+            step.clusterLabel = data['metcluster_labelhod'];
+        }
 
         if (data.hasOwnProperty('method')) {
             step.method = data['method'];
@@ -2655,6 +2643,7 @@ class AnalysisStepCompareGenes {
         this.nGenes = 0;
         this.queryCluster = null;
         this.referenceCluster = null;
+        this.clusterLabel = null;
         this.method = 't-test_overestim_var';
         this.corrMethod = 'benjamini-hochberg';
         this.tableJsonF = null;
@@ -2703,8 +2692,6 @@ class AnalysisStepCompareGenes {
             container.replaceChildren();
         }
 
-        const computeGeneComparison = this.calculated ? 1 : 0;
-
         try {
             const {data} = await axios.post("./cgi/h5ad_compare_genes.cgi", convertToFormData({
                 'dataset_id': this.analysis.dataset.id,
@@ -2712,7 +2699,6 @@ class AnalysisStepCompareGenes {
                 'analysis_type': this.analysis.type,
                 'session_id': this.analysis.userSessionId,
                 'n_genes': document.querySelector(UI.compareGenesNGenesElt).value,
-                'compute_gene_comparison': computeGeneComparison,
                 'group_labels': JSON.stringify(this.analysis.groupLabels),
                 'query_cluster': document.querySelector(UI.queryClusterSelectElt).value,
                 'reference_cluster': document.querySelector(UI.referenceClusterSelectElt).value,
@@ -2734,6 +2720,8 @@ class AnalysisStepCompareGenes {
             this.referenceCluster = document.querySelector(UI.referenceClusterSelectElt).value;
             this.method = document.querySelector(UI.compareGenesMethodSelectElt).value;
             this.corrMethod = document.querySelector(UI.comapreGenesCorrMethodSelectElt).value;
+
+            this.clusterLabel = data.cluster_label;
             this.updateUIWithResults(data);
             createToast("Comparison computed", "is-success");
         } catch (error) {
@@ -2778,7 +2766,7 @@ class AnalysisStepCompareGenes {
 
         const params = {
             'analysis_id': ana.id,
-            'analysis_name': `rank_genes_groups_${data['cluster_label']}_comp_ranked`,
+            'analysis_name': `rank_genes_groups_${data.cluster_label}_comp_ranked`,
             'analysis_type': ana.type,
             'dataset_id': ana.dataset.id,
             'session_id': ana.userSessionId,

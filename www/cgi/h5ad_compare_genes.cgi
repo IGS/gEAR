@@ -38,7 +38,6 @@ def main():
     n_genes = int(form.getvalue('n_genes'))
     method = form.getvalue('method')
     corr_method = form.getvalue('corr_method')
-    compute_gene_comparison = int(form.getvalue('compute_gene_comparison'))
 
     if form.getvalue('group_labels'):
         group_labels = json.loads(form.getvalue('group_labels'))
@@ -48,6 +47,11 @@ def main():
     ## correction method isn't valid for logistic regression
     if method == 'logreg':
         corr_method = None
+
+    if not user:
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({'success': 0, 'error': 'Invalid session'}))
 
     ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
                           session_id=session_id, user_id=user.id)
