@@ -38,6 +38,7 @@ def main():
         print(json.dumps(result))
         return
 
+    gene_cart.get_genes()
     genes = gene_cart.genes
     organism_id = gene_cart.organism_id
 
