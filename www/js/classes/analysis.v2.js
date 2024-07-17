@@ -76,6 +76,11 @@ class Analysis {
      * @returns {Object} - The snake_case object.
      */
     static convertToJson(camelCaseObj) {
+        // If the object is not an object or is null, return it as is
+        if (camelCaseObj === null || typeof camelCaseObj !== 'object') {
+            return camelCaseObj;
+        }
+
         const toSnakeCase = (str) => {
             return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
         }
@@ -589,6 +594,10 @@ class Analysis {
         for (const key in state) {
             if (typeof state[key] === 'object') {
                 state[key] = Analysis.convertToJson(state[key]);
+            //} else if (typeof state[key] === 'array') {
+            //    state[key] = state[key].map((item) => {
+            //       return item;
+            //    });
             }
         }
 
@@ -815,7 +824,7 @@ class AnalysisStepPrimaryFilter {
             failStepWithHref("#primary-filter-s")
             document.querySelector(UI.primaryFilterSectionFailedElt).classList.remove("is-hidden");
         } finally {
-            if (this.type !== 'primary') {
+            if (this.analysis.type !== 'primary') {
                 this.analysis.save();
             }
         }
@@ -1098,7 +1107,7 @@ class AnalysisStepQCByMito {
             failStepWithHref(UI.qcByMitoSection);
             document.querySelector(UI.qcByMitoSectionFailedElt).classList.remove("is-hidden");
         } finally {
-            if (this.type !== 'primary') {
+            if (this.analysis.type !== 'primary') {
                 this.analysis.save();
             }
         }
@@ -1319,7 +1328,7 @@ class AnalysisStepSelectVariableGenes {
             document.getElementById(UI.selectVariableGenesSectionFailedElt).classList.remove("is-hidden");
             failStepWithHref(UI.selectVariableGenesSection);
         } finally {
-            if (this.type !== 'primary') {
+            if (this.analysis.type !== 'primary') {
                 this.analysis.save();
             }
         }
@@ -1498,7 +1507,7 @@ class AnalysisStepPCA {
             document.querySelector(UI.pcaSectionFailedElt).classList.remove("is-hidden");
 
         } finally {
-            if (this.type !== 'primary') {
+            if (this.analysis.type !== 'primary') {
                 this.analysis.save();
             }
         }
@@ -1792,7 +1801,7 @@ class AnalysisSteptSNE {
             document.querySelector(UI.tsneMissingGeneContainer).classList.remove("is-hidden");
 
         } finally {
-            if (this.type !== 'primary') {
+            if (this.analysis.type !== 'primary') {
                 this.analysis.save();
             }
         }
@@ -2049,7 +2058,7 @@ class AnalysisStepClustering {
             }
 
         } finally {
-            if (this.type !== 'primary') {
+            if (this.analysis.type !== 'primary') {
                 this.analysis.save();
             }
         }
@@ -2454,7 +2463,7 @@ class AnalysisStepMarkerGenes {
             failStepWithHref(UI.markerGenesSection)
 
         } finally {
-            if (this.type !== 'primary') {
+            if (this.analysis.type !== 'primary') {
                 this.analysis.save();
             }
         }
@@ -2730,7 +2739,7 @@ class AnalysisStepCompareGenes {
             logErrorInConsole(error);
             document.querySelector(UI.compareGenesSectionFailedElt).classList.remove("is-hidden");
         } finally {
-            if (this.type !== 'primary') {
+            if (this.analysis.type !== 'primary') {
                 this.analysis.save();
             }
         }
