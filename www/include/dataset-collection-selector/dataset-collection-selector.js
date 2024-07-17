@@ -133,7 +133,7 @@ const fetchDatasetCollections = async (callback) => {
         }
 
         if (callback) {
-            callback(dataset_collection_data);
+            callback();
         }
 
     } catch (error) {

@@ -750,7 +750,7 @@ const buildFilterString = (groupName) => {
  * updates the UI based on the selected collection, and handles button actions.
  * @returns {Promise<void>} A promise that resolves when the function completes.
  */
-const changeDatasetCollectionCallback = async (datasetCollectionData=null) => {
+const changeDatasetCollectionCallback = async () => {
     // Show action buttons
     document.getElementById("collection-actions-c").classList.remove("is-hidden");
 
@@ -763,13 +763,12 @@ const changeDatasetCollectionCallback = async (datasetCollectionData=null) => {
     // The share_id should be updated in the component when a new dataset collection is selected
     const datasetData = await apiCallsMixin.fetchDatasets({layout_share_id: selected_dc_share_id, sort_by: "date_added"})
 
-    // If dataset collection data is not passed in, fetch it from the API
-    if (!datasetCollectionData) {
-        datasetCollectionData = await apiCallsMixin.fetchDatasetCollections();
-    }
+    // Uses dataset-collection-selector.js variable
+    // ? I don't like doing this but calling this with callback uses whatever state of the variable is at the time of MutationObserver setup
+    const datasetCollectionData = dataset_collection_data;
 
     // merge all dataset collection data from domain_layouts, group_layouts, public_layouts, shared_layouts, and user_layouts into one array
-    flatDatasetCollectionData = [...datasetCollectionData.domain_layouts, ...datasetCollectionData.group_layouts, ...datasetCollectionData.public_layouts, ...datasetCollectionData.shared_layouts, ...datasetCollectionData.user_layouts]
+    flatDatasetCollectionData = [...datasetCollectionData.domain_layouts, ...datasetCollectionData.group_layouts, ...datasetCollectionData.public_layouts, ...datasetCollectionData.shared_layouts, ...datasetCollectionData.user_layouts];
 
     // Find the dataset collection data for the selected share_id
     let collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
@@ -1290,7 +1289,7 @@ const createDeleteCollectionConfirmationPopover = () => {
 
         // Create popover (help from https://floating-ui.com/docs/tutorial)
         computePosition(button, popoverContent, {
-            placement: 'top',
+            placement: 'bottom',
             middleware: [
                 flip(), // flip to bottom if there is not enough space on top
                 shift(), // shift the popover to the right if there is not enough space on the left
@@ -1344,13 +1343,15 @@ const createDeleteCollectionConfirmationPopover = () => {
 
                     createToast("Dataset collection deleted", "is-success");
 
-                    selectDatasetCollection(null);  // performs DatasetCollectionSelectorCallback when label is reset
+                    if (Cookies.get('gear_default_domain') === selected_dc_share_id) {
+                        Cookies.remove('gear_default_domain');
+                    }
+
+                    selected_dc_share_id = CURRENT_USER.default_profile_share_id;
+                    selectDatasetCollection(selected_dc_share_id);  // performs DatasetCollectionSelectorCallback when label is reset
 
                     // Override the "show" from the callback. If the collection is deleted, the collection management should be hidden
                     document.getElementById("collection-actions-c").classList.add("is-hidden");
-
-                    // Remove the collection from the dropdown so that it cannot be selected again
-                    document.querySelector(`.dropdown-dc-item[data-share-id="${selected_dc_share_id}"]`).remove();
 
                 } else {
                     const error = data['error'] || "Failed to delete collection";
@@ -1422,7 +1423,7 @@ const createNewCollectionPopover = () => {
 
         // Create popover (help from https://floating-ui.com/docs/tutorial)
         computePosition(button, popoverContent, {
-            placement: 'top',
+            placement: 'bottom',
             middleware: [
                 flip(), // flip to bottom if there is not enough space on top
                 shift(), // shift the popover to the right if there is not enough space on the left
@@ -1811,19 +1812,19 @@ const createPaginationEllipsis = () => {
     return li;
 }
 
-const datasetCollectionSelectCallback = (datasetCollectionData) => {
+const datasetCollectionSelectCallback = () => {
     // Add mutation observer to watch if #dropdown-dc-selector-label changes
     const observer = new MutationObserver((mutationsList, observer) => {
         for (const mutation of mutationsList) {
             if (mutation.type === 'childList') {
-                changeDatasetCollectionCallback(datasetCollectionData);
+                changeDatasetCollectionCallback();
             }
         }
     });
 
     observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
 
-    // Trigger the default dataset collection to be selected in the
+    // Trigger the default dataset collection to be selected at the start
     if (CURRENT_USER.default_profile_share_id) {
         selectDatasetCollection(CURRENT_USER.default_profile_share_id);
     }
