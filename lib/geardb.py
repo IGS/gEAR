@@ -1265,6 +1265,10 @@ class LayoutCollection:
 
     layouts: List[Layout] = field(default_factory=list)
 
+    # In this class many of the methods need db connections, and this can be costly. Let's keep one
+    #  open while it's used
+    _cnx = Connection()
+
     def __post_init__(self):
         if len(self.folder_idx) == 0:
             self._populate_folder_index()
@@ -1299,15 +1303,13 @@ class LayoutCollection:
         self.folder_idx = dict()
 
         qry = "SELECT id, parent_id FROM folder"
-        conn = Connection()
-        cursor = conn.get_cursor()
+        cursor = self._cnx.get_cursor()
         cursor.execute(qry)
 
         for row in cursor:
             self.folder_idx[row[0]] = row[1]
 
         cursor.close()
-        conn.close()
 
     def _populate_root_folder_index(self):
         """
@@ -1318,8 +1320,7 @@ class LayoutCollection:
             return False
 
         qry = "SELECT id, parent_id FROM folder"
-        conn = Connection()
-        cursor = conn.get_cursor()
+        cursor = self._cnx.get_cursor()
         cursor.execute(qry)
 
         for row in cursor:
@@ -1328,7 +1329,6 @@ class LayoutCollection:
                 self.root_folder_idx[row[0]] = self._get_root_folder_id(row[1])
 
         cursor.close()
-        conn.close()
 
     def get_by_share_id(self, share_id=None):
         """
@@ -1338,8 +1338,7 @@ class LayoutCollection:
         if not share_id:
             return self.layouts
 
-        conn = Connection()
-        cursor = conn.get_cursor()
+        cursor = self._cnx.get_cursor()
 
         qry = """
               SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public,
@@ -1385,7 +1384,6 @@ class LayoutCollection:
             self.layouts.append(layout)
 
         cursor.close()
-        conn.close()
         return self.layouts
 
     def get_by_user(self, user=None):
@@ -1395,8 +1393,7 @@ class LayoutCollection:
         if not isinstance(user, User):
             raise Exception("LayoutCollection.get_by_user() requires an instance of User to be passed.")
 
-        conn = Connection()
-        cursor = conn.get_cursor()
+        cursor = self._cnx.get_cursor()
 
         qry = """
               SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public,
@@ -1443,7 +1440,6 @@ class LayoutCollection:
             self.layouts.append(layout)
 
         cursor.close()
-        conn.close()
         return self.layouts
 
     def get_by_users_groups(self, user=None, append=True):
@@ -1459,8 +1455,7 @@ class LayoutCollection:
         if append == False:
             self.layouts = list()
 
-        conn = Connection()
-        cursor = conn.get_cursor()
+        cursor = self._cnx.get_cursor()
 
         qry = """
               SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public,
@@ -1512,15 +1507,13 @@ class LayoutCollection:
             self.layouts.append(layout)
 
         cursor.close()
-        conn.close()
         return self.layouts
 
     def get_domains(self):
         """
         Queries the DB to get all the site domain layouts.
         """
-        conn = Connection()
-        cursor = conn.get_cursor()
+        cursor = self._cnx.get_cursor()
 
         qry = """
               SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public,
@@ -1566,15 +1559,13 @@ class LayoutCollection:
             self.layouts.append(layout)
 
         cursor.close()
-        conn.close()
         return self.layouts
 
     def get_public(self):
         """
         Queries the DB to get all the site domain layouts.
         """
-        conn = Connection()
-        cursor = conn.get_cursor()
+        cursor = self._cnx.get_cursor()
 
         qry = """
               SELECT l.id, l.label, l.is_current, l.user_id, l.share_id, l.is_domain, l.is_public,
@@ -1621,7 +1612,6 @@ class LayoutCollection:
             self.layouts.append(layout)
 
         cursor.close()
-        conn.close()
         return self.layouts
 
 @dataclass
