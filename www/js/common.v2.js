@@ -1054,7 +1054,7 @@ const apiCallsMixin = {
      * @returns {Promise<any>} - A promise that resolves to the data of the gene cart members.
      */
     async fetchGeneCartMembersByShareId(geneCartShareId) {
-        const payload = { session_id: this.sessionId, gene_cart_share_id: geneCartShareId };
+        const payload = { session_id: this.sessionId, share_id: geneCartShareId };
         const {data} = await axios.post(`/cgi/get_gene_cart_members.cgi`, convertToFormData(payload));
         return data;
     },

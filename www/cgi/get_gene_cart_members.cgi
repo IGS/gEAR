@@ -28,15 +28,21 @@ def main():
     session_id = form.getvalue('session_id')
     user = geardb.get_user_from_session_id(session_id)
     gene_cart_id = form.getvalue('gene_cart_id')
+    gene_cart_share_id = form.getvalue('share_id')
     result = { 'gene_symbols':[], 'success': 0 }
 
     if user is None:
         raise Exception("ERROR: failed to get user ID from session_id {0}".format(session_id))
 
     # Determine type of gene cart
-    gc = geardb.get_gene_cart_by_id(gene_cart_id)
-    if gc is None:
-        raise Exception("ERROR: failed to get gene cart ID {0}".format(gene_cart_id))
+    if gene_cart_id:
+        gc = geardb.get_gene_cart_by_id(gene_cart_id)
+        if gc is None:
+            raise Exception("ERROR: failed to get gene cart ID {0}".format(gene_cart_id))
+    elif gene_cart_share_id:
+        gc = geardb.get_gene_cart_by_share_id(gene_cart_share_id)
+        if gc is None:
+            raise Exception("ERROR: failed to get gene cart share ID {0}".format(gene_cart_share_id))
 
     if gc.gctype == "unweighted-list":
         gene_cart_query = """
@@ -45,13 +51,13 @@ def main():
                 WHERE gene_cart_id = %s
         """
 
-        cursor.execute(gene_cart_query, (gene_cart_id,))
+        cursor.execute(gene_cart_query, (gc.id,))
         for row in cursor:
             result['gene_symbols'].append({'id': row[0], 'label': row[1]})
     elif gc.gctype == "weighted-list":
         share_id = gc.share_id
         if not share_id:
-            raise Exception("ERROR: weighted-list gene cart {0} has no share ID".format(gene_cart_id))
+            raise Exception("ERROR: weighted-list gene cart {0} has no share ID".format(gc.id))
 
         # Get the gene symbols from the shared cart file
         file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + share_id))
