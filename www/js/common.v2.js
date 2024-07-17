@@ -925,8 +925,15 @@ const apiCallsMixin = {
      * @param {string|null} noDomain - If 1, the domain layout will not be included in the results.
      * @returns {Promise<any>} The response data.
      */
-    async fetchDatasetCollections(layoutShareId=null, noDomain=0) {
+    async fetchDatasetCollections(layoutShareId=null, noDomain=0, includeMembers=true) {
         const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, no_domain: noDomain};
+
+        if (includeMembers) {
+            payload.include_members = 1;
+        } else {
+            payload.include_members = 0;
+        }   
+
         const {data} = await axios.post("cgi/get_user_layouts.cgi", convertToFormData(payload));
         return data;
     },
@@ -1053,7 +1060,7 @@ const apiCallsMixin = {
      * @param {string} cartType - The type of gene cart to fetch.
      * @returns {Promise<any>} - A promise that resolves to the fetched gene carts data.
      */
-    async fetchGeneCarts(cartType=null, includeMembers=true) {
+    async fetchGeneCarts({cartType=null, includeMembers=true}) {
         const payload = {session_id: this.sessionId};
         if (cartType) {
             payload.cart_type = cartType;

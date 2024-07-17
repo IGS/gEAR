@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 const fetchGeneCartData = async (callback) => {
     try {
-        gene_cart_data = await apiCallsMixin.fetchGeneCarts('unweighted-list');
+        gene_cart_data = await apiCallsMixin.fetchGeneCarts({cartType: 'unweighted-list', includeMembers: true});
         document.querySelector('#dropdown-gene-lists').classList.remove('is-loading');
         document.querySelector('#dropdown-gene-lists').classList.remove('is-disabled');
 
@@ -168,10 +168,6 @@ const fetchGeneCartData = async (callback) => {
             for (const cart of gene_cart_data[cart_type]) {
                 gene_cart_label_index[cart.share_id] = cart.label;
                 gene_cart_genes[cart.share_id] = cart.genes;
-
-                // remove the genes list from the original data structure so we don't
-                //  use the memory twice
-                delete cart.genes;
             }
         }
 

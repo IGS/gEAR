@@ -78,6 +78,8 @@ def main():
 
     if include_members == 0:
         include_members = False
+    elif include_members == 1:
+        include_members = True
 
     domain_carts = geardb.GeneCartCollection(include_genes=include_members).get_domain()
     user_carts = []

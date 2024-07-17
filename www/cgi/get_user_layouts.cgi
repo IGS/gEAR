@@ -70,6 +70,7 @@ def main():
     no_domain = form.getvalue('no_domain', 0)
     session_id = form.getvalue('session_id')
     layout_share_id = form.getvalue('layout_share_id')
+    include_members = form.getvalue('include_members', 1)
     user = geardb.get_user_from_session_id(session_id)
 
     folder_ids_found = set()
@@ -86,10 +87,13 @@ def main():
                'selected': None }
 
     # Everyone can see public ones
-    result['public_layouts'] = geardb.LayoutCollection().get_public()
+    result['public_layouts'] = geardb.LayoutCollection(include_datasets=include_members).get_public()
 
     if not no_domain:
-        result['domain_layouts'] = geardb.LayoutCollection().get_domains()
+        result['domain_layouts'] = geardb.LayoutCollection(include_datasets=include_members).get_domains()
+
+    print(json.dumps(result, default=lambda o: o.__dict__))
+    sys.exit(0)
 
     if user:
         result['user_layouts'] = geardb.LayoutCollection().get_by_user(user)
