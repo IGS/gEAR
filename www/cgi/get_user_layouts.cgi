@@ -92,8 +92,8 @@ def main():
     if not no_domain:
         result['domain_layouts'] = geardb.LayoutCollection(include_datasets=include_members).get_domains()
 
-    print(json.dumps(result, default=lambda o: o.__dict__))
-    sys.exit(0)
+    #print(json.dumps(result, default=lambda o: o.__dict__))
+    #sys.exit(0)
 
     if user:
         result['user_layouts'] = geardb.LayoutCollection().get_by_user(user)
