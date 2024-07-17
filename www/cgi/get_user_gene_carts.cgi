@@ -76,16 +76,19 @@ def main():
     # Track the cart IDs already stored so we don't duplicate
     cart_ids_found = set()
 
-    domain_carts = geardb.GeneCartCollection(include_genes=False).get_domain()
+    if include_members == 0:
+        include_members = False
+
+    domain_carts = geardb.GeneCartCollection(include_genes=include_members).get_domain()
     user_carts = []
     group_carts = []
     recent_carts = []
     if current_user:
-        user_carts = geardb.GeneCartCollection(include_genes=False).get_by_user(user=current_user)
-        group_carts = geardb.GeneCartCollection(include_genes=False).get_by_user_groups(user=current_user)
-        recent_carts = geardb.GeneCartCollection(include_genes=False).get_by_user_recent(user=current_user, n=10)
-    shared_carts = geardb.GeneCartCollection(include_genes=False).get_by_share_ids(share_ids=[share_id])
-    public_carts = geardb.GeneCartCollection(include_genes=False).get_public()
+        user_carts = geardb.GeneCartCollection(include_genes=include_members).get_by_user(user=current_user)
+        group_carts = geardb.GeneCartCollection(include_genes=include_members).get_by_user_groups(user=current_user)
+        recent_carts = geardb.GeneCartCollection(include_genes=include_members).get_by_user_recent(user=current_user, n=10)
+    shared_carts = geardb.GeneCartCollection(include_genes=include_members).get_by_share_ids(share_ids=[share_id])
+    public_carts = geardb.GeneCartCollection(include_genes=include_members).get_public()
 
     if group_by_type and not group_by_type == "false":
         # Group all cart results by their cart type and return
