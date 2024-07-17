@@ -73,6 +73,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             return;
         }
 
+        document.getElementById("result-panel-initial-notification").classList.add('is-hidden');
         document.getElementById("result-panel-loader").classList.remove('is-hidden');
 
         // update multi/single pattern

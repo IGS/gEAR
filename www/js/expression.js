@@ -78,6 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        document.getElementById("result-panel-initial-notification").classList.add('is-hidden');
         document.getElementById("result-panel-loader").classList.remove('is-hidden');
 
         // update multigene/single gene
