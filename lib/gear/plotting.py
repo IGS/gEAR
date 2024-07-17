@@ -359,6 +359,11 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
     kwargs["traces"]["marker"].setdefault("size", 3)    # If size does not exist within
 
 
+    # Round y values to 2 decimal places for hover data
+    df["y_rounded"] = df[y].astype(float).round(2)
+    import sys
+    print(df.head(), file=sys.stderr)
+
     # These labels allows use to override these labels used for axis titles, etc.
     labels_dict = {x:x_title, y:y_title, "color_name":""}
 
@@ -370,7 +375,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
         , "color":color_name
         , "category_orders": category_orders if category_orders else {}
         , "labels":labels_dict
-        , "hover_name": text_name if text_name else y
+        , "hover_name": text_name if text_name else "y_rounded"
         }
 
     # Ensure label is one of the labels that is not lost from "gropuby"
@@ -380,6 +385,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
 
     plotting_args = _adjust_colorscale(plotting_args, colormap, palette)
     plotting_args["hover_data"] = { col: False for col in df.columns.tolist() }
+
 
     # If jitter is needed for scatter plot, convert to a strip plot
     if plot_type == "scatter" and jitter:
@@ -429,7 +435,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
             plotting_args["hover_data"] = {
                 x: False,
                 y: False,
-                "std": True
+                "std": ':.2f'
             }
 
     if plot_type == 'contour':
