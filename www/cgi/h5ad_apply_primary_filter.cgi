@@ -90,10 +90,16 @@ def main():
 
     sc.settings.figdir = dest_directory + "/figures"
 
+    # ensure adata.var.gene_symbol is mixed object dtype
+    # See https://github.com/IGS/gEAR/issues/753 for an explanation
+    if 'gene_symbol' in adata.var.columns and adata.var['gene_symbol'].dtype.name != 'object':
+        adata.var['gene_symbol'] = adata.var['gene_symbol'].astype('object')
+
     try:
-        ax = sc.pl.highest_expr_genes(adata, n_top=20, gene_symbols='gene_symbol', save=".png")
+        sc.pl.highest_expr_genes(adata, n_top=20, gene_symbols='gene_symbol', show=True, save=".png")
         result['success'] = 1
-    except:
+    except Exception as e:
+        print("Failed to generate highest_expr_genes plot: {0}".format(e), file=sys.stderr)
         result['success'] = 0
 
     result['n_obs'] = n_obs
