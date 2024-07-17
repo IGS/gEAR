@@ -934,8 +934,8 @@ class AnalysisStepPrimaryFilter {
                 document.querySelector(UI.filterGenesGtNCellsSelectedElt).checked = true;
             }
 
-            document.querySelector(UI.filterCellsLtNGenesElt).value = this.filterCellsLtNGenes;
-            document.querySelector(UI.filterCellsGtNGenesElt).value = this.filterCellsGtNGenes || 300;
+            document.querySelector(UI.filterCellsLtNGenesElt).value = this.filterCellsLtNGenes || 300;
+            document.querySelector(UI.filterCellsGtNGenesElt).value = this.filterCellsGtNGenes;
             document.querySelector(UI.filterGenesLtNCellsElt).value = this.filterGenesLtNCells || 3;
             document.querySelector(UI.filterGenesGtNCellsElt).value = this.filterGenesGtNCells;
 
