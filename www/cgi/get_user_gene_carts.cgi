@@ -67,7 +67,7 @@ def main():
     share_id = form.getvalue('share_id')
     filter_cart_type = form.getvalue('cart_type', None)
     group_by_type = form.getvalue("group_by_type", False)
-    include_members = form.getvalue("include_members", True)
+    include_members = form.getvalue("include_members", 1)
     current_user = geardb.get_user_from_session_id(session_id)
 
     result = { 'domain_carts':[], 'group_carts':[], 'public_carts':[],
@@ -75,6 +75,9 @@ def main():
 
     # Track the cart IDs already stored so we don't duplicate
     cart_ids_found = set()
+
+    if include_members:
+        include_members = int(include_members)
 
     if include_members == 0:
         include_members = False

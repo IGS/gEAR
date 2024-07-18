@@ -76,6 +76,9 @@ def main():
     if no_domain:
         no_domain = int(no_domain)
 
+    if include_members:
+        include_members = int(include_members)
+
     if include_members == 0:
         include_members = False
     elif include_members == 1:
