@@ -161,7 +161,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     document.getElementById("submit-expression-search").classList.add("is-loading");
     await Promise.all([
         fetchGeneCartData(),
-        fetchDatasetCollections()
+        fetchDatasetCollections(false)
     ]);
     document.getElementById("submit-expression-search").classList.remove("is-loading");
 

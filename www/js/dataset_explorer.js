@@ -575,8 +575,11 @@ const addModalEventListeners = () => {
 
                 createToast("Display added to collection", "is-success");
 
+                const curr_share_id  = selected_dc_share_id;
+
                 // Update the layout arrangement views
-                changeDatasetCollectionCallback();
+                await fetchDatasetCollections(true);
+                selectDatasetCollection(curr_share_id); // performs DatasetCollectionSelectorCallback when label is set
 
             } catch (error) {
                 logErrorInConsole(error);
@@ -609,8 +612,11 @@ const addModalEventListeners = () => {
 
                 createToast("Display removed from collection", "is-success");
 
+                const curr_share_id  = selected_dc_share_id;
+
                 // Update the layout arrangement views
-                changeDatasetCollectionCallback();
+                await fetchDatasetCollections(true);
+                selectDatasetCollection(curr_share_id); // performs DatasetCollectionSelectorCallback when label is set
 
             } catch (error) {
                 logErrorInConsole(error);
@@ -790,6 +796,8 @@ const changeDatasetCollectionCallback = async () => {
             share_id: selected_dc_share_id,
         }
     }
+
+    console.log("here");
 
     const titles = {};
     for (const dataset of datasetData.datasets) {
@@ -1339,7 +1347,7 @@ const createDeleteCollectionConfirmationPopover = () => {
 
                 if (data['success'] === 1) {
                     // Re-fetch the dataset collections, which will update in the UI via click events
-                    await fetchDatasetCollections()
+                    await fetchDatasetCollections(true)
 
                     createToast("Dataset collection deleted", "is-success");
 
@@ -1486,7 +1494,7 @@ const createNewCollectionPopover = () => {
 
                 if (data['layout_share_id']) {
                     // Re-fetch the dataset collections, which will update the UI via click events
-                    await fetchDatasetCollections()
+                    await fetchDatasetCollections(true)
 
                     createToast("Dataset collection created", "is-success");
 
@@ -1618,7 +1626,7 @@ const createRenameCollectionPopover = () => {
 
                 if (data['layout_label']) {
                     // Re-fetch the dataset collections, which will update the UI via click events
-                    await fetchDatasetCollections()
+                    await fetchDatasetCollections(true)
 
                     createToast("Dataset collection renamed", "is-success");
 
@@ -1760,7 +1768,7 @@ const createRenameCollectionPermalinkPopover = () => {
                 }
 
                 // Re-fetch the dataset collections, which will update the UI via click events
-                await fetchDatasetCollections()
+                await fetchDatasetCollections(true)
 
                 createToast("Dataset collection permalink renamed", "is-success");
 
@@ -2607,7 +2615,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     const sessionId = CURRENT_USER.session_id;
 
 	if (! sessionId ) {
-        document.getElementById("not-logged-in-msg").classList.remove("is-hidden");
         document.getElementById("collection-management").classList.add("is-hidden");
         // only show public datasets option
         for (const elt of document.querySelectorAll("#controls-ownership li:not([data-dbval='public'])")) {
@@ -2626,7 +2633,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     await Promise.all([
         loadOrganismList(),
-        fetchDatasetCollections(datasetCollectionSelectCallback)
+        fetchDatasetCollections(true, datasetCollectionSelectCallback)
     ]);
 
     document.getElementById("dropdown-dc").classList.remove("is-right");    // Cannot see the dropdown if it is right aligned
