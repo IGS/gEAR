@@ -1,7 +1,11 @@
 button.format-selector {
 	margin-top: 20px;
 }
-
+div.format-selection-box {
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between; 
+}
 div#logged-in-c {
 	padding-bottom: 500px;
 }
