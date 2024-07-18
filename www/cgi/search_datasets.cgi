@@ -148,7 +148,7 @@ def main():
 
     if custom_list:
         if custom_list == 'most_recent':
-            orders_by.append('d.date_added DESC')
+            orders_by.append(' d.date_added DESC')
         else:
             result['success'] = 0
             result['problem'] = "Didn't recognize the custom list requested"
@@ -196,10 +196,11 @@ def main():
 
     cursor.execute(qry, qry_params)
 
-    matching_dataset_ids = set()
+    # NOTE: Must keep as a list to preserve order
+    matching_dataset_ids = list()
     # this index keeps track of the size and position of each dataset if a layout was passed
     for row in cursor:
-        matching_dataset_ids.add(row[0])
+        matching_dataset_ids.append(row[0])
 
     result['datasets'] = datasets_collection.get_by_dataset_ids(matching_dataset_ids)
 
