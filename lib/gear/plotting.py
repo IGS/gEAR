@@ -361,8 +361,6 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
 
     # Round y values to 2 decimal places for hover data
     df["y_rounded"] = df[y].astype(float).round(2)
-    import sys
-    print(df.head(), file=sys.stderr)
 
     # These labels allows use to override these labels used for axis titles, etc.
     labels_dict = {x:x_title, y:y_title, "color_name":""}
