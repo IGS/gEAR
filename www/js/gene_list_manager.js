@@ -1414,6 +1414,10 @@ const submitSearch = async (page) => {
             classElt.classList.remove("is-invisible");
         }
     }
+
+    Cookies.set("default_gene_list_ownership_view", searchCriteria.ownership);
+    Cookies.set("default_gene_list_organism_view", searchCriteria.organism_ids);
+    Cookies.set("default_gene_list_date_added_view", searchCriteria.date_added);
 }
 
 /**
@@ -1480,6 +1484,26 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 
     await loadOrganismList();
+
+    // Select the user's last remembered filter options
+    const defaultOwnershipView = Cookies.get("default_gene_list_ownership_view");
+    const defaultOrganismView = Cookies.get("default_gene_list_organism_view");
+    const defaultDateAddedView = Cookies.get("default_gene_list_date_added_view");
+
+    if (defaultOwnershipView) {
+        for (const ownership of defaultOwnershipView.split(",")) {
+            document.querySelector(`#controls-ownership li[data-dbval='${ownership}']`).classList.add("js-selected");
+        }
+    }
+    if (defaultOrganismView) {
+        for (const organism of defaultOrganismView.split(",")) {
+            document.querySelector(`#controls-organism li[data-dbval='${organism}']`).classList.add("js-selected");
+        }
+    }
+    if (defaultDateAddedView) {
+        document.querySelector(`#controls-date-added li[data-dbval='${CURRENT_USER.default_date_added_view}']`).classList.add("js-selected");
+    }
+
     await submitSearch();
 
     // Settings for selected facets

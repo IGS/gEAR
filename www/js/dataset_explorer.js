@@ -2484,6 +2484,12 @@ const submitSearch = async (page=1) => {
             classElt.classList.remove("is-invisible");
         }
     }
+
+    // Update current user profile with last "controls" settings
+    Cookies.set("default_collection_ownership_view", searchCriteria.ownership);
+    Cookies.set("default_collection_organism_view", searchCriteria.organism_ids);
+    Cookies.set("default_collection_date_added_view", searchCriteria.date_added);
+    Cookies.set("default_collection_dataset_type_view", searchCriteria.dtypes);
 }
 
 /**
@@ -2645,6 +2651,31 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     ]);
 
     document.getElementById("dropdown-dc").classList.remove("is-right");    // Cannot see the dropdown if it is right aligned
+
+    // Select the user's last remembered filter options
+    const defaultOwnershipView = Cookies.get("default_collection_ownership_view");
+    const defaultOrganismView = Cookies.get("default_collection_organism_view");
+    const defaultDateAddedView = Cookies.get("default_collection_date_added_view");
+    const defaultDatasetTypeView = Cookies.get("default_collection_dataset_type_view");
+
+    if (defaultOwnershipView) {
+        for (const ownership of defaultOwnershipView.split(",")) {
+            document.querySelector(`#controls-ownership li[data-dbval='${ownership}']`).classList.add("js-selected");
+        }
+    }
+    if (defaultOrganismView) {
+        for (const organism of defaultOrganismView.split(",")) {
+            document.querySelector(`#controls-organism li[data-dbval='${organism}']`).classList.add("js-selected");
+        }
+    }
+    if (defaultDateAddedView) {
+        document.querySelector(`#controls-date-added li[data-dbval='${CURRENT_USER.default_date_added_view}']`).classList.add("js-selected");
+    }
+    if (defaultDatasetTypeView) {
+        for (const dtype of defaultDatasetTypeView.split(",")) {
+            document.querySelector(`#controls-dataset-type li[data-dbval='${dtype}']`).classList.add("js-selected");
+        }
+    }
 
     await submitSearch();
 
