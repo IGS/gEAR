@@ -376,9 +376,6 @@ const getComparisons = async (event) => {
 		const sortedGenes = Array.from(selected_genes).sort();
 		updatePlotAnnotations(sortedGenes);
 
-        // Show button to add genes to gene cart
-        document.getElementById("gene-list-btn").classList.remove("is-hidden");
-
 		// Hide this view
 		document.getElementById("content-c").classList.add("is-hidden");
 		// Generate and display "post-plotting" view/container
@@ -1209,15 +1206,6 @@ document.getElementById("edit-params").addEventListener("click", (event) => {
 
 document.getElementById("clear-genes-btn").addEventListener("click", clearGenes);
 
-// code from Bulma documentation to handle modals
-document.getElementById("gene-list-btn").addEventListener("click", ($trigger) => {
-    const closestButton = $trigger.target.closest(".button");
-    const modal = closestButton.dataset.target;
-    const $target = document.getElementById(modal);
-    openModal($target);
-
-});
-
 document.getElementById("new-genecart-label").addEventListener("input", (event) => {
     const saveBtn = document.getElementById("save-genecart-btn");
     saveBtn.disabled = event.target.value ? false : true;
@@ -1273,7 +1261,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 	if (! sessionId ) {
 		// TODO: Add master override to prevent other triggers from enabling saving
         createToast("Not logged in so saving gene carts is disabled.", "is-warning");
-        document.getElementById("gene-list-btn").disabled = true;
+        disableAndHideElement(document.getElementById("save-genecart-btn"));
     }
 
 

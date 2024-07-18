@@ -538,7 +538,17 @@ const createToast = (msg, levelClass="is-danger", closeManually=false) => {
     toast.appendChild(document.createTextNode(msg));
 
     const numToasts = document.querySelectorAll(".js-toast.notification").length;
+    const numToastsThisLevel = document.querySelectorAll(`.js-toast.notification.${levelClass}`).length;
 
+    // Delete all toasts of this level if there are any
+    if (numToastsThisLevel) {
+        const notifications = document.querySelectorAll(`.js-toast.notification.${levelClass}`);
+        for (const notification of notifications) {
+            notification.remove();
+        }
+    }
+
+    // Append the toast to the main content
     if (document.querySelector(".js-toast.notification")) {
         // If .js-toast notifications are present, append under final notification
         // This is to prevent overlapping toast notifications
