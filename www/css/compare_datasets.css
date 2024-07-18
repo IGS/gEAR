@@ -11,3 +11,9 @@ input[type=number] {
 .button.is-loading::after, .loader, .select.is-loading::after, .control.is-loading::after {
     border-color: black;
 }
+
+#gene-table-container {
+    /* make table scrollable */
+    overflow-y: auto;
+    max-height: 50vh;
+}
