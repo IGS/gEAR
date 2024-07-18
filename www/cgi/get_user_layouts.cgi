@@ -79,10 +79,10 @@ def main():
     if include_members:
         include_members = int(include_members)
 
-    if include_members == 0:
-        include_members = False
-    elif include_members == 1:
-        include_members = True
+    bool_include_members = False
+
+    if include_members == 1:
+       bool_include_members = True
 
     result = { 'user_layouts': [],
                'domain_layouts': [],
@@ -93,17 +93,17 @@ def main():
                'selected': None }
 
     # Everyone can see public ones
-    result['public_layouts'] = geardb.LayoutCollection(include_datasets=include_members).get_public()
+    result['public_layouts'] = geardb.LayoutCollection(include_datasets=bool_include_members).get_public()
 
     if not no_domain:
-        result['domain_layouts'] = geardb.LayoutCollection(include_datasets=include_members).get_domains()
+        result['domain_layouts'] = geardb.LayoutCollection(include_datasets=bool_include_members).get_domains()
 
     if user:
-        result['user_layouts'] = geardb.LayoutCollection(include_datasets=include_members).get_by_user(user)
-        result['group_layouts'] =  geardb.LayoutCollection(include_datasets=include_members).get_by_users_groups(user)
+        result['user_layouts'] = geardb.LayoutCollection(include_datasets=bool_include_members).get_by_user(user)
+        result['group_layouts'] =  geardb.LayoutCollection(include_datasets=bool_include_members).get_by_users_groups(user)
 
     if layout_share_id:
-        result['shared_layouts'] = geardb.LayoutCollection(include_datasets=include_members).get_by_share_id(layout_share_id)
+        result['shared_layouts'] = geardb.LayoutCollection(include_datasets=bool_include_members).get_by_share_id(layout_share_id)
 
     ## Selected priority:
     ## - A passed share ID
