@@ -939,7 +939,7 @@ class OrganismCollection:
 
 class Layout:
     def __init__(self, id=None, user_id=None, is_domain=None, label=None,
-                 is_current=None, share_id=None, members=None, folder_id=None,
+                 is_current=None, share_id=None, members=[], folder_id=None,
                  folder_parent_id=None, folder_label=None, is_public=None):
         self.id = id
         self.user_id = user_id
@@ -954,12 +954,15 @@ class Layout:
         self.folder_parent_id = folder_parent_id
         self.folder_label = folder_label
 
+        self.dataset_count = 0
+
         self.singlegene_members = list()
         self.multigene_members = list()
 
         # This should be a list of LayoutDisplays objects
-        if not members:
-            self.members = list()
+        self.members = list()
+        if members:
+            self.members = members
 
         # handle defaults
         # TODO: If is_current = 1 we really need to reset all the other layouts by this user
@@ -1361,6 +1364,7 @@ class LayoutCollection:
                 is_public=row[6]
             )
 
+
             if self.include_datasets == True:
                 layout.get_members()
                 layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
@@ -1400,6 +1404,7 @@ class LayoutCollection:
             if self.include_datasets == True:
                 layout.get_members()
                 layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
+                print(layout.members, file=sys.stderr)
 
             self.layouts.append(layout)
 
@@ -1480,7 +1485,7 @@ class LayoutCollection:
             if self.include_datasets == True:
                 layout.get_members()
                 layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
-            
+
             self.layouts.append(layout)
 
         cursor.close()
@@ -1497,7 +1502,7 @@ class LayoutCollection:
                 FROM layout l
                WHERE l.is_public = 1
         """
-       
+
         cursor.execute(qry)
 
         for row in cursor:
@@ -2599,7 +2604,7 @@ class GeneCart:
 @dataclass
 class GeneCartCollection:
     carts: List[GeneCart] = field(default_factory=list)
-    
+
     # should gene-populating methods called to include gene members (lots of overhead)
     include_genes: bool = True
 
@@ -2659,7 +2664,7 @@ class GeneCartCollection:
 
                 if self.include_genes == True:
                     cart.get_genes()
-                
+
                 self.carts.append(cart)
 
         cursor.close()
@@ -2693,7 +2698,7 @@ class GeneCartCollection:
 
                 if self.include_genes == True:
                     cart.get_genes()
-                
+
                 self.carts.append(cart)
 
         cursor.close()
@@ -2726,7 +2731,7 @@ class GeneCartCollection:
 
             if self.include_genes == True:
                 cart.get_genes()
-                    
+
             self.carts.append(cart)
 
         cursor.close()
@@ -2766,7 +2771,7 @@ class GeneCartCollection:
 
             if self.include_genes == True:
                 cart.get_genes()
-            
+
             self.carts.append(cart)
 
         cursor.close()
@@ -2800,7 +2805,7 @@ class GeneCartCollection:
 
             if self.include_genes == True:
                 cart.get_genes()
-            
+
             self.carts.append(cart)
             rows_returned += 1
 
@@ -2833,7 +2838,7 @@ class GeneCartCollection:
 
             if self.include_genes == True:
                 cart.get_genes()
-            
+
             self.carts.append(cart)
 
         cursor.close()
@@ -2862,7 +2867,7 @@ class GeneCartCollection:
 
             if self.include_genes == True:
                 cart.get_genes()
-            
+
             self.carts.append(cart)
 
         cursor.close()

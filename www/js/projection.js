@@ -136,7 +136,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         // but Promise.allSettled waits until all resolve/reject and lets you know which ones failed
         const [cartResult, dcResult,] = await Promise.all([
             fetchPatternsData(parsepatternCartURLParams),
-            fetchDatasetCollections(parseDatasetCollectionURLParams),
+            fetchDatasetCollections(false, parseDatasetCollectionURLParams),
         ]);
 
         // Should help with lining things up on index page

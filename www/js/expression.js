@@ -320,7 +320,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         // but Promise.allSettled waits until all resolve/reject and lets you know which ones failed
         const [cart_result, dc_result, org_result] = await Promise.all([
             fetchGeneCartData(parseGeneCartURLParams),
-            fetchDatasetCollections(parseDatasetCollectionURLParams),
+            fetchDatasetCollections(false, parseDatasetCollectionURLParams),
             fetchOrganisms()
         ]);
     } catch (error) {

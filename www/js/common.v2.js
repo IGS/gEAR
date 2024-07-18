@@ -918,21 +918,21 @@ const apiCallsMixin = {
         const {data} = await axios.post("cgi/get_users_layout_members.cgi", convertToFormData(payload));
         return data;
     },
+
     /**
      * Fetches dataset collections.
      *
-     * @param {string|null} layoutShareId - The layout share ID.
-     * @param {string|null} noDomain - If 1, the domain layout will not be included in the results.
-     * @returns {Promise<any>} The response data.
+     * @param {Object} options - The options for fetching dataset collections.
+     * @param {string|null} options.layoutShareId - The layout share ID.
+     * @param {number} [options.noDomain=0] - The no domain flag.
+     * @param {boolean} [options.includeMembers=true] - Whether to include collection members in output.
+     * @returns {Promise<any>} - A promise that resolves to the fetched dataset collections.
      */
     async fetchDatasetCollections({layoutShareId=null, noDomain=0, includeMembers=true}) {
         const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, no_domain: noDomain};
 
-        if (includeMembers) {
-            payload.include_members = 1;
-        } else {
-            payload.include_members = 0;
-        }   
+        // is passed as string in the payload
+        payload.include_members = includeMembers ? 1 : 0;
 
         const {data} = await axios.post("cgi/get_user_layouts.cgi", convertToFormData(payload));
         return data;
@@ -1066,11 +1066,8 @@ const apiCallsMixin = {
             payload.cart_type = cartType;
         }
 
-        if (includeMembers) {
-            payload.include_members = 1;
-        } else {
-            payload.include_members = 0;
-        }
+        // is passed as string in the payload
+        payload.include_members = includeMembers ? 1 : 0;
 
         const {data} = await axios.post(`/cgi/get_user_gene_carts.cgi`, convertToFormData(payload));
         return data;

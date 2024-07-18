@@ -112,9 +112,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-const fetchDatasetCollections = async (callback) => {
+const fetchDatasetCollections = async (includeMembers=false, callback) => {
+    const layoutShareId = selected_dc_share_id || null;
+
     try {
-        dataset_collection_data = await apiCallsMixin.fetchDatasetCollections({includeMembers: false});
+        dataset_collection_data = await apiCallsMixin.fetchDatasetCollections({includeMembers, layoutShareId});
         document.querySelector('#dropdown-dc').classList.remove('is-loading');
         document.querySelector('#dropdown-dc').classList.remove('is-disabled');
 
