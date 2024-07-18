@@ -531,29 +531,10 @@ const addDownloadableInfoToDataset = (datasetId, isDownloadable, hasH5ad) => {
     datasetDisplayContainer.appendChild(datasetDisplaySpan);
 }
 
-const addModalEventListeners = () => {
+const addModalEventListeners = (collection) => {
     for (const classElt of document.getElementsByClassName("js-collection-add-display")) {
         classElt.addEventListener("click", async (e) => {
             const thisElt = e.currentTarget;
-            let collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
-
-            // Currently only collectiosn with datasets members will be fetched.
-            // If this isn't one (i.e. brand new one), we can fudge some properties to make the UI work
-            if (!collection) {
-                collection = {
-                    dataset_count: 0,
-                    folder_id: null,
-                    folder_label: null,
-                    folder_parent_id: null,
-                    is_current: 0,
-                    is_domain: 0,
-                    is_owner: 1,
-                    is_public: 0,
-                    label: selected_dc_label,
-                    members: [],
-                    share_id: selected_dc_share_id,
-                }
-            }
 
             // get nearest parent .js-modal-display
             const displayElement = thisElt.closest(".js-modal-display");
@@ -797,8 +778,6 @@ const changeDatasetCollectionCallback = async () => {
         }
     }
 
-    console.log("here");
-
     const titles = {};
     for (const dataset of datasetData.datasets) {
         titles[dataset.dataset_id] = dataset.title;
@@ -827,6 +806,15 @@ const changeDatasetCollectionCallback = async () => {
     document.getElementById("btn-set-primary-collection").classList.add("is-outlined");
     if (collection.share_id === Cookies.get('gear_default_domain')) {
         document.getElementById("btn-set-primary-collection").classList.remove("is-outlined");
+    }
+
+    // Also hide js-view-displays buttons if user is not the owner of the collection
+    const viewDisplayButtons = document.getElementsByClassName("js-view-displays");
+    for (const classElt of viewDisplayButtons) {
+        disableAndHideElement(classElt);
+        if (collection?.is_owner) {
+            enableAndShowElement(classElt);
+        }
     }
 
     // Domain collections are not editable, so don't bother with creating the layout arrangment view
@@ -1836,6 +1824,7 @@ const datasetCollectionSelectCallback = () => {
     if (CURRENT_USER.default_profile_share_id) {
         selectDatasetCollection(CURRENT_USER.default_profile_share_id);
     }
+
 }
 
 /**
@@ -2180,8 +2169,6 @@ const renderDisplaysModal = async (datasetId, title, isPublic) => {
     const ownerDisplaysElt = modalContent.querySelector(".js-modal-owner-displays");
     ownerDisplaysElt.replaceChildren();
 
-
-
     const collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
 
     // Did it this way so we didn't have to pass async/await up the chain
@@ -2223,7 +2210,25 @@ const renderDisplaysModal = async (datasetId, title, isPublic) => {
     // Set state of initial display add/remove buttons based on the initial dataset collection.
     updateDisplayAddRemoveToCollectionButtons(modalDiv.id, collection);
 
-    addModalEventListeners();
+    // Currently only collectiosn with datasets members will be fetched.
+    // If this isn't one (i.e. brand new one), we can fudge some properties to make the UI work
+    if (!collection) {
+        collection = {
+            dataset_count: 0,
+            folder_id: null,
+            folder_label: null,
+            folder_parent_id: null,
+            is_current: 0,
+            is_domain: 0,
+            is_owner: 1,
+            is_public: 0,
+            label: selected_dc_label,
+            members: [],
+            share_id: selected_dc_share_id,
+        }
+    }
+
+    addModalEventListeners(collection);
 
     // Create tooltips for all elements with the data-tooltip-content attribute
     // Only creating one set so that they can be reused
@@ -2511,6 +2516,7 @@ const updateDatasetCollectionButtons = (collection=null) => {
         disableAndHideElement(collectionRenamePermalinkButton);
         disableAndHideElement(collectionDeleteButton);
     }
+
 }
 
 /**
@@ -2615,12 +2621,14 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     const sessionId = CURRENT_USER.session_id;
 
 	if (! sessionId ) {
+        // ? Technically we can show profiles, but I would need to build in "logged out controls".
         document.getElementById("collection-management").classList.add("is-hidden");
         // only show public datasets option
         for (const elt of document.querySelectorAll("#controls-ownership li:not([data-dbval='public'])")) {
             elt.remove();
         }
         document.querySelector("#controls-ownership li[data-dbval='public']").classList.add("js-selected");
+
     }
 
     for (const actionElt of document.querySelectorAll(".js-collection-action-links")) {
@@ -2639,6 +2647,21 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     document.getElementById("dropdown-dc").classList.remove("is-right");    // Cannot see the dropdown if it is right aligned
 
     await submitSearch();
+
+    // Normally this is done in the datasetCollectionCallback but we need to wait for the search to complete.
+    let collection = null;
+    try {
+        collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
+    } catch (error) {
+        // pass
+    }
+    const viewDisplayButtons = document.getElementsByClassName("js-view-displays");
+    for (const classElt of viewDisplayButtons) {
+        disableAndHideElement(classElt);
+        if (collection?.is_owner) {
+            enableAndShowElement(classElt);
+        }
+    }
 
     // Settings for selected facets
     for (const elt of document.querySelectorAll("ul.js-expandable-target li")) {
