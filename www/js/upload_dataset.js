@@ -6,6 +6,7 @@
 
 let dataset_uid = null;
 let share_uid = null;
+let dataset_format = null;
 
 let required_metadata_fields = ['metadata-title', 'metadata-summary', 'metadata-dataset-type',
     'metadata-contact-name', 'metadata-annotation-source', 'metadata-annotation-version',
@@ -25,6 +26,30 @@ window.onload=function() {
     // Generate the UID that will be used for this submission
     dataset_uid = guid('long');
     share_uid = guid('short');
+
+    // Add click listeners for all buttons of class 'format-selector'
+    document.querySelectorAll('.format-selector').forEach((btn) => {
+        btn.addEventListener('click', (event) => {
+                
+            // Reset each as selectable
+            document.querySelectorAll('.format-selector').forEach((element) => {
+                if (! element.disabled) {
+                    // set the classList on this button to only be 'mdi' and 'mdi-cancel'
+                    let icon = element.querySelector('span.icon i');
+                    icon.classList.remove(...icon.classList);
+                    icon.classList.add('mdi', 'mdi-checkbox-blank-outline');
+
+                    element.querySelector('span.format-status').textContent = 'Choose';
+                }
+            });
+
+            // Now set things for the one actually clicked
+            btn.querySelector('span.icon i').classList.remove('mdi', 'mdi-checkbox-blank-outline');
+            btn.querySelector('span.icon i').classList.add('mdi', 'mdi-checkbox-outline');
+            btn.querySelector('span.format-status').textContent = 'Selected';
+            dataset_format = btn.dataset.format;
+        });
+    });
 
     document.getElementById('metadata-form-submit').addEventListener('click', (event) => {
         event.preventDefault();
