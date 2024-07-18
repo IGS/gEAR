@@ -118,7 +118,7 @@
                 </ul>
               </div> <!-- end #step-c -->
               <hr />
-              <div id="step-upload-metadata-c" class="step-c">
+              <div id="step-upload-metadata-c" class="step-c is-hidden">
                 <h1>Step - Enter metadata (via form OR upload)</h1>
                 <p>
                   The 'metadata' is the data describing your dataset, including things like title, authorship, sequencing 
@@ -504,7 +504,7 @@
                 </div>
 
               </div>
-              <div id="step-upload-dataset-c" class="step-c is-hidden">
+              <div id="step-upload-dataset-c" class="step-c">
                 <h1>Step - Upload dataset</h1>
                 <p>
                   Choose the format of your dataset and upload it here. You can also provide a URL to a supported dataset.
@@ -515,7 +515,7 @@
                 <div class="columns">
                   <div class="column format-column is-3 is-flex">
                     <!-- MEX/3-tab -->
-                    <div class="box">
+                    <div class="box format-selection-box">
                       <h3>MEX / 3-tab format</h3>
                       <p class="format-description">
                         These are simple, plain-text files in a bundle, usually compressed 
@@ -553,7 +553,7 @@
                   </div>
                   <div class="column format-column is-3 is-flex">
                     <!-- Excel -->
-                    <div class="box">
+                    <div class="box format-selection-box">
                       <h3>MS Excel</h3>
                       <p class="format-description">
                         Similar in format to 3-tab but rather than individual files each is a different 
@@ -582,7 +582,7 @@
                   </div>
                   <div class="column format-column is-3 is-flex">
                     <!-- Rdata/Seurat -->
-                    <div class="box">
+                    <div class="box format-selection-box">
                       <h3>Rdata / Seurat</h3>
                       <p class="format-description">
                         This is a binary format used by the Seurat package in R. If you've already been 
@@ -613,7 +613,7 @@
                   </div>
                   <div class="column format-column is-3 is-flex">
                     <!-- H5AD/Python -->
-                    <div class="box">
+                    <div class="box format-selection-box">
                       <h3>H5AD / Python</h3>
                       <p class="format-description">
                         Usually created by the Scanpy package in Python, this is a binary format that is
