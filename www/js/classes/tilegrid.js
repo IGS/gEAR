@@ -661,8 +661,15 @@ class DatasetTile {
                 case "info":
                     // Modal for dataset information
                     item.addEventListener("click", (event) => {
-                        // Create and open modal for all user and owner displays
-                        createToast("This feature is not yet implemented.", "is-warning");
+                        const existingModals = document.querySelectorAll('.js-infobox');
+                        for (const modal of existingModals) {
+                            modal.remove();
+                        }
+                        const modalHTML = this.createModalInfobox();
+                        // Add modal to DOM
+                        document.body.append(modalHTML);
+                        const modalElt = document.getElementById(`infobox-modal-${this.tile.tileId}`);
+                        openModal(modalElt);
                     });
                     break;
                 case "publication":
@@ -861,6 +868,48 @@ class DatasetTile {
         modalDiv.id = `choose-display-modal-${this.tile.tileId}`;
 
         return modalHTML;
+    }
+
+    /**
+     * Creates a modal infobox for the tile.
+     * @returns {DocumentFragment} The cloned infobox HTML.
+     */
+    createModalInfobox() {
+        const infoboxTemplate = document.getElementById('tmpl-tile-infobox');
+        const infoboxHTML = infoboxTemplate.content.cloneNode(true);
+
+        const modalDiv = infoboxHTML.querySelector('.modal');
+        modalDiv.id = `infobox-modal-${this.tile.tileId}`;
+
+        modalDiv.querySelector('.modal-card-body .js-infobox-title').textContent = this.dataset.title;
+        modalDiv.querySelector('.modal-card-body .js-infobox-ldesc').innerHTML = this.dataset.ldesc;
+
+        // Some .js-infobox-ldesc may have embedded table data. If so, need to display this properly
+        const tableElts = modalDiv.querySelectorAll('.modal-card-body .js-infobox-ldesc table');
+        for (const tableElt of tableElts) {
+            tableElt.classList.add("table", "is-fullwidth");
+        }
+
+
+        const img = modalDiv.querySelector('.modal-card-body .js-infobox-schematic');
+        if (this.dataset.schematic_image) {
+            img.src = this.dataset.schematic_image;
+        } else {
+            // remove image element
+            img.remove();
+        }
+
+        // Close button event listener
+        const closeButton = modalDiv.querySelector(".delete");
+        closeButton.addEventListener("click", (event) => {
+            closeModal(modalDiv);
+        });
+        const modalBackground = modalDiv.querySelector(".modal-background");
+        modalBackground.addEventListener("click", (event) => {
+            closeModal(modalDiv);
+        });
+
+        return infoboxHTML;
     }
 
     /**
