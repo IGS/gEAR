@@ -124,9 +124,9 @@ ul#go-terms li {
     width: 70%; /* make wider, which makes preview images larger */
 }
 
-#pattern-result-list-sticky {
+#pattern-result-list-c {
     position: sticky;
-    top: 10px;
+    top: 0;
     z-index: 100;
     align-self: flex-start; /* doesn't seem to do anything */
 }
