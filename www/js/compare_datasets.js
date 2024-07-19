@@ -1037,6 +1037,8 @@ const updatePlotAnnotations = (genes) => {
 
 	// update the Plotly layout
 	Plotly.relayout(plotlyPreview, layout);
+
+	// TODO: Update table highlighting
 }
 
 // For plotting options, populate select menus with category groups

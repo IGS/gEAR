@@ -123,3 +123,9 @@ ul#go-terms li {
 .js-choose-display-modal .modal-content {
     width: 70%; /* make wider, which makes preview images larger */
 }
+
+#pattern-result-list-sticky {
+    position: sticky;
+    top: 10px;
+    z-index: 100;
+}

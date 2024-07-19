@@ -101,14 +101,16 @@
             </div>
             <div id="results-main-c" class="columns">
               <div id="pattern-result-list-c" class="column is-narrow is-fullheight p-0 is-hidden">
-                <h3 class="mt-3 ml-3 mr-6">Select pattern</h3>
-                <ul id="pattern-result-list" class="mt-3"></ul>
-                <template id="tmpl-pattern-result-item">
-                  <li class="pattern-result-list-item is-clickable pl-4"></li>
-                </template>
-                <template id="tmpl-pattern-result-none-found">
-                  <li class="pl-4">No matches found</li>
-                </template>
+                <div id="pattern-result-list-sticky">
+                  <h3 class="mt-3 ml-3 mr-6">Select pattern</h3>
+                  <ul id="pattern-result-list" class="mt-3"></ul>
+                  <template id="tmpl-pattern-result-item">
+                    <li class="pattern-result-list-item is-clickable pl-4"></li>
+                  </template>
+                  <template id="tmpl-pattern-result-none-found">
+                    <li class="pl-4">No matches found</li>
+                  </template>
+                </div>
               </div>
               <section id="result-panel" class="column p-3">
                 <div id="top-genes-c" class="is-hidden content">

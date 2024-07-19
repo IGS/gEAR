@@ -136,4 +136,9 @@ ul#go-terms li {
     width: 70%; /* make wider, which makes preview images larger */
 }
 
+#gene-result-list-sticky {
+    position: sticky;
+    top: 10px;
+    z-index: 100;
+}
 
