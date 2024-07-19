@@ -6,6 +6,7 @@
 
 let dataset_uid = null;
 let share_uid = null;
+let dataset_format = null;
 
 let required_metadata_fields = ['metadata-title', 'metadata-summary', 'metadata-dataset-type',
     'metadata-contact-name', 'metadata-annotation-source', 'metadata-annotation-version',
@@ -25,6 +26,30 @@ window.onload=function() {
     // Generate the UID that will be used for this submission
     dataset_uid = guid('long');
     share_uid = guid('short');
+
+    // Add click listeners for all buttons of class 'format-selector'
+    document.querySelectorAll('.format-selector').forEach((btn) => {
+        btn.addEventListener('click', (event) => {
+                
+            // Reset each as selectable
+            document.querySelectorAll('.format-selector').forEach((element) => {
+                if (! element.disabled) {
+                    // set the classList on this button to only be 'mdi' and 'mdi-cancel'
+                    let icon = element.querySelector('span.icon i');
+                    icon.classList.remove(...icon.classList);
+                    icon.classList.add('mdi', 'mdi-checkbox-blank-outline');
+
+                    element.querySelector('span.format-status').textContent = 'Choose';
+                }
+            });
+
+            // Now set things for the one actually clicked
+            btn.querySelector('span.icon i').classList.remove('mdi', 'mdi-checkbox-blank-outline');
+            btn.querySelector('span.icon i').classList.add('mdi', 'mdi-checkbox-outline');
+            btn.querySelector('span.format-status').textContent = 'Selected';
+            dataset_format = btn.dataset.format;
+        });
+    });
 
     document.getElementById('metadata-form-submit').addEventListener('click', (event) => {
         event.preventDefault();
@@ -53,6 +78,18 @@ window.onload=function() {
         }
     });
 
+    document.getElementById('dataset-file-input').addEventListener('change', (event) => {
+        // Was a file selected?
+        if (event.target.files.length > 0) {
+            document.getElementById('dataset-upload-submit').disabled = false;
+            const file = event.target.files[0];
+            document.getElementById('dataset-file-name').textContent = file.name;
+        } else {
+            document.getElementById('dataset-upload-submit').disabled = true;
+            document.getElementById('dataset-file-name').textContent = 'No file selected';
+        }
+    });
+
     document.getElementById('metadata-file-input').addEventListener('change', (event) => {
         // Was a file selected?
         if (event.target.files.length > 0) {
@@ -64,6 +101,17 @@ window.onload=function() {
             document.getElementById('metadata-upload-submit').disabled = true;
             document.getElementById('metadata-file-name').textContent = 'No file selected';
         }
+    });
+
+    document.getElementById('dataset-upload-submit').addEventListener('click', (event) => {
+        // change submit button to spinner
+        event.preventDefault();
+
+        let button = document.getElementById('dataset-upload-submit');
+        button.disabled = true;
+        button.classList.add('is-loading');
+        document.getElementById('dataset-upload-status').classList.add('is-hidden');
+        uploadDataset();
     });
 
     document.getElementById('metadata-upload-submit').addEventListener('click', (event) => {
@@ -234,6 +282,36 @@ const storeMetadata = async () => {
     } else {
         alert('Failed to store metadata');
     }
+}
+
+const uploadDataset = () => {
+    const formData = new FormData();
+    formData.append('dataset_uid', dataset_uid);
+    formData.append('share_uid', share_uid);
+    formData.append('session_id', CURRENT_USER.session_id);
+    formData.append('dataset_format', dataset_format);
+    formData.append('dataset_file', document.getElementById('dataset-file-input').files[0]);
+    
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', './cgi/store_expression_dataset.cgi', true);
+
+    xhr.upload.onprogress = function(event) {
+        if (event.lengthComputable) {
+            const percentComplete = (event.loaded / event.total) * 100;
+            document.getElementById('dataset-upload-progress').value = percentComplete;
+        }
+    };
+
+    xhr.onload = function() {
+        if (xhr.status == 200) {
+            console.log('Upload successful!');
+        } else {
+            console.log('Upload failed.');
+        }
+    };
+
+    let data = xhr.send(formData);
+    console.log(data);
 }
 
 const validateMetadataForm = () => {

@@ -547,7 +547,12 @@
                         </li>
                       </ul>
                       <div class="control">
-                        <button data-format="mex_3tab" class="button is-primary is-fullwidth format-selector">Choose</button>
+                        <button data-format="mex_3tab" class="button is-primary is-fullwidth format-selector">
+                          <span class="icon">
+                            <i class="mdi mdi-checkbox-blank-outline"></i>
+                          </span>
+                          <span class="format-status">Choose</span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -576,7 +581,12 @@
                         </li>
                       </ul>
                       <div class="control">
-                        <button data-format="excel" class="button is-primary is-fullwidth format-selector">Choose</button>
+                        <button data-format="excel" class="button is-primary is-fullwidth format-selector">
+                          <span class="icon">
+                            <i class="mdi mdi-checkbox-blank-outline"></i>
+                          </span>
+                          <span class="format-status">Choose</span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -607,7 +617,12 @@
                         </li>
                       </ul>
                       <div class="control">
-                        <button data-format="rdata" class="button is-primary is-fullwidth format-selector">Choose</button>
+                        <button data-format="rdata" class="button is-primary is-fullwidth format-selector" disabled>
+                          <span class="icon">
+                            <i class="mdi mdi-cancel"></i>
+                          </span>
+                          <span class="format-status">Not yet available</span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -638,7 +653,12 @@
                         </li>
                       </ul>
                       <div class="control">
-                        <button data-format="h5ad" class="button is-primary is-fullwidth format-selector">Choose</button>
+                        <button data-format="h5ad" class="button is-primary is-fullwidth format-selector" disabled>
+                          <span class="icon">
+                            <i class="mdi mdi-cancel"></i>
+                          </span>
+                          <span class="format-status">Not yet available</span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -648,6 +668,7 @@
 
                 <div class="columns">
                   <div class="column is-6">
+                    <form>
                     <div class="field">
                       <label class="label">
                         Upload dataset file
@@ -658,7 +679,7 @@
                       </label>
                       <div class="file has-name is-fullwidth">
                         <label class="file-label is-fullwidth">
-                          <input class="file-input is-fullwidth" type="file" name="dataset-file-input">
+                          <input class="file-input is-fullwidth" type="file" id="dataset-file-input" name="dataset-file-input">
                           <span class="file-cta">
                             <span class="file-icon">
                               <i class="mdi mdi-upload"></i>
@@ -667,10 +688,18 @@
                               Choose
                             </span>
                           </span>
-                          <span class="file-name">
+                          <span class="file-name" id="dataset-file-name">
                             No file chosen
                           </span> 
                         </label>
+                      </div>
+                      <div id="dataset-upload-status" class="is-hidden">
+                        <p>
+                          <span class="icon">
+                            <i class="mdi mdi-information"></i>
+                          </span>
+                          <span id="dataset-upload-status-message"></span>
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -684,15 +713,18 @@
                         </span>
                       </label>
                       <div class="control">
-                        <input class="input" type="text" name="dataset-url" placeholder="URL to dataset">
+                        <input class="input" type="text" name="dataset-url" placeholder="Not yet supported" disabled>
                       </div>
                     </div>
                   </div>
                 </div>
+                <div class="field">
+                  <progress id="dataset-upload-progress" class="progress is-medium" value="0" max="100"></progress>
+                </div>
               
                 <div class="field">
                   <div class="control">
-                    <button class="button is-primary">Upload dataset</button>
+                    <button class="button is-primary" id="dataset-upload-submit" disabled>Upload dataset</button>
                   </div>
                 </div>
               </div>
