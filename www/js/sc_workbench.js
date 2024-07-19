@@ -520,7 +520,9 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             try {
                 // find DatasetTree node and trigger "activate"
                 const foundNode = datasetTree.findFirst(e => e.data.dataset_id === linkedDatasetId);
-                foundNode.setActive(true);
+                foundNode.setActive(true, {focusTree:true});
+                datasetTree.tree.setActiveNode(foundNode);
+                datasetTree.selectCallback({node: foundNode});  // manually trigger the "activate" event.
                 datasetId = linkedDatasetId;
             } catch (error) {
                 createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset`);
