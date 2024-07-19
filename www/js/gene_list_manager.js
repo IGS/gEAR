@@ -1491,11 +1491,17 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     const defaultDateAddedView = Cookies.get("default_gene_list_date_added_view");
 
     if (defaultOwnershipView) {
+        // deselect All
+        document.querySelector("#controls-ownership li.js-all-selector").classList.remove("js-selected");
+
         for (const ownership of defaultOwnershipView.split(",")) {
             document.querySelector(`#controls-ownership li[data-dbval='${ownership}']`).classList.add("js-selected");
         }
     }
     if (defaultOrganismView) {
+        // deselect All
+        document.querySelector("#controls-organism li.js-all-selector").classList.remove("js-selected");
+
         for (const organism of defaultOrganismView.split(",")) {
             document.querySelector(`#controls-organism li[data-dbval='${organism}']`).classList.add("js-selected");
         }

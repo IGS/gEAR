@@ -2673,11 +2673,16 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     const defaultDatasetTypeView = Cookies.get("default_collection_dataset_type_view");
 
     if (defaultOwnershipView) {
+        // deselect All
+        document.querySelector("#controls-ownership li.js-all-selector").classList.remove("js-selected");
+
         for (const ownership of defaultOwnershipView.split(",")) {
             document.querySelector(`#controls-ownership li[data-dbval='${ownership}']`).classList.add("js-selected");
         }
     }
     if (defaultOrganismView) {
+        // deselect All
+        document.querySelector("#controls-organism li.js-all-selector").classList.remove("js-selected");
         for (const organism of defaultOrganismView.split(",")) {
             document.querySelector(`#controls-organism li[data-dbval='${organism}']`).classList.add("js-selected");
         }
@@ -2686,6 +2691,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         document.querySelector(`#controls-date-added li[data-dbval='${CURRENT_USER.default_date_added_view}']`).classList.add("js-selected");
     }
     if (defaultDatasetTypeView) {
+        // deselect All
+        document.querySelector("#controls-dataset-type li.js-all-selector").classList.remove("js-selected");
         for (const dtype of defaultDatasetTypeView.split(",")) {
             document.querySelector(`#controls-dataset-type li[data-dbval='${dtype}']`).classList.add("js-selected");
         }
