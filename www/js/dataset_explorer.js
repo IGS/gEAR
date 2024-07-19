@@ -840,16 +840,28 @@ const changeDatasetCollectionCallback = async () => {
     singleArrangement = new LayoutArrangement();
     multiArrangement = new LayoutArrangement(true);
 
+    // If no layout members, show a message and hide loading indication
+    document.getElementById("dataset-arrangement-no-displays-notification").classList.add("is-hidden");
+    if (!singleLayoutMembers.length && !multiLayoutMembers.length) {
+        document.getElementById("dataset-arrangement-loading-notification").classList.add("is-hidden");
+        document.getElementById("dataset-arrangement-no-displays-notification").classList.remove("is-hidden");
+    }
+
+
     // TODO: Get layout members from the "get_users_layout_members.cgi" API call
 
     const maxEndCol = 13;
+
+    document.getElementById("dataset-arrangement-single-c").classList.remove("is-hidden");
+    if (!singleLayoutMembers.length) {
+        document.getElementById("dataset-arrangement-single-c").classList.add("is-hidden");
+    }
 
     for (const member of singleLayoutMembers) {
         const displayId = member.display_id;
         const datasetId = member.dataset_id;
 
         const singleMember = new LayoutArrangementMember(singleArrangement, displayId, member.grid_position, member.start_col, member.start_row, member.grid_width, member.grid_height);
-
 
         // If in legacy mode, then we need to calculate the startCol and endCol and startRow and endRow
         // so the arrangement view can be displayed correctly
@@ -877,6 +889,12 @@ const changeDatasetCollectionCallback = async () => {
     // Reset for the multi-gene layout
     currentCol = 1;
     currentRow = 1;
+
+    document.getElementById("dataset-arrangement-multi-c").classList.remove("is-hidden");
+    if (!multiLayoutMembers.length) {
+        document.getElementById("dataset-arrangement-multi-c").classList.add("is-hidden");
+    }
+
     for (const member of multiLayoutMembers) {
         const displayId = member.display_id;
         const datasetId = member.dataset_id;
