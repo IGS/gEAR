@@ -1,5 +1,7 @@
 'use strict';
 
+let passwordUpdateWanted = false;
+
 // When password and repeated password are not the same, add a tooltip
 for (const classElt of document.getElementsByClassName("js-password")) {
     classElt.addEventListener("keyup", () => {
@@ -28,6 +30,13 @@ for (const classElt of document.getElementsByClassName("js-password")) {
 document.getElementById("show-password").addEventListener("click", () => {
     const newPasswordElt = document.getElementById("new-password");
     newPasswordElt.type = newPasswordElt.type === "password" ? "text" : "password";
+});
+
+document.getElementById("update-password-toggle").addEventListener("click", () => {
+    document.getElementById("update-password-toggle").classList.add("is-hidden");
+    document.getElementById("password-update-section").classList.remove("is-hidden");
+    document.getElementById("new-password").focus();
+    passwordUpdateWanted = true; 
 });
 
 // submit the form
@@ -95,4 +104,14 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     document.getElementById("colorblind-mode").checked = CURRENT_USER.colorblind_mode;
     document.getElementById("want-updates").checked = CURRENT_USER.updates_wanted;
 
+    // Forcibly empty the password fields so the browser's don't autofill.
+    //  Then wait and do it again.
+    //  If only they would respect the autocomplete="off" attribute...
+    document.getElementById("new-password").value = "";
+    document.getElementById("repeat-password").value = "";
+
+    setTimeout(() => {
+        document.getElementById("new-password").value = "";
+        document.getElementById("repeat-password").value = "";
+    }, 500);
 };

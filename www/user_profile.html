@@ -39,7 +39,7 @@
         <!--#include virtual="/include/primary_nav.html" -->
         <section id="main-c" class="column pl-0 pt-0">
             <!--#include virtual="/include/header_bar.html" -->
-            <section id="content-c" class="m-3 container section">
+            <section id="content-c" class="m-3 container section" data-nav-link="workspace">
                 <article id="not-logged-in-msg" class="message is-danger is-hidden">
                     <div class="message-body">
                         You must be logged in as a user to change your user settings.
@@ -71,33 +71,39 @@
                             </div>
                         </div>
 
-                        <div class="field">
-                            <label class="label">New password</label>
-                            <div class="control has-icons-left">
-                                <input id="new-password" class="input js-password" type="password" placeholder="Enter new password">
-                                <span class="icon is-small is-left">
-                                    <i class="mdi mdi-lock"></i>
-                                </span>
-                            </div>
-                            <div class="control">
-                                <label class="checkbox">
-                                    <input id="show-password" type="checkbox">
-                                    Show password
-                                </label>
-                            </div>
-                            <p class="help">Leave blank if you do not wish to change</p>
+                        <div class="field mt-3 mb-3">
+                            <button id="update-password-toggle" class="button is-primary">Click if you want to update your password</button>
                         </div>
 
-                        <div class="field">
-                            <label class="label">Re-enter new password</label>
-                            <div class="control has-icons-left">
-                                <input id="repeat-password" class="input js-password" type="text" placeholder="Re-enter password">
-                                <span class="icon is-small is-left">
-                                    <i class="mdi mdi-lock"></i>
-                                </span>
+                        <div id="password-update-section" class="is-hidden">
+                            <div class="field">
+                                <label class="label">New password</label>
+                                <div class="control has-icons-left">
+                                    <input id="new-password" class="input js-password" type="password" autocomplete="bad-google-dont-do-it" placeholder="Enter new password">
+                                    <span class="icon is-small is-left">
+                                        <i class="mdi mdi-lock"></i>
+                                    </span>
+                                </div>
+                                <div class="control">
+                                    <label class="checkbox">
+                                        <input id="show-password" type="checkbox">
+                                        Show password
+                                    </label>
+                                </div>
+                                <p class="help">Leave blank if you do not wish to change</p>
                             </div>
-                            <p id="password-no-match" class="help has-text-danger-dark is-hidden">Passwords do not match</p>
-                            <p id="password-match" class="help has-text-success-dark is-hidden">Passwords match</p>
+
+                            <div class="field">
+                                <label class="label">Re-enter new password</label>
+                                <div class="control has-icons-left">
+                                    <input id="repeat-password" class="input js-password" type="text" autocomplete="false" placeholder="Re-enter password">
+                                    <span class="icon is-small is-left">
+                                        <i class="mdi mdi-lock"></i>
+                                    </span>
+                                </div>
+                                <p id="password-no-match" class="help has-text-danger-dark is-hidden">Passwords do not match</p>
+                                <p id="password-match" class="help has-text-success-dark is-hidden">Passwords match</p>
+                            </div>
                         </div>
 
                         <div class="field">
