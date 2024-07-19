@@ -77,7 +77,7 @@ async function createAccount(verification_uuid) {
     const colorblind_mode = document.getElementById('colorblind-mode').checked ? 'yes' : 0;
 
     // get the value of the email_updates checkbox, if it's checked
-    let email_updates = document.getElementById('email-updates').checked ? 'yes' : 0;
+    const email_updates = document.getElementById('email-updates').checked ? 'yes' : 0;
 
     const {data} = await axios.post('./cgi/create_account.cgi', convertToFormData({
         'first-last': document.getElementById('first-last').value,
@@ -86,8 +86,8 @@ async function createAccount(verification_uuid) {
         'password': document.getElementById('password1').value,
         'verification_code_long': verification_uuid,
         'verification_code_short': document.getElementById('verification-code').value,
-        colorblind_mode,
-        email_updates,
+        'colorblind_mode': colorblind_mode,
+        'email_updates': email_updates
     }));
 
     if (data['success']) {
