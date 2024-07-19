@@ -1838,7 +1838,7 @@ class Dataset:
 
             if user:
                 qry = """
-                      SELECT l.id, l.user_id, l.is_domain, l.label, l.is_current, l.share_id
+                      SELECT DISTINCT l.id, l.user_id, l.is_domain, l.label, l.is_current, l.share_id
                         FROM layout l
                              JOIN layout_displays lm ON lm.layout_id=l.id
                              JOIN dataset_display dd ON dd.id =lm.display_id
