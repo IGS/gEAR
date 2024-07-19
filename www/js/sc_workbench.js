@@ -432,6 +432,9 @@ const updateManualMarkerGeneEntries = (geneString) => {
     const counterSet = new Set([...typedMarkerGenes, ...clickedMarkerGenes]);
     document.querySelector(UI.markerGenesUniqueCountElt).textContent = counterSet.size;
     document.querySelector(UI.markerGenesEnteredCountElt).textContent = typedMarkerGenes.size;
+
+    // Enable the button if there are genes entered
+    document.querySelector(UI.btnVisualizeMarkerGenesElt).disabled = !counterSet.size;
 }
 
 /**
@@ -483,6 +486,7 @@ const updateUiAfterPcaGeneListSaveFailure = (geneCart, message) => {
  */
 const validateMarkerGeneSelection = () => {
     currentAnalysis.markerGenes.genesOfInterest = new Set([...typedMarkerGenes, ...clickedMarkerGenes]);
+
     // Only allow saving of gene list if genes are selected
     document.querySelector(UI.btnSaveMarkerGeneListElt).disabled = !currentAnalysis.markerGenes.genesOfInterest.size;
     return Boolean(currentAnalysis.markerGenes.genesOfInterest.size)
