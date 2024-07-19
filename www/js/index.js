@@ -27,13 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
         selected_genes = new Set([...selected_genes, ...manually_entered_genes]);
     });
 
-    // handle click even for all a elements of class 'guide-launcher'
-    document.querySelectorAll('.guide-launcher').forEach((element) => {
-        element.addEventListener('click', (event) => {
-            createToast('The guides are still being developed. Please check back later.', 'is-warning');
-        });
-    });
-
     document.querySelector('#submit-expression-search').addEventListener('click', (event) => {
         const status = validateExpressionSearchForm();
 
