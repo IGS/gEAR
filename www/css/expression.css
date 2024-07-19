@@ -139,7 +139,6 @@ ul#go-terms li {
 #gene-result-list-c {
     position: sticky;
     top: 0;
-    z-index: 100;
     align-self: flex-start;
 }
 
