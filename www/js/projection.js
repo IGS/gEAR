@@ -448,7 +448,7 @@ const validateProjectionSearchForm = () => {
     }
 
     // If multi, check that at least two weights are selected
-    if (isMulti && selectedPattern.selectedWeights.length < 2) {
+    if ( document.getElementById('single-multi-multi').checked && selectedPattern.selectedWeights.length < 2) {
         createToast('Please select at least two patterns to proceed');
         return false;
     }

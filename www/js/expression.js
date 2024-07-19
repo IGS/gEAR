@@ -591,8 +591,10 @@ const validateExpressionSearchForm = () => {
         return false;
     }
 
+    const isMulti = document.getElementById('single-multi-multi').checked;
+
     // If multi, check that at least two genes are selected
-    if (is_multigene && selected_genes.size < 2) {
+    if (isMulti && selected_genes.size < 2) {
         createToast('Please select at least two genes to proceed');
         return false;
     }
