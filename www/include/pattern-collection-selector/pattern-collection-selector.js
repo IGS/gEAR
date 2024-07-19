@@ -246,7 +246,7 @@ const createPatternListItem = (item, cart) => {
  */
 const fetchPatternsData = async (callback) => {
     try {
-        patternsCartData = await apiCallsMixin.fetchGeneCarts();
+        patternsCartData = await apiCallsMixin.fetchGeneCarts({includeMembers: true});
 
         flatPatternsCartData = [...patternsCartData.domain_carts, ...patternsCartData.group_carts, ...patternsCartData.public_carts, ...patternsCartData.user_carts, ...patternsCartData.shared_carts, ...patternsCartData.recent_carts]
         document.getElementById('dropdown-pattern-lists').classList.remove('is-loading');

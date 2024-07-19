@@ -143,7 +143,7 @@ def create_two_way_sorting(adata, gene_symbol):
 
 def get_colorblind_scale(n_colors):
     """Get a colorblind friendly colorscale (Viridis). Return n colors spaced equidistantly."""
-    cividis = cm.get_cmap("viridis", n_colors)
+    cividis = plt.get_cmap("viridis", n_colors)
     colors = cividis.colors
     # convert to hex since I ran into some issues using rpg colors
     return [mcolors.rgb2hex(color) for color in colors]

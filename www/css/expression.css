@@ -136,4 +136,10 @@ ul#go-terms li {
     width: 70%; /* make wider, which makes preview images larger */
 }
 
+#gene-result-list-c {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    align-self: flex-start;
+}
 

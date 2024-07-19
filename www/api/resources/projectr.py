@@ -244,6 +244,8 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             , 'message': "Could not find gene cart in database"
         }
 
+    genecart.get_genes();
+
     if not len(genecart.genes):
         return {
             'success': -1
