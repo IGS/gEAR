@@ -128,4 +128,5 @@ ul#go-terms li {
     position: sticky;
     top: 10px;
     z-index: 100;
+    align-self: flex-start; /* doesn't seem to do anything */
 }
