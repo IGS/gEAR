@@ -2508,6 +2508,10 @@ const submitSearch = async (page=1) => {
     Cookies.set("default_collection_organism_view", searchCriteria.organism_ids);
     Cookies.set("default_collection_date_added_view", searchCriteria.date_added);
     Cookies.set("default_collection_dataset_type_view", searchCriteria.dtypes);
+
+    // If user is in expanded view, this is undone by the rerendering of the results.
+    // So just make table view to be consistent with the view from first loading the page.
+    document.getElementById("btn-table-view").click();
 }
 
 /**
