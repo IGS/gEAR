@@ -104,9 +104,16 @@ window.onload=function() {
     });
 
     document.getElementById('dataset-upload-submit').addEventListener('click', (event) => {
-        // change submit button to spinner
         event.preventDefault();
 
+        // make sure they chose a format
+        if (!dataset_format) {
+            document.getElementById('dataset-upload-status-message').textContent = 'Please choose a format above first.';
+            document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+            return;
+        }
+        
+        // change submit button to spinner
         let button = document.getElementById('dataset-upload-submit');
         button.disabled = true;
         button.classList.add('is-loading');
@@ -303,15 +310,23 @@ const uploadDataset = () => {
     };
 
     xhr.onload = function() {
-        if (xhr.status == 200) {
-            console.log('Upload successful!');
+        const response = JSON.parse(xhr.responseText);
+
+        document.getElementById('dataset-upload-status-message').textContent = '';
+        document.getElementById('dataset-upload-submit').classList.remove('is-loading');
+        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+
+        if (response.success) {
+            document.getElementById('dataset-upload-status-message').textContent = 'Dataset uploaded successfully';
+            document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+
         } else {
-            console.log('Upload failed.');
+            document.getElementById('dataset-upload-status-message').textContent = response.message;
+            document.getElementById('dataset-upload-submit').disabled = false;
         }
     };
 
-    let data = xhr.send(formData);
-    console.log(data);
+    xhr.send(formData);
 }
 
 const validateMetadataForm = () => {

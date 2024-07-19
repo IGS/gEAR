@@ -79,6 +79,20 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.replace('./index.html');
     });
 
+    document.getElementById('citation-copy').addEventListener('click', () => {
+        let citation_text = `gEAR: Gene Expression Analysis Resource portal for community-driven, multi-omic data exploration.
+Orvis J, et al. Nat Methods. 2021 Jun 25.
+doi: 10.1038/s41592-021-01200-9
+PMID: 34172972`;
+        copyToClipboard(citation_text).then((copied) => {
+            if (copied) {
+                createToast("Citation copied to clipboard.", "is-success");
+            } else {
+                createToast("Failed to copy citation to clipboard.", "is-danger");
+            }
+        })
+    });
+
 /**
  * Controls for the left navbar visibility
  */

@@ -25,21 +25,39 @@ def main():
     user_upload_file_base = '../uploads/files'
 
     user = geardb.get_user_from_session_id(session_id)
-    result = {'success': 0}
+    result = {'success': 0, 'message': ''}
 
     filename = form['dataset_file'].filename
     file_extension = filename.split('.')[-1]
 
     dataset_filename = os.path.join(user_upload_file_base, session_id + '_' + share_uid + '.' + file_extension)
 
-    print("DEBUG: Saving dataset to: " + dataset_filename, file=sys.stderr)
+    if not user:
+        result['message'] = 'Only logged in users can upload datasets.'
+        print(json.dumps(result))
+        sys.exit(0)
+
+    # formats can be h5ad, rdata, excel, or mex_3tab
+    if dataset_format == 'mex_3tab':
+        if not filename.endswith('tar.gz') and not filename.endswith('zip'):
+            result['message'] = 'Invalid file extension for MEX 3-tab format. Expected .tar.gz or .zip'
+            print(json.dumps(result))
+            sys.exit(0)
+
+    if dataset_format == 'excel':
+        if not filename.endswith('xlsx') and not filename.endswith('xls'):
+            result['message'] = 'Invalid file extension for Excel format. Expected .xlsx or .xls'
+            print(json.dumps(result))
+            sys.exit(0)
 
     try:
         with open(dataset_filename, 'wb') as f:
             f.write(form['dataset_file'].file.read())
         result['success'] = 1
+        result['message'] = 'Dataset file saved successfully.'
+
     except Exception as e:
-        raise Exception("DEBUG: Error saving dataset file: " + str(e))
+        result['message'] = 'Error saving dataset file: ' + str(e)
 
     print(json.dumps(result))
 
