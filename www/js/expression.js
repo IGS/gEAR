@@ -130,7 +130,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // handle when the organism-selector select box is changed
     document.querySelector('#organism-selector').addEventListener('change', (event) => {
-        currently_selected_org_id = parseInt(document.querySelector('#organism-selector').value);
+        if (document.querySelector('#organism-selector').value) {
+            currently_selected_org_id = parseInt(document.querySelector('#organism-selector').value);
+        } else {
+            currently_selected_org_id = "";
+        }
 
         if (currently_selected_org_id === "") {
             showOrganismSelectorToolip();
