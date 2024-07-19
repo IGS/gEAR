@@ -2645,12 +2645,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         }
     }
 
-    await Promise.all([
-        loadOrganismList(),
-        fetchDatasetCollections(true, datasetCollectionSelectCallback)
-    ]);
-
-    document.getElementById("dropdown-dc").classList.remove("is-right");    // Cannot see the dropdown if it is right aligned
+    // Prep filters
+    await loadOrganismList();
 
     // Select the user's last remembered filter options
     const defaultOwnershipView = Cookies.get("default_collection_ownership_view");
@@ -2678,6 +2674,11 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 
     await submitSearch();
+
+    // Load dataset collections
+    await fetchDatasetCollections(true, datasetCollectionSelectCallback)
+    document.getElementById("dropdown-dc").classList.remove("is-right");    // Cannot see the dropdown if it is right aligned
+
 
     // Normally this is done in the datasetCollectionCallback but we need to wait for the search to complete.
     let collection = null;
