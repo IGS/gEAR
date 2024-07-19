@@ -140,6 +140,7 @@ def main():
     elif sort_by == 'owner':
         selects.append("g.user_name")
         froms.append("guser g")
+        wheres.append("d.owner_id = g.id")
         orders_by.append(" g.user_name")
     else:
         orders_by.append(" d.date_added DESC")
