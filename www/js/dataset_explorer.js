@@ -2508,6 +2508,10 @@ const submitSearch = async (page=1) => {
     Cookies.set("default_collection_organism_view", searchCriteria.organism_ids);
     Cookies.set("default_collection_date_added_view", searchCriteria.date_added);
     Cookies.set("default_collection_dataset_type_view", searchCriteria.dtypes);
+
+    // If user is in expanded view, this is undone by the rerendering of the results.
+    // So just make table view to be consistent with the view from first loading the page.
+    document.getElementById("btn-table-view").click();
 }
 
 /**
@@ -2673,11 +2677,16 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     const defaultDatasetTypeView = Cookies.get("default_collection_dataset_type_view");
 
     if (defaultOwnershipView) {
+        // deselect All
+        document.querySelector("#controls-ownership li.js-all-selector").classList.remove("js-selected");
+
         for (const ownership of defaultOwnershipView.split(",")) {
             document.querySelector(`#controls-ownership li[data-dbval='${ownership}']`).classList.add("js-selected");
         }
     }
     if (defaultOrganismView) {
+        // deselect All
+        document.querySelector("#controls-organism li.js-all-selector").classList.remove("js-selected");
         for (const organism of defaultOrganismView.split(",")) {
             document.querySelector(`#controls-organism li[data-dbval='${organism}']`).classList.add("js-selected");
         }
@@ -2686,6 +2695,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         document.querySelector(`#controls-date-added li[data-dbval='${CURRENT_USER.default_date_added_view}']`).classList.add("js-selected");
     }
     if (defaultDatasetTypeView) {
+        // deselect All
+        document.querySelector("#controls-dataset-type li.js-all-selector").classList.remove("js-selected");
         for (const dtype of defaultDatasetTypeView.split(",")) {
             document.querySelector(`#controls-dataset-type li[data-dbval='${dtype}']`).classList.add("js-selected");
         }
@@ -2787,6 +2798,7 @@ document.getElementById("btn-table-view").addEventListener("click", () => {
     document.getElementById("btn-table-view").classList.add('is-gear-bg-secondary');
     document.getElementById("btn-table-view").classList.remove('is-dark');
 
+    document.getElementById("sortby-level").classList.remove("is-hidden");
     document.getElementById("results-table").classList.remove("is-hidden");
     document.getElementById("results-list-div").classList.add("is-hidden");
     document.getElementById("dataset-arrangement-c").classList.add("is-hidden");
@@ -2808,6 +2820,7 @@ document.getElementById("btn-list-view-compact").addEventListener("click", () =>
     document.getElementById("btn-list-view-compact").classList.add('is-gear-bg-secondary');
     document.getElementById("btn-list-view-compact").classList.remove('is-dark');
 
+    document.getElementById("sortby-level").classList.remove("is-hidden");
     document.getElementById("results-table").classList.add("is-hidden");
     document.getElementById("results-list-div").classList.remove("is-hidden");
     document.getElementById("dataset-arrangement-c").classList.add("is-hidden");
@@ -2841,6 +2854,7 @@ document.getElementById("btn-list-view-expanded").addEventListener("click", () =
     document.getElementById("btn-list-view-expanded").classList.add('is-gear-bg-secondary');
     document.getElementById("btn-list-view-expanded").classList.remove('is-dark');
 
+    document.getElementById("sortby-level").classList.remove("is-hidden");
     document.getElementById("results-table").classList.add("is-hidden");
     document.getElementById("results-list-div").classList.remove("is-hidden");
     document.getElementById("dataset-arrangement-c").classList.add("is-hidden");
@@ -2874,6 +2888,7 @@ document.getElementById("btn-arrangement-view").addEventListener("click", () => 
     document.getElementById("btn-arrangement-view").classList.add('is-gear-bg-secondary');
     document.getElementById("btn-arrangement-view").classList.remove('is-dark');
 
+    document.getElementById("sortby-level").classList.add("is-hidden");
     document.getElementById("results-table").classList.add("is-hidden");
     document.getElementById("results-list-div").classList.add("is-hidden");
     document.getElementById("dataset-arrangement-c").classList.remove("is-hidden");

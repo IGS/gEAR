@@ -1418,6 +1418,10 @@ const submitSearch = async (page) => {
     Cookies.set("default_gene_list_ownership_view", searchCriteria.ownership);
     Cookies.set("default_gene_list_organism_view", searchCriteria.organism_ids);
     Cookies.set("default_gene_list_date_added_view", searchCriteria.date_added);
+
+    // If user is in expanded view, this is undone by the rerendering of the results.
+    // So just make table view to be consistent with the view from first loading the page.
+    document.getElementById("btn-table-view").click();
 }
 
 /**
@@ -1491,11 +1495,17 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     const defaultDateAddedView = Cookies.get("default_gene_list_date_added_view");
 
     if (defaultOwnershipView) {
+        // deselect All
+        document.querySelector("#controls-ownership li.js-all-selector").classList.remove("js-selected");
+
         for (const ownership of defaultOwnershipView.split(",")) {
             document.querySelector(`#controls-ownership li[data-dbval='${ownership}']`).classList.add("js-selected");
         }
     }
     if (defaultOrganismView) {
+        // deselect All
+        document.querySelector("#controls-organism li.js-all-selector").classList.remove("js-selected");
+
         for (const organism of defaultOrganismView.split(",")) {
             document.querySelector(`#controls-organism li[data-dbval='${organism}']`).classList.add("js-selected");
         }
