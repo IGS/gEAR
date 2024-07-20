@@ -2924,6 +2924,9 @@ document.getElementById("filter-only-in-collection").addEventListener("change", 
     searchByCollection = e.currentTarget.checked;
     // If the checkbox is checked, change label accordingly
     e.currentTarget.closest(".field").querySelector("label").textContent = searchByCollection ? "Yes" : "No"
+
+    // trigger search
+    submitSearch();
 });
 
 document.getElementById("btn-save-arrangement").addEventListener("click", async () => {
