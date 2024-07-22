@@ -315,7 +315,7 @@ const resetWorkbench = () => {
  * Saves the marker gene list.
  * @returns {void}
  */
-const saveMarkerGeneList = () => {
+const saveMarkerGeneList = async () => {
     // must have access to USER_SESSION_ID
     const gc = new GeneCart({
         session_id: CURRENT_USER.session_id,
@@ -333,7 +333,7 @@ const saveMarkerGeneList = () => {
         gc.addGene(gene);
     };
 
-    gc.save(updateUiAfterMarkerGeneListSaveSuccess, updateUiAfterMarkerGeneListSaveFailure);
+    await gc.save(updateUiAfterMarkerGeneListSaveSuccess, updateUiAfterMarkerGeneListSaveFailure);
 }
 
 /**
@@ -381,7 +381,7 @@ const savePcaGeneList = async () => {
             geneList.addGene(gene);
         });
 
-        geneList.save(updateUiAfterPcaGeneListSaveSuccess, updateUiAfterPcaGeneListSaveFailure);
+        await geneList.save(updateUiAfterPcaGeneListSaveSuccess, updateUiAfterPcaGeneListSaveFailure);
 
     } catch (error) {
         createToast(`Error saving PCs as gene list: ${error.message}`);
