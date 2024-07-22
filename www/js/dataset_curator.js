@@ -1102,9 +1102,9 @@ const setupPlotlyOptions = async () => {
         return;
     }
     // Filter out values we don't want of "levels", like "colors"
-    allColumns = allColumns.filter((col) => !col.includes("-colors"));
+    allColumns = allColumns.filter((col) => !col.includes("_colors"));
     for (const key in levels) {
-        if (key.includes("-colors")) {
+        if (key.includes("_colors")) {
             delete levels[key];
         }
     }
@@ -1321,9 +1321,9 @@ const setupScanpyOptions = async () => {
     }
 
     // Filter out values we don't want of "levels", like "colors"
-    allColumns = allColumns.filter((col) => !col.includes("-colors"));
+    allColumns = allColumns.filter((col) => !col.includes("_colors"));
     for (const key in levels) {
-        if (key.includes("-colors")) {
+        if (key.includes("_colors")) {
             delete levels[key];
         }
     }
