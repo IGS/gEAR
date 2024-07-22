@@ -221,17 +221,19 @@ const createPatternListItem = (item, cart) => {
         event.currentTarget.classList.remove('is-clickable');
 
         // These buttons have no bearing on unweighted lists
-        document.getElementById("dropdown-pattern-list-clear-weights").classList.remove('is-hidden');
-        document.getElementById("dropdown-pattern-list-top5-weights").classList.remove('is-hidden');
-        document.getElementById("dropdown-pattern-list-top10-weights").classList.remove('is-hidden');
-        document.getElementById("dropdown-pattern-list-top20-weights").classList.remove('is-hidden');
-        document.getElementById("dropdown-pattern-list-all-weights").classList.remove('is-hidden');
-        if (gctype === "unweighted-list") {
-            document.getElementById("dropdown-pattern-list-clear-weights").classList.add('is-hidden');
-            document.getElementById("dropdown-pattern-list-top5-weights").classList.add('is-hidden');
-            document.getElementById("dropdown-pattern-list-top10-weights").classList.add('is-hidden');
-            document.getElementById("dropdown-pattern-list-top20-weights").classList.add('is-hidden');
-            document.getElementById("dropdown-pattern-list-all-weights").classList.add('is-hidden');
+        document.getElementById("weighted-shortcut-label").classList.add('is-hidden');
+        document.getElementById("dropdown-pattern-list-clear-weights").classList.add('is-hidden');
+        document.getElementById("dropdown-pattern-list-top5-weights").classList.add('is-hidden');
+        document.getElementById("dropdown-pattern-list-top10-weights").classList.add('is-hidden');
+        document.getElementById("dropdown-pattern-list-top20-weights").classList.add('is-hidden');
+        document.getElementById("dropdown-pattern-list-all-weights").classList.add('is-hidden');
+        if (gctype === "weighted-list") {
+            document.getElementById("weighted-shortcut-label").classList.remove('is-hidden');
+            document.getElementById("dropdown-pattern-list-clear-weights").classList.remove('is-hidden');
+            document.getElementById("dropdown-pattern-list-top5-weights").classList.remove('is-hidden');
+            document.getElementById("dropdown-pattern-list-top10-weights").classList.remove('is-hidden');
+            document.getElementById("dropdown-pattern-list-top20-weights").classList.remove('is-hidden');
+            document.getElementById("dropdown-pattern-list-all-weights").classList.remove('is-hidden');
         }
 
 
