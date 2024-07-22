@@ -1557,8 +1557,6 @@ class AnalysisStepPCA {
         } catch (error) {
             createToast(`Error computing top PCA genes: ${error.message}`);
             logErrorInConsole(error);
-        } finally {
-            document.querySelector(UI.btnPcaTopGenesElt).disabled = false;
         }
     }
 

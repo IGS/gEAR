@@ -818,8 +818,30 @@ document.querySelector(UI.btnPcaRunElt).addEventListener("click", async (event) 
     event.target.classList.remove("is-loading");
 });
 
+document.querySelector(UI.topPcaGenesElt).addEventListener("input", (event) => {
+    // enable the 'plot top genes' button if at least one number is entered
+    document.querySelector(UI.btnPcaTopGenesElt).disabled = true;
+    if (!event.target.value) {
+        return;
+    }
+    const splitValues = event.target.value.split(",");
+    // check if first value is an int
+    if (parseInt(splitValues[0])) {
+        document.querySelector(UI.btnPcaTopGenesElt).disabled = false;
+    };
+});
+
 document.querySelector(UI.btnPcaTopGenesElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
+
+    // validate that all values are integers
+    const topGenes = document.querySelector(UI.topPcaGenesElt).value.split(",").map(x => parseInt(x));
+    if (topGenes.some(isNaN)) {
+        createToast("Please enter a comma-separated list of integers.");
+        event.target.classList.remove("is-loading");
+        return;
+    }
+
     // Run the PCA top genes
     await currentAnalysis.checkDependenciesAndRun(currentAnalysis.pca.runAnalysisTopGenes.bind(currentAnalysis.pca));
     event.target.classList.remove("is-loading");
