@@ -2054,7 +2054,7 @@ const processSearchResults = (data) => {
         setElementProperties(listResultsView, ".js-dataset-curator", { href: `./dataset_curator.html?dataset_id=${datasetId}`});
         setElementProperties(listResultsView, ".js-multigene-viewer", { href: `./multigene_curator.html?dataset_id=${datasetId}`});
         setElementProperties(listResultsView, ".js-compare-tool", { href: `./compare_datasets.html?dataset_id=${datasetId}`});
-        setElementProperties(listResultsView, ".js-sc-workbench", { href: `./analyze_dataset.html?dataset_id=${datasetId}`});
+        setElementProperties(listResultsView, ".js-sc-workbench", { href: `./sc_workbench.html?dataset_id=${datasetId}`});
 
 
         // dataset type section
