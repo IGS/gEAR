@@ -799,7 +799,6 @@ const changeDatasetCollectionCallback = async () => {
     // if arrangement view is active (class "gear-bg-secondary") switch to table view
     document.getElementById("btn-arrangement-view").classList.remove("is-hidden");
     if (isDomain) {
-        document.getElementById("btn-table-view").click();
         document.getElementById("btn-arrangement-view").classList.add("is-hidden");
     }
 
@@ -819,7 +818,10 @@ const changeDatasetCollectionCallback = async () => {
     }
 
     // Update dataset list (in case user has "only in collection" toggle set)
-    await submitSearch();
+    // ? This sort of duplicates the fetchDatasets call above, but it's necessary to update the dataset list
+    if (searchByCollection) {
+        await submitSearch();
+    }
 
     // Domain collections are not editable, so don't bother with creating the layout arrangment view
     if (collection.is_domain) {

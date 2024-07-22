@@ -166,7 +166,7 @@ const addGeneListEventListeners = () => {
             const newLdesc = document.querySelector(`${selectorBase}-editable-ldesc`).value;
 
             try {
-                const data = await apiCallsMixin.saveGeneCartChanges(gcId, intNewVisibility, newTitle, newOrgId, newLdesc);
+                const data = await apiCallsMixin.saveGeneListInfoChanges(gcId, intNewVisibility, newTitle, newOrgId, newLdesc);
                 createToast("Gene list changes saved", "is-success");
 
             } catch (error) {
