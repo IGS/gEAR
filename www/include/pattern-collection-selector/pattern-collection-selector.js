@@ -57,7 +57,12 @@ document.getElementById('dropdown-pattern-list-cancel').addEventListener('click'
     document.getElementById('dropdown-pattern-list-selector-label').innerHTML = 'Quick search using pattern lists';
 
     // and finally the related pattern lists and patterns
-    selectedPattern = {shareId: null, label: null, gctype: null, organismId: null, selectedWeights: []};
+    // Doing it this way to not break the Proxy object on projection.js
+    selectedPattern.shareId = null;
+    selectedPattern.label = null;
+    selectedPattern.gctype = null;
+    selectedPattern.organismId = null;
+    selectedPattern.selectedWeights = [];
 });
 
 // Monitor key strokes after user types more than 2 characters in the dropdown-pattern-list-search-input box
