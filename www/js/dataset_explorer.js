@@ -9,6 +9,7 @@ let selected_dc_share_id; // from dataset-collection-selector
 let firstSearch = true;
 let searchByCollection = false;
 const resultsPerPage = 20;
+let listView = "table";
 
 let flatDatasetCollectionData = {};   // flattened version of all dataset collections availabe to user
 
@@ -2512,9 +2513,14 @@ const submitSearch = async (page=1) => {
     Cookies.set("default_collection_date_added_view", searchCriteria.date_added);
     Cookies.set("default_collection_dataset_type_view", searchCriteria.dtypes);
 
-    // If user is in expanded view, this is undone by the rerendering of the results.
-    // So just make table view to be consistent with the view from first loading the page.
-    document.getElementById("btn-table-view").click();
+    // restore previous list view
+    if (listView === "table") {
+        document.getElementById("btn-table-view").click();
+    } else if (listView === "list-compact") {
+        document.getElementById("btn-list-view-compact").click();
+    } else if (listView === "list-expanded") {
+        document.getElementById("btn-list-view-expanded").click();
+    }
 }
 
 /**
@@ -2793,6 +2799,7 @@ document.getElementById("sort-by").addEventListener("change", async () => {
 });
 
 document.getElementById("btn-table-view").addEventListener("click", () => {
+    listView = "table";
     for (const classElt of document.getElementsByClassName("js-view-btn")) {
         classElt.classList.remove('is-gear-bg-secondary');
         classElt.classList.add('is-dark');
@@ -2815,6 +2822,7 @@ document.getElementById("btn-table-view").addEventListener("click", () => {
 })
 
 document.getElementById("btn-list-view-compact").addEventListener("click", () => {
+    listView = "list-compact";
     for (const classElt of document.getElementsByClassName("js-view-btn")) {
         classElt.classList.remove('is-gear-bg-secondary');
         classElt.classList.add('is-dark');
@@ -2849,6 +2857,7 @@ document.getElementById("btn-list-view-compact").addEventListener("click", () =>
 });
 
 document.getElementById("btn-list-view-expanded").addEventListener("click", () => {
+    listView = "list-expanded";
     for (const classElt of document.getElementsByClassName("js-view-btn")) {
         classElt.classList.remove('is-gear-bg-secondary');
         classElt.classList.add('is-dark');
