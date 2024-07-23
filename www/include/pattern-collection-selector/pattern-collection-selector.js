@@ -57,7 +57,12 @@ document.getElementById('dropdown-pattern-list-cancel').addEventListener('click'
     document.getElementById('dropdown-pattern-list-selector-label').innerHTML = 'Quick search using pattern lists';
 
     // and finally the related pattern lists and patterns
-    selectedPattern = {shareId: null, label: null, gctype: null, organismId: null, selectedWeights: []};
+    // Doing it this way to not break the Proxy object on projection.js
+    selectedPattern.shareId = null;
+    selectedPattern.label = null;
+    selectedPattern.gctype = null;
+    selectedPattern.organismId = null;
+    selectedPattern.selectedWeights = [];
 });
 
 // Monitor key strokes after user types more than 2 characters in the dropdown-pattern-list-search-input box
@@ -221,17 +226,19 @@ const createPatternListItem = (item, cart) => {
         event.currentTarget.classList.remove('is-clickable');
 
         // These buttons have no bearing on unweighted lists
-        document.getElementById("dropdown-pattern-list-clear-weights").classList.remove('is-hidden');
-        document.getElementById("dropdown-pattern-list-top5-weights").classList.remove('is-hidden');
-        document.getElementById("dropdown-pattern-list-top10-weights").classList.remove('is-hidden');
-        document.getElementById("dropdown-pattern-list-top20-weights").classList.remove('is-hidden');
-        document.getElementById("dropdown-pattern-list-all-weights").classList.remove('is-hidden');
-        if (gctype === "unweighted-list") {
-            document.getElementById("dropdown-pattern-list-clear-weights").classList.add('is-hidden');
-            document.getElementById("dropdown-pattern-list-top5-weights").classList.add('is-hidden');
-            document.getElementById("dropdown-pattern-list-top10-weights").classList.add('is-hidden');
-            document.getElementById("dropdown-pattern-list-top20-weights").classList.add('is-hidden');
-            document.getElementById("dropdown-pattern-list-all-weights").classList.add('is-hidden');
+        document.getElementById("weighted-shortcut-label").classList.add('is-hidden');
+        document.getElementById("dropdown-pattern-list-clear-weights").classList.add('is-hidden');
+        document.getElementById("dropdown-pattern-list-top5-weights").classList.add('is-hidden');
+        document.getElementById("dropdown-pattern-list-top10-weights").classList.add('is-hidden');
+        document.getElementById("dropdown-pattern-list-top20-weights").classList.add('is-hidden');
+        document.getElementById("dropdown-pattern-list-all-weights").classList.add('is-hidden');
+        if (gctype === "weighted-list") {
+            document.getElementById("weighted-shortcut-label").classList.remove('is-hidden');
+            document.getElementById("dropdown-pattern-list-clear-weights").classList.remove('is-hidden');
+            document.getElementById("dropdown-pattern-list-top5-weights").classList.remove('is-hidden');
+            document.getElementById("dropdown-pattern-list-top10-weights").classList.remove('is-hidden');
+            document.getElementById("dropdown-pattern-list-top20-weights").classList.remove('is-hidden');
+            document.getElementById("dropdown-pattern-list-all-weights").classList.remove('is-hidden');
         }
 
 

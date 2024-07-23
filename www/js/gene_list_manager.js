@@ -3,6 +3,7 @@
 let firstSearch = true;
 let isAddFormOpen = false;
 const resultsPerPage = 20;
+let listView = "table";
 
 // TODO - Add transformation code for quick gene list transformations
 
@@ -165,7 +166,7 @@ const addGeneListEventListeners = () => {
             const newLdesc = document.querySelector(`${selectorBase}-editable-ldesc`).value;
 
             try {
-                const data = await apiCallsMixin.saveGeneCartChanges(gcId, intNewVisibility, newTitle, newOrgId, newLdesc);
+                const data = await apiCallsMixin.saveGeneListInfoChanges(gcId, intNewVisibility, newTitle, newOrgId, newLdesc);
                 createToast("Gene list changes saved", "is-success");
 
             } catch (error) {
@@ -1419,9 +1420,14 @@ const submitSearch = async (page) => {
     Cookies.set("default_gene_list_organism_view", searchCriteria.organism_ids);
     Cookies.set("default_gene_list_date_added_view", searchCriteria.date_added);
 
-    // If user is in expanded view, this is undone by the rerendering of the results.
-    // So just make table view to be consistent with the view from first loading the page.
-    document.getElementById("btn-table-view").click();
+    // restore previous list view
+    if (listView === "table") {
+        document.getElementById("btn-table-view").click();
+    } else if (listView === "list-compact") {
+        document.getElementById("btn-list-view-compact").click();
+    } else if (listView === "list-expanded") {
+        document.getElementById("btn-list-view-expanded").click();
+    }
 }
 
 /**
@@ -1796,6 +1802,7 @@ btnNewCartSave.addEventListener("click", (e) => {
 });
 
 document.getElementById("btn-table-view").addEventListener("click", () => {
+    listView = "table";
     for (const classElt of document.getElementsByClassName("js-view-btn")) {
         classElt.classList.remove('is-gear-bg-secondary');
         classElt.classList.add('is-dark');
@@ -1810,6 +1817,7 @@ document.getElementById("btn-table-view").addEventListener("click", () => {
 })
 
 document.getElementById("btn-list-view-compact").addEventListener("click", () => {
+    listView = "list-compact";
     for (const classElt of document.getElementsByClassName("js-view-btn")) {
         classElt.classList.remove('is-gear-bg-secondary');
         classElt.classList.add('is-dark');
@@ -1835,6 +1843,7 @@ document.getElementById("btn-list-view-compact").addEventListener("click", () =>
 });
 
 document.getElementById("btn-list-view-expanded").addEventListener("click", () => {
+    listView = "list-expanded";
     for (const classElt of document.getElementsByClassName("js-view-btn")) {
         classElt.classList.remove('is-gear-bg-secondary');
         classElt.classList.add('is-dark');

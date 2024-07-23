@@ -9,6 +9,7 @@ let selected_dc_share_id; // from dataset-collection-selector
 let firstSearch = true;
 let searchByCollection = false;
 const resultsPerPage = 20;
+let listView = "table";
 
 let flatDatasetCollectionData = {};   // flattened version of all dataset collections availabe to user
 
@@ -798,7 +799,6 @@ const changeDatasetCollectionCallback = async () => {
     // if arrangement view is active (class "gear-bg-secondary") switch to table view
     document.getElementById("btn-arrangement-view").classList.remove("is-hidden");
     if (isDomain) {
-        document.getElementById("btn-table-view").click();
         document.getElementById("btn-arrangement-view").classList.add("is-hidden");
     }
 
@@ -815,6 +815,12 @@ const changeDatasetCollectionCallback = async () => {
         if (collection?.is_owner) {
             enableAndShowElement(classElt);
         }
+    }
+
+    // Update dataset list (in case user has "only in collection" toggle set)
+    // ? This sort of duplicates the fetchDatasets call above, but it's necessary to update the dataset list
+    if (searchByCollection) {
+        await submitSearch();
     }
 
     // Domain collections are not editable, so don't bother with creating the layout arrangment view
@@ -2048,7 +2054,7 @@ const processSearchResults = (data) => {
         setElementProperties(listResultsView, ".js-dataset-curator", { href: `./dataset_curator.html?dataset_id=${datasetId}`});
         setElementProperties(listResultsView, ".js-multigene-viewer", { href: `./multigene_curator.html?dataset_id=${datasetId}`});
         setElementProperties(listResultsView, ".js-compare-tool", { href: `./compare_datasets.html?dataset_id=${datasetId}`});
-        setElementProperties(listResultsView, ".js-sc-workbench", { href: `./analyze_dataset.html?dataset_id=${datasetId}`});
+        setElementProperties(listResultsView, ".js-sc-workbench", { href: `./sc_workbench.html?dataset_id=${datasetId}`});
 
 
         // dataset type section
@@ -2509,9 +2515,14 @@ const submitSearch = async (page=1) => {
     Cookies.set("default_collection_date_added_view", searchCriteria.date_added);
     Cookies.set("default_collection_dataset_type_view", searchCriteria.dtypes);
 
-    // If user is in expanded view, this is undone by the rerendering of the results.
-    // So just make table view to be consistent with the view from first loading the page.
-    document.getElementById("btn-table-view").click();
+    // restore previous list view
+    if (listView === "table") {
+        document.getElementById("btn-table-view").click();
+    } else if (listView === "list-compact") {
+        document.getElementById("btn-list-view-compact").click();
+    } else if (listView === "list-expanded") {
+        document.getElementById("btn-list-view-expanded").click();
+    }
 }
 
 /**
@@ -2790,6 +2801,7 @@ document.getElementById("sort-by").addEventListener("change", async () => {
 });
 
 document.getElementById("btn-table-view").addEventListener("click", () => {
+    listView = "table";
     for (const classElt of document.getElementsByClassName("js-view-btn")) {
         classElt.classList.remove('is-gear-bg-secondary');
         classElt.classList.add('is-dark');
@@ -2798,7 +2810,9 @@ document.getElementById("btn-table-view").addEventListener("click", () => {
     document.getElementById("btn-table-view").classList.add('is-gear-bg-secondary');
     document.getElementById("btn-table-view").classList.remove('is-dark');
 
-    document.getElementById("sortby-level").classList.remove("is-hidden");
+    for (const classElt of document.getElementsByClassName("js-trigger-dataset-search")) {
+        classElt.classList.remove("is-hidden");
+    }
     document.getElementById("results-table").classList.remove("is-hidden");
     document.getElementById("results-list-div").classList.add("is-hidden");
     document.getElementById("dataset-arrangement-c").classList.add("is-hidden");
@@ -2812,6 +2826,7 @@ document.getElementById("btn-table-view").addEventListener("click", () => {
 })
 
 document.getElementById("btn-list-view-compact").addEventListener("click", () => {
+    listView = "list-compact";
     for (const classElt of document.getElementsByClassName("js-view-btn")) {
         classElt.classList.remove('is-gear-bg-secondary');
         classElt.classList.add('is-dark');
@@ -2820,7 +2835,9 @@ document.getElementById("btn-list-view-compact").addEventListener("click", () =>
     document.getElementById("btn-list-view-compact").classList.add('is-gear-bg-secondary');
     document.getElementById("btn-list-view-compact").classList.remove('is-dark');
 
-    document.getElementById("sortby-level").classList.remove("is-hidden");
+    for (const classElt of document.getElementsByClassName("js-trigger-dataset-search")) {
+        classElt.classList.remove("is-hidden");
+    }
     document.getElementById("results-table").classList.add("is-hidden");
     document.getElementById("results-list-div").classList.remove("is-hidden");
     document.getElementById("dataset-arrangement-c").classList.add("is-hidden");
@@ -2846,6 +2863,7 @@ document.getElementById("btn-list-view-compact").addEventListener("click", () =>
 });
 
 document.getElementById("btn-list-view-expanded").addEventListener("click", () => {
+    listView = "list-expanded";
     for (const classElt of document.getElementsByClassName("js-view-btn")) {
         classElt.classList.remove('is-gear-bg-secondary');
         classElt.classList.add('is-dark');
@@ -2854,7 +2872,9 @@ document.getElementById("btn-list-view-expanded").addEventListener("click", () =
     document.getElementById("btn-list-view-expanded").classList.add('is-gear-bg-secondary');
     document.getElementById("btn-list-view-expanded").classList.remove('is-dark');
 
-    document.getElementById("sortby-level").classList.remove("is-hidden");
+    for (const classElt of document.getElementsByClassName("js-trigger-dataset-search")) {
+        classElt.classList.remove("is-hidden");
+    }
     document.getElementById("results-table").classList.add("is-hidden");
     document.getElementById("results-list-div").classList.remove("is-hidden");
     document.getElementById("dataset-arrangement-c").classList.add("is-hidden");
@@ -2888,9 +2908,14 @@ document.getElementById("btn-arrangement-view").addEventListener("click", () => 
     document.getElementById("btn-arrangement-view").classList.add('is-gear-bg-secondary');
     document.getElementById("btn-arrangement-view").classList.remove('is-dark');
 
-    document.getElementById("sortby-level").classList.add("is-hidden");
+    // Elements that would trigger submitSearch() are hidden so that pagination and count label won't appear
+    for (const classElt of document.getElementsByClassName("js-trigger-dataset-search")) {
+        classElt.classList.add("is-hidden");
+    }
+
     document.getElementById("results-table").classList.add("is-hidden");
     document.getElementById("results-list-div").classList.add("is-hidden");
+
     document.getElementById("dataset-arrangement-c").classList.remove("is-hidden");
 
     // hide .pagination and #count-label-c

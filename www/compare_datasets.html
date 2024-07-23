@@ -132,18 +132,6 @@
           </h5>
 
           <div class="js-step-collapsable mt-3" id="condition-compare-collapsable">
-            <div id="facet-content" class="content is-hidden">
-              <p>Number of selected observations: <span id="num-selected" class="has-text-weight-semibold"></span></p>
-              <div class="box" id="selected-facets">
-                <p> Selected filters:
-                    <span class="loader is-hidden is-inline-flex" id="selected-facets-loader"></span>
-                </p>
-                <span class="tags" id="selected-facets-tags"></span>
-              </div>
-
-              <span class="title is-6">Shared filtered conditions</span>
-              <div id="facet-c" class="content"></div>
-            </div>
 
             <div>
               <div class="columns">
@@ -158,19 +146,33 @@
               </div>
 
               <div class="columns">
-                <div class="field column is-one-third">
+                <div class="field column is-one-third is-hidden">
                   <label class="label">X-axis (query) condition <span class="has-text-success-dark is-pulled-right">Required</span></label>
                   <div id="compare-x" class="control has-background-white p-3 is-hidden js-compare-groups js-compare-x">
                   </div>
                 </div>
 
-                <div class="field column is-one-third">
+                <div class="field column is-one-third is-hidden">
                     <label class="label">Y-axis (reference) condition <span class="has-text-success-dark is-pulled-right">Required</span></label>
                     <div id="compare-y" class="control has-background-white p-3 is-hidden js-compare-groups js-compare-y">
                     </div>
                 </div>
               </div>
-              <p id="select-compare-series-notification" class="notification is-light"> </p>
+              <p id="select-compare-series-notification" class="mb-3 notification is-warning">Please select a series to compare to choose X and Y conditions</p>
+            </div>
+
+            <div id="facet-content" class="content is-hidden">
+              <p>Number of selected observations: <span id="num-selected" class="has-text-weight-semibold"></span></p>
+              <div class="box" id="selected-facets">
+                <p> Selected filters:
+                    <span class="loader is-hidden is-inline-flex" id="selected-facets-loader"></span>
+                </p>
+                <span class="tags" id="selected-facets-tags"></span>
+              </div>
+
+              <span class="title is-6">Extra filters to apply to both conditions</span>
+              <p class="help">Useful for doing X vs Y comparison on subsets of data beyond the main series to compare.</p>
+              <div id="facet-c" class="content"></div>
             </div>
 
           </div>

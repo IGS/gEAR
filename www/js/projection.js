@@ -22,10 +22,16 @@ selectedPattern = new Proxy(selectedPattern, {
         target[key] = value;
         const algorithmElt = document.getElementById('algorithm');
 
+        // NOTE: When checking keys, if multiple keys are set at once, the order of the if statements matters
+        // The Proxy keys are triggered in order they were set in the object.
+
         if (key === "selectedWeights") {
-            document.getElementById("single-multi-multi").disabled = false;
-            if(value.length < 2) {
-                document.getElementById("single-multi-multi").disabled = true;
+            enableAndShowElement(document.getElementById("single-multi-multi"), true);
+            if (!value.length) {
+                // Reset button was hit
+                enableAndShowElement(document.getElementById("single-multi-multi"), true);
+            } else if(value.length < 2) {
+                disableAndHideElement(document.getElementById("single-multi-multi"), true);
                 document.getElementById("single-multi-single").checked = true;
                 isMulti = false;
             }

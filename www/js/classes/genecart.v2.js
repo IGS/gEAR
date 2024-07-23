@@ -70,7 +70,7 @@ class GeneCart {
         this.genes.push(gene)
     }
 
-    save(callback=null, errCallback=null) {
+    async save(callback=null, errCallback=null) {
         /*
         If the 'id' is empty, it's assumed to be new, so an INSERT is
         performed.  Otherwise, if ID is populated this does an
@@ -82,7 +82,7 @@ class GeneCart {
         if (this.id) {
             this.updateCartInDb(callback, errCallback);
         } else {
-            this.addCartToDb(callback, errCallback);
+            await this.addCartToDb(callback, errCallback);
         }
     }
 

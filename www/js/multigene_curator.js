@@ -865,7 +865,7 @@ const getCategoryColumns = async () => {
     }
     // Filter out values we don't want of "levels", like "colors"
     for (const key in levels) {
-        if (key.includes("-colors")) {
+        if (key.includes("_colors")) {
             delete levels[key];
         }
     }

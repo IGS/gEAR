@@ -45,7 +45,7 @@ const LOG10_TRANSFORMED_DATASETS = [
 ];
 
 let sessionId;
-let facetWidget;
+let facetWidget;	// stores aggregation data
 let datasetId;
 let organismId;	// Used for saving as gene cart
 let compareData;;
@@ -106,12 +106,8 @@ const datasetTree = new DatasetTree({
 			classElt.replaceChildren();
 		}
 
-		// Create facet widget, which will refresh filters
-		facetWidget = await createFacetWidget(datasetId, null, {});
-		document.getElementById("facet-content").classList.remove("is-hidden");
-		document.getElementById("selected-facets").classList.remove("is-hidden");
-
 		// Update compare series options
+		facetWidget = await createFacetWidget(datasetId, null, {}); // Initial fetching of categorical columns
 		const catColumns = facetWidget.aggregations.map((agg) => agg.name);
 		updateSeriesOptions("js-compare", catColumns);
 
@@ -237,6 +233,8 @@ const clearGenes = (event) => {
 
 const createFacetWidget = async (datasetId, analysisId, filters) => {
     document.getElementById("selected-facets-loader").classList.remove("is-hidden")
+	document.getElementById("facet-content").classList.add("is-hidden");
+	document.getElementById("selected-facets").classList.add("is-hidden");
 
     const {aggregations, total_count:totalCount} = await fetchAggregations(datasetId, analysisId, filters);
     document.getElementById("num-selected").textContent = totalCount;
@@ -262,6 +260,8 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
 		filterHeaderExtraClasses:"has-background-white"
     });
     document.getElementById("selected-facets-loader").classList.add("is-hidden")
+	document.getElementById("facet-content").classList.remove("is-hidden");
+	document.getElementById("selected-facets").classList.remove("is-hidden");
     return facetWidget;
 }
 
@@ -959,6 +959,8 @@ const updateGroupOptions = (selectorId, groupsArray, series) => {
 		label.prepend(checkbox);
 
 		// If group has aggregations count of 0 (no data after filtering), disable checkbox and label
+		checkbox.disabled = false;
+		label.removeAttribute("disabled");
 		if (facetWidget.aggregations.find((agg) => agg.name === series).items.find((item) => item.name === group).count === 0) {
 			checkbox.disabled = true;
 			label.setAttribute("disabled", "disabled");
@@ -1136,15 +1138,22 @@ document.getElementById("statistical-test").addEventListener("change", (event) =
 for (const classElt of document.getElementsByClassName("js-compare")) {
 	const compareSeriesNotification = document.getElementById("select-compare-series-notification");
 	classElt.addEventListener("change", async (event) => {
+
+		// Disable plot button until conditions are met
+		for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
+			plotBtn.disabled = true;
+		}
+
+		// Hide and clear compare groups
+		for (const classElt of document.getElementsByClassName("js-compare-groups")) {
+			classElt.parentElement.classList.add("is-hidden");
+			classElt.replaceChildren();
+		}
+
 		const compareSeries = event.target.value;
 		compareSeriesNotification.classList.remove("is-hidden", "is-danger");
 		compareSeriesNotification.classList.add("is-warning");
-		compareSeriesNotification.textContent = "Please select a series to compare first";
-
-		for (const classElt of document.getElementsByClassName("js-compare-groups")) {
-			classElt.classList.add("is-hidden");
-			classElt.replaceChildren();
-		}
+		compareSeriesNotification.textContent = "Please select a series to compare to choose X and Y conditions";
 
 		if (!compareSeries) return;
 
@@ -1162,8 +1171,21 @@ for (const classElt of document.getElementsByClassName("js-compare")) {
 
 		compareSeriesNotification.classList.add("is-hidden");
 
+		// Reset facet groups
+		facetWidget = await createFacetWidget(datasetId, null, {}); // will also remove any existing facet widget
+
 		updateGroupOptions("compare-x", seriesNames, compareSeries);
 		updateGroupOptions("compare-y", seriesNames, compareSeries);
+
+		// Show compare groups since things have validated.
+		for (const classElt of document.getElementsByClassName("js-compare-groups")) {
+			classElt.parentElement.classList.remove("is-hidden");
+		}
+
+		// Hide the chosen group's facet element
+		const facetElt = document.getElementById(`filter-${compareSeries}`);
+		facetElt.classList.add("is-hidden");
+
 	})
 }
 
@@ -1249,7 +1271,7 @@ document.getElementById('genes-manually-entered').addEventListener('change', (ev
     chooseGenes(null);
 });
 
-document.querySelector('#dropdown-gene-list-proceed').addEventListener('click', chooseGenes);
+document.getElementById('dropdown-gene-list-proceed').addEventListener('click', chooseGenes);
 
 document.getElementById("download-selected-genes-btn").addEventListener("click", downloadSelectedGenes);
 

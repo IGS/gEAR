@@ -61,11 +61,6 @@
                                                 <span class="icon"><i class="mdi mdi-18px mdi-checkbox-marked-circle"></i></span>
                                             </button>
                                         </p>
-                                        <!-- May be removed <p class="control">
-                                            <button id="btn-view-collection-datasets" class="button is-small is-outlined is-dark" data-tooltip-content="View datasets from this collection">
-                                                <span class="icon"><i class="mdi mdi-18px mdi-eye"></i></span>
-                                            </button>
-                                        </p>-->
                                         <p class="control">
                                             <button id="btn-rename-collection" class="button is-small is-outlined is-dark" data-tooltip-content="Rename collection title">
                                                 <span class="icon"><i class="mdi mdi-18px mdi-pencil"></i></span>
@@ -93,7 +88,7 @@
                                         </p>
                                     </div>
 
-                                    <div class="field mt-1">
+                                    <div class="js-trigger-dataset-search field mt-1">
                                         <p class="label is-size-7">Show only selected collection datasets.</p>
                                         <!-- toggle switch --->
                                         <input id="filter-only-in-collection" type="checkbox" class="switch is-small is-primary"/>
@@ -106,7 +101,7 @@
                         </div>
 
                         <!-- search field -->
-                        <div class="field">
+                        <div class="js-trigger-dataset-search field">
                             <label class="label">Find datasets</label>
                             <div class="control has-icons-right">
                                 <input id="search-terms" class="input" type="text" placeholder="Keyword search">
@@ -117,7 +112,7 @@
                         </div>
 
                         <!-- filter options -->
-                        <div class="field">
+                        <div class="js-trigger-dataset-search field">
                             <div id="controls-ownership" class="js-filter-subsection is-clickable">
                                 <p class="has-text-weight-semibold js-expandable-control">
                                     <span>Ownership</span>
@@ -136,7 +131,7 @@
                             </div>
                         </div>
 
-                        <div class="field">
+                        <div class="js-trigger-dataset-search field">
                             <div id="controls-organism" class="js-filter-subsection is-clickable">
                                 <p class="has-text-weight-semibold  js-expandable-control">
                                     <span>Organism</span>
@@ -152,7 +147,7 @@
                             </div>
                         </div>
 
-                        <div class="field">
+                        <div class="js-trigger-dataset-search field">
                             <div id="controls-dataset-type" class="js-filter-subsection is-clickable">
                                 <p class="has-text-weight-semibold  js-expandable-control">
                                     <span>Dataset type</span>
@@ -172,7 +167,7 @@
                             </div>
                         </div>
 
-                        <div class="field">
+                        <div class="js-trigger-dataset-search field">
                             <div id="controls-date-added" class="js-filter-subsection is-clickable">
                                 <p class="has-text-weight-semibold  js-expandable-control">
                                     <span>Date added</span>
@@ -228,7 +223,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div id="sortby-level" class="level-item">
+                                <div class="js-trigger-dataset-search level-item">
                                     <label class="label mr-3">Sort by:</label>  <!-- .field.is-horizontal + .field-label scrunches the label up -->
                                     <div class="field">
                                         <div class="control">
