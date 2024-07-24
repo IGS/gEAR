@@ -62,10 +62,12 @@ def main():
     if gene_symbol is not None:
         params['gene_symbol'] = gene_symbol
 
-    if gene_symbol_exact_match and gene_symbol_exact_match.lower() in [0, '0', 'false', 'f', 'no']:
-        params['gene_symbol_exact_match'] = 0
-    else:
-        params['gene_symbol_exact_match'] = 1
+    # Set gene_symbol_exact_match to 1 by default on pages where it makes sense
+    if page not in ('a', 'de'):
+        if gene_symbol_exact_match and gene_symbol_exact_match.lower() in [0, '0', 'false', 'f', 'no']:
+            params['gene_symbol_exact_match'] = 0
+        else:
+            params['gene_symbol_exact_match'] = 1
 
     if gene_cart:
         key = 'gene_lists'
