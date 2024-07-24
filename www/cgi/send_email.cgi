@@ -64,9 +64,7 @@ def main():
             <head></head>
             <body style="font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
             <div style="height:50px; background-color:#2F103E;">
-               <a href="{}">
-                 <img src="{}" style="border-radius:4px; margin-left:90px;">
-              </a>
+                <img src="{}" style="border-radius:4px; margin-left:90px;">
             </div>
             <div style="text-align:center; height:50vh; vertical-align:middle; margin-top:100px;">
               <br />
@@ -78,7 +76,7 @@ def main():
             </div>
             </body>
             </html>
-            """.format(domain_home_url, domain_logo, url)
+            """.format(domain_logo, url)
 
             result['success'] = 1
         else:
