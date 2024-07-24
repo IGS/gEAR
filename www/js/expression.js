@@ -110,9 +110,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 first_gene.click();
             }
 
-            document.getElementById("dropdown-gene-lists").classList.remove("is-right");
-            document.getElementById("dropdown-dc").classList.remove("is-right");
-
         } catch (error) {
             logErrorInConsole(error);
             return;
