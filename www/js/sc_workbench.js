@@ -693,7 +693,6 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
 
     resetWorkbench();
 
-
     const selectedOption = event.target.selectedOptions[0];
     currentAnalysis.type = selectedOption.dataset.analysisType;
     currentAnalysis.id = selectedOption.dataset.analysisId;

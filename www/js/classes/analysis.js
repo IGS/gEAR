@@ -202,6 +202,7 @@ class Analysis {
             document.querySelector(UI.labeledTsneSection).classList.add("is-hidden");
             if (this.type === "primary" && data['tsne']['tsne_calculated']) {
                 document.querySelector(UI.labeledTsneSection).classList.remove("is-hidden");
+                this.labeledTsne = new AnalysisStepLabeledTsne(this);
             }
 
         } catch (error) {
