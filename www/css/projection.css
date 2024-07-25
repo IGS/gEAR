@@ -64,10 +64,6 @@ ul#go-terms li {
     width: 1080px;  /* grid width + 2*border width */
 }
 
-/* Adjusting .card-image and img for static images */
-.js-tile .card-image {
-    height: calc(100% - 60px); /* factors in the card-header height ... inexact art */
-}
 .js-tile .card-image img {
     object-fit: fill;
     width: fit-content;
@@ -81,11 +77,6 @@ ul#go-terms li {
 }
 
 .js-tile .card-image .js-plotly-plot {
-    width: 100%;
-    height: 100%;
-}
-
-.js-tile .card-image .plotly {
     width: 100%;
     height: 100%;
 }

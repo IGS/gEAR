@@ -395,10 +395,16 @@ class DatasetTile {
             if (this.projectR.projectionInfo) {
                 this.renderProjectionInfo();
             }
+
+            this.resizeCardImage();
+
             // Plot and render the display
             await this.renderDisplay(geneSymbolInput, null, svgScoringMethod);
             return;
         }
+
+        // Resize the card image (plots) to accomodate the title header
+        this.resizeCardImage();
 
         // Not projection mode, so get orthologs
         await this.getOrthologs(geneSymbolInput)
@@ -532,9 +538,6 @@ class DatasetTile {
         const cardContent = tileElement.querySelector('.js-card-extras');
 
         cardContent.append(projectionInfoHTML);
-
-        // Adjust height of card image to account for the dropdown
-        document.querySelector(`#tile-${this.tile.tileId} .card-image`).style.height = "calc(100% - 80px)";
     }
 
     /**
@@ -1220,6 +1223,9 @@ class DatasetTile {
         const datasetId = display.dataset_id;
         const {gene_symbol: geneSymbol} = display.plotly_config;
 
+        createCardMessage(this.tile.tileId, "warning", "Epiviz displays have not been implemented yet.");
+        return;
+
         let genome = null;
         const genesTrack = display.plotly_config.tracks["EPIVIZ-GENES-TRACK"];
         if (genesTrack.length > 0) {
@@ -1290,6 +1296,11 @@ class DatasetTile {
         return epivizHTML;
     }
 
+    /**
+     * Renders Epiviz tracks based on the provided plot configuration.
+     * @param {Object} plotConfig - The plot configuration object.
+     * @returns {string} - The HTML template for the Epiviz tracks.
+     */
     renderEpivizTracks(plotConfig) {
         //Create the tracks
         let epivizTracksTemplate = "";
@@ -1316,6 +1327,14 @@ class DatasetTile {
         return epivizTracksTemplate;
     }
 
+    /**
+     * Renders the multi-gene display.
+     *
+     * @param {Object} display - The display object.
+     * @param {Object} otherOpts - Other options.
+     * @returns {Promise<void>} - A promise that resolves when the rendering is complete.
+     * @throws {Error} - If there is an error fetching the data or rendering the plot.
+     */
     async renderMultiGeneDisplay(display, otherOpts) {
 
         const datasetId = display.dataset_id;
@@ -1367,6 +1386,14 @@ class DatasetTile {
 
     }
 
+    /**
+     * Renders a Plotly display on the tile grid.
+     *
+     * @param {Object} display - The display object containing the plotly configuration.
+     * @param {Object} otherOpts - Additional options for rendering the plotly display.
+     * @returns {Promise<void>} - A promise that resolves when the plotly display is rendered.
+     * @throws {Error} - If there is an error fetching the plotly data or rendering the plot.
+     */
     async renderPlotlyDisplay(display, otherOpts) {
         const datasetId = display.dataset_id;
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
@@ -1455,6 +1482,14 @@ class DatasetTile {
     }
 
 
+    /**
+     * Retrieves a PNG image for a given display and initiates its download.
+     *
+     * @async
+     * @param {Object} display - The display object containing information about the dataset and plot configuration.
+     * @returns {Promise<void>} - A promise that resolves when the PNG image is downloaded.
+     * @throws {Error} - If the image retrieval is unsuccessful or encounters an unknown error.
+     */
     async getScanpyPNG(display) {
         const datasetId = display.dataset_id;
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
@@ -1500,6 +1535,15 @@ class DatasetTile {
     }
 
 
+    /**
+     * Renders an SVG for the display.
+     *
+     * @param {Object} display - The display object.
+     * @param {string} [svgScoringMethod="gene"] - The SVG scoring method.
+     * @param {Object} otherOpts - Other options.
+     * @returns {Promise<void>} - A promise that resolves when the SVG is rendered.
+     * @throws {Error} - If there is an error rendering the SVG.
+     */
     async renderSVG(display, svgScoringMethod="gene", otherOpts) {
         const datasetId = display.dataset_id;
         const plotConfig = display.plotly_config;
@@ -1517,11 +1561,31 @@ class DatasetTile {
 
     }
 
+    /**
+     * Resets the AbortController and cancels any previous axios requests.
+     * Creates a new AbortController for a new set of frames.
+     */
     resetAbortController() {
         if (this.controller && !this.projectR.performingProjection) {
             this.controller.abort(); // Cancel any previous axios requests (such as drawing plots for a previous dataset)
         }
         this.controller = new AbortController(); // Create new controller for new set of frames
+
+    }
+
+    /**
+     * Resizes the card image based on the sibling card header height.
+     */
+    resizeCardImage() {
+        const cardImage = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
+        // resize based on the sibling .card-header height
+        const cardHeader = document.querySelector(`#tile-${this.tile.tileId} .card-header`);
+        const cardExtras = document.querySelector(`#tile-${this.tile.tileId} .js-card-extras`); // this is used in projections
+        let offsetHeight = cardHeader.offsetHeight;
+        if (cardExtras) {
+            offsetHeight += cardExtras.offsetHeight;
+        }
+        cardImage.style.height = `calc(100% - ${offsetHeight}px)`;
 
     }
 }
