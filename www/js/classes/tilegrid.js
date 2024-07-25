@@ -118,7 +118,7 @@ class TileGrid {
         // Max col is going to be 12 (since width is stored as 12-col format in db),
         // and max row is max(endRow)
 
-        const maxRows = Math.max(...this.tiles.map(tile => tile.tile.endRow));
+        const maxRows = Math.max(...this.tiles.map(tile => tile.tile.endRow)) - 1; // Subtract 1 because endRow is first row tile is not in
         selectorElt.style.gridTemplateRows = `repeat(${maxRows}, ${this.colHeight}px)`;
         // if going from single dataset to layout, need to unset gridTemplateColumns. Otherwise the grid will be messed up
         selectorElt.style.gridTemplateColumns = "";
