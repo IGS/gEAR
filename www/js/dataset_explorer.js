@@ -560,7 +560,7 @@ const addModalEventListeners = (collection) => {
                 const curr_share_id  = selected_dc_share_id;
 
                 // Update the layout arrangement views
-                await fetchDatasetCollections(true);
+                await updateDatasetCollections();
                 selectDatasetCollection(curr_share_id); // performs DatasetCollectionSelectorCallback when label is set
 
             } catch (error) {
@@ -597,7 +597,7 @@ const addModalEventListeners = (collection) => {
                 const curr_share_id  = selected_dc_share_id;
 
                 // Update the layout arrangement views
-                await fetchDatasetCollections(true);
+                await updateDatasetCollections();
                 selectDatasetCollection(curr_share_id); // performs DatasetCollectionSelectorCallback when label is set
 
             } catch (error) {
@@ -730,212 +730,6 @@ const buildFilterString = (groupName) => {
     }
 
     return dbvals.join(",");
-}
-
-/**
- * Callback function that is triggered when a new dataset collection is selected.
- * It fetches the dataset collections and collection members from the API,
- * updates the UI based on the selected collection, and handles button actions.
- * @returns {Promise<void>} A promise that resolves when the function completes.
- */
-const changeDatasetCollectionCallback = async () => {
-    // Show action buttons
-    document.getElementById("collection-actions-c").classList.remove("is-hidden");
-
-    // Reset the arrangement views
-    const arrangementViewSingle = document.getElementById("dataset-arrangement-single");
-    const arrangementViewMulti = document.getElementById("dataset-arrangement-multi");
-    arrangementViewSingle.innerHTML = "";
-    arrangementViewMulti.innerHTML = "";
-
-    // The share_id should be updated in the component when a new dataset collection is selected
-    const datasetData = await apiCallsMixin.fetchDatasets({layout_share_id: selected_dc_share_id, sort_by: "date_added"})
-
-    // Uses dataset-collection-selector.js variable
-    // ? I don't like doing this but calling this with callback uses whatever state of the variable is at the time of MutationObserver setup
-    const datasetCollectionData = dataset_collection_data;
-
-    // merge all dataset collection data from domain_layouts, group_layouts, public_layouts, shared_layouts, and user_layouts into one array
-    flatDatasetCollectionData = [...datasetCollectionData.domain_layouts, ...datasetCollectionData.group_layouts, ...datasetCollectionData.public_layouts, ...datasetCollectionData.shared_layouts, ...datasetCollectionData.user_layouts];
-
-    // Find the dataset collection data for the selected share_id
-    let collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
-
-    // Currently only collectiosn with datasets members will be fetched.
-    // If this isn't one (i.e. brand new one), we can fudge some properties to make the UI work
-    if (!collection) {
-        collection = {
-            dataset_count: 0,
-            folder_id: null,
-            folder_label: null,
-            folder_parent_id: null,
-            is_current: 0,
-            is_domain: 0,
-            is_owner: 1,
-            is_public: 0,
-            label: selected_dc_label,
-            members: [],
-            share_id: selected_dc_share_id,
-        }
-    }
-
-    const titles = {};
-    for (const dataset of datasetData.datasets) {
-        titles[dataset.dataset_id] = dataset.title;
-    }
-
-    // Create popvers for collection actions
-    createDeleteCollectionConfirmationPopover();
-    createNewCollectionPopover();
-    createRenameCollectionPopover();
-    createRenameCollectionPermalinkPopover();
-
-    // Update action buttons for the dataset collection or datasets
-    updateDatasetCollectionButtons(collection);
-
-    const isDomain = Boolean(collection.is_domain);
-
-    // If selected dataset collection is a "domain" collection, hide the "arrangement" view button.
-    // if arrangement view is active (class "gear-bg-secondary") switch to table view
-    document.getElementById("btn-arrangement-view").classList.remove("is-hidden");
-    if (isDomain) {
-        document.getElementById("btn-arrangement-view").classList.add("is-hidden");
-    }
-
-    // If the selected dataset collection is the current collection, make it look like the primary collection
-    document.getElementById("btn-set-primary-collection").classList.add("is-outlined");
-    if (collection.share_id === Cookies.get('gear_default_domain')) {
-        document.getElementById("btn-set-primary-collection").classList.remove("is-outlined");
-    }
-
-    // Also hide js-view-displays buttons if user is not the owner of the collection
-    const viewDisplayButtons = document.getElementsByClassName("js-view-displays");
-    for (const classElt of viewDisplayButtons) {
-        disableAndHideElement(classElt);
-        if (collection?.is_owner) {
-            enableAndShowElement(classElt);
-        }
-    }
-
-    // Update dataset list (in case user has "only in collection" toggle set)
-    // ? This sort of duplicates the fetchDatasets call above, but it's necessary to update the dataset list
-    if (searchByCollection) {
-        await submitSearch();
-    }
-
-    // Domain collections are not editable, so don't bother with creating the layout arrangment view
-    if (collection.is_domain) {
-        return;
-    }
-
-    // Loading indication
-    document.getElementById("dataset-arrangement-loading-notification").classList.remove("is-hidden");
-
-    // JSON parse every layout member
-    const layoutMembers = collection.members;
-    const singleLayoutMembers = collection.singlegene_members || [];
-    const multiLayoutMembers = collection.multigene_members || [];
-
-    // Legacy mode - if all tiles have startCol = 1, then we are in legacy mode
-    // These layouts were generated only with a "width" property
-    const legacyMode = layoutMembers.every((dataset) => dataset.start_col === 1);
-
-    let currentCol = 1;
-    let currentRow = 1;
-
-    singleArrangement = new LayoutArrangement();
-    multiArrangement = new LayoutArrangement(true);
-
-    // If no layout members, show a message and hide loading indication
-    document.getElementById("dataset-arrangement-no-displays-notification").classList.add("is-hidden");
-    if (!singleLayoutMembers.length && !multiLayoutMembers.length) {
-        document.getElementById("dataset-arrangement-loading-notification").classList.add("is-hidden");
-        document.getElementById("dataset-arrangement-no-displays-notification").classList.remove("is-hidden");
-    }
-
-
-    // TODO: Get layout members from the "get_users_layout_members.cgi" API call
-
-    const maxEndCol = 13;
-
-    document.getElementById("dataset-arrangement-single-c").classList.remove("is-hidden");
-    if (!singleLayoutMembers.length) {
-        document.getElementById("dataset-arrangement-single-c").classList.add("is-hidden");
-    }
-
-    for (const member of singleLayoutMembers) {
-        const displayId = member.display_id;
-        const datasetId = member.dataset_id;
-
-        const singleMember = new LayoutArrangementMember(singleArrangement, displayId, member.grid_position, member.start_col, member.start_row, member.grid_width, member.grid_height);
-
-        // If in legacy mode, then we need to calculate the startCol and endCol and startRow and endRow
-        // so the arrangement view can be displayed correctly
-        if (legacyMode) {
-            const width = member.grid_width;
-
-            // If endCol is greater than 13, then this tile is in the next row
-            if (currentCol + width > maxEndCol) {
-                currentCol = 1;
-                currentRow++;
-            }
-
-            singleMember.startCol = currentCol;
-            singleMember.startRow = currentRow;
-
-            currentCol += width;
-        }
-
-        singleMember.image = await apiCallsMixin.fetchDatasetDisplayImage(datasetId, displayId)
-
-        singleMember.datasetTitle = titles[datasetId];
-        singleArrangement.addMember(singleMember);
-    }
-
-    // Reset for the multi-gene layout
-    currentCol = 1;
-    currentRow = 1;
-
-    document.getElementById("dataset-arrangement-multi-c").classList.remove("is-hidden");
-    if (!multiLayoutMembers.length) {
-        document.getElementById("dataset-arrangement-multi-c").classList.add("is-hidden");
-    }
-
-    for (const member of multiLayoutMembers) {
-        const displayId = member.display_id;
-        const datasetId = member.dataset_id;
-
-        const multiMember = new LayoutArrangementMember(multiArrangement, displayId, member.grid_position, member.start_col, member.start_row, member.grid_width, member.grid_height);
-
-        if (legacyMode) {
-            const width = member.grid_width;
-
-            // If endCol is greater than 13, then this tile is in the next row
-            if (currentCol + width > maxEndCol) {
-                currentCol = 1;
-                currentRow++;
-            }
-
-            multiMember.startCol = currentCol;
-            multiMember.startRow = currentRow;
-
-            currentCol += width;
-
-        }
-
-        multiMember.image = await apiCallsMixin.fetchDatasetDisplayImage(datasetId, displayId)
-
-        multiMember.datasetTitle = titles[datasetId];
-        multiArrangement.addMember(multiMember);
-
-    }
-
-    singleArrangement.setupArrangementAdjustable();
-    multiArrangement.setupArrangementAdjustable();
-
-    // Hide loading indication
-    document.getElementById("dataset-arrangement-loading-notification").classList.add("is-hidden");
-
 }
 
 /**
@@ -1358,8 +1152,7 @@ const createDeleteCollectionConfirmationPopover = () => {
                 const data = await apiCallsMixin.deleteDatasetCollection(selected_dc_share_id);
 
                 if (data['success'] === 1) {
-                    // Re-fetch the dataset collections, which will update in the UI via click events
-                    await fetchDatasetCollections(true)
+                    await updateDatasetCollections();
 
                     createToast("Dataset collection deleted", "is-success");
 
@@ -1369,9 +1162,6 @@ const createDeleteCollectionConfirmationPopover = () => {
 
                     selected_dc_share_id = CURRENT_USER.default_profile_share_id;
                     selectDatasetCollection(selected_dc_share_id);  // performs DatasetCollectionSelectorCallback when label is reset
-
-                    // Override the "show" from the callback. If the collection is deleted, the collection management should be hidden
-                    document.getElementById("collection-actions-c").classList.add("is-hidden");
 
                 } else {
                     const error = data['error'] || "Failed to delete collection";
@@ -1505,8 +1295,7 @@ const createNewCollectionPopover = () => {
                 const data = await apiCallsMixin.createDatasetCollection(newName);
 
                 if (data['layout_share_id']) {
-                    // Re-fetch the dataset collections, which will update the UI via click events
-                    await fetchDatasetCollections(true)
+                    await updateDatasetCollections();
 
                     createToast("Dataset collection created", "is-success");
 
@@ -1637,8 +1426,7 @@ const createRenameCollectionPopover = () => {
                 const data = await apiCallsMixin.renameCollection(selected_dc_share_id, newName);
 
                 if (data['layout_label']) {
-                    // Re-fetch the dataset collections, which will update the UI via click events
-                    await fetchDatasetCollections(true)
+                    await updateDatasetCollections();
 
                     createToast("Dataset collection renamed", "is-success");
 
@@ -1779,8 +1567,7 @@ const createRenameCollectionPermalinkPopover = () => {
                     throw new Error(error);
                 }
 
-                // Re-fetch the dataset collections, which will update the UI via click events
-                await fetchDatasetCollections(true)
+                await updateDatasetCollections();
 
                 createToast("Dataset collection permalink renamed", "is-success");
 
@@ -1832,23 +1619,61 @@ const createPaginationEllipsis = () => {
     return li;
 }
 
-const datasetCollectionSelectCallback = () => {
-    // Add mutation observer to watch if #dropdown-dc-selector-label changes
-    const observer = new MutationObserver((mutationsList, observer) => {
-        for (const mutation of mutationsList) {
-            if (mutation.type === 'childList') {
-                changeDatasetCollectionCallback();
-            }
-        }
-    });
-
-    observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
-
-    // Trigger the default dataset collection to be selected at the start
-    if (CURRENT_USER.default_profile_share_id) {
-        selectDatasetCollection(CURRENT_USER.default_profile_share_id);
+/**
+ * Callback function for dataset collection selection.
+ * This function updates the dataset list, shows action buttons, resets arrangement views,
+ * finds the dataset collection data for the selected share_id, creates popovers for collection actions,
+ * fetches collection members, renders layout arranger if the user owns the collection,
+ * updates action buttons for the dataset collection or datasets, and hides/shows js-view-displays buttons.
+ * @returns {Promise<void>} A promise that resolves when the function completes.
+ */
+const datasetCollectionSelectionCallback = async () => {
+    // Update dataset list (in case user has "only in collection" toggle set)
+    if (searchByCollection) {
+        await submitSearch();
     }
 
+    // Reset the arrangement views
+    const arrangementViewSingle = document.getElementById("dataset-arrangement-single");
+    const arrangementViewMulti = document.getElementById("dataset-arrangement-multi");
+    arrangementViewSingle.innerHTML = "";
+    arrangementViewMulti.innerHTML = "";
+
+    // Get collection with displays
+    const data = await apiCallsMixin.fetchDatasetCollectionMembers(selected_dc_share_id);
+    document.getElementById("btn-arrangement-view").classList.add("is-hidden");
+    // If user owns collection, show layout arranger
+    if (data.is_owner) {
+        await renderLayoutArranger(data);
+        document.getElementById("btn-arrangement-view").classList.remove("is-hidden");
+    }
+
+    // Update action buttons for the dataset collection or datasets
+    updateDatasetCollectionButtons(data);
+
+    // Also hide js-view-displays buttons if user is not the owner of the collection
+    const viewDisplayButtons = document.getElementsByClassName("js-view-displays");
+    for (const classElt of viewDisplayButtons) {
+        disableAndHideElement(classElt);
+        if (data?.is_owner) {
+            enableAndShowElement(classElt);
+        } else {
+            // restore previous list view since user should not be in arrangement view
+            if (listView === "table") {
+                document.getElementById("btn-table-view").click();
+            } else if (listView === "list-compact") {
+                document.getElementById("btn-list-view-compact").click();
+            } else if (listView === "list-expanded") {
+                document.getElementById("btn-list-view-expanded").click();
+            }
+        }
+    }
+
+    // If the selected dataset collection is the current collection, make it look like the primary collection
+    document.getElementById("btn-set-primary-collection").classList.add("is-outlined");
+    if (selected_dc_share_id === Cookies.get('gear_default_domain')) {
+        document.getElementById("btn-set-primary-collection").classList.remove("is-outlined");
+    }
 }
 
 /**
@@ -1862,6 +1687,40 @@ const getAllDatasetDisplays = async (datasetId) => {
     const {user: userDisplays, owner: ownerDisplays} = await apiCallsMixin.fetchDatasetDisplays(datasetId);
     return { userDisplays, ownerDisplays };
 }
+
+/**
+ * Initializes the dataset collection selection.
+ *
+ * @returns {void}
+ */
+const initializeDatasetCollectionSelection = () => {
+    // Add mutation observer to watch if #dropdown-dc-selector-label changes
+    const observer = new MutationObserver(async (mutationsList, observer) => {
+        for (const mutation of mutationsList) {
+            if (mutation.type === 'childList') {
+                await datasetCollectionSelectionCallback();
+            }
+        }
+    });
+
+    observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
+
+    // Trigger the default dataset collection to be selected at the start
+    if (CURRENT_USER.default_profile_share_id) {
+        selectDatasetCollection(CURRENT_USER.default_profile_share_id);
+    }
+
+    // Show action buttons
+    document.getElementById("collection-actions-c").classList.remove("is-hidden");
+
+    // Create popvers for collection actions (reused when collection is changed)
+    createDeleteCollectionConfirmationPopover();
+    createNewCollectionPopover();
+    createRenameCollectionPopover();
+    createRenameCollectionPermalinkPopover();
+
+}
+
 
 /**
  * Loads the list of organisms from the server and populates the organism choices and new cart organism ID select elements.
@@ -2347,6 +2206,133 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
 }
 
 /**
+ * Renders the layout arranger for a given collection.
+ *
+ * @param {Object} collection - The collection object containing layout members.
+ * @returns {Promise<void>} - A promise that resolves when the layout arranger is rendered.
+ */
+const renderLayoutArranger = async (collection) => {
+    // Loading indication
+    document.getElementById("dataset-arrangement-loading-notification").classList.remove("is-hidden");
+
+    // The share_id should be updated in the component when a new dataset collection is selected
+    const datasetData = await apiCallsMixin.fetchDatasets({layout_share_id: selected_dc_share_id, sort_by: "date_added"})
+
+    // Get the titles of the datasets
+    const titles = {};
+    for (const dataset of datasetData.datasets) {
+        titles[dataset.dataset_id] = dataset.title;
+    }
+
+    // JSON parse every layout member
+    const layoutMembers = collection.layout_members;
+    const singleLayoutMembers = layoutMembers.single || [];
+    const multiLayoutMembers = layoutMembers.multi || [];
+
+    // Legacy mode - if all tiles have startCol = 1, then we are in legacy mode
+    // These layouts were generated only with a "width" property
+
+    const combinedLayoutMembers = singleLayoutMembers.concat(multiLayoutMembers);
+
+    const legacyMode = combinedLayoutMembers.every((display) => JSON.parse(display).start_col === 1);
+
+    let currentCol = 1;
+    let currentRow = 1;
+
+    singleArrangement = new LayoutArrangement();
+    multiArrangement = new LayoutArrangement(true);
+
+    // If no layout members, show a message and hide loading indication
+    document.getElementById("dataset-arrangement-no-displays-notification").classList.add("is-hidden");
+    if (!singleLayoutMembers.length && !multiLayoutMembers.length) {
+        document.getElementById("dataset-arrangement-loading-notification").classList.add("is-hidden");
+        document.getElementById("dataset-arrangement-no-displays-notification").classList.remove("is-hidden");
+    }
+
+    const maxEndCol = 13;
+
+    document.getElementById("dataset-arrangement-single-c").classList.remove("is-hidden");
+    if (!singleLayoutMembers.length) {
+        document.getElementById("dataset-arrangement-single-c").classList.add("is-hidden");
+    }
+
+    for (const display of singleLayoutMembers) {
+        const member = JSON.parse(display);
+        const displayId = member.display_id;
+        const datasetId = member.dataset_id;
+
+        const singleMember = new LayoutArrangementMember(singleArrangement, displayId, member.grid_position, member.start_col, member.start_row, member.grid_width, member.grid_height);
+
+        // If in legacy mode, then we need to calculate the startCol and endCol and startRow and endRow
+        // so the arrangement view can be displayed correctly
+        if (legacyMode) {
+            const width = member.grid_width;
+
+            // If endCol is greater than 13, then this tile is in the next row
+            if (currentCol + width > maxEndCol) {
+                currentCol = 1;
+                currentRow++;
+            }
+
+            singleMember.startCol = currentCol;
+            singleMember.startRow = currentRow;
+
+            currentCol += width;
+        }
+
+        singleMember.image = await apiCallsMixin.fetchDatasetDisplayImage(datasetId, displayId)
+
+        singleMember.datasetTitle = titles[datasetId];
+        singleArrangement.addMember(singleMember);
+    }
+
+    // Reset for the multi-gene layout
+    currentCol = 1;
+    currentRow = 1;
+
+    document.getElementById("dataset-arrangement-multi-c").classList.remove("is-hidden");
+    if (!multiLayoutMembers.length) {
+        document.getElementById("dataset-arrangement-multi-c").classList.add("is-hidden");
+    }
+
+    for (const display of multiLayoutMembers) {
+        const member = JSON.parse(display);
+        const displayId = member.display_id;
+        const datasetId = member.dataset_id;
+
+        const multiMember = new LayoutArrangementMember(multiArrangement, displayId, member.grid_position, member.start_col, member.start_row, member.grid_width, member.grid_height);
+
+        if (legacyMode) {
+            const width = member.grid_width;
+
+            // If endCol is greater than 13, then this tile is in the next row
+            if (currentCol + width > maxEndCol) {
+                currentCol = 1;
+                currentRow++;
+            }
+
+            multiMember.startCol = currentCol;
+            multiMember.startRow = currentRow;
+
+            currentCol += width;
+
+        }
+
+        multiMember.image = await apiCallsMixin.fetchDatasetDisplayImage(datasetId, displayId)
+
+        multiMember.datasetTitle = titles[datasetId];
+        multiArrangement.addMember(multiMember);
+
+    }
+
+    singleArrangement.setupArrangementAdjustable();
+    multiArrangement.setupArrangementAdjustable();
+
+    // Hide loading indication
+    document.getElementById("dataset-arrangement-loading-notification").classList.add("is-hidden");
+}
+
+/**
  * Sets the dataset of an element based on the provided dataset object.
  * @param {HTMLElement} parentNode - The parent node containing the element.
  * @param {string} selector - The CSS selector to select the element.
@@ -2538,6 +2524,12 @@ const toggleEditableMode = (hideEditable, selectorBase="") => {
     nonEditableElements.forEach(el => el.classList.toggle("is-hidden", !hideEditable));
 }
 
+/**
+ * Updates the dataset collection buttons based on the ownership status of the collection.
+ * If the user is not the owner of the collection, the delete and rename buttons are removed.
+ *
+ * @param {Object} collection - The dataset collection object.
+ */
 const updateDatasetCollectionButtons = (collection=null) => {
 
     // If user is not the owner of the collection, remove the delete and rename buttons
@@ -2555,6 +2547,27 @@ const updateDatasetCollectionButtons = (collection=null) => {
         disableAndHideElement(collectionRenamePermalinkButton);
         disableAndHideElement(collectionDeleteButton);
     }
+
+}
+
+/**
+ * Callback function that is triggered when a new dataset collection is selected.
+ * It fetches the dataset collections and collection members from the API,
+ * updates the UI based on the selected collection, and handles button actions.
+ * @returns {Promise<void>} A promise that resolves when the function completes.
+ */
+const updateDatasetCollections = async () => {
+
+    // Fetch the dataset collections, which will update the dataset collection selector
+    await fetchDatasetCollections(false)
+
+
+    // Uses dataset-collection-selector.js variable
+    // ? I don't like doing this but calling this with callback uses whatever state of the variable is at the time of MutationObserver setup
+    const datasetCollectionData = dataset_collection_data;
+
+    // merge all dataset collection data from domain_layouts, group_layouts, public_layouts, shared_layouts, and user_layouts into one array
+    flatDatasetCollectionData = [...datasetCollectionData.domain_layouts, ...datasetCollectionData.group_layouts, ...datasetCollectionData.public_layouts, ...datasetCollectionData.shared_layouts, ...datasetCollectionData.user_layouts];
 
 }
 
@@ -2722,9 +2735,9 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     await submitSearch();
 
     // Load dataset collections
-    await fetchDatasetCollections(true, datasetCollectionSelectCallback)
+    await updateDatasetCollections();
+    initializeDatasetCollectionSelection();
     document.getElementById("dropdown-dc").classList.remove("is-right");    // Cannot see the dropdown if it is right aligned
-
 
     // Normally this is done in the datasetCollectionCallback but we need to wait for the search to complete.
     let collection = null;
