@@ -1658,13 +1658,15 @@ const datasetCollectionSelectionCallback = async () => {
         if (data?.is_owner) {
             enableAndShowElement(classElt);
         } else {
-            // restore previous list view since user should not be in arrangement view
-            if (listView === "table") {
-                document.getElementById("btn-table-view").click();
-            } else if (listView === "list-compact") {
-                document.getElementById("btn-list-view-compact").click();
-            } else if (listView === "list-expanded") {
-                document.getElementById("btn-list-view-expanded").click();
+            if (!searchByCollection) {
+                // restore previous list view since user should not be in arrangement view
+                if (listView === "table") {
+                    document.getElementById("btn-table-view").click();
+                } else if (listView === "list-compact") {
+                    document.getElementById("btn-list-view-compact").click();
+                } else if (listView === "list-expanded") {
+                    document.getElementById("btn-list-view-expanded").click();
+                }
             }
         }
     }
