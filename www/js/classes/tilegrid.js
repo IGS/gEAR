@@ -416,7 +416,7 @@ class DatasetTile {
         this.orthologsToPlot = Object.keys(this.orthologs).map(g => this.orthologs[g].sort()).flat();
 
         if (this.orthologsToPlot.length === 0) {
-            const message = "The given gene symbol(s) nor corresponding orthologs were not found in this dataset.";
+            const message = "Neither the given gene symbol(s) nor corresponding orthologs were not found in this dataset.";
             // Fill in card-image with error message
             createCardMessage(tileId, "danger", message);
             // skip to the next tile

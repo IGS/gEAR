@@ -30,6 +30,7 @@ class Analysis {
         this.label = label;
         this.datasetIsRaw = datasetIsRaw;
 
+        // TODO: All this is overwritten if getStoredAnalysis is called, so probably need to adjust the constructor
         // All new analysis start as "primary" analyses, but true primary analyses share the same ID as the dataset
         if (this.id === this.dataset?.id) {
             this.labeledTsne = new AnalysisStepLabeledTsne(this);   // Only for "primary" analyses
@@ -202,6 +203,8 @@ class Analysis {
             document.querySelector(UI.labeledTsneSection).classList.add("is-hidden");
             if (this.type === "primary" && data['tsne']['tsne_calculated']) {
                 document.querySelector(UI.labeledTsneSection).classList.remove("is-hidden");
+
+                // Initialize the labeled tSNE step
                 this.labeledTsne = new AnalysisStepLabeledTsne(this);
             }
 
