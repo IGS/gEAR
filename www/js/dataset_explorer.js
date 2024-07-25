@@ -1646,6 +1646,17 @@ const datasetCollectionSelectionCallback = async () => {
     if (data.is_owner) {
         await renderLayoutArranger(data);
         document.getElementById("btn-arrangement-view").classList.remove("is-hidden");
+    } else {
+        // restore previous list view since user should not be in arrangement view
+        if (!searchByCollection) {
+            if (listView === "table") {
+                document.getElementById("btn-table-view").click();
+            } else if (listView === "list-compact") {
+                document.getElementById("btn-list-view-compact").click();
+            } else if (listView === "list-expanded") {
+                document.getElementById("btn-list-view-expanded").click();
+            }
+        }
     }
 
     // Update action buttons for the dataset collection or datasets
@@ -1657,17 +1668,6 @@ const datasetCollectionSelectionCallback = async () => {
         disableAndHideElement(classElt);
         if (data?.is_owner) {
             enableAndShowElement(classElt);
-        } else {
-            if (!searchByCollection) {
-                // restore previous list view since user should not be in arrangement view
-                if (listView === "table") {
-                    document.getElementById("btn-table-view").click();
-                } else if (listView === "list-compact") {
-                    document.getElementById("btn-list-view-compact").click();
-                } else if (listView === "list-expanded") {
-                    document.getElementById("btn-list-view-expanded").click();
-                }
-            }
         }
     }
 
