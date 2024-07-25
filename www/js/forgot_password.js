@@ -1,59 +1,53 @@
 'use strict';
 
-let verification_uuid = null;
+let help_id = null;
 
 window.onload=function() {
     // Set the page title
-    document.getElementById('page-header-label').textContent = 'Create an account';
+    document.getElementById('page-header-label').textContent = 'Lost password recovery';
 
     document.addEventListener('click', async function(e) {
 
-        if (e.target.id === 'btn-account-creation-submit') {
+        if (e.target.id === 'btn-password-update-submit') {
             e.preventDefault();
 
             // disable the button so the user doesn't click it again
-            document.getElementById('btn-account-creation-submit').classList.add('is-loading');
+            document.getElementById('btn-password-update-submit').classList.add('is-loading');
 
             // Validate form's completion. Exit if it contains errors and alert user
-            const form_data_valid = await validateAccountCreationForm();
+            const form_data_valid = await validatePasswordUpdateForm();
             if (form_data_valid == false){
-                document.getElementById('btn-account-creation-submit').classList.remove('is-loading');
+                document.getElementById('btn-password-update-submit').classList.remove('is-loading');
                 return false;
+            } else {
+                // Submit the form
+                const {data} = await axios.post('./cgi/update_password.cgi', convertToFormData({
+                    'password': document.getElementById('password1').value,
+                    'help_id': help_id
+                }));
+
+                document.getElementById('btn-password-update-submit').classList.remove('is-loading');
+
+                if (data["success"]) {
+                    document.getElementById('reset-form').classList.add('is-hidden');
+                    document.getElementById('reset-success').classList.remove('is-hidden');
+                } else {
+                    document.getElementById('password-update-status-message').innerHTML = 'There was a problem updating your password. ' + data['error'] + '. Please try again later or contact us.';
+                    document.getElementById('password-update-status-message').classList.remove('is-hidden');
+                }
+            
             }
-
-            // generate a UUID for the user
-            verification_uuid = uuid();
-            const email_sent = await sendVerificationEmail(verification_uuid);
-
-            if (email_sent == false) {
-                // TODO: Handle UI display here.
-                alert("There was an error sending the verification email. Please try again later.");
-                document.getElementById('btn-account-creation-submit').classList.remove('is-loading');
-                return false;
-            }
-
-            // hide the account info and show the verification info
-            document.getElementById('account-info-c').classList.add('is-hidden');
-            document.getElementById('email-verification-c').classList.remove('is-hidden');
-
-            return false;
-
-        } else if (e.target.id === 'btn-email-verification-submit') {
-            e.preventDefault();
-
-            // This returns false no matter what. await/sync (or developer) issue, so UI code shifted within
-            const account_created = await createAccount(verification_uuid);
-            return false;
         }
-
     });
 
-    document.getElementById('first-last').addEventListener('blur', function() {
-        validateFirstLast();
-    });
+    document.getElementById('initial-submit').addEventListener('click', function() {
+        document.getElementById('initial-submit').classList.add('is-loading');
+        document.getElementById('initial-submit').disabled = true;
 
-    document.getElementById('email').addEventListener('blur', async function() {
-        await validateEmail();
+        // Did they enter a valid email address?
+        if (validateEmail(document.getElementById('email').value)) {
+            sendVerificationEmail();
+        }
     });
 
     document.getElementById('password1').addEventListener('keyup', function() {
@@ -67,67 +61,52 @@ window.onload=function() {
 
 const handlePageSpecificLoginUIUpdates = async (event) => {
     // Nothing to do here at the moment
+    help_id = getUrlParameter('help_id');
+
+    if (help_id) {
+        document.getElementById('reset-form').classList.remove('is-hidden');
+    } else {
+        document.getElementById('initial-form').classList.remove('is-hidden');
+    }
 }
 
-async function createAccount(verification_uuid) {
-    // disable the button so it's not clicked again
-    document.getElementById('btn-email-verification-submit').classList.add('is-loading');
+async function sendVerificationEmail(verification_uuid) {
+    console.log("Sending verification email");
 
-    // get the value of the colorblind mode checkbox, if it's checked
-    const colorblind_mode = document.getElementById('colorblind-mode').checked ? 'yes' : 0;
+    const current_url = window.location.href;
+    const current_page = current_url.lastIndexOf("/");
+    const destination_page = `${current_url.substring(0, current_page)}/forgot_password.html`;
 
-    // get the value of the email_updates checkbox, if it's checked
-    const email_updates = document.getElementById('email-updates').checked ? 'yes' : 0;
-
-    const {data} = await axios.post('./cgi/create_account.cgi', convertToFormData({
-        'first-last': document.getElementById('first-last').value,
-        'institution': document.getElementById('institution').value,
+    const {data} = await axios.post('./cgi/send_email.cgi', convertToFormData({
         'email': document.getElementById('email').value,
-        'password': document.getElementById('password1').value,
-        'verification_code_long': verification_uuid,
-        'verification_code_short': document.getElementById('verification-code').value,
-        'colorblind_mode': colorblind_mode,
-        'email_updates': email_updates
+        'scope': 'forgot_password',
+        'destination_page': destination_page
     }));
 
-    if (data['success']) {
-        document.getElementById('account-info-c').classList.add('is-hidden');
-        document.getElementById('email-verification-c').classList.add('is-hidden');
-        document.getElementById('account-creation-success-c').classList.remove('is-hidden');
+    document.getElementById('initial-submit').classList.remove('is-loading');
 
-        // populate the login form, then log the user in
-        document.getElementById('user-email').value = document.getElementById('email').value;
-        document.getElementById('user-password').value = document.getElementById('password1').value;
-        doLogin(false);
+    if (data["success"]) {
+        document.getElementById('email-success-message').classList.remove('is-hidden');
     } else {
-        document.getElementById('account-info-c').classList.add('is-hidden');
-        document.getElementById('email-verification-c').classList.add('is-hidden');
-        document.getElementById('account-creation-failure-c').classList.remove('is-hidden');
-        console.log('error: ' + data['error'])
-        document.getElementById('btn-email-verification-submit').classList.remove('is-loading');
-        return false;
+        document.getElementById('email-error-message').innerHTML = 'There was a problem sending the e-mail. Please try again later.';
+        document.getElementById('email').classList.add('is-danger');
+        document.getElementById('email-error-message').classList.remove('is-hidden');
+        document.getElementById('email-alert-icon').classList.remove('is-hidden');
+        document.getElementById('initial-submit').disabled = false;
     }
 
     return Boolean(data["success"]);
 }
 
-async function sendVerificationEmail(verification_uuid) {
-    const {data} = await axios.post('./cgi/send_email.cgi', convertToFormData({
-        'email': document.getElementById('email').value,
-        'scope': 'user_verification',
-        'verification_code_long': verification_uuid,
-    }));
-
-    return Boolean(data["success"]);
-}
-
-async function validateEmail() {
-    const email = document.getElementById('email').value;
+const validateEmail = (emailAddress) =>  {
+    // TODO: Make this part of common.js along with the create_account.js methods
+    const email = emailAddress.trim();
     const email_regex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
     if (email_regex.test(email) ) {
         document.getElementById('email').classList.remove('is-danger');
         document.getElementById('email-error-message').classList.add('is-hidden');
         document.getElementById('email-alert-icon').classList.add('is-hidden');
+        return true;
     } else {
         document.getElementById('email-error-message').innerHTML = 'Please enter a valid e-mail address';
         document.getElementById('email').classList.add('is-danger');
@@ -135,35 +114,6 @@ async function validateEmail() {
         document.getElementById('email-alert-icon').classList.remove('is-hidden');
         return false;
     }
-
-    // Also check if this e-mail is already registered
-    const {data} = await axios.post('./cgi/check_existing_email.cgi', convertToFormData({
-        'email': email,
-    }));
-
-    if (data['email_exists'] == 1) {
-        document.getElementById('email-error-message').innerHTML = 'This e-mail address is already registered';
-        document.getElementById('email').classList.add('is-danger');
-        document.getElementById('email-error-message').classList.remove('is-hidden');
-        return false;
-    }
-
-    return true;
-}
-
-function validateFirstLast() {
-    const first_last = document.getElementById('first-last').value;
-
-    if ( first_last.length > 2 && first_last.includes(' ')) {
-        document.getElementById('first-last').classList.remove('is-danger');
-        document.getElementById('first-last-error-message').classList.add('is-hidden');
-        document.getElementById('first-last-alert-icon').classList.add('is-hidden');
-        return true;
-    }
-    document.getElementById('first-last').classList.add('is-danger');
-    document.getElementById('first-last-error-message').classList.remove('is-hidden');
-    document.getElementById('first-last-alert-icon').classList.remove('is-hidden');
-    return false;
 }
 
 function validatePassword(mode) {
@@ -228,6 +178,7 @@ function validatePassword(mode) {
     if (mode != 'submit') {
         return;
     }
+
     if (password1 != password2) {
         document.getElementById('password1').classList.add('is-danger');
         document.getElementById('password2').classList.add('is-danger');
@@ -284,17 +235,7 @@ function validatePasswordToggleRequirement(requirement, state) {
     }
 }
 
-async function validateAccountCreationForm() {
-    // function returns bool
-    if (!validateFirstLast()) {
-        return false;
-    }
-
-    // function returns bool
-    if (!(await validateEmail())) {
-        return false;
-    }
-
+async function validatePasswordUpdateForm() {
     if (!validatePassword('submit')) {
         return false;
     }

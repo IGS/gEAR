@@ -2713,6 +2713,12 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         }
     }
 
+    // If they passed search_string URL parameter, set that
+    let search_string = getUrlParameter("search_string");
+    if (search_string) {
+        document.getElementById("search-terms").value = search_string;
+    }
+
     await submitSearch();
 
     // Load dataset collections
