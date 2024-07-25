@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
         item.closest(".dropdown").classList.toggle('is-active');
     });
 
-    // Add event listeners to the gene list category selectors
+    // Add event listeners to the dataset collection category selectors
     const categorySelectors = document.querySelectorAll('#dropdown-content-dc-category .ul-li');
     categorySelectors.forEach((element) => {
         element.addEventListener('click', (event) => {
