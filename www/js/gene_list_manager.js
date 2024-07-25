@@ -1500,7 +1500,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     const defaultOrganismView = Cookies.get("default_gene_list_organism_view");
     const defaultDateAddedView = Cookies.get("default_gene_list_date_added_view");
 
-    if (defaultOwnershipView) {
+    if (defaultOwnershipView && CURRENT_USER.session_id) {
         // deselect All
         document.querySelector("#controls-ownership li.js-all-selector").classList.remove("js-selected");
 
@@ -1508,7 +1508,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             document.querySelector(`#controls-ownership li[data-dbval='${ownership}']`).classList.add("js-selected");
         }
     }
-    if (defaultOrganismView) {
+    if (defaultOrganismView && CURRENT_USER.session_id) {
         // deselect All
         document.querySelector("#controls-organism li.js-all-selector").classList.remove("js-selected");
 
@@ -1516,7 +1516,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             document.querySelector(`#controls-organism li[data-dbval='${organism}']`).classList.add("js-selected");
         }
     }
-    if (defaultDateAddedView) {
+    if (defaultDateAddedView && CURRENT_USER.session_id) {
         document.querySelector(`#controls-date-added li[data-dbval='${CURRENT_USER.default_date_added_view}']`).classList.add("js-selected");
     }
 

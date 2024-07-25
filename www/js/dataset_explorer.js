@@ -2687,7 +2687,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     const defaultDateAddedView = Cookies.get("default_collection_date_added_view");
     const defaultDatasetTypeView = Cookies.get("default_collection_dataset_type_view");
 
-    if (defaultOwnershipView) {
+    if (defaultOwnershipView && CURRENT_USER.session_id) {
         // deselect All
         document.querySelector("#controls-ownership li.js-all-selector").classList.remove("js-selected");
 
@@ -2695,17 +2695,17 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             document.querySelector(`#controls-ownership li[data-dbval='${ownership}']`).classList.add("js-selected");
         }
     }
-    if (defaultOrganismView) {
+    if (defaultOrganismView && CURRENT_USER.session_id) {
         // deselect All
         document.querySelector("#controls-organism li.js-all-selector").classList.remove("js-selected");
         for (const organism of defaultOrganismView.split(",")) {
             document.querySelector(`#controls-organism li[data-dbval='${organism}']`).classList.add("js-selected");
         }
     }
-    if (defaultDateAddedView) {
+    if (defaultDateAddedView && CURRENT_USER.session_id) {
         document.querySelector(`#controls-date-added li[data-dbval='${CURRENT_USER.default_date_added_view}']`).classList.add("js-selected");
     }
-    if (defaultDatasetTypeView) {
+    if (defaultDatasetTypeView && CURRENT_USER.session_id) {
         // deselect All
         document.querySelector("#controls-dataset-type li.js-all-selector").classList.remove("js-selected");
         for (const dtype of defaultDatasetTypeView.split(",")) {
