@@ -33,31 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Add event listeners to the DC selectors even if they don't exist yet
-    document.addEventListener('click', (event) => {
-        // SAdkins - This can be changed to just .dropdown-dc-item, and use "currnetTarget" instead of "target"
-        if (event.target.classList.contains('dropdown-dc-item') ||
-            event.target.classList.contains('dc-item-label') ||
-            event.target.classList.contains('dc-item-tag')) {
-
-            // uncheck all the existing rows
-            const rows = document.querySelectorAll('.dropdown-dc-item');
-            rows.forEach((row) => {
-                row.classList.remove('is-selected');
-            });
-
-            const row_div = event.target.closest('div');
-            row_div.classList.toggle('is-selected');
-            selected_dc_share_id = row_div.dataset.shareId;
-            selected_dc_label = dataset_collection_label_index[selected_dc_share_id];
-
-            updateDatasetCollectionSelectorLabel();
-
-            document.querySelector('#dropdown-dc').classList.remove('is-active');
-            document.querySelector('#dropdown-dc button').classList.remove('is-danger');
-        }
-    });
-
     // Add a click listener to the dancel button
     document.querySelector('#dropdown-dc-cancel').addEventListener('click', (event) => {
         document.querySelector('#dropdown-dc-search-input').value = '';
@@ -93,25 +68,20 @@ document.addEventListener('DOMContentLoaded', () => {
             for (const entry of dataset_collection_data[category]) {
                 if (entry.label.toLowerCase().includes(search_term.toLowerCase())) {
                     const row = dc_item_template.content.cloneNode(true);
-                    row.querySelector('.dc-item-label').textContent = entry.label;
-                    row.querySelector('.ul-li').dataset.shareId = entry.share_id;
-
-                    let tag_element = row.querySelector('.ul-li .dc-item-tag');
-
-                    if (entry.folder_label) {
-                        tag_element.textContent = entry.folder_label;
-                    } else {
-                        // we don't need the tag at all if there's no content for it
-                        tag_element.remove();
-                    }
-
-                    document.querySelector('#dropdown-content-dc').appendChild(row);
+                    createDatasetCollectionListItem(row, entry);
                 }
             }
         }
     });
 });
 
+/**
+ * Fetches dataset collections from the API.
+ *
+ * @param {boolean} includeMembers - Whether to include members in the dataset collections.
+ * @param {Function} callback - Optional callback function to be called after fetching dataset collections.
+ * @returns {Promise<void>} - A promise that resolves when the dataset collections are fetched.
+ */
 const fetchDatasetCollections = async (includeMembers=false, callback) => {
     const layoutShareId = selected_dc_share_id || null;
 
@@ -143,6 +113,11 @@ const fetchDatasetCollections = async (includeMembers=false, callback) => {
     }
 }
 
+/**
+ * Selects a dataset collection based on the provided share ID.
+ *
+ * @param {string} share_id - The share ID of the dataset collection to be selected.
+ */
 const selectDatasetCollection = (share_id) => {
     // reads the DC share_id passed and handles any UI and data updates to make
     //   it preselected
@@ -154,6 +129,11 @@ const selectDatasetCollection = (share_id) => {
     updateDatasetCollectionSelectorLabel();
 }
 
+/**
+ * Sets the active dataset collection category and updates the dropdown content accordingly.
+ *
+ * @param {string} category - The category to set as active. Possible values are 'domain', 'user', 'recent', 'group', and 'shared'.
+ */
 const setActiveDCCategory = (category) => {
     // clear the dataset collection search input and content
     document.querySelector('#dropdown-content-dc').innerHTML = '';
@@ -204,22 +184,14 @@ const setActiveDCCategory = (category) => {
 
     for (const entry of data) {
         const row = dc_item_template.content.cloneNode(true);
-        row.querySelector('.dc-item-label').textContent = entry.label;
-        row.querySelector('.ul-li').dataset.shareId = entry.share_id;
-
-        const tag_element = row.querySelector('.ul-li .dc-item-tag');
-
-        if (entry.folder_label) {
-            tag_element.textContent = entry.folder_label;
-        } else {
-            // we don't need the tag at all if there's no content for it
-            tag_element.remove();
-        }
-
-        document.querySelector('#dropdown-content-dc').appendChild(row);
+        createDatasetCollectionListItem(row, entry);
     }
 }
 
+/**
+ * Updates the label of the dataset collection selector based on the selected_dc_label.
+ * If the selected_dc_label exceeds the length limit, it will be truncated and displayed with ellipsis.
+ */
 const updateDatasetCollectionSelectorLabel = () => {
     if (selected_dc_label.length > DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT) {
         const truncated_label = `${selected_dc_label.substring(0, DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT)}...`;
@@ -227,4 +199,48 @@ const updateDatasetCollectionSelectorLabel = () => {
     } else {
         document.querySelector('#dropdown-dc-selector-label').innerHTML = selected_dc_label;
     }
+}
+
+/**
+ * Creates a dataset collection list item and updates its content based on the provided entry.
+ * @param {HTMLElement} row - The row element representing the dataset collection list item.
+ * @param {Object} entry - The entry object containing the data for the dataset collection.
+ */
+const createDatasetCollectionListItem = (row, entry) => {
+    row.querySelector('.dc-item-label').textContent = entry.label;
+    row.querySelector('.ul-li').dataset.shareId = entry.share_id;
+
+    const tag_element = row.querySelector('.ul-li .dc-item-tag');
+
+    if (entry.folder_label) {
+        tag_element.textContent = entry.folder_label;
+    } else {
+        // we don't need the tag at all if there's no content for it
+        tag_element.remove();
+    }
+
+    document.querySelector('#dropdown-content-dc').appendChild(row);
+
+    // Create event listener to select the dataset collection
+    const thisItem = document.querySelector(`.dropdown-dc-item[data-share-id="${entry.share_id}"]`);
+    thisItem.addEventListener('click', (event) => {
+
+        // uncheck all the existing rows
+        const rows = document.getElementsByClassName('dropdown-dc-item');
+        for (const row of rows) {
+            row.classList.remove('is-selected');
+        };
+
+        const row_div = event.target.closest('div');
+        row_div.classList.toggle('is-selected');
+        selected_dc_share_id = row_div.dataset.shareId;
+        selected_dc_label = dataset_collection_label_index[selected_dc_share_id];
+
+        updateDatasetCollectionSelectorLabel();
+
+        document.querySelector('#dropdown-dc').classList.remove('is-active');
+        document.querySelector('#dropdown-dc button').classList.remove('is-danger');
+    });
+
+
 }
