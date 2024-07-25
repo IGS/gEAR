@@ -1632,6 +1632,7 @@ const colorSVG = async (chartData, plotConfig, datasetId, tileId, svgScoringMeth
     svgDiv.classList.add('svg');
     // higher z-index so we can mouseover the svg
     svgDiv.style.zIndex = 2;
+    svgDiv.style.height = "calc(100% - 40px)";
     cardImage.append(svgDiv);
 
     const snap = Snap(svgDiv);
