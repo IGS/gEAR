@@ -45,6 +45,10 @@ def main():
         #if dataset.is_public or dataset.user_id == user.id:
         #    result['layout_members']["multi"].append(member)
 
+    result["is_owner"] = False
+    if user and layout.user_id == user.id:
+        result["is_owner"] = True
+
     #Alphabetize layouts
     print(json.dumps(result))
 
