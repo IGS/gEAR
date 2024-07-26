@@ -83,8 +83,8 @@ ul#go-terms li {
 }
 
 /* This is the main svg image */
-.js-tile .card-image .svg {
-    height: calc(95% - 40px); /* factors in the svg legend */
+.js-tile .card-image .svg svg {
+    height: inherit;    /* match the height set by the SVG container (after legend applied) */
 }
 
 .js-tile .card-image .js-plotly-plot {

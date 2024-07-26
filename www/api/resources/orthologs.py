@@ -32,15 +32,19 @@ def get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id, e
     # Determine if we need to get a single ortholog file or multiple
     is_single_ortholog_file_needed = gene_organism_id and gene_organism_id != dataset_organism_id
 
-    if is_single_ortholog_file_needed:
-        # Get a single ortholog file
-        ortholog_files = [get_ortholog_file(gene_organism_id, dataset_organism_id, "ensembl")]
-        if not exclusive_org:
-            ortholog_files += get_ortholog_files_from_dataset(dataset_organism_id, "ensembl")
+    try:
+        if is_single_ortholog_file_needed:
+            # Get a single ortholog file
+            ortholog_files = [get_ortholog_file(gene_organism_id, dataset_organism_id, "ensembl")]
+            if not exclusive_org:
+                ortholog_files += get_ortholog_files_from_dataset(dataset_organism_id, "ensembl")
 
-    else:
-        # Get multiple ortholog files from the dataset
-        ortholog_files = get_ortholog_files_from_dataset(dataset_organism_id, "ensembl")
+        else:
+            # Get multiple ortholog files from the dataset
+            ortholog_files = get_ortholog_files_from_dataset(dataset_organism_id, "ensembl")
+    except FileNotFoundError as e:
+        # We want this to fail gracefully, so return an empty list. The original will be mapped back to itself downstream.
+        return []
 
     for ortholog_file in ortholog_files:
         mapped_genes = map_single_gene(gene_symbol, ortholog_file)
@@ -74,15 +78,20 @@ def get_mapped_gene_symbols(gene_symbols, gene_organism_id, dataset_organism_id,
     # Determine if we need to get a single ortholog file or multiple
     is_single_ortholog_file_needed = gene_organism_id and gene_organism_id != dataset_organism_id
 
-    if is_single_ortholog_file_needed:
-        # Get a single ortholog file
-        ortholog_files = [get_ortholog_file(gene_organism_id, dataset_organism_id, "ensembl")]
-        if not exclusive_org:
-            ortholog_files += get_ortholog_files_from_dataset(dataset_organism_id, "ensembl")
+    try:
+        if is_single_ortholog_file_needed:
+            # Get a single ortholog file
+            ortholog_files = [get_ortholog_file(gene_organism_id, dataset_organism_id, "ensembl")]
+            if not exclusive_org:
+                ortholog_files += get_ortholog_files_from_dataset(dataset_organism_id, "ensembl")
 
-    else:
-        # Get multiple ortholog files from the dataset
-        ortholog_files = get_ortholog_files_from_dataset(dataset_organism_id, "ensembl")
+        else:
+            # Get multiple ortholog files from the dataset
+            ortholog_files = get_ortholog_files_from_dataset(dataset_organism_id, "ensembl")
+    except FileNotFoundError as e:
+        # We want this to fail gracefully, so return an empty list for each gene symbol
+        # The original will be mapped back to itself downstream.
+        return {gene: [] for gene in gene_symbols}
 
     for ortholog_file in ortholog_files:
         mapped_genes_dict = map_multiple_genes(gene_symbols, ortholog_file)

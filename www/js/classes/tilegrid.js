@@ -406,6 +406,18 @@ class DatasetTile {
         // Resize the card image (plots) to accomodate the title header
         this.resizeCardImage();
 
+        // If the dataset type is epiviz, then give warning that it hasn't been implemented yet
+        if (this.dataset.dtype === "epiviz") {
+            createCardMessage(tileId, "warning", "Epiviz datasets are not yet supported.");
+            return;
+        }
+
+        // fail fast if no h5ad file
+        if (!this.dataset.has_h5ad) {
+            createCardMessage(tileId, "danger", "No h5ad file found for this dataset. Please contact the gEAR team.");
+            return;
+        }
+
         // Not projection mode, so get orthologs
         await this.getOrthologs(geneSymbolInput)
 
@@ -1632,6 +1644,7 @@ const colorSVG = async (chartData, plotConfig, datasetId, tileId, svgScoringMeth
     svgDiv.classList.add('svg');
     // higher z-index so we can mouseover the svg
     svgDiv.style.zIndex = 2;
+    svgDiv.style.height = "calc(100% - 40px)";
     cardImage.append(svgDiv);
 
     const snap = Snap(svgDiv);

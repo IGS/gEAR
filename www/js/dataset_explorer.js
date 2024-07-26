@@ -1152,16 +1152,18 @@ const createDeleteCollectionConfirmationPopover = () => {
                 const data = await apiCallsMixin.deleteDatasetCollection(selected_dc_share_id);
 
                 if (data['success'] === 1) {
-                    await updateDatasetCollections();
+                    selected_dc_share_id = CURRENT_USER.default_profile_share_id;
 
+                    // This will trigger
+                    // a) selectDatasetCollection
+                    // b) datasetCollectionSelectorCallback
+                    await updateDatasetCollections();
+                    setActiveDCCategory("user");    // Update the user category to reflect the datasets without the deleted collection
                     createToast("Dataset collection deleted", "is-success");
 
                     if (Cookies.get('gear_default_domain') === selected_dc_share_id) {
                         Cookies.remove('gear_default_domain');
                     }
-
-                    selected_dc_share_id = CURRENT_USER.default_profile_share_id;
-                    selectDatasetCollection(selected_dc_share_id);  // performs DatasetCollectionSelectorCallback when label is reset
 
                 } else {
                     const error = data['error'] || "Failed to delete collection";
@@ -1295,11 +1297,13 @@ const createNewCollectionPopover = () => {
                 const data = await apiCallsMixin.createDatasetCollection(newName);
 
                 if (data['layout_share_id']) {
+                    selected_dc_share_id = data['layout_share_id'];
+                    // This will trigger
+                    // a) selectDatasetCollection
+                    // b) datasetCollectionSelectorCallback
                     await updateDatasetCollections();
-
+                    setActiveDCCategory("user");    // Update the user category to reflect the new collection item
                     createToast("Dataset collection created", "is-success");
-
-                    selectDatasetCollection(data['layout_share_id']); // performs DatasetCollectionSelectorCallback when label is set
 
                 } else {
                     const error = data['error'] || "Failed to create new collection";
@@ -1426,12 +1430,13 @@ const createRenameCollectionPopover = () => {
                 const data = await apiCallsMixin.renameCollection(selected_dc_share_id, newName);
 
                 if (data['layout_label']) {
+                    selected_dc_share_id = data['layout_share_id'];
+                    // This will trigger
+                    // a) selectDatasetCollection
+                    // b) datasetCollectionSelectorCallback
                     await updateDatasetCollections();
-
+                    setActiveDCCategory("user");    // Update the user category to reflect the new collection name
                     createToast("Dataset collection renamed", "is-success");
-
-                    selectDatasetCollection(data['layout_share_id']); // performs DatasetCollectionSelectorCallback when label is set
-
                 } else {
                     const error = data['error'] || "Failed to rename collection";
                     throw new Error(error);
@@ -2553,21 +2558,17 @@ const updateDatasetCollectionButtons = (collection=null) => {
 }
 
 /**
- * Callback function that is triggered when a new dataset collection is selected.
- * It fetches the dataset collections and collection members from the API,
- * updates the UI based on the selected collection, and handles button actions.
- * @returns {Promise<void>} A promise that resolves when the function completes.
+ * Updates the dataset collections by fetching the dataset collections and updating the dataset collection selector.
+ *
+ * @returns {Promise<void>} A promise that resolves when the dataset collections are updated.
  */
 const updateDatasetCollections = async () => {
 
     // Fetch the dataset collections, which will update the dataset collection selector
     await fetchDatasetCollections(false)
 
-
     // Uses dataset-collection-selector.js variable
-    // ? I don't like doing this but calling this with callback uses whatever state of the variable is at the time of MutationObserver setup
     const datasetCollectionData = dataset_collection_data;
-
     // merge all dataset collection data from domain_layouts, group_layouts, public_layouts, shared_layouts, and user_layouts into one array
     flatDatasetCollectionData = [...datasetCollectionData.domain_layouts, ...datasetCollectionData.group_layouts, ...datasetCollectionData.public_layouts, ...datasetCollectionData.shared_layouts, ...datasetCollectionData.user_layouts];
 
