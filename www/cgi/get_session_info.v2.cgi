@@ -7,7 +7,8 @@ Data structure returned:
 
 {
    email: 'you@whereever.foo',
-   name: 'Latasha Smithe'
+   user_name: 'Latasha Smithe'
+   ... and rest of guser table columns
 }
 
 """
@@ -31,7 +32,8 @@ def main():
     result = {'email':None, 'user_name':None, 'success':0}
 
     session_qry = """
-       SELECT u.email, u.user_name, u.is_admin, u.id, u.institution, u.colorblind_mode, u.updates_wanted, u.default_org_id
+       SELECT u.email, u.user_name, u.is_admin, u.id, u.institution, u.colorblind_mode, 
+              u.updates_wanted, u.default_org_id, u.layout_share_id
          FROM guser u
               JOIN user_session us ON u.id=us.user_id
         WHERE us.session_id = %s
@@ -42,21 +44,17 @@ def main():
         result = {'email':row[0]
         , 'user_name':row[1]
         , 'is_admin':row[2]
-        , 'id':row[3]
         , 'institution':row[4]
         , 'colorblind_mode': row[5]
         , 'updates_wanted':row[6]
         , 'default_org_id':row[7]
+        , 'layout_share_id':row[8]
         , 'success':1
         }
         break
 
     cursor.close()
     cnx.close()
-
-    # remove user_id
-    if 'id' in result:
-        del result['id']
 
     # if we got here, there isn't a match
     print(json.dumps(result))

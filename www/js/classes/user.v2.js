@@ -2,7 +2,8 @@
 
 class User {
     constructor ({id, user_name, email, institution, colorblind_mode, updates_wanted, is_admin,
-                  help_id, date_created, session_id, default_profile_share_id, default_org_id} = {}) {
+                  help_id, date_created, session_id, default_profile_share_id, default_org_id,
+                  layout_share_id} = {}) {
 
         // SAdkins - I would love to make these properties camelCase as per JS convention, but that would be an effort to fix in all code that uses this class.
         this.user_name = user_name;
@@ -16,6 +17,7 @@ class User {
         this.date_created = date_created;
         this.session_id = session_id;
         this.default_org_id = default_org_id;
+        this.layout_share_id = layout_share_id;
 
         // derived
         this.default_profile_share_id = default_profile_share_id
