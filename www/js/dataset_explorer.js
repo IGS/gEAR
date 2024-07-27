@@ -1152,7 +1152,7 @@ const createDeleteCollectionConfirmationPopover = () => {
                 const data = await apiCallsMixin.deleteDatasetCollection(selected_dc_share_id);
 
                 if (data['success'] === 1) {
-                    selected_dc_share_id = CURRENT_USER.default_profile_share_id;
+                    selected_dc_share_id = CURRENT_USER.layout_share_id;
 
                     // This will trigger
                     // a) selectDatasetCollection
@@ -1160,10 +1160,6 @@ const createDeleteCollectionConfirmationPopover = () => {
                     await updateDatasetCollections();
                     setActiveDCCategory("user");    // Update the user category to reflect the datasets without the deleted collection
                     createToast("Dataset collection deleted", "is-success");
-
-                    if (Cookies.get('gear_default_domain') === selected_dc_share_id) {
-                        Cookies.remove('gear_default_domain');
-                    }
 
                 } else {
                     const error = data['error'] || "Failed to delete collection";
@@ -1678,7 +1674,7 @@ const datasetCollectionSelectionCallback = async () => {
 
     // If the selected dataset collection is the current collection, make it look like the primary collection
     document.getElementById("btn-set-primary-collection").classList.add("is-outlined");
-    if (selected_dc_share_id === Cookies.get('gear_default_domain')) {
+    if (selected_dc_share_id === CURRENT_USER.layout_share_id) {
         document.getElementById("btn-set-primary-collection").classList.remove("is-outlined");
     }
 }
@@ -1713,8 +1709,8 @@ const initializeDatasetCollectionSelection = () => {
     observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
 
     // Trigger the default dataset collection to be selected at the start
-    if (CURRENT_USER.default_profile_share_id) {
-        selectDatasetCollection(CURRENT_USER.default_profile_share_id);
+    if (CURRENT_USER.layout_share_id) {
+        selectDatasetCollection(CURRENT_USER.layout_share_id);
     }
 
     // Show action buttons
@@ -3036,7 +3032,6 @@ document.getElementById("btn-set-primary-collection").addEventListener("click", 
 });
 
 document.getElementById("btn-share-collection").addEventListener("click", (e) => {
-
     const currentPage = getRootUrl();
     const shareUrl = `${currentPage}/p?l=${selected_dc_share_id}`;
     copyPermalink(shareUrl);

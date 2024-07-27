@@ -159,8 +159,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     document.getElementById("submit-expression-search").classList.remove("is-loading");
 
     // Trigger the default dataset collection to be selected in the
-    if (CURRENT_USER.default_profile_share_id) {
-        selectDatasetCollection(CURRENT_USER.default_profile_share_id);
+    if (CURRENT_USER.layout_share_id) {
+        selectDatasetCollection(CURRENT_USER.layout_share_id);
     }
 
 }
