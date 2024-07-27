@@ -292,7 +292,6 @@ const checkForLogin = async () => {
 
             if (data.success) {
                 CURRENT_USER = new User({session_id, ...data});
-                CURRENT_USER.setDefaultProfile();
                 document.getElementById('current-user-name').textContent = data.user_name;
                 handleLoginUIUpdates();
 
