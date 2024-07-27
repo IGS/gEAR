@@ -31,8 +31,12 @@ layout_member_qry = """
               SELECT lm.layout_id, lm.dataset_id, lm.grid_position, lm.mg_grid_position,
               lm.start_col, lm.mg_start_col, lm.grid_width, lm.mg_grid_width,
               lm.start_row, lm.mg_start_row, lm.grid_height, lm.mg_grid_height
-              FROM layout_members lm ORDER BY lm.layout_id, lm.grid_position
+              FROM layout_members lm
+              JOIN dataset ds ON lm.dataset_id=ds.id
+              WHERE ds.marked_for_removal = 0
+              ORDER BY lm.layout_id, lm.grid_position
               """
+
 
 cursor.execute(layout_member_qry)
 
