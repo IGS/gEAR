@@ -28,7 +28,6 @@ def main():
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
-    print("DEBUG: session_id = {0}".format(session_id), file=sys.stderr)
 
     result = {'email':None, 'user_name':None, 'success':0}
 
