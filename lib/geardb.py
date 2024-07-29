@@ -1117,6 +1117,10 @@ class Layout:
         conn = Connection()
         cursor = conn.get_cursor()
 
+        # First remove this as any user's default so it doesn't cause issues
+        qry = "UPDATE guser SET layout_id = NULL WHERE layout_id = %s"
+        cursor.execute(qry, (self.id,))
+
         qry = """
               DELETE FROM layout
               WHERE id = %s
