@@ -403,6 +403,9 @@ class Analysis {
         // Not doing anything with data.clustering yet but would like to
         if (data.louvain) {
             data.clustering = data.louvain;
+            if (!data.clustering?.mode) {
+                data.clustering.mode = "initial";
+            }
         }
 
         analysis.clustering = AnalysisStepClustering.loadFromJson(data.clustering, analysis);
@@ -411,6 +414,10 @@ class Analysis {
 
         // Support legacy data.
         const clusteringEditData = data.clustering_edit || data.clustering
+        if (!clusteringEditData?.mode) {
+            clusteringEditData.mode = "edit";
+        }
+
         analysis.clusteringEdit = AnalysisStepClustering.loadFromJson(clusteringEditData, analysis);
 
         analysis.compareGenes = AnalysisStepCompareGenes.loadFromJson(data.compare_genes, analysis);
@@ -1887,7 +1894,7 @@ class AnalysisStepClustering {
      * @returns {AnalysisStepClustering} - The newly created instance of AnalysisStepClustering.
      */
     static loadFromJson(data, analysis) {
-        const mode = data.mode || "initial";
+        const mode = data?.mode || "initial";
         const step = new AnalysisStepClustering(analysis, mode);
         if (!data) return step;
 
