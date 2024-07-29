@@ -1395,7 +1395,7 @@ const apiCallsMixin = {
      */
     async setUserPrimaryDatasetCollection(layoutShareId) {
         const payload = {session_id: this.sessionId, layout_share_id: layoutShareId};
-        const {data} = await axios.post("/cgi/set_primary_layout.cgi", convertToFormData(payload));
+        const {data} = await axios.post("/cgi/save_user_chosen_layout.cgi", convertToFormData(payload));
         return data;
     },
 

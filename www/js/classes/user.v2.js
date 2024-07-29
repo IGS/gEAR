@@ -15,8 +15,11 @@ class User {
         this.session_id = session_id;
         this.default_org_id = default_org_id;
         this.layout_share_id = layout_share_id;
+    }
 
-        // TODO: Check any calls like this and have them save to the DB
-        //  Cookies.set('gear_default_domain');
+    // Write a function to save the layout_share_id to the database via a CGI script
+    saveLayoutShareId(shareId) {
+        this.layout_share_id = shareId;
+        apiCallsMixin.setUserPrimaryDatasetCollection(shareId);
     }
 }
