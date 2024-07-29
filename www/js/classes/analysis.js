@@ -414,9 +414,6 @@ class Analysis {
 
         // Support legacy data.
         const clusteringEditData = data.clustering_edit || data.clustering
-        if (!clusteringEditData?.mode) {
-            clusteringEditData.mode = "edit";
-        }
 
         analysis.clusteringEdit = AnalysisStepClustering.loadFromJson(clusteringEditData, analysis);
 
