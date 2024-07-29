@@ -48,7 +48,7 @@ fixed paths have worked fine for decades.
       matplotlib==3.9.0 \
       mod-wsgi==4.9.4 \
       more_itertools==9.0.0 \
-      mysql-connector-python==8.4.0 \
+      mysql-connector-python==8.0.20 \
       numba==0.58.1 \
       numexpr==2.8.4 \
       numpy==1.26.0 \
