@@ -134,10 +134,11 @@ class DatasetCollectionPanel {
             CURRENT_USER.profile = layout_label;
 
             //Update user's primary layout profile
+            // TODO: handle this with apiCallsMixin.setUserPrimaryDatasetCollection instead?
             $.ajax({
-                url: "./cgi/set_primary_layout.cgi",
+                url: "./cgi/save_user_chosen_layout.cgi",
                 type: "post",
-                data: { session_id: CURRENT_USER.session_id, layout_id: layout_id }
+                data: { session_id: CURRENT_USER.session_id, layout_share_id: layout_id }
             }).done((data) => {
                 if (data.success == 1) {
                     if (projection) {

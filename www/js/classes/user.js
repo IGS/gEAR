@@ -2,7 +2,7 @@
 
 class User {
     constructor ({id, name, email, institution, colorblind_mode, updates_wanted, is_admin,
-                  help_id, date_created, session_id} = {}) {
+                  help_id, date_created, session_id, layout_id} = {}) {
         this.id = id;
         this.user_name = name;
         this.email = email;
@@ -14,6 +14,7 @@ class User {
         this.help_id = help_id;
         this.date_created = date_created;
         this.session_id = session_id;
+        this.layout_id = layout_id;
 
         // derived
         this.profile = undefined;

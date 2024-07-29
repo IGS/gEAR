@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
         item.closest(".dropdown").classList.toggle('is-active');
     });
 
-    // Add event listeners to the gene list category selectors
+    // Add event listeners to the dataset collection category selectors
     const categorySelectors = document.querySelectorAll('#dropdown-content-dc-category .ul-li');
     categorySelectors.forEach((element) => {
         element.addEventListener('click', (event) => {
@@ -235,6 +235,8 @@ const createDatasetCollectionListItem = (row, entry) => {
         row_div.classList.toggle('is-selected');
         selected_dc_share_id = row_div.dataset.shareId;
         selected_dc_label = dataset_collection_label_index[selected_dc_share_id];
+        CURRENT_USER.saveLayoutShareId(selected_dc_share_id);
+        console.log("Selected DC: ", selected_dc_share_id, selected_dc_label);
 
         updateDatasetCollectionSelectorLabel();
 

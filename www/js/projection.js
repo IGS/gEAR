@@ -162,8 +162,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         selected_dc_share_id = layoutShareId;
         selectDatasetCollection(layoutShareId);
         urlParamsPassed = true;
-    } else if (!layoutShareId && CURRENT_USER.default_profile_share_id) {
-        selectDatasetCollection(CURRENT_USER.default_profile_share_id);
+    } else if (CURRENT_USER.layout_share_id) {
+        selectDatasetCollection(CURRENT_USER.layout_share_id);
     }
 
     // Now, if URL params were passed and we have both patterns and a dataset collection,

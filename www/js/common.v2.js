@@ -292,7 +292,6 @@ const checkForLogin = async () => {
 
             if (data.success) {
                 CURRENT_USER = new User({session_id, ...data});
-                CURRENT_USER.setDefaultProfile();
                 document.getElementById('current-user-name').textContent = data.user_name;
                 handleLoginUIUpdates();
 
@@ -1396,7 +1395,7 @@ const apiCallsMixin = {
      */
     async setUserPrimaryDatasetCollection(layoutShareId) {
         const payload = {session_id: this.sessionId, layout_share_id: layoutShareId};
-        const {data} = await axios.post("/cgi/set_primary_layout.cgi", convertToFormData(payload));
+        const {data} = await axios.post("/cgi/save_user_chosen_layout.cgi", convertToFormData(payload));
         return data;
     },
 
