@@ -393,7 +393,7 @@ def get_user_by_id(user_id):
                  g.is_admin, g.default_org_id, g.is_curator, g.help_id, g.colorblind_mode,
                  l.share_id
             FROM guser g
-                 JOIN layout l ON g.layout_id=l.id
+                 LEFT JOIN layout l ON g.layout_id=l.id
            WHERE g.id = %s
     """
     cursor.execute(qry, (user_id, ) )
@@ -427,7 +427,7 @@ def get_user_from_session_id(session_id):
                  l.share_id
             FROM guser g
                  JOIN user_session us ON g.id=us.user_id
-                 JOIN layout l ON g.layout_id=l.id
+                 LEFT JOIN layout l ON g.layout_id=l.id
            WHERE us.session_id = %s
     """
     cursor.execute(qry, (session_id, ) )
