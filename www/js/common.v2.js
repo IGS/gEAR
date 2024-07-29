@@ -63,13 +63,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const betaSiteModal = document.getElementById('beta-site-modal');
     const betaCookie = Cookies.get('gear_beta_agreed');
     if (betaCookie != "true") {
-        betaSiteModal.classList.add('is-active');
+        //betaSiteModal.classList.add('is-active');
     }
 
     /**
      * Temporary code to handle the warning modal while in beta mode
      */
     document.getElementById('beta-modal-agree').addEventListener('click', () => {
+        return;
         Cookies.set('gear_beta_agreed', 'true', { expires: 7 });
         betaSiteModal.classList.remove('is-active');
     });
