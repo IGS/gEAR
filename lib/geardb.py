@@ -2492,6 +2492,17 @@ class GeneCart:
         cursor.close()
         conn.close()
 
+    def get_gene_counts(self):
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        qry = "SELECT COUNT(*) FROM gene_cart_member WHERE gene_cart_id = %s"
+        cursor.execute(qry, (self.id,))
+        self.num_genes = cursor.fetchone()[0]
+
+        cursor.close()
+        conn.close()
+
     def remove(self):
         """
         Removes a gene cart and its dependencies from the database.  Requires object's
@@ -2676,6 +2687,8 @@ class GeneCartCollection:
 
                 if self.include_genes == True:
                     cart.get_genes()
+                else:
+                    cart.get_gene_counts()
 
                 self.carts.append(cart)
 
@@ -2710,6 +2723,8 @@ class GeneCartCollection:
 
                 if self.include_genes == True:
                     cart.get_genes()
+                else:
+                    cart.get_gene_counts()
 
                 self.carts.append(cart)
 
@@ -2743,6 +2758,8 @@ class GeneCartCollection:
 
             if self.include_genes == True:
                 cart.get_genes()
+            else:
+                cart.get_gene_counts()
 
             self.carts.append(cart)
 
@@ -2783,6 +2800,8 @@ class GeneCartCollection:
 
             if self.include_genes == True:
                 cart.get_genes()
+            else:
+                cart.get_gene_counts()
 
             self.carts.append(cart)
 
@@ -2817,6 +2836,8 @@ class GeneCartCollection:
 
             if self.include_genes == True:
                 cart.get_genes()
+            else:
+                cart.get_gene_counts()
 
             self.carts.append(cart)
             rows_returned += 1
@@ -2850,6 +2871,8 @@ class GeneCartCollection:
 
             if self.include_genes == True:
                 cart.get_genes()
+            else:
+                cart.get_gene_counts()
 
             self.carts.append(cart)
 
@@ -2879,6 +2902,8 @@ class GeneCartCollection:
 
             if self.include_genes == True:
                 cart.get_genes()
+            else:
+                cart.get_gene_counts()
 
             self.carts.append(cart)
 

@@ -171,9 +171,7 @@ document.getElementById("dropdown-pattern-list-all-weights").addEventListener("c
 const createPatternListItem = (item, cart) => {
     const gctype = cart.gctype;
     const num_genes = cart.num_genes;
-    const text = `${cart.label}`;
-    // ! commenting out to address https://github.com/IGS/gEAR/issues/838
-    //const text = `${cart.label} (${num_genes} genes)`;
+    const text = `${cart.label} (${num_genes} genes)`;
 
     item.querySelector('.pattern-list-item-label').textContent = text;
     item.querySelector('.ul-li').dataset.shareId = cart.share_id;
