@@ -157,7 +157,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-const fetchGeneCartData = async (callback) => {
+/**
+ * Fetches gene cart data from the server.
+ * @returns {Promise<void>} A promise that resolves when the gene cart data is fetched.
+ */
+const fetchGeneCartData = async () => {
     try {
         gene_cart_data = await apiCallsMixin.fetchGeneCarts({cartType: 'unweighted-list', includeMembers: true});
         document.querySelector('#dropdown-gene-lists').classList.remove('is-loading');
@@ -169,10 +173,6 @@ const fetchGeneCartData = async (callback) => {
                 gene_cart_label_index[cart.share_id] = cart.label;
                 gene_cart_genes[cart.share_id] = cart.genes;
             }
-        }
-
-        if (callback) {
-            callback();
         }
 
     } catch (error) {

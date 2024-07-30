@@ -79,10 +79,9 @@ document.addEventListener('DOMContentLoaded', () => {
  * Fetches dataset collections from the API.
  *
  * @param {boolean} includeMembers - Whether to include members in the dataset collections.
- * @param {Function} callback - Optional callback function to be called after fetching dataset collections.
  * @returns {Promise<void>} - A promise that resolves when the dataset collections are fetched.
  */
-const fetchDatasetCollections = async (includeMembers=false, callback) => {
+const fetchDatasetCollections = async (includeMembers=false) => {
     const layoutShareId = selected_dc_share_id || null;
 
     try {
@@ -102,10 +101,6 @@ const fetchDatasetCollections = async (includeMembers=false, callback) => {
 
         if (dataset_collection_data.selected) {
             selectDatasetCollection(dataset_collection_data.selected);
-        }
-
-        if (callback) {
-            callback();
         }
 
     } catch (error) {

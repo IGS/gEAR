@@ -248,20 +248,15 @@ const createPatternListItem = (item, cart) => {
 
 /**
  * Fetches patterns data asynchronously and executes a callback function.
- * @param {Function} callback - The callback function to be executed after fetching patterns data.
  * @returns {Promise<void>} - A promise that resolves when the patterns data is fetched successfully.
  */
-const fetchPatternsData = async (callback) => {
+const fetchPatternsData = async () => {
     try {
         patternsCartData = await apiCallsMixin.fetchGeneCarts({includeMembers: false});
 
         flatPatternsCartData = [...patternsCartData.domain_carts, ...patternsCartData.group_carts, ...patternsCartData.public_carts, ...patternsCartData.user_carts, ...patternsCartData.shared_carts, ...patternsCartData.recent_carts]
         document.getElementById('dropdown-pattern-lists').classList.remove('is-loading');
         document.getElementById('dropdown-pattern-lists').classList.remove('is-disabled');
-
-        if (callback) {
-            await callback();
-        }
 
     } catch (error) {
         console.error(error);
