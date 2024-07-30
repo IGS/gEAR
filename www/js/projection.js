@@ -16,42 +16,49 @@ let layoutShareId = null;
 // selected_dc_share_id = null;
 // selected_dc_label = null;
 
-// Proxy the selectedPattern object to watch for changes to the selectedWeights array
-selectedPattern = new Proxy(selectedPattern, {
-    set: (target, key, value) => {
-        target[key] = value;
-        const algorithmElt = document.getElementById('algorithm');
+/**
+ * Creates a proxy object for the selected pattern.
+ *
+ * @param {Object} selectedPattern - The selected pattern object.
+ * @returns {Proxy} - The proxy object for the selected pattern.
+ */
+const createSelectedPatternProxy = (selectedPattern) => {
+    return new Proxy(selectedPattern, {
+        set: (target, key, value) => {
+            target[key] = value;
+            const algorithmElt = document.getElementById('algorithm');
 
-        // NOTE: When checking keys, if multiple keys are set at once, the order of the if statements matters
-        // The Proxy keys are triggered in order they were set in the object.
+            // NOTE: When checking keys, if multiple keys are set at once, the order of the if statements matters
+            // The Proxy keys are triggered in order they were set in the object.
 
-        if (key === "selectedWeights") {
-            enableAndShowElement(document.getElementById("single-multi-multi"), true);
-            if (!value.length) {
-                // Reset button was hit
+            if (key === "selectedWeights") {
                 enableAndShowElement(document.getElementById("single-multi-multi"), true);
-            } else if(value.length < 2) {
-                disableAndHideElement(document.getElementById("single-multi-multi"), true);
-                document.getElementById("single-multi-single").checked = true;
-                isMulti = false;
-            }
-            // Enable or disable the "binary" option if all selectedWeights have "binary" property set to True
-            const binary = value.every((w) => w.binary);
-            algorithmElt.querySelector('option[value="binary"]').disabled  = !binary;
+                if (!value.length) {
+                    // Reset button was hit
+                    enableAndShowElement(document.getElementById("single-multi-multi"), true);
+                } else if(value.length < 2) {
+                    disableAndHideElement(document.getElementById("single-multi-multi"), true);
+                    document.getElementById("single-multi-single").checked = true;
+                    isMulti = false;
+                }
+                // Enable or disable the "binary" option if all selectedWeights have "binary" property set to True
+                const binary = value.every((w) => w.binary);
+                algorithmElt.querySelector('option[value="binary"]').disabled  = !binary;
 
-        } else if (key === "gctype") {
-            // Adjust algorithm options based on gctype
-            algorithmElt.querySelector('option[value="nmf"]').disabled = false;
-            algorithmElt.querySelector('option[value="fixednmf"]').disabled = false;
+            } else if (key === "gctype") {
+                // Adjust algorithm options based on gctype
+                algorithmElt.querySelector('option[value="nmf"]').disabled = false;
+                algorithmElt.querySelector('option[value="fixednmf"]').disabled = false;
 
-            if (value === "unweighted-list") {
-                algorithmElt.querySelector('option[value="nmf"]').disabled = true;
-                algorithmElt.querySelector('option[value="fixednmf"]').disabled = true;
+                if (value === "unweighted-list") {
+                    algorithmElt.querySelector('option[value="nmf"]').disabled = true;
+                    algorithmElt.querySelector('option[value="fixednmf"]').disabled = true;
+                }
             }
+            return true;
         }
-        return true;
-    }
-});
+    });
+}
 
 /**
  * Handles the UI updates specific to the page login.
@@ -64,6 +71,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     document.getElementById('page-header-label').textContent = 'Projection Search';
     datasetShareId = getUrlParameter('share_id');
     layoutShareId = getUrlParameter('layout_id');
+
+    selectedPattern = createSelectedPatternProxy(selectedPattern);
 
     // add event listener for when the submit-projection-search button is clicked
     document.querySelector('#submit-projection-search').addEventListener('click', async (event) => {
@@ -141,9 +150,12 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         // SAdkins note - Promise.all fails fast,
         // but Promise.allSettled waits until all resolve/reject and lets you know which ones failed
         const [cartResult, dcResult,] = await Promise.all([
-            fetchPatternsData(parsepatternCartURLParams),
-            fetchDatasetCollections(false, parseDatasetCollectionURLParams),
+            fetchPatternsData(),
+            fetchDatasetCollections(false),
         ]);
+
+        await parseDatasetCollectionURLParams();
+        await parsepatternCartURLParams();
 
         // Should help with lining things up on index page
         document.getElementById("dropdown-dc").classList.remove("is-right");
@@ -169,6 +181,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Now, if URL params were passed and we have both patterns and a dataset collection,
     //  run the search
     if (urlParamsPassed) {
+
         if ((datasetShareId || selected_dc_share_id) && selectedPattern.shareId !== null && selectedPattern.selectedWeights.length > 0) {
             document.querySelector('#submit-projection-search').click();
         }
@@ -267,7 +280,7 @@ const populatePatternResultsList = () => {
 /**
  * Parses the URL parameters and updates the UI based on the values.
  */
-const parsepatternCartURLParams = () => {
+const parsepatternCartURLParams = async () => {
     // if projection algorithm is passed, set it in #algorithm
     const projectionAlgorithm = getUrlParameter('projection_algorithm');
     if (projectionAlgorithm) {
@@ -286,20 +299,47 @@ const parsepatternCartURLParams = () => {
 
     // handle passed pattern lists
     const pattern = getUrlParameter('projection_source')
-    if (pattern) {
-        urlParamsPassed = true;
-        const foundPattern = flatPatternsCartData.find((p) => p.share_id === pattern);
-        selectedPattern = {shareId: foundPattern.share_id, label: foundPattern.label, gctype: foundPattern.gctype, selectedWeights: []};
-        updatePatternListSelectorLabel()
+    if (!pattern) {
+        return;
     }
+    urlParamsPassed = true;
+    const foundPattern = flatPatternsCartData.find((p) => p.share_id === pattern);
+    selectedPattern = {shareId: foundPattern.share_id, label: foundPattern.label, gctype: foundPattern.gctype, selectedWeights: []};
+    selectedPattern = createSelectedPatternProxy(selectedPattern);
+
+    // we cannot the click event, since the pattern list items only render when an intiial category is selected
+    // so we need to manually populate the pattern weights
+    await populatePatternWeights();
 
     // handle manually-entered pattern symbols
     const urlWeights = getUrlParameter('projection_patterns');
-    if (pattern && urlWeights) {
+    if (urlWeights) {
         // Cannot have weights without a source pattern
         const labels = urlWeights.split(',');
+
+        // click each weight to populate the top-up and top-down genes
+        selectPatternWeights(labels);
+
         selectedPattern.selectedWeights = labels.map((label) => ({label, top_up: null, top_down: null}));
+    } else {
+        // If no weights were passed, select the first weight for the pattern
+        const rows = document.getElementsByClassName('dropdown-weight-item');
+        const labels = Array.from(rows).map((row) => row.dataset.label);
+
+
+        // if multipattern, use all weights (done in populatePatternWeights)
+        // if single pattern, use the first weight
+        // (the extra selectPatternWeights deselects all weights, as the selector to deselect is not working outside the widget)
+        if (!isMulti) {
+            selectPatternWeights(labels);
+            selectPatternWeights([labels[0]]);
+        }
+
     }
+
+    // click "proceed" button in pattern selector to update the UI
+    document.getElementById('dropdown-pattern-list-proceed').click();
+
 }
 
 /**

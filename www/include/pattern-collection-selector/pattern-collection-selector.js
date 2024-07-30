@@ -209,7 +209,7 @@ const createPatternListItem = (item, cart) => {
     const thisItem = document.querySelector(`.dropdown-pattern-list-item[data-share-id="${cart.share_id}"]`);
 
     // Event listener to select the pattern list and get the weights for the pattern.  Populate the weights dropdown with the weights.
-    thisItem.addEventListener("click", (event) => {
+    thisItem.addEventListener("click", async (event) => {
         // uncheck all the existing rows
         const rows = document.getElementsByClassName('dropdown-pattern-list-item');
         for (const row of rows) {
@@ -242,7 +242,7 @@ const createPatternListItem = (item, cart) => {
         }
 
 
-        populatePatternWeights();
+        await populatePatternWeights();
     });
 }
 
@@ -260,7 +260,7 @@ const fetchPatternsData = async (callback) => {
         document.getElementById('dropdown-pattern-lists').classList.remove('is-disabled');
 
         if (callback) {
-            callback();
+            await callback();
         }
 
     } catch (error) {
