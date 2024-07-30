@@ -1423,7 +1423,7 @@ const createRenameCollectionPopover = () => {
             const newName = document.getElementById("collection-name").value;
 
             try {
-                const data = await apiCallsMixin.renameCollection(selected_dc_share_id, newName);
+                const data = await apiCallsMixin.renameDatasetCollection(selected_dc_share_id, newName);
 
                 if (data['layout_label']) {
                     selected_dc_share_id = data['layout_share_id'];
