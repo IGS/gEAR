@@ -17,6 +17,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Replace "gEAR" in the page title with the "domain_short_display_label" from the site preferences
         const pageTitle = document.title;
         document.title = pageTitle.replace("gEAR", SITE_PREFS.domain_short_display_label);
+
+        // insert the page logo based on the site preferences
+        const logoNormal = document.getElementById('navbar-logo-normal');
+        logoNormal.src = "/img/by_domain/" + SITE_PREFS.domain_label + "/logo-main-normal.png"
+
+        const logoSmall = document.getElementById('navbar-logo-small');
+        logoSmall.src = "/img/by_domain/" + SITE_PREFS.domain_label + "/logo-main-small.png"
+        console.log("Set logo to: " + logoNormal.src);
     });
 
     // set the active primary nav element, deselect the rest
