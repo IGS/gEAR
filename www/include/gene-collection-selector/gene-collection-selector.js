@@ -164,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 const fetchGeneCartData = async () => {
     try {
-        gene_cart_data = await apiCallsMixin.fetchGeneCarts({cartType: 'unweighted-list', includeMembers: true});
+        gene_cart_data = await apiCallsMixin.fetchGeneCarts({cartType: 'unweighted-list', includeMembers: false});
         document.querySelector('#dropdown-gene-lists').classList.remove('is-loading');
         document.querySelector('#dropdown-gene-lists').classList.remove('is-disabled');
 
