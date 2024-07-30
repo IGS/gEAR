@@ -282,7 +282,7 @@ const populatePatternResultsList = () => {
  */
 const parsepatternCartURLParams = async () => {
     // if projection algorithm is passed, set it in #algorithm
-    const projectionAlgorithm = getUrlParameter('projection_algorithm') || getUrlParameter("algo");
+    const projectionAlgorithm = getUrlParameter('projection_algorithm');
     if (projectionAlgorithm) {
         document.getElementById('algorithm').value = projectionAlgorithm;
     }

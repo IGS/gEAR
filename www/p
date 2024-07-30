@@ -85,7 +85,7 @@ def main():
         params["projection_patterns"] = patterns
 
     if algo and page == "p":
-        params["projection_algo"] = algo
+        params["projection_algorithm"] = algo
 
     if search_string and (page == "de" or page == "gcm"):
         params["search_string"] = search_string
