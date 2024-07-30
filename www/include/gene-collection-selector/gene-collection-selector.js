@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Add event listeners to the gene list selectors even if they don't exist yet
+    // TODO: These click events should match what is in the dataset-collection and pattern-collection selectors
     document.addEventListener('click', (event) => {
         // gene-list-item-label & dropdown-gene-list-item-right-selector both should only show the genes
         // dropdown-gene-list-item-add should add the entire cart

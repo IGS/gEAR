@@ -254,7 +254,13 @@ const populatePatternResultsList = () => {
     document.getElementById('pattern-result-list').innerHTML = '';
 
     // sort the selectedWeights array based on the numeric value at the end of each string
-    const sortedLabels = selectedPattern.selectedWeights.map((weight) => weight.label).sort(customNumericSort);
+    // If this does not work, just sort alphabetically
+    let sortedLabels;
+    try {
+        sortedLabels = selectedPattern.selectedWeights.map((weight) => weight.label).sort(customNumericSort);
+    } catch (error) {
+        sortedLabels = selectedPattern.selectedWeights.map((weight) => weight.label).sort();
+    }
 
     for (const label of sortedLabels) {
         const row = template.content.cloneNode(true);
