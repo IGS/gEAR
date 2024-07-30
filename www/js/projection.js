@@ -305,36 +305,24 @@ const parsepatternCartURLParams = async () => {
     urlParamsPassed = true;
     const foundPattern = flatPatternsCartData.find((p) => p.share_id === pattern);
     selectedPattern = {shareId: foundPattern.share_id, label: foundPattern.label, gctype: foundPattern.gctype, selectedWeights: []};
-    selectedPattern = createSelectedPatternProxy(selectedPattern);
 
     // we cannot the click event, since the pattern list items only render when an intiial category is selected
     // so we need to manually populate the pattern weights
     await populatePatternWeights();
 
+    // If no weights were passed, select the first weight for the pattern
+    const rows = document.getElementsByClassName('dropdown-weight-item');
+    const labels = Array.from(rows).map((row) => row.dataset.label);
+
     // handle manually-entered pattern symbols
     const urlWeights = getUrlParameter('projection_patterns');
     if (urlWeights) {
         // Cannot have weights without a source pattern
-        const labels = urlWeights.split(',');
+        const urlLabels = urlWeights.split(',');
 
-        // click each weight to populate the top-up and top-down genes
-        selectPatternWeights(labels);
-
-        selectedPattern.selectedWeights = labels.map((label) => ({label, top_up: null, top_down: null}));
-    } else {
-        // If no weights were passed, select the first weight for the pattern
-        const rows = document.getElementsByClassName('dropdown-weight-item');
-        const labels = Array.from(rows).map((row) => row.dataset.label);
-
-
-        // if multipattern, use all weights (done in populatePatternWeights)
-        // if single pattern, use the first weight
-        // (the extra selectPatternWeights deselects all weights, as the selector to deselect is not working outside the widget)
-        if (!isMulti) {
-            selectPatternWeights(labels);
-            selectPatternWeights([labels[0]]);
-        }
-
+        const labelsToDeselect = labels.filter((label) => !urlLabels.includes(label));
+        // deselect all weights that are not in the urlWeights
+        selectPatternWeights(labelsToDeselect);
     }
 
     // click "proceed" button in pattern selector to update the UI
