@@ -171,7 +171,9 @@ document.getElementById("dropdown-pattern-list-all-weights").addEventListener("c
 const createPatternListItem = (item, cart) => {
     const gctype = cart.gctype;
     const num_genes = cart.num_genes;
-    const text = `${cart.label} (${num_genes} genes)`;
+    const text = `${cart.label}`;
+    // ! commenting out to address https://github.com/IGS/gEAR/issues/838
+    //const text = `${cart.label} (${num_genes} genes)`;
 
     item.querySelector('.pattern-list-item-label').textContent = text;
     item.querySelector('.ul-li').dataset.shareId = cart.share_id;
@@ -253,7 +255,7 @@ const createPatternListItem = (item, cart) => {
  */
 const fetchPatternsData = async (callback) => {
     try {
-        patternsCartData = await apiCallsMixin.fetchGeneCarts({includeMembers: true});
+        patternsCartData = await apiCallsMixin.fetchGeneCarts({includeMembers: false});
 
         flatPatternsCartData = [...patternsCartData.domain_carts, ...patternsCartData.group_carts, ...patternsCartData.public_carts, ...patternsCartData.user_carts, ...patternsCartData.shared_carts, ...patternsCartData.recent_carts]
         document.getElementById('dropdown-pattern-lists').classList.remove('is-loading');

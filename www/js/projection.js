@@ -155,7 +155,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         ]);
 
         await parseDatasetCollectionURLParams();
-        await parsepatternCartURLParams();
+        await parsePatternCartURLParams();
 
         // Should help with lining things up on index page
         document.getElementById("dropdown-dc").classList.remove("is-right");
@@ -280,7 +280,7 @@ const populatePatternResultsList = () => {
 /**
  * Parses the URL parameters and updates the UI based on the values.
  */
-const parsepatternCartURLParams = async () => {
+const parsePatternCartURLParams = async () => {
     // if projection algorithm is passed, set it in #algorithm
     const projectionAlgorithm = getUrlParameter('projection_algorithm');
     if (projectionAlgorithm) {
@@ -306,6 +306,9 @@ const parsepatternCartURLParams = async () => {
     const foundPattern = flatPatternsCartData.find((p) => p.share_id === pattern);
     selectedPattern = {shareId: foundPattern.share_id, label: foundPattern.label, gctype: foundPattern.gctype, selectedWeights: []};
 
+    // Update proxy so that multi-gene radio button can be enabled/disabled
+    selectedPattern = createSelectedPatternProxy(selectedPattern);
+
     // we cannot the click event, since the pattern list items only render when an intiial category is selected
     // so we need to manually populate the pattern weights
     await populatePatternWeights();
@@ -327,7 +330,6 @@ const parsepatternCartURLParams = async () => {
 
     // click "proceed" button in pattern selector to update the UI
     document.getElementById('dropdown-pattern-list-proceed').click();
-
 }
 
 /**
