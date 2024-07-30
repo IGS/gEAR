@@ -424,7 +424,6 @@ class DatasetTile {
         // If no genes were found, then raise an error
         // This should never happen as geneSymbolInput should be a key in the orthologs object
         if (!this.orthologs || Object.keys(this.orthologs).length === 0) {
-            console.log(this)
 
             createCardMessage(tileId, "danger", "No orthologs were mapped for this dataset. This should not have happened.");
             throw new Error("Should never happen. Please contact the gEAR team.");

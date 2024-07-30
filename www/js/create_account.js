@@ -103,7 +103,7 @@ async function createAccount(verification_uuid) {
         document.getElementById('account-info-c').classList.add('is-hidden');
         document.getElementById('email-verification-c').classList.add('is-hidden');
         document.getElementById('account-creation-failure-c').classList.remove('is-hidden');
-        console.log('error: ' + data['error'])
+        console.error('error: ' + data['error'])
         document.getElementById('btn-email-verification-submit').classList.remove('is-loading');
         return false;
     }

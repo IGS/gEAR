@@ -35,7 +35,7 @@ window.onload=function() {
                     document.getElementById('password-update-status-message').innerHTML = 'There was a problem updating your password. ' + data['error'] + '. Please try again later or contact us.';
                     document.getElementById('password-update-status-message').classList.remove('is-hidden');
                 }
-            
+
             }
         }
     });
@@ -71,7 +71,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 }
 
 async function sendVerificationEmail(verification_uuid) {
-    console.log("Sending verification email");
+    console.debug("Sending verification email");
 
     const current_url = window.location.href;
     const current_page = current_url.lastIndexOf("/");
