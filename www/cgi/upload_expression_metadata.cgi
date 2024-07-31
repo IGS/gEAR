@@ -1,5 +1,11 @@
 #!/opt/bin/python3
 
+"""
+This is used by the expression uploader and accepts an metadata file upload,
+stores the file in temp space, parses it to JSON, and returns that. Not meant
+for permanent storage.
+"""
+
 import cgi
 import json
 import os, sys
@@ -51,7 +57,7 @@ def main():
 
     result['metadata'] = json.loads(metadata.write_json())
 
-    # run geo if that property is defined
+    # TODO: run geo if that property is defined
 
 
     result['success'] = 1

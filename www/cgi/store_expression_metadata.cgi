@@ -4,7 +4,7 @@
 Used by the expression uploader, this stores metadata from the form and saves
 it to a file until the expression data are ready to be saved.
 
-Writes a file at: ../uploads/files/<session_id>_<share_uid>.json
+Writes a file at: ../uploads/files/<session_id>/<share_uid>/metadata.json
 """
 
 import cgi
@@ -19,11 +19,27 @@ def main():
     print('Content-Type: application/json\n\n')
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
+    share_uid = form.getvalue('share_uid')
 
-    user_upload_file_base = '../uploads/files'
+    # make sure session_id is alphanumeric
+    if not session_id.isalnum():
+        print(json.dumps({'success': 0, 'error': 'Invalid session_id'}))
+        return
+
+    user_upload_file_base = "../uploads/files/{0}".format(session_id)
+
+    # make sure the directory exists
+    if not os.path.exists(user_upload_file_base):
+        os.makedirs(user_upload_file_base)
+
+    user_upload_file_base = os.path.join(user_upload_file_base, share_uid)
+
+    # make sure the directory exists
+    if not os.path.exists(user_upload_file_base):
+        os.makedirs(user_upload_file_base)
 
     user = geardb.get_user_from_session_id(session_id)
-    result = {'success': 0}
+    result = {'success': 0, 'error': None}
 
     # names are changed here so the files are compatible with the legacy ones
     formdata = {
@@ -55,12 +71,13 @@ def main():
     }
 
     # Save the metadata to a file
-    metadata_filename = os.path.join(user_upload_file_base, session_id + '_' + form.getvalue('share_uid') + '.json')
+    metadata_filename = os.path.join(user_upload_file_base, 'metadata.json')
     try:
         with open(metadata_filename, 'w') as f:
             f.write(json.dumps(formdata))
         result['success'] = 1
     except Exception as e:
+        result['error'] = str(e)
         pass
 
     print(json.dumps(result))
