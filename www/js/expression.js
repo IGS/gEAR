@@ -329,8 +329,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         // SAdkins note - Promise.all fails fast,
         // but Promise.allSettled waits until all resolve/reject and lets you know which ones failed
         const [cart_result, dc_result, org_result] = await Promise.all([
-            fetchGeneCartData(parseGeneCartURLParams),
-            fetchDatasetCollections(false, parseDatasetCollectionURLParams),
+            fetchGeneCartData(),
+            fetchDatasetCollections(false),
             fetchOrganisms()
         ]);
     } catch (error) {
@@ -338,6 +338,9 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     } finally {
         document.getElementById("submit-expression-search").classList.remove("is-loading");
     }
+
+    parseGeneCartURLParams();
+    parseDatasetCollectionURLParams();
 
     // Trigger the default dataset collection to be selected in the
     if (datasetShareId) {

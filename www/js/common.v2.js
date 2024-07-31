@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const logoSmall = document.getElementById('navbar-logo-small');
         logoSmall.src = "/img/by_domain/" + SITE_PREFS.domain_label + "/logo-main-small.png"
-        console.log("Set logo to: " + logoNormal.src);
+        console.debug("Set logo to: " + logoNormal.src);
     });
 
     // set the active primary nav element, deselect the rest

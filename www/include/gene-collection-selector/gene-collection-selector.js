@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Add event listeners to the gene list selectors even if they don't exist yet
+    // TODO: These click events should match what is in the dataset-collection and pattern-collection selectors
     document.addEventListener('click', (event) => {
         // gene-list-item-label & dropdown-gene-list-item-right-selector both should only show the genes
         // dropdown-gene-list-item-add should add the entire cart
@@ -157,9 +158,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-const fetchGeneCartData = async (callback) => {
+/**
+ * Fetches gene cart data from the server.
+ * @returns {Promise<void>} A promise that resolves when the gene cart data is fetched.
+ */
+const fetchGeneCartData = async () => {
     try {
-        gene_cart_data = await apiCallsMixin.fetchGeneCarts({cartType: 'unweighted-list', includeMembers: true});
+        gene_cart_data = await apiCallsMixin.fetchGeneCarts({cartType: 'unweighted-list', includeMembers: false});
         document.querySelector('#dropdown-gene-lists').classList.remove('is-loading');
         document.querySelector('#dropdown-gene-lists').classList.remove('is-disabled');
 
@@ -169,10 +174,6 @@ const fetchGeneCartData = async (callback) => {
                 gene_cart_label_index[cart.share_id] = cart.label;
                 gene_cart_genes[cart.share_id] = cart.genes;
             }
-        }
-
-        if (callback) {
-            callback();
         }
 
     } catch (error) {
@@ -304,8 +305,8 @@ const setActiveGeneCartCategory = (category) => {
 }
 
 const selectGeneLists = (share_ids) => {
-    console.log('selectGeneLists', share_ids);
-    console.log(gene_cart_genes);
+    console.debug('selectGeneLists', share_ids);
+    console.debug(gene_cart_genes);
     // reads the gene list share_ids passed and handles any UI and data updates to make
     //   them preselected
     for (const share_id of share_ids) {
