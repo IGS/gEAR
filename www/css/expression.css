@@ -131,5 +131,7 @@ ul#go-terms li {
     position: sticky;
     top: 0;
     align-self: flex-start;
+    height:100vh;
+    overflow-y: auto;   /* scroll if too long */
 }
 
