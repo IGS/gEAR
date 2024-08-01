@@ -252,8 +252,14 @@
                                     </nav>
                                 </div>
                             </div>
-
                         </section> <!-- #view-controls -->
+
+                        <div id="include-public-membership-c" class="js-trigger-dataset-search is-hidden field mt-1">
+                            <p class="label is-size-7">For each dataset, include membership into public datasets.</p>
+                            <!-- toggle switch --->
+                            <input id="include-public-membership" type="checkbox" class="switch is-primary"/>
+                            <label for="include-public-membership">No</label>
+                        </div>
 
                         <!-- results view -->
                         <section id="results-container">
@@ -546,7 +552,7 @@
                                                     </div>
                                                     <!-- Added to collections section -->
                                                     <div class="column is-6 py-0 js-display-version js-found-in-collections">
-                                                        <p class="has-text-weight-semibold">Found in these collections you own</p>
+                                                        <p class="js-found-in-collection-text has-text-weight-semibold">Found in these owned or highlighted collections</p>
                                                         <ul class="js-found-in-collections-list"></ul>
                                                     </div>
 

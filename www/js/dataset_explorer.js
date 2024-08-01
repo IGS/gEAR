@@ -8,6 +8,7 @@ let selected_dc_share_id; // from dataset-collection-selector
 
 let firstSearch = true;
 let searchByCollection = false;
+let includePublicMembership = false;
 const resultsPerPage = 20;
 let listView = "table";
 
@@ -1930,6 +1931,11 @@ const processSearchResults = (data) => {
         resultsListDiv.appendChild(listResultsView);
 
         // add collection membership info to dataset
+        document.querySelector(`#${resultDatasetId} .js-found-in-collection-text`).innerHTML = "Found in these owned or highlighted collections";
+        if (includePublicMembership) {
+            document.querySelector(`#${resultDatasetId} .js-found-in-collection-text`).innerHTML = "Found in these owned or public collections";
+        }
+
         const collections = dataset.layouts;
         for (const collectionString of collections) {
             const collection = JSON.parse(collectionString);
@@ -2473,6 +2479,10 @@ const submitSearch = async (page=1) => {
         searchCriteria.layout_share_id = selected_dc_share_id;
     }
 
+    if (includePublicMembership) {
+        searchCriteria.include_public_collection_membership = true;
+    }
+
     // collect the filter options the user defined
     searchCriteria.organism_ids = buildFilterString('controls-organism');
     searchCriteria.date_added = buildFilterString('controls-date-added');
@@ -2835,6 +2845,8 @@ document.getElementById("btn-table-view").addEventListener("click", () => {
     document.getElementById("results-list-div").classList.add("is-hidden");
     document.getElementById("dataset-arrangement-c").classList.add("is-hidden");
 
+    document.getElementById("include-public-membership-c").classList.add("is-hidden");
+
     // Show pagination in case arrangement view hid the pagination
     for (const classElt of document.getElementsByClassName("pagination")) {
         classElt.classList.remove("is-invisible");
@@ -2860,6 +2872,7 @@ document.getElementById("btn-list-view-compact").addEventListener("click", () =>
     document.getElementById("results-list-div").classList.remove("is-hidden");
     document.getElementById("dataset-arrangement-c").classList.add("is-hidden");
 
+    document.getElementById("include-public-membership-c").classList.add("is-hidden");
 
     // find all elements with class 'js-expandable-view' and make sure they also have 'expanded-view-hidden'
     for (const elt of document.querySelectorAll(".js-expandable-view")){
@@ -2897,6 +2910,7 @@ document.getElementById("btn-list-view-expanded").addEventListener("click", () =
     document.getElementById("results-list-div").classList.remove("is-hidden");
     document.getElementById("dataset-arrangement-c").classList.add("is-hidden");
 
+    document.getElementById("include-public-membership-c").classList.remove("is-hidden");
 
     // find all elements with class 'js-expandable-view' and make sure they also have 'expanded-view-hidden'
     for (const elt of document.querySelectorAll(".js-expandable-view")){
@@ -2925,6 +2939,8 @@ document.getElementById("btn-arrangement-view").addEventListener("click", () => 
 
     document.getElementById("btn-arrangement-view").classList.add('is-gear-bg-secondary');
     document.getElementById("btn-arrangement-view").classList.remove('is-dark');
+
+    document.getElementById("include-public-membership-c").classList.add("is-hidden");
 
     // Elements that would trigger submitSearch() are hidden so that pagination and count label won't appear
     for (const classElt of document.getElementsByClassName("js-trigger-dataset-search")) {
@@ -2967,6 +2983,16 @@ document.getElementById("filter-only-in-collection").addEventListener("change", 
     searchByCollection = e.currentTarget.checked;
     // If the checkbox is checked, change label accordingly
     e.currentTarget.closest(".field").querySelector("label").textContent = searchByCollection ? "Yes" : "No"
+
+    // trigger search
+    submitSearch();
+});
+
+// If checkbox is changed, set the searchByCollection flag
+document.getElementById("include-public-membership").addEventListener("change", (e) => {
+    includePublicMembership = e.currentTarget.checked;
+    // If the checkbox is checked, change label accordingly
+    e.currentTarget.closest(".field").querySelector("label").textContent = includePublicMembership ? "Yes" : "No"
 
     // trigger search
     submitSearch();

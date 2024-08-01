@@ -1836,7 +1836,7 @@ class Dataset:
 
         return tarball_file_path
 
-    def get_layouts(self, user=None):
+    def get_layouts(self, user=None, include_public=False):
         """
         Populates the dataset layouts attribute, a list of Layout objects in which
         this dataset can be found (only those which the user has rights to see.)
@@ -1861,7 +1861,7 @@ class Dataset:
                 cursor.execute(qry, (self.id, user.id))
             else:
                 qry = """
-                      SELECT l.id, l.user_id, l.is_domain, l.label, l.is_current, l.share_id
+                      SELECT DISTINCT l.id, l.user_id, l.is_domain, l.label, l.is_current, l.share_id
                         FROM layout l
                              JOIN layout_displays lm ON lm.layout_id=l.id
                              JOIN dataset_display dd ON dd.id =lm.display_id
@@ -1875,6 +1875,31 @@ class Dataset:
                 l = Layout(id=row[0], user_id=row[1], is_domain=row[2], label=row[3],
                            is_current=row[4], share_id=row[5])
                 self.layouts.append(l)
+
+            print("include_public: {0}".format(include_public), file=sys.stderr)
+            print(self.layouts, file=sys.stderr)
+            print("------------------------", file=sys.stderr)
+
+            if include_public:
+                qry = """
+                      SELECT DISTINCT l.id, l.user_id, l.is_domain, l.label, l.is_current, l.share_id
+                        FROM layout l
+                             JOIN layout_displays lm ON lm.layout_id=l.id
+                             JOIN dataset_display dd ON dd.id =lm.display_id
+                       WHERE dd.dataset_id = %s
+                             AND l.is_public = 1
+                    ORDER BY l.label
+                """
+                cursor.execute(qry, (self.id,))
+
+                for row in cursor:
+                    l = Layout(id=row[0], user_id=row[1], is_domain=row[2], label=row[3],
+                               is_current=row[4], share_id=row[5])
+                    self.layouts.append(l)
+
+            # deduplicate based on a layout's ID (in case user and public layouts overlap)
+            # (normal set->list conversion doesn't work for objects)
+            self.layouts = list({l.id: l for l in self.layouts}.values())
 
             cursor.close()
 
