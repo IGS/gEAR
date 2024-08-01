@@ -40,6 +40,7 @@ def main():
         down_genes = df.nsmallest(n=5, columns=[col]).iloc[:, 1].tolist()
 
         # if there are no negative values, the down_genes should be empty
+        # Example is with binary weights.
         if all([v >= 0 for v in df[col]]):
             down_genes = []
 
