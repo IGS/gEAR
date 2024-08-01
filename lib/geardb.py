@@ -1855,7 +1855,7 @@ class Dataset:
                              JOIN layout_displays lm ON lm.layout_id=l.id
                              JOIN dataset_display dd ON dd.id =lm.display_id
                        WHERE dd.dataset_id = %s
-                             AND (l.user_id = 0 OR l.user_id = %s)
+                             AND (l.is_domain = 1 OR l.user_id = %s)
                     ORDER BY l.label
                 """
                 cursor.execute(qry, (self.id, user.id))
@@ -1866,7 +1866,7 @@ class Dataset:
                              JOIN layout_displays lm ON lm.layout_id=l.id
                              JOIN dataset_display dd ON dd.id =lm.display_id
                        WHERE dd.dataset_id = %s
-                             AND l.user_id = 0
+                             AND l.is_domain = 1
                     ORDER BY l.label
                 """
                 cursor.execute(qry, (self.id,))
@@ -1884,6 +1884,7 @@ class Dataset:
                              JOIN dataset_display dd ON dd.id =lm.display_id
                        WHERE dd.dataset_id = %s
                              AND l.is_public = 1
+                             AND l.is_domain = 0
                     ORDER BY l.label
                 """
                 cursor.execute(qry, (self.id,))
