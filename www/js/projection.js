@@ -367,10 +367,12 @@ const selectPatternWeightResult = async (label) => {
     // if projection algorithm is "nmf", then hide the top_down genes
     const projectionAlgorithm = document.getElementById('algorithm').value;
     if (projectionAlgorithm === 'nmf') {
-        document.getElementById('svg-scoring-method').value = 'top_up';
+        //document.getElementById('svg-scoring-method').value = 'top_up';   ? Why is this here? Not a valid value
         document.getElementById('top-down-genes').classList.add('is-hidden');
     } else {
-        document.getElementById('top-down-genes').classList.remove('is-hidden');
+        if (obj.top_down) {
+            document.getElementById('top-down-genes').classList.remove('is-hidden');
+        }
     }
 
     // if isMulti=false, show top_up and top_down genes

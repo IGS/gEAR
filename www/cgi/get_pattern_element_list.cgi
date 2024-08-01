@@ -25,7 +25,7 @@ def main():
     # Handle unweighted genecarts which are not saved to tabfile.
     # NOTE: Does not check db for existence of unweighted genecart
     if scope == "unweighted-list":
-        result.append({"label":"unweighted", "top_up":"", "top_down":"", "binary": True})
+        result.append({"label":"unweighted", "top_up":[], "top_down":[], "binary": True})
         print(json.dumps(result))
         return
 
@@ -40,6 +40,7 @@ def main():
         down_genes = df.nsmallest(n=5, columns=[col]).iloc[:, 1].tolist()
 
         # if there are no negative values, the down_genes should be empty
+        # Example is with binary weights.
         if all([v >= 0 for v in df[col]]):
             down_genes = []
 
