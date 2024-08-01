@@ -1459,6 +1459,11 @@ class DatasetTile {
         const plotType = display.plot_type;
         const plotConfig = display.plotly_config;
 
+        const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
+        if (!this.isZoomed) {
+            plotConfig.grid_spec = tileElement.style.gridArea   // add grid spec to plot config
+        }
+
         const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
@@ -1512,6 +1517,10 @@ class DatasetTile {
         const plotConfig = JSON.parse(JSON.stringify(display.plotly_config));
         plotConfig.high_dpi = true;
 
+        const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
+        if (!this.isZoomed) {
+            plotConfig.grid_spec = tileElement.style.gridArea   // add grid spec to plot config
+        }
 
         const data = await apiCallsMixin.fetchTsneImage(datasetId, analysisObj, plotType, plotConfig);
         if (data?.success < 1) {

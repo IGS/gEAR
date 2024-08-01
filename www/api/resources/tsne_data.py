@@ -4,7 +4,7 @@ import io
 import os
 import re
 import sys
-from math import ceil
+from math import ceil, log2
 from pathlib import Path
 
 import geardb
@@ -45,13 +45,13 @@ class PlotError(Exception):
         super().__init__(self.message)
 
 
-def calculate_figure_height(num_plots):
+def calculate_figure_height(num_plots, span=1):
     """Determine height of tsne plot based on number of group elements."""
-    return (num_plots * 2) + (num_plots -1)
+    return ((num_plots * 2) + (num_plots - 1)) * span
 
-def calculate_figure_width(num_plots):
+def calculate_figure_width(num_plots, span=1):
     """Determine width of tsne plot based on number of group elements."""
-    return (num_plots * 6) + (num_plots -1)
+    return ((num_plots * 6) + (num_plots - 1)) * span
 
 def calculate_num_legend_cols(group_len):
     """Determine number of columns legend should have in tSNE plot."""
@@ -239,6 +239,7 @@ class TSNEData(Resource):
         projection_id = req.get('projection_id', None)    # projection id of csv output
         colorblind_mode = req.get('colorblind_mode', False)
         high_dpi = req.get('high_dpi', False)
+        grid_spec = req.get('grid_spec', "1/1/1/1") # start_row/start_col/end_row/end_col (end not inclusive)
         sc.settings.figdir = '/tmp/'
 
         if not dataset_id:
@@ -479,7 +480,7 @@ class TSNEData(Resource):
                 elif color_idx_name in selected.obs:
                     # Alternative method.  Associate with hexcodes already stored in the dataframe
                     # Making the assumption that these values are hexcodes
-                    grouped = selected.obs.groupby([colorize_by, color_idx_name])
+                    grouped = selected.obs.groupby([colorize_by, color_idx_name], observed=False)
                     # Ensure one-to-one mapping between category and hexcodes
                     if len(selected.obs[colorize_by].unique()) == len(grouped):
                         # Test if names are color hexcodes and use those if applicable (if first is good, assume all are)
@@ -544,9 +545,23 @@ class TSNEData(Resource):
         io_fig = sc.pl.embedding(selected, **kwargs)
         ax = io_fig.get_axes()
 
+        # break grid_spec into spans
+        grid_spec = grid_spec.split('/')
+        grid_spec = [int(x) for x in grid_spec]
+        row_span = grid_spec[2] - grid_spec[0]
+        col_span = grid_spec[3] - grid_spec[1]
+        row_span_pixels = row_span * 360     # number of pixels this row span will take up
+        col_span_pixels = col_span * 90    # number of pixels this col span will take up
+
         # set the figsize based on the number of plots
-        io_fig.set_figheight(calculate_figure_height(num_plots))
-        io_fig.set_figwidth(calculate_figure_width(num_plots))
+        #io_fig.set_figheight(calculate_figure_height(num_plots, row_span))
+        #io_fig.set_figwidth(calculate_figure_width(num_plots, col_span))
+
+        # Set the figsize (in inches)
+        dpi = io_fig.dpi    # default dpi is 100, but will be saved as 150 later on
+        # With 2 plots as a default (gene expression and colorize_by), we want to grow the figure size slowly based on the number of plots
+        io_fig.set_figheight(row_span_pixels * log2(num_plots) / dpi)
+        io_fig.set_figwidth(col_span_pixels * log2(num_plots) / dpi)
 
         # rename axes labels
         if type(ax) == list:
@@ -583,15 +598,14 @@ class TSNEData(Resource):
             selected.file.close()
 
         with io.BytesIO() as io_pic:
-            # ? From what I'm reading and seeing, this line does not seem to make a difference if bbox_inches is set to "tight"
-            io_fig.tight_layout()   # This crops out much of the whitespace around the plot. The "savefig" line does this with the legend too
-
             # Set the saved figure dpi based on the number of observations in the dataset after filtering
             if high_dpi:
                 dpi = max(150, int(df.shape[0] / 100))
                 sc.settings.set_figure_params(dpi_save=dpi)
-                # if high_dpi, double the figsize height
-                io_fig.set_figheight(calculate_figure_height(num_plots) * 2)
+                # Figure height is calculated based on the number of plots
+                io_fig.set_figheight(calculate_figure_height(num_plots))
+                io_fig.set_figwidth(calculate_figure_width(num_plots))
+
                 io_fig.savefig(io_pic, format='png', bbox_inches="tight")
             else:
                 # Moved this to the end to prevent any issues with the dpi setting
