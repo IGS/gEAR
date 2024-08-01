@@ -1876,10 +1876,6 @@ class Dataset:
                            is_current=row[4], share_id=row[5])
                 self.layouts.append(l)
 
-            print("include_public: {0}".format(include_public), file=sys.stderr)
-            print(self.layouts, file=sys.stderr)
-            print("------------------------", file=sys.stderr)
-
             if include_public:
                 qry = """
                       SELECT DISTINCT l.id, l.user_id, l.is_domain, l.label, l.is_current, l.share_id
