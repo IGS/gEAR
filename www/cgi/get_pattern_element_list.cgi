@@ -25,7 +25,7 @@ def main():
     # Handle unweighted genecarts which are not saved to tabfile.
     # NOTE: Does not check db for existence of unweighted genecart
     if scope == "unweighted-list":
-        result.append({"label":"unweighted", "top_up":[], "top_down":[], "binary": True})
+        result.append({"label":"unweighted", "top_up":"", "top_down":"", "binary": True})
         print(json.dumps(result))
         return
 
