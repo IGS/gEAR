@@ -492,8 +492,14 @@ const addDatasetListEventListeners = () => {
     // Redirect to gene expression search
     for (const classElt of document.getElementsByClassName("js-view-dataset")) {
         classElt.addEventListener("click", (e) => {
-            // ! Currently redirects to blank page
             window.open(`./p?s=${e.currentTarget.value}`, '_blank');
+        });
+    }
+
+    // Redirect to gene expression search
+    for (const classElt of document.getElementsByClassName("js-view-projection-dataset")) {
+        classElt.addEventListener("click", (e) => {
+            window.open(`./p?p=p&s=${e.currentTarget.value}`, '_blank');
         });
     }
 }
@@ -533,7 +539,7 @@ const addDownloadableInfoToDataset = (datasetId, isDownloadable, hasH5ad) => {
     datasetDisplayContainer.appendChild(datasetDisplaySpan);
 }
 
-const addModalEventListeners = (collection) => {
+const addModalEventListeners = () => {
     for (const classElt of document.getElementsByClassName("js-collection-add-display")) {
         classElt.addEventListener("click", async (e) => {
             const thisElt = e.currentTarget;
@@ -1045,6 +1051,7 @@ const createRenameDatasetPermalinkPopover = () => {
                     // (since e.currentTarget is null after confirm button is clicked)
                     e.target.closest(".js-action-links").querySelector(".js-edit-dataset-permalink").dataset.shareId = newShareId;
                     e.target.closest(".js-action-links").querySelector(".js-view-dataset").value = newShareId;
+                    e.target.closest(".js-action-links").querySelector(".js-view-projection-dataset").value = newShareId;
                     e.target.closest(".js-action-links").querySelector(".js-share-dataset").value = newShareId;
 
                     popoverContent.remove();
@@ -1904,6 +1911,7 @@ const processSearchResults = (data) => {
 
         // action buttons section
         setElementProperties(listResultsView, ".js-view-dataset", { value: shareId });
+        setElementProperties(listResultsView, ".js-view-projection-dataset", { value: shareId });
         setElementProperties(listResultsView, ".js-view-displays", { dataset: { datasetId, title: label, isPublic } });
         setElementProperties(listResultsView, ".js-delete-dataset", { value: datasetId, dataset: { isOwner } });
         setElementProperties(listResultsView, ".js-edit-dataset-permalink", { value: datasetId, dataset: { isOwner, shareId } });
@@ -2062,6 +2070,10 @@ const renderDisplaysModal = async (datasetId, title, isPublic) => {
     ownerDisplaysElt.replaceChildren();
 
     const collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
+    if (collection) {
+        const layoutMemberData = await apiCallsMixin.fetchDatasetCollectionMembers(selected_dc_share_id);
+        collection.members = layoutMemberData.layout_members.single.concat(layoutMemberData.layout_members.multi);
+    }
 
     // Did it this way so we didn't have to pass async/await up the chain
     await Promise.allSettled([
@@ -2102,47 +2114,32 @@ const renderDisplaysModal = async (datasetId, title, isPublic) => {
     // Set state of initial display add/remove buttons based on the initial dataset collection.
     updateDisplayAddRemoveToCollectionButtons(modalDiv.id, collection);
 
-    // Currently only collectiosn with datasets members will be fetched.
-    // If this isn't one (i.e. brand new one), we can fudge some properties to make the UI work
-    if (!collection) {
-        collection = {
-            dataset_count: 0,
-            folder_id: null,
-            folder_label: null,
-            folder_parent_id: null,
-            is_current: 0,
-            is_domain: 0,
-            is_owner: 1,
-            is_public: 0,
-            label: selected_dc_label,
-            members: [],
-            share_id: selected_dc_share_id,
-        }
-    }
-
-    addModalEventListeners(collection);
+    addModalEventListeners();
 
     // Create tooltips for all elements with the data-tooltip-content attribute
     // Only creating one set so that they can be reused
     const actionGroupElt = document.querySelector(".js-collection-add-remove-group");
     const tooltips = []
 
-    for (const classElt of actionGroupElt.querySelectorAll("[data-tooltip-content]")) {
-        tooltips.push(createActionTooltips(classElt))
-    }
+    if (actionGroupElt) {
+        // Push into master list, the first instance of tooltips
+        for (const classElt of actionGroupElt.querySelectorAll("[data-tooltip-content]")) {
+            tooltips.push(createActionTooltips(classElt))
+        }
 
-    for (const tooltip of tooltips) {
-        tooltip.classList.add("js-modal-tooltip"); // prevent removal of tooltip
-    }
+        for (const tooltip of tooltips) {
+            tooltip.classList.add("js-modal-tooltip"); // prevent removal of tooltip
+        }
 
-    // Then apply each tooltip to the appropriate element for all elements with the data-tooltip-content attribute
-
-    for (const actionElt of document.querySelectorAll(".js-collection-add-remove-group")) {
-        const loopTooltips = [...tooltips];
-        for (const classElt of actionElt.querySelectorAll("[data-tooltip-content]")) {
-            applyTooltip(classElt, loopTooltips.shift());
+        // Then apply each tooltip to the appropriate element for all elements with the data-tooltip-content attribute
+        for (const actionElt of document.querySelectorAll(".js-collection-add-remove-group")) {
+            const loopTooltips = [...tooltips];
+            for (const classElt of actionElt.querySelectorAll("[data-tooltip-content]")) {
+                applyTooltip(classElt, loopTooltips.shift());
+            }
         }
     }
+
 
     // Render warning about public collection and private dataset and disable "add to collection" button
     if (!(collection.is_public && !isPublic)) {
@@ -2172,7 +2169,7 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
     for (const display of displays) {
         const displayHTML = displayTemplate.content.cloneNode(true);
 
-        const displayId = display.id;;
+        const displayId = display.id;
 
         const displayElement = displayHTML.querySelector('.js-modal-display');
         displayElement.dataset.displayId = displayId;
@@ -2201,8 +2198,10 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
 
         // Determine number of times display is in current layout
         const displayCount = displayElement.querySelector('.js-collection-display-count');
-        if (collection) {
-            const displayCountValue = collection.members.filter((member) => member.display_id === displayId).length;
+
+        if (collection?.members) {
+            console.log(collection.members);
+            const displayCountValue = collection.members.filter((member) => JSON.parse(member).display_id === displayId).length
             displayCount.textContent = displayCountValue;
         } else {
             // maybe a new collection
@@ -2666,7 +2665,7 @@ const updateDisplayAddRemoveToCollectionButtons = (modalDivId, collection=null) 
         }
 
         // if display is not in the currently selected collection, hide the "remove from collection" button
-        const displayInCollection = collection.members.some(member => member.display_id === displayId);
+        const displayInCollection = collection.members.some(member => JSON.parse(member).display_id === displayId);
         if (!displayInCollection) {
             disableAndHideElement(removeFromCollectionButton);
         }
