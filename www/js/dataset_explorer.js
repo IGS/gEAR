@@ -492,8 +492,14 @@ const addDatasetListEventListeners = () => {
     // Redirect to gene expression search
     for (const classElt of document.getElementsByClassName("js-view-dataset")) {
         classElt.addEventListener("click", (e) => {
-            // ! Currently redirects to blank page
             window.open(`./p?s=${e.currentTarget.value}`, '_blank');
+        });
+    }
+
+    // Redirect to gene expression search
+    for (const classElt of document.getElementsByClassName("js-view-projection-dataset")) {
+        classElt.addEventListener("click", (e) => {
+            window.open(`./p?p=p&s=${e.currentTarget.value}`, '_blank');
         });
     }
 }
@@ -1045,6 +1051,7 @@ const createRenameDatasetPermalinkPopover = () => {
                     // (since e.currentTarget is null after confirm button is clicked)
                     e.target.closest(".js-action-links").querySelector(".js-edit-dataset-permalink").dataset.shareId = newShareId;
                     e.target.closest(".js-action-links").querySelector(".js-view-dataset").value = newShareId;
+                    e.target.closest(".js-action-links").querySelector(".js-view-projection-dataset").value = newShareId;
                     e.target.closest(".js-action-links").querySelector(".js-share-dataset").value = newShareId;
 
                     popoverContent.remove();
@@ -1904,6 +1911,7 @@ const processSearchResults = (data) => {
 
         // action buttons section
         setElementProperties(listResultsView, ".js-view-dataset", { value: shareId });
+        setElementProperties(listResultsView, ".js-view-projection-dataset", { value: shareId });
         setElementProperties(listResultsView, ".js-view-displays", { dataset: { datasetId, title: label, isPublic } });
         setElementProperties(listResultsView, ".js-delete-dataset", { value: datasetId, dataset: { isOwner } });
         setElementProperties(listResultsView, ".js-edit-dataset-permalink", { value: datasetId, dataset: { isOwner, shareId } });

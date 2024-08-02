@@ -63,7 +63,7 @@ def main():
         params['gene_symbol'] = gene_symbol
 
     # Set gene_symbol_exact_match to 1 by default on pages where it makes sense
-    if page not in ('a', 'de'):
+    if page not in ('a', 'de', 'gcm', 'p'):
         if gene_symbol_exact_match and gene_symbol_exact_match.lower() in [0, '0', 'false', 'f', 'no']:
             params['gene_symbol_exact_match'] = 0
         else:
