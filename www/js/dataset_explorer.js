@@ -2565,7 +2565,6 @@ const updateDatasetCollectionButtons = (collection=null) => {
     }
 
     // Set the visibility of the collection
-    console.log(isPublic);
     const collectionVisibilityInput = document.getElementById("collection-visibility");
     collectionVisibilityInput.closest(".field").querySelector("label").textContent = "Private collection";
     if (isPublic) {
