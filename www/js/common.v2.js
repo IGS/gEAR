@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const head = document.getElementsByTagName('head')[0];
         const ga_script = document.createElement('script');
         ga_script.src = "https://www.googletagmanager.com/gtag/js?id=" + SITE_PREFS['google_analytics_4_measurement_id'];
-        ga_script.async = ""
+        ga_script.async = true;
         head.append(ga_script)
 
         window.dataLayer = window.dataLayer || [];
