@@ -24,7 +24,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const logoSmall = document.getElementById('navbar-logo-small');
         logoSmall.src = "/img/by_domain/" + SITE_PREFS.domain_label + "/logo-main-small.png"
-        console.debug("Set logo to: " + logoNormal.src);
+        
+        // Load analytics
+        const head = document.getElementsByTagName('head')[0];
+        const ga_script = document.createElement('script');
+        ga_script.src = "https://www.googletagmanager.com/gtag/js?id=" + SITE_PREFS['google_analytics_4_measurement_id'];
+        ga_script.async = ""
+        head.append(ga_script)
+
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', SITE_PREFS['google_analytics_4_measurement_id']);
     });
 
     // set the active primary nav element, deselect the rest
