@@ -327,15 +327,16 @@ def get_layout_by_id(layout_id):
     layout = None
 
     qry = """
-          SELECT id, user_id, label, is_current, is_domain, share_id
+          SELECT id, user_id, label, is_current, is_domain, share_id, is_public
           FROM layout
           WHERE id = %s
     """
     cursor.execute(qry, (layout_id,))
 
-    for (id, user_id, label, is_current, is_domain, share_id) in cursor:
+    for (id, user_id, label, is_current, is_domain, share_id, is_public) in cursor:
         layout = Layout(id=id, user_id=user_id, is_domain=is_domain,
-                        label=label, is_current=is_current, share_id=share_id)
+                        label=label, is_current=is_current,
+                        share_id=share_id, is_public=is_public)
         break
 
     cursor.close()
