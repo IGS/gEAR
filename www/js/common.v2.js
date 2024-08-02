@@ -1409,6 +1409,19 @@ const apiCallsMixin = {
     },
 
     /**
+     * Updates the visibility of a dataset collection in the layout.
+     *
+     * @param {string} layoutShareId - The ID of the layout share.
+     * @param {string} newVisibility - The new visibility value for the dataset collection.
+     * @returns {Promise<any>} - A promise that resolves to the updated data.
+     */
+    async updateDatasetCollectionVisibility(layoutShareId, newVisibility) {
+        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, visibility: newVisibility};
+        const {data} = await axios.post("/cgi/update_layout_visibility.cgi", convertToFormData(payload));
+        return data;
+    },
+
+    /**
      * Updates the share ID with a new share ID.
      *
      * @param {string} shareId - The current share ID.

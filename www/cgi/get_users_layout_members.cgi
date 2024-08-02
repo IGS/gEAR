@@ -49,6 +49,10 @@ def main():
     if user and layout.user_id == user.id:
         result["is_owner"] = True
 
+    result["is_public"] = layout.is_public
+    if not layout.is_public:
+        result["is_public"] = False
+
     #Alphabetize layouts
     print(json.dumps(result))
 

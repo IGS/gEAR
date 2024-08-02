@@ -1681,6 +1681,7 @@ const datasetCollectionSelectionCallback = async () => {
     }
 
     // If the selected dataset collection is the current collection, make it look like the primary collection
+    // ! Currently the selector will auto-make that collection the primary collection
     document.getElementById("btn-set-primary-collection").classList.add("is-outlined");
     if (selected_dc_share_id === CURRENT_USER.layout_share_id) {
         document.getElementById("btn-set-primary-collection").classList.remove("is-outlined");
@@ -2108,8 +2109,6 @@ const renderDisplaysModal = async (datasetId, title, isPublic) => {
 
     // Add modal to DOM
     document.body.append(modalHTML);
-
-
 
     // Set state of initial display add/remove buttons based on the initial dataset collection.
     updateDisplayAddRemoveToCollectionButtons(modalDiv.id, collection);
@@ -2546,19 +2545,48 @@ const updateDatasetCollectionButtons = (collection=null) => {
 
     // If user is not the owner of the collection, remove the delete and rename buttons
     const isOwner = (collection && Boolean(collection.is_owner)) || false;
+    const isPublic = (collection && Boolean(collection.is_public)) || false;
 
     const collectionRenameButton = document.getElementById("btn-rename-collection");
     const collectionRenamePermalinkButton = document.getElementById("btn-rename-collection-permalink");
     const collectionDeleteButton = document.getElementById("btn-delete-collection");
+    const collectionVisibilityContainer = document.getElementById("collection-visibility-c");
 
     enableAndShowElement(collectionRenameButton);
     enableAndShowElement(collectionRenamePermalinkButton);
     enableAndShowElement(collectionDeleteButton);
+    enableAndShowElement(collectionVisibilityContainer);
     if (!isOwner) {
         disableAndHideElement(collectionRenameButton);
         disableAndHideElement(collectionRenamePermalinkButton);
         disableAndHideElement(collectionDeleteButton);
+        disableAndHideElement(collectionVisibilityContainer);
+        return;
     }
+
+    // Set the visibility of the collection
+    console.log(isPublic);
+    const collectionVisibilityInput = document.getElementById("collection-visibility");
+    collectionVisibilityInput.closest(".field").querySelector("label").textContent = "Private collection";
+    if (isPublic) {
+        // If the checkbox is checked, change label accordingly
+        collectionVisibilityInput.closest(".field").querySelector("label").textContent = "Public collection";
+    }
+    collectionVisibilityInput.checked = isPublic;
+
+    // Add event to update the collection visibility on the server
+    collectionVisibilityInput.addEventListener("change", async (event) => {
+        const visibility = event.target.checked;
+        try {
+            await apiCallsMixin.updateDatasetCollectionVisibility(selected_dc_share_id, visibility);
+            createToast("Collection visibility updated");
+        } catch (error) {
+            logErrorInConsole(error);
+            createToast("Failed to update collection visibility");
+        }
+        // update label
+        event.target.closest(".field").querySelector("label").textContent = visibility ? "Public collection" : "Private collection";
+    });
 
 }
 
