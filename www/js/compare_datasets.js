@@ -637,12 +637,16 @@ const plotDataToGraph = (data) => {
 		document.getElementById("download-selected-genes-btn").classList.add("is-hidden");
 		document.querySelector("input[name='genecart_type'][value='unweighted']").disabled = true;
 		document.querySelector("input[name='genecart_type'][value='unweighted']").parentElement.setAttribute("disabled", "disabled");
+		// click the weighted radio button
+		document.querySelector("input[name='genecart_type'][value='weighted']").click();
 
 		if (eventData?.points.length) {
 			document.getElementById("tbl-selected-genes").classList.remove("is-hidden");
 			document.getElementById("download-selected-genes-btn").classList.remove("is-hidden");
 			document.querySelector("input[name='genecart_type'][value='unweighted']").disabled = false;
 			document.querySelector("input[name='genecart_type'][value='unweighted']").parentElement.removeAttribute("disabled");
+			// click the unweighted radio button
+			document.querySelector("input[name='genecart_type'][value='unweighted']").click();
 
 			adjustGeneTableLabels();
 			populateGeneTable(eventData);
