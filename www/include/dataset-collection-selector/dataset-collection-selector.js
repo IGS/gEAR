@@ -86,6 +86,7 @@ const fetchDatasetCollections = async (includeMembers=false) => {
 
     try {
         dataset_collection_data = await apiCallsMixin.fetchDatasetCollections({includeMembers, layoutShareId});
+
         document.querySelector('#dropdown-dc').classList.remove('is-loading');
         document.querySelector('#dropdown-dc').classList.remove('is-disabled');
 
@@ -172,8 +173,8 @@ const setActiveDCCategory = (category) => {
 
     // sort the data by label before iterating
     data.sort((a, b) => {
-        if (a.label < b.label) {return -1}
-        if (a.label > b.label) {return 1}
+        if (a.label.toUpperCase() < b.label.toUpperCase()) {return -1}
+        if (a.label.toUpperCase() > b.label.toUpperCase()) {return 1}
         return 0;
     });
 
