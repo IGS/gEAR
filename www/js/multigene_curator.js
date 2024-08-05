@@ -210,6 +210,12 @@ class GenesAsAxisHandler extends PlotHandler {
     async setupPlotSpecificEvents() {
         catColumns = await getCategoryColumns();
 
+        if (!catColumns.length) {
+            document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
+            createToast("No categorical columns found in dataset. Cannot create a plot. Please choose another dataset");
+            return;
+        }
+
         updateSeriesOptions("js-dash-primary", catColumns);
         updateSeriesOptions("js-dash-secondary", catColumns);
 
@@ -575,6 +581,13 @@ class GenesAsDataHandler extends PlotHandler {
     async setupPlotSpecificEvents() {
 
         catColumns = await getCategoryColumns();
+
+        if (!catColumns.length) {
+            document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
+            createToast("No categorical columns found in dataset. Cannot create a plot. Please choose another dataset");
+            return;
+        }
+
         updateSeriesOptions("js-dash-compare", catColumns);
 
         // When compare series changes, update the compare groups

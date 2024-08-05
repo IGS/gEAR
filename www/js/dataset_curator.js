@@ -1109,6 +1109,12 @@ const setupPlotlyOptions = async () => {
         }
     }
 
+    if (!allColumns.length) {
+        document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
+        createToast("No metadata columns found in dataset. Cannot create a plot. Please choose another dataset");
+        return;
+    }
+
     catColumns = Object.keys(levels);
 
 
@@ -1141,7 +1147,6 @@ const setupPlotlyOptions = async () => {
         }
     }
 
-
     const xAxisSeriesElts = document.getElementsByClassName("js-plotly-x-axis");
     // If x-axis is categorical, enable jitter plots
     if (["violin", "scatter", "tsne_dyna"].includes(plotType)) {
@@ -1166,7 +1171,6 @@ const setupPlotlyOptions = async () => {
             });
         }
     }
-
 
     if (["scatter", "tsne_dyna"].includes(plotType)) {
         updateSeriesOptions("js-plotly-size", continuousColumns, true);
@@ -1262,6 +1266,41 @@ const setupPlotlyOptions = async () => {
         });
     }
 
+    // Ensure that the same series is not selected for both x-axis and y-axis (plot would be meaningless)
+    for (const classElt of [...document.getElementsByClassName("js-plotly-x-axis"), ...document.getElementsByClassName("js-plotly-y-axis")]) {
+        // if x-axis series changes, disable that option in y-axis series, and vice versa
+        classElt.addEventListener("change", (event) => {
+            const series = event.target.value;
+
+            // if no series selected, do nothing
+            if (!series) {
+                return;
+            }
+
+            const otherClass = event.target.classList.contains("js-plotly-x-axis") ? "js-plotly-y-axis" : "js-plotly-x-axis";
+
+            for (const otherClassElt of [...document.getElementsByClassName(otherClass)]) {
+                // enable all series
+                for (const opt of otherClassElt.options) {
+                    opt.removeAttribute("disabled");
+                }
+                // disable selected series in other series
+                const opt = otherClassElt.querySelector(`option[value="${series}"]`);
+
+                // If bar/violin plot, continuous y-axis but categorical x-axis
+                if (!opt) {
+                    continue;
+                }
+
+                opt.setAttribute("disabled", "disabled");
+                // If this option was selected, unselect it
+                if (otherClassElt.value === series) {
+                    otherClassElt.value = "";
+                }
+            }
+        });
+    }
+
     // Trigger event to enable plot button (in case we switched between plot types, since the HTML vals are saved)
     const xSeries = document.getElementById("x-axis-series");
     const ySeries = document.getElementById("y-axis-series");
@@ -1327,6 +1366,13 @@ const setupScanpyOptions = async () => {
             delete levels[key];
         }
     }
+
+    if (!allColumns.length) {
+        document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
+        createToast("No metadata columns found in dataset. Cannot create a plot. Please choose another dataset");
+        return;
+    }
+
     catColumns = Object.keys(levels);
 
     let xDefaultOption = null;
@@ -1411,6 +1457,33 @@ const setupScanpyOptions = async () => {
             }
             updateOrderSortable();
 
+        });
+    }
+
+    // Ensure that the same series is not selected for both x-axis and y-axis (plot would be meaningless)
+    for (const classElt of [...document.getElementsByClassName("js-tsne-x-axis"), ...document.getElementsByClassName("js-tsne-y-axis")]) {
+        // if x-axis series changes, disable that option in y-axis series, and vice versa
+        classElt.addEventListener("change", (event) => {
+            const series = event.target.value;
+            if (!series) {
+                return;
+            }
+
+            const otherClass = event.target.classList.contains("js-tsne-x-axis") ? "js-tsne-y-axis" : "js-tsne-x-axis";
+
+            for (const otherClassElt of [...document.getElementsByClassName(otherClass)]) {
+                // enable all series
+                for (const opt of otherClassElt.options) {
+                    opt.removeAttribute("disabled");
+                }
+                // disable selected series in other series
+                const opt = otherClassElt.querySelector(`option[value="${series}"]`);
+                opt.setAttribute("disabled", "disabled");
+                // If this option was selected, unselect it
+                if (otherClassElt.value === series) {
+                    otherClassElt.value = "";
+                }
+            }
         });
     }
 

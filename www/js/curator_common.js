@@ -9,7 +9,7 @@ let facetWidget = null;
 //let plotConfig = {};  // Plot config that is passed to API or stored in DB
 let allColumns = [];
 let catColumns = [];
-let levels = {};    // categorical columns + groups
+let levels = {};    // categorical columns as keys + groups as values
 
 let datasetId = null;
 let organismId = null;
@@ -487,7 +487,7 @@ const analysisSelectUpdate = async () => {
  * @param {Event} event - The event object.
  * @returns {Promise<void>} - A promise that resolves when the analysis is chosen and the UI is updated.
  */
-const chooseAnalysis = async (event) => {
+const chooseAnalysis = async () => {
     const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
     const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
     const analysisText = (analysisId?.length) ? analysisId : "Primary Analysis";
@@ -522,7 +522,7 @@ const chooseAnalysis = async (event) => {
  * @param {Event} event - The event object.
  * @returns {Promise<void>} - A promise that resolves when the display is updated.
  */
-const chooseNewDisplay = async (event) => {
+const chooseNewDisplay = async () => {
     document.getElementById('new-display').classList.add("is-loading");
     document.getElementById("analysis-select").disabled = false;
 
@@ -553,7 +553,7 @@ const chooseNewDisplay = async (event) => {
  * @param {Event} event - The event object.
  * @returns {Promise<void>} - A promise that resolves once the plot type is chosen.
  */
-const choosePlotType = async (event) => {
+const choosePlotType = async () => {
     if (!plotTypeSelect.selectedOptions.length) return;   // Do not trigger after setting disable/enable on options
 
     // Do not display if default opt is chosen
@@ -602,7 +602,7 @@ const cloneDisplay = async (event, display) => {
     const cloneElt = event.currentTarget;
     cloneElt.classList.add("is-loading");
 
-    updateDatasetGenes(),
+    await updateDatasetGenes(),
 
     document.getElementById("analysis-select").disabled = false;
     document.getElementById("plot-type-select").disabled = false;
@@ -1551,9 +1551,9 @@ const validateRequirements = (event) => {
     document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
 }
 
-document.getElementById("new-display").addEventListener("click", chooseNewDisplay);
-document.getElementById("analysis-select").addEventListener("change", chooseAnalysis);
-document.getElementById("plot-type-select").addEventListener("change", choosePlotType);
+document.getElementById("new-display").addEventListener("click", async (event) => chooseNewDisplay());
+document.getElementById("analysis-select").addEventListener("change", async (event) => chooseAnalysis());
+document.getElementById("plot-type-select").addEventListener("change", async (event) =>  choosePlotType());
 
 const plotBtns = document.getElementsByClassName("js-plot-btn");
 for (const plotBtn of plotBtns) {
