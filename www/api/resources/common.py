@@ -35,7 +35,6 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
         # Create the anndata object and write to h5ad
         # Associate with a filename to ensure AnnData is read in "backed" mode
         projection_adata = anndata.AnnData(X=X, obs=obs, var=var, obsm=dataset_adata.obsm, filename=projection_adata_path, filemode='r')
-
     except Exception as e:
         print(str(e), file=sys.stderr)
         raise PlotError("Could not create projection AnnData object from CSV.")
@@ -45,8 +44,6 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
 
     # For some reason the gene_symbol is not taken in by the constructor
     projection_adata.var["gene_symbol"] = projection_adata.var_names
-
-    print(projection_adata.var, file=sys.stderr)
 
     return projection_adata
 
