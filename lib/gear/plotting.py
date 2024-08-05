@@ -360,7 +360,14 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
 
 
     # Round y values to 2 decimal places for hover data
-    df["y_rounded"] = df[y].astype(float).round(2)
+    try:
+        df["y_rounded"] = df[y].astype(float).round(2)
+    except:
+        # If y is not a number, try x.  If that is not a number, use y as is
+        try:
+            df["y_rounded"] = df[x].astype(float).round(2)
+        except:
+            df["y_rounded"] = df[y]
 
     # These labels allows use to override these labels used for axis titles, etc.
     labels_dict = {x:x_title, y:y_title, "color_name":""}

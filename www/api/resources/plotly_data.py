@@ -383,6 +383,9 @@ class PlotlyData(Resource):
             return_dict["message"] = str(pe)
             return return_dict
         except Exception as e:
+            # print stacktrace to stderr
+            import traceback
+            traceback.print_exc()
             return_dict["success"] = -1
             return_dict["message"] = "Encountered error: {}".format(str(e))
             return return_dict
