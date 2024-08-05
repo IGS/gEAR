@@ -1,16 +1,15 @@
 import json
-import os
-from pathlib import Path
 
 import gear.mg_plotting as mg
 import geardb
 import pandas as pd
 from flask import request
 from flask_restful import Resource
-from gear.mg_plotting import PlotError
 from plotly.utils import PlotlyJSONEncoder
 
-from werkzeug.utils import secure_filename
+from gear.mg_plotting import PlotError
+from .common import create_projection_adata, order_by_time_point
+
 
 # SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 # This is meant to be a short-term solution until more people specify their data is transformed via the metadata
@@ -56,26 +55,7 @@ LOG10_TRANSFORMED_DATASETS = [
 , "80eadbe6-49ac-8eaf-f2fb-e07706cf117b"    # HRP dataset
 ]
 
-TWO_LEVELS_UP = 2
-abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
-PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
-
 CLUSTER_LIMIT = 5000
-
-def order_by_time_point(obs_df):
-    """Order observations by time point column if it exists."""
-    # check if time point order is intially provided in h5ad
-    time_point_order = obs_df.get('time_point_order')
-    if (time_point_order is not None and 'time_point' in obs_df.columns):
-        sorted_df = obs_df.drop_duplicates().sort_values(by='time_point_order')
-        # Safety check. Make sure time point is categorical before
-        # calling .cat
-        obs_df['time_point'] = pd.Categorical(obs_df['time_point'])
-        col = obs_df['time_point'].cat
-        obs_df['time_point'] = col.reorder_categories(
-            sorted_df.time_point.drop_duplicates(), ordered=True)
-        obs_df = obs_df.drop(['time_point_order'], axis=1)
-    return obs_df
 
 def create_composite_index_column(df, columns):
     """
@@ -97,39 +77,6 @@ def create_composite_index_column(df, columns):
         dtype: object
     """
     return df.obs[columns].apply(lambda x: ';'.join(map(str, x)), axis=1)
-
-def create_projection_adata(dataset_adata, dataset_id, projection_id):
-    # Create AnnData object out of readable CSV file
-    # ? Does it make sense to put this in the geardb/Analysis class?
-    projection_id = secure_filename(projection_id)
-    dataset_id = secure_filename(dataset_id)
-
-    import scanpy as sc
-    projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
-    # Sanitize input to prevent path traversal
-    projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
-
-    # SAdkins - Run into issues where the h5ad present had different observation columns than the dataset adata, leading to KeyError
-    #  when using certain columns. For now, we will always createa new backed h5ad file.
-    #if projection_adata_path.is_file():
-    #    return sc.read_h5ad(projection_adata_path)#, backed="r")
-
-    projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
-    try:
-        projection_adata = sc.read_csv(projection_csv_path)
-    except Exception as e:
-        import sys
-        print(str(e), file=sys.stderr)
-        raise PlotError("Could not create projection AnnData object from CSV.")
-    projection_adata.obs = dataset_adata.obs
-    projection_adata.obsm = dataset_adata.obsm
-    # Close dataset adata so that we do not have a stale opened object
-    if dataset_adata.isbacked:
-        dataset_adata.file.close()
-    projection_adata.var["gene_symbol"] = projection_adata.var_names
-    # Associate with a filename to ensure AnnData is read in "backed" mode
-    projection_adata.filename = projection_adata_path
-    return projection_adata
 
 class MultigeneDashData(Resource):
     """Resource for retrieving data from h5ad to be used to draw charts on UI.

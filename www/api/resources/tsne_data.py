@@ -3,9 +3,7 @@ import base64
 import io
 import os
 import re
-import sys
 from math import ceil
-from pathlib import Path
 
 import geardb
 import matplotlib as mpl
@@ -17,9 +15,9 @@ import scanpy as sc
 
 from flask import request
 from flask_restful import Resource
-from matplotlib import cm
 
-from werkzeug.utils import secure_filename
+from gear.plotting import PlotError
+from .common import create_projection_adata
 
 sc.settings.verbosity = 0
 
@@ -33,17 +31,6 @@ COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
 NUM_LEGENDS_PER_COL = 12    # Max number of legend items per column allowed in vertical legend
 NUM_HORIZONTAL_COLS = 8 # Number of columns in horizontal legend
-
-TWO_LEVELS_UP = 2
-abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
-PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
-
-class PlotError(Exception):
-    """Error based on plotting issues."""
-    def __init__(self, message="") -> None:
-        self.message = message
-        super().__init__(self.message)
-
 
 def calculate_figure_height(num_plots):
     """Determine height of tsne plot based on number of group elements."""
@@ -76,37 +63,6 @@ def create_colorscale_with_zero_gray(colorscale):
     gray = np.array([192/256, 192/256, 192/256, 1])
     newcolors[0, :] = gray
     return mcolors.ListedColormap(newcolors)
-
-def create_projection_adata(dataset_adata, dataset_id, projection_id):
-    # Create AnnData object out of readable CSV file
-    # ? Does it make sense to put this in the geardb/Analysis class?
-    projection_id = secure_filename(projection_id)
-    dataset_id = secure_filename(dataset_id)
-
-    projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
-    # Sanitize input to prevent path traversal
-    projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
-
-    # SAdkins - Run into issues where the h5ad present had different observation columns than the dataset adata, leading to KeyError
-    #  when using certain columns. For now, we will always createa new backed h5ad file.
-    #if projection_adata_path.is_file():
-    #    return sc.read_h5ad(projection_adata_path)#, backed="r")
-
-    projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
-    try:
-        projection_adata = sc.read_csv(projection_csv_path)
-    except Exception as e:
-        print(str(e), file=sys.stderr)
-        raise PlotError("Could not create projection AnnData object from CSV.")
-    projection_adata.obs = dataset_adata.obs
-    projection_adata.obsm = dataset_adata.obsm
-    # Close dataset adata so that we do not have a stale opened object
-    if dataset_adata.isbacked:
-        dataset_adata.file.close()
-    projection_adata.var["gene_symbol"] = projection_adata.var_names
-    # Associate with a filename to ensure AnnData is read in "backed" mode
-    projection_adata.filename = projection_adata_path
-    return projection_adata
 
 def create_bublrd_colorscale():
     """Create a diverging colorscale but with black in the middle range."""

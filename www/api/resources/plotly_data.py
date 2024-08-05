@@ -1,74 +1,20 @@
 import copy
 import json
 import numbers
-import os
 import re
 import sys
-from pathlib import Path
 
 import geardb
 import pandas as pd
 import plotly.express.colors as pxc
 from flask import request
 from flask_restful import Resource
-
-from werkzeug.utils import secure_filename
-
-from gear.plotting import PlotError, generate_plot, plotly_color_map
 from plotly.utils import PlotlyJSONEncoder
 
+from gear.plotting import PlotError, generate_plot, plotly_color_map
+from .common import create_projection_adata, order_by_time_point
+
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
-
-TWO_LEVELS_UP = 2
-abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
-PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
-
-def create_projection_adata(dataset_adata, dataset_id, projection_id):
-    # Create AnnData object out of readable CSV file
-    # ? Does it make sense to put this in the geardb/Analysis class?
-    projection_id = secure_filename(projection_id)
-    dataset_id = secure_filename(dataset_id)
-
-    import scanpy as sc
-    projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
-    # Sanitize input to prevent path traversal
-    projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
-
-    # SAdkins - Run into issues where the h5ad present had different observation columns than the dataset adata, leading to KeyError
-    #  when using certain columns. For now, we will always createa new backed h5ad file.
-    #if projection_adata_path.is_file():
-    #    return sc.read_h5ad(projection_adata_path)#, backed="r")
-
-    projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
-    try:
-        projection_adata = sc.read_csv(projection_csv_path)
-    except Exception as e:
-        print(str(e), file=sys.stderr)
-        raise PlotError("Could not create projection AnnData object from CSV.")
-    projection_adata.obs = dataset_adata.obs
-    projection_adata.obsm = dataset_adata.obsm
-    # Close dataset adata so that we do not have a stale opened object
-    if dataset_adata.isbacked:
-        dataset_adata.file.close()
-    projection_adata.var["gene_symbol"] = projection_adata.var_names
-    # Associate with a filename to ensure AnnData is read in "backed" mode
-    projection_adata.filename = projection_adata_path
-    return projection_adata
-
-def order_by_time_point(obs_df):
-    """Order observations by time point column if it exists."""
-    # check if time point order is intially provided in h5ad
-    time_point_order = obs_df.get('time_point_order')
-    if (time_point_order is not None and 'time_point' in obs_df.columns):
-        sorted_df = obs_df.drop_duplicates().sort_values(by='time_point_order')
-        # Safety check. Make sure time point is categorical before
-        # calling .cat
-        obs_df['time_point'] = pd.Categorical(obs_df['time_point'])
-        col = obs_df['time_point'].cat
-        obs_df['time_point'] = col.reorder_categories(
-            sorted_df.time_point.drop_duplicates(), ordered=True)
-        obs_df = obs_df.drop(['time_point_order'], axis=1)
-    return obs_df
 
 class PlotlyData(Resource):
     """Resource for retrieving data from h5ad to be used to draw charts on UI.
