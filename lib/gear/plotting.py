@@ -501,7 +501,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
         priority_groups = _build_priority_groups(facet_row, facet_col, color_name, x)
         if priority_groups:
             # Groupby will not include combinations with missing data.  This can result in missing traces for a group
-            grouped = df.groupby(priority_groups)
+            grouped = df.groupby(priority_groups, observed=False)
             names_in_legend = {}
             # Name is a tuple of groupings, or a string if grouped by only 1 dataseries
             # Group is the 'groupby' dataframe
