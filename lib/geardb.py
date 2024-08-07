@@ -1728,6 +1728,38 @@ class DatasetDisplay:
             cursor.close()
             conn.close()
 
+    def remove(self):
+        """
+        Deletes the current display from the database.
+        """
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        # first remove any layout_display entries
+        qry = """
+                DELETE FROM layout_displays
+                WHERE display_id = %s
+        """
+        cursor.execute(qry, (self.id,))
+
+        # Then remove from anly dataset_preference entries
+        qry = """
+                DELETE FROM dataset_preference
+                WHERE display_id = %s
+        """
+        cursor.execute(qry, (self.id,))
+
+        # Then remove the display itself
+        qry = """
+                DELETE FROM dataset_display
+                WHERE id = %s
+        """
+        cursor.execute(qry, (self.id,))
+
+        cursor.close()
+        conn.commit()
+        conn.close()
+
 @dataclass
 class Dataset:
     id: str
