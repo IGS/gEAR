@@ -170,6 +170,7 @@ class Analysis {
             document.querySelector(UI.newAnalysisOptionElt).setAttribute("selected", "selected");
             document.querySelector(UI.analysisSelect).dispatchEvent(new Event("change"));
             await this.getSavedAnalysesList(this.dataset.id, 0);
+            resetStepperWithHrefs(UI.primaryFilterSection);
 
         } catch (error) {
             createToast(`Error deleting analysis: ${error.message}`);

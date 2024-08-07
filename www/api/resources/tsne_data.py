@@ -211,13 +211,15 @@ class TSNEData(Resource):
 
         try:
             ana = geardb.get_analysis(analysis, dataset_id, session_id)
+            adata = ana.get_adata(backed=True)
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return {
                 "success": -1,
                 "message": str(e)
             }
 
-        adata = ana.get_adata(backed=True)
 
         if projection_id:
             try:
