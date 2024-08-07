@@ -616,6 +616,13 @@ for (const button of document.querySelectorAll(UI.analysisDeleteElts)) {
     })
 }
 
+for (const button of document.querySelectorAll(UI.analysisDownloadElts)) {
+    button.addEventListener("click", (event) => {
+        // Download the current analysis
+        currentAnalysis.download();
+    });
+}
+
 // Show the "rename" analysis label input when the button is clicked
 for (const button of document.querySelectorAll(UI.analysisRenameElts)) {
     button.addEventListener("click", (event) => {

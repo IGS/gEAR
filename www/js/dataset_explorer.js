@@ -291,16 +291,21 @@ const addDatasetListEventListeners = () => {
 
     for (const classElt of document.getElementsByClassName("js-download-dataset")) {
         classElt.addEventListener("click", async (e) => {
-            // download the h5ad
-            const datasetId = e.currentTarget.dataset.datasetId;
-            const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${datasetId}`;
-            const {data} = await axios.get(url, {responseType: 'blob'});
-            const blob = new Blob([data], {type: 'application/octet-stream'});
-            const downloadUrl = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = downloadUrl;
-            a.download = `${datasetId}.h5ad`;
-            a.click();
+            try {
+                // download the h5ad
+                const datasetId = e.currentTarget.dataset.datasetId;
+                const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${datasetId}`;
+                const {data} = await axios.get(url, {responseType: 'blob'});
+                const blob = new Blob([data], {type: 'application/octet-stream'});
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `${datasetId}.h5ad`;
+                a.click();
+            } catch (error) {
+                logErrorInConsole(error);
+                createToast("Failed to download dataset");
+            }
         });
     }
 

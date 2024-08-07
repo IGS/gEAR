@@ -177,6 +177,34 @@ class Analysis {
         }
     }
 
+    async download() {
+
+        // create URL parameters
+        const params = {
+            session_id: this.userSessionId,
+            dataset_id: this.dataset.id,
+            analysis_id: this.id,
+            type: "h5ad",
+        }
+
+        // download the h5ad
+        const url = `./cgi/download_source_file.cgi?${new URLSearchParams(params).toString()}`;
+        try {
+            const {data} = await axios.get(url, {responseType: 'blob'});
+            const blob = new Blob([data], {type: 'application/octet-stream'});
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `${this.dataset.id}.${this.id}.h5ad`;
+            a.click();
+        } catch (error) {
+            console.error("Error downloading analysis h5ad", this);
+            logErrorInConsole(error);
+            createToast(`Error downloading analysis h5ad`);
+        }
+
+    }
+
     /**
      * Retrieves the stored analysis data from the server.
      * @returns {Promise<void>} A promise that resolves when the analysis data is retrieved.
@@ -518,9 +546,11 @@ class Analysis {
             const imgSrc = response.request.responseURL;
             const html = `<a target="_blank" href="${imgSrc}"><img src="${imgSrc}" class="image" alt="${title}" /></a>`;
             document.querySelector(target).innerHTML = html;
-        } else {
-            console.error(`Error: ${response.status}`);
+            return;
         }
+
+        console.error(`Error: ${response.status}`);
+        createToast(`Error getting analysis image`);
     }
 
     /**

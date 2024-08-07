@@ -34,6 +34,7 @@ class AnalysisUI {
     analysisPublicElt = "#analyses-public"
     analysisRenameElts = ".js-show-rename-input"
     analysisDeleteElts = ".js-delete-analysis"
+    analysisDownloadElts = ".js-download-analysis"
     analysisActionContainer = "#analysis-action-c"
     btnSaveAnalysisElt = "#btn-save-analysis"
     btnDeleteUnsavedAnalysisElt = "#btn-delete-unsaved-analysis"

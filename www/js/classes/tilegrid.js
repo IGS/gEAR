@@ -751,8 +751,14 @@ class DatasetTile {
                 case "download-bundle":
                     // Download dataset bundle
                     if (hasTarball && isDownloadable) {
-                        const url = `./cgi/download_source_file.cgi?type=tarball&dataset_id=${datasetId}`;
-                        item.href = url;
+                        try {
+                            const url = `./cgi/download_source_file.cgi?type=tarball&dataset_id=${datasetId}`;
+                            item.href = url;
+                        } catch (error) {
+                            logErrorInConsole(error);
+                            createToast("An error occurred while trying to download the dataset bundle.");
+                        }
+
                     } else {
                         item.classList.add("is-hidden");
                     }
@@ -760,8 +766,13 @@ class DatasetTile {
                 case "download-h5ad":
                     // Download h5ad file
                     if (hasH5ad && isDownloadable) {
-                        const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${datasetId}`;
-                        item.href = url;
+                        try {
+                            const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${datasetId}`;
+                            item.href = url;
+                        } catch (error) {
+                            logErrorInConsole(error);
+                            createToast("An error occurred while trying to download the h5ad file.");
+                        }
                     } else {
                         item.classList.add("is-hidden");
                     }
