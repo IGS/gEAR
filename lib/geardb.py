@@ -104,7 +104,7 @@ def get_analysis(analysis, dataset_id, session_id):
         if 'type' in analysis:
             ana.type = analysis['type']
         else:
-            ana.discover_type(current_user_id=user_id)
+            ana.discover_type()
     else:
         ds = Dataset(id=dataset_id, has_h5ad=1)
         h5_path = ds.get_file_path()
@@ -682,7 +682,7 @@ class Analysis:
             return 'community'
 
 
-    def discover_type(self, current_user_id=None):
+    def discover_type(self):
         """
         Given an analysis ID it's technically possible to scan the directory hierarchies and
         find the type.
