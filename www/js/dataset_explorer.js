@@ -349,6 +349,15 @@ const addDatasetListEventListeners = () => {
             const title = document.querySelector(`${selectorBase}-editable-title`).dataset.originalVal;
             document.querySelector(`${selectorBase}-editable-title`).value = title;
 
+            const ldesc = document.querySelector(`${selectorBase}-editable-ldesc`).dataset.originalVal;
+            document.querySelector(`${selectorBase}-editable-ldesc`).value = ldesc;
+
+            const pubmedId = document.querySelector(`${selectorBase}-editable-pubmed-id`).dataset.originalVal;
+            document.querySelector(`${selectorBase}-editable-pubmed-id`).value = pubmedId;
+
+            const geoId = document.querySelector(`${selectorBase}-editable-geo-id`).dataset.originalVal;
+            document.querySelector(`${selectorBase}-editable-geo-id`).value = geoId;
+
             document.querySelector(`${selectorBase} .js-action-links`).classList.remove("is-hidden");
 
         });
