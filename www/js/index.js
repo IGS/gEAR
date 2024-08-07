@@ -4,6 +4,14 @@ let manually_entered_genes = [];
 
 document.addEventListener('DOMContentLoaded', () => {
 
+    // if URL params are present, the user probably pasted a v1 URL into the browser
+    //  so we should redirect them to the new expression URL but keep the same parameters
+    if (window.location.search) {
+        const url = new URL('/expression.html', window.location.origin);
+        url.search = window.location.search;
+        window.location = url.toString();
+    }
+
     // handle when the dropdown-gene-list-search-input input box is changed
     document.getElementById('genes-manually-entered').addEventListener('change', (event) => {
         const search_term_string = event.target.value;
