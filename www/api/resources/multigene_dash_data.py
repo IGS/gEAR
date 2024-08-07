@@ -142,6 +142,8 @@ class MultigeneDashData(Resource):
 
         try:
             ana = geardb.get_analysis(analysis, dataset_id, session_id)
+            # Using adata with "backed" mode does not work with volcano plot
+            adata = ana.get_adata(backed=False)
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -149,9 +151,6 @@ class MultigeneDashData(Resource):
                 'success': -1,
                 'message': str(e),
             }
-
-        # Using adata with "backed" mode does not work with volcano plot
-        adata = ana.get_adata(backed=False)
 
         adata.obs = order_by_time_point(adata.obs)
 
