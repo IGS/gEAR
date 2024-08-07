@@ -27,7 +27,11 @@ def main():
     result = {'success': 0, 'message': ''}
 
     filename = form['dataset_file'].filename
-    file_extension = filename.split('.')[-1]
+
+    if filename.endswith('.tar.gz'):
+        file_extension = 'tar.gz'
+    else:
+        file_extension = filename.split('.')[-1]
 
     # This should already have been created when the metadata was stored
     user_upload_file_base = "../uploads/files/{0}".format(session_id)
