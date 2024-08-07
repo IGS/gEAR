@@ -70,6 +70,35 @@
             </div>
 
             <div id="logged-in-c" class="is-hidden">
+              <div id="submissions-in-progress" class="is-hidden">
+                <h1>Submissions in progress</h1>
+                <p class="mb-4">
+                  This table has entries for any uploads you have in progress. Click to resume or see more
+                  details about the status.
+                </p>
+                <table class="table is-fullwidth">
+                  <thead class="has-text-weight-semibold">
+                    <tr>
+                      <th>Share ID</th>
+                      <th>Status</th>
+                      <th>Dataset type</th>
+                      <th>Title</th>
+                    </tr>
+                  </thead>
+                  <tbody id="submissions-in-progress-table-tbody"></tbody>
+                </table>
+                <template id="submission-history-row">
+                  <tr data-share-id="">
+                    <td class="submission-share-id"></td>
+                    <td class="submission-status"></td>
+                    <td class="submission-dataset-type"></td>
+                    <td class="submission-title"></td>
+                  </tr>
+                </template>
+                <hr />
+                <h1>Or start a new submission:</h1>
+              </div>
+
               <div id="step-graphic-c">
                 <ul class="steps has-content-centered">
                   <li id='step-enter-metadata' class="steps-segment is-active">

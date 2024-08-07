@@ -12,6 +12,17 @@ div#logged-in-c {
 div.step-c {
 	margin-top: 20px;
 }
+div#submissions-in-progress table {
+	border: 1px solid #ccc;
+	/*background-color: #dbdbdb;*/
+}
+div#submissions-in-progress table th {
+	background-color: #f0f0f0;
+}
+div#submissions-in-progress table tbody tr:hover {
+	background-color: #dbdbdb;
+	cursor: pointer;
+}
 h1 {
 	font-size: 130%;
 	font-weight: bold;

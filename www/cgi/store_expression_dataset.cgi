@@ -4,7 +4,7 @@
 Used by the expression uploader, this stores the actual dataset from the form
 and saves it to a file for processing.
 
-Writes a file at: ../uploads/files/<session_id>_<share_uid>.<ext>
+Writes a file at: ../uploads/files/<session_id>/<share_uid>/<share_uid>.<ext>
 """
 
 import cgi
@@ -22,15 +22,20 @@ def main():
     dataset_uid = form.getvalue('dataset_uid')
     share_uid = form.getvalue('share_uid')
     dataset_format = form.getvalue('dataset_format')
-    user_upload_file_base = '../uploads/files'
 
     user = geardb.get_user_from_session_id(session_id)
     result = {'success': 0, 'message': ''}
 
     filename = form['dataset_file'].filename
-    file_extension = filename.split('.')[-1]
 
-    dataset_filename = os.path.join(user_upload_file_base, session_id + '_' + share_uid + '.' + file_extension)
+    if filename.endswith('.tar.gz'):
+        file_extension = 'tar.gz'
+    else:
+        file_extension = filename.split('.')[-1]
+
+    # This should already have been created when the metadata was stored
+    user_upload_file_base = "../uploads/files/{0}".format(session_id)
+    dataset_filename = os.path.join(user_upload_file_base, share_uid, share_uid + '.' + file_extension)
 
     if not user:
         result['message'] = 'Only logged in users can upload datasets.'

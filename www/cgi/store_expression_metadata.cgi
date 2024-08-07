@@ -22,7 +22,8 @@ def main():
     share_uid = form.getvalue('share_uid')
 
     # make sure session_id is alphanumeric
-    if not session_id.isalnum():
+    mod_session_id = session_id.replace('-', '')
+    if not mod_session_id.isalnum():
         print(json.dumps({'success': 0, 'error': 'Invalid session_id'}))
         return
 
