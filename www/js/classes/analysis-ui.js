@@ -22,11 +22,6 @@ class AnalysisUI {
     currentAnalysisElt = "#current-analysis"
     analysisSelect = "#analysis-select"
     newAnalysisOptionElt = `${this.analysisSelect} option[data-analysis-id='0']`
-    newAnalysisLabelContainer = "#new-analysis-label-c"
-    newAnalysisLabelElt = "#new-analysis-label"
-    btnNewAnalysisLabelSaveElt = "#btn-new-analysis-label-save"
-    btnNewAnalysisLabelCancelElt = "#btn-new-analysis-label-cancel"
-    duplicateLabelWarningElt = "#duplicate-label-warning"
     analysisPrimaryElt = "#analyses-primary"
     analysisPrimaryNotificationElt = "#analysis-primary-notification"
     analysisUnsavedElt = "#analyses-unsaved"

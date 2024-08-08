@@ -152,23 +152,29 @@ class Analysis {
      * @throws {Error} If the deletion is unsuccessful or an error occurs.
      */
     async delete() {
-        const {data} = await axios.post("./cgi/delete_dataset_analysis.cgi", convertToFormData({
-            session_id: this.userSessionId,
-            dataset_id: this.dataset.id,
-            analysis_id: this.id,
-            analysis_type: this.type
-        }));
 
-        if (!data.success || data.success < 1) {
-            const error = data.error || "Unknown error. Please contact gEAR support.";
-            throw new Error(error);
+        try {
+            const {data} = await axios.post("./cgi/delete_dataset_analysis.cgi", convertToFormData({
+                session_id: this.userSessionId,
+                dataset_id: this.dataset.id,
+                analysis_id: this.id,
+                analysis_type: this.type
+            }));
+
+            if (!data.success || data.success < 1) {
+                const error = data.error || "Unknown error. Please contact gEAR support.";
+                throw new Error(error);
+            }
+
+            // Trigger the selection of a 'New' analysis
+            document.querySelector(UI.newAnalysisOptionElt).setAttribute("selected", "selected");
+            document.querySelector(UI.analysisSelect).dispatchEvent(new Event("change"));
+            await this.getSavedAnalysesList(this.dataset.id, 0);
+            resetStepperWithHrefs(UI.primaryFilterSection);
+
+        } catch (error) {
+            createToast(`Error deleting analysis: ${error.message}`);
         }
-
-        // Trigger the selection of a 'New' analysis
-        document.querySelector(UI.newAnalysisOptionElt).setAttribute("selected", "selected");
-        document.querySelector(UI.analysisSelect).dispatchEvent(new Event("change"));
-        await this.getSavedAnalysesList(this.dataset.id, 0);
-        resetStepperWithHrefs(UI.primaryFilterSection);
     }
 
     async download() {
@@ -688,7 +694,6 @@ class Analysis {
             document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
             document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.remove("is-hidden");
             document.querySelector(UI.btnMakePublicCopyElt).classList.remove("is-hidden");
-            document.querySelector(UI.newAnalysisLabelContainer).classList.add("is-hidden");
 
             await this.getSavedAnalysesList(this.dataset.id, this.id);
         } catch (error) {
