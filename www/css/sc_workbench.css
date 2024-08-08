@@ -44,3 +44,35 @@ input.input-length-6 {
 #progress-guide .has-background-grey {
     background-color: #dbdbdb !important;
 }
+
+/* CSS for Floating UI components */
+
+article[role="tooltip"] {
+    width: max-content;
+    position: absolute; /* float above everything else to not disrupt layout */
+    top: 0;
+    left: 0;
+}
+
+#arrow {
+    position: absolute;
+    background: inherit;
+    width: 8px;
+    height: 8px;
+    transform: rotate(45deg);
+}
+
+article[role="tooltip"],#arrow {
+    z-index: 10000; /* above .stick-to-top */
+}
+
+.tooltip {
+    font-weight: bold;
+    padding: 5px;
+    border-radius: 4px;
+    font-size: 90%;
+    width: max-content;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
