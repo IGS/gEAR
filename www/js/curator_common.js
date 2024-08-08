@@ -1583,7 +1583,7 @@ document.getElementById("save-display-btn").addEventListener("click", async (eve
         createToast("Display saved.", "is-success");
 
         if (document.getElementById("make-default-display-check").checked) {
-            apiCallsMixin.saveDefaultDisplay(displayId);
+            curatorApiCallsMixin.saveDefaultDisplay(displayId);
         }
     } catch (error) {
         //pass - handled in functions
