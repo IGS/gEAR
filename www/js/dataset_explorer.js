@@ -893,8 +893,6 @@ const createDeleteDatasetConfirmationPopover = () => {
                 });
             });
 
-            // Show popover
-            document.body.appendChild(popoverContent);
 
             // Store the dataset ID to delete
             const datasetIdToDelete = e.currentTarget.value;
@@ -1023,9 +1021,6 @@ const createRenameDatasetPermalinkPopover = () => {
                     [staticSide]: '-4px',
                 });
             });
-
-            // Show popover
-            document.body.appendChild(popoverContent);
 
             const shareId = e.currentTarget.dataset.shareId;
 
@@ -1159,9 +1154,6 @@ const createDeleteCollectionConfirmationPopover = () => {
             });
         });
 
-        // Show popover
-        document.body.appendChild(popoverContent);
-
         // Add event listener to cancel button
         document.getElementById('cancel-collection-delete').addEventListener('click', () => {
             popoverContent.remove();
@@ -1286,9 +1278,6 @@ const createNewCollectionPopover = () => {
                 [staticSide]: '-4px',
             });
         });
-
-        // Show popover
-        document.body.appendChild(popoverContent);
 
         document.getElementById("collection-name").addEventListener("keyup", () => {
             const newCollectionName = document.getElementById("collection-name");
@@ -1419,9 +1408,6 @@ const createRenameCollectionPopover = () => {
                 [staticSide]: '-4px',
             });
         });
-
-        // Show popover
-        document.body.appendChild(popoverContent);
 
         document.getElementById("collection-name").addEventListener("keyup", () => {
             const newCollectionName = document.getElementById("collection-name");
@@ -1557,9 +1543,6 @@ const createRenameCollectionPermalinkPopover = () => {
                 [staticSide]: '-4px',
             });
         });
-
-        // Show popover
-        document.body.appendChild(popoverContent);
 
         document.getElementById("collection-link-name").addEventListener("keyup", () => {
             const newLinkName = document.getElementById("collection-link-name");
