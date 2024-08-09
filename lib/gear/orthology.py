@@ -109,7 +109,11 @@ def get_organism_name_by_id(organism_id: str):
     Returns:
         str: The organism name corresponding to the given organism ID.
     """
-    return filter_organism_by_id(organism_id)["name"]
+    organism = filter_organism_by_id(organism_id)
+    if organism is not None:
+        return organism["label"]
+    else:
+        return ""
 
 def create_orthology_df(orthomap_file: Path):
     """

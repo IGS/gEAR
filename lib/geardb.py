@@ -910,8 +910,8 @@ class Organism:
         return json.dumps(self.__dict__)
 
 class OrganismCollection:
-    def __init__(self, organisms=None):
-        self.organisms = [] if organisms is None else organisms
+    def __init__(self, organisms=[]):
+        self.organisms = organisms
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -944,6 +944,7 @@ class OrganismCollection:
             self.organisms.append(org)
 
         cursor.close()
+        conn.close()
 
         return self.organisms
 
