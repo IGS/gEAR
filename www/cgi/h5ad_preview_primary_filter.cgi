@@ -35,8 +35,7 @@ def main():
 
     result = {'success': 1}
 
-    ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
-                          session_id=session_id, user_id=user.id)
+    ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id, session_id=session_id)
 
     source_datafile_path = ana.dataset_path()
     violin_path = source_datafile_path.replace('.h5ad', '.prelim_violin.png')
