@@ -9,10 +9,8 @@ function add_dga_button_listeners() {
             let dm = item.closest('.dropdown');
 
             if (dm.classList.contains('is-active')) {
-                console.log("removing active class");
                 dm.classList.remove('is-active');
             } else {
-                console.log("adding active class");
                 dm.classList.add('is-active');
             }
 
@@ -202,4 +200,4 @@ fetch("./plugins/deafness_gene_annotation/mgi_data.json")
     });
     
 geneChangeCallbacks.push(deafness_plugin_gene_change);
-geneChangeCallbacks.push(add_dga_button_listeners);
+add_dga_button_listeners();
