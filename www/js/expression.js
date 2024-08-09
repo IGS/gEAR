@@ -14,13 +14,11 @@ let svg_scoring_method = 'gene';
 let datasetShareId = null;
 let layoutShareId = null;
 
+// Plugins can add functions to this which are called after a gene selection change is made
+let geneChangeCallbacks = [];
+
 /*
 TODOs:
-- hide the annotation panel when multi-gene searches are displayed
-- check if the user has a stored default profile and select that one if none were passed (index page too)
-- If I clear the gene symbol search, then click, the gene symbol is not updated and passes validation below - SAdkins
-- Page currently doesn't seem to be submitting history events
-- Entire annotation section should be collapsible, leaving only gene name and product
 - Scrolling of datasets in collection should still show gene list
 - When changing genes the tiles need to show 'loading' states before redrawing
 - When changing scopes the tiles need to show 'loading' states before redrawing
@@ -470,6 +468,11 @@ const selectGeneResult = (gene_symbol) => {
     // Other things can be called next, such as plotting calls
     if (tilegrid) {
         tilegrid.renderDisplays(currently_selected_gene_symbol, is_multigene, svg_scoring_method);
+    }
+
+    // call any callbacks that have been added (usually by plugins)
+    for (const callback of geneChangeCallbacks) {
+        callback();
     }
 }
 

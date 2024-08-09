@@ -3,96 +3,110 @@ let omim_data;
 let hl_data;
 let mgi_data;
 
+function add_dga_button_listeners() {
+    document.querySelectorAll('.btn-dm').forEach(item => {
+        item.addEventListener('click', event => {
+            let dm = item.closest('.dropdown');
+
+            if (dm.classList.contains('is-active')) {
+                dm.classList.remove('is-active');
+            } else {
+                dm.classList.add('is-active');
+            }
+
+            document.querySelectorAll('.btn-dm').forEach(btn => {
+                if (btn !== item) {
+                    dm = btn.closest('.dropdown');
+                    dm.classList.remove('is-active');
+                }
+            });
+        });
+    });
+}
+
+
 function deafness_plugin_gene_change() {
-    const gene_symbol = SELECTED_GENE.text().toLowerCase();
+    const gene_symbol = currently_selected_gene_symbol.toLowerCase();
 
-    // disable button#deafness_gene_mouse, button#deafness_gene_human, button#deafness_gene_human_putative
-    document.getElementById("deafness_gene_mouse").disabled = true;
-    document.getElementById("deafness_gene_human").disabled = true;
-    document.getElementById("deafness_gene_human_putative").disabled = true;
+    // remove the active class from all dropdowns
+    document.querySelectorAll('.dropdown').forEach(item => {
+        item.classList.remove('is-active');
+    });
 
-    // reset all
-    document.querySelector('#deafness_gene_mouse img').setAttribute('src', './img/icons/org-1-outline-64.svg');
-    document.querySelector('#deafness_gene_human img').setAttribute('src', './img/icons/org-2-outline-64.svg');
-    document.querySelector('#deafness_gene_human_putative img').setAttribute('src', './img/icons/org-2-unknown-outline-64.svg');
-    document.querySelector('#deafness_gene_mouse').setAttribute('data-title', 'No data available');
-    document.querySelector('#deafness_gene_human').setAttribute('data-title', 'No data available');
-    document.querySelector('#deafness_gene_human_putative').setAttribute('data-title', 'No data available');
-    document.querySelector('#deafness_popover_phenotypes').innerHTML = 'No data available';
+    // Disable the buttons (do we really need to?)
+    document.getElementById("btn-deafness-gene-mouse").disabled = true;
+    document.getElementById("btn-deafness-gene-human").disabled = true;
+    document.getElementById("btn-deafness-gene-human-putative").disabled = true;
 
-    let mouse_deafness_links = [];
+    // Reset the images to the outline states
+    document.getElementById("img-deafness-gene-mouse").src = "./img/icons/org-1-outline-64.svg";
+    document.getElementById("img-deafness-gene-human").src = "./img/icons/org-2-outline-64.svg";
+    document.getElementById("img-deafness-gene-human-putative").src = "./img/icons/org-2-unknown-outline-64.svg";
+
+    // Clear any existing lists
+    for (const list of document.querySelectorAll(".dm-deafness-phenotypes")) {
+        list.innerHTML = "";
+    }
+
+    for (const list of document.querySelectorAll(".dm-deafness-links")) {
+        list.innerHTML = "";
+    }
+
+    const phenotype_template = document.getElementById('tmpl-deafness-phenotype');
+    const link_template = document.getElementById('tmpl-deafness-resource-link');
 
     if (mgi_data.hasOwnProperty(gene_symbol)) {
-        mouse_deafness_links = mouse_deafness_links.concat(mgi_data[gene_symbol]['links']);
-        document.querySelector('#deafness_gene_mouse').setAttribute('data-title', 'Click for links and phenotypes');
-
-        document.querySelector('#deafness_popover_phenotypes').innerHTML = '';
-
-        for (link of mouse_deafness_links) {
-
+        for (const phenotype of mgi_data[gene_symbol]['phenotypes']) {
+            const span = phenotype_template.content.cloneNode(true);
+            span.querySelector('span').innerHTML = phenotype;
+            document.getElementById('dm-deafness-gene-mouse-phenotypes').appendChild(span);
         }
 
-        const phenotypes_tmpl = $.templates("#tmpl_deafness_phenotypes");
-        const phenotypes_html = phenotypes_tmpl.render(mgi_data[gene_symbol]['phenotypes']);
-        $("#deafness_popover_phenotypes").html(phenotypes_html);
+        for (const link of mgi_data[gene_symbol]['links']) {
+            const a = link_template.content.cloneNode(true);
+            a.querySelector('a').innerHTML = link['label'];
+            a.querySelector('a').href = link['url'];
+            document.getElementById('dm-deafness-gene-mouse-links').appendChild(a);
+        }
+
+        document.getElementById("img-deafness-gene-mouse").src = "./img/icons/org-1-dark-64.svg";
+        document.getElementById("btn-deafness-gene-mouse").disabled = false;
     }
-
-    if (impc_data.hasOwnProperty(gene_symbol)) {
-        $('#deafness_gene_mouse').attr('data-title', impc_data[gene_symbol]['on_hover']);
-        mouse_deafness_links = mouse_deafness_links.concat(impc_data[gene_symbol]['links']);
-    }
-
-    if (mouse_deafness_links.length > 0) {
-        $("button#deafness_gene_mouse").attr("disabled", false);
-        $('#deafness_gene_mouse img').attr('src', './img/icons/org-1-dark-64.svg');
-        var links_tmpl = $.templates("#tmpl_deafness_resource_links");
-        var links_html = links_tmpl.render(mouse_deafness_links);
-        $("#deafness_popover_links").html(links_html);
-
-        $('#deafness_gene_mouse').attr("data-popover", $("#deafness_popover_c").html())
-    }
-
-    // this is here after mouse so that the phenotypes don't carry over to other organisms
-    $('#deafness_popover_phenotypes').html('No data available');
 
     if (omim_data.hasOwnProperty(gene_symbol)) {
-        $("button#deafness_gene_human").attr("disabled", false);
-        $('#deafness_gene_human img').attr('src', './img/icons/org-2-dark-64.svg');
-        $('#deafness_gene_human').attr('data-title',
-                                       omim_data[gene_symbol]['phenotypes'].join(' - '));
+        for (const phenotype of omim_data[gene_symbol]['phenotypes']) {
+            const span = phenotype_template.content.cloneNode(true);
+            span.querySelector('span').innerHTML = phenotype;
+            document.getElementById('dm-deafness-gene-human-phenotypes').appendChild(span);
+        }
 
-        var links_tmpl = $.templates("#tmpl_deafness_resource_links");
-        var links_html = links_tmpl.render(omim_data[gene_symbol]['links']);
-        $("#deafness_popover_links").html(links_html);
-        $('#deafness_gene_human').attr("data-popover", $("#deafness_popover_c").html())
+        for (const link of omim_data[gene_symbol]['links']) {
+            const a = link_template.content.cloneNode(true);
+            a.querySelector('a').innerHTML = link['label'];
+            a.querySelector('a').href = link['url'];
+            document.getElementById('dm-deafness-gene-human-links').appendChild(a);
+        }
+
+        document.getElementById("img-deafness-gene-human").src = "./img/icons/org-2-dark-64.svg";
+        document.getElementById("btn-deafness-gene-human").disabled = false;
     }
 
     if (hl_data.hasOwnProperty(gene_symbol)) {
-        $("button#deafness_gene_human_putative").attr("disabled", false);
-        $('#deafness_gene_human_putative img').attr('src', './img/icons/org-2-unknown-dark-64.svg');
-        $('#deafness_gene_human_putative').attr('data-title',
-                                                hl_data[gene_symbol]['locus']);
+        const locus = hl_data[gene_symbol]['locus'];
+        const span = phenotype_template.content.cloneNode(true);
+        span.querySelector('span').innerHTML = locus;
+        document.getElementById('dm-deafness-gene-human-putative-loci').appendChild(span);
 
-        var links_tmpl = $.templates("#tmpl_deafness_resource_links");
-        var links_html = links_tmpl.render(hl_data[gene_symbol]['links']);
-        $("#deafness_popover_links").html(links_html);
-        $('#deafness_gene_human_putative').attr("data-popover", $("#deafness_popover_c").html())
+        for (const link of hl_data[gene_symbol]['links']) {
+            const a = link_template.content.cloneNode(true);
+            a.querySelector('a').innerHTML = link['label'];
+            a.querySelector('a').href = link['url'];
+            document.getElementById('dm-deafness-gene-human-putative-links').appendChild(a);
+        }
+
+        document.getElementById("img-deafness-gene-human-putative").src = "./img/icons/org-2-dark-64.svg";
+        document.getElementById("btn-deafness-gene-human-putative").disabled = false;
     }
-
-    $('button.icon-deafness-gene').each(function() {
-        $(this).popover("dispose").popover({
-            content : $(this).attr("data-popover"),
-            placement : 'auto',
-            title : 'Deafness gene info',
-            trigger: 'focus',
-            html: true
-        }).tooltip("dispose").tooltip({
-            placement : 'top',
-            title : $(this).attr("data-title")
-        }).on('show.bs.popover', function() {
-            $(this).tooltip('hide')
-        })
-    });
 }
 
 
@@ -184,5 +198,6 @@ fetch("./plugins/deafness_gene_annotation/mgi_data.json")
     .catch(function(err) {
         console.error('Fetch Error :-S', err);
     });
-
-//search_result_postselection_functions.push(deafness_plugin_gene_change);
+    
+geneChangeCallbacks.push(deafness_plugin_gene_change);
+add_dga_button_listeners();
