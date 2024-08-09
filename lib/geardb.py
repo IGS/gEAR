@@ -1006,6 +1006,7 @@ class Layout:
 
         cursor.close()
         conn.commit()
+        conn.close()
 
     def dataset_ids(self):
         """
@@ -1108,7 +1109,7 @@ class Layout:
         self.get_members()
 
         cursor.close()
-        conn.commit()
+        conn.close()
 
     def remove(self):
         """
@@ -1131,6 +1132,7 @@ class Layout:
 
         cursor.close()
         conn.commit()
+        conn.close()
 
     def remove_all_members(self):
         """
@@ -1147,6 +1149,7 @@ class Layout:
 
         cursor.close()
         conn.commit()
+        conn.close()
 
         self.members = []
 
@@ -1172,6 +1175,7 @@ class Layout:
 
         cursor.close()
         conn.commit()
+        conn.close()
 
     def remove_members_by_dataset_id(self, dataset_id):
         """Deletes all members where the display ID belongs to a given dataset ID from the database."""
@@ -1217,8 +1221,6 @@ class Layout:
             self.id = cursor.lastrowid
         else:
             # ID already populated
-            conn = Connection()
-            cursor = conn.get_cursor()
 
             # Update layout properties
             sql = """
@@ -1235,12 +1237,11 @@ class Layout:
                 self.is_domain, self.share_id, self.id
             ))
 
-            conn.commit()
-
             # TODO: delete existing members, add current ones
 
         cursor.close()
         conn.commit()
+        conn.close()
 
     def save_change(self, attribute=None, value=None):
         """

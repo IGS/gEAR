@@ -68,12 +68,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('submit-expression-search').addEventListener('click', async (event) => {
         const currentTarget = event.currentTarget;
         currentTarget.classList.add('is-loading');
-        const status = validateExpressionSearchForm();
+        const isExactMatch = document.getElementById('gene-search-exact-match').checked;
 
-        if (! status) {
-            console.info("Aborting search");
-            event.currentTarget.classList.remove('is-loading');
-            return;
+        // Validate here. However for multigene fuzzy searches, we need the gene list to be populated
+        if (!(is_multigene && !isExactMatch)) {
+            const status = validateExpressionSearchForm();
+
+            if (! status) {
+                console.info("Aborting search");
+                event.currentTarget.classList.remove('is-loading');
+                return;
+            }
         }
 
         document.getElementById("result-panel-initial-notification").classList.add('is-hidden');
@@ -103,9 +108,28 @@ document.addEventListener('DOMContentLoaded', () => {
             tilegrid = tilegridRes.value;
 
             // auto-select the first gene in the list
-            const first_gene = document.querySelector('.gene-result-list-item');
-            if (!is_multigene && first_gene) {
-                first_gene.click();
+            const firstGene = document.querySelector('.gene-result-list-item');
+            if (!is_multigene && firstGene) {
+                // Will call renderDisplays on the selected gene downstream
+                firstGene.click();
+
+            } else if (is_multigene) {
+                let genes = Array.from(selected_genes);
+                if (!isExactMatch) {
+                    const status = validateExpressionSearchForm();
+
+                    if (! status) {
+                        console.info("Aborting search");
+                        event.currentTarget.classList.remove('is-loading');
+                        return;
+                    }
+
+                    // If multigene and not exact match, render all the genes
+                    const allGenesElts = document.querySelectorAll('.gene-result-list-item');
+                    genes = Array.from(allGenesElts).map(elt => elt.textContent);
+                }
+                await tilegrid.renderDisplays(genes, is_multigene);
+
             }
 
             // If the user isn't logged in, set the first organism's annotation as the default
@@ -159,30 +183,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelector('#set-default-organism').addEventListener('click', (event) => {
         // we don't want to set to null, and the UI should have prevented this, but check just in case
-        if (currently_selected_org_id !== "") {
-            CURRENT_USER.default_org_id = currently_selected_org_id;
-            apiCallsMixin.saveUserDefaultOrgId(CURRENT_USER);
-            document.querySelector('#set-default-organism').classList.add('is-hidden');
-        }
-    });
-
-    // Add event listeners to the gene result list items even if they don't exist yet
-    document.addEventListener('click', (event) => {
-        if (!event.target.classList.contains('gene-result-list-item')) {
+        if (currently_selected_org_id === "") {
             return;
         }
-
-        const gene_symbol = event.target.textContent;
-        document.querySelector('#currently-selected-gene').innerHTML = gene_symbol;
-
-        // remove is-selected from all the existing rows, then add it to this one
-        const rows = document.querySelectorAll('.gene-result-list-item');
-        rows.forEach((row) => {
-            row.classList.remove('is-selected');
-        });
-
-        event.target.classList.add('is-selected');
-        selectGeneResult(gene_symbol);
+        CURRENT_USER.default_org_id = currently_selected_org_id;
+        apiCallsMixin.saveUserDefaultOrgId(CURRENT_USER);
+        document.querySelector('#set-default-organism').classList.add('is-hidden');
     });
 
     // Change the svg scoring method when select element is changed
@@ -283,6 +289,23 @@ const fetchGeneAnnotations = async (callback) => {
                     const annot = JSON.parse(annotation_data[gene_symbol]['by_organism'][organism_id][0]);
                     annotation_data[gene_symbol]['by_organism'][organism_id] = annot;
                 }
+            }
+
+            // add event listeners to the gene result list items
+            for (const gene_result of document.querySelectorAll('.gene-result-list-item')) {
+                gene_result.addEventListener('click', (event) => {
+                    const gene_symbol = event.target.textContent;
+                    document.querySelector('#currently-selected-gene').innerHTML = gene_symbol;
+
+                    // remove is-selected from all the existing rows, then add it to this one
+                    const rows = document.querySelectorAll('.gene-result-list-item');
+                    rows.forEach((row) => {
+                        row.classList.remove('is-selected');
+                    });
+
+                    event.target.classList.add('is-selected');
+                    selectGeneResult(gene_symbol);
+                });
             }
         }
     } catch (error) {
@@ -475,14 +498,6 @@ const setupTileGrid = async (shareId, type="layout") => {
 
         tilegrid.applyTileGrid(is_multigene);
 
-        // NOTE - the tilegrid.renderDisplays() call below can check and use the first array element of the selected_genes array if single_gene
-        // We do not render for single-gene searches because the first gene result is "clicked" and the tilegrid is rendered in the event listener.
-        if (is_multigene) {
-            // Don't render yet if a gene is not selected
-            if (selected_genes.size) {
-                await tilegrid.renderDisplays(Array.from(selected_genes), is_multigene);
-            }
-        }
     } catch (error) {
         logErrorInConsole(error);
     } finally {
@@ -604,11 +619,23 @@ const validateExpressionSearchForm = () => {
     }
 
     const isMulti = document.getElementById('single-multi-multi').checked;
+    const isExactMatch = document.getElementById('gene-search-exact-match').checked;
 
     // If multi, check that at least two genes are selected
-    if (isMulti && selected_genes.size < 2) {
-        createToast('Please select at least two genes to proceed');
-        return false;
+    if (isMulti) {
+        // if not exact match, test if there are at least two genes in results
+        if (!isExactMatch) {
+            const allGenesElts = document.querySelectorAll('.gene-result-list-item');
+            const allGenes = Array.from(allGenesElts).map(elt => elt.textContent);
+            if (allGenes.length < 2) {
+                createToast('Need at least two genes to proceed');
+                return false;
+            }
+
+        } else if (selected_genes.size < 2) {
+            createToast('Please select at least two genes to proceed');
+            return false;
+        }
     }
 
     return true;

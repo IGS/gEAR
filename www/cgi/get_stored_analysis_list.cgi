@@ -22,8 +22,12 @@ def main():
     user = geardb.get_user_from_session_id(session_id)
     result = {'primary': [], 'public': [], 'user_saved': [], 'user_unsaved': []}
 
+    user_id = None
+    if user:
+        user_id = user.id
+
     acollection = geardb.AnalysisCollection()
-    acollection.get_all_by_dataset_id(user_id=user.id, session_id=session_id, dataset_id=dataset_id)
+    acollection.get_all_by_dataset_id(user_id=user_id, session_id=session_id, dataset_id=dataset_id)
 
     result['primary'] = acollection.primary
     result['public'] = acollection.public
