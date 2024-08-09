@@ -9,8 +9,10 @@ function add_dga_button_listeners() {
             let dm = item.closest('.dropdown');
 
             if (dm.classList.contains('is-active')) {
+                console.log("removing active class");
                 dm.classList.remove('is-active');
             } else {
+                console.log("adding active class");
                 dm.classList.add('is-active');
             }
 
@@ -44,8 +46,13 @@ function deafness_plugin_gene_change() {
     document.getElementById("img-deafness-gene-human-putative").src = "./img/icons/org-2-unknown-outline-64.svg";
 
     // Clear any existing lists
-    document.querySelector(".dm-deafness-phenotypes").innerHTML = "";
-    document.querySelector(".dm-deafness-links").innerHTML = "";
+    for (const list of document.querySelectorAll(".dm-deafness-phenotypes")) {
+        list.innerHTML = "";
+    }
+
+    for (const list of document.querySelectorAll(".dm-deafness-links")) {
+        list.innerHTML = "";
+    }
 
     const phenotype_template = document.getElementById('tmpl-deafness-phenotype');
     const link_template = document.getElementById('tmpl-deafness-resource-link');
