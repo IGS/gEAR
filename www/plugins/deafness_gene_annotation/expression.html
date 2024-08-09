@@ -4,7 +4,9 @@
      
     <div class="dropdown is-right">
       <div class="dropdown-trigger">
-        <button id="btn-deafness-gene-mouse" class="button is-rounded is-small btn-dm" aria-haspopup="true" aria-controls="dropdown-menu">
+        <button id="btn-deafness-gene-mouse" class="button is-rounded is-small btn-dm" 
+                aria-haspopup="true" aria-controls="dropdown-menu"
+                data-tooltip="Click for mouse deafness genes">
           <span class="icon is-small">
             <img id="img-deafness-gene-mouse" src="./img/icons/org-1-outline-64.svg" />
           </span>
@@ -26,30 +28,70 @@
       </div>
     </div>
 
-    <button id="btn-deafness-gene-human" class="button is-rounded is-small">
-      <span class="icon is-small">
-        <img id="img-deafness-gene-human" src="./img/icons/org-2-outline-64.svg" />
-      </span>
-    </button>
-
-    <button id="btn-deafness-gene-human-putative" class="button is-rounded is-small">
-      <span class="icon is-small">
-        <img id="img-deafness-gene-human-putative" src="./img/icons/org-2-unknown-outline-64.svg" />
-      </span>
-    </button>
-
-      <template id="tmpl-deafness-phenotype">
-        <span class="tag is-light"></span>
-      </template>
-      <template id="tmpl-deafness-resource-link">
-        <span class="icon-text dropdown-item deafness-item-link">
-          <span class="icon">
-            <i class="mdi mdi-open-in-new"></i>
+    <div class="dropdown is-right">
+      <div class="dropdown-trigger">
+        <button id="btn-deafness-gene-human" class="button is-rounded is-small btn-dm" 
+                aria-haspopup="true" aria-controls="dropdown-menu"
+                data-tooltip="Click for human deafness genes">
+          <span class="icon is-small">
+            <img id="img-deafness-gene-human" src="./img/icons/org-2-outline-64.svg" />
           </span>
-          <span>
-            <a href="" target="_blank"></a>
+        </button>
+      </div>
+      <div class="dropdown-menu dm-deafness" role="menu">
+        <div class="dropdown-content">
+          <div class="dropdown-item">
+            <div class="deafness-dropdown-header">Deafness gene info</div>
+            <hr class="mt-2 mb-2" />
+            <div class="deafness-dropdown-subheader">Phenotypes</div>
+          </div>
+          <div id="dm-deafness-gene-human-phenotypes" class="dm-deafness-phenotypes pl-4 pr-4"></div>
+          <div class="dropdown-item mt-3">
+            <div class="deafness-dropdown-subheader">Deafness resource links</div>
+          </div>
+          <div id="dm-deafness-gene-human-links" class="dm-deafness-links"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dropdown is-right">
+      <div class="dropdown-trigger">
+        <button id="btn-deafness-gene-human-putative" class="button is-rounded is-small btn-dm" 
+                aria-haspopup="true" aria-controls="dropdown-menu"
+                data-tooltip="Click for human (putative) deafness genes">
+          <span class="icon is-small">
+            <img id="img-deafness-gene-human-putative" src="./img/icons/org-2-unknown-outline-64.svg" />
           </span>
+        </button>
+      </div>
+      <div class="dropdown-menu dm-deafness" role="menu">
+        <div class="dropdown-content">
+          <div class="dropdown-item">
+            <div class="deafness-dropdown-header">Deafness gene info</div>
+            <hr class="mt-2 mb-2" />
+            <div class="deafness-dropdown-subheader">Locus</div>
+          </div>
+          <div id="dm-deafness-gene-human-putative-loci" class="dm-deafness-phenotypes pl-4 pr-4"></div>
+          <div class="dropdown-item mt-3">
+            <div class="deafness-dropdown-subheader">Deafness resource links</div>
+          </div>
+          <div id="dm-deafness-gene-human-putative-links" class="dm-deafness-links"></div>
+        </div>
+      </div>
+    </div>
+
+    <template id="tmpl-deafness-phenotype">
+      <span class="tag is-light"></span>
+    </template>
+    <template id="tmpl-deafness-resource-link">
+      <span class="icon-text dropdown-item deafness-item-link">
+        <span class="icon">
+          <i class="mdi mdi-open-in-new"></i>
         </span>
-      </template>
+        <span>
+          <a href="" target="_blank"></a>
+        </span>
+      </span>
+    </template>
   </div>
 </div>
