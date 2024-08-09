@@ -105,6 +105,11 @@ def get_analysis(analysis, dataset_id, session_id):
             ana.type = analysis['type']
         else:
             ana.discover_type()
+
+        # Check that the h5ad file exists
+        if not os.path.exists(ana.dataset_path()):
+            raise FileNotFoundError("No h5 file found for the passed in analysis")
+
     else:
         ds = Dataset(id=dataset_id, has_h5ad=1)
         h5_path = ds.get_file_path()
