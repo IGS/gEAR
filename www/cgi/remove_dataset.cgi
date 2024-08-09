@@ -39,7 +39,13 @@ def main():
     if owns_dataset == True:
         result = { 'success': 1, 'dataset':[] }
 
-    # Delete dataset from referenced tables
+    else:
+        error = "Not able to remove dataset. User does not own the dataset."
+        result = { 'success': 0, 'error': error }
+        print(json.dumps(result))
+
+    try:
+        # Delete dataset from referenced tables
         remove_from_layout_displays(cursor, dataset_id)
         remove_from_dataset_shares(cursor, dataset_id)
 
@@ -51,11 +57,11 @@ def main():
         cnx.close()
 
         print(json.dumps(result))
+    except Exception as e:
+        print(json.dumps({'success': 0, 'error': str(e)}))
+        import traceback
+        traceback.print_exc()
 
-    else:
-        error = "Not able to remove dataset. User does not own the dataset."
-        result = { 'success': 0, 'error': error }
-        print(json.dumps(result))
 
 
 def check_dataset_ownership(cursor, current_user_id, dataset_id):
