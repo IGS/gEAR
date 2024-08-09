@@ -296,6 +296,8 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     # NOTE Currently no analyses are supported yet.
     try:
         ana = geardb.get_analysis(None, dataset_id, session_id)
+        # Using adata with "backed" mode does not work with volcano plot
+        adata = ana.get_adata(backed=True)
     except Exception as e:
         print(str(e), file=fh)
         return {
@@ -303,8 +305,6 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             , 'message': str(e)
         }
 
-    # Using adata with "backed" mode does not work with volcano plot
-    adata = ana.get_adata(backed=True)
 
     # If dataset genes have duplicated index names, we need to rename them to avoid errors
     # in collecting rownames in projectR (which gives invalid output)
