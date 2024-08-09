@@ -109,22 +109,6 @@ function deafness_plugin_gene_change() {
         document.getElementById("img-deafness-gene-human-putative").src = "./img/icons/org-2-dark-64.svg";
         document.getElementById("btn-deafness-gene-human-putative").disabled = false;
     }
-    
-    return;
-
-
-
-    if (hl_data.hasOwnProperty(gene_symbol)) {
-        $("button#deafness_gene_human_putative").attr("disabled", false);
-        $('#deafness_gene_human_putative img').attr('src', './img/icons/org-2-unknown-dark-64.svg');
-        $('#deafness_gene_human_putative').attr('data-title',
-                                                hl_data[gene_symbol]['locus']);
-
-        var links_tmpl = $.templates("#tmpl_deafness_resource_links");
-        var links_html = links_tmpl.render(hl_data[gene_symbol]['links']);
-        $("#deafness_popover_links").html(links_html);
-        $('#deafness_gene_human_putative').attr("data-popover", $("#deafness_popover_c").html())
-    }
 }
 
 
