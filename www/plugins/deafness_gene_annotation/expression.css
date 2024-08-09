@@ -1,23 +1,14 @@
-div#deafness_links_c img:hover {
-    cursor: pointer;
+div.deafness-dropdown-header {
+    font-weight: bold;
 }
-div#deafness_links_c img {
-    height: 24px;
-    width: 24px;
+div.deafness-dropdown-subheader {
+    font-weight: italic;
+    
 }
-div#deafness_popover_c,
-div#deafness_popover_templates_c {
-    display: none;
+div.dm-deafness .dropdown-content {
+    width: 20vw;
 }
-ul#deafness_popover_phenotypes,
-ul#deafness_popover_links {
-    list-style: none;
-    margin-left: 5px;
-    padding-left: 0;
-}
-.deafness_resource_link_i {
-   list-style: none;
-}
-.deafness_resource_link_i a {
-    padding-left: 10px;
+span.deafness-item-link {
+    font-size: 90%;
+    padding-left: 1em;
 }
