@@ -43,6 +43,7 @@ def main():
         error = "Not able to remove dataset. User does not own the dataset."
         result = { 'success': 0, 'error': error }
         print(json.dumps(result))
+        return
 
     try:
         # Delete dataset from referenced tables
