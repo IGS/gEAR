@@ -119,12 +119,20 @@ class PlotlyData(Resource):
 
         try:
             ana = geardb.get_analysis(analysis, dataset_id, session_id)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return_dict["success"] = -1
+            return_dict["message"] = "Could not retrieve analysis."
+            return return_dict
+
+        try:
             adata = ana.get_adata(backed=True)
         except Exception as e:
             import traceback
             traceback.print_exc()
             return_dict["success"] = -1
-            return_dict["message"] = str(e)
+            return_dict["message"] = "Could not retrieve AnnData."
             return return_dict
 
         if projection_id:

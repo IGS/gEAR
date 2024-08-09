@@ -296,13 +296,23 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     # NOTE Currently no analyses are supported yet.
     try:
         ana = geardb.get_analysis(None, dataset_id, session_id)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": -1,
+            "message": "Could not retrieve analysis."
+        }
+
+    try:
         # Using adata with "backed" mode does not work with volcano plot
         adata = ana.get_adata(backed=True)
     except Exception as e:
-        print(str(e), file=fh)
+        import traceback
+        traceback.print_exc()
         return {
-            'success': -1
-            , 'message': str(e)
+            "success": -1,
+            "message": "Could not retrieve AnnData object."
         }
 
 
