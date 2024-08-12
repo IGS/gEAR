@@ -662,6 +662,7 @@ class ProjectR(Resource):
                     dataset_genes = config.get('num_dataset_genes', -1)
                     break
 
+            message = ""
             if common_genes:
                 message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(common_genes, dataset_genes, genecart_genes)
 
