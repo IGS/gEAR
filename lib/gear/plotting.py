@@ -531,7 +531,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
                 # Each individual trace is a separate scalegroup to ensure plots are scaled correctly for violin plots
                 new_plotting_args['scalegroup'] = name
                 if isinstance(name, tuple):
-                    new_plotting_args['scalegroup'] = "_".join(name)
+                    new_plotting_args['scalegroup'] = "_".join(str(name))
 
                 # If color dataseries is present, add some special configurations
                 if color_name:
