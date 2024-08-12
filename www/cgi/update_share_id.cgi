@@ -10,6 +10,13 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 
+from pathlib import Path
+abs_path_www = Path(__file__).resolve().parents[1] # web-root dir
+CARTS_BASE_DIR = abs_path_www.joinpath("carts")
+BY_DATASET_DIR = abs_path_www.joinpath("projections", "by_dataset")
+BY_GENECART_DIR = abs_path_www.joinpath("projections", "by_genecart")
+
+
 def main():
     cnx = geardb.Connection()
     print('Content-Type: application/json\n\n')
@@ -115,7 +122,7 @@ def main():
 
         # rename carts
         if gene_cart.gctype == "weighted":
-            os.chdir("/var/www/carts")
+            os.chdir(str(CARTS_BASE_DIR))
 
             for filename in os.listdir("."):
                 if not share_id in filename:
@@ -131,7 +138,7 @@ def main():
 
         # rename projections
         # the "by_dataset" directory only needs projections.json files updated
-        os.chdir("/var/www/projections/by_dataset")
+        os.chdir(str(BY_DATASET_DIR))
         for root, dirs, files in os.walk("."):
             for file in files:
                 if not file.endswith("projections.json"):
@@ -145,7 +152,7 @@ def main():
                 break
 
         # the "by_genecart" directory needs both directory names updated
-        os.chdir("/var/www/projections/by_genecart")
+        os.chdir(str(BY_GENECART_DIR))
         for root, dirs, files in os.walk("."):
             for dirname in dirs:
                 if not share_id in dirname:
