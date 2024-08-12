@@ -468,10 +468,10 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
         # TODO: put in function
 
         # Map indexes for subplot ordering.  Indexes start at 1 since plotting rows/cols start at 1
-        facet_row_groups = category_orders[facet_row] if facet_row and facet_row in category_orders else []
+        facet_row_groups = category_orders[facet_row] if facet_row and facet_row in category_orders else df[facet_row].unique()
         facet_row_indexes = {group: idx for idx, group in enumerate(facet_row_groups, start=1)}
         num_rows = len(facet_row_groups) if facet_row else 1
-        facet_col_groups = category_orders[facet_col] if facet_col and facet_col in category_orders else []
+        facet_col_groups = category_orders[facet_col] if facet_col and facet_col in category_orders else df[facet_col].unique()
         facet_col_indexes = {group: idx for idx, group in enumerate(facet_col_groups, start=1)}
         num_cols = len(facet_col_groups) if facet_col else 1
 
