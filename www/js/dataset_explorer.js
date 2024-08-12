@@ -578,11 +578,8 @@ const addModalEventListeners = () => {
 
                 createToast("Display added to collection", "is-success");
 
-                const curr_share_id  = selected_dc_share_id;
-
                 // Update the layout arrangement views
                 await updateDatasetCollections();
-                selectDatasetCollection(curr_share_id); // performs DatasetCollectionSelectorCallback when label is set
 
             } catch (error) {
                 logErrorInConsole(error);
@@ -615,12 +612,8 @@ const addModalEventListeners = () => {
 
                 createToast("Display removed from collection", "is-success");
 
-                const curr_share_id  = selected_dc_share_id;
-
                 // Update the layout arrangement views
                 await updateDatasetCollections();
-                selectDatasetCollection(curr_share_id); // performs DatasetCollectionSelectorCallback when label is set
-
             } catch (error) {
                 logErrorInConsole(error);
                 createToast("Failed to remove dataset from collection");
@@ -2196,7 +2189,6 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
         const displayCount = displayElement.querySelector('.js-collection-display-count');
 
         if (collection?.members) {
-            console.log(collection.members);
             const displayCountValue = collection.members.filter((member) => JSON.parse(member).display_id === displayId).length
             displayCount.textContent = displayCountValue;
         } else {
