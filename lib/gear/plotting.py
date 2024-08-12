@@ -482,6 +482,10 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
         facet_col_indexes = {group: idx for idx, group in enumerate(facet_col_groups, start=1)}
         num_cols = len(facet_col_groups) if facet_col else 1
 
+        # Ensure facet_row_groups and facet_col_groups elements are cast as strings
+        facet_row_groups = [str(group) for group in facet_row_groups]
+        facet_col_groups = [str(group) for group in facet_col_groups]
+
         # Make faceted plot
         fig = make_subplots(rows=num_rows
                 , cols=num_cols
