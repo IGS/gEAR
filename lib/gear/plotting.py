@@ -485,8 +485,8 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
         # Make faceted plot
         fig = make_subplots(rows=num_rows
                 , cols=num_cols
-                , row_titles=facet_row_groups
-                , column_titles=facet_col_groups
+                , row_titles=list(facet_row_groups)
+                , column_titles=list(facet_col_groups)
                 , x_title=x_title if x_title else None
                 , y_title=y_title if y_title else None
                 )
