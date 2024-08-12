@@ -479,6 +479,9 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             else:
                 raise ValueError("Algorithm {} is not supported".format(algorithm))
         except Exception as e:
+            # clear lock file
+            remove_lock_file(lock_fh, lockfile)
+
             print(str(e), file=sys.stderr)
             return {
                 'success': -1
@@ -487,6 +490,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
                 , "num_genecart_genes": num_loading_genes
                 , "num_dataset_genes": num_target_genes
             }
+
 
     # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
     projection_patterns_df = projection_patterns_df.set_axis(loading_df.columns, axis="columns")
