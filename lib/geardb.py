@@ -914,9 +914,9 @@ class Organism:
     def __repr__(self):
         return json.dumps(self.__dict__)
 
+@dataclass
 class OrganismCollection:
-    def __init__(self, organisms=[]):
-        self.organisms = organisms
+    organisms: List[Organism] = field(default_factory=list)
 
     def __repr__(self):
         return json.dumps(self.__dict__)
