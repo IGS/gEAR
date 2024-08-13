@@ -86,7 +86,11 @@ def remove_lock_file(fd, filepath):
     """Release the lock file."""
     #fcntl.flock(fd, fcntl.LOCK_UN)
     fd.close()
-    Path(filepath).unlink()
+    try:
+        Path(filepath).unlink()
+    except FileNotFoundError:
+        # This is fine, as the lock file may have been removed by another process
+        pass
 
 def write_to_json(projections_dict, projection_json_file):
     with open(projection_json_file, 'w') as f:
