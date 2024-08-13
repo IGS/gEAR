@@ -697,6 +697,10 @@ const chooseGenes = (event) => {
     const geneTagsElt = document.getElementById("gene-tags");
     geneTagsElt.replaceChildren();
 
+    document.getElementById("num-selected-genes-c").classList.remove("is-hidden");
+    document.getElementById("num-selected-genes").textContent = selected_genes.size;
+    document.getElementById("num-selected-genes-post").textContent = selected_genes.size;
+
 	if (selected_genes.size == 0) return;  // Do not trigger after initial population
 
     // Update list of gene tags
@@ -755,7 +759,8 @@ const curatorSpecifcCreatePlot = async (plotType) => {
 }
 
 const curatorSpecifcDatasetTreeCallback = async () => {
-    //pass
+    document.getElementById("num-selected-genes").textContent = 0;
+    document.getElementById("num-selected-genes-post").textContent = 0;
 }
 
 /**

@@ -690,6 +690,8 @@ const chooseGene = () => {
         document.getElementById("gene-s-failed").classList.remove("is-hidden");
         document.getElementById("gene-s-success").classList.add("is-hidden");
         document.getElementById("current-gene").textContent = "";
+        document.getElementById("current-gene-post").textContent = "";
+
         for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
             plotBtn.disabled = true;
         }
@@ -701,6 +703,7 @@ const chooseGene = () => {
     // Display current selected gene
     document.getElementById("current-gene-c").classList.remove("is-hidden");
     document.getElementById("current-gene").textContent = selectedGene;
+    document.getElementById("current-gene-post").textContent = selectedGene;
     // Force validationcheck to see if plot button should be enabled
     trigger(document.querySelector(".js-plot-req"), "change");
     document.getElementById("plot-options-s").click();
@@ -875,6 +878,7 @@ const curatorSpecifcCreatePlot = async (plotType) => {
  */
 const curatorSpecifcDatasetTreeCallback = () => {
     document.getElementById("current-gene").textContent = "";
+    document.getElementById("current-gene-post").textContent = "";
 }
 
 /**

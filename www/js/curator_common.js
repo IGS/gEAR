@@ -659,9 +659,15 @@ const cloneDisplay = async (event, display) => {
         selected_genes = manuallyEnteredGenes;
         const geneSymbolString = config.gene_symbols.join(" ");
         document.getElementById('genes-manually-entered').value = geneSymbolString;
+        // Mostly need this to populate the current gene(s) in the display contaainer
+        chooseGenes();
     } else {
         selectedGene = config.gene_symbol;
+        // Mostly need this to populate the current gene(s) in the display contaainer
+        chooseGene();
     }
+
+
 
     try {
         plotStyle.cloneDisplay(config);
