@@ -248,7 +248,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             , 'message': "Could not find gene cart in database"
         }
 
-    genecart.get_genes();
+    genecart.get_genes()
 
     if not len(genecart.genes):
         return {
@@ -601,12 +601,12 @@ class ProjectROutputFile(Resource):
             }
 
         # If legacy version exists, copy to current format.
-        if not genecart_id in projections_dict or "cart.{}".format(genecart_id) in projections_dict:
-            print("Copying legacy cart.{} to {} in the projection json file.".format(genecart_id, genecart_id), file=fh)
+        if (not genecart_id in projections_dict) and "cart.{}".format(genecart_id) in projections_dict:
+            print("Copying legacy cart.{} to {} in the projection json file.".format(genecart_id, genecart_id), file=sys.stderr)
             projections_dict[genecart_id] == projections_dict["cart.{}".format(genecart_id)]
             projections_dict.pop("cart.{}".format(genecart_id), None)
             # move legacy genecart projection stuff to new version
-            print("Moving legacy cart.{} contents to {} in the projection genecart directory.".format(genecart_id, genecart_id), file=fh)
+            print("Moving legacy cart.{} contents to {} in the projection genecart directory.".format(genecart_id, genecart_id), file=sys.stderr)
             old_genecart_projection_json_file = build_projection_json_path("cart.{}".format(genecart_id), "genecart")
             old_genecart_projection_json_file.parent.rename(dataset_projection_json_file.parent)
 
@@ -655,16 +655,19 @@ class ProjectR(Resource):
             common_genes = None
             genecart_genes = None
             dataset_genes = None
-            for config in projections_dict[genecart_id]:
-                # Handle legacy algorithm
-                if "is_pca" in config:
-                    config["algorithm"] = "pca" if config["is_pca"] == 1 else "nmf"
 
-                if algorithm == config["algorithm"]:
-                    common_genes = config.get('num_common_genes', None)
-                    genecart_genes = config.get('num_genecart_genes', -1)
-                    dataset_genes = config.get('num_dataset_genes', -1)
-                    break
+            # Get projection info from the json file if it already exists
+            if genecart_id in projections_dict:
+                for config in projections_dict[genecart_id]:
+                    # Handle legacy algorithm
+                    if "is_pca" in config:
+                        config["algorithm"] = "pca" if config["is_pca"] == 1 else "nmf"
+
+                    if algorithm == config["algorithm"]:
+                        common_genes = config.get('num_common_genes', None)
+                        genecart_genes = config.get('num_genecart_genes', -1)
+                        dataset_genes = config.get('num_dataset_genes', -1)
+                        break
 
             message = ""
             if common_genes:
