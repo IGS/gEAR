@@ -35,7 +35,7 @@ AND ld1.id > ld2.id
 """
 cursor.execute(qry)
 
-cursor.commit()
+conn.commit()
 
 # print row count
 qry = "SELECT COUNT(*) FROM layout_displays"
