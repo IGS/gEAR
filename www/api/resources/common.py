@@ -46,6 +46,8 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
 
     # Associate with a filename to ensure AnnData is read in "backed" mode
     # This creates the h5ad file if it does not exist
+    # TODO: If too many processes read from this file, it can throw a BlockingIOError. Eventually we should
+    #       handle this by creating a copy of the file for each process, like a tempfile.
     projection_adata.filename = projection_adata_path
 
     return projection_adata
