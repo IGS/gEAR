@@ -321,10 +321,11 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     # If dataset genes have duplicated index names, we need to rename them to avoid errors
     # in collecting rownames in projectR (which gives invalid output)
     # This means these duplicated genes will not be in the intersection of the dataset and pattern genes
-    dedup_copy = Path(ana.dataset_path().replace('.h5ad', '.dups_removed.h5ad'))
-    if dedup_copy.exists():
-        dedup_copy.unlink()
-    adata = adata[:, adata.var.index.duplicated(keep="first") == False].copy(filename=dedup_copy)
+    if (adata.var.index.duplicated(keep="first") == True).any():
+        dedup_copy = Path(ana.dataset_path().replace('.h5ad', '.dups_removed.h5ad'))
+        if dedup_copy.exists():
+            dedup_copy.unlink()
+        adata = adata[:, adata.var.index.duplicated(keep="first") == False].copy(filename=dedup_copy)
 
     num_target_genes = adata.shape[1]
     num_loading_genes = loading_df.shape[0]

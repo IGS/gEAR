@@ -348,12 +348,8 @@ class TSNEData(Resource):
             # delete the original column
             selected.obs.drop(selected_gene, axis=1, inplace=True)
 
-        df = selected.to_df()
         success = 1
         message = ""
-        if len(df.columns) > 1:
-            success = 2
-            message = "WARNING: Multiple Ensemble IDs found for gene symbol '{}'.  Using the first stored Ensembl ID.".format(selected_gene)
 
         # Drop duplicate gene symbols so that only 1 ensemble ID is used in scanpy
         selected.var = selected.var.reset_index().set_index('gene_symbol')
@@ -361,7 +357,10 @@ class TSNEData(Resource):
         # Rename to end the confusion
         selected.var = selected.var.rename(columns={selected.var.columns[0]: "ensembl_id"})
         # Modify the AnnData object to not include any duplicated gene symbols (keep only first entry)
-        if len(df.columns) > 1:
+        if (selected.var.index.duplicated(keep="first") == True).any():
+            success = 2
+            message = "WARNING: Multiple Ensemble IDs found for gene symbol '{}'.  Using the first stored Ensembl ID.".format(selected_gene)
+
             dedup_copy = ana.dataset_path().replace('.h5ad', '.dups_removed.h5ad')
             if os.path.exists(dedup_copy):
                 os.remove(dedup_copy)
