@@ -362,10 +362,10 @@ class TSNEData(Resource):
         selected.var = selected.var.rename(columns={selected.var.columns[0]: "ensembl_id"})
         # Modify the AnnData object to not include any duplicated gene symbols (keep only first entry)
         if len(df.columns) > 1:
-            scanpy_copy = ana.dataset_path().replace('.h5ad', '.scanpy_dups_removed.h5ad')
-            if os.path.exists(scanpy_copy):
-                os.remove(scanpy_copy)
-            selected = selected[:, selected.var.index.duplicated() == False].copy(filename=scanpy_copy)
+            dedup_copy = ana.dataset_path().replace('.h5ad', '.dups_removed.h5ad')
+            if os.path.exists(dedup_copy):
+                os.remove(dedup_copy)
+            selected = selected[:, selected.var.index.duplicated() == False].copy(filename=dedup_copy)
 
         io_fig = None
         try:
