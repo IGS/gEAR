@@ -210,6 +210,12 @@ class GenesAsAxisHandler extends PlotHandler {
     async setupPlotSpecificEvents() {
         catColumns = await getCategoryColumns();
 
+        if (!catColumns.length) {
+            document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
+            createToast("No categorical columns found in dataset. Cannot create a plot. Please choose another dataset");
+            return;
+        }
+
         updateSeriesOptions("js-dash-primary", catColumns);
         updateSeriesOptions("js-dash-secondary", catColumns);
 
@@ -575,6 +581,13 @@ class GenesAsDataHandler extends PlotHandler {
     async setupPlotSpecificEvents() {
 
         catColumns = await getCategoryColumns();
+
+        if (!catColumns.length) {
+            document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
+            createToast("No categorical columns found in dataset. Cannot create a plot. Please choose another dataset");
+            return;
+        }
+
         updateSeriesOptions("js-dash-compare", catColumns);
 
         // When compare series changes, update the compare groups
@@ -684,6 +697,10 @@ const chooseGenes = (event) => {
     const geneTagsElt = document.getElementById("gene-tags");
     geneTagsElt.replaceChildren();
 
+    document.getElementById("num-selected-genes-c").classList.remove("is-hidden");
+    document.getElementById("num-selected-genes").textContent = selected_genes.size;
+    document.getElementById("num-selected-genes-post").textContent = selected_genes.size;
+
 	if (selected_genes.size == 0) return;  // Do not trigger after initial population
 
     // Update list of gene tags
@@ -742,7 +759,8 @@ const curatorSpecifcCreatePlot = async (plotType) => {
 }
 
 const curatorSpecifcDatasetTreeCallback = async () => {
-    //pass
+    document.getElementById("num-selected-genes").textContent = 0;
+    document.getElementById("num-selected-genes-post").textContent = 0;
 }
 
 /**

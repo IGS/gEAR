@@ -42,11 +42,15 @@ def main():
     date_added = form.getvalue('date_added')
     ownership = form.getvalue('ownership')
     layout_share_id = form.getvalue('layout_share_id')
+    include_public_membership = form.getvalue('include_public_collection_membership')
     page = form.getvalue('page', "1")    # page starts at 1
     limit = form.getvalue('limit', str(DEFAULT_MAX_RESULTS))
     sort_by = re.sub("[^[a-z]]", "", form.getvalue('sort_by'))
     user = geardb.get_user_from_session_id(session_id) if session_id else None
     result = {'success': 1, 'problem': '', 'datasets': []}
+
+    # convert include_public_membership to boolean
+    include_public_membership = True if include_public_membership == 'true' else False
 
     if page and not page.isdigit():
         raise ValueError("Page must be a number")
@@ -206,8 +210,7 @@ def main():
     result['datasets'] = datasets_collection.get_by_dataset_ids(matching_dataset_ids)
 
     for dataset in result['datasets']:
-
-        dataset.get_layouts(user=user)
+        dataset.get_layouts(user=user, include_public=include_public_membership)
         # delete user_id and layout_id from each dataset layout (security reasons)
         for l in dataset.layouts:
             #l.is_owner = True if user and l.user_id == user.id else False

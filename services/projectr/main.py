@@ -1,5 +1,6 @@
 import os, sys
 import pandas as pd
+from io import StringIO
 from flask import Flask, abort, jsonify, request
 
 cloud_logging = False
@@ -36,9 +37,21 @@ def write_entry(logger_name, severity, message):
 
 def do_binary_projection(target_df, loading_df):
     """Perform projection based on the number of genes that were expressed in the cell or observation."""
-    # Only applies with unweighted gene carts.
-    tp_target_series = target_df.astype(bool).sum(axis=0).transpose()
-    return pd.DataFrame(data=tp_target_series, columns=loading_df.columns, index=tp_target_series.index)
+    # Only applies with unweighted gene carts, or weighted carts with binary values.
+
+    # for each loading pattern, count the number of genes that are expressed in the target
+    # and return the count as the pattern weight.
+    binary_target_df = pd.DataFrame()
+    for pattern in loading_df.columns:
+        # Count the number of genes that are 1 in the loading_df
+        good_loading_genes_mask = loading_df[pattern].astype(bool)
+        good_loading_genes = loading_df.index[good_loading_genes_mask]
+
+        # Count the number of those genes that are 1 (expressed) in the target_df.
+        good_genes = target_df.loc[good_loading_genes].astype(bool).sum(axis=0).transpose()
+        binary_target_df[pattern] = good_genes
+    return binary_target_df
+
 
 def do_pca_projection(target_df, loading_df):
     """Perform projection of PCA loadings."""
@@ -65,6 +78,10 @@ def index():
     write_entry("projectr", "INFO", "Dataset ID: {}".format(dataset_id))
     write_entry("projectr", "INFO", "Genecart ID: {}".format(genecart_id))
 
+
+    # pd.read_json gives a FutureWarning, and suggest to wrap the json in StringIO.
+    target = StringIO(target)
+    loadings = StringIO(loadings)
 
     target_df = pd.read_json(target, orient="split")
     loading_df = pd.read_json(loadings, orient="split")

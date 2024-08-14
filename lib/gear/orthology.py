@@ -98,7 +98,8 @@ def filter_organism_by_id(organism_id: str):
     Returns:
         dict: The organism dictionary corresponding to the given organism ID.
     """
-    return next((item for item in organisms if item["id"] == organism_id), None)
+
+    return next((item for item in organisms if item.id == organism_id), None)
 
 def get_organism_name_by_id(organism_id: str):
     """Get the organism name corresponding to the given organism ID.
@@ -109,7 +110,11 @@ def get_organism_name_by_id(organism_id: str):
     Returns:
         str: The organism name corresponding to the given organism ID.
     """
-    return filter_organism_by_id(organism_id)["name"]
+    organism = filter_organism_by_id(organism_id)
+    if organism is not None:
+        return organism.label
+    else:
+        return ""
 
 def create_orthology_df(orthomap_file: Path):
     """
@@ -149,7 +154,8 @@ def map_dataframe_genes(orig_df: pd.DataFrame, orthomap_file: Path):
 
     def get_best_match(id1):
         # Get the best match for the id2 gene symbol
-        sorted_by_best_match = orthomap_df[orthomap_df["id1"] == id1].sort_values("algorithms_match_count", ascending=False)
+        best_match_for_id = orthomap_df[orthomap_df["id1"] == id1]
+        sorted_by_best_match = best_match_for_id.sort_values(by="algorithms_match_count", ascending=False)
         # If no match, return the original id1
         if sorted_by_best_match.empty:
             return id1

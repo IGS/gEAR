@@ -2,7 +2,7 @@
 
 This document is intended to capture all the customizations to the apache2 config files needed for a gEAR instance to operate properly.  The paths given are those for a standard Ubuntu installation, but adjust as needed for another platform.
 
-## Enabling mod-rewrite, CGI, PHP and WSGI
+## Enabling mod-rewrite, CGI and WSGI
 
     $ sudo a2enmod rewrite
     $ sudo a2enmod cgi
@@ -10,29 +10,7 @@ This document is intended to capture all the customizations to the apache2 confi
     $ sudo apt install libapache2-mod-wsgi-py3 apache2-dev
     $ sudo a2enmod wsgi
     $ sudo a2enmod proxy
-    $ sudo a2dismod mpm_event && sudo a2enmod mpm_prefork && sudo a2enmod php8.1
-### PHP (used by uploader)
-
-    $ sudo apt install php
-
-The php.ini file also needs updating on some systems to get around file upload limitations. Visit
-the test PHP page in gEAR, look for the 'Configuration file (php.ini) Path' setting, then modify
-that one.
-
-     http://localhost/cgi/test.php
-
-Modifications to make:
-
-    post_max_size = 3000M
-    upload_max_filesize = 3000M
-
-### Note about Ubuntu 22.04 Jammy
-
-If upgrading from 20.04 to 22.04, then a couple extra steps need to be taken as the former PHP (7.4) is not available in the newer OS version, which has PHP 8.1
-
-sudo a2enmod php8.1
-sudo a2dismod php7.4
-sudo systemctl apache restart
+    $ sudo a2dismod mpm_event && sudo a2enmod mpm_prefork
 
 ## /etc/apache2/apache2.conf
 

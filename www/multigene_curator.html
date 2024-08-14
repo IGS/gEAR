@@ -240,6 +240,10 @@
               <i class="mdi mdi-chevron-down"></i>
             </span>
           </h5>
+          <div id="num-selected-genes-c" class="is-hidden">
+            Number of selected genes:
+            <span id="num-selected-genes"></span>
+          </div>
           <div class="js-step-collapsable mt-3" id="gene-collapsable">
             <p>Genes entered manually or chosen from an existing gene list will be added to your group of selected genes to plot. Note that only genes or orthologs found in the dataset will appear in the plot.</p>
 
@@ -304,6 +308,7 @@
               <p>Dataset: <span id="current-dataset-post" class="has-text-weight-semibold"></span></p>
               <p>Analysis: <span id="current-analysis-post" class="has-text-weight-semibold">Primary analysis</span></p>
               <p>Number of selected observations: <span id="num-selected" class="has-text-weight-semibold"></span></p>
+              <p>Number of selected genes: <span id="num-selected-genes-post" class="has-text-weight-semibold"></span></p>
             </div>
             <div id="post-plot-customize">
               <div id="facet-content" class="content is-hidden">

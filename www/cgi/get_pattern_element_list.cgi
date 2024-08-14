@@ -39,6 +39,11 @@ def main():
         up_genes = df.nlargest(n=5, columns=[col]).iloc[:, 1].tolist()
         down_genes = df.nsmallest(n=5, columns=[col]).iloc[:, 1].tolist()
 
+        # if there are no negative values, the down_genes should be empty
+        # Example is with binary weights.
+        if all([v >= 0 for v in df[col]]):
+            down_genes = []
+
         # If all values are either 0 or 1, the pattern can be a binary weight
         binary = all([v in [0, 1] for v in df[col]])
 

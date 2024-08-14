@@ -170,10 +170,39 @@ class Analysis {
             document.querySelector(UI.newAnalysisOptionElt).setAttribute("selected", "selected");
             document.querySelector(UI.analysisSelect).dispatchEvent(new Event("change"));
             await this.getSavedAnalysesList(this.dataset.id, 0);
+            resetStepperWithHrefs(UI.primaryFilterSection);
 
         } catch (error) {
             createToast(`Error deleting analysis: ${error.message}`);
         }
+    }
+
+    async download() {
+
+        // create URL parameters
+        const params = {
+            session_id: this.userSessionId,
+            dataset_id: this.dataset.id,
+            analysis_id: this.id,
+            type: "h5ad",
+        }
+
+        // download the h5ad
+        const url = `./cgi/download_source_file.cgi?${new URLSearchParams(params).toString()}`;
+        try {
+            const {data} = await axios.get(url, {responseType: 'blob'});
+            const blob = new Blob([data], {type: 'application/octet-stream'});
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `${this.dataset.id}.${this.id}.h5ad`;
+            a.click();
+        } catch (error) {
+            console.error("Error downloading analysis h5ad", this);
+            logErrorInConsole(error);
+            createToast(`Error downloading analysis h5ad`);
+        }
+
     }
 
     /**
@@ -517,9 +546,11 @@ class Analysis {
             const imgSrc = response.request.responseURL;
             const html = `<a target="_blank" href="${imgSrc}"><img src="${imgSrc}" class="image" alt="${title}" /></a>`;
             document.querySelector(target).innerHTML = html;
-        } else {
-            console.error(`Error: ${response.status}`);
+            return;
         }
+
+        console.error(`Error: ${response.status}`);
+        createToast(`Error getting analysis image`);
     }
 
     /**
@@ -663,7 +694,6 @@ class Analysis {
             document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
             document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.remove("is-hidden");
             document.querySelector(UI.btnMakePublicCopyElt).classList.remove("is-hidden");
-            document.querySelector(UI.newAnalysisLabelContainer).classList.add("is-hidden");
 
             await this.getSavedAnalysesList(this.dataset.id, this.id);
         } catch (error) {

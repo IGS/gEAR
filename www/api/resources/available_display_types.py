@@ -78,7 +78,7 @@ class MGAvailableDisplayTypes(Resource):
         if len(categorical_columns) == 0:
           return {
             "success": -1,
-            'message': "No categorical columns found in this dataset, so plots cannot be drawn."
+            'message': "No categorical columns found in this dataset, so plots cannot be drawn. Please choose another dataset."
           }
 
         # Volcano plots must have at least 2 distinct categorical columns
@@ -175,6 +175,12 @@ class AvailableDisplayTypes(Resource):
           adata = sc.read_h5ad(h5_path)
 
         columns = adata.obs.columns.tolist()
+
+        if len(columns) == 0:
+          return {
+            "success": -1,
+            'message': "No metadata columns found in this dataset, so plots cannot be drawn. Please choose another dataset."
+          }
 
         if "replicate" in columns:
           columns.remove('replicate')

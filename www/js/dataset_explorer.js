@@ -8,6 +8,7 @@ let selected_dc_share_id; // from dataset-collection-selector
 
 let firstSearch = true;
 let searchByCollection = false;
+let includePublicMembership = false;
 const resultsPerPage = 20;
 let listView = "table";
 
@@ -290,16 +291,21 @@ const addDatasetListEventListeners = () => {
 
     for (const classElt of document.getElementsByClassName("js-download-dataset")) {
         classElt.addEventListener("click", async (e) => {
-            // download the h5ad
-            const datasetId = e.currentTarget.dataset.datasetId;
-            const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${datasetId}`;
-            const {data} = await axios.get(url, {responseType: 'blob'});
-            const blob = new Blob([data], {type: 'application/octet-stream'});
-            const downloadUrl = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = downloadUrl;
-            a.download = `${datasetId}.h5ad`;
-            a.click();
+            try {
+                // download the h5ad
+                const datasetId = e.currentTarget.dataset.datasetId;
+                const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${datasetId}`;
+                const {data} = await axios.get(url, {responseType: 'blob'});
+                const blob = new Blob([data], {type: 'application/octet-stream'});
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `${datasetId}.h5ad`;
+                a.click();
+            } catch (error) {
+                logErrorInConsole(error);
+                createToast("Failed to download dataset");
+            }
         });
     }
 
@@ -347,6 +353,15 @@ const addDatasetListEventListeners = () => {
 
             const title = document.querySelector(`${selectorBase}-editable-title`).dataset.originalVal;
             document.querySelector(`${selectorBase}-editable-title`).value = title;
+
+            const ldesc = document.querySelector(`${selectorBase}-editable-ldesc`).dataset.originalVal;
+            document.querySelector(`${selectorBase}-editable-ldesc`).value = ldesc;
+
+            const pubmedId = document.querySelector(`${selectorBase}-editable-pubmed-id`).dataset.originalVal;
+            document.querySelector(`${selectorBase}-editable-pubmed-id`).value = pubmedId;
+
+            const geoId = document.querySelector(`${selectorBase}-editable-geo-id`).dataset.originalVal;
+            document.querySelector(`${selectorBase}-editable-geo-id`).value = geoId;
 
             document.querySelector(`${selectorBase} .js-action-links`).classList.remove("is-hidden");
 
@@ -491,8 +506,14 @@ const addDatasetListEventListeners = () => {
     // Redirect to gene expression search
     for (const classElt of document.getElementsByClassName("js-view-dataset")) {
         classElt.addEventListener("click", (e) => {
-            // ! Currently redirects to blank page
             window.open(`./p?s=${e.currentTarget.value}`, '_blank');
+        });
+    }
+
+    // Redirect to gene expression search
+    for (const classElt of document.getElementsByClassName("js-view-projection-dataset")) {
+        classElt.addEventListener("click", (e) => {
+            window.open(`./p?p=p&s=${e.currentTarget.value}`, '_blank');
         });
     }
 }
@@ -532,7 +553,7 @@ const addDownloadableInfoToDataset = (datasetId, isDownloadable, hasH5ad) => {
     datasetDisplayContainer.appendChild(datasetDisplaySpan);
 }
 
-const addModalEventListeners = (collection) => {
+const addModalEventListeners = () => {
     for (const classElt of document.getElementsByClassName("js-collection-add-display")) {
         classElt.addEventListener("click", async (e) => {
             const thisElt = e.currentTarget;
@@ -557,11 +578,8 @@ const addModalEventListeners = (collection) => {
 
                 createToast("Display added to collection", "is-success");
 
-                const curr_share_id  = selected_dc_share_id;
-
                 // Update the layout arrangement views
                 await updateDatasetCollections();
-                selectDatasetCollection(curr_share_id); // performs DatasetCollectionSelectorCallback when label is set
 
             } catch (error) {
                 logErrorInConsole(error);
@@ -594,12 +612,8 @@ const addModalEventListeners = (collection) => {
 
                 createToast("Display removed from collection", "is-success");
 
-                const curr_share_id  = selected_dc_share_id;
-
                 // Update the layout arrangement views
                 await updateDatasetCollections();
-                selectDatasetCollection(curr_share_id); // performs DatasetCollectionSelectorCallback when label is set
-
             } catch (error) {
                 logErrorInConsole(error);
                 createToast("Failed to remove dataset from collection");
@@ -872,8 +886,6 @@ const createDeleteDatasetConfirmationPopover = () => {
                 });
             });
 
-            // Show popover
-            document.body.appendChild(popoverContent);
 
             // Store the dataset ID to delete
             const datasetIdToDelete = e.currentTarget.value;
@@ -1003,9 +1015,6 @@ const createRenameDatasetPermalinkPopover = () => {
                 });
             });
 
-            // Show popover
-            document.body.appendChild(popoverContent);
-
             const shareId = e.currentTarget.dataset.shareId;
 
             document.getElementById("dataset-link-name").addEventListener("keyup", () => {
@@ -1044,6 +1053,7 @@ const createRenameDatasetPermalinkPopover = () => {
                     // (since e.currentTarget is null after confirm button is clicked)
                     e.target.closest(".js-action-links").querySelector(".js-edit-dataset-permalink").dataset.shareId = newShareId;
                     e.target.closest(".js-action-links").querySelector(".js-view-dataset").value = newShareId;
+                    e.target.closest(".js-action-links").querySelector(".js-view-projection-dataset").value = newShareId;
                     e.target.closest(".js-action-links").querySelector(".js-share-dataset").value = newShareId;
 
                     popoverContent.remove();
@@ -1136,9 +1146,6 @@ const createDeleteCollectionConfirmationPopover = () => {
                 [staticSide]: '-4px',
             });
         });
-
-        // Show popover
-        document.body.appendChild(popoverContent);
 
         // Add event listener to cancel button
         document.getElementById('cancel-collection-delete').addEventListener('click', () => {
@@ -1264,9 +1271,6 @@ const createNewCollectionPopover = () => {
                 [staticSide]: '-4px',
             });
         });
-
-        // Show popover
-        document.body.appendChild(popoverContent);
 
         document.getElementById("collection-name").addEventListener("keyup", () => {
             const newCollectionName = document.getElementById("collection-name");
@@ -1397,9 +1401,6 @@ const createRenameCollectionPopover = () => {
                 [staticSide]: '-4px',
             });
         });
-
-        // Show popover
-        document.body.appendChild(popoverContent);
 
         document.getElementById("collection-name").addEventListener("keyup", () => {
             const newCollectionName = document.getElementById("collection-name");
@@ -1536,9 +1537,6 @@ const createRenameCollectionPermalinkPopover = () => {
             });
         });
 
-        // Show popover
-        document.body.appendChild(popoverContent);
-
         document.getElementById("collection-link-name").addEventListener("keyup", () => {
             const newLinkName = document.getElementById("collection-link-name");
             const confirmRenameLink = document.getElementById("confirm-collection-link-rename");
@@ -1673,6 +1671,7 @@ const datasetCollectionSelectionCallback = async () => {
     }
 
     // If the selected dataset collection is the current collection, make it look like the primary collection
+    // ! Currently the selector will auto-make that collection the primary collection
     document.getElementById("btn-set-primary-collection").classList.add("is-outlined");
     if (selected_dc_share_id === CURRENT_USER.layout_share_id) {
         document.getElementById("btn-set-primary-collection").classList.remove("is-outlined");
@@ -1903,6 +1902,7 @@ const processSearchResults = (data) => {
 
         // action buttons section
         setElementProperties(listResultsView, ".js-view-dataset", { value: shareId });
+        setElementProperties(listResultsView, ".js-view-projection-dataset", { value: shareId });
         setElementProperties(listResultsView, ".js-view-displays", { dataset: { datasetId, title: label, isPublic } });
         setElementProperties(listResultsView, ".js-delete-dataset", { value: datasetId, dataset: { isOwner } });
         setElementProperties(listResultsView, ".js-edit-dataset-permalink", { value: datasetId, dataset: { isOwner, shareId } });
@@ -1930,6 +1930,11 @@ const processSearchResults = (data) => {
         resultsListDiv.appendChild(listResultsView);
 
         // add collection membership info to dataset
+        document.querySelector(`#${resultDatasetId} .js-found-in-collection-text`).innerHTML = "Found in these owned or highlighted collections";
+        if (includePublicMembership) {
+            document.querySelector(`#${resultDatasetId} .js-found-in-collection-text`).innerHTML = "Found in these owned or public collections";
+        }
+
         const collections = dataset.layouts;
         for (const collectionString of collections) {
             const collection = JSON.parse(collectionString);
@@ -2056,6 +2061,10 @@ const renderDisplaysModal = async (datasetId, title, isPublic) => {
     ownerDisplaysElt.replaceChildren();
 
     const collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
+    if (collection) {
+        const layoutMemberData = await apiCallsMixin.fetchDatasetCollectionMembers(selected_dc_share_id);
+        collection.members = layoutMemberData.layout_members.single.concat(layoutMemberData.layout_members.multi);
+    }
 
     // Did it this way so we didn't have to pass async/await up the chain
     await Promise.allSettled([
@@ -2091,52 +2100,35 @@ const renderDisplaysModal = async (datasetId, title, isPublic) => {
     // Add modal to DOM
     document.body.append(modalHTML);
 
-
-
     // Set state of initial display add/remove buttons based on the initial dataset collection.
     updateDisplayAddRemoveToCollectionButtons(modalDiv.id, collection);
 
-    // Currently only collectiosn with datasets members will be fetched.
-    // If this isn't one (i.e. brand new one), we can fudge some properties to make the UI work
-    if (!collection) {
-        collection = {
-            dataset_count: 0,
-            folder_id: null,
-            folder_label: null,
-            folder_parent_id: null,
-            is_current: 0,
-            is_domain: 0,
-            is_owner: 1,
-            is_public: 0,
-            label: selected_dc_label,
-            members: [],
-            share_id: selected_dc_share_id,
-        }
-    }
-
-    addModalEventListeners(collection);
+    addModalEventListeners();
 
     // Create tooltips for all elements with the data-tooltip-content attribute
     // Only creating one set so that they can be reused
     const actionGroupElt = document.querySelector(".js-collection-add-remove-group");
     const tooltips = []
 
-    for (const classElt of actionGroupElt.querySelectorAll("[data-tooltip-content]")) {
-        tooltips.push(createActionTooltips(classElt))
-    }
+    if (actionGroupElt) {
+        // Push into master list, the first instance of tooltips
+        for (const classElt of actionGroupElt.querySelectorAll("[data-tooltip-content]")) {
+            tooltips.push(createActionTooltips(classElt))
+        }
 
-    for (const tooltip of tooltips) {
-        tooltip.classList.add("js-modal-tooltip"); // prevent removal of tooltip
-    }
+        for (const tooltip of tooltips) {
+            tooltip.classList.add("js-modal-tooltip"); // prevent removal of tooltip
+        }
 
-    // Then apply each tooltip to the appropriate element for all elements with the data-tooltip-content attribute
-
-    for (const actionElt of document.querySelectorAll(".js-collection-add-remove-group")) {
-        const loopTooltips = [...tooltips];
-        for (const classElt of actionElt.querySelectorAll("[data-tooltip-content]")) {
-            applyTooltip(classElt, loopTooltips.shift());
+        // Then apply each tooltip to the appropriate element for all elements with the data-tooltip-content attribute
+        for (const actionElt of document.querySelectorAll(".js-collection-add-remove-group")) {
+            const loopTooltips = [...tooltips];
+            for (const classElt of actionElt.querySelectorAll("[data-tooltip-content]")) {
+                applyTooltip(classElt, loopTooltips.shift());
+            }
         }
     }
+
 
     // Render warning about public collection and private dataset and disable "add to collection" button
     if (!(collection.is_public && !isPublic)) {
@@ -2166,7 +2158,7 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
     for (const display of displays) {
         const displayHTML = displayTemplate.content.cloneNode(true);
 
-        const displayId = display.id;;
+        const displayId = display.id;
 
         const displayElement = displayHTML.querySelector('.js-modal-display');
         displayElement.dataset.displayId = displayId;
@@ -2195,8 +2187,9 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
 
         // Determine number of times display is in current layout
         const displayCount = displayElement.querySelector('.js-collection-display-count');
-        if (collection) {
-            const displayCountValue = collection.members.filter((member) => member.display_id === displayId).length;
+
+        if (collection?.members) {
+            const displayCountValue = collection.members.filter((member) => JSON.parse(member).display_id === displayId).length
             displayCount.textContent = displayCountValue;
         } else {
             // maybe a new collection
@@ -2473,6 +2466,10 @@ const submitSearch = async (page=1) => {
         searchCriteria.layout_share_id = selected_dc_share_id;
     }
 
+    if (includePublicMembership) {
+        searchCriteria.include_public_collection_membership = true;
+    }
+
     // collect the filter options the user defined
     searchCriteria.organism_ids = buildFilterString('controls-organism');
     searchCriteria.date_added = buildFilterString('controls-date-added');
@@ -2537,19 +2534,47 @@ const updateDatasetCollectionButtons = (collection=null) => {
 
     // If user is not the owner of the collection, remove the delete and rename buttons
     const isOwner = (collection && Boolean(collection.is_owner)) || false;
+    const isPublic = (collection && Boolean(collection.is_public)) || false;
 
     const collectionRenameButton = document.getElementById("btn-rename-collection");
     const collectionRenamePermalinkButton = document.getElementById("btn-rename-collection-permalink");
     const collectionDeleteButton = document.getElementById("btn-delete-collection");
+    const collectionVisibilityContainer = document.getElementById("collection-visibility-c");
 
     enableAndShowElement(collectionRenameButton);
     enableAndShowElement(collectionRenamePermalinkButton);
     enableAndShowElement(collectionDeleteButton);
+    enableAndShowElement(collectionVisibilityContainer);
     if (!isOwner) {
         disableAndHideElement(collectionRenameButton);
         disableAndHideElement(collectionRenamePermalinkButton);
         disableAndHideElement(collectionDeleteButton);
+        disableAndHideElement(collectionVisibilityContainer);
+        return;
     }
+
+    // Set the visibility of the collection
+    const collectionVisibilityInput = document.getElementById("collection-visibility");
+    collectionVisibilityInput.closest(".field").querySelector("label").textContent = "Private collection";
+    if (isPublic) {
+        // If the checkbox is checked, change label accordingly
+        collectionVisibilityInput.closest(".field").querySelector("label").textContent = "Public collection";
+    }
+    collectionVisibilityInput.checked = isPublic;
+
+    // Add event to update the collection visibility on the server
+    collectionVisibilityInput.addEventListener("change", async (event) => {
+        const visibility = event.target.checked;
+        try {
+            await apiCallsMixin.updateDatasetCollectionVisibility(selected_dc_share_id, visibility);
+            createToast("Collection visibility updated");
+        } catch (error) {
+            logErrorInConsole(error);
+            createToast("Failed to update collection visibility");
+        }
+        // update label
+        event.target.closest(".field").querySelector("label").textContent = visibility ? "Public collection" : "Private collection";
+    });
 
 }
 
@@ -2656,7 +2681,7 @@ const updateDisplayAddRemoveToCollectionButtons = (modalDivId, collection=null) 
         }
 
         // if display is not in the currently selected collection, hide the "remove from collection" button
-        const displayInCollection = collection.members.some(member => member.display_id === displayId);
+        const displayInCollection = collection.members.some(member => JSON.parse(member).display_id === displayId);
         if (!displayInCollection) {
             disableAndHideElement(removeFromCollectionButton);
         }
@@ -2835,6 +2860,8 @@ document.getElementById("btn-table-view").addEventListener("click", () => {
     document.getElementById("results-list-div").classList.add("is-hidden");
     document.getElementById("dataset-arrangement-c").classList.add("is-hidden");
 
+    document.getElementById("include-public-membership-c").classList.add("is-hidden");
+
     // Show pagination in case arrangement view hid the pagination
     for (const classElt of document.getElementsByClassName("pagination")) {
         classElt.classList.remove("is-invisible");
@@ -2860,6 +2887,7 @@ document.getElementById("btn-list-view-compact").addEventListener("click", () =>
     document.getElementById("results-list-div").classList.remove("is-hidden");
     document.getElementById("dataset-arrangement-c").classList.add("is-hidden");
 
+    document.getElementById("include-public-membership-c").classList.add("is-hidden");
 
     // find all elements with class 'js-expandable-view' and make sure they also have 'expanded-view-hidden'
     for (const elt of document.querySelectorAll(".js-expandable-view")){
@@ -2897,6 +2925,7 @@ document.getElementById("btn-list-view-expanded").addEventListener("click", () =
     document.getElementById("results-list-div").classList.remove("is-hidden");
     document.getElementById("dataset-arrangement-c").classList.add("is-hidden");
 
+    document.getElementById("include-public-membership-c").classList.remove("is-hidden");
 
     // find all elements with class 'js-expandable-view' and make sure they also have 'expanded-view-hidden'
     for (const elt of document.querySelectorAll(".js-expandable-view")){
@@ -2925,6 +2954,8 @@ document.getElementById("btn-arrangement-view").addEventListener("click", () => 
 
     document.getElementById("btn-arrangement-view").classList.add('is-gear-bg-secondary');
     document.getElementById("btn-arrangement-view").classList.remove('is-dark');
+
+    document.getElementById("include-public-membership-c").classList.add("is-hidden");
 
     // Elements that would trigger submitSearch() are hidden so that pagination and count label won't appear
     for (const classElt of document.getElementsByClassName("js-trigger-dataset-search")) {
@@ -2967,6 +2998,16 @@ document.getElementById("filter-only-in-collection").addEventListener("change", 
     searchByCollection = e.currentTarget.checked;
     // If the checkbox is checked, change label accordingly
     e.currentTarget.closest(".field").querySelector("label").textContent = searchByCollection ? "Yes" : "No"
+
+    // trigger search
+    submitSearch();
+});
+
+// If checkbox is changed, set the searchByCollection flag
+document.getElementById("include-public-membership").addEventListener("change", (e) => {
+    includePublicMembership = e.currentTarget.checked;
+    // If the checkbox is checked, change label accordingly
+    e.currentTarget.closest(".field").querySelector("label").textContent = includePublicMembership ? "Yes" : "No"
 
     // trigger search
     submitSearch();

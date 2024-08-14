@@ -104,7 +104,12 @@ def get_analysis(analysis, dataset_id, session_id):
         if 'type' in analysis:
             ana.type = analysis['type']
         else:
-            ana.discover_type(current_user_id=user_id)
+            ana.discover_type()
+
+        # Check that the h5ad file exists
+        if not os.path.exists(ana.dataset_path()):
+            raise FileNotFoundError("No h5 file found for the passed in analysis")
+
     else:
         ds = Dataset(id=dataset_id, has_h5ad=1)
         h5_path = ds.get_file_path()
@@ -327,15 +332,16 @@ def get_layout_by_id(layout_id):
     layout = None
 
     qry = """
-          SELECT id, user_id, label, is_current, is_domain, share_id
+          SELECT id, user_id, label, is_current, is_domain, share_id, is_public
           FROM layout
           WHERE id = %s
     """
     cursor.execute(qry, (layout_id,))
 
-    for (id, user_id, label, is_current, is_domain, share_id) in cursor:
+    for (id, user_id, label, is_current, is_domain, share_id, is_public) in cursor:
         layout = Layout(id=id, user_id=user_id, is_domain=is_domain,
-                        label=label, is_current=is_current, share_id=share_id)
+                        label=label, is_current=is_current,
+                        share_id=share_id, is_public=is_public)
         break
 
     cursor.close()
@@ -352,15 +358,16 @@ def get_layout_by_share_id(layout_share_id):
     layout = None
 
     qry = """
-          SELECT id, user_id, label, is_current, is_domain, share_id
+          SELECT id, user_id, label, is_current, is_domain, share_id, is_public
           FROM layout
           WHERE share_id = %s
     """
     cursor.execute(qry, (layout_share_id,))
 
-    for (id, user_id, label, is_current, is_domain, share_id) in cursor:
+    for (id, user_id, label, is_current, is_domain, share_id, is_public) in cursor:
         layout = Layout(id=id, user_id=user_id, is_domain=is_domain,
-                        label=label, is_current=is_current, share_id=share_id)
+                        label=label, is_current=is_current,
+                        share_id=share_id, is_public=is_public)
         break
 
     cursor.close()
@@ -680,7 +687,7 @@ class Analysis:
             return 'community'
 
 
-    def discover_type(self, current_user_id=None):
+    def discover_type(self):
         """
         Given an analysis ID it's technically possible to scan the directory hierarchies and
         find the type.
@@ -907,9 +914,9 @@ class Organism:
     def __repr__(self):
         return json.dumps(self.__dict__)
 
+@dataclass
 class OrganismCollection:
-    def __init__(self, organisms=None):
-        self.organisms = [] if organisms is None else organisms
+    organisms: List[Organism] = field(default_factory=list)
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -942,6 +949,7 @@ class OrganismCollection:
             self.organisms.append(org)
 
         cursor.close()
+        conn.close()
 
         return self.organisms
 
@@ -1004,6 +1012,7 @@ class Layout:
 
         cursor.close()
         conn.commit()
+        conn.close()
 
     def dataset_ids(self):
         """
@@ -1106,7 +1115,7 @@ class Layout:
         self.get_members()
 
         cursor.close()
-        conn.commit()
+        conn.close()
 
     def remove(self):
         """
@@ -1129,6 +1138,7 @@ class Layout:
 
         cursor.close()
         conn.commit()
+        conn.close()
 
     def remove_all_members(self):
         """
@@ -1145,6 +1155,7 @@ class Layout:
 
         cursor.close()
         conn.commit()
+        conn.close()
 
         self.members = []
 
@@ -1170,6 +1181,7 @@ class Layout:
 
         cursor.close()
         conn.commit()
+        conn.close()
 
     def remove_members_by_dataset_id(self, dataset_id):
         """Deletes all members where the display ID belongs to a given dataset ID from the database."""
@@ -1215,8 +1227,6 @@ class Layout:
             self.id = cursor.lastrowid
         else:
             # ID already populated
-            conn = Connection()
-            cursor = conn.get_cursor()
 
             # Update layout properties
             sql = """
@@ -1233,12 +1243,11 @@ class Layout:
                 self.is_domain, self.share_id, self.id
             ))
 
-            conn.commit()
-
             # TODO: delete existing members, add current ones
 
         cursor.close()
         conn.commit()
+        conn.close()
 
     def save_change(self, attribute=None, value=None):
         """
@@ -1726,6 +1735,38 @@ class DatasetDisplay:
             cursor.close()
             conn.close()
 
+    def remove(self):
+        """
+        Deletes the current display from the database.
+        """
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        # first remove any layout_display entries
+        qry = """
+                DELETE FROM layout_displays
+                WHERE display_id = %s
+        """
+        cursor.execute(qry, (self.id,))
+
+        # Then remove from anly dataset_preference entries
+        qry = """
+                DELETE FROM dataset_preference
+                WHERE display_id = %s
+        """
+        cursor.execute(qry, (self.id,))
+
+        # Then remove the display itself
+        qry = """
+                DELETE FROM dataset_display
+                WHERE id = %s
+        """
+        cursor.execute(qry, (self.id,))
+
+        cursor.close()
+        conn.commit()
+        conn.close()
+
 @dataclass
 class Dataset:
     id: str
@@ -1836,7 +1877,7 @@ class Dataset:
 
         return tarball_file_path
 
-    def get_layouts(self, user=None):
+    def get_layouts(self, user=None, include_public=False):
         """
         Populates the dataset layouts attribute, a list of Layout objects in which
         this dataset can be found (only those which the user has rights to see.)
@@ -1855,18 +1896,18 @@ class Dataset:
                              JOIN layout_displays lm ON lm.layout_id=l.id
                              JOIN dataset_display dd ON dd.id =lm.display_id
                        WHERE dd.dataset_id = %s
-                             AND (l.user_id = 0 OR l.user_id = %s)
+                             AND (l.is_domain = 1 OR l.user_id = %s)
                     ORDER BY l.label
                 """
                 cursor.execute(qry, (self.id, user.id))
             else:
                 qry = """
-                      SELECT l.id, l.user_id, l.is_domain, l.label, l.is_current, l.share_id
+                      SELECT DISTINCT l.id, l.user_id, l.is_domain, l.label, l.is_current, l.share_id
                         FROM layout l
                              JOIN layout_displays lm ON lm.layout_id=l.id
                              JOIN dataset_display dd ON dd.id =lm.display_id
                        WHERE dd.dataset_id = %s
-                             AND l.user_id = 0
+                             AND l.is_domain = 1
                     ORDER BY l.label
                 """
                 cursor.execute(qry, (self.id,))
@@ -1875,6 +1916,28 @@ class Dataset:
                 l = Layout(id=row[0], user_id=row[1], is_domain=row[2], label=row[3],
                            is_current=row[4], share_id=row[5])
                 self.layouts.append(l)
+
+            if include_public:
+                qry = """
+                      SELECT DISTINCT l.id, l.user_id, l.is_domain, l.label, l.is_current, l.share_id
+                        FROM layout l
+                             JOIN layout_displays lm ON lm.layout_id=l.id
+                             JOIN dataset_display dd ON dd.id =lm.display_id
+                       WHERE dd.dataset_id = %s
+                             AND l.is_public = 1
+                             AND l.is_domain = 0
+                    ORDER BY l.label
+                """
+                cursor.execute(qry, (self.id,))
+
+                for row in cursor:
+                    l = Layout(id=row[0], user_id=row[1], is_domain=row[2], label=row[3],
+                               is_current=row[4], share_id=row[5])
+                    self.layouts.append(l)
+
+            # deduplicate based on a layout's ID (in case user and public layouts overlap)
+            # (normal set->list conversion doesn't work for objects)
+            self.layouts = list({l.id: l for l in self.layouts}.values())
 
             cursor.close()
 

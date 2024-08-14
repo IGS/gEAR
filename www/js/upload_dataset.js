@@ -183,6 +183,7 @@ const populateMetadataFormFromFile = async () => {
 const handlePageSpecificLoginUIUpdates = async (event) => {
     if (CURRENT_USER.session_id) {
         document.getElementById('logged-in-c').classList.remove('is-hidden');
+        loadUploadsInProgress();
     } else {
         document.getElementById('not-logged-in-c').classList.remove('is-hidden');
     }
@@ -212,6 +213,34 @@ const getGeoData = async () => {
     let button = document.getElementById('metadata-geo-lookup');
     button.disabled = false;
     button.classList.remove('is-loading');
+}
+
+const loadUploadsInProgress = async () => {
+    const {data} = await axios.post('./cgi/get_uploads_in_progress.cgi', convertToFormData({
+        session_id: CURRENT_USER.session_id
+    }));
+
+    if (data.success) {
+        if (data.uploads.length > 0) {
+            const template = document.getElementById('submission-history-row');
+            document.querySelector('#submissions-in-progress-table-tbody').innerHTML = '';
+
+            data.uploads.forEach((upload) => {
+                let clone = template.content.cloneNode(true);
+                clone.querySelector('tr').dataset.shareId = upload.share_id;
+
+                clone.querySelector('.submission-share-id').textContent = upload.share_id;
+                clone.querySelector('.submission-status').textContent = upload.status;
+                clone.querySelector('.submission-title').textContent = upload.title;
+                clone.querySelector('.submission-dataset-type').textContent = upload.dataset_type;
+                document.querySelector('#submissions-in-progress-table-tbody').appendChild(clone);
+            });
+
+            document.getElementById('submissions-in-progress').classList.remove('is-hidden');
+        }
+    } else {
+        createToast('Error loading uploads in progress: ' + data.message, 'is-warning');
+    }
 }
 
 const prettifyFieldName = (field) => {
@@ -287,7 +316,8 @@ const storeMetadata = async () => {
         window.scrollTo(0, 0);
 
     } else {
-        alert('Failed to store metadata');
+        // Show error with a toast
+        createToast('Error saving metadata', data.message, 'is-warning');
     }
 }
 

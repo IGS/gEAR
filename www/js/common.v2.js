@@ -24,7 +24,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const logoSmall = document.getElementById('navbar-logo-small');
         logoSmall.src = "/img/by_domain/" + SITE_PREFS.domain_label + "/logo-main-small.png"
-        console.debug("Set logo to: " + logoNormal.src);
+        
+        // Load analytics
+        const head = document.getElementsByTagName('head')[0];
+        const ga_script = document.createElement('script');
+        ga_script.src = "https://www.googletagmanager.com/gtag/js?id=" + SITE_PREFS['google_analytics_4_measurement_id'];
+        ga_script.async = true;
+        head.append(ga_script)
+
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', SITE_PREFS['google_analytics_4_measurement_id']);
     });
 
     // set the active primary nav element, deselect the rest
@@ -1405,6 +1416,19 @@ const apiCallsMixin = {
     async setUserPrimaryDatasetCollection(layoutShareId) {
         const payload = {session_id: this.sessionId, layout_share_id: layoutShareId};
         const {data} = await axios.post("/cgi/save_user_chosen_layout.cgi", convertToFormData(payload));
+        return data;
+    },
+
+    /**
+     * Updates the visibility of a dataset collection in the layout.
+     *
+     * @param {string} layoutShareId - The ID of the layout share.
+     * @param {string} newVisibility - The new visibility value for the dataset collection.
+     * @returns {Promise<any>} - A promise that resolves to the updated data.
+     */
+    async updateDatasetCollectionVisibility(layoutShareId, newVisibility) {
+        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, visibility: newVisibility};
+        const {data} = await axios.post("/cgi/update_layout_visibility.cgi", convertToFormData(payload));
         return data;
     },
 

@@ -6,6 +6,14 @@ let typedMarkerGenes = new Set();
 let currentLabel = null;
 let datasetId = null;
 
+// Floating UI function alias. See https://floating-ui.com/docs/getting-started#umd
+// Subject to change if we ever need these common names for other things.
+const computePosition = window.FloatingUIDOM.computePosition;
+const flip = window.FloatingUIDOM.flip;
+const shift = window.FloatingUIDOM.shift;
+const offset = window.FloatingUIDOM.offset;
+const arrow = window.FloatingUIDOM.arrow;
+
 /**
  * Represents a dataset tree.
  *
@@ -84,31 +92,32 @@ const datasetTree = new DatasetTree({
     })
 });
 
-    /**
-     * Counts and highlights duplicate values in the clustering group labels step.
-     * @returns {number} The number of duplicate values found.
-     */
-    const countAndHighlightDuplicates = () => {
-        const allValues = [];
-        const dupValues = [];
+/**
+ * Counts and highlights duplicate values in the clustering group labels step.
+ * @returns {number} The number of duplicate values found.
+ */
+const countAndHighlightDuplicates = () => {
+    const allValues = [];
+    const dupValues = [];
 
-        // first remove any duplicate-labeled ones
-        for (const elt of document.querySelectorAll(UI.clusterGroupLabelsInputElts)) {
-            elt.classList.remove('has-background-danger');
+    // first remove any duplicate-labeled ones
+    for (const elt of document.querySelectorAll(UI.clusterGroupLabelsInputElts)) {
+        elt.classList.remove('has-background-danger');
 
-            const clusterLabel = elt.value.trim();
+        const clusterLabel = elt.value.trim();
 
-            // this means it WAS found
-            if (allValues.includes(clusterLabel)) {
-                dupValues.push(clusterLabel);
-                elt.classList.add('has-background-danger');
-            } else {
-                allValues.push(clusterLabel);
-            }
+        // this means it WAS found
+        if (allValues.includes(clusterLabel)) {
+            dupValues.push(clusterLabel);
+            elt.classList.add('has-background-danger');
+        } else {
+            allValues.push(clusterLabel);
         }
-
-        return dupValues.length;
     }
+
+    return dupValues.length;
+}
+
 
 /**
  * Downloads the table data as an Excel file.
@@ -308,7 +317,6 @@ const resetWorkbench = () => {
         elt.replaceChildren();
     }
     */
-    document.querySelector(UI.newAnalysisLabelElt).value = '';
 }
 
 /**
@@ -609,34 +617,251 @@ document.querySelector(UI.btnSaveAnalysisElt).addEventListener("click", async (e
 
 });
 
-for (const button of document.querySelectorAll(UI.analysisDeleteElts)) {
+for (const button of document.querySelectorAll(UI.analysisDownloadElts)) {
     button.addEventListener("click", (event) => {
-        // Delete the current analysis
-        currentAnalysis.delete();
-    })
+        // Download the current analysis
+        currentAnalysis.download();
+    });
 }
 
 // Show the "rename" analysis label input when the button is clicked
 for (const button of document.querySelectorAll(UI.analysisRenameElts)) {
     button.addEventListener("click", (event) => {
-        document.querySelector(UI.newAnalysisLabelElt).value = currentAnalysis.label;
-        document.querySelector(UI.newAnalysisLabelContainer).classList.remove("is-hidden");
+
+        // remove existing popovers
+        const existingPopover = document.getElementById('rename-analysis-popover');
+        if (existingPopover) {
+            existingPopover.remove();
+        }
+
+        // Create popover content
+        const popoverContent = document.createElement('article');
+        popoverContent.id = 'rename-analysis-popover';
+        popoverContent.classList.add("message", "is-dark");
+        popoverContent.setAttribute("role", "tooltip");
+        popoverContent.style.width = "500px";
+        popoverContent.innerHTML = `
+            <div class='message-header'>
+                <p>Rename collection</p>
+            </div>
+            <div class='message-body'>
+                <p>Please provide a new name for this analysis</p>
+                <div class='field'>
+                    <div class='control'>
+                        <input id='new-analysis-label' class='input' type='text' placeholder='Analysis name'>
+                    </div>
+                </div>
+                <div id="duplicate-label-warning" class='is-hidden help has-text-danger-dark'>
+                    This analysis label has already been used.
+                </div>
+                <div class='field is-grouped' style='width:250px'>
+                    <p class="control">
+                        <button id='confirm-analysis-rename' class='button is-dark' disabled>Update</button>
+                    </p>
+                    <p class="control">
+                        <button id='cancel-analysis-rename' class='button' value='cancel_rename'>Cancel</button>
+                    </p>
+                </div>
+            </div>
+            <div id="arrow"></div>
+        `;
+
+        // append element to DOM to get its dimensions
+        document.body.appendChild(popoverContent);
+
+        document.getElementById("new-analysis-label").value = currentAnalysis.label;
         document.querySelector(UI.currentAnalysisElt).textContent = currentAnalysis.label;
+
+
+        const arrowElement = document.getElementById('arrow');
+
+        // Create popover (help from https://floating-ui.com/docs/tutorial)
+        computePosition(button, popoverContent, {
+            placement: 'bottom',
+            middleware: [
+                flip(), // flip to top if there is not enough space on butotm
+                shift(), // shift the popover to the right if there is not enough space on the left
+                offset(5), // offset relative to the button
+                arrow({ element: arrowElement }) // add an arrow pointing to the button
+            ],
+        }).then(({ x, y, placement, middlewareData }) => {
+            console.log('Popover position:', x, y, placement, middlewareData);
+            // Position the popover
+            Object.assign(popoverContent.style, {
+                left: `${x}px`,
+                top: `${y}px`,
+            });
+            // Accessing the data
+            const { x: arrowX, y: arrowY } = middlewareData.arrow;
+
+            // Position the arrow relative to the popover
+            const staticSide = {
+                top: 'bottom',
+                right: 'left',
+                bottom: 'top',
+                left: 'right',
+            }[placement.split('-')[0]];
+
+            // Set the arrow position
+            Object.assign(arrowElement.style, {
+                left: arrowX != null ? `${arrowX}px` : '',
+                top: arrowY != null ? `${arrowY}px` : '',
+                right: '',
+                bottom: '',
+                [staticSide]: '-4px',
+            });
+        });
+
+        document.getElementById("new-analysis-label").addEventListener("keyup", (event) => {
+            // Update the new analysis label if it is not a duplicate
+            if (analysisLabels.has(event.target.value.trim())) {
+                if (event.target.value.trim() !== currentLabel) {
+                    event.target.classList.add("duplicate");
+                    document.getElementById("confirm-analysis-rename").disabled = true;
+                    document.getElementById("duplicate-label-warning").classList.remove("is-hidden");
+                }
+                return;
+            }
+
+            document.getElementById("duplicate-label-warning").classList.add("is-hidden");
+            event.target.classList.remove("duplicate");
+            document.getElementById("confirm-analysis-rename").disabled = false;
+        });
+
+        document.getElementById("new-analysis-label").addEventListener("focus", (event) => {
+            // Reset the new analysis label
+            currentLabel = event.target.value.trim();
+        });
+
+        document.getElementById("cancel-analysis-rename").addEventListener("click", async (event) => {
+            // Reset the label to the current analysis label
+            document.getElementById("new-analysis-label").value = currentAnalysis.label;
+            popoverContent.remove();
+        });
+
+
+        document.getElementById("confirm-analysis-rename").addEventListener("click", async (event) => {
+            event.target.classList.add("is-loading");
+            currentAnalysis.label = document.getElementById("new-analysis-label").value;
+
+            try {
+                // Save the new label to the current analysis
+                await currentAnalysis.save();
+            } catch (error) {
+                // pass - handled in the save method
+            } finally {
+                event.target.classList.remove("is-loading");
+                popoverContent.remove();
+            }
+        });
+
     });
 }
 
-document.querySelector(UI.btnNewAnalysisLabelSaveElt).addEventListener("click", async (event) => {
-    // Save the new label to the current analysis
-    currentAnalysis.label = document.querySelector(UI.newAnalysisLabelElt).value;
-    await currentAnalysis.save();
-    document.querySelector(UI.newAnalysisLabelContainer).classList.add("is-hidden");
-});
 
-document.querySelector(UI.btnNewAnalysisLabelCancelElt).addEventListener("click", async (event) => {
-    // Reset the label to the current analysis label
-    document.querySelector(UI.newAnalysisLabelElt).value = currentAnalysis.label;
-    document.querySelector(UI.newAnalysisLabelContainer).classList.add("is-hidden");
-});
+
+
+
+/**
+ * Creates a confirmation popover for deleting an analysis.
+ */
+const deleteButtons = document.querySelectorAll(UI.analysisDeleteElts);
+for (const button of deleteButtons) {
+    button.addEventListener('click', (e) => {
+        // remove existing popovers
+        const existingPopover = document.getElementById('delete-analysis-popover');
+        if (existingPopover) {
+            existingPopover.remove();
+        }
+
+        // Create popover content
+        const popoverContent = document.createElement('article');
+        popoverContent.id = 'delete-analysis-popover';
+        popoverContent.classList.add("message", "is-danger");
+        popoverContent.setAttribute("role", "tooltip");
+        popoverContent.style.width = "500px";
+        popoverContent.innerHTML = `
+            <div class='message-header'>
+                <p>Delete this analysis</p>
+            </div>
+            <div class='message-body'>
+                <p>Are you sure you want to delete this analysis? This will affect any saved dataset displays using this analysis for yourself and for other users.</p>
+                <div class='field is-grouped' style='width:250px'>
+                    <p class="control">
+                        <button id='confirm-analysis-delete' class='button is-danger'>Delete</button>
+                    </p>
+                    <p class="control">
+                        <button id='cancel-analysis-delete' class='button' value='cancel_delete'>Cancel</button>
+                    </p>
+                </div>
+            </div>
+            <div id="arrow"></div>
+        `;
+
+        // append element to DOM to get its dimensions
+        document.body.appendChild(popoverContent);
+
+        const arrowElement = document.getElementById('arrow');
+
+        // Create popover (help from https://floating-ui.com/docs/tutorial)
+        computePosition(button, popoverContent, {
+            placement: 'bottom',
+            middleware: [
+                flip(), // flip to top if there is not enough space on butotm
+                shift(), // shift the popover to the right if there is not enough space on the left
+                offset(5), // offset relative to the button
+                arrow({ element: arrowElement }) // add an arrow pointing to the button
+            ],
+        }).then(({ x, y, placement, middlewareData }) => {
+            console.log('Popover position:', x, y, placement, middlewareData);
+            // Position the popover
+            Object.assign(popoverContent.style, {
+                left: `${x}px`,
+                top: `${y}px`,
+            });
+            // Accessing the data
+            const { x: arrowX, y: arrowY } = middlewareData.arrow;
+
+            // Position the arrow relative to the popover
+            const staticSide = {
+                top: 'bottom',
+                right: 'left',
+                bottom: 'top',
+                left: 'right',
+            }[placement.split('-')[0]];
+
+            // Set the arrow position
+            Object.assign(arrowElement.style, {
+                left: arrowX != null ? `${arrowX}px` : '',
+                top: arrowY != null ? `${arrowY}px` : '',
+                right: '',
+                bottom: '',
+                [staticSide]: '-4px',
+            });
+        });
+
+        // Add event listener to cancel button
+        document.getElementById('cancel-analysis-delete').addEventListener('click', () => {
+            popoverContent.remove();
+        });
+
+        // Add event listener to confirm button
+        document.getElementById('confirm-analysis-delete').addEventListener('click', async (event) => {
+            event.target.classList.add("is-loading");
+
+            try {
+                // Delete the current analysis
+                await currentAnalysis.delete();
+            } catch (error) {
+                // pass - handled in the delete method
+            } finally {
+                event.target.classList.remove("is-loading");
+                popoverContent.remove();
+            }
+        });
+    });
+}
+
 
 // Handle the analysis selection change
 document.querySelector(UI.analysisSelect).addEventListener("change", async (event) => {
@@ -689,8 +914,6 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
     }
     createToast("Loading stored analysis", "is-info");
 
-    document.querySelector(UI.newAnalysisLabelContainer).classList.add("is-hidden");
-
     resetWorkbench();
 
     const selectedOption = event.target.selectedOptions[0];
@@ -729,27 +952,6 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
         document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
     }
 
-});
-
-document.querySelector(UI.newAnalysisLabelElt).addEventListener("keyup", (event) => {
-    // Update the new analysis label if it is not a duplicate
-    if (analysisLabels.has(event.target.value.trim())) {
-        if (event.target.value.trim() !== currentLabel) {
-            event.target.classList.add("duplicate");
-            document.querySelector(UI.btnNewAnalysisLabelSaveElt).disabled = true;
-            document.querySelector(UI.duplicateLabelWarningElt).classList.remove("is-hidden");
-        }
-        return;
-    }
-
-    document.querySelector(UI.duplicateLabelWarningElt).classList.add("is-hidden");
-    event.target.classList.remove("duplicate");
-    document.querySelector(UI.btnNewAnalysisLabelSaveElt).disabled = false;
-});
-
-document.querySelector(UI.newAnalysisLabelElt).addEventListener("focus", (event) => {
-    // Reset the new analysis label
-    currentLabel = event.target.value.trim();
 });
 
 // Labeled tSNE
