@@ -323,7 +323,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     # If dataset genes have duplicated index names, we need to rename them to avoid errors
     # in collecting rownames in projectR (which gives invalid output)
     # This means these duplicated genes will not be in the intersection of the dataset and pattern genes
-    adata.var_names_make_unique()
+    adata = adata[:, adata.var.index.duplicated(keep="first") == False]
 
     num_target_genes = adata.shape[1]
     num_loading_genes = loading_df.shape[0]
