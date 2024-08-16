@@ -350,6 +350,8 @@ class PlotlyData(Resource):
             y_title = y_axis
             if y_axis == "raw_value":
                 y_title = "expression of {}".format(gene_symbol)
+                if projection_id is not None:
+                    y_title = "relative " + y_title
 
         if plot_type == "contour" and not z_axis:
             z_axis = "raw_value"
