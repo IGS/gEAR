@@ -1203,15 +1203,16 @@ class DatasetTile {
                 // Determine how "download_png" is handled for scanpy plots
                 const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-png"]`);
                 if (downloadPNG) {
-                    downloadPNG.classList.remove("is-hidden");
 
-                    // Remove any existing event listeners
-                    downloadPNG.removeEventListener("click", async (event) => {
-                        await this.getScanpyPNG(display);
-                    });
+                    // If I use the existing "download image" button after switching displays, all previous tsne-static displays will
+                    // also be downloaded becuase event listeners are not removed. So, I will remove the button and re-add it.
+                    // Source -> https://stackoverflow.com/a/9251864
 
-                    // Once = true so that the event listener is only called once
-                    downloadPNG.addEventListener("click", async (event) => {
+                    const newDownloadPNG = downloadPNG.cloneNode(true);
+                    downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
+
+                    newDownloadPNG.classList.remove("is-hidden");
+                    newDownloadPNG.addEventListener("click", async (event) => {
                         // get the download URL
                         await this.getScanpyPNG(display);
                     });
