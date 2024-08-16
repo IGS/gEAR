@@ -196,7 +196,7 @@ class TSNEData(Resource):
         projection_id = req.get('projection_id', None)    # projection id of csv output
         colorblind_mode = req.get('colorblind_mode', False)
         high_dpi = req.get('high_dpi', False)
-        grid_spec = req.get('grid_spec', "1/1/1/1") # start_row/start_col/end_row/end_col (end not inclusive)
+        grid_spec = req.get('grid_spec', "1/1/2/2") # start_row/start_col/end_row/end_col (end not inclusive)
         sc.settings.figdir = '/tmp/'
 
         # convert max_columns to int
@@ -518,7 +518,7 @@ class TSNEData(Resource):
         grid_spec = grid_spec.split('/')
         grid_spec = [int(x) for x in grid_spec]
         row_span = grid_spec[2] - grid_spec[0]
-        col_span = int((grid_spec[3] - grid_spec[1]) / 3)    # Generally these plots span columns in multiples of 4.
+        col_span = ceil((grid_spec[3] - grid_spec[1]) / 3)    # Generally these plots span columns in multiples of 4.
 
         # Set the figsize (in inches)
         dpi = io_fig.dpi    # default dpi is 100, but will be saved as 150 later on
@@ -564,18 +564,14 @@ class TSNEData(Resource):
         if selected.isbacked:
             selected.file.close()
 
-        # Contrain the figure layout
-        io_fig.tight_layout()
-
-
         with io.BytesIO() as io_pic:
             # Set the saved figure dpi based on the number of observations in the dataset after filtering
             if high_dpi:
                 dpi = max(150, int(selected.shape[0] / 100))
                 sc.settings.set_figure_params(dpi_save=dpi)
                 # Double the height and width of the figure to maintain the same size
-                io_fig.set_figwidth(io_fig.get_figwidth() * 2)
-                io_fig.set_figheight(io_fig.get_figheight() * 2)
+                io_fig.set_figwidth(num_plots_wide * 10)
+                io_fig.set_figheight(num_plots_high * 10)
 
                 io_fig.savefig(io_pic, format='png', bbox_inches="tight")
             else:
