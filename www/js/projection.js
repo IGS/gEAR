@@ -411,6 +411,9 @@ const selectPatternWeightResult = async (label) => {
 
     // Other things can be called next, such as plotting calls
     if (tilegrid) {
+        // Revert back to "#result-panel-grid" display before rendering the new gene displays
+        document.getElementById("result-panel-grid").classList.remove("is-hidden");
+        document.getElementById("zoomed-panel-grid").classList.add("is-hidden");
         tilegrid.renderDisplays(label, isMulti, svgScoringMethod, projectionOpts);
     }
 }
