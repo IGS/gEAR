@@ -39,7 +39,6 @@ fixed paths have worked fine for decades.
       Flask-RESTful==0.3.9 \
       gunicorn \
       h5py==3.10.0 \
-      itsdangerous==2.1.2 \
       jupyterlab==4.0.5 \
       jupyter==1.0.0 \
       kaleido==0.2.1 \
@@ -66,7 +65,6 @@ fixed paths have worked fine for decades.
       scikit-learn==1.0.2 \
       scipy==1.11.04 \
       seaborn==0.13.2 \
-      SQLAlchemy==1.4.32 \
       tables==3.9.2 \
       xlrd==1.2.0
     $ sudo mkdir /opt/bin
