@@ -422,6 +422,26 @@ const handleGetComparisonError = (datasetID, conditionX, conditionY) => {
 	console.error(msg);
 }
 
+/**
+ * Highlights rows in a gene table based on the searched genes.
+ *
+ * @param {string[]} searchedGenes - An array of genes to search for.
+ */
+const highlightTableGenes = (searchedGenes=[]) => {
+	const geneTableBody = document.getElementById("gene-table-body");
+	// Select the first column (gene_symbols) in each row
+	for (const row of geneTableBody.children) {
+		// clear any previous highlighting
+		row.classList.remove("has-background-success");
+		const tableGene = row.children[0].textContent;
+		for (const gene of searchedGenes) {
+			if (gene.toLowerCase() === tableGene.toLowerCase() ) {
+				row.classList.add("has-background-success");
+			}
+		};
+	}
+}
+
 /* Transform and load dataset data into a "tree" format */
 const loadDatasetTree = async () => {
     const userDatasets = [];
@@ -629,6 +649,9 @@ const plotDataToGraph = (data) => {
 
 	Plotly.newPlot("plotly-preview", plotData, layout, config);
 
+	// Hide table when plot is first loaded
+	document.getElementById("tbl-selected-genes").classList.add("is-hidden");
+
 	// If plot data is selected, create the right-column table and do other misc things
 	plotlyPreview.on("plotly_selected", (eventData) => {
 
@@ -661,16 +684,7 @@ const plotDataToGraph = (data) => {
 
 		// Highlight table rows that match searched genes
 		if (searchedGenes) {
-			const geneTableBody = document.getElementById("gene-table-body");
-			// Select the first column (gene_symbols) in each row
-			for (const row of geneTableBody.children) {
-				const tableGene = row.children[0].textContent;
-				for (const gene of searchedGenes) {
-					if (gene.toLowerCase() === tableGene.toLowerCase() ) {
-						row.classList.add("has-background-success-light");
-					}
-				};
-			}
+			highlightTableGenes(searchedGenes);
 		}
 	});
 
@@ -1044,7 +1058,9 @@ const updatePlotAnnotations = (genes) => {
 	// update the Plotly layout
 	Plotly.relayout(plotlyPreview, layout);
 
-	// TODO: Update table highlighting
+	// Update table highlighting
+	highlightTableGenes(genes);
+
 }
 
 // For plotting options, populate select menus with category groups
