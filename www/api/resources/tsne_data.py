@@ -3,7 +3,7 @@ import base64
 import io
 import os
 import re
-from math import ceil
+from math import ceil, log2
 
 import geardb
 import matplotlib as mpl
@@ -32,13 +32,14 @@ COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 NUM_LEGENDS_PER_COL = 12    # Max number of legend items per column allowed in vertical legend
 NUM_HORIZONTAL_COLS = 8 # Number of columns in horizontal legend
 
-def calculate_figure_height(num_plots):
+def calculate_figure_height(num_plots, span=1):
     """Determine height of tsne plot based on number of group elements."""
-    return (num_plots * 2) + (num_plots -1)
+    return ((num_plots * 4) * span) + (num_plots - 1)
 
-def calculate_figure_width(num_plots):
+def calculate_figure_width(num_plots, span=1):
     """Determine width of tsne plot based on number of group elements."""
-    return (num_plots * 6) + (num_plots -1)
+    # The + (num_plots - 1) is to account for the space between plots
+    return ((num_plots * 2) * span) + (num_plots - 1)
 
 def calculate_num_legend_cols(group_len):
     """Determine number of columns legend should have in tSNE plot."""
@@ -195,7 +196,12 @@ class TSNEData(Resource):
         projection_id = req.get('projection_id', None)    # projection id of csv output
         colorblind_mode = req.get('colorblind_mode', False)
         high_dpi = req.get('high_dpi', False)
+        grid_spec = req.get('grid_spec', "1/1/2/2") # start_row/start_col/end_row/end_col (end not inclusive)
         sc.settings.figdir = '/tmp/'
+
+        # convert max_columns to int
+        if max_columns:
+            max_columns = int(max_columns)
 
         if not dataset_id:
             return {
@@ -211,15 +217,23 @@ class TSNEData(Resource):
 
         try:
             ana = geardb.get_analysis(analysis, dataset_id, session_id)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {
+                "success": -1,
+                "message": "Could not retrieve analysis."
+            }
+
+        try:
             adata = ana.get_adata(backed=True)
         except Exception as e:
             import traceback
             traceback.print_exc()
             return {
                 "success": -1,
-                "message": str(e)
+                "message": "Could not retrieve AnnData object."
             }
-
 
         if projection_id:
             try:
@@ -340,12 +354,8 @@ class TSNEData(Resource):
             # delete the original column
             selected.obs.drop(selected_gene, axis=1, inplace=True)
 
-        df = selected.to_df()
         success = 1
         message = ""
-        if len(df.columns) > 1:
-            success = 2
-            message = "WARNING: Multiple Ensemble IDs found for gene symbol '{}'.  Using the first stored Ensembl ID.".format(selected_gene)
 
         # Drop duplicate gene symbols so that only 1 ensemble ID is used in scanpy
         selected.var = selected.var.reset_index().set_index('gene_symbol')
@@ -353,11 +363,14 @@ class TSNEData(Resource):
         # Rename to end the confusion
         selected.var = selected.var.rename(columns={selected.var.columns[0]: "ensembl_id"})
         # Modify the AnnData object to not include any duplicated gene symbols (keep only first entry)
-        if len(df.columns) > 1:
-            scanpy_copy = ana.dataset_path().replace('.h5ad', '.scanpy_dups_removed.h5ad')
-            if os.path.exists(scanpy_copy):
-                os.remove(scanpy_copy)
-            selected = selected[:, selected.var.index.duplicated() == False].copy(filename=scanpy_copy)
+        if (selected.var.index.duplicated(keep="first") == True).any():
+            success = 2
+            message = "WARNING: Multiple Ensemble IDs found for gene symbol '{}'.  Using the first stored Ensembl ID.".format(selected_gene)
+
+            dedup_copy = ana.dataset_path().replace('.h5ad', '.dups_removed.h5ad')
+            if os.path.exists(dedup_copy):
+                os.remove(dedup_copy)
+            selected = selected[:, selected.var.index.duplicated() == False].copy(filename=dedup_copy)
 
         io_fig = None
         try:
@@ -437,7 +450,7 @@ class TSNEData(Resource):
                 elif color_idx_name in selected.obs:
                     # Alternative method.  Associate with hexcodes already stored in the dataframe
                     # Making the assumption that these values are hexcodes
-                    grouped = selected.obs.groupby([colorize_by, color_idx_name])
+                    grouped = selected.obs.groupby([colorize_by, color_idx_name], observed=False)
                     # Ensure one-to-one mapping between category and hexcodes
                     if len(selected.obs[colorize_by].unique()) == len(grouped):
                         # Test if names are color hexcodes and use those if applicable (if first is good, assume all are)
@@ -466,7 +479,7 @@ class TSNEData(Resource):
 
                 max_cols = num_plots
                 if max_columns:
-                    max_cols = min(int(max_columns), num_plots)
+                    max_cols = min(max_columns, num_plots)
 
                 selected.obs["gene_expression"] = [float(x) for x in selected[:,selected.var.index.isin([selected_gene])].X]
                 max_expression = max(selected.obs["gene_expression"].tolist())
@@ -474,7 +487,6 @@ class TSNEData(Resource):
                 # Filter expression data by "plot_by_group" group and plot each instance
                 if order and plot_by_group in order:
                     column_order = order[plot_by_group]
-
 
                 for _,name in enumerate(column_order):
                     # Copy gene expression dataseries to observation
@@ -502,9 +514,22 @@ class TSNEData(Resource):
         io_fig = sc.pl.embedding(selected, **kwargs)
         ax = io_fig.get_axes()
 
+        # break grid_spec into spans
+        grid_spec = grid_spec.split('/')
+        grid_spec = [int(x) for x in grid_spec]
+        row_span = grid_spec[2] - grid_spec[0]
+        col_span = ceil((grid_spec[3] - grid_spec[1]) / 3)    # Generally these plots span columns in multiples of 4.
+
+        # Set the figsize (in inches)
+        dpi = io_fig.dpi    # default dpi is 100, but will be saved as 150 later on
+        # With 2 plots as a default (gene expression and colorize_by), we want to grow the figure size slowly based on the number of plots
+
+        num_plots_wide = max_columns if max_columns else num_plots
+        num_plots_high = ceil(num_plots / num_plots_wide)
+
         # set the figsize based on the number of plots
-        io_fig.set_figheight(calculate_figure_height(num_plots))
-        io_fig.set_figwidth(calculate_figure_width(num_plots))
+        io_fig.set_figwidth(calculate_figure_width(num_plots_wide, col_span))
+        io_fig.set_figheight(calculate_figure_height(num_plots_high, row_span))
 
         # rename axes labels
         if type(ax) == list:
@@ -535,21 +560,19 @@ class TSNEData(Resource):
         else:
             rename_axes_labels(ax, x_axis, y_axis)
 
-
         # Close adata so that we do not have a stale opened object
         if selected.isbacked:
             selected.file.close()
 
         with io.BytesIO() as io_pic:
-            # ? From what I'm reading and seeing, this line does not seem to make a difference if bbox_inches is set to "tight"
-            io_fig.tight_layout()   # This crops out much of the whitespace around the plot. The "savefig" line does this with the legend too
-
             # Set the saved figure dpi based on the number of observations in the dataset after filtering
             if high_dpi:
-                dpi = max(150, int(df.shape[0] / 100))
+                dpi = max(150, int(selected.shape[0] / 100))
                 sc.settings.set_figure_params(dpi_save=dpi)
-                # if high_dpi, double the figsize height
-                io_fig.set_figheight(calculate_figure_height(num_plots) * 2)
+                # Double the height and width of the figure to maintain the same size
+                io_fig.set_figwidth(num_plots_wide * 10)
+                io_fig.set_figheight(num_plots_high * 10)
+
                 io_fig.savefig(io_pic, format='png', bbox_inches="tight")
             else:
                 # Moved this to the end to prevent any issues with the dpi setting

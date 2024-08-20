@@ -185,33 +185,20 @@ Information about the individual datasets can be found in the dataset explorer."
                 <section id="summary-s" class="box has-background-primary-light">
                     <header class="content">
                         <div id="analysis-optc-c" class="is-pulled-right">
-                            <div id="new-analysis-label-c" class="field is-hidden">
-                                <label for="new-analysis-label" class="label">Label for this analysis</label>
-                                <input type="text" id="new-analysis-label" class="input" value="Unlabeled" />
-                                <div id="duplicate-label-warning" class='is-hidden has-text-danger-dark'>
-                                    This analysis label has already been used.
-                                </div>
-                                <div class="field has-addons">
-                                    <button id="btn-new-analysis-label-save" class="button is-primary"
-                                    title="Save this label">
-                                        <span class="icon is-small">
-                                            <i class="mdi mdi-content-save"></i>
-                                        </span>
-                                    </button>
-                                    <button id="btn-new-analysis-label-cancel" class="button"
-                                    title="Cancel this label update">
-                                        <span class="icon is-small">
-                                            <i class="mdi mdi-cancel"></i>
-                                        </span>
-                                    </button>
-                                </div>
-                            </div>
                             <div id="analysis-action-c" class="field is-horizontal has-addons is-hidden is-pulled-right">
                                 <div class="field-label is-normal">
                                     <label class="label">Analysis options:</label>
                                 </div>
                                 <div class="field-body">
                                     <div class="field has-addons">
+                                        <p class="control">
+                                            <button class="button js-download-analysis">
+                                                <span class="icon is-small">
+                                                    <i class="mdi mdi-download"></i>
+                                                </span>
+                                                <span>Download analysis H5AD</span>
+                                            </button>
+                                        </p>
                                         <p class="control">
                                             <button class="button js-show-rename-input">
                                                 <span class="icon is-small">
@@ -245,6 +232,14 @@ Information about the individual datasets can be found in the dataset explorer."
                                 </div>
                                 <div class="field-body">
                                     <div class="field has-addons">
+                                        <p class="control">
+                                            <button class="button js-download-analysis">
+                                                <span class="icon is-small">
+                                                    <i class="mdi mdi-download"></i>
+                                                </span>
+                                                <span>Download analysis H5AD</span>
+                                            </button>
+                                        </p>
                                         <p class="control">
                                             <button class="button js-show-rename-input">
                                                 <span class="icon is-small">
@@ -1470,6 +1465,10 @@ At the completion of this step press on ‘save these genes’.
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
     <script src="js/vendor/js.cookie.js"></script>
+
+    <!-- Floating UI for tooltips, popovers, etc -->
+    <script src="https://cdn.jsdelivr.net/npm/@floating-ui/core@1.5.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.5.3"></script>
 
     <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
     <script>document.write('<script src="js/stepper-fxns.' + (new Date()).getTime() + '.js"><\/script>');</script>

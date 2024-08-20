@@ -291,16 +291,21 @@ const addDatasetListEventListeners = () => {
 
     for (const classElt of document.getElementsByClassName("js-download-dataset")) {
         classElt.addEventListener("click", async (e) => {
-            // download the h5ad
-            const datasetId = e.currentTarget.dataset.datasetId;
-            const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${datasetId}`;
-            const {data} = await axios.get(url, {responseType: 'blob'});
-            const blob = new Blob([data], {type: 'application/octet-stream'});
-            const downloadUrl = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = downloadUrl;
-            a.download = `${datasetId}.h5ad`;
-            a.click();
+            try {
+                // download the h5ad
+                const datasetId = e.currentTarget.dataset.datasetId;
+                const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${datasetId}`;
+                const {data} = await axios.get(url, {responseType: 'blob'});
+                const blob = new Blob([data], {type: 'application/octet-stream'});
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `${datasetId}.h5ad`;
+                a.click();
+            } catch (error) {
+                logErrorInConsole(error);
+                createToast("Failed to download dataset");
+            }
         });
     }
 
@@ -573,11 +578,8 @@ const addModalEventListeners = () => {
 
                 createToast("Display added to collection", "is-success");
 
-                const curr_share_id  = selected_dc_share_id;
-
                 // Update the layout arrangement views
                 await updateDatasetCollections();
-                selectDatasetCollection(curr_share_id); // performs DatasetCollectionSelectorCallback when label is set
 
             } catch (error) {
                 logErrorInConsole(error);
@@ -610,12 +612,8 @@ const addModalEventListeners = () => {
 
                 createToast("Display removed from collection", "is-success");
 
-                const curr_share_id  = selected_dc_share_id;
-
                 // Update the layout arrangement views
                 await updateDatasetCollections();
-                selectDatasetCollection(curr_share_id); // performs DatasetCollectionSelectorCallback when label is set
-
             } catch (error) {
                 logErrorInConsole(error);
                 createToast("Failed to remove dataset from collection");
@@ -888,8 +886,6 @@ const createDeleteDatasetConfirmationPopover = () => {
                 });
             });
 
-            // Show popover
-            document.body.appendChild(popoverContent);
 
             // Store the dataset ID to delete
             const datasetIdToDelete = e.currentTarget.value;
@@ -1018,9 +1014,6 @@ const createRenameDatasetPermalinkPopover = () => {
                     [staticSide]: '-4px',
                 });
             });
-
-            // Show popover
-            document.body.appendChild(popoverContent);
 
             const shareId = e.currentTarget.dataset.shareId;
 
@@ -1154,9 +1147,6 @@ const createDeleteCollectionConfirmationPopover = () => {
             });
         });
 
-        // Show popover
-        document.body.appendChild(popoverContent);
-
         // Add event listener to cancel button
         document.getElementById('cancel-collection-delete').addEventListener('click', () => {
             popoverContent.remove();
@@ -1281,9 +1271,6 @@ const createNewCollectionPopover = () => {
                 [staticSide]: '-4px',
             });
         });
-
-        // Show popover
-        document.body.appendChild(popoverContent);
 
         document.getElementById("collection-name").addEventListener("keyup", () => {
             const newCollectionName = document.getElementById("collection-name");
@@ -1414,9 +1401,6 @@ const createRenameCollectionPopover = () => {
                 [staticSide]: '-4px',
             });
         });
-
-        // Show popover
-        document.body.appendChild(popoverContent);
 
         document.getElementById("collection-name").addEventListener("keyup", () => {
             const newCollectionName = document.getElementById("collection-name");
@@ -1552,9 +1536,6 @@ const createRenameCollectionPermalinkPopover = () => {
                 [staticSide]: '-4px',
             });
         });
-
-        // Show popover
-        document.body.appendChild(popoverContent);
 
         document.getElementById("collection-link-name").addEventListener("keyup", () => {
             const newLinkName = document.getElementById("collection-link-name");
@@ -2208,7 +2189,6 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
         const displayCount = displayElement.querySelector('.js-collection-display-count');
 
         if (collection?.members) {
-            console.log(collection.members);
             const displayCountValue = collection.members.filter((member) => JSON.parse(member).display_id === displayId).length
             displayCount.textContent = displayCountValue;
         } else {

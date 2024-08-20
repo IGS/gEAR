@@ -546,9 +546,6 @@ const createDeleteConfirmationPopover = () => {
                 });
             });
 
-            // Show popover
-            document.body.appendChild(popoverContent);
-
             // Store the gene list ID to delete
             const gcIdToDelete = e.currentTarget.value;
 
@@ -682,9 +679,6 @@ const createRenamePermalinkPopover = () => {
                     [staticSide]: '-4px',
                 });
             });
-
-            // Show popover
-            document.body.appendChild(popoverContent);
 
             const shareId = e.currentTarget.dataset.shareId;
 

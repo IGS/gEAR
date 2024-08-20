@@ -64,8 +64,8 @@ ul#go-terms li {
     width: 1080px;  /* grid width + 2*border width */
 }
 
+/* tSNE plots */
 .js-tile .card-image img {
-    object-fit: fill;
     width: fit-content;
     height: 100%;
     margin: auto;

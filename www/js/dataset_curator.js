@@ -690,6 +690,8 @@ const chooseGene = () => {
         document.getElementById("gene-s-failed").classList.remove("is-hidden");
         document.getElementById("gene-s-success").classList.add("is-hidden");
         document.getElementById("current-gene").textContent = "";
+        document.getElementById("current-gene-post").textContent = "";
+
         for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
             plotBtn.disabled = true;
         }
@@ -701,6 +703,7 @@ const chooseGene = () => {
     // Display current selected gene
     document.getElementById("current-gene-c").classList.remove("is-hidden");
     document.getElementById("current-gene").textContent = selectedGene;
+    document.getElementById("current-gene-post").textContent = selectedGene;
     // Force validationcheck to see if plot button should be enabled
     trigger(document.querySelector(".js-plot-req"), "change");
     document.getElementById("plot-options-s").click();
@@ -875,6 +878,7 @@ const curatorSpecifcCreatePlot = async (plotType) => {
  */
 const curatorSpecifcDatasetTreeCallback = () => {
     document.getElementById("current-gene").textContent = "";
+    document.getElementById("current-gene-post").textContent = "";
 }
 
 /**
@@ -1121,15 +1125,16 @@ const setupPlotlyOptions = async () => {
     const difference = (arr1, arr2) => arr1.filter(x => !arr2.includes(x))
     const continuousColumns = difference(allColumns, catColumns);
 
-    // class name, list of columns, add expression, default category
-
     const xColumns = ["bar", "violin"].includes(plotType) ? catColumns : allColumns;
     const xUseRaw = ["bar", "violin"].includes(plotType) ? false : true;
     const yColumns = ["bar", "violin"].includes(plotType) ? continuousColumns : allColumns;
+    const colorColumns = ["bar", "line", "violin"].includes(plotType) ? catColumns : allColumns;
+    const colorUseRaw = ["bar", "line", "violin"].includes(plotType) ? false : true;
 
+    // Arguments - class name, list of columns, add expression, default category
     updateSeriesOptions("js-plotly-x-axis", xColumns, xUseRaw);
     updateSeriesOptions("js-plotly-y-axis", yColumns, true, "raw_value");
-    updateSeriesOptions("js-plotly-color", allColumns, true);
+    updateSeriesOptions("js-plotly-color", colorColumns, colorUseRaw);
     updateSeriesOptions("js-plotly-label", allColumns, true);
     updateSeriesOptions("js-plotly-facet-row", catColumns, false);
     updateSeriesOptions("js-plotly-facet-col", catColumns, false);

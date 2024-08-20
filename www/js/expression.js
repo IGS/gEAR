@@ -14,13 +14,11 @@ let svg_scoring_method = 'gene';
 let datasetShareId = null;
 let layoutShareId = null;
 
+// Plugins can add functions to this which are called after a gene selection change is made
+let geneChangeCallbacks = [];
+
 /*
 TODOs:
-- hide the annotation panel when multi-gene searches are displayed
-- check if the user has a stored default profile and select that one if none were passed (index page too)
-- If I clear the gene symbol search, then click, the gene symbol is not updated and passes validation below - SAdkins
-- Page currently doesn't seem to be submitting history events
-- Entire annotation section should be collapsible, leaving only gene name and product
 - Scrolling of datasets in collection should still show gene list
 - When changing genes the tiles need to show 'loading' states before redrawing
 - When changing scopes the tiles need to show 'loading' states before redrawing
@@ -58,24 +56,29 @@ document.addEventListener('DOMContentLoaded', () => {
             organism_selector.classList.remove('is-hidden');
             toggle_icon.classList.remove('mdi-chevron-down');
             toggle_icon.classList.add('mdi-chevron-up');
-        } else {
-            annotation_panel.classList.add('is-hidden');
-            organism_selector.classList.add('is-hidden');
-            toggle_icon.classList.remove('mdi-chevron-up');
-            toggle_icon.classList.add('mdi-chevron-down');
+            return;
         }
+        annotation_panel.classList.add('is-hidden');
+        organism_selector.classList.add('is-hidden');
+        toggle_icon.classList.remove('mdi-chevron-up');
+        toggle_icon.classList.add('mdi-chevron-down');
     });
 
     // add event listener for when the submit-expression-search button is clicked
     document.getElementById('submit-expression-search').addEventListener('click', async (event) => {
         const currentTarget = event.currentTarget;
         currentTarget.classList.add('is-loading');
-        const status = validateExpressionSearchForm();
+        const isExactMatch = document.getElementById('gene-search-exact-match').checked;
 
-        if (! status) {
-            console.info("Aborting search");
-            event.currentTarget.classList.remove('is-loading');
-            return;
+        // Validate here. However for multigene fuzzy searches, we need the gene list to be populated
+        if (!(is_multigene && !isExactMatch)) {
+            const status = validateExpressionSearchForm();
+
+            if (! status) {
+                console.info("Aborting search");
+                event.currentTarget.classList.remove('is-loading');
+                return;
+            }
         }
 
         document.getElementById("result-panel-initial-notification").classList.add('is-hidden');
@@ -105,16 +108,35 @@ document.addEventListener('DOMContentLoaded', () => {
             tilegrid = tilegridRes.value;
 
             // auto-select the first gene in the list
-            const first_gene = document.querySelector('.gene-result-list-item');
-            if (!is_multigene && first_gene) {
-                first_gene.click();
+            const firstGene = document.querySelector('.gene-result-list-item');
+            if (!is_multigene && firstGene) {
+                // Will call renderDisplays on the selected gene downstream
+                firstGene.click();
+
+            } else if (is_multigene) {
+                let genes = Array.from(selected_genes);
+                if (!isExactMatch) {
+                    const status = validateExpressionSearchForm();
+
+                    if (! status) {
+                        console.info("Aborting search");
+                        event.currentTarget.classList.remove('is-loading');
+                        return;
+                    }
+
+                    // If multigene and not exact match, render all the genes
+                    const allGenesElts = document.querySelectorAll('.gene-result-list-item');
+                    genes = Array.from(allGenesElts).map(elt => elt.textContent);
+                }
+                await tilegrid.renderDisplays(genes, is_multigene);
+
             }
 
             // If the user isn't logged in, set the first organism's annotation as the default
             if (!CURRENT_USER.session_id && tilegrid.datasets.length > 0) {
                 const first_organism_id = tilegrid.datasets[0].organism_id;
                 currently_selected_org_id = parseInt(first_organism_id);
-                document.querySelector('#organism-selector').value = currently_selected_org_id;
+                document.getElementById('organism-selector').value = currently_selected_org_id;
                 updateAnnotationDisplay();
             }
 
@@ -142,11 +164,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (currently_selected_org_id === "") {
-            showOrganismSelectorToolip();
+            showOrganismSelectorTooltip();
             document.querySelector('#set-default-organism').classList.add('is-hidden');
             return;
         }
-        hideOrganismSelectorToolip();
+        hideOrganismSelectorTooltip();
         updateAnnotationDisplay();
 
         // If the user is logged in and doesn't have a default org ID or it's different from their current,
@@ -161,30 +183,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelector('#set-default-organism').addEventListener('click', (event) => {
         // we don't want to set to null, and the UI should have prevented this, but check just in case
-        if (currently_selected_org_id !== "") {
-            CURRENT_USER.default_org_id = currently_selected_org_id;
-            apiCallsMixin.saveUserDefaultOrgId(CURRENT_USER);
-            document.querySelector('#set-default-organism').classList.add('is-hidden');
-        }
-    });
-
-    // Add event listeners to the gene result list items even if they don't exist yet
-    document.addEventListener('click', (event) => {
-        if (!event.target.classList.contains('gene-result-list-item')) {
+        if (currently_selected_org_id === "") {
             return;
         }
-
-        const gene_symbol = event.target.textContent;
-        document.querySelector('#currently-selected-gene').innerHTML = gene_symbol;
-
-        // remove is-selected from all the existing rows, then add it to this one
-        const rows = document.querySelectorAll('.gene-result-list-item');
-        rows.forEach((row) => {
-            row.classList.remove('is-selected');
-        });
-
-        event.target.classList.add('is-selected');
-        selectGeneResult(gene_symbol);
+        CURRENT_USER.default_org_id = currently_selected_org_id;
+        apiCallsMixin.saveUserDefaultOrgId(CURRENT_USER);
+        document.querySelector('#set-default-organism').classList.add('is-hidden');
     });
 
     // Change the svg scoring method when select element is changed
@@ -232,7 +236,7 @@ const buildStateURL = () => {
     url.searchParams.append('is_multigene', singleMulti === 'single' ? '0' : '1');
 
     // add the gene lists
-    //  TODO: This will only be for labeling purposes, since individual genes could have been
+    //  NOTE: This will only be for labeling purposes, since individual genes could have been
     //    deselected within
     if (selected_gene_lists.size > 0) {
         const geneCartShareIds = Array.from(selected_gene_lists);
@@ -286,13 +290,35 @@ const fetchGeneAnnotations = async (callback) => {
                     annotation_data[gene_symbol]['by_organism'][organism_id] = annot;
                 }
             }
+
+            // add event listeners to the gene result list items
+            for (const gene_result of document.querySelectorAll('.gene-result-list-item')) {
+                gene_result.addEventListener('click', (event) => {
+                    const gene_symbol = event.target.textContent;
+                    document.querySelector('#currently-selected-gene').innerHTML = gene_symbol;
+
+                    // remove is-selected from all the existing rows, then add it to this one
+                    const rows = document.querySelectorAll('.gene-result-list-item');
+                    rows.forEach((row) => {
+                        row.classList.remove('is-selected');
+                    });
+
+                    event.target.classList.add('is-selected');
+                    selectGeneResult(gene_symbol);
+                });
+            }
         }
     } catch (error) {
         console.error(error);
     }
 }
 
-const fetchOrganisms = async (callback) => {
+/**
+ * Fetches organisms and populates the organism selector dropdown.
+ *
+\ * @returns {Promise<void>} - A promise that resolves when the organisms are fetched and the dropdown is populated.
+ */
+const fetchOrganisms = async () => {
     try {
         const orgs = await apiCallsMixin.fetchOrganismList();
         const template = document.getElementById('tmpl-organism-option');
@@ -316,6 +342,11 @@ const fetchOrganisms = async (callback) => {
     }
 }
 
+/**
+ * Handles the UI updates specific to the page after login.
+ * @param {Event} event - The event object.
+ * @returns {Promise<void>} - A promise that resolves when all UI updates are completed.
+ */
 const handlePageSpecificLoginUIUpdates = async (event) => {
     // Set the page header title
     document.getElementById('page-header-label').textContent = 'Gene Expression Search';
@@ -358,7 +389,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     //  run the search
     if (urlParamsPassed) {
         if ((datasetShareId || selected_dc_share_id) && selected_genes.size > 0) {
-            document.querySelector('#submit-expression-search').click();
+            document.getElementById('submit-expression-search').click();
         }
     }
 
@@ -376,11 +407,25 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 }
 
-const hideOrganismSelectorToolip = () => {
-    document.querySelector('#organism-selector-control').classList.remove('has-tooltip-top', 'has-tooltip-arrow', 'has-tooltip-active');
-    document.querySelector('#organism-selector-control').removeAttribute('data-tooltip');
+/**
+ * Hides the organism selector tooltip.
+ */
+const hideOrganismSelectorTooltip = () => {
+    document.getElementById('organism-selector-control').classList.remove('has-tooltip-top', 'has-tooltip-arrow', 'has-tooltip-active');
+    document.getElementById('organism-selector-control').removeAttribute('data-tooltip');
 }
 
+/**
+ * Shows the organism selector tooltip.
+ */
+const showOrganismSelectorTooltip = () => {
+    document.getElementById('organism-selector-control').setAttribute('data-tooltip', 'Select an organism to view annotation');
+    document.getElementById('organism-selector-control').classList.add('has-tooltip-top', 'has-tooltip-arrow', 'has-tooltip-active');
+}
+
+/**
+ * Parses the URL parameters related to gene cart and updates the UI accordingly.
+ */
 const parseGeneCartURLParams = () => {
     // handle manually-entered gene symbols
     const gene_symbols = getUrlParameter('gene_symbol');
@@ -420,6 +465,9 @@ const parseGeneCartURLParams = () => {
     }
 }
 
+/**
+ * Parses the URL parameters to handle the passed dataset collection.
+ */
 const parseDatasetCollectionURLParams = () => {
     // handle passed dataset collection
     const layoutShareId = getUrlParameter('layout_id');
@@ -433,20 +481,34 @@ const parseDatasetCollectionURLParams = () => {
     document.getElementById('dropdown-dc-selector-label').innerHTML = selected_dc_label;
 }
 
+/**
+ * Selects a gene result and performs necessary actions based on the selected gene symbol.
+ *
+ * @param {string} gene_symbol - The symbol of the gene to be selected.
+ */
 const selectGeneResult = (gene_symbol) => {
     const selected_organism_id = document.getElementById('organism-selector').value;
     currently_selected_gene_symbol = gene_symbol;
 
     // if no organism is selected, display a tooltip to choose one
     if (selected_organism_id === "") {
-        showOrganismSelectorToolip();
+        showOrganismSelectorTooltip();
     } else {
         updateAnnotationDisplay();
     }
 
     // Other things can be called next, such as plotting calls
     if (tilegrid) {
+        // Revert back to "#result-panel-grid" display before rendering the new gene displays
+        document.getElementById("result-panel-grid").classList.remove("is-hidden");
+        document.getElementById("zoomed-panel-grid").classList.add("is-hidden");
+
         tilegrid.renderDisplays(currently_selected_gene_symbol, is_multigene, svg_scoring_method);
+    }
+
+    // call any callbacks that have been added (usually by plugins)
+    for (const callback of geneChangeCallbacks) {
+        callback();
     }
 }
 
@@ -472,14 +534,6 @@ const setupTileGrid = async (shareId, type="layout") => {
 
         tilegrid.applyTileGrid(is_multigene);
 
-        // NOTE - the tilegrid.renderDisplays() call below can check and use the first array element of the selected_genes array if single_gene
-        // We do not render for single-gene searches because the first gene result is "clicked" and the tilegrid is rendered in the event listener.
-        if (is_multigene) {
-            // Don't render yet if a gene is not selected
-            if (selected_genes.size) {
-                await tilegrid.renderDisplays(Array.from(selected_genes), is_multigene);
-            }
-        }
     } catch (error) {
         logErrorInConsole(error);
     } finally {
@@ -487,91 +541,85 @@ const setupTileGrid = async (shareId, type="layout") => {
     }
 }
 
-const showOrganismSelectorToolip = () => {
-    document.querySelector('#organism-selector-control').setAttribute('data-tooltip', 'Select an organism to view annotation');
-    document.querySelector('#organism-selector-control').classList.add('has-tooltip-top', 'has-tooltip-arrow', 'has-tooltip-active');
-}
-
+/**
+ * Updates the annotation display based on the currently selected gene symbol and organism ID.
+ */
 const updateAnnotationDisplay = () => {
     // these make some of the syntax below shorter
     const gs = currently_selected_gene_symbol;
     const oid = currently_selected_org_id;
 
     // clear the external resource links and GO terms
-    document.querySelector('#external-resource-links').innerHTML = '';
-    document.querySelector('#go-terms').innerHTML = '';
-    document.querySelector('#go-term-count').innerHTML = '';
+    document.getElementById('external-resource-links').innerHTML = '';
+    document.getElementById('go-terms').innerHTML = '';
+    document.getElementById('go-term-count').innerHTML = '';
 
     // if the selected organism is not in the annotation data, show a message
     if (! annotation_data[gs]['by_organism'].hasOwnProperty(oid)) {
-        document.querySelector('#currently-selected-gene-product').innerHTML = " - (annotation not available for this organism)";
-        document.querySelector('#currently-selected-gene-product').classList.remove('is-hidden');
+        document.getElementById('currently-selected-gene-product').innerHTML = " - (annotation not available for this organism)";
+        document.getElementById('currently-selected-gene-product').classList.remove('is-hidden');
 
         const dbxref_template = document.querySelector('#tmpl-external-resource-link-none-found');
         const dbxref_template_row = dbxref_template.content.cloneNode(true);
-        document.querySelector('#external-resource-links').appendChild(dbxref_template_row);
+        document.getElementById('external-resource-links').appendChild(dbxref_template_row);
         return;
     }
 
     // if we got this far, we have annotation for this one. let's display it
     const annotation = annotation_data[gs]['by_organism'][oid];
-    document.querySelector('#annotation-panel-gene-symbol').innerHTML = gs;
+    document.getElementById('annotation-panel-gene-symbol').innerHTML = gs;
 
     // Gene product
-    document.querySelector('#currently-selected-gene-product').innerHTML = " - " + annotation['product'];
-    document.querySelector('#currently-selected-gene-product').classList.remove('is-hidden');
-    document.querySelector('#annotation-panel-gene-product').innerHTML = annotation['product'];
+    document.getElementById('currently-selected-gene-product').innerHTML = " - " + annotation['product'];
+    document.getElementById('currently-selected-gene-product').classList.remove('is-hidden');
+    document.getElementById('annotation-panel-gene-product').innerHTML = annotation['product'];
 
     // aliases and Ensembl ID
-    if (annotation['aliases'].length > 1) {
-        document.querySelector('#annotation-panel-gene-aliases').innerHTML = annotation['aliases'].join(', ');
-    } else {
-        document.querySelector('#annotation-panel-gene-aliases').innerHTML = "None found";
-    }
+    document.getElementById('annotation-panel-gene-aliases').innerHTML = annotation['aliases'].length > 1 ? annotation['aliases'].join(', ') : "None found";
 
-    document.querySelector('#annotation-panel-gene-ensembl-release').innerHTML = annotation['ensembl_release'];
-    document.querySelector('#annotation-panel-gene-ensembl-id').innerHTML = annotation['ensembl_id'];
+    document.getElementById('annotation-panel-gene-ensembl-release').innerHTML = annotation['ensembl_release'];
+    document.getElementById('annotation-panel-gene-ensembl-id').innerHTML = annotation['ensembl_id'];
 
     const ensembl_url = "https://www.ensembl.org/Multi/Search/Results?q=" + annotation['ensembl_id'] + ";site=ensembl";
-    document.querySelector('#annotation-panel-gene-ensembl-id').setAttribute('href', ensembl_url);
+    document.getElementById('annotation-panel-gene-ensembl-id').setAttribute('href', ensembl_url);
 
     // External database references
     let good_dbxref_count = 0;
 
     for (const dbxref of annotation['dbxrefs']) {
         if (dbxref['url'] !== null) {
-            const dbxref_template = document.querySelector('#tmpl-external-resource-link');
+            const dbxref_template = document.getElementById('tmpl-external-resource-link');
             const row = dbxref_template.content.cloneNode(true);
             row.querySelector('a').innerHTML = dbxref['source'];
             row.querySelector('a').href = dbxref['url'];
-            document.querySelector('#external-resource-links').appendChild(row);
+            document.getElementById('external-resource-links').appendChild(row);
             good_dbxref_count++;
         }
     }
 
     if (good_dbxref_count === 0) {
-        const dbxref_template = document.querySelector('#tmpl-external-resource-link-none-found');
+        const dbxref_template = document.getElementById('tmpl-external-resource-link-none-found');
         const row = dbxref_template.content.cloneNode(true);
-        document.querySelector('#external-resource-links').appendChild(row);
+        document.getElementById('external-resource-links').appendChild(row);
     }
 
     // GO terms
-    document.querySelector('#go-term-count').innerHTML = '(' + annotation['go_terms'].length + ')';
-    if (annotation['go_terms'].length === 0) {
-        const go_term_template = document.querySelector('#tmpl-go-term-none-found');
+    document.getElementById('go-term-count').innerHTML = `(${annotation.go_terms.length})`;
+    if (annotation.go_terms.length === 0) {
+        const go_term_template = document.getElementById('tmpl-go-term-none-found');
         const row = go_term_template.content.cloneNode(true);
-        document.querySelector('#go-terms').appendChild(row);
-    } else {
-        for (const go_term of annotation['go_terms']) {
-            const go_term_template = document.querySelector('#tmpl-go-term');
-            const go_term_url = "https://amigo.geneontology.org/amigo/search/ontology?q=" + go_term['go_id'];
+        document.getElementById('go-terms').appendChild(row);
+        return;
+    }
+    for (const go_term of annotation['go_terms']) {
+        const go_term_template = document.getElementById('tmpl-go-term');
+        const go_term_url = "https://amigo.geneontology.org/amigo/search/ontology?q=" + go_term['go_id'];
 
-            const row = go_term_template.content.cloneNode(true);
-            row.querySelector('.go-term-id').innerHTML = go_term['go_id'];
-            row.querySelector('.go-term-id').href = go_term_url;
-            row.querySelector('.go-term-label').innerHTML = go_term['name'];
-            document.querySelector('#go-terms').appendChild(row);
-        }
+        const row = go_term_template.content.cloneNode(true);
+        row.querySelector('.go-term-id').innerHTML = go_term['go_id'];
+        row.querySelector('.go-term-id').href = go_term_url;
+        row.querySelector('.go-term-label').innerHTML = go_term['name'];
+        document.querySelector('#go-terms').appendChild(row);
     }
 }
 
@@ -601,11 +649,23 @@ const validateExpressionSearchForm = () => {
     }
 
     const isMulti = document.getElementById('single-multi-multi').checked;
+    const isExactMatch = document.getElementById('gene-search-exact-match').checked;
 
     // If multi, check that at least two genes are selected
-    if (isMulti && selected_genes.size < 2) {
-        createToast('Please select at least two genes to proceed');
-        return false;
+    if (isMulti) {
+        // if not exact match, test if there are at least two genes in results
+        if (!isExactMatch) {
+            const allGenesElts = document.querySelectorAll('.gene-result-list-item');
+            const allGenes = Array.from(allGenesElts).map(elt => elt.textContent);
+            if (allGenes.length < 2) {
+                createToast('Need at least two genes to proceed');
+                return false;
+            }
+
+        } else if (selected_genes.size < 2) {
+            createToast('Please select at least two genes to proceed');
+            return false;
+        }
     }
 
     return true;

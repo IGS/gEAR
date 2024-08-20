@@ -17,7 +17,6 @@ PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
 
 def create_projection_adata(dataset_adata, dataset_id, projection_id):
     # Create AnnData object out of readable CSV file
-    # ? Does it make sense to put this in the geardb/Analysis class?
     projection_id = secure_filename(projection_id)
     dataset_id = secure_filename(dataset_id)
 
@@ -34,7 +33,7 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
         obs = dataset_adata.obs
         # Create the anndata object and write to h5ad
         # Associate with a filename to ensure AnnData is read in "backed" mode
-        projection_adata = anndata.AnnData(X=X, obs=obs, var=var, obsm=dataset_adata.obsm, filename=projection_adata_path, filemode='r')
+        projection_adata = anndata.AnnData(X=X, obs=obs, var=var, obsm=dataset_adata.obsm, filemode='r')
     except Exception as e:
         print(str(e), file=sys.stderr)
         raise PlotError("Could not create projection AnnData object from CSV.")
@@ -44,6 +43,12 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
 
     # For some reason the gene_symbol is not taken in by the constructor
     projection_adata.var["gene_symbol"] = projection_adata.var_names
+
+    # Associate with a filename to ensure AnnData is read in "backed" mode
+    # This creates the h5ad file if it does not exist
+    # TODO: If too many processes read from this file, it can throw a BlockingIOError. Eventually we should
+    #       handle this by creating a copy of the file for each process, like a tempfile.
+    projection_adata.filename = projection_adata_path
 
     return projection_adata
 

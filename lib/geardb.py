@@ -104,7 +104,12 @@ def get_analysis(analysis, dataset_id, session_id):
         if 'type' in analysis:
             ana.type = analysis['type']
         else:
-            ana.discover_type(current_user_id=user_id)
+            ana.discover_type()
+
+        # Check that the h5ad file exists
+        if not os.path.exists(ana.dataset_path()):
+            raise FileNotFoundError("No h5 file found for the passed in analysis")
+
     else:
         ds = Dataset(id=dataset_id, has_h5ad=1)
         h5_path = ds.get_file_path()
@@ -682,7 +687,7 @@ class Analysis:
             return 'community'
 
 
-    def discover_type(self, current_user_id=None):
+    def discover_type(self):
         """
         Given an analysis ID it's technically possible to scan the directory hierarchies and
         find the type.
@@ -909,9 +914,9 @@ class Organism:
     def __repr__(self):
         return json.dumps(self.__dict__)
 
+@dataclass
 class OrganismCollection:
-    def __init__(self, organisms=None):
-        self.organisms = [] if organisms is None else organisms
+    organisms: List[Organism] = field(default_factory=list)
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -944,6 +949,7 @@ class OrganismCollection:
             self.organisms.append(org)
 
         cursor.close()
+        conn.close()
 
         return self.organisms
 
@@ -1006,6 +1012,7 @@ class Layout:
 
         cursor.close()
         conn.commit()
+        conn.close()
 
     def dataset_ids(self):
         """
@@ -1108,7 +1115,7 @@ class Layout:
         self.get_members()
 
         cursor.close()
-        conn.commit()
+        conn.close()
 
     def remove(self):
         """
@@ -1131,6 +1138,7 @@ class Layout:
 
         cursor.close()
         conn.commit()
+        conn.close()
 
     def remove_all_members(self):
         """
@@ -1147,6 +1155,7 @@ class Layout:
 
         cursor.close()
         conn.commit()
+        conn.close()
 
         self.members = []
 
@@ -1172,6 +1181,7 @@ class Layout:
 
         cursor.close()
         conn.commit()
+        conn.close()
 
     def remove_members_by_dataset_id(self, dataset_id):
         """Deletes all members where the display ID belongs to a given dataset ID from the database."""
@@ -1217,8 +1227,6 @@ class Layout:
             self.id = cursor.lastrowid
         else:
             # ID already populated
-            conn = Connection()
-            cursor = conn.get_cursor()
 
             # Update layout properties
             sql = """
@@ -1235,12 +1243,11 @@ class Layout:
                 self.is_domain, self.share_id, self.id
             ))
 
-            conn.commit()
-
             # TODO: delete existing members, add current ones
 
         cursor.close()
         conn.commit()
+        conn.close()
 
     def save_change(self, attribute=None, value=None):
         """

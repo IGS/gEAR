@@ -158,9 +158,9 @@ const openNextSteps = (selectors, activeSelector=null) => {
 const resetStepperWithHrefs = (activeSelectorHref=null) => {
     const steps = document.querySelectorAll(".steps:not(.is-hidden) .steps-marker")
     for (const step of steps) {
-        step.classList.remove("is-light", "is-danger");
+        step.classList.remove("is-light", "is-danger", "is-dark");
         step.parentElement.classList.remove("is-active", "is-dashed");
-        step.querySelector("i").classList.remove("mdi-pencil", "mdi-check");
+        step.querySelector("i").classList.remove("mdi-pencil", "mdi-check", "mdi-lock");
     }
 
 

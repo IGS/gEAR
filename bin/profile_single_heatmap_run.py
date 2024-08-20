@@ -147,7 +147,7 @@ def get_analysis(analysis, dataset_id, session_id):
             ana.type = analysis['type']
         except:
             user = geardb.get_user_from_session_id(session_id)
-            ana.discover_type(current_user_id=user.id)
+            ana.discover_type()
     else:
         ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
         h5_path = ds.get_file_path()

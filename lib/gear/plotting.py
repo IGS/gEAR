@@ -468,18 +468,25 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
         # TODO: put in function
 
         # Map indexes for subplot ordering.  Indexes start at 1 since plotting rows/cols start at 1
-        facet_row_groups = category_orders[facet_row] if facet_row and facet_row in category_orders else []
+        facet_row_groups = []
+        facet_col_groups = []
+
+        if facet_row:
+            facet_row_groups = category_orders[facet_row] if facet_row in category_orders else df[facet_row].unique().tolist()
+
+        if facet_col:
+            facet_col_groups = category_orders[facet_col] if facet_col in category_orders else df[facet_col].unique().tolist()
+
         facet_row_indexes = {group: idx for idx, group in enumerate(facet_row_groups, start=1)}
         num_rows = len(facet_row_groups) if facet_row else 1
-        facet_col_groups = category_orders[facet_col] if facet_col and facet_col in category_orders else []
         facet_col_indexes = {group: idx for idx, group in enumerate(facet_col_groups, start=1)}
         num_cols = len(facet_col_groups) if facet_col else 1
 
         # Make faceted plot
         fig = make_subplots(rows=num_rows
                 , cols=num_cols
-                , row_titles=facet_row_groups if facet_row else None
-                , column_titles=facet_col_groups if facet_col else None
+                , row_titles=list(facet_row_groups)
+                , column_titles=list(facet_col_groups)
                 , x_title=x_title if x_title else None
                 , y_title=y_title if y_title else None
                 )
@@ -524,7 +531,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
                 # Each individual trace is a separate scalegroup to ensure plots are scaled correctly for violin plots
                 new_plotting_args['scalegroup'] = name
                 if isinstance(name, tuple):
-                    new_plotting_args['scalegroup'] = "_".join(name)
+                    new_plotting_args['scalegroup'] = "_".join(str(name))
 
                 # If color dataseries is present, add some special configurations
                 if color_name:

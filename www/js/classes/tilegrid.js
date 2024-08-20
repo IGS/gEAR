@@ -751,8 +751,14 @@ class DatasetTile {
                 case "download-bundle":
                     // Download dataset bundle
                     if (hasTarball && isDownloadable) {
-                        const url = `./cgi/download_source_file.cgi?type=tarball&dataset_id=${datasetId}`;
-                        item.href = url;
+                        try {
+                            const url = `./cgi/download_source_file.cgi?type=tarball&dataset_id=${datasetId}`;
+                            item.href = url;
+                        } catch (error) {
+                            logErrorInConsole(error);
+                            createToast("An error occurred while trying to download the dataset bundle.");
+                        }
+
                     } else {
                         item.classList.add("is-hidden");
                     }
@@ -760,8 +766,13 @@ class DatasetTile {
                 case "download-h5ad":
                     // Download h5ad file
                     if (hasH5ad && isDownloadable) {
-                        const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${datasetId}`;
-                        item.href = url;
+                        try {
+                            const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${datasetId}`;
+                            item.href = url;
+                        } catch (error) {
+                            logErrorInConsole(error);
+                            createToast("An error occurred while trying to download the h5ad file.");
+                        }
                     } else {
                         item.classList.add("is-hidden");
                     }
@@ -1192,15 +1203,16 @@ class DatasetTile {
                 // Determine how "download_png" is handled for scanpy plots
                 const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-png"]`);
                 if (downloadPNG) {
-                    downloadPNG.classList.remove("is-hidden");
 
-                    // Remove any existing event listeners
-                    downloadPNG.removeEventListener("click", async (event) => {
-                        await this.getScanpyPNG(display);
-                    });
+                    // If I use the existing "download image" button after switching displays, all previous tsne-static displays will
+                    // also be downloaded becuase event listeners are not removed. So, I will remove the button and re-add it.
+                    // Source -> https://stackoverflow.com/a/9251864
 
-                    // Once = true so that the event listener is only called once
-                    downloadPNG.addEventListener("click", async (event) => {
+                    const newDownloadPNG = downloadPNG.cloneNode(true);
+                    downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
+
+                    newDownloadPNG.classList.remove("is-hidden");
+                    newDownloadPNG.addEventListener("click", async (event) => {
                         // get the download URL
                         await this.getScanpyPNG(display);
                     });
@@ -1459,6 +1471,11 @@ class DatasetTile {
         const plotType = display.plot_type;
         const plotConfig = display.plotly_config;
 
+        const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
+        if (!this.isZoomed) {
+            plotConfig.grid_spec = tileElement.style.gridArea   // add grid spec to plot config
+        }
+
         const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
@@ -1512,6 +1529,10 @@ class DatasetTile {
         const plotConfig = JSON.parse(JSON.stringify(display.plotly_config));
         plotConfig.high_dpi = true;
 
+        const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
+        if (!this.isZoomed) {
+            plotConfig.grid_spec = tileElement.style.gridArea   // add grid spec to plot config
+        }
 
         const data = await apiCallsMixin.fetchTsneImage(datasetId, analysisObj, plotType, plotConfig);
         if (data?.success < 1) {

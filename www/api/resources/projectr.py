@@ -86,7 +86,11 @@ def remove_lock_file(fd, filepath):
     """Release the lock file."""
     #fcntl.flock(fd, fcntl.LOCK_UN)
     fd.close()
-    Path(filepath).unlink()
+    try:
+        Path(filepath).unlink()
+    except FileNotFoundError:
+        # This is fine, as the lock file may have been removed by another process
+        pass
 
 def write_to_json(projections_dict, projection_json_file):
     with open(projection_json_file, 'w') as f:
@@ -233,8 +237,6 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     Only step 3 needs to be in R, and we use rpy2 to call that.
     """
 
-    # Get unique identifier of first gene from target dataset
-    #first_dataset_gene = target_df.index[0]
 
     # Unweighted carts get a "1" weight for each gene
     genecart = geardb.get_gene_cart_by_share_id(genecart_id)
@@ -244,7 +246,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             , 'message': "Could not find gene cart in database"
         }
 
-    genecart.get_genes();
+    genecart.get_genes()
 
     if not len(genecart.genes):
         return {
@@ -297,19 +299,33 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     try:
         ana = geardb.get_analysis(None, dataset_id, session_id)
     except Exception as e:
-        print(str(e), file=fh)
+        import traceback
+        traceback.print_exc()
         return {
-            'success': -1
-            , 'message': str(e)
+            "success": -1,
+            "message": "Could not retrieve analysis."
         }
 
-    # Using adata with "backed" mode does not work with volcano plot
-    adata = ana.get_adata(backed=True)
+    try:
+        # Using adata with "backed" mode does not work with volcano plot
+        adata = ana.get_adata(backed=True)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": -1,
+            "message": "Could not retrieve AnnData object."
+        }
+
 
     # If dataset genes have duplicated index names, we need to rename them to avoid errors
     # in collecting rownames in projectR (which gives invalid output)
     # This means these duplicated genes will not be in the intersection of the dataset and pattern genes
-    adata.var_names_make_unique()
+    if (adata.var.index.duplicated(keep="first") == True).any():
+        dedup_copy = Path(ana.dataset_path().replace('.h5ad', '.dups_removed.h5ad'))
+        if dedup_copy.exists():
+            dedup_copy.unlink()
+        adata = adata[:, adata.var.index.duplicated(keep="first") == False].copy(filename=dedup_copy)
 
     num_target_genes = adata.shape[1]
     num_loading_genes = loading_df.shape[0]
@@ -469,6 +485,9 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             else:
                 raise ValueError("Algorithm {} is not supported".format(algorithm))
         except Exception as e:
+            # clear lock file
+            remove_lock_file(lock_fh, lockfile)
+
             print(str(e), file=sys.stderr)
             return {
                 'success': -1
@@ -477,6 +496,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
                 , "num_genecart_genes": num_loading_genes
                 , "num_dataset_genes": num_target_genes
             }
+
 
     # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
     projection_patterns_df = projection_patterns_df.set_axis(loading_df.columns, axis="columns")
@@ -583,12 +603,12 @@ class ProjectROutputFile(Resource):
             }
 
         # If legacy version exists, copy to current format.
-        if not genecart_id in projections_dict or "cart.{}".format(genecart_id) in projections_dict:
-            print("Copying legacy cart.{} to {} in the projection json file.".format(genecart_id, genecart_id), file=fh)
+        if (not genecart_id in projections_dict) and "cart.{}".format(genecart_id) in projections_dict:
+            print("Copying legacy cart.{} to {} in the projection json file.".format(genecart_id, genecart_id), file=sys.stderr)
             projections_dict[genecart_id] == projections_dict["cart.{}".format(genecart_id)]
             projections_dict.pop("cart.{}".format(genecart_id), None)
             # move legacy genecart projection stuff to new version
-            print("Moving legacy cart.{} contents to {} in the projection genecart directory.".format(genecart_id, genecart_id), file=fh)
+            print("Moving legacy cart.{} contents to {} in the projection genecart directory.".format(genecart_id, genecart_id), file=sys.stderr)
             old_genecart_projection_json_file = build_projection_json_path("cart.{}".format(genecart_id), "genecart")
             old_genecart_projection_json_file.parent.rename(dataset_projection_json_file.parent)
 
@@ -637,17 +657,21 @@ class ProjectR(Resource):
             common_genes = None
             genecart_genes = None
             dataset_genes = None
-            for config in projections_dict[genecart_id]:
-                # Handle legacy algorithm
-                if "is_pca" in config:
-                    config["algorithm"] = "pca" if config["is_pca"] == 1 else "nmf"
 
-                if algorithm == config["algorithm"]:
-                    common_genes = config.get('num_common_genes', None)
-                    genecart_genes = config.get('num_genecart_genes', -1)
-                    dataset_genes = config.get('num_dataset_genes', -1)
-                    break
+            # Get projection info from the json file if it already exists
+            if genecart_id in projections_dict:
+                for config in projections_dict[genecart_id]:
+                    # Handle legacy algorithm
+                    if "is_pca" in config:
+                        config["algorithm"] = "pca" if config["is_pca"] == 1 else "nmf"
 
+                    if algorithm == config["algorithm"]:
+                        common_genes = config.get('num_common_genes', None)
+                        genecart_genes = config.get('num_genecart_genes', -1)
+                        dataset_genes = config.get('num_dataset_genes', -1)
+                        break
+
+            message = ""
             if common_genes:
                 message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(common_genes, dataset_genes, genecart_genes)
 
