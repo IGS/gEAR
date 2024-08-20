@@ -25,6 +25,7 @@ def main():
     parser = argparse.ArgumentParser( description='3-tab -> H5AD')
     parser.add_argument('-i', '--input_directory', type=str, required=True, help='Path to an input directory containing the 3-tab files')
     parser.add_argument('-o', '--output_file', type=str, required=True, help='Path to the output file to be created')
+    parser.add_argument('-r', '--row_chunk_size', type=int, required=False, default=500, help='Rows of input to be read at a time (helps control memory)')
     
     args = parser.parse_args()
 
@@ -61,7 +62,7 @@ def main():
     print("Creating AnnData object with obs and var", file=sys.stderr, flush=True)
     adata = sc.AnnData(obs=var, var=obs)
     print("Reading expression matrix file: {0}".format(expression_matrix_path), file=sys.stderr, flush=True)    
-    reader = pd.read_csv(expression_matrix_path, sep='\t', index_col=0, chunksize=500)
+    reader = pd.read_csv(expression_matrix_path, sep='\t', index_col=0, chunksize=args.row_chunk_size)
     adata.X = sparse.vstack([sparse.csr_matrix(chunk.values) for chunk in reader])
     print("Finished reading expression matrix file", file=sys.stderr, flush=True)
     adata = adata.transpose()
