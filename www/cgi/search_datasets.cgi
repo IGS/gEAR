@@ -97,12 +97,24 @@ def main():
                 #  match.
                 ownership_bits.append("d.id IN ('XYZ')")
 
+            if 'group' in owners:
+                ownership_bits.append("d.owner_id IN \
+                                        (SELECT DISTINCT user_id FROM user_group_membership WHERE group_id IN \
+                                        (SELECT group_id FROM user_group_membership WHERE user_id = %s)) \
+                                        ")
+                qry_params.append(user.id)
+
         else:
             ownership_bits.append("d.is_public = 1")
             ownership_bits.append("d.owner_id = %s")
-            qry_params.append(user.id)
             if shared_dataset_id_str:
                 ownership_bits.append(f"d.id IN ({shared_dataset_id_str})")
+
+            ownership_bits.append("d.owner_id IN \
+                                    (SELECT DISTINCT user_id FROM user_group_membership WHERE group_id IN \
+                                    (SELECT group_id FROM user_group_membership WHERE user_id = %s)) \
+                                    ")
+            qry_params.extend([user.id, user.id])
 
         wheres.append(f"({' OR '.join(ownership_bits)})")   # OR accomodates the "not ownership" case
 

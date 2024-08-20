@@ -79,12 +79,29 @@ def main():
             if 'public' in owners:
                 ownership_bits.append("gc.is_public = 1")
 
+            if 'shared' in owners:
+                # NOT IMPLEMENTED YET
+                pass
+
+            if 'group' in owners:
+                ownership_bits.append("gc.user_id IN \
+                        (SELECT DISTINCT user_id FROM user_group_membership WHERE group_id IN \
+                        (SELECT group_id FROM user_group_membership WHERE user_id = %s)) \
+                        ")
+                qry_params.append(user.id)
+
             wheres.append("AND ({0})".format(' OR '.join(ownership_bits)))
 
         # otherwise, give the usual self and public.
         else:
-            wheres.append("AND (gc.is_public = 1 OR gc.user_id = %s)")
-            qry_params.append(user.id)
+            wheres.append("AND (gc.is_public = 1 \
+                                OR gc.user_id = %s \
+                                OR (gc.user_id IN \
+                                    (SELECT DISTINCT user_id FROM user_group_membership WHERE group_id IN \
+                                        (SELECT group_id FROM user_group_membership WHERE user_id = %s)) \
+                                    ) \
+                                )")
+            qry_params.extend([user.id, user.id])
 
     if search_terms:
         selects.append(' MATCH(gc.label, gc.ldesc) AGAINST("%s" IN BOOLEAN MODE) as rscore')
