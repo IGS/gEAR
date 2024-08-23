@@ -1,7 +1,7 @@
 #!/bin/bash
 
 Rmaj=R-4
-Rver="${Rmaj}.3.1"
+Rver="${Rmaj}.4.0"
 
 current_dir=$(pwd)
 

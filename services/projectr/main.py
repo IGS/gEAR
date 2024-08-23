@@ -79,7 +79,7 @@ def index():
     write_entry("projectr", "INFO", "Genecart ID: {}".format(genecart_id))
 
 
-    # pd.read_json gives a FutureWarning, and suggest to wrap the json in StringIO.
+    # pd.read_json gives a FutureWarning, and suggest to wrap the json in StringIO.  Needed for pandas 2.x
     target = StringIO(target)
     loadings = StringIO(loadings)
 
