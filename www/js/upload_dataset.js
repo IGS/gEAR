@@ -51,6 +51,17 @@ window.onload=function() {
         });
     });
 
+    // Add click listeners for submissions-in-progress-table-tbody rows, even if they don't exist yet
+    document.addEventListener('click', (event) => {
+        if (event.target.classList.contains('submission-history-row')) {
+            const share_id = event.target.dataset.shareId;
+            const step = event.target.dataset.step;
+             
+            // Do we want to dynamically load the next step or page refresh for it?
+            //  If dynamic we have to reset all the forms.
+        }
+    });
+
     document.getElementById('metadata-form-submit').addEventListener('click', (event) => {
         event.preventDefault();
         let errored_fields = validateMetadataForm();
@@ -309,7 +320,7 @@ const storeMetadata = async () => {
         upload_step_marker.classList.add('is-light');
         upload_step_icon.firstElementChild.classList.add('mdi-wrench');
 
-        document.getElementById('step-upload-metadata-c').classList.add('is-hidden');
+        document.getElementById('step-enter-metadata-c').classList.add('is-hidden');
         document.getElementById('step-upload-dataset-c').classList.remove('is-hidden');
 
         // Scroll to the top of the page
