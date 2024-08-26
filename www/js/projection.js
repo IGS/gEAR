@@ -72,6 +72,21 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     datasetShareId = getUrlParameter('share_id');
     layoutShareId = getUrlParameter('layout_id');
 
+    // if certain legacy or shorthand URL parameters are passed, change the parameter to the new ones
+    const urlParams = new URLSearchParams(window.location.search);
+    const rebindUrlParam = (oldParam, newParam) => {
+        if (urlParams.has(oldParam)) {
+            urlParams.set(newParam, urlParams.get(oldParam));
+            urlParams.delete(oldParam);
+        }
+    }
+
+    // There are some shorthand URL parameters (not on the shorthand URL) that need to be converted to the longform
+    rebindUrlParam("multi", "multipattern_plots");
+    rebindUrlParam("c", "projection_source");
+    rebindUrlParam("ptrns", "projection_patterns");
+    rebindUrlParam("algo", "projection_algo");
+
     selectedPattern = createSelectedPatternProxy(selectedPattern);
 
     // add event listener for when the submit-projection-search button is clicked
@@ -214,7 +229,7 @@ const buildStateUrl = () => {
     url.searchParams.set('projection_algorithm', algorithm);
 
     // Add the multipattern_plots value to the URL
-    const multipatternPlots = document.querySelector('#single-multi-multi').checked ? 1 : 0;
+    const multipatternPlots = document.getElementById('single-multi-multi').checked ? 1 : 0;
     url.searchParams.set('multipattern_plots', multipatternPlots);
 
     // Add the pattern source to the URL
@@ -287,21 +302,6 @@ const populatePatternResultsList = () => {
  * Parses the URL parameters and updates the UI based on the values.
  */
 const parsePatternCartURLParams = async () => {
-
-    // if certain legacy or shorthand URL parameters are passed, change the parameter to the new ones
-    const urlParams = new URLSearchParams(window.location.search);
-    const rebindUrlParam = (oldParam, newParam) => {
-        if (urlParams.has(oldParam)) {
-            urlParams.set(newParam, urlParams.get(oldParam));
-            urlParams.delete(oldParam);
-        }
-    }
-
-    // There are some shorthand URL parameters (not on the shorthand URL) that need to be converted to the longform
-    rebindUrlParam("multi", "multipattern_plots");
-    rebindUrlParam("c", "projection_source");
-    rebindUrlParam("ptrns", "projection_patterns");
-    rebindUrlParam("algo", "projection_algo");
 
     // if projection algorithm is passed, set it in #algorithm
     const projectionAlgorithm = getUrlParameter('projection_algorithm');
