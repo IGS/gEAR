@@ -2586,7 +2586,7 @@ const updateDatasetCollectionButtons = (collection=null) => {
 const updateDatasetCollections = async () => {
 
     // Fetch the dataset collections, which will update the dataset collection selector
-    await fetchDatasetCollections(false)
+    await fetchDatasetCollections()
 
     // Uses dataset-collection-selector.js variable
     const datasetCollectionData = dataset_collection_data;

@@ -246,13 +246,17 @@ const createPatternListItem = (item, cart) => {
     });
 }
 
+
 /**
- * Fetches patterns data asynchronously and executes a callback function.
- * @returns {Promise<void>} - A promise that resolves when the patterns data is fetched successfully.
+ * Fetches patterns data.
+ *
+ * @param {string|null} shareId - The gene list (pattern) share ID.
+ * @returns {Promise<void>} - A promise that resolves when the patterns data is fetched.
+ * @throws {Error} - If an error occurs during the fetch.
  */
-const fetchPatternsData = async () => {
+const fetchPatternsData = async (shareId=null) => {
     try {
-        patternsCartData = await apiCallsMixin.fetchGeneCarts({includeMembers: false});
+        patternsCartData = await apiCallsMixin.fetchGeneCarts({gcShareId: shareId, includeMembers: false});
 
         flatPatternsCartData = [...patternsCartData.domain_carts, ...patternsCartData.group_carts, ...patternsCartData.public_carts, ...patternsCartData.user_carts, ...patternsCartData.shared_carts, ...patternsCartData.recent_carts]
         document.getElementById('dropdown-pattern-lists').classList.remove('is-loading');

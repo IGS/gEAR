@@ -59,6 +59,8 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 
+GENE_LIST_TYPES = ["unweighted-list", "weighted-list", "labeled-list"]
+
 def main():
     print('Content-Type: application/json\n\n')
 
@@ -96,9 +98,8 @@ def main():
 
     if group_by_type and not group_by_type == "false":
         # Group all cart results by their cart type and return
-        gctypes = ["unweighted-list", "weighted-list", "labeled-list"]
         gctypes_result = dict()
-        for cart_type in gctypes:
+        for cart_type in GENE_LIST_TYPES:
             subset_domain_carts = filter_by_cart_type(domain_carts, cart_type)
             subset_user_carts = filter_by_cart_type(user_carts, cart_type)
             subset_group_carts = filter_by_cart_type(group_carts, cart_type)
@@ -117,13 +118,16 @@ def main():
         print(json.dumps(gctypes_result, default=lambda o: o.__dict__))
         sys.exit(0)
 
-    if len(str(filter_cart_type)) > 0 and filter_cart_type != 'undefined':
+    if filter_cart_type and filter_cart_type in GENE_LIST_TYPES:
         domain_carts = filter_by_cart_type(domain_carts, filter_cart_type)
         user_carts = filter_by_cart_type(user_carts, filter_cart_type)
         group_carts = filter_by_cart_type(group_carts, filter_cart_type)
         recent_carts = filter_by_cart_type(recent_carts, filter_cart_type)
         shared_carts = filter_by_cart_type(shared_carts, filter_cart_type)
         public_carts = filter_by_cart_type(public_carts, filter_cart_type)
+    elif filter_cart_type and filter_cart_type not in GENE_LIST_TYPES:
+        # log warning that the cart type is not valid and return all carts
+        print("WARNING: Invalid cart type: " + filter_cart_type, file=sys.stderr)
 
     result = { 'domain_carts':domain_carts,
                 'group_carts':group_carts,

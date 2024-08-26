@@ -76,16 +76,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * Fetches dataset collections from the API.
+ * Fetches dataset collections.
  *
- * @param {boolean} includeMembers - Whether to include members in the dataset collections.
+ * @param {string} [shareId=null] - The share ID of the dataset collection.
  * @returns {Promise<void>} - A promise that resolves when the dataset collections are fetched.
+ * @throws {Error} - If an error occurs during the fetch.
  */
-const fetchDatasetCollections = async (includeMembers=false) => {
-    const layoutShareId = selected_dc_share_id || null;
+const fetchDatasetCollections = async (shareId=null) => {
+    const layoutShareId = shareId || selected_dc_share_id || null;
 
     try {
-        dataset_collection_data = await apiCallsMixin.fetchDatasetCollections({includeMembers, layoutShareId});
+        dataset_collection_data = await apiCallsMixin.fetchDatasetCollections({includeMembers: false, layoutShareId});
 
         document.querySelector('#dropdown-dc').classList.remove('is-loading');
         document.querySelector('#dropdown-dc').classList.remove('is-disabled');

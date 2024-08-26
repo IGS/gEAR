@@ -1,3 +1,5 @@
+# Python setup instructions
+
 ## Overview
 
 These are instructions for setting up the Python environment for Python
@@ -25,6 +27,14 @@ fixed paths have worked fine for decades.
     $ sudo ln -s /opt/Python-${PYTHONV}/lib/libpython${PYTHON_MINORV}.so.1.0 /usr/lib/
 
     $ sudo apt install r-base r-base-dev hdf5-helpers hdf5-tools libhdf5-dev zlib1g-dev libblas-dev liblapack-dev libxml2-dev cmake apache2 apache2-dev
+
+## pip install option A (reqs file)
+
+Check the requirement.txt file in <git_repo_root>/docker for the latest packages that have been tested locally. They work in a Dockerized ubuntu environment so should be able to work on the VMs. You can run `./pip3 install -r requirements.txt` as a shortcut.
+
+``./pip3 install -r <git_repo_root/docker/requirements.txt`
+
+## pip install option B (manual)
 
     $ ./pip3 install --upgrade pip
 
@@ -59,7 +69,7 @@ fixed paths have worked fine for decades.
       plotly==5.6.0 \
       python-dotenv==0.20.0 \
       requests==2.31.0 \
-      rpy2==3.5.1 \
+      rpy2==3.5.16 \
       sanic \
       scanpy==1.10.1 \
       scikit-learn==1.0.2 \
@@ -70,9 +80,9 @@ fixed paths have worked fine for decades.
     $ sudo mkdir /opt/bin
     $ sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/
 
-Check the requirement.txt file in <git_repo_root>/docker for the latest packages that have been tested locally. They work in a Dockerized ubuntu environment so should be able to work on the VMs. You can run `./pip3 install -r requirements.txt` as a shortcut.
+# Gotchas
 
-Scanpy (or dependencies) assumes it can write in several directories which the web server won't be able to write to by default, so this can be fixed with:
+Scanpy (or dependencies like numba) assumes it can write in several directories which the web server won't be able to write to by default, so this can be fixed with:
 
     $ cd /opt/Python-${PYTHONV}/lib/python${PYTHON_MINORV}/site-packages/scanpy
     $ find ./ -name __pycache__ -exec chmod 777 {} \;

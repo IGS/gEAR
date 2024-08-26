@@ -72,10 +72,16 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     datasetShareId = getUrlParameter('share_id');
     layoutShareId = getUrlParameter('layout_id');
 
+    // There are some shorthand URL parameters (not on the shorthand URL) that need to be converted to the longform
+    rebindUrlParam("multi", "multipattern_plots");
+    rebindUrlParam("c", "projection_source");
+    rebindUrlParam("ptrns", "projection_patterns");
+    rebindUrlParam("algo", "projection_algorithm");
+
     selectedPattern = createSelectedPatternProxy(selectedPattern);
 
     // add event listener for when the submit-projection-search button is clicked
-    document.querySelector('#submit-projection-search').addEventListener('click', async (event) => {
+    document.getElementById('submit-projection-search').addEventListener('click', async (event) => {
 
         const currentTarget = event.currentTarget;
         currentTarget.classList.add("is-loading");
@@ -92,7 +98,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         document.getElementById("result-panel-loader").classList.remove('is-hidden');
 
         // update multi/single pattern
-        isMulti = document.querySelector('#single-multi-multi').checked;
+        isMulti = document.getElementById('single-multi-multi').checked;
 
         populatePatternResultsList();
 
@@ -109,10 +115,9 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             tilegrid =  await setupTileGridFn;
 
             // auto-select the first pattern in the list
-            const first_pattern = document.querySelector('.pattern-result-list-item');
-            if (!isMulti && first_pattern) {
-
-                first_pattern.click();
+            const firstPattern = document.querySelector('.pattern-result-list-item');
+            if (!isMulti && firstPattern) {
+                firstPattern.click();
             }
 
         } catch (error) {
@@ -129,32 +134,19 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         history.pushState(null, '', url);
     });
 
-    // Change the svg scoring method when select element is changed
-    document.getElementById('svg-scoring-method').addEventListener('change', (event) => {
-        if (isMulti) return;   // multi does not use this
-
-        svgScoringMethod = event.target.value;
-        // Get pattern symbol from currently selected list item
-        let listItem = document.querySelector('.pattern-result-list-item.is-selected');
-        if (!listItem) {
-            listItem = document.querySelector('.pattern-result-list-item');
-        }
-
-        const pattern = listItem.textContent;
-        selectPatternWeightResult(pattern);
-    });
-
     // Wait until all pending API calls have completed before checking if we need to search
     document.getElementById("submit-projection-search").classList.add("is-loading");
     try {
+        const pattern = getUrlParameter('projection_source', urlParams);
+
         // SAdkins note - Promise.all fails fast,
         // but Promise.allSettled waits until all resolve/reject and lets you know which ones failed
         const [cartResult, dcResult,] = await Promise.all([
-            fetchPatternsData(),
-            fetchDatasetCollections(false),
+            fetchPatternsData(pattern),
+            fetchDatasetCollections(layoutShareId),
         ]);
 
-        await parseDatasetCollectionURLParams();
+        parseDatasetCollectionURLParams();
         await parsePatternCartURLParams();
 
         // Should help with lining things up on index page
@@ -183,7 +175,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     if (urlParamsPassed) {
 
         if ((datasetShareId || selected_dc_share_id) && selectedPattern.shareId !== null && selectedPattern.selectedWeights.length > 0) {
-            document.querySelector('#submit-projection-search').click();
+            document.getElementById('submit-projection-search').click();
         }
     }
 
@@ -214,7 +206,7 @@ const buildStateUrl = () => {
     url.searchParams.set('projection_algorithm', algorithm);
 
     // Add the multipattern_plots value to the URL
-    const multipatternPlots = document.querySelector('#single-multi-multi').checked ? 1 : 0;
+    const multipatternPlots = document.getElementById('single-multi-multi').checked ? 1 : 0;
     url.searchParams.set('multipattern_plots', multipatternPlots);
 
     // Add the pattern source to the URL
@@ -287,29 +279,34 @@ const populatePatternResultsList = () => {
  * Parses the URL parameters and updates the UI based on the values.
  */
 const parsePatternCartURLParams = async () => {
+
     // if projection algorithm is passed, set it in #algorithm
-    const projectionAlgorithm = getUrlParameter('projection_algorithm');
+    const projectionAlgorithm = getUrlParameter('projection_algorithm', urlParams);
     if (projectionAlgorithm) {
         document.getElementById('algorithm').value = projectionAlgorithm;
     }
 
     // single or multiple pattern view (convert to boolean)?
     // NOTE: This will be adjusted if the pattern only has one weight
-    const isMultiParam = getUrlParameter('multipattern_plots');
+    const isMultiParam = getUrlParameter('multipattern_plots', urlParams);
     isMulti = isMultiParam === '1';
     if (isMulti) {
-        document.querySelector('#single-multi-multi').checked = true;
+        document.getElementById('single-multi-multi').checked = true;
     } else {
-        document.querySelector('#single-multi-single').checked = true;
+        document.getElementById('single-multi-single').checked = true;
     }
 
     // handle passed pattern lists
-    const pattern = getUrlParameter('projection_source')
+    const pattern = getUrlParameter('projection_source', urlParams);
     if (!pattern) {
         return;
     }
     urlParamsPassed = true;
     const foundPattern = flatPatternsCartData.find((p) => p.share_id === pattern);
+    if (!foundPattern) {
+        console.warn(`Pattern ${pattern} not found in pattern cart data. Perhaps the user does not have access to it.`);
+        return;
+    }
     selectedPattern = {shareId: foundPattern.share_id, label: foundPattern.label, gctype: foundPattern.gctype, selectedWeights: []};
 
     // Update proxy so that multi-gene radio button can be enabled/disabled
@@ -324,7 +321,7 @@ const parsePatternCartURLParams = async () => {
     const labels = Array.from(rows).map((row) => row.dataset.label);
 
     // handle manually-entered pattern symbols
-    const urlWeights = getUrlParameter('projection_patterns');
+    const urlWeights = getUrlParameter('projection_patterns', urlParams);
     if (urlWeights) {
         // Cannot have weights without a source pattern
         const urlLabels = urlWeights.split(',');
@@ -499,7 +496,7 @@ const validateProjectionSearchForm = () => {
     }
 
     // If multi, check that at least two weights are selected
-    if ( document.getElementById('single-multi-multi').checked && selectedPattern.selectedWeights.length < 2) {
+    if (document.getElementById('single-multi-multi').checked && selectedPattern.selectedWeights.length < 2) {
         createToast('Please select at least two patterns to proceed');
         return false;
     }
@@ -517,4 +514,19 @@ document.getElementById('btn-view-weighted-genes').addEventListener('click', (ev
     const tab = window.open('about:blank', '_blank');
     tab.document.write(htmlStream);
     tab.document.close();
+});
+
+// Change the svg scoring method when select element is changed
+document.getElementById('svg-scoring-method').addEventListener('change', (event) => {
+    if (isMulti) return;   // multi does not use this
+
+    svgScoringMethod = event.target.value;
+    // Get pattern symbol from currently selected list item
+    let listItem = document.querySelector('.pattern-result-list-item.is-selected');
+    if (!listItem) {
+        listItem = document.querySelector('.pattern-result-list-item');
+    }
+
+    const pattern = listItem.textContent;
+    selectPatternWeightResult(pattern);
 });

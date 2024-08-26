@@ -2,6 +2,9 @@ let CURRENT_USER;
 let SIDEBAR_COLLAPSED = false;
 let SITE_PREFS = null;
 
+// if certain legacy or shorthand URL parameters are passed, change the parameter to the new ones
+const urlParams = new URLSearchParams(window.location.search);
+
 // Handle unhandled promise rejections (general catch-all for anything that wasn't caught)
 // https://developer.mozilla.org/en-US/docs/Web/API/Window/unhandledrejection_event
 window.addEventListener("unhandledrejection", function (event) {
@@ -24,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const logoSmall = document.getElementById('navbar-logo-small');
         logoSmall.src = "/img/by_domain/" + SITE_PREFS.domain_label + "/logo-main-small.png"
-        
+
         // Load analytics
         const head = document.getElementsByTagName('head')[0];
         const ga_script = document.createElement('script');
@@ -255,17 +258,34 @@ const getDomainPreferences = async () => {
     return response.json();
 }
 
+
 /**
- * Retrieves the value of a URL parameter.
- * @param {string} sParam - The name of the parameter to retrieve.
- * @returns {string|null} - The value of the parameter, or null if it doesn't exist.
+ * Retrieves the value of a specified URL parameter.
+ *
+ * @param {string} sParam - The name of the URL parameter.
+ * @param {URLSearchParams} [urlParams=null] - Optional URLSearchParams object to parse.
+ * @returns {string|null} - The value of the URL parameter, or null if it doesn't exist.
  */
-const getUrlParameter = (sParam) => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has(sParam)) {
-        return urlParams.get(sParam);
+const getUrlParameter = (sParam, urlParams=null) => {
+    const params = urlParams || new URLSearchParams(window.location.search);
+    if (params.has(sParam)) {
+        return params.get(sParam);
     }
     return null;
+}
+
+/**
+ * Rebinds a URL parameter to a new parameter name.
+ *
+ * @param {string} oldParam - The old parameter name to be replaced.
+ * @param {string} newParam - The new parameter name to replace the old parameter.
+ * @returns {URLSearchParams} - The updated URLSearchParams object.
+ */
+const rebindUrlParam = (oldParam, newParam) => {
+    if (urlParams.has(oldParam)) {
+        urlParams.set(newParam, urlParams.get(oldParam));
+        urlParams.delete(oldParam);
+    }
 }
 
 /**
@@ -961,7 +981,6 @@ const apiCallsMixin = {
         const {data} = await axios.post("cgi/get_users_layout_members.cgi", convertToFormData(payload));
         return data;
     },
-
     /**
      * Fetches dataset collections.
      *
@@ -971,12 +990,8 @@ const apiCallsMixin = {
      * @param {boolean} [options.includeMembers=true] - Whether to include collection members in output.
      * @returns {Promise<any>} - A promise that resolves to the fetched dataset collections.
      */
-    async fetchDatasetCollections({layoutShareId=null, noDomain=0, includeMembers=true}) {
-        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, no_domain: noDomain};
-
-        // is passed as string in the payload
-        payload.include_members = includeMembers ? 1 : 0;
-
+    async fetchDatasetCollections({layoutShareId=null, noDomain=0, includeMembers=true}={}) {
+        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, no_domain: noDomain, include_members: includeMembers ? 1 : 0};
         const {data} = await axios.post("cgi/get_user_layouts.cgi", convertToFormData(payload));
         return data;
     },
@@ -1099,19 +1114,15 @@ const apiCallsMixin = {
         return data;
     },
     /**
-     * Fetches gene carts based on the specified cart type.
-     * @param {string} cartType - The type of gene cart to fetch.
-     * @returns {Promise<any>} - A promise that resolves to the fetched gene carts data.
+     * Fetches gene carts.
+     * @param {Object} options - The options for fetching gene carts.
+     * @param {string|null} options.gcShareId - The share ID of the gene cart.
+     * @param {string|null} options.cartType - The type of the gene cart.
+     * @param {boolean} [options.includeMembers=true] - Whether to include members in the gene cart.
+     * @returns {Promise<Object>} The fetched gene carts.
      */
-    async fetchGeneCarts({cartType=null, includeMembers=true}) {
-        const payload = {session_id: this.sessionId};
-        if (cartType) {
-            payload.cart_type = cartType;
-        }
-
-        // is passed as string in the payload
-        payload.include_members = includeMembers ? 1 : 0;
-
+    async fetchGeneCarts({gcShareId=null, cartType=null, includeMembers=true}) {
+        const payload = {session_id: this.sessionId, cart_type: cartType, share_id: gcShareId, include_members: includeMembers ? 1 : 0};
         const {data} = await axios.post(`/cgi/get_user_gene_carts.cgi`, convertToFormData(payload));
         return data;
     },
