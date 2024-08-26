@@ -357,11 +357,13 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Wait until all pending API calls have completed before checking if we need to search
     document.getElementById("submit-expression-search").classList.add("is-loading");
     try {
+        const geneListShareId = getUrlParameter('gene_cart_share_id')
+
         // SAdkins note - Promise.all fails fast,
         // but Promise.allSettled waits until all resolve/reject and lets you know which ones failed
         const [cart_result, dc_result, org_result] = await Promise.all([
-            fetchGeneCartData(),
-            fetchDatasetCollections(false),
+            fetchGeneCartData(geneListShareId),
+            fetchDatasetCollections(layoutShareId),
             fetchOrganisms()
         ]);
     } catch (error) {

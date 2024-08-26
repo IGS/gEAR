@@ -137,14 +137,16 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Wait until all pending API calls have completed before checking if we need to search
     document.getElementById("submit-projection-search").classList.add("is-loading");
     try {
+        const pattern = getUrlParameter('projection_source', urlParams);
+
         // SAdkins note - Promise.all fails fast,
         // but Promise.allSettled waits until all resolve/reject and lets you know which ones failed
         const [cartResult, dcResult,] = await Promise.all([
-            fetchPatternsData(),
-            fetchDatasetCollections(false),
+            fetchPatternsData(pattern),
+            fetchDatasetCollections(layoutShareId),
         ]);
 
-        await parseDatasetCollectionURLParams();
+        parseDatasetCollectionURLParams();
         await parsePatternCartURLParams();
 
         // Should help with lining things up on index page

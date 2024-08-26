@@ -981,7 +981,6 @@ const apiCallsMixin = {
         const {data} = await axios.post("cgi/get_users_layout_members.cgi", convertToFormData(payload));
         return data;
     },
-
     /**
      * Fetches dataset collections.
      *
@@ -991,12 +990,8 @@ const apiCallsMixin = {
      * @param {boolean} [options.includeMembers=true] - Whether to include collection members in output.
      * @returns {Promise<any>} - A promise that resolves to the fetched dataset collections.
      */
-    async fetchDatasetCollections({layoutShareId=null, noDomain=0, includeMembers=true}) {
-        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, no_domain: noDomain};
-
-        // is passed as string in the payload
-        payload.include_members = includeMembers ? 1 : 0;
-
+    async fetchDatasetCollections({layoutShareId=null, noDomain=0, includeMembers=true}={}) {
+        const payload = {session_id: this.sessionId, layout_share_id: layoutShareId, no_domain: noDomain, include_members: includeMembers ? 1 : 0};
         const {data} = await axios.post("cgi/get_user_layouts.cgi", convertToFormData(payload));
         return data;
     },
@@ -1119,19 +1114,15 @@ const apiCallsMixin = {
         return data;
     },
     /**
-     * Fetches gene carts based on the specified cart type.
-     * @param {string} cartType - The type of gene cart to fetch.
-     * @returns {Promise<any>} - A promise that resolves to the fetched gene carts data.
+     * Fetches gene carts.
+     * @param {Object} options - The options for fetching gene carts.
+     * @param {string|null} options.gcShareId - The share ID of the gene cart.
+     * @param {string|null} options.cartType - The type of the gene cart.
+     * @param {boolean} [options.includeMembers=true] - Whether to include members in the gene cart.
+     * @returns {Promise<Object>} The fetched gene carts.
      */
-    async fetchGeneCarts({cartType=null, includeMembers=true}) {
-        const payload = {session_id: this.sessionId};
-        if (cartType) {
-            payload.cart_type = cartType;
-        }
-
-        // is passed as string in the payload
-        payload.include_members = includeMembers ? 1 : 0;
-
+    async fetchGeneCarts({gcShareId=null, cartType=null, includeMembers=true}) {
+        const payload = {session_id: this.sessionId, cart_type: cartType, share_id: gcShareId, include_members: includeMembers ? 1 : 0};
         const {data} = await axios.post(`/cgi/get_user_gene_carts.cgi`, convertToFormData(payload));
         return data;
     },

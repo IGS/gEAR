@@ -160,11 +160,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /**
  * Fetches gene cart data from the server.
- * @returns {Promise<void>} A promise that resolves when the gene cart data is fetched.
+ *
+ * @param {string|null} shareId - The share ID of the gene list. Default is null.
+ * @returns {Promise<void>} - A promise that resolves when the gene cart data is fetched successfully.
  */
-const fetchGeneCartData = async () => {
+const fetchGeneCartData = async (shareId=null) => {
     try {
-        gene_cart_data = await apiCallsMixin.fetchGeneCarts({cartType: 'unweighted-list', includeMembers: false});
+        gene_cart_data = await apiCallsMixin.fetchGeneCarts({gcShareId: shareId, cartType: 'unweighted-list', includeMembers: false});
         document.querySelector('#dropdown-gene-lists').classList.remove('is-loading');
         document.querySelector('#dropdown-gene-lists').classList.remove('is-disabled');
 
