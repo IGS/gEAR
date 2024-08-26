@@ -72,20 +72,11 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     datasetShareId = getUrlParameter('share_id');
     layoutShareId = getUrlParameter('layout_id');
 
-    // if certain legacy or shorthand URL parameters are passed, change the parameter to the new ones
-    const urlParams = new URLSearchParams(window.location.search);
-    const rebindUrlParam = (oldParam, newParam) => {
-        if (urlParams.has(oldParam)) {
-            urlParams.set(newParam, urlParams.get(oldParam));
-            urlParams.delete(oldParam);
-        }
-    }
-
     // There are some shorthand URL parameters (not on the shorthand URL) that need to be converted to the longform
     rebindUrlParam("multi", "multipattern_plots");
     rebindUrlParam("c", "projection_source");
     rebindUrlParam("ptrns", "projection_patterns");
-    rebindUrlParam("algo", "projection_algo");
+    rebindUrlParam("algo", "projection_algorithm");
 
     selectedPattern = createSelectedPatternProxy(selectedPattern);
 
@@ -124,10 +115,9 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             tilegrid =  await setupTileGridFn;
 
             // auto-select the first pattern in the list
-            const first_pattern = document.getElementsByClassName('pattern-result-list-item');
-            if (!isMulti && first_pattern) {
-
-                first_pattern.click();
+            const firstPattern = document.querySelector('.pattern-result-list-item');
+            if (!isMulti && firstPattern) {
+                firstPattern.click();
             }
 
         } catch (error) {
@@ -142,21 +132,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         const url = buildStateUrl();
         // add to state history
         history.pushState(null, '', url);
-    });
-
-    // Change the svg scoring method when select element is changed
-    document.getElementById('svg-scoring-method').addEventListener('change', (event) => {
-        if (isMulti) return;   // multi does not use this
-
-        svgScoringMethod = event.target.value;
-        // Get pattern symbol from currently selected list item
-        let listItem = document.querySelector('.pattern-result-list-item.is-selected');
-        if (!listItem) {
-            listItem = document.querySelector('.pattern-result-list-item');
-        }
-
-        const pattern = listItem.textContent;
-        selectPatternWeightResult(pattern);
     });
 
     // Wait until all pending API calls have completed before checking if we need to search
@@ -198,7 +173,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     if (urlParamsPassed) {
 
         if ((datasetShareId || selected_dc_share_id) && selectedPattern.shareId !== null && selectedPattern.selectedWeights.length > 0) {
-            document.querySelector('#submit-projection-search').click();
+            document.getElementById('submit-projection-search').click();
         }
     }
 
@@ -304,14 +279,14 @@ const populatePatternResultsList = () => {
 const parsePatternCartURLParams = async () => {
 
     // if projection algorithm is passed, set it in #algorithm
-    const projectionAlgorithm = getUrlParameter('projection_algorithm');
+    const projectionAlgorithm = getUrlParameter('projection_algorithm', urlParams);
     if (projectionAlgorithm) {
         document.getElementById('algorithm').value = projectionAlgorithm;
     }
 
     // single or multiple pattern view (convert to boolean)?
     // NOTE: This will be adjusted if the pattern only has one weight
-    const isMultiParam = getUrlParameter('multipattern_plots');
+    const isMultiParam = getUrlParameter('multipattern_plots', urlParams);
     isMulti = isMultiParam === '1';
     if (isMulti) {
         document.getElementById('single-multi-multi').checked = true;
@@ -320,7 +295,7 @@ const parsePatternCartURLParams = async () => {
     }
 
     // handle passed pattern lists
-    const pattern = getUrlParameter('projection_source')
+    const pattern = getUrlParameter('projection_source', urlParams);
     if (!pattern) {
         return;
     }
@@ -340,7 +315,7 @@ const parsePatternCartURLParams = async () => {
     const labels = Array.from(rows).map((row) => row.dataset.label);
 
     // handle manually-entered pattern symbols
-    const urlWeights = getUrlParameter('projection_patterns');
+    const urlWeights = getUrlParameter('projection_patterns', urlParams);
     if (urlWeights) {
         // Cannot have weights without a source pattern
         const urlLabels = urlWeights.split(',');
@@ -533,4 +508,19 @@ document.getElementById('btn-view-weighted-genes').addEventListener('click', (ev
     const tab = window.open('about:blank', '_blank');
     tab.document.write(htmlStream);
     tab.document.close();
+});
+
+// Change the svg scoring method when select element is changed
+document.getElementById('svg-scoring-method').addEventListener('change', (event) => {
+    if (isMulti) return;   // multi does not use this
+
+    svgScoringMethod = event.target.value;
+    // Get pattern symbol from currently selected list item
+    let listItem = document.querySelector('.pattern-result-list-item.is-selected');
+    if (!listItem) {
+        listItem = document.querySelector('.pattern-result-list-item');
+    }
+
+    const pattern = listItem.textContent;
+    selectPatternWeightResult(pattern);
 });

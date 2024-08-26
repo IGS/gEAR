@@ -2,6 +2,9 @@ let CURRENT_USER;
 let SIDEBAR_COLLAPSED = false;
 let SITE_PREFS = null;
 
+// if certain legacy or shorthand URL parameters are passed, change the parameter to the new ones
+const urlParams = new URLSearchParams(window.location.search);
+
 // Handle unhandled promise rejections (general catch-all for anything that wasn't caught)
 // https://developer.mozilla.org/en-US/docs/Web/API/Window/unhandledrejection_event
 window.addEventListener("unhandledrejection", function (event) {
@@ -24,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const logoSmall = document.getElementById('navbar-logo-small');
         logoSmall.src = "/img/by_domain/" + SITE_PREFS.domain_label + "/logo-main-small.png"
-        
+
         // Load analytics
         const head = document.getElementsByTagName('head')[0];
         const ga_script = document.createElement('script');
@@ -255,17 +258,34 @@ const getDomainPreferences = async () => {
     return response.json();
 }
 
+
 /**
- * Retrieves the value of a URL parameter.
- * @param {string} sParam - The name of the parameter to retrieve.
- * @returns {string|null} - The value of the parameter, or null if it doesn't exist.
+ * Retrieves the value of a specified URL parameter.
+ *
+ * @param {string} sParam - The name of the URL parameter.
+ * @param {URLSearchParams} [urlParams=null] - Optional URLSearchParams object to parse.
+ * @returns {string|null} - The value of the URL parameter, or null if it doesn't exist.
  */
-const getUrlParameter = (sParam) => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has(sParam)) {
-        return urlParams.get(sParam);
+const getUrlParameter = (sParam, urlParams=null) => {
+    const params = urlParams || new URLSearchParams(window.location.search);
+    if (params.has(sParam)) {
+        return params.get(sParam);
     }
     return null;
+}
+
+/**
+ * Rebinds a URL parameter to a new parameter name.
+ *
+ * @param {string} oldParam - The old parameter name to be replaced.
+ * @param {string} newParam - The new parameter name to replace the old parameter.
+ * @returns {URLSearchParams} - The updated URLSearchParams object.
+ */
+const rebindUrlParam = (oldParam, newParam) => {
+    if (urlParams.has(oldParam)) {
+        urlParams.set(newParam, urlParams.get(oldParam));
+        urlParams.delete(oldParam);
+    }
 }
 
 /**
