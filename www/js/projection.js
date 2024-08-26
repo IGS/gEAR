@@ -301,6 +301,10 @@ const parsePatternCartURLParams = async () => {
     }
     urlParamsPassed = true;
     const foundPattern = flatPatternsCartData.find((p) => p.share_id === pattern);
+    if (!foundPattern) {
+        console.warn(`Pattern ${pattern} not found in pattern cart data. Perhaps the user does not have access to it.`);
+        return;
+    }
     selectedPattern = {shareId: foundPattern.share_id, label: foundPattern.label, gctype: foundPattern.gctype, selectedWeights: []};
 
     // Update proxy so that multi-gene radio button can be enabled/disabled
