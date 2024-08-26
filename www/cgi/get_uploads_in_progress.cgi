@@ -57,10 +57,11 @@ def main():
             metadata = json.load(f)
 
             result['uploads'].append( {
-                    'share_id': share_id, 
+                    'share_id': share_id,
                     'dataset_type': metadata.get('dataset_type', ''),
                     'title': metadata.get('title', ''),
-                    'status': 'metadata uploaded'
+                    'status': 'metadata uploaded',
+                    'load_step': 'upload-dataset'
                 }
             )
 
@@ -68,6 +69,9 @@ def main():
 
         if os.path.exists(tarball_data_file):
             result['uploads'][-1]['status'] = 'datafile uploaded'
+            result['uploads'][-1]['load_step'] = 'process-dataset'
+
+        # The user could have uploaded the data file and never clicked
     
     result['success'] = 1
     print(json.dumps(result))
