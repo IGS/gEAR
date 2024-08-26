@@ -53,12 +53,16 @@ window.onload=function() {
 
     // Add click listeners for submissions-in-progress-table-tbody rows, even if they don't exist yet
     document.addEventListener('click', (event) => {
+        console.log(event.target);
+
         if (event.target.classList.contains('submission-history-row')) {
+            console.log("Clicked on a history row");
             const share_id = event.target.dataset.shareId;
             const step = event.target.dataset.step;
              
             // Do we want to dynamically load the next step or page refresh for it?
             //  If dynamic we have to reset all the forms.
+            stepTo(step);
         }
     });
 
@@ -226,6 +230,47 @@ const getGeoData = async () => {
     button.classList.remove('is-loading');
 }
 
+const stepTo = (step) => {
+    //////////////////////////////////////////
+    // Handle the step menu
+
+    // Inactivate all steps
+    document.querySelectorAll('.steps-segment').forEach((item) => {
+        item.classList.remove('is-active');
+    });
+
+    let metadata_step_li = document.getElementById('step-enter-metadata');
+    let metadata_step_marker = metadata_step_li.firstElementChild;
+    let metadata_step_icon = metadata_step_marker.firstElementChild;
+
+    let upload_step_li = document.getElementById('step-upload-dataset');
+    let upload_step_marker = upload_step_li.firstElementChild;
+    let upload_step_icon = upload_step_marker.firstElementChild;
+
+    if (step === 'upload-dataset') {
+        metadata_step_li.classList.remove('is-active');
+        upload_step_li.classList.add('is-active');
+
+        metadata_step_marker.classList.remove('is-light');
+        metadata_step_icon.firstElementChild.classList.remove('mdi-wrench');
+        metadata_step_icon.firstElementChild.classList.add('mdi-check-bold');
+
+        upload_step_marker.classList.add('is-light');
+        upload_step_icon.firstElementChild.classList.add('mdi-wrench');
+
+        document.getElementById('step-enter-metadata-c').classList.add('is-hidden');
+        document.getElementById('step-upload-dataset-c').classList.remove('is-hidden');
+    }
+
+    // Activate the step we want
+    document.getElementById('step-' + step).classList.add('is-active');
+
+    //////////////////////////////////////////
+    // Now do the actual step contents
+
+    
+}
+
 const loadUploadsInProgress = async () => {
     const {data} = await axios.post('./cgi/get_uploads_in_progress.cgi', convertToFormData({
         session_id: CURRENT_USER.session_id
@@ -239,6 +284,7 @@ const loadUploadsInProgress = async () => {
             data.uploads.forEach((upload) => {
                 let clone = template.content.cloneNode(true);
                 clone.querySelector('tr').dataset.shareId = upload.share_id;
+                clone.querySelector('tr').dataset.loadStep = upload.load_step;
 
                 clone.querySelector('.submission-share-id').textContent = upload.share_id;
                 clone.querySelector('.submission-status').textContent = upload.status;
@@ -302,26 +348,7 @@ const storeMetadata = async () => {
         </span>
         */
 
-        let metadata_step_li = document.getElementById('step-enter-metadata');
-        let metadata_step_marker = metadata_step_li.firstElementChild;
-        let metadata_step_icon = metadata_step_marker.firstElementChild;
-
-        let upload_step_li = document.getElementById('step-upload-dataset');
-        let upload_step_marker = upload_step_li.firstElementChild;
-        let upload_step_icon = upload_step_marker.firstElementChild;
-
-        metadata_step_li.classList.remove('is-active');
-        upload_step_li.classList.add('is-active');
-
-        metadata_step_marker.classList.remove('is-light');
-        metadata_step_icon.firstElementChild.classList.remove('mdi-wrench');
-        metadata_step_icon.firstElementChild.classList.add('mdi-check-bold');
-
-        upload_step_marker.classList.add('is-light');
-        upload_step_icon.firstElementChild.classList.add('mdi-wrench');
-
-        document.getElementById('step-enter-metadata-c').classList.add('is-hidden');
-        document.getElementById('step-upload-dataset-c').classList.remove('is-hidden');
+        stepTo('upload-dataset');
 
         // Scroll to the top of the page
         window.scrollTo(0, 0);
