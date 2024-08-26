@@ -300,7 +300,7 @@ const parsePatternCartURLParams = async () => {
     // There are some shorthand URL parameters (not on the shorthand URL) that need to be converted to the longform
     rebindUrlParam("multi", "multipattern_plots");
     rebindUrlParam("c", "projection_source");
-    rebindUrlParams("ptrns", "projection_patterns");
+    rebindUrlParam("ptrns", "projection_patterns");
     rebindUrlParam("algo", "projection_algo");
 
     // if projection algorithm is passed, set it in #algorithm
