@@ -75,7 +75,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     selectedPattern = createSelectedPatternProxy(selectedPattern);
 
     // add event listener for when the submit-projection-search button is clicked
-    document.querySelector('#submit-projection-search').addEventListener('click', async (event) => {
+    document.getElementById('submit-projection-search').addEventListener('click', async (event) => {
 
         const currentTarget = event.currentTarget;
         currentTarget.classList.add("is-loading");
@@ -92,7 +92,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         document.getElementById("result-panel-loader").classList.remove('is-hidden');
 
         // update multi/single pattern
-        isMulti = document.querySelector('#single-multi-multi').checked;
+        isMulti = document.getElementById('single-multi-multi').checked;
 
         populatePatternResultsList();
 
@@ -109,7 +109,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             tilegrid =  await setupTileGridFn;
 
             // auto-select the first pattern in the list
-            const first_pattern = document.querySelector('.pattern-result-list-item');
+            const first_pattern = document.getElementsByClassName('pattern-result-list-item');
             if (!isMulti && first_pattern) {
 
                 first_pattern.click();
@@ -287,6 +287,22 @@ const populatePatternResultsList = () => {
  * Parses the URL parameters and updates the UI based on the values.
  */
 const parsePatternCartURLParams = async () => {
+
+    // if certain legacy or shorthand URL parameters are passed, change the parameter to the new ones
+    const urlParams = new URLSearchParams(window.location.search);
+    const rebindUrlParam = (oldParam, newParam) => {
+        if (urlParams.has(oldParam)) {
+            urlParams.set(newParam, urlParams.get(oldParam));
+            urlParams.delete(oldParam);
+        }
+    }
+
+    // There are some shorthand URL parameters (not on the shorthand URL) that need to be converted to the longform
+    rebindUrlParam("multi", "multipattern_plots");
+    rebindUrlParam("c", "projection_source");
+    rebindUrlParams("ptrns", "projection_patterns");
+    rebindUrlParam("algo", "projection_algo");
+
     // if projection algorithm is passed, set it in #algorithm
     const projectionAlgorithm = getUrlParameter('projection_algorithm');
     if (projectionAlgorithm) {
@@ -298,9 +314,9 @@ const parsePatternCartURLParams = async () => {
     const isMultiParam = getUrlParameter('multipattern_plots');
     isMulti = isMultiParam === '1';
     if (isMulti) {
-        document.querySelector('#single-multi-multi').checked = true;
+        document.getElementById('single-multi-multi').checked = true;
     } else {
-        document.querySelector('#single-multi-single').checked = true;
+        document.getElementById('single-multi-single').checked = true;
     }
 
     // handle passed pattern lists
@@ -499,7 +515,7 @@ const validateProjectionSearchForm = () => {
     }
 
     // If multi, check that at least two weights are selected
-    if ( document.getElementById('single-multi-multi').checked && selectedPattern.selectedWeights.length < 2) {
+    if (document.getElementById('single-multi-multi').checked && selectedPattern.selectedWeights.length < 2) {
         createToast('Please select at least two patterns to proceed');
         return false;
     }
