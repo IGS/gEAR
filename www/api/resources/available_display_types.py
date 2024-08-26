@@ -187,32 +187,40 @@ class AvailableDisplayTypes(Resource):
 
         columns = [col for col in columns if not col.endswith('_colors')]
 
-
         for col in columns:
           # If any of the columns are of numerical type,
           # then we can draw line plots
           if "float" in str(adata.obs[col].dtype) or "int" in str(adata.obs[col].dtype):
             line = True
 
+          """
           # if any columns have tSNE in the name, enable support for that.
           if 'tsne'.lower() in str(col).lower():
-              tsne_static = True
-              tsne_umap_pca_dynamic = True
+            tsne_static = True
+            tsne_umap_pca_dynamic = True
 
           # if any columns have UMAP in the name, enable support for that.
           if 'umap'.lower() in str(col).lower():
-              umap_static = True
-              tsne_umap_pca_dynamic = True
+            umap_static = True
+            tsne_umap_pca_dynamic = True
 
           # if any columns have PCA in the name, enable support for that.
           if 'pca'.lower() in str(col).lower():
-              pca_static = True
-              tsne_umap_pca_dynamic = True
+            pca_static = True
+            tsne_umap_pca_dynamic = True
 
           # Carlo wants to be able to plot DimRed columns this way
           if str(col).startswith('DimRed') or str(col).startswith('PC'):
-              tsne_static = True
-              tsne_umap_pca_dynamic = True
+            tsne_static = True
+            tsne_umap_pca_dynamic = True
+          """
+
+        # if at least two columns are float or int, enable tsne/umap/pca plots
+        if len([col for col in columns if "float" in str(adata.obs[col].dtype) or "int" in str(adata.obs[col].dtype)]) >= 2:
+          tsne_umap_pca_dynamic = True
+          tsne_static = True
+          umap_static = True
+          pca_static = True
 
         available_display_types = {
           "scatter": scatter,
