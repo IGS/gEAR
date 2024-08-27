@@ -51,21 +51,6 @@ window.onload=function() {
         });
     });
 
-    // Add click listeners for submissions-in-progress-table-tbody rows, even if they don't exist yet
-    document.addEventListener('click', (event) => {
-        console.log(event.target);
-
-        if (event.target.classList.contains('submission-history-row')) {
-            console.log("Clicked on a history row");
-            const share_id = event.target.dataset.shareId;
-            const step = event.target.dataset.step;
-             
-            // Do we want to dynamically load the next step or page refresh for it?
-            //  If dynamic we have to reset all the forms.
-            stepTo(step);
-        }
-    });
-
     document.getElementById('metadata-form-submit').addEventListener('click', (event) => {
         event.preventDefault();
         let errored_fields = validateMetadataForm();
@@ -231,44 +216,49 @@ const getGeoData = async () => {
 }
 
 const stepTo = (step) => {
-    //////////////////////////////////////////
-    // Handle the step menu
+    const step_labels = ['enter-metadata', 'upload-dataset', 'process-dataset',
+        'finalize-dataset', 'curate-dataset'
+    ];
+    let step_reached = false;
 
-    // Inactivate all steps
-    document.querySelectorAll('.steps-segment').forEach((item) => {
-        item.classList.remove('is-active');
-    });
+    // Walk forward in the steps and handle each
+    for (const label of step_labels) {
+        let step_li = document.getElementById('step-' + label);
+        let step_marker = step_li.firstElementChild;
+        let step_icon = step_marker.firstElementChild;
 
-    let metadata_step_li = document.getElementById('step-enter-metadata');
-    let metadata_step_marker = metadata_step_li.firstElementChild;
-    let metadata_step_icon = metadata_step_marker.firstElementChild;
+        // If the step is the one we want, add the check icon
+        if (label === step) {
+            step_marker.classList.add('is-light');
+            step_li.classList.add('is-active');
+            step_icon.firstElementChild.classList.remove('mdi-check-bold');
+            step_icon.firstElementChild.classList.add('mdi-wrench');
+            step_reached = true;
 
-    let upload_step_li = document.getElementById('step-upload-dataset');
-    let upload_step_marker = upload_step_li.firstElementChild;
-    let upload_step_icon = upload_step_marker.firstElementChild;
-
-    if (step === 'upload-dataset') {
-        metadata_step_li.classList.remove('is-active');
-        upload_step_li.classList.add('is-active');
-
-        metadata_step_marker.classList.remove('is-light');
-        metadata_step_icon.firstElementChild.classList.remove('mdi-wrench');
-        metadata_step_icon.firstElementChild.classList.add('mdi-check-bold');
-
-        upload_step_marker.classList.add('is-light');
-        upload_step_icon.firstElementChild.classList.add('mdi-wrench');
-
-        document.getElementById('step-enter-metadata-c').classList.add('is-hidden');
-        document.getElementById('step-upload-dataset-c').classList.remove('is-hidden');
+        // If not the current step, handle if it's before or after the current
+        } else {
+            if (step_reached) {
+                // These are the steps markers after the current one
+                step_li.classList.remove('is-active');
+                step_marker.classList.remove('is-light');
+                step_icon.firstElementChild.classList.remove('mdi-wrench');
+                step_icon.firstElementChild.classList.remove('mdi-check-bold');
+            } else {
+                // These are the step markers before the current one
+                step_li.classList.remove('is-active');
+                step_marker.classList.remove('is-light');
+                step_icon.firstElementChild.classList.remove('mdi-wrench');
+                step_icon.firstElementChild.classList.add('mdi-check-bold');
+            }
+        }
     }
 
-    // Activate the step we want
-    document.getElementById('step-' + step).classList.add('is-active');
+    // Inactivate all step contents, then display the one we want
+    document.querySelectorAll('.step-c').forEach((item) => {
+        item.classList.add('is-hidden');
+    });
 
-    //////////////////////////////////////////
-    // Now do the actual step contents
-
-    
+    document.getElementById('step-' + step + '-c').classList.remove('is-hidden');
 }
 
 const loadUploadsInProgress = async () => {
@@ -291,6 +281,18 @@ const loadUploadsInProgress = async () => {
                 clone.querySelector('.submission-title').textContent = upload.title;
                 clone.querySelector('.submission-dataset-type').textContent = upload.dataset_type;
                 document.querySelector('#submissions-in-progress-table-tbody').appendChild(clone);
+            });
+
+            // Add click listeners for submissions-in-progress-table-tbody rows we just added
+            document.querySelectorAll('.submission-history-row').forEach((row) => {
+                row.addEventListener('click', (event) => {
+                    const share_id = row.dataset.shareId;
+                    const step = row.dataset.loadStep;
+                     
+                    // Do we want to dynamically load the next step or page refresh for it?
+                    //  If dynamic we have to reset all the forms.
+                    stepTo(step);
+                });
             });
 
             document.getElementById('submissions-in-progress').classList.remove('is-hidden');
