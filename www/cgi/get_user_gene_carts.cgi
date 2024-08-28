@@ -75,8 +75,8 @@ def main():
     result = { 'domain_carts':[], 'group_carts':[], 'public_carts':[],
                'recent_carts':[], 'shared_carts':[], 'user_carts':[] }
 
-    # Track the cart IDs already stored so we don't duplicate
-    cart_ids_found = set()
+    if filter_cart_type == "null":
+        filter_cart_type = None
 
     if include_members:
         include_members = int(include_members)

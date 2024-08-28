@@ -1,11 +1,7 @@
-# Purely kept so we can debug with sys.stderr
 from itertools import cycle
-
-import pandas as pd
 
 import plotly.express as px
 import plotly.graph_objects as go
-from matplotlib.pyplot import plot
 from plotly import exceptions
 from plotly.colors import unlabel_rgb
 from plotly.subplots import make_subplots

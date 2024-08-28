@@ -215,6 +215,10 @@ class PlotlyData(Resource):
         if adata.isbacked:
             adata.file.close()
 
+        # Rename the single selected.var index label to "raw_value"
+        # This resolves https://github.com/IGS/gEAR/issues/878 where the gene_symbol index may be the same as a observation column (i.e. projections)
+        selected.var.index = pd.Index(["raw_value"])
+
         df = selected.to_df()
 
         success = 1
@@ -224,8 +228,7 @@ class PlotlyData(Resource):
             message = "WARNING: Multiple Ensemble IDs found for gene symbol '{}'.  Using the first stored Ensembl ID.".format(gene_symbol)
             df = df.iloc[:,[0]] # Note, put the '0' in a list to return a DataFrame.  Not having in list returns DataSeries instead
 
-        df2 = pd.concat([df,selected.obs], axis=1)
-        df = df2.rename(columns={df.columns[0]: "raw_value"})
+        df = pd.concat([df,selected.obs], axis=1)
 
         # Valid analysis column names from api/resources/h5ad.py
         analysis_tsne_columns = ['X_tsne_1', 'X_tsne_2']

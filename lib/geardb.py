@@ -2599,11 +2599,11 @@ class GeneCart:
             # ID is empty, this is a new one
             #  Insert the cart and then add the members
             gc_insert_qry = """
-                            INSERT INTO gene_cart (user_id, label, organism_id, share_id, is_public, is_domain, gctype)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                            INSERT INTO gene_cart (user_id, label, organism_id, share_id, is_public, is_domain, gctype, ldesc)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """
 
-            cursor.execute(gc_insert_qry, (self.user_id, self.label, self.organism_id, self.share_id, self.is_public, self.is_domain, self.gctype))
+            cursor.execute(gc_insert_qry, (self.user_id, self.label, self.organism_id, self.share_id, self.is_public, self.is_domain, self.gctype, self.ldesc))
             self.id = cursor.lastrowid
 
             for gene in self.genes:
