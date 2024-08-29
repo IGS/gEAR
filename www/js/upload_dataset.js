@@ -51,6 +51,13 @@ window.onload=function() {
         });
     });
 
+    document.getElementById('new-submission-toggle').addEventListener('click', (event) => {
+        event.preventDefault();
+        
+        document.getElementById('submissions-in-progress').classList.add('is-hidden');
+        document.getElementById('submission-c').classList.remove('is-hidden');
+    });
+
     document.getElementById('metadata-form-submit').addEventListener('click', (event) => {
         event.preventDefault();
         let errored_fields = validateMetadataForm();
@@ -286,17 +293,23 @@ const loadUploadsInProgress = async () => {
             // Add click listeners for submissions-in-progress-table-tbody rows we just added
             document.querySelectorAll('.submission-history-row').forEach((row) => {
                 row.addEventListener('click', (event) => {
-                    const share_id = row.dataset.shareId;
+                    share_uid = row.dataset.shareId;
                     const step = row.dataset.loadStep;
                      
                     // Do we want to dynamically load the next step or page refresh for it?
                     //  If dynamic we have to reset all the forms.
                     stepTo(step);
+
+                    document.getElementById('submissions-in-progress').classList.add('is-hidden');
+                    document.getElementById('submission-c').classList.remove('is-hidden');
                 });
             });
 
             document.getElementById('submissions-in-progress').classList.remove('is-hidden');
+        } else {
+            document.getElementById('submission-c').classList.remove('is-hidden');
         }
+
     } else {
         createToast('Error loading uploads in progress: ' + data.message, 'is-warning');
     }
@@ -387,8 +400,16 @@ const uploadDataset = () => {
         document.getElementById('dataset-upload-status').classList.remove('is-hidden');
 
         if (response.success) {
-            document.getElementById('dataset-upload-status-message').textContent = 'Dataset uploaded successfully';
+            document.getElementById('dataset-upload-status-message').textContent = 'Dataset uploaded successfully. Processing beginning momentarily ...';
             document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+
+            processDataset();
+
+            // Wait a few seconds, then move to the next step. The process script
+            // (called above) will run for a long time and be monitored separately
+            setTimeout(() => {
+                stepTo('process-dataset');
+            }, 3000);            
 
         } else {
             document.getElementById('dataset-upload-status-message').textContent = response.message;
@@ -397,6 +418,13 @@ const uploadDataset = () => {
     };
 
     xhr.send(formData);
+}
+
+const processDataset = async () => {
+    const formData = new FormData();
+    formData.append('share_uid', share_uid);
+    formData.append('dataset_format', dataset_format);
+    const data = await apiCallsMixin.processDatasetUpload(formData);
 }
 
 const validateMetadataForm = () => {
