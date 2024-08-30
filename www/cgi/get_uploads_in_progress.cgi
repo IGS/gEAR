@@ -81,6 +81,9 @@ def main():
                 if processing_status == 'processing':
                     result['uploads'][-1]['status'] = 'processing'
                     result['uploads'][-1]['load_step'] = 'process-dataset'
+                if processing_status == 'complete':
+                    result['uploads'][-1]['status'] = 'ready to finalize'
+                    result['uploads'][-1]['load_step'] = 'finalize-dataset'
                 
     
     result['success'] = 1
