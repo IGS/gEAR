@@ -1313,6 +1313,12 @@ const apiCallsMixin = {
         return data;
     },
 
+    async processDatasetUpload(formData) {
+        formData.append("session_id", this.sessionId);
+        const {data} = await axios.post("/cgi/process_uploaded_expression_dataset.cgi", formData);
+        return data;
+    },
+
     /**
      * Renames a dataset collection.
      *
