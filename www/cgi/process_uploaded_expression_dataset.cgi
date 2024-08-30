@@ -65,6 +65,11 @@ def main():
     dataset_format = form.getvalue('dataset_format')
     dataset_upload_dir = os.path.join(user_upload_file_base, session_id, share_uid)
 
+    # if the upload directory doesn't exist, we can't process the dataset
+    if not os.path.exists(dataset_upload_dir):
+        result['message'] = 'Dataset/directory not found.'
+        print_and_go(json.dumps(result))
+
     if dataset_format not in dataset_formats:
         result['message'] = 'Unsupported dataset format.'
         print_and_go(json.dumps(result))
@@ -145,6 +150,7 @@ def process_3tab(upload_dir):
     reader = pd.read_csv(expression_matrix_path, sep='\t', index_col=0, chunksize=chunk_size)
     #adata.X = sparse.vstack([sparse.csr_matrix(chunk.values) for chunk in reader])
 
+    # This can be an order of magnitude faster than the using python alone
     total_rows = int(subprocess.check_output(f"/usr/bin/wc -l {expression_matrix_path}", shell=True).split()[0])
 
     expression_matrix = []

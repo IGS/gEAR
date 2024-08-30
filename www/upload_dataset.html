@@ -771,38 +771,13 @@
                   <p>
                     Your dataset is being processed on the server. This may take a few minutes, depending on the size of the dataset.
                   </p>
-                  <p>
-                    You can check the status of the processing below.
-                  </p>
                   <hr />
                   <div class="columns">
-                    <div class="column is-6">
-                      <div class="field">
-                        <label class="label">
-                          Dataset processing status
-                          <span class="icon has-tooltip-right has-tooltip-arrow" 
-                                data-tooltip="The status of the dataset processing.">
-                              <i class="mdi mdi-information"></i>
-                          </span>
-                        </label>
-                        <div class="control">
-                          <input class="input" type="text" name="dataset-processing-status" placeholder="Processing status" disabled>
-                        </div>
-                      </div>
+                    <div class="column">
+                      <h2>Status: <span id="step-process-dataset-status">Checking ...</span></h2>
                     </div>
-                    <div class="column is-6">
-                      <div class="field">
-                        <label class="label">
-                          Processing log
-                          <span class="icon has-tooltip-right has-tooltip-arrow" 
-                                data-tooltip="Log of the processing steps taken.">
-                              <i class="mdi mdi-information"></i>
-                          </span>
-                        </label>
-                        <div class="control">
-                          <textarea class="textarea" name="dataset-processing-log" placeholder="Processing log" disabled></textarea>
-                        </div>
-                      </div>
+                    <div class="column">
+                      <h2>Message: <span id="step-process-dataset-status-message"></span></h2>
                     </div>
                   </div>
                   <div class="field">

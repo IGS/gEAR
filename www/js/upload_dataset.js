@@ -8,6 +8,9 @@ let dataset_uid = null;
 let share_uid = null;
 let dataset_format = null;
 
+let processing_status = null;
+const processing_status_check_interval = 10; // seconds
+
 let required_metadata_fields = ['metadata-title', 'metadata-summary', 'metadata-dataset-type',
     'metadata-contact-name', 'metadata-annotation-source', 'metadata-annotation-version',
     'metadata-contact-name', 'metadata-contact-email',
@@ -148,6 +151,22 @@ window.onload=function() {
     });
 };
 
+const checkDatasetProcessingStatus = async () => {
+    const {data} = await axios.post('./cgi/check_dataset_processing_status.cgi', convertToFormData({
+        share_uid: share_uid,
+        session_id: CURRENT_USER.session_id
+    }));
+
+    processing_status = data.status;
+    document.getElementById('step-process-dataset-status').textContent = processing_status.charAt(0).toUpperCase() + processing_status.slice(1);
+    document.getElementById('step-process-dataset-status-message').textContent = data.message;
+    document.getElementById('dataset-processing-progress').value = data.progress;
+
+    // TODO: Handle the different statuses here
+
+    console.log(data);
+}
+
 const populateMetadataFormFromFile = async () => {
     const formData = new FormData(document.getElementById('metadata-upload-form'));
     const data = await apiCallsMixin.parseMetadataFile(formData);
@@ -260,12 +279,24 @@ const stepTo = (step) => {
         }
     }
 
+    // if the step is process-dataset, we need to check on the status
+    if (step === 'process-dataset') {
+        setInterval(() => {
+            if (processing_status !== 'complete' && processing_status !== 'error') {
+                checkDatasetProcessingStatus();
+            }
+        }, processing_status_check_interval * 1000);
+    }
+
     // Inactivate all step contents, then display the one we want
     document.querySelectorAll('.step-c').forEach((item) => {
         item.classList.add('is-hidden');
     });
 
     document.getElementById('step-' + step + '-c').classList.remove('is-hidden');
+
+    // Scroll to the top of the page
+    window.scrollTo(0, 0);
 }
 
 const loadUploadsInProgress = async () => {
