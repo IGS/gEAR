@@ -176,7 +176,6 @@ def main():
     image_success = False
     url = "https://localhost/api/plot/{}".format(dataset_id)
 
-    is_local = True
     if is_local:
         url = alt_url
 
