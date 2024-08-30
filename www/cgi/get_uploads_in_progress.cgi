@@ -71,7 +71,17 @@ def main():
             result['uploads'][-1]['status'] = 'datafile uploaded'
             result['uploads'][-1]['load_step'] = 'process-dataset'
 
-        # The user could have uploaded the data file and never clicked
+        processing_status_json_file = os.path.join(share_dir, 'status.json')
+
+        if os.path.exists(processing_status_json_file):
+            with open(processing_status_json_file, 'r') as f:
+                status_json = json.load(f)
+                processing_status = status_json.get('status', '')
+
+                if processing_status == 'processing':
+                    result['uploads'][-1]['status'] = 'processing'
+                    result['uploads'][-1]['load_step'] = 'process-dataset'
+                
     
     result['success'] = 1
     print(json.dumps(result))
