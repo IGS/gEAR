@@ -12,6 +12,13 @@ div#logged-in-c {
 div.step-c {
 	margin-top: 20px;
 }
+div#step-process-dataset-c h3 {
+	margin-bottom: 5px;
+}
+div#step-process-dataset-c h3 span {
+	font-weight: normal;
+	font-size: 90%;
+}
 div#submissions-in-progress table {
 	border: 1px solid #ccc;
 	/*background-color: #dbdbdb;*/

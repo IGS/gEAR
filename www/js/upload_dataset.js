@@ -61,6 +61,12 @@ window.onload=function() {
         document.getElementById('submission-c').classList.remove('is-hidden');
     });
 
+    document.getElementById('dataset-processing-submit').addEventListener('click', (event) => {
+        event.preventDefault();
+        
+        stepTo('finalize-dataset');
+    });
+
     document.getElementById('metadata-form-submit').addEventListener('click', (event) => {
         event.preventDefault();
         let errored_fields = validateMetadataForm();
@@ -163,8 +169,9 @@ const checkDatasetProcessingStatus = async () => {
     document.getElementById('dataset-processing-progress').value = data.progress;
 
     // TODO: Handle the different statuses here
-
-    console.log(data);
+    if (processing_status === 'complete') {
+        document.getElementById('dataset-processing-submit').disabled = false;
+    }
 }
 
 const populateMetadataFormFromFile = async () => {
@@ -281,6 +288,9 @@ const stepTo = (step) => {
 
     // if the step is process-dataset, we need to check on the status
     if (step === 'process-dataset') {
+        // Check the status immediately, then set an interval to keep doing it.
+        checkDatasetProcessingStatus();
+        
         setInterval(() => {
             if (processing_status !== 'complete' && processing_status !== 'error') {
                 checkDatasetProcessingStatus();

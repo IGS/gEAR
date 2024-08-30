@@ -161,6 +161,7 @@ def process_3tab(upload_dir):
         expression_matrix.append(sparse.csr_matrix(chunk.values))
         print(f"Chunks read: {rows_read}/{total_rows}", file=sys.stderr, flush=True)
         status['progress'] = percentage
+        status['message'] = f"Processed {rows_read}/{total_rows} expression matrix chunks ..."
         with open(os.path.join(upload_dir, 'status.json'), 'w') as f:
             f.write(json.dumps(status))
 

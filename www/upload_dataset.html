@@ -731,14 +731,6 @@
                             </span> 
                           </label>
                         </div>
-                        <div id="dataset-upload-status" class="is-hidden">
-                          <p>
-                            <span class="icon">
-                              <i class="mdi mdi-information"></i>
-                            </span>
-                            <span id="dataset-upload-status-message"></span>
-                          </p>
-                        </div>
                       </div>
                     </div>
                     <div class="column is-6">
@@ -756,10 +748,17 @@
                       </div>
                     </div>
                   </div>
+                  <div id="dataset-upload-status" class="is-hidden">
+                    <p class="mt-2 mb-0 pt-2 pb-0">
+                      <span class="icon">
+                        <i class="mdi mdi-information"></i>
+                      </span>
+                      <span id="dataset-upload-status-message"></span>
+                    </p>
+                  </div>
                   <div class="field">
                     <progress id="dataset-upload-progress" class="progress is-medium" value="0" max="100"></progress>
                   </div>
-                
                   <div class="field">
                     <div class="control">
                       <button class="button is-primary" id="dataset-upload-submit" disabled>Upload dataset</button>
@@ -772,16 +771,21 @@
                     Your dataset is being processed on the server. This may take a few minutes, depending on the size of the dataset.
                   </p>
                   <hr />
-                  <div class="columns">
-                    <div class="column">
-                      <h2>Status: <span id="step-process-dataset-status">Checking ...</span></h2>
+                  <div class="columns mb-0 pb-0">
+                    <div class="column is-one-third mb-0 pb-0">
+                      <h3>Status: <span id="step-process-dataset-status">Checking ...</span></h3>
                     </div>
-                    <div class="column">
-                      <h2>Message: <span id="step-process-dataset-status-message"></span></h2>
+                    <div class="column is-two-thirds mb-0 pb-0">
+                      <h3>Message: <span id="step-process-dataset-status-message"></span></h3>
                     </div>
                   </div>
                   <div class="field">
-                    <progress id="dataset-processing-progress" class="progress is-medium" value="0" max="100"></progress>
+                    <progress id="dataset-processing-progress" class="progress is-medium" value="" max="100"></progress>
+                  </div>
+                  <div class="field">
+                    <div class="control">
+                      <button class="button is-primary" id="dataset-processing-submit" disabled>Continue</button>
+                    </div>
                   </div>
                 </div>
               </div> 
