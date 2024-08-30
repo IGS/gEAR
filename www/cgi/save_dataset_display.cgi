@@ -93,6 +93,14 @@ def main():
     cursor = cnx.get_cursor()
 
     user = geardb.get_user_from_session_id(session_id=session_id)
+
+    if not user:
+        print('User not found for session_id {}'.format(session_id), file=sys.stderr)
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(dict(display_id=None, success=False)))
+        return
+
     user_id = user.id
 
     if display_id:
@@ -113,10 +121,10 @@ def main():
                 WHERE id = %s;
             """
             cursor.execute(query, (label, plot_type, plotly_config, display_id))
-            result = dict(success=True)
+            result = dict(display_id=display_id, success=True)
         else:
             print('UPDATE DIDNT HAPPEN?', file=sys.stderr)
-            result = dict(success=False)
+            result = dict(display_id=display_id, success=False)
     else:
         # Display doesn't exist yet, insert new
 
@@ -155,7 +163,8 @@ def main():
         print("Invalid filename: {}".format(filename), file=sys.stderr)
         sys.stdout = original_stdout
         print('Content-Type: application/json\n\n')
-        print(json.dumps(dict(success=False)))
+        result["success"] = False
+        print(json.dumps(result))
         return
 
     # Add plot_type to config so it can be passed in the POST cmd as well
@@ -167,6 +176,7 @@ def main():
     image_success = False
     url = "https://localhost/api/plot/{}".format(dataset_id)
 
+    is_local = True
     if is_local:
         url = alt_url
 

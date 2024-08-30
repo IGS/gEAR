@@ -108,7 +108,7 @@ def get_analysis(analysis, dataset_id, session_id):
 
         # Check that the h5ad file exists
         if not os.path.exists(ana.dataset_path()):
-            raise FileNotFoundError("No h5 file found for the passed in analysis")
+            raise FileNotFoundError("No h5 file found for the passed in analysis {}".format(ana.dataset_path()))
 
     else:
         ds = Dataset(id=dataset_id, has_h5ad=1)
@@ -116,7 +116,7 @@ def get_analysis(analysis, dataset_id, session_id):
 
         # Let's not fail if the file isn't there
         if not os.path.exists(h5_path):
-            raise FileNotFoundError("No h5 file found for this dataset")
+            raise FileNotFoundError("No h5 file found for this dataset {}".format(h5_path))
         ana = Analysis(type='primary', dataset_id=dataset_id)
     return ana
 
