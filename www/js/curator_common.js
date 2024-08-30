@@ -12,6 +12,7 @@ let catColumns = [];
 let levels = {};    // categorical columns as keys + groups as values
 
 let datasetId = null;
+let chosenDisplayId = null;
 let organismId = null;
 let analysisObj = null;
 
@@ -344,8 +345,8 @@ const curatorApiCallsMixin = {
                 throw new Error("Could not save this new display. Please contact the gEAR team.");
             }
 
-            // Make new display card and make it the default display
-            renderUserDisplayCard({id: display_id, label, plot_type: plotType, plotly_config: plotConfig}, display_id);
+            // Ensure the display is not a default display (the user must choose to make it default)
+            renderUserDisplayCard({id: display_id, label, plot_type: plotType, plotly_config: plotConfig}, -1);
 
             return display_id;
         } catch (error) {
@@ -535,6 +536,12 @@ const chooseNewDisplay = async () => {
     document.getElementById("plot-type-select-c-failed").classList.remove("is-hidden");
     document.getElementById("plot-options-s-success").classList.add("is-hidden");
 
+    // Ensure display saves as a new display
+    chosenDisplayId = null;
+    document.getElementById("overwrite-display-check").checked = false;
+    document.getElementById("overwrite-display-check").disabled = true;
+    disableCheckboxLabel(document.getElementById("overwrite-display-check"), true);
+
     // update genes, analysis, and plot type selects in parallel
     await Promise.all([
         updateDatasetGenes(),
@@ -601,6 +608,11 @@ const cloneDisplay = async (event, display) => {
 
     const cloneElt = event.currentTarget;
     cloneElt.classList.add("is-loading");
+
+    // Give user option to overwrite display
+    chosenDisplayId = display.id;
+    document.getElementById("overwrite-display-check").disabled = false;
+    disableCheckboxLabel(document.getElementById("overwrite-display-check"), false);
 
     await updateDatasetGenes(),
 
@@ -1585,7 +1597,12 @@ document.getElementById("save-display-btn").addEventListener("click", async (eve
     const label = document.getElementById("new-display-label").value;
     event.target.classList.add("is-loading");
     try {
-        const displayId = await curatorApiCallsMixin.saveDatasetDisplay(datasetId, null, label, plotStyle.plotType, plotStyle.plotConfig);
+        let displayIdToUse = null;
+        if (document.getElementById("overwrite-display-check").checked) {
+            displayIdToUse = chosenDisplayId;
+        }
+
+        const displayId = await curatorApiCallsMixin.saveDatasetDisplay(datasetId, displayIdToUse, label, plotStyle.plotType, plotStyle.plotConfig);
         createToast("Display saved.", "is-success");
 
         if (document.getElementById("make-default-display-check").checked) {
