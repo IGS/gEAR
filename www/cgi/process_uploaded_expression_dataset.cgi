@@ -14,12 +14,13 @@ status.json
     "progress": 0
 }
 
-Where status can be 'extracting', 'processing', 'error', or 'complete'.
+Where status can be 'uploaded', 'extracting', 'processing', 'error', or 'complete'.
 """
 
 import cgi
 import json
 import os, sys
+import time
 
 import pandas as pd
 import scanpy as sc
@@ -41,7 +42,7 @@ session_id = None
 user_upload_file_base = '../uploads/files'
 
 status = {
-    "process_id": os.getpid(),
+    "process_id": None,
     "status": "extracting",
     "message": "",
     "progress": 0
@@ -88,20 +89,33 @@ def main():
     ###############################################
     # This is the fork off of apache
     # https://stackoverflow.com/a/22181041/1368079
+    # https://stackoverflow.com/questions/6024472/start-background-process-daemon-from-cgi-script
     sys.stdout = original_stdout
     result['success'] = 1
-    print(json.dumps(result)
+    print(json.dumps(result))
     
     sys.stdout.flush()
     os.close(sys.stdout.fileno()) # Break web pipe
     sys.stderr.flush()
     os.close(sys.stderr.fileno()) # Break web pipe
 
-    if os.fork(): # Get out parent process
-        if dataset_format == 'mex_3tab':
+    if os.fork(): # Get out of parent process
+        sys.exit(0)
+
+    # open a log file in /tmp
+    #f_out = open('/tmp/apache.stdout.log', 'w')
+    #f_err = open('/tmp/apache.stderr.log', 'w')
+
+    time.sleep(1)  # Be sure the parent process reach exit command.
+    os.setsid() # Become process group leader
+
+    status['process_id'] = os.getpid()
+
+    # new child command
+    if dataset_format == 'mex_3tab':
             process_mex_3tab(dataset_upload_dir)
 
-    sys.exit(0)
+        
 
 
 def print_and_go(status_file, content):

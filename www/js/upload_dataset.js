@@ -465,8 +465,20 @@ const processDataset = async () => {
     const formData = new FormData();
     formData.append('share_uid', share_uid);
     formData.append('dataset_format', dataset_format);
-    const data = await apiCallsMixin.processDatasetUpload(formData);
-    console.log("processDataset returned: ", data);
+    formData.append('session_id', CURRENT_USER.session_id);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', './cgi/process_uploaded_expression_dataset.cgi', true);
+
+    xhr.onload = function() {
+        const response = JSON.parse(xhr.responseText);
+
+        if (response.success) {
+            // Nothing really to do here since status checking happening elsewhere
+        }
+    }
+
+    xhr.send(formData);
 }
 
 const validateMetadataForm = () => {
