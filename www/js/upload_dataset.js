@@ -466,6 +466,7 @@ const processDataset = async () => {
     formData.append('share_uid', share_uid);
     formData.append('dataset_format', dataset_format);
     const data = await apiCallsMixin.processDatasetUpload(formData);
+    console.log("processDataset returned: ", data);
 }
 
 const validateMetadataForm = () => {
