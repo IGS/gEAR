@@ -14,20 +14,22 @@ status.json
     "progress": 0
 }
 
-Where status can be 'extracting', 'processing', 'error', or 'complete'.
+Where status can be 'uploaded', 'extracting', 'processing', 'error', or 'complete'.
 """
 
 import cgi
 import json
 import os, sys
+import time
 
 import pandas as pd
 import scanpy as sc
 from scipy import sparse
 
 # This has a huge dependency stack of libraries. Occasionally, one of them has methods
-#  which prints debugging information on STDERR, killing this CGI.  So here we redirect
+#  which prints debugging information on STDOUT, killing this CGI.  So here we redirect
 #  STDOUT until we need it.
+print('Content-Type: application/json\n\n', flush=True)
 original_stdout = sys.stdout
 sys.stdout = open(os.devnull, 'w')
 
@@ -40,7 +42,7 @@ session_id = None
 user_upload_file_base = '../uploads/files'
 
 status = {
-    "process_id": os.getpid(),
+    "process_id": None,
     "status": "extracting",
     "message": "",
     "progress": 0
@@ -58,50 +60,72 @@ def main():
     user = geardb.get_user_from_session_id(session_id)
     if user is None:
         result['message'] = 'User ID not found. Please log in to continue.'
-        print_and_go(json.dumps(result))
+        print_and_go(None, json.dumps(result))
 
     # values are mex_3tab, excel, rdata, h5ad
     dataset_formats = ['mex_3tab', 'excel', 'rdata', 'h5ad']
     dataset_format = form.getvalue('dataset_format')
     dataset_upload_dir = os.path.join(user_upload_file_base, session_id, share_uid)
 
+    # quickly write the status so the page doesn't error out
+    status_file = os.path.join(dataset_upload_dir, 'status.json')
+    with open(status_file, 'w') as f:
+        f.write(json.dumps(status))
+
     # if the upload directory doesn't exist, we can't process the dataset
     if not os.path.exists(dataset_upload_dir):
         result['message'] = 'Dataset/directory not found.'
-        print_and_go(json.dumps(result))
+        print_and_go(status_file, json.dumps(result))
 
     if dataset_format not in dataset_formats:
         result['message'] = 'Unsupported dataset format.'
-        print_and_go(json.dumps(result))
+        print_and_go(status_file, json.dumps(result))
 
     # Since this process can take a while, we want to fork off of apache and continue
-    #  processing in the background.  We'll write the status to a file in the same
-    #  directory as the dataset.
-    status_file = os.path.join(dataset_upload_dir, 'status.json')
+    #  processing in the background.
     with open(status_file, 'w') as f:
         f.write(json.dumps(status))
 
     ###############################################
     # This is the fork off of apache
     # https://stackoverflow.com/a/22181041/1368079
-    #sys.stdout.flush()
-    #os.close(sys.stdout.fileno()) # Break web pipe
-    #sys.stderr.flush()
-    #os.close(sys.stderr.fileno()) # Break web pipe
-    #if os.fork(): # Get out parent process
-    #    result['success'] = 1
-    #    print_and_go(json.dumps(result))
-    ###############################################
-
-    if dataset_format == 'mex_3tab':
-        process_mex_3tab(dataset_upload_dir)
-
-    print_and_go(json.dumps(result))
-
-def print_and_go(content):
+    # https://stackoverflow.com/questions/6024472/start-background-process-daemon-from-cgi-script
     sys.stdout = original_stdout
-    print('Content-Type: application/json\n\n', flush=True)
+    result['success'] = 1
+    print(json.dumps(result))
+    
+    sys.stdout.flush()
+    os.close(sys.stdout.fileno()) # Break web pipe
+    sys.stderr.flush()
+    os.close(sys.stderr.fileno()) # Break web pipe
+
+    if os.fork(): # Get out of parent process
+        sys.exit(0)
+
+    # open a log file in /tmp
+    #f_out = open('/tmp/apache.stdout.log', 'w')
+    #f_err = open('/tmp/apache.stderr.log', 'w')
+
+    time.sleep(1)  # Be sure the parent process reach exit command.
+    os.setsid() # Become process group leader
+
+    status['process_id'] = os.getpid()
+
+    # new child command
+    if dataset_format == 'mex_3tab':
+            process_mex_3tab(dataset_upload_dir)
+
+        
+
+
+def print_and_go(status_file, content):
+    sys.stdout = original_stdout
     print(content)
+
+    if status_file is not None:
+        with open(status_file, 'w') as f:
+            f.write(json.dumps(status))
+
     sys.exit(0)
 
 def process_3tab(upload_dir):
@@ -143,12 +167,8 @@ def process_3tab(upload_dir):
             obs[num_type] = pd.to_numeric(obs[num_type])
 
     # Read in expressions as AnnData object in a memory-efficient manner
-    #print("Creating AnnData object with obs and var", file=sys.stderr, flush=True)
     adata = sc.AnnData(obs=var, var=obs)
-    #print("Reading expression matrix file: {0}".format(expression_matrix_path), file=sys.stderr, flush=True)
-    
     reader = pd.read_csv(expression_matrix_path, sep='\t', index_col=0, chunksize=chunk_size)
-    #adata.X = sparse.vstack([sparse.csr_matrix(chunk.values) for chunk in reader])
 
     # This can be an order of magnitude faster than the using python alone
     total_rows = int(subprocess.check_output(f"/usr/bin/wc -l {expression_matrix_path}", shell=True).split()[0])
@@ -159,7 +179,7 @@ def process_3tab(upload_dir):
         rows_read += chunk_size
         percentage = int((rows_read / total_rows) * 100)
         expression_matrix.append(sparse.csr_matrix(chunk.values))
-        print(f"Chunks read: {rows_read}/{total_rows}", file=sys.stderr, flush=True)
+        
         status['progress'] = percentage
         status['message'] = f"Processed {rows_read}/{total_rows} expression matrix chunks ..."
         with open(os.path.join(upload_dir, 'status.json'), 'w') as f:
@@ -192,7 +212,22 @@ def process_mex_3tab(upload_dir):
     with tarfile.open(filename) as tf:
         for entry in tf:
             tf.extract(entry, path=upload_dir)
-            files_extracted.append(entry.name)
+
+            # Nemo suffixes
+            nemo_suffixes = ['DataMTX.tab', 'COLmeta.tab', 'ROWmeta.tab']
+            suffix_found = None
+
+            for suffix in nemo_suffixes:
+                if entry.name.endswith(suffix):
+                    suffix_found = suffix
+                    # Rename the file to the appropriate name
+                    os.rename(os.path.join(upload_dir, entry.name), 
+                              os.path.join(upload_dir, suffix))
+            
+            if suffix_found is not None:
+                files_extracted.append(suffix_found)
+            else:
+                files_extracted.append(entry.name)
 
     # Determine the dataset type
     dataset_type = tarball_content_type(files_extracted)
@@ -233,7 +268,7 @@ def tarball_content_type(filenames):
         
         if 'matrix.mtx' in filenames and 'barcodes.tsv' in filenames and 'genes.tsv' in filenames:
             return 'mex'
-        
+
         if 'DataMTX.tab' in filenames and 'COLmeta.tab' in filenames and 'ROWmeta.tab' in filenames:
             return 'threetab'
 
