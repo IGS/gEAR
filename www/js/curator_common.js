@@ -1202,7 +1202,7 @@ const renderOrderSortableSeries = (series) => {
     }
 
     // Create sortable for this series
-    sortable(`#${series}-order-list`, {
+    sortable(`#${CSS.escape(series)}-order-list`, {
         hoverClass: "has-text-weight-bold"
         , itemSerializer(item, container) {
             item.label = item.node.textContent
@@ -1494,10 +1494,11 @@ const updateOrderSortable = () => {
     }
 
     // Get all current plotting order series and save as a set
-    const sortableElts = document.querySelectorAll(".js-plot-order-sortable p");
+    // selector syntax from https://tobiasahlin.com/blog/previous-sibling-css-has/
+    const sortableElts = document.querySelectorAll("p:has(+ .js-plot-order-sortable)");
     const sortableSet = new Set();
     for (const elt of sortableElts) {
-        const series = elt.value;
+        const series = elt.textContent;
         // These series already are categorical
         if (series) {
             sortableSet.add(series);
@@ -1510,7 +1511,7 @@ const updateOrderSortable = () => {
     }
 
     for (const series of sortableSet) {
-        // 3. Series is in sortableSet but not seriesSet, remove <series>-order element
+        // Series is in sortableSet but not seriesSet, remove <series>-order element
         if (!seriesSet.has(series)) {
             const orderElt = document.getElementById(`${series}-order`);
             orderElt.remove();
