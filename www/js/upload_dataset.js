@@ -67,6 +67,13 @@ window.onload=function() {
         stepTo('finalize-dataset');
     });
 
+    document.getElementById('dataset-curate-submit').addEventListener('click', (event) => {
+        event.preventDefault();
+        
+        let url = `/dataset_curator.html?dataset_id=${dataset_uid}`;
+        window.location.href = url;
+    });
+
     document.getElementById('metadata-form-submit').addEventListener('click', (event) => {
         event.preventDefault();
         let errored_fields = validateMetadataForm();
