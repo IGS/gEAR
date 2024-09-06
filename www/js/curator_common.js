@@ -1494,10 +1494,11 @@ const updateOrderSortable = () => {
     }
 
     // Get all current plotting order series and save as a set
-    const sortableElts = document.querySelectorAll(".js-plot-order-sortable p");
+    // selector syntax from https://tobiasahlin.com/blog/previous-sibling-css-has/
+    const sortableElts = document.querySelectorAll("p:has(+ .js-plot-order-sortable)");
     const sortableSet = new Set();
     for (const elt of sortableElts) {
-        const series = elt.value;
+        const series = elt.textContent;
         // These series already are categorical
         if (series) {
             sortableSet.add(series);
