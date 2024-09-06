@@ -195,6 +195,9 @@ const finalizeUpload = async () => {
     formData.append('session_id', CURRENT_USER.session_id);
     formData.append('dataset_uid', dataset_uid);
 
+    const dataset_visibility = document.querySelector('input[name=dataset-visibility]:checked').value;
+    formData.append('dataset_visibility', dataset_visibility);
+
     const data = await apiCallsMixin.finalizeExpressionUpload(formData);
 
     if (data['metadata_loaded']) {
@@ -214,8 +217,10 @@ const finalizeUpload = async () => {
     }
 
     if (data.success) {
-        console.log("SUCCESS");
-        console.log(data);
+        // Not actually doing anything further with access rights after the initial insert,
+        // so can set it as successful here
+        document.getElementById('finalize-setting-access').classList.remove('mdi-checkbox-blank-outline');
+        document.getElementById('finalize-setting-access').classList.add('mdi-checkbox-marked');
         document.getElementById('dataset-finalize-next-step').disabled = false;
     } else {
         console.log("ERROR");

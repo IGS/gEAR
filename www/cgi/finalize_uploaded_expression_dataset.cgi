@@ -50,6 +50,16 @@ def main():
     share_uid = form.getvalue('share_uid')
     session_id = form.getvalue('session_id')
     dataset_id = form.getvalue('dataset_uid')
+    dataset_visibility = form.getvalue('dataset_visibility')
+
+    if dataset_visibility == 'private':
+        is_public = 0
+    elif dataset_visibility == 'public':
+        is_public = 1
+    else:
+        result['message'] = 'Invalid dataset visibility.'
+        print(json.dumps(result))
+        sys.exit(0)
 
     user = geardb.get_user_from_session_id(session_id)
     if user is None:
@@ -78,7 +88,7 @@ def main():
     # Load the metadata into the database
     metadata = Metadata(file_path=metadata_file)
     try:
-        metadata.save_to_mysql(status='complete')
+        metadata.save_to_mysql(status='complete', is_public=is_public)
         result['metadata_loaded'] = 1
     except Exception as e:
         result['message'] = 'Error saving metadata to MySQL: {}'.format(str(e))
