@@ -1202,7 +1202,7 @@ const renderOrderSortableSeries = (series) => {
     }
 
     // Create sortable for this series
-    sortable(`#${series}-order-list`, {
+    sortable(`#${CSS.escape(series)}-order-list`, {
         hoverClass: "has-text-weight-bold"
         , itemSerializer(item, container) {
             item.label = item.node.textContent
@@ -1510,7 +1510,7 @@ const updateOrderSortable = () => {
     }
 
     for (const series of sortableSet) {
-        // 3. Series is in sortableSet but not seriesSet, remove <series>-order element
+        // Series is in sortableSet but not seriesSet, remove <series>-order element
         if (!seriesSet.has(series)) {
             const orderElt = document.getElementById(`${series}-order`);
             orderElt.remove();
