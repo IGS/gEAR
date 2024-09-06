@@ -70,6 +70,7 @@ class Metadata:
 
 
     def read_file(self, file_path=None):
+        print(f'DEBUG: Reading metadata file: {file_path}', file=sys.stderr)
         """
         Reads dataset_metadata.xlsx or dataset_metadata.json into a pandas dataframe
 
@@ -95,7 +96,8 @@ class Metadata:
                 json_data = {'field': [], 'value': []}
 
                 with open(file_path) as json_file:
-                    data = ast.literal_eval(json_file.read())
+                    data = json.loads(json_file.read())
+                    
                     for d in data:
                         json_data['field'].append(d)
                         json_data['value'].append(data[d])
@@ -273,14 +275,14 @@ class Metadata:
             is_public = 0
                 All datasets will save as private. Once the upload is complete,
                 the user can change the dataset to public on the dataset manager.
-            load_status = 'pending'
-                All datasets will save as 'pending'.
+            load_status = 'complete'
+                All datasets will save as 'complete'.
         """
         if self.metadata is None:
             raise Exception("No values to evaluate. Please load a metadata file first.")
 
         if status is None:
-            status = 'pending'
+            status = 'complete'
 
         df = self.metadata
 

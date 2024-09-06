@@ -58,6 +58,7 @@ def main():
 
             result['uploads'].append( {
                     'share_id': share_id,
+                    'dataset_id': metadata.get('dataset_uid', ''),
                     'dataset_type': metadata.get('dataset_type', ''),
                     'title': metadata.get('title', ''),
                     'status': 'metadata uploaded',
@@ -81,7 +82,9 @@ def main():
                 if processing_status == 'processing':
                     result['uploads'][-1]['status'] = 'processing'
                     result['uploads'][-1]['load_step'] = 'process-dataset'
-                
+                elif processing_status == 'complete':
+                    result['uploads'][-1]['status'] = 'processed'
+                    result['uploads'][-1]['load_step'] = 'finalize-dataset'
     
     result['success'] = 1
     print(json.dumps(result))
