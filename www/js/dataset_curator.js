@@ -667,6 +667,10 @@ const addOvercrowdedSeriesWarning = (plotContainer) => {
     overcrowdedSeriesWarning.classList.add("message", "is-warning");
     overcrowdedSeriesWarning.id = "overcrowded-series-warning";
     overcrowdedSeriesWarning.innerHTML = `
+            <div class="message-header">
+                <p class="mb-0">Overcrowding Warning</p>
+                <button class="delete" aria-label="delete"></button>
+            </div>
             <div class="message-body">
                 <strong>WARNING:</strong> One or more of the selected categorical series has more than 20 groups. This may cause the plot to be more difficult to read or render properly.
             </div>
