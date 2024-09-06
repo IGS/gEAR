@@ -70,7 +70,6 @@ class Metadata:
 
 
     def read_file(self, file_path=None):
-        print(f'DEBUG: Reading metadata file: {file_path}', file=sys.stderr)
         """
         Reads dataset_metadata.xlsx or dataset_metadata.json into a pandas dataframe
 
