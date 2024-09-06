@@ -113,7 +113,7 @@ def main():
 
     # new child command
     if dataset_format == 'mex_3tab':
-            process_mex_3tab(dataset_upload_dir)
+        process_mex_3tab(dataset_upload_dir)
 
         
 
