@@ -106,6 +106,21 @@ window.onload=function() {
         }
     });
 
+    document.getElementById('dataset-finalize-submit').addEventListener('click', (event) => {
+        event.preventDefault();
+        document.getElementById('dataset-finalize-submit').disabled = true;
+        document.getElementById('finalize-dataset-status-c').classList.remove('is-hidden');
+
+        finalizeUpload();
+    });
+
+    document.getElementById('dataset-finalize-next-step').addEventListener('click', (event) => {
+        event.preventDefault();
+
+        // Move to the next step
+        stepTo('curate-dataset');
+    });
+
     document.getElementById('metadata-file-input').addEventListener('change', (event) => {
         // Was a file selected?
         if (event.target.files.length > 0) {
@@ -171,6 +186,42 @@ const checkDatasetProcessingStatus = async () => {
     // TODO: Handle the different statuses here
     if (processing_status === 'complete') {
         document.getElementById('dataset-processing-submit').disabled = false;
+    }
+}
+
+const finalizeUpload = async () => {
+    let formData = new FormData();
+    formData.append('share_uid', share_uid);
+    formData.append('session_id', CURRENT_USER.session_id);
+    formData.append('dataset_uid', dataset_uid);
+
+    const data = await apiCallsMixin.finalizeExpressionUpload(formData);
+
+    if (data['metadata_loaded']) {
+        document.getElementById('finalize-storing-metadata').classList.remove('mdi-checkbox-blank-outline');
+        document.getElementById('finalize-storing-metadata').classList.add('mdi-checkbox-marked');
+    } else {
+        document.getElementById('finalize-storing-metadata').classList.remove('mdi-checkbox-blank-outline');
+        document.getElementById('finalize-storing-metadata').classList.add('mdi-skull-scan');
+    }
+
+    if (data['h5ad_migrated']) {
+        document.getElementById('finalize-migrating-h5ad').classList.remove('mdi-checkbox-blank-outline');
+        document.getElementById('finalize-migrating-h5ad').classList.add('mdi-checkbox-marked');
+    } else {
+        document.getElementById('finalize-migrating-h5ad').classList.remove('mdi-checkbox-blank-outline');
+        document.getElementById('finalize-migrating-h5ad').classList.add('mdi-skull-scan');
+    }
+
+    if (data.success) {
+        console.log("SUCCESS");
+        console.log(data);
+        document.getElementById('dataset-finalize-next-step').disabled = false;
+    } else {
+        console.log("ERROR");
+        console.log(data);
+        document.getElementById('dataset-finalize-status-message').innerText = data.message;
+        document.getElementById('dataset-finalize-status-message-c').classList.remove('is-hidden');
     }
 }
 
@@ -322,6 +373,7 @@ const loadUploadsInProgress = async () => {
             data.uploads.forEach((upload) => {
                 let clone = template.content.cloneNode(true);
                 clone.querySelector('tr').dataset.shareId = upload.share_id;
+                clone.querySelector('tr').dataset.datasetId = upload.dataset_id;
                 clone.querySelector('tr').dataset.loadStep = upload.load_step;
 
                 clone.querySelector('.submission-share-id').textContent = upload.share_id;
@@ -336,6 +388,10 @@ const loadUploadsInProgress = async () => {
                 row.addEventListener('click', (event) => {
                     share_uid = row.dataset.shareId;
                     const step = row.dataset.loadStep;
+
+                    if (row.dataset.datasetId) {
+                        dataset_uid = row.dataset.datasetId;
+                    }
                      
                     // Do we want to dynamically load the next step or page refresh for it?
                     //  If dynamic we have to reset all the forms.

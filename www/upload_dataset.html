@@ -88,7 +88,7 @@
                   <tbody id="submissions-in-progress-table-tbody"></tbody>
                 </table>
                 <template id="submission-history-row">
-                  <tr class="submission-history-row" data-share-id="" data-load-step="">
+                  <tr class="submission-history-row" data-share-id="" data-dataset-id="" data-load-step="">
                     <td class="submission-share-id"></td>
                     <td class="submission-status"></td>
                     <td class="submission-dataset-type"></td>
@@ -790,10 +790,99 @@
                     </div>
                   </div>
                 </div>
+                <div id="step-finalize-dataset-c" class="step-c is-hidden">
+                  <h1>Step - Finalize submission</h1>
+                  <p>
+                    Your dataset has been processed and is ready to be submitted.
+                  </p>
+                  <hr />
+                  <div class="columns">
+                    <div class="column">
+                      <!-- set whether dataset is public or private -->
+                      <div class="field">
+                        <label class="label">
+                          Dataset visibility
+                          <span class="icon has-tooltip-right has-tooltip-arrow" 
+                                data-tooltip="Choose whether this dataset is public or private. Public datasets are visible to all users.">
+                              <i class="mdi mdi-information"></i>
+                          </span>
+                        </label>
+                        <div class="control">
+                          <label class="radio">
+                            <input type="radio" name="dataset-visibility" value="public">
+                            Public
+                          </label>
+                          <label class="radio">
+                            <input type="radio" name="dataset-visibility" value="private" checked>
+                            Private (can be changed later)
+                          </label>
+                        </div>
+                      </div>
+                      <div class="field">
+                        <div class="control mt-4">
+                          <button class="button is-primary" id="dataset-finalize-submit">Finalize submission</button>
+                        </div>
+                      </div>
+                      <div id="dataset-finalize-status-message-c" class="is-hidden">
+                        <p>
+                          Please use the Feedback link on the left and provide this error message:
+                        </p>
+                        <span class="icon">
+                          <i class="mdi mdi-information"></i>
+                        </span>
+                        <span id="dataset-finalize-status-message"></span>
+                        
+                      </div>
+                    </div>
+                    <div class="column">
+                      <div id="finalize-dataset-status-c" class="is-hidden">
+                        <h3>Steps being performed:</h3>
+                        <ul id="finalize-dataset-status-list">
+                          <li>
+                            <span class="icon-text">
+                              <span class="icon">
+                                <i id="finalize-storing-metadata" class="mdi mdi-checkbox-blank-outline"></i>
+                              </span>
+                              <span>Storing metadata</span>
+                            </span>
+                            </li>
+                          </li>
+                          <li>
+                            <span class="icon-text">
+                              <span class="icon">
+                              <i id="finalize-migrating-h5ad" class="mdi mdi-checkbox-blank-outline"></i>
+                              </span>
+                              <span>Migrate data files</span>
+                            </span>
+                            </li>
+                          </li>
+                          <li>
+                            <span class="icon-text">
+                              <span class="icon">
+                              <i class="mdi mdi-checkbox-blank-outline"></i>
+                              </span>
+                              <span>Setting access rights</span>
+                            </span>
+                            </li>
+                          </li>
+                        </ul>
+                        <div class="field">
+                          <div class="control mt-4">
+                            <button class="button is-primary" id="dataset-finalize-next-step" disabled>
+                              Done! Last step
+                              <span class="icon pl-3">
+                                <i class="mdi mdi-chevron-right"></i>
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div id="step-curate-dataset-c" class="step-c is-hidden">
+                </div>
               </div> 
-              
-
-              
             </div> <!-- end #logged-in-c -->
 
           </section><!-- end #content-c -->
