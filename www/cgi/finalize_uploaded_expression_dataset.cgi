@@ -25,6 +25,7 @@ result = {
 import cgi
 import json
 import os, sys
+import shutil
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
@@ -97,12 +98,11 @@ def main():
 
     # migrate the H5AD file
     h5ad_file = os.path.join(dataset_upload_dir, f'{share_uid}.h5ad')
+    h5ad_dest = os.path.join(dataset_final_dir, f'{dataset_id}.h5ad')
     if not os.path.exists(h5ad_file):
         result['message'] = 'H5AD file not found: {}'.format(h5ad_file)
         print(json.dumps(result))
         sys.exit(0)
-
-    h5ad_dest = os.path.join(dataset_final_dir, f'{dataset_id}.h5ad')
 
     try:
         os.rename(h5ad_file, h5ad_dest)
@@ -112,16 +112,25 @@ def main():
         print(json.dumps(result))
         sys.exit(0)
     
+    # migrate the tarball
+    tarball_file = os.path.join(dataset_upload_dir, f'{share_uid}.tar.gz')
+    tarball_dest = os.path.join(dataset_final_dir, f'{dataset_id}.tar.gz')
+
+    try:
+        os.rename(tarball_file, tarball_dest)
+        result['tarball_migrated'] = 1
+    except Exception as e:
+        result['message'] = 'Error migrating tarball file: {}'.format(str(e))
+        print(json.dumps(result))
+        sys.exit(0)
 
     # if we made it this far, all is well, so return success
     result['success'] = 1
     result['message'] = 'All steps completed successfully.'
     print(json.dumps(result))
 
-
-
-
-    
+    # now delete the entire upload directory
+    shutil.rmtree(dataset_upload_dir)
 
 if __name__ == '__main__':
     main()
