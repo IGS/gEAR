@@ -103,8 +103,8 @@ def main():
         sys.exit(0)
 
     # open a log file in /tmp
-    #f_out = open('/tmp/apache.stdout.log', 'w')
-    #f_err = open('/tmp/apache.stderr.log', 'w')
+    f_out = open('/home/jorvis/logs/apache.stdout.log', 'w')
+    f_err = open('/home/jorvis/logs/apache.stderr.log', 'w')
 
     time.sleep(1)  # Be sure the parent process reach exit command.
     os.setsid() # Become process group leader
@@ -113,7 +113,7 @@ def main():
 
     # new child command
     if dataset_format == 'mex_3tab':
-            process_mex_3tab(dataset_upload_dir)
+        process_mex_3tab(dataset_upload_dir)
 
         
 
@@ -186,8 +186,6 @@ def process_3tab(upload_dir):
             f.write(json.dumps(status))
 
     adata.X = sparse.vstack(expression_matrix)
-    
-    print("Finished reading expression matrix file", file=sys.stderr, flush=True)
     adata = adata.transpose()
 
     h5ad_path = os.path.join(upload_dir, f"{share_uid}.h5ad")
