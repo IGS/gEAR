@@ -36,6 +36,7 @@ def main():
     # This should already have been created when the metadata was stored
     user_upload_file_base = "../uploads/files/{0}".format(session_id)
     dataset_filename = os.path.join(user_upload_file_base, share_uid, share_uid + '.' + file_extension)
+    status_file = os.path.join(user_upload_file_base, share_uid, 'status.json')
 
     if not user:
         result['message'] = 'Only logged in users can upload datasets.'
@@ -60,6 +61,16 @@ def main():
             f.write(form['dataset_file'].file.read())
         result['success'] = 1
         result['message'] = 'Dataset file saved successfully.'
+
+        status = {
+            "process_id": None,
+            "status": "uploaded",
+            "message": "The dataset has been uploaded and is pending processing",
+            "progress": 0
+        }
+        
+        with open(status_file, 'w') as f:
+            f.write(json.dumps(status))
 
     except Exception as e:
         result['message'] = 'Error saving dataset file: ' + str(e)

@@ -95,7 +95,8 @@ class Metadata:
                 json_data = {'field': [], 'value': []}
 
                 with open(file_path) as json_file:
-                    data = ast.literal_eval(json_file.read())
+                    data = json.loads(json_file.read())
+                    
                     for d in data:
                         json_data['field'].append(d)
                         json_data['value'].append(data[d])
@@ -265,7 +266,7 @@ class Metadata:
 
         return fv
 
-    def save_to_mysql(self, status=None):
+    def save_to_mysql(self, status=None, is_public=0):
         """
         Saves metadata to gEAR MySQL table 'dataset'. If present, also saves tags.
 
@@ -273,14 +274,14 @@ class Metadata:
             is_public = 0
                 All datasets will save as private. Once the upload is complete,
                 the user can change the dataset to public on the dataset manager.
-            load_status = 'pending'
-                All datasets will save as 'pending'.
+            load_status = 'complete'
+                All datasets will save as 'complete'.
         """
         if self.metadata is None:
             raise Exception("No values to evaluate. Please load a metadata file first.")
 
         if status is None:
-            status = 'pending'
+            status = 'complete'
 
         df = self.metadata
 
@@ -300,16 +301,6 @@ class Metadata:
             organism_id = id
 
         geo_id = str( get_value_from_df(df, 'geo_accession') ).strip()
-
-        # Make all datasets private if not specified in the metadata
-        try:
-            is_public = get_value_from_df(df, 'is_public')
-
-            if is_public != 1:
-                is_public = 0
-        except:
-            is_public = 0
-
         ldesc = get_value_from_df(df, 'summary')
         dtype = get_value_from_df(df, 'dataset_type')
         schematic_image = get_value_from_df(df, 'schematic_image')

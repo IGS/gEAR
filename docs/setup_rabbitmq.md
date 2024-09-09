@@ -55,6 +55,8 @@ As root, I would create a file in `/var/log/gEAR_queue` named `<service>.log` wh
 
 ## Running a particular consumer
 
+NOTE: This is automatically handled in the projectr_consumer system.d service file
+
 First, make sure a directory is present under /var/log/gEAR_queue (you may have to create this as root). If you are not going to run the consumer listener as root, ensure the user has the same group-write privileges as the directory.
 
 The consumer scripts are stored at `<root>/listeners/<files>`.  Let it run in the background (preferably with `nohup`)

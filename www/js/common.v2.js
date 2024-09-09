@@ -1282,6 +1282,12 @@ const apiCallsMixin = {
         const {data} = await axios.post("/cgi/get_user_history_entries.cgi", convertToFormData(payload));
         return data;
     },
+
+    async finalizeExpressionUpload(formData) {
+        const payload = new URLSearchParams(formData);
+        const {data} = await axios.post("/cgi/finalize_uploaded_expression_dataset.cgi", payload);
+        return data;
+    },
     /**
      * Retrieves session information.
      * @returns {Promise<Object>} The session information.
@@ -1301,7 +1307,6 @@ const apiCallsMixin = {
         const {data} = await axios.post("/cgi/login.v2.cgi", payload);
         return data;
     },
-
     /**
      * Parses the metadata file using the provided form data.
      * @param {FormData} formData - The form data containing the metadata file.
@@ -1312,13 +1317,6 @@ const apiCallsMixin = {
         const {data} = await axios.post("/cgi/upload_expression_metadata.cgi", formData);
         return data;
     },
-
-    async processDatasetUpload(formData) {
-        formData.append("session_id", this.sessionId);
-        const {data} = await axios.post("/cgi/process_uploaded_expression_dataset.cgi", formData);
-        return data;
-    },
-
     /**
      * Renames a dataset collection.
      *

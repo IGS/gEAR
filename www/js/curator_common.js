@@ -599,20 +599,29 @@ const choosePlotType = async () => {
 
 
 /**
- * Clones a display based on the event and display object.
- * @param {Event} event - The event object.
+ * Clones a display and performs necessary operations to set up the cloned display.
+ *
+ * @param {Event} event - The event that triggered the cloning action.
  * @param {Object} display - The display object to be cloned.
- * @returns {Promise<void>} - A promise that resolves when the display is cloned.
+ * @param {string} [scope="owner"] - The scope of the cloning operation. Defaults to "owner".
+ * @returns {Promise<void>} - A promise that resolves once the cloning process is complete.
  */
-const cloneDisplay = async (event, display) => {
+const cloneDisplay = async (event, display, scope="owner") => {
 
     const cloneElt = event.currentTarget;
     cloneElt.classList.add("is-loading");
 
     // Give user option to overwrite display
-    chosenDisplayId = display.id;
-    document.getElementById("overwrite-display-check").disabled = false;
-    disableCheckboxLabel(document.getElementById("overwrite-display-check"), false);
+    // Ensure display saves as a new display
+    chosenDisplayId = null;
+    document.getElementById("overwrite-display-check").checked = false;
+    document.getElementById("overwrite-display-check").disabled = true;
+    disableCheckboxLabel(document.getElementById("overwrite-display-check"), true);
+    if (scope === "user") {
+        chosenDisplayId = display.id;
+        document.getElementById("overwrite-display-check").disabled = false;
+        disableCheckboxLabel(document.getElementById("overwrite-display-check"), false);
+    }
 
     await updateDatasetGenes(),
 
@@ -1193,7 +1202,7 @@ const renderOrderSortableSeries = (series) => {
     }
 
     // Create sortable for this series
-    sortable(`#${series}-order-list`, {
+    sortable(`#${CSS.escape(series)}-order-list`, {
         hoverClass: "has-text-weight-bold"
         , itemSerializer(item, container) {
             item.label = item.node.textContent
@@ -1252,7 +1261,7 @@ const renderOwnerDisplayCard = async (display, defaultDisplayId) => {
     // Add event listeners
     displayCardDefaultBtn.addEventListener("click", (event) => curatorApiCallsMixin.saveDefaultDisplay(display.id));
     const displayCardCloneBtn = displayCard.querySelector(".js-display-clone");
-    displayCardCloneBtn.addEventListener("click", (event) => cloneDisplay(event, display));
+    displayCardCloneBtn.addEventListener("click", (event) => cloneDisplay(event, display, "owner"));
 
     const ownerDisplaysElt = document.getElementById("owner-displays");
     ownerDisplaysElt.append(displayCard);
@@ -1308,7 +1317,7 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
     // Add event listeners
     displayCardDefaultBtn.addEventListener("click", (event) => curatorApiCallsMixin.saveDefaultDisplay(display.id));
     const displayCardCloneBtn = displayCard.querySelector(".js-display-clone");
-    displayCardCloneBtn.addEventListener("click", (event) => cloneDisplay(event, display));
+    displayCardCloneBtn.addEventListener("click", (event) => cloneDisplay(event, display, "user"));
     const displayCardDeleteBtn = displayCard.querySelector(".js-display-delete");
     displayCardDeleteBtn.addEventListener("click", (event) => curatorApiCallsMixin.deleteDisplay(display.id));
 
@@ -1485,10 +1494,11 @@ const updateOrderSortable = () => {
     }
 
     // Get all current plotting order series and save as a set
-    const sortableElts = document.querySelectorAll(".js-plot-order-sortable p");
+    // selector syntax from https://tobiasahlin.com/blog/previous-sibling-css-has/
+    const sortableElts = document.querySelectorAll("p:has(+ .js-plot-order-sortable)");
     const sortableSet = new Set();
     for (const elt of sortableElts) {
-        const series = elt.value;
+        const series = elt.textContent;
         // These series already are categorical
         if (series) {
             sortableSet.add(series);
@@ -1501,7 +1511,7 @@ const updateOrderSortable = () => {
     }
 
     for (const series of sortableSet) {
-        // 3. Series is in sortableSet but not seriesSet, remove <series>-order element
+        // Series is in sortableSet but not seriesSet, remove <series>-order element
         if (!seriesSet.has(series)) {
             const orderElt = document.getElementById(`${series}-order`);
             orderElt.remove();

@@ -215,19 +215,21 @@ class PlotlyData(Resource):
         if adata.isbacked:
             adata.file.close()
 
+        success = 1
+        message = ""
+
+        # If there are multiple rows with the same gene symbol, we will only use the first one
+        # But throw a warning message
+        if len(selected.var) > 1:
+            success = 2
+            message = "WARNING: Multiple Ensemble IDs found for gene symbol '{}'.  Using the first stored Ensembl ID.".format(gene_symbol)
+            selected = selected[:, 0]
+
         # Rename the single selected.var index label to "raw_value"
         # This resolves https://github.com/IGS/gEAR/issues/878 where the gene_symbol index may be the same as a observation column (i.e. projections)
         selected.var.index = pd.Index(["raw_value"])
 
         df = selected.to_df()
-
-        success = 1
-        message = ""
-        if len(df.columns) > 1:
-            success = 2
-            message = "WARNING: Multiple Ensemble IDs found for gene symbol '{}'.  Using the first stored Ensembl ID.".format(gene_symbol)
-            df = df.iloc[:,[0]] # Note, put the '0' in a list to return a DataFrame.  Not having in list returns DataSeries instead
-
         df = pd.concat([df,selected.obs], axis=1)
 
         # Valid analysis column names from api/resources/h5ad.py
