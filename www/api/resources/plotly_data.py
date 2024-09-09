@@ -221,8 +221,8 @@ class PlotlyData(Resource):
         # If there are multiple rows with the same gene symbol, we will only use the first one
         # But throw a warning message
         if len(selected.var) > 1:
-            return_dict["success"] = 2
-            return_dict["message"] = "WARNING: Multiple Ensemble IDs found for gene symbol '{}'.  Using the first stored Ensembl ID.".format(gene_symbol)
+            success = 2
+            message = "WARNING: Multiple Ensemble IDs found for gene symbol '{}'.  Using the first stored Ensembl ID.".format(gene_symbol)
             selected = selected[:, 0]
 
         # Rename the single selected.var index label to "raw_value"
