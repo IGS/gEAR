@@ -70,7 +70,6 @@ class Metadata:
 
 
     def read_file(self, file_path=None):
-        print(f'DEBUG: Reading metadata file: {file_path}', file=sys.stderr)
         """
         Reads dataset_metadata.xlsx or dataset_metadata.json into a pandas dataframe
 
@@ -267,7 +266,7 @@ class Metadata:
 
         return fv
 
-    def save_to_mysql(self, status=None):
+    def save_to_mysql(self, status=None, is_public=0):
         """
         Saves metadata to gEAR MySQL table 'dataset'. If present, also saves tags.
 
@@ -302,16 +301,6 @@ class Metadata:
             organism_id = id
 
         geo_id = str( get_value_from_df(df, 'geo_accession') ).strip()
-
-        # Make all datasets private if not specified in the metadata
-        try:
-            is_public = get_value_from_df(df, 'is_public')
-
-            if is_public != 1:
-                is_public = 0
-        except:
-            is_public = 0
-
         ldesc = get_value_from_df(df, 'summary')
         dtype = get_value_from_df(df, 'dataset_type')
         schematic_image = get_value_from_df(df, 'schematic_image')
