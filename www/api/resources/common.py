@@ -4,6 +4,7 @@ Common functions shared across several resources
 
 import sys
 import anndata
+import pandas as pd
 
 from pathlib import Path
 
