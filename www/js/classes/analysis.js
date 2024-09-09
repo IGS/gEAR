@@ -1811,6 +1811,8 @@ class AnalysisSteptSNE {
             this.tsneCalculated = Boolean(computeTsne);
             this.umapCalculated = Boolean(computeUmap);
             this.genesToColor = document.querySelector(UI.tsneGenesToColorElt).value;
+            this.nNeighbors = document.querySelector(UI.dimReductionNNeighborsElt).value;
+            this.nPcs = document.querySelector(UI.tsneNPcsElt).value;
             this.plotTsne = plotTsne;
             this.plotUmap = plotUmap;
             this.updateUIWithResults();
