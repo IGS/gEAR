@@ -29,8 +29,15 @@ def main():
                           user_id=user.id, session_id=session_id,
                           type=analysis_type)
 
-    print('Content-Type: application/json\n\n')
-    print(ana)
+    # try to read the analysis object and raise exception if FileNotFoundError
+
+    try:
+        print('Content-Type: application/json\n\n')
+        print(ana)
+    except FileNotFoundError:
+        print('Content-Type: application/json\n\n')
+        print('{"error": "Analysis config file not found"}')
+        return
 
 if __name__ == '__main__':
     main()
