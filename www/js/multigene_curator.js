@@ -873,8 +873,7 @@ const fetchDashData = async (datasetId, analysis, plotType, plotConfig)  => {
 }
 
 const getCategoryColumns = async () => {
-    const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
-    const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
+    const analysisId = getAnalysisId();
     try {
         ({obs_columns: allColumns, obs_levels: levels} = await curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
     } catch (error) {

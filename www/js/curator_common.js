@@ -489,9 +489,8 @@ const analysisSelectUpdate = async () => {
  * @returns {Promise<void>} - A promise that resolves when the analysis is chosen and the UI is updated.
  */
 const chooseAnalysis = async () => {
-    const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
-    const analysisId = analysisValue || null;
-    const analysisText = (analysisId?.length) ? analysisId : "Primary Analysis";
+    const analysisId = getAnalysisId()
+    const analysisText = analysisSelect.selectedOptions.length ? analysisSelect.selectedOptions[0].data.text : "Primary Analysis";
 
     // Display current selected analysis
     document.getElementById("current-analysis").textContent = analysisText;
@@ -511,10 +510,16 @@ const chooseAnalysis = async () => {
             plotTypeSelectUpdate(analysisId)
             , updateDatasetGenes(analysisId)
         ]);
-
-        // Create facet widget
-        facetWidget = await createFacetWidget(datasetId, analysisId, {});
     }
+
+    // If a plot type has been chosen and still available, click it
+    // else reset the plot type select
+    if (plotTypeSelect.selectedOptions.length) {
+        choosePlotType();
+    } else {
+        plotTypeSelect.reset();
+    }
+
 }
 
 /* New display has been chosen, so display analysis and plot type options */
@@ -585,7 +590,9 @@ const choosePlotType = async () => {
     document.getElementById("current-plot-type").textContent = plotType;
 
     // Create facet widget, which will refresh filters
-    facetWidget = await createFacetWidget(datasetId, null, {});
+
+    const analysisId = getAnalysisId();
+    facetWidget = await createFacetWidget(datasetId, analysisId, {});
     document.getElementById("facet-content").classList.remove("is-hidden");
     document.getElementById("selected-facets").classList.remove("is-hidden");
 
@@ -645,14 +652,15 @@ const cloneDisplay = async (event, display, scope="owner") => {
         // NOTE: Analysis will not be chosen if the user cannot access it (i.e. owner curation, private analysis)
     }
 
-    // plot types
+    // Set up plot types
 
     // Read clone config to populate analysis, plot type, gnee and plot-specific options
     let plotType = display.plot_type;
     plotType = curatorSpecificPlotTypeAdjustments(plotType);
 
+    // TODO: unify with plotTypeSelectUpdate code
     try {
-        const availablePlotTypes = await curatorApiCallsMixin.fetchAvailablePlotTypes(datasetId, undefined, isMultigene);
+        const availablePlotTypes = await curatorApiCallsMixin.fetchAvailablePlotTypes(datasetId, analysisObj?.id, isMultigene);
         for (const plotType in availablePlotTypes) {
             const isAllowed = availablePlotTypes[plotType];
             setPlotTypeDisabledState(plotType, isAllowed);
@@ -663,12 +671,15 @@ const cloneDisplay = async (event, display, scope="owner") => {
         await choosePlotType();
         // In this step, a PlotStyle object is instantiated onto "plotStyle", and we will use that
     } catch (error) {
-        console.error(error);
         document.getElementById("plot-type-s-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-select-c-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-s-success").classList.add("is-hidden");
         document.getElementById("plot-type-select-c-success").classList.add("is-hidden");
-
+        // make all plot types disabled
+        for (const plotType in availablePlotTypes) {
+            setPlotTypeDisabledState(plotType, false);
+        }
+        plotTypeSelect.update();
         return;
     } finally {
         cloneElt.classList.remove("is-loading");
@@ -866,6 +877,16 @@ const disableCheckboxLabel = (checkboxElt, state) => {
             checkboxElt.parentElement.removeAttribute("disabled");
         }
     }
+}
+
+/**
+ * Retrieves the analysis ID from the selected options.
+ *
+ * @returns {string|null} The analysis ID, or null if no analysis is selected.
+ */
+const getAnalysisId = () => {
+    const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
+    return analysisValue || null;
 }
 
 /**
@@ -1114,7 +1135,12 @@ const plotTypeSelectUpdate = async (analysisId=null) => {
         document.getElementById("plot-type-s-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-select-c-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-s-success").classList.add("is-hidden");
-        document.getElementById("plot-type-select-c-success").classList.add("is-hidden");;
+        document.getElementById("plot-type-select-c-success").classList.add("is-hidden");
+        // make all plot types disabled
+        for (const plotType in availablePlotTypes) {
+            setPlotTypeDisabledState(plotType, false);
+        }
+        plotTypeSelect.update();
     }
 }
 
