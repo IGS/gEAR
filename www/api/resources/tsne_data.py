@@ -306,13 +306,6 @@ class TSNEData(Resource):
                 if flip_y:
                     adata.obsm[key][:,1] = -1 * adata.obsm[key][:,1]
 
-        # We also need to change the adata's Raw var dataframe
-        # We can't explicitly reset its index so we reinitialize it with
-        # the newer adata object.
-        # https://github.com/theislab/anndata/blob/master/anndata/base.py#L1020-L1022
-        if adata.raw is not None:
-            adata.raw = adata
-
         # Reorder the categorical values in the observation dataframe
         # Currently in UI only "plot_by_group" has reordering capabilities
         if order:

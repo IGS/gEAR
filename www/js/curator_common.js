@@ -490,7 +490,7 @@ const analysisSelectUpdate = async () => {
  */
 const chooseAnalysis = async () => {
     const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
-    const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
+    const analysisId = analysisValue || null;
     const analysisText = (analysisId?.length) ? analysisId : "Primary Analysis";
 
     // Display current selected analysis
