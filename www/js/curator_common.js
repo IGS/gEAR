@@ -499,6 +499,9 @@ const chooseAnalysis = async () => {
     // User may have chosen a new analysis with plot options
     document.getElementById("plot-type-select").disabled = false;
 
+    // Clear plot type options so user is forced to choose a new plot type instead of using a potentially incompatible one
+    plotTypeSelect.clear();
+
     // NOTE: For now, we can just pass analysis id only to tSNE and be fine
     // Any private dataset will belong to our user. Any public datasets can be found by the API "get_analysis" code.
     if (analysisId) {
@@ -513,15 +516,6 @@ const chooseAnalysis = async () => {
             , updateDatasetGenes(analysisId)
         ]);
     }
-
-    // If a plot type has been chosen and still available, click it
-    // else reset the plot type select
-    if (plotTypeSelect.selectedOptions.length) {
-        choosePlotType();
-    } else {
-        plotTypeSelect.reset();
-    }
-
 }
 
 /* New display has been chosen, so display analysis and plot type options */
@@ -678,6 +672,7 @@ const cloneDisplay = async (event, display, scope="owner") => {
         document.getElementById("plot-type-s-success").classList.add("is-hidden");
         document.getElementById("plot-type-select-c-success").classList.add("is-hidden");
         document.getElementById("plot-type-select").disabled = true;
+        plotTypeSelect.update();
         return;
     } finally {
         cloneElt.classList.remove("is-loading");
@@ -1128,13 +1123,14 @@ const plotTypeSelectUpdate = async (analysisId=null) => {
 
         // set plot type to first option
         setSelectBoxByValue("plot-type-select", "nope");
-        plotTypeSelect.update();
     } catch (error) {
         document.getElementById("plot-type-s-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-select-c-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-s-success").classList.add("is-hidden");
         document.getElementById("plot-type-select-c-success").classList.add("is-hidden");
         document.getElementById("plot-type-select").disabled = true;
+    } finally {
+        plotTypeSelect.update();
     }
 }
 
