@@ -496,6 +496,8 @@ const chooseAnalysis = async () => {
     document.getElementById("current-analysis").textContent = analysisText;
     document.getElementById("current-analysis-post").textContent = analysisText;
 
+    // User may have chosen a new analysis with plot options
+    document.getElementById("plot-type-select").disabled = false;
 
     // NOTE: For now, we can just pass analysis id only to tSNE and be fine
     // Any private dataset will belong to our user. Any public datasets can be found by the API "get_analysis" code.
@@ -675,11 +677,7 @@ const cloneDisplay = async (event, display, scope="owner") => {
         document.getElementById("plot-type-select-c-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-s-success").classList.add("is-hidden");
         document.getElementById("plot-type-select-c-success").classList.add("is-hidden");
-        // make all plot types disabled
-        for (const plotType in availablePlotTypes) {
-            setPlotTypeDisabledState(plotType, false);
-        }
-        plotTypeSelect.update();
+        document.getElementById("plot-type-select").disabled = true;
         return;
     } finally {
         cloneElt.classList.remove("is-loading");
@@ -1136,11 +1134,7 @@ const plotTypeSelectUpdate = async (analysisId=null) => {
         document.getElementById("plot-type-select-c-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-s-success").classList.add("is-hidden");
         document.getElementById("plot-type-select-c-success").classList.add("is-hidden");
-        // make all plot types disabled
-        for (const plotType in availablePlotTypes) {
-            setPlotTypeDisabledState(plotType, false);
-        }
-        plotTypeSelect.update();
+        document.getElementById("plot-type-select").disabled = true;
     }
 }
 
