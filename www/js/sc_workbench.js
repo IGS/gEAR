@@ -933,7 +933,7 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
         document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
         document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
         document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
-        createToast("This analysis is stored in your profile.", "is-info", true);
+        createToast("This analysis is stored in your private user profile.", "is-info", true);
         document.querySelector(UI.btnMakePublicCopyElt).classList.remove("is-hidden");
     }
 
@@ -948,7 +948,7 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
         document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
         document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
         document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
-        createToast("Changes made to this public analysis will spawn a local copy within your profile.", "is-info", true);
+        createToast("Changes made to this public analysis will create a local private copy within your profile.", "is-info", true);
         document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
     }
 

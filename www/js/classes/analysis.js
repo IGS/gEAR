@@ -202,49 +202,6 @@ class Analysis {
             logErrorInConsole(error);
             createToast(`Error downloading analysis h5ad`);
         }
-
-    }
-
-    /**
-     * Retrieves the stored analysis data from the server.
-     * @returns {Promise<void>} A promise that resolves when the analysis data is retrieved.
-     */
-    async getStoredAnalysis() {
-
-        // Some dataset info (like organism ID) may be lost when loading an analysis from JSON
-        const datasetObj = this.dataset;
-
-        try {
-            const {data} = await axios.post("./cgi/get_stored_analysis.cgi", convertToFormData({
-                analysis_id: this.id,
-                analysis_type: this.type,
-                session_id: this.userSessionId,
-                dataset_id: this.dataset.id
-            }));
-
-            // Load the analysis data and assign it to the current instance
-            const ana = Analysis.loadFromJson(data);
-            Object.assign(this, ana);
-
-            // If tSNE was calculate, show the labeled tSNE section
-            // Mainly for primary analyses
-            // ? verify claim
-            document.querySelector(UI.labeledTsneSection).classList.add("is-hidden");
-            if (this.type === "primary" && data['tsne']['tsne_calculated']) {
-                document.querySelector(UI.labeledTsneSection).classList.remove("is-hidden");
-
-                // Initialize the labeled tSNE step
-                this.labeledTsne = new AnalysisStepLabeledTsne(this);
-            }
-
-        } catch (error) {
-            logErrorInConsole(`Failed ID was: ${datasetId} because msg: ${error}`);
-            createToast(`Error getting stored analysis`);
-        }
-
-        // Restore the dataset object
-        this.dataset = datasetObj;
-
     }
 
     /**
@@ -321,6 +278,15 @@ class Analysis {
 
             // unsaved
             if (data.user_unsaved.length) {
+                // if data has no label, it will be "Unlabeled"
+                const count = 1
+                data.user_unsaved.forEach(analysis => {
+                    if (!analysis.label) {
+                        analysis.label = `Unlabeled ${count}`;
+                        count++;
+                    }
+                });
+
                 // sort by label
                 data.user_unsaved.sort((a, b) => a.label.localeCompare(b.label));
 
@@ -334,6 +300,15 @@ class Analysis {
 
             // saved
             if (data.user_saved.length) {
+                // if data has no label, it will be "Unlabeled"
+                const count = 1
+                data.user_saved.forEach(analysis => {
+                    if (!analysis.label) {
+                        analysis.label = `Unlabeled ${count}`;
+                        count++;
+                    }
+                });
+
                 // sort by label
                 data.user_saved.sort((a, b) => a.label.localeCompare(b.label));
 
@@ -347,6 +322,15 @@ class Analysis {
 
             // public
             if (data.public.length) {
+                // if data has no label, it will be "Unlabeled"
+                const count = 1
+                data.public.forEach(analysis => {
+                    if (!analysis.label) {
+                        analysis.label = `Unlabeled ${count}`;
+                        count++;
+                    }
+                });
+
                 // sort by label
                 data.public.sort((a, b) => a.label.localeCompare(b.label));
 
@@ -368,19 +352,63 @@ class Analysis {
             createToast(`Error getting saved analyses: ${error}`);
             logErrorInConsole(`Failed ID was: ${datasetId} because msg: ${error}`);
         }
+    }
+
+
+    /**
+     * Retrieves the stored analysis data from the server.
+     * @returns {Promise<void>} A promise that resolves when the analysis data is retrieved.
+     */
+    async getStoredAnalysis() {
+
+        // Some dataset info (like organism ID) may be lost when loading an analysis from JSON
+        const datasetObj = this.dataset;
+
+        try {
+            const {data} = await axios.post("./cgi/get_stored_analysis.cgi", convertToFormData({
+                analysis_id: this.id,
+                analysis_type: this.type,
+                session_id: this.userSessionId,
+                dataset_id: this.dataset.id
+            }));
+
+            // Load the analysis data and assign it to the current instance
+            const ana = await Analysis.loadFromJson(data, datasetObj);
+            Object.assign(this, ana);
+
+            // If tSNE was calculate, show the labeled tSNE section
+            // Mainly for primary analyses
+            // ? verify claim
+            document.querySelector(UI.labeledTsneSection).classList.add("is-hidden");
+            if (this.type === "primary" && data['tsne']['tsne_calculated']) {
+                document.querySelector(UI.labeledTsneSection).classList.remove("is-hidden");
+
+                // Initialize the labeled tSNE step
+                this.labeledTsne = new AnalysisStepLabeledTsne(this);
+            }
+
+        } catch (error) {
+            logErrorInConsole(`Failed ID was: ${datasetId} because msg: ${error}`);
+            createToast(`Error getting stored analysis`);
+        }
+
+        // Restore the dataset object
+        this.dataset = datasetObj;
 
     }
 
     /**
      * Loads an Analysis object from JSON data.
      *
-     * @param {Object} data - The JSON data representing the Analysis object.
-     * @returns {Analysis} The loaded Analysis object.
+     * @param {Object} data - The JSON data representing the Analysis.
+     * @param {Object} datasetObj - The dataset object associated with the Analysis.
+     * @returns {Promise<Analysis>} - The loaded Analysis object.
      */
-    static async loadFromJson(data) {
+    static async loadFromJson(data, datasetObj) {
+
         const analysis = new Analysis({
             id: data.id,
-            datasetObj: data.dataset,
+            datasetObj: datasetObj,
             datasetIsRaw: data.dataset_is_raw,
             label: data.label,
             type: data.type,
@@ -542,7 +570,7 @@ class Analysis {
         const url = "./cgi/get_analysis_image.cgi";
         const response = await axios.get(url, { params });
 
-        if (response.status === 200) {
+        if (response?.status === 200) {
             const imgSrc = response.request.responseURL;
             const html = `<a target="_blank" href="${imgSrc}"><img src="${imgSrc}" class="image" alt="${title}" /></a>`;
             document.querySelector(target).innerHTML = html;
@@ -638,6 +666,7 @@ class Analysis {
 
         // Some legacy things to change around
         state.dataset_id = state.dataset.id;
+        delete state.dataset;   // redundant with other saved things. We can retrieve dataset info when loading
         if (state.qc_by_mito) {
             state.qc_by_mito.filter_mito_perc = state.qc_by_mito.filter_mito_percent;
             delete state.qc_by_mito.filter_mito_percent;
@@ -690,7 +719,7 @@ class Analysis {
             this.type = 'user_saved';
             document.querySelector(UI.btnSaveAnalysisElt).textContent = "Saved";
             document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
-            createToast("This analysis is stored in your profile.", "is-info", true);
+            createToast("This analysis has been saved in your private user profile.", "is-info", true);
             document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
             document.querySelector(UI.btnDeleteSavedAnalysisElt).classList.remove("is-hidden");
             document.querySelector(UI.btnMakePublicCopyElt).classList.remove("is-hidden");
