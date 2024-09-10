@@ -1118,7 +1118,7 @@ const setupPlotlyOptions = async () => {
 
     if (!allColumns.length) {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
-        createToast("No metadata columns found in dataset. Cannot create a plot. Please choose another dataset");
+        createToast("No metadata columns found in dataset. Cannot create a plot. Please choose another analysis or choose another dataset.");
         return;
     }
 
@@ -1376,7 +1376,7 @@ const setupScanpyOptions = async () => {
 
     if (!allColumns.length) {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
-        createToast("No metadata columns found in dataset. Cannot create a plot. Please choose another dataset");
+        createToast("No metadata columns found in dataset. Cannot create a plot. Please choose another analysis or choose another dataset.");
         return;
     }
 

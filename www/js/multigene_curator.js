@@ -212,7 +212,7 @@ class GenesAsAxisHandler extends PlotHandler {
 
         if (!catColumns.length) {
             document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
-            createToast("No categorical columns found in dataset. Cannot create a plot. Please choose another dataset");
+            createToast("No metadata columns found in dataset. Cannot create a plot. Please choose another analysis or choose another dataset.");
             return;
         }
 
@@ -584,7 +584,7 @@ class GenesAsDataHandler extends PlotHandler {
 
         if (!catColumns.length) {
             document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
-            createToast("No categorical columns found in dataset. Cannot create a plot. Please choose another dataset");
+            createToast("No metadata columns found in dataset. Cannot create a plot. Please choose another analysis or choose another dataset.");
             return;
         }
 
