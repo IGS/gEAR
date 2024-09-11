@@ -169,12 +169,12 @@ const getDatasetInfo = async (datasetId) => {
         currentAnalysis.dataset = ds;
 
         document.querySelector(UI.primaryFilterSection).classList.remove("is-hidden");
-        analysisLabels = currentAnalysis.getSavedAnalysesList(ds.id, -1, 'sc_workbench');   // select first "selct an analysis" option
+        analysisLabels = await currentAnalysis.getSavedAnalysesList(ds.id, -1, 'sc_workbench');   // select first "selct an analysis" option
+        document.querySelector(UI.analysisSelect).disabled = false;
 
         document.querySelector(UI.primaryInitialInfoSection).classList.remove("is-hidden");
         document.querySelector(UI.selectedDatasetShapeInitialElt).textContent = currentAnalysis.dataset.shape();
 
-        document.querySelector(UI.analysisSelect).disabled = false;
         createToast("Dataset loaded", "is-success");
     } catch (error) {
         createToast("Failed to access dataset");
