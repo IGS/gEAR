@@ -81,12 +81,11 @@ const datasetTree = new DatasetTree({
         currentAnalysis = new Analysis({id: datasetId, type: "primary", datasetIsRaw: true});
 
         try {
+            document.querySelector(UI.analysisSelect).disabled = true;
             analysisLabels = await currentAnalysis.getSavedAnalysesList(datasetId, -1, 'sc_workbench');
-            document.querySelector(UI.analysisSelect).disabled = false;
         } catch (error) {
             createToast("Failed to access analyses for this dataset");
             logErrorInConsole(error);
-            document.querySelector(UI.analysisSelect).disabled = true;
         }
 
         document.querySelector(UI.primaryInitialInfoSection).classList.remove("is-hidden");
@@ -96,10 +95,15 @@ const datasetTree = new DatasetTree({
             await currentAnalysis.loadPreliminaryFigures(); // depends on dataset.id from getDatasetInfo
         } catch (error) {
             logErrorInConsole(error);
+
+            // Cannot run analyses without a dataset
+            document.querySelector(UI.analysisSelect).disabled = true;
             // pass
         } finally {
             document.querySelector(UI.primaryInitialPlotContainer).classList.add("is-hidden");
         }
+
+        document.querySelector(UI.analysisSelect).disabled = false;
 
     })
 });
