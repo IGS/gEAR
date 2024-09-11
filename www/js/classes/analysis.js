@@ -573,17 +573,18 @@ class Analysis {
      */
     async placeAnalysisImage({params, title, target} = {}) {
         const url = "./cgi/get_analysis_image.cgi";
-        const response = await axios.get(url, { params });
 
-        if (response?.status === 200) {
-            const imgSrc = response.request.responseURL;
-            const html = `<a target="_blank" href="${imgSrc}"><img src="${imgSrc}" class="image" alt="${title}" /></a>`;
-            document.querySelector(target).innerHTML = html;
-            return;
+        try {
+            const response = await axios.get(url, { params });
+            if (response?.status === 200) {
+                const imgSrc = response.request.responseURL;
+                const html = `<a target="_blank" href="${imgSrc}"><img src="${imgSrc}" class="image" alt="${title}" /></a>`;
+                document.querySelector(target).innerHTML = html;
+            }
+        } catch (error) {
+            console.error(`Error: ${error.response?.status}`);
+            createToast(`Error retrieving analysis image for at least one completed step. You can re-run those steps to generate images again.`, "is-warning");
         }
-
-        console.error(`Error: ${response.status}`);
-        createToast(`Error getting analysis image`);
     }
 
     /**
