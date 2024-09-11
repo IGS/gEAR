@@ -1984,7 +1984,7 @@ class Dataset:
 
             import scanpy as sc
             sc.settings.verbosity = 0
-            adata = sc.read_h5ad(h5ad_file_path, backed='r')
+            adata = sc.read_h5ad(h5ad_file_path)
             (n_obs, n_vars) = adata.shape
             if tuple_only:
                 return (n_obs, n_vars)
