@@ -499,7 +499,6 @@ class Analysis {
      */
     async loadPreliminaryFigures() {
 
-        document.querySelector(UI.primaryInitialPlotContainer).classList.remove("is-hidden");
         try {
             const {data} = await axios.post("./cgi/h5ad_preview_primary_filter.cgi", convertToFormData({
                 dataset_id: this.dataset.id,
@@ -507,8 +506,6 @@ class Analysis {
                 analysis_type: this.type,
                 session_id: this.analysisSessionId
             }));
-
-            document.querySelector(UI.primaryInitialLoadingPlotElt).classList.add("is-hidden");
 
             if (!data.success || data.success < 1) {
                 document.querySelector(UI.primaryInitialViolinContainer).textContent = "Preliminary figures not yet generated. Continue your analysis.";

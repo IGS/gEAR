@@ -80,13 +80,24 @@ const datasetTree = new DatasetTree({
         // This is a placeholder to retrieve preliminary figures which are stored in the "primary" directory
         currentAnalysis = new Analysis({id: datasetId, type: "primary", datasetIsRaw: true});
 
-        // Technically these could load asynchronously, but logically the progress logs make more sense sequentially
+        try {
+            analysisLabels = await currentAnalysis.getSavedAnalysesList(datasetId, -1, 'sc_workbench');
+            document.querySelector(UI.analysisSelect).disabled = false;
+        } catch (error) {
+            createToast("Failed to access analyses for this dataset");
+            logErrorInConsole(error);
+            document.querySelector(UI.analysisSelect).disabled = true;
+        }
+
+        document.querySelector(UI.primaryInitialPlotContainer).classList.remove("is-hidden");
         try {
             await getDatasetInfo(datasetId);
-            await currentAnalysis.loadPreliminaryFigures();
+            await currentAnalysis.loadPreliminaryFigures(); // depends on dataset.id from getDatasetInfo
         } catch (error) {
             logErrorInConsole(error);
             // pass
+        } finally {
+            document.querySelector(UI.primaryInitialPlotContainer).classList.add("is-hidden");
         }
 
     })
@@ -159,8 +170,6 @@ const downloadTableAsExcel = (tableId, filename) => {
  * @returns {Promise<void>} - A promise that resolves when the dataset information is retrieved and UI updates are complete.
  */
 const getDatasetInfo = async (datasetId) => {
-    document.querySelector(UI.analysisSelect).disabled = true;
-
     try {
         const data = await apiCallsMixin.fetchDatasetInfo(datasetId);
 
@@ -169,8 +178,6 @@ const getDatasetInfo = async (datasetId) => {
         currentAnalysis.dataset = ds;
 
         document.querySelector(UI.primaryFilterSection).classList.remove("is-hidden");
-        analysisLabels = await currentAnalysis.getSavedAnalysesList(ds.id, -1, 'sc_workbench');   // select first "selct an analysis" option
-        document.querySelector(UI.analysisSelect).disabled = false;
 
         document.querySelector(UI.primaryInitialInfoSection).classList.remove("is-hidden");
         document.querySelector(UI.selectedDatasetShapeInitialElt).textContent = currentAnalysis.dataset.shape();
@@ -179,8 +186,6 @@ const getDatasetInfo = async (datasetId) => {
     } catch (error) {
         createToast("Failed to access dataset");
         logErrorInConsole(`Failed ID was: ${datasetId} because msg: ${error.message}`);
-        document.querySelector(UI.analysisSelect).disabled = true;
-
     }
 }
 
