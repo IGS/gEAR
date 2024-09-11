@@ -93,6 +93,7 @@ const datasetTree = new DatasetTree({
         try {
             await getDatasetInfo(datasetId);
             await currentAnalysis.loadPreliminaryFigures(); // depends on dataset.id from getDatasetInfo
+            document.querySelector(UI.analysisSelect).disabled = false;
         } catch (error) {
             logErrorInConsole(error);
 
@@ -102,8 +103,6 @@ const datasetTree = new DatasetTree({
         } finally {
             document.querySelector(UI.primaryInitialPlotContainer).classList.add("is-hidden");
         }
-
-        document.querySelector(UI.analysisSelect).disabled = false;
 
     })
 });
