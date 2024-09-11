@@ -613,7 +613,10 @@ class Analysis:
 
     def __repr__(self):
         pipeline_file = self.settings_path()
-        return open(pipeline_file).read()
+        json_data = json.loads(open(pipeline_file).read())
+        # change "user_session_id" to "session_id" for consistency
+        json_data['session_id'] = json_data.pop('user_session_id')
+        return json.dumps(json_data, indent=4)
 
     def _serialize_json(self):
         # Called when json modules attempts to serialize
