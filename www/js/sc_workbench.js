@@ -360,7 +360,7 @@ const savePcaGeneList = async () => {
             'dataset_id': currentAnalysis.dataset.id,
             'analysis_id': currentAnalysis.id,
             'analysis_type': currentAnalysis.type,
-            'session_id': currentAnalysis.userSessionId,
+            'session_id': currentAnalysis.analysisSessionId,
         }));
 
         if (!data.success || data.success < 1) {
@@ -919,6 +919,7 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
     const selectedOption = event.target.selectedOptions[0];
     currentAnalysis.type = selectedOption.dataset.analysisType;
     currentAnalysis.id = selectedOption.dataset.analysisId;
+    currentAnalysis.analysisSessionId = selectedOption.dataset.analysisSessionId;
 
     await currentAnalysis.getStoredAnalysis();    // await-able
 

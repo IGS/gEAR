@@ -18,12 +18,12 @@ class Analysis {
         label = `Unlabeled ${commonDateTime()}`,
         type,
         vetting,
-        userSessionId = CURRENT_USER.session_id,
+        analysisSessionId = CURRENT_USER.session_id,
         genesOfInterest = [],
         groupLabels = []
     } = {}) {
         this.id = id;
-        this.userSessionId = userSessionId;
+        this.analysisSessionId = analysisSessionId;
         this.dataset = datasetObj;    // The dataset object
         this.type = type;
         this.vetting = vetting;
@@ -99,7 +99,7 @@ class Analysis {
      */
     async copyDatasetAnalysis(destType) {
         const params = {
-            session_id: this.userSessionId,
+            session_id: this.analysisSessionId,
             dataset_id: this.dataset.id,
             source_analysis_id: this.id,
             dest_analysis_id: this.id,
@@ -131,7 +131,7 @@ class Analysis {
 
             this.type = 'user_unsaved';
             this.id = newAnalysisId;
-            this.userSessionId = CURRENT_USER.session_id;
+            this.analysisSessionId = CURRENT_USER.session_id;
 
             document.querySelector(UI.analysisActionContainer).classList.remove("is-hidden");
             document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
@@ -155,7 +155,7 @@ class Analysis {
 
         try {
             const {data} = await axios.post("./cgi/delete_dataset_analysis.cgi", convertToFormData({
-                session_id: this.userSessionId,
+                session_id: this.analysisSessionId,
                 dataset_id: this.dataset.id,
                 analysis_id: this.id,
                 analysis_type: this.type
@@ -181,7 +181,7 @@ class Analysis {
 
         // create URL parameters
         const params = {
-            session_id: this.userSessionId,
+            session_id: this.analysisSessionId,
             dataset_id: this.dataset.id,
             analysis_id: this.id,
             type: "h5ad",
@@ -217,7 +217,7 @@ class Analysis {
         try {
             const {data} = await axios.post("./cgi/get_stored_analysis_list.cgi", convertToFormData({
                 dataset_id: datasetId,
-                session_id: this.userSessionId
+                session_id: this.analysisSessionId
             }));
 
             // Create an empty option for the analysis select element
@@ -239,6 +239,7 @@ class Analysis {
                 const option = document.createElement("option");
                 option.dataset.analysisId = analysis.id;
                 option.dataset.analysisType = analysis.type;
+                option.dataset.analysisSessionId = analysis.user_session_id;
                 option.dataset.datasetId = analysis.dataset_id;
                 option.textContent = analysis.label || "Unlabeled"
                 // ? Using standard HTML, cannot add icons to options, so making icons by vetting status is not possible
@@ -368,7 +369,7 @@ class Analysis {
             const {data} = await axios.post("./cgi/get_stored_analysis.cgi", convertToFormData({
                 analysis_id: this.id,
                 analysis_type: this.type,
-                session_id: this.userSessionId,
+                session_id: this.analysisSessionId,
                 dataset_id: this.dataset.id
             }));
 
@@ -416,7 +417,7 @@ class Analysis {
             datasetIsRaw: data.dataset_is_raw,
             label: data.label,
             type: data.type,
-            userSessionId: data.user_session_id || CURRENT_USER.session_id,
+            analysisSessionId: data.user_session_id || CURRENT_USER.session_id,
             groupLabels: data.group_labels,
             genesOfInterest: data.genesOfInterest
         });
@@ -504,7 +505,7 @@ class Analysis {
                 dataset_id: this.dataset.id,
                 analysis_id: this.id,
                 analysis_type: this.type,
-                session_id: this.userSessionId
+                session_id: this.analysisSessionId
             }));
 
             document.querySelector(UI.primaryInitialLoadingPlotElt).classList.add("is-hidden");
@@ -638,7 +639,7 @@ class Analysis {
 
     async save() {
 
-        if (!this.userSessionId) {
+        if (!this.analysisSessionId) {
             console.warn("Cannot save analysis without a user session ID");
             return;
         }
@@ -680,7 +681,7 @@ class Analysis {
 
         try {
             const {data} = await axios.post("./cgi/save_dataset_analysis.cgi", convertToFormData({
-                session_id: this.userSessionId,
+                session_id: this.analysisSessionId,
                 dataset_id: this.dataset.id,
                 analysis_id: this.id,
                 analysis_type: this.type,
@@ -857,7 +858,7 @@ class AnalysisStepPrimaryFilter {
                 analysis_id: this.analysis.id,
                 analysis_type: this.analysis.type,
                 dataset_id: this.analysis.dataset.id,
-                session_id: this.analysis.userSessionId,
+                session_id: this.analysis.analysisSessionId,
                 filter_cells_lt_n_genes: this.filterCellsLtNGenes || "",
                 filter_cells_gt_n_genes: this.filterCellsGtNGenes || "",
                 filter_genes_lt_n_cells: this.filterGenesLtNCells || "",
@@ -1027,7 +1028,7 @@ class AnalysisStepPrimaryFilter {
             'analysis_name': 'highest_expr_genes',
             'analysis_type': ana.type,
             'dataset_id': ana.dataset.id,
-            'session_id': ana.userSessionId,
+            'session_id': ana.analysisSessionId,
             // this saves the user from getting a cached image each time
             datetime: (new Date()).getTime()
         }
@@ -1149,7 +1150,7 @@ class AnalysisStepQCByMito {
                 dataset_id: this.analysis.dataset.id,
                 analysis_id: this.analysis.id,
                 analysis_type: this.analysis.type,
-                session_id: this.analysis.userSessionId,
+                session_id: this.analysis.analysisSessionId,
                 genes_prefix: this.genePrefix,
                 filter_mito_perc: this.filterMitoPercent,
                 filter_mito_count: this.filterMitoCount,
@@ -1215,7 +1216,7 @@ class AnalysisStepQCByMito {
             'analysis_name': 'violin_qc_by_mito',
             'analysis_type': ana.type,
             'dataset_id': ana.dataset.id,
-            'session_id': ana.userSessionId,
+            'session_id': ana.analysisSessionId,
             // this saves the user from getting a cached image each time
             'datetime': (new Date()).getTime()
         }
@@ -1352,7 +1353,7 @@ class AnalysisStepSelectVariableGenes {
             'dataset_id': this.analysis.dataset.id,
             'analysis_id': this.analysis.id,
             'analysis_type': this.analysis.type,
-            'session_id': this.analysis.userSessionId,
+            'session_id': this.analysis.analysisSessionId,
             'norm_counts_per_cell': this.normCountsPerCell,
             'flavor': this.flavor,
             'n_top_genes': this.nTopGenes,
@@ -1445,7 +1446,7 @@ class AnalysisStepSelectVariableGenes {
             'analysis_name': 'filter_genes_dispersion',
             'analysis_type': ana.type,
             'dataset_id': ana.dataset.id,
-            'session_id': ana.userSessionId,
+            'session_id': ana.analysisSessionId,
 
             // this saves the user from getting a cached image each time
             'datetime': (new Date()).getTime()
@@ -1548,7 +1549,7 @@ class AnalysisStepPCA {
                 dataset_id: this.analysis.dataset.id,
                 analysis_id: this.analysis.id,
                 analysis_type: this.analysis.type,
-                session_id: this.analysis.userSessionId,
+                session_id: this.analysis.analysisSessionId,
                 genes_to_color: document.querySelector(UI.pcaGenesToColorElt).value,
                 compute_pca: computePCA
             }));
@@ -1601,7 +1602,7 @@ class AnalysisStepPCA {
                 dataset_id: this.analysis.dataset.id,
                 analysis_id: this.analysis.id,
                 analysis_type: this.analysis.type,
-                session_id: this.analysis.userSessionId,
+                session_id: this.analysis.analysisSessionId,
                 pcs: document.querySelector(UI.topPcaGenesElt).value
             }));
 
@@ -1615,7 +1616,7 @@ class AnalysisStepPCA {
                 'analysis_name': 'pca_loadings',
                 'analysis_type': this.analysis.type,
                 'dataset_id': this.analysis.dataset.id,
-                'session_id': this.analysis.userSessionId,
+                'session_id': this.analysis.analysisSessionId,
                 datetime: (new Date()).getTime()
             }
 
@@ -1656,7 +1657,7 @@ class AnalysisStepPCA {
             'analysis_name': 'pca',
             'analysis_type': ana.type,
             'dataset_id': ana.dataset.id,
-            'session_id': ana.userSessionId,
+            'session_id': ana.analysisSessionId,
             // this saves the user from getting a cached image each time
             'datetime': (new Date()).getTime()
         }
@@ -1819,7 +1820,7 @@ class AnalysisSteptSNE {
             'dataset_id': this.analysis.dataset.id,
             'analysis_id': this.analysis.id,
             'analysis_type': this.analysis.type,
-            'session_id': this.analysis.userSessionId,
+            'session_id': this.analysis.analysisSessionId,
             'genes_to_color': document.querySelector(UI.tsneGenesToColorElt).value,
             'n_pcs': document.querySelector(UI.tsneNPcsElt).value,
             'n_neighbors': document.querySelector(UI.dimReductionNNeighborsElt).value,
@@ -1911,7 +1912,7 @@ class AnalysisSteptSNE {
             'analysis_name': 'tsne',
             'analysis_type': ana.type,
             'dataset_id': ana.dataset.id,
-            'session_id': ana.userSessionId,
+            'session_id': ana.analysisSessionId,
             // this saves the user from getting a cached image each time
             'datetime': (new Date()).getTime()
         }
@@ -2080,7 +2081,7 @@ class AnalysisStepClustering {
                 dataset_id: this.analysis.dataset.id,
                 analysis_id: this.analysis.id,
                 analysis_type: this.analysis.type,
-                session_id: this.analysis.userSessionId,
+                session_id: this.analysis.analysisSessionId,
                 resolution,
                 compute_clusters: computeClustering,
                 plot_tsne: plotTsne,
@@ -2162,7 +2163,7 @@ class AnalysisStepClustering {
             'analysis_name': 'tsne_clustering',
             'analysis_type': ana.type,
             'dataset_id': ana.dataset.id,
-            'session_id': ana.userSessionId,
+            'session_id': ana.analysisSessionId,
             // this saves the user from getting a cached image each time
             'datetime': (new Date()).getTime()
         }
@@ -2284,7 +2285,7 @@ class AnalysisStepMarkerGenes {
             'dataset_id': this.analysis.dataset.id,
             'analysis_id': this.analysis.id,
             'analysis_type': this.analysis.type,
-            'session_id': this.analysis.userSessionId,
+            'session_id': this.analysis.analysisSessionId,
             'n_genes': this.nGenes,
             'compute_marker_genes': this.computeMarkerGenes
         }));
@@ -2329,7 +2330,7 @@ class AnalysisStepMarkerGenes {
                 'dataset_id': this.analysis.dataset.id,
                 'analysis_id': this.analysis.id,
                 'analysis_type': this.analysis.type,
-                'session_id': this.analysis.userSessionId,
+                'session_id': this.analysis.analysisSessionId,
                 'marker_genes': JSON.stringify([...this.genesOfInterest])
             }));
 
@@ -2343,7 +2344,7 @@ class AnalysisStepMarkerGenes {
                 'analysis_name': 'dotplot_goi',
                 'analysis_type': this.analysis.type,
                 'dataset_id': this.analysis.dataset.id,
-                'session_id': this.analysis.userSessionId,
+                'session_id': this.analysis.analysisSessionId,
                 // this saves the user from getting a cached image each time
                 datetime: (new Date()).getTime()
             }
@@ -2575,7 +2576,7 @@ class AnalysisStepMarkerGenes {
             'analysis_name': `rank_genes_groups_${data.cluster_label}`,
             'analysis_type': ana.type,
             'dataset_id': ana.dataset.id,
-            'session_id': ana.userSessionId,
+            'session_id': ana.analysisSessionId,
             // this saves the user from getting a cached image each time
             'datetime': (new Date()).getTime()
         }
@@ -2791,7 +2792,7 @@ class AnalysisStepCompareGenes {
                 'dataset_id': this.analysis.dataset.id,
                 'analysis_id': this.analysis.id,
                 'analysis_type': this.analysis.type,
-                'session_id': this.analysis.userSessionId,
+                'session_id': this.analysis.analysisSessionId,
                 'n_genes': document.querySelector(UI.compareGenesNGenesElt).value,
                 'group_labels': JSON.stringify(this.analysis.groupLabels),
                 'query_cluster': document.querySelector(UI.queryClusterSelectElt).value,
@@ -2863,7 +2864,7 @@ class AnalysisStepCompareGenes {
             'analysis_name': `rank_genes_groups_${data.cluster_label}_comp_ranked`,
             'analysis_type': ana.type,
             'dataset_id': ana.dataset.id,
-            'session_id': ana.userSessionId,
+            'session_id': ana.analysisSessionId,
             // this saves the user from getting a cached image each time
             'datetime': (new Date()).getTime()
         }
