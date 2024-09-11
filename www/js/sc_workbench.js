@@ -88,8 +88,8 @@ const datasetTree = new DatasetTree({
             logErrorInConsole(error);
         }
 
-        document.querySelector(UI.primaryInitialInfoSection).classList.remove("is-hidden");
         document.querySelector(UI.primaryInitialPlotContainer).classList.remove("is-hidden");
+        document.querySelector(UI.primaryInitialLoadingPlotElt).classList.remove("is-hidden");
         try {
             await getDatasetInfo(datasetId);
             await currentAnalysis.loadPreliminaryFigures(); // depends on dataset.id from getDatasetInfo
@@ -101,7 +101,7 @@ const datasetTree = new DatasetTree({
             document.querySelector(UI.analysisSelect).disabled = true;
             // pass
         } finally {
-            document.querySelector(UI.primaryInitialPlotContainer).classList.add("is-hidden");
+            document.querySelector(UI.primaryInitialLoadingPlotElt).classList.add("is-hidden");
         }
 
     })
@@ -181,6 +181,7 @@ const getDatasetInfo = async (datasetId) => {
 
         currentAnalysis.dataset = ds;
 
+        document.querySelector(UI.primaryInitialInfoSection).classList.remove("is-hidden");
         document.querySelector(UI.primaryFilterSection).classList.remove("is-hidden");
         document.querySelector(UI.selectedDatasetShapeInitialElt).textContent = currentAnalysis.dataset.shape();
 
