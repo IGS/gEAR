@@ -372,6 +372,10 @@ class Analysis {
                 dataset_id: this.dataset.id
             }));
 
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
             // Load the analysis data and assign it to the current instance
             const ana = await Analysis.loadFromJson(data, datasetObj);
             Object.assign(this, ana);
@@ -389,7 +393,7 @@ class Analysis {
 
         } catch (error) {
             logErrorInConsole(`Failed ID was: ${datasetId} because msg: ${error}`);
-            createToast(`Error getting stored analysis`);
+            createToast(`Error retrieving stored analysis`);
         }
 
         // Restore the dataset object
