@@ -89,7 +89,7 @@ const datasetTree = new DatasetTree({
             document.querySelector(UI.analysisSelect).disabled = true;
         }
 
-        document.querySelector(UI.primaryFilterSection).classList.remove("is-hidden");
+        document.querySelector(UI.primaryInitialInfoSection).classList.remove("is-hidden");
         document.querySelector(UI.primaryInitialPlotContainer).classList.remove("is-hidden");
         try {
             await getDatasetInfo(datasetId);
@@ -178,7 +178,7 @@ const getDatasetInfo = async (datasetId) => {
 
         currentAnalysis.dataset = ds;
 
-        document.querySelector(UI.primaryInitialInfoSection).classList.remove("is-hidden");
+        document.querySelector(UI.primaryFilterSection).classList.remove("is-hidden");
         document.querySelector(UI.selectedDatasetShapeInitialElt).textContent = currentAnalysis.dataset.shape();
 
         createToast("Dataset loaded", "is-success");
