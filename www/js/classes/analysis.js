@@ -498,6 +498,7 @@ class Analysis {
      * @returns {Promise<void>} A promise that resolves when the preliminary figures are loaded.
      */
     async loadPreliminaryFigures() {
+        document.querySelector(UI.primaryInitialPlotContainer).classList.add("is-hidden");
 
         try {
             const {data} = await axios.post("./cgi/h5ad_preview_primary_filter.cgi", convertToFormData({
@@ -515,6 +516,7 @@ class Analysis {
             document.querySelector(UI.primaryInitialViolinContainer).innerHTML = `<a target="_blank" href="./datasets/${this.dataset.id}.prelim_violin.png"><img src="./datasets/${this.dataset.id}.prelim_violin.png" class="img-fluid img-zoomed" /></a>`;
             document.querySelector(UI.primaryInitialScatterContainer).innerHTML = `<a target="_blank" href="./datasets/${this.dataset.id}.prelim_n_genes.png"><img src="./datasets/${this.dataset.id}.prelim_n_genes.png" class="img-fluid img-zoomed" /></a>`;
             createToast("Preliminary plots displayed", "is-success");
+            document.querySelector(UI.primaryInitialPlotContainer).classList.remove("is-hidden");
 
         } catch (error) {
             createToast("Failed to access dataset");
