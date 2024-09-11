@@ -83,6 +83,7 @@
                       <th>Status</th>
                       <th>Dataset type</th>
                       <th>Title</th>
+                      <th></th>
                     </tr>
                   </thead>
                   <tbody id="submissions-in-progress-table-tbody"></tbody>
@@ -93,6 +94,27 @@
                     <td class="submission-status"></td>
                     <td class="submission-dataset-type"></td>
                     <td class="submission-title"></td>
+                    <td>
+                      <div class="buttons are-small is-hidden">
+                        <button class="button">
+                          <span class="icon">
+                            <i class="mdi mdi-delete"></i>
+                          </span>
+                        </button>
+                        <button class="button is-danger">
+                          <span class="icon">
+                            <i class="mdi mdi-delete"></i>
+                          </span>
+                          <span>Yes, delete</span>
+                        </button>
+                        <button class="button is-success">
+                          <span class="icon">
+                            <i class="mdi mdi-cancel"></i>
+                          </span>
+                          <span>Nevermind!</span>
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 </template>
                 <hr />
@@ -365,7 +387,7 @@
                               
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-organism" placeholder="Dataset contact email">
+                              <input class="input" type="text" name="metadata-organism" placeholder="Genus species">
                             </div>
                           </div>
                         </div>
