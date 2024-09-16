@@ -268,6 +268,14 @@ class PlotlyData(Resource):
                 message =  "WARNING: Color map has values not in the dataframe column '{}': {}\n".format(color_name, diff)
                 message += "Will set color map key values to the unique values in the dataframe column."
                 print(message, file=sys.stderr)
+                # If any element in diff is nan and color_map contains a valid missing value key like "NA", change the value in the dataframe to match the color_map key
+                for key in list(diff):
+                    if pd.isna(key) and "NA" in color_map.keys():
+                        df[color_name] = df[color_name].replace({key: "NA"})
+                        col_values.remove(key)  # Remove the nan value from the set
+                        col_values = col_values.union({"NA"})
+                        break
+
                 # Sort both the colormap and dataframe column alphabetically
                 sorted_column_values = sorted(col_values)
                 updated_color_map = {}
