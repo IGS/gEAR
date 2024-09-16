@@ -16,6 +16,10 @@ from rpy2.robjects.packages import importr
 from rpy2.robjects.conversion import localconverter
 from rpy2.robjects.vectors import StrVector
 
+# If running locally, need to ensure that multiple concurrent R calls do not conflict
+from rpy2.rinterface_lib import openrlib
+
+
 class RError(Exception):
     """Error based on issues that would manifest in any particular R-language call."""
     def __init__(self, message="") -> None:
@@ -45,51 +49,54 @@ def run_projectR_cmd(target_df, loading_df, algorithm):
     Return Pandas dataframe of the projectR output
     """
 
-    # Convert from pandas dataframe to R data.frame
-    with localconverter(ro.default_converter + pandas2ri.converter):
-        target_r_df = ro.conversion.py2rpy(target_df)
-        loading_r_df = ro.conversion.py2rpy(loading_df)
+    # Ensure multithreading if running locally -> https://rpy2.github.io/doc/v3.5.x/html/rinterface.html#multithreading
+    with openrlib.rlock:
 
-    # data.frame to matrix (projectR has no data.frame signature)
-    target_r_matrix = convert_r_df_to_r_matrix(target_r_df)
-    loading_r_matrix = convert_r_df_to_r_matrix(loading_r_df)
+        # Convert from pandas dataframe to R data.frame
+        with localconverter(ro.default_converter + pandas2ri.converter):
+            target_r_df = ro.conversion.py2rpy(target_df)
+            loading_r_df = ro.conversion.py2rpy(loading_df)
 
-    # Assign Rownames to each matrix
-    # I don't know why but using ro.StrVector makes rpy2py fail where the output df is an incompatible class
-    # Guessing that there are some non-strings mixed into the indexes
-    target_r_matrix.rownames = StrVector(target_df.index)
-    loading_r_matrix.rownames = StrVector(loading_df.index)
+        # data.frame to matrix (projectR has no data.frame signature)
+        target_r_matrix = convert_r_df_to_r_matrix(target_r_df)
+        loading_r_matrix = convert_r_df_to_r_matrix(loading_r_df)
 
-    # The NMF projectR method signature is based on the LinearEmbeddedMatrix class,
-    # Which has a featureLoadings property. That matrix is loaded and the default
-    # projectR signature is returned and used. So we can just pass the matrix as-is.
-    # https://rdrr.io/bioc/SingleCellExperiment/man/LinearEmbeddingMatrix.html
+        # Assign Rownames to each matrix
+        # I don't know why but using ro.StrVector makes rpy2py fail where the output df is an incompatible class
+        # Guessing that there are some non-strings mixed into the indexes
+        target_r_matrix.rownames = StrVector(target_df.index)
+        loading_r_matrix.rownames = StrVector(loading_df.index)
 
-    # Run project R command.  Get projectionPatterns matrix
-    try:
-        if algorithm == "nmf":
-            projectR = importr('projectR')
-            projection_patterns_r_matrix = projectR.projectR(data=target_r_matrix, loadings=loading_r_matrix, full=False)
-        elif algorithm == "fixednmf":
-            sjd = importr('SJD')
-            loading_list = ro.ListVector({"genesig": loading_r_matrix})
+        # The NMF projectR method signature is based on the LinearEmbeddedMatrix class,
+        # Which has a featureLoadings property. That matrix is loaded and the default
+        # projectR signature is returned and used. So we can just pass the matrix as-is.
+        # https://rdrr.io/bioc/SingleCellExperiment/man/LinearEmbeddingMatrix.html
 
-            projection = sjd.projectNMF(proj_dataset=target_r_matrix, proj_group=True, list_component=loading_list)
-            projection_patterns_r_matrix = projection.rx2("proj_score_list").rx2("genesig")
-        else:
-            raise ValueError("Algorithm {} is not supported".format(algorithm))
-    except Exception as e:
-        # print stacktrace with line numbers
-        traceback.print_exc(file=sys.stderr)
-        raise RError("Error: Could not run projectR command.\tReason: {}".format(str(e)))
+        # Run project R command.  Get projectionPatterns matrix
+        try:
+            if algorithm == "nmf":
+                projectR = importr('projectR')
+                projection_patterns_r_matrix = projectR.projectR(data=target_r_matrix, loadings=loading_r_matrix, full=False)
+            elif algorithm == "fixednmf":
+                sjd = importr('SJD')
+                loading_list = ro.ListVector({"genesig": loading_r_matrix})
 
-    # matrix back to data.frame
-    projection_patterns_r_df = convert_r_matrix_to_r_df(projection_patterns_r_matrix)
+                projection = sjd.projectNMF(proj_dataset=target_r_matrix, proj_group=True, list_component=loading_list)
+                projection_patterns_r_matrix = projection.rx2("proj_score_list").rx2("genesig")
+            else:
+                raise ValueError("Algorithm {} is not supported".format(algorithm))
+        except Exception as e:
+            # print stacktrace with line numbers
+            traceback.print_exc(file=sys.stderr)
+            raise RError("Error: Could not run projectR command.\tReason: {}".format(str(e)))
 
-    # Convert from R data.frame to pandas dataframe
-    with localconverter(ro.default_converter + pandas2ri.converter):
-        projection_patterns_df = ro.conversion.rpy2py(projection_patterns_r_df)
+        # matrix back to data.frame
+        projection_patterns_r_df = convert_r_matrix_to_r_df(projection_patterns_r_matrix)
 
-    return projection_patterns_df
+        # Convert from R data.frame to pandas dataframe
+        with localconverter(ro.default_converter + pandas2ri.converter):
+            projection_patterns_df = ro.conversion.rpy2py(projection_patterns_r_df)
+
+        return projection_patterns_df
 
 
