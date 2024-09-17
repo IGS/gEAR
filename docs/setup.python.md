@@ -75,6 +75,7 @@ Check the requirement.txt file in <git_repo_root>/docker for the latest packages
       scikit-learn==1.0.2 \
       scipy==1.11.04 \
       seaborn==0.13.2 \
+      shadows==0.1a0 \
       tables==3.9.2 \
       xlrd==1.2.0
     $ sudo mkdir /opt/bin
