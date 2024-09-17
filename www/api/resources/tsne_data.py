@@ -356,11 +356,11 @@ class TSNEData(Resource):
         # Rename to end the confusion
         selected.var = selected.var.rename(columns={selected.var.columns[0]: "ensembl_id"})
         # Modify the AnnData object to not include any duplicated gene symbols (keep only first entry)
+        dedup_copy = ana.dataset_path().replace('.h5ad', '.dups_removed.h5ad')
         if (selected.var.index.duplicated(keep="first") == True).any():
             success = 2
             message = "WARNING: Multiple Ensemble IDs found for gene symbol '{}'.  Using the first stored Ensembl ID.".format(selected_gene)
 
-            dedup_copy = ana.dataset_path().replace('.h5ad', '.dups_removed.h5ad')
             if os.path.exists(dedup_copy):
                 os.remove(dedup_copy)
             selected = selected[:, selected.var.index.duplicated() == False].copy(filename=dedup_copy)
@@ -556,6 +556,9 @@ class TSNEData(Resource):
         # Close adata so that we do not have a stale opened object
         if selected.isbacked:
             selected.file.close()
+
+        if os.path.exists(dedup_copy):
+            os.remove(dedup_copy)
 
         with io.BytesIO() as io_pic:
             # Set the saved figure dpi based on the number of observations in the dataset after filtering

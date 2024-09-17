@@ -232,6 +232,10 @@ class PlotlyData(Resource):
         df = selected.to_df()
         df = pd.concat([df,selected.obs], axis=1)
 
+        # fill any missing adata.obs values with "NA"
+        # The below line gives the error - TypeError: Cannot setitem on a Categorical with a new category (NA), set the categories first
+        #df = df.fillna("NA")
+
         # Valid analysis column names from api/resources/h5ad.py
         analysis_tsne_columns = ['X_tsne_1', 'X_tsne_2']
         analysis_umap_columns = ['X_umap_1', 'X_umap_2']
