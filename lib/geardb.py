@@ -1986,6 +1986,9 @@ class Dataset:
             adata = AnnDataShadow(h5ad_file_path)
 
             (n_obs, n_vars) = adata.shape
+
+            adata.close()
+
             if tuple_only:
                 return (n_obs, n_vars)
 
