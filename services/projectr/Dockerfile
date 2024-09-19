@@ -11,8 +11,7 @@ RUN apt-get -qq update \
     # Required for R
 	gfortran \
     # Required for rpy2
-    r-base-dev \
-    r-base \
+    r-cran-rjava \
     # Required for R-package devtools (which is required for SJD)
     libharfbuzz-dev \
     libfribidi-dev \

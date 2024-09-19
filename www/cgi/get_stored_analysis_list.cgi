@@ -35,9 +35,10 @@ def main():
     result['user_unsaved'] = acollection.user_unsaved
 
     ## get the vetting for each
-    for atype in result:
-        for ana in result[atype]:
-            ana.discover_vetting(current_user_id=user.id)
+    if user_id:
+        for atype in result:
+            for ana in result[atype]:
+                ana.discover_vetting(current_user_id=user_id)
 
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))

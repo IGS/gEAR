@@ -835,8 +835,8 @@ def run_tsne(dataset_id):
     # Rename to end the confusion
     adata.var = adata.var.rename(columns={adata.var.columns[0]: "ensembl_id"})
     # Modify the AnnData object to not include any duplicated gene symbols (keep only first entry)
+    scanpy_copy = ana.dataset_path().replace('.h5ad', '.scanpy_dups_removed.h5ad')
     if len(df.columns) > 1:
-        scanpy_copy = ana.dataset_path().replace('.h5ad', '.scanpy_dups_removed.h5ad')
         if os.path.exists(scanpy_copy):
             os.remove(scanpy_copy)
         adata = adata[:, adata.var.index.duplicated() == False].copy(filename=scanpy_copy)
@@ -845,7 +845,7 @@ def run_tsne(dataset_id):
     try:
         basis = PLOT_TYPE_TO_BASIS[plot_type]
     except:
-        raise("{} was not a valid plot type".format(plot_type))
+        raise Exception("{} was not a valid plot type".format(plot_type))
 
     # NOTE: This may change in the future if users want plots by group w/o the colorize_by plot added
     if plot_by_group:
@@ -992,6 +992,9 @@ def run_tsne(dataset_id):
     io_pic.seek(0)
     plt.clf()
     plt.close()  # Prevent zombie plots, which can cause issues
+
+    if os.path.exists(scanpy_copy):
+        os.remove(scanpy_copy)
 
     return {
         "success": success,

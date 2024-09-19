@@ -335,7 +335,7 @@ def _update_by_plot_type(fig, plot_type, force_overlay=False, use_jitter=False):
 
 def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
                       color_name=None, colormap=None, palette=None,
-                      reverse_palette=False, category_orders=None,
+                      reverse_palette=False, category_orders={},
                       plot_type='scatter', hide_x_labels=False, hide_y_labels=False,
                       hide_legend=None, text_name=None, jitter=False,
                       x_range=None, y_range=None, vlines=[], x_title=None, y_title=None,
@@ -374,7 +374,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
         , "facet_row":facet_row
         , "facet_col":facet_col
         , "color":color_name
-        , "category_orders": category_orders if category_orders else {}
+        , "category_orders": category_orders
         , "labels":labels_dict
         , "hover_name": text_name if text_name else "y_rounded"
         }

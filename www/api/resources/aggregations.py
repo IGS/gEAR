@@ -50,6 +50,7 @@ class Aggregations(Resource):
 
             ana = geardb.Analysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
             ana.discover_type()
+            adata = ana.get_adata()
 
         else:
             # Dataset is primary type

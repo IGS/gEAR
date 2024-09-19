@@ -90,24 +90,27 @@ def main():
     # This is the fork off of apache
     # https://stackoverflow.com/a/22181041/1368079
     # https://stackoverflow.com/questions/6024472/start-background-process-daemon-from-cgi-script
-    sys.stdout = original_stdout
-    result['success'] = 1
-    print(json.dumps(result))
-    
-    sys.stdout.flush()
-    os.close(sys.stdout.fileno()) # Break web pipe
-    sys.stderr.flush()
-    os.close(sys.stderr.fileno()) # Break web pipe
+    # https://groups.google.com/g/comp.lang.python/c/gSRnd0RoVKY?pli=1
+    do_fork = True
+    if do_fork:
+        sys.stdout = original_stdout
+        result['success'] = 1
+        print(json.dumps(result))
 
-    if os.fork(): # Get out of parent process
-        sys.exit(0)
+        sys.stdout.flush()
+        sys.stdout.close()
 
-    # open a log file in /tmp
-    f_out = open('/home/jorvis/logs/apache.stdout.log', 'w')
-    f_err = open('/home/jorvis/logs/apache.stderr.log', 'w')
+        sys.stderr.flush()
+        sys.stderr.close()
 
-    time.sleep(1)  # Be sure the parent process reach exit command.
-    os.setsid() # Become process group leader
+        f = os.fork()
+
+        if f != 0:
+            # Terminate the parent
+            sys.exit(0)
+            # PARENT DEAD
+
+        # CHILD CONTINUES FROM HERE
 
     status['process_id'] = os.getpid()
 

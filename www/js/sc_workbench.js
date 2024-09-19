@@ -80,13 +80,28 @@ const datasetTree = new DatasetTree({
         // This is a placeholder to retrieve preliminary figures which are stored in the "primary" directory
         currentAnalysis = new Analysis({id: datasetId, type: "primary", datasetIsRaw: true});
 
-        // Technically these could load asynchronously, but logically the progress logs make more sense sequentially
+        try {
+            document.querySelector(UI.analysisSelect).disabled = true;
+            analysisLabels = await currentAnalysis.getSavedAnalysesList(datasetId, -1, 'sc_workbench');
+        } catch (error) {
+            createToast("Failed to access analyses for this dataset");
+            logErrorInConsole(error);
+        }
+
+        document.querySelector(UI.primaryInitialInfoSection).classList.remove("is-hidden");
+        document.querySelector(UI.primaryInitialLoadingElt).classList.remove("is-hidden");
         try {
             await getDatasetInfo(datasetId);
-            await currentAnalysis.loadPreliminaryFigures();
+            await currentAnalysis.loadPreliminaryFigures(); // depends on dataset.id from getDatasetInfo
+            document.querySelector(UI.analysisSelect).disabled = false;
         } catch (error) {
             logErrorInConsole(error);
+
+            // Cannot run analyses without a dataset
+            document.querySelector(UI.analysisSelect).disabled = true;
             // pass
+        } finally {
+            document.querySelector(UI.primaryInitialLoadingElt).classList.add("is-hidden");
         }
 
     })
@@ -159,8 +174,6 @@ const downloadTableAsExcel = (tableId, filename) => {
  * @returns {Promise<void>} - A promise that resolves when the dataset information is retrieved and UI updates are complete.
  */
 const getDatasetInfo = async (datasetId) => {
-    document.querySelector(UI.analysisSelect).disabled = true;
-
     try {
         const data = await apiCallsMixin.fetchDatasetInfo(datasetId);
 
@@ -169,18 +182,12 @@ const getDatasetInfo = async (datasetId) => {
         currentAnalysis.dataset = ds;
 
         document.querySelector(UI.primaryFilterSection).classList.remove("is-hidden");
-        analysisLabels = currentAnalysis.getSavedAnalysesList(ds.id, -1, 'sc_workbench');   // select first "selct an analysis" option
-
-        document.querySelector(UI.primaryInitialInfoSection).classList.remove("is-hidden");
         document.querySelector(UI.selectedDatasetShapeInitialElt).textContent = currentAnalysis.dataset.shape();
 
-        document.querySelector(UI.analysisSelect).disabled = false;
         createToast("Dataset loaded", "is-success");
     } catch (error) {
         createToast("Failed to access dataset");
         logErrorInConsole(`Failed ID was: ${datasetId} because msg: ${error.message}`);
-        document.querySelector(UI.analysisSelect).disabled = true;
-
     }
 }
 
@@ -360,7 +367,7 @@ const savePcaGeneList = async () => {
             'dataset_id': currentAnalysis.dataset.id,
             'analysis_id': currentAnalysis.id,
             'analysis_type': currentAnalysis.type,
-            'session_id': currentAnalysis.userSessionId,
+            'session_id': currentAnalysis.analysisSessionId,
         }));
 
         if (!data.success || data.success < 1) {
@@ -919,6 +926,7 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
     const selectedOption = event.target.selectedOptions[0];
     currentAnalysis.type = selectedOption.dataset.analysisType;
     currentAnalysis.id = selectedOption.dataset.analysisId;
+    currentAnalysis.analysisSessionId = selectedOption.dataset.analysisSessionId;
 
     await currentAnalysis.getStoredAnalysis();    // await-able
 
@@ -933,7 +941,7 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
         document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
         document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
         document.querySelector(UI.analysisStatusInfoContainer).classList.remove("is-hidden");
-        createToast("This analysis is stored in your profile.", "is-info", true);
+        createToast("This analysis is stored in your private user profile.", "is-info", true);
         document.querySelector(UI.btnMakePublicCopyElt).classList.remove("is-hidden");
     }
 
@@ -948,7 +956,7 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
         document.querySelector(UI.analysisPrimaryNotificationElt).classList.add("is-hidden");
         document.querySelector(UI.analysisActionContainer).classList.add("is-hidden");
         document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
-        createToast("Changes made to this public analysis will spawn a local copy within your profile.", "is-info", true);
+        createToast("Changes made to this public analysis will create a local private copy within your profile.", "is-info", true);
         document.querySelector(UI.btnMakePublicCopyElt).classList.add("is-hidden");
     }
 

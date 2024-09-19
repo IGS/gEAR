@@ -105,6 +105,14 @@ def main():
     # NOTE: "null" values can happen but will be queried out in the SQL (unless there is a actual "null" share_id)
     if layout_share_id:
         result['shared_layouts'] = geardb.LayoutCollection(include_datasets=bool_include_members).get_by_share_id(layout_share_id)
+        # remove shared layouts that are also in the user, domain, or group layouts.
+        for l in result['shared_layouts']:
+            for ltype in ['user', 'domain', 'group', 'public']:
+                for l2 in result[ltype + '_layouts']:
+                    if l.share_id == l2.share_id:
+                        result['shared_layouts'].remove(l)
+                        break
+
 
     ## Selected priority:
     ## - A passed share ID

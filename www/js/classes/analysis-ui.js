@@ -51,7 +51,7 @@ class AnalysisUI {
     // Initial info
     primaryInitialInfoSection = "#initial-info-s"
     primaryInitialPlotContainer = "#initial-plot-c"
-    primaryInitialLoadingPlotElt = "#initial-loading-plot"
+    primaryInitialLoadingElt = "#initial-loading-c"
     primaryInitialScatterContainer = "#initial-scatter-c"
     primaryInitialViolinContainer = "#initial-violin-c"
     selectedDatasetShapeInitialElt = "#selected-dataset-shape-initial"
