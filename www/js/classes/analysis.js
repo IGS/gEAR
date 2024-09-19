@@ -239,7 +239,7 @@ class Analysis {
                 const option = document.createElement("option");
                 option.dataset.analysisId = analysis.id;
                 option.dataset.analysisType = analysis.type;
-                option.dataset.analysisSessionId = analysis.session_id;
+                option.dataset.analysisSessionId = analysis.session_id || CURRENT_USER.session_id;
                 option.dataset.datasetId = analysis.dataset_id;
                 option.textContent = analysis.label || "Unlabeled"
                 // ? Using standard HTML, cannot add icons to options, so making icons by vetting status is not possible
