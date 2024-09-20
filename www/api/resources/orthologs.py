@@ -146,6 +146,8 @@ class Orthologs(Resource):
 
         # Get the dataset and organism ID
         dataset = geardb.get_dataset_by_id(dataset_id)
+        if not dataset:
+            return {"error": "The dataset was not found."}, 400
         dataset_organism_id = dataset.organism_id
 
         h5_path = dataset.get_file_path()
@@ -215,6 +217,8 @@ class Orthologs(Resource):
 
         # Get the dataset and organism ID
         dataset = geardb.get_dataset_by_id(dataset_id)
+        if not dataset:
+            return {"error": "The dataset was not found."}, 400
         dataset_organism_id = dataset.organism_id
 
         # Get the right AnnData object depending on if the analysis is provided
