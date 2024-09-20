@@ -89,7 +89,7 @@ def main():
     # Load the metadata into the database
     metadata = Metadata(file_path=metadata_file)
     try:
-        metadata.save_to_mysql(status='complete', is_public=is_public)
+        metadata.save_to_mysql(status='completed', is_public=is_public)
         result['metadata_loaded'] = 1
     except Exception as e:
         result['message'] = 'Error saving metadata to MySQL: {}'.format(str(e))

@@ -274,14 +274,14 @@ class Metadata:
             is_public = 0
                 All datasets will save as private. Once the upload is complete,
                 the user can change the dataset to public on the dataset manager.
-            load_status = 'complete'
-                All datasets will save as 'complete'.
+            load_status = 'completed'
+                All datasets will save as 'completed'.
         """
         if self.metadata is None:
             raise Exception("No values to evaluate. Please load a metadata file first.")
 
         if status is None:
-            status = 'complete'
+            status = 'completed'
 
         df = self.metadata
 
