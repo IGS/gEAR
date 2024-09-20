@@ -3,6 +3,8 @@ from flask_restful import Resource
 import os
 import geardb
 
+from .common import get_adata_shadow
+
 def tsne_or_umap_present(ana):
   """Return True if tSNE or UMAP plot was calculated for the given analysis."""
   return ana.tsne['tsne_calculated'] == 1 or ana.tsne['umap_calculated'] == 1
@@ -42,27 +44,13 @@ class MGAvailableDisplayTypes(Resource):
         ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
         h5_path = ds.get_file_path()
 
-        # Import here so that Flask-RESTful does not import it with every API call.
-        import scanpy as sc
-
-        # Have a public dataset or user_saved dataset
-        if analysis_id:
-            user = geardb.get_user_from_session_id(session_id)
-
-            ana = geardb.Analysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
-            ana.discover_type()
-
-            ### Not needed for MG yet
-
-        else:
-          # Dataset is primary type
-          if not os.path.exists(h5_path):
-              # Let's not fail if the file isn't there
-              return {
-                  "success": -1,
-                  'message': "No h5 file found for this dataset"
-              }
-          adata = sc.read_h5ad(h5_path)
+        try:
+            adata = get_adata_shadow(analysis_id, dataset_id, session_id, h5_path)
+        except FileNotFoundError:
+            return {
+                "success": -1,
+                'message': "No h5 file found for this dataset"
+            }
 
         columns = adata.obs.columns.tolist()
 
@@ -143,18 +131,15 @@ class AvailableDisplayTypes(Resource):
         if full_svg_path.startswith(base_path) and os.path.exists(full_svg_path):
           svg_exists = True
 
-        # Import here so that Flask-RESTful does not import it with every API call.
-        import scanpy as sc
+        try:
+            adata = get_adata_shadow(analysis_id, dataset_id, session_id, h5_path)
+        except FileNotFoundError:
+            return {
+                "success": -1,
+                'message': "No h5 file found for this dataset"
+            }
 
-        # Have a public dataset or user_saved dataset
         if analysis_id:
-            # session_id = request.cookies.get('gear_session_id')
-            user = geardb.get_user_from_session_id(session_id)
-
-            ana = geardb.Analysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
-            ana.discover_type()
-
-            adata = sc.read_h5ad(ana.dataset_path())
             if hasattr(adata, 'obsm') and 'X_tsne' in adata.obsm:
                 tsne_static = True
                 tsne_umap_pca_dynamic = True
@@ -164,15 +149,6 @@ class AvailableDisplayTypes(Resource):
             elif hasattr(adata, 'obsm') and 'X_pca' in adata.obsm:
                 pca_static = True
                 tsne_umap_pca_dynamic = True
-        else:
-          # Dataset is primary type
-          if not os.path.exists(h5_path):
-              # Let's not fail if the file isn't there
-              return {
-                  "success": -1,
-                  'message': "No h5 file found for this dataset"
-              }
-          adata = sc.read_h5ad(h5_path)
 
         columns = adata.obs.columns.tolist()
 
