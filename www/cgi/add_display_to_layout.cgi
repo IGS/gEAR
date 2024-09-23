@@ -27,6 +27,12 @@ def main():
 
     user = geardb.get_user_from_session_id(session_id)
     layout = geardb.get_layout_by_share_id(share_id)
+
+    if layout is None:
+        result['error'] = "Layout not found"
+        print(json.dumps(result))
+        return
+
     layout.load()
 
     if user is None:
@@ -84,8 +90,13 @@ def main():
             if col_to_insert > 12:
                 # get grid height of the last row, first start column
                 # Want to ensure that the new row starts below the span of the previous row
-                grid_height = [m.grid_height for m in members_to_use if m.start_row == row_to_insert and m.start_col == 1][0]
-                row_to_insert += grid_height
+                # However, if there are no start_col = 1 members, then we can start at the "row_to_insert" value
+
+                start_col_grid_heights = [m.grid_height for m in members_to_use if m.start_row == row_to_insert and m.start_col == 1]
+                if len(start_col_grid_heights) > 0:
+                    grid_height = start_col_grid_heights[0]
+                    row_to_insert += grid_height
+
                 col_to_insert = 1
 
         if user.id == layout.user_id:

@@ -273,6 +273,7 @@
                             <table id="results-table" class="table is-narrow is-striped is-fullwidth">
                                 <thead>
                                     <tr>
+                                        <th></th>
                                         <th>Title</th>
                                         <th>Visibility</th>
                                         <th>Organism</th>
@@ -284,6 +285,11 @@
                                 <tbody>
                                     <template id="results-table-view">
                                         <tr>
+                                            <td class="js-table-view-displays">
+                                                <button class="button is-small is-dark js-view-displays" data-tooltip-content="View, add or remove displays from current collection">
+                                                    <span class="icon"><i class="mdi mdi-24px mdi-plus-minus-variant"></i></span>
+                                                </button>
+                                            </td>
                                             <td class="js-display-title"></td>
                                             <td class="js-display-visibility"></td>
                                             <td class="js-display-organism"></td>
