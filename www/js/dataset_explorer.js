@@ -1990,13 +1990,20 @@ const processSearchResults = (data) => {
     for (const classElt of actionGroupElt.querySelectorAll("[data-tooltip-content]")) {
         tooltips.push(createActionTooltips(classElt))
     }
+    const tableDisplayGroupElt = document.querySelector(".js-table-view-displays");
+    const tableDisplayGroupTooltip = createActionTooltips(tableDisplayGroupElt.querySelector("[data-tooltip-content]"))
 
     // Then apply each tooltip to the appropriate element for all elements with the data-tooltip-content attribute
 
-    for (const actionElt of document.querySelectorAll(".js-action-links")) {
+    for (const actionElt of document.getElementsByClassName("js-action-links")) {
         const loopTooltips = [...tooltips];
         for (const classElt of actionElt.querySelectorAll("[data-tooltip-content]")) {
             applyTooltip(classElt, loopTooltips.shift());
+        }
+    }
+    for (const actionElt of document.getElementsByClassName("js-table-view-displays")) {
+        for (const classElt of actionElt.querySelectorAll("[data-tooltip-content]")) {
+            applyTooltip(classElt, tableDisplayGroupTooltip);
         }
     }
 
