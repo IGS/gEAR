@@ -201,6 +201,7 @@ const finalizeUpload = async () => {
     formData.append('share_uid', share_uid);
     formData.append('session_id', CURRENT_USER.session_id);
     formData.append('dataset_uid', dataset_uid);
+    formData.append('dataset_format', dataset_format);
 
     const dataset_visibility = document.querySelector('input[name=dataset-visibility]:checked').value;
     formData.append('dataset_visibility', dataset_visibility);
@@ -221,6 +222,14 @@ const finalizeUpload = async () => {
     } else {
         document.getElementById('finalize-migrating-h5ad').classList.remove('mdi-checkbox-blank-outline');
         document.getElementById('finalize-migrating-h5ad').classList.add('mdi-skull-scan');
+    }
+
+    if (data['userdata_migrated']) {
+        document.getElementById('finalize-migrating-userdata').classList.remove('mdi-checkbox-blank-outline');
+        document.getElementById('finalize-migrating-userdata').classList.add('mdi-checkbox-marked');
+    } else {
+        document.getElementById('finalize-migrating-userdata').classList.remove('mdi-checkbox-blank-outline');
+        document.getElementById('finalize-migrating-userdata').classList.add('mdi-skull-scan');
     }
 
     if (data.success) {
