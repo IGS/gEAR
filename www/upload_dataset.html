@@ -83,6 +83,7 @@
                       <th>Status</th>
                       <th>Dataset type</th>
                       <th>Title</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody id="submissions-in-progress-table-tbody"></tbody>
@@ -93,6 +94,22 @@
                     <td class="submission-status"></td>
                     <td class="submission-dataset-type"></td>
                     <td class="submission-title"></td>
+                    <td>
+                      <div class="buttons are-small">
+                        <button class="button is-primary submission-resume">
+                          <span class="icon">
+                            <i class="mdi mdi-play"></i>
+                          </span>
+                          <span>View / resume</span>
+                        </button>
+                        <button class="button is-danger submission-delete">
+                          <span class="icon">
+                            <i class="mdi mdi-trash-can"></i>
+                          </span>
+                          <span>Delete</span>
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 </template>
                 <hr />
@@ -365,7 +382,7 @@
                               
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-organism" placeholder="Dataset contact email">
+                              <input class="input" type="text" name="metadata-organism" placeholder="Genus species">
                             </div>
                           </div>
                         </div>
@@ -852,7 +869,16 @@
                               <span class="icon">
                               <i id="finalize-migrating-h5ad" class="mdi mdi-checkbox-blank-outline"></i>
                               </span>
-                              <span>Migrate data files</span>
+                              <span>Migrate H5AD file</span>
+                            </span>
+                            </li>
+                          </li>
+                          <li></li>
+                            <span class="icon-text">
+                              <span class="icon">
+                              <i id="finalize-migrating-userdata" class="mdi mdi-checkbox-blank-outline"></i>
+                              </span>
+                              <span>Migrate user-uploaded source file</span>
                             </span>
                             </li>
                           </li>

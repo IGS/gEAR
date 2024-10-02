@@ -25,6 +25,7 @@ import time
 import pandas as pd
 import scanpy as sc
 from scipy import sparse
+import anndata
 
 # This has a huge dependency stack of libraries. Occasionally, one of them has methods
 #  which prints debugging information on STDOUT, killing this CGI.  So here we redirect
@@ -56,6 +57,7 @@ def main():
     form = cgi.FieldStorage()
     share_uid = form.getvalue('share_uid')
     session_id = form.getvalue('session_id')
+    dataset_format = form.getvalue('dataset_format')
 
     user = geardb.get_user_from_session_id(session_id)
     if user is None:
@@ -64,7 +66,6 @@ def main():
 
     # values are mex_3tab, excel, rdata, h5ad
     dataset_formats = ['mex_3tab', 'excel', 'rdata', 'h5ad']
-    dataset_format = form.getvalue('dataset_format')
     dataset_upload_dir = os.path.join(user_upload_file_base, session_id, share_uid)
 
     # quickly write the status so the page doesn't error out
@@ -117,8 +118,10 @@ def main():
     # new child command
     if dataset_format == 'mex_3tab':
         process_mex_3tab(dataset_upload_dir)
-
-        
+    elif dataset_format == 'excel':
+        process_excel(dataset_upload_dir)
+    else:
+        raise Exception('Unsupported dataset format')
 
 
 def print_and_go(status_file, content):
@@ -139,10 +142,7 @@ def process_3tab(upload_dir):
     obs = None
     var = None
 
-    status['status'] = 'processing'
-    status['message'] = 'Initializing dataset processing.'
-    with open(os.path.join(upload_dir, 'status.json'), 'w') as f:
-        f.write(json.dumps(status))
+    write_status(upload_dir, 'processing', 'Initializing dataset processing.')
 
     for infile in os.listdir(upload_dir):
         # skip any files beginning with a dot
@@ -194,11 +194,94 @@ def process_3tab(upload_dir):
     h5ad_path = os.path.join(upload_dir, f"{share_uid}.h5ad")
     adata.write(h5ad_path)
 
-    status['status'] = 'complete'
-    status['message'] = 'Dataset processed successfully.'
-    with open(os.path.join(upload_dir, 'status.json'), 'w') as f:
-        f.write(json.dumps(status))
+    write_status(upload_dir, 'complete', 'Dataset processed successfully.')
     
+def process_excel(upload_dir):
+    filepath = os.path.join(upload_dir, f"{share_uid}.xlsx")
+
+    write_status(upload_dir, 'processing', 'Initializing dataset processing.')
+
+    exp_df = pd.read_excel(filepath, sheet_name='expression', index_col=0).transpose()
+
+    try:
+        X = exp_df.values[:, 0:].astype(float)
+    except:
+        write_status(upload_dir, 'error', "Encountered unexpected value type. Expected float type in expression matrix.")
+        return 
+    
+    # Get counts of genes and observations
+    number_obs_from_exp, number_genes_from_exp = X.shape
+
+    # Get the observations
+    try:
+        obs_df = pd.read_excel(filepath, sheet_name='observations', index_col='observations')
+    except:
+        write_status(upload_dir, 'error', "No observations sheet found. Expected spreadsheet sheet named 'observations'.")
+        return
+
+    # Verify number observations equal those found in expression sheet
+    number_obs, number_cond = obs_df.shape
+    if number_obs != number_obs_from_exp:
+        write_status(upload_dir, 'error', "Observations sheet error. Row count ({0}) in 'observations' sheet must match row count of 'expression' sheet({1}).".format(number_obs, number_obs_from_exp))
+        return
+    
+    # Verify observations index matches expression sheet col index
+    if not obs_df.index.equals(exp_df.index):
+        write_status(upload_dir, 'error', "Observations sheet error. The names and order of the index column in 'observations' sheet must match the rows of 'expression' sheet.")
+        return
+    
+    # Get the genes (if present), else use the .var from exp_df
+    try:
+        genes_df = pd.read_excel(filepath, sheet_name='genes', index_col=0, converters={'gene_symbol': str})
+    except:
+        # With 'genes' sheet absent try to get the genes from 'expression'
+        try:
+            # read expression sheet. Set genes as the index and only parse 1 column
+            genes_df = pd.read_excel(filepath, sheet_name='expression', index_col=0, usecols=[0,1])
+
+            # remove the 1 parsed column. This leaves an empty dataframe
+            # with an index of gene ids to match other datasets.
+            genes_df = genes_df.drop(genes_df.columns[0], axis=1)
+        except Exception as err:
+            write_status(upload_dir, 'error', "No 'genes' sheet found. Tried using genes column from 'expression' sheet as .var, but " + str(err))
+            return
+        
+    # Check for numeric gene symbols
+    if 'gene_symbol' in genes_df.columns:
+        digit_count = genes_df['gene_symbol'].str.isnumeric().sum()
+        if digit_count > 0:
+            write_status(upload_dir, 'error', "Genes sheet error. {0} gene symbols are listed as numbers, not gene symbols".format(str(digit_count)))
+            return
+    else:
+        write_status(upload_dir, 'error', "Failed to find gene_symbol column in genes tab")
+        return
+
+    for str_type in ['cell_type', 'condition', 'time_point', 'time_unit']:
+        if str_type in obs_df.columns:
+            obs_df[str_type] = pd.Categorical(obs_df[str_type])
+
+    for num_type in ['replicate', 'time_point_order']:
+        if num_type in obs_df.columns:
+            obs_df[num_type] = pd.to_numeric(obs_df[num_type])
+            
+    # Verify number genes equal those found in expression sheet
+    number_genes, number_columns = genes_df.shape
+    if number_genes != number_genes_from_exp:
+        write_status(upload_dir, 'error', "Genes sheet error. Row count ({0}) in 'genes' sheet must match row count of 'expression' sheet({1}).".format(number_genes, number_genes_from_exp))
+        return
+
+    # Verify genes index matches expression sheet columns
+    if not genes_df.index.equals(exp_df.columns):
+        write_status(upload_dir, 'error', "Genes sheet error. The names and order of the index column in 'genes' sheet must match the rows of 'expression' sheet.")
+        return
+
+    # Create AnnData object and return it
+    adata = anndata.AnnData(X=X, obs=obs_df, var=genes_df)    
+
+    h5ad_path = os.path.join(upload_dir, f"{share_uid}.h5ad")
+    adata.write(h5ad_path)
+
+    write_status(upload_dir, 'complete', 'Dataset processed successfully.')
 
 def process_mex(upload_dir):
     pass
@@ -234,16 +317,19 @@ def process_mex_3tab(upload_dir):
     dataset_type = tarball_content_type(files_extracted)
 
     if dataset_type is None:
-        status['status'] = 'error'
-        status['message'] = "Unsupported dataset format. Couldn't tell type from file names within the tarball"
-        with open(os.path.join(upload_dir, 'status.json'), 'w') as f:
-            f.write(json.dumps(status))
+        write_status(upload_dir, 'error', "Unsupported dataset format. Couldn't tell type from file names within the tarball")
 
     # Call the appropriate function
     if dataset_type == 'threetab':
         process_3tab(upload_dir)
     elif dataset_type == 'mex':
         process_mex(upload_dir)
+
+def write_status(upload_dir, status_name, message):
+    status['status'] = status_name
+    status['message'] = message
+    with open(os.path.join(upload_dir, 'status.json'), 'w') as f:
+        f.write(json.dumps(status))
 
 def tarball_content_type(filenames):
         """

@@ -82,6 +82,14 @@ def main():
                 if processing_status == 'processing':
                     result['uploads'][-1]['status'] = 'processing'
                     result['uploads'][-1]['load_step'] = 'process-dataset'
+
+                    # Check if the process is still running
+                    process_id = status_json.get('process_id', -1)
+                    if process_id > 0:
+                        # TODO: check that the process is the correct name too
+                        if os.system(f'ps -p {process_id} > /dev/null') != 0:
+                            result['uploads'][-1]['status'] = 'error'
+
                 elif processing_status == 'complete':
                     result['uploads'][-1]['status'] = 'processed'
                     result['uploads'][-1]['load_step'] = 'finalize-dataset'

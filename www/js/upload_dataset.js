@@ -196,11 +196,26 @@ const checkDatasetProcessingStatus = async () => {
     }
 }
 
+const deleteUploadInProgress = async (share_uid, dataset_id) => {
+    const {data} = await axios.post('./cgi/delete_upload_in_progress.cgi', convertToFormData({
+        share_uid: share_uid,
+        dataset_id: dataset_id,
+        session_id: CURRENT_USER.session_id
+    }));
+
+    if (data.success) {
+        loadUploadsInProgress();
+    } else {
+        createToast('Error deleting upload in progress', data.message, 'is-warning');
+    }
+}
+
 const finalizeUpload = async () => {
     let formData = new FormData();
     formData.append('share_uid', share_uid);
     formData.append('session_id', CURRENT_USER.session_id);
     formData.append('dataset_uid', dataset_uid);
+    formData.append('dataset_format', dataset_format);
 
     const dataset_visibility = document.querySelector('input[name=dataset-visibility]:checked').value;
     formData.append('dataset_visibility', dataset_visibility);
@@ -221,6 +236,14 @@ const finalizeUpload = async () => {
     } else {
         document.getElementById('finalize-migrating-h5ad').classList.remove('mdi-checkbox-blank-outline');
         document.getElementById('finalize-migrating-h5ad').classList.add('mdi-skull-scan');
+    }
+
+    if (data['userdata_migrated']) {
+        document.getElementById('finalize-migrating-userdata').classList.remove('mdi-checkbox-blank-outline');
+        document.getElementById('finalize-migrating-userdata').classList.add('mdi-checkbox-marked');
+    } else {
+        document.getElementById('finalize-migrating-userdata').classList.remove('mdi-checkbox-blank-outline');
+        document.getElementById('finalize-migrating-userdata').classList.add('mdi-skull-scan');
     }
 
     if (data.success) {
@@ -396,8 +419,11 @@ const loadUploadsInProgress = async () => {
             });
 
             // Add click listeners for submissions-in-progress-table-tbody rows we just added
-            document.querySelectorAll('.submission-history-row').forEach((row) => {
+            // First, the resume button
+            document.querySelectorAll('.submission-history-row .submission-resume').forEach((row) => {
                 row.addEventListener('click', (event) => {
+                    let row = event.target.closest('tr');
+
                     share_uid = row.dataset.shareId;
                     const step = row.dataset.loadStep;
 
@@ -411,6 +437,18 @@ const loadUploadsInProgress = async () => {
 
                     document.getElementById('submissions-in-progress').classList.add('is-hidden');
                     document.getElementById('submission-c').classList.remove('is-hidden');
+                });
+            });
+
+            // Now the delete button
+            document.querySelectorAll('.submission-history-row .submission-delete').forEach((row) => {
+                row.addEventListener('click', (event) => {
+                    // reset row to be the parent tr element
+                    let row = event.target.closest('tr');
+                        
+                    share_uid = row.dataset.shareId;
+                    const dataset_id = row.dataset.datasetId;
+                    deleteUploadInProgress(share_uid, dataset_id);
                 });
             });
 
