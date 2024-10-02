@@ -1474,6 +1474,7 @@ class DatasetTile {
         const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
         if (!this.isZoomed) {
             plotConfig.grid_spec = tileElement.style.gridArea   // add grid spec to plot config
+            if (plotConfig.grid_spec === "auto") delete plotConfig.grid_spec;   // single dataset grid spec
         }
 
         const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
@@ -1532,6 +1533,7 @@ class DatasetTile {
         const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
         if (!this.isZoomed) {
             plotConfig.grid_spec = tileElement.style.gridArea   // add grid spec to plot config
+            if (plotConfig.grid_spec === "auto") delete plotConfig.grid_spec;   // single dataset grid spec
         }
 
         const data = await apiCallsMixin.fetchTsneImage(datasetId, analysisObj, plotType, plotConfig);
