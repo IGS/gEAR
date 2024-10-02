@@ -41,11 +41,18 @@ def main():
     if not image_path.startswith(ana_directory):
         raise Exception("Invalid filename: {}".format(image_path))
 
-    with open(image_path, 'rb') as f:
-        print("Content-Type: image/png\n")
-        sys.stdout.flush() # <---
-        sys.stdout.buffer.write(f.read())
-
+    try:
+        with open(image_path, 'rb') as f:
+            print("Content-Type: image/png\n")
+            sys.stdout.flush() # <---
+            sys.stdout.buffer.write(f.read())
+    except FileNotFoundError as e:
+        print(str(e), file=sys.stderr)
+        # ensure a 404 response
+        print("Status: 404 Not Found\n")
+        print("Content-Type: text/plain\n")
+        print("File not found: {0}".format(image_path))
+        print("Error: {0}".format(e))
 
 if __name__ == '__main__':
     main()

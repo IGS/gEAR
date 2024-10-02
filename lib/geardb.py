@@ -613,7 +613,10 @@ class Analysis:
 
     def __repr__(self):
         pipeline_file = self.settings_path()
-        return open(pipeline_file).read()
+        json_data = json.loads(open(pipeline_file).read())
+        # change "user_session_id" to "session_id" for consistency
+        json_data['session_id'] = json_data.pop('user_session_id')
+        return json.dumps(json_data, indent=4)
 
     def _serialize_json(self):
         # Called when json modules attempts to serialize
@@ -1979,10 +1982,13 @@ class Dataset:
             ## File is under datasets/${id}.h5ad
             h5ad_file_path = self.get_file_path(session_id=session_id)
 
-            import scanpy as sc
-            sc.settings.verbosity = 0
-            adata = sc.read_h5ad(h5ad_file_path)
+            from shadows import AnnDataShadow
+            adata = AnnDataShadow(h5ad_file_path)
+
             (n_obs, n_vars) = adata.shape
+
+            adata.close()
+
             if tuple_only:
                 return (n_obs, n_vars)
 

@@ -489,14 +489,18 @@ const analysisSelectUpdate = async () => {
  * @returns {Promise<void>} - A promise that resolves when the analysis is chosen and the UI is updated.
  */
 const chooseAnalysis = async () => {
-    const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
-    const analysisId = analysisValue || null;
-    const analysisText = (analysisId?.length) ? analysisId : "Primary Analysis";
+    const analysisId = getAnalysisId()
+    const analysisText = analysisSelect.selectedOptions.length ? analysisSelect.selectedOptions[0].data.text : "Primary Analysis";
 
     // Display current selected analysis
     document.getElementById("current-analysis").textContent = analysisText;
     document.getElementById("current-analysis-post").textContent = analysisText;
 
+    // User may have chosen a new analysis with plot options
+    document.getElementById("plot-type-select").disabled = false;
+
+    // Clear plot type options so user is forced to choose a new plot type instead of using a potentially incompatible one
+    plotTypeSelect.clear();
 
     // NOTE: For now, we can just pass analysis id only to tSNE and be fine
     // Any private dataset will belong to our user. Any public datasets can be found by the API "get_analysis" code.
@@ -511,9 +515,6 @@ const chooseAnalysis = async () => {
             plotTypeSelectUpdate(analysisId)
             , updateDatasetGenes(analysisId)
         ]);
-
-        // Create facet widget
-        facetWidget = await createFacetWidget(datasetId, analysisId, {});
     }
 }
 
@@ -585,7 +586,9 @@ const choosePlotType = async () => {
     document.getElementById("current-plot-type").textContent = plotType;
 
     // Create facet widget, which will refresh filters
-    facetWidget = await createFacetWidget(datasetId, null, {});
+
+    const analysisId = getAnalysisId();
+    facetWidget = await createFacetWidget(datasetId, analysisId, {});
     document.getElementById("facet-content").classList.remove("is-hidden");
     document.getElementById("selected-facets").classList.remove("is-hidden");
 
@@ -645,14 +648,15 @@ const cloneDisplay = async (event, display, scope="owner") => {
         // NOTE: Analysis will not be chosen if the user cannot access it (i.e. owner curation, private analysis)
     }
 
-    // plot types
+    // Set up plot types
 
     // Read clone config to populate analysis, plot type, gnee and plot-specific options
     let plotType = display.plot_type;
     plotType = curatorSpecificPlotTypeAdjustments(plotType);
 
+    // TODO: unify with plotTypeSelectUpdate code
     try {
-        const availablePlotTypes = await curatorApiCallsMixin.fetchAvailablePlotTypes(datasetId, undefined, isMultigene);
+        const availablePlotTypes = await curatorApiCallsMixin.fetchAvailablePlotTypes(datasetId, analysisObj?.id, isMultigene);
         for (const plotType in availablePlotTypes) {
             const isAllowed = availablePlotTypes[plotType];
             setPlotTypeDisabledState(plotType, isAllowed);
@@ -663,12 +667,12 @@ const cloneDisplay = async (event, display, scope="owner") => {
         await choosePlotType();
         // In this step, a PlotStyle object is instantiated onto "plotStyle", and we will use that
     } catch (error) {
-        console.error(error);
         document.getElementById("plot-type-s-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-select-c-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-s-success").classList.add("is-hidden");
         document.getElementById("plot-type-select-c-success").classList.add("is-hidden");
-
+        document.getElementById("plot-type-select").disabled = true;
+        plotTypeSelect.update();
         return;
     } finally {
         cloneElt.classList.remove("is-loading");
@@ -866,6 +870,16 @@ const disableCheckboxLabel = (checkboxElt, state) => {
             checkboxElt.parentElement.removeAttribute("disabled");
         }
     }
+}
+
+/**
+ * Retrieves the analysis ID from the selected options.
+ *
+ * @returns {string|null} The analysis ID, or null if no analysis is selected.
+ */
+const getAnalysisId = () => {
+    const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
+    return analysisValue || null;
 }
 
 /**
@@ -1109,12 +1123,14 @@ const plotTypeSelectUpdate = async (analysisId=null) => {
 
         // set plot type to first option
         setSelectBoxByValue("plot-type-select", "nope");
-        plotTypeSelect.update();
     } catch (error) {
         document.getElementById("plot-type-s-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-select-c-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-s-success").classList.add("is-hidden");
-        document.getElementById("plot-type-select-c-success").classList.add("is-hidden");;
+        document.getElementById("plot-type-select-c-success").classList.add("is-hidden");
+        document.getElementById("plot-type-select").disabled = true;
+    } finally {
+        plotTypeSelect.update();
     }
 }
 

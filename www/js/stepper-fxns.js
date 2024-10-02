@@ -34,9 +34,9 @@
  * @param {string} selectorHref - The href of the step to be blocked.
  */
 const blockStepWithHref = (selectorHref) => {
-    document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}']`).parentElement.classList.remove("is-dashed", "is-active");
+    document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}']`).parentElement.classList.remove("is-dashed", "is-active", "is-light");
     document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}']`).classList.add("is-dark");
-    document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}'] i`).classList.remove("mdi-check");
+    document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}'] i`).classList.remove("mdi-check", "mdi-pencil");
     document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}'] i`).classList.add("mdi-lock");
 }
 
@@ -45,9 +45,9 @@ const blockStepWithHref = (selectorHref) => {
  * @param {string} selector - The CSS selector of the step element.
  */
 const blockStep = (selector) => {
-    document.querySelector(`.steps:not(.is-hidden) ${selector}`).parentElement.classList.remove("is-dashed", "is-active");
+    document.querySelector(`.steps:not(.is-hidden) ${selector}`).parentElement.classList.remove("is-dashed", "is-active", "is-light");
     document.querySelector(`.steps:not(.is-hidden) ${selector}`).classList.add("is-dark");
-    document.querySelector(`.steps:not(.is-hidden) ${selector} i`).classList.remove("mdi-check");
+    document.querySelector(`.steps:not(.is-hidden) ${selector} i`).classList.remove("mdi-check", "mdi-pencil");
     document.querySelector(`.steps:not(.is-hidden) ${selector} i`).classList.add("mdi-lock");
 }
 

@@ -1100,8 +1100,7 @@ const renderColorPicker = (seriesName) => {
  * @returns {Promise<void>} A promise that resolves when the options are set up.
  */
 const setupPlotlyOptions = async () => {
-    const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
-    const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
+    const analysisId = getAnalysisId();
     const plotType = getSelect2Value(plotTypeSelect);
     try {
         ({obs_columns: allColumns, obs_levels: levels} = await curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
@@ -1119,7 +1118,7 @@ const setupPlotlyOptions = async () => {
 
     if (!allColumns.length) {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
-        createToast("No metadata columns found in dataset. Cannot create a plot. Please choose another dataset");
+        createToast("No metadata columns found in dataset. Cannot create a plot. Please choose another analysis or choose another dataset.");
         return;
     }
 
@@ -1358,8 +1357,7 @@ const setupPlotlyOptions = async () => {
  * @returns {Promise<void>} A promise that resolves when the setup is complete.
  */
 const setupScanpyOptions = async () => {
-    const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
-    const analysisId = (analysisValue && analysisValue > 0) ? analysisValue : null;
+    const analysisId = getAnalysisId();
     const plotType = getSelect2Value(plotTypeSelect);
     try {
         ({obs_columns: allColumns, obs_levels: levels} = await curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
@@ -1378,7 +1376,7 @@ const setupScanpyOptions = async () => {
 
     if (!allColumns.length) {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
-        createToast("No metadata columns found in dataset. Cannot create a plot. Please choose another dataset");
+        createToast("No metadata columns found in dataset. Cannot create a plot. Please choose another analysis or choose another dataset.");
         return;
     }
 

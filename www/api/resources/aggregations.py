@@ -3,6 +3,7 @@ from flask_restful import Resource
 import os
 import geardb
 
+from .common import get_adata_shadow
 
 class Aggregations(Resource):
     """Resource for retrieving observation aggregations for a dataset and applied categorial observations filters
@@ -41,25 +42,13 @@ class Aggregations(Resource):
         ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
         h5_path = ds.get_file_path()
 
-        # Import here so that Flask-RESTful does not import it with every API call.
-        import scanpy as sc
-
-        # Have a public dataset or user_saved dataset
-        if analysis_id:
-            user = geardb.get_user_from_session_id(session_id)
-
-            ana = geardb.Analysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
-            ana.discover_type()
-
-        else:
-            # Dataset is primary type
-            if not os.path.exists(h5_path):
-                # Let's not fail if the file isn't there
-                return {
-                    "success": -1,
-                    'message': "No h5 file found for this dataset"
-                }
-            adata = sc.read_h5ad(h5_path)
+        try:
+            adata = get_adata_shadow(analysis_id, dataset_id, session_id, h5_path)
+        except FileNotFoundError:
+            return {
+                "success": -1,
+                'message': "No h5 file found for this dataset"
+            }
 
         columns = adata.obs.columns.tolist()
 

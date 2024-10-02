@@ -1,14 +1,24 @@
 #!/opt/bin/python3
 
 """
-At this point we should have a directory with a JSON file with metadata, a tarball
-uploaded by the user, and a status.json file.
+At this point we should have a directory with at least the following:
+
+- JSON file with metadata
+- An H5AD file ready to go
+- A status.json file
+
+Then, depending on the upload format, we also should have
+
+- If 3tab:
+    - A tarball uploaded by the user
+- If Excel:
+    - An Excel file uploaded by the user
 
 This script does the following:
 
 - Loads the JSON metadata file and stores it in MySQL
 - Migrates the H5AD file to the proper directory
-- Migrates the original tarball so it can be downloaded by users
+- Migrates the original uploaded file so it can be downloaded by users
 
 Returns a status of these steps as JSON data like this:
 
@@ -17,7 +27,7 @@ result = {
     "success": 1,
     "metadata_loaded": 1,
     "h5ad_migrated": 1,
-    "tarball_migrated": 1,
+    "userdata_migrated": 1,    
     "message": "All steps completed successfully."
 }
 """
@@ -40,7 +50,7 @@ result = {
     "success": 0,
     "metadata_loaded": 0,
     "h5ad_migrated": 0,
-    "tarball_migrated": 0,
+    "userdata_migrated": 0,
     "message": ""
 }
 
@@ -51,6 +61,7 @@ def main():
     share_uid = form.getvalue('share_uid')
     session_id = form.getvalue('session_id')
     dataset_id = form.getvalue('dataset_uid')
+    dataset_format = form.getvalue('dataset_format')
     dataset_visibility = form.getvalue('dataset_visibility')
 
     if dataset_visibility == 'private':
@@ -89,7 +100,7 @@ def main():
     # Load the metadata into the database
     metadata = Metadata(file_path=metadata_file)
     try:
-        metadata.save_to_mysql(status='complete', is_public=is_public)
+        metadata.save_to_mysql(status='completed', is_public=is_public)
         result['metadata_loaded'] = 1
     except Exception as e:
         result['message'] = 'Error saving metadata to MySQL: {}'.format(str(e))
@@ -112,17 +123,30 @@ def main():
         print(json.dumps(result))
         sys.exit(0)
     
-    # migrate the tarball
-    tarball_file = os.path.join(dataset_upload_dir, f'{share_uid}.tar.gz')
-    tarball_dest = os.path.join(dataset_final_dir, f'{dataset_id}.tar.gz')
+    if dataset_format == '3tab' or dataset_format == 'mex':
+        # migrate the tarball
+        tarball_file = os.path.join(dataset_upload_dir, f'{share_uid}.tar.gz')
+        tarball_dest = os.path.join(dataset_final_dir, f'{dataset_id}.tar.gz')
 
-    try:
-        os.rename(tarball_file, tarball_dest)
-        result['tarball_migrated'] = 1
-    except Exception as e:
-        result['message'] = 'Error migrating tarball file: {}'.format(str(e))
-        print(json.dumps(result))
-        sys.exit(0)
+        try:
+            os.rename(tarball_file, tarball_dest)
+            result['userdata_migrated'] = 1
+        except Exception as e:
+            result['message'] = 'Error migrating tarball file: {}'.format(str(e))
+            print(json.dumps(result))
+            sys.exit(0)
+    elif dataset_format == 'excel':
+        # migrate the Excel file
+        excel_file = os.path.join(dataset_upload_dir, f'{share_uid}.xlsx')
+        excel_dest = os.path.join(dataset_final_dir, f'{dataset_id}.xlsx')
+
+        try:
+            os.rename(excel_file, excel_dest)
+            result['userdata_migrated'] = 1
+        except Exception as e:
+            result['message'] = 'Error migrating Excel file: {}'.format(str(e))
+            print(json.dumps(result))
+            sys.exit(0)
 
     # if we made it this far, all is well, so return success
     result['success'] = 1

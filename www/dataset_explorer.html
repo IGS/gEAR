@@ -96,7 +96,7 @@
                                     </div>
 
                                     <div class="js-trigger-dataset-search field mt-1">
-                                        <p class="label is-size-7">Show only selected collection datasets.</p>
+                                        <p class="label is-size-7">Show only datasets from this collection.</p>
                                         <!-- toggle switch --->
                                         <input id="filter-only-in-collection" type="checkbox" class="switch is-small is-primary"/>
                                         <label for="filter-only-in-collection" class="is-size-7">No</label>
@@ -273,6 +273,7 @@
                             <table id="results-table" class="table is-narrow is-striped is-fullwidth">
                                 <thead>
                                     <tr>
+                                        <th></th>
                                         <th>Title</th>
                                         <th>Visibility</th>
                                         <th>Organism</th>
@@ -284,6 +285,11 @@
                                 <tbody>
                                     <template id="results-table-view">
                                         <tr>
+                                            <td class="js-table-view-displays">
+                                                <button class="button is-small is-dark js-view-displays" data-tooltip-content="View, add or remove displays from current collection">
+                                                    <span class="icon"><i class="mdi mdi-24px mdi-plus-minus-variant"></i></span>
+                                                </button>
+                                            </td>
                                             <td class="js-display-title"></td>
                                             <td class="js-display-visibility"></td>
                                             <td class="js-display-organism"></td>

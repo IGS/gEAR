@@ -1818,6 +1818,7 @@ const processSearchResults = (data) => {
 
         // Set properties for multiple elements
         // TODO: Truncate titles with tooltip for full title
+        setElementProperties(tableResultsView, ".js-view-displays", { dataset: { datasetId, title: label, isPublic } });
         setElementProperties(tableResultsView, ".js-display-title", { id: `${resultDatasetId}-table-title`, textContent: label });
         setElementProperties(tableResultsView, ".js-display-visibility", { id: `${resultDatasetId}-table-visibility` });
         setElementProperties(tableResultsView, ".js-display-organism", { id: `${resultDatasetId}-table-organism`, textContent: organism });
@@ -1989,13 +1990,20 @@ const processSearchResults = (data) => {
     for (const classElt of actionGroupElt.querySelectorAll("[data-tooltip-content]")) {
         tooltips.push(createActionTooltips(classElt))
     }
+    const tableDisplayGroupElt = document.querySelector(".js-table-view-displays");
+    const tableDisplayGroupTooltip = createActionTooltips(tableDisplayGroupElt.querySelector("[data-tooltip-content]"))
 
     // Then apply each tooltip to the appropriate element for all elements with the data-tooltip-content attribute
 
-    for (const actionElt of document.querySelectorAll(".js-action-links")) {
+    for (const actionElt of document.getElementsByClassName("js-action-links")) {
         const loopTooltips = [...tooltips];
         for (const classElt of actionElt.querySelectorAll("[data-tooltip-content]")) {
             applyTooltip(classElt, loopTooltips.shift());
+        }
+    }
+    for (const actionElt of document.getElementsByClassName("js-table-view-displays")) {
+        for (const classElt of actionElt.querySelectorAll("[data-tooltip-content]")) {
+            applyTooltip(classElt, tableDisplayGroupTooltip);
         }
     }
 
@@ -2004,6 +2012,23 @@ const processSearchResults = (data) => {
     for (const classElt of viewBtns) {
         applyTooltip(classElt, createActionTooltips(classElt), "bottom");
     }
+
+    // Normally this is done in the datasetCollectionCallback but we also need it when searching
+    // to ensure the table-view button is shown/hid when filters are applied
+    let collection = null;
+    try {
+        collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
+    } catch (error) {
+        // pass
+    }
+    const viewDisplayButtons = document.getElementsByClassName("js-view-displays");
+    for (const classElt of viewDisplayButtons) {
+        disableAndHideElement(classElt);
+        if (collection?.is_owner) {
+            enableAndShowElement(classElt);
+        }
+    }
+
 
     // Hide/Remove some buttons if user is not owner
     updateDatasetListButtons();
@@ -2762,21 +2787,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     await updateDatasetCollections();
     initializeDatasetCollectionSelection();
     document.getElementById("dropdown-dc").classList.remove("is-right");    // Cannot see the dropdown if it is right aligned
-
-    // Normally this is done in the datasetCollectionCallback but we need to wait for the search to complete.
-    let collection = null;
-    try {
-        collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
-    } catch (error) {
-        // pass
-    }
-    const viewDisplayButtons = document.getElementsByClassName("js-view-displays");
-    for (const classElt of viewDisplayButtons) {
-        disableAndHideElement(classElt);
-        if (collection?.is_owner) {
-            enableAndShowElement(classElt);
-        }
-    }
 
     // Settings for selected facets
     for (const elt of document.querySelectorAll("ul.js-expandable-target li")) {
