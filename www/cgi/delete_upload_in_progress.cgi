@@ -8,6 +8,7 @@ import cgi
 import json
 import os, sys
 import shutil
+import re
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
@@ -36,6 +37,12 @@ def main():
         return
     
     user_upload_file_path = os.path.join(user_upload_file_base, session_id, share_uid)
+
+    # Make sure the final directory looks like a share_uid (8 alphanumeric characters)
+    if not re.match(r'^[a-zA-Z0-9]{8}$', share_uid):
+        result['message'] = 'Invalid share_uid: ' + share_uid
+        print(json.dumps(result))
+        return
 
     if not os.path.exists(user_upload_file_path):
         result['message'] = 'Upload directory not found: ' + user_upload_file_path
