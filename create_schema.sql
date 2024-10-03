@@ -1,49 +1,3 @@
-/* https://docs.python.org/3.4/library/http.cookies.html */
-CREATE TABLE guser (
-       id             INT PRIMARY KEY AUTO_INCREMENT,
-       user_name      VARCHAR(255),
-       email          VARCHAR(255),
-       institution    VARCHAR(255),
-       pass           VARCHAR(50),
-       colorblind_mode TINYINT(1) DEFAULT 0,
-       updates_wanted TINYINT(1),
-       is_admin       TINYINT(1) DEFAULT 0,
-       help_id        VARCHAR(50),
-       date_created   DATETIME DEFAULT CURRENT_TIMESTAMP,
-       is_gear_curator TINYINT(1) DEFAULT 0
-) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
-
-/* password is a hashlib md5 hexdigest */
-INSERT INTO guser (id, user_name, email, institution, pass, updates_wanted, is_admin)
-       VALUES (0, 'gEAR admin', 'admin@localhost', 'UMaryland', 'fcdf1dc2c1ef7dec3dbb1a6e2c5e3c8a', 0, 1);
-INSERT INTO guser (email, user_name, institution, pass, updates_wanted, is_admin)
-       VALUES('jorvis@gmail.com', 'Joshua Orvis', 'IGS', 'e81e78d854d86edc38ba45c443662aee', 0, 1);
-
-/* Group is a reserved word, so we get gEAR Group (ggroup) */
-CREATE TABLE ggroup (
-       id             INT PRIMARY KEY AUTO_INCREMENT,
-       creator_id     INT NOT NULL,
-       label          VARCHAR(255) NOT NULL,
-       FOREIGN KEY (creator_id) REFERENCES guser(id) ON DELETE CASCADE
-) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
-
-CREATE TABLE user_group_membership (
-       id             INT PRIMARY KEY AUTO_INCREMENT,
-       user_id        INT NOT NULL,
-       group_id       INT NOT NULL,
-       FOREIGN KEY (user_id) REFERENCES guser(id) ON DELETE CASCADE,
-       FOREIGN KEY (group_id) REFERENCES ggroup(id) ON DELETE CASCADE
-) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
-
-CREATE TABLE user_session (
-       id             INT PRIMARY KEY AUTO_INCREMENT,
-       user_id        INT,
-       session_id     VARCHAR(255),
-       FOREIGN KEY (user_id)
-          REFERENCES guser(id)
-          ON DELETE CASCADE
-) ENGINE=INNODB DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
-
 CREATE TABLE organism (
        id             INT PRIMARY KEY AUTO_INCREMENT,
        label          VARCHAR(255) NOT NULL,
@@ -530,7 +484,7 @@ CREATE TABLE user_history (
     url             VARCHAR(255) NOT NULL,
     FOREIGN KEY (user_id)
      REFERENCES guser(id)
-) ENGINE=InnoDB
+) ENGINE=InnoDB;
 
 /* Restrictd datasets can only be accessed by users in a specific group */
 /* NOTE: Not inserting at this time, as I am currently using "dataset_shares"
