@@ -123,9 +123,3 @@ ul#go-terms li {
     height:100vh;
     overflow-y: auto;   /* scroll if too long */
 }
-
-#share_confirm {
-  font-size: 90%;
-  font-weight: bold;
-  display: none;
-}
