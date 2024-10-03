@@ -1,3 +1,6 @@
+/* Import any external, global CSS files here */
+@import url("https://cdn.jsdelivr.net/npm/@creativebulma/bulma-tooltip@1.2.0/dist/bulma-tooltip.min.css");
+
 /* -------------------- */
 /* -= General layout =- */
 
@@ -5,33 +8,72 @@ html, body {
     height: 100vh;
 }
 
-#main_layout_c {
-    height: 100vh;
+/* Get rid of underlines on the tooltip elements */
+[data-tooltip] {
+    border-bottom-width: 0 !important;
+}
+
+.columns {
+    /* Without this, the entire page has a gap at the bottom.  Discussed here:
+         https://stackoverflow.com/questions/55568335/100vh-flex-item-is-not-full-height
+    */
+    margin-top: 0 !important;
+}
+
+.is-disabled {
+    pointer-events: none;
+    opacity: 0.50;
 }
 
 /* ---------------- */
 /* -= Typography =- */
 
 
-
 /* -------------------- */
 /* -= Header section =- */
 
-#header_bar {
+#header-bar {
     border-bottom: 1px solid rgb(200, 200, 200);
 }
-/* ------------------ */
-/* -= Other styles =- */
 
-.card-content {
-    font-size: 70%;
+#logo-c:hover {
+    cursor: pointer;
 }
-.card-header-title {
-    font-size: 90%;
+
+#navbar-login input {
+    width: 15em;
 }
-#citation_c {
+
+.navbar-dropdown {
+    width: max-content;
+}
+
+/* -------------------- */
+/* -= Left navbar section =- */
+
+#citation-c {
     max-width: 200px;
 }
+
+#citation-c .card-content {
+    font-size: 70%;
+    background-color: white;
+    color: black;
+    min-height: 20em;
+}
+
+#citation-c .card-header-title {
+    font-size: 90%;
+}
+
+/* CSS class for the hide animation */
+.hidden-sidenavbar {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.3s ease, max-height 0.3s ease;
+}
+
 .menu-list a {
     border-radius: 10px;
     padding: 0.25rem 0.5rem;
@@ -39,8 +81,33 @@ html, body {
     font-size: 90%;
 }
 
+.menu-list li {
+    min-height: 2.5rem;
+}
+
+p.menu-label {
+    min-height: 1.5rem;
+}
+
+/* CSS class for the show animation */
+.shown-sidenavbar {
+    opacity: 1;
+    max-height: 1000px; /* Adjust the maximum height as needed */
+    transition: opacity 0.3s ease, max-height 0.3s ease;
+}
+
+/* ------------------ */
+/* -= Other styles =- */
+
+.js-step {
+    /* Lets user know that the step is clickable */
+    cursor: pointer;
+}
+
 .js-step-collapsable {
     display: none;
+    /* original (arrow) cursor */
+    cursor: initial;
 }
 
 .step-active .js-step-collapsable {
@@ -53,7 +120,7 @@ html, body {
     background-color: lightgrey;
 }
 
-.select.is-success select{
+.select.is-success select, .input.is-success, .textarea.is-success{
     border-color: #539400;  /* overwrite default success for .select */
 }
 
@@ -61,7 +128,7 @@ html, body {
     border-color: #539400; /* overwrite default success for .select */
 }
 
-.select.is-danger select{
+.select.is-danger select, .input.is-danger, .textarea.is-danger{
     border-color: #942400; /* overwrite default success for .select */
 }
 
@@ -70,5 +137,49 @@ html, body {
 }
 
 .js-tree {
-    max-height: 300px;  /* a) addresses long lists and b) addresses https://github.com/mar10/wunderbaum/issues/57 */
+    max-height: 200px;  /* a) addresses long lists and b) addresses https://github.com/mar10/wunderbaum/issues/57 */
 }
+
+/* Toast-style notifications for actual alerts */
+.notification.js-toast {
+    position: fixed;
+    top: 30px;
+    right: 10px;
+    z-index:1001;
+}
+
+/* By default clicking the nice-select2 dropdown search closes it again.  This
+    feels unintuitage.  This CSS fixes that. */
+
+.nice-select .nice-select-search-box {
+    pointer-events: unset;
+}
+
+/* TEMPORARY code to prettify the beta modal */
+div#beta-site-modal .modal-content {
+    padding: 2em;
+    background-color: white;
+    border-radius: 0.5em;
+}
+div#beta-site-modal div.buttons {
+    margin-top: 1.5em;
+
+}
+div#beta-site-modal h2 {
+    font-size: 1.3em;
+    font-weight: bold;
+    margin-bottom: 0.5em;
+    color: #362E5C;
+}
+div#beta-site-modal h3 {
+    color: #362E5C;
+    margin-top: 1.5em;
+    font-size: 1.3em;
+    font-weight: bold;
+}
+
+/* render something unclickable and unhoverable */
+.is-pointer-events-none {
+    pointer-events: none;
+}
+

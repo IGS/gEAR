@@ -17,10 +17,27 @@ import geardb
 def main():
     form = cgi.FieldStorage()
     dataset_id = html.escape(form.getvalue('dataset_id'))
+    analysis_id = html.escape(form.getvalue('analysis_id', ""))
+    session_id = html.escape(form.getvalue('session_id', ""))
     dtype = html.escape(form.getvalue('type'))
     dataset = geardb.Dataset(id=dataset_id)
     tarball_path = dataset.get_tarball_path()
     h5ad_path = dataset.get_file_path()
+
+    # if analysis ID is passed, retrieve the h5ad file for the analysis to download
+    if analysis_id:
+
+        # Need session id to get "user_unsaved" analyses
+        if not session_id:
+          session_id = None
+
+        analysis = geardb.Analysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id)
+        analysis.discover_type()
+        try:
+          h5ad_path = analysis.dataset_path()
+        except Exception as e:
+          print(str(e), file=sys.stderr)
+          h5ad_path = ""
 
     if dtype == 'tarball' and os.path.isfile(tarball_path):
         print("Content-type: application/octet-stream")
@@ -41,22 +58,7 @@ def main():
             copyfileobj(binfile, sys.stdout.buffer)
 
     else:
-        result_error = "Dataset file could not be found. Unable to download data file."
-
-        print("Content-type: text/html")
-        print()
-        print("""
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta http-equiv='refresh' content='5;url=http://gear.igs.umaryland.edu/'>
-          </head>
-          <body>
-            <p>Error: {0}</p>
-            <p>Redirecting... <a href='{1}'>Click here if you are not redirected</a>
-          </body>
-        </html>
-        """.format(result_error, 'http://gear.igs.umaryland.edu'))
+        raise FileNotFoundError("File not found")
 
 if __name__ == '__main__':
     main()

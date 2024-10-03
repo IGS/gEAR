@@ -5,6 +5,7 @@ import dash_bio as dashbio
 import diffxpy.api as de
 import numpy as np
 import pandas as pd
+import anndata as ad
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -539,8 +540,8 @@ def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val,
     de_filter3 = adata.obs[key].isin([control_val])
     selected3 = adata[de_filter3, :]
     # Query needs to be appended onto ref to ensure the test results are not flipped
-    de_selected1 = selected3.concatenate(selected1)
-    de_selected2 = selected3.concatenate(selected2)
+    de_selected1 = ad.concat([selected3, selected1], merge="same")
+    de_selected2 = ad.concat([selected3, selected2], merge="same")
 
     if not is_log10:
         de_selected1.X = de_selected1.X + LOG_COUNT_ADJUSTER
@@ -736,7 +737,7 @@ def create_violin_plot(df, groupby_filters, is_log10=False, colorscale=None, rev
     groupby = ["gene_symbol"]
     groupby.extend(groupby_filters)
     # Create groupings for traces
-    grouped = df.groupby(groupby)
+    grouped = df.groupby(groupby, observed=True)
 
     # Name is a tuple of groupings, or a string if grouped by only 1 dataseries
     # Group is the 'groupby' dataframe
@@ -999,7 +1000,7 @@ def prep_volcano_dataframe(adata, key, query_val, ref_val, de_test_algo="ttest",
         de_filter2 = adata.obs[key].isin([ref_val])
         selected2 = adata[de_filter2, :]
     # Query needs to be appended onto ref to ensure the test results are not flipped
-    de_selected = selected2.concatenate(selected1)
+    de_selected = ad.concat([selected2, selected1], merge="same")
 
     if not is_log10:
         de_selected.X = de_selected.X + LOG_COUNT_ADJUSTER
@@ -1106,8 +1107,8 @@ def create_dataframe_gene_mask(df, gene_symbols):
         gene_filter = df.index.isin(genes_df.index)
 
         # Get list of duplicated genes for the dataset
-        gene_counts_df = df['gene_symbol'].value_counts().to_frame()
-        dup_genes = gene_counts_df.index[gene_counts_df['gene_symbol'] > 1].tolist()
+        gene_counts_df = df['gene_symbol'].value_counts().to_frame("count") # adding name to count ensures compatibility between pandas v1.5 and v2.0+
+        dup_genes = gene_counts_df.index[gene_counts_df["count"] > 1].tolist()
 
         # Note to user which genes were duplicated.
         dup_genes_intersection = intersection(dup_genes, normalized_genes_list)
@@ -1121,31 +1122,23 @@ def create_dataframe_gene_mask(df, gene_symbols):
         genes_not_present = [gene for gene in gene_symbols if gene not in found_genes]
         if genes_not_present:
             success = 2,
-            message_list.append('<li>One or more genes were not found in the dataset: {}</li>'.format(', '.join(genes_not_present)))
+            message_list.append('<li>One or more genes were not found in the dataset nor could be mapped: {}</li>'.format(', '.join(genes_not_present)))
         message = "\n".join(message_list)
         return gene_filter, success, message
     except PlotError as pe:
         raise PlotError(str(pe))
     except Exception as e:
+        # print stack trace
+        import sys
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+
         # Catch non-PlotError stuff
         raise PlotError("There was an issue searching genes in this dataset.")
 
 def create_facet_indexes(groups):
     """Create facet indexes for subplots.  Returns a dict of group names to subplot index number."""
     return {group: idx for idx, group in enumerate(groups, start=1)}
-
-def create_filtered_composite_indexes(filters, composite_indexes):
-    """Create an index based on the 'composite_index' column."""
-    all_vals = [v for k, v in filters.items()]  # List of lists
-
-    # itertools.product returns a combation of every value from every list
-    # Essentially  ((x,y) for x in A for y in B)
-    filter_combinations = product(*all_vals)
-    string_filter_combinations = [";".join(v) for v in filter_combinations]
-
-    # This contains combinations of indexes that may not exist in the dataframe.
-    # Use composite indexes from dataframe to return valid filtered indexes
-    return intersection(string_filter_combinations, composite_indexes)
 
 def create_multicategory_axis_labels(groupby_filters, df):
     """ Creates the multicategory axis labels for a plot."""

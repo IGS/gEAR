@@ -49,7 +49,7 @@ Folder support
   - All other profiles where the user has set layout.is_public=1
   - Can have folders but only admins can create them
 
-All profiles and folders should be nested within these 5 top-level options. 
+All profiles and folders should be nested within these 5 top-level options.
 
 # show all profiles and their labels within a folder
 """
@@ -61,21 +61,40 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 
-from gear.serverconfig import ServerConfig
+def remove_shared_layouts(result):
+    # Collect all share_ids from user, domain, group, and public layouts
+    share_ids_to_remove = set()
+    for layout_type in ['user', 'domain', 'group', 'public']:
+        for layout in result[layout_type + '_layouts']:
+            share_ids_to_remove.add(layout.share_id)
+
+    # Remove shared layouts that have matching share_ids
+    result['shared_layouts'] = [
+        layout for layout in result['shared_layouts']
+        if layout.share_id not in share_ids_to_remove
+    ]
+
 
 def main():
     print('Content-Type: application/json\n\n')
 
     form = cgi.FieldStorage()
-    no_domain = form.getvalue('no_domain')
+    no_domain = form.getvalue('no_domain', 0)
     session_id = form.getvalue('session_id')
     layout_share_id = form.getvalue('layout_share_id')
+    include_members = form.getvalue('include_members', 1)
     user = geardb.get_user_from_session_id(session_id)
 
-    folder_ids_found = set()
-    
     if no_domain:
         no_domain = int(no_domain)
+
+    if include_members:
+        include_members = int(include_members)
+
+    bool_include_members = False
+
+    if include_members == 1:
+       bool_include_members = True
 
     result = { 'user_layouts': [],
                'domain_layouts': [],
@@ -86,46 +105,49 @@ def main():
                'selected': None }
 
     # Everyone can see public ones
-    result['public_layouts'] = geardb.LayoutCollection().get_public()
-    
+    result['public_layouts'] = geardb.LayoutCollection(include_datasets=bool_include_members).get_public()
+
     if not no_domain:
-        result['domain_layouts'] = geardb.LayoutCollection().get_domains()
+        result['domain_layouts'] = geardb.LayoutCollection(include_datasets=bool_include_members).get_domains()
 
     if user:
-        result['user_layouts'] = geardb.LayoutCollection().get_by_user(user)
-        result['group_layouts'] =  geardb.LayoutCollection().get_by_users_groups(user)
+        result['user_layouts'] = geardb.LayoutCollection(include_datasets=bool_include_members).get_by_user(user)
+        result['group_layouts'] =  geardb.LayoutCollection(include_datasets=bool_include_members).get_by_users_groups(user)
 
+    # NOTE: "null" values can happen but will be queried out in the SQL (unless there is a actual "null" share_id)
     if layout_share_id:
-        result['shared_layouts'] = geardb.LayoutCollection().get_by_share_id(layout_share_id)
+        result['shared_layouts'] = geardb.LayoutCollection(include_datasets=bool_include_members).get_by_share_id(layout_share_id)
+        remove_shared_layouts(result)
 
-    ## Selected priority (and indexes folder IDs):
+    ## Selected priority:
     ## - A passed share ID
     ## - User has set a saved profile
     ## - Use the site default
     for ltype in ['user', 'domain', 'group', 'shared', 'public']:
         for l in result[ltype + '_layouts']:
-            if l.folder_id:
-                folder_ids_found.add(l.folder_id)
-            
             if l.share_id == layout_share_id:
-                result['selected'] = l.id
+                result['selected'] = l.share_id
                 break
-    
+
     if not result['selected']:
         for l in result['user_layouts']:
             if l.is_current:
-                result['selected'] = l.id
+                result['selected'] = l.share_id
                 break
 
     if not result['selected']:
         for l in result['domain_layouts']:
             if l.is_current:
-                result['selected'] = l.id
+                result['selected'] = l.share_id
                 break
 
-    result['folders'] = geardb.FolderCollection()
-    result['folders'] = result['folders'].get_tree_by_folder_ids(ids=folder_ids_found,
-                                                                 folder_type='profile')
+    # for each layout, determine if the user is the owner
+    for ltype in ['user', 'domain', 'group', 'shared', 'public']:
+        for l in result[ltype + '_layouts']:
+            l.is_owner = True if user and l.user_id == user.id else False
+            # delete user_id and layout_id from the layout object
+            del l.user_id
+            del l.id
 
     # Doing this so nested objects don't get stringified: https://stackoverflow.com/a/68935297
     print(json.dumps(result, default=lambda o: o.__dict__))

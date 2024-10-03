@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>gEAR gene list manager</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="-1">
+    <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
+
+    <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
+        to be changed for any hosts where gEAR is not at the webserver root.
+    -->
+    <base href="/" />
+
+    <link rel="stylesheet" href="css/gear-theme-purple.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
+
+    <!-- Fancy animation effects -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
+    <!-- Ensures we always get a new version (during our current active development cycles) -->
+    <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
+
+    <!--Page-specific CSS here -->
+    <script>document.write('<link rel="stylesheet" href="css/gene_list_manager.' + (new Date()).getTime() + '.css" />');</script>
+</head>
+<body>
+    <!--[if lt IE 7]>
+        <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+    <![endif]-->
+
+    <div id="main-layout-c" class="columns is-fullheight">
+        <!--#include virtual="/include/primary_nav.html" -->
+        <section id="main-c" class="column pl-0 pt-0">
+            <!--#include virtual="/include/header_bar.html" -->
+            <section id="content-c" class="m-3 container" data-nav-link="manage_genes">
+                <article id="not-logged-in-msg" class="message is-danger is-hidden">
+                    <div class="message-body">
+                        You must be logged in as a user to create new gene lists.
+                    </div>
+                </article>
+
+                <div class="columns">
+                    <div class="column is-fifth">
+                        <!-- Create new gene cart button -->
+                        <div class="field">
+                            <div class="control">
+                                <button id="create-new-gene-list" class="button is-primary is-fullwidth">
+                                    <span class="icon">
+                                        <i class="mdi mdi-plus"></i>
+                                    </span>
+                                    <span>Create new gene list</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- search field -->
+                        <div class="field">
+                            <label class="label">Find gene lists</label>
+                            <div class="control has-icons-right">
+                                <input id="search-terms" class="input" type="text" placeholder="Keyword search">
+                                <span class="icon is-hidden is-right is-clickable" id="search-clear">
+                                    <i class="mdi mdi-close-circle"></i>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- filter options -->
+                        <div class="field">
+                            <div id="controls-ownership" class="js-filter-subsection is-clickable">
+                                <p class="has-text-weight-semibold js-expandable-control">
+                                    <span>Ownership</span>
+                                    <span class="icon is-pulled-right">
+                                        <i class="mdi mdi-minus"></i>
+                                    </span>
+                                </p>
+                                <hr class="my-2 has-background-grey-lighter">
+                                <ul class="js-expandable-target">
+                                    <li class="js-all-selector">All</li>
+                                    <li class="js-selected" data-dbval="yours">Your lists</li>
+                                    <li data-dbval="group">Group-affiliated lists</li>
+                                    <li data-dbval="shared">Lists shared with you</li>
+                                    <li data-dbval="public">Public lists</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <div id="controls-organism" class="js-filter-subsection is-clickable">
+                                <p class="has-text-weight-semibold  js-expandable-control">
+                                    <span>Organism</span>
+                                    <span class="icon is-pulled-right">
+                                        <i class="mdi mdi-minus"></i>
+                                    </span>
+                                </p>
+                                <hr class="my-2 has-background-grey-lighter">
+                                <ul class="js-expandable-target" id="organism-choices">
+                                    <li class="js-all-selector js-selected">All</li>
+                                    <!-- list built by js -->
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <div id="controls-date-added" class="js-filter-subsection is-clickable">
+                                <p class="has-text-weight-semibold  js-expandable-control">
+                                    <span>Date added</span>
+                                    <span class="icon is-pulled-right">
+                                        <i class="mdi mdi-minus"></i>
+                                    </span>
+                                </p>
+                                <hr class="my-2 has-background-grey-lighter">
+                                <ul class="js-expandable-target js-choose-only-one">
+                                    <li class="js-all-selector js-selected">Any time</li>
+                                    <li data-dbval="week">Within last week</li>
+                                    <li data-dbval="month">Within last month</li>
+                                    <li data-dbval="year">Within last year</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="column is-four-fifths">
+
+                        <!-- create list view -->
+                        <section id="create-list-container" class="is-hidden">
+                            <section id="new-list-cards" class="columns">
+                                <div class="card column has-background-light is-flex is-flex-direction-column">
+                                    <header class="card-header">
+                                        <p class="card-header-title has-text-dark js-new-list-header" id="new-list-unweighted-header">
+                                            Unweighted gene list
+                                        </p>
+                                    </header>
+                                    <div class="card-content is-flex-grow-1">
+                                        <div class="content has-text-dark">
+                                            This is a list of gene symbols only, possibly the most common type of gene list.
+                                        </div>
+                                    </div>
+                                    <footer class="card-footer">
+                                        <div class="buttons card-footer-item">
+                                            <button class="button is-primary js-upload-gc-btn" id="btn-gc-paste-unweighted-list">Paste list of genes</button>
+                                            <button class="button is-primary js-upload-gc-btn" id="btn-gc-upload-unweighted-list">Upload file</button>
+                                        </div>
+                                    </footer>
+                                </div>
+
+                                <div class="card column has-background-light is-flex is-flex-direction-column">
+                                    <header class="card-header">
+                                        <p class="card-header-title has-text-dark js-new-list-header" id="new-list-weighted-header">
+                                            Weighted gene list
+                                        </p>
+                                    </header>
+                                    <div class="card-content is-flex-grow-1">
+                                        <div class="content has-text-dark">
+                                            Upload a gene list with associated weights. For example, from a dataset's principal component analysis
+                                        </div>
+                                    </div>
+                                    <footer class="card-footer">
+                                        <div class="buttons card-footer-item">
+                                            <button class="button is-primary js-upload-gc-btn" id="btn-gc-upload-weighted-list">Upload file</button>
+                                        </div>
+                                    </footer>
+                                </div>
+
+                                <div class="card column has-background-light is-flex is-flex-direction-column">
+                                    <header class="card-header">
+                                        <p class="card-header-title has-text-dark js-new-list-header" id="new-list-labeled-header">
+                                            Labeled gene list
+                                        </p>
+                                    </header>
+                                    <div class="card-content is-flex-grow-1">
+                                        <div class="content has-text-dark">
+                                            <p class="is-subtitle has-text-weight-semibold">COMING SOON</p>
+                                            Upload a file containing a list of genes and associated labels. For example, marker genes for cell types
+                                        </div>
+                                    </div>
+                                    <footer class="card-footer">
+                                        <div class="buttons card-footer-item">
+                                            <button class="button is-primary js-upload-gc-btn" id="btn-gc-upload-labeled-list" disabled>Upload file</button>
+                                        </div>
+                                    </footer>
+                                </div>
+                            </section>
+
+                            <!-- New gene cart form -->
+                            <div class="section is-hidden" id="new-list-form-c">
+                                <div class="is-5 title">New gene list information</div>
+                                <input type="hidden" id="new-list-upload-type" name="new-list-upload-type" value="" />
+
+                                <div class="columns">
+                                    <div class="column is-5">
+                                        <div class="field">
+                                            <label class="label" for="new-list-label">Name of list</label>
+                                            <div class="control">
+                                                <input type="text" class="input" id="new-list-label" name="new-list-label" placeholder="" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="column is-4">
+                                    <div class="field">
+                                            <label class="label" for="new-list-organism-id">Organism</label>
+                                            <div class="control">
+                                                <div class="select">
+                                                    <select id="new-list-organism-id" name="new-list-organism-id"></select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="column is-3">
+                                        <div class="field">
+                                            <p class="label">Visibility</p>
+                                            <!-- toggle switch --->
+                                            <input type="checkbox" class="switch is-primary" name="new-list-visibility" id="new-list-visibility"/>
+                                            <label for="new-list-visibility"></label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="field">
+                                    <label class="label" for="new-list-ldesc">Longer description</label>
+                                    <div class="control">
+                                        <textarea class="textarea" id="new-list-ldesc" name="new-list-ldesc" rows="3"></textarea>
+                                    </div>
+                                </div>
+                                <div class="field" id="new-list-upload-c">
+                                    <label class="label">Upload gene list
+                                        <a id="list-upload-reqs" tabindex="0" class="button is-small is-text has-text-gear-bg-secondary" role="button" data-target="list-upload-reqs-modal">Click for requirements</a>
+
+                                    </label>
+                                    <div class="field">
+                                        <div class="control">
+                                            <div id="file-upload-c" class="file">
+                                                <label for="new-list-file" class="file-label">
+                                                    <input class="file-input" name="new-list-file" type="file" id="new-list-file"/>
+                                                    <span class="file-cta">
+                                                        <span class="file-icon">
+                                                            <i class="mdi mdi-upload"></i>
+                                                        </span>
+                                                        <span class="file-label">
+                                                            Choose a file…
+                                                        </span>
+                                                    </span>
+                                                </label>
+                                                <span class="file-name is-hidden" id="new-list-file-name"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="field is-hidden" id="new-list-pasted-genes-c">
+                                    <label class="label" for="new-list-pasted-genes">Paste gene symbols, separated by commas, spaces or on separate lines</label>
+                                    <div class="control">
+                                        <textarea class="textarea" id="new-list-pasted-genes" name="new-list-pasted-genes" rows="3" placeholder="Example: Sox2 Pou4f3 Rfx7"></textarea>
+                                    </div>
+                                </div>
+                                <div class="field is-grouped">
+                                    <p class="control">
+                                        <button class="button is-primary" id="btn-new-list-save">Save</button>
+                                    </p>
+                                    <p class="control">
+                                        <button class="button is-primary is-outlined" id="btn-new-list-cancel">Cancel</button>
+                                    </p>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Count and view control -->
+                        <section id="view-controls" class="level">
+                            <div class="level-left">
+                                <div class="level-item">
+                                    <div class="field is-horizontal">
+                                        <div class="field-label">
+                                            <label class="label">View:</label>
+                                        </div>
+                                        <div class="field-body">
+                                            <div class="buttons has-addons" role="group" aria-label="Gene cart list view preference">
+                                                <button type="button" id="btn-table-view" class="js-view-btn button is-small is-gear-bg-secondary" aria-label="Table view" data-tooltip-content="Table view">
+                                                    <span class="icon">
+                                                        <i class="mdi mdi-18px mdi-table-column"></i>
+                                                    </span>
+                                                </button>
+                                                <button type="button" id="btn-list-view-compact" class="js-view-btn button is-small is-dark" aria-label="Compact list view" data-tooltip-content="List view - Compact">
+                                                    <span class="icon">
+                                                        <i class="mdi mdi-18px mdi-format-list-bulleted"></i>
+                                                    </span>
+                                                </button>
+                                                <button type="button" id="btn-list-view-expanded" class="js-view-btn button is-small is-dark" aria-label="Expanded list view" data-tooltip-content="List view - Expanded">
+                                                    <span class="icon">
+                                                        <i class="mdi mdi-18px mdi-window-maximize"></i>
+                                                    </span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="level-item">
+                                    <label class="label mr-3">Sort by:</label>  <!-- .field.is-horizontal + .field-label scrunches the label up -->
+                                    <div class="field">
+                                        <div class="control">
+                                            <div class="select is-small">
+                                                <select name="sort-by" id="sort-by">
+                                                    <option value="relevance">Relevance</option>
+                                                    <option value="title">Gene cart title</option>
+                                                    <option value="date_added" selected>Date created</option>
+                                                    <option value="owner">Owner</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="level-right">
+                                <div class="level-item">
+                                    <div id="count-label-c" class="is-hidden">
+                                        <span id="count-label">Showing <span id="result-range"></span> of <span id="result-count"></span> <span id="result-label"></span></span>
+                                    </div>
+                                </div>
+                                <div class="level-item">
+                                    <!-- ? May change to numbers if genecarts get too numerous -->
+                                    <nav id="pagination-container" class="pagination is-small" role="navigation" aria-label="pagination">
+                                    </nav>
+                                </div>
+                            </div>
+
+                        </section> <!-- #view-controls -->
+
+                        <!-- results view -->
+                        <section id="results-container">
+                            <table id="results-table" class="table is-narrow is-striped is-fullwidth">
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Visibility</th>
+                                        <th>Organism</th>
+                                        <th>Owner</th>
+                                        <th>Date added</th>
+                                        <th>Type</th>
+                                        <th>Num Genes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template id="results-table-view">
+                                        <tr>
+                                            <td class="js-display-title"></td>
+                                            <td class="js-display-visibility"></td>
+                                            <td class="js-display-organism"></td>
+                                            <td class="js-display-owner"></td>
+                                            <td class="js-display-date-added"></td>
+                                            <td class="js-display-gctype"></td>
+                                            <td class="js-display-num-genes"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+
+                            <div id="results-list-div" class="is-hidden">
+                                <template id="results-list-view">
+                                    <!-- parts filled in by js -->
+                                    <div class="js-gc-list-element">
+                                        <!-- title section -->
+                                        <div class="columns">
+                                            <div class="column is-11 py-0">
+                                                <div class="js-display-version js-display-title">
+                                                    <p class="has-text-weight-bold"></p>
+                                                </div>
+                                                <div id="editable-title-c" class="js-editable-version js-editable-title is-hidden">
+                                                    <div class="field">
+                                                        <span class="has-text-weight-semibold">Title</span>
+                                                        <input type="text" class="input"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="column is-1 py-0">
+                                                <span class="is-clickable is-pulled-right js-expand-box icon"><i class="mdi mdi-arrow-expand"></i></span>
+                                            </div>
+                                        </div>
+
+                                        <!-- visibility/other metadata section -->
+                                        <div class="columns is-size-7">
+                                            <div class="column is-3 py-0">
+                                                <div class="js-display-version js-display-visibility"></div>
+                                                <div class="js-editable-version js-editable-visibility is-hidden">
+                                                    <div class="field">
+                                                        <p class="label">Visibility</p>
+                                                        <!-- toggle switch --->
+                                                        <input type="checkbox" class="switch is-primary"/>
+                                                        <label></label>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- organism section -->
+                                            <div class="column is-3 py-0">
+                                                <div class="js-display-version js-display-organism">
+                                                    <span class="has-text-weight-semibold">Organism</span> <span></span>
+                                                </div>
+                                                <div class="js-editable-version js-editable-organism is-hidden">
+                                                    <div class="field">
+                                                        <label class="label">Organism</label>
+                                                        <div class="control">
+                                                            <div class="select">
+                                                                <select></select>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="column is-3 py-0">
+                                                <div class="js-display-version js-display-owner">
+                                                    <span class="has-text-weight-semibold">Owner</span> <span></span>
+                                                </div>
+                                                <div class="js-editable-version js-editable-owner is-hidden">
+                                                    <div class="field">
+                                                        <label class="label">Owner</label>
+                                                        <div class="control">
+                                                            <input class="input is-static" readonly>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="column is-3 py-0">
+                                                <div class="js-display-version js-display-date-added">
+                                                    <span class="has-text-weight-semibold">Added</span> <span></span>
+                                                </div>
+                                                <div class="js-editable-version js-editable-date-added is-hidden">
+                                                    <div class="field">
+                                                        <label class="label">Added</label>
+                                                        <div class="control">
+                                                            <input class="input is-static" readonly>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- preview + action buttons section -->
+                                        <div class="columns is-size-7 my-0">
+                                            <div class="column is-3 py-0">
+                                                <div class="js-preview-genes-button-container"></div>
+                                            </div>
+                                            <div class="column is-9 py-0">
+                                                <div class="columns my-0">
+                                                    <div class="column is-two-thirds py-0">
+                                                        <div class="field has-addons js-action-links my-0" role="group">
+                                                            <p class="control">
+                                                                <button class="button is-small is-outlined is-dark js-view-gc" data-tooltip-content="View on front page">
+                                                                    <span class="icon"><i class="mdi mdi-18px mdi-eye"></i></span>
+                                                                </button>
+                                                            </p>
+                                                            <p class="control">
+                                                                <button class="button is-small is-danger js-delete-gc" data-tooltip-content="Delete list">
+                                                                    <span class="icon"><i class="mdi mdi-18px mdi-delete"></i></span>
+                                                                </button>
+                                                            </p>
+                                                            <p class="control">
+                                                                <button class="button is-small is-outlined is-dark js-download-gc" data-tooltip-content="Download list as tsv">
+                                                                    <span class="icon"><i class="mdi mdi-18px mdi-download"></i></span>
+                                                                </button>
+                                                            </p>
+                                                            <p class="control">
+                                                                <button class="button is-small is-outlined is-dark js-share-gc" data-tooltip-content="Get shareable link">
+                                                                    <span class="icon"><i class="mdi mdi-18px mdi-share-variant"></i></span>
+                                                                </button>
+                                                            </p>
+                                                            <p class="control">
+                                                                <button class="button is-small is-outlined is-dark js-edit-gc-permalink" data-tooltip-content="Edit permalink">
+                                                                    <span class="icon"><i class="mdi mdi-18px mdi-link-edit"></i></span>
+                                                                </button>
+                                                            </p>
+                                                            <p class="control">
+                                                                <button class="button is-small is-outlined is-dark js-edit-gc js-display-version" data-tooltip-content="Edit list metadata">
+                                                                    <span class="icon"><i class="mdi mdi-18px mdi-pencil"></i></span>
+                                                                </button>
+                                                            </p>
+                                                        </div>
+                                                        <div class="field has-addons" role="group">
+                                                            <p class="control">
+                                                                <button class="button is-primary js-edit-gc-save js-editable-version is-hidden">
+                                                                    <span class="icon"><i class="mdi mdi-content-save-edit-outline"></i></span><span>Save edits</span>
+                                                                </button>
+                                                            </p>
+                                                            <p class="control">
+                                                                <button class="button is-outlined is-primary js-edit-gc-cancel js-editable-version is-hidden">
+                                                                    <span class="icon"><i class="mdi mdi-undo-variant"></i></span><span>Cancel edits</span>
+                                                                </button>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="column is-one-third py-0">
+                                                        <div class="js-display-version js-display-gctype">
+                                                            <span class="has-text-weight-semibold">Type</span> <span></span>
+                                                        </div>
+                                                        <div class="js-editable-version js-editable-gctype is-hidden">
+                                                            <div class="field">
+                                                                <label class="label">Type</label>
+                                                                <div class="control">
+                                                                    <input class="input is-static" readonly>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div> <!-- end .columns -->
+                                            </div>
+
+                                        </div> <!-- end .columns -->
+
+                                        <!-- Gene preview section -->
+                                        <div class="js-preview-genes-container is-hidden"></div>
+                                        <hr class="js-expandable-view is-hidden" />
+                                        <!-- Long description section -->
+                                        <div class="columns js-expandable-view is-hidden">
+                                            <div class="column is-3 py-0"></div>
+                                            <div class="column is-9 py-0 js-display-version js-display-ldesc">
+                                                <p class="has-text-weight-semibold">Long description</p>
+                                            </div>
+                                            <div class="column is-9 py-0 js-editable-version js-editable-ldesc is-hidden">
+                                                <div class="field">
+                                                    <label class="label">Long description</label>
+                                                    <div class="control">
+                                                        <textarea class="textarea" rows="4"></textarea>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div> <!-- end .js-gc-list-element -->
+                                    <hr class="gc-list-element-divider mb-2 has-background-grey-lighter" />
+                                </template>
+                            </div>
+                        </section>
+                        <nav id="below-pagination-container" class="pagination is-small is-pulled-right" role="navigation" aria-label="pagination">
+                        </nav>
+
+
+                    </div>
+                </div>
+
+            </section>
+        </section>
+    </div>
+
+    <div class="modal" id="list-upload-reqs-modal">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">File upload requirements</p>
+                <button class="delete" aria-label="close"></button>
+            </header>
+            <section class="modal-card-body">
+            <!-- Content ... -->
+                <div class="content">
+
+                <template id="unweighted-example">
+                    <p>Genes in the file must be separated by either commas, spaces, tab-indented, or on separate lines.</p>
+                    <p>gEAR will determine the Ensembl ID for each gene based on the organism selected.</p>
+
+                    <h5>Example</h5>
+                    <p>Pou4f3, Sox2, Atoh1</p>
+
+                    <h5>Example 2</h5>
+                    <p>
+                        Pou4f3<br />
+                        Sox2<br />
+                        Atoh1
+                    </p>
+                </template>
+
+                <template id="weighted-example">
+                    <ul>
+                        <li>File upload must be in CSV, TAB, or Excel-format only.</li>
+                        <li>A header row of columns is required. The names are not important but the third-column name onwards will be used as weight names.</li>
+                        <li>The first column must be unique gene identifiers. This is needed for potential cross-organism mapping with datasets.</li>
+                        <li>The second column must be gene symbols.</li>
+                        <li>All columns beyond the second must be numeric weights.</li>
+                        <li>The file will be parsed and validated before being uploaded.</li>
+                    </ul>
+
+                    <h5>Example</h5>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ensembl_id</th>
+                                <th>gene_symbol</th>
+                                <th>PC1</th>
+                                <th>PC2</th>
+                                <th>MyCoolMetric</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>ENSG00000000003</td>
+                                <td>TSPAN6</td>
+                                <td>0.1</td>
+                                <td>-0.2</td>
+                                <td>3</td>
+                            </tr>
+                            <tr>
+                                <td>ENSG00000000005</td>
+                                <td>TSPAN5</td>
+                                <td>0.4</td>
+                                <td>0.5</td>
+                                <td>6</td>
+                            </tr>
+                            <tr>
+                                <td>ENSG00000000419</td>
+                                <td>DPM1</td>
+                                <td>0.7</td>
+                                <td>-0.8</td>
+                                <td>9</td>
+                            </tr>
+                            <tr>
+                                <td>ENSG00000000457</td>
+                                <td>SCYL3</td>
+                                <td>1.0</td>
+                                <td>-1.1</td>
+                                <td>12</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </template>
+
+                <template id="labeled-example">
+                    <ul>
+                        <li>File upload must be in Excel-format only.</li>
+                        <li>A header row of columns is required.</li>
+                        <li>The header name in each column is the label of the list of genes (i.e. marker gene names).</li>
+                        <li>The second row onwards is the gene symbols for that label. The label must have at least one gene symbol. Ensembl IDs are not needed.</li>
+                        <li>The file will be parsed and validated before being uploaded.</li>
+                    </ul>
+
+                    <h5>Example</h5>
+
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Astrocytes</th>
+                                <th>Neurons</th>
+                                <th>Microglia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>AQP4</td>
+                                <td>APOE</td>
+                            </tr>
+                            <tr>
+                                <td>GRIN2A</td>
+                                <td>SLA</td>
+                                <td>SNAP25</td>
+                            </tr>
+                            <tr>
+                                <td>CSF1</td>
+                                <td>CSF1R</td>
+                                <td>IL6</td>
+                                <td>TNFA</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </template>
+
+                </div>
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button">Close</button>
+            </footer>
+        </div>
+    </div>
+
+
+    <!-- Promise based HTTP client for the browser  -->
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+    <script src="js/vendor/js.cookie.js"></script>
+
+    <!-- Floating UI for tooltips, popovers, etc -->
+    <script src="https://cdn.jsdelivr.net/npm/@floating-ui/core@1.5.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.5.3"></script>
+
+    <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+    <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+    <script>document.write('<script src="js/classes/genecart.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
+
+    <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+    <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
+    <!-- Page-specific JS file here -->
+    <script>document.write('<script src="js/gene_list_manager.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-59916932-1');
+    </script>
+</body>
+</html>

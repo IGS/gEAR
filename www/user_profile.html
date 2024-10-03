@@ -3,142 +3,218 @@
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
 <!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-        <title>User Profile page</title>
-        <meta http-equiv="Pragma" content="no-cache">
-        <meta http-equiv="Expires" content="-1">
-        <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
-        <meta name="description" content="">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>gEAR user profile page</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="-1">
+    <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
 
-        <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
-             to be changed for any hosts where gEAR is not at the webserver root.
-          -->
-        <base href="/" />
+    <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
+        to be changed for any hosts where gEAR is not at the webserver root.
+    -->
+    <base href="/" />
 
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="css/gear-theme-purple.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
 
-        <!-- Ensures we always get a new version (during our current active development cycles) -->
-        <script>document.write('<link rel="stylesheet" href="css/common.' + (new Date()).getTime() + '.css" />');</script>
-        <script>document.write('<link rel="stylesheet" href="css/user_profile.' + (new Date()).getTime() + '.css"/>');</script>
+    <!-- Fancy animation effects -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 
-    </head>
-    <body>
-        <!--[if lt IE 7]>
-            <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
-        <![endif]-->
-        <div id="body_c">
+    <!-- Ensures we always get a new version (during our current active development cycles) -->
+    <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
 
-            <div id="navigation_bar">
-            <!-- content here inserted via JQuery -->
-            </div> <!-- end navigation_bar -->
-            <div class="col-12 alert-container">
-            <!-- CONTAINER FOR ALERTS - INSERTED BY JQUERY -->
-            </div>
+    <!--Page-specific CSS here -->
+    <script>document.write('<link rel="stylesheet" href="css/user_profile.' + (new Date()).getTime() + '.css" />');</script>
+</head>
+<body>
+    <!--[if lt IE 7]>
+        <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+    <![endif]-->
 
-            <div id="login_checking">
-            <div class="col-12">
-            <h2><img id="checking_indicator" src="img/loading_search.gif" alt="checking">Checking login status</h2>
-            </div>
-            </div>
+    <div id="main-layout-c" class="columns is-fullheight">
+        <!--#include virtual="/include/primary_nav.html" -->
+        <section id="main-c" class="column pl-0 pt-0">
+            <!--#include virtual="/include/header_bar.html" -->
+            <section id="content-c" class="m-3 container section" data-nav-link="workspace">
+                <article id="not-logged-in-msg" class="message is-danger is-hidden">
+                    <div class="message-body">
+                        You must be logged in as a user to change your user settings.
+                    </div>
+                </article>
 
-            <div id="login_warning">
-            <div class="col-12">
-            <h2>Login required</h2>
-            <p>
-                You must be logged in to view a user profile.  Please use the login form in the top-right.
-            </p>
-            </div>
-            </div>
+                <h4 class="title is-4">Update settings</h4>
 
-            <div id="main_content" class="container">
-            <div id='main_row' class="row">
-                <div class="col">
-                    <h2>User Profile</h2>
+                <div class="columns">
+                    <div class="column is-half">
+                        <div class="field">
+                            <label class="label">Email</label>
+                            <div class="control has-icons-left">
+                                <input id="email" class="input" type="email" placeholder="Email input" value="">
+                                <span class="icon is-small is-left">
+                                    <i class="mdi mdi-email"></i>
+                                </span>
+                            </div>
+                            <p class="help is-danger is-hidden">This email is invalid</p>
+                        </div>
 
-                    <form id="settings_form" name="settings_form">
-                        <h4>User settings</h4>
-                        <div class="form-group form-row">
-                            <label class="col-form-label col-2" for="email">Email:</label>
-                            <div class="col">
-                            <input id="email" name="email" type="email" class="form-control" />
+                        <div class="field">
+                            <label class="label">Institution</label>
+                            <div class="control has-icons-left">
+                                <input id="institution" class="input" type="text" placeholder="School, organization, etc.">
+                                <span class="icon is-small is-left">
+                                    <i class="mdi mdi-bank"></i>
+                                </span>
                             </div>
                         </div>
-                        <div class="form-group form-row">
-                            <label class="col-form-label col-2" for="institution">Institution:</label>
-                            <div class="col">
-                            <input id="institution" name="institution" type="text" class="form-control" />
-                            </div>
-                        </div>
-                        <div class="form-group form-row">
-                            <label class="col-form-label col-2" for="newPassword">New password:</label>
-                            <div class="col">
-                            <input id="newPassword" name="newPassword" type="password" class="form-control" />
-                            <div class="form-check">
-                            <input id="showPassword" name="showPassword" type="checkbox" class="form-check-input" />
-                            <label class="form-check-label" for="showPassword">Show Password</label>
-                            </div>
-                            </div>
-                        </div>
-                        <div class="form-group form-row">
-                            <label class="col-form-label col-2" for="repeatPassword">Repeat new password:</label>
-                            <div class="col">
-                            <input id="repeatPassword" name="repeatPassword" type="password" class="form-control"/>
-                            <span id="passwordMatch"></span>
-                            </div>
-                        </div>
-                        <div class="form-check form-group form-row">
-                            <div class="offset-2">
-                            <input class="form-check-input" type="checkbox" id="colorblind_mode" name="colorblind_mode">
-                            <label class="form-check-label" for="colorblind_mode">
-                            Check box to view all plots using a colorscheme suitable for those with color-vision deficiencies.
-                            </label>
-                            </div>
-                        </div>
-                        <div class="form-check form-group form-row">
-                            <div class="offset-2">
-                            <input id="wantUpdates" name="wantUpdates" type="checkbox" class="form-check-input" />
-                            <label class="form-check-label" for="wantUpdates">Check box if you want to receive periodic news and updates about gEAR</label>
-                            </div>
-                        </div>
-                        <div class="form-group form-row">
-                            <button id="submit_preferences" class="btn btn-primary offset-2" type="submit">Update Profile</button>
-                        </div>
-                    </form>
 
-                    <!-- eventually differentiate between user settings and profiles with a tab menu or accordion or something -->
-                </div> <!-- end #.col-12 -->
-            </div> <!-- end #main_row -->
-            </div> <!-- end #main_content -->
+                        <div class="field mt-3 mb-3">
+                            <button id="update-password-toggle" class="button is-primary">Click if you want to update your password</button>
+                        </div>
 
-            <div id='account_creation_c' class='row'>
-            <!-- content inserted via common.js-->
-            </div>
+                        <div id="password-update-section" class="is-hidden">
+                            <div class="field">
+                                <label class="label">New password</label>
+                                <div class="control has-icons-left">
+                                    <input id="new-password" class="input js-password" type="password" autocomplete="bad-google-dont-do-it" placeholder="Enter new password">
+                                    <span class="icon is-small is-left">
+                                        <i class="mdi mdi-lock"></i>
+                                    </span>
+                                </div>
+                                <div class="control">
+                                    <label class="checkbox">
+                                        <input id="show-password" type="checkbox">
+                                        Show password
+                                    </label>
+                                </div>
+                                <p class="help">Leave blank if you do not wish to change</p>
+                            </div>
 
-            <div style="clear: both;">&nbsp;</div>
+                            <div class="field">
+                                <label class="label">Re-enter new password</label>
+                                <div class="control has-icons-left">
+                                    <input id="repeat-password" class="input js-password" type="text" autocomplete="false" placeholder="Re-enter password">
+                                    <span class="icon is-small is-left">
+                                        <i class="mdi mdi-lock"></i>
+                                    </span>
+                                </div>
+                                <p id="password-no-match" class="help has-text-danger-dark is-hidden">Passwords do not match</p>
+                                <p id="password-match" class="help has-text-success-dark is-hidden">Passwords match</p>
+                            </div>
+                        </div>
 
-            <footer>
-                <div id='funding'>
-                    <!-- content here inserted via JQuery -->
+                        <div class="field">
+                            <label class="label">Colorblind mode</label>
+                            <div class="control">
+                                <label class="checkbox">
+                                    <input id="colorblind-mode" type="checkbox">
+                                    View plots using a colorscheme built for those with color-vision deficiencies.
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label class="label">gEAR updates</label>
+                            <div class="control">
+                                <label class="checkbox">
+                                    <input id="want-updates" type="checkbox">
+                                    Receive periodic news and updates about gEAR
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- select gEAR theme cards -->
+                        <div class="field is-hidden">
+                            <label class="label">Select gEAR site theme</label>
+                            <div class="columns">
+                                <div class="column is-4">
+                                    <div class="card">
+                                        <div class="card-image">
+                                            <figure class="image is-4by3">
+                                                <img src="https://bulma.io/images/placeholders/1280x960.png" alt="Placeholder image">
+                                            </figure>
+                                        </div>
+                                        <footer class="card-footer">
+                                            <div class="control card-footer-item">
+                                                <label class="radio">
+                                                    <input type="radio" name="theme" id="white">
+                                                    White
+                                                </label>
+                                            </div>
+                                        </footer>
+                                    </div>
+                                </div>
+                                <div class="column is-4">
+                                    <div class="card">
+                                        <div class="card-image">
+                                            <figure class="image is-4by3">
+                                                <img src="https://bulma.io/images/placeholders/1280x960.png" alt="Placeholder image">
+                                            </figure>
+                                        </div>
+                                        <footer class="card-footer">
+                                            <div class="control card-footer-item">
+                                                <label class="radio">
+                                                    <input type="radio" name="theme" id="neutral">
+                                                    Neutral (default) <!-- this would be purple in gEAR, for example -->
+                                                </label>
+                                            </div>
+                                        </footer>
+                                    </div>
+                                </div>
+                                <div class="column is-4">
+                                    <div class="card">
+                                        <div class="card-image">
+                                            <figure class="image is-4by3">
+                                                <img src="https://bulma.io/images/placeholders/1280x960.png" alt="Placeholder image">
+                                            </figure>
+                                        </div>
+                                        <footer class="card-footer">
+                                            <div class="control card-footer-item">
+                                                <label class="radio">
+                                                    <input type="radio" name="theme" id="black">
+                                                    Black
+                                                </label>
+                                            </div>
+                                        </footer>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </footer>
-        </div> <!-- /body_c -->
-        <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
-        <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
 
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
-        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+                <div class="control">
+                    <button id="submit-preferences" class="button is-primary">Update profile</button>
+                </div>
 
-        <script src="js/vendor/js.cookie.js"></script>
-        <script src="js/vendor/jquery.iframe-transport.js"></script>
-        <script src="//cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.0/bootstrap3-editable/js/bootstrap-editable.min.js"></script>
+            </section>
+        </section>
+    </div>
 
-        <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-        <script>document.write('<script src="js/classes/user.' + (new Date()).getTime() + '.js"><\/script>');</script>
-        <script>document.write('<script src="js/common.' + (new Date()).getTime() + '.js"><\/script>');</script>
-        <script>document.write('<script src="js/user_profile.' + (new Date()).getTime() + '.js"><\/script>');</script>
-    </body>
+    <!-- Promise based HTTP client for the browser  -->
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+    <script src="js/vendor/js.cookie.js"></script>
+
+    <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+    <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
+    <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+    <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
+    <!-- Page-specific JS file here -->
+    <script>document.write('<script src="js/user_profile.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'UA-59916932-1');
+    </script>
+</body>
 </html>

@@ -1,0 +1,137 @@
+/*
+    Colors from template
+
+    Highlighted background color: fbfcfd
+    Highlighted background border: e9eef1
+*/
+div#annotation-and-grid-c h3 {
+    font-weight: normal;
+    font-size: 90%;
+}
+div#annotation-and-grid-c h3 span {
+    font-weight: bold;
+}
+div#extended-annotation-panel {
+    border: 1px solid #e9eef1;
+    border-style: rounded;
+    height: 20em;
+}
+div#functional-annotation-c h3 {
+    font-weight: bold;
+    font-size: 90%;
+}
+div#gene-result-list-c {
+    border-right: 1px solid #e9eef1;
+}
+div#gene-result-list-c h3 {
+    font-weight: bold;
+    font-size: 90%;
+}
+div#results-main-c {
+    border-top: 1px solid rgb(220, 220, 220);
+    margin-top: 50px;
+}
+section#annotation-panel,
+section#result-panel {
+    background-color: #fbfcfd;
+    border: 1px solid #e9eef1;
+}
+section#annotation-panel h4 {
+    font-weight: bold;
+    font-size: 90%;
+}
+span.option-label {
+    font-weight: bold;
+    font-size: 90%;
+}
+ul#gene-result-list {
+    list-style: none;
+}
+ul#gene-result-list li {
+    padding: 0.3em 0 0.3em 1em;
+    border-top: 1px solid #e9eef1;
+    font-size: 90%;
+}
+ul#gene-result-list li:last-child {
+    border-bottom: 1px solid #e9eef1;
+}
+ul#gene-result-list li.is-selected {
+    /* TODO: Make this a variable */
+    background-color: #483285;
+    color: white;
+}
+ul#go-terms {
+    max-height: 17em;
+    overflow-y: scroll;
+}
+ul#go-terms li {
+    border-bottom: 1px solid #e9eef1;
+}
+
+#result-panel-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 90px);    /* setting px instead of fr prevernts distortions if grid dimensions change */
+    grid-gap: 0.5em;
+    width: 1080px;  /* grid width + 2*border width */
+}
+
+/* tSNE plots */
+.js-tile .card-image img {
+    width: fit-content;
+    height: 100%;
+    margin: auto;
+}
+
+/* This is the main svg image */
+.js-tile .card-image .svg svg {
+    height: inherit;    /* match the height set by the SVG container (after legend applied) */
+}
+
+.js-tile .card-image .js-plotly-plot {
+    width: 100%;
+    height: 100%;
+}
+
+/* Loading info or error message */
+.js-tile .card-image p {
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Dropdown settings */
+
+.js-tile .dropdown-content {
+    width: max-content;
+}
+
+.js-tile .dropdown-item {
+    padding: 0.125rem 1rem;
+}
+
+.js-modal-display figure {
+    border-color: darkgray;
+    border-width: thin;
+    border-style: solid;
+}
+
+.js-modal-display.is-selected figure{
+    border-color: lightblue;
+    border-width: thick;
+    border-style: solid;
+
+}
+
+.js-choose-display-modal .modal-content {
+    width: 70%; /* make wider, which makes preview images larger */
+}
+
+#gene-result-list-c {
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    height:100vh;
+    overflow-y: auto;   /* scroll if too long */
+}
+

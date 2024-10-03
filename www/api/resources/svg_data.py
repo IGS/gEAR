@@ -1,5 +1,4 @@
-import os, sys
-from pathlib import Path
+import os
 
 import geardb
 import numpy as np
@@ -8,49 +7,9 @@ import scanpy as sc
 from flask import request
 from flask_restful import Resource
 
-TWO_LEVELS_UP = 2
-abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
-PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
+from gear.plotting import PlotError
+from .common import create_projection_adata
 
-class PlotError(Exception):
-    """Error based on plotting issues."""
-    def __init__(self, message="") -> None:
-        self.message = message
-        super().__init__(self.message)
-
-def create_projection_adata(dataset_adata, dataset_id, projection_id):
-    # Create AnnData object out of readable CSV file
-    # ? Does it make sense to put this in the geardb/Analysis class?
-    projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
-    projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
-    if projection_adata_path.is_file():
-        return sc.read_h5ad(projection_adata_path)  #, backed="r")
-
-    projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
-    try:
-        projection_adata = sc.read_csv(projection_csv_path)
-    except Exception as e:
-        print(f"{projection_csv_path} - {str(e)}", file=sys.stderr)
-        # Encountered edge cases were sample indexes had commas in them which
-        # breaks scanpy's read_csv feature (since they split on comma first)
-        import tempfile
-        df = pd.read_csv(projection_csv_path, index_col=0, quotechar='"')
-        df.index = df.index.astype(str).str.replace(",", "/")
-        with tempfile.NamedTemporaryFile() as fp:
-            df.to_csv(fp)
-            try:
-                projection_adata = sc.read_csv(fp.name)
-            except Exception as e:
-                print(f"Temp file {fp.name} - {str(e)}", file=sys.stderr)
-                raise PlotError("Could not create projection AnnData object from CSV.")
-    projection_adata.obs = dataset_adata.obs
-    # Close dataset adata so that we do not have a stale opened object
-    if dataset_adata.isbacked:
-        dataset_adata.file.close()
-    projection_adata.var["gene_symbol"] = projection_adata.var_names
-    # Associate with a filename to ensure AnnData is read in "backed" mode
-    projection_adata.filename = projection_adata_path
-    return projection_adata
 
 class SvgData(Resource):
     """Resource for retrieving data from h5ad to be used to color svgs.
@@ -72,6 +31,8 @@ class SvgData(Resource):
 
         dataset = geardb.get_dataset_by_id(dataset_id)
 
+        # ! SVG analysis does not operate on analysis objects.
+
         h5_path = dataset.get_file_path()
         if not os.path.exists(h5_path):
             return {
@@ -90,22 +51,24 @@ class SvgData(Resource):
                     'message': str(pe),
                 }
 
+
         gene_symbols = (gene_symbol,)
 
-        if 'gene_symbol' in adata.var.columns:
-            gene_filter = adata.var.gene_symbol.isin(gene_symbols)
-            if not gene_filter.any():
-                return {
-                    "success": -1,
-                    "message": "Gene not found."
-                }
-        else:
+        if 'gene_symbol' not in adata.var.columns:
+            return {"success": -1, "message": "The h5ad is missing the gene_symbol column."}
+
+        gene_filter = adata.var.gene_symbol.isin(gene_symbols)
+        if not gene_filter.any():
             return {
                 "success": -1,
-                "message": "The h5ad is missing gene_symbol.",
+                "message": "The gene symbol '{}' was not found in the dataset.".format(gene_symbol)
             }
 
-        selected = adata[:, gene_filter].to_memory()
+        try:
+            selected = adata[:, gene_filter].to_memory()
+        except:
+            # The "try" may fail for projections as it is already in memory
+            selected = adata[:, gene_filter]
 
         df = selected.to_df()
 
@@ -149,7 +112,7 @@ class SvgData(Resource):
             df = selected.to_df()
             df = pd.concat([df, selected.obs["cell_type"]], axis=1)
 
-            cell_type_avgs = df.groupby('cell_type').mean()
+            cell_type_avgs = df.groupby('cell_type', observed=False).mean()
             # Add mean label
             mean_labels = cell_type_avgs.reset_index()['cell_type'].apply(
                 lambda cell_type: f"{cell_type}--mean")

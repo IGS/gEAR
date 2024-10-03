@@ -3,322 +3,956 @@
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
 <!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+
+<!--
+  Uploading process:
+  - Upload metadata file
+  - Scan metadata file for issues
+  - Report any issues, show user processed metadata
+
+  - Show data file format choices
+    - 3-tab / MEX
+    - Rdata file / Seurat object
+    - H5AD / AnnData
+  - Provide upload controls:
+    - File upload
+    - URL upload
+  - Do dataset validations
+    - 3-tab / MEX
+      - Check for missing values
+      - Check for non-numeric values
+      - Check for non-unique row names
+      - Check for non-unique column names
+      - Check for non-unique cell values
+
+-->
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-        <title>Data upload page</title>
+        <title>Upload a dataset</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta http-equiv="Pragma" content="no-cache">
         <meta http-equiv="Expires" content="-1">
         <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
-        <meta name="description" content="">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
 
         <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
              to be changed for any hosts where gEAR is not at the webserver root.
           -->
         <base href="/" />
 
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+        <link rel="stylesheet" href="css/gear-theme-purple.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css" />
 
-        <link rel="stylesheet" href="css/jquery.fileupload.css" />
-        <link rel="stylesheet" href="css/vendor/bs-stepper.20190106.min.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/octoshrimpy/bulma-o-steps@master/bulma-steps.min.css">
 
         <!-- Ensures we always get a new version (during our current active development cycles) -->
-        <script>document.write('<link rel="stylesheet" href="css/common.' + (new Date()).getTime() + '.css" />');</script>
-        <script>document.write('<link rel="stylesheet" href="css/upload_dataset.' + (new Date()).getTime() + '.css" />');</script>
+        <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
 
-        <script src="js/vendor/modernizr-2.6.2-respond-1.1.0.min.js"></script>
+        <!--Page-specific CSS here -->
+        <script>document.write('<link rel="stylesheet" href="css/upload_dataset.' + (new Date()).getTime() + '.css" />');</script>
     </head>
     <body>
+      <div id="main-layout-c" class="columns">
 
-        <!--[if lt IE 7]>
-            <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
-        <![endif]-->
- <div id="body_c">
-    <div id="navigation_bar">
-      <!-- content here inserted via JQuery -->
-    </div> <!-- end navigation_bar -->
-    <div class="col-12 alert-container">
-      <!-- CONTAINER FOR ALERTS - INSERTED BY JQUERY -->
-    </div>
+        <!--#include virtual="/include/primary_nav.html" -->
 
-    <div id="login_checking">
-      <h2><img id="checking_indicator" src="img/loading_search.gif" alt="checking">Checking login status</h2>
-    </div>
+        <section id="main-c" class="column pl-0 pt-0">
 
-    <div id="login_warning">
-      <h2>Login required</h2>
-      <p>
-        You must be logged in to upload datasets.  Please use the login form in the top-right.
-      </p>
-    </div>
+          <!--#include virtual="/include/header_bar.html" -->
 
-    <div id="main_content" class="container-fluid">
-      <div id='main_row' class="row">
-        <div class="col-12">
-          <h2>Dataset uploader</h2>
-          <form id='upload_form' name='upload_form'>
-            <input type="hidden" id="dataset_uid" name="dataset_uid" value="">
-            <input type="hidden" id="share_uid" name="share_uid" value="">
-            <input type="hidden" id="uploaded_metadata_name" name="uploaded_metadata_name" value="">
-            <input type="hidden" id="uploaded_expression_name" name="uploaded_expression_name" value="">
-            <!-- <input type="hidden" id="uploaded_svg_name" name="uploaded_svg_name" value=""> -->
-            <input type="hidden" id="uploaded_schematic_name" name="uploaded_schematic_name" value="">
-            <input type="hidden" id="session_id" name="session_id" value="">
-            <input type="hidden" id="default_plot_type" name="default_plot_type" value="">
-            <!-- valid values: svg-expression, bargraph-standard -->
-            <!-- <input type="hidden" id="dataset_type" name="dataset_type" value=""> -->
-            <!-- <input type="hidden" id="spreadsheet_data_format" name="spreadsheet_data_format" value=""> -->
-            <!-- <input type="hidden" id="default_data_format" name="default_data_format" value=""> -->
-          </form>
+          <section id="content-c" class="m-3" data-nav-link="upload_dataset">
+            <div id="not-logged-in-c" class="is-hidden">
+              <h1>Not logged in</h1>
+              <p>
+                You must be logged in to upload a dataset. Please log in (upper right) or <a href="./create_account.html"> create an account!</a>.
+              </p>
+            </div>
 
-          <div id='stepper_c' class='row'>
-            <div class='col-12'>
-              <div class="bs-stepper">
-                <div class="bs-stepper-header" role="tablist">
-                  <!-- the steps go here -->
-                  <div class="step" data-target="#metadata-part">
-                    <button type="button" class="btn btn-link step-trigger" role="tab" aria-controls="metadata-part" id="metadata-part-trigger">
-                      <span class="bs-stepper-circle">1</span>
-                      <span class="bs-stepper-label">Upload metadata</span>
-                    </button>
-                  </div>
-                  <div class="line"></div>
-                  <div class="step" data-target="#expression-part">
-                    <button type="button" class="btn btn-link step-trigger" role="tab" aria-controls="expression-part" id="expression-part-trigger">
-                      <span class="bs-stepper-circle">2</span>
-                      <span class="bs-stepper-label">Upload expression data</span>
-                    </button>
-                  </div>
-                  <div class="line"></div>
-                  <div class="step" data-target="#curator-part">
-                    <button type="button" class="btn btn-link step-trigger" role="tab" aria-controls="curator-part" id="curator-part-trigger">
-                      <span class="bs-stepper-circle">3</span>
-                      <span class="bs-stepper-label">Curate your views</span>
-                    </button>
-                  </div>
-                </div> <!-- end .bs-stepper-header -->
-                <div class="bs-stepper-content">
-                  <!-- the steps content here -->
-
-                  <!--------------------->
-                  <!-- METADATA step -->
-                  <div id="metadata-part" class="content" role="tabpanel" aria-labelledby="metadata-part-trigger">
-                    <div id='metadata_c' class='row'>
-                      <div class='col-12'>
-                        <div id="metadata_upload_c">
-                          <div class='row'>
-                            <div class='col-2' align='center'>
-                              <a href="user_templates/metadata_template.xlsx" download><i class='fa fa-file-text-o fa-5x'></i><br />Download</a>
-                            </div>
-                            <div class='col-10'>
-                              <p>
-                                To upload your data we first need a metadata document describing your data.  Download the template
-                                on the right, be sure to fill out at least all fields marked as required, and then use the button
-                                below to upload your saved file.
-                              </p>
-                            </div>
-                          </div>
-                          <div class='row'>
-                            <div class='col-12'>
-                              <span id="metadata_upload_controller" class="btn btn-success fileinput-button">
-                                <i class="fa fa-plus"></i>
-                                <span>Upload metadata file</span>
-                                <!-- The file input field used as target for the file upload widget -->
-                                <input id="metadata_upload" type="file" name="files[]">
-                              </span>
-                            </div>
-                          </div>
-                        </div> <!-- end metadata_upload_c-->
-                        <div id='metadata_processing_c'>
-                          <h2 id='metadata_uploading'>Uploading metadata file </h2>
-                          <h2 id='metadata_validating'>Validating metadata </h2>
-                          <div class='upload_spinner'>
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                          </div>
-                        </div> <!-- end #metadata_processing_c-->
-                        <div id="metadata_preview_c">
-                          <p>Please review the following table. If necessary, make corrections to your metadata file. Once the corrections are made, click 'Go back' and load the corrected file.</p>
-                          <table id="metadata_preview" class="table table-hover">
-                            <!-- Populate validation messages(errors) here -->
-                          </table>
-                        </div> <!-- end #metada_preview_c-->
-                      </div> <!-- end .col-12-->
-                    </div> <!-- end #metadata_c -->
-                  </div> <!-- end #metadata-part -->
-
-                  <!--------------------->
-                  <!-- EXPRESSION step -->
-                  <div id="expression-part" class="content" role="tabpanel" aria-labelledby="expression-part-trigger">
-                    <div id='expression_c' class='row'>
-                      <div class='col-12'>
-                        <!-- <h3>Upload your expression data</h3> -->
-                        <div id='expression_upload_c'>
-                          <div id="expression_instructions_c">
-                            <p>
-                              If your expression data is formatted properly, upload it here. Examples of how data needs to be formatted are listed below.
-                            </p>
-                            <ul class='list-inline'>
-                              <li>
-                                <span style="padding-left:20px;">Excel:</span>
-                              </li>
-                              <li>
-                                <span style="padding-left:20px;">
-                                  <a href="user_templates/example_celltype_cond_devstage_reps.xlsx" download><b>Cell-type, Conditions, Development Stage, &amp; Replicates</b></a>
-                                </span>
-                              </li>
-                              <li>
-                                <span style="padding-left:20px;">
-                                  <a href="user_templates/example_timeseries.xlsx" download><b>Time series</b></a>
-                                </span>
-                              </li>
-                              <li>
-                                <span style="padding-left:20px;">
-                                  <a href="user_templates/example_singlecell.xlsx" download><b>Single-cell</b></a>
-                                </span>
-                              </li>
-                            </ul>
-                            <ul class='list-inline'>
-                              <li>
-                                <span style="padding-left:20px;">MEX:</span>
-                              </li>
-                              <li>
-                                <span style="padding-left:20px;">
-                                  <a href="user_templates/example_mex.tar" download><b>Example</b></a>
-                                </span>
-                              </li>
-                            </ul>
-                            <ul class='list-inline'>
-                              <li>
-                                <span style="padding-left:20px;">3 tab file tarball (plain text)</span>
-                              </li>
-                              <li>
-                                <span style="padding-left:20px;">
-                                  <a href="user_templates/example_3tab.tar.gz" download><b>Example</b></a>
-                                </span>
-                              </li>
-                            </ul>
-                          </div>
-                          <span id="expression_upload_controller" class="btn btn-success fileinput-button">
-                            <i class="fa fa-plus"></i>
-                            <span>Select expression file</span>
-                            <!-- The file input field used as target for the file upload widget -->
-                            <input id="expression_upload" type="file" name="files[]">
+            <div id="logged-in-c" class="is-hidden">
+              <div id="submissions-in-progress" class="is-hidden">
+                <h1>Submissions in progress</h1>
+                <p class="mb-4">
+                  This table has entries for any uploads you have in progress. Click to resume or see more
+                  details about the status.
+                </p>
+                <table class="table is-fullwidth">
+                  <thead class="has-text-weight-semibold">
+                    <tr>
+                      <th>Share ID</th>
+                      <th>Status</th>
+                      <th>Dataset type</th>
+                      <th>Title</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="submissions-in-progress-table-tbody"></tbody>
+                </table>
+                <template id="submission-history-row">
+                  <tr class="submission-history-row" data-share-id="" data-dataset-id="" data-load-step="">
+                    <td class="submission-share-id"></td>
+                    <td class="submission-status"></td>
+                    <td class="submission-dataset-type"></td>
+                    <td class="submission-title"></td>
+                    <td>
+                      <div class="buttons are-small">
+                        <button class="button is-primary submission-resume">
+                          <span class="icon">
+                            <i class="mdi mdi-play"></i>
                           </span>
-                        </div><!-- end #expression_upload_c -->
-                        <div id='expression_processing_c' class='hide_after_error'>
-                          <h2 id='expression_uploading'>Uploading and validating expression file ... please wait ...</h2>
-                          <div class='upload_spinner'>
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                          </div>
-                        </div> <!-- end #expression_processing_c-->
-                        <div id="expression_preview_c">
-                          <h3>Expression data processed</h3>
-                          <h3>Your dataset stats</h3>
-                          <div id="expression_preview_shape"></div>
-                        </div> <!-- end #expression_preview_c-->
-                      </div> <!-- end .col-12 -->
-                    </div> <!-- end #expression_c -->
-                  </div> <!-- end #expression-part -->
-
-                  <!--------------------->
-                  <!-- CURATOR step -->
-                  <div id="curator-part" class="content" role="tabpanel" aria-labelledby="curator-part-trigger">
-                    <div class='row'>
-                      <div class='col-6'>
-                        <p>
-                          Now that you're dataset is loaded it's time to specify how you'd like it to look
-                          to users by default.  The <a class='curator_link' href=''>Dataset Curator</a> allows you to customize this next.
-                        </p>
-                        <button id="goto_curator" type="button" class="btn btn-secondary form-control">Curate this dataset</button>
+                          <span>View / resume</span>
+                        </button>
+                        <button class="button is-danger submission-delete">
+                          <span class="icon">
+                            <i class="mdi mdi-trash-can"></i>
+                          </span>
+                          <span>Delete</span>
+                        </button>
                       </div>
-                      <div class='col-6'>
-                        <a class='curator_link' href=''>
-                          <img class="img-fluid" alt='Curator preview' src='img/gear_plot_type_examples.png' />
-                        </a>
+                    </td>
+                  </tr>
+                </template>
+                <hr />
+                <h1 id="submission-action-label">Or start a new submission:</h1>
+                <button id="new-submission-toggle" class="button is-primary">
+                  <span class="icon">
+                    <i class="mdi mdi-archive-plus"></i>
+                  </span>
+                  <span>Start</span>
+                </button>
+              </div>
+
+
+              <!--
+                Naming convention here. Every step has an id like 'step-enter-metadata',
+                which corresponds to a container below, 'step-enter-metadata-c'. That basename
+                'enter-metadata' can be passed via a link to resume the submission at that step.
+              -->
+              <div id="submission-c" class="is-hidden">
+                <div id="step-graphic-c">
+                  <ul class="steps has-content-centered">
+                    <li id='step-enter-metadata' class="steps-segment is-active">
+                      <span class="steps-marker is-light">
+                        <span class="icon">
+                          <i class="mdi mdi-wrench"></i>
+                        </span>
+                      </span>
+                      <div class="steps-content">
+                        <p class="step-label is-size-5">Enter metadata</p>
+                        <p class="is-size-7">Use the form or provided template to enter metadata for your dataset.</p>
+                      </div>
+                    </li>
+                    <li id="step-upload-dataset" class="steps-segment">
+                      <span class="steps-marker"><span class="icon"><i class="mdi"></i></span></span>
+                      <div class="steps-content">
+                        <p class="step-label is-size-5">Upload dataset</p>
+                        <p class="is-size-7">Choose your dataset format and upload directly or provide a supported URL.</p>
+                      </div>
+                    </li>
+                    <li id='step-process-dataset' class="steps-segment">
+                      <span class="steps-marker"><span class="icon"><i class="mdi"></i></span></span>
+                      <div class="steps-content">
+                        <p class="step-label is-size-5">Dataset processing</p>
+                        <p class="is-size-7">Your dataset is processed and checked on the server.</p>
+                      </div>
+                    </li>
+                    <li id='step-finalize-dataset' class="steps-segment">
+                      <span class="steps-marker"><span class="icon"><i class="mdi"></i></span></span>
+                      <div class="steps-content">
+                        <p class="step-label is-size-5">Finalize submission</p>
+                        <p class="is-size-7">Your dataset gets fully integrated into the system here.</p>
+                      </div>
+                    </li>
+                    <li id="step-curate-dataset" class="steps-segment">
+                      <span class="steps-marker"><span class="icon"><i class="mdi"></i></span></span>
+                      <div class="steps-content">
+                        <p class="step-label is-size-5">Curate dataset</p>
+                        <p class="is-size-7">Get the most out of your dataset by doing curation steps here.</p>
+                      </div>
+                    </li>
+                  </ul>
+                </div> <!-- end #step-c -->
+                <hr />
+                <div id="step-enter-metadata-c" class="step-c">
+                  <h1>Step - Enter metadata (via form OR upload)</h1>
+                  <p>
+                    The 'metadata' is the data describing your dataset, including things like title, authorship, sequencing
+                    protocols used, etc. This is the first step in uploading a dataset to the portal. All data uploaded
+                    are initially private to only your account (you can change this later in the Dataset Explorer)
+                  </p>
+                  <hr />
+                  <p>
+                    Enter the metadata manually below OR fill out and upload from a <a href="./user_templates/metadata_template.xlsx">spreadsheet template</a>.
+                  </p>
+                  <div class="columns">
+                    <div id="metadata-form-c" class="column is-8 mt-3">
+                      <!-- title -->
+                      <div class="field">
+                        <label class="label">
+                          Title
+                          <span class="icon has-tooltip-right has-tooltip-arrow"
+                                data-tooltip="The title will show above each dataset and should be a single sentence, perhaps even a shortened version of the paper title. Character limit: 255">
+                              <i class="mdi mdi-information"></i>
+                          </span>
+                        </label>
+                        <div class="control">
+                          <input class="input" type="text" name="metadata-title" placeholder="Title of your dataset">
+                        </div>
+                      </div>
+                      <!-- long description / summary -->
+                      <div class="field">
+                        <label class="label">
+                          Longer description
+                          <span class="icon has-tooltip-right has-tooltip-arrow"
+                                data-tooltip="The title will show above each dataset and should be a single sentence, perhaps even a shortened version of the paper title. Character limit: 255">
+                              <i class="mdi mdi-information"></i>
+                          </span>
+                        </label>
+                        <div class="control">
+                          <textarea class="textarea" name="metadata-summary" placeholder="A concise description of the experiments performed. Describing how the data were produced."></textarea>
+                        </div>
+                      </div>
+                      <!-- dataset type -->
+                      <div class="field">
+                        <label class="label">
+                          Dataset type
+                          <span class="icon has-tooltip-right has-tooltip-arrow"
+                                data-tooltip="At a high-level, what type of expression data is being uploaded?">
+                              <i class="mdi mdi-information"></i>
+                          </span>
+                        </label>
+                        <div class="control">
+                          <div class="select">
+                            <select name="metadata-dataset-type">
+                              <option value="">Select one</option>
+                              <option value="sc-rna-seq">Single-cell RNA-seq</option>
+                              <option value="bulk-rna-seq">Bulk RNA-seq</option>
+                              <option value="microarray">Microarray</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                      <hr />
+                      <h3>Annotation metadata</h3>
+                      <div class="columns">
+                        <div class="column is-6">
+                          <!-- annotation source -->
+                          <div class="field">
+                            <label class="label">
+                              Annotation source
+                              <span class="icon has-tooltip-right has-tooltip-arrow"
+                                    data-tooltip="Which source of identifiers was used to annotate the data? These should correspond to the row identifiers in your data matrix">
+                                  <i class="mdi mdi-information"></i>
+                              </span>
+                            </label>
+                            <div class="control is-expanded">
+                              <div class="select is-fullwidth">
+                                <select name="metadata-annotation-source">
+                                  <option value="">Select one</option>
+                                  <option value="Ensembl">Ensembl</option>
+                                  <option value="ncbi">NCBI</option>
+                                  <option value="other">Other / custom</option>
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="column is-6">
+                          <!-- annotation version -->
+                          <div class="field">
+                            <label class="label">
+                              Annotation release name/number
+                              <span class="icon has-tooltip-right has-tooltip-arrow"
+                                    data-tooltip="Annotation release version name/number. For Ensembl, like '101'. For NCBI, maybe 'hg38'">
+                                  <i class="mdi mdi-information"></i>
+                              </span>
+                            </label>
+                            <div class="control">
+                              <input class="input" type="text" name="metadata-annotation-version" placeholder="">
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <hr />
+                      <h3>Contact, organism and instrumentation</h3>
+                      <div class="columns">
+                        <div class="column is-6">
+                          <!-- GEO ID -->
+                          <div class="field">
+                            <label class="label">
+                              GEO series or sample ID (optional)
+                              <span class="icon has-tooltip-right has-tooltip-arrow"
+                                    data-tooltip="If available, autofills the rest of this section">
+                                  <i class="mdi mdi-information"></i>
+                              </span>
+                            </label>
+                            <div class="control">
+                              <input class="input" type="text" name="metadata-geo-id" placeholder="Like GSEnnnnn or GSMnnnnnnn">
+                            </div>
+                            <div class="control pt-1">
+                              <button id="metadata-geo-lookup" class="button is-primary is-small">Lookup</button>
+                              <span id="metadata-geo-lookup-status" class="pt-1 is-pulled-right is-hidden"><i class="mdi mdi-alert-outline"></i> Entry not found</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="column is-6">
+                          <p class="mt-5">
+                            <span class="icon">
+                              <i class="mdi mdi-arrow-left"></i>
+                            </span>
+                            If a GEO ID is available, enter it here and the rest can be autofilled.
+                          </p>
+                        </div>
+                      </div>
+                      <div class="columns">
+                        <div class="column is-6">
+                          <!-- contact name -->
+                          <div class="field">
+                            <label class="label">
+                              Contact name
+                              <span class="icon has-tooltip-right has-tooltip-arrow"
+                                    data-tooltip="Who should be contacted with questions about this dataset?">
+                                  <i class="mdi mdi-information"></i>
+                              </span>
+                            </label>
+                            <div class="control">
+                              <input class="input" type="text" name="metadata-contact-name" placeholder="Dataset contact person">
+                            </div>
+                          </div>
+                        </div>
+                        <div class="column is-6">
+                          <!-- contact email -->
+                          <div class="field">
+                            <label class="label">
+                              Contact e-mail
+                              <span class="icon has-tooltip-right has-tooltip-arrow"
+                                    data-tooltip="E-mail address for this contact person">
+                                  <i class="mdi mdi-information"></i>
+                              </span>
+                            </label>
+                            <div class="control">
+                              <input class="input" type="email" name="metadata-contact-email" placeholder="Dataset contact email">
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <!-- contact institute -->
+                      <div class="field">
+                        <label class="label">
+                          Contact institute
+                          <span class="icon has-tooltip-right has-tooltip-arrow"
+                                data-tooltip="Institute/company associated with this contact person">
+                              <i class="mdi mdi-information"></i>
+                          </span>
+                        </label>
+                        <div class="control">
+                          <input class="input" type="email" name="metadata-contact-institute" placeholder="Dataset contact institute">
+                        </div>
+                      </div>
+                      <div class="columns">
+                        <div class="column is-6">
+                          <!-- sample taxon ID -->
+                          <div class="field">
+                            <label class="label">
+                              Sample taxonomy ID
+                              <span class="icon has-tooltip-right has-tooltip-arrow"
+                                    data-tooltip="NCBI taxonomy ID. Use lookup link provided">
+                                  <i class="mdi mdi-information"></i>
+                              </span>
+                              <span class="is-pulled-right">
+                                <a href="https://www.ncbi.nlm.nih.gov/taxonomy/" target="_blank">NCBI lookup</a>
+                                <i class="mdi mdi-open-in-new"></i>
+                              </span>
+
+                            </label>
+                            <div class="control">
+                              <input class="input" type="text" name="metadata-taxon-id" placeholder="NCBI tax ID">
+                            </div>
+                          </div>
+                        </div>
+                        <div class="column is-6">
+                          <!-- sample organism -->
+                          <div class="field">
+                            <label class="label">
+                              Sample organism
+                              <span class="icon has-tooltip-right has-tooltip-arrow"
+                                    data-tooltip="Genus/species/strain from which the data originated">
+                                  <i class="mdi mdi-information"></i>
+                              </span>
+
+                            </label>
+                            <div class="control">
+                              <input class="input" type="text" name="metadata-organism" placeholder="Genus species">
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="columns">
+                        <div class="column is-6">
+                          <!-- Platform ID -->
+                          <div class="field">
+                            <label class="label">
+                              NCBI platform ID
+                              <span class="icon has-tooltip-right has-tooltip-arrow"
+                                    data-tooltip="GEO platform ID. Format: 'GPLxxxx'">
+                                  <i class="mdi mdi-information"></i>
+                              </span>
+                              <span class="is-pulled-right">
+                                <a href="https://www.ncbi.nlm.nih.gov/geo/browse/?view=platforms&tool=findplatform" target="_blank">NCBI lookup</a>
+                                <i class="mdi mdi-open-in-new"></i>
+                              </span>
+
+                            </label>
+                            <div class="control">
+                              <input class="input" type="text" name="metadata-platform-id" placeholder="Ex: GPLnnnn">
+                            </div>
+                          </div>
+                        </div>
+                        <div class="column is-6">
+                          <!-- Instrument model -->
+                          <div class="field">
+                            <label class="label">
+                              Instrument model
+                              <span class="icon has-tooltip-right has-tooltip-arrow"
+                                    data-tooltip="Type of technology used to produce data. Ex: Illumina HiSeq 2000">
+                                  <i class="mdi mdi-information"></i>
+                              </span>
+
+                            </label>
+                            <div class="control">
+                              <input class="input" type="text" name="metadata-instrument" placeholder="Ex: Illumina HiSeq 2000">
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="columns">
+                        <div class="column is-4">
+                          <!-- Library selection -->
+                          <div class="field">
+                            <label class="label">
+                              Library selection
+                              <span class="icon has-tooltip-right has-tooltip-arrow"
+                                    data-tooltip="Name of technology used to produce data. Ex: cDNA">
+                                  <i class="mdi mdi-information"></i>
+                              </span>
+                            </label>
+                            <div class="control">
+                              <input class="input" type="text" name="metadata-library-selection" placeholder="Ex: cDNA">
+                            </div>
+                          </div>
+                        </div>
+                        <div class="column is-4">
+                          <!-- Library source -->
+                          <div class="field">
+                            <label class="label">
+                              Library source
+                              <span class="icon has-tooltip-right has-tooltip-arrow"
+                                    data-tooltip="Ex: transcriptomic">
+                                  <i class="mdi mdi-information"></i>
+                              </span>
+                            </label>
+                            <div class="control">
+                              <input class="input" type="text" name="metadata-library-source" placeholder="Ex: transcriptomic">
+                            </div>
+                          </div>
+                        </div>
+                        <div class="column is-4">
+                          <!-- Library strategy -->
+                          <div class="field">
+                            <label class="label">
+                              Library strategy
+                              <span class="icon has-tooltip-right has-tooltip-arrow"
+                                    data-tooltip="Ex: RNA-seq">
+                                  <i class="mdi mdi-information"></i>
+                              </span>
+                            </label>
+                            <div class="control">
+                              <input class="input" type="text" name="metadata-library-strategy" placeholder="Ex: RNA-seq">
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="columns">
+                        <div class="column is-6">
+                          <!-- Pubmed ID -->
+                          <div class="field">
+                            <label class="label">
+                              PubMed ID
+                              <span class="icon has-tooltip-right has-tooltip-arrow"
+                                    data-tooltip="If this is part of a published paper, add PubMed ID here">
+                                  <i class="mdi mdi-information"></i>
+                              </span>
+                            </label>
+                            <div class="control">
+                              <input class="input" type="text" name="metadata-pubmed-id" placeholder="Ex: 34172972">
+                            </div>
+                          </div>
+                          <div class="field">
+                            <div class="control">
+                              <button id="metadata-form-submit" class="button is-primary">Submit metadata</button>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="column is-6">
+                          <div id="errored-field-list-c" class="is-hidden">
+                            <p>
+                              <span class="icon">
+                                <i class="mdi mdi-alert"></i>
+                              </span>
+                              Please check the form above and correct these issues.
+                            </p>
+                            <ul id="errored-field-list"></ul>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                    <div class="column is-4">
+                      <div class="columns is-multiline is-variable">
+                        <div class="column is-12">
+                          <!-- metadata upload file -->
+                          <form id="metadata-upload-form" enctype="multipart/form-data"
+                                action="./cgi/upload_expression_metadata.cgi" method="post">
+                            <div class="field">
+                              <label class="label">Or upload a metadata file</label>
+                              <div class="file has-name is-fullwidth">
+                                <label class="file-label">
+                                  <input class="file-input is-fullwidth" type="file" id="metadata-file-input" name="metadata-file-input">
+                                  <span class="file-cta">
+                                    <span class="file-icon">
+                                      <i class="mdi mdi-upload"></i>
+                                    </span>
+                                    <span class="file-label">
+                                      Choose
+                                    </span>
+                                  </span>
+                                  <span class="file-name" id="metadata-file-name">
+                                    No file chosen
+                                  </span>
+                                </label>
+                              </div>
+                              <div id="metadata-upload-status" class="is-hidden">
+                                <p>
+                                  <span class="icon">
+                                    <i class="mdi mdi-information"></i>
+                                  </span>
+                                  <span id="metadata-upload-status-message"></span>
+                                </p>
+                              </div>
+                            </div>
+                            <input type="hidden" name="metadata-session-id" value="">
+                            <input type="hidden" name="metadata-dataset-id" value="">
+                          </form>
+                        </div>
+                        <div class="column is-12">
+                          <div class="field">
+                            <div class="control">
+                              <button class="button is-primary" id="metadata-upload-submit" disabled>
+                                <span class="icon"><i class="mdi mdi-upload"></i></span>
+                                <span>Upload</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div> <!-- end #curator-part -->
-                </div> <!-- end .bs-stepper-content -->
-              </div> <!-- end .bs-stepper -->
-            </div> <!-- end .col-12 -->
-          </div> <!-- end #stepper_c -->
+                  </div>
 
-          <div class="modal fade" id="user_help_modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
-            <div id="modal_manual_excerpt" class="modal-dialog" role="document">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                  <h4 class="modal-title" id="user_help_modal_title">Manual Excerpt</h4>
                 </div>
-                <div id="user_help_modal_body" class="modal-body">
-                  ...
+                <div id="step-upload-dataset-c" class="step-c is-hidden">
+                  <h1>Step - Upload dataset</h1>
+                  <p>
+                    Choose the format of your dataset and upload it here. You can also provide a URL to a supported dataset.
+                  </p>
+
+                  <hr />
+
+                  <div class="columns">
+                    <div class="column format-column is-3 is-flex">
+                      <!-- MEX/3-tab -->
+                      <div class="box format-selection-box">
+                        <h3>MEX / 3-tab format</h3>
+                        <p class="format-description">
+                          These are simple, plain-text files in a bundle, usually compressed
+                          with tar/gzip or zip.
+                        </p>
+                        <p class="format-documentation-header">
+                          Learn more
+                        </p>
+                        <ul class="format-documentation-links">
+                          <li>
+                            <span class="icon-text"><span class="icon"><i class="mdi mdi-open-in-new"></i></span>
+                              <span><a href="https://www.10xgenomics.com/support/software/cell-ranger/latest/analysis/outputs/cr-outputs-mex-matrices" target="_blank">MEX info</a></span>
+                            </span>
+                          </li>
+                          <li>
+                            <span class="icon-text"><span class="icon"><i class="mdi mdi-download"></i></span>
+                              <span><a href="./user_templates/example_mex.tar" target="_blank">MEX example</a></span>
+                            </span>
+                          </li>
+                          <li>
+                            <span class="icon-text"><span class="icon"><i class="mdi mdi-open-in-new"></i></span>
+                              <span>3-tab info</span>
+                            </span>
+                          </li>
+                          <li>
+                            <span class="icon-text"><span class="icon"><i class="mdi mdi-download"></i></span>
+                              <span><a href="./user_templates/example_3tab.tar.gz">3-tab example</a></span>
+                            </span>
+                          </li>
+                        </ul>
+                        <div class="control">
+                          <button data-format="mex_3tab" class="button is-primary is-fullwidth format-selector">
+                            <span class="icon">
+                              <i class="mdi mdi-checkbox-blank-outline"></i>
+                            </span>
+                            <span class="format-status">Choose</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="column format-column is-3 is-flex">
+                      <!-- Excel -->
+                      <div class="box format-selection-box">
+                        <h3>MS Excel</h3>
+                        <p class="format-description">
+                          Similar in format to 3-tab but rather than individual files each is a different
+                          tab in an Excel spreadsheet. Mostly for bulk RNA-seq data as it doesn't initial-scale
+                          very well for even medium-sized datasets.
+                        </p>
+                        <p class="format-documentation-header">
+                          Learn more
+                        </p>
+                        <ul class="format-documentation-links">
+                          <li>
+                            <span class="icon-text"><span class="icon"><i class="mdi mdi-open-in-new"></i></span>
+                              <span>Excel info</span>
+                            </span>
+                          </li>
+                          <li>
+                            <span class="icon-text"><span class="icon"><i class="mdi mdi-download"></i></span>
+                              <span><a href="./user_templates/example_timeseries.xlsx">Excel example</a></span>
+                            </span>
+                          </li>
+                        </ul>
+                        <div class="control">
+                          <button data-format="excel" class="button is-primary is-fullwidth format-selector">
+                            <span class="icon">
+                              <i class="mdi mdi-checkbox-blank-outline"></i>
+                            </span>
+                            <span class="format-status">Choose</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="column format-column is-3 is-flex">
+                      <!-- Rdata/Seurat -->
+                      <div class="box format-selection-box">
+                        <h3>Rdata / Seurat</h3>
+                        <p class="format-description">
+                          This is a binary format used by the Seurat package in R. If you've already been
+                          working with your dataset in R, including clustering and other analyses, this is
+                          the format to choose.
+                        </p>
+                        <p class="format-documentation-header">
+                          <span class="icon-text"><span class="icon"><i class="mdi mdi-school-outline"></i></span>
+                            <span>Learn more</span>
+                          </span>
+                        </p>
+                        <ul class="format-documentation-links">
+                          <li>
+                            <span class="icon-text"><span class="icon"><i class="mdi mdi-open-in-new"></i></span>
+                              <span><a href="https://bioinformatics.ccr.cancer.gov/docs/getting-started-with-scrna-seq/IntroToR_Seurat/" target="_blank">Rdata info</a></span>
+                            </span>
+                          </li>
+                          <li>
+                            <span class="icon-text"><span class="icon"><i class="mdi mdi-download"></i></span>
+                              <span>Rdata example</span>
+                            </span>
+                          </li>
+                        </ul>
+                        <div class="control">
+                          <button data-format="rdata" class="button is-primary is-fullwidth format-selector" disabled>
+                            <span class="icon">
+                              <i class="mdi mdi-cancel"></i>
+                            </span>
+                            <span class="format-status">Not yet available</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="column format-column is-3 is-flex">
+                      <!-- H5AD/Python -->
+                      <div class="box format-selection-box">
+                        <h3>H5AD / Python</h3>
+                        <p class="format-description">
+                          Usually created by the Scanpy package in Python, this is a binary format that is
+                          very efficient for large datasets. If you've been working with your dataset in Python,
+                          this is the format to choose.
+                        </p>
+                        <p class="format-documentation-header">
+                          <span class="icon-text"><span class="icon"><i class="mdi mdi-school-outline"></i></span>
+                            <span>Learn more</span>
+                          </span>
+                        </p>
+                        <ul class="format-documentation-links">
+                          <li>
+                            <span class="icon-text"><span class="icon"><i class="mdi mdi-open-in-new"></i></span>
+                              <span><a href="https://anndata.readthedocs.io/en/latest/" target="_blank">H5AD info</a></span>
+                            </span>
+                          </li>
+                          <li>
+                            <span class="icon-text"><span class="icon"><i class="mdi mdi-download"></i></span>
+                              <span>H5AD example</span>
+                            </span>
+                          </li>
+                        </ul>
+                        <div class="control">
+                          <button data-format="h5ad" class="button is-primary is-fullwidth format-selector" disabled>
+                            <span class="icon">
+                              <i class="mdi mdi-cancel"></i>
+                            </span>
+                            <span class="format-status">Not yet available</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <hr />
+
+                  <div class="columns">
+                    <div class="column is-6">
+                      <form>
+                      <div class="field">
+                        <label class="label">
+                          Upload dataset file
+                          <span class="icon has-tooltip-right has-tooltip-arrow"
+                                data-tooltip="Choose the file to upload.">
+                              <i class="mdi mdi-information"></i>
+                          </span>
+                        </label>
+                        <div class="file has-name is-fullwidth">
+                          <label class="file-label is-fullwidth">
+                            <input class="file-input is-fullwidth" type="file" id="dataset-file-input" name="dataset-file-input">
+                            <span class="file-cta">
+                              <span class="file-icon">
+                                <i class="mdi mdi-upload"></i>
+                              </span>
+                              <span class="file-label is-fullwidth">
+                                Choose
+                              </span>
+                            </span>
+                            <span class="file-name" id="dataset-file-name">
+                              No file chosen
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="column is-6">
+                      <div class="field">
+                        <label class="label">
+                          Or provide a URL
+                          <span class="icon has-tooltip-right has-tooltip-arrow"
+                                data-tooltip="Provide a URL to a supported dataset.">
+                              <i class="mdi mdi-information"></i>
+                          </span>
+                        </label>
+                        <div class="control">
+                          <input class="input" type="text" name="dataset-url" placeholder="Not yet supported" disabled>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div id="dataset-upload-status" class="is-hidden">
+                    <p class="mt-2 mb-0 pt-2 pb-0">
+                      <span class="icon">
+                        <i class="mdi mdi-information"></i>
+                      </span>
+                      <span id="dataset-upload-status-message"></span>
+                    </p>
+                  </div>
+                  <div class="field">
+                    <progress id="dataset-upload-progress" class="progress is-medium" value="0" max="100"></progress>
+                  </div>
+                  <div class="field">
+                    <div class="control">
+                      <button class="button is-primary" id="dataset-upload-submit" disabled>Upload dataset</button>
+                    </div>
+                  </div>
+                </div>
+                <div id="step-process-dataset-c" class="step-c is-hidden">
+                  <h1>Step - Process dataset</h1>
+                  <p>
+                    Your dataset is being processed on the server. This may take a few minutes, depending on the
+                    size of the dataset. You can close your browser at any time and return to the uploader to
+                    check on the progress.
+                  </p>
+                  <hr />
+                  <div class="columns mb-0 pb-0">
+                    <div class="column is-one-third mb-0 pb-0">
+                      <h3>Status: <span id="step-process-dataset-status">Checking ...</span></h3>
+                    </div>
+                    <div class="column is-two-thirds mb-0 pb-0">
+                      <h3>Message: <span id="step-process-dataset-status-message"></span></h3>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <progress id="dataset-processing-progress" class="progress is-medium" value="" max="100"></progress>
+                  </div>
+                  <div class="field">
+                    <div class="control">
+                      <button class="button is-primary" id="dataset-processing-submit" disabled>Continue</button>
+                    </div>
+                  </div>
+                </div>
+                <div id="step-finalize-dataset-c" class="step-c is-hidden">
+                  <h1>Step - Finalize submission</h1>
+                  <p>
+                    Your dataset has been processed and is ready to be submitted.
+                  </p>
+                  <hr />
+                  <div class="columns">
+                    <div class="column">
+                      <!-- set whether dataset is public or private -->
+                      <div class="field">
+                        <label class="label">
+                          Dataset visibility
+                          <span class="icon has-tooltip-right has-tooltip-arrow"
+                                data-tooltip="Choose whether this dataset is public or private. Public datasets are visible to all users.">
+                              <i class="mdi mdi-information"></i>
+                          </span>
+                        </label>
+                        <div class="control">
+                          <label class="radio">
+                            <input type="radio" name="dataset-visibility" value="public">
+                            Public
+                          </label>
+                          <label class="radio">
+                            <input type="radio" name="dataset-visibility" value="private" checked>
+                            Private (can be changed later)
+                          </label>
+                        </div>
+                      </div>
+                      <div class="field">
+                        <div class="control mt-4">
+                          <button class="button is-primary" id="dataset-finalize-submit">Finalize submission</button>
+                        </div>
+                      </div>
+                      <div id="dataset-finalize-status-message-c" class="is-hidden">
+                        <p>
+                          Please use the Feedback link on the left and provide this error message:
+                        </p>
+                        <span class="icon">
+                          <i class="mdi mdi-information"></i>
+                        </span>
+                        <span id="dataset-finalize-status-message"></span>
+
+                      </div>
+                    </div>
+                    <div class="column">
+                      <div id="finalize-dataset-status-c" class="is-hidden">
+                        <h3>Steps being performed:</h3>
+                        <ul id="finalize-dataset-status-list">
+                          <li>
+                            <span class="icon-text">
+                              <span class="icon">
+                                <i id="finalize-storing-metadata" class="mdi mdi-checkbox-blank-outline"></i>
+                              </span>
+                              <span>Storing metadata</span>
+                            </span>
+                            </li>
+                          </li>
+                          <li>
+                            <span class="icon-text">
+                              <span class="icon">
+                              <i id="finalize-migrating-h5ad" class="mdi mdi-checkbox-blank-outline"></i>
+                              </span>
+                              <span>Migrate H5AD file</span>
+                            </span>
+                            </li>
+                          </li>
+                          <li></li>
+                            <span class="icon-text">
+                              <span class="icon">
+                              <i id="finalize-migrating-userdata" class="mdi mdi-checkbox-blank-outline"></i>
+                              </span>
+                              <span>Migrate user-uploaded source file</span>
+                            </span>
+                            </li>
+                          </li>
+                          <li>
+                            <span class="icon-text">
+                              <span class="icon">
+                                <i id="finalize-setting-access" class="mdi mdi-checkbox-blank-outline"></i>
+                              </span>
+                              <span>Setting access rights</span>
+                            </span>
+                            </li>
+                          </li>
+                        </ul>
+                        <div class="field">
+                          <div class="control mt-4">
+                            <button class="button is-primary" id="dataset-finalize-next-step" disabled>
+                              Done! Last step
+                              <span class="icon pl-3">
+                                <i class="mdi mdi-chevron-right"></i>
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div id="step-curate-dataset-c" class="step-c is-hidden">
+                  <h1>Step - Curate dataset</h1>
+                  <p>
+                    Your dataset has been submitted and is now available in the Dataset Explorer.
+                  </p>
+                  <hr />
+                  <div class="columns">
+                    <div class="column">
+                      <h3>What is curation?</h3>
+                      <p>
+                        Right now your dataset is stored in the system but there
+                        are no visualizations created so users can explore it. Curation is the process
+                        of creating these visualizations, which can include things like bar charts, UMAPs,
+                        heatmaps, etc.
+                      </p>
+                      <div class="field mt-6">
+                        <div class="control">
+                          <button class="button is-primary" id="dataset-curate-submit">Curate dataset</button>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="column">
+                      <img class="img-fluid" src="/img/gear_plot_type_examples.png" alt="Dataset curation examples" />
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </div> <!-- end #logged-in-c -->
 
-        </div> <!-- end #.col-12 -->
-      </div> <!-- end #main_row -->
+          </section><!-- end #content-c -->
 
-      <div id="upload_controls_c">
-        <div class="row">
-          <div id="goback_c" class="form-group col-3 pull-left">
-            <button id="goback_spreadsheet_processing" type="button" class="btn btn-secondary form-control">Go back</button>
-          </div>
-          <div id="continue_c" class="form-group col-4 pull-right">
-            <button id="continue_spreadsheet_processing" data-confirm-step="0" type="button" class="btn btn-success form-control">Continue</button>
-          </div>
-          <div id="submit_upload_c" class="form-group col-5 pull-right">
-            <button id="submit_upload" class="btn btn-default btn-success form-control" type="submit">Submit</button>
-          </div>
+        </section> <!-- end #main-c -->
+      </div>
+      <footer>
+        <div>
+          <!-- content here TO BE inserted via common.js -->
         </div>
-      </div>
-    </div> <!-- end #main_content -->
+      </footer>
 
-    <div id='account_creation_c' class='row'>
-      <!-- content inserted via common.js-->
-    </div>
+      <script src="js/vendor/js.cookie.js"></script>
 
-    <div style="clear: both;">&nbsp;</div>
+      <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+      <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+      <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
-    <footer>
-      <div id='funding'>
-        <!-- content here inserted via JQuery -->
-      </div>
-    </footer>
-</div> <!-- /body_c -->
-        <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
-        <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
-
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
-        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
-
-        <script src="js/vendor/js.cookie.js"></script>
-        <script src="js/vendor/jquery.iframe-transport.js"></script>
-        <script src="js/vendor/jquery.fileupload.js"></script>
-        <script src="//cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.0/bootstrap3-editable/js/bootstrap-editable.min.js"></script>
-
-        <!-- https://github.com/Johann-S/bs-stepper -->
-        <script src="js/vendor/bs-stepper.20190106.min.js"></script>
-
-        <script src="js/vendor/jsrender.20181003.min.js"></script>
-
-        <!-- Plotly JS-->
-        <script src="https://cdn.plot.ly/plotly-1.54.1.min.js"></script>
-
-        <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-        <script>document.write('<script src="js/classes/user.' + (new Date()).getTime() + '.js"><\/script>');</script>
-        <script>document.write('<script src="js/common.' + (new Date()).getTime() + '.js"><\/script>');</script>
-        <script>document.write('<script src="js/upload_dataset.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <!-- Page-specific JS file here -->
+      <script>document.write('<script src="js/upload_dataset.' + (new Date()).getTime() + '.js"><\/script>');</script>
     </body>
 </html>

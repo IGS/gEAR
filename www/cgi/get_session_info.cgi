@@ -53,6 +53,10 @@ def main():
     cursor.close()
     cnx.close()
 
+    # remove user_id
+    if 'id' in result:
+        del result['id']
+
     # if we got here, there isn't a match
     print(json.dumps(result))
 

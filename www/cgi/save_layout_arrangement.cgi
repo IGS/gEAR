@@ -21,62 +21,57 @@ def main():
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
-    layout_id = form.getvalue('layout_id')
-    dataset_ids = form.getvalue('dataset_ids')[:-1]
-    dataset_widths = form.getvalue('dataset_widths')[:-1]
+    layout_share_id = form.getvalue('layout_share_id')
+    layout_arrangement_json = form.getvalue('layout_arrangement')
 
     user = geardb.get_user_from_session_id(session_id)
+
+    layout = geardb.get_layout_by_share_id(layout_share_id)
+
+    if not layout:
+        print(json.dumps({'success': 0, 'error': 'Collection not found'}))
+        return
+
+    layout_id = layout.id
 
     # Does user own the dataset ...
     owns_layout = check_layout_ownership(cursor, user.id, layout_id)
 
-    if owns_layout == True and layout_id != 0:
-        d_ids = dataset_ids.split(',')
-        d_widths = dataset_widths.split(',')
+    if owns_layout == True and layout_share_id != 0:
 
-        #convert widths from pixel values to grid values
-        for i, width in enumerate(d_widths):
-            # Need float first in case the math created a non-int
-            width = int(float(width))
+        layout_arrangement = json.loads(layout_arrangement_json)
 
-            if width < 210:
-                d_widths[i] = 4
-            if width > 380 and width < 400:
-                d_widths[i] = 8
-            if width > 570:
-                d_widths[i] = 12
-        print(d_widths, file=sys.stderr)
+        # Clear the current layout displays for this layout
+        qry = """ DELETE FROM layout_displays
+                    WHERE layout_id = %s
+                """
+        cursor.execute(qry, (layout_id,))
 
-        grid_position = 1
-        for d_id, d_width in zip(d_ids, d_widths):
-            # TODO: Address mg_grid_width as well
-            qry = """ UPDATE layout_members
-                      SET grid_position = %s, grid_width = %s
-                      WHERE layout_id = %s
-                        AND dataset_id = %s
-            """
-            cursor.execute(qry, (grid_position, d_width, layout_id, d_id))
-            grid_position += 1
+        # Loop through all the layout members and update their grid positions
+        for display_type in ["single", "multi"]:
+            curr_grid_position = 1
+            for layout_display in layout_arrangement[display_type]:
+                qry = """ INSERT INTO layout_displays
+                            (layout_id, display_id, grid_position, grid_width, grid_height, start_col, start_row)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """
+
+                cursor.execute(qry, (layout_id, layout_display["display_id"], curr_grid_position,
+                                    layout_display["grid_width"], layout_display["grid_height"],
+                                    layout_display["start_col"], layout_display["start_row"])
+                )
+                curr_grid_position += 1
 
         result = { 'success':1 }
         cnx.commit()
         cursor.close()
         cnx.close()
     else:
-        result = { 'error':[] }
         error = "Not able to save layout arrangement. User must be logged in and own the layout."
-        result['error'] = error
+        result = {'success':0, "error": error}
+
 
     print(json.dumps(result))
-
-
-def add_layout(cursor, user_id, layout_name):
-    qry = """
-        INSERT INTO layout (user_id, label, is_current)
-        VALUES (%s, %s, 0)
-    """
-    cursor.execute(qry, (user_id, layout_name))
-    return cursor.lastrowid
 
 def check_layout_ownership(cursor, current_user_id, layout_id):
     qry = """

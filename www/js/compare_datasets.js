@@ -1,14 +1,8 @@
-// NOTE: - SAdkins - 11/3/21 - Refactored code using P42 VSCode extension https://p42.ai/documentation/code-action/
-
-let plot_data = null;
-let selected_data = null;
-
-let condition_x = null;
-let condition_y = null;
+'use strict';
 
 // SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 // This is meant to be a short-term solution until more people specify their data is transformed via the metadata
-const log10_transformed_datasets = [
+const LOG10_TRANSFORMED_DATASETS = [
 "320ca057-0119-4f32-8397-7761ea084ed1"
 , "df726e89-b7ac-d798-83bf-2bd69d7f3b52"
 , "bad48d04-db27-26bc-2324-e88506f751fd"
@@ -50,433 +44,747 @@ const log10_transformed_datasets = [
 , "80eadbe6-49ac-8eaf-f2fb-e07706cf117b"
 ];
 
-// TODO: Have mechanism to convert non-categorical column to categorical if it was erroneously added as numerical
+let sessionId;
+let facetWidget;	// stores aggregation data
+let datasetId;
+let organismId;	// Used for saving as gene cart
+let compareData;;
+let selectedGeneData;
+let manuallyEnteredGenes = new Set();
 
-const dataset_tree = new DatasetTree({treeDiv: '#dataset_tree'});
-const gene_cart_tree = new GeneCartTree({treeDiv: '#gene_cart_tree'});
+// imported from gene-collection-selector.js
+// let selected_genes = new Set();
 
-window.onload = () => {
-	$(".btn-apply-filter").on("click", () => {
-		$(".initial_instructions").hide();
-		$("#myChart").html("");
-		$("#error_loading_c").hide();
-		$("#plot_loading").show();
-		load_comparison_graph();
-	});
+// Storing user's plot text edits, so they can be restored if user replots
+let titleText = null;
+let xaxisText = null;
+let yaxisText = null;
 
-	/***** gene cart stuff *****/
-	$("#create_gene_cart").on("click", () => {
-		$("#create_gene_cart_dialog").show("fade");
-	});
-	$("#cancel_save_gene_cart").on("click", () => {
-		$("#create_gene_cart_dialog").hide("fade");
-		$("#gene_cart_name").val("");
-	});
+const datasetTree = new DatasetTree({
+    element: document.getElementById("dataset-tree")
+    , searchElement: document.getElementById("dataset-query")
+    , selectCallback: (async (e) => {
+        if (e.node.type !== "dataset") {
+            return;
+        }
+        document.getElementById("current-dataset-c").classList.remove("is-hidden");
+        document.getElementById("current-dataset").textContent = e.node.title;
+        document.getElementById("current-dataset-post").textContent = e.node.title;
 
-	$("#gene_cart_name").on("input", function () {
-		if ($(this).val() == "") {
-			$("#save_gene_cart").prop("disabled", true);
-		} else {
-			$("#save_gene_cart").prop("disabled", false);
+        const newDatasetId = e.node.data.dataset_id;
+        organismId = e.node.data.organism_id;
+
+        // We don't want to needless run this if the same dataset was clicked
+        if (newDatasetId === datasetId) {
+            return;
+        }
+
+        datasetId = newDatasetId;
+
+        // Click to get to next step
+        document.getElementById("condition-compare-s").click();
+
+        // Clear "success/failure" icons
+        for (const elt of document.getElementsByClassName("js-step-success")) {
+            elt.classList.add("is-hidden");
+        }
+		for (const elt of document.getElementsByClassName("js-step-failure")) {
+			elt.classList.add("is-hidden");
 		}
-	});
-	$("#save_gene_cart").on("click", () => {
-		$("#save_gene_cart").prop("disabled", true);
 
-		if (CURRENT_USER) {
-			save_gene_cart();
-		} else {
-			alert("You must be signed in to do that.");
+        // collapse tree
+        e.node.tree.expandAll(false);
+
+		const compareSeriesElt = document.getElementById("compare-series");
+		compareSeriesElt.parentElement.classList.add("is-loading");
+
+		// Clear selected gene tags
+		document.getElementById("gene-tags").replaceChildren();
+
+		// Clear compare groups
+		for (const classElt of document.getElementsByClassName("js-compare-groups")) {
+			classElt.replaceChildren();
 		}
-	});
 
-	$("#weighted_gene_cart_name").on("input", function () {
-		if ($(this).val() == "") {
-			$("#save_weighted_gene_cart").prop("disabled", true);
-		} else {
-			$("#save_weighted_gene_cart").prop("disabled", false);
-		}
-	});
-	$("#save_weighted_gene_cart").on("click", () => {
-		$("#save_weighted_gene_cart").prop("disabled", true);
-		if (CURRENT_USER) {
-			save_weighted_gene_cart();
-		} else {
-			alert("You must be signed in to do that.");
-		}
-	});
-	/***** end gene cart stuff *****/
+		// Update compare series options
+		facetWidget = await createFacetWidget(datasetId, null, {}); // Initial fetching of categorical columns
+		const catColumns = facetWidget.aggregations.map((agg) => agg.name);
+		updateSeriesOptions("js-compare", catColumns);
 
-	$("#dataset_id").on("change", () => {
-		populate_condition_selection_control();
-		// Change the default if the dataset is already log10 transformed
-		if (log10_transformed_datasets.includes($('#dataset_id').val())) {
-			$('#log_base').val('10');
-		} else {
-			$('#log_base').val('2');
-		}
-	});
+		compareSeriesElt.parentElement.classList.remove("is-loading");
 
-	$("#statistical_test").on("change", () => {
-		if ($("#statistical_test").val()) {
-		$("#test_pval_cutoff").prop("disabled", false);
-		} else {
-		$("#test_pval_cutoff").prop("disabled", true);
-		}
-	});
-
-	// Create observer to watch if user changes (ie. successful login does not refresh page)
-	// See: https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
-
-	// But we need to wait for navigation_bar to load first (in common.js) so do some polling
-	// See: https://stackoverflow.com/q/38881301
-
-	// Select the node that will be observed for mutations
-	const target_node = document.getElementById('loggedin_controls');
-    const safer_node = document.getElementById("navigation_bar");   // Empty div until loaded
-	// Create an observer instance linked to the callback function
-	const observer = new MutationObserver(function(mutationList, observer) {
-		if (target_node) {
-			load_all_trees();
-			this.disconnect();  // Don't need to reload once the trees are updated
-		}
-	});
-	// For the "config" settings, do not monitor the subtree of nodes as that will trigger the callback multiple times.
-	// Just seeing #loggedin_controls go from hidden (not logged in) to shown (logged in) is enough to trigger.
-	observer.observe(target_node || safer_node , { attributes: true });
-
-};
-
-// Load user's gene carts
-$('#loaded_gene_cart').change(function () {
-    const gene_cart_id = $(this).val();
-    const params = { session_id, gene_cart_id };
-    const d = new $.Deferred(); // Causes editable to wait until results are returned
-
-    if (typeof session_id !== 'undefined') {
-        // Get the gene cart members and populate the gene symbol search bar
-        $.ajax({
-            url: './cgi/get_gene_cart_members.cgi',
-            async: false,
-            type: 'post',
-            data: params,
-            success: function (data, newValue, oldValue) {
-                if (data.success === 1) {
-                    const gene_symbols_array = []
-                    // format gene symbols into search string
-                    $.each(data.gene_symbols, function (i, item) {
-                        gene_symbols_array.push(item.label);
-                    });
-                    //deduplicate gene cart
-                    const dedup_gene_symbols_array = [...new Set(gene_symbols_array)]
-
-                    gene_symbols = dedup_gene_symbols_array.join(' ')
-                    $('#highlighted_genes').val(gene_symbols);
-                }
-                d.resolve();
-            }
-        });
-    } else {
-        d.resolve();
-    }
-    return d.promise();
+    })
 });
 
+const adjustGeneTableLabels = () => {
+    const geneFoldchanges = document.getElementById("tbl-gene-foldchanges");
+	geneFoldchanges.replaceChildren();
+	const logBase = document.getElementById("log-base").value;
 
-function download_selected_genes() {
+	const spanIcon = document.createElement("span");
+	spanIcon.classList.add("icon");
+	const i = document.createElement("i");
+	i.classList.add("mdi", "mdi-sort-numeric-ascending");
+	i.setAttribute("aria-hidden", "true");
+	spanIcon.appendChild(i);
+	geneFoldchanges.appendChild(spanIcon);
+
+	if (logBase === "raw") {
+		geneFoldchanges.prepend("Fold Change ");
+		return;
+	}
+	geneFoldchanges.prepend(`Log${logBase} Fold Change `);
+}
+
+const appendGeneTagButton = (geneTagElt) => {
+    // Add delete button
+    const deleteBtnElt = document.createElement("button");
+    deleteBtnElt.classList.add("delete", "is-small");
+    geneTagElt.appendChild(deleteBtnElt);
+    deleteBtnElt.addEventListener("click", (event) => {
+        // Remove gene from selected_genes
+        const gene = event.target.parentNode.textContent;
+		selected_genes.delete(gene);
+		event.target.parentNode.remove();
+
+		// Remove gene from manually entered genes textbox
+		manuallyEnteredGenes.delete(gene);
+		document.getElementById("genes-manually-entered").value = Array.from(manuallyEnteredGenes).join(" ");
+
+		// Update graph
+		updatePlotAnnotations(Array.from(selected_genes).sort());
+
+        // Remove checkmark from gene lists dropdown
+        const geneListLabel = document.querySelector(`#dropdown-content-genes .gene-item-label[text="${gene}"]`);
+        if (!geneListLabel) {
+            return;
+        }
+        const geneListElt = geneListLabel.parentElement;
+        const geneListI = geneListElt.querySelector("i.toggler")
+        if (!geneListI.classList.contains("mdi-check")) {
+            return;
+        }
+        geneListI.classList.replace("mdi-check", "mdi-plus");
+        geneListI.classList.replace("gene-list-item-remove", "gene-list-item-add");
+        geneListElt.classList.remove("is-selected");
+
+
+    });
+}
+
+const chooseGenes = (event) => {
+    // Triggered when a gene is selected
+
+    // Delete existing tags
+    const geneTagsElt = document.getElementById("gene-tags");
+    geneTagsElt.replaceChildren();
+
+	if (selected_genes.size == 0) return;  // Do not trigger after initial population
+
+    // Update list of gene tags
+	const sortedGenes = Array.from(selected_genes).sort();
+    for (const opt in sortedGenes) {
+        const geneTagElt = document.createElement("span");
+        geneTagElt.classList.add("tag", "is-primary", "mx-1");
+        geneTagElt.textContent = sortedGenes[opt];
+        appendGeneTagButton(geneTagElt);
+        geneTagsElt.appendChild(geneTagElt);
+    }
+
+    document.getElementById("gene-tags-c").classList.remove("is-hidden");
+
+    // If more than 10 tags, hide the rest and add a "show more" button
+    if (selected_genes.size > 10) {
+        const geneTags = geneTagsElt.querySelectorAll("span.tag");
+        for (let i = 10; i < geneTags.length; i++) {
+            geneTags[i].classList.add("is-hidden");
+        }
+        // Add show more button
+        const showMoreBtnElt = document.createElement("button");
+        showMoreBtnElt.classList.add("tag", "button", "is-small", "is-primary", "is-light");
+        const numToDisplay = selected_genes.size - 10;
+        showMoreBtnElt.textContent = `+${numToDisplay} more`;
+        showMoreBtnElt.addEventListener("click", (event) => {
+            const geneTags = geneTagsElt.querySelectorAll("span.tag");
+            for (let i = 10; i < geneTags.length; i++) {
+                geneTags[i].classList.remove("is-hidden");
+            }
+            event.target.remove();
+        });
+        geneTagsElt.appendChild(showMoreBtnElt);
+    }
+
+	updatePlotAnnotations(sortedGenes);
+
+}
+
+const clearGenes = (event) => {
+    document.getElementById("clear-genes-btn").classList.add("is-loading");
+	document.getElementById("gene-tags").replaceChildren();
+	selected_genes.clear();
+	document.getElementById("dropdown-gene-list-cancel").click();	// clear the dropdown
+	// Remove gene from manually entered genes textbox
+	manuallyEnteredGenes.clear();
+	document.getElementById("genes-manually-entered").value = "";
+
+	updatePlotAnnotations([]);
+    document.getElementById("clear-genes-btn").classList.remove("is-loading");
+}
+
+const createFacetWidget = async (datasetId, analysisId, filters) => {
+    document.getElementById("selected-facets-loader").classList.remove("is-hidden")
+	document.getElementById("facet-content").classList.add("is-hidden");
+	document.getElementById("selected-facets").classList.add("is-hidden");
+
+    const {aggregations, total_count:totalCount} = await fetchAggregations(datasetId, analysisId, filters);
+    document.getElementById("num-selected").textContent = totalCount;
+
+
+    const facetWidget = new FacetWidget({
+        aggregations,
+        filters,
+        onFilterChange: async (filters) => {
+            if (filters) {
+                try {
+                    const {aggregations, total_count:totalCount} = await fetchAggregations(datasetId, analysisId, filters);
+                    facetWidget.updateAggregations(aggregations);
+                    document.getElementById("num-selected").textContent = totalCount;
+                } catch (error) {
+                    logErrorInConsole(error);
+                }
+            } else {
+                // Save an extra API call
+                facetWidget.updateAggregations(facetWidget.aggregations);
+            }
+        },
+		filterHeaderExtraClasses:"has-background-white"
+    });
+    document.getElementById("selected-facets-loader").classList.add("is-hidden")
+	document.getElementById("facet-content").classList.remove("is-hidden");
+	document.getElementById("selected-facets").classList.remove("is-hidden");
+    return facetWidget;
+}
+
+const downloadSelectedGenes = (event) => {
+    event.preventDefault();
+
 	// Builds a file in memory for the user to download.  Completely client-side.
 	// plot_data contains three keys: x, y and symbols
 	// build the file string from this
 
-	const x_label = $('#x_label').val().length ? $('#x_label').val() : "x-condition";
-	const y_label = $('#y_label').val().length ? $('#y_label').val() : "y-condition";
+    // Adjust headers to the plot type
+	const xLabel = JSON.stringify([...document.querySelectorAll("#compare-x input:checked")].map((elt) => elt.value));
+	const yLabel = JSON.stringify([...document.querySelectorAll("#compare-y input:checked")].map((elt) => elt.value));
 
-	let file_contents =
-		$("#log_base").val() == "raw"
+	const logBase = document.getElementById("log-base").value;
+
+	let fileContents =
+		logBase === "raw"
 		? "gene_symbol\tp-value\traw fold change\t"
-		+ x_label + "\t"
-		+ y_label + "\n"
+		+ xLabel + "\t"
+		+ yLabel + "\n"
 		: "gene_symbol\tp-value\traw fold change\t"
-		+ x_label + " (log" + $("#log_base").val() +")\t"
-		+ y_label + " (log" + $("#log_base").val() +")\n";
+		+ xLabel + " (log" + logBase +")\t"
+		+ yLabel + " (log" + logBase +")\n";
 
 
-
-	selected_data.points.forEach((pt) => {
+	selectedGeneData.forEach((gene) => {
 		// Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
-		file_contents +=
-			`${pt.data.id[pt.pointNumber]}\t`
-			+ ($("#statistical_test").val() ? pt.data.pvals[pt.pointNumber].toExponential(2) : "NA") + "\t"
-			+ pt.data.foldchange[pt.pointNumber].toFixed(1) + "\t"
-			+ pt.x.toFixed(1) + "\t"
-			+ pt.y.toFixed(1) + "\n";
+		fileContents +=
+			`${gene.gene_symbol}\t`
+			+ `${gene.pval}\t`
+			+ `${gene.foldchange}\t`
+			+ `${gene.x}\t`
+			+ `${gene.y}\n`;
 	});
 
 	const element = document.createElement("a");
 	element.setAttribute(
 		"href",
-		`data:text/tab-separated-values;charset=utf-8,${encodeURIComponent(file_contents)}`
+		`data:text/tab-separated-values;charset=utf-8,${encodeURIComponent(fileContents)}`
 	);
 	element.setAttribute("download", "selected_genes.tsv");
 	element.style.display = "none";
 	document.body.appendChild(element);
 	element.click();
 	document.body.removeChild(element);
+
+
 }
 
-// Build list of selected categories and groups
-function update_selected_conditions() {
-	const condition = {};
-	// Create current object of which groups are to be included (checked)
-	$('#conditions_accordion').find('.js-group-check').each(function(){
-	const id = $(this).data("group");
 
-	const category = id.split(';-;')[0];
-	const group = id.split(';-;')[1];
-
-	if (Object.keys(condition).indexOf(category) === -1) {
-		condition[category] = [];
-	}
-
-	if ($(this).prop("checked")) {
-		condition[category].push(group);
-	}
-	});
-	return condition;
+const fetchAggregations = async (datasetId, analysisId, filters) => {
+    try {
+        const data = await apiCallsMixin.fetchAggregations(datasetId, analysisId, filters)
+        if (data.hasOwnProperty("success") && data.success < 1) {
+            throw new Error(data?.message || "Could not fetch number of observations for this dataset. Please contact the gEAR team.");
+        }
+        const {aggregations, total_count} = data;
+        return {aggregations, total_count};
+    } catch (error) {
+        logErrorInConsole(error);
+    }
 }
 
-function load_comparison_graph() {
-	// Save current state of active condition tab
-	if ($("#condition_x_tab").hasClass("active")) {
-		condition_x = update_selected_conditions();
+const fetchDatasetComparison = async (datasetId, filters, compareKey, conditionX, conditionY, foldChangeCutoff, stDevNumCutoff, logBase, statisticalTestAction) => {
+	try {
+		return await apiCallsMixin.fetchDatasetComparison(datasetId, filters, compareKey, conditionX, conditionY, foldChangeCutoff, stDevNumCutoff, logBase, statisticalTestAction);
+	} catch (error) {
+		const msg = "Could not fetch dataset comparison. Please contact the gEAR team."
+		throw new Error(msg);
+	}
+}
+
+const fetchDatasets = async () => {
+    try {
+        return await apiCallsMixin.fetchAllDatasets();
+    } catch (error) {
+        logErrorInConsole(error);
+        const msg = "Could not fetch datasets. Please contact the gEAR team."
+        createToast(msg);
+        throw new Error(msg);
+    }
+}
+
+const getComparisons = async (event) => {
+
+	// set loading icon
+	event.target.classList.add("is-loading");
+
+	const filters = JSON.stringify(facetWidget.filters);
+
+	const compareSeries = document.getElementById("compare-series").value
+
+	// Get all checked x and y series
+	const checkedX = JSON.stringify([...document.querySelectorAll("#compare-x input:checked")].map((elt) => elt.value));
+	const checkedY = JSON.stringify([...document.querySelectorAll("#compare-y input:checked")].map((elt) => elt.value));
+
+	const foldChangeCutoff = document.getElementById("fc-cutoff").value;
+	const stdDevNumCutoff = document.getElementById("standard-deviation").value;
+	const logTransformation = document.getElementById("log-base").value;
+	const statisticalTest = document.getElementById("statistical-test").value;
+
+	try {
+		const data = await fetchDatasetComparison(datasetId, filters, compareSeries, checkedX, checkedY, foldChangeCutoff, stdDevNumCutoff, logTransformation, statisticalTest);
+		if (data?.success < 1) {
+			throw new Error(data?.message || "Could not fetch dataset comparison. Please contact the gEAR team.");
+		}
+		compareData = data;
+		plotDataToGraph(compareData);
+
+		// If any genes selected, update plot annotations (since plot was previously purged)
+		const sortedGenes = Array.from(selected_genes).sort();
+		updatePlotAnnotations(sortedGenes);
+
+		// Hide this view
+		document.getElementById("content-c").classList.add("is-hidden");
+		// Generate and display "post-plotting" view/container
+		document.getElementById("post-plot-content-c").classList.remove("is-hidden");
+
+	} catch (error) {
+		console.error(error);
+		handleGetComparisonError(datasetId, checkedX, checkedY);
+	} finally {
+		event.target.classList.remove("is-loading");
+	}
+
+	// When a plot configuration ID is selected, populate the plot configuration post textbox
+	const plotConfigElts = ["statistical-test", "pval-cutoff", "cutoff-filter-action", "log-base", "fc-cutoff", "standard-deviation"];
+	for (const elt of plotConfigElts) {
+		// if value is empty, set to "None", or if disabled, set to "N/A"
+		let value = document.getElementById(elt).disabled ? "N/A" : document.getElementById(elt).value || "None"
+
+		// Append extra flavor text
+		if (elt == "log-base" && !(value === "raw" )) {
+			value = `log${value}`
+		}
+
+		if (elt == "standard-deviation" && !(value === "0" )) {
+			value = `±${value}`
+		}
+
+		document.getElementById(`${elt}-post`).textContent = value;
+	}
+
+}
+
+const getSeriesItems = (series) => {
+	return facetWidget.aggregations.find((agg) => agg.name === series).items;
+}
+
+const getSeriesNames = (seriesItems) => {
+	return seriesItems.map((item) => item.name);
+}
+
+const handleGetComparisonError = (datasetID, conditionX, conditionY) => {
+	const msg = `Could not fetch dataset comparison. Please contact the gEAR team.`;
+	createToast(msg);
+	console.error(msg);
+}
+
+/**
+ * Highlights rows in a gene table based on the searched genes.
+ *
+ * @param {string[]} searchedGenes - An array of genes to search for.
+ */
+const highlightTableGenes = (searchedGenes=[]) => {
+	const geneTableBody = document.getElementById("gene-table-body");
+	// Select the first column (gene_symbols) in each row
+	for (const row of geneTableBody.children) {
+		// clear any previous highlighting
+		row.classList.remove("has-background-success");
+		const tableGene = row.children[0].textContent;
+		for (const gene of searchedGenes) {
+			if (gene.toLowerCase() === tableGene.toLowerCase() ) {
+				row.classList.add("has-background-success");
+			}
+		};
+	}
+}
+
+/* Transform and load dataset data into a "tree" format */
+const loadDatasetTree = async () => {
+    const userDatasets = [];
+    const sharedDatasets = [];
+    const domainDatasets = [];
+    try {
+        const datasetData = await apiCallsMixin.fetchAllDatasets();
+
+        let counter = 0;
+
+        // Populate select box with dataset information owned by the user
+        if (datasetData.user.datasets.length > 0) {
+            // User has some profiles
+            for (const item of datasetData.user.datasets) {
+                if (item) {
+                    userDatasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
+                }
+            };
+        }
+        // Next, add datasets shared with the user
+        if (datasetData.shared_with_user.datasets.length > 0) {
+            for (const item of datasetData.shared_with_user.datasets) {
+                if (item) {
+                    sharedDatasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
+                }
+            };
+        }
+        // Now, add public datasets
+        if (datasetData.public.datasets.length > 0) {
+            for (const item of datasetData.public.datasets) {
+                if (item) {
+                    domainDatasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
+                }
+            };
+        }
+        datasetTree.userDatasets = userDatasets;
+        datasetTree.sharedDatasets = sharedDatasets;
+        datasetTree.domainDatasets = domainDatasets;
+        datasetTree.generateTree();
+    } catch (error) {
+		createToast("Could not fetch datasets. Please contact the gEAR team.");
+        document.getElementById("dataset-s-failed").classList.remove("is-hidden");
+    }
+}
+
+const plotDataToGraph = (data) => {
+
+	const statisticalTest = document.getElementById("statistical-test").value;
+
+	const pointLabels = [];
+	const performRanking = statisticalTest ? true : false;
+
+	const plotData = [];
+
+	if (performRanking) {
+		const pValCutoff = document.getElementById("pval-cutoff").value;
+		const pvalCutoff = parseFloat(pValCutoff);
+		const passing = { x: [], y: [], labels: [], id: [], pvals: [], foldchange: []};
+		const failing = { x: [], y: [], labels: [], id: [], pvals: [], foldchange: []};
+
+		data.x.forEach((trace, i) => {
+			// pvals_adj array consist of 1-element arrays, so let's flatten to prevent potential issues
+			// Caused by rank_genes_groups output (1 inner array per query comparison group)
+			data.pvals_adj = data.pvals_adj.flat();
+
+			const thisPval = parseFloat(data.pvals_adj[i]);
+
+			const arrayToPushInto = (thisPval <= pvalCutoff) ? passing : failing;
+
+			arrayToPushInto.x.push(trace);
+			arrayToPushInto.y.push(data.y[i]);
+			arrayToPushInto.foldchange.push(data.fold_changes[i]);
+			arrayToPushInto.labels.push(
+			"Gene symbol: " +
+				data.symbols[i] +
+				"   P-value: " +
+				thisPval.toPrecision(6)
+			);
+			arrayToPushInto.id.push(data.symbols[i]);
+			arrayToPushInto.pvals.push(data.pvals_adj[i]);
+
+		});
+
+		const passColor = CURRENT_USER.colorblind_mode ? 'rgb(0, 34, 78)' : "#FF0000";
+		const failColor = CURRENT_USER.colorblind_mode ? 'rgb(254, 232, 56)' : "#A1A1A1";
+
+		const statAction = document.getElementById("cutoff-filter-action").value;
+		if (statAction === "colorize") {
+			const passingObj = {
+					id: passing.id,
+					pvals: passing.pvals,
+					x: passing.x,
+					y: passing.y,
+					foldchange: passing.foldchange,
+					mode: "markers",
+					name: "Passed cutoff",
+					type: "scatter",
+					text: passing.labels,
+					marker: {
+						color: new Array(passing.x.length).fill(passColor, 0, passing.x.length),
+						size: 4,
+					},
+				}
+			// store original marker color as a deep copy
+			passingObj.marker.origColor = JSON.parse(JSON.stringify(passingObj.marker.color));
+
+			const failingObj = {
+					id: failing.id,
+					pvals: failing.pvals,
+					x: failing.x,
+					y: failing.y,
+					foldchange: failing.foldchange,
+					mode: "markers",
+					name: "Did not pass cutoff",
+					type: "scatter",
+					text: failing.labels,
+					marker: {
+						color: new Array(failing.x.length).fill(failColor, 0, failing.x.length),
+						size: 4,
+					},
+				}
+			// store original marker color as a deep copy
+			failingObj.marker.origColor = JSON.parse(JSON.stringify(failingObj.marker.color));
+
+			plotData.push(passingObj);
+			plotData.push(failingObj);
+		} else {
+
+			const passingObj = {
+				id: passing.id,
+				pvals: passing.pvals,
+				x: passing.x,
+				y: passing.y,
+				foldchange: passing.foldchange,
+				mode: "markers",
+				type: "scatter",
+				text: passing.labels,
+				marker: {
+					color: new Array(passing.x.length).fill("#000000" , 0, passing.x.length),
+					size: 4,
+				},
+			}
+			// store original marker color as a deep copy
+			passingObj.marker.origColor = JSON.parse(JSON.stringify(passingObj.marker.color));
+
+			plotData.push(passingObj);
+		}
+
 	} else {
-		// on #condition_y_tab
-		condition_y = update_selected_conditions();
+		for (const gene of data.symbols) {
+			pointLabels.push(`Gene symbol: ${gene}`);
+		}
+
+		const dataObj = {
+			id: data.symbols,
+			pvals: data.pvals_adj,
+			x: data.x,
+			y: data.y,
+			foldchange: data.fold_changes,
+			mode: "markers",
+			type: "scatter",
+			text: pointLabels,
+			marker: {
+				color: new Array(data.x.length).fill("#000000", 0, data.x.length),
+				size: 4,
+			},
+		}
+		// store original marker color as a deep copy
+		dataObj.marker.origColor = JSON.parse(JSON.stringify(dataObj.marker.color));
+
+		plotData.push(dataObj);
 	}
 
-	const dataset_id = $("#dataset_id").val();
-	const dataset_text = $("#dataset_id").text();
-	const sanitized_condition_x = sanitize_condition(condition_x);
-	const sanitized_condition_y = sanitize_condition(condition_y);
-	const condition_x_string = JSON.stringify(sanitized_condition_x);
-	const condition_y_string = JSON.stringify(sanitized_condition_y);
-
-	// empty error message, so that user/helper won't get confused
-	$("#ticket_error_msg").empty();
-	$("#error_loading_c").hide();
-	$("#genes_not_found").empty().hide();
-	$("#gene_list_c").hide();
-	$('#weighted_gene_cart_c').hide();
-
-	$.ajax({
-		url: "./cgi/get_dataset_comparison.cgi",
-		type: "POST",
-		data: {
-			dataset_id,
-			condition_x: condition_x_string,
-			condition_y: condition_y_string,
-			fold_change_cutoff: $("#fold_change_cutoff").val(),
-			std_dev_num_cutoff: $("#std_dev_num_cutoff").val(),
-			log_transformation: $("#log_base").val(),
-			statistical_test: $("#statistical_test").val(),
+	const layout = {
+		title: titleText || "Dataset Comparison",
+		xaxis: {
+			title: xaxisText || data.condition_x.join(", "),
 		},
-		dataType: "json"
-	}).done((data) => {
-		if (data.success == 1) {
-			$("#fold_change_std_dev").html(data.fold_change_std_dev);
-			plot_data = data;
-			plot_data_to_graph(data);
-			return;
+		yaxis: {
+			title: yaxisText || data.condition_y.join(", "),
+		},
+		annotations: [],
+		hovermode: "closest",
+		dragmode: "select",
+	};
+
+
+	const config = {
+		editable: true, // allows user to edit plot title, axis labels, and legend
+		showLink: false
+	}
+
+	const plotContainer = document.getElementById("plot-container");
+	plotContainer.replaceChildren();    // erase plot
+
+	// NOTE: Plot initially is created to a default width but is responsive.
+	// Noticed container within our "column" will make full-width go beyond the screen
+
+	const plotlyPreview = document.createElement("div");
+	plotlyPreview.id = "plotly-preview";
+	plotlyPreview.classList.add("container", "is-max-desktop");
+	plotContainer.append(plotlyPreview);
+
+	Plotly.purge("plotly-preview"); // clear old Plotly plots
+
+	Plotly.newPlot("plotly-preview", plotData, layout, config);
+
+	// Hide table when plot is first loaded
+	document.getElementById("tbl-selected-genes").classList.add("is-hidden");
+
+	// If plot data is selected, create the right-column table and do other misc things
+	plotlyPreview.on("plotly_selected", (eventData) => {
+
+		// Hide selected genes table and disable unweighted radio button if no genes are selected
+		document.getElementById("tbl-selected-genes").classList.add("is-hidden");
+		document.getElementById("download-selected-genes-btn").classList.add("is-hidden");
+		document.querySelector("input[name='genecart_type'][value='unweighted']").disabled = true;
+		document.querySelector("input[name='genecart_type'][value='unweighted']").parentElement.setAttribute("disabled", "disabled");
+		// click the weighted radio button
+		document.querySelector("input[name='genecart_type'][value='weighted']").click();
+
+		if (eventData?.points.length) {
+			document.getElementById("tbl-selected-genes").classList.remove("is-hidden");
+			document.getElementById("download-selected-genes-btn").classList.remove("is-hidden");
+			document.querySelector("input[name='genecart_type'][value='unweighted']").disabled = false;
+			document.querySelector("input[name='genecart_type'][value='unweighted']").parentElement.removeAttribute("disabled");
+			// click the unweighted radio button
+			document.querySelector("input[name='genecart_type'][value='unweighted']").click();
+
+			adjustGeneTableLabels();
+			populateGeneTable(eventData);
 		}
-		handle_get_comparison_error(dataset_id, dataset_text, condition_x_string, condition_y_string);
-	}).fail((data) => {
-		handle_get_comparison_error(dataset_id, dataset_text, condition_x_string, condition_y_string);
-	});
-}
 
-function handle_get_comparison_error(dataset_id, dataset_text, condition_x_string, condition_y_string) {
-	// Handle graphing failures
-	$("#plot_loading").hide();
-	$("#ticket_dataset_id").text(dataset_id);
-	$("#ticket_dataset_text").text(dataset_text);
-	$("#ticket_datasetx_condition").text(condition_x_string);
-	$("#ticket_datasety_condition").text(condition_y_string);
-	$("#error_loading_c").show();
-}
-
-async function fetch_h5ad_observations (dataset_id) {
-	const base = `./api/h5ad/${dataset_id}`;
-	const { data } = await axios.get(base);
-	return data;
-}
-
-async function populate_condition_selection_control() {
-	const dataset_id = $("#dataset_id").val();
-	$("#conditions_accordion").removeClass("alert-info alert-danger");
-	$("#conditions_accordion").html("<p>Loading ... </p>");
-	const obs_data = await fetch_h5ad_observations(dataset_id);
-	const cat_obs = obs_data.obs_levels;  // cat->groups
-	const all_obs = obs_data.obs_columns; // Array
-	const noncat_obs = Object.values(all_obs).filter(x => Object.keys(cat_obs).indexOf(x) === -1);  // Array
-
-	// If dataset has no observations, indicate it does not and hide condition controls
-	if (! Object.keys(cat_obs).length) {
-		$('#condition_tabs').hide();
-		$("#conditions_accordion").removeClass("alert-info").addClass("alert-danger");
-		$("#conditions_accordion").text("There are no categorical observations found for this dataset.");
-		return;
-	}
-
-	$('#condition_tabs').show();
-
-	// Render templates
-	const selector_tmpl = $.templates("#dataset_condition_options");
-	const selector_html = selector_tmpl.render(cat_obs);
-	$("#conditions_accordion").html(selector_html);
-
-	if (noncat_obs.length) {
-		const noncat_tmpl = $.templates("#non_categories_list");
-		const noncat_html = noncat_tmpl.render({noncat_obs});
-		$("#noncats").html(noncat_html);
-	}
-
-	// Since we want the default state of the category groups to be unchecked,
-	// we do not set an initial state of stored checked conditions
-	if (obs_data.has_replicates == 1) {
-		$("#statistical_test_label").html("");
-		$("#statistical_test").attr("disabled", false);
-	} else {
-		$("#statistical_test_label").html(
-			"Not applicable since this dataset has no replicates"
-		);
-		$("#statistical_test").attr("disabled", true);
-	}
-}
-
-$('#condition_x_tab').on('shown.bs.tab', (e) => {
-
-	condition_y = update_selected_conditions();
-
-	// Load condition_x stuff
-	$('.js-cat-check').prop("checked", false);
-	$('.js-group-check').prop("checked", false);
-	for (const cat in condition_x) {
-		for (const elem of condition_x[cat]) {
-			$(`input[data-group="${cat};-;${elem}"]`).prop("checked", true);
+		// Get genes from gene tags
+		const geneTags = document.querySelectorAll("#gene-tags span.tag");
+		const searchedGenes = [];
+		for (const tag of geneTags) {
+			searchedGenes.push(tag.textContent);
 		}
-		$('.js-group-check').change();  // trigger so the cat checkbox matches up
-	}
 
-})
-
-$('#condition_y_tab').on('shown.bs.tab', (e) => {
-
-	condition_x = update_selected_conditions();
-
-	// Load condition_y stuff
-	$('.js-cat-check').prop("checked", false);
-	$('.js-group-check').prop("checked", false);
-	for (const cat in condition_y) {
-		for (const elem of condition_y[cat]) {
-			$(`input[data-group="${cat};-;${elem}"]`).prop("checked", true);
+		// Highlight table rows that match searched genes
+		if (searchedGenes) {
+			highlightTableGenes(searchedGenes);
 		}
-		$('.js-group-check').change();  // trigger so the cat checkbox matches up
-	}
-})
-
-$(document).on('change', '.js-cat-check', function (e) {
-	// If turned on, check all group boxes
-	// If turned off, uncheck all group boxes
-	const checked = $(this).prop("checked");
-
-	const id = this.id;
-	const category = id.replace('_check', '');
-	const escapedCategory = $.escapeSelector(category);
-	const category_collaspable = $(`#${escapedCategory}_body`);
-
-	category_collaspable.find('input[type="checkbox"]').prop({checked});
-
-	// Expand collaspable since category was focused on
-	category_collaspable.collapse('show');
-
-	update_axis_labels();
-})
-
-$(document).on('click', '.js-cat-collapse', function (e) {
-	// If category was clicked, then toggle collapsable element
-	// Controlling via JS instead of "data-target" since we may need to escape CSS selectors
-	const { id } = this;
-	const category = id.replace('_collapse', '');
-	const escapedCategory = $.escapeSelector(category);
-	const category_collaspable = $(`#${escapedCategory}_body`);
-	category_collaspable.collapse('toggle');
-})
-
-$(document).on('change', '.js-group-check', function(e) {
-	// https://css-tricks.com/indeterminate-checkboxes/
-	// After changing checkbox status, check siblings
-	// and determine if category checkbox should be
-	// checked, not checked, or indeterminate
-
-	const checked = $(this).prop("checked");
-
-	// Get category name out of the checkbox ID
-	const id = $(this).data("group");
-	const category = id.split(';-;')[0]
-	const escapedCategory = $.escapeSelector(category);
-	const category_header = $(`#${escapedCategory}_check`);
-	const category_collaspable = $(`#${escapedCategory}_body`);
-
-	// Get checked status of all other checkboxes in this category
-	// If there is a combination of checked/unchecked the "each" loop breaks early
-	let all = true;
-	$(category_collaspable).find('input[type="checkbox"]').each(function(){
-		return all = ($(this).prop("checked") === checked);
 	});
 
-	if (all) {
-		// All group checkboxes are the same as the category checkbox
-		category_header.prop({
-		"indeterminate": false,
-		"checked": checked
+	// Handler for when plot text is edited
+	plotlyPreview.on("plotly_relayout", (eventData) => {
+		// If plot title, x-axis or y-axis is edited, save the text
+		if (eventData?.["title.text"]) {
+			titleText = eventData["title.text"];
+		}
+		if (eventData?.["xaxis.title.text"]) {
+			xaxisText = eventData["xaxis.title.text"];
+		}
+		if (eventData?.["yaxis.title.text"]) {
+			yaxisText = eventData["yaxis.title.text"];
+		}
+	});
+
+	const plotlyNote = document.createElement("div");
+	plotlyNote.id = "tip-on-editing";
+	plotlyNote.classList.add("notification", "content", "is-info", "is-light");
+	plotlyNote.innerHTML = `<p><strong>Tip:</strong> Use the Plotly box and lasso select tools (upper-right) to select genes to view as a table. Double-clicking clears any selections.</p>
+
+	<p>You can also click the plot title or axis labels to edit them. Hit Enter to apply edit.</p>`;
+	plotlyPreview.append(plotlyNote);
+}
+
+
+const populateGeneTable = (data) => {
+	const statisticalTest = document.getElementById("statistical-test").value;
+
+	selectedGeneData = [];
+
+	data.points.forEach((pt) => {
+		// Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
+		// Each trace has its own "pointNumber" ids so gene symbols and pvalues needed to be passed in for each plotdata trace
+		selectedGeneData.push({
+			gene_symbol: pt.data.id[pt.pointNumber],
+			pval: statisticalTest ? pt.data.pvals[pt.pointNumber].toExponential(2) : "NA",
+			foldchange: pt.data.foldchange[pt.pointNumber].toFixed(1),
+			x: pt.data.x[pt.pointNumber].toFixed(1),
+			y: pt.data.y[pt.pointNumber].toFixed(1)
 		});
-	} else {
-		// All group checkbox states are mixed.  Category checkbox is indeterminate and unchecked
-		category_header.prop({
-		"indeterminate": true,
-		"checked": false
-		});
+	});
+
+	// Sort by adjusted p-value in descending order either by fold change or p-values
+	selectedGeneData.sort((a, b) => b.foldchange - a.foldchange);
+	if (statisticalTest)
+		selectedGeneData.sort((a, b) => a.pval - b.pval);
+
+
+    const geneTableBody = document.getElementById("gene-table-body");
+    geneTableBody.replaceChildren();
+
+    for (const gene of selectedGeneData) {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td>${gene.gene_symbol}</td><td>${gene.pval}</td><td>${gene.foldchange}</td>`;
+        geneTableBody.appendChild(row);
+    }
+
+	// If not statistical test, hide p-value column (deleting can cause issues with subsequent calls to this function)
+	const pvalColumn = document.getElementById("tbl-gene-pvalues");
+	pvalColumn.classList.remove("is-hidden");
+	for (const pvalCell of document.querySelectorAll("#tbl-selected-genes tbody tr td:nth-child(2)")) {
+		pvalCell.classList.remove("is-hidden");
 	}
+	if (!statisticalTest) {
+		pvalColumn.classList.add("is-hidden");
+		for (const pvalCell of document.querySelectorAll("#tbl-selected-genes tbody tr td:nth-child(2)")) {
+			pvalCell.classList.add("is-hidden");
+		}
+	}
+	// Should be sorted by logFC now
 
-	update_axis_labels();
-})
+}
 
-function update_axis_labels() {
-	// Update the "axis label" input boxes
-	if ($("#condition_x_tab").hasClass("active")) {
-		const curr_condition_x = update_selected_conditions();
-		$('#x_label').val(stringify_all_conditions(curr_condition_x));
-	} else {
-		// on #condition_y_tab
-		const curr_condition_y = update_selected_conditions();
-		$('#y_label').val(stringify_all_conditions(curr_condition_y));
+const populatePostCompareBox = (scope, series, groups) => {
+	// Find box
+	const boxElt = document.querySelector(`#${scope}-post-c .notification`);
+	boxElt.replaceChildren();
+
+	// Add series as mini-subtitle and group as tag
+	const seriesElt = document.createElement("div");
+	seriesElt.classList.add("has-text-weight-semibold", "mb-2");
+	seriesElt.textContent = series;
+	boxElt.append(seriesElt);
+
+	const tagsElt = document.createElement("div");
+	tagsElt.classList.add("tags");
+	boxElt.append(tagsElt);
+
+	for (const group of groups) {
+
+		const groupElt = document.createElement("span");
+		groupElt.classList.add("tag", "is-dark", "is-rounded");
+		groupElt.textContent = group;
+		tagsElt.append(groupElt);
 	}
 }
 
-// Get all chosen condition groups and return as a semicolon-joined string
-function stringify_all_conditions(condition) {
-	const all_conditions = []
-	for (const property in condition) {
-		// If no groups for an observation are selected, delete filter
-		if (condition[property].length) {
-		all_conditions.push(...condition[property])
-
-		}
-	}
-	return all_conditions.join(";");
-	}
-
-	function sanitize_condition(condition) {
+const sanitizeCondition = (condition) => {
 	const sanitized_condition = {}
 	for (const property in condition) {
 		// If no groups for an observation are selected, delete filter
@@ -487,468 +795,58 @@ function stringify_all_conditions(condition) {
 	return sanitized_condition;
 }
 
-$(document).on("build_jstrees", async () => await load_all_trees());
-
-// If user changes, update genecart/profile trees
-async function load_all_trees(){
-    // Update dataset and genecart trees in parallel
-    // Works if they were not populated or previously populated
-    await Promise.allSettled([populate_dataset_selection_controls(), load_gene_carts()])//, load_pattern_tree()])
-        .catch((err) => {
-            console.error(err)
-        });
-
-    // NOTE: This will trigger again if the MutationObserver catches a login, but that may be acceptable.
-    $(document).trigger("handle_page_loading");
-
-}
-
-async function populate_dataset_selection_controls() {
-	const dataset_id = getUrlParameter("dataset_id");
-	$('#pre_dataset_spinner').show();
-	await $.ajax({
-		type: "POST",
-		url: "./cgi/get_h5ad_dataset_list.cgi",
-		data: {
-		session_id: CURRENT_USER.session_id,
-		for_page: "compare_dataset",
-		include_dataset_id: dataset_id,
-		},
-		dataType: "json",
-		success(data) {
-		let counter = 0
-		// Populate select box with dataset information owned by the user
-		const user_datasets = [];
-		if (data.user.datasets.length > 0) {
-			// User has some profiles
-			$.each(data.user.datasets, (_i, item) => {
-			if (item) {
-				user_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id });
-			}
-			});
-		}
-		// Next, add datasets shared with the user
-		const shared_datasets = [];
-		if (data.shared_with_user.datasets.length > 0) {
-			// User has some profiles
-			$.each(data.shared_with_user.datasets, (_i, item) => {
-			if (item) {
-				shared_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
-			}
-			});
-		}
-		// Now, add public datasets
-		const domain_datasets = [];
-		if (data.public.datasets.length > 0) {
-			// User has some profiles
-			$.each(data.public.datasets, (_i, item) => {
-			if (item) {
-				domain_datasets.push({ value: counter++, text: item.title, dataset_id : item.id, organism_id: item.organism_id  });
-			}
-			});
-		}
-
-		dataset_tree.userDatasets = user_datasets;
-		dataset_tree.sharedDatasets = shared_datasets;
-		dataset_tree.domainDatasets = domain_datasets;
-		dataset_tree.generateTree();
-
-		// was there a requested dataset ID already?
-		if (dataset_id !== undefined) {
-			$("#dataset_id").val(dataset_id);
-			try {
-				// Had difficulties triggering a "select_node.jstree" event, so just add the data info here
-				const tree_leaf = dataset_tree.treeData.find(e => e.dataset_id === dataset_id);
-				$('#dataset_id').text(tree_leaf.text);
-				$('#dataset_id').data("organism-id", tree_leaf.organism_id);
-				$('#dataset_id').data("dataset-id", tree_leaf.dataset_id);
-				$("#dataset_id").trigger("change");
-			} catch {
-				console.error(`Dataset id ${dataset_id} was not returned as a public/private/shared dataset`);
-			}
-		}
-		},
-		error(xhr, status, msg) {
-			report_error(`Failed to load dataset list because msg: ${msg}`);
-		},
-	});
-	$('#pre_dataset_spinner').hide();
-}
-
-// Load all saved gene carts for the current user
-async function load_gene_carts () {
-    if (!session_id) {
-        // User is not logged in. Hide gene carts container
-        $('#gene_cart_container').hide();
-        return;
-    }
-    await $.ajax({
-        url: './cgi/get_user_gene_carts.cgi',
-        type: 'post',
-        data: { session_id, "cart_type":"unweighted-list" },
-        dataType: 'json'
-    }).done((data) => {
-        const carts = {};
-        const cartTypes = ['domain', 'user', 'group', 'shared', 'public'];
-        let cartsFound = false;
-
-        for (const ctype of cartTypes) {
-            carts[ctype] = [];
-
-            if (data[`${ctype}_carts`].length > 0) {
-                cartsFound = true;
-
-                //User has some profiles
-                $.each(data[`${ctype}_carts`], (_i, item) => {
-                    carts[ctype].push({value: item.id, text: item.label });
-                });
-            }
-        }
-
-        gene_cart_tree.domainGeneCarts = carts.domain;
-        gene_cart_tree.userGeneCarts = carts.user;
-        gene_cart_tree.groupGeneCarts = carts.group;
-        gene_cart_tree.sharedGeneCarts = carts.shared;
-        gene_cart_tree.publicGeneCarts = carts.public;
-        gene_cart_tree.generateTree();
-
-        if (cartsFound ) {
-            $('#gene_cart_container').show();
-        }
-
-    }).fail((jqXHR, textStatus, errorThrown) => {
-        console.error(`Error getting session info: ${textStatus}`);
+const saveGeneCart = () => {
+    // must have access to USER_SESSION_ID
+    const gc = new GeneCart({
+        session_id: sessionId
+        , label: document.getElementById("new-genecart-label").value
+        , gctype: "unweighted-list"
+        , organism_id:  organismId
+        , is_public: 0
     });
+
+    for (const sg of selectedGeneData) {
+        const gene = new Gene({
+            id: sg.ensembl_id, // Ensembl ID stored in "customdata" property
+            gene_symbol: sg.gene_symbol,
+        });
+        gc.addGene(gene);
+    }
+
+    gc.save(updateUIAfterGeneCartSaveSuccess, updateUIAfterGeneCartSaveFailure);
 }
 
-function plot_data_to_graph(data) {
-	$("#selection_methods_c").show();
+const saveWeightedGeneCart = () => {
 
-	const point_labels = [];
-	let perform_ranking = false;
-
-	if ($("#statistical_test").val()) {
-		perform_ranking = true;
-	}
-
-	let plotdata = null;
-
-	if (!perform_ranking) {
-		for (i = 0; i < data.symbols.length; i++) {
-		point_labels.push(`Gene symbol: ${data.symbols[i]}`);
-		}
-
-		plotdata = [
-		{
-			id: data.symbols,
-			pvals: data.pvals_adj,
-			x: data.x,
-			y: data.y,
-			foldchange: data.fold_changes,
-			mode: "markers",
-			type: "scatter",
-			text: point_labels,
-			marker: {
-			color: "#2F103E",
-			size: 4,
-			},
-		},
-		];
-	} else {
-		const pval_cutoff = parseFloat($("#test_pval_cutoff").val());
-		const passing = { x: [], y: [], labels: [], id: [], pvals: [], foldchange: []};
-		const failing = { x: [], y: [], labels: [], id: [], pvals: [], foldchange: []};
-
-		for (i = 0; i < data.x.length; i++) {
-		// pvals_adj array consist of 1-element arrays, so let's flatten to prevent potential issues
-		// Caused by rank_genes_groups output (1 inner array per query comparison group)
-		data.pvals_adj = data.pvals_adj.flat();
-
-		const this_pval = parseFloat(data.pvals_adj[i]);
-
-		if ((this_pval <= pval_cutoff)) {
-			// good scoring match
-			passing.x.push(data.x[i]);
-			passing.y.push(data.y[i]);
-			passing.foldchange.push(data.fold_changes[i]);
-			passing.labels.push(
-			"Gene symbol: " +
-				data.symbols[i] +
-				"   P-value: " +
-				this_pval.toPrecision(6)
-			);
-			passing.id.push(data.symbols[i]);
-			passing.pvals.push(data.pvals_adj[i]);
-		} else {
-			// this one didn't pass the p-value cutoff
-			failing.x.push(data.x[i]);
-			failing.y.push(data.y[i]);
-			failing.foldchange.push(data.fold_changes[i]);
-			failing.labels.push(
-			"Gene symbol: " +
-				data.symbols[i] +
-				"   P-value: " +
-				this_pval.toPrecision(6)
-			);
-			failing.id.push(data.symbols[i]);
-			failing.pvals.push(data.pvals_adj[i]);
-		}
-		}
-
-		pass_color = CURRENT_USER.colorblind_mode ? 'rgb(0, 34, 78)' : "#FF0000";
-		fail_color = CURRENT_USER.colorblind_mode ? 'rgb(254, 232, 56)' : "#A1A1A1";
-
-		plotdata = $("input[name='stat_action']:checked").val() == "colorize" ? [
-		{
-			id: passing.id,
-			pvals: passing.pvals,
-			x: passing.x,
-			y: passing.y,
-			foldchange: passing.foldchange,
-			mode: "markers",
-			name: "Passed cutoff",
-			type: "scatter",
-			text: passing.labels,
-			marker: {
-			color: pass_color,
-			size: 4,
-			},
-		},
-		{
-			id: failing.id,
-			pvals: failing.pvals,
-			x: failing.x,
-			y: failing.y,
-			foldchange: failing.foldchange,
-			mode: "markers",
-			name: "Did not pass cutoff",
-			type: "scatter",
-			text: failing.labels,
-			marker: {
-			color: fail_color,
-			size: 4,
-			},
-		},
-		] : [
-		{
-			id: passing.id,
-			pvals: passing.pvals,
-			x: passing.x,
-			y: passing.y,
-			foldchange: passing.foldchange,
-			mode: "markers",
-			type: "scatter",
-			text: passing.labels,
-			marker: {
-			color: "#2F103E",
-			size: 4,
-			},
-		},
-		];
-	}
-
-	const layout = {
-		title: $("#dataset_id").text(),
-		xaxis: {
-			title: $('#x_label').val().length ? $('#x_label').val() : JSON.stringify(data.condition_x_idx),
-			type: "",
-		},
-		yaxis: {
-			title: $('#y_label').val().length ? $('#y_label').val() : JSON.stringify(data.condition_y_idx),
-			type: "",
-		},
-		annotations: [],
-		margin: { t: 40 },
-		hovermode: "closest",
-		dragmode: "select",
-		modebar: {orientation: "v"}
-	};
-
-	annotation_color = CURRENT_USER.colorblind_mode ? 'rgb(125, 124, 118)' : "crimson";
-
-	// Take genes to search for and highlight their datapoint in the plot
-	const genes_not_found = [];
-	if ($('#highlighted_genes').val()) {
-		const searched_genes = $('#highlighted_genes').val().replace(/,?\s/g, ",").split(",");
-		searched_genes.forEach((gene) => {
-		let found = false;
-		plots:
-		for (i = 0; i < plotdata.length; i++) {
-			genes:
-			for (j = 0; j < plotdata[i].id.length; j++) {
-			if (gene.toLowerCase() === plotdata[i].id[j].toLowerCase() ) {
-				// If gene is found add an annotation arrow
-				layout.annotations.push({
-				xref: "x",
-				yref: "y",
-				x: plotdata[i].x[j],
-				y: plotdata[i].y[j],
-				text:plotdata[i].id[j],
-				font: {
-					color: annotation_color,
-				},
-				showarrow: true,
-				arrowcolor: annotation_color,
-
-				});
-				found = true;
-				break plots;
-			}
-			}
-		}
-		if (! found)
-			genes_not_found.push(gene);
-		});
-	}
-
-
-	$("#plot_loading").hide();
-	const graphDiv = document.getElementById("myChart");
-	Plotly.newPlot(graphDiv, plotdata, layout, { showLink: false });
-	$("#selected_label").hide();
-	$("#controls_label").show();
-	$('#weighted_gene_cart_c').show();
-
-	// If searched-for genes were not found, display under plot
-	if (genes_not_found.length) {
-		const genes_not_found_str = genes_not_found.join(", ");
-		$("#genes_not_found").text(`Searched genes not found: ${genes_not_found_str}`);
-		$("#genes_not_found").show();
-	} else {
-		$("#genes_not_found").hide();
-	}
-
-	// If plot data is selected, create the right-column table and do other misc things
-	graphDiv.on("plotly_selected", (eventData) => {
-		selected_data = eventData;
-		selected_gene_data = [];
-
-		eventData.points.forEach((pt) => {
-			// Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
-			// Each trace has its own "pointNumber" ids so gene symbols and pvalues needed to be passed in for each plotdata trace
-			selected_gene_data.push({
-				gene_symbol: pt.data.id[pt.pointNumber],
-				pvals: $("#statistical_test").val() ? pt.data.pvals[pt.pointNumber].toExponential(2) : "NA",
-				foldchange: pt.data.foldchange[pt.pointNumber].toFixed(1),
-			});
-		});
-
-		// Sort by adjusted p-value in descending order either by fold change or p-values
-		selected_gene_data.sort((a, b) => b.foldchange - a.foldchange);
-		if ($("#statistical_test").val())
-			selected_gene_data.sort((a, b) => a.pvals - b.pvals);
-
-		const template = $.templates("#selected_genes_tmpl");
-		const htmlOutput = template.render(selected_gene_data);
-		$("#selected_genes_c").html(htmlOutput);
-
-		// Highlight table rows that match searched genes
-		if ($('#highlighted_genes').val()) {
-			const searched_genes = $('#highlighted_genes').val().replace(/\s/g, "").split(",");
-			// Select the first column (gene_symbols) in each row
-			$("#selected_genes_c tr td:first-child").each(function() {
-				const table_gene = $(this).text();
-				searched_genes.forEach((gene) => {
-					if (gene.toLowerCase() === table_gene.toLowerCase() ) {
-						$(this).parent().addClass("table-success");
-					}
-				});
-			})
-		}
-
-		// toggle visibilities
-		$("#selection_methods_c").hide();
-		$("#saved_gene_cart_info_c").hide();
-		$("#gene_list_c").show();
-
-		$("#controls_label").hide();
-		$("#selected_label").show();
-
-	});
-
-	window.onresize = () => {
-		Plotly.Plots.resize(graphDiv);
-	};
-}
-
-function save_gene_cart() {
 	// must have access to USER_SESSION_ID
-	const gc = new GeneCart({
-		session_id: CURRENT_USER.session_id,
-		label: $("#gene_cart_name").val(),
-		gctype: 'unweighted-list',
-		organism_id: $("#dataset_id").data('organism-id'),
-		is_public: 0
-	});
 
-	selected_data.points.forEach((pt) => {
-		const gene = new Gene({
-			id: plot_data.gene_ids[pt.pointNumber],
-			gene_symbol: plot_data.symbols[pt.pointNumber],
-		});
-		gc.add_gene(gene);
-	});
 
-	gc.save(update_ui_after_gene_cart_save_success, update_ui_after_gene_cart_save_failure);
-}
-
-function save_weighted_gene_cart() {
-	// must have access to USER_SESSION_ID
-	let foldchange_label = "FC"
-
-	const foldchange_to_save = Number($('input[name=foldchange_to_save]:checked').val());
-
-	switch (foldchange_to_save) {
-		case 2:
-			foldchange_label = "Log2FC";
-			break;
-		case 10:
-			foldchange_label = "Log10FC";
-			break;
-		default: // 'raw'
-			foldchange_label = foldchange_label;
-	}
-
-	const weight_labels = [foldchange_label];
+	// Saving raw FC by default so it is easy to transform weight as needed
+	const weightLabels = ["FC"];
 
 	const gc = new WeightedGeneCart({
-		session_id: CURRENT_USER.session_id,
-		label: $("#weighted_gene_cart_name").val(),
-		gctype: 'weighted-list',
-		organism_id: $("#dataset_id").data('organism-id'),
-		is_public: 0
-	}, weight_labels);
+		session_id: sessionId
+		, label:  document.getElementById("new-genecart-label").value
+		, gctype: 'weighted-list'
+		, organism_id: organismId
+		, is_public: 0
+	}, weightLabels);
 
-
-	plot_data.gene_ids.forEach((gene_id, i) => {
-		let foldchange = plot_data.fold_changes[i]	// currently "raw" values
-
-		switch (foldchange_to_save) {
-			case 2:
-				foldchange = Math.log2(foldchange);
-				break;
-			case 10:
-				foldchange = Math.log10(foldchange);
-				break;
-			default: // 'raw'
-				foldchange = foldchange;
-		}
-
-		const weights = [foldchange];
+	compareData.gene_ids.forEach((gene_id, i) => {
+		const weights = [compareData.fold_changes[i]];
 
 		const gene = new WeightedGene({
 			id: gene_id,
-			gene_symbol: plot_data.symbols[i]
+			gene_symbol: compareData.symbols[i]
 		}, weights);
-		gc.add_gene(gene);
+		gc.addGene(gene);
 	});
 
-	gc.save(update_ui_after_weighted_gene_cart_save_success, update_ui_after_weighted_gene_cart_save_failure);
+	gc.save(updateUIAfterGeneCartSaveSuccess, updateUIAfterGeneCartSaveFailure);
 }
 
-// Sort selected gene table (using already generated table data)
 // Taken from https://www.w3schools.com/howto/howto_js_sort_table.asp
-function sortTable(n) {
+const sortGeneTable = (mode) => {
 	let table;
 	let rows;
 	let switching;
@@ -958,7 +856,7 @@ function sortTable(n) {
 	let shouldSwitch;
 	let dir;
 	let switchcount = 0;
-	table = document.getElementById("tbl_selected_genes");
+	table = document.getElementById("tbl-selected-genes");
 
 	switching = true;
 	// Set the sorting direction to ascending:
@@ -972,81 +870,468 @@ function sortTable(n) {
 		/* Loop through all table rows (except the
 		first, which contains table headers): */
 		for (i = 1; i < rows.length - 1; i++) {
-		// Start by saying there should be no switching:
-		shouldSwitch = false;
-		/* Get the two elements you want to compare,
-			one from current row and one from the next: */
-		x = rows[i].getElementsByTagName("td")[n];
-		y = rows[i + 1].getElementsByTagName("td")[n];
-		/* Check if the two rows should switch place,
-			based on the direction, asc or desc: */
-		if (dir == "asc") {
-			// First column is gene_symbol... rest are numbers
-			if (n === 0 && x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
-			// If so, mark as a switch and break the loop:
-			shouldSwitch = true;
-			break;
-			}
-			if (Number(x.innerHTML) > Number(y.innerHTML)) {
-			shouldSwitch = true;
-			break;
-			}
-		} else if (dir == "desc") {
-			if (n === 0 && x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
-			// If so, mark as a switch and break the loop:
-			shouldSwitch = true;
-			break;
-			}
-			if (Number(x.innerHTML) < Number(y.innerHTML)) {
-			shouldSwitch = true;
-			break;
-			}
-		}
+            // Start by saying there should be no switching:
+            shouldSwitch = false;
+            /* Get the two elements you want to compare,
+                one from current row and one from the next: */
+            x = rows[i].getElementsByTagName("td")[mode];
+            y = rows[i + 1].getElementsByTagName("td")[mode];
+            /* Check if the two rows should switch place,
+                based on the direction, asc or desc: */
+            if (dir == "asc") {
+                // First column is gene_symbol... rest are numbers
+                if (mode === 0 && x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                    // If so, mark as a switch and break the loop:
+                    shouldSwitch = true;
+                    break;
+                }
+                if (Number(x.innerHTML) > Number(y.innerHTML)) {
+                    shouldSwitch = true;
+                    break;
+                }
+            } else if (dir == "desc") {
+                if (mode === 0 && x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+                    // If so, mark as a switch and break the loop:
+                    shouldSwitch = true;
+                    break;
+                }
+                if (Number(x.innerHTML) < Number(y.innerHTML)) {
+                    shouldSwitch = true;
+                    break;
+                }
+            }
 		}
 		if (shouldSwitch) {
-		/* If a switch has been marked, make the switch
-			and mark that a switch has been done: */
-		rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
-		switching = true;
-		// Each time a switch is done, increase this count by 1:
-		switchcount++;
+            /* If a switch has been marked, make the switch
+                and mark that a switch has been done: */
+            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+            switching = true;
+            // Each time a switch is done, increase this count by 1:
+            switchcount++;
+
 		} else {
-		/* If no switching has been done AND the direction is "asc",
-			set the direction to "desc" and run the while loop again. */
-		if (switchcount == 0 && dir == "asc") {
-			dir = "desc";
-			switching = true;
+            /* If no switching has been done AND the direction is "asc",
+                set the direction to "desc" and run the while loop again. */
+            if (switchcount == 0 && dir == "asc") {
+                dir = "desc";
+                switching = true;
+            }
 		}
+	}
+
+    // Reset other sort icons to "ascending" state, to show what direction they will sort when clicked
+    const otherTblHeaders = document.querySelectorAll(`.js-tbl-gene-header:not(:nth-child(${mode + 1}))`);
+    for (const tblHeader of otherTblHeaders) {
+        const currIcon = tblHeader.querySelector("i");
+        if (mode == 0) {
+            currIcon.classList.remove("mdi-sort-alphabetical-descending");
+            currIcon.classList.add("mdi-sort-alphabetical-ascending");
+        } else {
+            currIcon.classList.remove("mdi-sort-numeric-descending");
+            currIcon.classList.add("mdi-sort-numeric-ascending");
+        }
+    }
+
+    // toggle the mdi icons between ascending / descending
+    // icon needs to reflect the current state of the sort
+    const selectedTblHeader = document.querySelector(`.js-tbl-gene-header:nth-child(${mode + 1})`);
+    const currIcon = selectedTblHeader.querySelector("i");
+    if (dir == "asc") {
+        if (mode == 0) {
+            currIcon.classList.remove("mdi-sort-alphabetical-descending");
+            currIcon.classList.add("mdi-sort-alphabetical-ascending");
+        } else {
+            currIcon.classList.remove("mdi-sort-numeric-descending");
+            currIcon.classList.add("mdi-sort-numeric-ascending");
+        }
+    } else {
+        if (mode == 0) {
+            currIcon.classList.remove("mdi-sort-alphabetical-ascending");
+            currIcon.classList.add("mdi-sort-alphabetical-descending");
+        } else {
+            currIcon.classList.remove("mdi-sort-numeric-ascending");
+            currIcon.classList.add("mdi-sort-numeric-descending");
+        }
+    }
+}
+
+// For a given categorical series (e.g. "celltype"), add checkboxes for each category
+const updateGroupOptions = (selectorId, groupsArray, series) => {
+
+	const elt = document.getElementById(selectorId);
+	elt.classList.remove("is-hidden");
+
+	// Add categories
+	for (const group of groupsArray.sort()) {
+
+		const checkbox = document.createElement("input");
+		checkbox.type = "checkbox";
+		checkbox.id = `${selectorId}-${group}`;
+		checkbox.name = group;
+		checkbox.value = group;
+
+		const label = document.createElement("label");
+		label.classList.add("checkbox");
+		label.htmlFor = `${selectorId}-${group}`;
+		label.textContent = ` ${group}`;
+		label.prepend(checkbox);
+
+		// If group has aggregations count of 0 (no data after filtering), disable checkbox and label
+		checkbox.disabled = false;
+		label.removeAttribute("disabled");
+		if (facetWidget.aggregations.find((agg) => agg.name === series).items.find((item) => item.name === group).count === 0) {
+			checkbox.disabled = true;
+			label.setAttribute("disabled", "disabled");
+		}
+
+
+		// create .control div to ensure checkboxs are vertically aligned
+		const control = document.createElement("div");
+		control.classList.add("control", "m-1");
+		control.append(label);
+
+		elt.append(control);
+	}
+}
+
+// Update the plotly graph with the selected genes
+const updatePlotAnnotations = (genes) => {
+	// Take genes to search for and highlight their datapoint in the plot
+
+	const plotlyPreview = document.getElementById("plotly-preview");
+	const plotData = plotlyPreview.data;
+	const layout = plotlyPreview.layout;
+
+	const annotationColor = CURRENT_USER.colorblind_mode ? "orange" : "cyan";
+
+	layout.annotations = [];
+
+	// Reset all trace colors
+	for (const trace of plotData) {
+		trace.id.forEach((element, i) => {
+			trace.marker.color[i] = trace.marker.origColor[i];
+		});
+	}
+
+	genes.forEach((gene) => {
+		for (const trace of plotData) {
+			trace.id.forEach((element, i) => {
+				if (gene.toLowerCase() !== element.toLowerCase() ) {
+					return;
+				}
+
+				// If gene is found add an annotation arrow
+				layout.annotations.push({
+					xref: "x",
+					yref: "y",
+					x: trace.x[i],
+					y: trace.y[i],
+					text:element,
+					bgcolor: annotationColor,
+					showarrow: true,
+					arrowcolor: annotationColor,
+					opacity: 0.8,
+
+				});
+
+				// change trace dot to match annotation
+				trace.marker.color[i] = annotationColor;
+
+			});
+		}
+	});
+
+	// If no annotations, add warning text that all genes were filtered out
+	if (!layout.annotations.length && genes.length) {
+		layout.annotations.push({
+			xref: "paper",
+			yref: "paper",
+			x: 0,
+			y: 1,
+			text: "No selected genes were found in this plot.",
+			bgcolor: "lightyellow",
+			showarrow: false,
+			opacity: 0.8,
+		});
+	}
+
+	// update the Plotly layout
+	Plotly.relayout(plotlyPreview, layout);
+
+	// Update table highlighting
+	highlightTableGenes(genes);
+
+}
+
+// For plotting options, populate select menus with category groups
+const updateSeriesOptions = (classSelector, seriesArray) => {
+
+	if (!seriesArray.length) {
+		createToast("No categorical data series found for this dataset. Please choose another dataset or contact the gEAR team.");
+		return;
+	}
+
+    for (const elt of document.getElementsByClassName(classSelector)) {
+        elt.replaceChildren();
+
+        // Append empty placeholder element
+        const firstOption = document.createElement("option");
+        elt.append(firstOption);
+
+        // Add categories
+        for (const group of seriesArray.sort()) {
+
+            const option = document.createElement("option");
+            option.textContent = group;
+            option.value = group;
+            elt.append(option);
+        }
+    }
+}
+
+const updateUIAfterGeneCartSaveSuccess = (gc) => {
+	createToast("Gene cart saved successfully", "is-success");
+}
+
+const updateUIAfterGeneCartSaveFailure = (gc, message) => {
+    createToast(message);
+}
+
+const validateCompareGroups = (event) => {
+
+	const group = event.target.value;
+	const checked = event.target.checked;
+
+	for (const innerClassElt of document.getElementsByClassName("js-compare-groups")) {
+		// BUG: Checking via label click enables X compare group
+		if (checked) {
+			// disable unique groups in other compare groups
+			if (innerClassElt.closest(".js-compare-groups").id !== event.target.closest(".js-compare-groups").id) {
+				const checkbox = innerClassElt.querySelector(`input[value="${group}"]`);
+				checkbox.setAttribute("disabled", "disabled");
+				checkbox.parentElement.setAttribute("disabled", "disabled");
+			}
+		} else {
+			const checkbox = innerClassElt.querySelector(`input[value="${group}"]`);
+			checkbox.removeAttribute("disabled");
+			checkbox.parentElement.removeAttribute("disabled");
 		}
 	}
 }
 
-function update_ui_after_gene_cart_save_success(gc) {
-	$("#create_gene_cart_dialog").hide("fade");
-	$("#saved_gene_cart_info_c > h3").html(`Cart: ${gc.label}`);
-	$("#gene_cart_member_count").html(gc.genes.length);
-	$("#saved_gene_cart_info_c").show();
+const validatePlotRequirements = (event) => {
+    const elt = event.target;
+    // Reset "status" classes
+    elt.classList.remove("is-success", "is-danger");
+
+    for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
+        plotBtn.disabled = true;
+    }
+
+	// We need at least one compare-x and one compare-y checkbox checked
+	const checkedX = [...document.querySelectorAll(".js-compare-x input:checked")].map((elt) => elt.value);
+	const checkedY = [...document.querySelectorAll(".js-compare-y input:checked")].map((elt) => elt.value);
+
+	if (checkedX.length && checkedY.length) {
+		// Enable plot button
+		for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
+			plotBtn.disabled = false;
+
+			document.getElementById("condition-compare-s-failed").classList.add("is-hidden");
+		}
+		return;
+	}
+
+    document.getElementById("condition-compare-s-success").classList.add("is-hidden");
 }
 
-function update_ui_after_gene_cart_save_failure(gc, message) {
-	$("#create_gene_cart_dialog").hide("fade");
-	$("#saved_gene_cart_info_c > h3").html(`There was an issue saving the gene cart. ${message}`);
-	$("#saved_gene_cart_info_c").show();
-	$("#save_gene_cart").prop("disabled", false);
+/* --- Event listeners --- */
+
+document.getElementById("statistical-test").addEventListener("change", (event) => {
+	const pvalCutoff = document.getElementById("pval-cutoff");
+	const cutoffFilterAction = document.getElementById("cutoff-filter-action");
+	pvalCutoff.disabled = event.target.value ? false : true;
+	cutoffFilterAction.disabled = event.target.value ? false : true;
+});
+
+// When compare series changes, update the compare groups
+for (const classElt of document.getElementsByClassName("js-compare")) {
+	const compareSeriesNotification = document.getElementById("select-compare-series-notification");
+	classElt.addEventListener("change", async (event) => {
+
+		// Disable plot button until conditions are met
+		for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
+			plotBtn.disabled = true;
+		}
+
+		// Hide and clear compare groups
+		for (const classElt of document.getElementsByClassName("js-compare-groups")) {
+			classElt.parentElement.classList.add("is-hidden");
+			classElt.replaceChildren();
+		}
+
+		const compareSeries = event.target.value;
+		compareSeriesNotification.classList.remove("is-hidden", "is-danger");
+		compareSeriesNotification.classList.add("is-warning");
+		compareSeriesNotification.textContent = "Please select a series to compare to choose X and Y conditions";
+
+		if (!compareSeries) return;
+
+		const seriesItems = getSeriesItems(compareSeries);
+		const seriesNames = getSeriesNames(seriesItems);
+
+		// at least 2 of the series items must have 1+ aggregation total, or else we can't compare
+		const seriesAggCountsFiltered = seriesItems.filter((item) => item.count > 0);
+		if (seriesAggCountsFiltered.length < 2) {
+			compareSeriesNotification.classList.remove("is-warning");
+			compareSeriesNotification.classList.add("is-danger");
+			compareSeriesNotification.textContent = `At least 2 groups within ${compareSeries} must each have one or more observations (after filtering) to compare`;
+			return;
+		}
+
+		compareSeriesNotification.classList.add("is-hidden");
+
+		// Reset facet groups
+		facetWidget = await createFacetWidget(datasetId, null, {}); // will also remove any existing facet widget
+
+		updateGroupOptions("compare-x", seriesNames, compareSeries);
+		updateGroupOptions("compare-y", seriesNames, compareSeries);
+
+		// Show compare groups since things have validated.
+		for (const classElt of document.getElementsByClassName("js-compare-groups")) {
+			classElt.parentElement.classList.remove("is-hidden");
+		}
+
+		// Hide the chosen group's facet element
+		const facetElt = document.getElementById(`filter-${compareSeries}`);
+		facetElt.classList.add("is-hidden");
+
+	})
 }
 
-function update_ui_after_weighted_gene_cart_save_success(gc) {
-	$("#saved_weighted_gene_cart_info_c > .status").html(`Cart "${gc.label}" successfully saved.`);
-	$("#saved_weighted_gene_cart_info_c > .status").removeClass("text-danger").addClass("text-success");
-	$("#saved_weighted_gene_cart_info_c").show();
-	$("#saved_weighted_gene_cart_info_c > .alert").hide();
+// When compare groups change, prevent the same group from being selected in the other compare groups
+for (const classElt of document.getElementsByClassName("js-compare-groups")) {
+	classElt.addEventListener("change", validateCompareGroups);
+	classElt.addEventListener("change", validatePlotRequirements);
 }
 
-function update_ui_after_weighted_gene_cart_save_failure(gc, message) {
-	$("#saved_weighted_gene_cart_info_c > .status").html("There was an issue saving the weighted gene cart.");
-	$("#saved_weighted_gene_cart_info_c > .status").removeClass("text-success").addClass("text-danger");
-	$("#saved_weighted_gene_cart_info_c > .alert").show();
-	$("#saved_weighted_gene_cart_info_c > .message").html(message);
-	$("#saved_weighted_gene_cart_info_c").show();
-	$("#save_weighted_gene_cart").prop("disabled", false);
+for (const classElt of document.getElementsByClassName("js-compare-x")) {
+	classElt.addEventListener("change", (event) => {
+	// We need at least one compare-x and one compare-y checkbox checked
+		const checkedX = [...document.querySelectorAll(".js-compare-x input:checked")].map((elt) => elt.value);
+		const compareSeries = document.getElementById("compare-series").value;
+		populatePostCompareBox("compare-x", compareSeries, checkedX);
+	})
 }
+
+for (const classElt of document.getElementsByClassName("js-compare-y")) {
+	classElt.addEventListener("change", (event) => {
+		const checkedY = [...document.querySelectorAll(".js-compare-y input:checked")].map((elt) => elt.value);
+		const compareSeries = document.getElementById("compare-series").value;
+		populatePostCompareBox("compare-y", compareSeries, checkedY);
+	})
+}
+
+for (const classElt of document.getElementsByClassName("js-plot-btn")) {
+	classElt.addEventListener("click", getComparisons);
+}
+
+document.getElementById("edit-params").addEventListener("click", (event) => {
+    event.target.classList.add("is-loading");
+	// Clear existing plot annotations
+	clearGenes();
+    // Hide this view
+    document.getElementById("content-c").classList.remove("is-hidden");
+    // Generate and display "post-plotting" view/container
+    document.getElementById("post-plot-content-c").classList.add("is-hidden");
+
+    event.target.classList.remove("is-loading");
+})
+
+document.getElementById("clear-genes-btn").addEventListener("click", clearGenes);
+
+document.getElementById("new-genecart-label").addEventListener("input", (event) => {
+    const saveBtn = document.getElementById("save-genecart-btn");
+    saveBtn.disabled = event.target.value ? false : true;
+});
+
+document.getElementById("save-genecart-btn").addEventListener("click", (event) => {
+    event.preventDefault();
+    event.target.classList.add("is-loading");
+    // get value of genecart radio button group
+    const geneCartName = document.querySelector("input[name='genecart_type']:checked").value;
+    if (CURRENT_USER) {
+        if (geneCartName === "unweighted") {
+            saveGeneCart();
+        } else {
+            saveWeightedGeneCart();
+        }
+    }
+    event.target.classList.remove("is-loading");
+});
+
+// handle when the dropdown-gene-list-search-input input box is changed
+document.getElementById('genes-manually-entered').addEventListener('change', (event) => {
+    const searchTermString = event.target.value;
+    const newManuallyEnteredGenes = searchTermString.length > 0 ? new Set(searchTermString.split(/[ ,]+/)) : new Set();
+
+    // Remove genes that have been deleted from the selected_genes set
+    for (const gene of manuallyEnteredGenes) {
+        if (!newManuallyEnteredGenes.has(gene)) {
+            selected_genes.delete(gene);
+        }
+    }
+
+    // Add new genes to the selected_genes set
+    for (const gene of newManuallyEnteredGenes) {
+        selected_genes.add(gene);
+    }
+
+    manuallyEnteredGenes = newManuallyEnteredGenes;
+    chooseGenes(null);
+});
+
+document.getElementById('dropdown-gene-list-proceed').addEventListener('click', chooseGenes);
+
+document.getElementById("download-selected-genes-btn").addEventListener("click", downloadSelectedGenes);
+
+/* --- Entry point --- */
+const handlePageSpecificLoginUIUpdates = async (event) => {
+
+	// Update with current page info
+	document.getElementById("page-header-label").textContent = "Comparison Tool";
+    sessionId = CURRENT_USER.session_id;
+
+	if (! sessionId ) {
+		// TODO: Add master override to prevent other triggers from enabling saving
+        createToast("Not logged in so saving gene carts is disabled.", "is-warning");
+        disableAndHideElement(document.getElementById("save-genecart-btn"));
+    }
+
+
+	try {
+		await Promise.all([
+			loadDatasetTree(),
+			fetchGeneCartData()
+		]);
+        // If brought here by the "gene search results" page, curate on the dataset ID that referred us
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has("dataset_id")) {
+            const linkedDatasetId = urlParams.get("dataset_id");
+            try {
+                // find DatasetTree node and trigger "activate"
+                const foundNode = datasetTree.findFirst(e => e.data.dataset_id === linkedDatasetId);
+                foundNode.setActive(true);
+                datasetTree.tree.setActiveNode(foundNode);
+                datasetTree.selectCallback({node: foundNode});  // manually trigger the "activate" event.
+                datasetId = linkedDatasetId;
+            } catch (error) {
+                createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset`);
+                throw new Error(error);
+            }
+        }
+	} catch (error) {
+		logErrorInConsole(error);
+	}
+
+};

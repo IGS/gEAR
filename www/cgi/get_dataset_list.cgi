@@ -53,21 +53,15 @@ def main():
     if search_terms is not None:
         search_terms = search_terms.translate(str.maketrans('','','+-/@'))
 
-    permalink_id = form.getvalue('permalink_share_id')
+    permalink_id = form.getvalue('permalink_share_id')  # dataset permalink
     only_types_str = form.getvalue('only_types')
     sort_order = form.getvalue('order')
     default_domain_label = form.getvalue('default_domain')
 
-    layout_id = None
     only_types = None
 
     if only_types_str:
         only_types = only_types_str.replace(' ', '').split(',')
-
-    # Only for get_layout_by_id - intial load on main.js = 1; dataset_manager.js = 0
-    exclude_pending = form.getvalue('exclude_pending')
-    if exclude_pending is not None:
-        exclude_pending = int(exclude_pending)
 
     if sort_order is None:
         sort_order = 'default'
@@ -78,8 +72,6 @@ def main():
     # only used to non-redundify
     dataset_ids = list()
 
-    join_type = 'AND'
-
     # Permalinks only. Get dataset info and return it
     if permalink_id is not None:
         result['datasets'] = get_permalink_dataset(cursor, permalink_id)
@@ -88,15 +80,18 @@ def main():
         print(json.dumps(result))
         return
 
-     # Was a specific layout ID passed?
-    if form.getvalue('layout_id') is not None:
-        layout_id = form.getvalue('layout_id')
-        layout = geardb.Layout(id=layout_id)
+    if form.getvalue(("layout_share_id")) is not None:
+        layout_share_id = form.getvalue('layout_share_id')
+        layouts = geardb.LayoutCollection().get_by_share_id(layout_share_id)
+        if len(layouts) > 2:
+            raise Exception("More than one layout found with share ID {0}".format(layout_share_id))
+        if not len(layouts):
+            raise Exception("No layout found with share ID {0}".format(layout_share_id))
+        layout = layouts[0]
         layout.load()
 
         dsc = geardb.DatasetCollection()
         dsc.get_by_dataset_ids(ids=layout.dataset_ids(), get_links=True)
-        dsc.apply_layout(layout=layout)
         result['datasets'].extend(dsc.datasets)
 
     # If scope is defined, the user is performing a search
@@ -237,7 +232,6 @@ def main():
 
             dsc = geardb.DatasetCollection()
             dsc.get_by_dataset_ids(ids=layout.dataset_ids(), get_links=True)
-            dsc.apply_layout(layout=layout)
             result['datasets'].extend(dsc.datasets)
 
     cursor.close()
@@ -275,7 +269,6 @@ def get_default_layout(cursor, domain_label):
 
     dsc = geardb.DatasetCollection()
     dsc.get_by_dataset_ids(ids=layout.dataset_ids(), get_links=True)
-    dsc.apply_layout(layout=layout)
 
     return dsc.datasets
 
@@ -316,9 +309,6 @@ def get_users_datasets(cursor, user_id):
 
             datasets.append({
                 'dataset_id': row[0],
-                'grid_position': None,
-                'grid_width': 4,
-                'mg_grid_width': 6,
                 'title': row[1],
                 'organism': row[2],
                 'organism_id': row[16],
@@ -348,9 +338,6 @@ def get_permalink_dataset(cursor, permalink_id):
 
     if len(dsc.datasets):
         ds = dsc.datasets[0]
-        ds.grid_position = 100
-        ds.grid_width = 6
-        ds.mg_grid_width = 6
         ds.is_permalink = 1
         datasets.append(ds)
 

@@ -1,0 +1,78 @@
+/* The 'size' attribute for Input tags with 'number' type is not valid. Adjust width instead */
+input.input-length-2 {
+    width: 2em;
+}
+input.input-length-4 {
+    width: 4em;
+}
+input.input-length-6 {
+    width: 6em;
+}
+
+#marker-genes-table-c {
+    display: grid;
+    /* see https://github.com/jgthms/bulma/issues/2572#issuecomment-523173866
+    Addresses issue where table will overflow to right if it's in parent ".column"
+    and some gene names in table cells are long */
+}
+
+.stick-to-top {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+/* steps-marker after is-active should not be clickable */
+.is-active ~ .steps-segment {
+    pointer-events: none;
+}
+
+/* very hacky - match stepper guide colors to stepper */
+
+#progress-guide .icon {
+    border: 1px solid #000000;
+}
+
+#progress-guide .has-background-success {
+    background-color: #23d160 !important;
+}
+
+#progress-guide .has-background-danger {
+    background-color: #ff3860 !important;
+}
+
+#progress-guide .has-background-grey {
+    background-color: #dbdbdb !important;
+}
+
+/* CSS for Floating UI components */
+
+article[role="tooltip"] {
+    width: max-content;
+    position: absolute; /* float above everything else to not disrupt layout */
+    top: 0;
+    left: 0;
+}
+
+#arrow {
+    position: absolute;
+    background: inherit;
+    width: 8px;
+    height: 8px;
+    transform: rotate(45deg);
+}
+
+article[role="tooltip"],#arrow {
+    z-index: 10000; /* above .stick-to-top */
+}
+
+.tooltip {
+    font-weight: bold;
+    padding: 5px;
+    border-radius: 4px;
+    font-size: 90%;
+    width: max-content;
+    position: absolute;
+    top: 0;
+    left: 0;
+}

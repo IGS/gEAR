@@ -54,7 +54,18 @@ RUN apt-get -qq update \
   python3-tk \
   openssh-server \
   llvm \
-  # TODO: Re-add R stuff from here https://github.com/IGS/gEAR/tree/611717853afe88003a2d2767afc019f7938ad570
+  # Required for R
+	gfortran \
+  # Required for rpy2
+  r-cran-rjava \
+  # Required for R-package devtools (which is required for SJD)
+  libharfbuzz-dev \
+  libfribidi-dev \
+  libfreetype6-dev \
+  libgit2-dev \
+  libpng-dev \
+  libtiff5-dev \
+  libjpeg-dev \
   # Apache2 and PHP
   libapache2-mod-wsgi-py3 \
   apache2-dev \
@@ -81,6 +92,13 @@ RUN wget $CMAKE_URL \
   && ./bootstrap \
   && make install \
   && rm -rf CMake-${CMAKE_VERSION} v${CMAKE_VERSION}.tar.gz
+
+# ProjectR install.  Must be done before rpy2 is installed
+# NOTE: Speed this up... so slow for Linux install.  Maybe build on actual linux hardware, or do a multi-stage docker build
+COPY ./install_bioc.sh /tmp/
+COPY ./install_bioc.R /tmp/
+WORKDIR /tmp
+RUN /tmp/install_bioc.sh
 
 # Install Python (with configuration options needed for gEAR)
 WORKDIR /tmp
@@ -110,6 +128,8 @@ COPY ./gear.ini.docker /opt/gEAR/gear.ini
 WORKDIR /opt/Python-${PYTHON_VERSION}/bin
 COPY ./requirements.txt /opt/gEAR/docker/requirements.txt
 RUN ./pip3 install --upgrade pip \
+  # wheel is needed for the installation of biopython
+  && ./pip3 install wheel \
   && ./pip3 install -r /opt/gEAR/docker/requirements.txt \
   && ./python3 -m pip install git+https://github.com/theislab/diffxpy.git@7609ea935936e3739fc4c71b75c8ee8ca57f51ea \
   && apt-get -qq update \

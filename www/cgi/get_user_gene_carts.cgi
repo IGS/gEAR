@@ -20,6 +20,10 @@ Returns {'user_carts': [
                         {'id': 3122, 'label': 'my_gene_cart'}
                         {'id': 4113, 'label': 'my_gene_cart'}
                        ],
+         'recent_carts': [
+                        {'id': 3122, 'label': 'my_gene_cart'}
+                        {'id': 4113, 'label': 'my_gene_cart'}
+                       ],
          'shared_carts': [
                         {'id': 1212, 'label': 'my_gene_cart'}
                        ],
@@ -38,6 +42,8 @@ of general interest.
 
 - Group carts are any shared with a group the user belongs to.
 
+- Recent carts are any the user recently created.
+
 - Shared carts are those explicitly shared with the current user by URL, even
 if private.  This list will usually only contain one cart since the system
 doesn't currently have a mechanism to store multiple cart shares.
@@ -53,6 +59,8 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 
+GENE_LIST_TYPES = ["unweighted-list", "weighted-list", "labeled-list"]
+
 def main():
     print('Content-Type: application/json\n\n')
 
@@ -61,40 +69,47 @@ def main():
     share_id = form.getvalue('share_id')
     filter_cart_type = form.getvalue('cart_type', None)
     group_by_type = form.getvalue("group_by_type", False)
+    include_members = form.getvalue("include_members", 1)
     current_user = geardb.get_user_from_session_id(session_id)
     result = { 'domain_carts':[], 'group_carts':[], 'public_carts':[],
-               'shared_carts':[], 'user_carts':[] }
+               'recent_carts':[], 'shared_carts':[], 'user_carts':[] }
 
-    # Track the cart IDs already stored so we don't duplicate
-    cart_ids_found = set()
+    if filter_cart_type == "null":
+        filter_cart_type = None
 
-    domain_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_domain())
+    if include_members:
+        include_members = int(include_members)
+
+    bool_include_members = False
+    if include_members == 1:
+        bool_include_members = True
+
+    domain_carts = geardb.GeneCartCollection(include_genes=bool_include_members).get_domain()
     user_carts = []
     group_carts = []
+    recent_carts = []
     if current_user:
-        user_carts   = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user(user=current_user))
-        group_carts  = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_user_groups(user=current_user))
-    shared_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_by_share_ids(share_ids=[share_id]))
-    public_carts = filter_any_previous(cart_ids_found, geardb.GeneCartCollection().get_public())
-
-    for carts in [domain_carts, user_carts, group_carts, shared_carts, public_carts]:
-        for cart in carts:
-            cart.label = f"{cart.label} ({cart.num_genes} genes)"
+        user_carts = geardb.GeneCartCollection(include_genes=bool_include_members).get_by_user(user=current_user)
+        group_carts = geardb.GeneCartCollection(include_genes=bool_include_members).get_by_user_groups(user=current_user)
+        recent_carts = geardb.GeneCartCollection(include_genes=bool_include_members).get_by_user_recent(user=current_user, n=10)
+    shared_carts = geardb.GeneCartCollection(include_genes=bool_include_members).get_by_share_ids(share_ids=[share_id])
+    public_carts = geardb.GeneCartCollection(include_genes=bool_include_members).get_public()
 
     if group_by_type and not group_by_type == "false":
         # Group all cart results by their cart type and return
-        gctypes = ["unweighted-list", "weighted-list"]
         gctypes_result = dict()
-        for cart_type in gctypes:
+        for cart_type in GENE_LIST_TYPES:
             subset_domain_carts = filter_by_cart_type(domain_carts, cart_type)
             subset_user_carts = filter_by_cart_type(user_carts, cart_type)
             subset_group_carts = filter_by_cart_type(group_carts, cart_type)
+            subset_recent_carts = filter_by_cart_type(recent_carts, cart_type)
             subset_shared_carts = filter_by_cart_type(shared_carts, cart_type)
             subset_public_carts = filter_by_cart_type(public_carts, cart_type)
 
             gctypes_result[cart_type] = { 'domain_carts':subset_domain_carts,
                 'group_carts':subset_group_carts,
                 'public_carts':subset_public_carts,
+                'recent_carts':subset_recent_carts,
                 'shared_carts':subset_shared_carts,
                 'user_carts':subset_user_carts }
 
@@ -102,17 +117,21 @@ def main():
         print(json.dumps(gctypes_result, default=lambda o: o.__dict__))
         sys.exit(0)
 
-    if filter_cart_type:
+    if filter_cart_type and filter_cart_type in GENE_LIST_TYPES:
         domain_carts = filter_by_cart_type(domain_carts, filter_cart_type)
         user_carts = filter_by_cart_type(user_carts, filter_cart_type)
         group_carts = filter_by_cart_type(group_carts, filter_cart_type)
+        recent_carts = filter_by_cart_type(recent_carts, filter_cart_type)
         shared_carts = filter_by_cart_type(shared_carts, filter_cart_type)
         public_carts = filter_by_cart_type(public_carts, filter_cart_type)
-
+    elif filter_cart_type and filter_cart_type not in GENE_LIST_TYPES:
+        # log warning that the cart type is not valid and return all carts
+        print("WARNING: Invalid cart type: " + filter_cart_type, file=sys.stderr)
 
     result = { 'domain_carts':domain_carts,
                 'group_carts':group_carts,
                 'public_carts':public_carts,
+                'recent_carts':recent_carts,
                 'shared_carts':shared_carts,
                 'user_carts':user_carts }
 

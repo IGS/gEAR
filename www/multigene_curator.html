@@ -6,7 +6,7 @@
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-        <title>gEAR multigene viewer page</title>
+        <title>gEAR multigene curator page</title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta http-equiv="Pragma" content="no-cache">
@@ -19,7 +19,7 @@
         <base href="/" />
 
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
 
         <!-- Fancy animation effects -->
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
@@ -29,16 +29,16 @@
 
         <!-- Tree view/grid -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.0/font/bootstrap-icons.css">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mar10/wunderbaum@v0.5.1/dist/wunderbaum.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mar10/wunderbaum@v0.10.0/dist/wunderbaum.css">
 
         <!-- Ensures we always get a new version (during our current active development cycles) -->
         <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
 
         <!-- Common functions for curator pages -->
-        <script>document.write('<link rel="stylesheet" href="css/curator_common.' + (new Date()).getTime() + '.css"><\/script>');</script>
+        <script>document.write('<link rel="stylesheet" href="css/curator_common.' + (new Date()).getTime() + '.css" />');</script>
 
         <!--Page-specific CSS here -->
-            <script>document.write('<link rel="stylesheet" href="css/dataset_curator.v2.' + (new Date()).getTime() + '.css" />');</script>
+        <script>document.write('<link rel="stylesheet" href="css/multigene_curator.' + (new Date()).getTime() + '.css" />');</script>
     </head>
 
 <body>
@@ -46,29 +46,29 @@
       <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
   <![endif]-->
 
-  <div id="main_layout_c" class="columns is-fullheight">
+  <div id="main-layout-c" class="columns is-fullheight">
     <!--#include virtual="/include/primary_nav.html" -->
-    <section id="main_c" class="column pl-0">
+    <section id="main-c" class="column pl-0 pt-0">
       <!--#include virtual="/include/header_bar.html" -->
-      <section id="content_c" class="m-3">
+      <section id="content-c" class="m-3" data-nav-link="mg_displays">
         <!-- This is the section to be populated for new pages -->
         <header class="columns section">
-          <div id="tool_desc_c" class="column is-3">
+          <div id="tool-desc-c" class="column is-3">
           <h3 class="title is-3">
             View new multigene displays for a dataset
           </h3>
           <p>The multigene viewer tool is used to create new multi-gene expression displays, as well as editing existing ones. You can choose from variety of plots, such as heatmaps, violin, and volcano plots.</p>
           </div>
-          <div id="guides_outer_c" class="column is-offset-3 has-background-white-bis notification">
+          <div id="guides-outer-c" class="column is-offset-3 has-background-white-bis notification">
             <h3 class="mt-4 mb-4">
               <span>GUIDES</span>
               <span class="icon is-pulled-right delete">
                 <i class="mdi mdi-close"></i>
               </span>
             </h3>
-            <div id="guides_inner_c" class="columns">
+            <div id="guides-inner-c" class="columns">
               <div class="column">
-                <div class="guide_element pr-3">
+                <div class="guide-element pr-3">
                   <div><!-- without the 2nd level div here the images disappears-->
                     <div class="media">
                       <div class="media-left">
@@ -80,7 +80,7 @@
                         <p>
                           Learn how to use the multigene curation tool
                         </p>
-                        <p class="mt-2"><a>Try now</a></p>
+                        <p class="mt-2"><a class="is-unselectable">Try now (coming soon)</a></p>
                       </div>
                     </div>
                   </div>
@@ -91,129 +91,130 @@
         </header>
 
 
-        <section class="has-background-light section js-step step-active" id="dataset_s">
+        <section class="has-background-light section js-step step-active" id="dataset-s">
           <!-- Dataset selection -->
           <h5 class="title is-5">
             <span class="icon">
               <i class="mdi mdi-text-box-search-outline"></i> <!-- Not quite the correct icon -->
             </span>
             <span>Select a dataset</span>
-            <span id="dataset_s_success" class="js-step-success icon has-text-success-dark is-hidden">
+            <span id="dataset-s-success" class="js-step-success icon has-text-success-dark is-hidden">
               <i class="mdi mdi-check-circle"></i>
             </span>
-            <span id="dataset_s_failed" class="js-step-success icon has-text-danger-dark is-hidden">
+            <span id="dataset-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
               <i class="mdi mdi-close-circle"></i>
             </span>
             <span class="icon is-pulled-right">
               <i class="mdi mdi-chevron-up"></i>
             </span>
           </h5>
-          <div id="current_dataset_c" class="is-hidden">
+          <div id="current-dataset-c" class="is-hidden">
             Current dataset:
-            <span id="current_dataset"></span>
+            <span id="current-dataset"></span>
           </div>
-          <div class="js-step-collapsable mt-3" id="dataset_collapsable">
-            <input class="input" id="dataset_query" type="text" placeholder="Enter a dataset" autofocus="" />
-            <div id="dataset_tree" class="wb-skeleton wb-initializing js-tree">
+          <div class="js-step-collapsable mt-3" id="dataset-collapsable">
+            <input class="input" id="dataset-query" type="text" placeholder="Enter a dataset" autofocus="" />
+            <div id="dataset-tree" class="wb-skeleton wb-initializing js-tree">
             </div>
           </div>
         </section>
 
-        <section class="has-background-white-bis section js-step" id="load_plot_s">
+        <section class="has-background-white-bis section js-step" id="load-plot-s">
           <h5 class="title is-5">
             <span class="icon">
               <i class="mdi mdi-file-upload-outline"></i> <!-- Not quite the correct icon -->
             </span>
             <span>Create new or load existing curation</span>
-            <span id="load_plot_s_success" class="js-step-success icon has-text-success-dark is-hidden">
+            <span id="load-plot-s-success" class="js-step-success icon has-text-success-dark is-hidden">
               <i class="mdi mdi-check-circle"></i>
             </span>
-            <span id="load_plot_s_failed" class="js-step-success icon has-text-danger-dark is-hidden">
+            <span id="load-plot-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
               <i class="mdi mdi-close-circle"></i>
             </span>
             <span class="icon is-pulled-right">
               <i class="mdi mdi-chevron-down"></i>
             </span>
           </h5>
-          <div class="js-step-collapsable mt-3" id="load_plot_collapsable">
-            <button id="new_display" class="content button is-primary" disabled>
+          <div class="js-step-collapsable mt-3" id="load-plot-collapsable">
+            <button id="new-display" class="content button is-primary" disabled>
               <span class="icon">
                 <i class="mdi mdi-plus"></i>
               </span>
               <span>Curate new display</span>
             </button>
-            <div id="user_displays" class="columns is-multiline"></div>
-            <div id="owner_displays" class="columns is-multiline"></div>
+            <div id="user-displays" class="columns is-multiline"></div>
+            <div id="owner-displays" class="columns is-multiline"></div>
 
           </div>
         </section>
 
-        <section class="has-background-white-bis section js-step" id="plot_type_s">
+        <section class="has-background-white-bis section js-step" id="plot-type-s">
           <h5 class="title is-5">
             <span class="icon">
               <i class="mdi mdi-chart-scatter-plot"></i> <!-- Not quite the correct icon -->
             </span>
             <span>Select dataset plot type and analysis type</span>
-            <span id="plot_type_s_success" class="js-step-success icon has-text-success-dark is-hidden">
+            <span id="plot-type-s-success" class="js-step-success icon has-text-success-dark is-hidden">
               <i class="mdi mdi-check-circle"></i>
             </span>
-            <span id="plot_type_s_failed" class="js-step-success icon has-text-danger-dark is-hidden">
+            <span id="plot-type-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
               <i class="mdi mdi-close-circle"></i>
             </span>
             <span class="icon is-pulled-right">
               <i class="mdi mdi-chevron-down"></i>
             </span>
           </h5>
-          <div id="current_plot_type_c" class="is-hidden">
+          <div id="current-plot-type-c" class="is-hidden">
             Current plot type:
-            <span id="current_plot_type"></span>
+            <span id="current-plot-type"></span>
           </div>
-          <div id="current_analysis_c">
+          <div id="current-analysis-c">
             Current analysis:
-            <span id="current_analysis">Primary analysis</span>
+            <span id="current-analysis">Primary analysis</span>
           </div>
-          <div class="js-step-collapsable mt-3" idi="plot_type_collapsable">
+          <div class="js-step-collapsable mt-3" idi="plot-type-collapsable">
             <div class="columns">
-              <div id="plot_type_select_c" class="column is-4">
+              <div id="plot-type-select-c" class="column is-4">
                 <div>Plot type
-                  <span id="plot_type_select_c_success" class="js-step-success icon has-text-success-dark is-hidden">
+                  <span id="plot-type-select-c-success" class="js-step-success icon has-text-success-dark is-hidden">
                     <i class="mdi mdi-check-circle"></i>
                   </span>
-                  <span id="plot_type_select_c_failed" class="js-step-success icon has-text-danger-dark is-hidden">
+                  <span id="plot-type-select-c-failed" class="js-step-success icon has-text-danger-dark is-hidden">
                     <i class="mdi mdi-close-circle"></i>
                   </span>
+                  <span class="has-text-success-dark is-pulled-right has-text-weight-bold">Required</span>
                 </div>
                 <div class="select is-fullwidth">
-                  <select id="plot_type_select" disabled>
+                  <select id="plot-type-select" disabled>
                     <option value="nope">Select plot type</option>
                     <optgroup label="Genes as axis labels">
-                      <option value="dotplot" id="dotplot_opt">Dotplot</option>
-                      <option value="heatmap" id="heatmap_opt">Heatmap</option>
-                      <option value="mg_violin" id="mg_violin_opt">Violin</option>
+                      <option value="dotplot" id="dotplot-opt">Dotplot</option>
+                      <option value="heatmap" id="heatmap-opt">Heatmap</option>
+                      <option value="mg_violin" id="mg-violin-opt">Violin</option>
                     </optgroup>
                     <optgroup label="Genes as data points">
-                      <option value="quadrant" id="quadrant_opt">Quadrant</option>
-                      <option value="volcano" id="volcano_opt">Volcano</option>
+                      <option value="quadrant" id="quadrant-opt">Quadrant</option>
+                      <option value="volcano" id="volcano-opt">Volcano</option>
                     </optgroup>
                   </select>
                 </div>
               </div>
-              <div id="analysis_type_select_c" class="column is-4">
+              <div id="analysis-type-select-c" class="column is-4">
                 <div>Analysis (optional)
-                  <span id="analysis_type_select_c_success" class="js-step-success icon has-text-success-dark is-hidden">
+                  <span id="analysis-type-select-c-success" class="js-step-success icon has-text-success-dark is-hidden">
                     <i class="mdi mdi-check-circle"></i>
                   </span>
-                  <span id="analysis_type_select_c_failed" class="js-step-success icon has-text-danger-dark is-hidden">
+                  <span id="analysis-type-select-c-failed" class="js-step-success icon has-text-danger-dark is-hidden">
                     <i class="mdi mdi-close-circle"></i>
                   </span>
                 </div>
                 <div class="select is-fullwidth">
-                  <select id="analysis_select" disabled>
+                  <select id="analysis-select" disabled>
                     <option value="-1" selected>Primary analysis (default)</option>
-                    <optgroup id="private_analyses" label="Your Saved Analyses">
+                    <optgroup id="private-analyses" label="Your Saved Analyses">
 
                     </optgroup>
-                    <optgroup id="public_analyses" label="Public Saved Analyses">
+                    <optgroup id="public-analyses" label="Public Saved Analyses">
 
                     </optgroup>
                   </select>
@@ -223,160 +224,280 @@
           </div>
         </section>
 
-        <section class="has-background-white-bis section js-step" id="gene_s">
+        <section class="has-background-white-bis section js-step" id="gene-s">
           <h5 class="title is-5">
             <span class="icon">
               <i class="mdi mdi-dna"></i> <!-- Not quite the correct icon -->
             </span>
             <span>Select genes</span>
-            <span id="gene_s_success" class="js-step-success icon has-text-success-dark is-hidden">
+            <span id="gene-s-success" class="js-step-success icon has-text-success-dark is-hidden">
               <i class="mdi mdi-check-circle"></i>
             </span>
-            <span id="gene_s_failed" class="js-step-success icon has-text-danger-dark is-hidden">
+            <span id="gene-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
               <i class="mdi mdi-close-circle"></i>
             </span>
             <span class="icon is-pulled-right">
               <i class="mdi mdi-chevron-down"></i>
             </span>
           </h5>
-          <div class="js-step-collapsable mt-3" id="gene_collapsable">
+          <div id="num-selected-genes-c" class="is-hidden">
+            Number of selected genes:
+            <span id="num-selected-genes"></span>
+          </div>
+          <div class="js-step-collapsable mt-3" id="gene-collapsable">
+            <p>Genes entered manually or chosen from an existing gene list will be added to your group of selected genes to plot. Note that only genes or orthologs found in the dataset will appear in the plot.</p>
 
-            <!-- BUG: https://github.com/mar10/wunderbaum/issues/57 -->
-            <div class="columns">
-              <div class="column is-6">
-                <input class="input" id="genecart_query" type="text" placeholder="Enter a gene collection" autofocus="" />
-                <div id="genecart_tree" class="wb-skeleton wb-initializing js-tree"></div>
-                <p class="help">These will be added to the selection of genes if in the dataset.</p>
-              </div>
-              <div id="gene_select_c" class="column is-4">
-                <div class="select is-fullwidth">
-                  <select class="js-gene-select" id="gene_select" multiple></select>
+            <div id="search-bar-c" class="mt-4 ml-3 mb-4">
+              <div class="field has-addons is-grouped mb-0">
+                <div class="control has-icons-left has-icons-right mr-0">
+                  <input class="input" type="input" id="genes-manually-entered" placeholder="Type here to search using specific gene symbols">
+                  <span class="icon is-small is-left">
+                    <i class="mdi mdi-magnify"></i>
+                  </span>
                 </div>
+                <!-- div with the text 'OR' centered vertically. this is awkward -->
+                <div class="columns">
+                  <div class="column is-1">
+                    <div class="is-vertical is-size-7 ml-2 mr-2">OR</div>
+                  </div>
+                </div>
+
+                <!--#include virtual="/include/gene-collection-selector/gene-collection-selector.html" -->
+              </div>
+              <span class="has-text-success-dark has-text-weight-bold">At least 2 genes required</span>
+            </div>
+            <div id="gene-tags-c" class="box is-hidden">
+              <p class="subtitle is-5" id="genes-selected">Genes selected:</p>
+              <div id="gene-tags" class="tags"></div>
+              <div class="buttons">
+                <button id="clear-genes-btn" class="button is-primary is-outlined"> Clear selection</button>
               </div>
             </div>
-            <div id="gene_tags_c" class="box is-hidden">
-              <p class="subtitle is-5" id="genes_selected">Genes selected:</p>
-              <div id="gene_tags" class="tags"></div>
-            </div>
-            <button id="clear_genes_btn" class="content button is-primary is-outlined"> Clear selection</button>
-            <div id="continue_to_plot_options" class="content has-text-weight-semibold is-hidden">
+            <div id="continue-to-plot-options" class="content has-text-weight-semibold is-hidden">
               You can click on the "Select plotting options" section at any time
             </div>
           </div>
         </section>
 
-        <section class="has-background-white-bis section js-step" id="plot_options_s">
+        <section class="has-background-white-bis section js-step" id="plot-options-s">
           <h5 class="title is-5">
             <span class="icon">
               <i class="mdi mdi-tune"></i> <!-- Not quite the correct icon -->
             </span>
             <span>Select plotting options</span>
-            <span id="plot_options_s_success" class="js-step-success icon has-text-success-dark is-hidden">
+            <span id="plot-options-s-success" class="js-step-success icon has-text-success-dark is-hidden">
               <i class="mdi mdi-check-circle"></i>
             </span>
-            <span id="plot_options_s_failed" class="js-step-success icon has-text-danger-dark is-hidden">
+            <span id="plot-options-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
               <i class="mdi mdi-close-circle"></i>
             </span>
             <span class="icon is-pulled-right">
               <i class="mdi mdi-chevron-down"></i>
             </span>
           </h5>
-          <div class="js-step-collapsable mt-3" id="plot_options_collapsable"></div>
+          <div class="js-step-collapsable mt-3" id="plot-options-collapsable"></div>
         </section>
 
-        <button id="plot_btn" class="my-3 button is-primary js-plot-btn" disabled>Plot</button>
+        <button id="plot-btn" class="my-3 button is-primary js-plot-btn" disabled>Plot</button>
       </section>
 
-      <section id="post_plot_content_c" class="m-3 columns is-hidden">
-        <div id="params_summary" class="column has-background-light is-flex is-flex-direction-column is-justify-content-space-between">
-          <div id="current_info" class="content">
-            <p>Dataset: <span id="current_dataset_post" class="has-text-weight-semibold"></span></p>
-            <p>Analysis: <span id="current_analysis_post" class="has-text-weight-semibold">Primary analysis</span></p>
-            <p>Number of selected observations: <span id="num_selected" class="has-text-weight-semibold"></span></p>
-          </div>
-          <div id="post_plot_customize">
-            <div id="facet_c" class="content">
-              <p class="title is-4">Filters</p>
+      <section id="post-plot-content-c" class="m-3 columns is-hidden">
+        <div id="params-summary" class="column has-background-light is-flex is-flex-direction-column">
+          <div class="">
+            <div id="current-info" class="content">
+              <p>Dataset: <span id="current-dataset-post" class="has-text-weight-semibold"></span></p>
+              <p>Analysis: <span id="current-analysis-post" class="has-text-weight-semibold">Primary analysis</span></p>
+              <p>Number of selected observations: <span id="num-selected" class="has-text-weight-semibold"></span></p>
+              <p>Number of selected genes: <span id="num-selected-genes-post" class="has-text-weight-semibold"></span></p>
             </div>
-            <div id="params_config_container">
-              <p class="title is-4">Plot configuration</p>
-              <section id="post_plot_adjustments" class="content"></section>
+            <div id="post-plot-customize">
+              <div id="facet-content" class="content is-hidden">
+                <h5 class="title is-5 is-clickable js-collapsable-trigger">
+                  <span>Dataset filters</span>
+                  <span class="icon is-pulled-right">
+                    <i class="mdi mdi-chevron-down"></i>
+                  </span>
+                </h5>
+                <div id="facet-c" class="is-hidden js-collapsable-content"></div>
+              </div>
 
-              <section id="plot_plot_global_adjustments" class="content">
-                <p class="is-flex is-justify-content-space-between pr-3">
-                  <span class="has-text-weight-medium">Plot title</span>
-                  <input class="js-dash-plot-title" id="plot_title_post" class="input" type="text" placeholder="Enter title of plot">
-                </p>
-                <p class="help">If left blank, plot will have a default title or no title.</p>
-                <p class="is-flex is-justify-content-space-between pr-3" id="legend_title_container">
-                  <span class="has-text-weight-medium">Legend title</span>
-                  <input class="js-dash-legend-title" id="legend_title_post" class="input" type="text" placeholder="Enter title of legend">
-                </p>
-                <p class="help">If left blank, legend will have a default title.</p>
+
+              <section id="params-config-container">
+                <h5 class="title is-5 is-clickable js-collapsable-trigger">
+                  <span>Plot configuration</span>
+                  <span class="icon is-pulled-right">
+                    <i class="mdi mdi-chevron-down"></i>
+                  </span>
+                </h5>
+                <div id="post-plot-configuration-c" class="is-hidden js-collapsable-content">
+                  <section id="post-plot-adjustments" class="content"></section>
+
+                  <section id="post-plot-global-adjustments" class="content">
+                    <p class="is-flex is-justify-content-space-between pr-3">
+                      <span class="has-text-weight-medium">Plot title</span>
+                      <input class="js-dash-plot-title" id="plot-title-post" class="input" type="text" placeholder="Enter title of plot">
+                    </p>
+                    <p class="help">If left blank, plot will have a default title or no title.</p>
+                    <p class="is-flex is-justify-content-space-between pr-3" id="legend-title-container">
+                      <span class="has-text-weight-medium">Legend title</span>
+                      <input class="js-dash-legend-title" id="legend-title-post" class="input" type="text" placeholder="Enter title of legend">
+                    </p>
+                    <p class="help">If left blank, legend will have a default title.</p>
+                  </section>
+                </div>
               </section>
-              <section id="order_section" class="my-3 is-hidden">
-                <p class="content title is-4">Change order</p>
-                <p class="help">Drag-and-drop to determine order of plotting</p>
-                <div id="order_container" class="container"></div>
+
+              <section id="order-section" class="my-3 is-hidden">
+                <h5 class="title is-5 is-clickable js-collapsable-trigger">
+                  <span>Change sort order</span>
+                  <span class="icon is-pulled-right">
+                    <i class="mdi mdi-chevron-down"></i>
+                  </span>
+                </h5>
+                <div class="is-hidden js-collapsable-content">
+                  <p class="help">Drag-and-drop to determine order of plotting</p>
+                  <div id="order-container" class="container"></div>
+                </div>
               </section>
             </div>
           </div>
 
-          <div id="post_plot_actions_container" class="mt-3 columns is-multiline">
+          <div id="post-plot-actions-container" class="mt-3 columns is-multiline is-flex-grow-1 is-align-content-end">
             <div class="column is-full">
-              <button id="update_plot" class="button is-medium is-responsive is-fullwidth is-primary js-plot-btn" disabled>Update Plot</button>
-              <button id="edit_params" class="button is-responsive is-fullwidth">
+              <button id="update-plot" class="button is-medium is-responsive is-fullwidth is-primary js-plot-btn" disabled>Update Plot</button>
+              <button id="edit-params" class="button is-responsive is-fullwidth">
                 <span class="icon is-pulled-left">
                   <i class="mdi mdi-arrow-left-thick"></i>
                 </span>
                 <span>Go Back</span>
               </button>
             </div>
-            <div id="save_display_container" class="column is-full">
+            <div id="save-display-container" class="column is-full">
               <div class="field">
                 <div class="control">
-                  <input id="new_display_label" class="input" type="text" placeholder="Enter name of display" />
+                  <input id="new-display-label" class="input" type="text" placeholder="Enter name of display" />
+                </div>
+              </div>
+              <div class="field">
+                <div class="control">
+                  <label class="checkbox" disabled>
+                    <input type="checkbox" id="overwrite-display-check" disabled>
+                    Overwrite existing display instead
+                  </label>
                 </div>
               </div>
               <div class="field">
                 <div class="control">
                   <label class="checkbox">
-                    <input type="checkbox" id="make_default_display_check">
+                    <input type="checkbox" id="make-default-display-check">
                     Make this my default display
                   </label>
                 </div>
               </div>
               <div class="field">
                 <div class="control">
-                  <button id="save_display_btn" class="button is-responsive is-fullwidth my-3">Save as new display</button>
+                  <button id="save-display-btn" class="button is-responsive is-fullwidth my-3">Save as new display</button>
                 </div>
               </div>
               <div class="field">
                 <div class="control">
-                  <button id="save_json_config" class="button is-responsive is-fullwidth ">Download config (JSON)</button>
+                  <button id="save-json-config" class="button is-responsive is-fullwidth ">Download config (JSON)</button>
                 </div>
               </div>
             </div>
           </div>
         </div>
-        <div class="column is-two-thirds has-background-white-bis">
-          <div class="box" id="selected_facets">
-            <p> Selected facets:
-                <span class="loader is-hidden is-inline-flex" id="selected_facets_loader"></span>
+        <div class="column is-two-thirds has-background-white-bis is-flex is-flex-direction-column">
+          <div class="box" id="selected-facets">
+            <p> Selected conditions:
+                <span class="loader is-hidden is-inline-flex" id="selected-facets-loader"></span>
             </p>
-            <span class="tags" id="selected_facets_tags"></span>
+            <span class="tag is-light is-primary" id="selected-facets-all">All</span>
+            <span class="tags" id="selected-facets-tags"></span>
           </div>
-          <div id="plot_container"></div>
+          <div id="plot-container" class="content"></div>
+          <!-- Gene cart button -->
+          <div id="gene-cart-btn-c" class="is-hidden is-flex is-justify-content-end is-flex-grow-1 is-align-items-end">
+            <button id="gene-cart-btn" class="button is-large is-primary is-outlined" data-target="gene-table-modal">
+              <span class="icon">
+                <i class="mdi mdi-file-table-box-multiple"></i>
+              </span>
+              <span>View and save genes</span>
+            </button>
+          </div>
         </div>
       </section>
     </section>
   </div>
 
+  <!-- Modal -->
+  <div id="gene-table-modal" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+      <header class="modal-card-head has-background-primary">
+        <p class="modal-card-title has-text-white">Gene collection</p>
+      </header>
+      <section class="modal-card-body">
+        <div id="gene-table-container" class="container">
+          <table class="table is-fullwidth is-hidden" id="tbl-selected-genes">
+            <thead>
+              <tr>
+                <th class="is-clickable js-tbl-gene-header" id="tbl-gene-names" onclick="sortGeneTable(0);">Gene <span class="icon"><i class="mdi mdi-sort-alphabetical-ascending" aria-hidden="true"></i></span></th>
+                <th class="is-clickable js-tbl-gene-header" id="tbl-gene-x" onclick="sortGeneTable(1);">Fold Change</th>
+                <th class="is-clickable js-tbl-gene-header" id="tbl-gene-y" onclick="sortGeneTable(2);">P-value</th>
+              </tr>
+            </thead>
+            <tbody id="gene-table-body">
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <footer class="modal-card-foot is-block">
+        <div class="field">
+          <div class="control">
+            <input id="new-genecart-label" class="input" type="text" placeholder="Enter name of collection" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">Collection type</label>
+          <div class="field-body">
+            <div class="field is-narrow">
+              <div class="control">
+                <label class="radio" disabled>
+                  <input type="radio" name="genecart_type" value="unweighted" disabled>
+                  Unweighted (saves selected genes)
+                </label>
+              </div>
+              <div class="control">
+                <label class="radio">
+                  <input type="radio" name="genecart_type" value="weighted" checked>
+                  Weighted (saves all genes in dataset)
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field is-grouped">
+          <div class="control">
+            <button id="save-genecart-btn" class="button is-primary" disabled>Save</button>
+          </div>
+          <div class="control">
+            <button id="download-selected-genes-btn" class="button is-text has-text-primary is-hidden">Download selected</button>
+          </div>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <!--#include virtual="/include/curator_common.html" -->
+
   <!-- fancy select elements -->
   <script src="https://cdn.jsdelivr.net/npm/nice-select2@2.1.0/dist/js/nice-select2.min.js"></script>
 
   <!-- Tree view/grid -->
-  <script src="https://cdn.jsdelivr.net/gh/mar10/wunderbaum@v0.5.1/dist/wunderbaum.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/mar10/wunderbaum@v0.10.0/dist/wunderbaum.umd.min.js"></script>
 
   <!-- sortable + drag-n-drop -->
   <script src="https://cdn.jsdelivr.net/npm/html5sortable@0.13.3/dist/html5sortable.min.js"></script>
@@ -385,14 +506,15 @@
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
   <script src="js/vendor/js.cookie.js"></script>
-  <script src="https://d3js.org/d3.v5.min.js"></script>
-  <script src="https://cdn.plot.ly/plotly-1.54.1.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.26.0.min.js" charset="utf-8"></script>
 
   <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
   <script>document.write('<script src="js/classes/facets.' + (new Date()).getTime() + '.js"><\/script>');</script>
-  <script>document.write('<script src="js/classes/tree.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+  <script>document.write('<script src="js/classes/tree.' + (new Date()).getTime() + '.js"><\/script>');</script>
+  <script>document.write('<script src="js/classes/gene.' + (new Date()).getTime() + '.js"><\/script>');</script>
+  <script>document.write('<script src="js/classes/genecart.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
   <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
-  <script>document.write('<script src="js/plot_display_config.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+  <script>document.write('<script src="js/plot_display_config.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
   <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
   <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
@@ -401,16 +523,16 @@
   <script>document.write('<script src="js/curator_common.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
   <!-- Page-specific JS file here -->
-  <script>document.write('<script src="js/multigene_curator.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+  <script>document.write('<script src="js/multigene_curator.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'UA-59916932-1');
+  </script>
 
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'UA-59916932-1');
-    </script>
 </body>
 </html>

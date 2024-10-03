@@ -1,7 +1,5 @@
 import numpy as np
 import pandas as pd
-import os, sys
-sys.path.append('/home/dolley/gear/lib')
 
 """
 Class and associated methods needed to calculate the following statistics at time of upload:

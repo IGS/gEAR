@@ -46,14 +46,15 @@ def main():
     filter_genes_gt_n_cells = form.getvalue('filter_genes_gt_n_cells')
 
     adata = ana.get_adata()
-    dest_datafile_path = None
 
+    # This step should only be performed on the original dataset.
+    # However the filtering will be saved in a temp directory to avoid overwriting the original dataset.
     if ana.type == 'primary':
         ana.type = 'user_unsaved'
-        dest_datafile_path = ana.dataset_path()
     else:
         raise Exception("ERROR: unsupported analysis type: {0}".format(ana.type))
 
+    dest_datafile_path = ana.dataset_path()
     dest_directory = os.path.dirname(dest_datafile_path)
 
     if not os.path.exists(dest_directory):
@@ -62,15 +63,13 @@ def main():
     adata.var_names_make_unique()
     adata.obs_names_make_unique()
 
-    was_filtered = False
+    was_filtered = False    # Need this to check if the "n_genes" and "n_cells" columns are present
 
     # API documentation states one filter param per call
     if filter_genes_lt_n_cells:
-        was_filtered = True
         sc.pp.filter_genes(adata, min_cells=int(filter_genes_lt_n_cells))
 
     if filter_genes_gt_n_cells:
-        was_filtered = True
         sc.pp.filter_genes(adata, max_cells=int(filter_genes_gt_n_cells))
 
     if filter_cells_lt_n_genes:
@@ -91,10 +90,16 @@ def main():
 
     sc.settings.figdir = dest_directory + "/figures"
 
+    # ensure adata.var.gene_symbol is mixed object dtype
+    # See https://github.com/IGS/gEAR/issues/753 for an explanation
+    if 'gene_symbol' in adata.var.columns and adata.var['gene_symbol'].dtype.name != 'object':
+        adata.var['gene_symbol'] = adata.var['gene_symbol'].astype('object')
+
     try:
-        ax = sc.pl.highest_expr_genes(adata, n_top=20, gene_symbols='gene_symbol', save=".png")
+        sc.pl.highest_expr_genes(adata, n_top=20, gene_symbols='gene_symbol', show=True, save=".png")
         result['success'] = 1
-    except:
+    except Exception as e:
+        print("Failed to generate highest_expr_genes plot: {0}".format(e), file=sys.stderr)
         result['success'] = 0
 
     result['n_obs'] = n_obs

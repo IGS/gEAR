@@ -1,3 +1,5 @@
+/* This file contains CSS that is common to both of the curator pages. */
+
 /* reflecting gEAR "select" form CSS to "nice-select" elements */
 .select .nice-select {
     background-color: #EFEDF7;
@@ -29,32 +31,20 @@
     background-color: lightgrey;
 }
 
-/* Toast-style notifications for actual alerts */
-.notification.js-toast {
-    position: fixed;
-    top: 30px;
-    right: 10px;
-    z-index:999;
-}
-
-#post_plot_adjustments select {
+#post-plot-adjustments select {
     width: 100px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-#params_summary {
-    height:92vh;
-}
-
-#post_plot_customize {
+#post-plot-customize {
     overflow-y:auto;
     overflow-x:hidden;
-    flex: 0 1 auto; /* flex-grow, flex-shrink, flex-basis */
+    /*flex: 0 1 auto;*/ /* flex-grow, flex-shrink, flex-basis */
 }
 
-#order_container li {
+#order-container li {
     text-overflow: ellipsis;
 }
 

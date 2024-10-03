@@ -12,12 +12,16 @@ def main():
     sys.stdout = open(os.devnull, 'w')
 
     form = cgi.FieldStorage()
-    user_id = form.getvalue('user_id')
+    session_id = form.getvalue('session_id')
     dataset_id = form.getvalue('dataset_id')
     is_multigene = int(form.getvalue('is_multigene', 0))
 
-    default_display_id = geardb.get_default_display(
-      user_id=user_id, dataset_id=dataset_id, is_multigene=is_multigene
+    user = geardb.get_user_from_session_id(session_id=session_id)
+
+    default_display_id = None
+    if user:
+      default_display_id = geardb.get_default_display(
+        user_id=user.id, dataset_id=dataset_id, is_multigene=is_multigene
 )
     if default_display_id is None:
       # User owner's default

@@ -25,6 +25,16 @@ def main():
     label = form.getvalue('label')
     user = geardb.get_user_from_session_id(session_id)
 
+    if user is None:
+        result = {'success': 0, 'error': "User not found"}
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+
+    if analysis_vetting in ["undefined", "null", ""]:
+        analysis_vetting = None
+
     ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
                           session_id=session_id, user_id=user.id, label=label,
                           vetting=analysis_vetting)

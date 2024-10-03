@@ -47,28 +47,31 @@ def main():
 
 def get_layout_string(cnx, dataset_id):
     cursor = cnx.get_cursor()
-    labels = list()
+    labels = set()
 
     qry = """
           SELECT l.share_id, l.label
-            FROM layout l 
-                 JOIN layout_members lm ON lm.layout_id=l.id
-           WHERE lm.dataset_id = %s
+            FROM layout l
+                 JOIN layout_displays lm ON lm.layout_id=l.id
+                 JOIN dataset_display dd ON lm.display_id=dd.id
+           WHERE dd.dataset_id = %s
     """
     cursor.execute(qry, [dataset_id,])
 
     for (share_id, label) in cursor:
-        labels.append(label)
+        labels.add(label)
 
     cursor.close()
+
+    labels = list(labels)
 
     if len(labels):
         return " / ".join(labels)
     else:
         return "None"
 
-    
-    
+
+
 if __name__ == '__main__':
     main()
-    
+

@@ -50,10 +50,9 @@ def main():
 
     if user.id == gc.user_id:
         # see what has changed and execute updates to the DB
-        if visibility == 0 and gc.is_public == 1:
-            gc.save_change('is_public', 0)
-        elif visibility == 1 and (gc.is_public == 0 or gc.is_public == None):
-            gc.save_change('is_public', 1)
+        # ? SAdkins - Why are we checking for differences? Can't we just update regardless, or are we trying to reduce transactions?
+        if gc.is_public != visibility:
+            gc.save_change('is_public', visibility)
 
         if gc.label != label:
             gc.save_change('label', label)
@@ -65,7 +64,7 @@ def main():
             gc.save_change('ldesc', ldesc)
 
         result = { 'gene_cart': gc, 'success': 1 }
-            
+
         print(json.dumps(result))
 
     else:

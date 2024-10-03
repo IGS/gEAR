@@ -1,9 +1,9 @@
 #!/opt/bin/python3
 
 """
-Used by analyze_dataset.html, this script gets a list of the H5AD datasets the user can view.
+Used by sc_workbench.html, this script gets a list of the H5AD datasets the user can view.
 
-Returns four keyed sets 'primary', 'public', 'user_saved' (if a user can be pulled from the 
+Returns four keyed sets 'primary', 'public', 'user_saved' (if a user can be pulled from the
 session) and 'user_unsaved'
 """
 
@@ -22,8 +22,12 @@ def main():
     user = geardb.get_user_from_session_id(session_id)
     result = {'primary': [], 'public': [], 'user_saved': [], 'user_unsaved': []}
 
+    user_id = None
+    if user:
+        user_id = user.id
+
     acollection = geardb.AnalysisCollection()
-    acollection.get_all_by_dataset_id(user_id=user.id, session_id=session_id, dataset_id=dataset_id)
+    acollection.get_all_by_dataset_id(user_id=user_id, session_id=session_id, dataset_id=dataset_id)
 
     result['primary'] = acollection.primary
     result['public'] = acollection.public
@@ -31,9 +35,10 @@ def main():
     result['user_unsaved'] = acollection.user_unsaved
 
     ## get the vetting for each
-    for atype in result:
-        for ana in result[atype]:
-            ana.discover_vetting(current_user_id=user.id)
+    if user_id:
+        for atype in result:
+            for ana in result[atype]:
+                ana.discover_vetting(current_user_id=user_id)
 
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))

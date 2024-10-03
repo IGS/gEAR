@@ -1,9 +1,7 @@
-# Purely kept so we can debug with sys.stderr
 from itertools import cycle
 
 import plotly.express as px
 import plotly.graph_objects as go
-from matplotlib.pyplot import plot
 from plotly import exceptions
 from plotly.colors import unlabel_rgb
 from plotly.subplots import make_subplots
@@ -121,6 +119,35 @@ def _adjust_colorscale(plotting_args, colormap=None, palette=None):
         # Palette selection supercedes "purples"
         if palette:
             plotting_args["color_continuous_scale"] = palette
+            if palette == "multicolor_diverging":
+                # This is a custom colorscale for diverging data (for Carlo)
+
+                #     nodes = [0.0, 0.12, 0.25, 0.38, 0.5, 0.62, 0.75, 0.88, 1.0]
+                #     colors = ["violet", "blue", "indigo", "darkblue", "black", "darkred", "red", "orange", "yellow"]
+
+                # Hex codes are based on Matplotlib values -> https://i.stack.imgur.com/nCk6u.jpg
+                plotting_args["color_continuous_scale"] = [
+                    [0.0, '#9a0eea'],
+                    [0.12, '#0343df'],
+                    [0.25, '#380282'],
+                    [0.38, '#00035b'],
+                    [0.5, '#000000'],
+                    [0.62, '#840000'],
+                    [0.75, '#e50000)'],
+                    [0.88, '#f97306'],
+                    [1.0, '#ffff14']
+                ]
+
+            elif palette == "bublrd":
+                plotting_args["color_continuous_scale"] = [
+                    [0, 'rgb(173, 216, 230)'],
+                    [0.25, 'rgb(0, 0, 128)'],
+                    [0.4, 'rgb(0, 0, 255)'],
+                    [0.5, 'rgb(0, 0, 0)'],
+                    [0.6, 'rgb(128, 0, 0)'],
+                    [0.75, 'rgb(255, 0, 0)'],
+                    [1, 'rgb(240, 128, 128)']
+                ]
 
     return plotting_args
 
@@ -133,7 +160,8 @@ def _aggregate_dataframe(df, x, y, facet_row=None, facet_col=None, color_name=No
     if not priority_groups:
         return df
 
-    grouped = df.groupby(priority_groups)
+    # If observed=False, then all groupings will be present in the final dataframe
+    grouped = df.groupby(priority_groups, observed=False)
 
     # Discrete colorscale or no colorscale
     if not color_name or _is_categorical(df[color_name]):
@@ -307,10 +335,11 @@ def _update_by_plot_type(fig, plot_type, force_overlay=False, use_jitter=False):
 
 def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
                       color_name=None, colormap=None, palette=None,
-                      reverse_palette=False, category_orders=None,
+                      reverse_palette=False, category_orders={},
                       plot_type='scatter', hide_x_labels=False, hide_y_labels=False,
                       hide_legend=None, text_name=None, jitter=False,
                       x_range=None, y_range=None, vlines=[], x_title=None, y_title=None,
+                      is_projection=False,
                       **kwargs):
     """Generates and returns figure for facet grid."""
 
@@ -326,6 +355,16 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
     kwargs["traces"]["marker"].setdefault("size", 3)    # If size does not exist within
 
 
+    # Round y values to 2 decimal places for hover data
+    try:
+        df["y_rounded"] = df[y].astype(float).round(2)
+    except:
+        # If y is not a number, try x.  If that is not a number, use y as is
+        try:
+            df["y_rounded"] = df[x].astype(float).round(2)
+        except:
+            df["y_rounded"] = df[y]
+
     # These labels allows use to override these labels used for axis titles, etc.
     labels_dict = {x:x_title, y:y_title, "color_name":""}
 
@@ -335,9 +374,9 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
         , "facet_row":facet_row
         , "facet_col":facet_col
         , "color":color_name
-        , "category_orders": category_orders if category_orders else {}
+        , "category_orders": category_orders
         , "labels":labels_dict
-        , "hover_name": text_name if text_name else y
+        , "hover_name": text_name if text_name else "y_rounded"
         }
 
     # Ensure label is one of the labels that is not lost from "gropuby"
@@ -348,13 +387,14 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
     plotting_args = _adjust_colorscale(plotting_args, colormap, palette)
     plotting_args["hover_data"] = { col: False for col in df.columns.tolist() }
 
+
     # If jitter is needed for scatter plot, convert to a strip plot
     if plot_type == "scatter" and jitter:
         plot_type = "strip"
 
     # For scatter plots with a lot of datapoints, use WebGL rendering
     if plot_type == "scattergl":
-        plot_type == "scatter"
+        plot_type = "scatter"
         plotting_args["render_mode"] = "webgl"
 
     # For line plots, use svg render since webgl mode does not have spline as a valid line shape (as of plotly 4.14.3)
@@ -383,6 +423,22 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
     if plot_type in ["bar"]:
         plotting_args["error_y"] = "std" if "std" in df.columns else None
 
+        if "std" in df.columns:
+            # For expression data, error_y_minus cannot go below 0 (negative values are not possible)
+            # Projections can go either way depending on the data
+            if not is_projection:
+                df["std_minus"] = df["std"]
+                df.loc[df[y] - df["std"] < 0, "std_minus"] = df[y]
+
+                plotting_args["error_y_minus"] = "std_minus"
+
+            # Add standard deviation to hover data
+            plotting_args["hover_data"] = {
+                x: False,
+                y: False,
+                "std": ':.2f'
+            }
+
     if plot_type == 'contour':
         plotting_args["z"] = z
         plotting_args["histfunc"] = "avg"   # For expression data
@@ -408,18 +464,25 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
         # TODO: put in function
 
         # Map indexes for subplot ordering.  Indexes start at 1 since plotting rows/cols start at 1
-        facet_row_groups = category_orders[facet_row] if facet_row and facet_row in category_orders else []
+        facet_row_groups = []
+        facet_col_groups = []
+
+        if facet_row:
+            facet_row_groups = category_orders[facet_row] if facet_row in category_orders else df[facet_row].unique().tolist()
+
+        if facet_col:
+            facet_col_groups = category_orders[facet_col] if facet_col in category_orders else df[facet_col].unique().tolist()
+
         facet_row_indexes = {group: idx for idx, group in enumerate(facet_row_groups, start=1)}
         num_rows = len(facet_row_groups) if facet_row else 1
-        facet_col_groups = category_orders[facet_col] if facet_col and facet_col in category_orders else []
         facet_col_indexes = {group: idx for idx, group in enumerate(facet_col_groups, start=1)}
         num_cols = len(facet_col_groups) if facet_col else 1
 
         # Make faceted plot
         fig = make_subplots(rows=num_rows
                 , cols=num_cols
-                , row_titles=facet_row_groups if facet_row else None
-                , column_titles=facet_col_groups if facet_col else None
+                , row_titles=list(facet_row_groups)
+                , column_titles=list(facet_col_groups)
                 , x_title=x_title if x_title else None
                 , y_title=y_title if y_title else None
                 )
@@ -448,7 +511,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
         priority_groups = _build_priority_groups(facet_row, facet_col, color_name, x)
         if priority_groups:
             # Groupby will not include combinations with missing data.  This can result in missing traces for a group
-            grouped = df.groupby(priority_groups)
+            grouped = df.groupby(priority_groups, observed=False)
             names_in_legend = {}
             # Name is a tuple of groupings, or a string if grouped by only 1 dataseries
             # Group is the 'groupby' dataframe
@@ -464,7 +527,7 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
                 # Each individual trace is a separate scalegroup to ensure plots are scaled correctly for violin plots
                 new_plotting_args['scalegroup'] = name
                 if isinstance(name, tuple):
-                    new_plotting_args['scalegroup'] = "_".join(name)
+                    new_plotting_args['scalegroup'] = "_".join(str(name))
 
                 # If color dataseries is present, add some special configurations
                 if color_name:

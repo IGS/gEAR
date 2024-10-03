@@ -1,0 +1,14 @@
+div.deafness-dropdown-header {
+    font-weight: bold;
+}
+div.deafness-dropdown-subheader {
+    font-weight: italic;
+    
+}
+div.dm-deafness .dropdown-content {
+    width: 25vw;
+}
+span.deafness-item-link {
+    font-size: 90%;
+    padding-left: 1em;
+}

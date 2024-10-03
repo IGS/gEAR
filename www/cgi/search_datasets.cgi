@@ -16,13 +16,15 @@ import cgi
 import json
 import os, sys
 import re
+from math import ceil
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.userhistory import UserHistory
 
 # limits the number of matches returned
-DEFAULT_MAX_RESULTS = 200
+DEFAULT_MAX_RESULTS = 20
 IMAGE_ROOT = os.path.abspath(os.path.join('..', 'img', 'dataset_previews'))
 WEB_IMAGE_ROOT = './img/dataset_previews'
 DEBUG_MODE = False
@@ -40,200 +42,245 @@ def main():
     date_added = form.getvalue('date_added')
     ownership = form.getvalue('ownership')
     layout_share_id = form.getvalue('layout_share_id')
+    include_public_membership = form.getvalue('include_public_collection_membership')
+    page = form.getvalue('page', "1")    # page starts at 1
+    limit = form.getvalue('limit', str(DEFAULT_MAX_RESULTS))
     sort_by = re.sub("[^[a-z]]", "", form.getvalue('sort_by'))
     user = geardb.get_user_from_session_id(session_id) if session_id else None
-    result = {'success': 0, 'problem': '', 'datasets': []}
+    result = {'success': 1, 'problem': '', 'datasets': []}
+
+    # convert include_public_membership to boolean
+    include_public_membership = True if include_public_membership == 'true' else False
+
+    if page and not page.isdigit():
+        raise ValueError("Page must be a number")
+
+    if page and int(page) < 1:
+        raise ValueError("Page must be greater than 0")
+
+    if limit and not limit.isdigit():
+        raise ValueError("Limit must be a number")
+
+    if limit and int(limit) < 1:
+        raise ValueError("Limit must be greater than 0")
 
     datasets_collection = geardb.DatasetCollection()
-    qry_params = []
     shared_dataset_id_str = None
+
+    qry_params = []
+    selects = ["d.id"]
+    froms = ["dataset d"]
+    wheres = ["d.marked_for_removal = 0", "d.load_status = 'completed'"]
+    orders_by = []
 
     if user:
         shared_dataset_id_str = get_shared_dataset_id_string(user, cursor)
+        ownership_bits = []
+
+        # if any ownership filters are defined, collect those
+        if ownership:
+            # options are 'yours', 'shared', 'public'
+            owners = ownership.split(',')
+
+            if 'yours' in owners:
+                ownership_bits.append("d.owner_id = %s")
+                qry_params.append(user.id)
+
+            if 'public' in owners:
+                ownership_bits.append("d.is_public = 1")
+
+            if 'shared' in owners and shared_dataset_id_str:
+                ownership_bits.append(f"d.id IN ({shared_dataset_id_str})")
+            elif 'shared' in owners:
+                # Query gets thrown off if there are no shares for this user so just put
+                #  something in which won't match any.  This allows other params to still
+                #  match.
+                ownership_bits.append("d.id IN ('XYZ')")
+
+            if 'group' in owners:
+                ownership_bits.append("d.owner_id IN \
+                                        (SELECT DISTINCT user_id FROM user_group_membership WHERE group_id IN \
+                                        (SELECT group_id FROM user_group_membership WHERE user_id = %s)) \
+                                        ")
+                qry_params.append(user.id)
+
+        else:
+            ownership_bits.append("d.is_public = 1")
+            ownership_bits.append("d.owner_id = %s")
+            if shared_dataset_id_str:
+                ownership_bits.append(f"d.id IN ({shared_dataset_id_str})")
+
+            ownership_bits.append("d.owner_id IN \
+                                    (SELECT DISTINCT user_id FROM user_group_membership WHERE group_id IN \
+                                    (SELECT group_id FROM user_group_membership WHERE user_id = %s)) \
+                                    ")
+            qry_params.extend([user.id, user.id])
+
+        wheres.append(f"({' OR '.join(ownership_bits)})")   # OR accomodates the "not ownership" case
+
+    else:
+        wheres.append("d.is_public = 1")
+
+    if search_terms:
+        selects.append('MATCH(d.title, d.ldesc, d.geo_id, d.pubmed_id) AGAINST("%s" IN BOOLEAN MODE) as rscore')
+        wheres.append('MATCH(d.title, d.ldesc, d.geo_id, d.pubmed_id) AGAINST("%s" IN BOOLEAN MODE)')
+
+        # this is the only instance where a placeholder can be in the SELECT statement, so it will
+        #  be the first qry param
+        qry_params.insert(0, ' '.join(search_terms))
+        qry_params.append(' '.join(search_terms))
+
+    if organism_ids:
+        ## only numeric characters and the comma are allowed here
+        organism_ids = re.sub("[^,0-9]", "", organism_ids)
+        wheres.append("d.organism_id in ({0})".format(organism_ids))
+
+    if dtypes:
+        ## only alphanumeric characters and the dash are allowed here
+        dtypes = re.sub("[^,\-A-Za-z0-9]", "", dtypes).split(',')
+        dtype_str = (', '.join('"' + item + '"' for item in dtypes))
+        wheres.append(f"d.dtype in ({dtype_str})")
+
+    if date_added:
+        date_added = re.sub("[^a-z]", "", date_added)
+        wheres.append(f"d.date_added BETWEEN date_sub(now(), INTERVAL 1 {date_added}) AND now()")
+
+    if sort_by == 'relevance':
+        # relevance can only be ordered if a search term was used
+        if search_terms:
+            orders_by.append(" rscore DESC")
+        else:
+            orders_by.append(" d.date_added DESC")
+    elif sort_by == 'title':
+        orders_by.append(" d.title")
+    elif sort_by == 'owner':
+        selects.append("g.user_name")
+        froms.append("guser g")
+        wheres.append("d.owner_id = g.id")
+        orders_by.append(" g.user_name")
+    else:
+        orders_by.append(" d.date_added DESC")
+
+    qry = ""
 
     if custom_list:
         if custom_list == 'most_recent':
-            if user:
-                qry = """
-                      SELECT d.id
-                        FROM dataset d
-                       WHERE d.marked_for_removal = 0
-                         AND d.load_status = 'completed'
-                         AND (d.owner_id = %s or d.is_public = 1)
-                    ORDER BY d.date_added DESC LIMIT 10
-                """
-                qry_params = [user.id]
-            else:
-                qry = """
-                      SELECT d.id
-                        FROM dataset d
-                       WHERE d.marked_for_removal = 0
-                         AND d.load_status = 'completed'
-                         AND d.is_public = 1
-                    ORDER BY d.date_added DESC LIMIT 10
-                """
-                qry_params = []
+            orders_by.append(' d.date_added DESC')
         else:
             result['success'] = 0
             result['problem'] = "Didn't recognize the custom list requested"
     elif layout_share_id:
-        qry = """
-              SELECT d.id, lm.grid_position, lm.grid_width
-                  FROM dataset d
-                       JOIN layout_members lm ON d.id=lm.dataset_id
-                       JOIN layout l ON lm.layout_id=l.id
-                 WHERE d.marked_for_removal = 0
-                   AND d.load_status = 'completed'
-                   AND l.share_id = %s
-                ORDER BY lm.grid_position
-        """
-        qry_params = [layout_share_id]
-    else:
-        selects = ["d.id", "g.user_name"]
-        froms = ["dataset d", "guser g"]
-        wheres = [
-            "d.owner_id = g.id "
-            "AND d.marked_for_removal = 0 ",
-            "AND d.load_status = 'completed'"
-        ]
+        qry_params.append(layout_share_id)
+
+        selects.pop(0)
+        selects.insert(0, "DISTINCT d.id")
+
+        froms.extend(["layout_displays lm", "layout l", "dataset_display dd"])
+        wheres.extend([
+            "lm.display_id = dd.id",
+            "d.id = dd.dataset_id",
+            "lm.layout_id = l.id",
+            "l.share_id = %s"
+        ])
+
+        # Orders by not compatible with "distinct" in the select statement
         orders_by = []
 
-        if not user:
-            # user not logged in, they can only see public datasets
-            wheres.append("AND d.is_public = 1")
-        else:
-            # if any ownership filters are defined, collect those
-            if ownership:
-                # options are 'yours', 'shared', 'public'
-                owners = ownership.split(',')
-                ownership_bits = []
+    # build query
+    qry = f"""
+    SELECT {', '.join(selects)}
+        FROM {', '.join(froms)}
+        WHERE {' AND '.join(wheres)}
+    """
 
-                if 'yours' in owners:
-                    ownership_bits.append("d.owner_id = %s")
-                    qry_params.append(user.id)
+    if not layout_share_id:
+        qry += f" ORDER BY {' '.join(orders_by) if orders_by else 'd.date_added DESC'}"
 
-                if 'public' in owners:
-                    ownership_bits.append("d.is_public = 1")
+    # if a limit is defined, add it to the query
+    if int(limit):
+        qry += f" LIMIT {limit}"
 
-                if 'shared' in owners:
-                    if shared_dataset_id_str:
-                        ownership_bits.append("d.id IN ({0})".format(shared_dataset_id_str))
-                    else:
-                        # Query gets thrown off if there are no shares for this user so just put
-                        #  something in which won't match any.  This allows other params to still
-                        #  match.
-                        ownership_bits.append("d.id IN ('XYZ')".format(shared_dataset_id_str))
-
-                # Don't add this if there aren't any
-                wheres.append("AND ({0})".format(' OR '.join(ownership_bits)))
-
-            # otherwise, give the usual self, public and shared.
-            else:
-                if shared_dataset_id_str:
-                    wheres.append("AND (d.is_public = 1 OR d.owner_id = %s OR d.id IN ({0}))".format(shared_dataset_id_str))
-                else:
-                    wheres.append("AND (d.is_public = 1 OR d.owner_id = %s)")
-
-                qry_params.extend([user.id])
-
-        if search_terms:
-            selects.append(' MATCH(d.title, d.ldesc, d.geo_id, d.pubmed_id) AGAINST("%s" IN BOOLEAN MODE) as rscore')
-            wheres.append(' AND MATCH(d.title, d.ldesc, d.geo_id, d.pubmed_id) AGAINST("%s" IN BOOLEAN MODE)')
-
-            # this is the only instance where a placeholder can be in the SELECT statement, so it will
-            #  be the first qry param
-            qry_params.insert(0, ' '.join(search_terms))
-            qry_params.append(' '.join(search_terms))
-
-        if organism_ids:
-            ## only numeric characters and the comma are allowed here
-            organism_ids = re.sub("[^,0-9]", "", organism_ids)
-            wheres.append("AND d.organism_id in ({0})".format(organism_ids))
-
-            # This way seemed safer but I couldn't get it working in time
-            #organism_id_str = "AND d.organism_id IN (%s)" % repr(tuple(map(str,organism_ids.split(','))))
-            #wheres.append(organism_id_str)
-
-        if dtypes:
-            ## only alphanumeric characters and the dash are allowed here
-            dtypes = re.sub("[^,\-A-Za-z0-9]", "", dtypes).split(',')
-            dtype_str = (', '.join('"' + item + '"' for item in dtypes))
-            wheres.append("AND d.dtype in ({0})".format(dtype_str))
-
-        if date_added:
-            date_added = re.sub("[^a-z]", "", date_added)
-            wheres.append("AND d.date_added BETWEEN date_sub(now(), INTERVAL 1 {0}) AND now()".format(date_added))
-
-        if sort_by == 'relevance':
-            # relevance can only be ordered if a search term was used
-            if search_terms:
-                orders_by.append(" rscore DESC")
-            else:
-                orders_by.append(" d.date_added DESC")
-        elif sort_by == 'title':
-            orders_by.append(" d.title")
-        elif sort_by == 'owner':
-            orders_by.append(" g.user_name")
-        else:
-            orders_by.append(" d.date_added DESC")
-
-        # build query
-        qry = """
-        SELECT {0}
-         FROM {1}
-         WHERE {2}
-        ORDER BY {3}
-        """.format(
-            ", ".join(selects),
-            ", ".join(froms),
-            " ".join(wheres),
-            " ".join(orders_by)
-        )
+    # if a page is defined, add it to the query
+    if int(page):
+        offset = int(page) - 1
+        qry += " OFFSET {0}".format(offset * int(limit))
 
     if DEBUG_MODE:
         ofh = open('/tmp/dataset.search.debug', 'wt')
-        ofh.write("QRY:\n{0}\n".format(qry))
-        ofh.write("QRY_params:\n{0}\n".format(qry_params))
+        ofh.write(f"QRY:\n{qry}\n")
+        ofh.write(f"QRY_params:\n{qry_params}\n")
         ofh.close()
 
     cursor.execute(qry, qry_params)
 
+    # NOTE: Must keep as a list to preserve order
     matching_dataset_ids = list()
     # this index keeps track of the size and position of each dataset if a layout was passed
-    layout_idx = dict()
     for row in cursor:
         matching_dataset_ids.append(row[0])
 
-        if layout_share_id:
-            layout_idx[row[0]] = {'position': row[1], 'width': row[2]}
-
-    result['datasets'].extend(datasets_collection.get_by_dataset_ids(matching_dataset_ids))
+    result['datasets'] = datasets_collection.get_by_dataset_ids(matching_dataset_ids)
 
     for dataset in result['datasets']:
-        if layout_share_id:
-            dataset.grid_position = layout_idx[dataset.id]['position']
-            dataset.grid_width = layout_idx[dataset.id]['width']
+        dataset.get_layouts(user=user, include_public=include_public_membership)
+        # delete user_id and layout_id from each dataset layout (security reasons)
+        for l in dataset.layouts:
+            #l.is_owner = True if user and l.user_id == user.id else False
+            del l.user_id
+            del l.id
 
-        dataset.get_layouts(user=user)
         if os.path.exists("{0}/{1}.default.png".format(IMAGE_ROOT, dataset.id)):
             dataset.preview_image_url = "{0}/{1}.default.png".format(WEB_IMAGE_ROOT, dataset.id)
         elif os.path.exists("{0}/{1}.single.default.png".format(IMAGE_ROOT, dataset.id)):
             dataset.preview_image_url = "{0}/{1}.single.default.png".format(WEB_IMAGE_ROOT, dataset.id)
-        elif os.path.exists("{0}/{1}.multi.default.png".format(IMAGE_ROOT, dataset.id)):
-            dataset.preview_image_url = "{0}/{1}.multi.default.png".format(WEB_IMAGE_ROOT, dataset.id)
         else:
             dataset.preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT, dataset.id)
 
-    if False:
-       try:
-           #### The relevent block above needs to be put into here once tested.
-           pass
-       except:
-            result['success'] = 0
-            result['problem'] = "There seems to be a database issue."
+        # Multi-gene preview image
+        if os.path.exists("{0}/{1}.multi.default.png".format(IMAGE_ROOT, dataset.id)):
+            dataset.mg_preview_image_url = "{0}/{1}.multi.default.png".format(WEB_IMAGE_ROOT, dataset.id)
+        else:
+            dataset.mg_preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT, dataset.id)
+
+        # add if the user is the owner of the dataset
+        dataset.is_owner = True if user and dataset.owner_id == user.id else False
+
+    # Get count of total results
+
+    qry_count = f"""
+        SELECT {'COUNT(DISTINCT d.id)' if layout_share_id else 'COUNT(*)'}
+        FROM {', '.join(froms)}
+        WHERE {' AND '.join(wheres)}
+        """
+
+    # if search terms are defined, remove first qry_param (since it's in the SELECT statement)
+    if search_terms:
+        qry_params.pop(0)
+
+    cursor.execute(qry_count, qry_params)
+
+    # compile pagination information
+    result["pagination"] = {}
+    result["pagination"]['total_results'] = cursor.fetchone()[0]
+    result["pagination"]['current_page'] = int(page)
+    result["pagination"]['limit'] = int(limit)
+    result["pagination"]["total_pages"] = ceil(int(result["pagination"]['total_results']) / int(result["pagination"]['limit']))
+    result["pagination"]["next_page"] = int(result["pagination"]['current_page']) + 1 if int(result["pagination"]['current_page']) < int(result["pagination"]['total_pages']) else None
+    result["pagination"]["prev_page"] = int(result["pagination"]['current_page']) - 1 if int(result["pagination"]['current_page']) > 1 else None
+
 
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))
+
+    # Log the search for the user
+    if user and len(search_terms):
+        history = UserHistory()
+        history.add_record(
+            user_id=user.id,
+            entry_category='dataset_search',
+            label="Datasets matching '{0}'".format(' '.join(search_terms)),
+            search_terms=search_terms,
+        )
 
 def get_shared_dataset_id_string(user, cursor):
     qry = "SELECT dataset_id FROM dataset_shares WHERE is_allowed = 1 AND user_id = %s"

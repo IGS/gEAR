@@ -2,553 +2,183 @@
 <!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!-->
-<html class="no-js">
-  <!--<![endif]-->
-  <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
-    <title>Main page</title>
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="-1" />
-    <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
-    <meta name="description" content="" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>gEAR - Projection Analysis</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="-1">
+        <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
 
-    <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
+        <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
              to be changed for any hosts where gEAR is not at the webserver root.
-    -->
-    <base href="/" />
+          -->
+        <base href="/" />
 
-    <link
-      rel="stylesheet"
-      href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
-      integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO"
-      crossorigin="anonymous"
-    />
+        <link rel="stylesheet" href="css/gear-theme-purple.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
 
-    <!-- Ensures we always get a new version (during our current active development cycles) -->
-    <link
-      href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
-      rel="stylesheet"
-    />
+        <!-- Ensures we always get a new version (during our current active development cycles) -->
+        <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
 
-    <!-- Interactive tree structure -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
+        <!--Page-specific CSS here -->
+            <script>document.write('<link rel="stylesheet" href="css/projection.' + (new Date()).getTime() + '.css" />');</script>
+    </head>
+    <body>
+      <div id="main-layout-c" class="columns is-fullheight">
 
-    <script>document.write('<link rel="stylesheet" href="css/common.' + (new Date()).getTime() + '.css" />');</script>
-    <script>document.write('<link rel="stylesheet" href="css/projection.' +  (new Date()).getTime() + '.css" />');</script>
-    <script>document.write('<link rel="stylesheet" href="css/sidepanel_notes.' + (new Date()).getTime() + '.css" />');</script>
+        <!--#include virtual="/include/primary_nav.html" -->
 
+        <section id="main-c" class="column pl-0 pt-0">
 
-    <link rel="stylesheet" href="css/jquery.mCustomScrollbar.css" />
-    <script src="js/vendor/modernizr-2.6.2-respond-1.1.0.min.js"></script>
-  </head>
-  <body>
+          <!--#include virtual="/include/header_bar.html" -->
 
-  <!-- Forgot (Change) Password Modal -->
-  <div class="modal fade" id="forgot_password_modal" tabindex="-1" role="dialog"
-    aria-labelledby="forgot_password_modal_title" aria-hidden="true" data-backdrop='static'>
-    <div class="modal-dialog" role="document">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2 class="modal-title" id="forgot_password_modal_title">Change your password</h2>
-        </div>
-        <div class="modal-body">
-          <div id="valid_forgot_pass_modal_body_c" class="container-fluid">
-            <div class="row">
-              <h3>Hi<span id="forgot_password_user_name"><b>!</b></span> You can reset your password by creating a
-                new one here.</h3>
-            </div>
-            <div class="row">
-              <form id='change_forgotten_pass_form' class='col-sm-12 form-horizontal' role='form'>
-                <input type='hidden' id='user_help_id' name='user_help_id' value='' />
-                <div class="form-group row">
-                  <label for="user_new_pass_1" class="col-2 col-form-label">New Password</label>
-                  <div class="col-10">
-                    <input class="form-control" type="password" value="" id="user_new_pass_1">
-                  </div>
-                </div>
-                <div class="form-group row">
-                  <label for="user_new_pass_2" class="col-2 col-form-label">Re-enter Password</label>
-                  <div class="col-10">
-                    <input class="form-control" type="password" value="" id="user_new_pass_2" disabled="true">
-                  </div>
-                </div>
-              </form>
-            </div>
-            <div class='row'>
-              <p>Both new passwords must match in order to save your new password.</p>
-            </div>
-          </div>
-          <div id="invalid_forgot_pass_modal_body_c" style="display:none;" class="container-fluid text-center">
-            <h3>This link is no longer available or has expired.</h3>
-          </div>
-          <div id="saving_forgot_pass_modal_body_c" style="display:none;" class="container-fluid text-center">
-            <h3><img id="submit_wait_indicator" src="img/loading_search.gif" style="height:30px; width:30px;"
-                alt="submitting"> Saving changes</h3>
-          </div>
-          <div id="success_forgot_pass_modal_body_c" style="display:none;" class="container-fluid text-center">
-            <h3><span class="glyphicon glyphicon-ok"></span> Your password has been updated.</h3>
-          </div>
-        </div>
-        <div id="forgot_pass_modal_footer" class="modal-footer text-center">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-          <button type="button" id="save_user_new_pass" class="btn btn-primary" disabled="true">Save changes</button>
-        </div>
-      </div>
-    </div>
-  </div> <!-- end of forgot_password_modal -->
-
-    <!--[if lt IE 7]>
-      <p class="browsehappy">
-        You are using an <strong>outdated</strong> browser. Please
-        <a href="http://browsehappy.com/">upgrade your browser</a> to improve
-        your experience.
-      </p>
-    <![endif]-->
-    <div id="body_c">
-      <div id="navigation_bar">
-        <!-- content here inserted via JQuery -->
-      </div> <!-- end navigation_bar -->
-
-      <div class="alert-container">
-        <!-- CONTAINER FOR ALERTS - INSERTED BY JQUERY -->
-      </div>
-    </div>
-
-    <div id="main_content" class="container-fluid">
-      <div id='note_main_c' class='row'>
-          <div id='note_side_panel_c' class='col-3 dock-right'></div>
-          <div id='note_fullwindow_c' class='col-9'></div>
-      </div>
-        <div class="row">
-          <div id="leftbar_main" class="col-2">
-
-            <div id="search_container">
-              <form id="projection_search_form"></form>
-              <div id="projection_search_div">
-                <div id="projection_source_container" class="form-group">
-                  <a id="projectr_paper_link" class="js-search btn btn-secondary btn-sm" role="button" href="https://academic.oup.com/bioinformatics/article/36/11/3592/5804979" target="_blank"><i class="fa fa-lg fa-info-circle"></i> Read the ProjectR paper</a>
-                  <h3 id="projection_source_label">Select Pattern Source</h3>
-                  <div id="projection_source_c" class="dropdown">
-                    <div id="projection_source" value="" data-title="Click to change" class="js-pattern form-control form-control-sm text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</div>
-                    <div class="dropdown-menu" aria-labelledby="projection_source">
-                      <form class="px-4 py-3" onsubmit="return false;">
-                        <div class="input-group input-group-sm mb-3">
-                          <div class="input-group-prepend">
-                            <i class="fa fa-search input-group-text" aria-hidden="true"></i>
-                          </div>
-                          <input type="text" class="form-control" id="projection_source_tree_q" placeholder="Type to search for patterns">
-                        </div>
-                        <div id="projection_source_tree"></div>
-                      </form>
+          <section id="content-c" class="m-3" data-nav-link="projection">
+            <!-- This needs to be abstracted out as an include, since both this page and the dashboard use it -->
+            <div id="search-bar-c" class="mt-4 ml-3 mb-4 columns">
+              <div class="column is-half">
+                <div class="field has-addons is-grouped mb-0">
+                  <!--#include virtual="/include/pattern-collection-selector/pattern-collection-selector.html" -->
+                  <div class="columns">
+                    <div class="column is-1">
+                      <div class="is-size-7 ml-2 mr-2">AND</div>
                     </div>
                   </div>
-                </div>
 
-                <div id="projection_algorithm_c" class="form-group form-group-sm"  data-toggle="tooltip" data-placement="right" title="Choose which projection algorithm to use">
-                  <h3>Select Algorithm</h3>
-                  <div class="form-check">
-                    <input class="form-check-input" type="radio" name="projection_algo" id="pca_algo" value="pca" checked>
-                    <label class="form-check-label" for="pca_algo">
-                      Principal Component Analysis (PCA)
-                    </label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="radio" name="projection_algo" id="nmf_algo" value="nmf">
-                    <label class="form-check-label" for="nmf_algo">
-                      Non-Negative Matrix factorization (NMF)
-                    </label>
-                  </div>
-                  <div class="form-check" id="binary_algo_form_check" style="display:none;">
-                    <input class="form-check-input" type="radio" name="projection_algo" id="binary_algo" value="binary">
-                    <label class="form-check-label" for="binary_algo">
-                      Binary Gene Count
-                    </label>
+                  <!--#include virtual="/include/dataset-collection-selector/dataset-collection-selector.html" -->
+
+                  <div class="control">
+                    <button id="submit-projection-search" class="button is-primary ml-3">
+                      <span class="icon is-small">
+                        <i class="mdi mdi-magnify"></i>
+                      </span>
+                    </button>
                   </div>
                 </div>
-
-                <div id="projection_display_mode_c" class="form-group form-group-sm">
-                  <h3>Select Display Mode</h3>
-                  <div class="form-check">
-                    <input class="form-check-input" type="radio" name="projection_display_mode" id="single_pattern" value="single" checked>
-                    <label class="form-check-label" for="single_pattern">
-                      Single-pattern display
+                <div class="field is-grouped">
+                  <div class="control">
+                    <label class="radio">
+                      <input type="radio" name="single-multi" id="single-multi-single" value="single" checked="checked">
+                      Single-pattern Display
                     </label>
-                  </div>
-                  <div class="form-check" id="multi_pattern_group">
-                    <input class="form-check-input" type="radio" name="projection_display_mode" id="multi_pattern" value="multi">
-                    <label class="form-check-label" for="multi_pattern">
-                      Multi-pattern display
+                    <label class="radio">
+                      <input type="radio" name="single-multi" id="single-multi-multi" value="multi">
+                      Multi-pattern Display
                     </label>
                   </div>
                 </div>
-
-                <div id="projection_pattern_elements_c" style="display:none;" class="form-group form-group-sm">
-                  <h3>Select Patterns to Plot</h3>
-                  <div class="form-group form-group-sm form-row">
-                    <div class="col-6">
-                      <a id="projection_pattern_select_all" class="btn btn-sm btn-link" role="button">Select all</a>
-                    </div>
-                    <div class="col-6">
-                      <a id="projection_pattern_deselect_all" class="btn btn-sm btn-link" role="button">Deselect all</a>
-                    </div>
-                  </div>
-                  <div id="projection_pattern_elements"></div>
-                </div>
-
-                <script id="pattern_list_tmpl" type="text/x-jsrender">
-                  <option value="{{:id}}">{{:title}}</option>
-                </script>
-                <script id="pattern_elements_tmpl" type="text/x-jsrender">
-                  <div class="form-check">
-                    <input type="checkbox" class="js-projection-pattern-elts-check form-check-input" data-label="{{:label}}" data-top-up="{{:top_up}}" data-top-down="{{:top_down}}">
-                    <label class="form-check-label">{{:label}}</label>
-                  </div>
-                </script>
-              </div>
-
-              <div id="selected_profile_container" class="form-group">
-                <h3 id="selected_profile_label">Select Profile</h3>
-                <div id="selected_profile_c" class="dropdown">
-                  <div id="selected_profile" value="" data-title="Click to change" class="js-profile form-control form-control-sm text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Empty</div>
-                  <div class="dropdown-menu" aria-labelledby="selected_profile">
-                    <form class="px-4 py-3" onsubmit="return false;">
-                      <div class="input-group input-group-sm mb-3">
-                        <div class="input-group-prepend">
-                          <i class="fa fa-search input-group-text" aria-hidden="true"></i>
-                        </div>
-                        <input type="text" class="form-control" id="selected_profile_tree_q" placeholder="Type to search profiles">
-                      </div>
-                      <div id="selected_profile_tree"></div>
-                    </form>
-                  </div>
-                </div> <!-- end selected_profile_c -->
-              </div>
-              <div class="form-group form-group-sm">
-                <button id="submit_search_projection" class="js-search btn btn-secondary btn-sm">Search projections</button>
-                <button id="share_search" class="btn btn-default btn-sm btn-outline-secondary" style="display:none;" data-toggle="popover" data-placement="bottom" title="Share projection search"><i class="fa fa-share-alt"></i></button>
-              </div>
-              <div id="share_confirm"></div>
-            </div><!-- end #search_container -->
-
-            <div id="search_results_c" class="item search_result_c search_result_c_DISABLED" style="height:calc(90vh - 240px);">
-              <!-- SAdkins - I don't like putting non-header stuff in a header element -->
-              <h3 class="clearfix">
-                Search results
-                <span id="search_result_count" class="badge"></span>
-              </h3>
-
-              <div id="search_results_scrollbox">
-                <div id="search_results" class="list-group"></div>
-              </div>
-            </div>
-            <!-- end #search_results_c -->
-          </div>
-          <!-- #lefbar_main -->
-
-          <div class="col-10">
-            <div id="viewport_intro" class="main_column row">
-              <!-- #PERMALINK -->
-              <div id="permalink_intro_c" class="shown_later">
-                <div id="permalink_info" class="container"></div>
-                <div class="container">
-                  <div class="alert alert-info" role="alert">
-                    <div id="projection_permalink_info">
-                      <h3>Cannot display plots since no projecton patterns were selected</h3>
-                      <p>
-                        To view the datasets for this profile, first select one or more projection patterns in the "Select Pattern Source" panel on the left. Then click "Search Projections".
-                      </p>
+                <div id="algorithm-c" class="field">
+                  <label class="label">Select algorithm</label>
+                  <div class="control">
+                    <div class="select is-small">
+                      <select id="algorithm">
+                        <option value="pca" selected>Principal Component Analysis (PCA)</option>
+                        <option value="nmf">Least-squares optimization for NMF</option>
+                        <option value="fixednmf">Fixed gene weights in NMF re-run</option>
+                        <option value="binary" disabled>Binary Gene Count</option>
+                      </select>
                     </div>
                   </div>
                 </div>
               </div>
-              <!-- end permalink -->
-            </div>
-            <!-- end #viewport -->
-
-            <!----------------------------------------
-            ----------------------------------------
-              Main panel of active page
-            ------------------------------------------->
-            <div id="viewport_main" class="main_column form-row">
-              <div id="highly_expressed_genes_card" class="card bg-light mb-3 w-50" style="display:none;">
-                <h5 class="card-header"></h5>  <!-- filled in with JS -->
-                <div class="card-body row">
-                  <div id="top_up_genes" class="col-6">
-                    <h5 class="card-title">Strongest positive contributors</h5>
-                    <p class="card-text mb-2"></p>  <!-- filled in with JS -->
+              <div class="column is-half">
+                <article class="message">
+                  <div class="message-body">
+                    The projection tool allows you to project a pattern onto a
+                    dataset and visualize the dynamics across studies, samples, cells, etc.
+                    You can select a pattern from the collection, a dataset, and an
+                    algorithm to use for the projection. The projection is applied against
+                    each sample within each dataset in the collection, where the color or
+                    value of the plot (dependent on type) represents the strength of the
+                    pattern in that dataset.
                   </div>
-                  <div id="top_down_genes" class="col-6">
-                    <h5 class="card-title">Strongest negative contributors</h5>
-                    <p class="card-text"></p>  <!-- filled in with JS -->
-                  </div>
-                </div>
-                <div class="card-footer">
-                  <button class="btn btn-sm btn-outline-dark">View all genes with weights</button>
-                </div>
-              </div>
+                </article>
 
-              <div id="tip" style="display:none">&nbsp;</div> <!-- for svg tooltips -->
-              <div id="dataset_grid" class="search_result_c search_result_c_DISABLED form-row">
-                <!-- populated by main.js:load_dataset_frames() -->
-              </div>
-              <div id="dataset_zoomed" class="search_result_c search_result_c_DISABLED" style="display:none;">
-                <!-- populated by main.js:load_dataset_frames() -->
               </div>
             </div>
-            <!-- end #viewport_main -->
-          </div> <!-- end #main_row -->
-
-          <div id='modals_c'>
-            <div class="modal fade" id="unready" tabindex="-1" role="dialog" aria-labelledby="unready" aria-hidden="true">
-              <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                  <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">X</button>
-                    <h4 class="modal-title" id="myModalLabel">Oops!</h4>
+            <div id="results-main-c" class="columns">
+              <div id="pattern-result-list-c" class="column is-narrow is-fullheight p-0 is-hidden">
+                <h3 class="mt-3 ml-3 mr-6">Select pattern</h3>
+                <ul id="pattern-result-list" class="mt-3"></ul>
+                <template id="tmpl-pattern-result-item">
+                  <li class="pattern-result-list-item is-clickable pl-4"></li>
+                </template>
+                <template id="tmpl-pattern-result-none-found">
+                  <li class="pl-4">No matches found</li>
+                </template>
+              </div>
+              <section id="result-panel" class="column p-3">
+                <div id="top-genes-c" class="is-hidden content">
+                  <div class="columns">
+                    <div id="top-up-genes" class="column is-3">
+                      <div class="has-text-weight-bold">Strongest positive contributors</div>
+                      <p></p>  <!-- filled in with JS -->
+                    </div>
+                    <div id="top-down-genes" class="column is-3">
+                      <div class="has-text-weight-bold">Strongest negative contributors</div>
+                      <p></p>  <!-- filled in with JS -->
+                    </div>
                   </div>
-                  <div class="modal-body">
-                    <!-- That feature isn't ready yet! -->
-                    <h3>That feature isn't ready yet!</h3>
-                  </div>
-                  <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                  </div> <!-- end .modal-footer -->
-                </div> <!-- end .modal-content -->
-              </div> <!-- end .modal-dialog -->
-            </div> <!-- div#unready -->
-          </div> <!-- end #modals_c -->
+                  <button id="btn-view-weighted-genes" class="button is-small is-primary is-outlined">View all genes with weights</button>
+                </div>
 
-        </div> <!-- end #main_content -->
+                <div id="result-panel-options">
+                  <div id="scoring-method-div">
+                    <span class="option-label pr-1">Scoring method: </span>
+                    <div class="control select is-small">
+                      <select id="svg-scoring-method">
+                        <option value="gene" selected>Pattern scope</option>
+                        <option value="tissue">Tissue scope</option>
+                        <option value="dataset">Sample scope</option>
+                      </select>
+                    </div>
+                  </div>
+                  <!-- other panel options here -->
+                </div>
+                <hr class="mt-3 mb-3" \>
+                <div id="result-panel-initial-notification" class="notification is-primary has-text-centered">
+                  To explore projections in various datasets, please choose a pattern and a dataset collection above and click the magnifying glass
+                </div>
+                <div id="result-panel-loader" class="box is-hidden">
+                  <p class="has-text-centered title is-3">Please wait. Dataset visualizations are loading...</p>
+                  <progress class="progress is-large is-primary" max="100"></progress>
+                </div>
+                <div id="result-panel-grid"></div>
+                <div id="zoomed-panel-grid" class="is-hidden"></div>
+                <!--#include virtual="/include/tile-grid/tile.html" -->
+              </section>
+            </div>
+          </section><!-- end #content-c -->
+
+        </section> <!-- end #main-c -->
       </div>
-
-      <div class=".clear_hack"></div>
-
       <footer>
-        <!-- content here inserted via JQuery -->
-        <div id="funding"></div>
-        <div id="footer"></div>
+        <div>
+          <!-- content here TO BE inserted via common.js -->
+        </div>
       </footer>
-    </div> <!-- /body_c -->
 
-    <div id="templates_c">
-      <script id="tmpl_permalink_info" type="text/x-jsrender">
-        {{if is_permalink == 1}}
-        <div class="row">
-          <div {{if schematic_image}} class="col" {{else}} class="col-sm-12"{{/if}}>
-            <h2>{{:title}}</h2>
-            <p>Owner:  {{:user_name}}</p>
-            <p>Uploaded:  {{:date_added}}</p>
-            <p class="dataset_ldesc">{{:ldesc}}</p>
-          </div>
-          {{if schematic_image}}
-          <div class="col">
-            <img width="100%;" src="{{:schematic_image}}" alt="Infograph" />
-          </div>
-          {{/if}}
-        </div>
-        {{/if}}
-      </script>
-      <!-- end script#permalink_info -->
-      <script id="tmpl_infobox" type="text/x-jsrender">
-        <div class="modal fade" id="dataset_{{:primary_key}}_info" tabindex="-1" role="dialog" aria-labelledby="unready" aria-hidden="true">
-          <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h4 class="modal-title">Dataset information</h4>
-              </div>
-              <div class="modal-body">
-                <h3>{{:title}}</h3>
-                <div class="textarea-ldesc">{{:ldesc}}</div>
-              </div>
-              <div class='infograph_illustration_{{:dataset_id}}'></div>
-              {{if schematic_image}}
-              <img class='img-fluid' src="{{:schematic_image}}" alt="Infograph" />
-              {{/if}}
-              <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </script>
-      <!-- script#tmpl_infobox -->
-      <script id="tmpl_displays_box" type="text/x-jsrender">
-        <div class="modal fade" id="dataset_{{:primary_key}}_displays_modal" tabindex="-1" role="dialog" aria-labelledby="unready" aria-hidden="true">
-          <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h4 class="modal-title">Displays for {{:title}}</h4>
-              </div>
-              <div class="modal-body">
-                {{if user_displays.length}}
-                 <h4>Your Displays</h4>
-                 <div class='row m-1 col-sm-12'>
-                   {{for user_displays ~active_display_id=active_display_id}}
-                   <div class='col-sm-4 modal-display svg-container' id='modal-display-{{:id}}'
-                        style='height:220px; border: 1px solid rgb(200,200,200)'>
-                        <img id='modal-display-{{:id}}-loading' class='modal-display-loading img-fluid' src='img/loading_search.gif' alt='loading' />
-                         <img
-                          class='img-fluid {{if id == ~active_display_id}} active-display {{/if}}'
-                          id='modal-display-img-{{:id}}'/>
-                     </div>
-                   {{/for}}
-                 </div>
-                {{/if}}
-                {{if owner_displays.length}}
-                   <h4>Owner Displays</h4>
-                   <div class='row m-1 col-sm-12'>
-                     {{for owner_displays ~active_display_id=active_display_id}}
-                       <div class='col-sm-4 modal-display svg-container' id='modal-display-{{:id}}'
-                          style='height:220px; border: 1px solid rgb(200,200,200)'>
-                         <img id='modal-display-{{:id}}-loading' class='modal-display-loading img-fluid' src='img/loading_search.gif' alt='loading' />
-                         <img
-                          class='img-fluid {{if id == ~active_display_id}} active-display {{/if}}'
-                          id='modal-display-img-{{:id}}'/>
-                       </div>
-                     {{/for}}
-                   </div>
-                {{/if}}
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </script>
-      <!-- script#tmpl_displays_box -->
-      <script id="tmpl_tooltip" type="text/x-jsrender">
-        <div class=''>
-          <h4 class='text-muted'>{{:tissue}}</h4>
-          <h3 class="">{{:score}}</h3>
-        </div>
-      </script>
-      <script id="tmpl_datasetbox" type="text/x-jsrender">
-        {{if load_status == 'completed'}}
-        <div class="dataset_cc col-sm-{{:grid_width}}" data-dataset-id="{{:id}}">
-          <div id="dataset_{{:primary_key}}" class="dataset_c">
-            <div class="dataset_header container-fluid">
-              <div class="row">
-                <div class="dataset_header_title col-sm-9">{{:title}}</div>
-                <div class="dataset_header_menu col-sm-3">
-                  <div class="btn-group pull-right">
-                    <button id="dataset_{{:primary_key}}_zoom_in_control" type="button" class="btn btn-sm" data-toggle="tooltip" data-placement="bottom" title="Larger view">
-                      <span class="fa fa-search-plus"></span>
-                    </button>
-                    <button type="button" class="btn btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-placement="bottom" title="Show options">
-                      <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-right datasetbox-menu" style='z-index:10000'>
-                      <li id="dataset_{{:primary_key}}_displays" class='dropdown-submenu'>
-                        <a href="javascript:;" class="fa fa-clone"> Displays</a>
-                      </li>
-                      <li id="note_launcher_{{:primary_key}}" class="note_launcher" data-dataset-id="{{:id}}" data-title="{{:title}}"><a href="javascript:;" class="fa fa-pencil"> Take notes</a></li>
-                      <li id="dataset_{{:primary_key}}_info_launcher" class="more_info" data-dataset_id="{{:id}}"><a href="javascript:;" class="fa fa-info-circle"> Info</a></li>
-                      {{if pubmed_id}}
-                      <li><a href="http://www.ncbi.nlm.nih.gov/pubmed/?term={{:pubmed_id}}" target="_blank" class="fa fa-graduation-cap"> Publication</a></li>
-                      {{/if}}
-                      {{if geo_id}}
-                      <li><a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={{:geo_id}}" target="_blank" class="fa fa-globe"> GEO entry</a></li>
-                      {{/if}}
-                      {{if has_h5ad}}
-                      <li><a href="./compare_datasets.html?dataset_id={{:id}}" target="_blank" class="fa fa-compress"> Compare Gene Expression</a></li>
-                      <li><a class="fa fa-desktop" target="_blank" href="./dataset_curator.html#/dataset/{{:id}}/displays"> Curate Display</a></li>
-                      <li><a class="fa fa-eye" target="_blank" href="./multigene_curator.html?dataset_id={{:id}}"> Multigene Viewer</a></li>
-                      <li><a href="./analyze_dataset.html?dataset_id={{:id}}" target="_blank" class="fa fa-bar-chart"> scRNA-Seq Analysis</a></li>
-                      {{/if}}
-                      <!-- Any new resources need CSS added for this class -->
-                      {{for links}}
-                      <li class="dataset-link-{{:resource}}"><a href="{{:url}}" class="fa" target="_blank">{{:label}}</a></li>
-                      {{/for}}
-                      {{if has_tarball}}
-                      <li><a href="./cgi/download_source_file.cgi?type=tarball&dataset_id={{:id}}" class="fa fa-download"> Download bundle</a></li>
-                      {{/if}}
-                      {{if has_h5ad}}
-                      <li><a href="./cgi/download_source_file.cgi?type=h5ad&dataset_id={{:id}}" class="fa fa-download"> Download H5AD</a></li>
-                      {{/if}}
-                    </ul>
-                  </div>
-                </div> <!-- .dataset_header_menu -->
-              </div>
-            </div> <!-- end .dataset_header -->
-            <div id="{{:primary_key}}_dataset_status_c" class="dataset-status-container">
-              <div style="height:350px">
-                <h2>Loading...</h2>
-              </div>
-            </div>
-          </div>
-        </div>
-        {{/if}}
-      </script>
-      <!-- script#tmpl_datasetbox -->
-      <script id="tmpl_dataset_zoomed" type="text/x-jsrender">
-        <div class="dataset_cc" data-dataset-id="{{:id}}">
-          <div id="dataset_{{:primary_key}}" class="dataset_c">
-            <div class="dataset_header container-fluid">
-              <div class="row">
-                <div class="dataset_header_title col-sm-9">{{:title}}</div>
-                <div class="dataset_header_menu col-sm-3">
-                  <div class="btn-group pull-right">
-                    <button
-                     id='dataset_zoom_out_btn'
-                     type="button"
-                     class="btn btn-sm">
-                       <span class="fa fa-search-minus"></span>
-                    </button>
-                  </div>
-                </div> <!-- .dataset_header_menu -->
-              </div>
-            </div> <!-- end .dataset_header -->
-            <div id="{{:primary_key}}_dataset_status_c" class="dataset-status-container" style='display:none;'>
-              <div style="height:70vh">
-                <h2>Loading...</h2>
-              </div>
-            </div>
-          </div>
-        </div>
-      </script>
-      <!-- script#tmpl_datasetbox -->
-    </div>
-    <!-- end templates_c -->
+      <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+      <script src="js/vendor/js.cookie.js"></script>
 
-    <script src="https://d3js.org/d3.v5.min.js"></script>
-    <!-- Promise based HTTP client for the browser  -->
-    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-    <!-- <script src="https://epiviz.github.io/polymer/charts/components/webcomponentsjs/webcomponents-lite.js"></script> -->
-    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
-    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+      <script src="js/vendor/snap.svg-min.js"></script>
+      <script src="https://d3js.org/d3.v5.min.js"></script>
+      <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+      <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+      <script>document.write('<script src="js/classes/tilegrid.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script>document.write('<script src="js/plot_display_config.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
-    <script src="js/vendor/jquery.mCustomScrollbar.concat.min.js"></script>
-    <script src="js/vendor/js.cookie.js"></script>
-    <script src="js/vendor/snap.svg-min.js"></script>
-    <script src="js/vendor/jsrender.20181003.min.js"></script>
+      <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+      <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
-    <script src="//cdnjs.cloudflare.com/ajax/libs/tinycolor/0.11.1/tinycolor.min.js"></script>
-    <script src="js/vendor/bootstrap.colorpickersliders.js"></script>
-    <script src="js/vendor/rainbowvis.js"></script>
 
-    <!-- Plotly JS-->
-    <script src="https://cdn.plot.ly/plotly-1.54.1.min.js"></script>
+      <!-- Page-specific JS file here -->
+      <script>document.write('<script src="js/projection.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
-    <!-- JStree -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
-
-    <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-    <script>document.write('<script src="js/classes/dataset.' + (new Date()).getTime() + '.js"><\/script>');</script>
-    <script>document.write('<script src="js/classes/ui-panel-dataset.' + (new Date()).getTime() + '.js"><\/script>');</script>
-    <script>document.write('<script src="js/classes/ui-panel-dataset-collection.' + (new Date()).getTime() +'.js"><\/script>');</script>
-    <script>document.write('<script src="js/classes/user.' + (new Date()).getTime() + '.js"><\/script>'); </script>
-    <script>document.write('<script src="js/plot_display_config.' + (new Date()).getTime() + '.js"><\/script>');</script>
-    <script>document.write('<script src="js/classes/display.' + (new Date()).getTime() + '.js"><\/script>');</script>
-    <script>document.write('<script src="js/classes/tree.' + (new Date()).getTime() + '.js"><\/script>');</script>
-    <script>document.write('<script src="js/common.' + (new Date()).getTime() + '.js"><\/script>');</script>
-    <script>document.write('<script src="js/projection.' + (new Date()).getTime() + '.js"><\/script>');</script>
-    <script>document.write('<script src="js/sidepanel_notes.' + (new Date()).getTime() + '.js"><\/script>');</script>
-  </body>
+    </body>
 </html>

@@ -38,7 +38,6 @@ def main():
     n_genes = int(form.getvalue('n_genes'))
     method = form.getvalue('method')
     corr_method = form.getvalue('corr_method')
-    compute_gene_comparison = int(form.getvalue('compute_gene_comparison'))
 
     if form.getvalue('group_labels'):
         group_labels = json.loads(form.getvalue('group_labels'))
@@ -48,6 +47,11 @@ def main():
     ## correction method isn't valid for logistic regression
     if method == 'logreg':
         corr_method = None
+
+    if not user:
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({'success': 0, 'error': 'Invalid session'}))
 
     ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
                           session_id=session_id, user_id=user.id)
@@ -171,6 +175,10 @@ def main():
         # Yuk.
         ensembl_id_list = np.concatenate(adata.uns['rank_genes_groups']['names'].tolist()).ravel().tolist()
 
+        # Copilot-proposed solution
+        #import itertools
+        #ensembl_id_list = list(itertools.chain.from_iterable(adata.uns['rank_genes_groups']['names'].tolist()))
+
         result['table_json_r'] = pd.DataFrame({
             'names': adata.var.loc[ensembl_id_list]['gene_symbol'].tolist(),
             'log2FC':adata.uns['rank_genes_groups']['logfoldchanges'],
@@ -184,4 +192,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

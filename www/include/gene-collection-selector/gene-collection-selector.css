@@ -1,0 +1,46 @@
+/* Prevent the dropdown from overflowing the left side of the screen */
+/* TODO: This was only tested on index.html.  It does not work well on expression.html + it's a hacky solution */
+#dropdown-gene-lists div.dropdown-menu {
+    width: 60vw;
+}
+@media (min-width: 1320px) {
+    #dropdown-gene-lists div.dropdown-menu {
+        width: 55vw;
+    }
+}
+@media (min-width: 1440px) {
+    #dropdown-gene-lists div.dropdown-menu {
+        width: 50vw;
+    }
+}
+@media (min-width: 1580px) {
+    #dropdown-gene-lists div.dropdown-menu {
+        width: 45vw;
+    }
+}
+div#dropdown-gene-lists button.is-danger {
+    border-color: #97172e;
+    background-color: white;
+    border-width: 2px;
+}
+div.dropdown-item h3 {
+    font-weight: bold;
+    font-size: 120%;
+}
+div.dropdown-item div.column.is-scrollable {
+    max-height: 40vh;
+    overflow-y: scroll;
+}
+div.ul-li {
+    border-radius: 0.5em;
+    padding: 0.4em;
+    margin-bottom: 0.2em;
+}
+div.ul-li.is-selected {
+    background-color: #EFEDF7;
+}
+div#gene-select-dropdown-dynamic-selections {
+    border: 1px solid rgb(200,200,200);
+    border-radius: 0.5em;
+    min-height: 4em;
+}

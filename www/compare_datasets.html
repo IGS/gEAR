@@ -3,450 +3,489 @@
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
 <!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-        <title>Dataset comparison tool</title>
-        <meta name="description" content="">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta http-equiv="Pragma" content="no-cache">
-        <meta http-equiv="Expires" content="-1">
-        <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>gEAR condition comparison tool page</title>
+  <meta name="description" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="-1">
+  <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
 
-        <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
-             to be changed for any hosts where gEAR is not at the webserver root.
-          -->
-        <base href="/" />
+  <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
+       to be changed for any hosts where gEAR is not at the webserver root.
+    -->
+  <base href="/" />
 
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.3/css/bootstrap-select.min.css">
-        <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/gear-theme-purple.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
 
-        <!-- Interactive tree structure -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
+  <!-- Fancy animation effects -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 
-        <!-- Ensures we always get a new version (during our current active development cycles) -->
-        <script>document.write('<link rel="stylesheet" href="css/common.' + (new Date()).getTime() + '.css" />');</script>
-        <script>document.write('<link rel="stylesheet" href="css/compare_datasets.' + (new Date()).getTime() + '.css" />');</script>
+  <!-- Tree view/grid -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mar10/wunderbaum@v0.10.0/dist/wunderbaum.css">
 
-        <script src="js/vendor/modernizr-2.6.2-respond-1.1.0.min.js"></script>
-        <script src="https://cdn.plot.ly/plotly-1.54.1.min.js"></script>
-    </head>
-    <body>
-        <!--[if lt IE 7]>
-            <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
-        <![endif]-->
- <div id="body_c">
-    <div id="navigation_bar">
-       <!-- content here inserted via JQuery -->
-    </div> <!-- end navigation_bar -->
+  <!-- Ensures we always get a new version (during our current active development cycles) -->
+  <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
 
-    <div id="main_content" class="container-fluid">
-      <div class="row">
-        <div class="col-12 alert-container">
-	      <!-- CONTAINER FOR ALERTS - INSERTED BY JQUERY -->
-        </div>
-      </div>
-      <div id='main_row' class="row">
-        <div id="sidebar" class="col-2">
-          <button type="button" class="btn btn-sm btn-outline-purple float-right position-relative" style="z-index: 1;" data-toggle="modal" data-target="#instructions_modal" id="instructions_btn">Click for Help</button>
-          <div class="filter_block">
-            <div class="form-group dropdown" id="dataset_c">
-              <div id="pre_dataset_spinner" style="display:none;">
-                <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
-                <span>Loading datasets...</span>
-              </div>
-              <div id="dataset_id" value="" data-title="Click to change" class="form-control form-control-sm text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose dataset</div>
-              <div class="dropdown-menu" aria-labelledby="dataset_id">
-                <form class="px-4 py-3" onsubmit="return false;">
-                  <div class="input-group input-group-sm mb-3">
-                    <div class="input-group-prepend">
-                      <i class="fa fa-search input-group-text" aria-hidden="true"></i>
+  <!--Page-specific CSS here -->
+  <script>document.write('<link rel="stylesheet" href="css/compare_datasets.' + (new Date()).getTime() + '.css" />');</script>
+</head>
+
+
+<body>
+  <!--[if lt IE 7]>
+      <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+  <![endif]-->
+
+  <div id="main-layout-c" class="columns is-fullheight">
+    <!--#include virtual="/include/primary_nav.html" -->
+    <section id="main-c" class="column pl-0 pt-0">
+      <!--#include virtual="/include/header_bar.html" -->
+      <section id="content-c" class="m-3" data-nav-link="compare">
+        <!-- This is the section to be populated for new pages -->
+        <header class="columns section">
+          <div id="tool-desc-c" class="column is-3">
+          <h3 class="title is-3">
+            Compare expression across conditions
+          </h3>
+          <p>The condition comparison tool allows for simple and quick comparisons of gene expression differences across two conditions within a dataset.</p>
+          </div>
+          <div id="guides-outer-c" class="column is-offset-3 has-background-white-bis notification">
+            <h3 class="mt-4 mb-4">
+              <span>GUIDES</span>
+              <span class="icon is-pulled-right delete">
+                <i class="mdi mdi-close"></i>
+              </span>
+            </h3>
+            <div id="guides-inner-c" class="columns">
+              <div class="column">
+                <div class="guide-element pr-3">
+                  <div><!-- without the 2nd level div here the images disappears-->
+                    <div class="media">
+                      <div class="media-left">
+                        <figure class="image is-96x96">
+                          <img src="/img/guide_image_mag_dna.png" alt="Placeholder image">
+                        </figure>
+                      </div>
+                      <div class="media-content is-size-7 has-text-weight-semibold">
+                        <p>
+                          Learn how to use the condition comparison tool
+                        </p>
+                        <p class="mt-2"><a class="is-unselectable">Try now (coming soon)</a></p>
+                      </div>
                     </div>
-                    <input type="text" class="form-control" id="dataset_tree_q" placeholder="Type to search datasets">
-                  </div>
-                  <div id="dataset_tree"></div>
-                </form>
-              </div>  <!-- end dropdown-menu -->
-            </div>  <!-- end dataset_c -->
-            <div class="form-group-sm">
-              <ul class="nav nav-tabs" id="condition_tabs" role="tablist" style="display:none;">
-                <li class="nav-item">
-                  <a id="condition_x_tab" class="nav-link active" data-toggle="tab" href="#conditions_accordion" role="tab" aria-controls="conditions_accordion" aria-selected="true">X Condition</a>
-                </li>
-                <li class="nav-item">
-                  <a id="condition_y_tab" class="nav-link" data-toggle="tab" href="#conditions_accordion" role="tab" aria-controls="conditions_accordion" aria-selected="false">Y Condition</a>
-                </li>
-              </ul>
-            </div>
-
-            <div class="form-group-sm alert alert-info" id="conditions_accordion">Select a dataset above to view groups.</div>
-            <br />
-            <div id="noncats"></div>
-            <h3>Axis titles</h3>
-            <small class="form-text text-muted">Customize the axes labels.</small>
-            <div class="form-group-sm">
-              <label for="x_label" class="control-label mb-0 mt-2">Adjust X Label</label>
-              <input class="form-control form-control-sm" id="x_label" placeholder="Name of x-axis label">
-            </div>
-            <div class="form-group-sm">
-              <label for="y_label" class="control-label mb-0 mt-2">Adjust Y Label</label>
-              <input class="form-control form-control-sm" id="y_label" placeholder="Name of y-axis label">
-            </div>
-            <hr />
-          </div>  <!-- end filter_block -->
-
-          <div id="chart_settings">
-            <h3>Data filters / settings</h3>
-            <div class="form-group-sm">
-              <label for="log_base" class="control-label mb-0 mt-2">Apply log transformation</label>
-              <select id="log_base" class="form-control form-control-sm">
-                <option value="raw">None - Raw values</option>
-                <option value="2" selected="selected">Log2</option>
-                <option value="10">Log10</option>
-              </select>
-            </div>
-            <div class="form-group-sm">
-              <label for="fold_change_cutoff" class="control-label mb-0 mt-2">Adjust fold change cutoff (>= N)</label>
-              <input id="fold_change_cutoff" class="form-control form-control-sm" value="2.0"/>
-              <ul>
-                <li>Current Fold change std dev: <span id='fold_change_std_dev'></span></li>
-              </ul>
-            </div>
-            <div class="form-group-sm">
-              <label for="std_dev_num_cutoff" class="control-label mb-0 mt-2">Adjust standard deviation</label>
-              <select id="std_dev_num_cutoff" class="form-control form-control-sm">
-                <option value="0" selected="selected">No filter</option>
-                <option value="1">1 standard deviation</option>
-                <option value="2">2 standard deviations</option>
-              </select>
-            </div>
-            <h3>Significance test</h3>
-            <div class="form-group-sm">
-              <label id="statistical_test_label" for="statistical_test" class="control-label mb-0 mt-1">Select significance test</label>
-              <select id="statistical_test" class="form-control form-control-sm">
-                <option value="" selected="selected">None</option>
-                <option value="t-test">T-test</option>
-                <option value="t-test_overestim_var">T-test (overestimated variance)</option>
-                <option value="wilcoxon">Wilcoxon-Rank-Sum</option>
-              </select>
-            </div>
-            <div class="form-group-sm">
-              <label for="test_pval_cutoff" class="control-label mb-0 mt-2">Adjust p-value cutoff</label>
-              <input type="number" id="test_pval_cutoff" class="form-control form-control-sm" min=0 max=1.0 value=0.05 disabled />
-            </div>
-            <div class="form-group-sm" id="stat_action_options_c">
-              <div class="custom-control custom-radio custom-control-inline">
-                <input type="radio" class="custom-control-input" value="colorize" id="stat_action_colorize" name="stat_action" checked />
-                <label class="custom-control-label" id="stat_action_colorize_label" for="stat_action_colorize">Colorize</label>
-              </div>
-              <div class="custom-control custom-radio custom-control-inline">
-                <input type="radio" class="custom-control-input" value="filter" id="stat_action_filter" name="stat_action" />
-                <label class="custom-control-label" id="stat_action_filter_label" for="stat_action_filter">Filter</label>
-              </div>
-            </div>
-            <div class="form-group-sm">
-              <hr />
-              <button id='btn_apply_dataset_changes' type="button" class="btn btn-default btn-sm center-block btn-apply-filter">Plot</button>
-            </div>
-
-          </div>
-          <h3>Highlight genes</h3>
-          <div class="form-group-sm">
-            <input id="highlighted_genes" class="form-control form-control-sm" type="text" placeholder="comma-separated genes"/>
-          </div>
-          <div id="gene_cart_c" class="form-group dropdown">
-            <h4>or load from genecart</h4>
-            <div id="loaded_gene_cart" value="" data-title="Click to change" class="form-control form-control-sm text-truncate dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose gene cart</div>
-            <div class="dropdown-menu" aria-labelledby="loaded_gene_cart">
-              <form class="px-4 py-3" onsubmit="return false;">
-                <div class="input-group input-group-sm mb-3">
-                  <div class="input-group-prepend">
-                    <i class="fa fa-search input-group-text" aria-hidden="true"></i>
-                  </div>
-                  <input type="text" class="form-control" id="gene_cart_tree_q" placeholder="Type to search gene carts">
-                </div>
-                <div id="gene_cart_tree"></div>
-              </form>
-            </div>
-          </div>
-        </div> <!-- end #sidebar -->
-
-        <div id="viewport" class="col-8">
-          <div class="row">
-            <div class="col-12">
-              <div class='loading_indicator' id='plot_loading'>
-                <img src='./img/loading_search.gif' alt='Loading' />
-              </div>
-              <h3 class='initial_instructions'>Instructions</h3>
-              <div class='initial_instructions'>
-                <p>
-                  Choose a dataset and condition for each axis using the controls on the left.
-                </p>
-                <p>
-                  For the x-axis and y-axis conditions, you are free to include and exclude any groups from the categorical observations. But if you are performing a significance test between then two conditions, then ensure that just a single differing group is chosen for each condition.
-                </p>
-                <p>
-                  Some observation metadata may be listed as non-categorical, and will be excluded from consideration.  If some observations (such as sample ID or timepoint) are erroneously in this list, it may be because they were loaded in such a way that the dataframe reader interpreted them as continuous (numerical) datatypes.
-                </p>
-                <p>
-                  <a href='./contact.html' class="text-primary">Feedback</a> on the dataset comparison tool is welcome.
-                </p>
-              </div>
-              <div id='error_loading_c'>
-                <p class="alert alert-danger">
-                  There was a problem loading this comparison graph.  Please check the error message below and confirm plot selections are valid. If you need additional help, please
-                  <a href='./contact.html' alt='Submit for help' class="text-primary alert-link">submit for help</a> with the
-                  following information:
-                </p>
-                <div class="code">
-                  <ul>
-                    <li>Dataset ID: <span id='ticket_dataset_id'></span></li>
-                    <li>Dataset Name: <span id='ticket_dataset_text'></span></li>
-                    <li>Dataset X condition: <span id='ticket_datasetx_condition'></span></li>
-                    <li>Dataset Y condition: <span id='ticket_datasety_condition'></span></li>
-                    <li><strong>Error:</strong> <span id='ticket_error_msg'></span></li>
-                  </ul>
-                </div>
-              </div> <!-- end #error_loading_c -->
-              <div id='myChart'></div>
-              <p id='genes_not_found' style="display:none;"></p>
-            </div>
-          </div>
-
-          <div id="weighted_gene_cart_c" class="card w-50" style="display:none;">
-            <div class="card-body">
-              <h3 class="card-title">Save Fold-change as Weighted Gene Cart</h3>
-              <p class="card-subtitle mb-2 text-muted">Save all dataset genes as a weighted gene cart. This can be used in plotting projections into curated displays from other datasets</p>
-              <div class="form-group form-group-sm form-row">
-                <label for="weighted_gene_cart_name col-1" class="control-label col-form-label col-4">Cart name to create:</label>
-                <input class="form-control mb-1 col-8" type="text" value="" id="weighted_gene_cart_name" />
-              </div>
-              <div class="form-group form-group-sm form-row">
-                <label for="weighted_gene_cart_name" class="control-label col-form-label col-4">Fold-change:</label>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" name="foldchange_to_save" id="log-raw" value="1" checked>
-                  <label class="form-check-label" for="log-raw">Raw</label>
-                </div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" name="foldchange_to_save" id="log-2" value="2">
-                  <label class="form-check-label" for="log-2">Log2</label>
-                </div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" name="foldchange_to_save" id="log-10" value="10">
-                  <label class="form-check-label" for="log-10">Log10</label>
-                </div>
-              </div>
-              <button id="save_weighted_gene_cart" class="btn btn-sm btn-purple">Save as Pattern Signature</button>
-              <div id='saved_weighted_gene_cart_info_c' style="display:none;">
-                <p class="status"></p>
-                <div class="alert alert-danger alert-dismissible" role="alert">
-                  <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                  </button>
-                  <p class="message"></p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div> <!-- end #viewport -->
-        <div id="docsbar" class="col-2">
-          <div id='selection_methods_c' class='selection_instructions'>
-            <div id='controls_label'>
-              <h3>Plot controls</h3>
-            </div>
-            <p>
-              Hover over the plot and you'll see buttons on the right side, which control
-              actions like zooming and selection of points.
-            </p>
-            <dl>
-              <dt>Control icons</dt>
-              <dd>
-                <div><img class='img-fluid' src='img/instructions_comparison_controls.png' /></div>
-                The Box and Lasso selection tools allow you to click and drag a shape around
-                genes of interest.
-              </dd>
-              <dt>Selecting genes</dt>
-              <dd>
-                <div><img class='img-fluid' src='img/instructions_freeform_selection.png' /></div>
-                After you select your desired genes, a list of them all will
-                be displayed.
-              </dd>
-            </dl>
-          </div>
-          <div id="gene_list_c" class="row">
-            <div class="col-12">
-              <div id='selected_label'>
-                <h3>Selected genes</h3>
-                <div>
-                  <button id="download_gene_table" type="button" class="btn btn-default" onclick="download_selected_genes();" aria-label="Download"
-                          data-toggle="tooltip" data-placement="bottom" title="Download genes as a text file">
-                    <span class="fa fa-download" aria-hidden="true"></span>
-                  </button>
-                  <button id="create_gene_cart" type="button" class="btn btn-default" aria-label="Create gene cart"
-                          data-toggle="tooltip" data-placement="bottom" title="You must be logged in to create a gene cart" disabled>
-                    <span class="fa fa-shopping-cart" aria-hidden="true"></span>
-                  </button>
-                </div>
-                <div id='create_gene_cart_dialog'>
-                  <div class="form-group-sm">
-                    <label for="gene_cart_name" class="control-label">Cart name to create:</label>
-                    <input class="form-control mb-1" type="text" value="" id="gene_cart_name" />
-                  </div>
-                  <div class="form-group-sm">
-                    <button type="button" id="cancel_save_gene_cart" class="btn btn-secondary">Cancel</button>
-                    <button type="button" id="save_gene_cart" class="btn btn-primary" disabled>Save</button>
                   </div>
                 </div>
-                <div id='saved_gene_cart_info_c'>
-                  <h3></h3>
-                  <p id='saved_gene_cart_info'>
-                    <span id='gene_cart_member_count'></span> genes saved into cart
-                  </p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+
+        <section class="has-background-light section js-step step-active" id="dataset-s">
+          <!-- Dataset selection -->
+          <h5 class="title is-5">
+            <span class="icon">
+              <i class="mdi mdi-text-box-search-outline"></i>
+            </span>
+            <span>Select a dataset</span>
+            <span id="dataset-s-success" class="js-step-success icon has-text-success-dark is-hidden">
+              <i class="mdi mdi-check-circle"></i>
+            </span>
+            <span id="dataset-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
+              <i class="mdi mdi-close-circle"></i>
+            </span>
+            <span class="icon is-pulled-right">
+              <i class="mdi mdi-chevron-up"></i>
+            </span>
+          </h5>
+          <div id="current-dataset-c" class="is-hidden">
+            Current dataset:
+            <span id="current-dataset"></span>
+          </div>
+          <div class="js-step-collapsable mt-3" id="dataset-collapsable">
+            <input class="input" id="dataset-query" type="text" placeholder="Enter a dataset" autofocus="" />
+            <div id="dataset-tree" class="wb-skeleton wb-initializing js-tree">
+            </div>
+          </div>
+        </section>
+
+        <section class="has-background-light section js-step" id="condition-compare-s">
+          <h5 class="title is-5">
+            <span class="icon">
+              <i class="mdi mdi-compare-horizontal"></i>
+            </span>
+            <span>Select conditions you want to compare</span>
+            <span id="condition-compare-s-success" class="js-step-success icon has-text-success-dark is-hidden">
+              <i class="mdi mdi-check-circle"></i>
+            </span>
+            <span id="condition-compare-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
+              <i class="mdi mdi-close-circle"></i>
+            </span>
+            <span class="icon is-pulled-right">
+              <i class="mdi mdi-chevron-up"></i>
+            </span>
+          </h5>
+
+          <div class="js-step-collapsable mt-3" id="condition-compare-collapsable">
+
+            <div>
+              <div class="columns">
+                <div class="field column is-one-third">
+                  <label class="label">Series to compare <span class="has-text-success-dark is-pulled-right">Required</span></label>
+                  <div class="control">
+                      <div class="select is-fullwidth">
+                          <select class="js-compare" id="compare-series"></select>
+                      </div>
+                  </div>
                 </div>
               </div>
-              <table id="tbl_selected_genes" class="table">
-                <thead>
-                  <tr>
-                    <th onclick="sortTable(0);">Gene <i class="fa fa-sort" aria-hidden="true"></i></th>
-                    <th onclick="sortTable(1);">FoldChg <i class="fa fa-sort" aria-hidden="true"></i></th>
-                    <th onclick="sortTable(2);">Pval <i class="fa fa-sort" aria-hidden="true"></i></th>
-                  </tr>
-                <thead>
-                  <tbody id='selected_genes_c'></tbody>
-                  <script id="selected_genes_tmpl" type="text/x-jsrender">
+
+              <div class="columns">
+                <div class="field column is-one-third is-hidden">
+                  <label class="label">X-axis (query) condition <span class="has-text-success-dark is-pulled-right">Required</span></label>
+                  <div id="compare-x" class="control has-background-white p-3 is-hidden js-compare-groups js-compare-x">
+                  </div>
+                </div>
+
+                <div class="field column is-one-third is-hidden">
+                    <label class="label">Y-axis (reference) condition <span class="has-text-success-dark is-pulled-right">Required</span></label>
+                    <div id="compare-y" class="control has-background-white p-3 is-hidden js-compare-groups js-compare-y">
+                    </div>
+                </div>
+              </div>
+              <p id="select-compare-series-notification" class="mb-3 notification is-warning">Please select a series to compare to choose X and Y conditions</p>
+            </div>
+
+            <div id="facet-content" class="content is-hidden">
+              <p>Number of selected observations: <span id="num-selected" class="has-text-weight-semibold"></span></p>
+              <div class="box" id="selected-facets">
+                <p> Selected filters:
+                    <span class="loader is-hidden is-inline-flex" id="selected-facets-loader"></span>
+                </p>
+                <span class="tags" id="selected-facets-tags"></span>
+              </div>
+
+              <span class="title is-6">Extra filters to apply to both conditions</span>
+              <p class="help">Useful for doing X vs Y comparison on subsets of data beyond the main series to compare.</p>
+              <div id="facet-c" class="content"></div>
+            </div>
+
+          </div>
+        </section>
+
+
+        <section class="has-background-light section js-step" id="compare-options-s">
+          <h5 class="title is-5">
+            <span class="icon">
+              <i class="mdi mdi-filter-variant"></i>
+            </span>
+            <span>Select comparison options</span>
+            <span id="compare-options-s-success" class="js-step-success icon has-text-success-dark is-hidden">
+              <i class="mdi mdi-check-circle"></i>
+            </span>
+            <span id="compare-options-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
+              <i class="mdi mdi-close-circle"></i>
+            </span>
+            <span class="icon is-pulled-right">
+              <i class="mdi mdi-chevron-up"></i>
+            </span>
+            <span class="has-text-weight-medium is-pulled-right">Optional</span>
+          </h5>
+
+          <div class="js-step-collapsable mt-3" id="compare-options-collapsable">
+            <div class="columns is-variable is-8">
+              <div class="column">
+                <div class="content">
+                  <span class="title is-6">Significance test</span>
+                </div>
+
+                <div class="content columns">
+                  <span class="has-text-weight-medium column">Select test</span>
+                  <div class="control is-expanded column">
+                    <div class="select is-fullwidth">
+                      <select class="js-compare-statistical-test" id="statistical-test">
+                        <option value="" selected="selected">None</option>
+                        <option value="t-test">T-test</option>
+                        <option value="t-test_overestim_var">T-test (overestimated variance)</option>
+                        <option value="wilcoxon">Wilcoxon rank-sum</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div class="content columns">
+                  <span class="has-text-weight-medium column">P-value cutoff</span>
+                  <div class="control is-expanded column">
+                    <input id="pval-cutoff" type="number" class="input is-fullwidth js-compare-pval-cutoff" value="0.05" step="0.01" min="0.0" max="1.0" disabled/>
+                  </div>
+                </div>
+                <div class="content columns">
+                  <span class="has-text-weight-medium column">Cutoff filter</span>
+                  <div class="control is-expanded column">
+                    <div class="select is-fullwidth" disabled>
+                      <select class="js-compare-cutoff-filter-action" id="cutoff-filter-action" disabled>
+                        <option value="colorize" selected="selected">Colorize</option>
+                        <option value="filter" selected="selected">Filter out</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="column">
+                <div class="content">
+                  <span class="title is-6">Data filters</span>
+                </div>
+
+                <div class="content columns">
+                  <span class="has-text-weight-medium column">Report output as </span>
+                  <div class="control is-expanded column">
+                    <div class="select is-fullwidth">
+                      <select class="js-compare-log-base" id="log-base">
+                        <option value="raw">None - Raw values</option>
+                        <option value="2" selected="selected">Log2</option>
+                        <option value="10">Log10</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div class="content columns">
+                  <span class="has-text-weight-medium column">Fold Change Cutoff (>=N)</span>
+                  <div class="control is-expanded column">
+                    <input id="fc-cutoff" type="number" class="input is-fullwidth js-compare-fc-cutoff" min="0.0" value="2.0" step="0.1"/>
+                  </div>
+                </div>
+                <div class="content columns">
+                  <span class="has-text-weight-medium column">Standard Deviation</span>
+                  <div class="control is-expanded column">
+                    <div class="select is-fullwidth">
+                      <select class="js-compare-standard-deviation" id="standard-deviation">
+                        <option value="0" selected="selected">No filter</option>
+                        <option value="1">1 standard deviation</option>
+                        <option value="2">2 standard deviations</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <button id="plot-btn" class="my-3 button is-primary js-plot-btn" disabled>Plot</button>
+      </section>
+
+      <section id="post-plot-content-c" class="m-3 columns is-hidden">
+        <div id="params-summary" class="column has-background-light is-flex is-flex-direction-column">
+          <div class="is-flex is-flex-direction-column">
+            <div id="current-info" class="content">
+              <div class="content title is-5">
+                <span class="icon">
+                  <i class="mdi mdi-text-box-search-outline"></i>
+                </span>
+                <span>Selected Dataset</span>
+              </div>
+              <p id="current-dataset-post" class="has-text-weight-semibold"></p>
+            </div>
+
+            <div id="current-conditions" class="content">
+              <div class="content title is-5">
+                <span class="icon">
+                  <i class="mdi mdi-compare-horizontal"></i>
+                </span>
+                <span>Comparison conditions</span>
+              </div>
+
+              <div id="shared-conditions-post-c" class="is-hidden content">
+                <p>Shared conditions</p>
+                <div class="notification is-white p-2"></div>
+              </div>
+              <div id="compare-x-post-c" class="content">
+                <p>X-axis</p>
+                <div class="notification is-white p-2"></div>
+              </div>
+              <div id="compare-y-post-c" class="content">
+                <p>Y-axis</p>
+                <div class="notification is-white p-2"></div>
+              </div>
+            </div>
+
+            <div id="current-plot-options">
+              <div class="content title is-5">
+                <span class="icon">
+                  <i class="mdi mdi-filter-variant"></i>
+                </span>
+                <span>Plot configuration</span>
+              </div>
+              <div class="content">
+                <div class="title is-6">Significance test</div>
+                <div class="is-flex is-justify-content-space-between pr-3">
+                  <span>Test</span>
+                  <span id="statistical-test-post" class="has-text-weight-semibold"></span>
+                </div>
+                <div class="is-flex is-justify-content-space-between pr-3">
+                  <span>P-value cutoff</span>
+                  <span id="pval-cutoff-post" class="has-text-weight-semibold"></span>
+                </div>
+                <div class="is-flex is-justify-content-space-between pr-3">
+                  <span>Cutoff filter</span>
+                  <span id="cutoff-filter-action-post" class="has-text-weight-semibold"></span>
+                </div>
+              </div>
+              <div class="content">
+                <div class="title is-6">Data filters</div>
+                <div class="is-flex is-justify-content-space-between pr-3">
+                  <span>Report output as</span>
+                  <span id="log-base-post" class="has-text-weight-semibold"></span>
+                </div>
+                <div class="is-flex is-justify-content-space-between pr-3">
+                  <span>Fold Change Cutoff</span>
+                  <span id="fc-cutoff-post" class="has-text-weight-semibold"></span>
+                </div>
+                <div class="is-flex is-justify-content-space-between pr-3">
+                  <span>Standard Deviation</span>
+                  <span id="standard-deviation-post" class="has-text-weight-semibold"></span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          <div id="post-plot-actions-container" class="mt-3 columns is-multiline is-flex-grow-1 is-align-content-end">
+            <div class="column is-full">
+              <button id="edit-params" class="button is-medium is-responsive is-fullwidth is-primary">
+                <span class="icon is-pulled-left">
+                  <i class="mdi mdi-arrow-left-thick"></i>
+                </span>
+                <span>Edit Parameters</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="column is-three-quarters has-background-white-bis is-flex is-flex-direction-column">
+          <div id="plot-container" class="content is-flex-shrink-1"></div>
+
+          <div id="selected-gene-container" class="content is-flex is-flex-direction-column">
+            <div class="title is-5">Selected genes</div>
+              <div id="gene-table-container" class="container content ml-0">
+                <table class="table is-fullwidth is-hidden" id="tbl-selected-genes">
+                  <thead>
                     <tr>
-                      <td class="text-truncate">{{:gene_symbol}}</td>
-                      <td>{{:foldchange}}</td>
-                      <td>{{:pvals}}</td>
+                      <th class="is-clickable js-tbl-gene-header" id="tbl-gene-names" onclick="sortGeneTable(0);">Gene <span class="icon"><i class="mdi mdi-sort-alphabetical-ascending" aria-hidden="true"></i></span></th>
+                      <th class="is-clickable js-tbl-gene-header" id="tbl-gene-pvalues" onclick="sortGeneTable(1);">P-value <span class="icon"><i class="mdi mdi-sort-numeric-ascending" aria-hidden="true"></i></span></th>
+                      <th class="is-clickable js-tbl-gene-header" id="tbl-gene-foldchanges" onclick="sortGeneTable(2);">Fold Change</th>
                     </tr>
-                  </script>
-              </table>
-            </div>
-          </div> <!-- end #gene_list_c -->
-        </div><!-- end #docsbar -->
-      </div><!-- end #main_row -->
-    </div> <!-- end #main_content -->
+                  </thead>
+                  <tbody id="gene-table-body">
+                  </tbody>
+                </table>
+              </div>
 
-    <footer>
-      <div id='funding'>
-        <!-- content here inserted via common.js -->
-      </div>
-    </footer>
-  </div> <!-- /body_c -->
+              <div class="field">
+                <div class="control">
+                  <input id="new-genecart-label" class="input column is-one-third" type="text" placeholder="Enter name of collection" />
+                </div>
+              </div>
 
-    <!-- Instructions modal -->
-    <div class="modal fade" id="instructions_modal" tabindex="-1" role="dialog" aria-labelledby="instructions_label" aria-hidden="true">
-      <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="instructions_label">Instructions</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-              <span aria-hidden="true">&times;</span>
-            </button>
+              <div class="field">
+                <label class="label">Collection type</label>
+                <div class="field-body">
+                  <div class="field is-narrow">
+                    <div class="control">
+                      <label class="radio" disabled>
+                        <input type="radio" name="genecart_type" value="unweighted" disabled>
+                        Unweighted (saves only selected genes)
+                      </label>
+                    </div>
+                    <div class="control">
+                      <label class="radio">
+                        <input type="radio" name="genecart_type" value="weighted" checked>
+                        Weighted (saves all genes from dataset)
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="field is-grouped">
+                <div class="control">
+                  <button id="save-genecart-btn" class="button is-primary" disabled>Save</button>
+                </div>
+                <div class="control">
+                  <button id="download-selected-genes-btn" class="button is-text has-text-primary is-hidden">Download selected</button>
+                </div>
+              </div>
           </div>
-          <div class="modal-body">
-            <h3>Instructions</h3>
-            <div>
-              <p>
-                Choose a dataset and condition for each axis using the controls on the left.
-              </p>
-              <p>
-                For the x-axis and y-axis conditions, you are free to include and exclude any groups from the categorical observations. But if you are performing a significance test between then two conditions, then ensure that just a single differing group is chosen for each condition.
-              </p>
-              <p>
-                Some observation metadata may be listed as non-categorical, and will be excluded from consideration.  If some observations (such as sample ID or timepoint) are erroneously in this list, it may be because they were loaded in such a way that the dataframe reader interpreted them as continuous (numerical) datatypes.
-              </p>
-              <p>
-                <a href='./contact.html' class="text-primary">Feedback</a> on the dataset comparison tool is welcome.
-              </p>
+
+          <div id="gene-annotation-container" class="content is-flex is-flex-direction-column">
+            <div class="title is-5">Highlight specific genes</div>
+
+            <div id="search-bar-c">
+              <div class="field has-addons is-grouped mb-0">
+                <div class="control has-icons-left has-icons-right mr-0">
+                  <input class="input" type="input" id="genes-manually-entered" placeholder="Type here to search using specific gene symbols">
+                  <span class="icon is-small is-left">
+                    <i class="mdi mdi-magnify"></i>
+                  </span>
+                </div>
+                <!-- div with the text 'OR' centered vertically. this is awkward -->
+                <div class="columns">
+                  <div class="column is-1">
+                    <div class="is-vertical is-size-7 ml-2 mr-2">OR</div>
+                  </div>
+                </div>
+
+                <!--#include virtual="/include/gene-collection-selector/gene-collection-selector.html" -->
+              </div>
             </div>
 
-            <h3>Plot controls</h3>
-            <div>
-              <p>
-                Hover over the plot and you'll see buttons on the right side, which control
-                actions like zooming and selection of points.
-              </p>
-              <dl>
-                <dt>Control icons</dt>
-                <dd>
-                  <div><img class='img-fluid' src='img/instructions_comparison_controls.png' /></div>
-                  The Box and Lasso selection tools allow you to click and drag a shape around
-                  genes of interest.
-                </dd>
-                <dt>Selecting genes</dt>
-                <dd>
-                  <div><img class='img-fluid' src='img/instructions_freeform_selection.png' /></div>
-                  After you select your desired genes, a list of them all will
-                  be displayed.
-                </dd>
-              </dl>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-purple" data-dismiss="modal">Close</button>
+            <div id="gene-tags-c" class="box is-hidden">
+              <p class="subtitle is-5" id="genes-selected">Genes selected:</p>
+              <div id="gene-tags" class="tags"></div>
+              <div class="buttons">
+                <button id="clear-genes-btn" class="button is-primary is-outlined"> Clear selection</button>
+              </div>
+              <p>Note that only genes found in the dataset will be highlighted.</p>
+            </div></p>
+
           </div>
         </div>
-      </div>
-    </div> <!-- end save_genes_modal-->
+      </section>
+    </section>
+  </div>
 
-  <!-- JSRender templates -->
-  <script id="dataset_condition_options" type="text/x-jsrender">
-    {{props itemVar="~category"}}
-    {{!-- key is categorical observation, prop is the list of unique categories --}}
-    <div class="card" id="{{:key}}_card" role="tabpanel">
-      <div class="form-check form-check-inline">
-        <input class="form-check-input js-cat-check" type="checkbox" value="" id="{{:key}}_check">
-        <button id="{{:key}}_collapse" class="btn btn-light btn-sm btn-block js-cat-collapse" data-toggle="collapse" aria-expanded="true">
-          {{:key}}
-          <i class="fa fa-caret-down" aria-hidden="true"></i>
-        </button>
-      </div>
-      <div id="{{:key}}_body" class="collapse" aria-labelledby="{{:key}}_card" data-parent="#conditions_accordion">
-        <div class="card-body">
-        {{props prop}}
-          {{!-- key is list index, prop is the value --}}
-          <div class="form-check">
-            <label class="form-check-label"><input class="form-check-input js-group-check" type="checkbox" data-group="{{:~category.key}};-;{{:prop}}" value="">{{:prop}}</label>
-          </div>
-        {{/props}}
-        </div>
-      </div>
-    </div>
-    {{/props}}
+  <!-- Tree view/grid -->
+  <script src="https://cdn.jsdelivr.net/gh/mar10/wunderbaum@v0.10.0/dist/wunderbaum.umd.min.js"></script>
+
+  <!-- Promise based HTTP client for the browser  -->
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+  <script src="js/vendor/js.cookie.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.26.0.min.js" charset="utf-8"></script>
+
+  <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+  <script>document.write('<script src="js/classes/facets.' + (new Date()).getTime() + '.js"><\/script>');</script>
+  <script>document.write('<script src="js/classes/tree.' + (new Date()).getTime() + '.js"><\/script>');</script>
+  <script>document.write('<script src="js/classes/gene.' + (new Date()).getTime() + '.js"><\/script>');</script>
+  <script>document.write('<script src="js/classes/genecart.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+  <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
+  <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+  <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
+  <!-- Page-specific JS file here -->
+  <script>document.write('<script src="js/compare_datasets.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'UA-59916932-1');
   </script>
 
-  <script id="non_categories_list" type="text/x-jsrender">
-    <h5>Non-categorical observations excluded:</h5>
-    <ul class="list-unstyled">
-    {{for noncat_obs}}
-      <li><small>{{:}}</small></li>
-    {{/for}}
-    </ul>
-  </script>
-
-        <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-        <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
-        <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
-
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
-        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.3/js/bootstrap-select.min.js"></script>
-
-        <script src="js/vendor/js.cookie.js"></script>
-        <script src="js/vendor/jsrender.20181003.min.js"></script>
-
-        <!-- JStree -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
-
-        <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-        <script>document.write('<script src="js/classes/user.' + (new Date()).getTime() + '.js"><\/script>');</script>
-        <script>document.write('<script src="js/classes/gene.' + (new Date()).getTime() + '.js"><\/script>');</script>
-        <script>document.write('<script src="js/classes/genecart.' + (new Date()).getTime() + '.js"><\/script>');</script>
-        <script>document.write('<script src="js/classes/tree.' + (new Date()).getTime() + '.js"><\/script>');</script>
-        <script>document.write('<script src="js/common.' + (new Date()).getTime() + '.js"><\/script>');</script>
-        <script>document.write('<script src="js/compare_datasets.' + (new Date()).getTime() + '.js"><\/script>');</script>
-    </body>
+</body>
 </html>

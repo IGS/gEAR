@@ -3,6 +3,8 @@ from flask_restful import Resource
 import os
 import geardb
 
+from .common import get_adata_shadow
+
 class H5ad(Resource):
     """H5ad Container
 
@@ -17,26 +19,16 @@ class H5ad(Resource):
         analysis_id = args.get('analysis_id')
         session_id = request.cookies.get('gear_session_id')
 
-        import scanpy as sc
+        ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
+        h5_path = ds.get_file_path()
 
-        if analysis_id:
-            # session_id = request.cookies.get('gear_session_id')
-            user = geardb.get_user_from_session_id(session_id)
-
-            ana = geardb.Analysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
-            ana.discover_type()
-            adata = ana.get_adata(backed=True)
-        else:
-            ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
-            h5_path = ds.get_file_path()
-            # Let's not fail if the file isn't there
-            if not os.path.exists(h5_path):
-                return {
-                    "success": -1,
-                    "message": "No h5 file found for this dataset"
-                }
-            ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
-            adata = ana.get_adata(backed=True)
+        try:
+            adata = get_adata_shadow(analysis_id, dataset_id, session_id, h5_path)
+        except FileNotFoundError:
+            return {
+                "success": -1,
+                'message': "No h5 file found for this dataset"
+            }
 
         columns = adata.obs.columns.tolist()
 
@@ -67,6 +59,16 @@ class H5ad(Resource):
         for col in columns:
             try:
                 levels[col] = adata.obs[col].cat.categories.tolist()
+
+                # if there is missing data, add that as a level
+                if adata.obs[col].isnull().sum() > 0 and "NA" not in levels[col]:
+                    levels[col].append("NA")
+
+                # Drop level if it has more than 50 unique values (i.e. barcodes)
+                # Most likely people won't want to filter/sort/plot with them
+                if len(levels[col]) > 50:
+                    del levels[col]
+
             except:
                 pass
                 # If levels are not categorical I don't believe

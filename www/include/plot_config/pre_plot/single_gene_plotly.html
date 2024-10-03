@@ -1,11 +1,11 @@
 <p class="help">More customization options will be available once the plot has been created.</p>
-<section id="plotly_arguments" class="columns">
-    <section id="main_options" class="column is-half">
+<section id="plotly-arguments" class="columns">
+    <section id="main-options" class="column is-half">
         <div class="field">
             <label class="label">X-axis <span class="has-text-success-dark is-pulled-right">Required</span></label>
             <div class="control">
                 <div class="select is-fullwidth">
-                    <select class="js-plot-req js-plot-order js-plotly-x-axis" id="x_axis_series"></select>
+                    <select class="js-plot-req js-plot-order js-plotly-x-axis" id="x-axis-series"></select>
                 </div>
             </div>
         </div>
@@ -14,7 +14,7 @@
             <label class="label">Y-axis <span class="has-text-success-dark is-pulled-right">Required</span></label>
             <div class="control">
                 <div class="select is-fullwidth"> <!-- raw_value already selected -->
-                    <select class="js-plot-req js-plot-order js-plotly-y-axis" id="y_axis_series"></select>
+                    <select class="js-plot-req js-plot-order js-plotly-y-axis" id="y-axis-series"></select>
                 </div>
             </div>
         </div>
@@ -23,7 +23,7 @@
             <label class="label">Color</label>
             <div class="control">
                 <div class="select is-fullwidth">
-                    <select class="js-plotly-color" id="color_series"></select>
+                    <select class="js-plotly-color js-plot-order" id="color-series"></select>
                 </div>
             </div>
             <p class="help">If series is categorical, each group is a different color. If series is continuous, color will be a gradient.</p>
@@ -33,7 +33,7 @@
             <label class="label">Marker size</label>
             <div class="control">
                 <div class="select is-fullwidth">
-                    <select class="js-plotly-size" id="size_series"></select>
+                    <select class="js-plotly-size" id="size-series"></select>
                 </div>
             </div>
         </div>
@@ -42,7 +42,7 @@
             <label class="label">Annotation label</label>
             <div class="control">
                 <div class="select is-fullwidth">
-                    <select class="js-plotly-label" id="label_series"></select>
+                    <select class="js-plotly-label" id="label-series"></select>
                 </div>
             </div>
             <p class="help">Series values to display when hovering over a data point</p>
@@ -52,7 +52,7 @@
             <label class="label">Subplots by row</label>
             <div class="control">
                 <div class="select is-fullwidth">
-                    <select class="js-plot-order js-plotly-facet-row" id="facet_row_series"></select>
+                    <select class="js-plot-order js-plotly-facet-row" id="facet-row-series"></select>
                 </div>
             </div>
         </div>
@@ -61,13 +61,13 @@
             <label class="label">Subplots by column</label>
             <div class="control">
                 <div class="select is-fullwidth">
-                    <select class="js-plot-order js-plotly-facet-col" id="facet_col_series"></select>
+                    <select class="js-plot-order js-plotly-facet-col" id="facet-col-series"></select>
                 </div>
             </div>
         </div>
 
         <!-- Include plot-specific HTML here -->
-        <section class="js-plot-specific-options field" id="plot_specific_options"></section>
+        <section class="js-plot-specific-options field" id="plot-specific-options"></section>
     </section>
 
 </section>

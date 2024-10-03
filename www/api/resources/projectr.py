@@ -2,6 +2,7 @@ from flask import request
 from flask_restful import Resource, reqparse
 from pathlib import Path
 import json, sys, fcntl
+from io import StringIO
 import pandas as pd
 import asyncio, aiohttp
 import gc
@@ -11,6 +12,7 @@ from time import sleep
 from more_itertools import sliced
 
 import geardb
+from gear.orthology import get_ortholog_file, map_dataframe_genes
 
 # Parse gEAR config
 # https://stackoverflow.com/a/35904211/1368079
@@ -22,7 +24,6 @@ TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
 CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 PROJECTIONS_BASE_DIR = abs_path_www.joinpath("projections")
-ORTHOLOG_BASE_DIR = abs_path_www.joinpath("feature_mapping")
 PROJECTIONS_JSON_BASENAME = "projections.json"
 
 ANNOTATION_TYPE = "ensembl" # NOTE: This will change in the future to be varied.
@@ -62,7 +63,6 @@ parser.add_argument('genecart_id', help='Weighted (pattern) genecart id required
 parser.add_argument('scope', type=str, required=False)
 parser.add_argument('algorithm', help="An algorithm needs to be provided", type=str,  required=False)
 parser.add_argument('analysis', type=str, required=False)   # not used at the moment
-parser.add_argument('analysis_owner_id', type=str, required=False)  # Not used at the moment
 
 run_projectr_parser = parser.copy()
 run_projectr_parser.add_argument('projection_id', type=str, required=False)
@@ -86,45 +86,15 @@ def remove_lock_file(fd, filepath):
     """Release the lock file."""
     #fcntl.flock(fd, fcntl.LOCK_UN)
     fd.close()
-    Path(filepath).unlink()
+    try:
+        Path(filepath).unlink()
+    except FileNotFoundError:
+        # This is fine, as the lock file may have been removed by another process
+        pass
 
 def write_to_json(projections_dict, projection_json_file):
     with open(projection_json_file, 'w') as f:
         json.dump(projections_dict, f, ensure_ascii=False, indent=4)
-
-def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
-    """Return analysis object based on various factors."""
-    # If an analysis is posted we want to read from its h5ad
-    if analysis:
-        ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
-                                session_id=session_id, user_id=analysis_owner_id)
-
-        try:
-            ana.type = analysis['type']
-        except:
-            user = geardb.get_user_from_session_id(session_id)
-            ana.discover_type(current_user_id=user.id)
-    else:
-        ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
-        h5_path = ds.get_file_path()
-
-        # Let's not fail if the file isn't there
-        if not Path(h5_path).is_file():
-            raise FileNotFoundError("No h5 file found for this dataset")
-        ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
-    return ana
-
-def remap_df_genes(orig_df: pd.DataFrame, orthomap_file: str):
-    """Remap the passed-in Dataframe to have gene indexes from the orthologous mapping file."""
-    # Read HDF5 file using Pandas read_hdf
-    try:
-        orthomap_df = pd.read_hdf(orthomap_file)
-    except Exception as e:
-        raise
-    # Index -> gs1 / id2 / gs2
-    orthomap_dict = orthomap_df.to_dict()["id2"]
-    # NOTE: Not all genes can be mapped. Unmappable genes do not change in the original dataframe.
-    return orig_df.rename(index=orthomap_dict)
 
 def calculate_chunk_size(num_genes, num_samples):
     """
@@ -137,7 +107,7 @@ def calculate_chunk_size(num_genes, num_samples):
 
 def concat_fetch_results_to_dataframe(res_jsons):
     # Concatenate the dataframes back together again
-    res_dfs = [pd.read_json(res_json, orient="split", dtype="float32") for res_json in res_jsons]
+    res_dfs = [pd.read_json(StringIO(res_json), orient="split", dtype="float32") for res_json in res_jsons]
     projection_patterns_df = pd.concat(res_dfs)
     return projection_patterns_df
 
@@ -233,6 +203,13 @@ async def fetch_one(client, payload):
     # https://docs.aiohttp.org/en/stable/client_reference.html
     # (semaphore) https://stackoverflow.com/questions/40836800/python-asyncio-semaphore-in-async-await-function
     async with client.post(url=endpoint, json=payload, headers=headers, raise_for_status=True) as response:
+
+        #TODO: Figure out how to get the response status code and payload to print to stderr
+        if response.status != 200:
+            # print payload to stderr
+            print("ERROR: POST request to {} failed with status code {}".format(endpoint, response.status), file=sys.stderr)
+            print("ERROR: Payload was: {}".format(payload), file=sys.stderr)
+
         return await response.json()
 
 def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, algorithm, fh):
@@ -241,6 +218,12 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
 
     if not fh:
         fh=sys.stderr
+
+    if scope == "unweighted-list" and algorithm in ["nmf", "fixednmf"]:
+        return {
+            'success': -1
+            , 'message': "Unweighted gene lists cannot be used with NMF algorithms."
+        }
 
     """
     Steps
@@ -253,8 +236,6 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     Only step 3 needs to be in R, and we use rpy2 to call that.
     """
 
-    # Get unique identifier of first gene from target dataset
-    #first_dataset_gene = target_df.index[0]
 
     # Unweighted carts get a "1" weight for each gene
     genecart = geardb.get_gene_cart_by_share_id(genecart_id)
@@ -263,6 +244,8 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             'success': -1
             , 'message': "Could not find gene cart in database"
         }
+
+    genecart.get_genes()
 
     if not len(genecart.genes):
         return {
@@ -276,6 +259,8 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         loading_df = create_unweighted_loading_df(genecart) if scope == "unweighted-list" else create_weighted_loading_df(genecart_id)
     except Exception as e:
         print(str(e), file=fh)
+        import traceback
+        traceback.print_exc()
         return {
             'success': -1
             , 'message': str(e)
@@ -292,43 +277,54 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     # If cross-species, remap the genecart genes to the orthologous genes for the dataset's organism
     try:
         # Get the organism ID associated with the dataset.
-        ds = geardb.get_dataset_by_id(dataset_id)
+        try:
+            ds = geardb.get_dataset_by_id(dataset_id)
+        except:
+            raise Exception("Dataset was not found in the database. Please contact a gEAR admin.")
+
         if not genecart.organism_id == ds.organism_id:
-            orthomap_file_base = "orthomap.{0}.{2}__{1}.{2}.hdf5".format(genecart.organism_id, ds.organism_id, ANNOTATION_TYPE)
-            orthomap_file = ORTHOLOG_BASE_DIR.joinpath(orthomap_file_base)
-            try:
-                loading_df = remap_df_genes(loading_df, orthomap_file)
-            except Exception as e:
-                print(str(e), file=fh)
-                message = "Could not remap pattern genes to ortholog equivalent in the dataset"
-                return {
-                    "success": -1
-                    , "message": message
-                }
-    except:
-        message = "Dataset was not found in the database. Please contact a gEAR admin."
-        return {"success": -1, "message": message}
+            ortholog_file = get_ortholog_file(genecart.organism_id, ds.organism_id, ANNOTATION_TYPE)
+            loading_df = map_dataframe_genes(loading_df, ortholog_file)
+    except Exception as e:
+        print(str(e), file=fh)
+        import traceback
+        traceback.print_exc()
+        return {"success": -1, "message": str(e)}
 
     # Drop duplicate unique identifiers. This may happen if two unweighted gene cart genes point to the same Ensembl ID in the db
     loading_df = loading_df[~loading_df.index.duplicated(keep='first')]
 
     # NOTE Currently no analyses are supported yet.
     try:
-        ana = get_analysis(None, dataset_id, session_id, None)
+        ana = geardb.get_analysis(None, dataset_id, session_id)
     except Exception as e:
-        print(str(e), file=fh)
+        import traceback
+        traceback.print_exc()
         return {
-            'success': -1
-            , 'message': str(e)
+            "success": -1,
+            "message": "Could not retrieve analysis."
         }
 
-    # Using adata with "backed" mode does not work with volcano plot
-    adata = ana.get_adata(backed=True)
+    try:
+        # Using adata with "backed" mode does not work with volcano plot
+        adata = ana.get_adata(backed=True)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": -1,
+            "message": "Could not retrieve AnnData object."
+        }
+
 
     # If dataset genes have duplicated index names, we need to rename them to avoid errors
     # in collecting rownames in projectR (which gives invalid output)
     # This means these duplicated genes will not be in the intersection of the dataset and pattern genes
-    adata.var_names_make_unique()
+    dedup_copy = Path(ana.dataset_path().replace('.h5ad', '.dups_removed.h5ad'))
+    if (adata.var.index.duplicated(keep="first") == True).any():
+        if dedup_copy.exists():
+            dedup_copy.unlink()
+        adata = adata[:, adata.var.index.duplicated(keep="first") == False].copy(filename=dedup_copy)
 
     num_target_genes = adata.shape[1]
     num_loading_genes = loading_df.shape[0]
@@ -403,14 +399,27 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
 
     # Chunk size needs to adjusted by how many genes are present, so that the payload always stays under the body size limit
     chunk_size = calculate_chunk_size(len(target_df.index), len(target_df.columns))
+    if len(target_df.columns) < chunk_size:
+        chunk_size = len(target_df.columns)
 
     print("TARGET: {}\nGENECART: {}\nTARGET DF (genes,samples): {}\nSAMPLES PER CHUNK: {}".format(dataset_id, genecart_id, target_df.shape, chunk_size), file=fh)
+
+    # shuffle target dataframe rows.  Needed to balance out the chunks in the NMF algorithms
+    target_df = target_df.sample(frac=1)
+
+    if algorithm == "fixednmf":
+        # Normalize the target_df by the minimum sum of each expression column
+        columns_sums = target_df.sum(axis=0)
+        normalized_columns_sums = columns_sums / columns_sums.min()
+        target_df = target_df.div(normalized_columns_sums, axis=1)
 
     if this.servercfg['projectR_service']['cloud_run_enabled'].startswith("1"):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+
         try:
             results = loop.run_until_complete(fetch_all(target_df, loading_df, algorithm, genecart_id, dataset_id, chunk_size))
+            print("INFO: All fetch tasks have completed", file=fh)
         except Exception as e:
             print(str(e), file=fh)
             # Raises as soon as one "gather" task has an exception
@@ -428,16 +437,18 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             loop.stop() # prevent "Task was destroyed but it is pending!" messages
             loop.close()
 
+        print("INFO: Concatenating results to dataframe", file=fh)
         projection_patterns_df = concat_fetch_results_to_dataframe(results)
 
         del results
         gc.collect()    # trying to clear memory
 
         if len(projection_patterns_df.index) != len(adata.obs.index):
-            print(str(e), file=sys.stderr)
+            message = "Not all chunked sample rows were returned by projectR.  Cannot proceed."
+            print(message, file=sys.stderr)
             return {
                 'success': -1
-                , 'message': "Not all chunked sample rows were returned by projectR.  Cannot proceed."
+                , 'message': message
                 , "num_common_genes": intersection_size
                 , "num_genecart_genes": num_loading_genes
                 , "num_dataset_genes": num_target_genes
@@ -465,10 +476,17 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             elif algorithm == "binary":
                 from projectr.main import do_binary_projection
                 projection_patterns_df = do_binary_projection(target_df,loading_df)
-            else:
+            elif algorithm == "2silca":
+                pass
+            elif algorithm in ["nmf", "fixednmf"]:
                 from projectr.rfuncs import run_projectR_cmd
-                projection_patterns_df = run_projectR_cmd(target_df, loading_df).transpose()
+                projection_patterns_df = run_projectR_cmd(target_df, loading_df, algorithm).transpose()
+            else:
+                raise ValueError("Algorithm {} is not supported".format(algorithm))
         except Exception as e:
+            # clear lock file
+            remove_lock_file(lock_fh, lockfile)
+
             print(str(e), file=sys.stderr)
             return {
                 'success': -1
@@ -478,13 +496,20 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
                 , "num_dataset_genes": num_target_genes
             }
 
-    # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
-    projection_patterns_df.set_axis(loading_df.columns, axis="columns", inplace=True)
+    adata.close()
+    if dedup_copy.exists():
+        dedup_copy.unlink()
 
+    # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
+    projection_patterns_df = projection_patterns_df.set_axis(loading_df.columns, axis="columns")
+
+    print("INFO: Writing projection patterns to {}".format(dataset_projection_csv), file=fh)
     projection_patterns_df.to_csv(dataset_projection_csv)
 
     del projection_patterns_df
     gc.collect()    # trying to clear memory
+
+    dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
 
     # Add new configuration to the list for this dictionary key
     dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
@@ -522,6 +547,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     write_to_json(genecart_projections_dict, genecart_projection_json_file)
 
     # Remove file lock
+    print("INFO: Removing lock file for {}".format(projection_id), file=fh)
     remove_lock_file(lock_fh, lockfile)
 
     return {
@@ -580,12 +606,12 @@ class ProjectROutputFile(Resource):
             }
 
         # If legacy version exists, copy to current format.
-        if not genecart_id in projections_dict or "cart.{}".format(genecart_id) in projections_dict:
-            print("Copying legacy cart.{} to {} in the projection json file.".format(genecart_id, genecart_id), file=fh)
+        if (not genecart_id in projections_dict) and "cart.{}".format(genecart_id) in projections_dict:
+            print("Copying legacy cart.{} to {} in the projection json file.".format(genecart_id, genecart_id), file=sys.stderr)
             projections_dict[genecart_id] == projections_dict["cart.{}".format(genecart_id)]
             projections_dict.pop("cart.{}".format(genecart_id), None)
             # move legacy genecart projection stuff to new version
-            print("Moving legacy cart.{} contents to {} in the projection genecart directory.".format(genecart_id, genecart_id), file=fh)
+            print("Moving legacy cart.{} contents to {} in the projection genecart directory.".format(genecart_id, genecart_id), file=sys.stderr)
             old_genecart_projection_json_file = build_projection_json_path("cart.{}".format(genecart_id), "genecart")
             old_genecart_projection_json_file.parent.rename(dataset_projection_json_file.parent)
 
@@ -634,17 +660,21 @@ class ProjectR(Resource):
             common_genes = None
             genecart_genes = None
             dataset_genes = None
-            for config in projections_dict[genecart_id]:
-                # Handle legacy algorithm
-                if "is_pca" in config:
-                    config["algorithm"] = "pca" if config["is_pca"] == 1 else "nmf"
 
-                if algorithm == config["algorithm"]:
-                    common_genes = config.get('num_common_genes', None)
-                    genecart_genes = config.get('num_genecart_genes', -1)
-                    dataset_genes = config.get('num_dataset_genes', -1)
-                    break
+            # Get projection info from the json file if it already exists
+            if genecart_id in projections_dict:
+                for config in projections_dict[genecart_id]:
+                    # Handle legacy algorithm
+                    if "is_pca" in config:
+                        config["algorithm"] = "pca" if config["is_pca"] == 1 else "nmf"
 
+                    if algorithm == config["algorithm"]:
+                        common_genes = config.get('num_common_genes', None)
+                        genecart_genes = config.get('num_genecart_genes', -1)
+                        dataset_genes = config.get('num_dataset_genes', -1)
+                        break
+
+            message = ""
             if common_genes:
                 message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(common_genes, dataset_genes, genecart_genes)
 

@@ -1,0 +1,47 @@
+/* Initial CSS for Floating UI (https://floating-ui.com/docs/migration#positioning-function-change) */
+.floating {
+    width: max-content;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+hr.gc-list-element-divider {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* facets on left */
+.js-selected {
+    background-color: #E8EBEE;
+    border: 1px solid #E8EBEE;
+    border-radius: 4px;
+}
+
+/* CSS for Floating UI components */
+
+article[role="tooltip"] {
+    width: max-content;
+    position: absolute; /* float above everything else to not disrupt layout */
+    top: 0;
+    left: 0;
+}
+
+#arrow {
+    position: absolute;
+    background: inherit;
+    width: 8px;
+    height: 8px;
+    transform: rotate(45deg);
+}
+
+.tooltip {
+    font-weight: bold;
+    padding: 5px;
+    border-radius: 4px;
+    font-size: 90%;
+    width: max-content;
+    position: absolute;
+    top: 0;
+    left: 0;
+}

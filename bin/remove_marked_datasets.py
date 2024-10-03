@@ -100,12 +100,21 @@ def remove_from_expression(conn, cursor, dataset_id):
     print("...'expression' data removed.")
 
 def remove_from_layout_members(cursor, dataset_id):
+    #qry = """
+    #    DELETE FROM layout_members
+    #    WHERE dataset_id = %s
+    #"""
+    #cursor.execute(qry, (dataset_id,))
+
     qry = """
-        DELETE FROM layout_members
-        WHERE dataset_id = %s
+        DELETE FROM layout_displays
+        WHERE dataset_id in (SELECT id
+                             FROM dataset_display
+                             WHERE dataset_id = %s)
     """
     cursor.execute(qry, (dataset_id,))
-    print("...'layout_members' data removed.")
+
+    print("...'layout_displays' data removed.")
 
 def remove_from_dataset_shares(cursor, dataset_id):
     qry = """

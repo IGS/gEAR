@@ -1,12 +1,14 @@
 # Include our lib directory on system path
 # so we have access to modules
 from pathlib import Path
-import sys
+import sys, os
 TWO_LEVELS_UP = 2
 abs_path_gear = Path(__file__).resolve().parents[TWO_LEVELS_UP]
 abs_path_lib = abs_path_gear.joinpath('lib')
 # abs_path_lib is a Path object so we need to convert to string
 sys.path.insert(0, str(abs_path_lib))
+
+debug = os.environ.get('DEBUG', False)
 
 # Prevent matplotlib backend rendering errors
 # when imporing scanpy in resource modules
@@ -25,6 +27,7 @@ from resources.top_pca_genes import TopPCAGenes
 from resources.available_display_types import AvailableDisplayTypes, MGAvailableDisplayTypes
 from resources.aggregations import Aggregations
 from resources.analyses import Analyses
+from resources.orthologs import Orthologs
 from resources.dataset_display import DatasetDisplay
 from resources.gene_symbols import GeneSymbols
 from resources.tsne_data import TSNEData
@@ -50,6 +53,7 @@ api.add_resource(AvailableDisplayTypes, '/h5ad/<dataset_id>/availableDisplayType
 api.add_resource(MGAvailableDisplayTypes, '/h5ad/<dataset_id>/mg_availableDisplayTypes')
 api.add_resource(Aggregations, '/h5ad/<dataset_id>/aggregations')
 api.add_resource(Analyses, '/h5ad/<dataset_id>/analyses')
+api.add_resource(Orthologs, '/h5ad/<dataset_id>/orthologs')
 api.add_resource(GeneSymbols, '/h5ad/<string:dataset_id>/genes')
 api.add_resource(TopPCAGenes, '/analysis/plotTopGenesPCA')
 api.add_resource(DatasetDisplay, '/displays/<int:display_id>')
@@ -100,5 +104,5 @@ if __name__ == '__main__':
     # api.add_resource(PlotlyData, '/api/plot/<dataset_id>')
     # api.add_resource(H5ad, '/api/h5ad/<dataset_id>')
     # app.wsgi_app = PrefixMiddleware(app.wsgi_app, prefix='/api')
-    app.run(debug=True, threaded=True)
+    app.run(debug=debug, threaded=True)
 

@@ -82,14 +82,26 @@ def main():
 
     form = cgi.FieldStorage()
     display_id = form.getvalue('id')
-    user_id = form.getvalue('user_id')
+    session_id = form.getvalue('session_id')
     dataset_id = form.getvalue('dataset_id')
     label = form.getvalue('label')
     plot_type = form.getvalue('plot_type')
     plotly_config = form.getvalue('plotly_config')
+    is_local = form.getvalue('is_local', False)
 
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
+
+    user = geardb.get_user_from_session_id(session_id=session_id)
+
+    if not user:
+        print('User not found for session_id {}'.format(session_id), file=sys.stderr)
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(dict(display_id=None, success=False)))
+        return
+
+    user_id = user.id
 
     if display_id:
         # display_id exists, so update
@@ -109,10 +121,10 @@ def main():
                 WHERE id = %s;
             """
             cursor.execute(query, (label, plot_type, plotly_config, display_id))
-            result = dict(success=True)
+            result = dict(display_id=display_id, success=True)
         else:
             print('UPDATE DIDNT HAPPEN?', file=sys.stderr)
-            result = dict(success=False)
+            result = dict(display_id=display_id, success=False)
     else:
         # Display doesn't exist yet, insert new
 
@@ -144,15 +156,28 @@ def main():
             break
 
     filename = os.path.join(DATASET_PREVIEWS_DIR, "{}.{}.png".format(dataset_id, display_id))
+
+    # Normalize path to avoid directory traversal attacks (e.g. ../../../etc/passwd) and validate
+    filename = os.path.normpath(filename)
+    if not filename.startswith(DATASET_PREVIEWS_DIR):
+        print("Invalid filename: {}".format(filename), file=sys.stderr)
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        result["success"] = False
+        print(json.dumps(result))
+        return
+
     # Add plot_type to config so it can be passed in the POST cmd as well
     config = json.loads(plotly_config)
     config["plot_type"] = plot_type
 
+    alt_url = "http://localhost/api/plot/{}".format(dataset_id)
+
     image_success = False
     url = "https://localhost/api/plot/{}".format(dataset_id)
 
-    url = "http://localhost/api/plot/{}".format(dataset_id)
-
+    if is_local:
+        url = alt_url
 
     try:
         if plot_type.lower() in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
@@ -174,6 +199,25 @@ def main():
     except Exception as e:
         print("Error with plotting dataset {}".format(dataset_id), file=sys.stderr)
         print(str(e), file=sys.stderr)
+
+    if not image_success:
+        try:
+            print("Attempting to use alt_url: {}".format(alt_url), file=sys.stderr)
+            url = alt_url
+            if plot_type.lower() in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
+                image_success = make_static_plotly_graph(filename, config, url)
+            elif plot_type.lower() in ["mg_violin", "dotplot", "volcano", "heatmap", "quadrant"]:
+                url += "/mg_dash"
+                image_success = make_static_plotly_graph(filename, config, url)
+            elif plot_type.lower() in ["tsne_static", "umap_static", "pca_static", "tsne"]:
+                url += "/tsne"
+                image_success = make_static_tsne_graph(filename, config, url)
+            elif plot_type.lower() in ["svg"]:
+                url += "/svg"
+                image_success = make_static_svg(filename, dataset_id)
+        except Exception as e:
+            print("Error with plotting dataset {} using alt_url".format(dataset_id), file=sys.stderr)
+            print(str(e), file=sys.stderr)
 
     if not image_success:
         print("Could not create static image file for display id {}".format(display_id), file=sys.stderr)

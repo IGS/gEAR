@@ -2,7 +2,7 @@
 
 """
 -Receives dataset upload data from upload_epigenetic_dataset.js.
-for each file the user uploads, creates a database entry into 
+for each file the user uploads, creates a database entry into
 dataset & dataset_epiviz
 
 """
@@ -17,6 +17,7 @@ import os, sys
 import re
 import shutil
 
+from werkzeug.utils import secure_filename
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
@@ -58,12 +59,12 @@ def main():
 
     if not is_url:
         # modify this later so that file urls are handled separately
-        file_source_path = user_upload_file_base + '/' + file_name
-        file_dest_path = user_upload_dest_base + '/' + dataset_uid + "." + file_type
+        file_source_path = secure_filename(user_upload_file_base + '/' + file_name)
+        file_dest_path = secure_filename(user_upload_dest_base + '/' + dataset_uid + "." + file_type)
         file_location = os.path.abspath(file_dest_path)
     else:
         file_location = file_url
-    
+
     # Must have a gEAR account to upload datasets
     user = geardb.get_user_from_session_id(session_id)
     if user is None:
@@ -72,7 +73,7 @@ def main():
         result['message'] = 'User ID not found. Please log in to continue.'
 
     else:
-        
+
         if not is_url:
             #  move file to dest
             shutil.move(file_source_path, file_dest_path)

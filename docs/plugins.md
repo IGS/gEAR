@@ -35,7 +35,7 @@ When a page is loaded the contents of that HTML file are added to a (hidden) div
 
 So if I'm on the index page and my plugin is called extrabuttons I can add code to my index.js which can access the HTML elements via a selector like "#extrabuttons_html_c".  You can then move the content to whatever place in the DOM it belongs.
 
-You should also take care to give unique, descriptive IDs and class attributes to your elements so they don't conflict with others.
+You should also take care to give unique, descriptive IDs and class attributes to your elements so they don't conflict with others. Prefixing these with your plugin name is a best practice.
 
 #### The CSS file
 
@@ -43,11 +43,11 @@ Vanilla CSS file here just gets imported, no special considerations.
 
 #### The Javascript file
 
-Add the Javascript here needed for your plugin, best wrapped in a document ready function.
+Add the Javascript here needed for your plugin. No need to wrap in a document ready function, as plugins are loaded after this is already true.
 
 #### Other files
 
-There are no restrictions to your adding other files (such as JSON data files) within your plugin directory as long as your handle their import/processing within your own plugin's javascript.
+There are no restrictions to your adding other files (such as JSON data files) within your plugin directory as long as you handle their import/processing within your own plugin's javascript.
 
 ### Site preferences configuration
 
@@ -56,18 +56,6 @@ Each gEAR portal has a site preferences JSON file at www/site_domain_prefs.json.
 ```text
 "enabled_plugins": {"extrabuttons": ["index.html", "analyze_dataset.html"]}
 ```
-
-### Page-specific features
-
-#### index.html
-
-It's expected that most plugins for this page will want to detect or call functions when the selected gene is changed, so you can add function reference calls to this global array:
-
-```text
-  search_result_postselection_functions
-```
-
-Define a function within your index.js and push a reference onto that array and it will get called each time the selected gene on the page changes.
 
 ## Submitting your plugin
 

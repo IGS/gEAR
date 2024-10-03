@@ -29,7 +29,7 @@ def main():
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
-    gc_id = form.getvalue('gene_cart_id')
+    gc_id = form.getvalue('gene_list_id')
 
     current_user_id = get_user_id_from_session_id(cursor, session_id)
 
@@ -62,6 +62,7 @@ def check_cart_ownership(cursor, current_user_id, gc_id):
     cursor.execute(qry, (gc_id,))
 
     for row in cursor:
+        print(row[1], current_user_id, file=sys.stderr)
         # Change access if user owns it
         if row[1] == current_user_id:
             return True

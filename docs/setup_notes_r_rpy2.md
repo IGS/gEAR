@@ -4,11 +4,11 @@ The base version of R installed on Ubuntu Bionic (18.04) is not a high enough ve
 
 ## Prerequesites to install via apt-get
 
-`sudo apt-get install gfortran libbz2-dev libcurl4-openssl-dev liblzma-dev libpcre3 libpcre3-dev libgomp1`
+`sudo apt-get install gfortran libbz2-dev libcurl4-openssl-dev liblzma-dev libpcre3 libpcre3-dev libgomp1 libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev`
 
 ## Installing R
 
-Run `sudo sh <gEAR\_git\_root>/docker/install_bioc.sh` to install R, Bioconductor, and projectR
+Run `sudo sh <gEAR\_git\_root>/services/projectr/install_bioc.sh` to install R, Bioconductor, and projectR
 
 To ensure R's shared libraries are found create a file "libR.conf" in /etc/ld.so.conf.d and add the following contents:
 

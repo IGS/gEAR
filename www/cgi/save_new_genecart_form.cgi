@@ -15,6 +15,7 @@ abs_path_gear = Path(__file__).resolve().parents[TWO_LEVELS_UP]
 abs_path_lib = abs_path_gear.joinpath('lib')
 sys.path.insert(0, str(abs_path_lib))
 import geardb
+from gear.userhistory import UserHistory
 
 abs_path_www = Path(__file__).resolve().parents[1] # web-root dir
 CARTS_BASE_DIR = abs_path_www.joinpath("carts")
@@ -29,16 +30,25 @@ def validate_weighted_gene_cart(df):
     # Objects are variable string length.
     if df[df.columns[0]].dtype not in ["string", "object"] \
         or df[df.columns[1]].dtype not in ["string", "object"]:
-        return [False, 'Columns 1 and 2 should be Identifier, Gene symbol']
+        print("The first two columns must be strings", file=sys.stderr)
+        print(df[df.columns[0]].dtype, df[df.columns[1]].dtype, file=sys.stderr)
+        return False
 
     # The third column onward must be a numeric weight
     for col in df[df.columns[2:]]:
-        if df[col].dtype not in ['float64', 'int']:
-            return [False, 'Columns after 2 must be numeric']
+        # if column is int, convert to float
+        if df[col].dtype == 'int64':
+            df[col] = df[col].astype('float64')
+
+        if df[col].dtype != 'float64':
+            print("The third column onward must be numeric", file=sys.stderr)
+            print(df[col].dtype, file=sys.stderr)
+            return False
 
     # The first column has to be unique identifiers
     if not df[df.columns[0]].is_unique:
-        return [False, 'Identifiers in column 1 must be unique']
+        print("First column is not unique", file=sys.stderr)
+        return False
 
     return [True, '']
 
@@ -75,6 +85,7 @@ def main():
         if fileitem.filename:
             pasted_genes = fileitem.file.read().decode().replace(",", " ")
             pasted_genes = re.sub(r"\s+", " ", pasted_genes)
+            pasted_genes = pasted_genes.replace('\n', ' ').replace('\r', '').replace('\t', ' ')
 
             for gene_sym in pasted_genes.split(' '):
                 if len(gene_sym):
@@ -138,11 +149,24 @@ def main():
         except Exception as e:
             print(str(e))
             sys.exit(1)
+    elif upload_type == "labeled-list":
+        raise NotImplementedError("Not implemented")
+    else:
+        raise Exception("Invalid upload type: {0}".format(upload_type))
 
     gc.save()
 
     result = { 'id': gc.id }
     print(json.dumps(result))
+
+    if gc.user_id:
+        history = UserHistory()
+        history.add_record(
+            user_id=gc.user_id,
+            entry_category='gene_cart_added',
+            label="Gene cart added: '{0}'".format(gc.label),
+            gene_cart_share_id=gc.share_id
+        )
 
 if __name__ == '__main__':
     main()

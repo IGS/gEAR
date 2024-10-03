@@ -42,6 +42,7 @@ def main():
     session_id = form.getvalue('session_id')
     dataset_id = form.getvalue('dataset_id')
     visibility = form.getvalue('visibility')
+    is_downloadable = form.getvalue('is_downloadable')
     title = form.getvalue('title')
     pubmed_id = form.getvalue('pubmed_id')
     geo_id = form.getvalue('geo_id')
@@ -55,10 +56,12 @@ def main():
 
     if owns_dataset == True:
         # see what has changed and execute updates to the DB
-        if visibility == 'private' and dataset.is_public == 1:
-            dataset.save_change('is_public', 0)
-        elif visibility == 'public' and (dataset.is_public == 0 or dataset.is_public == None):
-            dataset.save_change('is_public', 1)
+        # ? SAdkins - Why are we checking for differences? Can't we just update regardless, or are we trying to reduce transactions?
+        if dataset.is_public != visibility:
+            dataset.save_change('is_public', visibility)
+
+        if dataset.is_downloadable != is_downloadable:
+            dataset.save_change("is_downloadable", is_downloadable)
 
         if dataset.title != title:
             dataset.save_change('title', title)
@@ -73,7 +76,7 @@ def main():
             dataset.save_change('ldesc', ldesc)
 
         result = { 'dataset': dataset, 'success': 1 }
-            
+
         print(json.dumps(result))
 
     else:

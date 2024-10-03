@@ -34,7 +34,7 @@ def main():
 
     norm_counts_per_cell = float(form.getvalue('norm_counts_per_cell'))
     flavor = form.getvalue('flavor')
-    n_top_genes = form.getvalue('n_top_genes')
+    n_top_genes = form.getvalue('n_top_genes', None)
     min_mean = float(form.getvalue('min_mean'))
     max_mean = float(form.getvalue('max_mean'))
     min_dispersion = float(form.getvalue('min_dispersion'))
@@ -43,12 +43,12 @@ def main():
     save_dataset = int(form.getvalue('save_dataset'))
 
     adata = ana.get_adata()
-    dest_datafile_path = None
 
-    if n_top_genes is not None:
+    if n_top_genes:
         n_top_genes = int(n_top_genes)
 
-    # primary or public analyses won't be after this
+    # primary or public analysis should not be overwritten
+    # this will alter the analysis object save destination
     if ana.type == 'primary' or ana.type == 'public':
         ana.type = 'user_unsaved'
 
@@ -58,22 +58,14 @@ def main():
     if not os.path.exists(dest_directory):
         os.makedirs(dest_directory)
 
-    # Set the .raw attribute of AnnData object to the logarithmized raw gene expression
-    #  for later use in differential testing and visualizations of gene expression.
-    adata.raw = sc.pp.log1p(adata, copy=True)
-
     # Per-cell normalize the data matrix, identify highly-variable genes and compute logarithm.
-    # Update - SAdkins - "normalize_per_cell" is deprecated so using "normalize_total"
     sc.pp.normalize_total(adata, target_sum=norm_counts_per_cell)
 
     # log the data
     sc.pp.log1p(adata)
     adata.raw = adata
 
-    # This next command hits a memory issue if not backed.  But the previous commands fail for various reasons if backed.  So back up now
-    adata.filename = dest_datafile_path + ".backed.h5ad"
-    #print(adata.isbacked)
-
+    # SAdkins - For some reason, if adata is backed these will fail when a copy of adata.X is made by the function.
     if n_top_genes:
         sc.pp.highly_variable_genes(
             adata, flavor=flavor, n_top_genes=n_top_genes)
@@ -107,7 +99,7 @@ def main():
 
     top_genes = ", ".join(highly_variable_genes)
 
-    result = {'n_obs': n_obs, 'n_genes': n_genes, 'top_genes': top_genes}
+    result = {"success": 1, 'n_obs': n_obs, 'n_genes': n_genes, 'top_genes': top_genes}
 
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')

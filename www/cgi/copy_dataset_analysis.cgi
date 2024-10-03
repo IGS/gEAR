@@ -7,7 +7,7 @@ directory structure.
 Use cases:
 
 - Migrating class 'user_unsaved' to 'user_saved'
-    Actions: 
+    Actions:
        - Move entire directory
        - Maintain open permissions
 - Migrating class 'user_saved' to 'public'
@@ -29,6 +29,8 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 
+from werkzeug.utils import secure_filename
+
 def main():
     form = cgi.FieldStorage()
     source_analysis_id = form.getvalue('source_analysis_id')
@@ -39,8 +41,32 @@ def main():
     session_id = form.getvalue('session_id')
     user = geardb.get_user_from_session_id(session_id)
 
+    if not user:
+        result = {'success': 0, 'error': 'Invalid session'}
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+
+    source_analysis_id = secure_filename(source_analysis_id)
+    dest_analysis_id = secure_filename(dest_analysis_id)
+
     source_ana = geardb.Analysis(id=source_analysis_id, type=source_analysis_type, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
     dest_ana = geardb.Analysis(id=dest_analysis_id, type=dest_analysis_type, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
+
+    if not source_ana:
+        result = {'success': 0, 'error': 'Source analysis does not exist'}
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+
+    if not dest_ana:
+        result = {'success': 0, 'error': 'Destination analysis does not exist'}
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
 
     source_pipeline_base = source_ana.base_path()
     dest_pipeline_base = dest_ana.base_path()
@@ -58,7 +84,7 @@ def main():
         set_config_analysis_type(dest_ana.settings_path(), dest_analysis_type, session_id, dest_analysis_id)
     else:
         result = {'success': 0, 'error': 'Unrecognized source and dest analysis types'}
-        
+
     result = {'success': 1}
 
     sys.stdout = original_stdout
@@ -68,15 +94,15 @@ def main():
 def closed_perm_changing_copy(src, dst):
     """
     The standard copy methods in shutil handle permissions strangely.  There doesn't seem to be a native
-    way to copy a read-only source to a destination where umask is respected.  
+    way to copy a read-only source to a destination where umask is respected.
     """
     shutil.copy(src, dst)
     return os.chmod(dst, 0o444)
-    
+
 def open_perm_changing_copy(src, dst):
     """
     The standard copy methods in shutil handle permissions strangely.  There doesn't seem to be a native
-    way to copy a read-only source to a destination where umask is respected.  
+    way to copy a read-only source to a destination where umask is respected.
     """
     shutil.copy(src, dst)
     return os.chmod(dst, 0o755)

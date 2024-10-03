@@ -1,14 +1,15 @@
 import json
-import os, sys
-from pathlib import Path
 
 import gear.mg_plotting as mg
 import geardb
 import pandas as pd
 from flask import request
 from flask_restful import Resource
-from gear.mg_plotting import PlotError
 from plotly.utils import PlotlyJSONEncoder
+
+from gear.mg_plotting import PlotError
+from .common import create_projection_adata, order_by_time_point
+
 
 # SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 # This is meant to be a short-term solution until more people specify their data is transformed via the metadata
@@ -54,86 +55,28 @@ LOG10_TRANSFORMED_DATASETS = [
 , "80eadbe6-49ac-8eaf-f2fb-e07706cf117b"    # HRP dataset
 ]
 
-TWO_LEVELS_UP = 2
-abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
-PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
-
 CLUSTER_LIMIT = 5000
 
-def order_by_time_point(obs_df):
-    """Order observations by time point column if it exists."""
-    # check if time point order is intially provided in h5ad
-    time_point_order = obs_df.get('time_point_order')
-    if (time_point_order is not None and 'time_point' in obs_df.columns):
-        sorted_df = obs_df.drop_duplicates().sort_values(by='time_point_order')
-        # Safety check. Make sure time point is categorical before
-        # calling .cat
-        obs_df['time_point'] = pd.Categorical(obs_df['time_point'])
-        col = obs_df['time_point'].cat
-        obs_df['time_point'] = col.reorder_categories(
-            sorted_df.time_point.drop_duplicates(), ordered=True)
-        obs_df = obs_df.drop(['time_point_order'], axis=1)
-    return obs_df
-
-def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
-    """Return analysis object based on various factors."""
-    # If an analysis is posted we want to read from its h5ad
-    if analysis:
-        ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
-                                session_id=session_id, user_id=analysis_owner_id)
-
-        try:
-            ana.type = analysis['type']
-        except:
-            user = geardb.get_user_from_session_id(session_id)
-            ana.discover_type(current_user_id=user.id)
-    else:
-        ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
-        h5_path = ds.get_file_path()
-
-        # Let's not fail if the file isn't there
-        if not os.path.exists(h5_path):
-            raise PlotError("No h5 file found for this dataset")
-        ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
-    return ana
-
 def create_composite_index_column(df, columns):
-    return df.obs[columns].apply(lambda x: ';'.join(map(str,x)), axis=1)
+    """
+    Create a composite index column by joining values from multiple columns.
 
-def create_projection_adata(dataset_adata, dataset_id, projection_id):
-    # Create AnnData object out of readable CSV file
-    # ? Does it make sense to put this in the geardb/Analysis class?
-    import scanpy as sc
-    projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
-    projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
-    if projection_adata_path.is_file():
-        return sc.read_h5ad(projection_adata_path)  #, backed="r")
+    Args:
+        df (pandas.DataFrame): The DataFrame containing the columns.
+        columns (list): A list of column names to be joined.
 
-    projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
-    try:
-        projection_adata = sc.read_csv(projection_csv_path)
-    except Exception as e:
-        print(f"{projection_csv_path} - {str(e)}", file=sys.stderr)
-        # Encountered edge cases were sample indexes had commas in them which
-        # breaks scanpy's read_csv feature (since they split on comma first)
-        import tempfile
-        df = pd.read_csv(projection_csv_path, index_col=0, quotechar='"')
-        df.index = df.index.astype(str).str.replace(",", "/")
-        with tempfile.NamedTemporaryFile() as fp:
-            df.to_csv(fp)
-            try:
-                projection_adata = sc.read_csv(fp.name)
-            except Exception as e:
-                print(f"Temp file {fp.name} - {str(e)}", file=sys.stderr)
-                raise PlotError("Could not create projection AnnData object from CSV.")
-    projection_adata.obs = dataset_adata.obs
-    # Close dataset adata so that we do not have a stale opened object
-    if dataset_adata.isbacked:
-        dataset_adata.file.close()
-    projection_adata.var["gene_symbol"] = projection_adata.var_names
-    # Associate with a filename to ensure AnnData is read in "backed" mode
-    projection_adata.filename = projection_adata_path
-    return projection_adata
+    Returns:
+        pandas.Series: A Series containing the composite index values.
+
+    Example:
+        >>> df = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
+        >>> create_composite_index_column(df, ['A', 'B'])
+        0    1;4
+        1    2;5
+        2    3;6
+        dtype: object
+    """
+    return df.obs[columns].apply(lambda x: ';'.join(map(str, x)), axis=1)
 
 class MultigeneDashData(Resource):
     """Resource for retrieving data from h5ad to be used to draw charts on UI.
@@ -153,7 +96,6 @@ class MultigeneDashData(Resource):
         session_id = request.cookies.get('gear_session_id')
         req = request.get_json()
         analysis = req.get('analysis', None)
-        analysis_owner_id = req.get('analysis_owner_id', None)
         plot_type = req.get('plot_type')
         gene_symbols = req.get('gene_symbols', [])
         filters = req.get('obs_filters', {})    # Dict of lists
@@ -199,15 +141,24 @@ class MultigeneDashData(Resource):
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         try:
-            ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
-        except PlotError as pe:
+            ana = geardb.get_analysis(analysis, dataset_id, session_id)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
             return {
-                'success': -1,
-                'message': str(pe),
+                "success": -1,
+                "message": "Could not retrieve analysis."
             }
 
-        # Using adata with "backed" mode does not work with volcano plot
-        adata = ana.get_adata(backed=False)
+        try:
+            adata = ana.get_adata(backed=True)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {
+                "success": -1,
+                "message": "Could not retrieve AnnData object."
+            }
 
         adata.obs = order_by_time_point(adata.obs)
 
@@ -219,6 +170,12 @@ class MultigeneDashData(Resource):
 
         # remove _colors columns
         columns = [col for col in columns if not col.endswith('_colors')]
+
+        # Remove any columns that are have more than 50 unique values
+        # These are likely not categorical columns (i.e. barcodes) and can cause issues with the composite index
+        for col in columns:
+            if len(adata.obs[col].unique()) > 50:
+                columns.remove(col)
 
         if not columns:
             return {
@@ -253,6 +210,10 @@ class MultigeneDashData(Resource):
         # 3 Warning - One or more genes could not be processed
         # NOTE: The success level in a warning can be overridden by another warning or error
 
+        # delete all "None" values from the gene_symbols list
+        # These are genes that did not map in the orthology mapping
+        gene_symbols = [gene for gene in gene_symbols if gene]
+
         # TODO: How to deal with a gene mapping to multiple Ensemble IDs
         try:
             if not gene_symbols and plot_type in ["dotplot", "heatmap", "mg_violin"]:
@@ -271,7 +232,11 @@ class MultigeneDashData(Resource):
             }
 
         # ADATA - Observations are rows, genes are columns
-        selected = adata
+        try:
+            selected = adata.to_memory()
+        except:
+            # The "try" may fail for projections as it is already in memory
+            selected = adata
 
         # These plot types filter to only the specific genes.
         # The other plot types use all genes and rather annotate the specific ones.
@@ -295,26 +260,21 @@ class MultigeneDashData(Resource):
             dataset_genes = adata.var['gene_symbol'].unique().tolist()
             # Gene symbols list may have genes not in the dataset.
             normalized_genes_list, _found_genes = mg.normalize_searched_genes(dataset_genes, gene_symbols)
+
+            # deduplicate normalized_genes_list
+            normalized_genes_list = list(dict.fromkeys(normalized_genes_list))
+
             # Sort ensembl IDs based on the gene symbol order
             sorted_ensm = map(lambda x: gene_to_ensm[x], normalized_genes_list)
 
         # Reorder the categorical values in the observation dataframe
+        sort_fields = []
         if sort_order:
             # Ensure selected primary and secondary columns are in the correct order
-            sort_fields = []
             if primary_col:
                 sort_fields.append(primary_col)
             if secondary_col and secondary_col != primary_col:
                 sort_fields.append(secondary_col)
-
-            """
-            # Add the rest of the sort order observation keys if any others exist.
-            # Currently this should only consist of the primary and secondary columns, but may be extended in the future.
-            obs_keys = sort_order.keys()
-            for key in obs_keys:
-                if key not in sort_fields:
-                    sort_fields.append(key)
-            """
 
             # Now reorder the dataframe
             for key in sort_fields:
@@ -333,26 +293,45 @@ class MultigeneDashData(Resource):
         selected.obs['composite_index'] = selected.obs['composite_index'].astype('category')
         columns.append("composite_index")
 
+        import sys
+
         # Filter dataframe on the chosen observation filters
         if filters:
             # reorder filter key the same order as sort_order if key exists
             # Mostly for fixing the order of the heatmap clusterbars
             for field in filters.keys():
+                values = filters[field]
+                # if there is an "NA" value in the filters but no "NA" in the dataframe
+                # check if it is a missing value, and if so, impute it
+                if "NA" in values and "NA" not in selected.obs[col].cat.categories:
+                    values.remove("NA")
+                    selected.obs[col].cat.add_categories("NA")
+                    selected.obs[col].fillna("NA", inplace=True)
+
+                mask = selected.obs[field].isin(values)
+                selected = selected[mask, :]
+
                 if sort_order and field in sort_order:
                     filters[field] = sort_order[field]
 
-            # Create a special composite index for the specified filters
+            # if the filters are empty, return an empty dataframe
+            if selected.shape[0] == 0:
+                return {
+                    "success": -1,
+                    "message": "No data found for the selected filters."
+                }
+
+            # For the remaining data, create a special composite index for the specified filters
             selected.obs['filters_composite'] = create_composite_index_column(selected, filters.keys())
             selected.obs['filters_composite'] = selected.obs['filters_composite'].astype('category')
             columns.append("filters_composite")
-            unique_composite_indexes = selected.obs["filters_composite"].unique()
 
-            # Only want to keep indexes that match chosen filters
-            # However if no filters were chosen, just use everything
-            filtered_composite_indexes = mg.create_filtered_composite_indexes(filters, unique_composite_indexes.tolist())
-            if filtered_composite_indexes:
-                condition_filter = selected.obs["filters_composite"].isin(filtered_composite_indexes)
-                selected = selected[condition_filter, :]
+            # sort by the filters
+            for key in sort_fields:
+                col = selected.obs[key]
+                reordered_col = col.cat.reorder_categories(
+                    filters[key], ordered=True)
+                selected.obs[key] = reordered_col
 
         var_index = selected.var.index.name
 
@@ -469,7 +448,10 @@ class MultigeneDashData(Resource):
             groupby = ["gene_symbol"]
             groupby.extend(groupby_filters)
 
-            grouped = df.groupby(groupby)
+            # drop Ensembl ID index since it may not aggregate and throw warnings
+            df.drop(columns=[var_index], inplace=True)
+
+            grouped = df.groupby(groupby, observed=True)
             df = grouped.agg(['mean', 'count', ('percent', percent)]) \
                 .fillna(0) \
                 .reset_index()
@@ -509,15 +491,15 @@ class MultigeneDashData(Resource):
                 union_fields.extend([groupby_index, "filters_composite"])   # Preserve filters index for downstream labeling
                 groupby_fields = union_fields
 
-            # Remove composite index so that the label is not duplicated.
-            for cat in columns:
+            # Only add the fields that will be used downstream
+            for cat in groupby_fields:
                 df[cat] = selected.obs[cat]
 
             # Groupby to remove the replicates
             # Ensure the composite index is used as the index for plot labeling
             if matrixplot:
-                grouped = df.groupby(groupby_fields)
-                df = grouped.agg('mean') \
+                grouped = df.groupby(groupby_fields, observed=False)
+                df = grouped.mean() \
                     .dropna() \
                     .reset_index() \
                     .set_index(groupby_index)
@@ -706,6 +688,5 @@ class MultigeneDashData(Resource):
         return {
             "success": success
             , "message": message
-            , 'gene_symbols': gene_symbols
             , 'plot_json': json.loads(plot_json)
         }

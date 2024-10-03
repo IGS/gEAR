@@ -4,9 +4,17 @@
 @import url('https://fonts.googleapis.com/css?family=Inter:400,700');
 
 // Brand colors
+// For NeMO site
+// https://mycolor.space/?hex=%232A3236&sub=1
+//$gear-bg-primary: #2A3236;
+//$gear-bg-secondary: #2A5A60;
+//$gear-bg-tertiary: #DBE8E5;
+
+// For gEAR site
 $gear-bg-primary: #362E5C;
 $gear-bg-secondary: #544A8E;
 $gear-bg-tertiary: #EFEDF7;
+
 $gear-state-success: #E2FFBD;
 $gear-state-error: #FFCDBD;
 $gear-state-disabled: #D1D1D1;
@@ -54,4 +62,8 @@ $input-radius: 5px;
 @import "../css/bulma/sass/helpers/_all.sass";
 @import "../css/bulma/sass/components/_all.sass";
 @import "../css/bulma/sass/layout/_all.sass";
+
+// Bulma switch extension
+// FROM "https://cdn.jsdelivr.net/npm/bulma-switch@2.0.4/src/sass/index.sass"
+@import "../css/bulma/sass/bulma-switch.sass";
 

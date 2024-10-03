@@ -5,7 +5,7 @@
 """
 
 import cgi, json
-import os, sys, re
+import os, sys
 
 original_stdout = sys.stdout
 sys.stdout = open(os.devnull, 'w')
@@ -38,19 +38,20 @@ def main():
 
     adata = ana.get_adata()
 
-    dest_datafile_path = None
     cluster_method = 'louvain'
 
-    if ana.type == 'primary':
+    # primary or public analysis should not be overwritten
+    # this will alter the analysis object save destination
+    if ana.type == 'primary' or ana.type == 'public':
         ana.type = 'user_unsaved'
-        dest_datafile_path = ana.dataset_path()
 
-        ## dirty hack for BICCN dataset customization
-        # BICCN Mini-Atlas (Integrated)
+    ## dirty hack for BICCN dataset customization
+    # BICCN Mini-Atlas (Integrated)
+    if ana.type == 'primary':
         if dataset_id in ['4fbd43e2-f301-42d8-a61d-a5dd5bf720e7',
-                          '7feba96b-816f-4154-8a3d-9f578acdf6c7',
-                          'f70f6499-a319-4346-aca5-79d88e48744e',
-                          '9682c015-9bb7-4307-bd7f-05abcd5d82b4']:
+                            '7feba96b-816f-4154-8a3d-9f578acdf6c7',
+                            'f70f6499-a319-4346-aca5-79d88e48744e',
+                            '9682c015-9bb7-4307-bd7f-05abcd5d82b4']:
             cluster_method = 'joint_cluster_round4_annot'
                             # BICCN Mini-Atlas (Transcript)
         elif dataset_id in ['495d68ba-9c05-4f5a-8b39-fb62291ae205',
@@ -71,8 +72,8 @@ def main():
                             'debbff92-dbe4-4b61-8cc8-b19d45ddf1d4'
         ]:
             cluster_method = 'subclass_label'
-    else:
-        dest_datafile_path = ana.dataset_path()
+
+    dest_datafile_path = ana.dataset_path()
 
     dest_datafile_dir = os.path.dirname(dest_datafile_path)
 
@@ -100,7 +101,10 @@ def main():
 
         # The sharey parameter here controls whether all axes have the same scale
         sc.pl.rank_genes_groups(adata, n_genes=n_genes, gene_symbols='gene_symbol', sharey=False, save='.png')
-
+    else:
+        # Get from the dest_datafile_path
+        adata = ana.get_adata()
+\
     df_json_str = pd.DataFrame(
         adata.uns['rank_genes_groups']['names']
     ).iloc[:n_genes].to_json(orient='split')

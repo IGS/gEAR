@@ -1,0 +1,246 @@
+<!-- Templates to be used with the TileGrid or an individual DatasetTile -->
+
+<template id="tmpl-tile-grid-tile">
+    <div class="js-tile card has-background-white">
+        <header class="card-header has-background-primary">
+            <div class="card-header-title py-0"></div>
+            <div class="card-header-icon">
+
+                <div class="dropdown is-right is-align-self-flex-start">
+                    <a class="button js-expand-display">
+                        <span class="icon">
+                            <i class="mdi mdi-24px mdi-arrow-expand-all"></i>
+                        </span>
+                    </a>
+                    <a class="button js-shrink-display">
+                        <span class="icon">
+                            <i class="mdi mdi-24px mdi-arrow-collapse-all"></i>
+                        </span>
+                    </a>
+                    <button class="button dropdown-trigger" aria-haspopup="true" aria-controls="dropdown-menu">
+                        <span class="icon">
+                            <i class="mdi mdi-24px mdi-18px mdi-dots-vertical"></i>
+                        </span>
+                    </button>
+                    <div class="dropdown-menu" role="menu">
+                        <div class="dropdown-content">
+                            <a class="dropdown-item" data-tool="display">
+                                <span class="icon-text">
+                                    <span class="icon">
+                                        <i class="mdi mdi-24px mdi-view-grid-outline"></i>
+                                    </span>
+                                    <span>Choose Display</span>
+                                </span>
+                            </a>
+
+                            <a class="dropdown-item" data-tool="info">
+                                <span class="icon-text">
+                                    <span class="icon">
+                                        <i class="mdi mdi-24px mdi-information-slab-circle-outline"></i>
+                                    </span>
+                                    <span>Dataset Information</span>
+                                </span>
+                            </a>
+                            <a class="dropdown-item" data-tool="publication" target="_blank">
+                                <span class="icon-text">
+                                    <span class="icon">
+                                        <i class="mdi mdi-24px mdi-school-outline"></i>
+                                    </span>
+                                    <span>Dataset publication</span>
+                                </span>
+                            </a>
+                            <a class="dropdown-item" data-tool="geo" target="_blank">
+                                <span class="icon-text">
+                                    <span class="icon">
+                                        <i class="mdi mdi-24px mdi-earth"></i>
+                                    </span>
+                                    <span>GEO Information</span>
+                                </span>
+                            </a>
+                            <a class="dropdown-item" data-tool="notes">
+                                <span class="icon-text">
+                                    <span class="icon">
+                                        <i class="mdi mdi-24px mdi-pencil-box-outline"></i>
+                                    </span>
+                                    <span>Take Notes</span>
+                                </span>
+                            </a>
+                            <hr class="dropdown-divider">
+                            <a class="dropdown-item" data-tool="single-cell" target="_blank">
+                                <span class="icon-text">
+                                    <span class="icon">
+                                        <i class="mdi mdi-24px mdi-chart-line"></i>
+                                    </span>
+                                    <span>Single Cell Workbench</span>
+                                </span>
+                            </a>
+                            <a class="dropdown-item" data-tool="compare" target="_blank">
+                                <span class="icon-text">
+                                    <span class="icon">
+                                        <i class="mdi mdi-24px mdi-compare-horizontal"></i>
+                                    </span>
+                                    <span>Comparison Tool</span>
+                                </span>
+                            </a>
+                            <a class="dropdown-item" data-tool="single-gene" target="_blank">
+                                <span class="icon-text">
+                                    <span class="icon">
+                                        <i class="mdi mdi-24px mdi-chart-box-outline"></i>
+                                    </span>
+                                    <span>Single-gene Curator</span>
+                                </span>
+                            </a>
+                            <a class="dropdown-item" data-tool="multi-gene" target="_blank">
+                                <span class="icon-text">
+                                    <span class="icon">
+                                        <i class="mdi mdi-24px mdi-chart-box-multiple-outline"></i>
+                                    </span>
+                                    <span>Multi-gene Displays</span>
+                                </span>
+                            </a>
+                            <hr class="dropdown-divider">
+                            <a class="dropdown-item" data-tool="download-bundle">
+                                <span class="icon-text">
+                                    <span class="icon">
+                                        <i class="mdi mdi-24px mdi-briefcase-download-outline"></i>
+                                    </span>
+                                    <span>Download Bundle</span>
+                                </span>
+                            </a>
+                            <a class="dropdown-item" data-tool="download-h5ad">
+                                <span class="icon-text">
+                                    <span class="icon">
+                                        <i class="mdi mdi-24px mdi-file-download-outline"></i>
+                                    </span>
+                                    <span>Download H5AD</span>
+                                </span>
+                            </a>
+                            <a class="dropdown-item" data-tool="download-png">
+                                <span class="icon-text">
+                                    <span class="icon">
+                                        <i class="mdi mdi-24px mdi-file-png-box"></i>
+                                    </span>
+                                    <span>Download Image</span>
+                                </span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <div class="js-card-extras content is-small columns m-0">
+            <!-- Extra options, etc go here -->
+        </div>
+        <div class="card-image"></div>
+    </div>
+</template>
+
+<template id="tmpl-tile-grid-dropdown-link">
+    <a class="dropdown-item" target="_blank">
+        <span class="icon-text">
+            <span class="icon">
+                <i class="mdi mdi-24px mdi-link"></i>
+            </span>
+            <span class="js-link-label"></span>
+        </span>
+    </a>
+</template>
+
+<template id="tmpl-epiviz-container">
+    <div class='epiviz-container'>
+        <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-sortable/0.9.13/jquery-sortable-min.js" integrity="sha512-9pm50HHbDIEyz2RV/g2tn1ZbBdiTlgV7FwcQhIhvykX6qbQitydd6rF19iLmOqmJVUYq90VL2HiIUHjUMQA5fw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+        <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/renderingQueues/renderingQueue.js"></script>
+        <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/webcomponentsjs/webcomponents-lite.js"></script>
+
+        <link rel="import" href="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/epiviz-components-gear.html">
+
+        <epiviz-data-source provider-type="epiviz.data.WebServerDataProvider"
+            provider-id="fileapi"
+        >
+        </epiviz-data-source>
+        <epiviz-navigation
+            hide-chr-input
+            hide-search
+            hide-add-chart
+            show-viewer
+        >
+        </epiviz-navigation>
+    </div>
+</template>
+
+<template id="tmpl-tile-grid-choose-display-modal">
+    <div class="js-choose-display-modal modal">
+        <div class="modal-background"></div>
+        <div class="modal-content">
+            <div class="box has-background-white-ter">
+                <h5 class="title is-5"></h5>
+                <div class="js-modal-user-displays columns is-multiline">
+                    <img>
+                </div>
+                <div class="js-modal-owner-displays columns is-multiline">
+                    <img>
+                </div>
+            </div>
+        </div>
+        <button class="modal-close is-large has-background-link" aria-label="close"></button>
+    </div>
+</template>
+
+<template id="tmpl-tile-grid-choose-display-modal-display">
+    <div class="js-modal-display column is-3 is-clickable p-1">
+        <figure class="image is-4by3">
+            <img alt="Saved display">
+            <span class="js-modal-display-type tag is-info is-relative"></span>
+        </figure>
+    </div>
+</template>
+
+<template id="tmpl-tile-grid-projection-info">
+    <div class="column p-0">
+        <div class="notification is-primary is-light p-1">
+            <p></p>
+        </div>
+    </div>
+</template>
+
+<template id="tmpl-tile-grid-ortholog-dropdown">
+    <div class="column is-4 p-0">
+        <div class="dropdown js-ortholog-dropdown">
+            <div class="dropdown-trigger">
+                <button class="button" aria-haspopup="true">
+                <span><strong>Choose ortholog</strong></span>
+                    <span class="icon is-small">
+                        <i class="mdi mdi-chevron-down" aria-hidden="true"></i>
+                    </span>
+                </button>
+                </div>
+                <div class="dropdown-menu" role="menu">
+                <div class="dropdown-content">
+                    <!-- add orthologs here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<template id="tmpl-tile-infobox">
+    <div class="modal js-infobox">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Dataset information</p>
+                <button class="delete" aria-label="close"></button>
+            </header>
+            <section class="modal-card-body">
+                <h5 class="js-infobox-title title is-5"></h5>
+                <div class="js-infobox-ldesc content"></div>
+
+                <div class="js-infograph-illustration"></div>
+                <figure class="image">
+                    <img class="js-infobox-schematic" src="" alt="Infograph" />
+                </figure>
+            </section>
+        </div>
+    </div>
+</template>

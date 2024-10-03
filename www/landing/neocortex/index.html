@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>Neocortex Devo landing page</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="-1">
+        <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
+
+        <link rel="stylesheet" href="../../css/gear-theme-purple.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css" />
+
+        <!-- Ensures we always get a new version (during our current active development cycles) -->
+        <script>document.write('<link rel="stylesheet" href="../../css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
+
+        <!--Page-specific CSS here -->
+        <link rel="stylesheet" href="./index.css" />
+        
+    </head>
+    <body>
+      <div id="main-layout-c" class="columns is-fullheight">
+
+        <!--#include virtual="/include/primary_nav.html" -->
+
+        <section id="main-c" class="column pl-0 pt-0">
+
+          <!--#include virtual="/include/header_bar.html" -->
+
+          <section id="content-c" class="m-3" data-nav-link="workspace">
+            <h1><a href="https://doi.org/10.1101/2024.02.26.581612">A Curated Compendium of Transcriptomic Data for the Exploration of Neocortical Development</a></h1>
+            <!-- This is the section to be populated for new pages -->
+            <p id="author-list">Shreyash Sonthalia, Ricky S. Adkins, Joshua Orvis, Guangyan Li, 
+              Xoel Mato Blanco, Alex Casella, Jinrui Liu, Genevieve Stein-O’Brien, Brian Caffo, 
+              Ronna Hertzano, Anup Mahurkar, Jesse Gillis, Jonathan Werner, Shaojie Ma, Nicola 
+              Micali, Nenad Sestan, Pasko Rakic, Gabriel Santpere, Seth A. Ament, Carlo Colantuoni
+            </p>
+            <p>
+              Vast quantities of multi-omic data have been produced to characterize the development 
+              and diversity of cell types in the cerebral cortex of humans and other mammals. To 
+              more fully harness the collective discovery potential of these data, we have assembled 
+              gene-level transcriptomic data from 188 published studies of neocortical development, 
+              including the transcriptomes of >33 million single-cells, extensive spatial 
+              transcriptomic experiments and RNA sequencing of sorted cells and bulk tissues. 
+              Applying joint matrix decomposition to mouse, macaque and human data in this 
+              collection, we defined transcriptome dynamics that are conserved across mammalian 
+              neurogenesis and which elucidate the evolution of outer, or basal, radial glial cells. 
+              Decomposition of adult human neocortical data identified layer-specific signatures in 
+              mature neurons and, in combination with transfer learning methods in NeMO Analytics, 
+              enabled the charting of their early developmental emergence and protracted maturation 
+              across years of postnatal life. Interrogation of data from cerebral organoids 
+              demonstrated that while many molecular elements of in vivo development are recapitulated 
+              in vitro, specific transcriptomic programs in neuronal maturation are absent. We 
+              invite computational biologists and cell biologists without coding expertise to use 
+              NeMO Analytics and to fuel it with emerging data.
+            </p>
+            <div class="figure-c">
+              <img class="figure-image img-fluid" src="fig1.png" alt="Joint decomposition of scRNA-seq data in the NeMO Analytics neocortical development data collection">
+              <p class="figure-title">Joint decomposition of scRNA-seq data in the NeMO Analytics neocortical development 
+                data collection
+              </p>
+              <p class="figure-text">
+                Schematic of NeMO Analytics data resources employed in conjunction with joint decomposition 
+                and transfer learning approaches. This is an outline of specific analyses in this report as 
+                well as a description of a general approach we invite others to take on. Analysis-ready 
+                datasets and detailed sample metadata can be downloaded from NeMO Analytics and analyzed 
+                offline. Elements learned from joint decomposition can then be uploaded to NeMO Analytics 
+                to explore their dynamics across the broad data collection. In this flow, the offline 
+                analysis could be any exploratory technique applied to mutli-omics data matrices that 
+                produces gene signatures in the form of simple lists or quantitative loadings, e.g. PCA, 
+                clustering, or differential expression analysis.
+              </p>
+            </div>
+            <h2>Exploring data collections and gene signatures with projection analysis</h2>
+            <p>The central notion behind our approach is to:</p>
+            <ol>
+              <li>
+                Create a comprehensive compendium of transcriptomic datasets focused on neocortical 
+                development: "<a href="#approach1">Transcriptomic data collections</a>" below. And:
+              </li>
+              <li>
+                Apply diverse matrix decomposition approaches (SJD) to define robust transcriptomic 
+                dynamics that are shared across carefully selected datasets: "<a href="#approach2">Gene signatures</a>" below. Followed by:
+              </li>
+              <li>
+                Molecular dissection of the broad transcriptomic data collections (1) by projection into 
+                gene signatures (2): Table of ”<a href="#approach3">Projection links</a>“ below.
+              </li>
+            </ol>
+            
+            <hr />
+
+            <h3><a name="approach1"></a>1. Transcriptomic data collections (profiles) focused on the neocortex in NeMO Analytics</h3>
+            <div id="data-collections-c">
+              <p><strong>Figure 1:</strong> scRNA-seq in mouse, macaque and human mid-gestational neocortex</p>
+              <p><strong>Figure 2:</strong> Bulk, single-cell and spatial transcriptomic data in mouse, macaque and human mid-gestational neocortex</p>
+              <p><strong>NeocortexDevoHsInVivo:</strong> in vivo data from the developing human neocortex</p>
+              <p><strong>NeocortexDevoHsInVitro:</strong> cerebral organoids neural differentiation in human stem cell models of the neocortex </p>
+              <p><strong>NeocortexDevoMmInVivo:</strong> in vivo data from the developing mouse neocortex</p>
+              <p><strong>NeocortexDevoNHPInVivo:</strong> in vivo data from the developing macaque, marmoset, and chimpanzee neocortex</p>
+              <p><strong>NeocortexEvoDevo:</strong> selected subset of in vivo datasets from mouse, macaque and human developing neocortex</p>
+              <p><strong>AdultNeoctxLayers:</strong> in vivo data from the mature human neocortex and spatial transcriptomics across species</p>
+              <p><strong>MammalianEmbryo:</strong> mammalian embryo development and the emergence of the neural lineage and telencephalon</p>
+            </div>
+
+            <h3><a name="approach2"></a>2. Gene signatures derived from joint matrix decomposition of neocortical data</h3>
+            <div id="gene-signatures-c">
+              <p><strong>MammCtxDev.jNMF.p7:</strong> Seven patterns defining conserved transcriptomic dynamics across scRNA-seq from mouse, macaque, and human neocortical neurogenesis (Figures 1 & 2, Sonthalia et al, where p5=RG/cycling, p4=IPC, p7=nascent neuron, p2=maturing neuron).</p>
+              <p><strong>MammCtxDev.jNMF.p40:</strong> Forty patterns defining conserved transcriptomic dynamics across scRNA-seq from mouse, macaque, and human neocortical neurogenesis (Figure 3, Sonthalia et al, where p27=oRG).</p>
+              <p><strong>HsCtxLayer.jNMF.p20:</strong> Twenty patterns defining shared transcriptomic signatures in snRNA-seq from adult human neocortical neurons from layer-specific microdissections across 8 neocortical regions and 5 donors (Figures 4 & 5, Sonthalia et al, where p1=subplate/L6b, p9=L6CT, p15=L6IT, p13=L5/6NP, p6=L5IT, p19=L4primate-specific, p4=L4conserved, p17=L2/3, p7=L2).</p>
+              <p><strong>CellCycleGenes:</strong> Two groups of genes - those expressed specifically in S- or G2M-phase of the cell cycle (from Seurat).</p>
+              <p><strong>CtxDiseaseGeneLists:</strong> Many neocortical disease risk gene lists (from MatoBlanco et al 2024).</p>
+            </div>
+
+            <h3><a name="approach3"></a>3. Projection links to explore gene signatures across the NeMO Analytics data collections</h3>
+            <div id="projection-links-c">
+              <p>
+                Each cell in the table links to the projection of 1 of the NeMO analytics data collections described 
+                above into 1 of the gene signatures described above, allowing the exploration of each of the gene 
+                signatures as it change across the millions of samples in the NeMO Analytics neocortical data 
+                collections (the first column of links can be used to view the expression of individual genes across 
+                the data collections). Red highlighted cells indicate specific [data collection :: gene signature] 
+                combinations of particular interest.
+              </p>
+              <table>
+                <thead>
+                  <tr>
+                    <th class="filled">&nbsp;</th>
+                    <th class="filled filled-with-text vertical">Gene signatures</th>
+                    <th class="vertical filled-with-text-light">Individual gene links</th>
+                    <th class="vertical filled-with-text-light">MammCtxDev.jNMF.p7</th>
+                    <th class="vertical filled-with-text-light">MammCtxDev.jNMF.p40</th>
+                    <th class="vertical filled-with-text-light">HsCtxLayer.jNMF.p20</th>
+                    <th class="vertical filled-with-text-light">CellCycleGenes</th>
+                    <th class="vertical filled-with-text-light">CtxDiseaseGeneLists</th>
+                  </tr>
+                  <tr>
+                    <th class="filled filled-with-text">Transcriptome data collections</th>
+                    <th class="filled">&nbsp;</th>
+                    <th class="filled">&nbsp;</th>
+                    <th class="filled">&nbsp;</th>
+                    <th class="filled">&nbsp;</th>
+                    <th class="filled">&nbsp;</th>
+                    <th class="filled">&nbsp;</th>
+                    <th class="filled">&nbsp;</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Figure 1</td>
+                    <td class="filled">&nbsp;</td>
+                    <td><a href="https://nemoanalytics.org/p?l=Sonthalia2024fig1&g=EOMES" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=Sonthalia2024fig1&c=MammCtxDev.jNMF.p7&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=Sonthalia2024fig1&c=MammCtxDev.jNMF.p40&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=Sonthalia2024fig1&c=HsCtxLayer.jNMF.p20&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=Sonthalia2024fig1&c=CellCycleGenes.Seurat&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=Sonthalia2024fig1&c=Blanco2024_CtxDiseaseGeneLists&algo=pca" target="_blank">LINK</a></td>
+                  </tr>
+                  <tr>
+                    <td>Figure 2</td>
+                    <td class="filled">&nbsp;</td>
+                    <td><a href="https://nemoanalytics.org/p?l=Sonthalia2024fig2&g=EOMES" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=Sonthalia2024fig2&c=MammCtxDev.jNMF.p7&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=Sonthalia2024fig2&c=MammCtxDev.jNMF.p40&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=Sonthalia2024fig2&c=HsCtxLayer.jNMF.p20&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=Sonthalia2024fig2&c=CellCycleGenes.Seurat&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=Sonthalia2024fig2&c=Blanco2024_CtxDiseaseGeneLists&algo=pca" target="_blank">LINK</a></td>
+                  </tr>
+                  <tr>
+                    <td>NeocortexDevoHsInVivo</td>
+                    <td class="filled">&nbsp;</td>
+                    <td><a href="https://nemoanalytics.org/p?l=NeocortexDevoHsInVivo&g=EOMES" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexDevoHsInVivo&c=MammCtxDev.jNMF.p7&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexDevoHsInVivo&c=MammCtxDev.jNMF.p40&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexDevoHsInVivo&c=HsCtxLayer.jNMF.p20&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexDevoHsInVivo&c=CellCycleGenes.Seurat&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexDevoHsInVivo&c=Blanco2024_CtxDiseaseGeneLists&algo=pca" target="_blank">LINK</a></td>
+                  <tr>
+                    <td>NeocortexDevoHsInVitro</td>
+                    <td class="filled">&nbsp;</td>
+                    <td><a href="https://nemoanalytics.org/p?l=NeocortexDevoHsInVitro&g=EOMES" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexDevoHsInVitro&c=MammCtxDev.jNMF.p7&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexDevoHsInVitro&c=MammCtxDev.jNMF.p40&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexDevoHsInVitro&c=HsCtxLayer.jNMF.p20&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexDevoHsInVitro&c=CellCycleGenes.Seurat&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexDevoHsInVitro&c=Blanco2024_CtxDiseaseGeneLists&algo=pca" target="_blank">LINK</a></td>
+                  </tr>
+                  <tr>
+                    <td>NeocortexDevoMmInVivo</td>
+                    <td class="filled">&nbsp;</td>
+                    <td><a href="https://nemoanalytics.org/p?l=NeocortexDevoMmInVivo&g=EOMES" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexDevoMmInVivo&c=MammCtxDev.jNMF.p7&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexDevoMmInVivo&c=MammCtxDev.jNMF.p40&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexDevoMmInVivo&c=HsCtxLayer.jNMF.p20&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexDevoMmInVivo&c=CellCycleGenes.Seurat&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexDevoMmInVivo&c=Blanco2024_CtxDiseaseGeneLists&algo=pca" target="_blank">LINK</a></td>
+                  </tr>
+                  <tr>
+                    <td>NeocortexDevoNHPInVivo</td>
+                    <td class="filled">&nbsp;</td>
+                    <td><a href="https://nemoanalytics.org/p?l=NeocortexDevoNHPInVivo&g=EOMES" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexDevoNHPInVivo&c=MammCtxDev.jNMF.p7&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexDevoNHPInVivo&c=MammCtxDev.jNMF.p40&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexDevoNHPInVivo&c=HsCtxLayer.jNMF.p20&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexDevoNHPInVivo&c=CellCycleGenes.Seurat&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexDevoNHPInVivo&c=Blanco2024_CtxDiseaseGeneLists&algo=pca" target="_blank">LINK</a></td>
+                  </tr>
+                  <tr>
+                    <td>NeocortexEvoDevo</td>
+                    <td class="filled">&nbsp;</td>
+                    <td><a href="https://nemoanalytics.org/p?l=NeocortexEvoDevo&g=EOMES" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexEvoDevo&c=MammCtxDev.jNMF.p7&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexEvoDevo&c=MammCtxDev.jNMF.p40&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexEvoDevo&c=HsCtxLayer.jNMF.p20&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexEvoDevo&c=CellCycleGenes.Seurat&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NeocortexEvoDevo&c=Blanco2024_CtxDiseaseGeneLists&algo=pca" target="_blank">LINK</a></td>
+                  </tr>
+                  <tr>
+                    <td>AdultNeoctxLayers</td>
+                    <td class="filled">&nbsp;</td>
+                    <td><a href="https://nemoanalytics.org/p?l=AdultNeoctxLayers&g=PCP4" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=AdultNeoctxLayers&c=MammCtxDev.jNMF.p7&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=AdultNeoctxLayers&c=MammCtxDev.jNMF.p40&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=AdultNeoctxLayers&c=HsCtxLayer.jNMF.p20&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=AdultNeoctxLayers&c=CellCycleGenes.Seurat&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=AdultNeoctxLayers&c=Blanco2024_CtxDiseaseGeneLists&algo=pca" target="_blank">LINK</a></td>
+                  </tr>
+                  <tr>
+                    <td>MammalianEmbryo</td>
+                    <td class="filled">&nbsp;</td>
+                    <td><a href="https://nemoanalytics.org/p?l=MammalianEmbryo&g=SOX2" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=MammalianEmbryo&c=MammCtxDev.jNMF.p7&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=MammalianEmbryo&c=MammCtxDev.jNMF.p40&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=MammalianEmbryo&c=HsCtxLayer.jNMF.p20&algo=nmf" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=MammalianEmbryo&c=CellCycleGenes.Seurat&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=MammalianEmbryo&c=Blanco2024_CtxDiseaseGeneLists&algo=pca" target="_blank">LINK</a></td>
+                  </tr>
+                </tbody>
+              </table>
+              <p>
+                We invite researchers to add their own datasets and gene signatures to this environment to 
+                explore their own data, ideas & hypotheses and to expand the discovery potential of this 
+                shared community research resource:
+              </p>
+              <ul id="utility-links">
+                <li><a href="/upload_dataset.html">Data uploading</a></li>
+                <li><a href="/gene_list_manager.html">Gene cart uploading</a></li>
+                <li><a href="https://www.carlocolantuoni.org/articles/neocortical-development">Colantuoni Collaborative - Neocortical Development</a></li>
+              </ul>
+            </div>
+
+          </section><!-- end #content-c -->
+        </section> <!-- end #main-c -->
+      </div>
+      <footer>
+        <div>
+          <!-- content here TO BE inserted via common.js -->
+        </div>
+      </footer>
+
+      <script src="../../js/vendor/js.cookie.js"></script>
+
+      <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+      <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+      <script>document.write('<script src="../../js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script>document.write('<script src="../../js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
+      <!-- Page-specific JS file here -->
+      <script src="index.js"></script>
+    </body>
+</html>

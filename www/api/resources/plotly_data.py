@@ -1,97 +1,20 @@
 import copy
 import json
 import numbers
-import os
 import re
 import sys
-from pathlib import Path
 
 import geardb
 import pandas as pd
 import plotly.express.colors as pxc
 from flask import request
 from flask_restful import Resource
-
-from gear.plotting import PlotError, generate_plot, plotly_color_map
 from plotly.utils import PlotlyJSONEncoder
 
+from gear.plotting import PlotError, generate_plot, plotly_color_map
+from .common import create_projection_adata, order_by_time_point
+
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
-
-TWO_LEVELS_UP = 2
-abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
-PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
-
-def create_projection_adata(dataset_adata, dataset_id, projection_id):
-    # Create AnnData object out of readable CSV file
-    # ? Does it make sense to put this in the geardb/Analysis class?
-    import scanpy as sc
-    projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
-    projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
-    if projection_adata_path.is_file():
-        return sc.read_h5ad(projection_adata_path)  # , backed="r")
-
-    projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
-    try:
-        projection_adata = sc.read_csv(projection_csv_path)
-    except Exception as e:
-        print(f"{projection_csv_path} - {str(e)}", file=sys.stderr)
-        # Encountered edge cases were sample indexes had commas in them which
-        # breaks scanpy's read_csv feature (since they split on comma first)
-        import tempfile
-        df = pd.read_csv(projection_csv_path, index_col=0, quotechar='"')
-        df.index = df.index.astype(str).str.replace(",", "/")
-        with tempfile.NamedTemporaryFile() as fp:
-            df.to_csv(fp)
-            try:
-                projection_adata = sc.read_csv(fp.name)
-            except Exception as e:
-                print(f"Temp file {fp.name} - {str(e)}", file=sys.stderr)
-                raise PlotError("Could not create projection AnnData object from CSV.")
-    projection_adata.obs = dataset_adata.obs
-    # Close dataset adata so that we do not have a stale opened object
-    if dataset_adata.isbacked:
-        dataset_adata.file.close()
-    projection_adata.var["gene_symbol"] = projection_adata.var_names
-    # Associate with a filename to ensure AnnData is read in "backed" mode
-    projection_adata.filename = projection_adata_path
-    return projection_adata
-
-def get_analysis(analysis, dataset_id, session_id, analysis_owner_id):
-    """Return analysis object based on various factors."""
-    # If an analysis is posted we want to read from its h5ad
-    if analysis:
-        ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
-                                session_id=session_id, user_id=analysis_owner_id)
-
-        if 'type' in analysis:
-            ana.type = analysis['type']
-        else:
-            user = geardb.get_user_from_session_id(session_id)
-            ana.discover_type(current_user_id=user.id)
-    else:
-        ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
-        h5_path = ds.get_file_path()
-
-        # Let's not fail if the file isn't there
-        if not os.path.exists(h5_path):
-            raise PlotError("No h5 file found for this dataset")
-        ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
-    return ana
-
-def order_by_time_point(obs_df):
-    """Order observations by time point column if it exists."""
-    # check if time point order is intially provided in h5ad
-    time_point_order = obs_df.get('time_point_order')
-    if (time_point_order is not None and 'time_point' in obs_df.columns):
-        sorted_df = obs_df.drop_duplicates().sort_values(by='time_point_order')
-        # Safety check. Make sure time point is categorical before
-        # calling .cat
-        obs_df['time_point'] = pd.Categorical(obs_df['time_point'])
-        col = obs_df['time_point'].cat
-        obs_df['time_point'] = col.reorder_categories(
-            sorted_df.time_point.drop_duplicates(), ordered=True)
-        obs_df = obs_df.drop(['time_point_order'], axis=1)
-    return obs_df
 
 class PlotlyData(Resource):
     """Resource for retrieving data from h5ad to be used to draw charts on UI.
@@ -138,7 +61,6 @@ class PlotlyData(Resource):
         facet_col = req.get('facet_col')
         order = req.get('order', {})
         analysis = req.get('analysis', None)
-        analysis_owner_id = req.get('analysis_owner_id', None)
         size_by_group = req.get('size_by_group')
         markersize = req.get('marker_size', 3)  # 3 is default in lib/gear/plotting.py
         jitter = req.get('jitter', False)
@@ -160,6 +82,7 @@ class PlotlyData(Resource):
             "success": None,
             "message": None,
             'gene_symbol': gene_symbol,
+            "mapped_gene_symbol": None,
             'plot_json': None,
             "x_axis": x_axis,
             "y_axis": y_axis,
@@ -195,13 +118,32 @@ class PlotlyData(Resource):
             return return_dict
 
         try:
-            ana = get_analysis(analysis, dataset_id, session_id, analysis_owner_id)
-        except PlotError as pe:
+            ana = geardb.get_analysis(analysis, dataset_id, session_id)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
             return_dict["success"] = -1
-            return_dict["message"] = str(pe)
+            return_dict["message"] = "Could not retrieve analysis."
             return return_dict
 
-        adata = ana.get_adata(backed=True)
+        try:
+            adata = ana.get_adata(backed=True)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return_dict["success"] = -1
+            return_dict["message"] = "Could not retrieve AnnData."
+            return return_dict
+
+        if projection_id:
+            try:
+                adata = create_projection_adata(adata, dataset_id, projection_id)
+            except PlotError as pe:
+                return {
+                    'success': -1,
+                    'message': str(pe),
+                }
+
         adata.obs = order_by_time_point(adata.obs)
 
         # Reorder the categorical values in the observation dataframe
@@ -224,35 +166,38 @@ class PlotlyData(Resource):
         if 'replicate' in columns:
             columns.remove('replicate')
 
-        if projection_id:
-            try:
-                adata = create_projection_adata(adata, dataset_id, projection_id)
-            except PlotError as pe:
-                return {
-                    'success': -1,
-                    'message': str(pe),
-                }
 
         gene_symbols = (gene_symbol,)
 
-        if 'gene_symbol' in adata.var.columns:
-            gene_filter = adata.var.gene_symbol.isin(gene_symbols)
-            if not gene_filter.any():
-                return_dict["success"] = -1
-                return_dict["message"] = 'Gene not found in dataset'
-                return return_dict
-        else:
+        if 'gene_symbol' not in adata.var.columns:
             return_dict["success"] = -1
-            return_dict["message"] = 'Missing gene_symbol in adata.var'
+            return_dict["message"] = "The h5ad is missing the gene_symbol column."
             return return_dict
 
         # Filter genes and slice the adata to get a dataframe
         # with expression and its observation metadata
-        selected = adata[:, gene_filter].to_memory()
+        gene_filter = adata.var.gene_symbol.isin(gene_symbols)
+        if not gene_filter.any():
+            return_dict["success"] = -1
+            return_dict["message"] = "The searched gene symbol could not be found in the dataset."
+            return return_dict
+
+        try:
+            selected = adata[:, gene_filter].to_memory()
+        except:
+            # The "try" may fail for projections as it is already in memory
+            selected = adata[:, gene_filter]
 
         # Filter by obs filters
         if filters:
             for col, values in filters.items():
+                # if there is an "NA" value in the filters but no "NA" in the dataframe
+                # check if it is a missing value, and if so, impute it
+                if "NA" in values and "NA" not in selected.obs[col].cat.categories:
+                    values.remove("NA")
+                    selected.obs[col].cat.add_categories("NA")
+                    selected.obs[col].fillna("NA", inplace=True)
+
                 selected_filter = selected.obs[col].isin(values)
                 selected = selected[selected_filter, :]
 
@@ -270,19 +215,26 @@ class PlotlyData(Resource):
         if adata.isbacked:
             adata.file.close()
 
-        df = selected.to_df()
-
         success = 1
         message = ""
-        if len(df.columns) > 1:
+
+        # If there are multiple rows with the same gene symbol, we will only use the first one
+        # But throw a warning message
+        if len(selected.var) > 1:
             success = 2
             message = "WARNING: Multiple Ensemble IDs found for gene symbol '{}'.  Using the first stored Ensembl ID.".format(gene_symbol)
-            df = df.iloc[:,[0]] # Note, put the '0' in a list to return a DataFrame.  Not having in list returns DataSeries instead
+            selected = selected[:, 0]
 
-        df2 = pd.concat([df,selected.obs], axis=1)
-        df = df2.rename(columns={df.columns[0]: "raw_value"})
+        # Rename the single selected.var index label to "raw_value"
+        # This resolves https://github.com/IGS/gEAR/issues/878 where the gene_symbol index may be the same as a observation column (i.e. projections)
+        selected.var.index = pd.Index(["raw_value"])
 
-        print()
+        df = selected.to_df()
+        df = pd.concat([df,selected.obs], axis=1)
+
+        # fill any missing adata.obs values with "NA"
+        # The below line gives the error - TypeError: Cannot setitem on a Categorical with a new category (NA), set the categories first
+        #df = df.fillna("NA")
 
         # Valid analysis column names from api/resources/h5ad.py
         analysis_tsne_columns = ['X_tsne_1', 'X_tsne_2']
@@ -321,6 +273,14 @@ class PlotlyData(Resource):
                 message =  "WARNING: Color map has values not in the dataframe column '{}': {}\n".format(color_name, diff)
                 message += "Will set color map key values to the unique Categorical values in the dataframe column."
                 print(message, file=sys.stderr)
+                # If any element in diff is nan and color_map contains a valid missing value key like "NA", change the value in the dataframe to match the color_map key
+                for key in list(diff):
+                    if pd.isna(key) and "NA" in color_map.keys():
+                        df[color_name] = df[color_name].replace({key: "NA"})
+                        col_values.remove(key)  # Remove the nan value from the set
+                        col_values = col_values.union({"NA"})
+                        break
+
                 # Sort both the colormap and dataframe column alphabetically
                 sorted_column_values = sorted(col_values)
                 updated_color_map = {}
@@ -408,6 +368,8 @@ class PlotlyData(Resource):
             y_title = y_axis
             if y_axis == "raw_value":
                 y_title = "expression of {}".format(gene_symbol)
+                if projection_id is not None:
+                    y_title = "relative " + y_title
 
         if plot_type == "contour" and not z_axis:
             z_axis = "raw_value"
@@ -442,6 +404,7 @@ class PlotlyData(Resource):
                 x_title=x_title,
                 y_title=y_title,
                 vlines=vlines,
+                is_projection=projection_id is not None,
                 **kwargs
             )
         except PlotError as pe:
@@ -449,6 +412,9 @@ class PlotlyData(Resource):
             return_dict["message"] = str(pe)
             return return_dict
         except Exception as e:
+            # print stacktrace to stderr
+            import traceback
+            traceback.print_exc()
             return_dict["success"] = -1
             return_dict["message"] = "Encountered error: {}".format(str(e))
             return return_dict

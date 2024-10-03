@@ -41,7 +41,8 @@ def main():
 
     adata = ana.get_adata()
 
-    # primary or public analyses won't be after this
+    # primary or public analysis should not be overwritten
+    # this will alter the analysis object save destination
     if ana.type == 'primary' or ana.type == 'public':
         ana.type = 'user_unsaved'
 
@@ -71,6 +72,7 @@ def main():
         adata.obs['n_counts'] = np.sum(adata.X, axis=1)
 
     os.chdir(os.path.dirname(dest_datafile_path))
+
     axs = sc.pl.violin(adata, ['n_genes', 'n_counts', 'percent_mito'],
                        jitter=0.4, multi_panel=True, save="_qc_by_mito.png")
 

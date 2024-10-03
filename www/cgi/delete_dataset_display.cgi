@@ -13,18 +13,28 @@ def main():
 
     form = cgi.FieldStorage()
     display_id = form.getvalue('id')
-    user_id = int(form.getvalue('user_id'))
+    session_id = form.getvalue('session_id')
+
+    # Exit if no display_id or session_id
+    if not display_id or not session_id:
+        # log this
+        print("No display_id or session_id", file=sys.stderr)
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(dict(success=False)))
+        return
 
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
 
     display = geardb.get_display_by_id(display_id)
 
+    user = geardb.get_user_from_session_id(session_id=session_id)
+
     # If no display found for this ID, treat as if it were already deleted.
     if not display:
         result = dict(success=True)
-
-    elif user_id == display['user_id']:
+    elif user.id == display['user_id']:
         query = "DELETE FROM dataset_display where id = %s"
         cursor.execute(query, (display_id,))
         cnx.commit()

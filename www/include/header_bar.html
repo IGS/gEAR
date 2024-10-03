@@ -1,7 +1,7 @@
-          <section id="header_bar">
+          <section id="header-bar">
             <nav class="navbar" role="navigation" aria-label="main navigation">
             <div class="navbar-brand">
-              <a class="navbar-item" href="https://bulma.io">
+              <a id="page-header-label" class="navbar-item">
                 My Workspace
               </a>
               <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarBasicExample">
@@ -17,24 +17,22 @@
               <div class="navbar-end">
                 <div id="navbar-login-controls" class="navbar-item is-hidden">
                   <div class="navbar-item has-dropdown is-hoverable logged-in">
-                    <a class="navbar-link">
-                      Joshua Orvis
-                    </a>
+                    <a id="current-user-name" class="navbar-link"></a>
                     <div class="navbar-dropdown is-right">
-                      <a class="navbar-item">
+                      <a class="navbar-item" href="./user_profile.html">
                         <span class="icon-text">
                           <span class="icon"><i class="mdi mdi-account"></i></span>
                           <span>User profile</span>
                         </span>
                       </a>
-                      <a class="navbar-item">
+                      <a id="submit-logout" class="navbar-item">
                         <span class="icon-text">
                           <span class="icon"><i class="mdi mdi-logout-variant"></i></span>
                           <span>Sign out</span>
                         </span>
                       </a>
                       <hr class="navbar-divider">
-                      <a class="navbar-item">
+                      <a class="navbar-item" href="./contact.html">
                         <span class="icon-text">
                           <span class="icon"><i class="mdi mdi-bug"></i></span>
                           <span>Report an issue</span>
@@ -42,15 +40,94 @@
                       </a>
                     </div><!-- end .navbar-dropdown -->
                   </div>
-                  
-                  <!-- toggle display depending on whether user is logged in -->
-                  <div class="buttons not-logged-in">
-                    <a class="button is-light">
-                      Sign in
+
+                  <div class="navbar-item not-logged-in has-dropdown is-hoverable">
+                    <a class="navbar-link">
+                      Log in
                     </a>
+
+                    <div id="navbar-login" class="navbar-dropdown is-right pl-3 pr-3">
+                      <div class="navbar-item">
+                        <p>
+                          Don't have an account yet?</br>
+                          <a href="./create_account.html">Sign up</a>
+                        </p>
+                      </div>
+                      <hr class="dropdown-divider">
+                      <div class="navbar-item">
+                        <!-- Add your login and password form here -->
+                        <form id="login-form">
+                          <div class="field">
+                            <label class="label">E-mail address</label>
+                            <div class="control">
+                              <input id="user-email" name="user-email" class="input is-small" type="text" placeholder="Your e-mail">
+                            </div>
+                            <p id="user-email-help" class="help has-text-danger-dark is-hidden">E-mail not found</p>
+                          </div>
+                          <div class="field">
+                            <label class="label">Password</label>
+                            <div class="control">
+                              <input id="user-password" name="user-password" class="input is-small" type="password" placeholder="Your password">
+                            </div>
+                            <p id="user-password-help" class="help has-text-danger-dark is-hidden">Incorrect password</p>
+                          </div>
+                          <div class="control">
+                            <button id="submit-login" class="button is-primary is-small is-fullwidth">Log in</button>
+                          </div>
+                        </form>
+                      </div>
+                      <div class="navbar-item">
+                        <p>
+                          <a href="/forgot_password.html">Forgot password?</a>
+                        </p>
+                      </div>
+                    </div>
                   </div>
+
                 </div>
               </div>
             </div>
             </nav>
-          </section> <!-- end #header_bar -->
+          </section> <!-- end #header-bar -->
+
+          <!-- Temporary modal for warnings beta testing users -->
+          <div id="beta-site-modal" class="modal">
+            <div class="modal-background"></div>
+            <div class="modal-content">
+              <h2>Thank you for testing our beta release of gEAR 2.0!</h2>
+              <p>
+                We are still working on the final version of the site. Please be aware that some features
+                may not work as expected, though we've tried to put placeholders where we know things aren't
+                yet finished.  If you encounter any issues, please report them to us using the
+                "Feedback" link in the user menu on the left.
+              </p>
+              <h3>
+                <span class="icon-text">
+                  <span class="icon pr-1"><i class="mdi mdi-24px mdi-alert"></i></span>
+                  <span>Important!</span>
+                  <span class="icon pl-1"><i class="mdi mdi-24px mdi-alert"></i></span>
+                </span>
+              </h3>
+              <p>
+                This page is for testing and feedback. You are free to make changes, add data, perform analyses,
+                etc. but <u>changes will not be saved permanently</u> while in beta mode.
+              </p>
+              <div class="buttons">
+                <button id="beta-modal-agree" class="button is-primary is-rounded is-fullwidth">
+                  <span class="icon">
+                    <i class="mdi mdi-24px mdi-beta"></i>
+                  </span>
+                  <span class="pl-3">Got it, changes won't be saved. Let's go.</span>
+                </button>
+                <button id="beta-modal-go-to-gear-v1" class="button is-secondary is-rounded is-fullwidth">
+                  <span class="icon">
+                    <i class="mdi mdi-24px mdi-home-outline"></i>
+                  </span>
+                  <span class="pl-3">
+                    <a href="https://umgear.org">Go to normal gEAR (v1) instead</a>
+                  </span>
+                </button>
+              </div>
+            </div>
+            <button class="modal-close is-large" aria-label="close"></button>
+          </div>

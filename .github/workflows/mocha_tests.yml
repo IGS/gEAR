@@ -1,0 +1,51 @@
+# Runs mocha tests
+# Tests are built to run on 5 browser modes (chrome, firefox, webkit/safari, iPhone, Pixel)
+# Normally, each test is built to loop through all 5 modes, but if hooks fail, the test will stop
+
+# TODO: Set user/pass secret to send to mocha tests
+
+name: Mocha Tests
+
+defaults:
+  run:
+    working-directory: ./tests
+
+on:
+  push:
+    branches: [ main] #, ui-v2 ]
+    paths:
+      - '**/*.js'
+      - '**/*.html'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '**/*.js'
+      - '**/*.html'
+
+jobs:
+  test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit, iPhone, pixel]
+      fail-fast: false
+      max-parallel: 1 # I think the tests are affected by running in parallel
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-node@v3
+      with:
+        node-version: 20
+    - name: Install dependencies
+      run: npm ci
+    - name: Install Playwright browsers
+      run: npx playwright install && npx playwright install-deps
+    - name: Start server
+      run: npm run dev > /dev/null 2>&1 & # alias to "node server.js"
+      env:
+        PORT: 8080
+    - name: Run Mocha tests
+      run: npm test # alias to "mocha test"
+      env:
+        BROWSER: ${{ matrix.browser }}
+        #LOCAL: "true"  # if false, run on devel.umgear.org

@@ -6,7 +6,7 @@
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-        <title>gEAR template page</title>
+        <title>gEAR - Dashboard</title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta http-equiv="Pragma" content="no-cache">
@@ -19,38 +19,37 @@
         <base href="/" />
 
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
 
         <!-- Ensures we always get a new version (during our current active development cycles) -->
         <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
 
+        <!-- Any other extension here -->
+
         <!--Page-specific CSS here -->
-            <script>document.write('<link rel="stylesheet" href="css/index.v2.' + (new Date()).getTime() + '.css" />');</script>
+        <script>document.write('<link rel="stylesheet" href="css/index.' + (new Date()).getTime() + '.css" />');</script>
     </head>
     <body>
-      <div id="main_layout_c" class="columns is-fullheight">
+      <div id="main-layout-c" class="columns is-fullheight">
 
         <!--#include virtual="/include/primary_nav.html" -->
 
-        <section id="main_c" class="column pl-0">
+        <section id="main-c" class="column pl-0 pt-0">
 
           <!--#include virtual="/include/header_bar.html" -->
 
-          <section id="content_c" class="m-3">
+          <section id="content-c" class="m-3" data-nav-link="workspace">
             <!-- This is the section to be populated for new pages -->
             <h3 class="mt-4 mb-4">
               <span class="icon">
                 <i class="mdi mdi-book-outline"></i>
               </span>
               <span>Guides</span>
-              <span class="icon is-pulled-right">
-                <i class="mdi mdi-close"></i>
-              </span>
             </h3>
             <div id="guides_c" class="columns">
               <div class="column">
-                <div class="guide_element pr-3">
-                  <div><!-- without the 2nd level div here the images disappears-->
+                <div class="guide-element pr-3">
+                  <div><!-- without the 2nd level div here the images disappears -->
                     <div class="media">
                       <div class="media-left">
                         <figure class="image is-96x96">
@@ -59,17 +58,17 @@
                       </div>
                       <div class="media-content is-size-7 has-text-weight-semibold">
                         <p>
-                          Search faster using gene lists and dataset collections
+                          What's new in gEAR 2.0? Watch our video guide.
                         </p>
-                        <p class="mt-2"><a>Try now</a></p>
+                        <p class="mt-2"><a class="guide-launcher" href="https://youtu.be/guI161nTv2U" target="_blank">Watch now</a></p>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
               <div class="column">
-                <div class="guide_element pr-3">
-                  <div><!-- without the 2nd level div here the images disappears-->
+                <div class="guide-element pr-3">
+                  <div><!-- without the 2nd level div here the images disappears -->
                     <div class="media">
                       <div class="media-left">
                         <figure class="image is-96x96">
@@ -80,15 +79,15 @@
                         <p>
                           Compare two conditions within a dataset
                         </p>
-                        <p class="mt-2"><a>Try now</a></p>
+                        <p class="mt-2"><a class="guide-launcher" href="https://youtu.be/7vsldnrjETw" target="_blank">Watch now</a></p>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
               <div class="column">
-                <div class="guide_element pr-3">
-                  <div><!-- without the 2nd level div here the images disappears-->
+                <div class="guide-element pr-3">
+                  <div><!-- without the 2nd level div here the images disappears -->
                     <div class="media">
                       <div class="media-left">
                         <figure class="image is-96x96">
@@ -99,15 +98,15 @@
                         <p>
                           Create and curate your own dataset collections
                         </p>
-                        <p class="mt-2"><a>Try now</a></p>
+                        <p class="mt-2"><a class="guide-launcher" href="https://youtu.be/DItayfJsldI" target="_blank">Watch now</a></p>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
               <div class="column">
-                <div class="guide_element pr-3">
-                  <div><!-- without the 2nd level div here the images disappears-->
+                <div class="guide-element pr-3">
+                  <div><!-- without the 2nd level div here the images disappears -->
                     <div class="media">
                       <div class="media-left">
                         <figure class="image is-96x96">
@@ -118,7 +117,7 @@
                         <p>
                           Search faster using gene lists and dataset collections
                         </p>
-                        <p class="mt-2"><a>Try now</a></p>
+                        <p class="mt-2"><a class="guide-launcher" href="https://youtu.be/bKTzGKAvn7w" target="_blank">Watch now</a></p>
                       </div>
                     </div>
                   </div>
@@ -134,68 +133,71 @@
             <div class="tabs-wrapper">
               <div class="tabs">
                   <ul>
-                      <li class="is-active">
-                          <a>Explore Gene Expression</a>
+                      <li data-tab-id="gene_expression" class="is-active">
+                          <a>Gene Expression</a>
                       </li>
-                      <li>
+                      <li data-tab-id="datasets">
                           <a>Explore Datasets</a>
                       </li>
                   </ul>
               </div>
               <div class="tabs-content">
                   <ul>
-                      <li class="is-active">
+                      <li data-tab-id="gene_expression" class="is-active">
                         <!-- has-addons connects, is-grouped makes together inline-->
-                        <div class="field is-grouped">
-                          <p class="control has-icons-left has-icons-right">
-                            <input class="input" type="input" placeholder="Type here to search using specific gene symbols">
+                        <div class="field has-addons is-grouped mb-0">
+                          <div class="control has-icons-left has-icons-right mr-0">
+                            <input class="input" type="input" id="genes-manually-entered" placeholder="Type here to search using specific gene symbols"\>
                             <span class="icon is-small is-left">
                               <i class="mdi mdi-magnify"></i>
                             </span>
-                          </p>
-                          <p class="control is-vcentered">OR</p>
-                          <div class="control select">
-                            <select>
-                              <option>Quick search using Gene Lists</option>
-                              <option>With options</option>
-                            </select>
                           </div>
-                          <p class="control is-vcentered">IN</p>
-                          <div class="control select">
-                            <select>
-                              <option>Hearing</option>
-                              <option>Here is a much longer profile name to test</option>
-                            </select>
+                          <!-- div with the text 'OR' centered vertically. this is awkward -->
+                          <div class="columns">
+                            <div class="column is-1">
+                              <div class="is-vertical is-size-7 ml-2 mr-2">OR</div>
+                            </div>
                           </div>
-                          <p class="control">
-                            <button class="button">
+
+                          <!--#include virtual="/include/gene-collection-selector/gene-collection-selector.html" -->
+
+                          <div class="columns">
+                            <div class="column is-1">
+                              <div class="is-vertical is-size-7 ml-2 mr-2">IN</div>
+                            </div>
+                          </div>
+
+                          <!--#include virtual="/include/dataset-collection-selector/dataset-collection-selector.html" -->
+
+                          <div class="control">
+                            <button id="submit-expression-search" class="button is-primary ml-3">
                               <span class="icon is-small">
                                 <i class="mdi mdi-magnify"></i>
                               </span>
                             </button>
-                          </p>
+                          </div>
                         </div>
                         <div class="field is-grouped">
                           <div class="control">
                             <label class="checkbox">
-                              <input type="checkbox">
-                              Exact match
+                              <input type="checkbox" id="gene-search-exact-match" checked>
+                              Exact
                             </label>
                           </div>
                           <div class="control">
                             <label class="radio">
-                              <input type="radio" name="answer">
+                              <input type="radio" name="single-multi" id="single-multi-single" value="single" checked="checked">
                               Single-gene Display
                             </label>
                             <label class="radio">
-                              <input type="radio" name="answer">
+                              <input type="radio" name="single-multi" id="single-multi-multi" value="multi">
                               Multi-gene Display
                             </label>
                           </div>
                         </div>
                       </li>
-                      <li>
-                          <h1>Music</h1>
+                      <li data-tab-id="datasets">
+                          <h1>This tab feature coming soon!</h1>
                       </li>
                   </ul>
               </div>
@@ -215,35 +217,56 @@
                   <td>Date</td>
                 </tr>
               </thead>
-              <tbody>
+              <tbody id="user-history-table-tbody">
                 <tr>
-                  <td>&nbsp;</td>
-                  <td>Gene expression search</td>
-                  <td>"fgf8 tbx2 shtn1 nefl fam19a3" in Hearing</td>
-                  <td>Mar 3, 2023</td>
-                </tr>
-                <tr>
-                  <td>&nbsp;</td>
-                  <td>Dataset search</td>
-                  <td>"mouse" in all datasets with Bulk RNASeq type</td>
-                  <td>Feb 26, 2023</td>
-                </tr>
-                <tr>
-                  <td>&nbsp;</td>
-                  <td>Dataset opened</td>
-                  <td>scRNAseq, embryonic mouse spiral ganglion neurons, by timepoint (Sanders & Kelly 2022)</td>
-                  <td>Feb 22, 2023</td>
-                </tr>
-                <tr>
-                  <td>&nbsp;</td>
-                  <td>Saved Analysis</td>
-                  <td>5dpf, homeostatic neuromast, zebrafish, scRNAseq (Piotrowski)</td>
-                  <td>Dec 17, 2022</td>
+                  <td colspan="4">
+                    <div class="has-text-centered">
+                      <span class="icon is-large">
+                        <i class="mdi mdi-account-off mdi-48px"></i>
+                      </span>
+                      <p class="mt-2">Login to show recent activity</p>
+                    </div>
+                  </td>
                 </tr>
               </tbody>
+              <template id="user-history-row">
+                <tr>
+                  <td><button class="button is-small">
+                    <a class="url" href="">
+                      <span class="icon"><i class="mdi mdi-arrow-top-right-thick"></i></span>
+                    </a>
+                  </button></td>
+                  <td class="category is-vcentered"></td>
+                  <td class="action-label is-vcentered"></td>
+                  <td class="date is-vcentered"></td>
+                </tr>
+              </template>
+              <template id="user-history-no-entries">
+                <tr>
+                  <td colspan="4">
+                    <div class="has-text-centered">
+                      <span class="icon is-large">
+                        <i class="mdi mdi-alert-outline mdi-48px"></i>
+                      </span>
+                      <p class="mt-2">No history found. As you use the site entries will appear here</p>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+              <template id="user-history-loading">
+                <tr>
+                  <td colspan="4">
+                    <div class="has-text-centered">
+                      <span class="icon is-large">
+                        <i class="mdi mdi-loading mdi-spin mdi-48px"></i>
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              </template>
             </table>
-          </section><!-- end #content_c -->
-        </section> <!-- end #main_c -->
+          </section><!-- end #content-c -->
+        </section> <!-- end #main-c -->
       </div>
       <footer>
         <div>
@@ -255,9 +278,11 @@
       <script src="js/vendor/jsrender.20181003.min.js"></script>
 
       <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+      <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
       <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
       <!-- Page-specific JS file here -->
-
+      <script>document.write('<script src="js/index.' + (new Date()).getTime() + '.js"><\/script>');</script>
     </body>
 </html>

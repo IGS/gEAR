@@ -75,6 +75,9 @@ def main():
             print(str(e))
             sys.exit(1)
 
+    elif gc.gctype == 'labeled-list':
+        raise NotImplementedError("Not implemented")
+
     try:
         gc.save()
     except Exception as e:

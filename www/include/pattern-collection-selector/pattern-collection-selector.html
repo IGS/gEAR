@@ -1,0 +1,124 @@
+<!--
+    How to include:
+
+    Just add the following line to the page you want to include this component in (but with a proper
+    comment tag, since this is already within a comment!):
+
+      <!- - #include virtual="/include/pattern-collection-selector/pattern-collection-selector.html" - ->
+
+    This creates the following top-level variables:
+
+    - selected_patterns: The selected individal patterns, unique merge of all patterns in carts and manually entered.
+    - pattern_cart_data: The output of the apiCallsMixin.fetchpatternCartData() call, which needs to
+      happen in the login UI handler of the page.
+    - pattern_cart_patterns: An index of all pattern carts loaded and their patterns.
+    - pattern_cart_label_index: A map of pattern cart share ids to their labels.
+
+    Requirements for importing this component:
+
+    - There are no other elements on the page with ID: 'dropdown-pattern-lists'
+    - apiCallsMixin.fetchpatternCartData() must be called in the login UI handler of the page.
+
+-->
+
+<link rel="stylesheet" href="include/pattern-collection-selector/pattern-collection-selector.css" />
+<div id="dropdown-pattern-lists" class="control dropdown is-loading is-disabled mr-0">
+    <button class="button dropdown-trigger">
+      <span id="dropdown-pattern-list-selector-label">Search for a pattern</span>
+      <span class="icon is-small">
+        <i class="mdi mdi-chevron-down" aria-hidden="true"></i>
+      </span>
+    </button>
+    <div class="dropdown-menu" role="menu">
+      <div class="dropdown-content">
+        <div class="dropdown-item">
+          <div class="field">
+            <p class="control has-icons-left">
+              <input class="input" type="input" id="dropdown-pattern-list-search-input" placeholder="Search and select a Pattern">
+              <span class="icon is-small is-left">
+                <i class="mdi mdi-magnify"></i>
+              </span>
+            </p>
+          </div>
+        </div>
+        <hr class="dropdown-divider">
+        <div class="dropdown-item">
+          <div class="columns is-mobile">
+            <div class="column is-one-querter is-scrollable">
+              <h3>Saved Items</h3>
+              <div id="dropdown-content-pattern-list-category" class="ul-replacement">
+                <div class="ul-li is-clickable" data-category="favorites">
+                  Favorites
+                  <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
+                </div>
+                <div class="ul-li is-clickable" data-category="recent">
+                  Recent
+                  <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
+                </div>
+                <div class="ul-li is-clickable" data-category="saved">
+                  Saved patterns
+                  <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
+                </div>
+                <div class="ul-li is-clickable" data-category="shared">
+                  Shared patterns
+                  <span class="icon is-pulled-right"><i class="mdi mdi-18px mdi-chevron-right"></i></span>
+                </div>
+              </div>
+            </div>
+            <div class="column is-half is-scrollable">
+              <h3>Pattern Source</h3>
+              <div id="dropdown-content-pattern-lists" class="ul-replacement"></div>
+            </div>
+            <div class="column is-one-quarter is-scrollable">
+              <h3>Weights</h3>
+              <div id="dropdown-content-weights" class="ul-replacement"></div>
+            </div>
+            <template id="tmpl-pattern-list-item">
+              <div class="ul-li dropdown-pattern-list-item is-clickable columns py-0">
+                <div class="column is-4 p-1">
+                  <span class="tag is-light"></span>
+                </div>
+                <div class="column is-7 p-0">
+                  <span class="pattern-list-item-label"></span>
+                </div>
+                <span class="dropdown-pattern-list-icon column is-1 icon is-pulled-right p-0">
+                  <i class="mdi mdi-18px mdi-chevron-right dropdown-pattern-list-item-right-selector"></i>
+                </span>
+              </div>
+            </template>
+            <template id="tmpl-weight-item">
+              <div class="ul-li dropdown-weight-item is-selected is-clickable">
+                <span class="icon is-pulled-left">
+                  <i class="mdi mdi-18px mdi-check mr-2"></i>
+                </span>
+                <span class="weight-item-label"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+        <div class="dropdown-item">
+          <hr class="dropdown-divider mb-0 pb-0">
+        </div>
+        <div class="dropdown-item">
+          <div class="columns">
+            <div class="column is-10">
+              <p id="weighted-shortcut-label" class="is-size-7 is-hidden">Weight selection shortcuts</p>
+              <div class="buttons">
+                <button id="dropdown-pattern-list-clear-weights" class="button is-light is-rounded is-small is-hidden">Clear weights</button>
+                <button id="dropdown-pattern-list-top5-weights" class="button is-light is-rounded is-small is-hidden">Top 5</button>
+                <button id="dropdown-pattern-list-top10-weights" class="button is-light is-rounded is-small is-hidden">Top 10</button>
+                <button id="dropdown-pattern-list-top20-weights" class="button is-light is-rounded is-small is-hidden">Top 20</button>
+                <button id="dropdown-pattern-list-all-weights" class="button is-light is-rounded is-small is-hidden">All weights</button>
+              </div>
+
+            </div>
+            <div class="column is-2">
+              <button id="dropdown-pattern-list-proceed" class="button is-primary is-rounded is-small mb-1">Proceed</button><br />
+              <button id="dropdown-pattern-list-cancel" class="button is-secondary is-rounded is-small">Reset</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+</div>
+<script type="text/javascript" src="include/pattern-collection-selector/pattern-collection-selector.js"></script>
