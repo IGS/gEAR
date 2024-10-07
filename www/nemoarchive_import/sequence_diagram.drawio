@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="6dscw00UcyDlalNh9v6r" name="Page-1">
-        <mxGraphModel dx="764" dy="1023" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="1050" dy="826" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -162,8 +162,8 @@
                 </mxCell>
                 <mxCell id="196" value="" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;rounded=1;" parent="1" edge="1">
                     <mxGeometry width="80" relative="1" as="geometry">
-                        <mxPoint x="1024" y="530" as="sourcePoint"/>
-                        <mxPoint x="1500" y="530" as="targetPoint"/>
+                        <mxPoint x="1500" y="530" as="sourcePoint"/>
+                        <mxPoint x="1024" y="530" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="197" value="Component files copied to submission staging area on VM" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="196" vertex="1" connectable="0">
@@ -177,10 +177,10 @@
                 <mxCell id="203" value="* Basic Seurat analysis is performed up to tSNE calculations&lt;br&gt;* &quot;tsne_static&quot; plot generated and saved as default display for user" style="text;strokeColor=none;align=left;fillColor=none;html=1;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="1024" y="679" width="160" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="204" value="Optionally choose categories and genes to search/curate by" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="204" value="Optionally choose categories and genes to search/curate by" style="whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="790" y="820" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="205" value="If desired, send email to user of completion status" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="205" value="If desired, send email to user of completion status" style="whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="1024" y="760" width="120" height="60" as="geometry"/>
                 </mxCell>
             </root>
