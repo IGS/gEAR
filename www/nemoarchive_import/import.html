@@ -31,14 +31,14 @@
 </head>
 
 <body>
-    <div id="main_layout_c" class="columns is-fullheight">
+    <div id="main-layout-c" class="columns is-fullheight">
         <!--#include virtual="/include/primary_nav.html" -->
-        <section id="main_c" class="column pl-0">
+        <section id="main-c" class="column pl-0">
             <!--#include virtual="/include/header_bar.html" -->
-            <section id="content_c" class="m-3">
+            <section id="content-c" class="m-3">
                 <!-- This is the section to be populated for new pages -->
                 <header class="columns section">
-                    <div id="tool_desc_c" class="column is-3">
+                    <div id="tool-desc-c" class="column is-3">
                         <h3 class="title is-3">
                             Import NeMO Archive data
                         </h3>
@@ -46,16 +46,16 @@
                             Analytics. Basic plots are created and it is encouraged to curate additional ones based on
                             needs.</p>
                     </div>
-                    <div id="guides_outer_c" class="column is-offset-3 has-background-white-bis notification">
+                    <div id="guides-outer-c" class="column is-offset-3 has-background-white-bis notification">
                         <h3 class="mt-4 mb-4">
                             <span>GUIDES</span>
                             <span class="icon is-pulled-right delete">
                                 <i class="mdi mdi-close"></i>
                             </span>
                         </h3>
-                        <div id="guides_inner_c" class="columns">
+                        <div id="guides-inner-c" class="columns">
                             <div class="column">
-                                <div class="guide_element pr-3">
+                                <div class="guide-element pr-3">
                                     <div><!-- without the 2nd level div here the images disappears-->
                                         <div class="media">
                                             <div class="media-left">
@@ -77,20 +77,20 @@
                     </div>
                 </header>
 
-                <div id="main_content" class="container">
+                <div id="main-content" class="container">
 
                     <h3 class="title is-3">NeMO Archive Import Tool</h3>
 
-                    <h5 id="submission_title" class="subtitle is-5">
+                    <h5 id="submission-title" class="subtitle is-5">
                         <span class="icon-text">
-                            <span>Submission: <span id="submission_id"></span></span>
+                            <span>Submission: <span id="submission-id"></span></span>
                             <span class="icon has-text-info is-clickable">
                                 <i class="mdi mdi-share" aria-hidden="true"></i>
                             </span>
                         </span>
                     </h5>
 
-                    <p id="not_supported_p">There were <span id="not_supported"></span> files that could not be imported
+                    <p id="not-supported-p">There were <span id="not-supported"></span> files that could not be imported
                         because their file type is not supported.</p>
 
                     <p class="content">
@@ -102,58 +102,58 @@
                         Multigene Viewer to create more relevant curations.
                     </p>
 
-                    <div id="main_notify" class="notification is-info is-light is-hidden">
+                    <div id="main-notify" class="notification is-info is-light is-hidden">
                         <button class="delete"></button>
                         <span></span>
                     </div>
 
-                    <div id="main_alert" class="notification is-danger is-light is-hidden">
+                    <div id="main-alert" class="notification is-danger is-light is-hidden">
                         <button class="delete"></button>
                         <span></span>
                     </div>
 
 
-                    <div id="import_finish" class="is-hidden my-4">
+                    <div id="import-finish" class="is-hidden my-4">
                         <div class="columns">
                             <div class="field column">
-                                <label class="label" for="collection_name">OPTIONAL: Name collection</label>
+                                <label class="label" for="collection-name">OPTIONAL: Name collection</label>
                                 <div class="control">
-                                    <input class="input column is-half" type="text" id="collection_name"
-                                      aria-describedby="collection_help">
+                                    <input class="input column is-half" type="text" id="collection-name"
+                                      aria-describedby="collection-help">
                                 </div>
-                                <small id="collection_help" class="help">Enter a name for this collection of datasets. A
+                                <small id="collection-help" class="help">Enter a name for this collection of datasets. A
                                     permalink will be created for displaying visualizations for this collection</small>
                             </div>
                             <div class="field column">
-                                <label class="label" for="global_gene_selection">OPTIONAL: Select gene for plotting
+                                <label class="label" for="global-gene-selection">OPTIONAL: Select gene for plotting
                                     expression</label>
                                 <div class="control">
-                                    <input class="input column is-half" type="text" id="global_gene_selection"
-                                      aria-describedby="global_gene_selection_help">
+                                    <input class="input column is-half" type="text" id="global-gene-selection"
+                                      aria-describedby="global-gene-selection-help">
                                 </div>
-                                <small id="global_gene_selection_help" class="help">This gene will be searched against
+                                <small id="global-gene-selection-help" class="help">This gene will be searched against
                                     when the "Visualize Collection" button is clicked.<br>Orthology mapping between
                                     species will be attempted if necessary. Any datasets missing this gene will not
                                     plot.</small>
                             </div>
                         </div>
 
-                        <p id="partial_success" class="has-text-warning-dark is-hidden">Importing is complete, but some
+                        <p id="partial-success" class="has-text-warning-dark is-hidden">Importing is complete, but some
                             datasets did not successfully import. Click "Visualize Collection" to view the successful
                             ones</p>
-                        <p id="complete_success" class="is-hidden">Importing is complete. Click "Visualize Collection"
+                        <p id="complete-success" class="is-hidden">Importing is complete. Click "Visualize Collection"
                             to view the collection</p>
 
-                        <button id="view_datasets" class="button is-primary">Visualize Collection</button>
+                        <button id="view-datasets" class="button is-primary">Visualize Collection</button>
                     </div>
-                    <div id="email_on_success_div" class="is-hidden my-4">
+                    <div id="email-on-success-div" class="is-hidden my-4">
                         <p>If you would like, click this button, and we will email you when the datasets have finished
                             importing. We will attempt to choose the best metadata category for plotting.</p>
-                        <button id="email_button" class="button is-link">Send Email Updates</button>
+                        <button id="email-button" class="button is-link">Send Email Updates</button>
                     </div>
 
                     <div class="table-container">
-                        <table class="table is-narrow is-striped is-fullwidth" id="submission_datasets">
+                        <table class="table is-narrow is-striped is-fullwidth" id="submission-datasets">
                             <thead>
                                 <tr>
                                     <th>File name</th>

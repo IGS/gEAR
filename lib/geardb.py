@@ -3401,13 +3401,13 @@ class Submission:
     Keep track of a individual submission of multiple datasets
     """
 
-    id: str = None
-    user_id: int = None
-    layout_id: int = None
-    is_finished: int = None
-    is_restricted: int = None
-    date_added: datetime.datetime = None
-    email_updates: int = None
+    id: Optional[str] = None    # uuid
+    user_id: Optional[int] = None
+    layout_id: Optional[int] = None
+    is_finished: Optional[int] = None
+    is_restricted: Optional[int] = None
+    date_added: datetime.datetime = datetime.datetime.now()
+    email_updates: Optional[int] = None
     datasets = None
 
     def __repr__(self):
@@ -3455,6 +3455,22 @@ class Submission:
         qry = """
               DELETE FROM submission
               WHERE id = %s
+        """
+        cursor.execute(qry, (self.id,))
+
+        cursor.close()
+        conn.commit()
+
+    def remove_all_members(self):
+        """
+        Deletes all submission members from the database.
+        """
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        qry = """
+              DELETE FROM submission_member
+              WHERE submission_id = %s
         """
         cursor.execute(qry, (self.id,))
 
@@ -3534,16 +3550,16 @@ class SubmissionDataset:
     Information related to a particular dataset uploaded via one or more submission imports
     """
 
-    id: int = None
-    dataset_id: str = None
-    nemo_identifier: str = None
-    pulled_to_vm_status: int = None #  /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
-    convert_metadata_status: int = None   #  /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
-    convert_to_h5ad_status: int = None  #  /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
-    make_tsne_status: int = None  #  /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
+    id: Optional[int] = None
+    dataset_id: Optional[str] = None
+    nemo_identifier: Optional[str] = None
+    pulled_to_vm_status: str = "pending" #  /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
+    convert_metadata_status: str = "pending"   #  /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
+    convert_to_h5ad_status: str = "pending"  #  /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
+    make_tsne_status: str = "pending"  #  /*options: 'pending', 'loading', 'completed', 'canceled', 'failed',*/
     log_message: str = ""
-    is_restricted: int = None
-    dataset: Dataset = None
+    is_restricted: Optional[int] = None
+    dataset: Optional[Dataset] = None
     submissions = None
 
     def __repr__(self):

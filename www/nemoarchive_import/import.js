@@ -9,23 +9,35 @@ const status2Class = {
 }
 
 const finishElements = {
-    importFinish: document.getElementById("import_finish")
-    , partialSuccess: document.getElementById("partial_success")
-    , completeSuccess: document.getElementById("complete_success")
+    importFinish: document.getElementById("import-finish")
+    , partialSuccess: document.getElementById("partial-success")
+    , completeSuccess: document.getElementById("complete-success")
 }
 
 const POLL_TIMEOUT = 10_000; // 10 seconds
 
+/**
+ * Displays an alert message in the main alert element.
+ *
+ * @param {string} msg - The message to display in the alert.
+ * @param {boolean} [fade=false] - Whether to add a fade effect to the alert (currently not implemented).
+ */
 const alert = (msg, fade=false) => {
     // TODO: Add some fade effect
-    const alertElt = document.getElementById("main_alert");
+    const alertElt = document.getElementById("main-alert");
     const alertBody = alertElt.querySelector("span");
     alertElt.classList.remove("is-hidden");
     alertBody.textContent = msg;
 }
 
+/**
+ * Displays a notification message on the webpage.
+ *
+ * @param {string} msg - The message to display in the notification.
+ * @param {boolean} [fade=false] - Whether the notification should fade out after a short period.
+ */
 const notify = (msg, fade=false) => {
-    const notifyElt = document.getElementById("main_notify");
+    const notifyElt = document.getElementById("main-notify");
     const notifyBody = notifyElt.querySelector("span");
     notifyElt.classList.remove("is-hidden");
     notifyBody.textContent = msg;
@@ -37,6 +49,29 @@ const notify = (msg, fade=false) => {
     }
 }
 
+/**
+ * Converts a given object to FormData.
+ *
+ * @param {Object} object - The object to be converted to FormData.
+ * @returns {FormData} - The resulting FormData object.
+ *
+ * @example
+ * const data = {
+ *   name: 'John Doe',
+ *   age: 30,
+ *   details: {
+ *     occupation: 'Developer'
+ *   }
+ * };
+ * const formData = convertToFormData(data);
+ *  formData will contain:
+ *  name: 'John Doe'
+ *  age: '30'
+ *  details: '{"occupation":"Developer"}'
+ *
+ * @note When using FormData, do not set headers to application/json.
+ * @see https://stackoverflow.com/a/66611630
+ */
 const convertToFormData = (object) => {
     // Source -> https://stackoverflow.com/a/66611630
     // NOTE: When using FormData do not set headers to application/json
@@ -48,6 +83,13 @@ const convertToFormData = (object) => {
     return formData;
 }
 
+/**
+ * Updates the message cell in a table with a specified message and styling based on the level.
+ *
+ * @param {string} datasetId - The ID of the dataset, used to locate the message cell in the table.
+ * @param {string} msg - The message to be displayed in the cell.
+ * @param {string} [level] - The optional level of the message, used to apply additional styling (e.g., 'info', 'warning', 'error').
+ */
 const printTblMessage = (datasetId, msg, level) => {
     // ? Should I make this a hover element since messages may be long?
     const cell = document.getElementById(`${datasetId}-messages`);
@@ -58,48 +100,78 @@ const printTblMessage = (datasetId, msg, level) => {
     }
 }
 
-/* Add this dataset to this layout */
-const addDatasetToLayout = async (datasetId, layoutId) => {
-    const payload = {dataset_id: datasetId, layout_id: layoutId}
-    const {data} = await axios.post("./cgi/add_dataset_to_layout.cgi", convertToFormData(payload));
-    return data
-}
-
 /* Create a dataset permalink URL from the stored share ID */
+/**
+ * Generates a permalink URL for a dataset based on the provided share ID.
+ *
+ * @param {string} shareId - The unique identifier for the dataset to be shared.
+ * @returns {string} - The generated permalink URL for the dataset.
+ */
 const createDatasetPermalinkUrl = (shareId) => {
     const currentUrl = window.location.href;
     const currentPage = currentUrl.lastIndexOf("nemoarchive_import");
     return `${currentUrl.substring(0, currentPage)}p?s=${shareId}`;
 }
 
-/* Get submission ID from JSON */
+/**
+ * Extracts the name of the first entity with the entityType "file_set" from the given array.
+ *
+ * @param {Array} jd - The array of entities to search through.
+ * @returns {string} - The name of the first entity with the entityType "file_set".
+ */
 const grabSubmissionId = (jd) => {
     return jd.find(entity => entity.entityType === "file_set").name;
 };
 
-/* Get array of all "file" entityType objects */
+/**
+ * Filters and returns entities of type "file" from the provided array.
+ *
+ * @param {Array} jd - The array of entities to filter.
+ * @returns {Array} - An array of entities where the entityType is "file".
+ */
 const getFileEntities = (jd) => {
     return jd.filter(entity => entity.entityType === "file");
 }
 
-/* Get array of all "sample" entityType objects */
+/**
+ * Filters and returns entities of type "sample" from the provided array.
+ *
+ * @param {Array} jd - The array of entities to filter.
+ * @returns {Array} - An array of entities where the entityType is "sample".
+ */
 const getSampleEntities = (jd) => {
     return jd.filter(entity => entity.entityType === "sample");
 }
 
-/* Get sample attributes when passed in a sample name. Accepts a list of sample entites */
+/**
+ * Retrieves the attributes of a sample by its name from a given dataset.
+ *
+ * @param {Array} jd - The dataset, an array of objects where each object represents an entity.
+ * @param {string} name - The name of the sample whose attributes are to be retrieved.
+ * @returns {Object} The attributes of the sample with the specified name.
+ */
 const getSampleAttributesByName = (jd, name) => {
     return jd.find(entity => entity.name === name).attributes;
 }
 
-/* Generate a DocumentFragment based on an HTML template. Returns htmlCollection */
+/**
+ * Generates a DOM element from an HTML string.
+ *
+ * @param {string} html - The HTML string to convert into a DOM element.
+ * @returns {Element} The first child element of the generated content.
+ */
 const generateElements = (html) => {
     const template = document.createElement('template');
     template.innerHTML = html.trim();
     return template.content.children[0];
 }
 
-/* Get specific dataset display information */
+/**
+ * Fetches the dataset display information based on the provided display ID.
+ *
+ * @param {string} displayId - The ID of the display to fetch information for.
+ * @returns {Promise<Object>} A promise that resolves to the dataset display information.
+ */
 const getDatasetDisplay = async (displayId) => {
     const params = new URLSearchParams({"display_id": displayId});
 
@@ -107,7 +179,13 @@ const getDatasetDisplay = async (displayId) => {
     return data;
 }
 
-/* Get a saved default display for the given dataset and user */
+/**
+ * Fetches the default display ID for a given dataset.
+ *
+ * @param {string} datasetId - The ID of the dataset for which to fetch the default display.
+ * @returns {Promise<string>} - A promise that resolves to the default display ID.
+ * @throws {Error} - Throws an error if the default display ID could not be fetched.
+ */
 const getDefaultDisplay = async (datasetId) => {
     const params = new URLSearchParams({"user_id":CURRENT_USER.id, "dataset_id": datasetId});
     try {
@@ -123,7 +201,13 @@ const getDefaultDisplay = async (datasetId) => {
 
 }
 
-/* Retrieve existing submission */
+/**
+ * Fetches a submission by its ID.
+ *
+ * @param {string} submissionId - The ID of the submission to fetch.
+ * @returns {Promise<Object>} The submission data.
+ * @throws {Error} If the submission could not be fetched.
+ */
 const getSubmission = async (submissionId) => {
     // Going to attempt to get existing submission
     try {
@@ -138,7 +222,13 @@ const getSubmission = async (submissionId) => {
     }
 }
 
-/* Retrieve existing submission_dataset */
+/**
+ * Fetches the submission dataset from the given URL.
+ *
+ * @param {string} href - The URL to fetch the submission dataset from.
+ * @returns {Promise<Object>} The data from the fetched submission dataset.
+ * @throws {Error} If the fetch operation fails or the response indicates failure.
+ */
 const getSubmissionDataset = async (href) => {
     // ? Should I use submission_id and dataset_id as args instead?
     try {
@@ -184,14 +274,21 @@ const initializeNewSubmission = async (fileEntities, submissionId) => {
 
 }
 
-/* Set up the dataset row in the submission table */
+/**
+ * Initializes a dataset row in the HTML table with the provided dataset information.
+ *
+ * @param {Object} dataset - The dataset object containing necessary information.
+ * @param {string} dataset.datasetId - The unique identifier for the dataset.
+ * @param {string} dataset.shareId - The share identifier for the dataset.
+ * @param {string} dataset.identifier - The identifier string for the dataset, which includes the namespace.
+ */
 const initializeDatasetRow = (dataset) => {
-    const {dataset_id:datasetId, share_id:shareId, identifier} = dataset;
+    const {datasetId, shareId, identifier} = dataset;
     const namespace = identifier.split("nemo:")[1];
     const identifierUrl = `https://assets.nemoarchive.org/${namespace}`;
 
     const template = `
-    <tr id="dataset-${datasetId}" data-share_id="${shareId}" data-dataset_id="${datasetId}">
+    <tr id="dataset-${datasetId}" data-share-id="${shareId}" data-dataset-id="${datasetId}">
         <td>
             <div><a class="has-text-link has-text-weight-semibold" href="${identifierUrl}" target="_blank">${identifier}</a><div>
             <div id="${datasetId}-permalink" class="is-size-7"></div>
@@ -205,11 +302,18 @@ const initializeDatasetRow = (dataset) => {
 
     console.log("here");
     // Append row to table
-    const parent = document.querySelector("#submission_datasets tbody");
+    const parent = document.querySelector("#submission-datasets tbody");
     const htmlCollection = generateElements(template);
     parent.append(htmlCollection);
 }
 
+/**
+ * Checks if the import process is complete based on the given status.
+ *
+ * @param {Object} status - The status object containing the state of the import process.
+ * @param {string} status.make_tsne - The status of the make_tsne step, which can be "pending", "loading", or other states.
+ * @returns {boolean} - Returns true if the import process is complete, otherwise false.
+ */
 const isImportComplete = (status) => {
     /* Returns True if last step finished */
     // i.e. a non-runnable state. Incomplete steps are reset to "pending" when an import is attempted
@@ -217,13 +321,18 @@ const isImportComplete = (status) => {
     return true;
 }
 
-/* Populate and show number of non-supported files, if any exist */
+/**
+ * Populates the non-supported element with a value from the URL parameter 'notsupported'.
+ * If the 'notsupported' parameter is greater than 0, it displays an additional paragraph element.
+ *
+ * @function
+ */
 const populateNonSupportedElement = () => {
     const notSupported = getUrlParameter('notsupported') || 0;
-    const notSupportedEl = document.querySelector("#not_supported");
+    const notSupportedEl = document.querySelector("#not-supported");
     notSupportedEl.textContent = notSupported;
     if (parseInt(notSupported) > 0) {
-        const notSupportedP = document.querySelector("#not_supported_p");
+        const notSupportedP = document.querySelector("#not-supported-p");
         notSupportedP.style.display = "block";
     }
 }
@@ -252,15 +361,27 @@ const populateObsDropdown = async (datasetId) => {
     }
 }
 
-/* Populate submission ID in DOM */
+/**
+ * Populates the element with the ID "submission-id" with the provided submission ID.
+ *
+ * @param {string} submissionId - The submission ID to be displayed in the element.
+ */
 const populateSubmissionId = (submissionId) => {
-    const submissionEl = document.getElementById("submission_id");
+    const submissionEl = document.getElementById("submission-id");
     submissionEl.textContent = submissionId;
 }
 
-/* Retrieve existing submission or add new one. Returns datasets from submission */
+/**
+ * Processes a submission by either retrieving an existing submission or creating a new one.
+ *
+ * @param {Array} fileEntities - An array of file entities to be processed.
+ * @param {string} submissionId - The ID of the submission to be processed.
+ * @returns {Promise<Object>} - A promise that resolves to the submission data.
+ *
+ * @throws {Error} - Throws an error if the submission retrieval or creation fails.
+ */
 const processSubmission = async (fileEntities, submissionId) => {
-    const submissionElt = document.getElementById("submission_title");
+    const submissionElt = document.getElementById("submission-title");
 
     try {
         // Going to attempt to get existing submission (and resume)
@@ -274,11 +395,11 @@ const processSubmission = async (fileEntities, submissionId) => {
 
         // Prepopulate collection name if previously added
         if (data.collection_name) {
-            document.getElementById("collection_name").value = data.collection_name;
+            document.getElementById("collection-name").value = data.collection_name;
         }
         // If this is a different user viewing the submission, disable naming the layout
         if (! data.is_submitter) {
-            document.getElementById("collection_name").disabled = "disabled";
+            document.getElementById("collection-name").disabled = "disabled";
         }
 
         submissionElt.dataset.layout_share_id = data.layout_share_id; // Store layout_share_id for future retrieval
@@ -351,6 +472,13 @@ const saveNewDisplay = async (datasetId, plotConfig, plotType, label) => {
     return data.display_id;
 }
 
+/**
+ * Saves the default display for a given dataset.
+ *
+ * @param {string} datasetId - The ID of the dataset.
+ * @param {string} displayId - The ID of the display to set as default.
+ * @returns {Promise<string>} - A promise that resolves to the ID of the default display.
+ */
 const saveDefaultDisplay = async (datasetId, displayId) => {
 
     const payload = {user_id: CURRENT_USER.id, dataset_id: datasetId, display_id: displayId}
@@ -358,22 +486,43 @@ const saveDefaultDisplay = async (datasetId, displayId) => {
     return data.default_display_id;
 }
 
+/**
+ * Updates the layout name for a given submission.
+ *
+ * @param {string} submissionId - The ID of the submission to update.
+ * @param {string} collectionName - The new layout name for the submission.
+ * @returns {Promise<Object>} The response data from the server.
+ */
 const updateLayoutName = async (submissionId, collectionName) => {
     const payload = {submission_id: submissionId, layout_name: collectionName}
     const {data} = await axios.post("./cgi/nemoarchive_update_submission_layout_name.cgi", convertToFormData(payload));
     return data;
 }
 
+/**
+ * Displays a permalink for a dataset in the specified table row.
+ *
+ * @param {string} datasetId - The unique identifier of the dataset.
+ */
 const showDatasetPermalink = (datasetId) => {
     const tableRow = document.getElementById(`dataset-${datasetId}`);
     const permalinkRow = document.getElementById(`${datasetId}-permalink`);
-    const shareId = tableRow.dataset.share_id;
+    const shareId = tableRow.dataset.shareId;
     const permalinkUrl =  createDatasetPermalinkUrl(shareId);
     const template = `<a href=${permalinkUrl} target="_blank">Visualize</a>`;
     permalinkRow.innerHTML = template;
 }
 
-/* Determine the current step in the import process */
+/**
+ * Determines the current step based on the provided statuses.
+ *
+ * @param {Object} statuses - An object representing the statuses of various steps.
+ * @param {string} statuses.make_tsne - Status of the "make_tsne" step.
+ * @param {string} statuses.convert_to_h5ad - Status of the "convert_to_h5ad" step.
+ * @param {string} statuses.convert_metadata - Status of the "convert_metadata" step.
+ * @param {string} statuses.pulled_to_vm - Status of the "pulled_to_vm" step.
+ * @returns {string} - The current step, which can be "loading", "failed", "make_tsne", "convert_to_h5ad", "convert_metadata", or "pulled_to_vm".
+ */
 const getCurrentStep = (statuses) => {
     // NOTE: This is under the assumption only one status is loading or failed.
     // Is anything currently loading or failed.
@@ -391,7 +540,13 @@ const getCurrentStep = (statuses) => {
 
 }
 
-/* Update the statuses of the table */
+/**
+ * Updates the status of a dataset's progress table and progress bar.
+ *
+ * @param {string} datasetId - The unique identifier for the dataset.
+ * @param {Object} statuses - An object containing the statuses of each step.
+ * @throws {Error} If the current step is not found in the step order.
+ */
 const updateTblStatus = (datasetId, statuses) => {
     const currentStep = getCurrentStep(statuses);
     const stepOrder = ["pulled_to_vm", "convert_metadata", "convert_to_h5ad", "make_tsne"];
@@ -439,9 +594,16 @@ const updateTblStatus = (datasetId, statuses) => {
     currentStepElt.textContent = progressBarElt.value == 100 ? "Complete" : step2Name[currentStep];
 }
 
+/**
+ * Handles the submission link by generating a shareable URL with the submission ID
+ * and copying it to the clipboard. Notifies the user whether the URL was successfully
+ * copied or not.
+ *
+ * @function handleSubmissionLink
+ */
 const handleSubmissionLink = () => {
-    const submissionElt = document.getElementById("submission_title");
-    const submissionId = submissionElt.dataset.submission_id;
+    const submissionElt = document.getElementById("submission-title");
+    const submissionId = submissionElt.dataset.submissionId;
     const currentUrl = window.location.href;
     const currentPage = currentUrl.lastIndexOf("?");
     if (currentPage === -1) currentPage = currentUrl.length;    // If nemoarchive import url with no params, use whole URL
@@ -454,6 +616,12 @@ const handleSubmissionLink = () => {
     }
 }
 
+/**
+ * Redirects the user to a gene search page in a new tab.
+ *
+ * @param {string} layoutShareId - The ID of the layout share.
+ * @param {string} [gene] - The gene to search for (optional).
+ */
 const redirect_to_gene_search = (layoutShareId, gene) => {
     const gene_addition = (gene) ? `&g=${gene}` : "";
     window.open(`${window.origin}/p?l=${layoutShareId}${gene_addition}`, "_blank");
@@ -512,7 +680,16 @@ const pollSubmission = async (submissionId) => {
     setTimeout(() => {pollSubmission(submissionId)}, POLL_TIMEOUT);
 }
 
-/* Create a brand new submission from JSON contents */
+/**
+ * Asynchronously creates a new submission by fetching data from a given JSON URL,
+ * initializing the submission, and polling for updates until the import process is complete.
+ *
+ * @param {string} jsonUrl - The URL of the JSON file containing submission data.
+ * @throws Will throw an error if the user is not logged in.
+ * @throws Will throw an error if there is an issue saving the submission to the database.
+ *
+ * @returns {Promise<void>} - A promise that resolves when the submission process is complete.
+ */
 const createSubmission = async (jsonUrl) => {
     // ! For debugging, the JSON blobs in the GCP bucket have a 30 minute token limit for accessing.
     // ! Currently we are also using local test.json as the nemoarchive API specs are evolving.
@@ -529,8 +706,8 @@ const createSubmission = async (jsonUrl) => {
 
     const submissionId = await grabSubmissionId(data);
     populateSubmissionId(submissionId);
-    const submissionElt = document.getElementById("submission_title");
-    submissionElt.dataset.submission_id = submissionId;
+    const submissionElt = document.getElementById("submission-title");
+    submissionElt.dataset.submissionId = submissionId;
     submissionElt.addEventListener("click", () => handleSubmissionLink());
     populateNonSupportedElement();
 
@@ -548,7 +725,7 @@ const createSubmission = async (jsonUrl) => {
         return;
     }
 
-    const emailDiv = document.getElementById("email_on_success_div");
+    const emailDiv = document.getElementById("email-on-success-div");
     emailDiv.classList.remove("is-hidden");
 
     // Launch off the new submission import. Since we are polling for status, we do not need to block here.
@@ -567,22 +744,30 @@ const createSubmission = async (jsonUrl) => {
     return;
 }
 
-/* View a submission in "view-only" mode */
+/**
+ * Asynchronously views a submission by its parameter, updating the UI with submission details.
+ * This function does not resume the submission but checks its status.
+ *
+ * @param {string} submissionParam - The parameter identifying the submission to view.
+ * @returns {Promise<void>} - A promise that resolves when the submission has been fully processed.
+ *
+ * @throws {Error} - Throws an error if there is an issue fetching the submission datasets.
+ */
 const viewSubmission = async (submissionParam) => {
-    // This is meant purely to check a submission status, but will not resume it
-    const submissionElt = document.getElementById("submission_title");
-    submissionElt.dataset.submission_id = submissionParam;
+    // This is meant purely to check a submission status, but will not resume it (view-only mode)
+    const submissionElt = document.getElementById("submission-title");
+    submissionElt.dataset.submissionId = submissionParam;
     populateSubmissionId(submissionParam);
     try {
         const { layout_share_id: layoutShareId, collection_name: collectionName, is_submitter: isSubmitter, datasets } = await getSubmission(submissionParam);
 
         // Prepopulate collection name if previously added
         if (collectionName) {
-            document.getElementById("collection_name").value = collectionName;
+            document.getElementById("collection-name").value = collectionName;
         }
         // If this is a different user viewing the submission, disable naming the layout
         if (! isSubmitter) {
-            document.getElementById("collection_name").disabled = "disabled";
+            document.getElementById("collection-name").disabled = "disabled";
         }
 
         // Set up the rows
@@ -612,23 +797,23 @@ const viewSubmission = async (submissionParam) => {
 
 /* Create UMAPs, save as a layout, and navigate to gene expression results */
 const handleViewDatasets = async () => {
-    const submissionElt = document.getElementById("submission_title");
-    const submissionId = submissionElt.dataset.submission_id;
+    const submissionElt = document.getElementById("submission-title");
+    const submissionId = submissionElt.dataset.submissionId;
 
-    const gene = document.getElementById("global_gene_selection").value;
+    const gene = document.getElementById("global-gene-selection").value;
 
     const plotType = "tsne_static";
     const label = "nemoanalytics import default plot";
 
     // Save new layout for submisison if it does not exist
-    const collectionName = document.getElementById("collection_name").value;
+    const collectionName = document.getElementById("collection-name").value;
     if (collectionName) {
         await updateLayoutName(submissionId, collectionName)
     }
 
-    const tableRows = document.querySelectorAll("#submission_datasets tbody tr");
+    const tableRows = document.querySelectorAll("#submission-datasets tbody tr");
     await Promise.allSettled([...tableRows].map( async (row) => {
-        const datasetId = row.dataset.dataset_id;
+        const datasetId = row.dataset.datasetId;
 
         if (!(isImportComplete(datasetId))) {
             console.info(`Dataset ${datasetId} did not finish. Cannot save displays or to layout.`)
@@ -661,11 +846,20 @@ const handleViewDatasets = async () => {
     redirect_to_gene_search(submissionElt.dataset.layout_share_id, gene);
 }
 
-/* Send email when importing has finished. Some RabbitMQ stuff will happen */
+/**
+ * Handles the email button click event.
+ * Sends a request to subscribe to email updates for the submission.
+ * Notifies the user if the subscription is successful or alerts if it fails.
+ *
+ * @async
+ * @function handleEmailButton
+ * @returns {Promise<void>} A promise that resolves when the email subscription request is complete.
+ */
 const handleEmailButton = async () => {
-    const submissionElt = document.getElementById("submission_title");
-    const submissionId = submissionElt.dataset.submission_id;
+    const submissionElt = document.getElementById("submission-title");
+    const submissionId = submissionElt.dataset.submissionId;
 
+    // Send email when importing has finished. Some RabbitMQ stuff will happen
     const {data} = await axios.put(`/api/submissions/${submissionId}/email`, {
         headers: {"Content-Type": "application/json"},
         });
@@ -680,7 +874,7 @@ const handleEmailButton = async () => {
 
 }
 
-window.onload = () => {
+document.addEventListener('DOMContentLoaded', () => {
 
     // Essentially a "view-only" mode.
     const submissionParam = getUrlParameter("submission_id")
@@ -708,7 +902,7 @@ window.onload = () => {
     // Neither path above was passed.  Alert user
     alert("You accessed this page without providing an import URL or an existing submission ID.")
 
-};
+});
 
 document.getElementById("view_datasets").addEventListener("click", handleViewDatasets);
 document.getElementById("email_button").addEventListener("click", handleEmailButton);

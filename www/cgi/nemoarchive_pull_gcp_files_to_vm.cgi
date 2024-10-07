@@ -63,6 +63,9 @@ def download_blob(bucket_name, source_blob_name, destination_file_name):
 
 def pull_gcp_files_to_vm(bucket_path, dataset_id):
     s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
+    if not s_dataset:
+        raise ValueError("Submission dataset for dataset id {} not found in database".format(dataset_id))
+
     s_dataset.save_change(attribute=DB_STEP, value="loading")
 
     source_blob_name = bucket_path.rpartition(BUCKET_NAME + "/")[2] # Retrieve all after the bucket name

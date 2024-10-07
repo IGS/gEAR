@@ -1,9 +1,4 @@
-img#checking_indicator {
-    height: 30px;
-    width: 30px;
-    margin-right: 10px;
-}
-#not_supported_p {
+#not-supported-p {
     display: none;
 }
 .table-messages {
