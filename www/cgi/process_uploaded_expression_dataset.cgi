@@ -289,7 +289,19 @@ def process_mex(upload_dir):
 def process_mex_3tab(upload_dir):
     # Extract the file
     import tarfile
+    compression_format = None
     filename = os.path.join(upload_dir, f"{share_uid}.tar.gz")
+
+    if os.path.exists(filename):
+        compression_format = 'tarball'
+    else:
+        filename = os.path.join(upload_dir, f"{share_uid}.zip")
+
+        if os.path.exists(filename):
+            compression_format = 'zip'
+        else:
+            write_status(upload_dir, 'error', "No tarball or zip file found.")
+            return
 
     files_extracted = []
 
@@ -313,6 +325,26 @@ def process_mex_3tab(upload_dir):
             else:
                 files_extracted.append(entry.name)
 
+    with zipfile.ZipFile(filename) as zf:
+        for entry in zf.infolist():
+            zf.extract(entry, path=upload_dir)
+
+            # Nemo suffixes
+            nemo_suffixes = ['DataMTX.tab', 'COLmeta.tab', 'ROWmeta.tab']
+            suffix_found = None
+
+            for suffix in nemo_suffixes:
+                if entry.filename.endswith(suffix):
+                    suffix_found = suffix
+                    # Rename the file to the appropriate name
+                    os.rename(os.path.join(upload_dir, entry.filename), 
+                              os.path.join(upload_dir, suffix))
+            
+            if suffix_found is not None:
+                files_extracted.append(suffix_found)
+            else:
+                files_extracted.append(entry.filename)
+
     # Determine the dataset type
     dataset_type = tarball_content_type(files_extracted)
 
@@ -332,6 +364,8 @@ def write_status(upload_dir, status_name, message):
         f.write(json.dumps(status))
 
 def tarball_content_type(filenames):
+        print("DEBUG: filenames", file=sys.stderr, flush=True)
+        print(filenames, file=sys.stderr, flush=True)
         """
         mex:
         matrix.mtx
