@@ -36,10 +36,10 @@ MIN_DISPERSION = 0.5
 N_NEIGHBORS = 10
 N_PCS = 40
 
-PLOT_TYPE = "tsne_static"
+PLOT_TYPE = "umap_static"
 LABEL = "nemoanalytics import default plot"
 
-DB_STEP = "make_tsne_status"    # step name in database
+DB_STEP = "make_uamp_status"    # step name in database
 
 
 def get_analysis(dataset_id, user_id):
@@ -52,16 +52,20 @@ def make_default_display(dataset_id, session_id, category=None, gene=None):
     result = {'success':False}
 
     s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
+    if not s_dataset:
+        raise Exception("No dataset found for this dataset ID {0}".format(dataset_id))
     s_dataset.save_change(attribute=DB_STEP, value="loading")
 
     # Verify h5ad is in primary area
     ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
     h5_path = ds.get_file_path()
     if not Path(h5_path).exists():
-        raise "No h5 file found for this dataset"
+        raise Exception("No h5 file found for this dataset")
 
     ana = get_analysis(dataset_id, user_id)
     dest_datafile_path = ana.dataset_path()
+    if not dest_datafile_path:
+        raise Exception("Could not find a dataset path for this dataset")
     dest_dir = Path(dest_datafile_path).parent
     dest_dir.mkdir(exist_ok=True, parents=True)
 
@@ -118,12 +122,12 @@ def make_default_display(dataset_id, session_id, category=None, gene=None):
         # PCA
         sc.tl.pca(adata, svd_solver='arpack')
         analysis_json['pca']['calculated'] = True
-        # tSNE
+        # UMAP
         sc.pp.neighbors(adata, n_neighbors=N_NEIGHBORS, n_pcs=N_PCS)
-        sc.tl.tsne(adata)
+        sc.tl.umap(adata)
         analysis_json['tsne']['n_neighbors'] = N_NEIGHBORS
         analysis_json['tsne']['n_pcs'] = N_PCS
-        analysis_json['tsne']['tsne_calculated'] = True
+        analysis_json['tsne']['umap_calculated'] = True
     except Exception as e:
         s_dataset.save_change(attribute=DB_STEP, value="failed")
         s_dataset.save_change(attribute="log_message", value=str(e))
@@ -150,7 +154,7 @@ def make_default_display(dataset_id, session_id, category=None, gene=None):
     with open(analysis_json_path, 'w') as outfile:
         json.dump(analysis_json, outfile, indent=3)
 
-    # Set up tSNE plot
+    # Set up UMAP plot
 
     if category == "null":
         # Fix JS "null"
@@ -159,8 +163,8 @@ def make_default_display(dataset_id, session_id, category=None, gene=None):
     plot_config = {
         "gene_symbol":gene
         ,"colors":{}
-        ,"x_axis":"tSNE_1"  # ? Should this be "X_tsne_1"... this is bypassed when analysis is passed in anyways
-        ,"y_axis":"tSNE_2"
+        ,"x_axis":"UMAP_1"  # ? Should this be "X_umap_1"... this is bypassed when analysis is passed in anyways
+        ,"y_axis":"UMAP_2"
         ,"order":{}
         ,"colorize_legend_by":category if category else None
         ,"plot_by_group":None
@@ -194,6 +198,7 @@ def make_default_display(dataset_id, session_id, category=None, gene=None):
         post_result = requests.post("http://localhost/cgi/save_default_display.cgi", data=params, verify=False)
         post_result.raise_for_status()
         decoded_result = post_result.json()
+        decoded_result["display_id"] = display_id
         s_dataset.save_change(attribute=DB_STEP, value="completed")
 
         result["success"] = True

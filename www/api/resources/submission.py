@@ -5,16 +5,43 @@ from flask_restful import Resource, abort
 import os,sys
 import asyncio, aiohttp
 
-lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
+from pathlib import Path
+
+# Add the cgi directory to the path
+abs_path_gear = Path(__file__).resolve().parents[2]
+cgi_path = str(abs_path_gear.joinpath('cgi'))
+sys.path.append(cgi_path)
+
+lib_path = Path('..') / '..' / 'lib'
+lib_path = str(lib_path.resolve())
 sys.path.append(lib_path)
 import geardb
-
 
 # Parse gEAR config
 # https://stackoverflow.com/a/35904211/1368079
 this = sys.modules[__name__]
 from gear.serverconfig import ServerConfig
 this.servercfg = ServerConfig().parse()
+
+# Need extra stuff to import .cgi scripts due to not having the .py extensions
+from importlib.util import spec_from_loader, module_from_spec
+from importlib.machinery import SourceFileLoader
+
+# Source -> https://gist.github.com/mportesdev/afb2ec26021ccabee0f67d6f7d18be3f
+# This is used to import .cgi files
+def import_from_file(module_name, file_path):
+    loader = SourceFileLoader(module_name, file_path)
+    spec = spec_from_loader(module_name, loader)
+    module = module_from_spec(spec)
+
+    sys.modules[module_name] = module    # this step is not necessary, but it's
+                                         # probably not a bad idea to have a manually
+                                         # imported module stored in sys.modules
+    spec.loader.exec_module(module)
+    return module
+
+add_display_to_layout = import_from_file("add_display_to_layout", f"{cgi_path}/add_display_to_layout.cgi")
+
 
 def send_email(result, submission, user_email):
     """Send user an email about the completion status of their dataset imports."""
@@ -75,6 +102,14 @@ def send_email(result, submission, user_email):
     s.sendmail( sender, user_email, msg.as_string() )
     s.quit()
 
+def get_submission(submission_id, fail_on_exist=False):
+    submission = geardb.get_submission_by_id(submission_id)
+    if fail_on_exist and submission
+        abort(400, message=f"Submission already exists for this ID {submission_id}.")
+    if not submission:
+        abort(404, message=f"Submission id {submission_id} does not exist.")
+    return submission
+
 class Submission(Resource):
     """Requests to deal with a single submission"""
 
@@ -93,9 +128,7 @@ class Submission(Resource):
         session_id = request.cookies.get('gear_session_id')
         user_id = geardb.get_user_id_from_session_id(session_id)
 
-        submission = geardb.get_submission_by_id(submission_id)
-        if not submission:
-            abort(404, message=f"Submission id {submission_id} does not exist.")
+        submission = get_submission(submission_id)
 
         if user_id == submission.user_id:
             result["is_submitter"] = True
@@ -118,9 +151,7 @@ class Submission(Resource):
 
     def delete(self, submission_id):
         """Delete the existing submission from the database."""
-        submission = geardb.get_submission_by_id(submission_id)
-        if not submission:
-            abort(404, message=f"Cannot delete submission {submission_id} which does not exist.")
+        submission = get_submission(submission_id)
         submission.remove()
 
 
@@ -137,7 +168,7 @@ class Submission(Resource):
         sample_metadata = req.get("sample_metadata")
         action = req.get("action")
 
-        submission = geardb.get_submission_by_id(submission_id)
+        submission = get_submission(submission_id)
         submission.datasets = geardb.SubmissionDatasetCollection().get_by_submission_id(submission_id=submission_id)
 
         if action == "import":
@@ -163,6 +194,8 @@ class Submission(Resource):
                     # Call NeMO Archive assets API using identifier
                     try:
                         #url = f"https://nemoarchive.org/asset/derived/{identifier}"
+                        #url = f"https://assets.nemoarchive.org/file/{identifier}"  # new API
+
                         url = f"http://localhost/api/mock_identifier/{identifier}"
                         async with session.get(url
                                 , verify_ssl=False
@@ -195,8 +228,15 @@ class Submission(Resource):
                         return result
 
                 result = import_result # should have "success" = True in here
+
+                # Let's save the display to the submission layout while we are at it
+                result = add_display_to_layout.add_display_to_layout(session_id, result['share_id'], result['display_id'], 12, 1)
+                if not result["success"]:
+                    raise Exception("Write H5AD step failed")
+
                 result["filetype"] = all_metadata["dataset"]["filetype"]
                 result["dataset_id"] = dataset_id
+
                 return result
 
 
@@ -254,7 +294,7 @@ class SubmissionEmail(Resource):
         result = {"success": False, "message":""}
 
         try:
-            submission = geardb.get_submission_by_id(submission_id)
+            submission = get_submission(submission_id)
             submission.save_change(attribute="email_updates", value=1)
             result["success"] = True
         except Exception as e:
@@ -284,9 +324,7 @@ class Submissions(Resource):
         is_restricted = req.get("is_restricted")
 
 
-        submission = geardb.get_submission_by_id(submission_id)
-        if submission:
-            abort(400, message=f"Submission already exists for this ID {submission_id}.")
+        submission = get_submission(submission_id, fail_on_exist=True)
 
         try:
             conn = geardb.Connection()
@@ -309,7 +347,7 @@ class Submissions(Resource):
             conn.commit()   # So Submission transaction is saved
 
             cursor = conn.get_cursor()
-            submission = geardb.get_submission_by_id(submission_id)
+            submission = get_submission(submission_id)
             submission.save_change(attribute="layout_id", value=layout.id)
             cursor.close()
             conn.commit()

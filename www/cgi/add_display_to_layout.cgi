@@ -16,13 +16,7 @@ lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 
-def main():
-    print('Content-Type: application/json\n\n')
-
-    form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    share_id = form.getvalue('layout_share_id')
-    display_id = form.getvalue('display_id')
+def add_display_to_layout(session_id, share_id, display_id, grid_width, grid_height):
     result = { 'success': 0, 'error': '' }
 
     user = geardb.get_user_from_session_id(session_id)
@@ -30,8 +24,7 @@ def main():
 
     if layout is None:
         result['error'] = "Layout not found"
-        print(json.dumps(result))
-        return
+        return result
 
     layout.load()
 
@@ -72,8 +65,10 @@ def main():
         # get the last start_row and start_col in that row
         row_to_insert = 1
         col_to_insert = 1
-        grid_width = 6 if is_multigene else 4
-        grid_height = 1
+        if not grid_width:
+            grid_width = 6 if is_multigene else 4
+        if not grid_height:
+            grid_height = 1
 
         members_to_use = layout.multigene_members if is_multigene else layout.singlegene_members
 
@@ -94,8 +89,7 @@ def main():
 
                 start_col_grid_heights = [m.grid_height for m in members_to_use if m.start_row == row_to_insert and m.start_col == 1]
                 if len(start_col_grid_heights) > 0:
-                    grid_height = start_col_grid_heights[0]
-                    row_to_insert += grid_height
+                    row_to_insert += start_col_grid_heights[0]
 
                 col_to_insert = 1
 
@@ -110,6 +104,20 @@ def main():
         else:
             error = "Not able to add to the profile. User doesn't own it"
             result['error'] = error
+
+    return result
+
+def main():
+    print('Content-Type: application/json\n\n')
+
+    form = cgi.FieldStorage()
+    session_id = form.getvalue('session_id')
+    share_id = form.getvalue('layout_share_id')
+    display_id = form.getvalue('display_id')
+    grid_width = form.getvalue('grid_width')
+    grid_height = form.getvalue('grid_height')
+
+    result = add_display_to_layout(session_id, share_id, display_id)
 
     print(json.dumps(result))
 

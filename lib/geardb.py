@@ -1372,36 +1372,6 @@ class Layout:
         cursor.close()
         conn.close()
 
-    # TODO: Need a function to take a DatasetCollection and populate
-    #  information on it within a layout
-
-    def save_change(self, attribute=None, value=None):
-        """
-        Update a submission dataset attribute, both in the object and the relational database
-        """
-        if self.id is None:
-            raise Exception("Error: no submission id. Cannot save change.")
-        if attribute is None:
-            raise Exception("Error: no attribute given. Cannot save change.")
-
-        ## quick sanitization of attribute
-        attribute = re.sub('[^a-zA-Z0-9_]', '_', attribute)
-        setattr(self, attribute, value)
-
-        conn = Connection()
-        cursor = conn.get_cursor()
-
-        save_sql = """
-            UPDATE layout
-            SET {0} = %s
-            WHERE id = %s
-        """.format(attribute)
-        cursor.execute(save_sql, (str(value), self.id))
-
-        conn.commit()
-        cursor.close()
-        conn.close()
-
 @dataclass
 class LayoutCollection:
     # keep an index of folder IDs and their parent-most root IDs (tree walk needed here)

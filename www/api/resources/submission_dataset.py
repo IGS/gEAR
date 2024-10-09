@@ -51,7 +51,7 @@ def get_db_status(s_dataset):
                 "pulled_to_vm": s_dataset.pulled_to_vm_status
                 , "convert_metadata": s_dataset.convert_metadata_status
                 , "convert_to_h5ad": s_dataset.convert_to_h5ad_status
-                , "make_tsne": s_dataset.make_tsne_status
+                , "make_umap": s_dataset.make_umap_status
             }
 
 def add_submission_dataset(params):
@@ -73,6 +73,12 @@ def add_submission_dataset(params):
     except Exception as e:
         raise
 
+def get_submission_dataset(dataset_id) -> geardb.SubmissionDataset:
+    s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
+    if not s_dataset:
+        abort(404, message=f"Submission dataset id {dataset_id} does not exist.")
+    return s_dataset
+
 def save_submission_dataset(dataset_id, identifier, is_restricted):
     # Dataset is a foreign key in SubmissionDataset so we need to ensure we do not duplicate
     dataset = geardb.get_dataset_by_id(dataset_id)
@@ -82,13 +88,13 @@ def save_submission_dataset(dataset_id, identifier, is_restricted):
     s_dataset = geardb.SubmissionDataset(dataset_id=dataset_id,
                     is_restricted=is_restricted, nemo_identifier=identifier,
                     pulled_to_vm_status="pending", convert_metadata_status="pending", convert_to_h5ad_status="pending",
-                    make_tsne_status="pending", log_message=""
+                    make_umap_status="pending", log_message=""
                     )
     s_dataset.save()
     s_dataset.get_dataset_info()
     return s_dataset
 
-def save_submission_member(submission_id:geardb.Submission, s_dataset:geardb.SubmissionDataset):
+def save_submission_member(submission_id, s_dataset):
     submission_member = geardb.SubmissionMember(submission_id=submission_id, submission_dataset_id=s_dataset.id)
     if not submission_member.does_submission_member_exist():
         submission_member.save()
@@ -127,7 +133,7 @@ def submission_dataset_callback(dataset_id, metadata, session_id, url_path, acti
             result = make_display.make_default_display(dataset_id, session_id, category, gene)
             result["self"] = url_path
             if not result["success"]:
-                raise Exception("Make tSNE step failed")
+                raise Exception("Make UMAP step failed")
         except Exception as e:
             result["message"] = str(e)
         finally:
@@ -169,11 +175,14 @@ def submission_dataset_callback(dataset_id, metadata, session_id, url_path, acti
                     raise Exception("Write H5AD step failed")
 
             ###
-            db_step = "make_tsne_status"
+            db_step = "make_umap_status"
             if should_step_run(s_dataset, db_step):
                 result = make_display.make_default_display(dataset_id, session_id, category, gene)
                 if not result["success"]:
-                    raise Exception("Make tSNE step failed")
+                    raise Exception("Make UMAP step failed")
+
+            # Add display to layout will occur in submission as one display can be added to multiple layouts
+
             else:
                 # Nothing needs to be run.
                 result["success"] = True
@@ -204,9 +213,7 @@ class SubmissionDataset(Resource):
 
         result = {"self":url_path, "href":url_path}
 
-        s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
-        if not s_dataset:
-            abort(404, message=f"Submission dataset id {dataset_id} does not exist.")
+        s_dataset = get_submission_dataset(dataset_id)
 
         result["success"] = True
         result["dataset_id"] = s_dataset.dataset_id
@@ -227,9 +234,7 @@ class SubmissionDataset(Resource):
         category = req.get("category", None)
         gene = req.get("gene", None)
 
-        s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
-        if not s_dataset:
-            abort(404, message=f"Submission dataset id {dataset_id} does not exist. Cannot perform operations on it.")
+        s_dataset = get_submission_dataset(dataset_id)
 
         # Create a messaging queue if necessary. Make it persistent across the lifetime of the Flask server.
         # Channels will be spawned during each task.
@@ -318,29 +323,11 @@ class SubmissionDatasetMember(Resource):
             result["message"] = "User not logged in."
             return result
 
-        s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
-
-        if not s_dataset:
-            abort(404, message=f"Submission dataset id {dataset_id} does not exist.")
+        s_dataset = get_submission_dataset(dataset_id)
 
         # Insert submission members and create new submisison datasets if they do not exist
         try:
             save_submission_member(submission_id, s_dataset)
-
-            # ? Should this go in a separate API function, like /layout
-            # Let's save the dataset to the submission layout while we are at it
-            submission = geardb.get_submission_by_id(submission_id)
-            if not submission:
-                abort(404, message=f"Submission id {submission_id} does not exist.")
-
-            layout = submission.get_layout_info()
-            # make sure the user owns the layout
-            gpos = len(layout.members) + 1
-
-            # This shoud never be an issue here (copied from add_dataset_to_layout.cgi)
-            if user_id == layout.user_id:
-                lm = geardb.LayoutMember(dataset_id=dataset_id, grid_position=gpos, grid_width=4, mg_grid_width=12)
-                layout.add_member(lm)
 
         except Exception as e:
             print(str(e), file=sys.stderr)
@@ -356,20 +343,27 @@ class SubmissionDatasetStatus(Resource):
         url_path = request.root_path + request.path
 
         result = {"success": False, "self": url_path}
-        s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
-
-        if not s_dataset:
-            abort(404, message=f"Submission dataset id {dataset_id} does not exist.")
+        s_dataset = get_submission_dataset(dataset_id)
 
         if action == "reset_steps":
             # Before initializing a new submission, we check this route to see if the current dataset exists
             # If it does and is not complete or loading, need to reset the steps so it can be resumed.
-            s_dataset.reset_incomplete_steps()
-            s_dataset.save_change(attribute="log_message", value="")
+            self.reset_dataset_steps(s_dataset)
             result["status"] = get_db_status(s_dataset)
             result["success"] = True
             return result
-        abort(405, f"No action or unknown action specified for submission dataset id {dataset_id}.")
+        abort(405, message=f"No action or unknown action specified for submission dataset id {dataset_id}.")
+
+    def get_submission_dataset(self, dataset_id):
+        s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
+        if not s_dataset:
+            abort(404, message=f"Submission dataset id {dataset_id} does not exist.")
+        return s_dataset
+
+    def reset_dataset_steps(self, s_dataset):
+        s_dataset.reset_incomplete_steps()
+        s_dataset.save_change(attribute="log_message", value="")
+
 
 class SubmissionDatasets(Resource):
     """Requests to deal with multiple submissions, including creating new ones"""
@@ -392,7 +386,7 @@ class SubmissionDatasets(Resource):
                 "pulled_to_vm": "canceled"
                 , "convert_metadata": "canceled"
                 , "convert_to_h5ad": "canceled"
-                , "make_tsne": "canceled"
+                , "make_umap": "canceled"
                 }
             return result
 
@@ -412,7 +406,7 @@ class SubmissionDatasets(Resource):
                 "pulled_to_vm": "canceled"
                 , "convert_metadata": "canceled"
                 , "convert_to_h5ad": "canceled"
-                , "make_tsne": "canceled"
+                , "make_umap: "canceled"
                 }
             return result
 

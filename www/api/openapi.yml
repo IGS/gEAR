@@ -203,9 +203,9 @@ paths:
                       convert_to_h5ad:
                         type: string
                         description: Status of converting dataset into h5ad format
-                      make_tsne:
+                      make_umap:
                         type: string
-                        description: Status of running a tSNE analysis and creating a basic display
+                        description: Status of running a UMAP analysis and creating a basic display
 
   /submssions/{submission_id}/datasets/{dataset_id}:
     parameters:
@@ -254,9 +254,9 @@ paths:
                       convert_to_h5ad:
                         type: string
                         description: Status of converting dataset into h5ad format
-                      make_tsne:
+                      make_umap:
                         type: string
-                        description: Status of running a tSNE analysis and creating a basic display
+                        description: Status of running a UMAP analysis and creating a basic display
         '404':
           description: Submission_dataset was not found.
 
@@ -277,10 +277,10 @@ paths:
                   description: Operation code to perform an action, such as import
                 category:
                   type: string
-                  description: Metadata category to annotate tSNE display on, if action = "make_display"
+                  description: Metadata category to annotate UMAP display on, if action = "make_display"
                 gene:
                   type: string
-                  description: Gene to plot tSNE expression on, if action = "make_display"
+                  description: Gene to plot UMAP expression on, if action = "make_display"
 
       responses:
         '204':
@@ -334,9 +334,9 @@ paths:
                       convert_to_h5ad:
                         type: string
                         description: Status of converting dataset into h5ad format
-                      make_tsne:
+                      make_umap:
                         type: string
-                        description: Status of running a tSNE analysis and creating a basic display
+                        description: Status of running a UMAP analysis and creating a basic display
         '404':
           description: The submission dataset was not found
         '405':

@@ -42,38 +42,9 @@
                         <h3 class="title is-3">
                             Import NeMO Archive data
                         </h3>
-                        <p>This tool will tracked the automated process of importing data from NeMO Archive into NeMO
-                            Analytics. Basic plots are created and it is encouraged to curate additional ones based on
+                        <p>This tool will automatically track the process of importing data from NeMO Archive into NeMO
+                            Analytics. Basic plots are created, and it is encouraged to curate additional ones based on
                             needs.</p>
-                    </div>
-                    <div id="guides-outer-c" class="column is-offset-3 has-background-white-bis notification">
-                        <h3 class="mt-4 mb-4">
-                            <span>GUIDES</span>
-                            <span class="icon is-pulled-right delete">
-                                <i class="mdi mdi-close"></i>
-                            </span>
-                        </h3>
-                        <div id="guides-inner-c" class="columns">
-                            <div class="column">
-                                <div class="guide-element pr-3">
-                                    <div><!-- without the 2nd level div here the images disappears-->
-                                        <div class="media">
-                                            <div class="media-left">
-                                                <figure class="image is-96x96">
-                                                    <img src="/img/guide_image_mag_dna.png" alt="Placeholder image">
-                                                </figure>
-                                            </div>
-                                            <div class="media-content is-size-7 has-text-weight-semibold">
-                                                <p>
-                                                    Learn how to use the dataset curation tool
-                                                </p>
-                                                <p class="mt-2"><a>Try now</a></p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </header>
 
@@ -101,17 +72,6 @@
                         highly recommended to visit the Single-Cell Analysis Workbench, Dataset Curator, or the
                         Multigene Viewer to create more relevant curations.
                     </p>
-
-                    <div id="main-notify" class="notification is-info is-light is-hidden">
-                        <button class="delete"></button>
-                        <span></span>
-                    </div>
-
-                    <div id="main-alert" class="notification is-danger is-light is-hidden">
-                        <button class="delete"></button>
-                        <span></span>
-                    </div>
-
 
                     <div id="import-finish" class="is-hidden my-4">
                         <div class="columns">
@@ -172,6 +132,19 @@
             </section>
         </section>
     </div>
+
+    <template id="dataset-row-tmpl">
+        <tr>
+            <td class="js-identifier-cell">
+                <div><a class="has-text-link has-text-weight-semibold" target="_blank"></a><div>
+                <div class="js-identifier-permalink" class="is-size-7"></div>
+            </td>
+            <td class="js-progress-cell"><progress class="progress is-info" value="0" max="100"></progress></td>
+            <td class="js-current-step-cell"></td>
+            <td class="js-messages-cell"></td>
+            <td class="js-obslevels-cell">Not ready</td>
+        </tr>
+    </template>
 
     <!-- Promise based HTTP client for the browser  -->
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
