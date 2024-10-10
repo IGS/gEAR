@@ -4,11 +4,12 @@ import os, sys
 import geardb
 from gear.orthology import get_ortholog_file, get_ortholog_files_from_dataset, map_single_gene, map_multiple_genes
 
-def normalize_searched_gene(gene_list, chosen_gene):
+def normalize_searched_gene(gene_set, chosen_gene):
     """Convert to case-insensitive version of gene.  Returns None if gene not found in dataset."""
-    for g in gene_list:
-        if chosen_gene.lower() == str(g).lower():
-            return g
+    chosen_gene_lower = chosen_gene.lower()
+    for gene in gene_set:
+        if chosen_gene_lower == gene.lower():
+            return gene
     return None
 
 def get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id, exclusive_org=False):
@@ -119,7 +120,7 @@ def check_gene_in_dataset(adata, gene_symbol):
         bool: True if any of the gene symbols are present in the dataset, False otherwise.
     """
 
-    dataset_genes = adata.var['gene_symbol'].unique().tolist()
+    dataset_genes = set(adata.var['gene_symbol'].unique())
     normalized_gene = normalize_searched_gene(dataset_genes, gene_symbol)
 
     gene_symbols = (normalized_gene,)
@@ -129,9 +130,29 @@ def check_gene_in_dataset(adata, gene_symbol):
 class Orthologs(Resource):
 
     def get(self, dataset_id):
-        gene_symbol = request.args.get('gene_symbol', None)
-        gene_organism_id = request.args.get('gene_organism_id', None)
-        exclusive_org = request.args.get('exclusive_org', "false") # If true, and mapping is not found, return an error. If false, loop through other organisms
+        """
+        Retrieve gene symbol mappings for a given dataset. This is meant to search a single gene symbol
+
+        Args:
+            dataset_id (str): The ID of the dataset to query.
+
+        Returns:
+            tuple: A tuple containing a dictionary with the result and an HTTP status code.
+            - If successful, returns a dictionary with the key "success" set to 1 and the key "mapping" containing the mapped gene symbols.
+            - If an error occurs, returns a dictionary with the key "error" or "message" and an appropriate HTTP status code.
+
+        Raises:
+            Exception: If an error occurs during orthology mapping and exclusive_org is True.
+
+        Notes:
+            - The function expects the following query parameters:
+            - gene_symbol (str): The gene symbol to search for.
+            - gene_organism_id (int, optional): The organism ID of the gene symbol.
+            - exclusive_org (str, optional): If "true", return an error if mapping is not found. Defaults to "false".
+        """
+        gene_symbol = request.args.get('gene_symbol')
+        gene_organism_id = request.args.get('gene_organism_id' )
+        exclusive_org = request.args.get('exclusive_org', "false").lower() == "true" # If true, only check this organism. If false, loop through other organisms
 
         if not gene_symbol:
             return {"error": "No gene symbol provided."}, 400
@@ -142,7 +163,6 @@ class Orthologs(Resource):
         if gene_organism_id:
             gene_organism_id = int(gene_organism_id)
 
-        exclusive_org = True if exclusive_org.lower() == "true" else False
 
         # Get the dataset and organism ID
         dataset = geardb.get_dataset_by_id(dataset_id)
@@ -157,7 +177,7 @@ class Orthologs(Resource):
         import scanpy as sc
         adata = sc.read_h5ad(h5_path)
 
-        dataset_genes = adata.var['gene_symbol'].unique().tolist()
+        dataset_genes = set(adata.var['gene_symbol'].unique())
 
         def normalize_gene(gene):
             return normalize_searched_gene(dataset_genes, gene)
@@ -197,12 +217,35 @@ class Orthologs(Resource):
 
 
     def post(self, dataset_id):
+        """
+        Handles POST requests to map gene symbols to their orthologs within a specified dataset.
+
+        Args:
+            dataset_id (str): The ID of the dataset to be queried.
+
+        Returns:
+            tuple: A tuple containing a JSON response and an HTTP status code.
+                - On success, returns a JSON object with a "success" key set to 1 and a "mapping" key containing a dictionary
+                  where the keys are the original gene symbols and the values are lists of mapped orthologs.
+                - On failure, returns a JSON object with an "error" key and an appropriate error message, along with a 400 status code.
+
+        Request JSON Structure:
+            {
+                "gene_symbols": list of str,  # List of gene symbols to be mapped.
+                "analysis": str,              # Analysis identifier (optional).
+                "gene_organism_id": int,      # Organism ID for the genes (optional).
+                "exclusive_org": str          # "true" or "false" indicating whether to exclusively check the specified organism (default: "false").
+            }
+
+        Raises:
+            Exception: If there is an error in retrieving the analysis or performing the orthology mapping.
+        """
         session_id = request.cookies.get('gear_session_id')
         req = request.get_json()
-        gene_symbols = req.get('gene_symbols', None)
-        analysis = req.get('analysis', None)
-        gene_organism_id = req.get('gene_organism_id', None)
-        exclusive_org = req.get('exclusive_org', "false") # If true, only check this organism. If false, loop through other organisms
+        gene_symbols = req.get('gene_symbols')
+        analysis = req.get('analysis')
+        gene_organism_id = req.get('gene_organism_id')
+        exclusive_org = req.get('exclusive_org', "false").lower() == "true" # If true, only check this organism. If false, loop through other organisms
 
         if not gene_symbols:
             return {"error": "No gene symbols provided."}, 400
@@ -212,8 +255,6 @@ class Orthologs(Resource):
 
         if gene_organism_id:
             gene_organism_id = int(gene_organism_id)
-
-        exclusive_org = True if exclusive_org.lower() == "true" else False
 
         # Get the dataset and organism ID
         dataset = geardb.get_dataset_by_id(dataset_id)
@@ -228,7 +269,7 @@ class Orthologs(Resource):
             return {"error": str(e)}, 400
 
         adata = ana.get_adata(backed=False)
-        dataset_genes = adata.var['gene_symbol'].unique().tolist()
+        dataset_genes = set(adata.var['gene_symbol'].unique())
 
         def normalize_gene(gene):
             return normalize_searched_gene(dataset_genes, gene)
