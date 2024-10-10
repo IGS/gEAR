@@ -3,6 +3,7 @@ from flask_restful import Resource
 import os, sys
 import geardb
 from gear.orthology import get_ortholog_file, get_ortholog_files_from_dataset, map_single_gene, map_multiple_genes
+from .common import get_adata_shadow
 
 def normalize_searched_gene(gene_set, chosen_gene):
     """Convert to case-insensitive version of gene.  Returns None if gene not found in dataset."""
@@ -30,19 +31,19 @@ def get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id, e
         Exception: If no orthologous mapping is found for the given gene symbol.
     """
 
-    # Determine if we need to get a single ortholog file or multiple
-    is_single_ortholog_file_needed = gene_organism_id and gene_organism_id != dataset_organism_id
-
-    try:
-        if is_single_ortholog_file_needed:
+    def fetch_ortholog_files():
+        # Determine if we need to get a single ortholog file or multiple
+        if gene_organism_id and gene_organism_id != dataset_organism_id:
             # Get a single ortholog file
             ortholog_files = [get_ortholog_file(gene_organism_id, dataset_organism_id, "ensembl")]
             if not exclusive_org:
                 ortholog_files += get_ortholog_files_from_dataset(dataset_organism_id, "ensembl")
-
         else:
-            # Get multiple ortholog files from the dataset
             ortholog_files = get_ortholog_files_from_dataset(dataset_organism_id, "ensembl")
+        return ortholog_files
+
+    try:
+        ortholog_files = fetch_ortholog_files()
     except FileNotFoundError as e:
         # We want this to fail gracefully, so return an empty list. The original will be mapped back to itself downstream.
         return []
@@ -55,7 +56,7 @@ def get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id, e
         # At this point, we have an empty list or dict, so we should continue to the next ortholog file
         if gene_organism_id and exclusive_org:
             raise Exception(f"No orthologous mapping found for the given gene symbols {gene_symbol}.")
-        continue
+
     return []
 
 
@@ -256,20 +257,27 @@ class Orthologs(Resource):
         if gene_organism_id:
             gene_organism_id = int(gene_organism_id)
 
+        analysis_id = None
+        if analysis:
+            analysis_id = analysis.get('id')
+
         # Get the dataset and organism ID
-        dataset = geardb.get_dataset_by_id(dataset_id)
+        dataset = geardb.Dataset(id=dataset_id, has_h5ad=1)
         if not dataset:
             return {"error": "The dataset was not found."}, 400
+        h5_path = dataset.get_file_path()
         dataset_organism_id = dataset.organism_id
 
-        # Get the right AnnData object depending on if the analysis is provided
         try:
-            ana = geardb.get_analysis(analysis, dataset_id, session_id)
-        except Exception as e:
-            return {"error": str(e)}, 400
+            adata = get_adata_shadow(analysis_id, dataset_id, session_id, h5_path)
+        except FileNotFoundError:
+            return {
+                "success": -1,
+                'message': "No h5 file found for this dataset"
+            }
 
-        adata = ana.get_adata(backed=False)
         dataset_genes = set(adata.var['gene_symbol'].unique())
+
 
         def normalize_gene(gene):
             return normalize_searched_gene(dataset_genes, gene)

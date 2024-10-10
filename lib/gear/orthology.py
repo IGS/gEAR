@@ -15,7 +15,6 @@ import sys
 import pandas as pd
 
 from pathlib import Path
-from collections import defaultdict
 
 # append parent directory to path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
@@ -58,10 +57,10 @@ def get_ortholog_file(gene_organism_id: str, dataset_organism_id: str, annotatio
         FileNotFoundError: If the orthologous mapping file is not found.
     """
     orthomap_file_base = format_orthomap_file_base(gene_organism_id, dataset_organism_id, annotation_source)
-    orthomap_file = ORTHOLOG_BASE_DIR.joinpath(orthomap_file_base)
+    orthomap_file = ORTHOLOG_BASE_DIR / orthomap_file_base
 
     if not orthomap_file.is_file():
-        raise FileNotFoundError("Orthologous mapping file not found: {0}".format(orthomap_file))
+        raise FileNotFoundError(f"Orthologous mapping file not found: {orthomap_file}")
     return orthomap_file
 
 def get_ortholog_files_from_dataset(dataset_organism_id: str, annotation_source: str="ensembl"):
@@ -85,7 +84,8 @@ def get_ortholog_files_from_dataset(dataset_organism_id: str, annotation_source:
     orthomap_files.sort(key=lambda x: int(x.name.split("__")[0].split(".")[1]))
 
     if not orthomap_files:
-        raise FileNotFoundError("Orthologous mapping files not found for dataset organism {0}".format(get_organism_name_by_id(dataset_organism_id)))
+        dataset_organism_name = get_organism_name_by_id(dataset_organism_id)
+        raise FileNotFoundError(f"Orthologous mapping files not found for dataset organism {dataset_organism_name}")
 
     return list(orthomap_files)
 
@@ -127,14 +127,15 @@ def create_orthology_df(orthomap_file: Path):
         pd.DataFrame: The DataFrame containing the orthologous mapping data.
     """
     try:
-        orthomap_df = pd.read_hdf(str(orthomap_file))   # do not need to pass in key, as it is the default (only) key
+        orthology_df = pd.read_hdf(str(orthomap_file))   # do not need to pass in key, as it is the default (only) key
     except Exception as e:
-        print("Error reading orthologous mapping file {1}: {0}".format(e, orthomap_file), file=sys.stderr)
+        error_message = f"Error reading orthologous mapping file {orthomap_file}: {e}"
+        print(error_message, file=sys.stderr)
         # print stack trace
         import traceback
         traceback.print_exc()
-        raise Exception("Error reading orthologous mapping file: {0}".format(e))
-    return orthomap_df
+        raise Exception(error_message)
+    return orthology_df
 
 def map_dataframe_genes(orig_df: pd.DataFrame, orthomap_file: Path):
     """
@@ -148,27 +149,33 @@ def map_dataframe_genes(orig_df: pd.DataFrame, orthomap_file: Path):
         pd.DataFrame: The DataFrame with the genes mapped to their orthologous genes.
     """
 
-    orthomap_df = create_orthology_df(orthomap_file)
+    orthology_df = create_orthology_df(orthomap_file)
 
     # NOTE: Not all genes can be mapped. Unmappable genes do not change in the original DataFrame.
 
-    def get_best_match(id1):
-        # Get the best match for the id2 gene symbol
-        best_match_for_id = orthomap_df[orthomap_df["id1"] == id1]
-        sorted_by_best_match = best_match_for_id.sort_values(by="algorithms_match_count", ascending=False)
-        # If no match, return the original id1
-        if sorted_by_best_match.empty:
-            return id1
-        best_match = sorted_by_best_match.iloc[0]
-        return best_match["id2"]
+    def get_best_match(gene_id: str) -> str:
+        """
+        Get the best match for the given gene ID based on the orthology mapping.
 
+        Args:
+            gene_id (str): The gene ID to find the best match for.
+
+        Returns:
+            str: The best matching gene ID or the original gene ID if no match is found.
+        """
+        matches = orthology_df[orthology_df["id1"] == gene_id]
+        if matches.empty:
+            return gene_id
+
+        best_match = matches.sort_values(by="algorithms_match_count", ascending=False).iloc[0]
+        return best_match["id2"]
 
     # Rename orig_df index (id1) using orthologous id (id2).  If id1 maps to multiple id2, then use the id2 with the highest algorithms_match_count
     orig_df.index = orig_df.index.map(get_best_match)
 
     return orig_df
 
-def map_single_gene(gene_symbol:str, orthomap_file: Path):
+def map_single_gene(gene_symbol: str, orthomap_file: Path) -> list:
     """
     Maps a single gene symbol to its corresponding orthologous gene symbol(s) using an orthology mapping file.
 
@@ -179,17 +186,18 @@ def map_single_gene(gene_symbol:str, orthomap_file: Path):
     Returns:
         list or None: The list of orthologous gene symbol(s) corresponding to the input gene symbol. Returns an empty list if the gene symbol cannot be mapped.
     """
-    orthomap_df = create_orthology_df(orthomap_file)
+    orthology_df = create_orthology_df(orthomap_file)
 
     # Create lowercase gs1 and gs2 columns
-    orthomap_df["lc_gs1"] = orthomap_df["gs1"].str.lower()
-    orthomap_df["lc_gs2"] = orthomap_df["gs2"].str.lower()
+    orthology_df["lc_gs1"] = orthology_df["gs1"].str.lower()
+    orthology_df["lc_gs2"] = orthology_df["gs2"].str.lower()
 
     # Check if case-insensitive gene symbol is in dictionary
     lc_gene_symbol = gene_symbol.lower()
 
-    # returns the list of all orthologs
-    return orthomap_df[orthomap_df["lc_gs1"] == lc_gene_symbol]["gs2"].tolist()
+    # Return the list of all orthologous gene symbols
+    orthologous_genes = orthology_df[orthology_df["lc_gs1"] == lc_gene_symbol]["gs2"].tolist()
+    return orthologous_genes
 
 def map_multiple_genes(gene_symbols: list, orthomap_file: Path) -> dict:
     """
@@ -203,17 +211,17 @@ def map_multiple_genes(gene_symbols: list, orthomap_file: Path) -> dict:
         dict: A dictionary where the keys are the input gene symbols and the values are lists of orthology gene symbols.
               If a gene symbol does not have any orthology gene symbols, its value is set to an empty list.
     """
-    orthomap_df = create_orthology_df(orthomap_file)
+    orthology_df = create_orthology_df(orthomap_file)
 
     # Create lowercase gs1 and gs2 columns
-    orthomap_df["lc_gs1"] = orthomap_df["gs1"].str.lower()
-    orthomap_df["lc_gs2"] = orthomap_df["gs2"].str.lower()
+    orthology_df["lc_gs1"] = orthology_df["gs1"].str.lower()
+    orthology_df["lc_gs2"] = orthology_df["gs2"].str.lower()
 
-    # Check if case-insensitive gene symbols are in orthology df.
     # Create a dictionary of gene symbol to orthologous gene symbols
-    gene_symbol_dict = defaultdict(list)
-    for gene_symbol in gene_symbols:
-        lc_gene_symbol = gene_symbol.lower()
-        gene_symbol_dict[gene_symbol] = orthomap_df[orthomap_df["lc_gs1"] == lc_gene_symbol]["gs2"].tolist()
+    # This checks if case-insensitive gene symbols are in orthology df.
+    gene_symbol_dict = {
+        gene_symbol: orthology_df[orthology_df["lc_gs1"] == gene_symbol.lower()]["gs2"].tolist()
+        for gene_symbol in gene_symbols
+    }
 
     return gene_symbol_dict
