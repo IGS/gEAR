@@ -6,11 +6,11 @@ networks:
 services:
   db:
     environment:
-      MYSQL_DATABASE: [database]
+      MYSQL_DATABASE: db
       MYSQL_USER: [user]
-      MYSQL_PASSWORD: [user_pw]
-      MYSQL_ROOT_PASSWORD: [root_pw]
-    image: mysql:8.0.29-oracle  # for arm64v8 architecture
+      MYSQL_PASSWORD: [pw]
+      MYSQL_ROOT_PASSWORD: [pw]
+    image: mysql:8.0.37-oracle  # for arm64v8 architecture
     networks:
       - gear
     ports:
@@ -23,7 +23,7 @@ services:
     build: .
     depends_on:
       - db
-    image: umgear
+    image: umgear:main
     networks:
       - gear
     ports:
@@ -40,4 +40,9 @@ services:
       - "5672:5672"
     restart: always
 
-# TODO: Make a consumer
+  # consumer:
+  #   image: busybox
+  #   tty: true
+  #   volumes:
+  #     - python_vol:/opt/Python-3.10.4
+  #     - ..:/opt/gEAR
