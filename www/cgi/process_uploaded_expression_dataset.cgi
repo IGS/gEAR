@@ -26,6 +26,7 @@ import pandas as pd
 import scanpy as sc
 from scipy import sparse
 import anndata
+import zipfile
 
 # This has a huge dependency stack of libraries. Occasionally, one of them has methods
 #  which prints debugging information on STDOUT, killing this CGI.  So here we redirect
@@ -92,7 +93,7 @@ def main():
     # https://stackoverflow.com/a/22181041/1368079
     # https://stackoverflow.com/questions/6024472/start-background-process-daemon-from-cgi-script
     # https://groups.google.com/g/comp.lang.python/c/gSRnd0RoVKY?pli=1
-    do_fork = True
+    do_fork = False
     if do_fork:
         sys.stdout = original_stdout
         result['success'] = 1
@@ -305,48 +306,58 @@ def process_mex_3tab(upload_dir):
 
     files_extracted = []
 
-    with tarfile.open(filename) as tf:
-        for entry in tf:
-            tf.extract(entry, path=upload_dir)
+    if compression_format == 'tarball':
+        try:
+            with tarfile.open(filename) as tf:
+                for entry in tf:
+                    tf.extract(entry, path=upload_dir)
 
-            # Nemo suffixes
-            nemo_suffixes = ['DataMTX.tab', 'COLmeta.tab', 'ROWmeta.tab']
-            suffix_found = None
+                    # Nemo suffixes
+                    nemo_suffixes = ['DataMTX.tab', 'COLmeta.tab', 'ROWmeta.tab']
+                    suffix_found = None
 
-            for suffix in nemo_suffixes:
-                if entry.name.endswith(suffix):
-                    suffix_found = suffix
-                    # Rename the file to the appropriate name
-                    os.rename(os.path.join(upload_dir, entry.name), 
-                              os.path.join(upload_dir, suffix))
-            
-            if suffix_found is not None:
-                files_extracted.append(suffix_found)
-            else:
-                files_extracted.append(entry.name)
+                    for suffix in nemo_suffixes:
+                        if entry.name.endswith(suffix):
+                            suffix_found = suffix
+                            # Rename the file to the appropriate name
+                            os.rename(os.path.join(upload_dir, entry.name), 
+                                    os.path.join(upload_dir, suffix))
+                    
+                    if suffix_found is not None:
+                        files_extracted.append(suffix_found)
+                    else:
+                        files_extracted.append(entry.name)
+        except tarfile.ReadError:
+            write_status(upload_dir, 'error', "Bad tarball file. Couldn't extract the tarball.")
+            return
 
-    with zipfile.ZipFile(filename) as zf:
-        for entry in zf.infolist():
-            zf.extract(entry, path=upload_dir)
+    if compression_format == 'zip':
+        try:
+            with zipfile.ZipFile(filename) as zf:
+                for entry in zf.infolist():
+                    zf.extract(entry, path=upload_dir)
 
-            # Nemo suffixes
-            nemo_suffixes = ['DataMTX.tab', 'COLmeta.tab', 'ROWmeta.tab']
-            suffix_found = None
+                    # Nemo suffixes
+                    nemo_suffixes = ['DataMTX.tab', 'COLmeta.tab', 'ROWmeta.tab']
+                    suffix_found = None
 
-            for suffix in nemo_suffixes:
-                if entry.filename.endswith(suffix):
-                    suffix_found = suffix
-                    # Rename the file to the appropriate name
-                    os.rename(os.path.join(upload_dir, entry.filename), 
-                              os.path.join(upload_dir, suffix))
-            
-            if suffix_found is not None:
-                files_extracted.append(suffix_found)
-            else:
-                files_extracted.append(entry.filename)
+                    for suffix in nemo_suffixes:
+                        if entry.filename.endswith(suffix):
+                            suffix_found = suffix
+                            # Rename the file to the appropriate name
+                            os.rename(os.path.join(upload_dir, entry.filename), 
+                                    os.path.join(upload_dir, suffix))
+                    
+                    if suffix_found is not None:
+                        files_extracted.append(suffix_found)
+                    else:
+                        files_extracted.append(entry.filename)
+        except zipfile.BadZipFile:
+            write_status(upload_dir, 'error', "Bad zip file. Couldn't extract the zip file.")
+            return
 
     # Determine the dataset type
-    dataset_type = tarball_content_type(files_extracted)
+    dataset_type = package_content_type(files_extracted)
 
     if dataset_type is None:
         write_status(upload_dir, 'error', "Unsupported dataset format. Couldn't tell type from file names within the tarball")
@@ -363,7 +374,7 @@ def write_status(upload_dir, status_name, message):
     with open(os.path.join(upload_dir, 'status.json'), 'w') as f:
         f.write(json.dumps(status))
 
-def tarball_content_type(filenames):
+def package_content_type(filenames):
         print("DEBUG: filenames", file=sys.stderr, flush=True)
         print(filenames, file=sys.stderr, flush=True)
         """
