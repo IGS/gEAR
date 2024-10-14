@@ -18,6 +18,12 @@ TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
 PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
 
+def get_adata_from_analysis(analysis_id, dataset_id, session_id):
+    user = get_user_from_session_id(session_id)
+    ana = Analysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
+    ana.discover_type()
+    return ana.get_adata()
+
 def get_adata_shadow_from_analysis(analysis_id, dataset_id, session_id):
     user = get_user_from_session_id(session_id)
     ana = Analysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
@@ -31,9 +37,14 @@ def get_adata_shadow_from_primary(h5_path):
 
 def get_adata_shadow(analysis_id, dataset_id, session_id, h5_path):
     if analysis_id:
-        return get_adata_shadow_from_analysis(analysis_id, dataset_id, session_id)
+        adata = get_adata_shadow_from_analysis(analysis_id, dataset_id, session_id)
     else:
-        return get_adata_shadow_from_primary(h5_path)
+        adata = get_adata_shadow_from_primary(h5_path)
+
+    if adata.var.gene_symbol.dtype == "int16":
+        print("Using AnnData instead of AnnDataShadow because var and obs are not correct for dataset {}".format(dataset_id), file=sys.stderr)
+        adata = get_adata_from_analysis(analysis_id, dataset_id, session_id)
+    return adata
 
 def create_projection_adata(dataset_adata, dataset_id, projection_id):
     # Create AnnData object out of readable CSV file

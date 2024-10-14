@@ -736,14 +736,14 @@ class Analysis:
 
             elif self.type == 'user_saved':
                 if self.user_id is None:
-                    raise Exception("ERROR: base_path() called on Analysis object with no user_id attribute set.")
+                    raise Exception("ERROR: base_path() called on Analysis object with no user_id attribute set. Probably not logged in.")
 
                 # ./$user_id/$dataset_id/$analysis_id/$dataset_id.h5ad
                 return "{0}/../www/analyses/by_user/{1}/{2}/{3}".format(this_dir, self.user_id, self.dataset_id, self.id)
 
             elif self.type == 'user_unsaved':
                 if self.session_id is None:
-                    raise Exception("ERROR: base_path() called on Analysis object with no session_id attribute set.")
+                    raise Exception("ERROR: base_path() called on Analysis object with no session_id attribute set. Probably not logged in.")
 
                 # /tmp/$session/$dataset_id/$analysis_id/$dataset_id.h5ad
                 return "/tmp/{0}/{1}/{2}".format(self.session_id, self.dataset_id, self.id)

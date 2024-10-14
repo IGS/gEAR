@@ -38,7 +38,7 @@ There are a few ways to get help with a gEAR Portal.
 
 ## Getting involved
 
-If you'd like to contribute to the gEAR in any form (documentation, bug fixes, new features, etc.) just fork the project and create a pull request.
+If you'd like to contribute to the gEAR in any form (documentation, bug fixes, new features, etc.) just fork the project and create a pull request. Within the project, we follow this [branching model](https://nvie.com/posts/a-successful-git-branching-model/).
 
 
 ----
