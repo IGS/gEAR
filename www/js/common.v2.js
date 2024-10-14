@@ -45,10 +45,13 @@ document.addEventListener('DOMContentLoaded', () => {
     for (const elt of document.querySelectorAll("#primary-nav .menu-list a.is-active")) {
 		elt.classList.remove("is-active");
 	}
-    const this_page_tool = document.getElementById("content-c").dataset.navLink;
-    const tool_search_string = "a[tool='" + this_page_tool + "'";
-	document.querySelector(tool_search_string).classList.add("is-active");
-
+    const thisPageTool = document.getElementById("content-c").dataset.navLink;
+    const toolSearchString = `a[tool='${thisPageTool}'`;
+	const toolElt = document.querySelector(toolSearchString);
+    // There are some pages (like nemoarchive_import) that may not have a sidebar link. In that case, don't try to set the active class.
+    if (toolElt) {
+        toolElt.classList.add("is-active");
+    }
 
 
     // Add listeners for any elements which have generic close controls
