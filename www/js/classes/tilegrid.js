@@ -68,8 +68,25 @@ class TileGrid {
 
         const layout = isMulti ? this.layout.multi : this.layout.single;
 
+        // clear any no-displays message
+        const noDisplaysElt = selectorElt.querySelector(".no-displays");
+        if (noDisplaysElt) {
+            noDisplaysElt.remove();
+        }
+        if (!layout || layout.length === 0) {
+            // create element to say this dataset collection has no saved displays.
+            const noDisplays = document.createElement("div");
+            noDisplays.classList.add("no-displays", "notification", "is-warning", "has-text-centered");
+            noDisplays.style.gridColumn = "1 / -1";
+            const keyword = isMulti ? "multi" : "single";
+            noDisplays.textContent = `No ${keyword}-gene displays were saved for this dataset collection. Add some in the Dataset Explorer.`;
+            selectorElt.append(noDisplays);
+            return;
+        }
+
         for (const memberString of layout) {
             const member = JSON.parse(memberString);
+
             const dataset = this.datasets.find(d => d.id === member.dataset_id);
             if (!dataset) {
                 console.warn(`Dataset with ID ${member.dataset_id} not found.`);
