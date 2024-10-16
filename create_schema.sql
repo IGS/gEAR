@@ -29,6 +29,7 @@ CREATE TABLE guser (
        user_name      VARCHAR(255),
        email          VARCHAR(255),
        institution    VARCHAR(255),
+       orcid          VARCHAR(19), -- XXXX-XXXX-XXXX-XXXX
        pass           VARCHAR(50),
        colorblind_mode TINYINT(1) DEFAULT 0,
        updates_wanted TINYINT(1),
@@ -214,6 +215,7 @@ CREATE TABLE dataset (
        contact_email            VARCHAR(100),
        contact_institute        VARCHAR(255),
        contact_name             VARCHAR(100),
+       contact_orcid            VARCHAR(19),    -- XXXX-XXXX-XXXX-XXXX
        annotation_source        VARCHAR(20),
        plot_default             VARCHAR(50), -- options: 'bar', 'line', 'violin'
        annotation_release       INT,

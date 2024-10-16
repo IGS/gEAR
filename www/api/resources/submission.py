@@ -127,6 +127,9 @@ class Submission(Resource):
 
         session_id = request.cookies.get('gear_session_id')
         user_id = geardb.get_user_id_from_session_id(session_id)
+        if not user_id:
+            # You can view a particular submission without being logged in
+            user_id = -1
 
         submission = get_submission(submission_id)
 
@@ -152,8 +155,9 @@ class Submission(Resource):
     def delete(self, submission_id):
         """Delete the existing submission from the database."""
         submission = get_submission(submission_id)
+        if not submission:
+            abort(404, message=f"Submission id {submission_id} does not exist.")
         submission.remove()
-
 
     def post(self, submission_id):
         """Start the import process for this submission."""
@@ -164,8 +168,6 @@ class Submission(Resource):
         user = geardb.get_user_from_session_id(session_id)
 
         req = request.get_json()
-        file_metadata = req.get("file_metadata")  # Metadata from neo4j request
-        sample_metadata = req.get("sample_metadata")
         action = req.get("action")
 
         submission = get_submission(submission_id)
@@ -173,48 +175,15 @@ class Submission(Resource):
 
         if action == "import":
             async def import_dataset(s_dataset):
-                nonlocal file_metadata
-                nonlocal sample_metadata
 
                 dataset_id = s_dataset.dataset_id
                 identifier = s_dataset.nemo_identifier
 
-                # Get first instance of entity match dataset ID or sample ID
-                file_attributes = next(filter(lambda entity: entity["attributes"]["id"] == dataset_id, file_metadata))["attributes"]
-                sample_attributes = next(filter(lambda entity: entity["name"] == file_attributes["sample_id"], sample_metadata))["attributes"]
-
-                all_attributes = {
-                    "dataset": file_attributes
-                    , "sample": sample_attributes
-                    }
-
                 result = {"success": False, "dataset_id": dataset_id}
 
                 async with aiohttp.ClientSession() as session:
-                    # Call NeMO Archive assets API using identifier
-                    try:
-                        #url = f"https://nemoarchive.org/asset/derived/{identifier}"
-                        #url = f"https://assets.nemoarchive.org/file/{identifier}"  # new API
-
-                        url = f"http://localhost/api/mock_identifier/{identifier}"
-                        async with session.get(url
-                                , verify_ssl=False
-                                , raise_for_status=True) as resp:
-                            api_result = await resp.json()
-                    except Exception as e:
-                        s_dataset.save_change(attribute="log_message", value=str(e))
-                        return result
-
-                    api_metadata = api_result["metadata"]
-
-                    # TODO: Eventually get everything from API
-                    all_metadata = {
-                        "dataset": {**all_attributes["dataset"], **api_metadata["dataset"]}
-                        , "sample": {**all_attributes["sample"], **api_metadata["sample"]}
-                    }
-
                     # Start the import process for each dataset
-                    params = {"metadata": all_metadata, "action": "import"}
+                    params = {"identifier": identifier, "action": "import"}
                     try:
                         url = f"http://localhost/{url_path}" + f"/datasets/{dataset_id}"
                         async with session.post(url
@@ -234,7 +203,7 @@ class Submission(Resource):
                 if not result["success"]:
                     raise Exception("Write H5AD step failed")
 
-                result["filetype"] = all_metadata["dataset"]["filetype"]
+                result["filetype"] = result["dataset"]["filetype"]
                 result["dataset_id"] = dataset_id
 
                 return result
@@ -348,6 +317,8 @@ class Submissions(Resource):
 
             cursor = conn.get_cursor()
             submission = get_submission(submission_id)
+            if not submission:
+                abort(400, message=f"New submission {submission_id} could not be found.")
             submission.save_change(attribute="layout_id", value=layout.id)
             cursor.close()
             conn.commit()

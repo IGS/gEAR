@@ -12,6 +12,59 @@ this = sys.modules[__name__]
 from gear.serverconfig import ServerConfig
 this.servercfg = ServerConfig().parse()
 
+"""
+{
+  "id": "nemo:der-bb3nhby",
+  "file_name": "allc_CEMBA190219-9H-3-CEMBA190219-9H-4-F2_ad001.tsv.tar",
+  "data_type": "counts",
+  "duls": {
+    "dul": "no restriction",
+    "specific_limits": "",
+    "dul_modifiers": []
+  },
+  "aliquot": {},
+  "program": "",
+  "grant_short_name": "",
+  "modality": "",
+  "technique": "",
+  "anatomical_regions": [],
+  "lab": "",
+  "contact": {},
+  "contributors": [],
+  "access": "open",
+  "md5": "7cb04d91463fa9324c29195c99205ae8",
+  "file_format": "tsv",
+  "file_attributes": {},
+  "size": 126904320,
+  "last_modified": "Thu, 12 Sep 2019 16:09:55 GMT",
+  "manifest_file_urls": {
+    "all": [],
+    "raw": [],
+    "processed": [],
+    "summary": [
+      {
+        "file_location": "nemo",
+        "url": "https://data.nemoarchive.org/biccn/grant/u19_cemba/cemba/epigenome/sncell/mCseq/mouse/processed/counts/9H/CEMBA190219_9H/allc_CEMBA190219-9H-3-CEMBA190219-9H-4-F2_ad001.tsv.tar",
+        "protocol": "http",
+        "type": "summary",
+        "file_count": 1,
+        "size": 126904320,
+        "readme": ""
+      }
+    ]
+  },
+  "analysis": [],
+  "taxa": [],
+  "library_pool": "",
+  "alternate_id": "",
+  "sample": "",
+  "child_files": [],
+  "parent_files": [],
+  "collections": []
+}
+"""
+
+
 def connect_to_assets_db():
     try:
         cnx = mysql.connector.connect(user=this.servercfg['database']['user'], password=this.servercfg['database']['password'],
@@ -84,7 +137,7 @@ class MockIdentifier(Resource):
         * treatment // subject_observations.value + subject_observations.obs_var_id -> obs_vars.name = "medication"
         treatment_label
         DRmethod_#
-\        cell_clusters
+        cell_clusters
         * age_value // subject_observations.value + subject_observations.obs_var_id -> obs_vars.name = "age"
         * age_unit  // subject_observations.unit + subject_observations.obs_var_id -> obs_vars.name = "age"
         age_order?

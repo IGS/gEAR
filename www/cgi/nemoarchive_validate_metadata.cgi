@@ -84,7 +84,7 @@ def get_genes_file_path(base_dir:Path, file_format):
         genes_file = base_dir.joinpath("h5ad_genes.tsv")
         adata.var.to_csv(genes_file, sep="\t")
         return genes_file
-    raise "File format {} not supported".format(file_format)
+    raise Exception("File format {} not supported".format(file_format))
 
 def organism_to_taxon_id(org):
     # Returns a gear-related mapping, or None if not encountered
@@ -155,14 +155,29 @@ def share_dataset_with_submission_user(dataset_id, user):
 def tissue_type_to_dataset_type(tissue_type):
     # Returns a gear-related mapping, or None if not encountered
     # ! The mapping keys will change as the assets db API comes into effect
-    TISSUE_TYPE2_DATASET_TYPE = {
+
+    TISSUE_TYPE_TO_DATASET_TYPE = {
         "bulk":"bulk"
-        , "cells":"single-cell-rnaseq"
-        , "nuclei":"single-nucleus-rnaseq"
-        , "single cell":"single-cell-rnaseq"
-        , "single nucleus":"single-nucleus-rnaseq"
+        , "cellgroup":"bulk"
+        , "single cell": "single-cell-rnaseq"
+        , "single nucleus": "single-nucleus-rnaseq"
+        , "reconstruction": "reconstruction"
+        , "cell nucleus": "single-nucleus-rnaseq"
+        , "whole cell": "single-cell-rnaseq"
+        , "bulk nucleus": "bulk"
+        , "tissue sample": "bulk"
+        , "library": "bulk"
+        , "cell in slice": "single-cell-rnaseq"
+        , "specimen": "bulk"
+        , "nuclei": "single-nucleus-rnaseq"
+        , "cell": "single-cell-rnaseq"
+        , "cells": "single-cell-rnaseq"
+        , "cell body": "single-cell-rnaseq"
+        , "isolated nuclei": "single-nucleus-rnaseq"
+        , "isolated whole cells": "single-cell-rnaseq"
     }
-    return TISSUE_TYPE2_DATASET_TYPE.get(tissue_type.lower())
+
+    return TISSUE_TYPE_TO_DATASET_TYPE.get(tissue_type.lower())
 
 def write_json(attributes, base_dir:Path):
     """Use supplied metadata to write a JSON file."""
@@ -177,38 +192,27 @@ def validate_metadata(dataset_id, session_id, attributes):
     result = {'success':False }
 
     s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
+    if not s_dataset:
+        err_msg = "Could not find submission dataset {} in the database".format(dataset_id)
+        handle_error(s_dataset, result, err_msg)
+        return
     s_dataset.save_change(attribute=DB_STEP, value="loading")
 
-    # ! Eventually the metadata will be taken from an API call to NeMO Archive based on the identifier,
-    # !     not from the neo4j database. Also may need to fail file if identifier cannot be found.
     json_attributes = {"field":[], "value":[]}  # see Metadata.read_file()
 
     json_attributes["field"].append("contact_name")
-    json_attributes["field"].append("contact_email")
+    json_attributes["field"].append("contact_orcid")
     json_attributes["field"].append("contact_institution")
 
     json_attributes["value"].append(attributes["dataset"]["contact_name"])
-    json_attributes["value"].append(attributes["dataset"]["contact_email"])
+    json_attributes["value"].append(attributes["dataset"]["contact_orcid"])
     json_attributes["value"].append(attributes["dataset"]["contact_institute"])
 
     json_attributes["field"].append("title")
-    #json_attributes["title"] = attributes["dataset"]["title"]
+    json_attributes["value"].append(attributes["dataset"]["title"])
 
-    # Temporary "title" for dataset will be the dataset name
-    grant = attributes["sample"]["project_grant"]
-    tissue = attributes["sample"]["tissue_ontology"]
-    sex = attributes["sample"]["sex_assigned_at_birth"]
-    age = attributes["sample"]["age_value"]
-    age_unit = attributes["sample"]["age_unit"]
-    json_attributes["value"].append(f"FAKE NAME {grant} - {tissue} - {sex} - {age}  {age_unit}")
-
-    # Summary information
     json_attributes["field"].append("summary")
-    identifier = attributes["dataset"]["identifier"]
-    url = "https://assets.nemoarchive.org/{}".format(identifier)
-    json_attributes["value"].append(f"This dataset was derived from nemo identifier: {identifier}." \
-        f"For more information about the original data see {url}")
-
+    json_attributes["value"].append(attributes["dataset"]["summary"])
 
     # Dataset type
     json_attributes["field"].append("dataset_type")
@@ -216,7 +220,7 @@ def validate_metadata(dataset_id, session_id, attributes):
     dataset_type = tissue_type_to_dataset_type(tissue_type)
     # ATAC-Seq has it's own metadata datatype
     if "ATAC-seq".lower() in attributes["dataset"]["technique"].lower():
-        dataset_type == "atac-seq"
+        dataset_type = "atac-seq"
     if not dataset_type:
         err_msg = "Could not find dataset type for tissue type {}".format(tissue_type)
         handle_error(s_dataset, result, err_msg)

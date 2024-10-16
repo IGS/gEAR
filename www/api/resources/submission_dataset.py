@@ -5,6 +5,7 @@ from flask_restful import Resource, abort
 
 import json
 import os,sys
+import requests
 
 import geardb
 
@@ -126,7 +127,7 @@ def submission_dataset_callback(dataset_id, metadata, session_id, url_path, acti
 
     #TODO: How to run as non-root when RabbitMQ is running this (at least to move h5ad/json to final area)
 
-    result = {"success" : False}
+    result: dict[str] = {"success" : False}
 
     if action == "make_display":
         try:
@@ -140,15 +141,17 @@ def submission_dataset_callback(dataset_id, metadata, session_id, url_path, acti
             result["self"] = url_path
             return result
 
-
     if action == "import":
-        dataset_mdata = metadata["dataset"]
         s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
 
         #NOTE: Each of the CGI scripts will control loading/failed/complete status of their process
 
-        ###
         try:
+            result = pull_nemoarchive_metadata(s_dataset, metadata["identifier"])
+            if not result["success"]:
+                raise Exception("Could not pull metadata from NeMO Archive API")
+            dataset_mdata = result["metadata"].get("dataset")
+
             db_step = "pulled_to_vm_status"    # step name in database
             if should_step_run(s_dataset, db_step):
                 # Component = file format type
@@ -158,13 +161,6 @@ def submission_dataset_callback(dataset_id, metadata, session_id, url_path, acti
                     result = pull_from_gcp.pull_gcp_files_to_vm(bucket_path, dataset_id)
                     if not result["success"]:
                         raise Exception("Pull GCP Files step failed")
-
-            ###
-            db_step = "convert_metadata_status"
-            if should_step_run(s_dataset, db_step):
-                result = validate_mdata.validate_metadata(dataset_id, session_id, metadata)
-                if not result["success"]:
-                    raise Exception("Validate Metadata step failed")
 
             ###
             db_step = "convert_to_h5ad_status"
@@ -194,7 +190,7 @@ def submission_dataset_callback(dataset_id, metadata, session_id, url_path, acti
             loading_step = s_dataset.find_loading_step()
             if loading_step:
                 s_dataset.save_change(attribute=loading_step, value="failed")
-                s_dataset.update_downstream_steps_to_canceled(attribute=loading_step)
+            s_dataset.update_downstream_steps_to_canceled(attribute=loading_step)
 
         finally:
             result["self"] = url_path
@@ -202,6 +198,287 @@ def submission_dataset_callback(dataset_id, metadata, session_id, url_path, acti
 
     result["message"] = "No action operation requested"
     return result
+
+def pull_nemoarchive_metadata(s_dataset, nemo_id) -> dict:
+    """
+    Pull metadata from NeMO Archive API
+    """
+
+    result = {"success" : False, "metadata":{}}
+
+    # Call NeMO Archive assets API using identifier
+    try:
+        url = f"https://assets.nemoarchive.org/file/{nemo_id}"
+        response = requests.get(url, verify=False)
+
+        #url = f"http://localhost/api/mock_identifier/{identifier}"
+        api_file_result = response.json()
+    except Exception as e:
+        s_dataset.save_change(attribute="log_message", value=str(e))
+        return result
+
+    if "error" in api_file_result:
+        s_dataset.save_change(attribute="log_message", value=api_file_result["error"])
+        return result
+
+    sample_identifier = api_file_result["sample"]
+    if not sample_identifier:
+        s_dataset.save_change(attribute="log_message", value="No sample identifier found in NeMO Archive API. Cannot get sample metadata.")
+        return result
+
+    # Call NeMO Archive assets API using identifier
+    try:
+        url = f"https://assets.nemoarchive.org/sample/{sample_identifier}"
+        response = requests.get(url, verify=False)
+
+        #url = f"http://localhost/api/mock_identifier/{identifier}"
+        api_sample_result = response.json()
+    except Exception as e:
+        s_dataset.save_change(attribute="log_message", value=str(e))
+        return result
+
+    if "error" in api_sample_result:
+        s_dataset.save_change(attribute="log_message", value=api_sample_result["error"])
+        return result
+
+    # Dataset metadata is used for the dataset entry in the database
+    # Sample metadata is not actively used but could be used for curation purposes if linked to counts
+    dataset_metadata = process_nemo_assets_api_file_result(api_file_result)
+    sample_metadata = process_nemo_assets_api_sample_result(api_sample_result)
+
+    api_metadata = {"dataset":dataset_metadata, "sample":sample_metadata}
+    result["success"] = True
+    result["metadata"] = api_metadata
+    return result
+
+def process_nemo_assets_api_file_result(api_result):
+    """
+    {
+        "id": "nemo:hak-03bgkrw",
+        "file_name": "string",
+        "data_type": "string",
+        "duls": {
+            "dul": "string",
+            "dul_modifiers": [
+            "string"
+            ],
+            "specific_limits": "string"
+        },
+        "aliquot": {
+            "nemo_id": "nemo:kuk-h42sdnl",
+            "library_name": "string",
+            "library_type": "aliquot",
+            "modality": "string",
+            "technique": "string",
+            "assay": "string",
+            "modality_cv_term_id": "string",
+            "technique_cv_term_id": "string",
+            "assay_cv_term_id": "string",
+            "specimen_type": "string"
+        },
+        "program": "biccn",
+        "grant_short_name": "string",
+        "modality": "string",
+        "technique": "string",
+        "anatomical_regions": [
+            {
+            "short_name": "string",
+            "region_name": "string",
+            "cv_term_id": "string"
+            }
+        ],
+        "lab": "string",
+        "contact": {
+            "name": "string",
+            "organization": "string",
+            "orcid": "stringstringstrings"
+        },
+        "contributors": [
+            {
+            "name": "string",
+            "organization": "string",
+            "orcid": "stringstringstrings"
+            }
+        ],
+        "access": "open",
+        "collections": [
+            "string"
+        ],
+        "md5": "stringstringstringstringstringst",
+        "file_format": "string",
+        "file_attributes": {
+            "name": "string",
+            "value": "string",
+            "unit": "string",
+            "cv_term_id": "string"
+        },
+        "size": 0,
+        "last_modified": "string",
+        "manifest_file_urls": [
+            {
+            "readme": "string",
+            "file_location": "string",
+            "protocol": "string",
+            "file_count": 0,
+            "size": 0,
+            "url": "string",
+            "type": "all"
+            }
+        ],
+        "analysis": [
+            {
+            "analysis_name": "string",
+            "attribute_name": "string",
+            "attribute_value": "string"
+            }
+        ],
+        "parent_files": [
+            "string"
+        ],
+        "child_files": [
+            "string"
+        ],
+        "taxa": [
+            {
+            "name": "string",
+            "cv_term_id": "string"
+            }
+        ],
+        "library_pool": "string",
+        "alternate_id": "string",
+        "sample": "string"
+    }
+    """
+
+    # ? Eventually we will need to distinguish between file datasets and sample datasets.  Sample-based ones may have multiple entries for an attribute, such as age.
+
+    dataset_metadata = {}
+
+    dataset_metadata["identifier"] = api_result["id"]
+    dataset_metadata["contact_name"] = api_result["contact"].get("name")
+    dataset_metadata["contact_orcid"] = f'orcid:{api_result["contact"].get("orcid")}'   # Use orcid identifier as email since email is not provided
+
+    dataset_metadata["contact_institute"] = api_result["contact"].get("organization")
+
+    # For title - two options
+    # Collection name + file name
+    # File name only (may be indecipherable)
+    # ? Verify
+    dataset_metadata["title"] = api_result["file_name"]
+    """
+    TEMP TITLE
+    grant = attributes["sample"]["project_grant"]
+    tissue = attributes["sample"]["tissue_ontology"]
+    sex = attributes["sample"]["sex_assigned_at_birth"]
+    age = attributes["sample"]["age_value"]
+    age_unit = attributes["sample"]["age_unit"]
+    json_attributes["value"].append(f"FAKE NAME {grant} - {tissue} - {sex} - {age}  {age_unit}")
+    """
+
+    # ? Is there a better summary we can use?
+    url = f"https://assets.nemoarchive.org/{api_result['id']}"
+    dataset_metadata["summary"] = f"This dataset was derived from NeMO identifier: {api_result['id']}." \
+    f"For more information about the original data, see {url}"
+
+
+    dataset_metadata["tissue_type"] = api_result["aliquot"].get("specimen_type")
+    dataset_metadata["technique"] = api_result["aliquot"].get("technique")
+    dataset_metadata["dataset_type"] = api_result["data_type"]  # will change based on other factors in nemoarchive_validate_metadata.cgi
+
+    dataset_metadata["file_format"] = api_result["file_format"]   # should be already got
+
+    # ? How to handle multiple taxa?  For now just take the first one as primary organism
+    taxa = api_result["taxa"]
+    first_taxon = taxa[0] if taxa else {}
+    dataset_metadata["organism"] = first_taxon.get("name")
+
+    dataset_metadata["assay"] = api_result["aliquot"].get("assay")
+
+    # Now for the dataset metadata I cannot quite get from the API
+    dataset_metadata["normalization_method"] = None
+    dataset_metadata["log_transformation"] = "raw"
+    # ? Can we derive this from api_result["analysis"]?
+    dataset_metadata["primary_analysis_completed"] = False
+
+    dataset_metadata["reference_annot_id"] = None
+    #dataset_metadata["reference_annot_id"] = get_reference_annot_id(connection, nemo_id)
+
+    return dataset_metadata
+
+def process_nemo_assets_api_sample_result(api_result):
+    """
+    {
+        "id": "nemo:oka-w7dgf1q",
+        "subjects": [
+            "string"
+        ],
+        "sample_attributes": [
+            {
+            "name": "string",
+            "value": "string",
+            "unit": "string",
+            "cv_term_id": "string"
+            }
+        ],
+        "source_sample_id": "string",
+        "sample_source": "string",
+        "sample_name": "string",
+        "entity_type": "sample",
+        "sample_aggregation": "string",
+        "sample_subtype": "string",
+        "pool_id": "string",
+        "alternate_id": "string",
+        "lab": "string",
+        "libraries": [
+            {
+            "nemo_id": "nemo:wgn-nrc4w5s",
+            "library_name": "string",
+            "library_type": "aliquot",
+            "modality": "string",
+            "technique": "string",
+            "assay": "string",
+            "modality_cv_term_id": "string",
+            "technique_cv_term_id": "string",
+            "assay_cv_term_id": "string",
+            "specimen_type": "string"
+            }
+        ],
+        "anatomical_regions": [
+            {
+            "short_name": "string",
+            "region_name": "string",
+            "cv_term_id": "string"
+            }
+        ],
+        "parent_samples": [
+            "string"
+        ],
+        "child_samples": [
+            "string"
+        ],
+        "files": [
+            "string"
+        ]
+    }
+    """
+
+    def find_attribute(sample_attributes: list = [], attr_name: str = ""):
+        for attr in sample_attributes:
+            if attr_name in attr["name"].lower():
+                return attr
+        return {}
+
+    def list_all_region_names(anatomical_regions: list = []):
+        return ", ".join([region["region_name"] for region in anatomical_regions])
+
+    # ? Eventually we will need to distinguish between file datasets and sample datasets.  Sample-based ones may have multiple entries for an attribute, such as age.
+    sample_metadata = {}
+    sample_metadata["tissue_ontology"] = list_all_region_names(api_result["anatomical_regions"])
+    sample_metadata["treatment"] = find_attribute(api_result["sample_attributes"], "treatment")["value"]
+    sample_metadata["age_value"] = find_attribute(api_result["sample_attributes"], "age")["value"]
+    sample_metadata["age_unit"] = find_attribute(api_result["sample_attributes"], "age")["unit"]
+    sample_metadata["sex_assigned_at_birth"] = find_attribute(api_result["sample_attributes"], "sex_assigned_at_birth")["value"]
+    return sample_metadata
 
 
 class SubmissionDataset(Resource):
@@ -214,6 +491,8 @@ class SubmissionDataset(Resource):
         result = {"self":url_path, "href":url_path}
 
         s_dataset = get_submission_dataset(dataset_id)
+        if not s_dataset:
+            abort(404, message=f"Submission dataset id {dataset_id} does not exist.")
 
         result["success"] = True
         result["dataset_id"] = s_dataset.dataset_id
@@ -229,12 +508,13 @@ class SubmissionDataset(Resource):
         session_id = request.cookies.get('gear_session_id')
 
         req = request.get_json()
-        metadata = req.get("metadata")
+        identifier = req.get("identifier")
         action = req.get("action", None)
         category = req.get("category", None)
         gene = req.get("gene", None)
 
         s_dataset = get_submission_dataset(dataset_id)
+        result = {}
 
         # Create a messaging queue if necessary. Make it persistent across the lifetime of the Flask server.
         # Channels will be spawned during each task.
@@ -275,7 +555,7 @@ class SubmissionDataset(Resource):
                 # Create the publisher
                 payload = {}
                 payload["dataset_id"] = dataset_id
-                payload["metadata"] = metadata
+                payload["identifier"] = identifier
                 payload["session_id"] = session_id
                 payload["url_path"] = url_path
                 payload["action"] = action
@@ -298,17 +578,14 @@ class SubmissionDataset(Resource):
                 while not task_finished:
                     pass
                 print("[x] sending payload response for submission_dataset {} back to client".format(dataset_id), file=sys.stderr)
-                if not result["success"]:
-                    print(result.get("message", "Something went wrong."), file=sys.stderr)
-                    abort(500, message="Submission dataset id {} - {}".format(dataset_id, result.get("message", "Something went wrong.")))
-                return result
-
+                result = response
         else:
             result =  submission_dataset_callback(dataset_id, metadata, session_id, url_path, action, category, gene)
-            if not result["success"]:
-                print(result.get("message", "Something went wrong."), file=sys.stderr)
-                abort(500, message="Submission dataset id {} - {}".format(dataset_id, result.get("message", "Something went wrong.")))
-            return result
+
+        if not result["success"]:
+            print(result.get("message", "Something went wrong."), file=sys.stderr)
+            abort(500, message="Submission dataset id {} - {}".format(dataset_id, result.get("message", "Something went wrong.")))
+        return result
 
 class SubmissionDatasetMember(Resource):
     def put(self, submission_id, dataset_id):

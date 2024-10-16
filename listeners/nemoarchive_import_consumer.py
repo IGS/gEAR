@@ -35,7 +35,7 @@ def _on_request(channel, method_frame, properties, body):
     delivery_tag = method_frame.delivery_tag
     deserialized_body = json.loads(body)
     dataset_id = deserialized_body["dataset_id"]
-    metadata = deserialized_body["metadata"]
+    identifier = deserialized_body["identifier"]
     session_id = deserialized_body["session_id"]
     url_path = deserialized_body["url_path"]
     action = deserialized_body["action"]
@@ -43,12 +43,12 @@ def _on_request(channel, method_frame, properties, body):
     gene = deserialized_body["gene"]
 
     import pika
-    
+
     with open(stream, "a") as fh:
         print("{} - [x] - Received request for submission dataset {}".format(pid, dataset_id), flush=True, file=fh)
         try:
             # Run the callback function to generate the reply payload
-            output_payload = submission_dataset_callback(dataset_id, metadata, session_id, url_path, action, category, gene)
+            output_payload = submission_dataset_callback(dataset_id, identifier, session_id, url_path, action, category, gene)
 
             # Send the output back to the Flask API call
             channel.basic_publish(
@@ -68,7 +68,7 @@ def _on_request(channel, method_frame, properties, body):
                     , body=json.dumps({"success":False, "message":str(e)})
                     , properties=pika.BasicProperties(delivery_mode=2, content_type="application/json")
                     )
-            
+
             channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
             print("{} - Could not deliver response back to client for submission dataset {}".format(pid, dataset_id), flush=True, file=fh)
         finally:

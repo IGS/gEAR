@@ -23,6 +23,12 @@ const SESSION_ERROR_MESSAGE = "Must be logged in to import a new submission. Ple
 const DB_ERROR_MESSAGE = "Something went wrong with saving this submission to the database. Please contact gEAR support.";
 
 
+const generateUUIDFromString = (string) => {
+    const hash = crypto.createHash('sha256').update(string).digest('hex');
+    const uuid = `${hash.substring(0, 8)}-${hash.substring(8, 12)}-4${hash.substring(13, 16)}-8${hash.substring(17, 20)}-${hash.substring(20, 32)}`;
+    return uuid;
+  }
+
 /**
  * Checks if the user is logged in by verifying the session ID.
  *
@@ -80,27 +86,6 @@ const grabSubmissionId = (jd) => {
  */
 const getFileEntities = (jd) => {
     return jd.filter(entity => entity.entityType === "file");
-};
-
-/**
- * Filters and returns entities of type "sample" from the provided array.
- *
- * @param {Array} jd - The array of entities to filter.
- * @returns {Array} - An array of entities where the entityType is "sample".
- */
-const getSampleEntities = (jd) => {
-    return jd.filter(entity => entity.entityType === "sample");
-};
-
-/**
- * Retrieves the attributes of a sample by its name from a given dataset.
- *
- * @param {Array} jd - The dataset, an array of objects where each object represents an entity.
- * @param {string} name - The name of the sample whose attributes are to be retrieved.
- * @returns {Object} The attributes of the sample with the specified name.
- */
-const getSampleAttributesByName = (jd, name) => {
-    return jd.find(entity => entity.name === name).attributes;
 };
 
 /**
@@ -308,8 +293,8 @@ const isImportComplete = (status) => {
  * @param {Array} fileEntities - The file entities to import.
  * @param {Array} sampleEntities - The sample entities to import.
  */
-const launchSubmissionImport = (submissionId, fileEntities, sampleEntities) => {
-    const params = { file_metadata: fileEntities, sample_metadata: sampleEntities, action: "import" };
+const launchSubmissionImport = (submissionId, fileEntities) => {
+    const params = { file_metadata: fileEntities, action: "import" };
     axios.post(`/api/submissions/${submissionId}`, params, {
         headers: { "Content-Type": "application/json" },
     });
@@ -417,8 +402,19 @@ const processSubmission = async (fileEntities, submissionId) => {
         // If the dataset exists (for another submission), then associate with this submission
 
         await Promise.allSettled([...fileEntities].map( async (entity) => {
-            const datasetId = entity.attributes.id;
+            // Create a UUID based on the identifier to use as the dataset_id
             const identifier = entity.attributes.identifier;
+            if (!identifier) {
+                // Log error and continue to next entity
+                console.warn(`No identifier found for entity ${entity.name}`);
+                // increment the not supported counter
+                const notSupportedElt = document.getElementById("not-supported");
+                notSupportedElt.textContent = parseInt(notSupportedElt.textContent) + 1;
+                return;
+            }
+
+            const datasetId = generateUUIDFromString(identifier);
+
             const sdParams = {"dataset_id":datasetId, "identifier":identifier, "is_restricted":isRestricted}
 
             const href = `/api/submissions/${submissionId}/datasets/${datasetId}`
@@ -699,7 +695,6 @@ const createSubmission = async (jsonUrl) => {
         populateNonSupportedElement();
 
         const fileEntities = getFileEntities(data);
-        const sampleEntities = getSampleEntities(data);
 
         // Initialize db information about this submission
         // Check db if datasets were loaded in previous submissions
@@ -709,7 +704,7 @@ const createSubmission = async (jsonUrl) => {
         const emailDiv = document.getElementById("email-on-success-div");
         emailDiv.classList.remove("is-hidden");
 
-        launchSubmissionImport(submissionId, fileEntities, sampleEntities);
+        launchSubmissionImport(submissionId, fileEntities);
 
         // Poll datasets for updates. Function calls itself until importing is finished.
         // If import has an error, it should at least poll once to show final statuses
