@@ -269,7 +269,6 @@ const populateMetadataFormFromFile = async () => {
     if (data.success) {
         document.getElementsByName('metadata-title')[0].value = data.metadata.title.value;
         document.getElementsByName('metadata-summary')[0].value = data.metadata.summary.value;
-        document.getElementsByName('metadata-dataset-type')[0].value = data.metadata.dataset_type.value;
         document.getElementsByName('metadata-annotation-source')[0].value = data.metadata.annotation_source.value;
         document.getElementsByName('metadata-annotation-version')[0].value = data.metadata.annotation_release_number.value;
         document.getElementsByName('metadata-geo-id')[0].value = data.metadata.geo_accession.value;
@@ -285,6 +284,17 @@ const populateMetadataFormFromFile = async () => {
         document.getElementsByName('metadata-library-source')[0].value = data.metadata.library_source.value;
         document.getElementsByName('metadata-library-strategy')[0].value = data.metadata.library_strategy.value;
         document.getElementsByName('metadata-pubmed-id')[0].value = data.metadata.pubmed_id.value;
+
+        //document.getElementsByName('metadata-dataset-type')[0].value = data.metadata.dataset_type.value;
+        // Handle the metadata-dataset-type select box
+        let dataset_type_select = document.getElementsByName('metadata-dataset-type')[0];
+        for (let i = 0; i < dataset_type_select.options.length; i++) {
+            if (dataset_type_select.options[i].value === data.metadata.dataset_type.value) {
+                dataset_type_select.selectedIndex = i;
+                break;
+            }
+        }
+
         document.getElementById('metadata-upload-status-message').textContent = "Form populated with uploaded metadata";
         button.disabled = false;
 
