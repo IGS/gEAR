@@ -32,6 +32,23 @@ COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 NUM_LEGENDS_PER_COL = 12    # Max number of legend items per column allowed in vertical legend
 NUM_HORIZONTAL_COLS = 8 # Number of columns in horizontal legend
 
+"""
+Taken from https://scanpy.readthedocs.io/en/stable/tutorials/plotting/advanced.html#plot-size
+TODO: Test these numbers with tweaking to our grid
+ncol = 2
+nrow = 1
+figsize = 3
+wspace = 1
+# Adapt figure size based on number of rows and columns and added space between them
+# (e.g. wspace between columns)
+fig, axs = plt.subplots(
+    nrow, ncol, figsize=(ncol * figsize + (ncol - 1) * wspace * figsize, nrow * figsize)
+)
+plt.subplots_adjust(wspace=wspace)
+sc.pl.umap(adata, color="louvain", ax=axs[0], show=False)
+sc.pl.umap(adata, color="phase", ax=axs[1])
+"""
+
 def calculate_figure_height(num_plots, span=1):
     """Determine height of tsne plot based on number of group elements."""
     return ((num_plots * 4) * span) + (num_plots - 1)
