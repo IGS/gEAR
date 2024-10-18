@@ -9,7 +9,15 @@ Data structure returned:
 {
    'success': 1,
    'uploads': [
-        { 
+         {
+              'last_updated': 1234567890,
+              'share_id': '1234567890',
+              'dataset_id': '1234567890',
+              'dataset_type': 'expression',
+              'title': 'My Expression Dataset',
+              'status': 'metadata uploaded',
+              'load_step': 'upload-dataset'
+         }, ...
    ]
 }
 
@@ -17,12 +25,11 @@ Data structure returned:
 
 import cgi, json
 import os, sys
+from datetime import datetime
+import pytz
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
-import geardb
-
-
 
 def main():
     print('Content-Type: application/json\n\n')
@@ -56,7 +63,14 @@ def main():
         with open(metadata_file, 'r') as f:
             metadata = json.load(f)
 
-            result['uploads'].append( {
+            last_updated_timestamp = os.path.getmtime(metadata_file)
+            last_updated_utc = datetime.utcfromtimestamp(last_updated_timestamp).replace(tzinfo=pytz.utc)
+            user_timezone = pytz.timezone('America/New_York')  # Replace with the user's actual time zone
+            last_updated_local = last_updated_utc.astimezone(user_timezone)
+            last_updated_formatted = last_updated_local.strftime('%Y-%m-%d %H:%M:%S ET')
+
+            result['uploads'].append({
+                    'last_updated': last_updated_formatted,
                     'share_id': share_id,
                     'dataset_id': metadata.get('dataset_uid', ''),
                     'dataset_type': metadata.get('dataset_type', ''),
@@ -93,6 +107,9 @@ def main():
                 elif processing_status == 'complete':
                     result['uploads'][-1]['status'] = 'processed'
                     result['uploads'][-1]['load_step'] = 'finalize-dataset'
+
+    ## Sort the results by last_updated
+    result['uploads'] = sorted(result['uploads'], key=lambda x: x['last_updated'], reverse=True)
     
     result['success'] = 1
     print(json.dumps(result))

@@ -421,6 +421,7 @@ const loadUploadsInProgress = async () => {
                 clone.querySelector('tr').dataset.datasetId = upload.dataset_id;
                 clone.querySelector('tr').dataset.loadStep = upload.load_step;
 
+                clone.querySelector('.submission-last-updated').textContent = upload.last_updated;
                 clone.querySelector('.submission-share-id').textContent = upload.share_id;
                 clone.querySelector('.submission-status').textContent = upload.status;
                 clone.querySelector('.submission-title').textContent = upload.title;
