@@ -216,7 +216,7 @@ CREATE TABLE dataset (
        contact_name             VARCHAR(100),
        annotation_source        VARCHAR(20),
        plot_default             VARCHAR(50), -- options: 'bar', 'line', 'violin'
-       annotation_release       INT,
+       annotation_release       VARCHAR(25),
        FULLTEXT                 text_idx (title, ldesc),
        FULLTEXT                 text_with_geo_idx (title, ldesc, geo_id),
        FULLTEXT                 text_with_geo_pubmed_idx (title, ldesc, geo_id, pubmed_id),
