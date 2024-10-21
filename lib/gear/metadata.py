@@ -149,11 +149,7 @@ class Metadata:
         series_content = FromGeo.get_geo_data(geo_id=geo_series_id)
 
         # Convert data into pandas dataframe
-        series_df: Union[str, pd.DataFrame] = FromGeo.process_geo_data(content=series_content, json_or_dataframe='dataframe')
-
-        # Ensure the result is a DataFrame
-        if not isinstance(series_df, pd.DataFrame):
-            raise TypeError("Expected a DataFrame, but got a different type.")
+        series_df = FromGeo.process_geo_return_dataframe(content=series_content)
 
         # Combine user's metdata and series metadata
         updated_metadata = FromGeo.add_geo_data(metadata=self.metadata, geo_data=series_df)
@@ -163,7 +159,7 @@ class Metadata:
         sample_id = sample_ids.split(',', 1)[0]
 
         samp_content = FromGeo.get_geo_data(geo_id=sample_id)
-        samp_df = FromGeo.process_geo_data(content=samp_content, json_or_dataframe='dataframe')
+        samp_df = FromGeo.process_geo_return_dataframe(content=samp_content)
         self.metadata = FromGeo.add_geo_data(metadata=self.metadata, geo_data=samp_df)
 
 

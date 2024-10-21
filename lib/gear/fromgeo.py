@@ -65,7 +65,7 @@ class FromGeo:
         return content
 
     @classmethod
-    def process_geo_data(cls, content=None, json_or_dataframe=None) -> Union[str, pd.DataFrame]:
+    def process_geo_data(cls, content:list[str]=[]) -> dict:
         """
         Use this to process the request GET content retrieved from in method get_geo_data()
 
@@ -75,17 +75,12 @@ class FromGeo:
         Input
         -----
             content = list of content from GEO request
-            json_or_dataframe = 'json' or 'dataframe'. Specifies the output format
 
         Output
         ------
             parsed GEO content is a JSON string or pandas dataframe
 
         """
-        if content is None:
-            raise Exception("No 'content' provided. Provide list of metadata from GEO to continue.")
-        if json_or_dataframe is None:
-            raise Exception("No 'json_or_dataframe' provided. Please specify the output format: 'json' or 'dataframe'.")
 
         geo_data = {}
         duplicates = {}
@@ -114,12 +109,48 @@ class FromGeo:
 
             # geo_data[k] = v
             geo_data[k] = ", ".join([str(val) for val in v])
+        return geo_data
 
-        if json_or_dataframe.lower() == 'json':
-            return json.dumps(geo_data)
+    @classmethod
+    def process_geo_return_json(cls, content:list[str]=[]) -> str:
+        """
+        Use this to process the request GET content retrieved from in method get_geo_data()
 
-        if json_or_dataframe.lower() == 'dataframe':
-            return pd.DataFrame.from_dict(geo_data, orient='index')
+        This method outputs a JSON formatted string.
+        Input
+        -----
+            content = list of content from GEO request
+
+        Output
+        ------
+            parsed GEO content is a JSON string
+        """
+        if not content:
+            raise Exception("No 'content' provided. Provide list of metadata from GEO to continue.")
+        geo_data = FromGeo.process_geo_data(content=content)
+
+        return json.dumps(geo_data)
+
+    @classmethod
+    def process_geo_return_dataframe(cls, content:list[str]=[]) -> pd.DataFrame:
+        """
+        Use this to process the request GET content retrieved from in method get_geo_data()
+
+        This method outputs a pandas dataframe.
+        Input
+        -----
+            content = list of content from GEO request
+
+        Output
+        ------
+            parsed GEO content is a pandas dataframe
+        """
+        if not content:
+            raise Exception("No 'content' provided. Provide list of metadata from GEO to continue.")
+
+        geo_data = FromGeo.process_geo_data(content=content)
+
+        return pd.DataFrame.from_dict(geo_data, orient='index')
 
     @classmethod
     def add_geo_data(cls, metadata=None, geo_data=None):

@@ -24,7 +24,8 @@ class MetadataValidator:
         ]
 
     # check that required fields are populated
-    def validate_required_field(self, value=None):
+    @classmethod
+    def validate_required_field(cls, value=None):
         is_valid = False
         if value is None:
             return is_valid
@@ -34,7 +35,8 @@ class MetadataValidator:
 
         return is_valid
 
-    def validate_tags(self, value=None):
+    @classmethod
+    def validate_tags(cls, value=None):
         #Tags are optional so empty is okay
         is_valid = True
         if value is None:
@@ -46,18 +48,20 @@ class MetadataValidator:
 
         return is_valid
 
-    def validate_email(self, email: str = ""):
+    @classmethod
+    def validate_email(cls, email: str = ""):
         #Check the format of the email
         if not email:
             return False
         if email.startswith('orcid:'):
-            return self.validate_orcid(email)
+            return MetadataValidator.validate_orcid(email)
 
         # Is email correctly formatted? regex from http://emailregex.com/
         email_regex = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
         return bool(re.match(email_regex, email))
 
-    def validate_orcid(self, orcid=""):
+    @classmethod
+    def validate_orcid(cls, orcid=""):
         #Check the format of the provided ORCID identifier
         if not orcid:
             return False
@@ -68,7 +72,8 @@ class MetadataValidator:
 
 
     # check if pubmed id is valid through URL search
-    def validate_pubmed_id(self, pubmed_id=None):
+    @classmethod
+    def validate_pubmed_id(cls, pubmed_id=None):
         is_valid = False
         print("DEBUG: Going to validate this pubmed ID:({0})".format(pubmed_id), file=sys.stderr)
         if pubmed_id is None:
@@ -79,7 +84,8 @@ class MetadataValidator:
 
 
     # check if geo id is valid
-    def validate_geo_id(self, geo_id=None):
+    @classmethod
+    def validate_geo_id(cls, geo_id=None):
         is_valid = False
         if geo_id is None:
             return is_valid
@@ -92,8 +98,8 @@ class MetadataValidator:
 
         return is_valid
 
-
-    def validate_taxon_id(self, txid=None):
+    @classmethod
+    def validate_taxon_id(cls, txid=None):
         """
         Currently only checks that the taxon ID is numeric.
         """
