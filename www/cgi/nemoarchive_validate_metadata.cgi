@@ -8,12 +8,11 @@ import os, subprocess, sys
 from pathlib import Path
 
 gear_root = Path(__file__).resolve().parents[2] # web-root dir
-bin_path = gear_root.joinpath("bin")
-sys.path.append(str(bin_path))
+
 lib_path = gear_root.joinpath("lib")
 sys.path.append(str(lib_path))
 
-from find_best_ensembl_release_match import find_best_ensembl_release_match
+from gear.orthology import find_best_ensembl_release_match
 
 import geardb
 from gear.metadata import Metadata
@@ -189,7 +188,7 @@ def write_json(attributes, base_dir:Path):
 
 def validate_metadata(dataset_id, session_id, attributes):
     user = geardb.get_user_from_session_id(session_id)
-    result = {'success':False }
+    result: dict[str] = {'success':False }
 
     s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
     if not s_dataset:
@@ -266,7 +265,7 @@ def validate_metadata(dataset_id, session_id, attributes):
         df = pd.read_json(json.dumps(json_attributes), orient="columns")
         df.set_index('field', inplace=True)
         metadata = Metadata(metadata=df)
-        if not metadata.validate():
+        if not (metadata and metadata.validate()):
             raise ValueError("Metadata failed validation")
 
         # Some fields need to change because the "Dataset" columns are different from the validation column fields.
