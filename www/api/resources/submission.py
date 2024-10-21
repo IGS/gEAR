@@ -196,15 +196,14 @@ class Submission(Resource):
                         print(str(e), file=sys.stderr)
                         return result
 
-                result = import_result # should have "success" = True in here
+                result.update(import_result) # should have "success" = True in here
 
                 # Let's save the display to the submission layout while we are at it
-                result = add_display_to_layout.add_display_to_layout(session_id, result['share_id'], result['display_id'], 12, 1)
+                result.update(add_display_to_layout.add_display_to_layout(session_id, result['share_id'], result['display_id'], 12, 1))
                 if not result["success"]:
                     raise Exception("Write H5AD step failed")
 
                 result["filetype"] = result["dataset"]["filetype"]
-                result["dataset_id"] = dataset_id
 
                 return result
 

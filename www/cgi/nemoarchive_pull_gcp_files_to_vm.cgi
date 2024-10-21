@@ -1,6 +1,7 @@
 #!/opt/bin/python3
 
-# nemoarchive_pull_gcp_files_to_vm.cgi - Run gsutils to pull datasets from a NeMO Archive GCP bucket into the NeMO Analytics VM
+# nemoarchive_pull_gcp_files_to_vm.cgi - Run gsutils to pull an archived dataset from a NeMO Archive GCP bucket into the NeMO Analytics VM
+# After the files are pulled, the filenames are extracted and returned to the client
 
 import cgi
 import json
@@ -53,13 +54,25 @@ def download_blob(bucket_name, source_blob_name, destination_file_name):
         # using `Bucket.blob` is preferred here.
         blob = bucket.blob(source_blob_name)
         blob.download_to_filename(destination_file_name)
-        #success_dict["message"] = "Downloaded storage object {} from bucket {} to local file {}.".format(
-        #    source_blob_name, bucket_name, destination_file_name
-        #)
         return destination_file_name
     except Exception as e:
         print(str(e), file=sys.stderr)
         raise
+
+def extract_filenames(filename, dest_dir):
+    # untar the file and save the filenames to result
+    if filename.endswith(".tar.gz"):
+        import tarfile
+        with tarfile.open(filename, "r:gz") as tar:
+            tar.extractall(path=dest_dir)
+            return tar.getnames()
+    elif filename.endswith(".zip"):
+        import zipfile
+        with zipfile.ZipFile(filename, 'r') as zip_ref:
+            zip_ref.extractall(dest_dir)
+            return zip_ref.namelist()
+    else:
+        return [filename]
 
 def pull_gcp_files_to_vm(bucket_path, dataset_id):
     s_dataset = geardb.get_submission_dataset_by_dataset_id(dataset_id)
@@ -72,9 +85,10 @@ def pull_gcp_files_to_vm(bucket_path, dataset_id):
     dest_dir = Path(UPLOAD_BASE_DIR).joinpath(dataset_id)
     dest_dir.mkdir(exist_ok=True)
     dest_filename = Path(source_blob_name).name
-    result = {"success": False, "filename":""}
+    result = {"success": False, "filenames":[]}
     try:
-        result["filename"] = download_blob(BUCKET_NAME, source_blob_name, str(dest_dir.joinpath(dest_filename)))
+        filename = download_blob(BUCKET_NAME, source_blob_name, str(dest_dir.joinpath(dest_filename)))
+        result["filenames"] = extract_filenames(filename, dest_dir)
         result["success"] = True
         # Update status in dataset
         s_dataset.save_change(attribute=DB_STEP, value="completed")

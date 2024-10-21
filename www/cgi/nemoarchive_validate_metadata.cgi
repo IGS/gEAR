@@ -2,9 +2,10 @@
 
 # nemoarchive_validate_metadata.cgi - Write metadata to JSON file
 
+import shutil, gzip
 import json
 import logging
-import os, subprocess, sys
+import sys
 from pathlib import Path
 
 gear_root = Path(__file__).resolve().parents[2] # web-root dir
@@ -46,6 +47,14 @@ def setup_logger():
 
 logger = setup_logger()
 
+def extract_gz_file(gz_file: str) -> str:
+    """Extracts a .gz file and returns the path to the extracted file."""
+    extracted_file = gz_file.replace(".gz", "")
+    with gzip.open(gz_file, 'rb') as f_in:
+        with open(extracted_file, 'wb') as f_out:
+            shutil.copyfileobj(f_in, f_out)
+    return extracted_file
+
 def get_ensembl_release(gene_file, organism_id):
     """Given the list of genes and the organism, determine best ensemble release to use for this dataset."""
 
@@ -56,34 +65,40 @@ def get_ensembl_release(gene_file, organism_id):
 
     return find_best_ensembl_release_match(gene_file, organism_id, silent=True)
 
-def get_genes_file_path(base_dir:Path, file_format):
+def get_genes_file_path(base_dir: Path, file_format: str) -> Path:
     """Grab list of genes depending on file format. Returns filepath. Accepts Ensembl ID as first column too."""
+    file_format = file_format.lower()
+    if file_format == "mex":
+        return get_mex_genes_file(base_dir)
+    elif file_format == "tabcounts":
+        return get_tabcounts_genes_file(base_dir)
+    elif file_format == "h5ad":
+        return get_h5ad_genes_file(base_dir)
+    else:
+        raise Exception(f"File format {file_format} not supported")
 
-    # This is working under the assumption that only one of the files in the base_dir matches
-    if file_format.lower() == "mex":
-        # I'm bad with glob patterns
-        mex_features_file = list(base_dir.glob(r"features.tsv*"))
-        mex_genes_file =  list(base_dir.glob(r"genes.tsv*"))
-        genes_file = str([*mex_features_file, *mex_genes_file][0])  # One of these should match
-        if genes_file.endswith(".gz"):
-            import shutil, gzip
-            gunzip_file = genes_file.replace(".gz", "")
-            with gzip.open(genes_file, 'rb') as f_in:
-                with open(gunzip_file, 'wb') as f_out:
-                    shutil.copyfileobj(f_in, f_out)
-                    genes_file = gunzip_file
-        return base_dir.joinpath(genes_file)
-    if file_format.lower() == "tabcounts":
-        genes_file =  list(base_dir.glob(r"*(genes|ROWmeta).tab"))[0]
-        return base_dir.joinpath(genes_file)
-    if file_format.lower() == "h5ad":
-        h5ad_file = list(base_dir.glob(r"*\.h5ad"))[0]
-        import anndata
-        adata = anndata.read(base_dir.joinpath(h5ad_file))
-        genes_file = base_dir.joinpath("h5ad_genes.tsv")
-        adata.var.to_csv(genes_file, sep="\t")
-        return genes_file
-    raise Exception("File format {} not supported".format(file_format))
+def get_mex_genes_file(base_dir: Path) -> Path:
+    """Finds and returns the MEX genes file path."""
+    mex_features_file = list(base_dir.glob(r"features.tsv*"))
+    mex_genes_file = list(base_dir.glob(r"genes.tsv*"))
+    genes_file = str([*mex_features_file, *mex_genes_file][0])  # One of these should match
+    if genes_file.endswith(".gz"):
+        genes_file = extract_gz_file(genes_file)
+    return base_dir.joinpath(genes_file)
+
+def get_tabcounts_genes_file(base_dir: Path) -> Path:
+    """Finds and returns the TabCounts genes file path."""
+    genes_file = list(base_dir.glob(r"*(genes|ROWmeta).tab"))[0]
+    return base_dir.joinpath(genes_file)
+
+def get_h5ad_genes_file(base_dir: Path) -> Path:
+    """Finds and returns the H5AD genes file path."""
+    import anndata
+    h5ad_file = list(base_dir.glob(r"*.h5ad"))[0]
+    adata = anndata.read(base_dir.joinpath(h5ad_file))
+    genes_file = base_dir.joinpath("h5ad_genes.tsv")
+    adata.var.to_csv(genes_file, sep="\t")
+    return genes_file
 
 def organism_to_taxon_id(org):
     # Returns a gear-related mapping, or None if not encountered
@@ -215,7 +230,7 @@ def validate_metadata(dataset_id, session_id, attributes):
 
     # Dataset type
     json_attributes["field"].append("dataset_type")
-    tissue_type = attributes["sample"]["tissue_type"]
+    tissue_type = attributes["dataset"]["tissue_type"]
     dataset_type = tissue_type_to_dataset_type(tissue_type)
     # ATAC-Seq has it's own metadata datatype
     if "ATAC-seq".lower() in attributes["dataset"]["technique"].lower():
@@ -228,7 +243,7 @@ def validate_metadata(dataset_id, session_id, attributes):
 
     # Organism
     json_attributes["field"].append("sample_taxid")
-    organism = attributes["sample"]["sample_organism"]
+    organism = attributes["dataset"]["organism"]
     taxon_id = organism_to_taxon_id(organism)
     if not taxon_id:
         err_msg = "Could not find taxon ID for organism {}".format(organism)

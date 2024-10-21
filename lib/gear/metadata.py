@@ -256,7 +256,10 @@ class Metadata:
         """
         Accessor for field attributes in the metadata dataframe.
         """
-        fv = self.metadata.loc[field, 'value']
+        if not field:
+            fv = self.metadata.loc[:, 'value']
+        else:
+            fv = self.metadata.loc[field, 'value']
         if isinstance(fv, dict):
             if 'value' in fv:
                 fv = fv['value']
@@ -317,7 +320,8 @@ class Metadata:
         pubmed_id = pubmed_ids.pop()
 
         if len(pubmed_ids):
-            ldesc += "<br>Additional Pubmed IDS: {0}".format(', '.join(pubmed_ids))
+            pubmed_ids_string = ', '.join(pubmed_ids)
+            ldesc = f'{ldesc}<br>Additional Pubmed IDS: {pubmed_ids_string}'
 
         platform_id = get_value_from_df(df, 'platform_id')
         instrument_model = get_value_from_df(df, 'instrument_model')

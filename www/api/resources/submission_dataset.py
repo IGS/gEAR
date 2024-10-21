@@ -80,7 +80,7 @@ def get_submission_dataset(dataset_id) -> geardb.SubmissionDataset:
         abort(404, message=f"Submission dataset id {dataset_id} does not exist.")
     return s_dataset
 
-def save_submission_dataset(dataset_id, identifier, is_restricted):
+def save_submission_dataset(dataset_id, identifier, is_restricted) -> geardb.SubmissionDataset:
     # Dataset is a foreign key in SubmissionDataset so we need to ensure we do not duplicate
     dataset = geardb.get_dataset_by_id(dataset_id)
     if not dataset:
@@ -131,7 +131,7 @@ def submission_dataset_callback(dataset_id, metadata, session_id, url_path, acti
 
     if action == "make_display":
         try:
-            result = make_display.make_default_display(dataset_id, session_id, category, gene)
+            result.update(make_display.make_default_display(dataset_id, session_id, category, gene))
             result["self"] = url_path
             if not result["success"]:
                 raise Exception("Make UMAP step failed")
@@ -147,33 +147,30 @@ def submission_dataset_callback(dataset_id, metadata, session_id, url_path, acti
         #NOTE: Each of the CGI scripts will control loading/failed/complete status of their process
 
         try:
-            result = pull_nemoarchive_metadata(s_dataset, metadata["identifier"])
+            result.update(pull_nemoarchive_metadata(s_dataset, metadata["identifier"]))
             if not result["success"]:
                 raise Exception("Could not pull metadata from NeMO Archive API")
             dataset_mdata = result["metadata"].get("dataset")
 
             db_step = "pulled_to_vm_status"    # step name in database
             if should_step_run(s_dataset, db_step):
-                # Component = file format type
-                component_files = dataset_mdata["component_fields"]
-                for component in component_files:
-                    bucket_path = dataset_mdata[component]
-                    result = pull_from_gcp.pull_gcp_files_to_vm(bucket_path, dataset_id)
-                    if not result["success"]:
-                        raise Exception("Pull GCP Files step failed")
+                bucket_path = dataset_mdata["bucket_path"]
+                result.update(pull_from_gcp.pull_gcp_files_to_vm(bucket_path, dataset_id))
+                if not result["success"]:
+                    raise Exception("Pull GCP Files step failed")
 
             ###
             db_step = "convert_to_h5ad_status"
             if should_step_run(s_dataset, db_step):
                 filetype = dataset_mdata["filetype"]
-                result = write_h5ad.run_write_h5ad(dataset_id, filetype)
+                result.update(write_h5ad.run_write_h5ad(dataset_id, filetype))
                 if not result["success"]:
                     raise Exception("Write H5AD step failed")
 
             ###
             db_step = "make_umap_status"
             if should_step_run(s_dataset, db_step):
-                result = make_display.make_default_display(dataset_id, session_id, category, gene)
+                result.update(make_display.make_default_display(dataset_id, session_id, category, gene))
                 if not result["success"]:
                     raise Exception("Make UMAP step failed")
 
@@ -219,6 +216,10 @@ def pull_nemoarchive_metadata(s_dataset, nemo_id) -> dict:
 
     if "error" in api_file_result:
         s_dataset.save_change(attribute="log_message", value=api_file_result["error"])
+        return result
+
+    if not "access" in api_file_result or api_file_result["access"] != "open":
+        s_dataset.save_change(attribute="log_message", value="File is not open access. Cannot import file at this time.")
         return result
 
     sample_identifier = api_file_result["sample"]
@@ -403,6 +404,16 @@ def process_nemo_assets_api_file_result(api_result):
     dataset_metadata["reference_annot_id"] = None
     #dataset_metadata["reference_annot_id"] = get_reference_annot_id(connection, nemo_id)
 
+    # get GCP bucket path
+    manifest_file_urls = api_result["manifest_file_urls"]
+    if manifest_file_urls:
+        # find the entry where protocol is "gcp"
+        gcp_manifest = next((entry for entry in manifest_file_urls if entry["protocol"] == "gcp"), None)
+        if gcp_manifest:
+            dataset_metadata["bucket_path"] = gcp_manifest["file_location"]
+    else:
+        dataset_metadata["bucket_path"] = None
+
     return dataset_metadata
 
 def process_nemo_assets_api_sample_result(api_result):
@@ -578,9 +589,9 @@ class SubmissionDataset(Resource):
                 while not task_finished:
                     pass
                 print("[x] sending payload response for submission_dataset {} back to client".format(dataset_id), file=sys.stderr)
-                result = response
+                result.update(response)
         else:
-            result =  submission_dataset_callback(dataset_id, metadata, session_id, url_path, action, category, gene)
+            result.update(submission_dataset_callback(dataset_id, metadata, session_id, url_path, action, category, gene))
 
         if not result["success"]:
             print(result.get("message", "Something went wrong."), file=sys.stderr)
