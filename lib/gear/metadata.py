@@ -1,9 +1,10 @@
-import ast
 import json
 import numpy as np
 import pandas as pd
 import sys
 import mysql.connector
+from typing import Union
+
 
 import geardb
 from gear.fromgeo import FromGeo
@@ -60,7 +61,7 @@ class Metadata:
         2. validate information
         3. upload metadata to gEAR MySQL
     """
-    def __init__(self, metadata=None, file_path=None):
+    def __init__(self, metadata=pd.DataFrame(), file_path=None):
         self.metadata = metadata
         self.file_path = file_path
 
@@ -68,7 +69,7 @@ class Metadata:
             self.read_file(file_path=file_path)
 
 
-    def read_file(self, file_path=None):
+    def read_file(self, file_path=""):
         """
         Reads dataset_metadata.xlsx or dataset_metadata.json into a pandas dataframe
 
@@ -95,7 +96,7 @@ class Metadata:
 
                 with open(file_path) as json_file:
                     data = json.loads(json_file.read())
-                    
+
                     for d in data:
                         json_data['field'].append(d)
                         json_data['value'].append(data[d])
@@ -126,7 +127,7 @@ class Metadata:
         -----
             Sets self.metadata = pandas DataFrame where empty fields are now populated by GEO info
         """
-        if self.metadata is None:
+        if self.metadata.empty:
             raise Exception("No metadata found in self.metadata. Provide read an excel metadata template file to continue.")
 
         geo_series_id = self.metadata.loc['geo_accession', 'value']
@@ -148,14 +149,17 @@ class Metadata:
         series_content = FromGeo.get_geo_data(geo_id=geo_series_id)
 
         # Convert data into pandas dataframe
-        series_df = FromGeo.process_geo_data(content=series_content, json_or_dataframe='dataframe')
+        series_df: Union[str, pd.DataFrame] = FromGeo.process_geo_data(content=series_content, json_or_dataframe='dataframe')
+
+        # Ensure the result is a DataFrame
+        if not isinstance(series_df, pd.DataFrame):
+            raise TypeError("Expected a DataFrame, but got a different type.")
 
         # Combine user's metdata and series metadata
         updated_metadata = FromGeo.add_geo_data(metadata=self.metadata, geo_data=series_df)
 
         # Repeat to get sample metadata
-        # sample_id = series_df.loc['sample_id', 0][0]
-        sample_ids = series_df.loc['sample_id', 0]
+        sample_ids = str(series_df.loc['sample_id', 0])
         sample_id = sample_ids.split(',', 1)[0]
 
         samp_content = FromGeo.get_geo_data(geo_id=sample_id)

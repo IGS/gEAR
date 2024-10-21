@@ -9,6 +9,8 @@ Returns an empty JSON object if the passed ID wasn't found
 import cgi
 import os, sys
 import json
+import pandas as pd
+from typing import Union
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 
@@ -20,13 +22,18 @@ def main():
 
     form = cgi.FieldStorage()
     geo_id = form.getvalue('geo_id')
-    
+
     result = { 'success': 0, 'message': '', 'data': {} }
 
     if geo_id.startswith('GSE'):
         series_content = FromGeo.get_geo_data(geo_id=geo_id)
-        series_content = FromGeo.process_geo_data(content=series_content, json_or_dataframe='json')
-        series_json = json.loads(series_content)
+
+        json_series_content: Union[str, pd.DataFrame]  = FromGeo.process_geo_data(content=series_content, json_or_dataframe='json')
+        # Ensure the result is a string
+        if not isinstance(json_series_content, str):
+            raise TypeError("Expected a JSON string, but got a different type.")
+
+        series_json = json.loads(json_series_content)
 
         # Can be like: GSM1602229, GSM1602230, GSM1602231, GSM1602228
         sample_id_str = series_json['sample_id']
@@ -38,8 +45,11 @@ def main():
             first_sample_id = sample_id_str
 
         sample_content = FromGeo.get_geo_data(geo_id=first_sample_id)
-        sample_content = FromGeo.process_geo_data(content=sample_content, json_or_dataframe='json')
-        sample_json = json.loads(sample_content)
+        json_sample_content: Union[str, pd.DataFrame] = FromGeo.process_geo_data(content=sample_content, json_or_dataframe='json')
+        # Ensure the result is a string
+        if not isinstance(json_sample_content, str):
+            raise TypeError("Expected a JSON string, but got a different type.")
+        sample_json = json.loads(json_sample_content)
 
         # Merge the sample metadata in but keep the series accession
         series_json.update(sample_json)
@@ -48,14 +58,20 @@ def main():
 
     elif geo_id.startswith('GSM'):
         sample_content = FromGeo.get_geo_data(geo_id=geo_id)
-        sample_content = FromGeo.process_geo_data(content=sample_content, json_or_dataframe='json')
-        sample_json = json.loads(sample_content)
+        json_sample_content: Union[str, pd.DataFrame] = FromGeo.process_geo_data(content=sample_content, json_or_dataframe='json')
+        # Ensure the result is a string
+        if not isinstance(json_sample_content, str):
+            raise TypeError("Expected a JSON string, but got a different type.")
+        sample_json = json.loads(json_sample_content)
 
         if 'series_id' in sample_json:
             series_id = sample_json['series_id']
             series_content = FromGeo.get_geo_data(geo_id=series_id)
-            series_content = FromGeo.process_geo_data(content=series_content, json_or_dataframe='json')
-            series_json = json.loads(series_content)
+            json_sample_content: Union[str, pd.DataFrame] = FromGeo.process_geo_data(content=series_content, json_or_dataframe='json')
+            # Ensure the result is a string
+            if not isinstance(json_sample_content, str):
+                raise TypeError("Expected a JSON string, but got a different type.")
+            series_json = json.loads(json_sample_content)
 
             # Add any keys from the series metadata that aren't in the sample metadata
             for key, value in series_json.items():

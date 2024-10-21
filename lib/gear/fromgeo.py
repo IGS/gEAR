@@ -1,8 +1,7 @@
 import json
-import numpy as np
-import os, sys
 import pandas as pd
 import requests
+from typing import Union
 
 from gear.metadatavalidator import MetadataValidator as mdv
 
@@ -15,7 +14,7 @@ class FromGeo:
     """
 
     @classmethod
-    def get_geo_data(cls, geo_id=None):
+    def get_geo_data(cls, geo_id="") -> list[str]:
         """
         Using geo_id (GSExxxxx or GSMxxxx), retrieves GEO metadata for that ID.
 
@@ -53,7 +52,7 @@ class FromGeo:
             targ=all - https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE65633&targ=all&view=full&form=text
             targ=gsm - https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE65633&targ=gsm&view=full&form=text
         """
-        if geo_id is None:
+        if not geo_id:
             raise Exception("No 'geo_id' provided. Provide GEO GSExxxxx or GSMxxxx ID to continue.")
 
         #Get metadata from GEO
@@ -66,7 +65,7 @@ class FromGeo:
         return content
 
     @classmethod
-    def process_geo_data(cls, content=None, json_or_dataframe=None):
+    def process_geo_data(cls, content=None, json_or_dataframe=None) -> Union[str, pd.DataFrame]:
         """
         Use this to process the request GET content retrieved from in method get_geo_data()
 
