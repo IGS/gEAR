@@ -5,6 +5,7 @@ Common functions shared across several resources
 import os, sys
 import anndata
 import pandas as pd
+from pandas.api.types import is_integer_dtype
 
 from pathlib import Path
 
@@ -20,13 +21,19 @@ PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
 
 def get_adata_from_analysis(analysis_id, dataset_id, session_id):
     user = get_user_from_session_id(session_id)
-    ana = Analysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
+    user_id = None
+    if user:
+        user_id = user.id
+    ana = Analysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user_id)
     ana.discover_type()
     return ana.get_adata()
 
 def get_adata_shadow_from_analysis(analysis_id, dataset_id, session_id):
     user = get_user_from_session_id(session_id)
-    ana = Analysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
+    user_id = None
+    if user:
+        user_id = user.id
+    ana = Analysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user_id)
     ana.discover_type()
     return AnnDataShadow(ana.dataset_path())
 
@@ -41,7 +48,7 @@ def get_adata_shadow(analysis_id, dataset_id, session_id, h5_path):
     else:
         adata = get_adata_shadow_from_primary(h5_path)
 
-    if adata.var.gene_symbol.dtype == "int16":
+    if is_integer_dtype(adata.var.gene_symbol.dtype):
         print("Using AnnData instead of AnnDataShadow because var and obs are not correct for dataset {}".format(dataset_id), file=sys.stderr)
         adata = get_adata_from_analysis(analysis_id, dataset_id, session_id)
     return adata
