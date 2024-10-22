@@ -44,6 +44,9 @@ class DatasetUploader:
                 elif tartype == 'threetab':
                     import gear.threetabuploader as threetabuploader
                     return threetabuploader.ThreeTabUploader()
+                elif tartype == 'visium':
+                    import gear.visiumuploader as visiumuploader
+                    return visiumuploader.VisiumUploader()
         if filetype == "h5ad":
             import gear.h5aduploader as h5aduploader
             return h5aduploader.H5adUploader()
@@ -67,7 +70,7 @@ class DatasetUploader:
         observations.tab
 
         None is returned if neither of these is true
-        
+
         Added NEMO file format functionality.
         DataMTX.tab -> expression.tab
         COLmeta.tab -> observations.tab
@@ -80,14 +83,18 @@ class DatasetUploader:
         for f_path in filenames:
             fname=os.path.basename(f_path)
             basenames.append(fname)
-            
+
         if 'expression.tab' in basenames and 'genes.tab' in basenames and 'observations.tab' in basenames:
             return 'threetab'
-        
+
         if 'matrix.mtx' in basenames and 'barcodes.tsv' in basenames and 'genes.tsv' in basenames:
             return 'mex'
-        
+
         if 'DataMTX.tab' in filestr and 'COLmeta.tab' in filestr and 'ROWmeta.tab' in filestr:
             return 'threetab'
+
+        # ? subject to change
+        if "spatial" in filestr and "tissue_positions_list.csv" in filestr and "filtered_feature_bc_matrix.h5" in filestr:
+            return 'visium'
 
         return None
