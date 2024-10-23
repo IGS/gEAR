@@ -30,13 +30,13 @@ Not necessary if you want projectR to run on a Google Cloud Run service (configu
 
 `sudo apt install r-base`
 
-Please consult `setup_notes_r_rpy2.md` for packages to install in order to install requisite R packages
+Please consult `setup.r_rpy2.md` for packages to install in order to install requisite R packages
 
 ### RabbitMQ
 
 Not necessary if you want projectR to run in the Apache environment or do not want to setup the RabbitMQ messaging service (configurable in gear.ini)
 
-Follow instructions in setup_rabbit_mq.md document
+Follow instructions in setup.rabbit_mq.md document
 
 ### Python
 
