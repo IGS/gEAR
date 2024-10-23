@@ -1,4 +1,5 @@
 import json
+import sys  # for debug prints
 
 import gear.mg_plotting as mg
 import geardb
@@ -162,6 +163,9 @@ class MultigeneDashData(Resource):
 
         adata.obs = order_by_time_point(adata.obs)
 
+        # quick check to ensure
+
+
         # get a map of all levels for each column
         columns = adata.obs.select_dtypes(include="category").columns.tolist()
 
@@ -220,7 +224,7 @@ class MultigeneDashData(Resource):
                 raise PlotError('Must pass in some genes before creating a plot of type {}'.format(plot_type))
 
             if len(gene_symbols) == 1 and plot_type == "heatmap":
-                raise PlotError('Heatmaps require 2 or more genes as input')
+                raise PlotError('Heatmaps require 2 or more genes from the input to be directly found or mapped to orthologs in the dataset.')
 
             # Some datasets have multiple ensemble IDs mapped to the same gene.
             # Drop dups to prevent out-of-bounds index errors downstream
@@ -245,7 +249,7 @@ class MultigeneDashData(Resource):
 
             try:
                 if plot_type == "heatmap" and len(selected.var) == 1:
-                    raise PlotError("Only one gene from the searched gene symbols was found in dataset.  The heatmap option require at least 2 genes to plot.")
+                    raise PlotError("Only one gene from the searched gene symbol was found in dataset.  The heatmap option requires at least 2 genes to plot.")
             except PlotError as pe:
                 return {
                     "success": -1,
@@ -267,77 +271,99 @@ class MultigeneDashData(Resource):
             # Sort ensembl IDs based on the gene symbol order
             sorted_ensm = map(lambda x: gene_to_ensm[x], normalized_genes_list)
 
-        # Reorder the categorical values in the observation dataframe
-        sort_fields = []
-        if sort_order:
-            # Ensure selected primary and secondary columns are in the correct order
-            if primary_col:
-                sort_fields.append(primary_col)
-            if secondary_col and secondary_col != primary_col:
-                sort_fields.append(secondary_col)
 
-            # Now reorder the dataframe
-            for key in sort_fields:
-                col = selected.obs[key]
-                try:
-                    # Some columns might be numeric, therefore
-                    # we don't want to reorder these
+        try:
+            # Reorder the categorical values in the observation dataframe
+            sort_fields = []
+            if sort_order:
+                # Ensure selected primary and secondary columns are in the correct order
+                if primary_col:
+                    sort_fields.append(primary_col)
+                if secondary_col and secondary_col != primary_col:
+                    sort_fields.append(secondary_col)
+
+                # Now reorder the dataframe
+                for key in sort_fields:
+                    if key not in selected.obs:
+                        raise PlotError(f"Sort order series {key} not found in observation metadata for dataset. Please update curation.")
+
+                    col = selected.obs[key]
+                    try:
+                        # Some columns might be numeric, therefore
+                        # we don't want to reorder these
+                        # ! This will pass on cases where the sort value is not in the column. Will be handled in the "filter" section
+                        reordered_col = col.cat.reorder_categories(
+                            sort_order[key], ordered=True)
+                        selected.obs[key] = reordered_col
+                    except:
+                        pass
+
+            # Make a composite index of all categorical types
+            selected.obs['composite_index'] = create_composite_index_column(selected, columns)
+            selected.obs['composite_index'] = selected.obs['composite_index'].astype('category')
+            columns.append("composite_index")
+
+            # Filter dataframe on the chosen observation filters
+            if filters:
+                for field in filters.keys():
+                    values = filters[field]
+
+                    if field not in selected.obs:
+                        raise PlotError(f"Filter series {field} not found in observation metadata for dataset. Please update curation")
+
+                    # if there is an "NA" value in the filters but no "NA" in the dataframe
+                    # check if it is a missing value, and if so, impute it
+                    if "NA" in values and "NA" not in selected.obs[field].cat.categories:
+                        values.remove("NA")
+                        selected.obs[field].cat.add_categories("NA")
+                        selected.obs[field].fillna("NA", inplace=True)
+
+                    mask = selected.obs[field].isin(values)
+                    selected = selected[mask, :]
+
+                    # reorder filter key the same order as sort_order if key exists
+                    # Mostly for fixing the order of the heatmap clusterbars
+                    if sort_order and field in sort_order:
+                        filters[field] = sort_order[field]
+
+                # if the filters are empty, return an empty dataframe
+                if selected.shape[0] == 0:
+                    return {
+                        "success": -1,
+                        "message": "No data found for the selected filters."
+                    }
+
+                # For the remaining data, create a special composite index for the specified filters
+                selected.obs['filters_composite'] = create_composite_index_column(selected, filters.keys())
+                selected.obs['filters_composite'] = selected.obs['filters_composite'].astype('category')
+                columns.append("filters_composite")
+
+                # Do another sort, this time by the filters
+                # Filtering the dataset may unsort the original sort we did.
+                # This is in case the filter key has less categories than the provided sort key
+                for key in sort_fields:
+                    col = selected.obs[key]
+
+                    # If every filter key is not in the col categories, raise an error
+                    # This can happen if a curation was made and then the dataset was reloaded with different labels
+                    if not all([val in col.cat.categories for val in filters[key]]):
+                        raise PlotError(f"At least one value for filter series {key} is not found in the observation metadata in the dataset. Please update curation.")
+
                     reordered_col = col.cat.reorder_categories(
-                        sort_order[key], ordered=True)
+                        filters[key], ordered=True)
                     selected.obs[key] = reordered_col
-                except:
-                    pass
+        except PlotError as pe:
+            return {
+                'success': -1,
+                'message': str(pe),
+            }
 
-        # Make a composite index of all categorical types
-        selected.obs['composite_index'] = create_composite_index_column(selected, columns)
-        selected.obs['composite_index'] = selected.obs['composite_index'].astype('category')
-        columns.append("composite_index")
-
-        import sys
-
-        # Filter dataframe on the chosen observation filters
-        if filters:
-            # reorder filter key the same order as sort_order if key exists
-            # Mostly for fixing the order of the heatmap clusterbars
-            for field in filters.keys():
-                values = filters[field]
-                # if there is an "NA" value in the filters but no "NA" in the dataframe
-                # check if it is a missing value, and if so, impute it
-                if "NA" in values and "NA" not in selected.obs[col].cat.categories:
-                    values.remove("NA")
-                    selected.obs[col].cat.add_categories("NA")
-                    selected.obs[col].fillna("NA", inplace=True)
-
-                mask = selected.obs[field].isin(values)
-                selected = selected[mask, :]
-
-                if sort_order and field in sort_order:
-                    filters[field] = sort_order[field]
-
-            # if the filters are empty, return an empty dataframe
-            if selected.shape[0] == 0:
-                return {
-                    "success": -1,
-                    "message": "No data found for the selected filters."
-                }
-
-            # For the remaining data, create a special composite index for the specified filters
-            selected.obs['filters_composite'] = create_composite_index_column(selected, filters.keys())
-            selected.obs['filters_composite'] = selected.obs['filters_composite'].astype('category')
-            columns.append("filters_composite")
-
-            # sort by the filters
-            for key in sort_fields:
-                col = selected.obs[key]
-                reordered_col = col.cat.reorder_categories(
-                    filters[key], ordered=True)
-                selected.obs[key] = reordered_col
 
         var_index = selected.var.index.name
 
         if plot_type == "volcano":
             try:
-                key, query_val, ref_val = mg.validate_volcano_conditions(query_condition, ref_condition)
+                key, query_val, ref_val = mg.validate_volcano_conditions(selected.obs, query_condition, ref_condition)
                 df = mg.prep_volcano_dataframe(selected
                     , key
                     , query_val
@@ -383,7 +409,7 @@ class MultigeneDashData(Resource):
                 dataset_genes = adata.var['gene_symbol'].unique().tolist()
                 normalized_genes_list, _found_genes = mg.normalize_searched_genes(dataset_genes, gene_symbols)
             try:
-                key, control_val, compare1_val, compare2_val = mg.validate_quadrant_conditions(ref_condition, compare_group1, compare_group2)
+                key, control_val, compare1_val, compare2_val = mg.validate_quadrant_conditions(selected.obs, ref_condition, compare_group1, compare_group2)
                 df = mg.prep_quadrant_dataframe(selected
                         , key
                         , control_val
@@ -463,6 +489,14 @@ class MultigeneDashData(Resource):
             fig = mg.create_dot_plot(df, groupby_filters, is_log10, title, colorscale, reverse_colorscale)
 
         elif plot_type == "heatmap":
+            for field in clusterbar_fields:
+                if field not in selected.obs:
+                    return {
+                        'success': -1,
+                        'message': f"Clusterbar field '{field}' not found in observation metadata for dataset. Please update curation."
+                    }
+
+
             # Filter genes and slice the adata to get a dataframe
             # with expression and its observation metadata
             df = selected.to_df()
