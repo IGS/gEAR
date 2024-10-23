@@ -45,7 +45,7 @@ def main():
             expression_matrix_path = filepath
         elif infile == 'observations.tab' or os.path.basename(filepath)== 'observations.tab' or 'COLmeta.tab' in infile:
             print("Reading observations file: {0}".format(filepath), file=sys.stderr, flush=True)
-            obs = pd.read_table(filepath, sep='\t', index_col=0, header=0)
+            obs = pd.read_table(filepath, sep='\t', index_col=0, header=0, low_memory=False)
         elif infile == 'genes.tab' or os.path.basename(filepath)== 'genes.tab' or 'ROWmeta.tab' in infile:
             print("Reading genes file: {0}".format(filepath), file=sys.stderr, flush=True)
             var = pd.read_table(filepath, sep='\t', index_col=0, header=0)
