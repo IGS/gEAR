@@ -428,15 +428,27 @@ CREATE TABLE tag (
 	label	VARCHAR(55)
 ) ENGINE=INNODB;
 
+CREATE TABLE comment (
+    id int PRIMARY KEY AUTO_INCREMENT,
+    first_name varchar(255) DEFAULT NULL,
+    last_name varchar(255) DEFAULT NULL,
+    user_id int NOT NULL,
+    email varchar(255) DEFAULT NULL,
+    title varchar(255) DEFAULT NULL,
+    message varchar(1020) DEFAULT NULL,
+    is_read tinyint DEFAULT 0,
+    date_added datetime DEFAULT NULL,
+    FOREIGN KEY comment_ibfk_1 (user_id) REFERENCES guser(id)
+) ENGINE=INNODB;
+
+
 -- multiple tags to multiple comments
 CREATE TABLE comment_tag (
-	id			INT PRIMARY KEY AUTO_INCREMENT,
-	tag_id		INT,
-	comment_id	INT,
+	id          INT PRIMARY KEY AUTO_INCREMENT,
+	tag_id      INT,
+	comment_id  INT,
 	FOREIGN KEY (tag_id) REFERENCES tag(id),
-	FOREIGN KEY (comment_id)
-    REFERENCES comment(id)
-    ON DELETE CASCADE
+	FOREIGN KEY (comment_id) REFERENCES comment(id) ON DELETE CASCADE
 ) ENGINE=INNODB;
 
 CREATE TABLE dataset_tag (
