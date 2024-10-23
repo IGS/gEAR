@@ -139,35 +139,35 @@ class PlotlyData(Resource):
         if x_axis not in adata.obs.columns:
             if not x_axis == "raw_value":
                 return_dict["success"] = -1
-                return_dict["message"] = f"X-axis arg '{x_axis}' not found in observation metadata for dataset. Please adjust curation."
+                return_dict["message"] = f"X-axis arg '{x_axis}' not found in observation metadata for dataset. Please update curation."
                 return return_dict
 
         if y_axis not in adata.obs.columns:
             if not y_axis == "raw_value":
                 return_dict["success"] = -1
-                return_dict["message"] = f"Y-axis arg '{y_axis}' not found in observation metadata for dataset. Please adjust curation."
+                return_dict["message"] = f"Y-axis arg '{y_axis}' not found in observation metadata for dataset. Please update curation."
                 return return_dict
 
         if color_name and color_name not in adata.obs.columns:
             if not color_name == "raw_value":
                 return_dict["success"] = -1
-                return_dict["message"] = f"Color arg '{color_name}' not found in observation metadata for dataset. Please adjust curation."
+                return_dict["message"] = f"Color arg '{color_name}' not found in observation metadata for dataset. Please update curation."
                 return return_dict
 
         if facet_row and facet_row not in adata.obs.columns:
             return_dict["success"] = -1
-            return_dict["message"] = f"Facet row arg '{facet_row}' not found in observation metadata for dataset. Please adjust curation."
+            return_dict["message"] = f"Facet row arg '{facet_row}' not found in observation metadata for dataset. Please adupdatejust curation."
             return return_dict
 
         if facet_col and facet_col not in adata.obs.columns:
             return_dict["success"] = -1
-            return_dict["message"] = f"Facet column arg '{facet_col}' not found in observation metadata for dataset. Please adjust curation."
+            return_dict["message"] = f"Facet column arg '{facet_col}' not found in observation metadata for dataset. Please update curation."
             return return_dict
 
         if label and label not in adata.obs.columns:
             if not label == "raw_value":
                 return_dict["success"] = -1
-                return_dict["message"] = f"Label arg '{label}' not found in observation metadata for dataset. Please adjust curation."
+                return_dict["message"] = f"Label arg '{label}' not found in observation metadata for dataset. Please update curation."
                 return return_dict
 
 
