@@ -37,7 +37,7 @@ CREATE TABLE guser (
        date_created   DATETIME DEFAULT CURRENT_TIMESTAMP,
        default_org_id INT NOT NULL DEFAULT 1,
        layout_id VARCHAR(24),
-       is_curator     TINYINT(1) DEFAULT 0
+       is_curator     TINYINT(1) DEFAULT 0,
        FOREIGN KEY fk_guser_doi(default_org_id) REFERENCES organism(id),
        FOREIGN KEY fk_guser_layout(layout_share_id) REFERENCES layout(share_id) ON DELETE CASCADE
 ) ENGINE=INNODB;
