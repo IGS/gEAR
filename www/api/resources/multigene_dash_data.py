@@ -285,12 +285,13 @@ class MultigeneDashData(Resource):
                 # Now reorder the dataframe
                 for key in sort_fields:
                     if key not in selected.obs:
-                        raise PlotError(f"Sort order series {key} not found in observation metadata for dataset. Please adjust curation.")
+                        raise PlotError(f"Sort order series {key} not found in observation metadata for dataset. Please update curation.")
 
                     col = selected.obs[key]
                     try:
                         # Some columns might be numeric, therefore
                         # we don't want to reorder these
+                        # ! This will pass on cases where the sort value is not in the column. Will be handled in the "filter" section
                         reordered_col = col.cat.reorder_categories(
                             sort_order[key], ordered=True)
                         selected.obs[key] = reordered_col
@@ -304,13 +305,11 @@ class MultigeneDashData(Resource):
 
             # Filter dataframe on the chosen observation filters
             if filters:
-                # reorder filter key the same order as sort_order if key exists
-                # Mostly for fixing the order of the heatmap clusterbars
                 for field in filters.keys():
                     values = filters[field]
 
                     if field not in selected.obs:
-                        raise PlotError(f"Filter series {field} not found in observation metadata for dataset. Please adjust curation", file=sys.stderr)
+                        raise PlotError(f"Filter series {field} not found in observation metadata for dataset. Please update curation")
 
                     # if there is an "NA" value in the filters but no "NA" in the dataframe
                     # check if it is a missing value, and if so, impute it
@@ -322,6 +321,8 @@ class MultigeneDashData(Resource):
                     mask = selected.obs[field].isin(values)
                     selected = selected[mask, :]
 
+                    # reorder filter key the same order as sort_order if key exists
+                    # Mostly for fixing the order of the heatmap clusterbars
                     if sort_order and field in sort_order:
                         filters[field] = sort_order[field]
 
@@ -337,9 +338,17 @@ class MultigeneDashData(Resource):
                 selected.obs['filters_composite'] = selected.obs['filters_composite'].astype('category')
                 columns.append("filters_composite")
 
-                # sort by the filters
+                # Do another sort, this time by the filters
+                # Filtering the dataset may unsort the original sort we did.
+                # This is in case the filter key has less categories than the provided sort key
                 for key in sort_fields:
                     col = selected.obs[key]
+
+                    # If every filter key is not in the col categories, raise an error
+                    # This can happen if a curation was made and then the dataset was reloaded with different labels
+                    if not all([val in col.cat.categories for val in filters[key]]):
+                        raise PlotError(f"At least one value for filter series {key} is not found in the observation metadata in the dataset. Please update curation.")
+
                     reordered_col = col.cat.reorder_categories(
                         filters[key], ordered=True)
                     selected.obs[key] = reordered_col
@@ -484,7 +493,7 @@ class MultigeneDashData(Resource):
                 if field not in selected.obs:
                     return {
                         'success': -1,
-                        'message': f"Clusterbar field '{field}' not found in observation metadata for dataset. Please adjust curation."
+                        'message': f"Clusterbar field '{field}' not found in observation metadata for dataset. Please update curation."
                     }
 
 

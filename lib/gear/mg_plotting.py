@@ -608,7 +608,7 @@ def validate_quadrant_conditions(obs_df, control_condition, compare_group1, comp
         raise PlotError("All comparable conditions must came from same observation group.")
 
     if control_key not in obs_df.columns:
-        raise PlotError(f"Control condition {control_key} not found in observation dataframe. Please adjust curation.")
+        raise PlotError(f"Control condition {control_key} not found in observation dataframe. Please update curation.")
 
     return control_key, control_val, compare1_val, compare2_val
 
@@ -1048,7 +1048,7 @@ def validate_volcano_conditions(obs_df, query_condition, ref_condition):
         raise PlotError("Both comparable conditions must came from same observation group.")
 
     if query_key not in obs_df.columns:
-        raise PlotError("Observation key {} not found in dataset. Please adjust curation.".format(query_key))
+        raise PlotError("Observation key {} not found in dataset. Please update curation.".format(query_key))
 
     return query_key, query_val, ref_val
 
