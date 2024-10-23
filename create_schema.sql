@@ -1,3 +1,6 @@
+-- drop database gear_portal; create database gear_portal; use gear_portal;
+-- source /home/jorvis/git/gEAR/create_schema.sql
+
 CREATE TABLE organism (
        id             INT PRIMARY KEY AUTO_INCREMENT,
        label          VARCHAR(255) NOT NULL,
@@ -354,7 +357,7 @@ CREATE TABLE layout (
           ON DELETE CASCADE
 ) ENGINE=INNODB;
 
-# Adding this here so we miss a chicken/egg problem, since both reference each other
+-- Adding this here so we miss a chicken/egg problem, since both reference each other
 ALTER TABLE guser ADD CONSTRAINT FOREIGN KEY fk_guser_layout(layout_id) REFERENCES layout(id) ON DELETE CASCADE;
 
 INSERT INTO layout VALUES (0, 0, NULL, "Hearing (default)", 1);
@@ -440,7 +443,6 @@ CREATE TABLE comment (
     date_added datetime DEFAULT NULL,
     FOREIGN KEY comment_ibfk_1 (user_id) REFERENCES guser(id)
 ) ENGINE=INNODB;
-
 
 -- multiple tags to multiple comments
 CREATE TABLE comment_tag (
