@@ -10,6 +10,15 @@ The base version of R installed on Ubuntu Bionic (18.04) is not a high enough ve
 
 Run `sudo sh <gEAR\_git\_root>/services/projectr/install_bioc.sh` to install R, Bioconductor, and projectR
 
+# This process ended with:
+  building HTML index ...
+make[2]: Leaving directory '/opt/R-4.4.0/src/library'
+make[1]: Leaving directory '/opt/R-4.4.0/src'
+make[1]: Entering directory '/opt/R-4.4.0/tests'
+make[1]: Nothing to be done for 'install'.
+make[1]: Leaving directory '/opt/R-4.4.0/tests'
+Fatal error: cannot open file 'install_bioc.R': No such file or directory
+
 To ensure R's shared libraries are found create a file "libR.conf" in /etc/ld.so.conf.d and add the following contents:
 
 ```text
