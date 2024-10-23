@@ -36,10 +36,9 @@ CREATE TABLE guser (
        help_id        VARCHAR(50),
        date_created   DATETIME DEFAULT CURRENT_TIMESTAMP,
        default_org_id INT NOT NULL DEFAULT 1,
-       layout_id      VARCHAR(24),
+       layout_id      INT,
        is_curator     TINYINT(1) DEFAULT 0,
-       FOREIGN KEY fk_guser_doi(default_org_id) REFERENCES organism(id),
-       FOREIGN KEY fk_guser_layout(layout_id) REFERENCES layout(id) ON DELETE CASCADE
+       FOREIGN KEY fk_guser_doi(default_org_id) REFERENCES organism(id)
 ) ENGINE=INNODB;
 
 -- password is a hashlib md5 hexdigest
@@ -354,6 +353,10 @@ CREATE TABLE layout (
           REFERENCES guser(id)
           ON DELETE CASCADE
 ) ENGINE=INNODB;
+
+# Adding this here so we miss a chicken/egg problem, since both reference each other
+ALTER TABLE guser ADD CONSTRAINT FOREIGN KEY fk_guser_layout(layout_id) REFERENCES layout(id) ON DELETE CASCADE;
+
 INSERT INTO layout VALUES (0, 0, NULL, "Hearing (default)", 1);
 INSERT INTO layout VALUES (10000, 0, NULL, "Brain development (default)", 0);
 INSERT INTO layout VALUES (10001, 0, NULL, "Huntingtons disease (default)", 0);
