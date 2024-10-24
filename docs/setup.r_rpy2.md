@@ -4,7 +4,7 @@ The base version of R installed on Ubuntu Bionic (18.04) is not a high enough ve
 
 ## Prerequesites to install via apt-get
 
-`sudo apt-get install gfortran libbz2-dev libcurl4-openssl-dev liblzma-dev libpcre3 libpcre3-dev libgomp1 libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev`
+`sudo apt-get install gfortran libbz2-dev libssl-dev libfontconfig1-dev libxml2-dev libcurl4-openssl-dev liblzma-dev libpcre3 libpcre3-dev libgomp1 libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev`
 
 ## Installing R
 
