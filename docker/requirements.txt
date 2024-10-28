@@ -31,7 +31,7 @@ python-dotenv==0.20.0
 requests==2.31.0
 rpy2==3.5.16
 sanic
-scanpy==1.10.1
+scanpy==1.10.3
 scikit-learn==1.0.2
 scipy==1.11.04
 seaborn==0.13.2
