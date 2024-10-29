@@ -141,15 +141,17 @@ const curatorApiCallsMixin = {
      * @returns {Promise<{aggregations: object, total_count: number}>} The fetched aggregations and total count.
      */
     async fetchAggregations(datasetId, analysisId, filters){
+        const errorMsg = "Could not fetch number of observations for this dataset. Please contact the gEAR team.";
         try {
             const data = await super.fetchAggregations(datasetId, analysisId, filters);
             if (data.hasOwnProperty("success") && data.success < 1) {
-                throw new Error(data?.message || "Could not fetch number of observations for this dataset. Please contact the gEAR team.");
+                throw new Error(data?.message || errorMsg);
             }
             const {aggregations, total_count} = data;
             return {aggregations, total_count};
         } catch (error) {
             logErrorInConsole(error);
+            throw new Error(errorMsg);
         }
     },
 
@@ -761,8 +763,19 @@ const createColorscaleSelectInstance = (idSelector, colorscaleSelect=null) => {
 const createFacetWidget = async (datasetId, analysisId, filters) => {
     document.getElementById("selected-facets-loader").classList.remove("is-hidden")
 
-    const {aggregations, total_count:totalCount} = await curatorApiCallsMixin.fetchAggregations(datasetId, analysisId, filters);
+    let aggregations = {};
+    let totalCount = 0;
+
+    try {
+        ({aggregations, total_count:totalCount} = await curatorApiCallsMixin.fetchAggregations(datasetId, analysisId, filters));
+
+    } catch (error) {
+        logErrorInConsole(error);
+        createToast("Could not fetch aggregations. You should still be able to plot.", "is-warning");
+        return facetWidget;
+    }
     document.getElementById("num-selected").textContent = totalCount;
+
 
     const facetWidget = new FacetWidget({
         aggregations,
@@ -775,6 +788,8 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
                     document.getElementById("num-selected").textContent = totalCount;
                 } catch (error) {
                     logErrorInConsole(error);
+                    createToast("Could not update aggregations. You should still be able to plot.", "is-warning");
+                    return facetWidget
                 }
             } else {
                 // Save an extra API call

@@ -4,20 +4,16 @@ The base version of R installed on Ubuntu Bionic (18.04) is not a high enough ve
 
 ## Prerequesites to install via apt-get
 
-`sudo apt-get install gfortran libbz2-dev libcurl4-openssl-dev liblzma-dev libpcre3 libpcre3-dev libgomp1 libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev`
+`sudo apt-get install gfortran libbz2-dev libssl-dev libfontconfig1-dev libxml2-dev libcurl4-openssl-dev liblzma-dev libpcre3 libpcre3-dev libgomp1 libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev`
 
 ## Installing R
 
-Run `sudo sh <gEAR\_git\_root>/services/projectr/install_bioc.sh` to install R, Bioconductor, and projectR
+Run this to install R, Bioconductor, and projectR:
 
-# This process ended with:
-  building HTML index ...
-make[2]: Leaving directory '/opt/R-4.4.0/src/library'
-make[1]: Leaving directory '/opt/R-4.4.0/src'
-make[1]: Entering directory '/opt/R-4.4.0/tests'
-make[1]: Nothing to be done for 'install'.
-make[1]: Leaving directory '/opt/R-4.4.0/tests'
-Fatal error: cannot open file 'install_bioc.R': No such file or directory
+```text
+cd <gEAR\_git\_root>/services/projectr/
+sudo sh ./install_bioc.sh
+```
 
 To ensure R's shared libraries are found create a file "libR.conf" in /etc/ld.so.conf.d and add the following contents:
 
@@ -30,6 +26,4 @@ Then run `sudo ldconfig` to cache the shared libraries.  You can confirm shared 
 
 ## Installing rpy2
 
-`<python\_bin>/pip3 install rpy2==3.5.1`
-
-Later versions seem to have an error that is not an issue with this version
+This will be done in the Python installation doc steps.
