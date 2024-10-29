@@ -9,8 +9,12 @@ def normalize_searched_gene(gene_set, chosen_gene):
     """Convert to case-insensitive version of gene.  Returns None if gene not found in dataset."""
     chosen_gene_lower = chosen_gene.lower()
     for gene in gene_set:
-        if chosen_gene_lower == gene.lower():
-            return gene
+        try:
+            if chosen_gene_lower == gene.lower():
+                return gene
+        except Exception:
+            print(gene, file=sys.stderr)
+            raise
     return None
 
 def get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id, exclusive_org=False):

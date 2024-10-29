@@ -90,9 +90,11 @@ Scanpy (or dependencies like numba) assumes it can write in several directories 
     $ find ./ -name __pycache__ -exec chmod 777 {} \;
 
 NOTE: Installing custom version of diffxpy that is based on the latest commit on the main branch (at the time). It does not have a release tag, but fixes a NumPy bug occurs with older diffxpy commits and newer numpy releases.
+
     $ /opt/Python-${PYTHONV}/bin/python3 -m pip install git+https://github.com/theislab/diffxpy.git@7609ea935936e3739fc4c71b75c8ee8ca57f51ea
 
 The MulticoreTSNE module currently fails with cmake 3.22.0 or greater.  I have a pending pull request to fix this but until then:
+
     $ /opt/Python-${PYTHONV}/bin/python3 -m pip install git+https://github.com/jorvis/Multicore-TSNE.git@68325753c4ab9758e3d242719cd4845d751a4b6c
 
 ## Note about Flask

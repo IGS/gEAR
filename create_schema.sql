@@ -1,3 +1,6 @@
+-- drop database gear_portal; create database gear_portal; use gear_portal;
+-- source /home/jorvis/git/gEAR/create_schema.sql
+
 CREATE TABLE organism (
        id             INT PRIMARY KEY AUTO_INCREMENT,
        label          VARCHAR(255) NOT NULL,
@@ -37,10 +40,9 @@ CREATE TABLE guser (
        help_id        VARCHAR(50),
        date_created   DATETIME DEFAULT CURRENT_TIMESTAMP,
        default_org_id INT NOT NULL DEFAULT 1,
-       layout_id VARCHAR(24),
-       is_curator     TINYINT(1) DEFAULT 0
-       FOREIGN KEY fk_guser_doi(default_org_id) REFERENCES organism(id),
-       FOREIGN KEY fk_guser_layout(layout_share_id) REFERENCES layout(share_id) ON DELETE CASCADE
+       layout_id      INT,
+       is_curator     TINYINT(1) DEFAULT 0,
+       FOREIGN KEY fk_guser_doi(default_org_id) REFERENCES organism(id)
 ) ENGINE=INNODB;
 
 -- password is a hashlib md5 hexdigest
@@ -356,6 +358,10 @@ CREATE TABLE layout (
           REFERENCES guser(id)
           ON DELETE CASCADE
 ) ENGINE=INNODB;
+
+-- Adding this here so we miss a chicken/egg problem, since both reference each other
+ALTER TABLE guser ADD CONSTRAINT FOREIGN KEY fk_guser_layout(layout_id) REFERENCES layout(id) ON DELETE CASCADE;
+
 INSERT INTO layout VALUES (0, 0, NULL, "Hearing (default)", 1);
 INSERT INTO layout VALUES (10000, 0, NULL, "Brain development (default)", 0);
 INSERT INTO layout VALUES (10001, 0, NULL, "Huntingtons disease (default)", 0);
@@ -427,15 +433,26 @@ CREATE TABLE tag (
 	label	VARCHAR(55)
 ) ENGINE=INNODB;
 
+CREATE TABLE comment (
+    id int PRIMARY KEY AUTO_INCREMENT,
+    first_name varchar(255) DEFAULT NULL,
+    last_name varchar(255) DEFAULT NULL,
+    user_id int NOT NULL,
+    email varchar(255) DEFAULT NULL,
+    title varchar(255) DEFAULT NULL,
+    message varchar(1020) DEFAULT NULL,
+    is_read tinyint DEFAULT 0,
+    date_added datetime DEFAULT NULL,
+    FOREIGN KEY comment_ibfk_1 (user_id) REFERENCES guser(id)
+) ENGINE=INNODB;
+
 -- multiple tags to multiple comments
 CREATE TABLE comment_tag (
-	id			INT PRIMARY KEY AUTO_INCREMENT,
-	tag_id		INT,
-	comment_id	INT,
+	id          INT PRIMARY KEY AUTO_INCREMENT,
+	tag_id      INT,
+	comment_id  INT,
 	FOREIGN KEY (tag_id) REFERENCES tag(id),
-	FOREIGN KEY (comment_id)
-    REFERENCES comment(id)
-    ON DELETE CASCADE
+	FOREIGN KEY (comment_id) REFERENCES comment(id) ON DELETE CASCADE
 ) ENGINE=INNODB;
 
 CREATE TABLE dataset_tag (

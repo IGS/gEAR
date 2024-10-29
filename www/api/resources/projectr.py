@@ -496,7 +496,10 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
                 , "num_dataset_genes": num_target_genes
             }
 
-    adata.close()
+    # Close adata so that we do not have a stale opened object
+    if adata.isbacked:
+        adata.file.close()
+
     if dedup_copy.exists():
         dedup_copy.unlink()
 

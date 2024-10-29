@@ -3,7 +3,7 @@ from flask_restful import Resource
 import os
 import geardb
 
-from .common import get_adata_shadow
+from .common import get_adata_shadow, get_adata_from_analysis
 
 class Aggregations(Resource):
     """Resource for retrieving observation aggregations for a dataset and applied categorial observations filters
@@ -43,10 +43,14 @@ class Aggregations(Resource):
         h5_path = ds.get_file_path()
 
         try:
-            adata = get_adata_shadow(analysis_id, dataset_id, session_id, h5_path)
+            if not filters:
+                adata = get_adata_shadow(analysis_id, dataset_id, session_id, h5_path)
+            else:
+                adata = get_adata_from_analysis(analysis_id, dataset_id, session_id)
         except FileNotFoundError:
             return {
                 "success": -1,
+                "aggretations": [],
                 'message': "No h5 file found for this dataset"
             }
 

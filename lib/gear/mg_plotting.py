@@ -595,7 +595,7 @@ def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val,
 
     return df
 
-def validate_quadrant_conditions(control_condition, compare_group1, compare_group2):
+def validate_quadrant_conditions(obs_df, control_condition, compare_group1, compare_group2):
     """Ensure quadrant conditions make sense."""
     if not (control_condition and compare_group1 and compare_group2):
         raise PlotError('Must pass three conditions in order to generate a volcano plot.')
@@ -606,6 +606,9 @@ def validate_quadrant_conditions(control_condition, compare_group1, compare_grou
 
     if control_key != compare1_key and control_key != compare2_key:
         raise PlotError("All comparable conditions must came from same observation group.")
+
+    if control_key not in obs_df.columns:
+        raise PlotError(f"Control condition {control_key} not found in observation dataframe. Please update curation.")
 
     return control_key, control_val, compare1_val, compare2_val
 
@@ -1029,7 +1032,7 @@ def prep_volcano_dataframe(adata, key, query_val, ref_val, de_test_algo="ttest",
 
     return df
 
-def validate_volcano_conditions(query_condition, ref_condition):
+def validate_volcano_conditions(obs_df, query_condition, ref_condition):
     """Ensure volcano conditions make sense."""
     if not (query_condition and ref_condition):
         raise PlotError('Must pass two conditions in order to generate a volcano plot.')
@@ -1043,6 +1046,9 @@ def validate_volcano_conditions(query_condition, ref_condition):
 
     if query_key != ref_key:
         raise PlotError("Both comparable conditions must came from same observation group.")
+
+    if query_key not in obs_df.columns:
+        raise PlotError("Observation key {} not found in dataset. Please update curation.".format(query_key))
 
     return query_key, query_val, ref_val
 

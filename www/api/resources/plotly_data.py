@@ -135,6 +135,42 @@ class PlotlyData(Resource):
             return_dict["message"] = "Could not retrieve AnnData."
             return return_dict
 
+        # quick check to ensure x, y, color, facet columns are in the adata.obs
+        if x_axis not in adata.obs.columns:
+            if not x_axis == "raw_value":
+                return_dict["success"] = -1
+                return_dict["message"] = f"X-axis arg '{x_axis}' not found in observation metadata for dataset. Please update curation."
+                return return_dict
+
+        if y_axis not in adata.obs.columns:
+            if not y_axis == "raw_value":
+                return_dict["success"] = -1
+                return_dict["message"] = f"Y-axis arg '{y_axis}' not found in observation metadata for dataset. Please update curation."
+                return return_dict
+
+        if color_name and color_name not in adata.obs.columns:
+            if not color_name == "raw_value":
+                return_dict["success"] = -1
+                return_dict["message"] = f"Color arg '{color_name}' not found in observation metadata for dataset. Please update curation."
+                return return_dict
+
+        if facet_row and facet_row not in adata.obs.columns:
+            return_dict["success"] = -1
+            return_dict["message"] = f"Facet row arg '{facet_row}' not found in observation metadata for dataset. Please adupdatejust curation."
+            return return_dict
+
+        if facet_col and facet_col not in adata.obs.columns:
+            return_dict["success"] = -1
+            return_dict["message"] = f"Facet column arg '{facet_col}' not found in observation metadata for dataset. Please update curation."
+            return return_dict
+
+        if label and label not in adata.obs.columns:
+            if not label == "raw_value":
+                return_dict["success"] = -1
+                return_dict["message"] = f"Label arg '{label}' not found in observation metadata for dataset. Please update curation."
+                return return_dict
+
+
         if projection_id:
             try:
                 adata = create_projection_adata(adata, dataset_id, projection_id)
@@ -147,59 +183,71 @@ class PlotlyData(Resource):
         adata.obs = order_by_time_point(adata.obs)
 
         # Reorder the categorical values in the observation dataframe
-        if order:
-            obs_keys = order.keys()
-            for key in obs_keys:
-                col = adata.obs[key]
-                try:
-                    # Some columns might be numeric, therefore
-                    # we don't want to reorder these
-                    reordered_col = col.cat.reorder_categories(
-                        order[key], ordered=True)
-                    adata.obs[key] = reordered_col
-                except:
-                    pass
-
-        # get a map of all levels for each column
-        columns = adata.obs.select_dtypes(include="category").columns.tolist()
-
-        if 'replicate' in columns:
-            columns.remove('replicate')
-
-
-        gene_symbols = (gene_symbol,)
-
-        if 'gene_symbol' not in adata.var.columns:
-            return_dict["success"] = -1
-            return_dict["message"] = "The h5ad is missing the gene_symbol column."
-            return return_dict
-
-        # Filter genes and slice the adata to get a dataframe
-        # with expression and its observation metadata
-        gene_filter = adata.var.gene_symbol.isin(gene_symbols)
-        if not gene_filter.any():
-            return_dict["success"] = -1
-            return_dict["message"] = "The searched gene symbol could not be found in the dataset."
-            return return_dict
-
         try:
-            selected = adata[:, gene_filter].to_memory()
-        except:
-            # The "try" may fail for projections as it is already in memory
-            selected = adata[:, gene_filter]
+            if order:
+                obs_keys = order.keys()
+                for key in obs_keys:
+                    if key not in adata.obs:
+                        raise PlotError(f"Sort order series '{key}' not found in observation metadata for dataset ID {dataset_id}.")
 
-        # Filter by obs filters
-        if filters:
-            for col, values in filters.items():
-                # if there is an "NA" value in the filters but no "NA" in the dataframe
-                # check if it is a missing value, and if so, impute it
-                if "NA" in values and "NA" not in selected.obs[col].cat.categories:
-                    values.remove("NA")
-                    selected.obs[col].cat.add_categories("NA")
-                    selected.obs[col].fillna("NA", inplace=True)
+                    col = adata.obs[key]
+                    try:
+                        # Some columns might be numeric, therefore
+                        # we don't want to reorder these
+                        reordered_col = col.cat.reorder_categories(
+                            order[key], ordered=True)
+                        adata.obs[key] = reordered_col
+                    except:
+                        pass
 
-                selected_filter = selected.obs[col].isin(values)
-                selected = selected[selected_filter, :]
+            # get a map of all levels for each column
+            columns = adata.obs.select_dtypes(include="category").columns.tolist()
+
+            if 'replicate' in columns:
+                columns.remove('replicate')
+
+
+            gene_symbols = (gene_symbol,)
+
+            if 'gene_symbol' not in adata.var.columns:
+                return_dict["success"] = -1
+                return_dict["message"] = "The h5ad is missing the gene_symbol column."
+                return return_dict
+
+            # Filter genes and slice the adata to get a dataframe
+            # with expression and its observation metadata
+            gene_filter = adata.var.gene_symbol.isin(gene_symbols)
+            if not gene_filter.any():
+                return_dict["success"] = -1
+                return_dict["message"] = "The searched gene symbol could not be found in the dataset."
+                return return_dict
+
+            try:
+                selected = adata[:, gene_filter].to_memory()
+            except:
+                # The "try" may fail for projections as it is already in memory
+                selected = adata[:, gene_filter]
+
+            # Filter by obs filters
+            if filters:
+                for col, values in filters.items():
+                    if col not in selected.obs:
+                        raise PlotError(f"Filter series '{col}' not found in observation metadata for dataset ID {dataset_id}.")
+
+                    # if there is an "NA" value in the filters but no "NA" in the dataframe
+                    # check if it is a missing value, and if so, impute it
+                    if "NA" in values and "NA" not in selected.obs[col].cat.categories:
+                        values.remove("NA")
+                        selected.obs[col].cat.add_categories("NA")
+                        selected.obs[col].fillna("NA", inplace=True)
+
+                    selected_filter = selected.obs[col].isin(values)
+                    selected = selected[selected_filter, :]
+        except PlotError as pe:
+            return {
+                'success': -1,
+                'message': str(pe),
+            }
 
         order_res = dict()
         for col in columns:
