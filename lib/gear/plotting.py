@@ -549,7 +549,11 @@ def generate_plot(df, x=None, y=None, z=None, facet_row=None, facet_col=None,
 
                     if colormap:
                         # Use black outlines with colormap fillcolor. Pertains mostly to violin plots
-                        new_plotting_args['fillcolor'] = colormap[curr_color]
+                        try:
+                            new_plotting_args['fillcolor'] = colormap[curr_color]
+                        except KeyError as e:
+                            # If color series and colormap differ, skip coloring but still make the plot.
+                            print("ERROR: Series {} not found in passed-in colormap. Skipping.".format(curr_color), file=sys.stderr)
 
                 # Now determine which plot this trace should go to.  Facet column is first if row does not exist.
                 # Note the "facet_row/col_indexes" enum command started indexing at 1, so no need to increment for 1-indexed subplots
