@@ -890,7 +890,10 @@ const curatorSpecifcDatasetTreeCallback = () => {
  * @param {string} seriesName - The name of the series.
  */
 const curatorSpecifcFacetItemSelectCallback = (seriesName) => {
-    renderColorPicker(seriesName);
+    // Update the color picker in case some elements of the color series were filtered out
+    if(plotStyle.plotConfig?.color_name) {
+        renderColorPicker(plotStyle.plotConfig.color_name);
+    }
 }
 
 /**
