@@ -64,6 +64,7 @@ this.servercfg = ServerConfig().parse()
 }
 """
 
+### THESE DB FUNCTIONS ARE OUTDATED AND BASED ON AN OLD SCHEMA
 
 def connect_to_assets_db():
     try:

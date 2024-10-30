@@ -38,6 +38,7 @@ def import_from_file(module_name, file_path):
     return module
 
 pull_from_gcp = import_from_file("pull_from_gcp", f"{cgi_path}/nemoarchive_pull_gcp_files_to_vm.cgi")
+pull_from_http = import_from_file("pull_from_http", f"{cgi_path}/nemoarchive_pull_http_files_to_vm.cgi")
 validate_mdata = import_from_file("validate_mdata", f"{cgi_path}/nemoarchive_validate_metadata.cgi")
 write_h5ad = import_from_file("write_h5ad", f"{cgi_path}/nemoarchive_write_h5ad.cgi")
 make_display = import_from_file("make_display", f"{cgi_path}/nemoarchive_make_default_display.cgi")
@@ -154,10 +155,19 @@ def submission_dataset_callback(dataset_id, metadata, session_id, url_path, acti
 
             db_step = "pulled_to_vm_status"    # step name in database
             if should_step_run(s_dataset, db_step):
-                bucket_path = dataset_mdata["bucket_path"]
-                result.update(pull_from_gcp.pull_gcp_files_to_vm(bucket_path, dataset_id))
-                if not result["success"]:
-                    raise Exception("Pull GCP Files step failed")
+                bucket_path = dataset_mdata["gcp_uri"]
+                if bucket_path:
+                    result.update(pull_from_gcp.pull_gcp_files_to_vm(bucket_path, dataset_id))
+                    if not result["success"]:
+                        raise Exception("Pull GCP Files step failed")
+                else:
+                    http_path = dataset_mdata["http_uri"]
+                    if http_path:
+                        result.update(pull_from_http.pull_http_files_to_vm(http_path, dataset_id))
+                        if not result["success"]:
+                            raise Exception("Pull HTTP Files step failed")
+                    else:
+                        raise Exception("No GCP or HTTP URI found in metadata")
 
             ###
             db_step = "convert_to_h5ad_status"
@@ -207,6 +217,7 @@ def pull_nemoarchive_metadata(s_dataset, nemo_id) -> dict:
     try:
         url = f"https://assets.nemoarchive.org/file/{nemo_id}"
         response = requests.get(url, verify=False)
+        response.raise_for_status()
 
         #url = f"http://localhost/api/mock_identifier/{identifier}"
         api_file_result = response.json()
@@ -222,6 +233,7 @@ def pull_nemoarchive_metadata(s_dataset, nemo_id) -> dict:
         s_dataset.save_change(attribute="log_message", value="File is not open access. Cannot import file at this time.")
         return result
 
+    """
     sample_identifier = api_file_result["sample"]
     if not sample_identifier:
         s_dataset.save_change(attribute="log_message", value="No sample identifier found in NeMO Archive API. Cannot get sample metadata.")
@@ -231,6 +243,7 @@ def pull_nemoarchive_metadata(s_dataset, nemo_id) -> dict:
     try:
         url = f"https://assets.nemoarchive.org/sample/{sample_identifier}"
         response = requests.get(url, verify=False)
+        response.raise_for_status()
 
         #url = f"http://localhost/api/mock_identifier/{identifier}"
         api_sample_result = response.json()
@@ -241,6 +254,8 @@ def pull_nemoarchive_metadata(s_dataset, nemo_id) -> dict:
     if "error" in api_sample_result:
         s_dataset.save_change(attribute="log_message", value=api_sample_result["error"])
         return result
+    """
+    api_sample_result = {}
 
     # Dataset metadata is used for the dataset entry in the database
     # Sample metadata is not actively used but could be used for curation purposes if linked to counts
@@ -405,14 +420,20 @@ def process_nemo_assets_api_file_result(api_result):
     #dataset_metadata["reference_annot_id"] = get_reference_annot_id(connection, nemo_id)
 
     # get GCP bucket path
+    dataset_metadata["gcp_uri"] = None
+    dataset_metadata["http_uri"] = None
+
     manifest_file_urls = api_result["manifest_file_urls"]
     if manifest_file_urls:
         # find the entry where protocol is "gcp"
         gcp_manifest = next((entry for entry in manifest_file_urls if entry["protocol"] == "gcp"), None)
         if gcp_manifest:
-            dataset_metadata["bucket_path"] = gcp_manifest["file_location"]
-    else:
-        dataset_metadata["bucket_path"] = None
+            dataset_metadata["gcp_uri"] = gcp_manifest["file_location"]
+
+        # find the entry where protocol is "http"
+        http_manifest = next((entry for entry in manifest_file_urls if entry["protocol"] == "http"), None)
+        if http_manifest:
+            dataset_metadata["http_uri"] = http_manifest["file_location"]
 
     return dataset_metadata
 

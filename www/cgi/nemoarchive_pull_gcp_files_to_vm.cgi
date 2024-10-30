@@ -15,8 +15,6 @@ sys.path.append(lib_path)
 
 import geardb
 
-#www_path = os.path.abspath(os.path.join('..'))
-
 www_path = Path(__file__).resolve().parents[1]
 
 
