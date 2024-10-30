@@ -980,7 +980,11 @@ class AnalysisCollection:
 
 class Connection:
     def __init__(self):
-        self.mysql_cnx = gear.db.MySQLDB().connect()
+        try:
+            self.mysql_cnx = gear.db.MySQLDB().connect()
+        except Exception as e:
+            print("ERROR: Unable to connect to MySQL database: {0}".format(e))
+            raise
 
     def commit(self):
         self.mysql_cnx.commit()
