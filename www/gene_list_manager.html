@@ -169,7 +169,8 @@
                                     </footer>
                                 </div>
 
-                                <div class="card column has-background-light is-flex is-flex-direction-column">
+                                <!-- Hiding labeled uploader for now -->
+                                <div class="card column has-background-light is-flex is-flex-direction-column is-hidden">
                                     <header class="card-header">
                                         <p class="card-header-title has-text-dark js-new-list-header" id="new-list-labeled-header">
                                             Labeled gene list
@@ -556,115 +557,6 @@
             <section class="modal-card-body">
             <!-- Content ... -->
                 <div class="content">
-
-                <template id="unweighted-example">
-                    <p>Genes in the file must be separated by either commas, spaces, tab-indented, or on separate lines.</p>
-                    <p>gEAR will determine the Ensembl ID for each gene based on the organism selected.</p>
-
-                    <h5>Example</h5>
-                    <p>Pou4f3, Sox2, Atoh1</p>
-
-                    <h5>Example 2</h5>
-                    <p>
-                        Pou4f3<br />
-                        Sox2<br />
-                        Atoh1
-                    </p>
-                </template>
-
-                <template id="weighted-example">
-                    <ul>
-                        <li>File upload must be in CSV, TAB, or Excel-format only.</li>
-                        <li>A header row of columns is required. The names are not important but the third-column name onwards will be used as weight names.</li>
-                        <li>The first column must be unique gene identifiers. This is needed for potential cross-organism mapping with datasets.</li>
-                        <li>The second column must be gene symbols.</li>
-                        <li>All columns beyond the second must be numeric weights.</li>
-                        <li>The file will be parsed and validated before being uploaded.</li>
-                    </ul>
-
-                    <h5>Example</h5>
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>ensembl_id</th>
-                                <th>gene_symbol</th>
-                                <th>PC1</th>
-                                <th>PC2</th>
-                                <th>MyCoolMetric</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>ENSG00000000003</td>
-                                <td>TSPAN6</td>
-                                <td>0.1</td>
-                                <td>-0.2</td>
-                                <td>3</td>
-                            </tr>
-                            <tr>
-                                <td>ENSG00000000005</td>
-                                <td>TSPAN5</td>
-                                <td>0.4</td>
-                                <td>0.5</td>
-                                <td>6</td>
-                            </tr>
-                            <tr>
-                                <td>ENSG00000000419</td>
-                                <td>DPM1</td>
-                                <td>0.7</td>
-                                <td>-0.8</td>
-                                <td>9</td>
-                            </tr>
-                            <tr>
-                                <td>ENSG00000000457</td>
-                                <td>SCYL3</td>
-                                <td>1.0</td>
-                                <td>-1.1</td>
-                                <td>12</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </template>
-
-                <template id="labeled-example">
-                    <ul>
-                        <li>File upload must be in Excel-format only.</li>
-                        <li>A header row of columns is required.</li>
-                        <li>The header name in each column is the label of the list of genes (i.e. marker gene names).</li>
-                        <li>The second row onwards is the gene symbols for that label. The label must have at least one gene symbol. Ensembl IDs are not needed.</li>
-                        <li>The file will be parsed and validated before being uploaded.</li>
-                    </ul>
-
-                    <h5>Example</h5>
-
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Astrocytes</th>
-                                <th>Neurons</th>
-                                <th>Microglia</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>AQP4</td>
-                                <td>APOE</td>
-                            </tr>
-                            <tr>
-                                <td>GRIN2A</td>
-                                <td>SLA</td>
-                                <td>SNAP25</td>
-                            </tr>
-                            <tr>
-                                <td>CSF1</td>
-                                <td>CSF1R</td>
-                                <td>IL6</td>
-                                <td>TNFA</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </template>
-
                 </div>
             </section>
             <footer class="modal-card-foot">
@@ -672,6 +564,114 @@
             </footer>
         </div>
     </div>
+
+    <template id="unweighted-example">
+        <p>Genes in the file must be separated by either commas, spaces, tab-indented, or on separate lines.</p>
+        <p>gEAR will determine the Ensembl ID for each gene based on the organism selected.</p>
+
+        <h5>Example</h5>
+        <p>Pou4f3, Sox2, Atoh1</p>
+
+        <h5>Example 2</h5>
+        <p>
+            Pou4f3<br />
+            Sox2<br />
+            Atoh1
+        </p>
+    </template>
+
+    <template id="weighted-example">
+        <ul>
+            <li>File upload must be in CSV, TAB, or Excel-format only.</li>
+            <li>A header row of columns is required. The names are not important but the third-column name onwards will be used as weight names.</li>
+            <li>The first column must be unique gene identifiers. This is needed for potential cross-organism mapping with datasets.</li>
+            <li>The second column must be gene symbols.</li>
+            <li>All columns beyond the second must be numeric weights.</li>
+            <li>The file will be parsed and validated before being uploaded.</li>
+        </ul>
+
+        <h5>Example</h5>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ensembl_id</th>
+                    <th>gene_symbol</th>
+                    <th>PC1</th>
+                    <th>PC2</th>
+                    <th>MyCoolMetric</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>ENSG00000000003</td>
+                    <td>TSPAN6</td>
+                    <td>0.1</td>
+                    <td>-0.2</td>
+                    <td>3</td>
+                </tr>
+                <tr>
+                    <td>ENSG00000000005</td>
+                    <td>TSPAN5</td>
+                    <td>0.4</td>
+                    <td>0.5</td>
+                    <td>6</td>
+                </tr>
+                <tr>
+                    <td>ENSG00000000419</td>
+                    <td>DPM1</td>
+                    <td>0.7</td>
+                    <td>-0.8</td>
+                    <td>9</td>
+                </tr>
+                <tr>
+                    <td>ENSG00000000457</td>
+                    <td>SCYL3</td>
+                    <td>1.0</td>
+                    <td>-1.1</td>
+                    <td>12</td>
+                </tr>
+            </tbody>
+        </table>
+    </template>
+
+    <template id="labeled-example">
+        <ul>
+            <li>File upload must be in Excel-format only.</li>
+            <li>A header row of columns is required.</li>
+            <li>The header name in each column is the label of the list of genes (i.e. marker gene names).</li>
+            <li>The second row onwards is the gene symbols for that label. The label must have at least one gene symbol. Ensembl IDs are not needed.</li>
+            <li>The file will be parsed and validated before being uploaded.</li>
+        </ul>
+
+        <h5>Example</h5>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Astrocytes</th>
+                    <th>Neurons</th>
+                    <th>Microglia</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>AQP4</td>
+                    <td>APOE</td>
+                </tr>
+                <tr>
+                    <td>GRIN2A</td>
+                    <td>SLA</td>
+                    <td>SNAP25</td>
+                </tr>
+                <tr>
+                    <td>CSF1</td>
+                    <td>CSF1R</td>
+                    <td>IL6</td>
+                    <td>TNFA</td>
+                </tr>
+            </tbody>
+        </table>
+    </template>
 
 
     <!-- Promise based HTTP client for the browser  -->
