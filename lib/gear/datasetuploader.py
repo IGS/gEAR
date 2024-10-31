@@ -45,8 +45,11 @@ class DatasetUploader:
                     import gear.threetabuploader as threetabuploader
                     return threetabuploader.ThreeTabUploader()
                 elif tartype == 'visium':
-                    import gear.visiumuploader as visiumuploader
-                    return visiumuploader.VisiumUploader()
+                    import gear.spatialuploader as spatialuploader
+                    return spatialuploader.VisiumUploader()
+                elif tartype == 'visiumhd':
+                    import gear.spatialuploader as spatialuploader
+                    return spatialuploader.VisiumHDUploader()
         if filetype == "h5ad":
             import gear.h5aduploader as h5aduploader
             return h5aduploader.H5adUploader()
@@ -96,5 +99,6 @@ class DatasetUploader:
         # ? subject to change
         if "spatial" in filestr and "tissue_positions_list.csv" in filestr and "filtered_feature_bc_matrix.h5" in filestr:
             return 'visium'
-
+        if "spatial" in filestr and "tissue_positions.parquet" in filestr and "filtered_feature_bc_matrix.h5" in filestr:
+            return 'visiumhd'
         return None
