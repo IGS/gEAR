@@ -87,7 +87,7 @@ And you get this:
 
     PrivateTmp=yes
 
-You need to turn it off.  On Ubuntu 20, you can find the setting in this file:
+You need to turn it off.  On Ubuntu 22, you can find the setting in this file:
 
     /usr/lib/systemd/system/apache2.service
 
