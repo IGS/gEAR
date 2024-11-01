@@ -21,6 +21,8 @@ def main():
 
     user_session_id = form.getvalue('session_id')
 
+    #print("DEBUG: User session ID: {0}".format(user_session_id), file=sys.stderr)
+
     ## can search for more than one gene symbol, separated by spaces
     search_gene_symbol = form.getvalue('search_gene_symbol')
 
@@ -68,6 +70,9 @@ def main():
     # log the search if user info is available
     user = geardb.get_user_from_session_id(user_session_id)
     layout_share_id = form.getvalue('layout_share_id')
+
+    #print("DEBUG: layout_share_id: {0}".format(layout_share_id), file=sys.stderr)
+
     if user:
         layout = geardb.get_layout_by_share_id(layout_share_id)
 
@@ -77,14 +82,16 @@ def main():
         else:
             gene_symbol_label = search_gene_symbol
 
-        history = UserHistory()
-        history.add_record(
-            user_id=user.id,
-            entry_category = 'multigene_search' if is_multi == 'true' else 'gene_search',
-            label="\"{0}\" in {1}".format(gene_symbol_label, layout.label),
-            gene_symbol=search_gene_symbol,
-            layout_share_id=layout.share_id
-        )
+        # There are cases where the layout is not found, so we can't log the search
+        if layout:
+            history = UserHistory()
+            history.add_record(
+                user_id=user.id,
+                entry_category = 'multigene_search' if is_multi == 'true' else 'gene_search',
+                label="\"{0}\" in {1}".format(gene_symbol_label, layout.label),
+                gene_symbol=search_gene_symbol,
+                layout_share_id=layout.share_id
+            )
 
 def get_mirna_family_gene_ids(cursor):
     cached_mirna_ids = {}
