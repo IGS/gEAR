@@ -111,7 +111,7 @@ class VisiumUploader(SpatialUploader):
 
             # table name should already be "table" for Visium
 
-            adata = to_legacy_anndata(sdata, include_images=True, coordinate_system="downscaled_hires", table_name="table")
+            adata = to_legacy_anndata(sdata, include_images=True, coordinate_system="downscaled_hires", table_name=self.NORMALIZED_TABLE_NAME)
 
             # Apply AnnData obj and filepath to uploader obj
             self.adata = adata
@@ -251,7 +251,7 @@ class XeniumUploader(SpatialUploader):
 
             # table name should already be "table" for Visium
 
-            adata = to_legacy_anndata(sdata, include_images=True, coordinate_system="downscaled_hires", table_name="table")
+            adata = to_legacy_anndata(sdata, include_images=True, coordinate_system="downscaled_hires", table_name=self.NORMALIZED_TABLE_NAME)
 
             # Apply AnnData obj and filepath to uploader obj
             self.adata = adata
