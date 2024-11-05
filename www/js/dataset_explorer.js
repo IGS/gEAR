@@ -85,7 +85,6 @@ class ResultItem {
     }
 
     createListItem() {
-
         const makeRandomString = (length) => {
             let result = '';
             const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
