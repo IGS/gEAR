@@ -32,8 +32,6 @@ let multiArrangement;
 
 class ResultItem {
     constructor(data) {
-        this.data = data;
-
         this.layouts = data.layouts;
 
         // UI selectors
