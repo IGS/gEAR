@@ -89,17 +89,10 @@
                                     </div>
 
                                     <div id="collection-visibility-c" class="field mt-1 is-hidden">
-                                        <p class="label is-size-7">Visibility</p>
+                                        <p class="label is-size-7">Toggle collection access</p>
                                         <!-- toggle switch --->
                                         <input id="collection-visibility" type="checkbox" class="switch is-small is-primary"/>
                                         <label for="collection-visibility" class="is-size-7"></label>
-                                    </div>
-
-                                    <div class="js-trigger-dataset-search field mt-1">
-                                        <p class="label is-size-7">Show only datasets from this collection.</p>
-                                        <!-- toggle switch --->
-                                        <input id="filter-only-in-collection" type="checkbox" class="switch is-small is-primary"/>
-                                        <label for="filter-only-in-collection" class="is-size-7">No</label>
                                     </div>
                                     <hr class="my-2 has-background-grey-lighter">
                                 </div>
@@ -107,15 +100,24 @@
                             </div>
                         </div>
 
+                        <h4 class="title is-4">Filter controls</h4>
+
                         <!-- search field -->
                         <div class="js-trigger-dataset-search field">
-                            <label class="label">Find datasets</label>
+                            <label class="label">Search by keyword</label>
                             <div class="control has-icons-right">
                                 <input id="search-terms" class="input" type="text" placeholder="Keyword search">
                                 <span class="icon is-hidden is-right is-clickable" id="search-clear">
                                     <i class="mdi mdi-close-circle"></i>
                                 </span>
                             </div>
+                        </div>
+
+                        <div class="js-trigger-dataset-search field mt-1">
+                            <label class="label">Show from this collection only</label>
+                            <!-- toggle switch --->
+                            <input id="filter-only-in-collection" type="checkbox" class="switch is-small is-primary"/>
+                            <label for="filter-only-in-collection" class="is-size-7">No</label>
                         </div>
 
                         <!-- filter options -->
@@ -275,7 +277,7 @@
                                     <tr>
                                         <th></th>
                                         <th>Title</th>
-                                        <th>Visibility</th>
+                                        <th>Access</th>
                                         <th>Organism</th>
                                         <th>Owner</th>
                                         <th>Type</th>
@@ -284,10 +286,10 @@
                                 </thead>
                                 <tbody>
                                     <template id="results-table-view">
-                                        <tr>
-                                            <td class="js-table-view-displays">
-                                                <button class="button is-small is-dark js-view-displays" data-tooltip-content="View, add or remove displays from current collection">
-                                                    <span class="icon"><i class="mdi mdi-24px mdi-plus-minus-variant"></i></span>
+                                        <tr class="js-table-row">
+                                            <td class="js-td-expand">
+                                                <button class="button is-small js-expand-row" data-tooltip-content="Expand entry for more info and actions">
+                                                    <span class="icon"><i class="mdi mdi-24px mdi-chevron-down"></i></span>
                                                 </button>
                                             </td>
                                             <td class="js-display-title"></td>
@@ -296,6 +298,9 @@
                                             <td class="js-display-owner"></td>
                                             <td class="js-display-dataset-type"></td>
                                             <td class="js-display-date-added"></td>
+                                        </tr>
+                                        <tr class="js-table-row-expanded is-hidden">
+                                            <td colspan=7></td>
                                         </tr>
                                     </template>
                                 </tbody>
@@ -314,7 +319,7 @@
                                                 <div class="js-display-version js-display-visibility"></div>
                                                 <div class="js-editable-version js-editable-visibility is-hidden">
                                                     <div class="field">
-                                                        <p class="label">Visibility</p>
+                                                        <p class="label">Access</p>
                                                         <!-- toggle switch --->
                                                         <input type="checkbox" class="switch is-primary"/>
                                                         <label></label>
@@ -337,7 +342,7 @@
                                                         <div class="js-display-version js-display-title">
                                                             <p class="has-text-weight-bold"></p>
                                                         </div>
-                                                        <div id="editable-title-c" class="js-editable-version js-editable-title is-hidden">
+                                                        <div class="js-editable-version js-editable-title is-hidden">
                                                             <div class="field">
                                                                 <span class="has-text-weight-semibold">Title</span>
                                                                 <input type="text" class="input"/>
