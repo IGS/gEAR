@@ -865,11 +865,11 @@ const apiCallsMixin = {
     /**
      * Deletes a gene list.
      *
-     * @param {string} geneListId - The ID of the gene list to be deleted.
+     * @param {string} shareId - The share ID of the gene list to be deleted.
      * @returns {Promise<any>} - A promise that resolves to the response data from the server.
      */
-    async deleteGeneList(geneListId) {
-        const payload = {session_id: this.sessionId, gene_list_id: geneListId};
+    async deleteGeneList(shareId) {
+        const payload = {session_id: this.sessionId, share_id: shareId};
         const {data} = await axios.post("/cgi/remove_gene_cart.cgi", convertToFormData(payload));
         return data;
     },
