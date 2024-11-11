@@ -2753,10 +2753,12 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 	document.getElementById("page-header-label").textContent = "Dataset Explorer";
 
     const sessionId = CURRENT_USER.session_id;
-
 	if (! sessionId ) {
         // ? Technically we can show profiles, but I would need to build in "logged out controls".
         document.getElementById("collection-management").classList.add("is-hidden");
+        document.getElementById("filter-collection-container").classList.add("is-hidden");
+        // Ensure this toggle remains hidden when user switches views
+        document.getElementById("filter-collection-container").classList.remove("js-trigger-dataset-search");
         // only show public datasets option
         for (const elt of document.querySelectorAll("#controls-ownership li:not([data-dbval='public'])")) {
             elt.remove();
