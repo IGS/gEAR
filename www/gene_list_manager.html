@@ -348,13 +348,21 @@
                                 <tbody>
                                     <template id="results-table-view">
                                         <tr>
+                                            <tr class="js-table-row">
+                                                <td class="js-td-expand">
+                                                    <button class="button is-small js-expand-row" data-tooltip-content="Expand entry for more info and actions">
+                                                        <span class="icon"><i class="mdi mdi-24px mdi-chevron-down"></i></span>
+                                                    </button>
+                                                </td>
                                             <td class="js-display-title"></td>
                                             <td class="js-display-visibility"></td>
                                             <td class="js-display-organism"></td>
                                             <td class="js-display-owner"></td>
-                                            <td class="js-display-date-added"></td>
                                             <td class="js-display-gctype"></td>
                                             <td class="js-display-num-genes"></td>
+                                        </tr>
+                                        <tr class="js-table-row-expanded is-hidden">
+                                            <td colspan=7></td>
                                         </tr>
                                     </template>
                                 </tbody>
@@ -444,7 +452,12 @@
                                         <!-- preview + action buttons section -->
                                         <div class="columns is-size-7 my-0">
                                             <div class="column is-3 py-0">
-                                                <div class="js-preview-genes-button-container"></div>
+                                                <div class="js-preview-genes-button-container">
+                                                    <button class="button is-small is-outlined is-dark" title="Show gene list">
+                                                        <span class="icon is-small"><i class="mdi mdi-format-list-bulleted"></i></span>
+                                                        <span class="js-gc-button-label"></span>
+                                                    </button>
+                                                </div>
                                             </div>
                                             <div class="column is-9 py-0">
                                                 <div class="columns my-0">
@@ -513,13 +526,15 @@
                                         </div> <!-- end .columns -->
 
                                         <!-- Gene preview section -->
-                                        <div class="js-preview-genes-container is-hidden"></div>
+                                        <div class="js-preview-genes-container is-hidden">
+                                        </div>
                                         <hr class="js-expandable-view is-hidden" />
                                         <!-- Long description section -->
                                         <div class="columns js-expandable-view is-hidden">
                                             <div class="column is-3 py-0"></div>
                                             <div class="column is-9 py-0 js-display-version js-display-ldesc">
                                                 <p class="has-text-weight-semibold">Long description</p>
+                                                <p class="js-display-ldesc-text"></p>
                                             </div>
                                             <div class="column is-9 py-0 js-editable-version js-editable-ldesc is-hidden">
                                                 <div class="field">
