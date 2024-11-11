@@ -67,21 +67,6 @@ class ResultItem {
 
     }
 
-    setElementProperties(element, selector, properties) {
-        const targetElement = element.querySelector(selector);
-        if (targetElement) {
-            for (const [key, value] of Object.entries(properties)) {
-                if (key === 'dataset') {
-                    for (const [dataKey, dataValue] of Object.entries(value)) {
-                        targetElement.dataset[dataKey] = dataValue;
-                    }
-                } else {
-                    targetElement[key] = value;
-                }
-            }
-        }
-    }
-
     createListItem() {
         const makeRandomString = (length) => {
             let result = '';
@@ -163,18 +148,18 @@ class ResultItem {
         // action buttons section
         setElementProperties(listItemView, ".js-view-dataset", { value: this.shareId });
         setElementProperties(listItemView, ".js-view-projection-dataset", { value: this.shareId });
-        setElementProperties(listItemView, ".js-delete-dataset", { value: this.datasetId });
-        setElementProperties(listItemView, ".js-edit-dataset-permalink", { value: this.datasetId });
+        setElementProperties(listItemView, ".js-delete-dataset", { value: datasetId });
+        setElementProperties(listItemView, ".js-edit-dataset-permalink", { value: datasetId });
 
         setElementProperties(listItemView, ".js-share-dataset", { value: this.shareId });
-        setElementProperties(listItemView, ".js-edit-dataset", { value: this.datasetId });
-        setElementProperties(listItemView, ".js-edit-dataset-save", { value: this.datasetId });
-        setElementProperties(listItemView, ".js-edit-dataset-cancel", { value: this.datasetId });
+        setElementProperties(listItemView, ".js-edit-dataset", { value: datasetId });
+        setElementProperties(listItemView, ".js-edit-dataset-save", { value: datasetId });
+        setElementProperties(listItemView, ".js-edit-dataset-cancel", { value: datasetId });
 
-        setElementProperties(listItemView, ".js-dataset-curator", { href: `./dataset_curator.html?dataset_id=${this.datasetId}`});
-        setElementProperties(listItemView, ".js-multigene-viewer", { href: `./multigene_curator.html?dataset_id=${this.datasetId}`});
-        setElementProperties(listItemView, ".js-compare-tool", { href: `./compare_datasets.html?dataset_id=${this.datasetId}`});
-        setElementProperties(listItemView, ".js-sc-workbench", { href: `./sc_workbench.html?dataset_id=${this.datasetId}`});
+        setElementProperties(listItemView, ".js-dataset-curator", { href: `./dataset_curator.html?dataset_id=${datasetId}`});
+        setElementProperties(listItemView, ".js-multigene-viewer", { href: `./multigene_curator.html?dataset_id=${datasetId}`});
+        setElementProperties(listItemView, ".js-compare-tool", { href: `./compare_datasets.html?dataset_id=${datasetId}`});
+        setElementProperties(listItemView, ".js-sc-workbench", { href: `./sc_workbench.html?dataset_id=${datasetId}`});
 
 
         // dataset type section
@@ -193,6 +178,9 @@ class ResultItem {
         // Append the cloned template to the results container
         this.resultsListDiv.appendChild(listItemView);
         this.resultListItem = this.resultsListDiv.querySelector(`.js-dataset-list-element[data-dataset-id="${this.datasetId}"]`);
+
+        this.createDeleteDatasetConfirmationPopover(this.resultListItem);
+        this.createRenameDatasetPermalinkPopover(this.resultListItem);
     }
 
     createTableExpandRow() {
@@ -204,6 +192,9 @@ class ResultItem {
         // Append the cloned template to the expanded cell
         this.tableExpandedCell.appendChild(listItemView);
         this.expandedRowItem = this.tableExpandedCell.querySelector(`.js-dataset-list-element[data-dataset-id="${this.datasetId}"]`);
+
+        this.createDeleteDatasetConfirmationPopover(this.expandedRowItem);
+        this.createRenameDatasetPermalinkPopover(this.expandedRowItem);
     }
 
 
@@ -213,12 +204,12 @@ class ResultItem {
         // Clone the template
         const rowItem = this.tableTemplate.content.cloneNode(true);
 
-        // Set properties for multiple elements
 
         // Adding dataset attrubute to be able to key in doing a querySelector action
         setElementProperties(rowItem, ".js-table-row", { dataset: { datasetId } });
 
         // TODO: Truncate titles with tooltip for full title
+        // Set properties for multiple elements
         setElementProperties(rowItem, ".js-display-title", {textContent: this.label });
         setElementProperties(rowItem, ".js-display-organism", {textContent: this.organism });
         setElementProperties(rowItem, ".js-display-owner", { textContent: this.userName });
@@ -227,7 +218,7 @@ class ResultItem {
 
         // Append the cloned template to the results container
         this.tableResultsBody.appendChild(rowItem);
-        this.rowItem = document.querySelector(`.js-table-row[data-dataset-id="${this.datasetId}"]`);
+        this.rowItem = document.querySelector(`.js-table-row[data-dataset-id="${datasetId}"]`);
         this.addTableVisibilityInfo();
 
         // Add the expandable row
@@ -236,19 +227,17 @@ class ResultItem {
         // Add event listneres
         this.addTableItemEventListeners();
 
-        // Add any conditions in case user is not the owner
-
     }
 
     // *** Table row stuff ***
     addTableVisibilityInfo() {
-        const datasetTableVisibility = this.rowItem.querySelector(`.js-display-visibility`);
+        const tableVisibility = this.rowItem.querySelector(`.js-display-visibility`);
         if (this.isPublic) {
-            datasetTableVisibility.classList.add("has-background-primary-light");
-            datasetTableVisibility.textContent = "Public";
+            tableVisibility.classList.add("has-background-primary-light");
+            tableVisibility.textContent = "Public";
         } else {
-            datasetTableVisibility.classList.add("has-background-danger");
-            datasetTableVisibility.textContent = "Private";
+            tableVisibility.classList.add("has-background-danger");
+            tableVisibility.textContent = "Private";
         }
     }
 
@@ -330,7 +319,6 @@ class ResultItem {
         const visibilitySwitch = parentElt.querySelector(`.js-editable-visibility input`);
         visibilitySwitch.addEventListener("change", (e) => {
             const isPublic = e.currentTarget.checked;
-            this.isPublic = isPublic;
             e.currentTarget.closest(".field").querySelector("label").textContent = isPublic ? "Public" : "Private";
         });
 
@@ -338,10 +326,8 @@ class ResultItem {
 
         downloadableSwitch.addEventListener("change", (e) => {
             const isDownloadable = e.currentTarget.checked;
-            this.isDownloadable = isDownloadable;
             e.currentTarget.closest(".field").querySelector("label").textContent = isDownloadable ? "Yes" : "No";
         });
-
     }
 
     addImagePreview(parentElt) {
@@ -351,10 +337,8 @@ class ResultItem {
 
     addDescriptionInfo(parentElt) {
         // Add ldesc if it exists
-        const ldescContainer = parentElt.querySelector(".js-display-ldesc");
-        const ldescElt = document.createElement("p");
-        ldescElt.textContent = this.longDesc || "No description entered";
-        ldescContainer.appendChild(ldescElt);
+        const ldescText = parentElt.querySelector(".js-display-ldesc-text");
+        ldescText.textContent = this.longDesc || "No description entered";
     }
 
     addListItemEventListeners(parentElt) {
@@ -404,9 +388,13 @@ class ResultItem {
 
         parentElt.querySelector(".js-share-dataset").addEventListener("click", (e) => {
 
-            const shareId = e.currentTarget.value;
-            const currentPage = getRootUrl();
-            const shareUrl = `${currentPage}/p?s=${shareId}`;
+            let currentPage = new URL(`${getRootUrl()}`);
+            const params = new URLSearchParams(currentPage.search);
+
+            params.set('s', this.shareId);
+
+            currentPage.search = params.toString();
+            const shareUrl = currentPage.toString();
             copyPermalink(shareUrl);
         });
 
@@ -430,8 +418,9 @@ class ResultItem {
 
             // Reset any unsaved/edited values
             parentElt.querySelector(`.js-editable-visibility input`).value = this.isPublic ? "Public" : "Private";
+            parentElt.querySelector(`.js-editable-downloadable input`).value = this.isDownloadable ? "Yes" : "No";
             parentElt.querySelector(`.js-editable-title input`).value = this.title;
-            parentElt.querySelector(`.js-editable-ldesc textarea`).value = this.ldesc;
+            parentElt.querySelector(`.js-editable-ldesc textarea`).value = this.longDesc;
             parentElt.querySelector(`.js-editable-pubmed-id input`).value = this.pubmedId;
             parentElt.querySelector(`.js-editable-geo-id input`).value = this.geoId;
             parentElt.querySelector(`.js-action-links`).classList.remove("is-hidden");
@@ -440,7 +429,6 @@ class ResultItem {
 
         // Save button for editing a dataset
         parentElt.querySelector(".js-edit-dataset-save").addEventListener("click", async (e) => {
-            //
             const newVisibility = parentElt.querySelector(`.js-editable-visibility input`).checked;
             // convert "true/false" visibility to 1/0
             const intNewVisibility = newVisibility ? 1 : 0;
@@ -468,6 +456,10 @@ class ResultItem {
 
             this.isPublic = newVisibility;
             this.isDownloadable = isDownloadable;
+            this.title = newTitle;
+            this.longDesc = newLdesc;
+            this.pubmedId = newPubmedId;
+            this.geoId = newGeoId;
 
             // Update the UI for the new values for the expanded row and the list item
             for (const selector of [this.expandedRowItem, this.resultListItem]) {
@@ -496,44 +488,36 @@ class ResultItem {
                 const downloadButton = selector.querySelector(`.js-download-dataset`);
                 if (downloadButton) {
                     // If button exists (has h5ad), update the button visibility
-                    this.isDownloadable = isDownloadable;
-
                     disableAndHideElement(downloadButton, true);
                     if (isDownloadable) {
                         enableAndShowElement(downloadButton, true);
                     }
                 }
 
-                this.title = newTitle;
-                selector.querySelector(`.js-display-title`).textContent = newTitle;
+                selector.querySelector(`.js-display-title p`).textContent = newTitle;
 
-                this.ldesc = newLdesc;
-                selector.querySelector(`.js-display-ldesc`).textContent = newLdesc || "No description entered";
+                selector.querySelector(`.js-display-ldesc-text`).textContent = newLdesc || "No description entered";
 
                 // pubmed and geo display are links if they exist
-                this.pubmedId = newPubmedId;
                 selector.querySelector(`.js-editable-pubmed-id input`).value = newPubmedId;
                 if (newPubmedId) {
-                    selector.querySelector(`.js-display-pubmed-id`).innerHTML = `<a href="https://pubmed.ncbi.nlm.nih.gov/${newPubmedId}" target="_blank">
+                    selector.querySelector(`.js-display-pubmed-id span:last-of-type`).innerHTML = `<a href="https://pubmed.ncbi.nlm.nih.gov/${newPubmedId}" target="_blank">
                         <span>${newPubmedId}</span>
                         <i class="mdi mdi-open-in-new"></i>
                     </a>`;
                 } else {
-                    selector.querySelector(`.js-display-pubmed-id`).textContent = "Not available";
+                    selector.querySelector(`.js-display-pubmed-id span:last-of-type`).textContent = "Not available";
                 }
 
-                this.geoId = newGeoId;
                 selector.querySelector(`.js-editable-geo-id input`).value = newGeoId;
                 if (newGeoId) {
-                    selector.querySelector(`.js-display-geo-id`).innerHTML = `<a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=${newGeoId}" target="_blank">
+                    selector.querySelector(`.js-display-geo-id span:last-of-type`).innerHTML = `<a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=${newGeoId}" target="_blank">
                         <span>${newGeoId}</span>
                         <i class="mdi mdi-open-in-new"></i>
                     </a>`;
                 } else {
-                    selector.querySelector(`.js-display-geo-id`).textContent = "Not available";
+                    selector.querySelector(`.js-display-geo-id span:last-of-type`).textContent = "Not available";
                 }
-                selector.querySelector(`.js-display-geo-id`).value = newGeoId;
-
             }
 
             // Update the UI for the table row values
@@ -588,54 +572,54 @@ class ResultItem {
     /**
      * Updates the dataset list buttons based on the dataset properties.
      */
-    updateDatasetListButtons(parentDir) {
+    updateDatasetListButtons(parentElt) {
         //unhide all buttons
-        for (const actionLinks of parentDir.querySelectorAll(".js-action-links .control")) {
+        for (const actionLinks of parentElt.querySelectorAll(".js-action-links .control")) {
             actionLinks.classList.remove("is-hidden");
         }
 
-        for (const selector of [this.expandedRowItem, this.resultListItem]) {
-            // If the dataset has no h5ad file, remove the download button since it cannot be downloaded regardless
-            const downloadButton = selector.querySelector("button.js-download-dataset");
-            if (downloadButton && !this.hasH5ad) {
-                downloadButton.parentElement.remove();
-            }
+        // If the dataset has no h5ad file, remove the download button since it cannot be downloaded regardless
+        const downloadButton = parentElt.querySelector("button.js-download-dataset");
+        if (downloadButton && !this.hasH5ad) {
+            downloadButton.parentElement.remove();
+        }
 
-            // If button still exists, update its visibility if the dataset is downloadable
-            if (downloadButton) {
-                disableAndHideElement(downloadButton, true);
-                if (this.isDownloadable) {
-                    enableAndShowElement(downloadButton, true);
-                }
-            }
-
-            // The ability to edit and delete and dataset are currently paired
-            const deleteButton = selector.querySelector("button.js-delete-dataset");
-            const editButton = selector.querySelector("button.js-edit-dataset");
-            const editPermalinkButton = selector.querySelector("button.js-edit-dataset-permalink");
-
-            if (deleteButton) {
-                // If user is not the owner of the dataset, remove the delete and edit buttons so user cannot manipulate
-                // These will be regenerated when a search triggers processSearchResults
-                if (!this.isOwner) {
-                    deleteButton.parentElement.remove();
-                    editButton.parentElement.remove()
-                    editPermalinkButton.parentElement.remove();
-
-                    // Remove all editable elements to prevent editing in the DOM
-                    for (const editableElt of selector.querySelectorAll(`.js-editable-version`)) {
-                        editableElt.classList.remove()
-                    }
-                };
+        // If button still exists, update its visibility if the dataset is downloadable
+        if (downloadButton) {
+            disableAndHideElement(downloadButton, true);
+            if (this.isDownloadable) {
+                enableAndShowElement(downloadButton, true);
             }
         }
+
+        // The ability to edit and delete and dataset are currently paired
+        const deleteButton = parentElt.querySelector("button.js-delete-dataset");
+        const editButton = parentElt.querySelector("button.js-edit-dataset");
+        const editPermalinkButton = parentElt.querySelector("button.js-edit-dataset-permalink");
+
+        if (this.isOwner) {
+            return;
         }
+
+        // If user is not the owner of the dataset, remove the delete and edit buttons so user cannot manipulate
+        // These will be regenerated when a search triggers processSearchResults
+        deleteButton.parentElement.remove(); // remove .control element to prevent heavy line where button was
+        editButton.parentElement.remove()
+        editPermalinkButton.parentElement.remove();
+
+        // Remove all editable elements to prevent editing in the DOM
+        for (const editableElt of parentElt.querySelectorAll(`.js-editable-version`)) {
+            editableElt.classList.remove()
+        }
+    }
 
     /**
      * Creates a confirmation popover for deleting a dataset.
      */
     createDeleteDatasetConfirmationPopover(parentElt) {
         parentElt.querySelector(".js-delete-dataset").addEventListener('click', (e) => {
+            const button = e.currentTarget;
+
             // remove existing popovers
             const existingPopover = document.getElementById('delete-dataset-popover');
             if (existingPopover) {
@@ -720,6 +704,8 @@ class ResultItem {
                     const data = await apiCallsMixin.deleteDataset(this.datasetId);
 
                     if (data['success'] === 1) {
+
+                        // ? Is this necessary if we are blowing away the object anyways
                         for (const selector of [this.expandedRowItem, this.resultListItem]) {
                             // Remove the dataset from the DOM
                             selector.remove();
@@ -749,6 +735,8 @@ class ResultItem {
      */
     createRenameDatasetPermalinkPopover(parentElt) {
         parentElt.querySelector(".js-edit-dataset-permalink").addEventListener('click', (e) => {
+            const button = e.currentTarget;
+
             // remove existing popovers
             const existingPopover = document.getElementById('rename-dataset-link-popover');
             if (existingPopover) {
@@ -1291,13 +1279,10 @@ const clearResultsViews = () => {
 /**
  * Copies a permalink to the clipboard.
  *
- * @param {string} shareUrl - The URL to be copied to the clipboard.
+ * @param {string} shareUrl - The sanitized URL to be copied to the clipboard.
  * @returns {void}
  */
 const copyPermalink = (shareUrl) => {
-    // sanitize shareUrl
-    shareUrl = shareUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
     if(copyToClipboard(shareUrl)) {
         createToast("URL copied to clipboard", "is-info");
     } else {
@@ -2056,7 +2041,6 @@ const processSearchResults = (data) => {
             // Add description info
             resultItem.addDescriptionInfo(selector);
 
-
         }
 
         resultItems.push(resultItem);
@@ -2085,10 +2069,10 @@ const processSearchResults = (data) => {
     for (const resultItem of resultItems) {
         for (const selector of [resultItem.expandedRowItem, resultItem.resultListItem]) {
             // Add event listeners for all dataset elements
-            resultItem.updateDatasetListButtons(selector);
-
-            // Add event listeners for all dataset elements
             resultItem.addListItemEventListeners(selector);
+
+            // Show/hide dataset list buttons based on user ownership
+            resultItem.updateDatasetListButtons(selector);
         }
     }
 
@@ -2406,34 +2390,28 @@ const renderLayoutArranger = async (collection) => {
     document.getElementById("dataset-arrangement-loading-notification").classList.add("is-hidden");
 }
 
-/**
- * Sets the dataset of an element based on the provided dataset object.
- * @param {HTMLElement} parentNode - The parent node containing the element.
- * @param {string} selector - The CSS selector to select the element.
- * @param {Object} dataset - The dataset object containing key-value pairs.
- */
-const setElementDataset = (parentNode, selector, dataset) => {
-    const element = parentNode.querySelector(selector);
-    Object.keys(dataset).forEach((key) => {
-        element.dataset[key] = dataset[key];
-    });
-}
 
 /**
- * Sets the properties of an element selected by a given selector within a parent node.
- * @param {HTMLElement} parentNode - The parent node containing the element.
- * @param {string} selector - The CSS selector used to select the element.
- * @param {Object} properties - An object containing the properties to be set on the element.
+ * Sets properties on a target element found within a given element using a selector.
+ *
+ * @param {HTMLElement} element - The parent element to query within.
+ * @param {string} selector - The CSS selector to find the target element.
+ * @param {Object} properties - An object containing the properties to set on the target element.
+ * @param {Object} [properties.dataset] - An optional object containing data attributes to set on the target element.
  */
-const setElementProperties = (parentNode, selector, properties) => {
-    const element = parentNode.querySelector(selector);
-    Object.keys(properties).forEach((property) => {
-        if (property === "dataset") {
-            setElementDataset(parentNode, selector, properties[property]);
-            return;
+const setElementProperties = (element, selector, properties) => {
+    const targetElement = element.querySelector(selector);
+    if (targetElement) {
+        for (const [key, value] of Object.entries(properties)) {
+            if (key === 'dataset') {
+                for (const [dataKey, dataValue] of Object.entries(value)) {
+                    targetElement.dataset[dataKey] = dataValue;
+                }
+            } else {
+                targetElement[key] = value;
+            }
         }
-        element[property] = properties[property];
-    });
+    }
 }
 
 /**
@@ -3136,7 +3114,10 @@ document.getElementById("btn-set-primary-collection").addEventListener("click", 
 });
 
 document.getElementById("btn-share-collection").addEventListener("click", (e) => {
-    const currentPage = getRootUrl();
-    const shareUrl = `${currentPage}/p?l=${selected_dc_share_id}`;
+    let currentPage = new URL(`${getRootUrl()}/p`);
+    let params = new URLSearchParams(currentPage.search);
+    params.set("l", selected_dc_share_id);
+    currentPage.search = params.toString();
+    const shareUrl = currentPage.toString();
     copyPermalink(shareUrl);
 });
