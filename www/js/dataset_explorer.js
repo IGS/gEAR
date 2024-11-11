@@ -365,25 +365,34 @@ class ResultItem {
 
         });
 
+        // Download button just needs href set. File will be <dataset_id>.h5ad
         const downloadSelector = parentElt.querySelector(".js-download-dataset");
         if (downloadSelector) {
+
             downloadSelector.addEventListener("click", async (e) => {
                 try {
                     // download the h5ad
                     const datasetId = this.datasetId;
                     const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${datasetId}`;
-                    const {data} = await axios.get(url, {responseType: 'blob'});
-                    const blob = new Blob([data], {type: 'application/octet-stream'});
-                    const downloadUrl = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
-                    a.href = downloadUrl;
-                    a.download = `${datasetId}.h5ad`;
+                    a.href = url;
                     a.click();
                 } catch (error) {
                     logErrorInConsole(error);
                     createToast("Failed to download dataset");
                 }
             });
+
+
+            try {
+                const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${this.datasetId}`;
+                console
+                downloadSelector.href = url;
+            } catch (error) {
+                logErrorInConsole(error);
+                createToast("An error occurred while trying to download the h5ad file.");
+            }
+
         }
 
         parentElt.querySelector(".js-share-dataset").addEventListener("click", (e) => {
