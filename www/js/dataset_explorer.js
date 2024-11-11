@@ -370,6 +370,7 @@ class ResultItem {
         if (downloadSelector) {
 
             downloadSelector.addEventListener("click", async (e) => {
+                e.currentTarget.classList.add("is-loading");
                 try {
                     // download the h5ad
                     const datasetId = this.datasetId;
@@ -380,18 +381,10 @@ class ResultItem {
                 } catch (error) {
                     logErrorInConsole(error);
                     createToast("Failed to download dataset");
+                } finally {
+                    e.currentTarget.classList.remove("is-loading");
                 }
             });
-
-
-            try {
-                const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${this.datasetId}`;
-                console
-                downloadSelector.href = url;
-            } catch (error) {
-                logErrorInConsole(error);
-                createToast("An error occurred while trying to download the h5ad file.");
-            }
 
         }
 
