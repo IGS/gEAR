@@ -53,13 +53,13 @@ $ sudo a2enmod include
 Then the Directory commands can look like this. Would be nice to find why combining these
 causes errors.
 
-    <Directory /var/www/html>
+    <Directory /var/www>
         Options Indexes FollowSymLinks
         AllowOverride None
         Require all granted
     </Directory>
 
-    <Directory /var/www/html>
+    <Directory /var/www>
         Options +ExecCGI +Includes
         AddHandler cgi-script .py .cgi
         AddOutputFilter INCLUDES .html
@@ -87,7 +87,7 @@ And you get this:
 
     PrivateTmp=yes
 
-You need to turn it off.  On Ubuntu 20, you can find the setting in this file:
+You need to turn it off.  On Ubuntu 22, you can find the setting in this file:
 
     /usr/lib/systemd/system/apache2.service
 
@@ -118,6 +118,11 @@ Resources:
 
 This needs to be tailored for each machine's resources to match the processors (cores) present
 and number of threads within each process.  If not running under SSL, this goes in 000-default.conf
+
+Finally, you need to make sure that ssl.conf file is symlinked under sites-enabled
+
+   $ cd /etc/apache2/sites-enabled
+   $ sudo ln -s ../sites-available/umgear-ssl.conf .
 
 There's a lot in here, but the CGI-related addition is:
 
