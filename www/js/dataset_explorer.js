@@ -14,6 +14,8 @@ let listView = "table";
 
 let flatDatasetCollectionData = {};   // flattened version of all dataset collections availabe to user
 
+let resultItems = [];   // array of ResultItem objects (with different views of a dataset)
+
 // TODO - Add transformation code for quick dataset transformations
 // TODO - Add superuser edit abilities for "is_curator" users
 
@@ -27,6 +29,843 @@ const arrow = window.FloatingUIDOM.arrow;
 
 let singleArrangement;
 let multiArrangement;
+
+class ResultItem {
+    constructor(data) {
+        this.layouts = data.layouts;
+
+        // UI selectors
+        this.tableResultsBody = document.querySelector("#results-table tbody");
+        this.tableTemplate = document.getElementById("results-table-view");
+        this.resultsListDiv = document.getElementById("results-list-div");
+        this.listTemplate = document.getElementById("results-list-view");
+
+        this.datasetId = data.id;
+        this.datasetType = data.dtype;
+        this.label = data.title;
+
+        this.longDesc = data.ldesc || "";
+        this.shareId = data.share_id;
+        this.isPublic = Boolean(data.is_public);
+        this.isDownloadable = Boolean(data.is_downloadable);
+        this.hasH5ad = Boolean(data.has_h5ad);
+        this.dateAdded = new Date(data.date_added).toDateString();
+        // as YYYY/MM/DD
+        this.shortDateAdded = new Date(data.date_added).toISOString().slice(0, 10);
+
+        this.userName = data.user_name;
+        this.organism = data.organism;
+        this.isOwner = data.is_owner
+
+        this.annotSource = data.annotation_source || "Not given";
+        this.annotVersion = data.annotation_release || "Not given";
+
+        this.pubmedId = data.pubmed_id || null;
+        this.geoId = data.geo_id || null;
+
+        this.previewImageUrl = data.preview_image_url || "/img/dataset_previews/missing.png";
+
+    }
+
+    createListItem() {
+        const makeRandomString = (length) => {
+            let result = '';
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            const charactersLength = characters.length;
+            for (let i = 0; i < length; i++) {
+                result += characters.charAt(Math.floor(Math.random() * charactersLength));
+            }
+            return result;
+        }
+
+        const datasetId = this.datasetId;
+
+        // Clone the template
+        const listItemView = this.listTemplate.content.cloneNode(true)
+
+        // Adding dataset attrubute to be able to key in doing a querySelector action
+        setElementProperties(listItemView, ".js-dataset-list-element", { dataset: { datasetId } });
+
+        // title section
+        setElementProperties(listItemView, ".js-display-title p", { textContent: this.label });
+        setElementProperties(listItemView, ".js-editable-title input", { value: this.label });
+        // visibility/other metadata section
+        const visibilityId = makeRandomString(10);
+        setElementProperties(listItemView, ".js-editable-visibility input", { id: visibilityId, checked: this.isPublic });
+        setElementProperties(listItemView, ".js-editable-visibility label", { htmlFor: visibilityId, textContent: this.isPublic ? "Public" : "Private" });
+
+        // downloadable section
+        const downloadableId = makeRandomString(10);
+        setElementProperties(listItemView, ".js-editable-downloadable input", { id: downloadableId, checked: this.isDownloadable });
+        setElementProperties(listItemView, ".js-editable-downloadable label", { htmlFor: downloadableId, textContent: this.isDownloadable ? "Yes" : "No" });
+        // if h5ad is not present, then disable input and set to "No"
+        if (!this.hasH5ad) {
+            setElementProperties(listItemView, ".js-editable-downloadable input", { disabled: true });
+            setElementProperties(listItemView, ".js-editable-downloadable label", { textContent: "No" });
+        }
+
+        // organism section
+        setElementProperties(listItemView, ".js-display-organism span:last-of-type", { textContent: this.organism });
+        setElementProperties(listItemView, ".js-editable-organism input", {value: this.organism });
+        // owner section
+        setElementProperties(listItemView, ".js-display-owner span:last-of-type", { textContent: this.userName });
+        setElementProperties(listItemView, ".js-editable-owner input", { value: this.userName });
+        // date added section
+        setElementProperties(listItemView, ".js-display-date-added span:last-of-type", { textContent: this.dateAdded });
+        setElementProperties(listItemView, ".js-editable-date-added input", { value: this.dateAdded });
+
+        // annotation source section
+        setElementProperties(listItemView, ".js-display-annot-source span:last-of-type", { textContent: this.annotSource });
+        setElementProperties(listItemView, ".js-editable-annot-source input", { value: this.annotSource });
+
+        // annotation version section
+        setElementProperties(listItemView, ".js-display-annot-version span:last-of-type", { textContent: this.annotVersion });
+        setElementProperties(listItemView, ".js-editable-annot-version input", { value: this.annotVersion });
+
+        // pubmed id section
+        const pubmedProp = this.pubmedId ? {
+            // Not adding "icon-text" and "icon" classes because it aligns text and icon under the label
+            innerHTML: `<a href="https://pubmed.ncbi.nlm.nih.gov/${this.pubmedId}" target="_blank">
+                    <span>${this.pubmedId}</span>
+                    <i class="mdi mdi-open-in-new"></i>
+                </a>`
+        } : { textContent: "Not available" };
+
+        setElementProperties(listItemView, ".js-display-pubmed-id span:last-of-type", pubmedProp);
+        setElementProperties(listItemView, ".js-editable-pubmed-id input", { value: this.pubmedId });
+
+        // geo id section
+        const geoProp = this.geoId ? {
+            innerHTML: `<a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=${this.geoId}" target="_blank">
+                    <span>${this.geoId}</span>
+                    <i class="mdi mdi-open-in-new"></i>
+                </a>`
+        } : { textContent: "Not available" };
+
+        setElementProperties(listItemView, ".js-display-geo-id span:last-of-type", geoProp);
+        setElementProperties(listItemView, ".js-editable-geo-id input", { value: this.geoId });
+
+        // action buttons section
+        setElementProperties(listItemView, ".js-view-dataset", { value: this.shareId });
+        setElementProperties(listItemView, ".js-view-projection-dataset", { value: this.shareId });
+        setElementProperties(listItemView, ".js-delete-dataset", { value: datasetId });
+        setElementProperties(listItemView, ".js-edit-dataset-permalink", { value: datasetId });
+
+        setElementProperties(listItemView, ".js-share-dataset", { value: this.shareId });
+        setElementProperties(listItemView, ".js-edit-dataset", { value: datasetId });
+        setElementProperties(listItemView, ".js-edit-dataset-save", { value: datasetId });
+        setElementProperties(listItemView, ".js-edit-dataset-cancel", { value: datasetId });
+
+        setElementProperties(listItemView, ".js-dataset-curator", { href: `./dataset_curator.html?dataset_id=${datasetId}`});
+        setElementProperties(listItemView, ".js-multigene-viewer", { href: `./multigene_curator.html?dataset_id=${datasetId}`});
+        setElementProperties(listItemView, ".js-compare-tool", { href: `./compare_datasets.html?dataset_id=${datasetId}`});
+        setElementProperties(listItemView, ".js-sc-workbench", { href: `./sc_workbench.html?dataset_id=${datasetId}`});
+
+
+        // dataset type section
+        setElementProperties(listItemView, ".js-display-dataset-type span:last-of-type", { textContent: this.datasetType });
+        setElementProperties(listItemView, ".js-editable-dataset-type input", { value: this.datasetType });
+        // long description section
+        setElementProperties(listItemView, ".js-editable-ldesc textarea", { value: this.longDesc });
+
+        return listItemView
+
+    }
+
+    createListViewItem() {
+        const listItemView = this.createListItem();
+
+        // Append the cloned template to the results container
+        this.resultsListDiv.appendChild(listItemView);
+        this.resultListItem = this.resultsListDiv.querySelector(`.js-dataset-list-element[data-dataset-id="${this.datasetId}"]`);
+
+        this.createDeleteDatasetConfirmationPopover(this.resultListItem);
+        this.createRenameDatasetPermalinkPopover(this.resultListItem);
+    }
+
+    createTableExpandRow() {
+        const listItemView = this.createListItem();
+
+        this.tableExpandedRow = this.rowItem.parentElement.querySelector(`[data-dataset-id="${this.datasetId}"] + .js-table-row-expanded`);
+        this.tableExpandedCell = this.tableExpandedRow.querySelector("td");
+
+        // Append the cloned template to the expanded cell
+        this.tableExpandedCell.appendChild(listItemView);
+        this.expandedRowItem = this.tableExpandedCell.querySelector(`.js-dataset-list-element[data-dataset-id="${this.datasetId}"]`);
+
+        this.createDeleteDatasetConfirmationPopover(this.expandedRowItem);
+        this.createRenameDatasetPermalinkPopover(this.expandedRowItem);
+    }
+
+
+    createTableRow() {
+        const datasetId = this.datasetId;
+
+        // Clone the template
+        const rowItem = this.tableTemplate.content.cloneNode(true);
+
+
+        // Adding dataset attrubute to be able to key in doing a querySelector action
+        setElementProperties(rowItem, ".js-table-row", { dataset: { datasetId } });
+
+        // TODO: Truncate titles with tooltip for full title
+        // Set properties for multiple elements
+        setElementProperties(rowItem, ".js-display-title", {textContent: this.label });
+        setElementProperties(rowItem, ".js-display-organism", {textContent: this.organism });
+        setElementProperties(rowItem, ".js-display-owner", { textContent: this.userName });
+        setElementProperties(rowItem, ".js-display-date-added", { textContent: this.shortDateAdded });
+        setElementProperties(rowItem, ".js-display-dataset-type", { textContent: this.datasetType });
+
+        // Append the cloned template to the results container
+        this.tableResultsBody.appendChild(rowItem);
+        this.rowItem = document.querySelector(`.js-table-row[data-dataset-id="${datasetId}"]`);
+        this.addTableVisibilityInfo();
+
+        // Add the expandable row
+        this.createTableExpandRow();
+
+        // Add event listneres
+        this.addTableItemEventListeners();
+
+    }
+
+    // *** Table row stuff ***
+    addTableVisibilityInfo() {
+        const tableVisibility = this.rowItem.querySelector(`.js-display-visibility`);
+        if (this.isPublic) {
+            tableVisibility.classList.add("has-background-primary-light");
+            tableVisibility.textContent = "Public";
+        } else {
+            tableVisibility.classList.add("has-background-danger");
+            tableVisibility.textContent = "Private";
+        }
+    }
+
+    addTableItemEventListeners() {
+        // click .js-td-expand in table row to expand/collapse the row
+        this.rowItem.querySelector(".js-expand-row").addEventListener("click", (e) => {
+            this.tableExpandedRow.classList.toggle("is-hidden");
+            // Check if the row is already expanded
+            if (this.tableExpandedRow.classList.contains("is-hidden")) {
+                // State is expanded
+                e.currentTarget.querySelector(".icon").innerHTML = '<i class="mdi mdi-24px mdi-chevron-down"></i>';
+                return;
+            }
+            // Original state is collapsed
+            e.currentTarget.querySelector(".icon").innerHTML = '<i class="mdi mdi-24px mdi-chevron-up"></i>';
+        });
+    }
+
+    // *** List item stuff ***
+    addCollectionMembershipInfo(parentElt) {
+        parentElt.querySelector(`.js-found-in-collection-text`).innerHTML = "Found in these owned or highlighted collections";
+        if (includePublicMembership) {
+            parentElt.querySelector(`.js-found-in-collection-text`).innerHTML = "Found in these owned or public collections";
+        }
+
+
+        const collections = this.layouts;
+        for (const collectionString of collections) {
+            const collection = JSON.parse(collectionString);
+            const shareId = collection.share_id;
+            const label = collection.label;
+
+            const collectionListElt = parentElt.querySelector(`.js-found-in-collections-list`);
+            // Create list element that can link out to the collection
+            const collectionListItem = document.createElement("li");
+            collectionListItem.innerHTML = `
+            <span>
+                <a href="./p?l=${shareId}" target="_blank">
+                    <span>${label}</span>
+                    <i class="mdi mdi-open-in-new"></i>
+                </a>
+            </span>
+            `;
+            collectionListElt.appendChild(collectionListItem);
+        }
+    }
+
+    addDownloadableInfoToDataset(parentElt){
+        const datasetDisplayContainer = parentElt.querySelector(`.js-display-downloadable`);
+        const datasetDisplaySpan = document.createElement("span");
+        datasetDisplaySpan.classList.add("tag");
+
+        if (this.hasH5ad && this.isDownloadable) {
+            datasetDisplaySpan.classList.add("is-success");
+            datasetDisplaySpan.textContent = "Downloadable";
+        } else {
+            datasetDisplaySpan.classList.add("is-dark");
+            datasetDisplaySpan.textContent = "Not downloadable";
+        }
+        datasetDisplayContainer.appendChild(datasetDisplaySpan);
+    }
+
+    addListVisibilityInfo(parentElt){
+        // add dataset public/private info to DOM
+        const datasetDisplayContainer = parentElt.querySelector(`.js-display-visibility`);
+        const datasetDisplaySpan = document.createElement("span");
+        datasetDisplaySpan.classList.add("tag");
+
+        if (this.isPublic) {
+            datasetDisplaySpan.classList.add("is-primary", "is-light");
+            datasetDisplaySpan.textContent = "Public dataset";
+        } else {
+            datasetDisplaySpan.classList.add("is-danger");
+            datasetDisplaySpan.textContent = "Private dataset";
+        }
+        datasetDisplayContainer.appendChild(datasetDisplaySpan);
+
+        // Toggle switch (public is checked, private is unchecked)
+        const visibilitySwitch = parentElt.querySelector(`.js-editable-visibility input`);
+        visibilitySwitch.addEventListener("change", (e) => {
+            const isPublic = e.currentTarget.checked;
+            e.currentTarget.closest(".field").querySelector("label").textContent = isPublic ? "Public" : "Private";
+        });
+
+        const downloadableSwitch = parentElt.querySelector(`.js-editable-downloadable input`);
+
+        downloadableSwitch.addEventListener("change", (e) => {
+            const isDownloadable = e.currentTarget.checked;
+            e.currentTarget.closest(".field").querySelector("label").textContent = isDownloadable ? "Yes" : "No";
+        });
+    }
+
+    addImagePreview(parentElt) {
+        const datasetImageContainer = parentElt.querySelector(`figure.is-square img`);
+        datasetImageContainer.src = this.previewImageUrl;
+    }
+
+    addDescriptionInfo(parentElt) {
+        // Add ldesc if it exists
+        const ldescText = parentElt.querySelector(".js-display-ldesc-text");
+        ldescText.textContent = this.longDesc || "No description entered";
+    }
+
+    addListItemEventListeners(parentElt) {
+
+        // Add event listener to analysis dropdown trigger
+        parentElt.querySelector(".js-analysis-dropdown .dropdown-trigger").addEventListener("click", (e) => {
+            const item = e.currentTarget;
+            item.closest(".dropdown").classList.toggle('is-active');
+        });
+
+        // Expand and collapse dataset view
+        parentElt.querySelector(".js-expand-box").addEventListener("click", (e) => {
+            const expandableViewElts = parentElt.querySelectorAll(".js-expandable-view");
+            for (const elt of expandableViewElts) {
+                elt.classList.toggle("is-hidden");
+            }
+
+            // Toggle the icon
+            if (e.currentTarget.innerHTML === '<i class="mdi mdi-arrow-expand"></i>') {
+                e.currentTarget.innerHTML = '<i class="mdi mdi-arrow-collapse"></i>';
+                return;
+            }
+            e.currentTarget.innerHTML = '<i class="mdi mdi-arrow-expand"></i>';
+
+        });
+
+        // Download button just needs href set. File will be <dataset_id>.h5ad
+        const downloadSelector = parentElt.querySelector(".js-download-dataset");
+        if (downloadSelector) {
+
+            downloadSelector.addEventListener("click", async (e) => {
+                e.currentTarget.classList.add("is-loading");
+                try {
+                    // download the h5ad
+                    const datasetId = this.datasetId;
+                    const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${datasetId}`;
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.click();
+                } catch (error) {
+                    logErrorInConsole(error);
+                    createToast("Failed to download dataset");
+                } finally {
+                    e.currentTarget.classList.remove("is-loading");
+                }
+            });
+
+        }
+
+        parentElt.querySelector(".js-share-dataset").addEventListener("click", (e) => {
+
+            let currentPage = new URL(`${getRootUrl()}`);
+            const params = new URLSearchParams(currentPage.search);
+
+            params.set('s', this.shareId);
+
+            currentPage.search = params.toString();
+            const shareUrl = currentPage.toString();
+            copyPermalink(shareUrl);
+        });
+
+        parentElt.querySelector(".js-view-displays").addEventListener("click", async (e) => {
+            await renderDisplaysModal(this.datasetId, this.title, this.isPublic);
+            const modalElt = document.getElementById(`displays-modal-${this.datasetId}`);
+            openModal(modalElt);
+
+        });
+
+        // Cancel button for editing a dataset
+        parentElt.querySelector(".js-edit-dataset-cancel").addEventListener("click", (e) => {
+
+            // Show editable versions where there are some and hide the display versions
+            for (const classElt of parentElt.querySelectorAll(`.js-editable-version`)) {
+                classElt.classList.add("is-hidden");
+            };
+            for (const classElt of parentElt.querySelectorAll(`.js-display-version`)) {
+                classElt.classList.remove("is-hidden");
+            };
+
+            // Reset any unsaved/edited values
+            parentElt.querySelector(`.js-editable-visibility input`).value = this.isPublic ? "Public" : "Private";
+            parentElt.querySelector(`.js-editable-downloadable input`).value = this.isDownloadable ? "Yes" : "No";
+            parentElt.querySelector(`.js-editable-title input`).value = this.title;
+            parentElt.querySelector(`.js-editable-ldesc textarea`).value = this.longDesc;
+            parentElt.querySelector(`.js-editable-pubmed-id input`).value = this.pubmedId;
+            parentElt.querySelector(`.js-editable-geo-id input`).value = this.geoId;
+            parentElt.querySelector(`.js-action-links`).classList.remove("is-hidden");
+
+        });
+
+        // Save button for editing a dataset
+        parentElt.querySelector(".js-edit-dataset-save").addEventListener("click", async (e) => {
+            const newVisibility = parentElt.querySelector(`.js-editable-visibility input`).checked;
+            // convert "true/false" visibility to 1/0
+            const intNewVisibility = newVisibility ? 1 : 0;
+
+            const isDownloadable = parentElt.querySelector(`.js-editable-downloadable input`).checked;
+            // convert "true/false" visibility to 1/0
+            const intIsDownloadable = isDownloadable ? 1 : 0;
+
+            const newTitle = parentElt.querySelector(`.js-editable-title input`).value;
+            const newLdesc = parentElt.querySelector(`.js-editable-ldesc textarea`).value;
+            const newPubmedId = parentElt.querySelector(`.js-editable-pubmed-id input`).value;
+            const newGeoId = parentElt.querySelector(`.js-editable-geo-id input`).value;
+
+            try {
+                const data = await apiCallsMixin.saveDatasetInfoChanges(this.datasetId, intNewVisibility, intIsDownloadable, newTitle, newPubmedId, newGeoId, newLdesc);
+                createToast("Dataset changes saved", "is-success");
+
+            } catch (error) {
+                logErrorInConsole(error);
+                createToast("Failed to save dataset changes");
+                return;
+            } finally {
+                parentElt.querySelector(`.js-action-links`).classList.remove("is-hidden");
+            }
+
+            this.isPublic = newVisibility;
+            this.isDownloadable = isDownloadable;
+            this.title = newTitle;
+            this.longDesc = newLdesc;
+            this.pubmedId = newPubmedId;
+            this.geoId = newGeoId;
+
+            // Update the UI for the new values for the expanded row and the list item
+            for (const selector of [this.expandedRowItem, this.resultListItem]) {
+
+                if (newVisibility) {
+                    selector.querySelector(`.js-display-visibility span`).textContent = "Public dataset";
+                    selector.querySelector(`.js-display-visibility span`).classList.remove("is-danger");
+                    selector.querySelector(`.js-display-visibility span`).classList.add("is-light", "is-primary");
+                } else {
+                    selector.querySelector(`.js-display-visibility span`).textContent = "Private dataset";
+                    selector.querySelector(`.js-display-visibility span`).classList.remove("is-light", "is-primary");
+                    selector.querySelector(`.js-display-visibility span`).classList.add("is-danger");
+                }
+
+
+                if (isDownloadable) {
+                    selector.querySelector(`.js-display-downloadable span`).textContent = "Downloadable";
+                    selector.querySelector(`.js-display-downloadable span`).classList.remove("is-dark");
+                    selector.querySelector(`.js-display-downloadable span`).classList.add("is-success");
+                } else {
+                    selector.querySelector(`.js-display-downloadable span`).textContent = "Not downloadable";
+                    selector.querySelector(`.js-display-downloadable span`).classList.remove("is-success");
+                    selector.querySelector(`.js-display-downloadable span`).classList.add("is-dark");
+                }
+
+                const downloadButton = selector.querySelector(`.js-download-dataset`);
+                if (downloadButton) {
+                    // If button exists (has h5ad), update the button visibility
+                    disableAndHideElement(downloadButton, true);
+                    if (isDownloadable) {
+                        enableAndShowElement(downloadButton, true);
+                    }
+                }
+
+                selector.querySelector(`.js-display-title p`).textContent = newTitle;
+
+                selector.querySelector(`.js-display-ldesc-text`).textContent = newLdesc || "No description entered";
+
+                // pubmed and geo display are links if they exist
+                selector.querySelector(`.js-editable-pubmed-id input`).value = newPubmedId;
+                if (newPubmedId) {
+                    selector.querySelector(`.js-display-pubmed-id span:last-of-type`).innerHTML = `<a href="https://pubmed.ncbi.nlm.nih.gov/${newPubmedId}" target="_blank">
+                        <span>${newPubmedId}</span>
+                        <i class="mdi mdi-open-in-new"></i>
+                    </a>`;
+                } else {
+                    selector.querySelector(`.js-display-pubmed-id span:last-of-type`).textContent = "Not available";
+                }
+
+                selector.querySelector(`.js-editable-geo-id input`).value = newGeoId;
+                if (newGeoId) {
+                    selector.querySelector(`.js-display-geo-id span:last-of-type`).innerHTML = `<a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=${newGeoId}" target="_blank">
+                        <span>${newGeoId}</span>
+                        <i class="mdi mdi-open-in-new"></i>
+                    </a>`;
+                } else {
+                    selector.querySelector(`.js-display-geo-id span:last-of-type`).textContent = "Not available";
+                }
+            }
+
+            // Update the UI for the table row values
+            if (newVisibility) {
+                this.rowItem.querySelector(`.js-display-visibility`).textContent = "Public";
+                this.rowItem.querySelector(`.js-display-visibility`).classList.replace("has-background-danger", "has-background-primary-light");
+
+            } else {
+                this.rowItem.querySelector(`.js-display-visibility`).textContent = "Private";
+                this.rowItem.querySelector(`.js-display-visibility`).classList.replace("has-background-primary-light", "has-background-danger");
+            }
+
+            this.rowItem.querySelector(`.js-display-title`).textContent = newTitle;
+
+            // Put interface back to view mode for current list item.
+            toggleEditableMode(true, parentElt);
+
+        });
+
+        const editSelector = parentElt.querySelector(".js-edit-dataset");
+        if (editSelector) {
+            // Toggle editable mode when edit button is clicked for a dataset
+            editSelector.addEventListener("click", async (e) => {
+                const editableVisibilityElt = parentElt.querySelector(`.js-editable-visibility input`);
+
+                editableVisibilityElt.checked = this.isPublic;
+                editableVisibilityElt.closest(".field").querySelector("label").textContent = this.isPublic ? "Public" : "Private";
+
+                // Show editable versions where there are some and hide the display versions
+                toggleEditableMode(false, parentElt);
+
+                // Make sure the view is expanded
+                const expandableViewElt = parentElt.querySelector(`.js-expandable-view`);
+                if (expandableViewElt.classList.contains('is-hidden')) {
+                    parentElt.querySelector(`span.js-expand-box`).click();
+                }
+                parentElt.querySelector(`.js-action-links`).classList.add("is-hidden");
+            });
+        }
+
+        // Redirect to gene expression search
+        parentElt.querySelector(".js-view-dataset").addEventListener("click", (e) => {
+            window.open(`./p?s=${this.shareId}`, '_blank');
+        });
+
+        // Redirect to gene expression search
+        parentElt.querySelector(".js-view-projection-dataset").addEventListener("click", (e) => {
+            window.open(`./p?p=p&s=${this.shareId}`, '_blank');
+        });
+    }
+
+    /**
+     * Updates the dataset list buttons based on the dataset properties.
+     */
+    updateDatasetListButtons(parentElt) {
+        //unhide all buttons
+        for (const actionLinks of parentElt.querySelectorAll(".js-action-links .control")) {
+            actionLinks.classList.remove("is-hidden");
+        }
+
+        // If the dataset has no h5ad file, remove the download button since it cannot be downloaded regardless
+        const downloadButton = parentElt.querySelector("button.js-download-dataset");
+        if (downloadButton && !this.hasH5ad) {
+            downloadButton.parentElement.remove();
+        }
+
+        // If button still exists, update its visibility if the dataset is downloadable
+        if (downloadButton) {
+            disableAndHideElement(downloadButton, true);
+            if (this.isDownloadable) {
+                enableAndShowElement(downloadButton, true);
+            }
+        }
+
+        // The ability to edit and delete and dataset are currently paired
+        const deleteButton = parentElt.querySelector("button.js-delete-dataset");
+        const editButton = parentElt.querySelector("button.js-edit-dataset");
+        const editPermalinkButton = parentElt.querySelector("button.js-edit-dataset-permalink");
+
+        if (this.isOwner) {
+            return;
+        }
+
+        // If user is not the owner of the dataset, remove the delete and edit buttons so user cannot manipulate
+        // These will be regenerated when a search triggers processSearchResults
+        deleteButton.parentElement.remove(); // remove .control element to prevent heavy line where button was
+        editButton.parentElement.remove()
+        editPermalinkButton.parentElement.remove();
+
+        // Remove all editable elements to prevent editing in the DOM
+        for (const editableElt of parentElt.querySelectorAll(`.js-editable-version`)) {
+            editableElt.classList.remove()
+        }
+    }
+
+    /**
+     * Creates a confirmation popover for deleting a dataset.
+     */
+    createDeleteDatasetConfirmationPopover(parentElt) {
+        parentElt.querySelector(".js-delete-dataset").addEventListener('click', (e) => {
+            const button = e.currentTarget;
+
+            // remove existing popovers
+            const existingPopover = document.getElementById('delete-dataset-popover');
+            if (existingPopover) {
+                existingPopover.remove();
+            }
+
+            // Create popover content
+            const popoverContent = document.createElement('article');
+            popoverContent.id = 'delete-dataset-popover';
+            popoverContent.classList.add("message", "is-danger");
+            popoverContent.setAttribute("role", "tooltip");
+            popoverContent.style.width = "500px";
+            popoverContent.innerHTML = `
+                <div class='message-header'>
+                    <p>Delete dataset</p>
+                </div>
+                <div class='message-body'>
+                    <p>Are you sure you want to delete this dataset? This will affect any saved displays and dataset collections for yourself and for other users.</p>
+                    <div class='field is-grouped' style='width:250px'>
+                        <p class="control">
+                            <button id='confirm-dataset-delete' class='button is-danger'>Delete</button>
+                        </p>
+                        <p class="control">
+                            <button id='cancel-dataset-delete' class='button' value='cancel_delete'>Cancel</button>
+                        </p>
+                    </div>
+                </div>
+                <div id="arrow"></div>
+            `;
+
+            // append element to DOM to get its dimensions
+            document.body.appendChild(popoverContent);
+
+            const arrowElement = document.getElementById('arrow');
+
+            // Create popover (help from https://floating-ui.com/docs/tutorial)
+            computePosition(button, popoverContent, {
+                placement: 'bottom',
+                middleware: [
+                    flip(), // flip to bottom if there is not enough space on top
+                    shift(), // shift the popover to the right if there is not enough space on the left
+                    offset(5), // offset relative to the button
+                    arrow({ element: arrowElement }) // add an arrow pointing to the button
+                ],
+            }).then(({ x, y, placement, middlewareData }) => {
+                // Position the popover
+                Object.assign(popoverContent.style, {
+                    left: `${x}px`,
+                    top: `${y}px`,
+                });
+                // Accessing the data
+                const { x: arrowX, y: arrowY } = middlewareData.arrow;
+
+                // Position the arrow relative to the popover
+                const staticSide = {
+                    top: 'bottom',
+                    right: 'left',
+                    bottom: 'top',
+                    left: 'right',
+                }[placement.split('-')[0]];
+
+                // Set the arrow position
+                Object.assign(arrowElement.style, {
+                    left: arrowX != null ? `${arrowX}px` : '',
+                    top: arrowY != null ? `${arrowY}px` : '',
+                    right: '',
+                    bottom: '',
+                    [staticSide]: '-4px',
+                });
+            });
+
+            // Add event listener to cancel button
+            document.getElementById('cancel-dataset-delete').addEventListener('click', () => {
+                popoverContent.remove();
+            });
+
+            // Add event listener to confirm button
+            document.getElementById('confirm-dataset-delete').addEventListener('click', async (event) => {
+                event.target.classList.add("is-loading");
+
+                try {
+                    const data = await apiCallsMixin.deleteDataset(this.datasetId);
+
+                    if (data['success'] === 1) {
+
+                        // ? Is this necessary if we are blowing away the object anyways
+                        for (const selector of [this.expandedRowItem, this.resultListItem]) {
+                            // Remove the dataset from the DOM
+                            selector.remove();
+                        }
+
+                        createToast("Dataset deleted", "is-success");
+
+                        // This can affect page counts, so we need to re-run the search
+                        await submitSearch();
+
+                    } else {
+                        throw new Error(data['error']);
+                    }
+                } catch (error) {
+                    logErrorInConsole(error);
+                    createToast("Failed to delete dataset");
+                } finally {
+                    event.target.classList.remove("is-loading");
+                    popoverContent.remove();
+                }
+            });
+        });
+    }
+
+    /**
+     * Creates a popover for renaming dataset permalink.
+     */
+    createRenameDatasetPermalinkPopover(parentElt) {
+        parentElt.querySelector(".js-edit-dataset-permalink").addEventListener('click', (e) => {
+            const button = e.currentTarget;
+
+            // remove existing popovers
+            const existingPopover = document.getElementById('rename-dataset-link-popover');
+            if (existingPopover) {
+                existingPopover.remove();
+            }
+
+            // Create popover content
+            const popoverContent = document.createElement('article');
+            popoverContent.id = 'rename-dataset-link-popover';
+            popoverContent.classList.add("message", "is-primary");
+            popoverContent.setAttribute("role", "tooltip");
+            popoverContent.innerHTML = `
+                <div class='message-header'>
+                    <p>Rename dataset permalink</p>
+                </div>
+                <div class='message-body'>
+                    <p>Please provide a new name for the dataset short-hand permalink.</p>
+                    <div class='field has-addons'>
+                        <div class='control'>
+                            <a class="button is-static">
+                                ${getRootUrl()}/p?s=
+                            </a>
+                        </div>
+                        <div class='control'>
+                            <input id='dataset-link-name' class='input' type='text' placeholder='permalink' value=${this.shareId}>
+                        </div>
+                    </div>
+                    <div class='field is-grouped' style='width:250px'>
+                        <p class="control">
+                            <button id='confirm-dataset-link-rename' class='button is-primary' disabled>Update</button>
+                        </p>
+                        <p class="control">
+                            <button id='cancel-dataset-link-rename' class='button' value='cancel_rename'>Cancel</button>
+                        </p>
+                    </div>
+                </div>
+                <div id="arrow"></div>
+            `;
+
+            // append element to DOM to get its dimensions
+            document.body.appendChild(popoverContent);
+
+            const arrowElement = document.getElementById('arrow');
+
+            // Create popover (help from https://floating-ui.com/docs/tutorial)
+            computePosition(button, popoverContent, {
+                placement: 'bottom',
+                middleware: [
+                    flip(), // flip to bottom if there is not enough space on top
+                    shift(), // shift the popover to the right if there is not enough space on the left
+                    offset(5), // offset relative to the button
+                    arrow({ element: arrowElement }) // add an arrow pointing to the button
+                ],
+            }).then(({ x, y, placement, middlewareData }) => {
+                // Position the popover
+                Object.assign(popoverContent.style, {
+                    left: `${x}px`,
+                    top: `${y}px`,
+                });
+                // Accessing the data
+                const { x: arrowX, y: arrowY } = middlewareData.arrow;
+
+                // Position the arrow relative to the popover
+                const staticSide = {
+                    top: 'bottom',
+                    right: 'left',
+                    bottom: 'top',
+                    left: 'right',
+                }[placement.split('-')[0]];
+
+                // Set the arrow position
+                Object.assign(arrowElement.style, {
+                    left: arrowX != null ? `${arrowX}px` : '',
+                    top: arrowY != null ? `${arrowY}px` : '',
+                    right: '',
+                    bottom: '',
+                    [staticSide]: '-4px',
+                });
+            });
+
+            document.getElementById("dataset-link-name").addEventListener("keyup", () => {
+                const newLinkName = document.getElementById("dataset-link-name");
+                const confirmRenameLink = document.getElementById("confirm-dataset-link-rename");
+
+                if (newLinkName.value.length === 0 || newLinkName.value === this.shareId) {
+                    confirmRenameLink.disabled = true;
+                    return;
+                }
+                confirmRenameLink.disabled = false;
+            });
+
+            // Add event listener to cancel button
+            document.getElementById('cancel-dataset-link-rename').addEventListener('click', () => {
+                popoverContent.remove();
+            });
+
+            // Add event listener to confirm button
+            document.getElementById('confirm-dataset-link-rename').addEventListener('click', async (event) => {
+                event.target.classList.add("is-loading");
+                const newShareId = document.getElementById("dataset-link-name").value;
+
+                try {
+                    const data = await apiCallsMixin.updateShareId(this.shareId, newShareId, "dataset");
+
+                    if ((!data.success) || (data.success < 1)) {
+                        const error = data.error || "Unknown error. Please contact gEAR support.";
+                        throw new Error(error);
+                    }
+
+                    createToast("Dataset permalink renamed", "is-success");
+
+                    // Update the share_id in the object, since the previous share_id is now invalid
+                    this.shareId = newShareId;
+
+                    popoverContent.remove();
+
+                } catch (error) {
+                    logErrorInConsole(error);
+                    createToast("Failed to rename dataset permalink: " + error);
+                } finally {
+                    event.target.classList.remove("is-loading");
+                }
+            });
+        });
+    }
+
+}
 
 class LayoutArrangement {
 
@@ -255,270 +1094,6 @@ class LayoutArrangementMember {
 }
 
 /**
- * Adds event listeners for various actions related to datasets.
- * @function
- * @returns {void}
- */
-const addDatasetListEventListeners = () => {
-
-    // Add event listener to analysis dropdown trigger
-    for (const classElt of document.querySelectorAll(".js-analysis-dropdown .dropdown-trigger")) {
-        classElt.addEventListener("click", (event) => {
-            const item = event.currentTarget;
-            item.closest(".dropdown").classList.toggle('is-active');
-        });
-    };
-
-    // Expand and collapse dataset view
-    for (const classElt of document.getElementsByClassName("js-expand-box")) {
-        classElt.addEventListener("click", (e) => {
-            const datasetId = e.currentTarget.dataset.datasetId;
-            const selector = `#result-dataset-id-${datasetId} .js-expandable-view`;
-            const expandableViewElts = document.querySelectorAll(selector);
-            for (const classElt of expandableViewElts) {
-                classElt.classList.toggle("is-hidden");
-            }
-
-            // Toggle the icon
-            if (e.currentTarget.innerHTML === '<i class="mdi mdi-arrow-expand"></i>') {
-                e.currentTarget.innerHTML = '<i class="mdi mdi-arrow-collapse"></i>';
-                return;
-            }
-            e.currentTarget.innerHTML = '<i class="mdi mdi-arrow-expand"></i>';
-
-        });
-    }
-
-    for (const classElt of document.getElementsByClassName("js-download-dataset")) {
-        classElt.addEventListener("click", async (e) => {
-            try {
-                // download the h5ad
-                const datasetId = e.currentTarget.dataset.datasetId;
-                const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${datasetId}`;
-                const {data} = await axios.get(url, {responseType: 'blob'});
-                const blob = new Blob([data], {type: 'application/octet-stream'});
-                const downloadUrl = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = downloadUrl;
-                a.download = `${datasetId}.h5ad`;
-                a.click();
-            } catch (error) {
-                logErrorInConsole(error);
-                createToast("Failed to download dataset");
-            }
-        });
-    }
-
-    for (const classElt of document.getElementsByClassName("js-share-dataset")) {
-        classElt.addEventListener("click", (e) => {
-
-            const shareId = e.currentTarget.value;
-            const currentPage = getRootUrl();
-            const shareUrl = `${currentPage}/p?s=${shareId}`;
-            copyPermalink(shareUrl);
-        });
-    }
-
-    for (const classElt of document.getElementsByClassName("js-view-displays")) {
-        classElt.addEventListener("click", async (e) => {
-
-            const datasetId = e.currentTarget.dataset.datasetId;
-            const title = e.currentTarget.dataset.title;
-            const isPublic = parseBool(e.currentTarget.dataset.isPublic);
-            await renderDisplaysModal(datasetId, title, isPublic);
-
-            const modalElt = document.getElementById(`displays-modal-${datasetId}`);
-            openModal(modalElt);
-
-        });
-    }
-
-    // Cancel button for editing a dataset
-    for (const classElt of document.getElementsByClassName("js-edit-dataset-cancel")) {
-        classElt.addEventListener("click", (e) => {
-            const datasetId = e.currentTarget.dataset.datasetId;
-            const selectorBase = `#result-dataset-id-${datasetId}`;
-
-            // Show editable versions where there are some and hide the display versions
-            for (const classElt of document.querySelectorAll(`${selectorBase} .js-editable-version`)) {
-                classElt.classList.add("is-hidden");
-            };
-            for (const classElt of document.querySelectorAll(`${selectorBase} .js-display-version`)) {
-                classElt.classList.remove("is-hidden");
-            };
-
-            // Reset any unsaved/edited values
-            const visibility = document.querySelector(`${selectorBase}-editable-visibility`).dataset.originalVal;
-            document.querySelector(`${selectorBase}-editable-visibility`).value = visibility;
-
-            const title = document.querySelector(`${selectorBase}-editable-title`).dataset.originalVal;
-            document.querySelector(`${selectorBase}-editable-title`).value = title;
-
-            const ldesc = document.querySelector(`${selectorBase}-editable-ldesc`).dataset.originalVal;
-            document.querySelector(`${selectorBase}-editable-ldesc`).value = ldesc;
-
-            const pubmedId = document.querySelector(`${selectorBase}-editable-pubmed-id`).dataset.originalVal;
-            document.querySelector(`${selectorBase}-editable-pubmed-id`).value = pubmedId;
-
-            const geoId = document.querySelector(`${selectorBase}-editable-geo-id`).dataset.originalVal;
-            document.querySelector(`${selectorBase}-editable-geo-id`).value = geoId;
-
-            document.querySelector(`${selectorBase} .js-action-links`).classList.remove("is-hidden");
-
-        });
-    }
-
-    // Save button for editing a dataset
-    for (const classElt of document.getElementsByClassName("js-edit-dataset-save")) {
-        classElt.addEventListener("click", async (e) => {
-            const datasetId = e.currentTarget.dataset.datasetId;
-            const selectorBase = `#result-dataset-id-${datasetId}`;
-            //
-            const newVisibility = document.querySelector(`${selectorBase}-editable-visibility`).checked;
-            // convert "true/false" visibility to 1/0
-            const intNewVisibility = newVisibility ? 1 : 0;
-
-            const isDownloadable = document.querySelector(`${selectorBase}-editable-downloadable`).checked;
-            // convert "true/false" visibility to 1/0
-            const intIsDownloadable = isDownloadable ? 1 : 0;
-
-            const newTitle = document.querySelector(`${selectorBase}-editable-title`).value;
-            const newPubmedId = document.querySelector(`${selectorBase}-editable-pubmed-id`).value;
-            const newGeoId = document.querySelector(`${selectorBase}-editable-geo-id`).value;
-            const newLdesc = document.querySelector(`${selectorBase}-editable-ldesc`).value;
-
-            try {
-                const data = await apiCallsMixin.saveDatasetInfoChanges(datasetId, intNewVisibility, intIsDownloadable, newTitle, newPubmedId, newGeoId, newLdesc);
-                createToast("Dataset changes saved", "is-success");
-
-            } catch (error) {
-                logErrorInConsole(error);
-                createToast("Failed to save dataset changes");
-                return;
-            } finally {
-                document.querySelector(`${selectorBase} .js-action-links`).classList.remove("is-hidden");
-            }
-
-            // Update the UI for the new values
-            document.querySelector(`${selectorBase}-editable-visibility`).dataset.isPublic = newVisibility;
-            if (newVisibility) {
-                document.querySelector(`${selectorBase}-display-visibility`).textContent = "Public dataset";
-                document.querySelector(`${selectorBase}-table-visibility`).textContent = "Public";
-                document.querySelector(`${selectorBase}-display-visibility`).classList.remove("is-danger");
-                document.querySelector(`${selectorBase}-display-visibility`).classList.add("is-light", "is-primary");
-                document.querySelector(`${selectorBase}-table-visibility`).classList.remove("has-background-danger");
-                document.querySelector(`${selectorBase}-table-visibility`).classList.add("has-background-primary-light");
-
-            } else {
-                document.querySelector(`${selectorBase}-display-visibility`).textContent = "Private dataset";
-                document.querySelector(`${selectorBase}-table-visibility`).textContent = "Private";
-                document.querySelector(`${selectorBase}-display-visibility`).classList.remove("is-light", "is-primary");
-                document.querySelector(`${selectorBase}-display-visibility`).classList.add("is-danger");
-                document.querySelector(`${selectorBase}-table-visibility`).classList.remove("has-background-primary-light");
-                document.querySelector(`${selectorBase}-table-visibility`).classList.add("has-background-danger");
-            }
-
-            document.querySelector(`${selectorBase}-editable-downloadable`).dataset.isDownloadable = isDownloadable;
-
-            if (isDownloadable) {
-                document.querySelector(`${selectorBase}-display-downloadable`).textContent = "Downloadable";
-                document.querySelector(`${selectorBase}-display-downloadable`).classList.remove("is-dark");
-                document.querySelector(`${selectorBase}-display-downloadable`).classList.add("is-success");
-            } else {
-                document.querySelector(`${selectorBase}-display-downloadable`).textContent = "Not downloadable";
-                document.querySelector(`${selectorBase}-display-downloadable`).classList.remove("is-success");
-                document.querySelector(`${selectorBase}-display-downloadable`).classList.add("is-dark");
-            }
-            const downloadButton = document.querySelector(`${selectorBase}-download-dataset`);
-            if (downloadButton) {
-                // If button exists (has h5ad), update the button visibility
-                downloadButton.dataset.isDownloadable = isDownloadable;
-
-                disableAndHideElement(downloadButton, true);
-                if (isDownloadable) {
-                    enableAndShowElement(downloadButton, true);
-                }
-            }
-
-            document.querySelector(`${selectorBase}-editable-title`).dataset.originalVal = newTitle;
-            document.querySelector(`${selectorBase}-display-title`).textContent = newTitle;
-            document.querySelector(`${selectorBase}-table-title`).textContent = newTitle;
-
-            document.querySelector(`${selectorBase}-editable-ldesc`).dataset.originalVal = newLdesc;
-            document.querySelector(`${selectorBase}-display-ldesc`).textContent = newLdesc || "No description entered";
-
-            // pubmed and geo display are links if they exist
-            document.querySelector(`${selectorBase}-editable-pubmed-id`).value = newPubmedId;
-            if (newPubmedId) {
-                document.querySelector(`${selectorBase}-display-pubmed-id`).innerHTML = `<a href="https://pubmed.ncbi.nlm.nih.gov/${newPubmedId}" target="_blank">
-                    <span>${newPubmedId}</span>
-                    <i class="mdi mdi-open-in-new"></i>
-                </a>`;
-            } else {
-                document.querySelector(`${selectorBase}-display-pubmed-id`).textContent = "Not available";
-            }
-
-            document.querySelector(`${selectorBase}-editable-geo-id`).value = newGeoId;
-            if (newGeoId) {
-                document.querySelector(`${selectorBase}-display-geo-id`).innerHTML = `<a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=${newGeoId}" target="_blank">
-                    <span>${newGeoId}</span>
-                    <i class="mdi mdi-open-in-new"></i>
-                </a>`;
-            } else {
-                document.querySelector(`${selectorBase}-display-geo-id`).textContent = "Not available";
-            }
-            document.querySelector(`${selectorBase}-display-geo-id`).value = newGeoId;
-
-            // Put interface back to view mode.
-            toggleEditableMode(true, selectorBase);
-
-        });
-    }
-
-    // Toggle editable mode when edit button is clicked for a dataset
-    for (const classElt of document.getElementsByClassName("js-edit-dataset")) {
-        classElt.addEventListener("click", async (e) => {
-
-            const datasetId = e.currentTarget.dataset.datasetId;
-            const selectorBase = `#result-dataset-id-${datasetId}`;
-
-            const editableVisibilityElt = document.querySelector(`${selectorBase}-editable-visibility`);
-
-            const isPublic = parseBool(editableVisibilityElt.dataset.isPublic);
-
-            editableVisibilityElt.checked = isPublic;
-            editableVisibilityElt.closest(".field").querySelector("label").textContent = isPublic ? "Public" : "Private";
-
-            // Show editable versions where there are some and hide the display versions
-            toggleEditableMode(false, selectorBase);
-
-            // Make sure the view is expanded
-            const expandableViewElt = document.querySelector(`${selectorBase} .js-expandable-view`);
-            if (expandableViewElt.classList.contains('is-hidden')) {
-                document.querySelector(`${selectorBase} span.js-expand-box`).click();
-            }
-
-            document.querySelector(`${selectorBase} .js-action-links`).classList.add("is-hidden");
-
-        });
-    }
-
-    // Redirect to gene expression search
-    for (const classElt of document.getElementsByClassName("js-view-dataset")) {
-        classElt.addEventListener("click", (e) => {
-            window.open(`./p?s=${e.currentTarget.value}`, '_blank');
-        });
-    }
-
-    // Redirect to gene expression search
-    for (const classElt of document.getElementsByClassName("js-view-projection-dataset")) {
-        classElt.addEventListener("click", (e) => {
-            window.open(`./p?p=p&s=${e.currentTarget.value}`, '_blank');
-        });
-    }
-}
-
-/**
  * Adds the dataset title to the modal.
  *
  * @param {HTMLElement} modalHTML - The HTML element representing the modal.
@@ -528,29 +1103,6 @@ const addDatasetTitleToModal = (modalHTML, title) => {
     const datasetTitle = modalContent.querySelector("h5");
     datasetTitle.replaceChildren();
     datasetTitle.textContent = title;
-}
-
-/**
- * Adds downloadable information to a dataset.
- *
- * @param {string} datasetId - The ID of the dataset.
- * @param {boolean} isDownloadable - Indicates whether the dataset is downloadable.
- * @param {boolean} hasH5ad - Indicates whether the dataset has an H5ad file.
- */
-const addDownloadableInfoToDataset = (datasetId, isDownloadable, hasH5ad) => {
-    const datasetDisplayContainer = document.getElementById(`${datasetId}-display-downloadable`);
-    const datasetDisplaySpan = document.createElement("span");
-    datasetDisplaySpan.classList.add("tag");
-    datasetDisplaySpan.id = `result-dataset-id-${datasetId}-display-downloadable`;
-
-    if (hasH5ad && isDownloadable) {
-        datasetDisplaySpan.classList.add("is-success");
-        datasetDisplaySpan.textContent = "Downloadable";
-    } else {
-        datasetDisplaySpan.classList.add("is-dark");
-        datasetDisplaySpan.textContent = "Not downloadable";
-    }
-    datasetDisplayContainer.appendChild(datasetDisplaySpan);
 }
 
 const addModalEventListeners = () => {
@@ -636,53 +1188,6 @@ const addModalDisplaySectionTitle = (element, titleText) => {
     title.classList.add("has-text-weight-bold", "is-underlined", "column", "is-full");
     title.textContent = titleText;
     element.prepend(title);
-}
-
-/**
- * Adds public/private visibility information to a dataset display container in the DOM.
- * @param {string} datasetId - The ID of the datasetdisplay container.
- * @param {boolean} isPublic - A boolean indicating whether the dataset is public or private.
- * @returns {void}
- */
-const addVisibilityInfoToDataset = (datasetId, isPublic) => {
-
-    // add dataset public/private info to DOM
-    const datasetDisplayContainer = document.getElementById(`${datasetId}-display-visibility`);
-    const datasetDisplaySpan = document.createElement("span");
-    datasetDisplaySpan.classList.add("tag");
-    datasetDisplaySpan.id = `result-dataset-id-${datasetId}-display-visibility`;
-    const datasetTableVisibility = document.getElementById(`result-dataset-id-${datasetId}-table-visibility`);
-
-    if (isPublic) {
-        datasetDisplaySpan.classList.add("is-primary", "is-light");
-        datasetDisplaySpan.textContent = "Public dataset";
-        datasetTableVisibility.classList.add("has-background-primary-light");
-        datasetTableVisibility.textContent = "Public";
-    } else {
-        datasetDisplaySpan.classList.add("is-danger");
-        datasetDisplaySpan.textContent = "Private dataset";
-        datasetTableVisibility.classList.add("has-background-danger");
-        datasetTableVisibility.textContent = "Private";
-    }
-    datasetDisplayContainer.appendChild(datasetDisplaySpan);
-
-    // Toggle switch (public is checked, private is unchecked)
-    const visibilitySwitch = document.getElementById(`result-dataset-id-${datasetId}-editable-visibility`);
-
-    visibilitySwitch.addEventListener("change", (e) => {
-        const isPublic = e.currentTarget.checked;
-        e.currentTarget.dataset.isPublic = isPublic;
-        e.currentTarget.closest(".field").querySelector("label").textContent = isPublic ? "Public" : "Private";
-    });
-
-    const downloadableSwitch = document.getElementById(`result-dataset-id-${datasetId}-editable-downloadable`);
-
-    downloadableSwitch.addEventListener("change", (e) => {
-        const isDownloadable = e.currentTarget.checked;
-        e.currentTarget.dataset.isDownloadable = isDownloadable;
-        e.currentTarget.closest(".field").querySelector("label").textContent = isDownloadable ? "Yes" : "No";
-    });
-
 }
 
 /**
@@ -776,13 +1281,10 @@ const clearResultsViews = () => {
 /**
  * Copies a permalink to the clipboard.
  *
- * @param {string} shareUrl - The URL to be copied to the clipboard.
+ * @param {string} shareUrl - The sanitized URL to be copied to the clipboard.
  * @returns {void}
  */
 const copyPermalink = (shareUrl) => {
-    // sanitize shareUrl
-    shareUrl = shareUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
     if(copyToClipboard(shareUrl)) {
         createToast("URL copied to clipboard", "is-info");
     } else {
@@ -807,268 +1309,6 @@ const createActionTooltips = (referenceElement) => {
     document.body.appendChild(tooltip);
     return tooltip;
 }
-
-/**
- * Creates a confirmation popover for deleting a dataset.
- */
-const createDeleteDatasetConfirmationPopover = () => {
-    const deleteButtons = document.getElementsByClassName("js-delete-dataset");
-    for (const button of deleteButtons) {
-        button.addEventListener('click', (e) => {
-            // remove existing popovers
-            const existingPopover = document.getElementById('delete-dataset-popover');
-            if (existingPopover) {
-                existingPopover.remove();
-            }
-
-            // Create popover content
-            const popoverContent = document.createElement('article');
-            popoverContent.id = 'delete-dataset-popover';
-            popoverContent.classList.add("message", "is-danger");
-            popoverContent.setAttribute("role", "tooltip");
-            popoverContent.style.width = "500px";
-            popoverContent.innerHTML = `
-                <div class='message-header'>
-                    <p>Delete dataset</p>
-                </div>
-                <div class='message-body'>
-                    <p>Are you sure you want to delete this dataset? This will affect any saved displays and dataset collections for yourself and for other users.</p>
-                    <div class='field is-grouped' style='width:250px'>
-                        <p class="control">
-                            <button id='confirm-dataset-delete' class='button is-danger'>Delete</button>
-                        </p>
-                        <p class="control">
-                            <button id='cancel-dataset-delete' class='button' value='cancel_delete'>Cancel</button>
-                        </p>
-                    </div>
-                </div>
-                <div id="arrow"></div>
-            `;
-
-            // append element to DOM to get its dimensions
-            document.body.appendChild(popoverContent);
-
-            const arrowElement = document.getElementById('arrow');
-
-            // Create popover (help from https://floating-ui.com/docs/tutorial)
-            computePosition(button, popoverContent, {
-                placement: 'bottom',
-                middleware: [
-                    flip(), // flip to bottom if there is not enough space on top
-                    shift(), // shift the popover to the right if there is not enough space on the left
-                    offset(5), // offset relative to the button
-                    arrow({ element: arrowElement }) // add an arrow pointing to the button
-                ],
-            }).then(({ x, y, placement, middlewareData }) => {
-                // Position the popover
-                Object.assign(popoverContent.style, {
-                    left: `${x}px`,
-                    top: `${y}px`,
-                });
-                // Accessing the data
-                const { x: arrowX, y: arrowY } = middlewareData.arrow;
-
-                // Position the arrow relative to the popover
-                const staticSide = {
-                    top: 'bottom',
-                    right: 'left',
-                    bottom: 'top',
-                    left: 'right',
-                }[placement.split('-')[0]];
-
-                // Set the arrow position
-                Object.assign(arrowElement.style, {
-                    left: arrowX != null ? `${arrowX}px` : '',
-                    top: arrowY != null ? `${arrowY}px` : '',
-                    right: '',
-                    bottom: '',
-                    [staticSide]: '-4px',
-                });
-            });
-
-
-            // Store the dataset ID to delete
-            const datasetIdToDelete = e.currentTarget.value;
-
-            // Add event listener to cancel button
-            document.getElementById('cancel-dataset-delete').addEventListener('click', () => {
-                popoverContent.remove();
-            });
-
-            // Add event listener to confirm button
-            document.getElementById('confirm-dataset-delete').addEventListener('click', async (event) => {
-                event.target.classList.add("is-loading");
-
-                try {
-                    const data = await apiCallsMixin.deleteDataset(datasetIdToDelete);
-
-                    if (data['success'] === 1) {
-                        const resultElement = document.getElementById(`result-dataset-id-${datasetIdToDelete}`);
-                        resultElement.style.transition = 'opacity 1s';
-                        resultElement.style.opacity = 0;
-                        resultElement.remove();
-
-                        createToast("Dataset deleted", "is-success");
-
-                        // This can affect page counts, so we need to re-run the search
-                        await submitSearch();
-
-                    } else {
-                        throw new Error(data['error']);
-                    }
-                } catch (error) {
-                    logErrorInConsole(error);
-                    createToast("Failed to delete dataset");
-                } finally {
-                    event.target.classList.remove("is-loading");
-                    popoverContent.remove();
-                }
-            });
-        });
-    }
-}
-
-/**
- * Creates a popover for renaming dataset permalink.
- */
-const createRenameDatasetPermalinkPopover = () => {
-    const permalinkButtons = document.getElementsByClassName("js-edit-dataset-permalink");
-    for (const button of permalinkButtons) {
-        button.addEventListener('click', (e) => {
-            // remove existing popovers
-            const existingPopover = document.getElementById('rename-dataset-link-popover');
-            if (existingPopover) {
-                existingPopover.remove();
-            }
-
-            // Create popover content
-            const popoverContent = document.createElement('article');
-            popoverContent.id = 'rename-dataset-link-popover';
-            popoverContent.classList.add("message", "is-primary");
-            popoverContent.setAttribute("role", "tooltip");
-            popoverContent.innerHTML = `
-                <div class='message-header'>
-                    <p>Rename dataset permalink</p>
-                </div>
-                <div class='message-body'>
-                    <p>Please provide a new name for the dataset short-hand permalink.</p>
-                    <div class='field has-addons'>
-                        <div class='control'>
-                            <a class="button is-static">
-                                ${getRootUrl()}/p?s=
-                            </a>
-                        </div>
-                        <div class='control'>
-                            <input id='dataset-link-name' class='input' type='text' placeholder='permalink' value=${e.currentTarget.dataset.shareId}>
-                        </div>
-                    </div>
-                    <div class='field is-grouped' style='width:250px'>
-                        <p class="control">
-                            <button id='confirm-dataset-link-rename' class='button is-primary' disabled>Update</button>
-                        </p>
-                        <p class="control">
-                            <button id='cancel-dataset-link-rename' class='button' value='cancel_rename'>Cancel</button>
-                        </p>
-                    </div>
-                </div>
-                <div id="arrow"></div>
-            `;
-
-            // append element to DOM to get its dimensions
-            document.body.appendChild(popoverContent);
-
-            const arrowElement = document.getElementById('arrow');
-
-            // Create popover (help from https://floating-ui.com/docs/tutorial)
-            computePosition(button, popoverContent, {
-                placement: 'bottom',
-                middleware: [
-                    flip(), // flip to bottom if there is not enough space on top
-                    shift(), // shift the popover to the right if there is not enough space on the left
-                    offset(5), // offset relative to the button
-                    arrow({ element: arrowElement }) // add an arrow pointing to the button
-                ],
-            }).then(({ x, y, placement, middlewareData }) => {
-                // Position the popover
-                Object.assign(popoverContent.style, {
-                    left: `${x}px`,
-                    top: `${y}px`,
-                });
-                // Accessing the data
-                const { x: arrowX, y: arrowY } = middlewareData.arrow;
-
-                // Position the arrow relative to the popover
-                const staticSide = {
-                    top: 'bottom',
-                    right: 'left',
-                    bottom: 'top',
-                    left: 'right',
-                }[placement.split('-')[0]];
-
-                // Set the arrow position
-                Object.assign(arrowElement.style, {
-                    left: arrowX != null ? `${arrowX}px` : '',
-                    top: arrowY != null ? `${arrowY}px` : '',
-                    right: '',
-                    bottom: '',
-                    [staticSide]: '-4px',
-                });
-            });
-
-            const shareId = e.currentTarget.dataset.shareId;
-
-            document.getElementById("dataset-link-name").addEventListener("keyup", () => {
-                const newLinkName = document.getElementById("dataset-link-name");
-                const confirmRenameLink = document.getElementById("confirm-dataset-link-rename");
-
-                if (newLinkName.value.length === 0 || newLinkName.value === shareId) {
-                    confirmRenameLink.disabled = true;
-                    return;
-                }
-                confirmRenameLink.disabled = false;
-            });
-
-            // Add event listener to cancel button
-            document.getElementById('cancel-dataset-link-rename').addEventListener('click', () => {
-                popoverContent.remove();
-            });
-
-            // Add event listener to confirm button
-            document.getElementById('confirm-dataset-link-rename').addEventListener('click', async (event) => {
-                event.target.classList.add("is-loading");
-                const newShareId = document.getElementById("dataset-link-name").value;
-
-                try {
-                    const data = await apiCallsMixin.updateShareId(shareId, newShareId, "dataset");
-
-                    if ((!data.success) || (data.success < 1)) {
-                        const error = data.error || "Unknown error. Please contact gEAR support.";
-                        throw new Error(error);
-                    }
-
-                    createToast("Dataset permalink renamed", "is-success");
-
-                    // Update the share_id in the button, since the previous share_id is now invalid
-                    // find nearest parent .js-edit-dataset-permalink to "e"
-                    // (since e.currentTarget is null after confirm button is clicked)
-                    e.target.closest(".js-action-links").querySelector(".js-edit-dataset-permalink").dataset.shareId = newShareId;
-                    e.target.closest(".js-action-links").querySelector(".js-view-dataset").value = newShareId;
-                    e.target.closest(".js-action-links").querySelector(".js-view-projection-dataset").value = newShareId;
-                    e.target.closest(".js-action-links").querySelector(".js-share-dataset").value = newShareId;
-
-                    popoverContent.remove();
-
-                } catch (error) {
-                    logErrorInConsole(error);
-                    createToast("Failed to rename dataset permalink: " + error);
-                } finally {
-                    event.target.classList.remove("is-loading");
-                }
-            });
-        });
-    }
-}
-
 
 /**
  * Creates a confirmation popover for deleting a dataset collection.
@@ -1776,242 +2016,40 @@ const processSearchResults = (data) => {
         return;
     }
 
-    const tableResultsBody = document.querySelector("#results-table tbody");
-    const tableTamplate = document.getElementById("results-table-view")
-
-    const resultsListDiv = document.getElementById("results-list-div");
-    const listTemplate = document.getElementById("results-list-view");
-
     // data.datasets is a list of JSON strings
     for (const dataset of data.datasets) {
-        const datasetId = dataset.id;
-        const datasetType = dataset.dtype;
-        const label = dataset.title;
 
-        const longDesc = dataset.ldesc || "";
-        const shareId = dataset.share_id;
-        const isPublic = Boolean(dataset.is_public);
-        const isDownloadable = Boolean(dataset.is_downloadable);
-        const hasH5ad = Boolean(dataset.has_h5ad);
-        const dateAdded = new Date(dataset.date_added).toDateString();
-        // as YYYY/MM/DD
-        const shortDateAdded = new Date(dataset.date_added).toISOString().slice(0, 10);
+        const resultItem = new ResultItem(dataset);
 
-        const userName = dataset.user_name;
-        const organism = dataset.organism;
-        const isOwner = dataset.is_owner
-
-        const annotSource = dataset.annotation_source || "Not given";
-        const annotVersion = dataset.annotation_release || "Not given";
-
-        const pubmedId = dataset.pubmed_id || null;
-        const geoId = dataset.geo_id || null;
-
-        const previewImageUrl = dataset.preview_image_url || "/img/dataset_previews/missing.png";
-
-        const resultDatasetId = `result-dataset-id-${datasetId}`
-
-        // TABLE VIEW
-
-        // Clone the template
-        const tableResultsView = tableTamplate.content.cloneNode(true)
-
-        // Set properties for multiple elements
-        // TODO: Truncate titles with tooltip for full title
-        setElementProperties(tableResultsView, ".js-view-displays", { dataset: { datasetId, title: label, isPublic } });
-        setElementProperties(tableResultsView, ".js-display-title", { id: `${resultDatasetId}-table-title`, textContent: label });
-        setElementProperties(tableResultsView, ".js-display-visibility", { id: `${resultDatasetId}-table-visibility` });
-        setElementProperties(tableResultsView, ".js-display-organism", { id: `${resultDatasetId}-table-organism`, textContent: organism });
-        setElementProperties(tableResultsView, ".js-display-owner", { textContent: userName });
-        setElementProperties(tableResultsView, ".js-display-date-added", { textContent: shortDateAdded });
-        setElementProperties(tableResultsView, ".js-display-dataset-type", { textContent: datasetType });
-
-        // Append the cloned template to the results container
-        tableResultsBody.appendChild(tableResultsView);
+        // TABLE VIEW + EXPANDED ROW
+        resultItem.createTableRow();
 
         // LIST VIEW
+        resultItem.createListViewItem();
 
-        // Clone the template
-        const listResultsView = listTemplate.content.cloneNode(true)
+        for (const selector of [resultItem.expandedRowItem, resultItem.resultListItem]) {
+            // Add collection membership info
+            resultItem.addCollectionMembershipInfo(selector);
 
-        // Set properties for multiple elements
-        setElementProperties(listResultsView, ".js-dataset-list-element", { id: resultDatasetId, dataset: { datasetId } });
+            // Add downloadable info
+            resultItem.addDownloadableInfoToDataset(selector);
 
-        // Figure section
-        setElementProperties(listResultsView, ".js-dataset-list-element figure", { id: `${resultDatasetId}-figure` });
+            // Add list visibility info
+            resultItem.addListVisibilityInfo(selector);
 
-        // title section
-        setElementProperties(listResultsView, ".js-display-title p", { id: `${resultDatasetId}-display-title`, textContent: label });
-        setElementProperties(listResultsView, ".js-editable-title input", { id: `${resultDatasetId}-editable-title`, dataset: { originalVal: label }, value: label });
-        setElementProperties(listResultsView, ".js-expand-box", { dataset: { datasetId } });
-        // visibility/other metadata section
-        setElementProperties(listResultsView, ".js-display-visibility", { id: `${datasetId}-display-visibility` });
-        setElementProperties(listResultsView, ".js-editable-visibility input", { id: `${resultDatasetId}-editable-visibility`, checked: isPublic, dataset: { isPublic } });
-        setElementProperties(listResultsView, ".js-editable-visibility label", { htmlFor: `${resultDatasetId}-editable-visibility`, textContent: isPublic ? "Public" : "Private" });
-        // downloadable section
-        setElementProperties(listResultsView, ".js-display-downloadable", { id: `${datasetId}-display-downloadable`});
-        setElementProperties(listResultsView, ".js-editable-downloadable input", { id: `${resultDatasetId}-editable-downloadable`, checked: isDownloadable, dataset: { downloadable: dataset.is_downloadable } });
-        setElementProperties(listResultsView, ".js-editable-downloadable label", { htmlFor: `${resultDatasetId}-editable-downloadable`, textContent: isDownloadable ? "Yes" : "No" });
-        // if h5ad is not present, then disable input and set to "No"
-        if (!hasH5ad) {
-            setElementProperties(listResultsView, ".js-editable-downloadable input", { disabled: true });
-            setElementProperties(listResultsView, ".js-editable-downloadable label", { textContent: "No" });
+            // Add image preview
+            resultItem.addImagePreview(selector);
+
+            // Add description info
+            resultItem.addDescriptionInfo(selector);
+
         }
 
-        // organism section
-        setElementProperties(listResultsView, ".js-display-organism span:last-of-type", { id: `${resultDatasetId}-display-organism`, textContent: organism });
-        setElementProperties(listResultsView, ".js-editable-organism input", {value: organism });
-        // owner section
-        setElementProperties(listResultsView, ".js-display-owner span:last-of-type", { textContent: userName });
-        setElementProperties(listResultsView, ".js-editable-owner input", { value: userName });
-        // date added section
-        setElementProperties(listResultsView, ".js-display-date-added span:last-of-type", { textContent: dateAdded });
-        setElementProperties(listResultsView, ".js-editable-date-added input", { value: dateAdded });
-
-        // annotation source section
-        setElementProperties(listResultsView, ".js-display-annot-source span:last-of-type", { textContent: annotSource });
-        setElementProperties(listResultsView, ".js-editable-annot-source input", { value: annotSource });
-
-        // annotation version section
-        setElementProperties(listResultsView, ".js-display-annot-version span:last-of-type", { textContent: annotVersion });
-        setElementProperties(listResultsView, ".js-editable-annot-version input", { value: annotVersion });
-
-        // pubmed id section
-        const pubmedProp = pubmedId ? {
-            // Not adding "icon-text" and "icon" classes because it aligns text and icon under the label
-            innerHTML: `<a href="https://pubmed.ncbi.nlm.nih.gov/${pubmedId}" target="_blank">
-                    <span>${pubmedId}</span>
-                    <i class="mdi mdi-open-in-new"></i>
-                </a>`
-        } : { textContent: "Not available" };
-        pubmedProp.id = `${resultDatasetId}-display-pubmed-id`;
-
-        setElementProperties(listResultsView, ".js-display-pubmed-id span:last-of-type", pubmedProp);
-        setElementProperties(listResultsView, ".js-editable-pubmed-id input", { id: `${resultDatasetId}-editable-pubmed-id`, dataset: { originalVal: pubmedId }, value: pubmedId });
-
-        // geo id section
-        const geoProp = geoId ? {
-            innerHTML: `<a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=${geoId}" target="_blank">
-                    <span>${geoId}</span>
-                    <i class="mdi mdi-open-in-new"></i>
-                </a>`
-        } : { textContent: "Not available" };
-        geoProp.id = `${resultDatasetId}-display-geo-id`;
-
-        setElementProperties(listResultsView, ".js-display-geo-id span:last-of-type", geoProp);
-        setElementProperties(listResultsView, ".js-editable-geo-id input", { id: `${resultDatasetId}-editable-geo-id`, dataset: { originalVal: geoId }, value: geoId });
-
-        // action buttons section
-        setElementProperties(listResultsView, ".js-view-dataset", { value: shareId });
-        setElementProperties(listResultsView, ".js-view-projection-dataset", { value: shareId });
-        setElementProperties(listResultsView, ".js-view-displays", { dataset: { datasetId, title: label, isPublic } });
-        setElementProperties(listResultsView, ".js-delete-dataset", { value: datasetId, dataset: { isOwner } });
-        setElementProperties(listResultsView, ".js-edit-dataset-permalink", { value: datasetId, dataset: { isOwner, shareId } });
-
-        setElementProperties(listResultsView, ".js-download-dataset", { id: `${resultDatasetId}-download-dataset`, dataset: { datasetId, isDownloadable, hasH5ad } });
-        setElementProperties(listResultsView, ".js-share-dataset", { value: shareId, dataset: { datasetId } });
-        setElementProperties(listResultsView, ".js-edit-dataset", { value: datasetId, dataset: { datasetId } });
-        setElementProperties(listResultsView, ".js-edit-dataset-save", { value: datasetId, dataset: { datasetId } });
-        setElementProperties(listResultsView, ".js-edit-dataset-cancel", { value: datasetId, dataset: { datasetId } });
-
-        setElementProperties(listResultsView, ".js-dataset-curator", { href: `./dataset_curator.html?dataset_id=${datasetId}`});
-        setElementProperties(listResultsView, ".js-multigene-viewer", { href: `./multigene_curator.html?dataset_id=${datasetId}`});
-        setElementProperties(listResultsView, ".js-compare-tool", { href: `./compare_datasets.html?dataset_id=${datasetId}`});
-        setElementProperties(listResultsView, ".js-sc-workbench", { href: `./sc_workbench.html?dataset_id=${datasetId}`});
-
-
-        // dataset type section
-        setElementProperties(listResultsView, ".js-display-dataset-type span:last-of-type", { textContent: datasetType });
-        setElementProperties(listResultsView, ".js-editable-dataset-type input", { value: datasetType });
-        // long description section
-        setElementProperties(listResultsView, ".js-display-ldesc", { id: `${resultDatasetId}-display-ldesc-container` });
-        setElementProperties(listResultsView, ".js-editable-ldesc textarea", { id: `${resultDatasetId}-editable-ldesc`, dataset: { originalVal: longDesc }, value: longDesc });
-
-        // Append the cloned template to the results container
-        resultsListDiv.appendChild(listResultsView);
-
-        // add collection membership info to dataset
-        document.querySelector(`#${resultDatasetId} .js-found-in-collection-text`).innerHTML = "Found in these owned or highlighted collections";
-        if (includePublicMembership) {
-            document.querySelector(`#${resultDatasetId} .js-found-in-collection-text`).innerHTML = "Found in these owned or public collections";
-        }
-
-        const collections = dataset.layouts;
-        for (const collectionString of collections) {
-            const collection = JSON.parse(collectionString);
-            const shareId = collection.share_id;
-            const label = collection.label;
-
-            const collectionListElt = document.querySelector(`#${resultDatasetId} .js-found-in-collections-list`);
-            // Create list element that can link out to the collection
-            const collectionListItem = document.createElement("li");
-            collectionListItem.innerHTML = `
-            <span>
-                <a href="./p?l=${shareId}" target="_blank">
-                    <span>${label}</span>
-                    <i class="mdi mdi-open-in-new"></i>
-                </a>
-            </span>
-            `;
-            collectionListElt.appendChild(collectionListItem);
-        }
-
-        // EXTRA STUFF TO BOTH VIEWS
-        addDownloadableInfoToDataset(datasetId, isDownloadable, hasH5ad);
-        addVisibilityInfoToDataset(datasetId, isPublic);
-
-        const datasetImageContainer = document.querySelector(`#${resultDatasetId}-figure img`);
-        datasetImageContainer.src = previewImageUrl;
-
-        // Add ldesc if it exists
-        const ldescContainer = document.getElementById(`${resultDatasetId}-display-ldesc-container`);
-        const ldescElt = document.createElement("p");
-        ldescElt.id = `${resultDatasetId}-display-ldesc`;
-        ldescElt.textContent = longDesc || "No description entered";
-        ldescContainer.appendChild(ldescElt);
-
+        resultItems.push(resultItem);
 
     }
 
-    // Configure tooltips before manipulating action link buttons
-    for (const tooltipElt of document.getElementsByClassName("tooltip")) {
-        // Do not remove collection tooltips
-        if (tooltipElt.classList.contains("js-collection-tooltip")) {
-            continue;
-        }
-        // Remove any existing tooltips
-        tooltipElt.remove();
-    }
-
-    // Create tooltips for all elements with the data-tooltip-content attribute
-    // Only creating one set so that they can be reused
-    const actionGroupElt = document.querySelector(".js-action-links");
-    const tooltips = []
-    for (const classElt of actionGroupElt.querySelectorAll("[data-tooltip-content]")) {
-        tooltips.push(createActionTooltips(classElt))
-    }
-    const tableDisplayGroupElt = document.querySelector(".js-table-view-displays");
-    const tableDisplayGroupTooltip = createActionTooltips(tableDisplayGroupElt.querySelector("[data-tooltip-content]"))
-
-    // Then apply each tooltip to the appropriate element for all elements with the data-tooltip-content attribute
-
-    for (const actionElt of document.getElementsByClassName("js-action-links")) {
-        const loopTooltips = [...tooltips];
-        for (const classElt of actionElt.querySelectorAll("[data-tooltip-content]")) {
-            applyTooltip(classElt, loopTooltips.shift());
-        }
-    }
-    for (const actionElt of document.getElementsByClassName("js-table-view-displays")) {
-        for (const classElt of actionElt.querySelectorAll("[data-tooltip-content]")) {
-            applyTooltip(classElt, tableDisplayGroupTooltip);
-        }
-    }
-
-    // Create tooltips for dataset view buttons
-    const viewBtns = document.getElementsByClassName("js-view-btn");
-    for (const classElt of viewBtns) {
-        applyTooltip(classElt, createActionTooltips(classElt), "bottom");
-    }
+    setupDatasetItemActionTooltips();
 
     // Normally this is done in the datasetCollectionCallback but we also need it when searching
     // to ensure the table-view button is shown/hid when filters are applied
@@ -2029,16 +2067,17 @@ const processSearchResults = (data) => {
         }
     }
 
+    // Now that tooltips have been populated we can remove buttons and add event listeners
+    for (const resultItem of resultItems) {
+        for (const selector of [resultItem.expandedRowItem, resultItem.resultListItem]) {
+            // Add event listeners for all dataset elements
+            resultItem.addListItemEventListeners(selector);
 
-    // Hide/Remove some buttons if user is not owner
-    updateDatasetListButtons();
+            // Show/hide dataset list buttons based on user ownership
+            resultItem.updateDatasetListButtons(selector);
+        }
+    }
 
-    // Initiialize delete dataset popover for each delete button
-    createDeleteDatasetConfirmationPopover();
-    createRenameDatasetPermalinkPopover();
-
-    // All event listeners for all dataset elements
-    addDatasetListEventListeners();
 }
 
 /**
@@ -2353,36 +2392,83 @@ const renderLayoutArranger = async (collection) => {
     document.getElementById("dataset-arrangement-loading-notification").classList.add("is-hidden");
 }
 
-/**
- * Sets the dataset of an element based on the provided dataset object.
- * @param {HTMLElement} parentNode - The parent node containing the element.
- * @param {string} selector - The CSS selector to select the element.
- * @param {Object} dataset - The dataset object containing key-value pairs.
- */
-const setElementDataset = (parentNode, selector, dataset) => {
-    const element = parentNode.querySelector(selector);
-    Object.keys(dataset).forEach((key) => {
-        element.dataset[key] = dataset[key];
-    });
-}
 
 /**
- * Sets the properties of an element selected by a given selector within a parent node.
- * @param {HTMLElement} parentNode - The parent node containing the element.
- * @param {string} selector - The CSS selector used to select the element.
- * @param {Object} properties - An object containing the properties to be set on the element.
+ * Sets properties on a target element found within a given element using a selector.
+ *
+ * @param {HTMLElement} element - The parent element to query within.
+ * @param {string} selector - The CSS selector to find the target element.
+ * @param {Object} properties - An object containing the properties to set on the target element.
+ * @param {Object} [properties.dataset] - An optional object containing data attributes to set on the target element.
  */
-const setElementProperties = (parentNode, selector, properties) => {
-    const element = parentNode.querySelector(selector);
-    Object.keys(properties).forEach((property) => {
-        if (property === "dataset") {
-            setElementDataset(parentNode, selector, properties[property]);
-            return;
+const setElementProperties = (element, selector, properties) => {
+    const targetElement = element.querySelector(selector);
+    if (targetElement) {
+        for (const [key, value] of Object.entries(properties)) {
+            if (key === 'dataset') {
+                for (const [dataKey, dataValue] of Object.entries(value)) {
+                    targetElement.dataset[dataKey] = dataValue;
+                }
+            } else {
+                targetElement[key] = value;
+            }
         }
-        element[property] = properties[property];
-    });
+    }
 }
 
+/**
+ * Sets up tooltips for various elements on the dataset explorer page.
+ *
+ * This function performs the following steps:
+ * 1. Removes existing tooltips from elements, except those with the class "js-collection-tooltip".
+ * 2. Creates new tooltips for elements with the "data-tooltip-content" attribute within the action links group.
+ * 3. Creates a tooltip for the table display group element with the "data-tooltip-content" attribute.
+ * 4. Applies the created tooltips to the appropriate elements in the action links and table display groups.
+ * 5. Creates and applies tooltips for dataset view buttons.
+ */
+const setupDatasetItemActionTooltips = () => {
+    // Configure tooltips before manipulating action link buttons
+    for (const tooltipElt of document.getElementsByClassName("tooltip")) {
+        // Do not remove collection tooltips
+        if (tooltipElt.classList.contains("js-collection-tooltip")) {
+            continue;
+        }
+        // Remove any existing tooltips
+        tooltipElt.remove();
+    }
+
+    // Create tooltips for all elements with the data-tooltip-content attribute
+    // Only creating one set so that they can be reused
+    const actionGroupElt = document.querySelector(".js-action-links");
+    const tooltips = []
+    for (const classElt of actionGroupElt.querySelectorAll("[data-tooltip-content]")) {
+        tooltips.push(createActionTooltips(classElt))
+    }
+    const tableDisplayGroupElt = document.querySelector(".js-td-expand");
+    const tableDisplayGroupTooltip = createActionTooltips(tableDisplayGroupElt.querySelector("[data-tooltip-content]"))
+
+    // Then apply each tooltip to the appropriate element for all elements with the data-tooltip-content attribute
+    // NOTE: It's important to do this after creating all the tooltips so that the tooltips are created in the correct order
+
+    for (const actionElt of document.getElementsByClassName("js-action-links")) {
+        const loopTooltips = [...tooltips];
+        for (const classElt of actionElt.querySelectorAll("[data-tooltip-content]")) {
+            applyTooltip(classElt, loopTooltips.shift());
+        }
+    }
+    for (const actionElt of document.getElementsByClassName("js-td-expand")) {
+        for (const classElt of actionElt.querySelectorAll("[data-tooltip-content]")) {
+            applyTooltip(classElt, tableDisplayGroupTooltip);
+        }
+    }
+
+    // Create tooltips for dataset view buttons
+    const viewBtns = document.getElementsByClassName("js-view-btn");
+    for (const classElt of viewBtns) {
+        applyTooltip(classElt, createActionTooltips(classElt), "bottom");
+    }
+
+}
 
 /**
  * Sets up the pagination UI based on the provided pagination data.
@@ -2473,6 +2559,9 @@ const setupPagination = (pagination) => {
  */
 const submitSearch = async (page=1) => {
 
+    // destroy current ResultItem objects
+    resultItems = [];
+
     const searchTerms = document.getElementById("search-terms").value;
 
     // If this is the first time searching with terms, set the sort by to relevance
@@ -2539,14 +2628,14 @@ const submitSearch = async (page=1) => {
 /**
  * Toggles the editable mode of elements with the given selector base.
  * @param {boolean} hideEditable - Whether to hide the editable elements or not.
- * @param {string} [selectorBase=""] - The base selector to use for finding the editable and non-editable elements.
+ * @param {string} [target=""] - The base selector to use for finding the editable and non-editable elements.
  */
-const toggleEditableMode = (hideEditable, selectorBase="") => {
-    const editableElements = document.querySelectorAll(`${selectorBase} .js-editable-version`);
-    const nonEditableElements = document.querySelectorAll(`${selectorBase} .js-display-version`);
+const toggleEditableMode = (hideEditable, target="") => {
+    const editableElements = target.getElementsByClassName(`js-editable-version`);
+    const nonEditableElements = target.getElementsByClassName(`js-display-version`);
 
-    editableElements.forEach(el => el.classList.toggle("is-hidden", hideEditable));
-    nonEditableElements.forEach(el => el.classList.toggle("is-hidden", !hideEditable));
+    [...editableElements].forEach(el => el.classList.toggle("is-hidden", hideEditable));
+    [...nonEditableElements].forEach(el => el.classList.toggle("is-hidden", !hideEditable));
 }
 
 /**
@@ -2592,7 +2681,7 @@ const updateDatasetCollectionButtons = (collection=null) => {
         const visibility = event.target.checked;
         try {
             await apiCallsMixin.updateDatasetCollectionVisibility(selected_dc_share_id, visibility);
-            createToast("Collection visibility updated");
+            createToast("Collection visibility updated", "is-success");
         } catch (error) {
             logErrorInConsole(error);
             createToast("Failed to update collection visibility");
@@ -2618,62 +2707,6 @@ const updateDatasetCollections = async () => {
     // merge all dataset collection data from domain_layouts, group_layouts, public_layouts, shared_layouts, and user_layouts into one array
     flatDatasetCollectionData = [...datasetCollectionData.domain_layouts, ...datasetCollectionData.group_layouts, ...datasetCollectionData.public_layouts, ...datasetCollectionData.shared_layouts, ...datasetCollectionData.user_layouts];
 
-}
-
-/**
- * Updates the dataset list buttons based on the dataset properties.
- */
-const updateDatasetListButtons = () => {
-
-    const datasetListElements = document.getElementsByClassName("js-dataset-list-element");
-    for (const classElt of datasetListElements) {
-        const datasetId = classElt.dataset.datasetId;
-
-        //unhide all buttons
-        for (const actionLinks of classElt.querySelectorAll(".js-action-links .control")) {
-            actionLinks.classList.remove("is-hidden");
-        }
-
-        // If the dataset has no h5ad file, remove the download button since it cannot be downloaded regardless
-        const downloadButton = classElt.querySelector("button.js-download-dataset");
-        if (downloadButton) {
-            const hasH5ad = parseBool(downloadButton.dataset.hasH5ad);
-            if (!hasH5ad) {
-                downloadButton.parentElement.remove();
-            }
-        }
-
-        // If button still exists, update its visibility if the dataset is downloadable
-        if (downloadButton) {
-            const isDownloadable = parseBool(downloadButton.dataset.isDownloadable);
-            disableAndHideElement(downloadButton, true);
-            if (isDownloadable) {
-                enableAndShowElement(downloadButton, true);
-            }
-        }
-
-        // The ability to edit and delete and dataset are currently paired
-        const deleteButton = classElt.querySelector("button.js-delete-dataset");
-        const editButton = classElt.querySelector("button.js-edit-dataset");
-        const editPermalinkButton = classElt.querySelector("button.js-edit-dataset-permalink");
-
-        const selectorBase = `#result-dataset-id-${datasetId}`;
-
-        if (deleteButton) {
-            // If user is not the owner of the dataset, remove the delete and edit buttons so user cannot manipulate
-            // These will be regenerated when a search triggers processSearchResults
-            if (deleteButton.dataset.isOwner === "false") {
-                deleteButton.parentElement.remove();
-                editButton.parentElement.remove()
-                editPermalinkButton.parentElement.remove();
-
-                // Remove all editable elements to prevent editing in the DOM
-                for (const editableElt of classElt.querySelectorAll(`${selectorBase} .js-editable-version`)) {
-                    editableElt.classList.remove()
-                }
-            };
-        }
-    }
 }
 
 /**
@@ -2720,10 +2753,12 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 	document.getElementById("page-header-label").textContent = "Dataset Explorer";
 
     const sessionId = CURRENT_USER.session_id;
-
 	if (! sessionId ) {
         // ? Technically we can show profiles, but I would need to build in "logged out controls".
         document.getElementById("collection-management").classList.add("is-hidden");
+        document.getElementById("filter-collection-container").classList.add("is-hidden");
+        // Ensure this toggle remains hidden when user switches views
+        document.getElementById("filter-collection-container").classList.remove("js-trigger-dataset-search");
         // only show public datasets option
         for (const elt of document.querySelectorAll("#controls-ownership li:not([data-dbval='public'])")) {
             elt.remove();
@@ -3003,7 +3038,7 @@ for (const elt of document.querySelectorAll(".js-expandable-control")) {
     }
 )};
 
-// If checkbox is changed, set the searchByCollection flag
+// If checkbox is changed, set the searchByCollection
 document.getElementById("filter-only-in-collection").addEventListener("change", (e) => {
     searchByCollection = e.currentTarget.checked;
     // If the checkbox is checked, change label accordingly
@@ -3013,7 +3048,7 @@ document.getElementById("filter-only-in-collection").addEventListener("change", 
     submitSearch();
 });
 
-// If checkbox is changed, set the searchByCollection flag
+// If checkbox is changed, set the searchByCollection
 document.getElementById("include-public-membership").addEventListener("change", (e) => {
     includePublicMembership = e.currentTarget.checked;
     // If the checkbox is checked, change label accordingly
@@ -3083,7 +3118,10 @@ document.getElementById("btn-set-primary-collection").addEventListener("click", 
 });
 
 document.getElementById("btn-share-collection").addEventListener("click", (e) => {
-    const currentPage = getRootUrl();
-    const shareUrl = `${currentPage}/p?l=${selected_dc_share_id}`;
+    let currentPage = new URL(`${getRootUrl()}/p`);
+    let params = new URLSearchParams(currentPage.search);
+    params.set("l", selected_dc_share_id);
+    currentPage.search = params.toString();
+    const shareUrl = currentPage.toString();
     copyPermalink(shareUrl);
 });
