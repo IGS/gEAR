@@ -1,0 +1,6 @@
+[Unit]
+Description=gEAR uploader Consumer Workers
+Wants=uploader-consumer@1.service uploader-consumer@2.service uploader-consumer@3.service
+
+[Install]
+WantedBy=multi-user.target
