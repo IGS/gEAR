@@ -44,7 +44,6 @@ servercfg = ServerConfig().parse()
 
 share_uid = None
 session_id = None
-user_upload_file_base = '../uploads/files'
 
 status = {
     "success": None,
@@ -54,36 +53,38 @@ status = {
     "progress": 0
 }
 
-status_file = os.path.join(dataset_upload_dir, 'status.json')
+status_file = None
 
 def main():
     global share_uid
     global session_id
+    global status_file
 
     form = cgi.FieldStorage()
     share_uid = form.getvalue('share_uid')
     session_id = form.getvalue('session_id')
     dataset_format = form.getvalue('dataset_format')
 
+    user_upload_file_base = '../uploads/files'
+    dataset_upload_dir = os.path.join(user_upload_file_base, session_id, share_uid)
+    status_file = os.path.join(dataset_upload_dir, 'status.json')
+
     user = geardb.get_user_from_session_id(session_id)
     if user is None:
-        write_status(success=False, status='error', message='User ID not found. Please log in to continue.')
+        write_status(success=False, label='error', message='User ID not found. Please log in to continue.')
         dump_and_exit()
-
-    # values are mex_3tab, excel, rdata, h5ad
-    dataset_formats = ['mex_3tab', 'excel', 'rdata', 'h5ad']
-    dataset_upload_dir = os.path.join(user_upload_file_base, session_id, share_uid)
 
     # quickly write the status so the page doesn't error out
     write_status()
 
     # if the upload directory doesn't exist, we can't process the dataset
     if not os.path.exists(dataset_upload_dir):
-        write_status(success=False, status='error', message='Dataset/directory not found.')
+        write_status(success=False, label='error', message='Dataset/directory not found.')
         dump_and_exit()
 
+    dataset_formats = ['mex_3tab', 'excel', 'rdata', 'h5ad']
     if dataset_format not in dataset_formats:
-        write_status(success=False, status='error', message='Unsupported dataset format.')
+        write_status(success=False, label='error', message='Unsupported dataset format.')
         dump_and_exit()
 
     if servercfg['uploader_service']['queue_enabled'].startswith("1"):
@@ -101,7 +102,7 @@ def process_via_queue(dataset_format, dataset_upload_dir):
         # Connect as a blocking RabbitMQ publisher
         connection = gearqueue.Connection(host=host, publisher_or_consumer="publisher")
     except Exception as e:
-        write_status(success=False, status='error', message=str(e))
+        write_status(success=False, label='error', message=str(e))
         dump_and_exit()
     
     with connection:
@@ -123,7 +124,7 @@ def process_via_queue(dataset_format, dataset_upload_dir):
                 on_message_callback=_on_response
             )
         except Exception as e:
-            write_status(success=False, status='error', message=str(e))
+            write_status(success=False, label='error', message=str(e))
             dump_and_exit()
 
         # Create the publisher
@@ -139,7 +140,7 @@ def process_via_queue(dataset_format, dataset_upload_dir):
             )
             print("[x] Requesting for dataset_format {} and dataset_upload_dir {}".format(dataset_format, dataset_upload_dir), file=sys.stderr)
         except Exception as e:
-            write_status(success=False, status='error', message=str(e))
+            write_status(success=False, label='error', message=str(e))
             dump_and_exit()
         
         # Wait for callback to finish, then return the response
@@ -160,15 +161,15 @@ def process_dataset(dataset_format, dataset_upload_dir):
     else:
         raise Exception('Unsupported dataset format')
 
-def write_status(success=None, status=None, message=None):
+def write_status(success=None, label=None, message=None):
     if success is not None:
         if success:
             status['success'] = 1
         else:
             status['success'] = 0
 
-    if status is not None:
-        status['status'] = status
+    if label is not None:
+        status['status'] = label
 
     if message is not None:
         status['message'] = message
@@ -193,7 +194,7 @@ def process_3tab(upload_dir):
     obs = None
     var = None
 
-    write_status(status='processing', message='Initializing dataset processing.')
+    write_status(label='processing', message='Initializing dataset processing.')
 
     for infile in os.listdir(upload_dir):
         # skip any files beginning with a dot
@@ -244,20 +245,20 @@ def process_3tab(upload_dir):
     h5ad_path = os.path.join(upload_dir, f"{share_uid}.h5ad")
     adata.write(h5ad_path)
 
-    write_status(success=True, status='complete', message='Dataset processed successfully.')
+    write_status(success=True, label='complete', message='Dataset processed successfully.')
     dump_and_exit()
     
 def process_excel(upload_dir):
     filepath = os.path.join(upload_dir, f"{share_uid}.xlsx")
 
-    write_status(status='processing', message='Initializing dataset processing.')
+    write_status(label='processing', message='Initializing dataset processing.')
 
     exp_df = pd.read_excel(filepath, sheet_name='expression', index_col=0).transpose()
 
     try:
         X = exp_df.values[:, 0:].astype(float)
     except:
-        write_status(status='error', message="Encountered unexpected value type. Expected float type in expression matrix.")
+        write_status(label='error', message="Encountered unexpected value type. Expected float type in expression matrix.")
         dump_and_exit()
     
     # Get counts of genes and observations
@@ -267,18 +268,18 @@ def process_excel(upload_dir):
     try:
         obs_df = pd.read_excel(filepath, sheet_name='observations', index_col='observations')
     except:
-        write_status(status='error', message="No observations sheet found. Expected spreadsheet sheet named 'observations'.")
+        write_status(label='error', message="No observations sheet found. Expected spreadsheet sheet named 'observations'.")
         dump_and_exit()
 
     # Verify number observations equal those found in expression sheet
     number_obs, number_cond = obs_df.shape
     if number_obs != number_obs_from_exp:
-        write_status(status='error', message="Observations sheet error. Row count ({0}) in 'observations' sheet must match row count of 'expression' sheet({1}).".format(number_obs, number_obs_from_exp))
+        write_status(label='error', message="Observations sheet error. Row count ({0}) in 'observations' sheet must match row count of 'expression' sheet({1}).".format(number_obs, number_obs_from_exp))
         dump_and_exit()
     
     # Verify observations index matches expression sheet col index
     if not obs_df.index.equals(exp_df.index):
-        write_status(status='error', message="Observations sheet error. The names and order of the index column in 'observations' sheet must match the rows of 'expression' sheet.")
+        write_status(label='error', message="Observations sheet error. The names and order of the index column in 'observations' sheet must match the rows of 'expression' sheet.")
         dump_and_exit()
     
     # Get the genes (if present), else use the .var from exp_df
@@ -294,17 +295,17 @@ def process_excel(upload_dir):
             # with an index of gene ids to match other datasets.
             genes_df = genes_df.drop(genes_df.columns[0], axis=1)
         except Exception as err:
-            write_status(status='error', message="No 'genes' sheet found. Tried using genes column from 'expression' sheet as .var, but " + str(err))
+            write_status(label='error', message="No 'genes' sheet found. Tried using genes column from 'expression' sheet as .var, but " + str(err))
             dump_and_exit()
         
     # Check for numeric gene symbols
     if 'gene_symbol' in genes_df.columns:
         digit_count = genes_df['gene_symbol'].str.isnumeric().sum()
         if digit_count > 0:
-            write_status(status='error', message="Genes sheet error. {0} gene symbols are listed as numbers, not gene symbols".format(str(digit_count)))
+            write_status(label='error', message="Genes sheet error. {0} gene symbols are listed as numbers, not gene symbols".format(str(digit_count)))
             dump_and_exit()
     else:
-        write_status(status='error', message="Failed to find gene_symbol column in genes tab")
+        write_status(label='error', message="Failed to find gene_symbol column in genes tab")
         dump_and_exit()
 
     for str_type in ['cell_type', 'condition', 'time_point', 'time_unit']:
@@ -318,12 +319,12 @@ def process_excel(upload_dir):
     # Verify number genes equal those found in expression sheet
     number_genes, number_columns = genes_df.shape
     if number_genes != number_genes_from_exp:
-        write_status(status='error', message="Genes sheet error. Row count ({0}) in 'genes' sheet must match row count of 'expression' sheet({1}).".format(number_genes, number_genes_from_exp))
+        write_status(label='error', message="Genes sheet error. Row count ({0}) in 'genes' sheet must match row count of 'expression' sheet({1}).".format(number_genes, number_genes_from_exp))
         dump_and_exit()
 
     # Verify genes index matches expression sheet columns
     if not genes_df.index.equals(exp_df.columns):
-        write_status(status='error', message="Genes sheet error. The names and order of the index column in 'genes' sheet must match the rows of 'expression' sheet.")
+        write_status(label='error', message="Genes sheet error. The names and order of the index column in 'genes' sheet must match the rows of 'expression' sheet.")
         dump_and_exit()
 
     # Create AnnData object and return it
@@ -332,7 +333,7 @@ def process_excel(upload_dir):
     h5ad_path = os.path.join(upload_dir, f"{share_uid}.h5ad")
     adata.write(h5ad_path)
 
-    write_status(success=True, status='complete', message='Dataset processed successfully.')
+    write_status(success=True, label='complete', message='Dataset processed successfully.')
     dump_and_exit()
 
 def process_mex(upload_dir):
@@ -352,7 +353,7 @@ def process_mex_3tab(upload_dir):
         if os.path.exists(filename):
             compression_format = 'zip'
         else:
-            write_status(status='error', message="No tarball or zip file found.")
+            write_status(label='error', message="No tarball or zip file found.")
             dump_and_exit()
 
     files_extracted = []
@@ -379,7 +380,7 @@ def process_mex_3tab(upload_dir):
                     else:
                         files_extracted.append(entry.name)
         except tarfile.ReadError:
-            write_status(status='error', message="Bad tarball file. Couldn't extract the tarball.")
+            write_status(label='error', message="Bad tarball file. Couldn't extract the tarball.")
             dump_and_exit()
 
     if compression_format == 'zip':
@@ -404,14 +405,14 @@ def process_mex_3tab(upload_dir):
                     else:
                         files_extracted.append(entry.filename)
         except zipfile.BadZipFile:
-            write_status(status='error', message="Bad zip file. Couldn't extract the zip file.")
+            write_status(label='error', message="Bad zip file. Couldn't extract the zip file.")
             dump_and_exit()
 
     # Determine the dataset type
     dataset_type = package_content_type(files_extracted)
 
     if dataset_type is None:
-        write_status(status='error', message="Unsupported dataset format. Couldn't tell type from file names within the tarball")
+        write_status(label='error', message="Unsupported dataset format. Couldn't tell type from file names within the tarball")
         dump_and_exit()
 
     # Call the appropriate function
