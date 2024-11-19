@@ -38,6 +38,7 @@ sys.stdout = open(os.devnull, 'w')
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+import gear.datasetuploader as datasetuploader
 
 from gear.serverconfig import ServerConfig
 servercfg = ServerConfig().parse()
@@ -90,7 +91,12 @@ def main():
     if servercfg['uploader_service']['queue_enabled'].startswith("1"):
         process_via_queue(dataset_format, dataset_upload_dir)
     else:
-        process_dataset(dataset_format, dataset_upload_dir)
+        uploader = datasetuploader.DatasetUploader(
+            share_uid=share_uid, session_id=session_id, 
+            dataset_format=dataset_format, status_json_file=status_file,
+            upload_dir=dataset_upload_dir
+        )
+        process_dataset(uploader)
 
 
 def process_via_queue(dataset_format, dataset_upload_dir):
@@ -152,14 +158,19 @@ def process_via_queue(dataset_format, dataset_upload_dir):
         return response
 
 
-def process_dataset(dataset_format, dataset_upload_dir):
-    # new child command
-    if dataset_format == 'mex_3tab':
-        process_mex_3tab(dataset_upload_dir)
-    elif dataset_format == 'excel':
-        process_excel(dataset_upload_dir)
+def process_dataset(uploader):
+    if uploader.dataset_format == 'mex_3tab':
+        process_mex_3tab(uploader.upload_dir)
+    elif uploader.dataset_format == 'excel':
+        process_excel(uploader.upload_dir)
+    elif uploader.dataset_format == 'rdata':
+        process_rdata(uploader.upload_dir)
+    elif uploader.dataset_format == 'h5ad':
+        process_h5ad(uploader.upload_dir)
     else:
-        raise Exception('Unsupported dataset format')
+        write_status(success=False, label='error', message='Unsupported dataset format.')
+        dump_and_exit()
+    
 
 def write_status(success=None, label=None, message=None):
     if success is not None:

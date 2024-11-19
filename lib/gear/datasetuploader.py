@@ -15,6 +15,17 @@ class FileType(object):
             pass
 
 class DatasetUploader:
+    """
+
+    """
+
+    def __init__(self, share_uid=None, session_id=None, dataset_format=None, 
+                 status_json_file=None, upload_dir=None):
+        self.share_uid = share_uid
+        self.session_id = session_id
+        self.dataset_format = dataset_format
+        self.status_json_file = status_json_file
+        self.upload_dir = upload_dir
 
     def get_by_filetype(self, filetype=None, filepath=None):
         """

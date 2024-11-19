@@ -15,7 +15,7 @@ import gearqueue
 www_path = str(Path(__file__).resolve().parents[1].joinpath("www"))
 sys.path.append(www_path)
 
-from api.resources.projectr import projectr_callback
+from api.resources.uploader import uploader_callback
 
 # https://stackoverflow.com/a/35904211/1368079
 this = sys.modules[__name__]
@@ -43,7 +43,7 @@ def _on_request(channel, method_frame, properties, body):
 
         try:
             # Run the callback function to generate the reply payload
-            output_payload = projectr_callback(session_id, share_id, fh)
+            output_payload = uploader_callback(session_id, share_id, fh)
 
             # Send the output back to the Flask API call
             channel.basic_publish(
