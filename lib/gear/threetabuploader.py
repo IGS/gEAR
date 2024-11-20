@@ -5,10 +5,9 @@ import scanpy as sc
 import tarfile
 sc.settings.verbosity = 0
 
-from gear.datasetuploader import FileType
+from gear.datasetuploader import DatasetUploader
 
-
-class ThreeTabUploader(FileType):
+class ThreeTabUploader(DatasetUploader):
     """
     Called by datasetuploader.py (factory) when tarball containing three tab-delimited files is going uploaded
 

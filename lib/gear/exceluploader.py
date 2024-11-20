@@ -4,10 +4,10 @@ import os, sys
 import scanpy as sc
 sc.settings.verbosity = 0
 
-from gear.datasetuploader import FileType
+from gear.datasetuploader import DatasetUploader
 
 
-class ExcelUploader(FileType):
+class ExcelUploader(DatasetUploader):
     """
     Called by datasetuploader.py (factory) when excel file is going uploaded
 

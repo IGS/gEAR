@@ -1,9 +1,19 @@
 import os, sys
 import tarfile
 
-class FileType(object):
-    # filetypes = []
-    def __init__(self, filetypes=None, adata=None):
+class DatasetUploader:
+    """
+
+    """
+
+    def __init__(self, share_uid=None, session_id=None, dataset_format=None, 
+                 status_json_file=None, upload_dir=None, filetypes=None, adata=None):
+        self.share_uid = share_uid
+        self.session_id = session_id
+        self.dataset_format = dataset_format
+        self.status_json_file = status_json_file
+        self.upload_dir = upload_dir
+
         self.filetypes = filetypes
         self.adata = adata
 
@@ -13,19 +23,6 @@ class FileType(object):
         #TODO: .adata added via ExcelUploader child-class
         if self.adata is None:
             pass
-
-class DatasetUploader:
-    """
-
-    """
-
-    def __init__(self, share_uid=None, session_id=None, dataset_format=None, 
-                 status_json_file=None, upload_dir=None):
-        self.share_uid = share_uid
-        self.session_id = session_id
-        self.dataset_format = dataset_format
-        self.status_json_file = status_json_file
-        self.upload_dir = upload_dir
 
     def get_by_filetype(self, filetype=None, filepath=None):
         """
