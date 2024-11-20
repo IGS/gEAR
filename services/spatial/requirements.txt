@@ -1,0 +1,8 @@
+panel==1.5.4
+bokeh==3.6.1
+plotly
+spatialdata
+spatialdata_io
+scanpy
+pandas
+anndata

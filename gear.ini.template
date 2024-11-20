@@ -11,6 +11,8 @@ password = [pass]
 [content]
 ;; this is the layout users will see by default if they haven't saved one or aren't logged in
 default_layout_share_id = [default_layout_share_id]
+;; Where to read spatial datasets from
+spatial_dataset_location =
 
 [test]
 host = http://localhost/

@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 
 from gear.datasetuploader import FileType
 
+import pandas as pd
 import anndata as ad
 import spatialdata as sd
 
@@ -35,7 +36,7 @@ class SpatialUploader(metaclass=ABC):
     def sdata(self):
         return self._sdata
 
-    @adata.setter
+    @sdata.setter
     @abstractmethod
     def sdata(self, sdata=sd.SpatialData()):
         self._sdata = sdata
@@ -51,7 +52,7 @@ class SpatialUploader(metaclass=ABC):
         if filepath is None:
             raise Exception("No destination file path given. Provide one to write file.")
         try:
-            self.sdata.write(filepath)
+            self.sdata.write(file_path=filepath)
         except Exception as err:
             raise Exception("Error occurred while writing to file: ", err)
         return self
@@ -142,17 +143,35 @@ class VisiumHDUploader(SpatialUploader):
     TABLE_NAME = "square_008um"
 
 
-    def _read_file(self, filepath):
+    def _read_file(self, filepath, ):
         # Get tar filename so tmp directory can be assigned
         tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
         tmp_dir = '/tmp/' + tar_filename
 
         binned_outputs_dir = "{}/binned_outputs".format(tmp_dir)
+        bin_008_dataset_path = "{}/{}/".format(binned_outputs_dir, self.TABLE_NAME)
+        clustering_csv_path = "{}/analysis/clustering/gene_expression_graphclust/clusters.csv".format(bin_008_dataset_path)
 
         absolute_path = os.path.abspath(binned_outputs_dir)
 
+        with tarfile.open(filepath) as tf:
+            for entry in tf:
+                # Extract file into tmp dir
+                filepath = "{0}/{1}".format(binned_outputs_dir, entry.name)
+                tf.extract(entry, path=binned_outputs_dir)
+
         if not os.path.exists("{}/feature_slice.h5".format(binned_outputs_dir)):
             raise Exception("feature_slice.h5 file not found in /binned_outputs directory in tarball.")
+
+        # If clustering file does not exist, raise an exception
+        if not os.path.exists(clustering_csv_path):
+            raise Exception("clusters.csv file not found in clusters.csv file in tarball.")
+
+        # If clustering file does not have "Barcode" and "Cluster" columns, raise an exception
+        with open(clustering_csv_path, 'r') as f:
+            first_line = f.readline()
+            if "Barcode" not in first_line or "Cluster" not in first_line:
+                raise Exception("clusters.csv file does not have 'Barcode' and 'Cluster' columns in clusters.csv file in tarball.")
 
         # https://github.com/scverse/spatialdata-io/issues/212
 
@@ -162,13 +181,6 @@ class VisiumHDUploader(SpatialUploader):
         if not os.path.exists("{}/spatialdata_feature_slice.h5".format(binned_outputs_dir)):
             os.symlink("{}/feature_slice.h5".format(absolute_path), "{}/spatialdata_feature_slice.h5".format(binned_outputs_dir))
 
-
-        with tarfile.open(filepath) as tf:
-            for entry in tf:
-                # Extract file into tmp dir
-                filepath = "{0}/{1}".format(binned_outputs_dir, entry.name)
-                tf.extract(entry, path=binned_outputs_dir)
-
             sdata = sdio.visium_hd(tmp_dir
                                    , dataset_id="spatialdata"   # Provide a name to standarize downstream usage
                                    , bin_size=8
@@ -177,6 +189,12 @@ class VisiumHDUploader(SpatialUploader):
                                    , fullres_image_file=None
                                    , bins_as_squares=True
                                    )
+
+            # add clustering information to the vis_sdata.table.obs dataframe
+            clustering = pd.read_csv(clustering_csv_path)
+            # make barcode as index
+            clustering.set_index('Barcode', inplace=True)
+            sdata[self.TABLE_NAME].obs['clusters'] = clustering['Cluster'].astype('category')
 
             # To get the adata equivalent, look at sdata.tables["table"]
             # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id

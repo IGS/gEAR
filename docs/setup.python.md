@@ -43,6 +43,7 @@ Check the requirement.txt file in <git_repo_root>/docker for the latest packages
       anndata==0.10.6 \
       biocode==0.10.0 \
       biopython==1.79 \
+      bokeh==3.6.1 \
       cairosvg==2.7.1 \
       dash-bio==1.0.2 \
       Flask==3.0.0 \
@@ -64,6 +65,7 @@ Check the requirement.txt file in <git_repo_root>/docker for the latest packages
       opencv-python==4.5.5.64 \
       openpyxl==3.1.5 \
       pandas==2.2.1 \
+      panel==1.5.4 \
       Pillow==10.2.0 \
       pika==1.3.1 \
       plotly==5.6.0 \
