@@ -1,3 +1,5 @@
+import sys
+
 import panel as pn
 
 import plotly.express as px
@@ -23,6 +25,17 @@ pn.extension('plotly')
 # Keep only box select
 buttonsToRemove = ["zoom", "pan", "zoomIn", "zoomOut", "autoScale", "lasso2d"]
 
+def normalize_searched_gene(gene_set, chosen_gene):
+    """Convert to case-insensitive version of gene.  Returns None if gene not found in dataset."""
+    chosen_gene_lower = chosen_gene.lower()
+    for gene in gene_set:
+        try:
+            if chosen_gene_lower == gene.lower():
+                return gene
+        except Exception:
+            print(gene, file=sys.stderr)
+            raise
+    return None
 
 def make_zoom_figs(event):
         if not event:
@@ -44,7 +57,7 @@ def make_zoom_figs(event):
             ### Update expression plot
             zoomed_expression_figure = go.Figure()
             zoomed_expression_figure.add_trace(image_trace)
-            zoomed_expression_figure.add_trace(make_expression_scatter(selected_data, gene_symbol, 10))
+            zoomed_expression_figure.add_trace(make_expression_scatter(selected_data, norm_gene_symbol, 10))
 
             zoomed_expression_figure.update_xaxes(range=[range_x1, range_x2], title_text="spatial1")
             zoomed_expression_figure.update_yaxes(range=[range_y2, range_y1], title_text="spatial2")
@@ -155,7 +168,10 @@ else:
 
     gene_symbol = pn.state.location.query_params["gene_symbol"]
 
-    selected = adata[:, gene_symbol]
+    dataset_genes = set(adata.var.index.unique())
+    norm_gene_symbol = normalize_searched_gene(dataset_genes, pn.state.location.query_params["gene_symbol"])
+
+    selected = adata[:, norm_gene_symbol]
     df = selected.to_df()
 
     # Add spatial coords from adata.obsm
@@ -180,7 +196,7 @@ else:
     ### Expression plot
     expression_plot_figure = go.Figure()
     expression_plot_figure.add_trace(image_trace)
-    expression_plot_figure.add_trace(make_expression_scatter(df, gene_symbol, 2))
+    expression_plot_figure.add_trace(make_expression_scatter(df, norm_gene_symbol, 2))
 
     expression_plot_figure.update_xaxes(range=[0, spatial_img.shape[1]], title_text="spatial1")
     expression_plot_figure.update_yaxes(range=[spatial_img.shape[0], 0], title_text="spatial2")
