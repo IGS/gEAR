@@ -58,7 +58,7 @@ Check the requirement.txt file in <git_repo_root>/docker for the latest packages
       matplotlib==3.9.0 \
       mod-wsgi==4.9.4 \
       more_itertools==9.0.0 \
-      mysql-connector-python==8.0.20 \
+      mysql-connector-python==8.0.28 \
       numba==0.58.1 \
       numexpr==2.8.4 \
       numpy==1.26.4 \

@@ -17,7 +17,7 @@ services:
       - "3306:3306"
     restart: always
     volumes:
-      - ./mysql:/var/lib/mysql
+      - db:/var/lib/mysql:rw
 
   web:
     build: .
@@ -46,3 +46,11 @@ services:
   #   volumes:
   #     - python_vol:/opt/Python-3.10.4
   #     - ..:/opt/gEAR
+
+volumes:
+  db:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./mysql
+      o: bind
