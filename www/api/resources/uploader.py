@@ -9,7 +9,7 @@ import sys
 #from gear.serverconfig import ServerConfig
 #this.servercfg = ServerConfig().parse()
 
-def projectr_callback(session_id, share_id, fh):
+def uploader_callback(session_id, share_id, fh):
     success = 1
     message = ""
 

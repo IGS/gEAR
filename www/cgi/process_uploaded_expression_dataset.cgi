@@ -22,19 +22,6 @@ import json
 import os, sys
 import time
 
-import pandas as pd
-import scanpy as sc
-from scipy import sparse
-import anndata
-import zipfile
-
-# This has a huge dependency stack of libraries. Occasionally, one of them has methods
-#  which prints debugging information on STDOUT, killing this CGI.  So here we redirect
-#  STDOUT until we need it.
-print('Content-Type: application/json\n\n', flush=True)
-original_stdout = sys.stdout
-sys.stdout = open(os.devnull, 'w')
-
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
@@ -42,19 +29,6 @@ import gear.datasetuploader as datasetuploader
 
 from gear.serverconfig import ServerConfig
 servercfg = ServerConfig().parse()
-
-share_uid = None
-session_id = None
-
-status = {
-    "success": None,
-    "process_id": None,
-    "status": "uploaded",
-    "message": "",
-    "progress": 0
-}
-
-status_file = None
 
 def main():
     global share_uid
@@ -70,32 +44,35 @@ def main():
     dataset_upload_dir = os.path.join(user_upload_file_base, session_id, share_uid)
     status_file = os.path.join(dataset_upload_dir, 'status.json')
 
+    uploader = datasetuploader.DatasetUploader.get_by_filetype(
+        share_uid=share_uid, 
+        session_id=session_id, 
+        dataset_format=dataset_format, 
+        status_json_file=status_file,
+        upload_dir=dataset_upload_dir
+    )
+
     user = geardb.get_user_from_session_id(session_id)
     if user is None:
-        write_status(success=False, label='error', message='User ID not found. Please log in to continue.')
-        dump_and_exit()
+        uploader.write_status(success=False, label='error', message='User ID not found. Please log in to continue.')
+        uploader.dump_and_exit()
 
     # quickly write the status so the page doesn't error out
-    write_status()
+    uploader.write_status()
 
     # if the upload directory doesn't exist, we can't process the dataset
     if not os.path.exists(dataset_upload_dir):
-        write_status(success=False, label='error', message='Dataset/directory not found.')
-        dump_and_exit()
+        uploader.write_status(success=False, label='error', message='Dataset/directory not found.')
+        uploader.dump_and_exit()
 
     dataset_formats = ['mex_3tab', 'excel', 'rdata', 'h5ad']
     if dataset_format not in dataset_formats:
-        write_status(success=False, label='error', message='Unsupported dataset format.')
-        dump_and_exit()
+        uploader.write_status(success=False, label='error', message='Unsupported dataset format.')
+        uploader.dump_and_exit()
 
     if servercfg['uploader_service']['queue_enabled'].startswith("1"):
         process_via_queue(dataset_format, dataset_upload_dir)
     else:
-        uploader = datasetuploader.DatasetUploader(
-            share_uid=share_uid, session_id=session_id, 
-            dataset_format=dataset_format, status_json_file=status_file,
-            upload_dir=dataset_upload_dir
-        )
         process_dataset(uploader)
 
 
@@ -171,31 +148,6 @@ def process_dataset(uploader):
         write_status(success=False, label='error', message='Unsupported dataset format.')
         dump_and_exit()
     
-
-def write_status(success=None, label=None, message=None):
-    if success is not None:
-        if success:
-            status['success'] = 1
-        else:
-            status['success'] = 0
-
-    if label is not None:
-        status['status'] = label
-
-    if message is not None:
-        status['message'] = message
-
-    with open(status_file, 'w') as f:
-        f.write(json.dumps(status))
-
-
-def dump_and_exit():
-    sys.stdout = original_stdout
-
-    response = { success: status['success'], message: status['message'] }
-    print(json.dumps(response), flush=True)
-
-    sys.exit(0)
 
 def process_3tab(upload_dir):
     import subprocess
@@ -351,6 +303,8 @@ def process_mex(upload_dir):
     pass
 
 def process_mex_3tab(upload_dir):
+    raise Exception("Deprecated function. Use datasetuploader.py instead.")
+
     # Extract the file
     import tarfile
     compression_format = None
