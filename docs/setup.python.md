@@ -43,7 +43,6 @@ Check the requirement.txt file in <git_repo_root>/docker for the latest packages
       anndata==0.10.6 \
       biocode==0.10.0 \
       biopython==1.79 \
-      bokeh==3.6.1 \
       cairosvg==2.7.1 \
       dash-bio==1.0.2 \
       Flask==3.0.0 \

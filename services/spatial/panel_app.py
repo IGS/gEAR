@@ -4,6 +4,7 @@ import panel as pn
 
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from PIL import Image
 import base64
@@ -20,10 +21,19 @@ from pathlib import Path
 
 spatial_path = Path("/datasets/spatial")
 
-pn.extension('plotly')
+pn.extension('plotly'
+            , loading_indicator=True
+            , sizing_mode="stretch_both"
+            , nthreads=4
+            )
 
 # Keep only box select
 buttonsToRemove = ["zoom", "pan", "zoomIn", "zoomOut", "autoScale", "lasso2d"]
+
+orig_x1 = None
+orig_x2 = None
+orig_y1 = None
+orig_y2 = None
 
 def normalize_searched_gene(gene_set, chosen_gene):
     """Convert to case-insensitive version of gene.  Returns None if gene not found in dataset."""
@@ -37,78 +47,87 @@ def normalize_searched_gene(gene_set, chosen_gene):
             raise
     return None
 
-def make_zoom_figs(event):
-        if not event:
-            return
-        if not "range" in event:
-            return
+def make_zoom_fig_callback(event):
+    # Fallback to original values if no event
+    range_x1 = orig_x1
+    range_x2 = orig_x2
+    range_y1 = orig_y1
+    range_y2 = orig_y2
 
-        try:
-            range_x1 = event["range"]["x"][0]
-            range_x2 = event["range"]["x"][1]
-            range_y1 = event["range"]["y"][0]
-            range_y2 = event["range"]["y"][1]
+    if event and "range" in event:
+        range_x1 = event["range"]["x"][0]
+        range_x2 = event["range"]["x"][1]
+        range_y1 = event["range"]["y"][0]
+        range_y2 = event["range"]["y"][1]
 
-            error_row[0].object = f"Selected range: x1={range_x1}, x2={range_x2}, y1={range_y1}, y2={range_y2}"
+    #error_row[0].object = f"Selected range: x1={range_x1}, x2={range_x2}, y1={range_y1}, y2={range_y2}"
 
-            # Filter the data based on the selected range
-            selected_data = df[(df["spatial1"] >= range_x1) & (df["spatial1"] <= range_x2) & (df["spatial2"] >= range_y1) & (df["spatial2"] <= range_y2)]
+    # Filter the data based on the selected range
+    selected_data = df[(df["spatial1"] >= range_x1) & (df["spatial1"] <= range_x2) & (df["spatial2"] >= range_y1) & (df["spatial2"] <= range_y2)]
 
-            ### Update expression plot
-            zoomed_expression_figure = go.Figure()
-            zoomed_expression_figure.add_trace(image_trace)
-            zoomed_expression_figure.add_trace(make_expression_scatter(selected_data, norm_gene_symbol, 10))
+    make_zoom_fig(selected_data)
 
-            zoomed_expression_figure.update_xaxes(range=[range_x1, range_x2], title_text="spatial1")
-            zoomed_expression_figure.update_yaxes(range=[range_y2, range_y1], title_text="spatial2")
+def make_zoom_fig(df):
 
-            ### Cluster plot
-            zoomed_cluster_figure = go.Figure()
-            zoomed_cluster_figure.add_trace(image_trace)
-            for cluster in unique_clusters:
-                cluster_data = selected_data[selected_data["Clusters"] == cluster]
-                zoomed_cluster_figure.add_trace(
-                    go.Scattergl(
-                        x=cluster_data["spatial1"],
-                        y=cluster_data["spatial2"],
-                        mode="markers",
-                        marker=dict(color=color_map[cluster], size=10, symbol="square"),
-                        name=str(cluster),
-                        text=cluster_data["Clusters"]
-                    )
-                )
+    range_x1 = df["spatial1"].min()
+    range_x2 = df["spatial1"].max()
+    range_y1 = df["spatial2"].min()
+    range_y2 = df["spatial2"].max()
 
-            # make legend markers bigger
-            zoomed_cluster_figure.update_layout(legend=dict(itemsizing='constant'))
+    image_trace = go.Image(source=base64_string)
 
-            zoomed_cluster_figure.update_xaxes(range=[range_x1, range_x2], title_text="spatial1")
-            zoomed_cluster_figure.update_yaxes(range=[range_y2, range_y1], title_text="spatial2")
+    # Make a 3-column subplot
+    fig = make_subplots(rows=1, cols=3, subplot_titles=("Gene Expression", "Clusters", "Image Only"), horizontal_spacing=0.15)
 
-            ### Image only
-            zoomed_image_figure = go.Figure()
-            zoomed_image_figure.add_trace(image_trace)
-            zoomed_image_figure.update_xaxes(range=[range_x1, range_x2], title_text="spatial1")
-            zoomed_image_figure.update_yaxes(range=[range_y2, range_y1], title_text="spatial2")
+    ### Expression plot
+    fig.add_trace(image_trace, row=1, col=1)
+    fig.add_trace(make_expression_scatter(df, norm_gene_symbol, "YlGn", 2), row=1, col=1)
 
-            # Update the zoom_row figures
-            # The object attribute is the plotly figure passed to the pane
-            zoom_row[0].object = zoomed_expression_figure
-            zoom_row[1].object = zoomed_cluster_figure
-            zoom_row[2].object = zoomed_image_figure
-        except Exception as e:
-            error_row[0].object = f"Error: {e}"
+    ### Cluster plot
+    fig.add_trace(image_trace, row=1, col=2)
+    for cluster in unique_clusters:
+        cluster_data = df[df["Clusters"] == cluster]
+        fig.add_trace(
+            go.Scattergl(
+                x=cluster_data["spatial1"],
+                y=cluster_data["spatial2"],
+                mode="markers",
+                marker=dict(color=color_map[cluster], size=2, symbol="square"),
+                name=str(cluster),
+                text=cluster_data["Clusters"]
+            ), row=1, col=2
+        )
 
+    # make legend markers bigger
+    fig.update_layout(legend=dict(itemsizing='constant', x=0.635), dragmode="select")
 
-def make_expression_scatter(df, gene_symbol, size):
+    ### Image only
+    fig.add_trace(image_trace, row=1, col=3)
+
+    fig.update_xaxes(range=[range_x1, range_x2], title_text="spatial1")
+    fig.update_yaxes(range=[range_y2, range_y1], title_text="spatial2")
+
+    # adjust domains of all 3 plots, leaving enough space for the colorbar and legend
+    fig.update_layout(
+        xaxis=dict(domain=[0, 0.25]),
+        xaxis2=dict(domain=[0.4, 0.65]),
+        xaxis3=dict(domain=[0.75, 1]),
+    )
+
+def make_expression_scatter(df, gene_symbol, color, size):
     return go.Scattergl(x=df["spatial1"], y=df["spatial2"], mode="markers", marker=dict(
                 color=df[gene_symbol],
-                colorscale='YlGn',  # You can choose any colorscale you like
+                colorscale=color,  # You can choose any colorscale you like
                 size=size,  # Adjust the marker size as needed
                 colorbar=dict(
-                    title=f"{gene_symbol} expression",  # Title for the colorbar
+                    len=1,  # Adjust the length of the colorbar
+                    thickness=20,  # Adjust the thickness of the colorbar (default is 30)
+                    #title=f"{gene_symbol} expression",  # Title for the colorbar
+                    x=0.25
                 ),
                 symbol="square",
                 ),
+                showlegend=False,
                 hovertemplate="Expression: %{marker.color:.2f}<extra></extra>"
             )
 
@@ -150,7 +169,7 @@ else:
     adata = to_legacy_anndata(sdata, include_images=True, coordinate_system="downscaled_hires")
 
     # Filter out cells that overlap with the blank space of the image.
-    sc.pp.filter_cells(adata, min_genes=300)
+    sc.pp.filter_cells(adata, min_genes=200)
     sc.pp.normalize_total(adata, inplace=True)
     sc.pp.log1p(adata)
 
@@ -193,23 +212,18 @@ else:
 
     image_trace = go.Image(source=base64_string)
 
+    # Make a 3-column subplot
+    fig = make_subplots(rows=1, cols=3, subplot_titles=("Gene Expression", "Clusters", "Image Only"), horizontal_spacing=0.15)
+
     ### Expression plot
-    expression_plot_figure = go.Figure()
-    expression_plot_figure.add_trace(image_trace)
-    expression_plot_figure.add_trace(make_expression_scatter(df, norm_gene_symbol, 2))
-
-    expression_plot_figure.update_xaxes(range=[0, spatial_img.shape[1]], title_text="spatial1")
-    expression_plot_figure.update_yaxes(range=[spatial_img.shape[0], 0], title_text="spatial2")
-    expression_plot_figure.update_layout(title="Gene Expression", title_x=0.5, dragmode="select")
-
-    expression_plot_pane = pn.pane.Plotly(expression_plot_figure, height=400, sizing_mode="stretch_width", config={"doubleClick":"reset","displayModeBar":True, "modeBarButtonsToRemove": buttonsToRemove})
+    fig.add_trace(image_trace, row=1, col=1)
+    fig.add_trace(make_expression_scatter(df, norm_gene_symbol, "YlGn", 2), row=1, col=1)
 
     ### Cluster plot
-    cluster_plot_figure = go.Figure()
-    cluster_plot_figure.add_trace(image_trace)
+    fig.add_trace(image_trace, row=1, col=2)
     for cluster in unique_clusters:
         cluster_data = df[df["Clusters"] == cluster]
-        cluster_plot_figure.add_trace(
+        fig.add_trace(
             go.Scattergl(
                 x=cluster_data["spatial1"],
                 y=cluster_data["spatial2"],
@@ -217,54 +231,62 @@ else:
                 marker=dict(color=color_map[cluster], size=2, symbol="square"),
                 name=str(cluster),
                 text=cluster_data["Clusters"]
-            )
+            ), row=1, col=2
         )
 
     # make legend markers bigger
-    cluster_plot_figure.update_layout(legend=dict(itemsizing='constant'))
-
-    cluster_plot_figure.update_xaxes(range=[0, spatial_img.shape[1]], title_text="spatial1")
-    cluster_plot_figure.update_yaxes(range=[spatial_img.shape[0], 0], title_text="spatial2")
-    cluster_plot_figure.update_layout(title="Clusters", title_x=0.5, dragmode="select")
-
-    cluster_plot_pane = pn.pane.Plotly(cluster_plot_figure, height=400, sizing_mode="stretch_width", config={"doubleClick":"reset", "displayModeBar":True, "modeBarButtonsToRemove": buttonsToRemove})
+    fig.update_layout(legend=dict(itemsizing='constant', x=0.635), dragmode="select")
 
     ### Image only
-    image_only_figure = go.Figure()
-    image_only_figure.add_trace(image_trace)
+    fig.add_trace(image_trace, row=1, col=3)
 
-    image_only_figure.update_xaxes(range=[0, spatial_img.shape[1]], title_text="spatial1")
-    image_only_figure.update_yaxes(range=[spatial_img.shape[0], 0], title_text="spatial2")
-    image_only_figure.update_layout(title="Image Only", title_x=0.5)
+    fig.update_xaxes(range=[0, spatial_img.shape[1]], title_text="spatial1")
+    fig.update_yaxes(range=[spatial_img.shape[0], 0], title_text="spatial2")
 
-    image_plot_pane = pn.pane.Plotly(image_only_figure, height=400, sizing_mode="stretch_width", config={'staticPlot': True})
+    # adjust domains of all 3 plots, leaving enough space for the colorbar and legend
+    fig.update_layout(
+        xaxis=dict(domain=[0, 0.25]),
+        xaxis2=dict(domain=[0.4, 0.65]),
+        xaxis3=dict(domain=[0.75, 1]),
+    )
+
+
+    fig_pane = pn.pane.Plotly(fig, config={"doubleClick":"reset","displayModeBar":True, "modeBarButtonsToRemove": buttonsToRemove})
 
     # Create a row for the zoomed in view
     zoom_row = pn.Row(
-            pn.pane.Plotly(go.Figure(), height=400, sizing_mode="stretch_width", config={'displayModeBar': False}),
-            pn.pane.Plotly(go.Figure(), height=400, sizing_mode="stretch_width", config={'displayModeBar': False}),
-            pn.pane.Plotly(go.Figure(), height=400, sizing_mode="stretch_width", config={'staticPlot': True}),
+            pn.pane.Plotly(go.Figure(), config={'displayModeBar': False}),
+            pn.pane.Plotly(go.Figure(), config={'displayModeBar': False}),
+            pn.pane.Plotly(go.Figure(), config={'staticPlot': True}),
+            height=400
         )
+
+    # get x and y range for whole figure
+    orig_x1, orig_x2 = fig.layout.xaxis.range
+    orig_y1, orig_y2 = fig.layout.yaxis.range
+
+    # First time, just show the whole image
+    #make_zoom_figs(None)
 
     error_row = pn.Row(
         pn.pane.Str("Any errors will go here", styles={"color": "red"})
     )
 
-    pn.bind(make_zoom_figs, expression_plot_pane.param.selected_data, watch=True)
-    pn.bind(make_zoom_figs, cluster_plot_pane.param.selected_data, watch=True)
+    #pn.bind(make_zoom_figs, expression_plot_pane.param.selected_data, watch=True)
+    #pn.bind(make_zoom_figs, cluster_plot_pane.param.selected_data, watch=True)
 
     # Create the app
     # TODO: Defer loading of the images
+    # TODO: explore Datashader
     # TODO: Add some loading indicators for plot drawing
     layout = pn.Column(
         '## Select a region in expression or cluster plot to show zoomed in view',
         pn.Row(
-            expression_plot_pane,
-            cluster_plot_pane,
-            image_plot_pane
+            fig_pane,
+            height=400
         ),
-        pn.layout.Divider(margin=(-20, 0, 0, 0)),
+        pn.layout.Divider(),    # default margins
         '## Zoomed in view',
-        zoom_row,
-        error_row
-    ).servable()
+        zoom_row
+        #, error_row
+    ).servable(title="Spatial Data Viewer", location=True)

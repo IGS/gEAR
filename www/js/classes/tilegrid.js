@@ -10,7 +10,6 @@ const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];   // "tsne" is
 
 // Epiviz overrides the <script> d3 version when it loads so we save as a new variable to preserve it
 const new_d3 = d3;
-
 class TileGrid {
 
     constructor(shareId, type="layout", selector ) {
@@ -21,6 +20,7 @@ class TileGrid {
 
         this.maxCols = 12 // highest number of columns in a row
         this.arrangementWidth = 1080;
+        // NOTE: The true width will be a bit wider as grid-gap is not accounted for
         this.rowWidth = this.arrangementWidth / this.maxCols; // Split width into 12 columns
         this.colHeight = this.rowWidth * 4; // A unit of height for us is 4 units of width (to make a square)
 
@@ -34,6 +34,10 @@ class TileGrid {
      * @returns {Promise<void>} A promise that resolves when all displays are added.
      */
     async addAllDisplays() {
+        if (!this.datasets || !this.datasets.length) {
+            console.warn("Not rendering displays because no datasets were found.");
+            return;
+        }
 
         for (const dataset of this.datasets) {
             dataset.userDisplays = [];
@@ -58,6 +62,31 @@ class TileGrid {
         selectorElt.replaceChildren();
 
         if (this.type === "dataset") {
+
+            if (this.shareId == "spatial") {
+                this.datasets = [
+                    {
+                        id: "cshults_visiumhd",
+                        title: "Chris Shults Spatial Transcriptomics Dataset",
+                        dtype: "spatial",
+                        organsim_id: 1,
+                        organism: "Mouse",
+                        owner_id: 622,
+                        has_h5ad: true,
+                        has_tarball: false,
+                        is_downloadable: false,
+                        ownerDisplays: [],
+                        userDisplays: [],
+                        links: []
+                    }
+                ]
+            }
+
+            if (!(this.datasets || this.datasets.length)) {
+                console.error("No datasets found.");
+                return;
+            }
+
             const datasetTile = new DatasetTile(this, null, this.datasets[0], isMulti); // default display will be currentDisplayId
             this.applySingleTileGrid(datasetTile, selectorElt);
             this.tiles = [datasetTile];
@@ -422,6 +451,35 @@ class DatasetTile {
 
         // Resize the card image (plots) to accomodate the title header
         this.resizeCardImage();
+
+        // TODO: Move spatial code after ortholog mapping once implemented
+        if (this.dataset.dtype === "spatial") {
+            // Add loading message
+            createCardMessage(tileId, "info", "Loading spatial dataset...");
+
+            // build the URL for the spatial app
+            const urlParams = new URLSearchParams();
+            urlParams.append("dataset_id", this.dataset.id);
+            urlParams.append("gene_symbol", geneSymbolInput);
+            const url = `/panel/panel_app?${urlParams.toString()}`;
+
+            try {
+                const cardImage = tileElement.querySelector('.card-image');
+                cardImage.replaceChildren();
+                const iframe = document.createElement("iframe");
+                // srcDoc html requires Panel static files to be served from the same domain, so use src instead
+                iframe.src = url;
+                iframe.loading="lazy";
+                iframe.sandbox="allow-scripts allow-same-origin";
+                cardImage.append(iframe);
+                return;
+            } catch (error) {
+                console.error(error);
+            }
+
+            createCardMessage(tileId, "warning", "Spatial datasets are not yet supported.");
+            return;
+        }
 
         // If the dataset type is epiviz, then give warning that it hasn't been implemented yet
         if (this.dataset.dtype === "epiviz") {
