@@ -165,7 +165,7 @@ class VisiumHDUploader(SpatialUploader):
 
         # If clustering file does not exist, raise an exception
         if not os.path.exists(clustering_csv_path):
-            raise Exception("clusters.csv file not found in clusters.csv file in tarball.")
+            raise Exception("clusters.csv file not found in tarball.")
 
         # If clustering file does not have "Barcode" and "Cluster" columns, raise an exception
         with open(clustering_csv_path, 'r') as f:
