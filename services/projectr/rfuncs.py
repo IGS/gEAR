@@ -62,15 +62,13 @@ def run_projectR_cmd(target_df, loading_df, algorithm):
 
             target_r_index = ro.conversion.py2rpy(target_df.index)
             loading_r_index = ro.conversion.py2rpy(loading_df.index)
-
         # Need a ruleset without pandas with auto-converts the R matrix to a numpy array
+
         with localconverter(ro.default_converter):
             try:
-
                 # data.frame to data.matrix (projectR has no data.frame signature)
                 target_r_matrix = convert_r_df_to_r_matrix(target_r_df)
                 loading_r_matrix = convert_r_df_to_r_matrix(loading_r_df)
-
                 # Assign Rownames to each matrix
                 target_r_matrix.rownames = target_r_index
                 loading_r_matrix.rownames = loading_r_index
@@ -79,12 +77,10 @@ def run_projectR_cmd(target_df, loading_df, algorithm):
                 traceback.print_exc(file=sys.stderr)
                 raise RError("Error: Could not assign rownames to matrix.\tReason: {}".format(str(e)))
 
-
             # The NMF projectR method signature is based on the LinearEmbeddedMatrix class,
             # Which has a featureLoadings property. That matrix is loaded and the default
             # projectR signature is returned and used. So we can just pass the matrix as-is.
             # https://rdrr.io/bioc/SingleCellExperiment/man/LinearEmbeddingMatrix.html
-
             # Run project R command.  Get projectionPatterns matrix
             try:
                 if algorithm == "nmf":
@@ -93,7 +89,6 @@ def run_projectR_cmd(target_df, loading_df, algorithm):
                 elif algorithm == "fixednmf":
                     sjd = importr('SJD')
                     loading_list = ro.ListVector({"genesig": loading_r_matrix})
-
                     projection = sjd.projectNMF(proj_dataset=target_r_matrix, proj_group=True, list_component=loading_list)
                     projection_patterns_r_matrix = projection.rx2("proj_score_list").rx2("genesig")
                 else:
