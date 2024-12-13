@@ -517,7 +517,7 @@ class TSNEData(Resource):
         dpi = io_fig.dpi    # default dpi is 100, but will be saved as 150 later on
         # With 2 plots as a default (gene expression and colorize_by), we want to grow the figure size slowly based on the number of plots
 
-        num_plots_wide = max_columns if max_columns else num_plots
+        num_plots_wide = max_columns if plot_by_group and max_columns else num_plots
         num_plots_high = ceil(num_plots / num_plots_wide)
 
         # set the figsize based on the number of plots
