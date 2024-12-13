@@ -23,7 +23,7 @@ spatial_path = Path("/datasets/spatial")
 
 pn.extension('plotly'
             , loading_indicator=True
-            , sizing_mode="stretch_both"
+            , sizing_mode="stretch_width"
             , nthreads=4
             )
 
@@ -65,7 +65,10 @@ def make_zoom_fig_callback(event):
     # Filter the data based on the selected range
     selected_data = df[(df["spatial1"] >= range_x1) & (df["spatial1"] <= range_x2) & (df["spatial2"] >= range_y1) & (df["spatial2"] <= range_y2)]
 
-    make_zoom_fig(selected_data)
+    fig = make_zoom_fig(selected_data)
+
+    zoom_row[0].object = fig
+    return
 
 def make_zoom_fig(df):
 
@@ -81,7 +84,7 @@ def make_zoom_fig(df):
 
     ### Expression plot
     fig.add_trace(image_trace, row=1, col=1)
-    fig.add_trace(make_expression_scatter(df, norm_gene_symbol, "YlGn", 2), row=1, col=1)
+    fig.add_trace(make_expression_scatter(df, norm_gene_symbol, "YlOrRd", 2), row=1, col=1)
 
     ### Cluster plot
     fig.add_trace(image_trace, row=1, col=2)
@@ -92,7 +95,7 @@ def make_zoom_fig(df):
                 x=cluster_data["spatial1"],
                 y=cluster_data["spatial2"],
                 mode="markers",
-                marker=dict(color=color_map[cluster], size=2, symbol="square"),
+                marker=dict(color=color_map[cluster], size=7, symbol="square"),
                 name=str(cluster),
                 text=cluster_data["Clusters"]
             ), row=1, col=2
@@ -113,6 +116,7 @@ def make_zoom_fig(df):
         xaxis2=dict(domain=[0.4, 0.65]),
         xaxis3=dict(domain=[0.75, 1]),
     )
+    return fig
 
 def make_expression_scatter(df, gene_symbol, color, size):
     return go.Scattergl(x=df["spatial1"], y=df["spatial2"], mode="markers", marker=dict(
@@ -166,6 +170,7 @@ else:
 
     # Create AnnData object
     # Need to include image since the bounding box query does not filter the image data by coordinates
+    # Each Image is downscaled (or upscaled) during rendering to fit a 2000x2000 pixels image (downscaled_hires)
     adata = to_legacy_anndata(sdata, include_images=True, coordinate_system="downscaled_hires")
 
     # Filter out cells that overlap with the blank space of the image.
@@ -217,7 +222,7 @@ else:
 
     ### Expression plot
     fig.add_trace(image_trace, row=1, col=1)
-    fig.add_trace(make_expression_scatter(df, norm_gene_symbol, "YlGn", 2), row=1, col=1)
+    fig.add_trace(make_expression_scatter(df, norm_gene_symbol, "YlGn", 10), row=1, col=1)
 
     ### Cluster plot
     fig.add_trace(image_trace, row=1, col=2)
@@ -245,19 +250,22 @@ else:
 
     # adjust domains of all 3 plots, leaving enough space for the colorbar and legend
     fig.update_layout(
-        xaxis=dict(domain=[0, 0.25]),
-        xaxis2=dict(domain=[0.4, 0.65]),
-        xaxis3=dict(domain=[0.75, 1]),
+        xaxis=dict(domain=[0, 0.2]),
+        xaxis2=dict(domain=[0.4, 0.6]),
+        xaxis3=dict(domain=[0.8, 1.00]),
     )
 
 
     fig_pane = pn.pane.Plotly(fig, config={"doubleClick":"reset","displayModeBar":True, "modeBarButtonsToRemove": buttonsToRemove})
 
+    fig_row = pn.Row(
+        fig_pane,
+        height=400
+    )
+
     # Create a row for the zoomed in view
     zoom_row = pn.Row(
-            pn.pane.Plotly(go.Figure(), config={'displayModeBar': False}),
-            pn.pane.Plotly(go.Figure(), config={'displayModeBar': False}),
-            pn.pane.Plotly(go.Figure(), config={'staticPlot': True}),
+            pn.pane.Plotly(fig, config={'displayModeBar': False}),
             height=400
         )
 
@@ -272,8 +280,7 @@ else:
         pn.pane.Str("Any errors will go here", styles={"color": "red"})
     )
 
-    #pn.bind(make_zoom_figs, expression_plot_pane.param.selected_data, watch=True)
-    #pn.bind(make_zoom_figs, cluster_plot_pane.param.selected_data, watch=True)
+    pn.bind(make_zoom_fig_callback, fig_pane.param.selected_data, watch=True)
 
     # Create the app
     # TODO: Defer loading of the images
@@ -281,10 +288,7 @@ else:
     # TODO: Add some loading indicators for plot drawing
     layout = pn.Column(
         '## Select a region in expression or cluster plot to show zoomed in view',
-        pn.Row(
-            fig_pane,
-            height=400
-        ),
+        fig_row,
         pn.layout.Divider(),    # default margins
         '## Zoomed in view',
         zoom_row
