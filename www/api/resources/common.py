@@ -3,6 +3,8 @@ Common functions shared across several resources
 """
 
 import os, sys
+import tempfile
+import shutil
 import anndata
 import pandas as pd
 from pandas.api.types import is_integer_dtype
@@ -82,11 +84,23 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     # For some reason the gene_symbol is not taken in by the constructor
     projection_adata.var["gene_symbol"] = projection_adata.var_names
 
+    # write to projection_adata_path. This ensures that the file is created and up to date with latest projection results
+    projection_adata.write(projection_adata_path)
+    # This should resolve (https://github.com/IGS/gEAR/issues/951)
+    # Create a temporary file
+    with tempfile.NamedTemporaryFile(delete=True) as temp_file:
+        temp_file_path = temp_file.name
+    # Copy the contents of the original file to the temporary file
+    shutil.copyfile(projection_adata_path, temp_file_path)
+    # Associate with the temporary filename to ensure AnnData is read in "backed" mode
+    # This creates the h5ad file if it does not exist
+    projection_adata.filename = temp_file_path
+
     # Associate with a filename to ensure AnnData is read in "backed" mode
     # This creates the h5ad file if it does not exist
     # TODO: If too many processes read from this file, it can throw a BlockingIOError. Eventually we should
     #       handle this by creating a copy of the file for each process, like a tempfile.
-    projection_adata.filename = projection_adata_path
+    #projection_adata.filename = projection_adata_path
 
     return projection_adata
 

@@ -58,6 +58,10 @@ def do_pca_projection(target_df, loading_df):
     tp_target_df = target_df.transpose()
     return tp_target_df.dot(loading_df)
 
+@app.route("/status", methods=["GET"])
+def status():
+    return "OK"
+
 @app.route("/", methods=["POST"])
 def index():
     req_json = request.get_json()
