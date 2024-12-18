@@ -5,14 +5,28 @@ or H5AD file.
 
 '''
 
-from shutil import copyfileobj
-import sys
-import cgi, html, json
 import os
+import sys
+import cgi, html
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+
+
+def download_file(file_path, file_name):
+    print("Content-type: application/octet-stream")
+    print(f"Content-Disposition: attachment; filename={file_name}")
+    print()
+    sys.stdout.flush()
+
+    with open(file_path, 'rb') as binfile:
+        while True:
+            chunk = binfile.read(8192)  # Read in 8KB chunks
+            if not chunk:
+                break
+            sys.stdout.buffer.write(chunk)
+            sys.stdout.buffer.flush()
 
 def main():
     form = cgi.FieldStorage()
@@ -40,23 +54,9 @@ def main():
           h5ad_path = ""
 
     if dtype == 'tarball' and os.path.isfile(tarball_path):
-        print("Content-type: application/octet-stream")
-        print("Content-Disposition: attachment; filename={0}.tar.gz".format(dataset_id))
-        print()
-        sys.stdout.flush()
-
-        with open(tarball_path, 'rb') as binfile:
-            copyfileobj(binfile, sys.stdout.buffer)
-
+        download_file(tarball_path, f"{dataset_id}.tar.gz")
     elif dtype == 'h5ad' and os.path.isfile(h5ad_path):
-        print("Content-type: application/octet-stream")
-        print("Content-Disposition: attachment; filename={0}.h5ad".format(dataset_id))
-        print()
-        sys.stdout.flush()
-
-        with open(h5ad_path, 'rb') as binfile:
-            copyfileobj(binfile, sys.stdout.buffer)
-
+        download_file(h5ad_path, f"{dataset_id}.h5ad")
     else:
         raise FileNotFoundError("File not found")
 
