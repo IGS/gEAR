@@ -266,14 +266,19 @@ class Orthologs(Resource):
             analysis_id = analysis.get('id')
 
         # Get the dataset and organism ID
-        dataset = geardb.Dataset(id=dataset_id, has_h5ad=1)
+        dataset = geardb.get_dataset_by_id(dataset_id)
+
         if not dataset:
             return {"error": "The dataset was not found."}, 400
-        h5_path = dataset.get_file_path()
+
+        dataset_path = dataset.get_file_path()
+        if not os.path.exists(dataset_path):
+            return {"error": f"The dataset for id {dataset_id} was not found."}, 400
+
         dataset_organism_id = dataset.organism_id
 
         try:
-            adata = get_adata_shadow(analysis_id, dataset_id, session_id, h5_path)
+            adata = get_adata_shadow(analysis_id, dataset_id, session_id, dataset_path)
         except FileNotFoundError:
             return {
                 "success": -1,
@@ -281,7 +286,6 @@ class Orthologs(Resource):
             }
 
         dataset_genes = set(adata.var['gene_symbol'].unique())
-
 
         def normalize_gene(gene):
             return normalize_searched_gene(dataset_genes, gene)

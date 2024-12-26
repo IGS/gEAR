@@ -63,10 +63,11 @@ class TileGrid {
 
         if (this.type === "dataset") {
 
-            if (this.shareId == "spatial") {
+            /*
+            if (this.shareId == "8dcfc3f6") {
                 this.datasets = [
                     {
-                        id: "cshults_visiumhd",
+                        id: "8dcfc3f6-1965-49b0-be49-e2e4d7236897",
                         title: "Chris Shults Spatial Transcriptomics Dataset",
                         dtype: "spatial",
                         organsim_id: 1,
@@ -81,6 +82,7 @@ class TileGrid {
                     }
                 ]
             }
+            */
 
             if (!(this.datasets || this.datasets.length)) {
                 console.error("No datasets found.");
@@ -452,35 +454,6 @@ class DatasetTile {
         // Resize the card image (plots) to accomodate the title header
         this.resizeCardImage();
 
-        // TODO: Move spatial code after ortholog mapping once implemented
-        if (this.dataset.dtype === "spatial") {
-            // Add loading message
-            createCardMessage(tileId, "info", "Loading spatial dataset...");
-
-            // build the URL for the spatial app
-            const urlParams = new URLSearchParams();
-            urlParams.append("dataset_id", this.dataset.id);
-            urlParams.append("gene_symbol", geneSymbolInput);
-            const url = `/panel/panel_app?${urlParams.toString()}`;
-
-            try {
-                const cardImage = tileElement.querySelector('.card-image');
-                cardImage.replaceChildren();
-                const iframe = document.createElement("iframe");
-                // srcDoc html requires Panel static files to be served from the same domain, so use src instead
-                iframe.src = url;
-                iframe.loading="lazy";
-                iframe.sandbox="allow-scripts allow-same-origin";
-                cardImage.append(iframe);
-                return;
-            } catch (error) {
-                console.error(error);
-            }
-
-            createCardMessage(tileId, "warning", "Spatial datasets are not yet supported.");
-            return;
-        }
-
         // If the dataset type is epiviz, then give warning that it hasn't been implemented yet
         if (this.dataset.dtype === "epiviz") {
             createCardMessage(tileId, "warning", "Epiviz datasets are not yet supported.");
@@ -488,7 +461,7 @@ class DatasetTile {
         }
 
         // fail fast if no h5ad file
-        if (!this.dataset.has_h5ad) {
+        if (!this.dataset.has_h5ad && !this.dataset.type === "spatial") {
             createCardMessage(tileId, "danger", "No h5ad file found for this dataset. Please contact the gEAR team.");
             return;
         }
@@ -521,6 +494,33 @@ class DatasetTile {
         // Render ortholog dropdown if in single-gene view and there is more than one ortholog for the gene
         if (this.type === "single" && this.orthologsToPlot.length > 1) {
             this.renderOrthologDropdown();
+        }
+
+        // ? Need a better spot
+        if (this.dataset.dtype === "spatial") {
+            // Add loading message
+            createCardMessage(tileId, "info", "Loading spatial display...");
+
+            // build the URL for the spatial app
+            const urlParams = new URLSearchParams();
+            urlParams.append("dataset_id", this.dataset.id);
+            urlParams.append("gene_symbol", orthologs[0]);
+            const url = `/panel/panel_app?${urlParams.toString()}`;
+
+            try {
+                const cardImage = tileElement.querySelector('.card-image');
+                cardImage.replaceChildren();
+                const iframe = document.createElement("iframe");
+                // srcDoc html requires Panel static files to be served from the same domain, so use src instead
+                iframe.src = url;
+                iframe.loading="lazy";
+                iframe.sandbox="allow-scripts";// allow-same-origin";
+                cardImage.append(iframe);
+            } catch (error) {
+                console.error(error);
+            } finally {
+                return;
+            }
         }
 
         // Plot and render the display

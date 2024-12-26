@@ -5,10 +5,6 @@ Common functions shared across several resources
 import os, sys
 import tempfile
 import shutil
-<<<<<<< HEAD
-
-=======
->>>>>>> devel
 import anndata
 import pandas as pd
 from pandas.api.types import is_integer_dtype
@@ -19,7 +15,7 @@ from werkzeug.utils import secure_filename
 from shadows import AnnDataShadow
 
 from gear.plotting import PlotError
-from geardb import get_user_from_session_id, Analysis
+from geardb import get_user_from_session_id, Analysis, SpatialAnalysis
 
 TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
@@ -48,15 +44,33 @@ def get_adata_shadow_from_primary(h5_path):
         raise FileNotFoundError("No h5 file found for this dataset")
     return AnnDataShadow(h5_path)
 
-def get_adata_shadow(analysis_id, dataset_id, session_id, h5_path):
+def get_adata_shadow(analysis_id, dataset_id, session_id, dataset_path):
+    if dataset_path.endswith(".zarr"):
+        # It's spatial data
+        return get_spatial_adata(analysis_id, dataset_id, session_id)
+
     if analysis_id:
         adata = get_adata_shadow_from_analysis(analysis_id, dataset_id, session_id)
     else:
-        adata = get_adata_shadow_from_primary(h5_path)
+        adata = get_adata_shadow_from_primary(dataset_path)
 
     if is_integer_dtype(adata.var.gene_symbol.dtype):
         print("Using AnnData instead of AnnDataShadow because var and obs are not correct for dataset {}".format(dataset_id), file=sys.stderr)
         adata = get_adata_from_analysis(analysis_id, dataset_id, session_id)
+    return adata
+
+def get_spatial_adata(analysis_id, dataset_id, session_id):
+    # Get spatial-based adata object.
+    user = get_user_from_session_id(session_id)
+    user_id = None
+    if user:
+        user_id = user.id
+    ana = SpatialAnalysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user_id)
+    ana.discover_type()
+    sdata = ana.get_sdata()
+    ana.filter_sdata_boundaries(sdata)
+    # Do not include images in the adata object (to make it lighter)
+    adata = ana.get_adata_from_sdata(sdata, False)
     return adata
 
 def create_projection_adata(dataset_adata, dataset_id, projection_id):

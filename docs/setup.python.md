@@ -77,6 +77,8 @@ Check the requirement.txt file in <git_repo_root>/docker for the latest packages
       scipy==1.11.04 \
       seaborn==0.13.2 \
       shadows==0.1a0 \
+      spatialdata==0.2.6 \
+      spatialdata_io==0.1.6 \
       tables==3.9.2 \
       xlrd==1.2.0
     $ sudo mkdir /opt/bin

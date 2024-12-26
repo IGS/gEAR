@@ -100,7 +100,7 @@ class VisiumUploader(SpatialUploader):
             # To get the adata equivalent, look at sdata.tables["table"]
 
             # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
-            #sdata.var_names_make_unique()
+            sdata[self.NORMALIZED_TABLE_NAME].var_names_make_unique()
 
             # currently gene symbols are the index, need to move them to a column
             sdata.var["gene_symbol"] = sdata.var.index
@@ -198,7 +198,7 @@ class VisiumHDUploader(SpatialUploader):
 
             # To get the adata equivalent, look at sdata.tables["table"]
             # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
-            #sdata.var_names_make_unique()
+            sdata[self.TABLE_NAME].var_names_make_unique()
 
             # currently gene symbols are the index, need to move them to a column
             sdata[self.TABLE_NAME].var["gene_symbol"] = sdata[self.TABLE_NAME].var.index
@@ -257,7 +257,7 @@ class XeniumUploader(SpatialUploader):
             # To get the adata equivalent, look at sdata.tables["table"]
 
             # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
-            #sdata.var_names_make_unique()
+            sdata[self.NORMALIZED_TABLE_NAME].var_names_make_unique()
 
             # currently gene symbols are the index, need to move them to a column
             sdata.var["gene_symbol"] = sdata.var.index

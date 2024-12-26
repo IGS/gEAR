@@ -74,7 +74,7 @@ ul#go-terms li {
 /* spatial embeds */
 .js-tile .card-image iframe {
     width: 100%;
-    height: 900px;
+    height: 800px;
     margin: auto;
 }
 
