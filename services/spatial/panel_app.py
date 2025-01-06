@@ -23,7 +23,6 @@ spatial_path = Path("/datasets/spatial")
 
 pn.extension('plotly'
             , loading_indicator=True
-            , sizing_mode="stretch_both"
             , nthreads=4
             )
 
@@ -89,6 +88,9 @@ def make_zoom_fig(df, orig_styles=False):
 
     marker_size = 2 if orig_styles else 7
 
+    fig.update_xaxes(range=[range_x1, range_x2], title_text="spatial1", showticklabels=False)
+    fig.update_yaxes(range=[range_y2, range_y1], title_text="spatial2", showticklabels=False, title_standoff=0)
+
     ### Image only
     # Add earlier so that the hover will show the expression or cluster traces on top
     image_trace = go.Image(source=base64_string)
@@ -116,16 +118,13 @@ def make_zoom_fig(df, orig_styles=False):
     # make legend markers bigger
     fig.update_layout(legend=dict(indentation=-15, itemsizing='constant', x=0.585))
 
-    fig.update_xaxes(range=[range_x1, range_x2], title_text="spatial1", showticklabels=False)
-    fig.update_yaxes(range=[range_y2, range_y1], title_text="spatial2", showticklabels=False, title_standoff=0)
-
     # adjust domains of all 3 plots, leaving enough space for the colorbar and legend
+    # NOTE: It seems setting a fixed width and height will override the panel sizing mode after updating, so don't set it here
     fig.update_layout(
         xaxis=dict(domain=[0, 0.26]),
         xaxis2=dict(domain=[0.32, 0.58]),
         xaxis3=dict(domain=[0.74, 1.00]),
         margin=dict(l=20, r=0, t=50, b=0, autoexpand=False),
-        width=1920, height=1080,
         # For the zoomed figure, we don't want to allow interaction
         dragmode=False
     )
@@ -217,6 +216,9 @@ else:
     # Make a 3-column subplot
     fig = make_subplots(rows=1, cols=3, column_titles=(f"{norm_gene_symbol} Expression", "Clusters", "Image Only"), horizontal_spacing=0.1)
 
+    fig.update_xaxes(range=[0, spatial_img.shape[1]], title_text="spatial1", showticklabels=False)
+    fig.update_yaxes(range=[spatial_img.shape[0], 0], title_text="spatial2", showticklabels=False, title_standoff=0)
+
     ### Image only
     # Add earlier so that the hover will show the expression or cluster traces on top
     image_trace = go.Image(source=base64_string)
@@ -244,9 +246,6 @@ else:
     # make legend markers bigger
     fig.update_layout(legend=dict(indentation=-15, itemsizing='constant', x=0.585))
 
-    fig.update_xaxes(range=[0, spatial_img.shape[1]], title_text="spatial1", showticklabels=False)
-    fig.update_yaxes(range=[spatial_img.shape[0], 0], title_text="spatial2", showticklabels=False, title_standoff=0)
-
     # adjust domains of all 3 plots, leaving enough space for the colorbar and legend
     fig.update_layout(
         xaxis=dict(domain=[0, 0.26]),
@@ -257,11 +256,19 @@ else:
         # Set dragmode properties on the main figure
         dragmode="select", selectdirection="d"
     )
-    fig_pane = pn.pane.Plotly(fig, config={"doubleClick":"reset","displayModeBar":True, "modeBarButtonsToRemove": buttonsToRemove}, height=350)
+    fig_pane = pn.pane.Plotly(fig
+                              , config={"doubleClick":"reset","displayModeBar":True, "modeBarButtonsToRemove": buttonsToRemove}
+                              , height=350
+                              , sizing_mode="stretch_both"
+                              )
 
     # Create a row for the zoomed in view
     bound_fig = pn.bind(make_zoom_fig_callback, fig_pane.param.selected_data, watch=True)
-    zoom_pane = pn.pane.Plotly(bound_fig, config={'displayModeBar': False, 'doubleClick': None}, height=350)
+    zoom_pane = pn.pane.Plotly(bound_fig
+                               , config={'displayModeBar': False, 'doubleClick': None}
+                               , height=350
+                               , sizing_mode="stretch_both"
+                               )
 
     # Create the app
     # TODO: Defer loading of the images
