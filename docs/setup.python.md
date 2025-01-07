@@ -67,7 +67,7 @@ Check the requirement.txt file in <git_repo_root>/docker for the latest packages
       panel==1.5.4 \
       Pillow==10.2.0 \
       pika==1.3.1 \
-      plotly==5.6.0 \
+      plotly==5.20.0 \
       python-dotenv==0.20.0 \
       requests==2.31.0 \
       rpy2==3.5.16 \

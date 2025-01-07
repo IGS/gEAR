@@ -2,8 +2,6 @@
 import tarfile, os
 from abc import ABC, abstractmethod
 
-from gear.datasetuploader import FileType
-
 import pandas as pd
 import anndata as ad
 import spatialdata as sd
