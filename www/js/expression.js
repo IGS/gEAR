@@ -13,6 +13,7 @@ let svg_scoring_method = 'gene';
 
 let datasetShareId = null;
 let layoutShareId = null;
+let shareUsed = false;
 
 // Plugins can add functions to this which are called after a gene selection change is made
 let geneChangeCallbacks = [];
@@ -353,6 +354,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     datasetShareId = getUrlParameter('share_id');
     layoutShareId = getUrlParameter('layout_id');
+    shareUsed = getUrlParameter('share_used') === '1';
 
     // Wait until all pending API calls have completed before checking if we need to search
     document.getElementById("submit-expression-search").classList.add("is-loading");
@@ -407,6 +409,10 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
 
+    // If we entered via a share link, display the notification
+    if (shareUsed) {
+        document.getElementById("result-panel-initial-notification").classList.remove('is-hidden');
+    }
 }
 
 /**
