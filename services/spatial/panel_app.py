@@ -31,7 +31,7 @@ buttonsToRemove = ["zoom", "pan", "zoomIn", "zoomOut", "autoScale", "lasso2d"]
 
 class SpatialPlot():
 
-    def __init__(self, df, spatial_img, color_map, gene_symbol, expression_name, expression_color, dragmode=None):
+    def __init__(self, df, spatial_img, color_map, gene_symbol, expression_name, expression_color, dragmode):
         self.df = df
         self.spatial_img = spatial_img
         self.color_map = color_map
@@ -62,6 +62,7 @@ class SpatialPlot():
                     symbol="square",
                     ),
                     showlegend=False,
+                    unselected=dict(marker=dict(opacity=1)),    # Helps with viewing unselected regions
                     hovertemplate="Expression: %{marker.color:.2f}<extra></extra>"
                 )
 
@@ -78,7 +79,8 @@ class SpatialPlot():
                     mode="markers",
                     marker=dict(color=color_map[cluster], size=self.marker_size, symbol="square"),
                     name=str(cluster),
-                    text=cluster_data["Clusters"]
+                    text=cluster_data["Clusters"],
+                    unselected=dict(marker=dict(opacity=1)),
                 ), row=1, col=2
             )
 
@@ -102,7 +104,7 @@ class SpatialPlot():
             height=1080 if static_size else None,
             # Set dragmode properties on the main figure
             dragmode=self.dragmode,
-            selectdirection="d" if self.dragmode == "select" else None
+            selectdirection="d"
         )
         return self.fig
 
@@ -182,6 +184,8 @@ class SpatialZoomSubplot(SpatialPlot):
             self.expression_color = "YlOrRd"
             self.marker_size = 7
 
+            # TODO: Either a) clear selected points on "not this" plot or b) mirror selection on all plots
+
         return self.create_pane()
 
 class SpatialPanel(pn.viewable.Viewer):
@@ -197,7 +201,7 @@ class SpatialPanel(pn.viewable.Viewer):
         self.map_colors()
 
         self.fig_subplot = SpatialNormalSubplot(self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, self.norm_gene_symbol, "YlGn", dragmode="select")
-        self.zoom_subplot = SpatialZoomSubplot(self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, "Local", "YlOrRd", dragmode=None)
+        self.zoom_subplot = SpatialZoomSubplot(self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, "Local", "YlOrRd", dragmode=False)
 
     def __panel__(self):
         self.fig_pane = self.fig_subplot.create_pane()
@@ -289,8 +293,9 @@ def normalize_searched_gene(gene_set, chosen_gene):
 
 ### MAIN APP ###
 
-# Reset bokeh logging level to "error" to suppress a "dropping patch" info message
-logging.getLogger("bokeh").setLevel(logging.ERROR)
+# Reset logging level to "error" to suppress a bokeh "dropping patch" info message
+# https://github.com/bokeh/bokeh/issues/13229
+logging.getLogger().setLevel(logging.ERROR)
 
 # If not params passed, just show OK as a way to test the app
 if not pn.state.location.query_params:
