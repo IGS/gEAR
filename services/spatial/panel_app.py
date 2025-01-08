@@ -23,6 +23,7 @@ spatial_path = Path("/datasets/spatial")
 
 pn.extension('plotly'
             , loading_indicator=True
+            , defer_load=True
             , nthreads=4
             )
 
@@ -92,12 +93,12 @@ class SpatialPlot():
         self.add_cluster_traces()
 
         # make legend markers bigger
-        self.fig.update_layout(legend=dict(indentation=-15, itemsizing='constant', x=0.585))
+        self.fig.update_layout(legend=dict(indentation=-15, itemsizing='constant', x=0.6))
 
         # adjust domains of all 3 plots, leaving enough space for the colorbar and legend
         self.fig.update_layout(
             xaxis=dict(domain=[0, 0.26]),
-            xaxis2=dict(domain=[0.32, 0.58]),
+            xaxis2=dict(domain=[0.33, 0.59]),
             xaxis3=dict(domain=[0.74, 1.00]),
             margin=dict(l=20, r=0, t=50, b=0),
             width=1920 if static_size else None,
@@ -185,6 +186,7 @@ class SpatialZoomSubplot(SpatialPlot):
             self.marker_size = 7
 
             # TODO: Either a) clear selected points on "not this" plot or b) mirror selection on all plots
+            # TODO: Sometimes the selection does not trigger the callback, need to investigate
 
         return self.create_pane()
 
@@ -213,7 +215,7 @@ class SpatialPanel(pn.viewable.Viewer):
             pn.layout.Divider(height=5),    # default margins
             pn.pane.Markdown('## Zoomed in view',height=30),
             self.zoom_pane,
-            width=1168, height=800
+            width=1100, height=725
         )
 
     def prep_adata(self):
@@ -315,7 +317,7 @@ else:
     gene_symbol = pn.state.location.query_params["gene_symbol"]
 
     # Create the app
-    # TODO: Defer loading of the images
+    # TODO: Defer loading of the images (https://panel.holoviz.org/how_to/callbacks/defer_load.html)
     # TODO: explore Datashader
-    # TODO: Add some loading indicators for plot drawing
+    # TODO: Add some loading indicators for plot drawing (https://panel.holoviz.org/how_to/state/busy.html)
     sp_panel = SpatialPanel(dataset_id, gene_symbol).servable(title="Spatial Data Viewer", location=True)
