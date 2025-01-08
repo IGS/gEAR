@@ -102,11 +102,21 @@
                 </template>
               </div>
               <div id="annotation-and-grid-c" class="column">
-                <div id="share-entrance-notification" class="notification is-primary">
-                  <h2>Share information</h2>
+                <div id="share-entrance-notification" class="notification is-primary is-hidden">
                   <p>
-                    You have used a share ID to access this page. Use the controls above to explore the data.
+                    You have used a share ID to access this page. This has pre-loaded selected datasets and
+                    now we only need to know what gene(s) you are interested in. Please use the form above
+                    to enter gene symbols or select a gene list.
                   </p>
+                  <h2>Share information</h2>
+                  <div id="share-entrance-dataset" class="is-hidden">
+                    <h3>Dataset</h3>
+                    <p id="share-entrance-dataset-name"></p>
+                  </div>
+                  <div id="share-entrance-layout" class="is-hidden">
+                    <h3>Layout</h3>
+                    <p id="share-entrance-layout-name"></p>
+                  </div>  
                 </div>
                 <h3 id="currently-selected-gene-header" class="mb-2 mt-0">
                   Showing results for:

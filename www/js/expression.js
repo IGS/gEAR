@@ -411,7 +411,17 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     // If we entered via a share link, display the notification
     if (shareUsed) {
-        document.getElementById("result-panel-initial-notification").classList.remove('is-hidden');
+        document.getElementById("share-entrance-notification").classList.remove('is-hidden');
+
+        // if an individual dataset was shared, show its info
+        if (datasetShareId) {
+            document.getElementById("share-entrance-dataset").classList.remove('is-hidden');
+
+        // if a dataset collection was shared, show its info
+        } else if (layoutShareId) {
+            document.getElementById("share-entrance-layout").classList.remove('is-hidden');
+        }
+
     }
 }
 
