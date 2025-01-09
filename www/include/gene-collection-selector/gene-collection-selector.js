@@ -133,25 +133,32 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector('#dropdown-content-genes').innerHTML = '';
         const gene_list_item_template = document.querySelector('#tmpl-gene-list-item');
 
+        let cart_share_ids_found = new Set();
+
         for (const cart_type in gene_cart_data) {
             for (const cart of gene_cart_data[cart_type]) {
                 if (cart.label.toLowerCase().includes(search_term.toLowerCase())) {
-                    const row = gene_list_item_template.content.cloneNode(true);
-                    row.querySelector('.gene-list-item-label').textContent = cart.label;
-                    row.querySelector('.ul-li').dataset.shareId = cart.share_id;
-                    row.querySelector('.ul-li').dataset.genes = gene_cart_genes[cart.share_id].join(',');
 
-                    if (selected_gene_lists.has(cart.share_id)) {
-                        row.querySelector('i.toggler').classList.remove('mdi-plus');
-                        row.querySelector('i.toggler').classList.add('mdi-check');
-                        row.querySelector('.ul-li').classList.add('is-selected');
-                    } else {
-                        row.querySelector('i.toggler').classList.remove('mdi-check');
-                        row.querySelector('i.toggler').classList.add('mdi-plus');
-                        row.querySelector('.ul-li').classList.remove('is-selected');
+                    if (! cart_share_ids_found.has(cart.share_id)) {
+                        const row = gene_list_item_template.content.cloneNode(true);
+                        row.querySelector('.gene-list-item-label').textContent = cart.label;
+                        row.querySelector('.ul-li').dataset.shareId = cart.share_id;
+                        row.querySelector('.ul-li').dataset.genes = gene_cart_genes[cart.share_id].join(',');
+
+                        if (selected_gene_lists.has(cart.share_id)) {
+                            row.querySelector('i.toggler').classList.remove('mdi-plus');
+                            row.querySelector('i.toggler').classList.add('mdi-check');
+                            row.querySelector('.ul-li').classList.add('is-selected');
+                        } else {
+                            row.querySelector('i.toggler').classList.remove('mdi-check');
+                            row.querySelector('i.toggler').classList.add('mdi-plus');
+                            row.querySelector('.ul-li').classList.remove('is-selected');
+                        }
+
+                        document.querySelector('#dropdown-content-gene-lists').appendChild(row);
+
+                        cart_share_ids_found.add(cart.share_id);
                     }
-
-                    document.querySelector('#dropdown-content-gene-lists').appendChild(row);
                 }
             }
         }
