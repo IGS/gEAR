@@ -93,7 +93,7 @@ def main():
     # https://stackoverflow.com/a/22181041/1368079
     # https://stackoverflow.com/questions/6024472/start-background-process-daemon-from-cgi-script
     # https://groups.google.com/g/comp.lang.python/c/gSRnd0RoVKY?pli=1
-    do_fork = True
+    do_fork = False
     if do_fork:
         sys.stdout = original_stdout
         result['success'] = 1
