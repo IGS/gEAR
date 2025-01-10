@@ -4,7 +4,7 @@
 FROM python:3.10
 
 # Allow statements and log messages to immediately appear in the Knative logs
-ENV PYTHONUNBUFFERED True
+ENV PYTHONUNBUFFERED=True
 
 RUN apt-get -qq update \
     && DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
@@ -39,7 +39,7 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt
 ENV LD_LIBRARY_PATH="/usr/local/lib/R/lib:$LD_LIBRARY_PATH"
 
 # Copy local code to the container image.
-ENV APP_HOME /app
+ENV APP_HOME=/app
 WORKDIR $APP_HOME
 COPY . ./
 
