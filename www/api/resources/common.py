@@ -50,7 +50,9 @@ def get_adata_shadow(analysis_id, dataset_id, session_id, h5_path):
     else:
         adata = get_adata_shadow_from_primary(h5_path)
 
-    if is_integer_dtype(adata.var.gene_symbol.dtype):
+    # TODO: Test with https://github.com/scverse/shadows/releases/tag/v0.1a2
+    # see https://github.com/scverse/shadows/issues/4
+    if is_integer_dtype(adata.var.index.dtype) :
         print("Using AnnData instead of AnnDataShadow because var and obs are not correct for dataset {}".format(dataset_id), file=sys.stderr)
         adata = get_adata_from_analysis(analysis_id, dataset_id, session_id)
     return adata

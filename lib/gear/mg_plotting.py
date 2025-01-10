@@ -701,6 +701,13 @@ def create_stacked_violin_plot(df, groupby_filters, is_log10=False, colorscale=N
             , col=col_idx
         )
 
+        # Only show x-axis labels on the bottom row
+        fig.update_xaxes(
+            showticklabels=False if row_idx < num_rows else True
+            , row=row_idx
+            , col=col_idx
+        )
+
     update_stacked_violin_annotations(fig, primary_groups, color_map)
 
     plot_title = groupby_filters[0]
