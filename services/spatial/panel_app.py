@@ -1,6 +1,7 @@
 import sys, logging
 
 import panel as pn
+import param
 
 import plotly.express as px
 import plotly.graph_objects as go
@@ -29,6 +30,14 @@ pn.extension('plotly'
 
 # Keep only box select
 buttonsToRemove = ["zoom", "pan", "zoomIn", "zoomOut", "autoScale", "lasso2d"]
+
+class Settings(param.Parameterized):
+    gene_symbol = param.String(doc="Gene symbol to display")
+    dataset_id = param.String(doc="Dataset ID to display")
+    selection_x1 = param.Integer(doc="left selection range")
+    selection_x2 = param.Integer(doc="right selection range")
+    selection_y1 = param.Integer(doc="upper selection range")
+    selection_y2 = param.Integer(doc="lower selection range")
 
 class SpatialPlot():
 

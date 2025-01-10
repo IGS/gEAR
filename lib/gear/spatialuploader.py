@@ -68,7 +68,62 @@ class SpatialUploader(metaclass=ABC):
             raise Exception("Error occurred while writing to file: ", err)
         return self
 
+class CurioUploader(SpatialUploader):
+    # TODO: Test this class
+    """
+    Called by datasetuploader.py (factory) when a Curio Seeker dataset is going to be uploaded
+
+    Standardized names for different files:
+    * <dataset_id>_`'anndata.h5ad'`: Counts and metadata file.
+    * <dataset_id>_`'cluster_assignment.txt'`: Cluster assignment file.
+    * <dataset_id>_`'Metrics.csv'`: Metrics file.
+    * <dataset_id>_`'variable_features_clusters.txt'`: Variable features clusters file.
+    * <dataset_id>_`'variable_features_spatial_moransi.txt'`: Variable features Moran’s I file.
+    """
+
+    def _read_file(self, filepath):
+        # Get tar filename so tmp directory can be assigned
+        tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
+        tmp_dir = '/tmp/' + tar_filename
+
+        with tarfile.open(filepath) as tf:
+            for entry in tf:
+                # Extract file into tmp dir
+                filepath = "{0}/{1}".format(tmp_dir, entry.name)
+                tf.extract(entry, path=tmp_dir)
+
+            sdata = sdio.curio(tmp_dir)
+
+            # To get the adata equivalent, look at sdata.tables["table"]
+
+            # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
+            sdata[self.NORMALIZED_TABLE_NAME].var_names_make_unique()
+
+            # currently gene symbols are the index, need to move them to a column
+            sdata.var["gene_symbol"] = sdata.var.index
+
+            # set the index to the ensembl id (gene_ids)
+            sdata.var.set_index("gene_ids", inplace=True)
+
+            self.sdata = sdata
+
+            # table name should already be "table" for Visium
+
+            adata = to_legacy_anndata(sdata, include_images=True, coordinate_system="downscaled_hires", table_name=self.NORMALIZED_TABLE_NAME)
+
+            # Apply AnnData obj and filepath to uploader obj
+            self.adata = adata
+            self.originalFile = filepath
+            return self
+
+    def _write_to_zarr(self, filepath=None):
+        return super()._write_to_zarr(filepath)
+
+    def _write_to_h5ad(self, filepath=None):
+        return super()._write_to_h5ad(filepath)
+
 class VisiumUploader(SpatialUploader):
+    # TODO: Test this class
     """
     Called by datasetuploader.py (factory) when a Visium or Visium-HD dataset is going to be uploaded
 
@@ -223,6 +278,7 @@ class VisiumHDUploader(SpatialUploader):
         return super()._write_to_h5ad(filepath)
 
 class XeniumUploader(SpatialUploader):
+    # TODO: Test this class
     """
     Called by datasetuploader.py (factory) when a Xenium dataset is going to be uploaded
 
