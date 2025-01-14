@@ -354,6 +354,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     datasetShareId = getUrlParameter('share_id');
     layoutShareId = getUrlParameter('layout_id');
+    let cartShareId = getUrlParameter('gene_lists');
+    let geneSymbolId = getUrlParameter('gene_symbol');
     shareUsed = getUrlParameter('share_used') === '1';
 
     // Wait until all pending API calls have completed before checking if we need to search
@@ -409,17 +411,22 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
 
-    // If we entered via a share link, display the notification
+    // If we entered via a share link, conditionally display the notification
     if (shareUsed) {
-        document.getElementById("share-entrance-notification").classList.remove('is-hidden');
+        // if any gene or cart information was passed, nothing to do
+        if (! cartShareId && ! geneSymbolId) {
+            const shareData = await apiCallsMixin.fetchShareData(datasetShareId, layoutShareId);
 
-        // if an individual dataset was shared, show its info
-        if (datasetShareId) {
-            document.getElementById("share-entrance-dataset").classList.remove('is-hidden');
+            document.getElementById("share-entrance-notification").classList.remove('is-hidden');
 
-        // if a dataset collection was shared, show its info
-        } else if (layoutShareId) {
-            document.getElementById("share-entrance-layout").classList.remove('is-hidden');
+            // if an individual dataset was shared, show its info
+            if (datasetShareId) {
+                document.getElementById("share-entrance-dataset").classList.remove('is-hidden');
+
+            // if a dataset collection was shared, show its info
+            } else if (layoutShareId) {
+                document.getElementById("share-entrance-layout").classList.remove('is-hidden');
+            }
         }
 
     }
