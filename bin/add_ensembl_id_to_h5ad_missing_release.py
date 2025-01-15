@@ -73,6 +73,12 @@ def main():
     print("\nOriginal loaded adata\n")
     print(adata)
 
+    # If adata.var is an empty dataframe, make note that the index is the original gene symbol column
+    # Ensures the `adata_unmapped_var` rename aligns with the original gene symbol column in adata.var
+    orig_gene_column = "genes"
+    if adata.var.empty:
+        orig_gene_column = "index"
+
     for release in ensembl_releases:
         print("INFO: comparing with ensembl release: {0} ... ".format(release), end='')
         cursor.execute(query, (args.organism, release))
@@ -139,7 +145,11 @@ def main():
     adata_unmapped_var = adata_not_present.var.reset_index() \
         .rename(columns={ \
                     #adata_not_present.var.index: "ensembl_id",
-                    "genes": "gene_symbol" \
+                    # In order to concatenate the unmapped var with the mapped var, we need to ensure the
+                    # column names are not the same as the mapped var. The "concat" function treats columns
+                    # as a set of values, so for a strategy like "unique" which requires all values
+                    # to be the same, it would see two different sets of values and not merge them.
+                    orig_gene_column: "gene_symbol_unmapped" \
                     }) \
         .set_index(args.id_prefix + adata_not_present.var.index.astype(str))
 
@@ -153,11 +163,21 @@ def main():
     print("ADATA UNMAPPED.VAR")
     print(adata_unmapped.var)
 
-    adata = ad.concat([adata_with_ensembl_ids, adata_unmapped], join="outer")
+    adata = ad.concat([adata_with_ensembl_ids, adata_unmapped], join="outer", merge="unique", uns_merge="unique")
 
     print("ADATA CONCAT")
     print(adata)
+    print("VAR CONCAT")
+    print(adata.var)
 
+    # Move all "gene_symbol_unmapped" values to "gene_symbol" if they are not already present
+    adata.var['gene_symbol'] = adata.var['gene_symbol_unmapped'].combine_first(adata.var['gene_symbol'])
+
+    # Drop the unmapped gene symbol column
+    adata.var = adata.var.drop(columns=['gene_symbol_unmapped'])
+
+    print("FINAL ADATA")
+    print(adata)
     print('VAR\n')
     print(adata.var.head())
     print("OBS\n")
