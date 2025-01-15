@@ -45,7 +45,6 @@ def main():
 
             # just get the first dataset in the layout and use that one for search
             for layout_display in layout.members:
-                layout_id = layout_display.layout_id
                 dataset = geardb.get_dataset_by_id(id=layout_display.dataset_id)
                 break
 
