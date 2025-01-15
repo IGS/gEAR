@@ -163,25 +163,35 @@ def main():
     print("ADATA UNMAPPED.VAR")
     print(adata_unmapped.var)
 
-    adata = ad.concat([adata_with_ensembl_ids, adata_unmapped], join="outer", merge="unique", uns_merge="unique")
+    # Concatenate the two AnnData objects, which unfortunately duplicates the observations
+    adata = ad.concat([adata_with_ensembl_ids, adata_unmapped], join="outer", merge="unique", uns_merge="unique", label="dataset")
 
     print("ADATA CONCAT")
     print(adata)
     print("VAR CONCAT")
     print(adata.var)
+    print("OBS_CONCAT")
+    print(adata.obs)
 
-    # Move all "gene_symbol_unmapped" values to "gene_symbol" if they are not already present
-    adata.var['gene_symbol'] = adata.var['gene_symbol_unmapped'].combine_first(adata.var['gene_symbol'])
+    # Backfill the gene symbol column with the unmapped gene symbols
+    adata.var['gene_symbol'] = adata.var['gene_symbol'].combine_first(adata.var['gene_symbol_unmapped'])
 
     # Drop the unmapped gene symbol column
     adata.var = adata.var.drop(columns=['gene_symbol_unmapped'])
 
+    # There should be duplicated indexes in the adata.obs dataframe, so drop the duplicates
+    # We could alternatively use `duplicates()` but this feels safer
+    adata = adata[adata.obs.dataset == "0"]
+    adata.obs = adata.obs.drop(columns=['dataset'])
+
     print("FINAL ADATA")
     print(adata)
     print('VAR\n')
-    print(adata.var.head())
+    print(adata.var)
     print("OBS\n")
-    print(adata.obs.head())
+    print(adata.obs)
+
+
     if not args.read_only:
         adata.write(args.output_file)
     print('############################################################')
