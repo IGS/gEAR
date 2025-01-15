@@ -2140,7 +2140,7 @@ class DatasetCollection:
             for row in cursor:
 
                 # valid pubmed IDs are numeric
-                m = re.match("\d+", str(row[3]))
+                m = re.match(r"\d+", str(row[3]))
                 if m:
                     pubmed_id = row[3]
                 else:
