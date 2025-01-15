@@ -413,22 +413,36 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     // If we entered via a share link, conditionally display the notification
     if (shareUsed) {
-        // if any gene or cart information was passed, nothing to do
-        if (! cartShareId && ! geneSymbolId) {
-            const shareData = await apiCallsMixin.fetchShareData(datasetShareId, layoutShareId);
+        const shareData = await apiCallsMixin.fetchShareData(datasetShareId, layoutShareId);
+        console.log(shareData);
 
-            document.getElementById("share-entrance-notification").classList.remove('is-hidden');
+        document.getElementById("share-entrance-notification").classList.remove('is-hidden');
 
-            // if an individual dataset was shared, show its info
-            if (datasetShareId) {
-                document.getElementById("share-entrance-dataset").classList.remove('is-hidden');
+        // if an individual dataset was shared, show its info
+        if (datasetShareId) {
+            document.getElementById("share-entrance-dataset-label").innerHTML = shareData['dataset_label'];
+            document.getElementById("share-entrance-dataset").classList.remove('is-hidden');
 
-            // if a dataset collection was shared, show its info
-            } else if (layoutShareId) {
-                document.getElementById("share-entrance-layout").classList.remove('is-hidden');
-            }
+        // if a dataset collection was shared, show its info
+        } else if (layoutShareId) {
+            document.getElementById("share-entrance-layout-label").innerHTML = shareData['layout_label'];
+            document.getElementById("share-entrance-layout").classList.remove('is-hidden');
         }
 
+        if (cartShareId || geneSymbolId) {
+            console.log("Cart or gene symbol passed on URL");
+            document.getElementById("share-entrance-genes-preselected").classList.remove('is-hidden');
+        } else {
+            console.log("Cart or gene symbol NOT passed on URL");
+            
+            if (shareData['gene_symbol']) {
+                document.getElementById("share-entrance-genes-autoselected").classList.remove('is-hidden');
+                document.getElementById("share-entrance-genes-label").innerHTML = shareData['gene_symbol'];
+                document.getElementById("share-entrance-genes").classList.remove('is-hidden');
+            } else {
+                document.getElementById("share-entrance-genes-noneselected").classList.remove('is-hidden');
+            }
+        }
     }
 }
 

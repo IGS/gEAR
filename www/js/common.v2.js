@@ -1244,6 +1244,7 @@ const apiCallsMixin = {
      */
     async fetchShareData(datasetShareId, layoutShareId) {
         const payload = { session_id: this.sessionId, dataset_share_id: datasetShareId, layout_share_id: layoutShareId };
+        console.log("Payload is: ", payload);
         const {data} = await axios.post("/cgi/get_shared_info.cgi", convertToFormData(payload));
         return data;
     },

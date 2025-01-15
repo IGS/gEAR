@@ -31,6 +31,17 @@ div#results-main-c {
     border-top: 1px solid rgb(220, 220, 220);
     margin-top: 50px;
 }
+div#share-entrance-notification h2 {
+    font-size: 120%;
+    font-weight: bold;
+}
+div#share-entrance-notification h3 {
+    font-size: 110%;
+    font-weight: bold;
+}
+div#share-entrance-notification p {
+    font-size: 90%;
+}
 section#annotation-panel,
 section#result-panel {
     background-color: #fbfcfd;

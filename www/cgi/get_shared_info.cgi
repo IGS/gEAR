@@ -32,12 +32,12 @@ def main():
 
     result = { 'gene_symbol': None, 'dataset_label': None, 'layout_label': None }
     
-    if dataset_share_id:
+    if dataset_share_id and dataset_share_id != 'null':
         dataset = geardb.get_dataset_by_share_id(share_id=dataset_share_id)
         if dataset:
             result['dataset_label'] = dataset.title
 
-    elif layout_share_id:
+    elif layout_share_id and layout_share_id != 'null':
         layout = geardb.get_layout_by_share_id(layout_share_id)
         if layout:
             result['layout_label'] = layout.label
