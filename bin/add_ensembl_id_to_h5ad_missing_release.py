@@ -135,7 +135,15 @@ def main():
     adata_with_ensembl_ids = ad.AnnData(
         adata_present.X,
         obs=adata_present.obs,
-        var=ensembl_id_var)
+        var=ensembl_id_var,
+        # May not use these directly, but need to pass them through to preserve them
+        # Note: there are other fields, like layers, that could be added here if needed
+        obsm=adata_present.obsm,
+        obsp=adata_present.obsp,
+        varm=adata_present.varm,
+        varp=adata_present.varp,
+        uns=adata_present.uns
+        )
 
     ## Now combine the unmapped dataframe with this one, first making the needed edits
     if 'gene_symbol' in adata_not_present.var.columns:
@@ -156,7 +164,12 @@ def main():
     adata_unmapped = ad.AnnData(
         X=adata_not_present.X,
         obs=adata_not_present.obs,
-        var=adata_unmapped_var
+        var=adata_unmapped_var,
+        obsm=adata_not_present.obsm,
+        obsp=adata_not_present.obsp,
+        varm=adata_not_present.varm,
+        varp=adata_not_present.varp,
+        uns=adata_not_present.uns
     )
     adata_unmapped.var.index.name = "ensembl_id"
 
@@ -166,12 +179,12 @@ def main():
     # Concatenate the two AnnData objects, which unfortunately duplicates the observations
     adata = ad.concat([adata_with_ensembl_ids, adata_unmapped], join="outer", merge="unique", uns_merge="unique", label="dataset")
 
-    print("ADATA CONCAT")
-    print(adata)
-    print("VAR CONCAT")
-    print(adata.var)
-    print("OBS_CONCAT")
-    print(adata.obs)
+    #print("ADATA CONCAT")
+    #print(adata)
+    #print("VAR CONCAT")
+    #print(adata.var)
+    #print("OBS_CONCAT")
+    #print(adata.obs)
 
     # Backfill the gene symbol column with the unmapped gene symbols
     adata.var['gene_symbol'] = adata.var['gene_symbol'].combine_first(adata.var['gene_symbol_unmapped'])
@@ -183,6 +196,8 @@ def main():
     # We could alternatively use `duplicates()` but this feels safer
     adata = adata[adata.obs.dataset == "0"]
     adata.obs = adata.obs.drop(columns=['dataset'])
+
+
 
     print("FINAL ADATA")
     print(adata)
