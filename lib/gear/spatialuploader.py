@@ -43,9 +43,36 @@ class SpatialUploader(ABC):
     def coordinate_system(self):
         pass
 
+    @property
+    @abstractmethod
+    def platform(self):
+        pass
+
+    @property
+    @abstractmethod
+    def img_name(self):
+        pass
+
     @abstractmethod
     def _read_file(self, filepath):
         pass
+
+    def _filter_sdata_by_coords(self):
+        # Filter to only the hires image boundaries
+        if not self.img_name:
+            return self
+
+        x = len(self.sdata.images[self.img_name].x)
+        y = len(self.sdata.images[self.img_name].y)
+        sdata = sd.bounding_box_query(self.sdata,
+                axes=("x", "y"),
+                min_coordinate=[0, 0],
+                max_coordinate=[x, y],
+                target_coordinate_system=self.coordinate_system,
+                filter_table=True,
+                )
+        self.sdata = sdata
+        return self
 
     def _convert_sdata_to_adata(self, table_name=None):
         if self.sdata is None:
@@ -68,6 +95,9 @@ class SpatialUploader(ABC):
         if filepath is None:
             raise Exception("No destination file path given. Provide one to write file.")
         try:
+            # Add platform type as metadata. Can use downstream
+            self.sdata.tables[self.NORMALIZED_TABLE_NAME].uns["platform"] = self.platform
+
             # Will fail if file already exists
             self.sdata.write(file_path=filepath)
         except Exception as err:
@@ -108,6 +138,14 @@ class CurioUploader(SpatialUploader):
     @property
     def coordinate_system(self):
         return "global"
+
+    @property
+    def platform(self):
+        return "curio"
+
+    @property
+    def img_name(self):
+        return None
 
     def _read_file(self, filepath):
         # Get tar filename so tmp directory can be assigned
@@ -200,6 +238,14 @@ class VisiumUploader(SpatialUploader):
     def coordinate_system(self):
         return "downscaled_hires"
 
+    @property
+    def platform(self):
+        return "visium"
+
+    @property
+    def img_name(self):
+        return "spatialdata_hires_image"
+
     def _read_file(self, filepath):
 
         # Get tar filename so tmp directory can be assigned
@@ -254,6 +300,11 @@ class VisiumHDUploader(SpatialUploader):
     Required files that will break the upload if not present:
     /binned_outputs/square_008um/filtered_feature_bc_matrix.h5
     /binned_outputs/feature_slice.h5
+    /binned_outputs/square_008um/spatial/scalefactors_json.json
+    /binned_outputs/square_008um/spatial/tissue_hires_image.png
+
+    Recommended tar command to create tarball:
+    `tar cvf <dataset>.tar binned_outputs/feature_slice.h5 binned_outputs/square_008um spatial`
 
     Special note: We have observed that bin sizes finer than 8 microns per pixel will generally have more cells, which can lead to longer analysis times.
     For now, we will attempt to use the "square_008um" binned output.
@@ -269,6 +320,14 @@ class VisiumHDUploader(SpatialUploader):
     @property
     def coordinate_system(self):
         return "downscaled_hires"
+
+    @property
+    def platform(self):
+        return "visium_hd"
+
+    @property
+    def img_name(self):
+        return "spatialdata_hires_image"
 
     def _read_file(self, filepath):
         # Get tar filename so tmp directory can be assigned
@@ -290,9 +349,14 @@ class VisiumHDUploader(SpatialUploader):
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
                 if entry.name.startswith("._") or entry.name.startswith(".DS_Store"):
                     continue
+
+                # IF directory has "square_" but not "square_008um", skip
+                if "square_" in entry.name and "square_008um" not in entry.name:
+                    continue
+
                 # Extract file into tmp dir
-                filepath = "{0}/{1}".format(binned_outputs_dir, entry.name)
-                tf.extract(entry, path=binned_outputs_dir)
+                filepath = "{0}/{1}".format(tmp_dir, entry.name)
+                tf.extract(entry, path=tmp_dir)
 
         if not os.path.exists("{}/feature_slice.h5".format(binned_outputs_dir)):
             raise Exception("feature_slice.h5 file not found in /binned_outputs directory in tarball.")
@@ -315,7 +379,7 @@ class VisiumHDUploader(SpatialUploader):
         if not os.path.exists("{}/spatialdata_feature_slice.h5".format(binned_outputs_dir)):
             os.symlink("{}/feature_slice.h5".format(absolute_path), "{}/spatialdata_feature_slice.h5".format(binned_outputs_dir))
 
-            sdata = sdio.visium_hd(tmp_dir
+            sdata = sdio.visium_hd(binned_outputs_dir
                                    , dataset_id="spatialdata"   # Provide a name to standarize downstream usage
                                    , bin_size=8
                                    , filtered_counts_file=True
@@ -382,6 +446,14 @@ class XeniumUploader(SpatialUploader):
     def coordinate_system(self):
         return "downscaled_hires"
 
+    @property
+    def platform(self):
+        return "xenium"
+
+    @property
+    def img_name(self):
+        return "spatialdata_hires_image"
+
     def _read_file(self, filepath):
         # Get tar filename so tmp directory can be assigned
         tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
@@ -425,3 +497,12 @@ class XeniumUploader(SpatialUploader):
 
     def _write_to_h5ad(self, filepath=None):
         return super()._write_to_h5ad(filepath)
+
+### Helper constants
+
+SPATIALTYPE2CLASS = {
+    "visium": VisiumUploader,
+    "visium_hd": VisiumHDUploader,
+    "xenium": XeniumUploader,
+    "curio": CurioUploader
+}

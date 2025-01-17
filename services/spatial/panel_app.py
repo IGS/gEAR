@@ -3,6 +3,7 @@ import sys, logging
 import panel as pn
 import param
 
+import plotly.io as pio
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -15,12 +16,16 @@ import pandas as pd
 import scanpy as sc
 
 import spatialdata as sd
-from spatialdata import bounding_box_query
-from spatialdata_io.experimental import to_legacy_anndata
 
 from pathlib import Path
 
+lib_path = Path(__file__).resolve().parent / 'lib'
+sys.path.append(str(lib_path))
+from gear import spatialuploader
+
 spatial_path = Path("/datasets/spatial")
+
+pio.templates.default = "simple_white"  # no gridlines, white background
 
 pn.extension('plotly'
             , loading_indicator=True
@@ -40,10 +45,13 @@ class Settings(param.Parameterized):
     selection_y2 = param.Integer(doc="lower selection range")
 
 class SpatialPlot():
+    """
+    Generalized class for creating a spatial plot with a gene expression heatmap, cluster markers, and an image.
+    """
 
     def __init__(self, df, spatial_img, color_map, gene_symbol, expression_name, expression_color, dragmode):
         self.df = df
-        self.spatial_img = spatial_img
+        self.spatial_img = spatial_img  # None or numpy array
         self.color_map = color_map
         self.gene_symbol = gene_symbol
         self.fig = go.Figure()
@@ -52,10 +60,10 @@ class SpatialPlot():
         self.dragmode = dragmode
         self.marker_size = 2
         self.base64_string = None
-        self.range_x1 = 0
-        self.range_x2 = spatial_img.shape[1]
-        self.range_y1 = 0
-        self.range_y2 = spatial_img.shape[0]
+        self.range_x1 = 0 if self.spatial_img is not None else min(df["spatial1"])
+        self.range_x2 = self.spatial_img.shape[1] if self.spatial_img is not None else max(df["spatial1"])
+        self.range_y1 = 0 if self.spatial_img is not None else min(df["spatial2"])
+        self.range_y2 = self.spatial_img.shape[0] if self.spatial_img is not None else max(df["spatial2"])
 
     def make_expression_scatter(self):
         df = self.df
@@ -66,8 +74,7 @@ class SpatialPlot():
                     colorbar=dict(
                         len=1,  # Adjust the length of the colorbar
                         thickness=15,  # Adjust the thickness of the colorbar (default is 30)
-                        #title=f"{gene_symbol} expression",  # Title for the colorbar
-                        x=0.2575
+                        x=self.max_x1 - 0.0025,  # Adjust the x position of the colorbar
                     ),
                     symbol="square",
                     ),
@@ -81,7 +88,7 @@ class SpatialPlot():
         df = self.df
         color_map = self.color_map
         for cluster in color_map:
-            cluster_data = df[df["Clusters"] == cluster]
+            cluster_data = df[df["clusters"] == cluster]
             fig.add_trace(
                 go.Scattergl(
                     x=cluster_data["spatial1"],
@@ -89,7 +96,7 @@ class SpatialPlot():
                     mode="markers",
                     marker=dict(color=color_map[cluster], size=self.marker_size, symbol="square"),
                     name=str(cluster),
-                    text=cluster_data["Clusters"],
+                    text=cluster_data["clusters"],
                     unselected=dict(marker=dict(opacity=1)),
                 ), row=1, col=2
             )
@@ -97,18 +104,33 @@ class SpatialPlot():
     def make_fig(self, static_size=False):
         self.create_subplots()
         self.update_axes()
-        self.add_image_trace()
+        # domain is adjusted whether there are images or not
+        if self.spatial_img is not None:
+            self.fig.update_layout(
+                xaxis=dict(domain=[0, 0.26]),
+                xaxis2=dict(domain=[0.33, 0.59]),
+                xaxis3=dict(domain=[0.74, 1.00]),
+            )
+        else:
+            self.fig.update_layout(
+                xaxis=dict(domain=[0, 0.4]),
+                xaxis2=dict(domain=[0.5, 0.90]),
+            )
+
+        # Get max domain for axis 1 and axis 2
+        self.max_x1 = self.fig.layout.xaxis.domain[1]
+        self.max_x2 = self.fig.layout.xaxis2.domain[1]
+
+        if self.spatial_img is not None:
+            self.add_image_trace()
         self.fig.add_trace(self.make_expression_scatter(), row=1, col=1)
         self.add_cluster_traces()
 
         # make legend markers bigger
-        self.fig.update_layout(legend=dict(indentation=-15, itemsizing='constant', x=0.6))
+        self.fig.update_layout(legend=dict(indentation=-15, itemsizing='constant', x=self.max_x2 + 0.01))
 
         # adjust domains of all 3 plots, leaving enough space for the colorbar and legend
         self.fig.update_layout(
-            xaxis=dict(domain=[0, 0.26]),
-            xaxis2=dict(domain=[0.33, 0.59]),
-            xaxis3=dict(domain=[0.74, 1.00]),
             margin=dict(l=20, r=0, t=50, b=0),
             width=1920 if static_size else None,
             height=1080 if static_size else None,
@@ -131,13 +153,20 @@ class SpatialPlot():
             self.base64_string = prefix + base64.b64encode(stream.getvalue()).decode("utf-8")
 
     def create_subplots(self):
-        # Make a 3-column subplot
-        fig = make_subplots(rows=1, cols=3, column_titles=(f"{self.expression_name} Expression", "Clusters", "Image Only"), horizontal_spacing=0.1)
-        self.fig = fig
+        if self.spatial_img is not None:
+            self.create_subplots_three()
+        else:
+            self.create_subplots_two()
+
+    def create_subplots_two(self):
+        self.fig = make_subplots(rows=1, cols=2, column_titles=(f"{self.expression_name} Expression", "clusters"), horizontal_spacing=0.1)
+
+    def create_subplots_three(self):
+        self.fig = make_subplots(rows=1, cols=3, column_titles=(f"{self.expression_name} Expression", "clusters", "Image Only"), horizontal_spacing=0.1)
 
     def update_axes(self):
-        self.fig.update_xaxes(range=[self.range_x1, self.range_x2], title_text="spatial1", showticklabels=False)
-        self.fig.update_yaxes(range=[self.range_y2, self.range_y1], title_text="spatial2", showticklabels=False, title_standoff=0)
+        self.fig.update_xaxes(range=[self.range_x1, self.range_x2], title_text="spatial1", showgrid=False, showticklabels=False, ticks="")
+        self.fig.update_yaxes(range=[self.range_y2, self.range_y1], title_text="spatial2", showgrid=False, showticklabels=False, ticks="", title_standoff=0)
 
     def add_image_trace(self):
         self.convert_image()
@@ -146,8 +175,10 @@ class SpatialPlot():
         self.fig.add_trace(image_trace, row=1, col=2)
         self.fig.add_trace(image_trace, row=1, col=3)
 
-
 class SpatialNormalSubplot(SpatialPlot):
+    """
+    Class for creating a spatial plot with a gene expression heatmap, cluster markers, and an image.
+    """
 
     def create_pane(self):
         return pn.pane.Plotly(self.make_fig(static_size=True)
@@ -157,6 +188,9 @@ class SpatialNormalSubplot(SpatialPlot):
                     )
 
 class SpatialZoomSubplot(SpatialPlot):
+    """
+    Class for creating a zoomed-in spatial plot with a gene expression heatmap, cluster markers, and an image.
+    """
 
     def __init__(self, df, spatial_img, color_map, gene_symbol, expression_name, expression_color, **params):
         super().__init__(df, spatial_img, color_map, gene_symbol, expression_name, expression_color, **params)
@@ -200,14 +234,18 @@ class SpatialZoomSubplot(SpatialPlot):
         return self.create_pane()
 
 class SpatialPanel(pn.viewable.Viewer):
+    """
+    Class for prepping the spatial data and setting up the Panel app.
+    """
 
-    def __init__(self, dataset_id, gene_symbol, **params):
+    def __init__(self, dataset_id, gene_symbol, min_genes=200, **params):
         super().__init__(**params)
         self.dataset_id = dataset_id
         self.gene_symbol = gene_symbol
+        self.min_genes = min_genes
 
+        self.prep_sdata()
         self.prep_adata()
-        self.spatial_img = self.adata.uns["spatial"]["spatialdata_hires_image"]["images"]["hires"]
         self.create_gene_df()
         self.map_colors()
 
@@ -227,32 +265,47 @@ class SpatialPanel(pn.viewable.Viewer):
             width=1100, height=725
         )
 
-    def prep_adata(self):
+    def prep_sdata(self):
         zarr_path = spatial_path / f"{self.dataset_id}.zarr"
         if not zarr_path.exists():
             raise ValueError(f"Dataset {self.dataset_id} not found")
         sdata = sd.read_zarr(zarr_path)
 
-        # Filter to only the hires image boundaries
-        img_to_use = "spatialdata_hires_image"
-        x = len(sdata.images[img_to_use].x)
-        y = len(sdata.images[img_to_use].y)
+        try:
+            platform = sdata.tables["table"].uns["platform"]
+        except KeyError:
+            raise ValueError("No platform information found in the dataset")
 
-        self.sdata = bounding_box_query(sdata,
-                                axes=("x", "y"),
-                                min_coordinate=[0, 0],
-                                max_coordinate=[x, y],
-                                target_coordinate_system="downscaled_hires",
-                                filter_table=True,
-                                )
+        # Ensure the spatial data type is supported
+        if platform not in spatialuploader.SPATIALTYPE2CLASS.keys():
+            print("Invalid or unsupported spatial data type")
+            print("Supported types: {0}".format(spatialuploader.SPATIALTYPE2CLASS.keys()))
+            sys.exit(1)
 
+        # Use uploader class to determine correct helper functions
+        self.spatial_obj = spatialuploader.SPATIALTYPE2CLASS[platform]()
+        self.spatial_obj.sdata = sdata
+        # Dictates if this will be a 2- or 3-plot figure
+        self.has_images = self.spatial_obj.has_images
+
+        # Filter by bounding box (mostly for images)
+        self.spatial_obj._filter_sdata_by_coords()
+
+    def prep_adata(self):
         # Create AnnData object
         # Need to include image since the bounding box query does not filter the image data by coordinates
         # Each Image is downscaled (or upscaled) during rendering to fit a 2000x2000 pixels image (downscaled_hires)
-        adata = to_legacy_anndata(self.sdata, include_images=True, coordinate_system="downscaled_hires", table_name="table")
+        self.spatial_obj._convert_sdata_to_adata()
+        adata = self.spatial_obj.adata
+
+        self.spatial_img = None
+        if self.has_images:
+            img_name = self.spatial_obj.img_name
+            self.spatial_img = adata.uns["spatial"][img_name]["images"]["hires"]
+
 
         # Filter out cells that overlap with the blank space of the image.
-        sc.pp.filter_cells(adata, min_genes=200)
+        sc.pp.filter_cells(adata, min_genes=self.min_genes)
         sc.pp.normalize_total(adata, inplace=True)
         sc.pp.log1p(adata)
 
@@ -274,19 +327,27 @@ class SpatialPanel(pn.viewable.Viewer):
         df["spatial1"] = selected.obsm["spatial"].transpose()[X].tolist()
         df["spatial2"] = selected.obsm["spatial"].transpose()[Y].tolist()
 
-        df["Clusters"] = selected.obs["clusters"].astype("category")
+        # Add cluster info
+        if "clusters" not in selected.obs:
+            raise ValueError("No cluster information found in adata.obs")
+
+        df["clusters"] = selected.obs["clusters"].astype("category")
         # drop NaN clusters
-        self.df = df.dropna(subset=["Clusters"])
+        self.df = df.dropna(subset=["clusters"])
 
     def map_colors(self):
         df = self.df
-        # Assuming df is your DataFrame and it has a column "Clusters"
-        unique_clusters = df["Clusters"].unique()
+        # Assuming df is your DataFrame and it has a column "clusters"
+        unique_clusters = df["clusters"].unique()
         # sort unique clusters by number
         self.unique_clusters = sorted(unique_clusters, key=lambda x: int(x))
-        self.color_map = {cluster: px.colors.qualitative.Alphabet[i % len(px.colors.qualitative.Alphabet)] for i, cluster in enumerate(self.unique_clusters)}
-        # Map the colors to the clusters
-        df["color"] = df["Clusters"].map(self.color_map)
+        self.color_map = None
+        if "colors" in df:
+            self.color_map = {cluster: df[df["clusters"] == cluster]["colors"].values[0] for cluster in self.unique_clusters}
+        else:
+            self.color_map = {cluster: px.colors.qualitative.Alphabet[i % len(px.colors.qualitative.Alphabet)] for i, cluster in enumerate(self.unique_clusters)}
+            # Map the colors to the clusters
+            df["color"] = df["clusters"].map(self.color_map)
         self.df = df
 
 
@@ -308,6 +369,17 @@ def normalize_searched_gene(gene_set, chosen_gene):
 # https://github.com/bokeh/bokeh/issues/13229
 logging.getLogger().setLevel(logging.ERROR)
 
+""" TODO
+settings = Settings()
+pn.state.location.sync(settings, {
+    'dataset_id': 'dataset_id'
+    , 'gene_symbol': 'gene_symbol'
+    , 'selection_x1': 'selection_x1'
+    , 'selection_x2': 'selection_x2'
+    , 'selection_y1': 'selection_y1'
+    , 'selection_y2': 'selection_y2'})
+"""
+
 # If not params passed, just show OK as a way to test the app
 if not pn.state.location.query_params:
     pn.pane.Markdown("OK").servable()
@@ -318,6 +390,9 @@ else:
     if not "gene_symbol" in pn.state.location.query_params:
         raise ValueError("Please provide a gene_symbol")
 
+    if "min_genes_per_obs" in pn.state.location.query_params and (pn.state.location.query_params["min_genes_per_obs"] < 0 or type(pn.state.location.query_params["min_genes_per_obs"]) != int):
+        raise ValueError("Please provide a min_genes_per_obs value greater than 0")
+
     #if not "image_str" in pn.state.location.query_params:
     #    raise ValueError("Please provide an encoded image")
 
@@ -325,8 +400,12 @@ else:
     dataset_id = pn.state.location.query_params["dataset_id"]
     gene_symbol = pn.state.location.query_params["gene_symbol"]
 
+    min_genes = 200
+    if "min_genes_per_obs" in pn.state.location.query_params and pn.state.location.query_params["min_genes_per_obs"] >= 0:
+        min_genes = pn.state.location.query_params["min_genes_per_obs"]
+
     # Create the app
     # TODO: Defer loading of the images (https://panel.holoviz.org/how_to/callbacks/defer_load.html)
     # TODO: explore Datashader
     # TODO: Add some loading indicators for plot drawing (https://panel.holoviz.org/how_to/state/busy.html)
-    sp_panel = SpatialPanel(dataset_id, gene_symbol).servable(title="Spatial Data Viewer", location=True)
+    sp_panel = SpatialPanel(dataset_id, gene_symbol, min_genes).servable(title="Spatial Data Viewer", location=True)

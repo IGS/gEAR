@@ -20,13 +20,6 @@ lib_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__
 sys.path.append(lib_path)
 from gear import spatialuploader
 
-SPATIALTYPE2CLASS = {
-    "visium": spatialuploader.VisiumUploader,
-    "visiumhd": spatialuploader.VisiumHDUploader,
-    "xenium": spatialuploader.XeniumUploader,
-    "curio": spatialuploader.CurioUploader
-}
-
 DEST_DIRPATH = Path(__file__).resolve().parent.parent / "www" / "datasets" / "spatial"
 OUTPUT_SUFFIX = ".zarr"
 
@@ -40,13 +33,14 @@ def main():
     parser.add_argument('-d', '--dataset_id', type=str, required=True, help='Numerical dataset ID to be used' )
     args = parser.parse_args()
 
-    # Current spatial data types supported are : "visium", "visiumhd", "xenium", "curio"
-    if args.type not in ["visium", "visiumhd", "xenium", "curio"]:
+    # Ensure the spatial data type is supported
+    if args.type not in spatialuploader.SPATIALTYPE2CLASS.keys():
         print("Invalid or unsupported spatial data type")
+        print("Supported types: {0}".format(spatialuploader.SPATIALTYPE2CLASS.keys()))
         sys.exit(1)
     print("Processing spatial data of type: {0}".format(args.type))
     print("Input file: {0}".format(args.input_file))
-    sp_class = SPATIALTYPE2CLASS[args.type]()
+    sp_class = spatialuploader.SPATIALTYPE2CLASS[args.type]()
     sp_class._read_file(args.input_file)
 
     output_filename = args.dataset_id
