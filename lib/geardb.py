@@ -829,31 +829,15 @@ class SpatialAnalysis(Analysis):
     def dataset_path(self):
         return "{0}/spatial/{1}.zarr".format(self.base_path(), self.dataset_id)
 
+    def determine_platform(self, sdata):
+        try:
+            platform = sdata.tables["table"].uns["platform"]
+            return platform
+        except KeyError:
+            raise ValueError("No platform information found in the dataset")
+
     def discover_type(self):
         return super().discover_type()
-
-    def filter_sdata_boundaries(self, sdata):
-        # Filter to only the hires image boundaries
-        img_to_use = "spatialdata_hires_image"
-        x = len(sdata.images[img_to_use].x)
-        y = len(sdata.images[img_to_use].y)
-
-        from spatialdata import bounding_box_query
-        return bounding_box_query(sdata,
-                                axes=("x", "y"),
-                                min_coordinate=[0, 0],
-                                max_coordinate=[x, y],
-                                target_coordinate_system="downscaled_hires",
-                                filter_table=True,
-                                )
-
-
-    def get_adata_from_sdata(self, sdata, include_images=True):
-        # Create AnnData object
-        # Need to include image since the bounding box query does not filter the image data by coordinates
-        # Each Image is downscaled (or upscaled) during rendering to fit a 2000x2000 pixels image (downscaled_hires)
-        from spatialdata_io.experimental import to_legacy_anndata
-        return to_legacy_anndata(sdata, include_images=include_images, coordinate_system="downscaled_hires", table_name="table")
 
     def get_sdata(self):
         import spatialdata as sd

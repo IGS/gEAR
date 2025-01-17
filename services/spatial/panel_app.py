@@ -87,6 +87,7 @@ class SpatialPlot():
         fig = self.fig
         df = self.df
         color_map = self.color_map
+        # TODO: Add click event for removing equivalent points from expression plot if legend item is clicked
         for cluster in color_map:
             cluster_data = df[df["clusters"] == cluster]
             fig.add_trace(
@@ -134,6 +135,7 @@ class SpatialPlot():
             margin=dict(l=20, r=0, t=50, b=0),
             width=1920 if static_size else None,
             height=1080 if static_size else None,
+            plot_bgcolor="#CCFFFF", # Mirror the background color of visium images
             # Set dragmode properties on the main figure
             dragmode=self.dragmode,
             selectdirection="d"

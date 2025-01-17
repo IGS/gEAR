@@ -74,16 +74,20 @@ class SpatialUploader(ABC):
         self.sdata = sdata
         return self
 
-    def _convert_sdata_to_adata(self, table_name=None):
+    def _convert_sdata_to_adata(self, include_images=None, table_name=None):
         if self.sdata is None:
             raise Exception("No spatial data object present to convert to AnnData object.")
 
+        if include_images is None:
+            include_images = self.has_images
+
+        # Generally everything should already be converted to the normalized table name
         if table_name is None:
             table_name = self.NORMALIZED_TABLE_NAME
 
         try:
             # table name should already be "table" for Visium
-            adata = to_legacy_anndata(self.sdata, include_images=self.has_images, coordinate_system=self.coordinate_system, table_name=table_name)
+            adata = to_legacy_anndata(self.sdata, include_images=include_images, coordinate_system=self.coordinate_system, table_name=table_name)
         except Exception as err:
             raise Exception("Error occurred while converting spatial data object to AnnData object: ", err)
         self.adata = adata
@@ -207,8 +211,8 @@ class CurioUploader(SpatialUploader):
             self.originalFile = filepath
             return self
 
-    def _convert_sdata_to_adata(self):
-        return super()._convert_sdata_to_adata()
+    def _convert_sdata_to_adata(self, include_images=None):
+        return super()._convert_sdata_to_adata(include_images)
 
     def _write_to_zarr(self, filepath=None):
         return super()._write_to_zarr(filepath)
@@ -282,8 +286,8 @@ class VisiumUploader(SpatialUploader):
             self.originalFile = filepath
             return self
 
-    def _convert_sdata_to_adata(self):
-        return super()._convert_sdata_to_adata()
+    def _convert_sdata_to_adata(self, include_images=None):
+        return super()._convert_sdata_to_adata(include_images)
 
     def _write_to_zarr(self, filepath=None):
         return super()._write_to_zarr(filepath)
@@ -411,8 +415,8 @@ class VisiumHDUploader(SpatialUploader):
             self.originalFile = filepath
             return self
 
-    def _convert_sdata_to_adata(self):
-        return super()._convert_sdata_to_adata()
+    def _convert_sdata_to_adata(self, include_images=None):
+        return super()._convert_sdata_to_adata(include_images)
 
     def _write_to_zarr(self, filepath=None):
         return super()._write_to_zarr(filepath)
@@ -489,8 +493,8 @@ class XeniumUploader(SpatialUploader):
             self.originalFile = filepath
             return self
 
-    def _convert_sdata_to_adata(self):
-        return super()._convert_sdata_to_adata()
+    def _convert_sdata_to_adata(self, include_images=None):
+        return super()._convert_sdata_to_adata(include_images)
 
     def _write_to_zarr(self, filepath=None):
         return super()._write_to_zarr(filepath)

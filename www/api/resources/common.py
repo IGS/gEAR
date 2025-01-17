@@ -6,6 +6,7 @@ import os, sys
 import tempfile
 import shutil
 import anndata
+import spatialdata as sd
 import pandas as pd
 from pandas.api.types import is_integer_dtype
 
@@ -70,9 +71,24 @@ def get_spatial_adata(analysis_id, dataset_id, session_id):
     ana = SpatialAnalysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user_id)
     ana.discover_type()
     sdata = ana.get_sdata()
-    ana.filter_sdata_boundaries(sdata)
+    platform = ana.determine_platform(sdata)
+
+    from gear import spatialuploader
+
+    # Ensure the spatial data type is supported
+    if not platform or platform not in spatialuploader.SPATIALTYPE2CLASS.keys():
+        raise ValueError("Invalid or unsupported spatial data type {0}".format(platform))
+
+    spatial_obj = spatialuploader.SPATIALTYPE2CLASS[platform]()
+    spatial_obj.sdata = sdata
+
+    # Filter by bounding box (mostly for images)
+    spatial_obj._filter_sdata_by_coords()
+
+    # Create AnnData object
     # Do not include images in the adata object (to make it lighter)
-    adata = ana.get_adata_from_sdata(sdata, False)
+    spatial_obj._convert_sdata_to_adata(include_images=False)
+    adata = spatial_obj.adata
     return adata
 
 def create_projection_adata(dataset_adata, dataset_id, projection_id):
