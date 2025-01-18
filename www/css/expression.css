@@ -11,6 +11,9 @@ div#annotation-and-grid-c h3 {
 div#annotation-and-grid-c h3 span {
     font-weight: bold;
 }
+div.divider-right {
+    border-right: 1px solid white;
+}
 div#extended-annotation-panel {
     border: 1px solid #e9eef1;
     border-style: rounded;
