@@ -19,7 +19,7 @@ import spatialdata as sd
 
 from pathlib import Path
 
-lib_path = Path(__file__).resolve().parent / 'lib'
+lib_path = Path(__file__).resolve().parent.parent.parent / 'lib'
 sys.path.append(str(lib_path))
 from gear import spatialuploader
 
@@ -244,22 +244,20 @@ class SpatialPanel(pn.viewable.Viewer):
         super().__init__(**params)
         self.dataset_id = dataset_id
         self.gene_symbol = gene_symbol
-        self.min_genes = min_genes
 
         self.prep_sdata()
         self.prep_adata()
-        self.create_gene_df()
-        self.map_colors()
 
-        self.fig_subplot = SpatialNormalSubplot(self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, self.norm_gene_symbol, "YlGn", dragmode="select")
-        self.zoom_subplot = SpatialZoomSubplot(self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, "Local", "YlOrRd", dragmode=False)
+        self.min_genes_slider = pn.widgets.IntSlider(name='Filter - Mininum genes per observation', start=0, end=500, step=5, value=200)
+        self.refresh_dataframe(min_genes)
+
+        pn.bind(self.refresh_dataframe, self.min_genes_slider.param.value_throttled, watch=True)
+
 
     def __panel__(self):
-        self.fig_pane = self.fig_subplot.create_pane()
-        self.zoom_pane = pn.bind(self.zoom_subplot.make_zoom_fig_callback, self.fig_pane.param.selected_data, watch=False)
-
         return pn.Column(
             pn.pane.Markdown('## Select a region to modify zoomed in view in the bottom panel', height=30),
+            self.min_genes_slider,
             self.fig_pane,
             pn.layout.Divider(height=5),    # default margins
             pn.pane.Markdown('## Zoomed in view',height=30),
@@ -304,15 +302,14 @@ class SpatialPanel(pn.viewable.Viewer):
         if self.has_images:
             img_name = self.spatial_obj.img_name
             self.spatial_img = adata.uns["spatial"][img_name]["images"]["hires"]
-
-
-        # Filter out cells that overlap with the blank space of the image.
-        sc.pp.filter_cells(adata, min_genes=self.min_genes)
-        sc.pp.normalize_total(adata, inplace=True)
-        sc.pp.log1p(adata)
-
-        adata.var_names_make_unique()
         self.adata = adata
+
+    def filter_adata(self):
+        # Filter out cells that overlap with the blank space of the image.
+        sc.pp.filter_cells(self.adata, min_genes=self.min_genes)
+        sc.pp.normalize_total(self.adata, inplace=True)
+        sc.pp.log1p(self.adata)
+        self.adata.var_names_make_unique()
 
     def create_gene_df(self):
         adata = self.adata
@@ -336,6 +333,18 @@ class SpatialPanel(pn.viewable.Viewer):
         df["clusters"] = selected.obs["clusters"].astype("category")
         # drop NaN clusters
         self.df = df.dropna(subset=["clusters"])
+
+    def refresh_dataframe(self, min_genes):
+        self.min_genes = min_genes
+        self.filter_adata()
+        self.create_gene_df()
+        self.map_colors()
+        self.fig_subplot = SpatialNormalSubplot(self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, self.norm_gene_symbol, "YlGn", dragmode="select")
+        self.zoom_subplot = SpatialZoomSubplot(self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, "Local", "YlOrRd", dragmode=False)
+
+        self.fig_pane = self.fig_subplot.create_pane()
+        self.zoom_pane = pn.bind(self.zoom_subplot.make_zoom_fig_callback, self.fig_pane.param.selected_data, watch=False)
+
 
     def map_colors(self):
         df = self.df
@@ -392,22 +401,11 @@ else:
     if not "gene_symbol" in pn.state.location.query_params:
         raise ValueError("Please provide a gene_symbol")
 
-    if "min_genes_per_obs" in pn.state.location.query_params and (pn.state.location.query_params["min_genes_per_obs"] < 0 or type(pn.state.location.query_params["min_genes_per_obs"]) != int):
-        raise ValueError("Please provide a min_genes_per_obs value greater than 0")
-
-    #if not "image_str" in pn.state.location.query_params:
-    #    raise ValueError("Please provide an encoded image")
-
-    # Read in zarr file into spatialdata object
     dataset_id = pn.state.location.query_params["dataset_id"]
     gene_symbol = pn.state.location.query_params["gene_symbol"]
-
-    min_genes = 200
-    if "min_genes_per_obs" in pn.state.location.query_params and pn.state.location.query_params["min_genes_per_obs"] >= 0:
-        min_genes = pn.state.location.query_params["min_genes_per_obs"]
 
     # Create the app
     # TODO: Defer loading of the images (https://panel.holoviz.org/how_to/callbacks/defer_load.html)
     # TODO: explore Datashader
     # TODO: Add some loading indicators for plot drawing (https://panel.holoviz.org/how_to/state/busy.html)
-    sp_panel = SpatialPanel(dataset_id, gene_symbol, min_genes).servable(title="Spatial Data Viewer", location=True)
+    sp_panel = SpatialPanel(dataset_id, gene_symbol).servable(title="Spatial Data Viewer", location=True)

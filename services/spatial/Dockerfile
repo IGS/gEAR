@@ -15,7 +15,8 @@ RUN apt-get -qq update \
   && rm -rf /var/lib/apt/lists/*
 
 # Copy local code to the container image.
-ENV APP_HOME=/app
+# App home is reflecting the relative levels within the gEAR repo
+ENV APP_HOME=/gEAR/services/spatial
 WORKDIR $APP_HOME
 COPY . ./
 

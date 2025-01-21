@@ -147,6 +147,12 @@ There's a lot in here, but the CGI-related addition is:
             </IfVersion>
     </Directory>
 
+
+  // Panel proxy
+  // Using the "ws" protocol for websockets as they are better are real-time two-way communication
+  ProxyPass "/panel" "ws://127.0.0.1:8081"
+  ProxyPassReverse "/panel" "ws://127.0.0.1:8081"
+
 ## /etc/apache2/mods-available/wsgi.load
 
 ### The version numbers here need to coincide with the python version installed

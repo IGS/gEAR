@@ -38,6 +38,17 @@ services:
       - "5672:5672"
     restart: always
 
+  panel:
+    image: panel_app
+    networks:
+      - gear
+    ports:
+      - "8081:8081" # host:container
+    restart: always
+    volumes:
+      - /Users/sadkins/git/gEAR/www/datasets:/datasets
+      - /Users/sadkins/git/gEAR/lib:/gEAR/lib
+
   # consumer:
   #   image: busybox
   #   tty: true
