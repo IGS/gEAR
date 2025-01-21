@@ -66,6 +66,8 @@ RUN apt-get -qq update \
   libpng-dev \
   libtiff5-dev \
   libjpeg-dev \
+  # Required for Panel (though we use Panel in a separate image)
+  libblosc-dev \
   # Apache2 and PHP
   libapache2-mod-wsgi-py3 \
   apache2-dev \

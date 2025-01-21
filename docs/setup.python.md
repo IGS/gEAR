@@ -80,6 +80,7 @@ Check the requirement.txt file in <git_repo_root>/docker for the latest packages
       spatialdata==0.2.7-pre0 \
       spatialdata_io==0.1.6 \
       tables==3.9.2 \
+      watchfiles \
       xlrd==1.2.0
     $ sudo mkdir /opt/bin
     $ sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/
