@@ -19,11 +19,14 @@ import spatialdata as sd
 
 from pathlib import Path
 
-lib_path = Path(__file__).resolve().parent.parent.parent / 'lib'
+gear_root = Path(__file__).resolve().parents[2]
+lib_path = gear_root.joinpath('lib')
+print(lib_path, file=sys.stderr)
+
 sys.path.append(str(lib_path))
 from gear import spatialuploader
 
-spatial_path = Path("/datasets/spatial")
+spatial_path = gear_root.joinpath('www/datasets/spatial')
 
 pio.templates.default = "simple_white"  # no gridlines, white background
 

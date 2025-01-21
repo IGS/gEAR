@@ -46,8 +46,8 @@ services:
       - "8081:8081" # host:container
     restart: always
     volumes:
-      - /Users/sadkins/git/gEAR/www/datasets:/datasets
-      - /Users/sadkins/git/gEAR/lib:/gEAR/lib
+      - <dataset_path>:/gEAR/www/datasets
+      - <gear_lib_path>:/gEAR/lib
 
   # consumer:
   #   image: busybox
