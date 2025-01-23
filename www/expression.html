@@ -103,6 +103,7 @@
               </div>
               <div id="annotation-and-grid-c" class="column">
                 <div id="share-entrance-notification" class="notification is-primary is-hidden">
+                  <button id="share-entrance-notification-close" class="delete"></button>
                   <div class="columns">
                     <div class="column divider-right is-4 mt-0 pt-0 pr-6">
                       <h2 class="mb-1">
@@ -135,19 +136,33 @@
                     <div class="column is-8 mt-0 pt-0 pl-6">
                       <div id="share-entrance-dataset" class="is-hidden">
                         <h3 class="mb-1">Dataset</h3>
-                        <p id="share-entrance-dataset-label"></p>
+                        <p class="pl-3">
+                          <strong>Title:</strong>
+                          <span id="share-entrance-dataset-label"></span>
+                        </p>
+                        <p class="pl-3">
+                          <strong>Owner:</strong>
+                          <span id="share-entrance-dataset-owner-label"></span>
+                        </p>
                       </div>
                       <div id="share-entrance-layout" class="is-hidden">
                         <h3 class="mb-1">Dataset Collection</h3>
-                        <p id="share-entrance-layout-label"></p>
+                        <p class="pl-3">
+                          <strong>Title:</strong>
+                          <span id="share-entrance-layout-label"></span>
+                        </p>
+                        <p class="pl-3">
+                          <strong>Owner:</strong>
+                          <span id="share-entrance-layout-owner-label"></span>
+                        </p>
                       </div>
                       <div id="share-entrance-genes" class="is-hidden mt-4">
                         <h3 class="mb-1">Gene(s) searched</h3>
-                        <p id="share-entrance-genes-label"></p>
+                        <p id="share-entrance-genes-label" class="pl-3"></p>
                       </div>
                       <div id="share-entrance-gene-list" class="is-hidden mt-4">
                         <h3 class="mb-1">Gene list searched</h3>
-                        <p id="share-entrance-gene-list-label"></p>
+                        <p id="share-entrance-gene-list-label" class="pl-3"></p>
                       </div>
                     </div>
                   </div>
