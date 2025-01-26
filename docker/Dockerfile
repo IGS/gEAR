@@ -152,7 +152,7 @@ COPY ./umgear.conf /etc/apache2/sites-available/umgear.conf
 COPY ./php.ini /etc/php/8.1/apache2/php.ini
 RUN a2dissite 000-default.conf
 RUN a2ensite umgear.conf
-RUN a2enmod rewrite cgi wsgi proxy proxy_http proxy_wstunnel include
+RUN a2enmod rewrite cgi wsgi proxy proxy_http proxy_wstunnel include headers
 EXPOSE 80
 
 CMD /usr/sbin/apachectl -D FOREGROUND

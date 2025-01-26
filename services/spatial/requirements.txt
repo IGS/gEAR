@@ -1,4 +1,4 @@
-panel==1.5.4
+panel==1.5.5
 plotly==5.20.0
 spatialdata==0.2.7-pre0
 spatialdata_io==0.1.6

@@ -64,7 +64,7 @@ Check the requirement.txt file in <git_repo_root>/docker for the latest packages
       opencv-python==4.5.5.64 \
       openpyxl==3.1.5 \
       pandas==2.2.1 \
-      panel==1.5.4 \
+      panel==1.5.5 \
       Pillow==10.2.0 \
       pika==1.3.1 \
       plotly==5.20.0 \

@@ -21,7 +21,6 @@ from pathlib import Path
 
 gear_root = Path(__file__).resolve().parents[2]
 lib_path = gear_root.joinpath('lib')
-print(lib_path, file=sys.stderr)
 
 sys.path.append(str(lib_path))
 from gear import spatialuploader
@@ -40,12 +39,28 @@ pn.extension('plotly'
 buttonsToRemove = ["zoom", "pan", "zoomIn", "zoomOut", "autoScale", "lasso2d"]
 
 class Settings(param.Parameterized):
+    """
+    Settings class for configuring parameters related to gene display and selection ranges.
+
+    Attributes:
+        gene_symbol (param.String): Gene symbol to display.
+        dataset_id (param.String): Dataset ID to display.
+        min_genes (param.Integer): Minimum number of genes per observation, with a default of 200 and bounds between 0 and 500.
+        selection_x1 (param.Integer): Left selection range.
+        selection_x2 (param.Integer): Right selection range.
+        selection_y1 (param.Integer): Upper selection range.
+        selection_y2 (param.Integer): Lower selection range.
+
+    Info on Param module can be found at https://param.holoviz.org/
+    """
+
     gene_symbol = param.String(doc="Gene symbol to display")
     dataset_id = param.String(doc="Dataset ID to display")
-    selection_x1 = param.Integer(doc="left selection range")
-    selection_x2 = param.Integer(doc="right selection range")
-    selection_y1 = param.Integer(doc="upper selection range")
-    selection_y2 = param.Integer(doc="lower selection range")
+    min_genes = param.Integer(doc="Minimum number of genes per observation", default=200, bounds=(0, 500))
+    selection_x1 = param.Number(doc="left selection range", allow_None=True)
+    selection_x2 = param.Number(doc="right selection range", allow_None=True)
+    selection_y1 = param.Number(doc="upper selection range", allow_None=True)
+    selection_y2 = param.Number(doc="lower selection range", allow_None=True)
 
 class SpatialPlot():
     """
@@ -106,7 +121,7 @@ class SpatialPlot():
             )
 
     def make_fig(self, static_size=False):
-        self.create_subplots()
+        self.create_subplots()  # sets self.fig
         self.update_axes()
         # domain is adjusted whether there are images or not
         if self.spatial_img is not None:
@@ -133,12 +148,18 @@ class SpatialPlot():
         # make legend markers bigger
         self.fig.update_layout(legend=dict(indentation=-15, itemsizing='constant', x=self.max_x2 + 0.01))
 
+        # Mirror the background color of visium images
+        # Do not set if image is present as there is a slight padding between data and axes ticks
+        plot_bgcolor = None
+        if self.spatial_img is None:
+            plot_bgcolor = "#99FFFF"
+
         # adjust domains of all 3 plots, leaving enough space for the colorbar and legend
         self.fig.update_layout(
             margin=dict(l=20, r=0, t=50, b=0),
             width=1920 if static_size else None,
             height=1080 if static_size else None,
-            plot_bgcolor="#CCFFFF", # Mirror the background color of visium images
+            plot_bgcolor=plot_bgcolor,
             # Set dragmode properties on the main figure
             dragmode=self.dragmode,
             selectdirection="d"
@@ -175,7 +196,13 @@ class SpatialPlot():
 
     def add_image_trace(self):
         self.convert_image()
-        image_trace = go.Image(source=self.base64_string, x0=self.range_x1, y0=self.range_y1)
+        # TODO: Currently if you hover over the image, this error appears: Can't serialize typed array of type 'Uint8ClampedArray'
+        # We can resolve this by adding the spatial img array to the "z" property, but this causes a big performance hit
+        # May need to convert the image to a different format or explore just using Bokeh instead of plotly, which seems more natural for Panel.
+        image_trace = go.Image(source=self.base64_string
+            , x0=self.range_x1
+            , y0=self.range_y1
+            )
         self.fig.add_trace(image_trace, row=1, col=1)
         self.fig.add_trace(image_trace, row=1, col=2)
         self.fig.add_trace(image_trace, row=1, col=3)
@@ -185,12 +212,8 @@ class SpatialNormalSubplot(SpatialPlot):
     Class for creating a spatial plot with a gene expression heatmap, cluster markers, and an image.
     """
 
-    def create_pane(self):
-        return pn.pane.Plotly(self.make_fig(static_size=True)
-                    , config={"doubleClick":"reset","displayModeBar":True, "modeBarButtonsToRemove": buttonsToRemove}
-                    , height=350
-                    , sizing_mode="stretch_width"
-                    )
+    def refresh_fig(self):
+        return self.make_fig(static_size=False)
 
 class SpatialZoomSubplot(SpatialPlot):
     """
@@ -203,12 +226,35 @@ class SpatialZoomSubplot(SpatialPlot):
         # Preserve the original dataframe for filtering
         self.orig_df = df
 
-    def create_pane(self):
-        return pn.pane.Plotly(self.make_fig(static_size=False)
-                    , config={'displayModeBar': False, 'doubleClick': None}
-                    , height=350
-                    , sizing_mode="stretch_width"
-                    )
+        # if all four selection range values are the same, they were not set in the query params, so use the default values
+        if settings.selection_x1 != settings.selection_x2 or settings.selection_y1 != settings.selection_y2:
+            # Occasionally, if a selection goes to the edge of the plot,
+            # the selection may not be modified and added to query_params,
+            # so use the default values if that happens
+            if settings.selection_x1:
+                self.range_x1 = settings.selection_x1
+            if settings.selection_x2:
+                self.range_x2 = settings.selection_x2
+            if settings.selection_y1:
+                self.range_y1 = settings.selection_y1
+            if settings.selection_y2:
+                self.range_y2 = settings.selection_y2
+
+            # Viewing a selection, so increase the marker size
+            self.calculate_marker_size()
+
+    def calculate_marker_size(self):
+        """Dynamically calculate the marker size based on the range of the selection."""
+        # Calculate the range of the selection
+        x_range = self.range_x2 - self.range_x1
+        y_range = self.range_y2 - self.range_y1
+
+        # Calculate the marker size based on the range of the selection
+        # The marker size will scale larger as the range of the selection gets more precise
+        self.marker_size = int(2 + 4000 / (x_range + y_range))
+
+    def refresh_fig(self):
+        return self.make_fig(static_size=False)
 
     def make_zoom_fig_callback(self, event):
         if event and "range" in event:
@@ -216,34 +262,36 @@ class SpatialZoomSubplot(SpatialPlot):
             x = "x" if "x" in event["range"] else "x2" if "x2" in event["range"] else "x3"
             y = "y" if "y" in event["range"] else "y2" if "y2" in event["range"] else "y3"
 
-            range_x1 = event["range"][x][0]
-            range_x2 = event["range"][x][1]
-            range_y1 = event["range"][y][0]
-            range_y2 = event["range"][y][1]
+            self.range_x1 = event["range"][x][0]
+            self.range_x2 = event["range"][x][1]
+            self.range_y1 = event["range"][y][0]
+            self.range_y2 = event["range"][y][1]
 
+            # Viewing a selection, so increase the marker size
+            self.calculate_marker_size()
+
+            # If no event, use the default values
             df = self.orig_df
 
             # Filter the data based on the selected range
-            self.df = df[(df["spatial1"] >= range_x1) & (df["spatial1"] <= range_x2) & (df["spatial2"] >= range_y1) & (df["spatial2"] <= range_y2)]
+            self.df = df[(df["spatial1"] >= self.range_x1) & (df["spatial1"] <= self.range_x2) & (df["spatial2"] >= self.range_y1) & (df["spatial2"] <= self.range_y2)]
 
-            self.range_x1 = range_x1
-            self.range_x2 = range_x2
-            self.range_y1 = range_y1
-            self.range_y2 = range_y2
-            self.expression_color = "YlOrRd"
-            self.marker_size = 7
+            settings.selection_x1 = self.range_x1
+            settings.selection_x2 = self.range_x2
+            settings.selection_y1 = self.range_y1
+            settings.selection_y2 = self.range_y2
 
             # TODO: Either a) clear selected points on "not this" plot or b) mirror selection on all plots
             # TODO: Sometimes the selection does not trigger the callback, need to investigate
 
-        return self.create_pane()
+        return self.refresh_fig()
 
 class SpatialPanel(pn.viewable.Viewer):
     """
     Class for prepping the spatial data and setting up the Panel app.
     """
 
-    def __init__(self, dataset_id, gene_symbol, min_genes=200, **params):
+    def __init__(self, dataset_id, gene_symbol, min_genes, **params):
         super().__init__(**params)
         self.dataset_id = dataset_id
         self.gene_symbol = gene_symbol
@@ -251,20 +299,35 @@ class SpatialPanel(pn.viewable.Viewer):
         self.prep_sdata()
         self.prep_adata()
 
-        self.min_genes_slider = pn.widgets.IntSlider(name='Filter - Mininum genes per observation', start=0, end=500, step=5, value=200)
-        self.refresh_dataframe(min_genes)
+        self.min_genes_slider = pn.widgets.IntSlider(name='Filter - Mininum genes per observation', start=0, end=500, step=25, value=min_genes)
 
-        pn.bind(self.refresh_dataframe, self.min_genes_slider.param.value_throttled, watch=True)
+        self.normal_fig = pn.bind(self.refresh_dataframe, self.min_genes_slider.param.value_throttled, watch=False)
 
 
     def __panel__(self):
+        # This is run when the app is loaded
+
+        normal_pane = pn.pane.Plotly(self.normal_fig
+                    , config={"doubleClick":"reset","displayModeBar":True, "modeBarButtonsToRemove": buttonsToRemove}
+                    , height=350
+                    , sizing_mode="stretch_width"
+                    )
+
+        self.zoom_fig = pn.bind(self.zoom_fig_obj.make_zoom_fig_callback, normal_pane.param.selected_data, watch=False)
+
+        zoom_pane = pn.pane.Plotly(self.zoom_fig
+                    , config={'displayModeBar': False, 'doubleClick': None}
+                    , height=350
+                    , sizing_mode="stretch_width"
+                    )
+
         return pn.Column(
             pn.pane.Markdown('## Select a region to modify zoomed in view in the bottom panel', height=30),
             self.min_genes_slider,
-            self.fig_pane,
+            normal_pane,
             pn.layout.Divider(height=5),    # default margins
             pn.pane.Markdown('## Zoomed in view',height=30),
-            self.zoom_pane,
+            zoom_pane,
             width=1100, height=725
         )
 
@@ -300,19 +363,23 @@ class SpatialPanel(pn.viewable.Viewer):
         # Each Image is downscaled (or upscaled) during rendering to fit a 2000x2000 pixels image (downscaled_hires)
         self.spatial_obj._convert_sdata_to_adata()
         adata = self.spatial_obj.adata
-
         self.spatial_img = None
         if self.has_images:
             img_name = self.spatial_obj.img_name
             self.spatial_img = adata.uns["spatial"][img_name]["images"]["hires"]
+
         self.adata = adata
+        self.orig_adata = adata.copy()  # Preserve the original adata for filtering
 
     def filter_adata(self):
+        # Need to make a copy of the original adata to avoid modifying the original (via inplace=True)
+        adata = self.orig_adata.copy()
         # Filter out cells that overlap with the blank space of the image.
-        sc.pp.filter_cells(self.adata, min_genes=self.min_genes)
-        sc.pp.normalize_total(self.adata, inplace=True)
-        sc.pp.log1p(self.adata)
-        self.adata.var_names_make_unique()
+        sc.pp.filter_cells(adata, min_genes=self.min_genes)
+        sc.pp.normalize_total(adata, inplace=True)
+        sc.pp.log1p(adata)
+        adata.var_names_make_unique()
+        self.adata = adata
 
     def create_gene_df(self):
         adata = self.adata
@@ -334,20 +401,40 @@ class SpatialPanel(pn.viewable.Viewer):
             raise ValueError("No cluster information found in adata.obs")
 
         df["clusters"] = selected.obs["clusters"].astype("category")
+
         # drop NaN clusters
         self.df = df.dropna(subset=["clusters"])
 
     def refresh_dataframe(self, min_genes):
+
         self.min_genes = min_genes
+
+        # If the min_genes value has changed...
+        if self.min_genes != settings.min_genes:
+            settings.min_genes = self.min_genes
+            # update selection range so that an unzoomed plot is generated if the slider has changed.
+            settings.selection_x1 = 0
+            settings.selection_x2 = 0
+            settings.selection_y1 = 0
+            settings.selection_y2 = 0
+
         self.filter_adata()
         self.create_gene_df()
         self.map_colors()
-        self.fig_subplot = SpatialNormalSubplot(self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, self.norm_gene_symbol, "YlGn", dragmode="select")
-        self.zoom_subplot = SpatialZoomSubplot(self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, "Local", "YlOrRd", dragmode=False)
 
-        self.fig_pane = self.fig_subplot.create_pane()
-        self.zoom_pane = pn.bind(self.zoom_subplot.make_zoom_fig_callback, self.fig_pane.param.selected_data, watch=False)
+        # destroy the old figure objects (to free up memory)
+        self.normal_fig_obj = None
+        self.zoom_fig_obj = None
 
+        self.normal_fig_obj = SpatialNormalSubplot(self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, self.norm_gene_symbol, "YlGn", dragmode="select")
+        self.zoom_fig_obj = SpatialZoomSubplot(self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, "Local", "YlOrRd", dragmode=False)
+
+        self.normal_fig = self.normal_fig_obj.refresh_fig()
+        # The pn.bind function for the zoom callback will not trigger when the normal_fig is refreshed.
+        self.zoom_fig = self.zoom_fig_obj.refresh_fig()
+
+        # Return for the bind function
+        return self.normal_fig
 
     def map_colors(self):
         df = self.df
@@ -383,32 +470,23 @@ def normalize_searched_gene(gene_set, chosen_gene):
 # https://github.com/bokeh/bokeh/issues/13229
 logging.getLogger().setLevel(logging.ERROR)
 
-""" TODO
 settings = Settings()
 pn.state.location.sync(settings, {
     'dataset_id': 'dataset_id'
     , 'gene_symbol': 'gene_symbol'
+    , 'min_genes': 'min_genes'
     , 'selection_x1': 'selection_x1'
     , 'selection_x2': 'selection_x2'
     , 'selection_y1': 'selection_y1'
     , 'selection_y2': 'selection_y2'})
-"""
 
 # If not params passed, just show OK as a way to test the app
 if not pn.state.location.query_params:
     pn.pane.Markdown("OK").servable()
 else:
-    if not "dataset_id" in pn.state.location.query_params:
-        raise ValueError("Please provide a dataset_id")
-
-    if not "gene_symbol" in pn.state.location.query_params:
-        raise ValueError("Please provide a gene_symbol")
-
-    dataset_id = pn.state.location.query_params["dataset_id"]
-    gene_symbol = pn.state.location.query_params["gene_symbol"]
 
     # Create the app
     # TODO: Defer loading of the images (https://panel.holoviz.org/how_to/callbacks/defer_load.html)
     # TODO: explore Datashader
     # TODO: Add some loading indicators for plot drawing (https://panel.holoviz.org/how_to/state/busy.html)
-    sp_panel = SpatialPanel(dataset_id, gene_symbol).servable(title="Spatial Data Viewer", location=True)
+    sp_panel = SpatialPanel(settings.dataset_id, settings.gene_symbol, settings.min_genes).servable(title="Spatial Data Viewer", location=True)
