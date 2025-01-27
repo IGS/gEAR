@@ -3,7 +3,7 @@ import base64
 import io
 import os
 import re
-from math import ceil, log2
+from math import ceil
 
 import geardb
 import matplotlib as mpl
