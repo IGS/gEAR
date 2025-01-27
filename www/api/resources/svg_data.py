@@ -41,7 +41,10 @@ class SvgData(Resource):
             }
 
         adata = sc.read_h5ad(h5_path)
-
+        # convert adata.X to a dense matrix if it is sparse
+        # This prevents issues with the min/max functions
+        adata.X = adata.X.todense()
+        
         if projection_id:
             try:
                 adata = create_projection_adata(adata, dataset_id, projection_id)
@@ -82,13 +85,13 @@ class SvgData(Resource):
         scores = {
             "dataset": {
                 "dataset_id": dataset_id,
-                "min": float(adata.X[~np.isnan(adata.X)].min()),
-                "max": float(adata.X[~np.isnan(adata.X)].max())
+                "min": float(np.nanmin(adata.X)),
+                "max": float(np.nanmax(adata.X))
             },
             "gene": {
                 "gene": gene_symbol,
-                "min": float(selected.X[~np.isnan(selected.X)].min()),
-                "max": float(selected.X[~np.isnan(selected.X)].max())
+                "min": float(np.nanmin(selected.X)),
+                "max": float(np.nanmax(selected.X))
             },
             "tissue": dict()
         }
@@ -97,8 +100,8 @@ class SvgData(Resource):
         for tissue in tissues:
             tissue_adata = adata[tissue, :]
             scores['tissue'][tissue] = {
-                "min": float(tissue_adata.X[~np.isnan(tissue_adata.X)].min()),
-                "max": float(tissue_adata.X[~np.isnan(tissue_adata.X)].max())
+                "min": float(np.nanmin(tissue_adata.X)),
+                "max": float(np.nanmax(tissue_adata.X))
             }
 
         # Close adata so that we do not have a stale opened object
