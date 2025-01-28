@@ -1256,7 +1256,20 @@ const apiCallsMixin = {
 
         return data;
     },
-
+    /**
+     * Fetches the spatial scanpy image for a given dataset, analysis, plot type, plot configuration, and other options.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} analysis - The analysis type.
+     * @param {object} plotConfig - The plot configuration.
+     * @param {object} [otherOpts={}] - Additional options for the request.
+     * @returns {Promise<any>} - A promise that resolves to the fetched data.
+     */
+    async fetchSpatialScanpyImage(datasetId, analysis, plotConfig, otherOpts={}) {
+        // NOTE: gene_symbol should already be already passed to plotConfig
+        const payload = { ...plotConfig, analysis, colorblind_mode: this.colorblindMode };
+        const {data} = await axios.post(`/api/plot/${datasetId}/spatial_scanpy`, payload, otherOpts);
+        return data;
+    },
     /**
      * Fetches the TSNE image for a given dataset, analysis, plot type, plot configuration, and other options.
      * @param {string} datasetId - The ID of the dataset.

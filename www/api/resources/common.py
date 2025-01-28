@@ -47,7 +47,7 @@ def get_adata_shadow_from_primary(h5_path):
 
 def get_adata_shadow(analysis_id, dataset_id, session_id, dataset_path):
     if dataset_path.endswith(".zarr"):
-        # It's spatial data
+        # It's spatial data... probably can't use AnnDataShadow
         return get_spatial_adata(analysis_id, dataset_id, session_id)
 
     if analysis_id:
@@ -62,7 +62,7 @@ def get_adata_shadow(analysis_id, dataset_id, session_id, dataset_path):
         adata = get_adata_from_analysis(analysis_id, dataset_id, session_id)
     return adata
 
-def get_spatial_adata(analysis_id, dataset_id, session_id):
+def get_spatial_adata(analysis_id, dataset_id, session_id, include_images=None):
     # Get spatial-based adata object.
     user = get_user_from_session_id(session_id)
     user_id = None
@@ -85,10 +85,17 @@ def get_spatial_adata(analysis_id, dataset_id, session_id):
     # Filter by bounding box (mostly for images)
     spatial_obj._filter_sdata_by_coords()
 
+    if include_images is None:
+        include_images = spatial_obj.has_images
+
     # Create AnnData object
     # Do not include images in the adata object (to make it lighter)
-    spatial_obj._convert_sdata_to_adata(include_images=False)
+    spatial_obj._convert_sdata_to_adata(include_images=include_images)
     adata = spatial_obj.adata
+    # Extra metadata to help with determining if images are available and where they are
+    adata.uns["has_images"] = spatial_obj.has_images
+    if spatial_obj.has_images:
+        adata.uns["img_name"] = spatial_obj.img_name
     return adata
 
 def create_projection_adata(dataset_adata, dataset_id, projection_id):

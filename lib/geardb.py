@@ -89,7 +89,7 @@ def get_verification_code_short_form(long_form):
     """
     return ''.join([x[0] for x in long_form.split('-')])
 
-def get_analysis(analysis, dataset_id, session_id):
+def get_analysis(analysis, dataset_id, session_id, is_spatial=False):
     """Return analysis object based on various factors."""
     # If an analysis is posted we want to read from its h5ad
     if analysis:
@@ -98,7 +98,11 @@ def get_analysis(analysis, dataset_id, session_id):
         if user:
             user_id = user.id
 
-        ana = Analysis(id=analysis['id'], dataset_id=dataset_id,
+        if is_spatial:
+            ana = SpatialAnalysis(id=analysis['id'], dataset_id=dataset_id,
+                                session_id=session_id, user_id=user_id)
+        else:
+            ana = Analysis(id=analysis['id'], dataset_id=dataset_id,
                                 session_id=session_id, user_id=user_id)
 
         if 'type' in analysis:

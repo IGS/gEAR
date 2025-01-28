@@ -510,12 +510,20 @@ class DatasetTile {
             try {
                 const cardImage = tileElement.querySelector('.card-image');
                 cardImage.replaceChildren();
-                const iframe = document.createElement("iframe");
-                // srcDoc html requires Panel static files to be served from the same domain, so use src instead
-                iframe.src = url;
-                iframe.loading="lazy";
-                iframe.sandbox="allow-scripts";// allow-same-origin";
-                cardImage.append(iframe);
+
+                // Create div element under .card-image, in this we will retrieve image data from an api call and re
+                this.gene_symbols = orthologs;
+                await this.renderSpatialScanpyDisplay(null, null);
+
+                if (this.type == "single") {
+                    const iframe = document.createElement("iframe");
+                    // srcDoc html requires Panel static files to be served from the same domain, so use src instead
+                    iframe.src = url;
+                    iframe.loading="lazy";
+                    iframe.sandbox="allow-scripts";// allow-same-origin";
+                    cardImage.prepend(iframe);
+                }
+
             } catch (error) {
                 console.error(error);
             } finally {
@@ -1576,12 +1584,6 @@ class DatasetTile {
 
         // decode base64 image and set as src
         tsnePreview.src = URL.createObjectURL(blob);
-
-        tsnePreview.onload = () => {
-            // Revoke the object URL to free up memory
-            // ! This does prevent right-click saving though
-            //URL.revokeObjectURL(tsnePreview.src);
-        }
         return;
     }
 
@@ -1667,8 +1669,76 @@ class DatasetTile {
         plotContainer.replaceChildren();    // erase plot
 
         colorSVG(data, plotConfig.colors, datasetId, this.tile.tileId, svgScoringMethod);
-
     }
+
+    /**
+     * Renders the spatial-based Scanpy display on the tile grid.
+     *
+     * @param {Object} display - The display object containing the dataset and plot information.
+     * @param {Object} otherOpts - Additional options for rendering the display.
+     * @returns {Promise<void>} - A promise that resolves when the display is rendered.
+     * @throws {Error} - If there is an error fetching the image data or if the image data is not available.
+     */
+    async renderSpatialScanpyDisplay(display, otherOpts) {
+
+        const datasetId = this.dataset.id;
+        const analysisObj = null
+        const plotConfig = {gene_symbols: this.gene_symbols};   // applies for single and multi gene
+
+        this.resetAbortController();
+        otherOpts = {}
+        if (this.controller) {
+            otherOpts.signal = this.controller.signal;
+        }
+
+
+        /* NOT IMPLEMENTED YET
+        const datasetId = display.dataset_id;
+        // Create analysis object if it exists.  Also supports legacy "analysis_id" string
+        const analysisObj = display.plotly_config.analysis_id ? {id: display.plotly_config.analysis_id} : display.plotly_config.analysis || null;
+        const plotConfig = display.plotly_config;
+        */
+
+        const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
+        if (!this.isZoomed) {
+            plotConfig.grid_spec = tileElement.style.gridArea   // add grid spec to plot config
+            if (plotConfig.grid_spec === "auto") delete plotConfig.grid_spec;   // single dataset grid spec
+        }
+
+        const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
+        if (!plotContainer) return; // tile was removed before data was returned
+        plotContainer.replaceChildren();    // erase plot
+
+        const spatialPreview = document.createElement("img");
+        spatialPreview.classList.add("image", "is-fullwidth");
+        spatialPreview.id = `tile-${this.tile.tileId}-spatial-preview`;
+        plotContainer.append(spatialPreview);
+
+        const data = await apiCallsMixin.fetchSpatialScanpyImage(datasetId, analysisObj, plotConfig, otherOpts);
+        if (data?.success < 1) {
+            throw new Error (data?.message ? data.message : "Unknown error.")
+        }
+        const {image} = data;
+
+        if (!image) {
+            console.warn(`Could not retrieve spatial plot image data for dataset ${datasetId}. Cannot make plot.`);
+            //console.warn(`Could not retrieve plot image for dataset display ${display.id}. Cannot make plot.`);
+            return;
+        }
+
+        const blob = await fetch(`data:image/webp;base64,${image}`).then(r => r.blob());
+
+        // decode base64 image and set as src
+        spatialPreview.src = URL.createObjectURL(blob);
+
+        spatialPreview.onload = () => {
+            // Revoke the object URL to free up memory
+            // ! This does prevent right-click saving though
+            //URL.revokeObjectURL(spatialPreview.src);
+        }
+        return;
+    }
+
 
     /**
      * Resets the AbortController and cancels any previous axios requests.
