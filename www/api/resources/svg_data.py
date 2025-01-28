@@ -43,7 +43,10 @@ class SvgData(Resource):
         adata = sc.read_h5ad(h5_path)
         # convert adata.X to a dense matrix if it is sparse
         # This prevents issues with the min/max functions
-        adata.X = adata.X.todense()
+        try:
+            adata.X = adata.X.todense()
+        except:
+            pass
         
         if projection_id:
             try:
