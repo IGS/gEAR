@@ -4,9 +4,11 @@ import io
 import geardb
 import matplotlib as mpl
 mpl.use("Agg")  # Prevents the need for a display when plotting, also thread-safe
-import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import scanpy as sc
+
+import plotly.express as px
+
 
 from flask import request
 from flask_restful import Resource
@@ -30,6 +32,22 @@ This API request will take a selection of genes and create a matplotlib figure w
 
 """
 
+def map_colors(adata):
+    # Assuming df is your DataFrame and it has a column "clusters"
+    unique_clusters = adata.obs["clusters"].unique()
+    # sort unique clusters by number
+    unique_clusters = sorted(unique_clusters, key=lambda x: int(x))
+    color_map = None
+    if "colors" in adata.obs.columns:
+        color_map = {cluster: adata.obs[adata.obs["clusters"] == cluster]["colors"].values[0] for cluster in unique_clusters}
+    else:
+        color_map = {cluster: px.colors.qualitative.Alphabet[i % len(px.colors.qualitative.Alphabet)] for i, cluster in enumerate(unique_clusters)}
+
+    # Scanpy checks for the existence of adata.uns["cluster_colors"] to determine whether to use the default color map
+    adata.uns["clusters_colors"] = [color_map[cluster] for cluster in unique_clusters]
+
+    return adata
+
 def normalize_gene_symbols(dataset_genes, chosen_genes):
     """Convert to case-insensitive.  Also will not add chosen gene if not in gene list."""
     case_insensitive_genes = [g for cg in chosen_genes for g in dataset_genes if cg.lower() == g.lower()]
@@ -44,24 +62,32 @@ def create_plot(adata, gene_symbols, colorblind_mode):
         umap_color_map = "inferno"
 
     # Split into 2 top/bottom subfigures.  Top side will be spatial and umap plots, and bottom side will be "stacked violin" plot
-    io_fig = plt.figure(figsize=(25, 10))
-    subfigs = io_fig.subfigures(2,1)
+    io_fig = plt.figure(figsize=(20, 10))
+    subfigs = io_fig.subfigures(2,1, height_ratios=[1, 0.5])
 
     extra_plots = 1
     library_id = None
     img_key = None
+    spot_size = 10   # Must be provided if no image found.  Otherwise auto-calculated.
     # The spatial function was meant for Visium data loaded through the spatialdata package. It requires a library_id and img_key to show images.
     if (adata.uns["has_images"]):
         extra_plots = 2
         library_id = adata.uns["img_name"]
         img_key = "hires"
+        spot_size = None
 
     # Spatial and UMAP plots
     ax0 = subfigs[0].subplots(2, len(gene_symbols)+extra_plots)
     ax_col = 0
 
     for gene in gene_symbols:
-        sc.pl.spatial(adata, img_key=img_key, color=gene, size=2, library_id=library_id, ax=ax0[0][ax_col], color_map=spatial_color_map, show=False)
+        if adata.uns["has_images"]:
+            sc.pl.spatial(adata, img_key=img_key, color=gene, size=2, library_id=library_id, ax=ax0[0][ax_col], color_map=spatial_color_map, show=False)
+        else:
+            sc.pl.embedding(adata, basis="spatial", color=gene, size=5, ax=ax0[0][ax_col], color_map=spatial_color_map, show=False)
+            # set background color to light blue so that low expression (yellow) points are more visible
+            ax0[0][ax_col].set_facecolor("#99FFFF")
+
         sc.pl.umap(adata, color=gene, ax=ax0[1][ax_col], color_map=umap_color_map, na_color="gray", show=False)
 
         # remove umap title (using title=None doesn't work)
@@ -69,7 +95,13 @@ def create_plot(adata, gene_symbols, colorblind_mode):
         ax_col +=1
 
     # clusters
-    sc.pl.spatial(adata, img_key=img_key, color="clusters", size=2, library_id=library_id, legend_loc=None, ax=ax0[0][ax_col], show=False)
+    if adata.uns["has_images"]:
+        sc.pl.spatial(adata, img_key=img_key, color="clusters", size=2, spot_size=spot_size, library_id=library_id, legend_loc=None, ax=ax0[0][ax_col], show=False)
+    else:
+        sc.pl.embedding(adata, basis="spatial", color="clusters", size=5, legend_loc=None, ax=ax0[0][ax_col], show=False)
+        # set background color to light blue so that low expression (yellow) points are more visible
+        ax0[0][ax_col].set_facecolor("#99FFFF")
+
     sc.pl.umap(adata, color="clusters", ax=ax0[1][ax_col], show=False)
 
     # remove umap title (using title=None doesn't work)
@@ -79,29 +111,37 @@ def create_plot(adata, gene_symbols, colorblind_mode):
         ax_col +=1
 
         # blank image
-        sc.pl.spatial(adata, img_key=img_key, color=None, size=2, library_id=library_id, ax=ax0[0][ax_col], show=False)
+        sc.pl.spatial(adata, img_key=img_key, color=None, size=2, spot_size=spot_size, library_id=library_id, ax=ax0[0][ax_col], show=False)
 
         # remove axes for ax0[ax_row][1] (no umap blank image)
         ax0[1][ax_col].axis("off")
 
     # Stacked Violin plot
     ax1 = subfigs[1].subplots(nrows=1, ncols=1)
+    # make the aspect shorter
 
-    violin_fig = sc.pl.stacked_violin(adata, gene_symbols, title="Marker gene expression per cluster", groupby="clusters", ax=ax1, row_palette="Blue", show=False, return_fig=True)
+    if len(gene_symbols) > 1:
 
-    # Remove the existing legend and add a new vertically-oriented one
-    # Need to make the figure to have it generate axes.
-    violin_fig.add_totals()
-    violin_fig.make_figure()
+        violin_fig = sc.pl.stacked_violin(adata, gene_symbols, title="Marker gene expression per cluster", groupby="clusters", ax=ax1, row_palette="Blue", show=False, return_fig=True)
 
-    # At this point, the figure has a spacer above the plot that we need to remove
-    # For some reason, deleting all axes and remaking the figure removes the spacer above the plot (which was in ax[2] I think)
-    violin_axes = violin_fig.fig.get_axes()
-    for ax in violin_axes:
-        violin_fig.fig.delaxes(ax)
+        # Remove the existing legend and add a new vertically-oriented one
+        # Need to make the figure to have it generate axes.
+        violin_fig.add_totals()
+        violin_fig.make_figure()
 
-    #violin_fig.swap_axes()
-    #violin_fig.make_figure()
+        # At this point, the figure has a spacer above the plot that we need to remove
+        # For some reason, deleting all axes and remaking the figure removes the spacer above the plot (which was in ax[2] I think)
+        violin_axes = violin_fig.fig.get_axes()
+        for ax in violin_axes:
+            violin_fig.fig.delaxes(ax)
+
+        violin_fig.swap_axes()
+        violin_fig.make_figure()
+    else:
+        sc.pl.violin(adata, gene_symbols[0], groupby="clusters", ax=ax1, show=False)
+        # hide legend
+        ax1.get_legend().remove()
+
     return io_fig
 
 class SpatialScanpyData(Resource):
@@ -188,6 +228,8 @@ class SpatialScanpyData(Resource):
         adata.var_names_make_unique()
         dataset_gene_symbols = adata.var.index.tolist()
         gene_symbols = normalize_gene_symbols(dataset_gene_symbols, gene_symbols)
+
+        adata = map_colors(adata)
 
         io_fig = create_plot(adata, gene_symbols, colorblind_mode)
 
