@@ -159,6 +159,45 @@ def get_dataset_by_id(id=None, include_shape=None):
     conn.close()
     return dataset
 
+def get_dataset_by_share_id(share_id=None, include_shape=None):
+    """
+    Given a dataset share ID string this returns a Dataset object with all attributes
+    populated which come directly from the table.  Secondary things, such as tags,
+    must be loaded separately.
+
+    Returns None if no dataset of that shareID is found.
+    """
+
+    conn = Connection()
+    cursor = conn.get_cursor()
+
+    qry = """
+         SELECT id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc, date_added,
+                dtype, schematic_image, share_id, math_default, marked_for_removal, load_status,
+                has_h5ad
+           FROM dataset
+          WHERE share_id = %s
+    """
+    cursor.execute(qry, (share_id, ))
+    dataset = None
+
+    for (id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc, date_added,
+         dtype, schematic_image, share_id, math_default, marked_for_removal, load_status,
+         has_h5ad) in cursor:
+        dataset = Dataset(id=id, owner_id=owner_id, title=title, organism_id=organism_id,
+                          pubmed_id=pubmed_id, geo_id=geo_id, is_public=is_public, is_downloadable=is_downloadable, ldesc=ldesc,
+                          date_added=date_added, dtype=dtype, schematic_image=schematic_image,
+                          share_id=share_id, math_default=math_default,
+                          marked_for_removal=marked_for_removal, load_status=load_status,
+                          has_h5ad=has_h5ad)
+
+    if include_shape == '1':
+        dataset.get_shape()
+
+    cursor.close()
+    conn.close()
+    return dataset
+
 def get_dataset_by_title(title=None, include_shape=None):
     """
     Given a dataset title string this returns a Dataset object with all attributes
@@ -1848,6 +1887,44 @@ class Dataset:
         conn.close()
 
         return self.displays
+    
+    def get_owner_display(self, is_multigene=False):
+        """
+        Returns the display object for the owner of the dataset.
+        """
+        if self.owner_id is None:
+            return None
+
+        qry = """
+              SELECT dd.id, dd.label, dd.plot_type, dd.plotly_config
+                FROM dataset d
+                    JOIN dataset_display dd ON d.id = dd.dataset_id
+                    JOIN dataset_preference dp ON d.id=dp.dataset_id
+                WHERE dp.user_id = d.owner_id
+                AND dd.user_id = d.owner_id
+                AND dp.is_multigene = %s
+                AND d.id = %s;
+        """
+        conn = Connection()
+        cursor = conn.get_cursor()
+
+        cursor.execute(qry, (is_multigene, self.id))
+
+        for row in cursor:
+            display = DatasetDisplay(
+                id=row[0],
+                dataset_id=self.id,
+                user_id=self.owner_id,
+                label=row[1],
+                plot_type=row[2],
+                plotly_config=row[3]
+            )
+
+            cursor.close()
+            conn.close()
+            return display
+
+        return None
 
     def get_file_path(self, session_id=None):
         """
