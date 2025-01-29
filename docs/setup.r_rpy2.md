@@ -1,6 +1,6 @@
 # Setting up R, projectR, and the rpy2 module
 
-The base version of R installed on Ubuntu Bionic (18.04) is not a high enough version to install projectR. So we need to install manually.
+Rather than using the OS' package manager to install R, we'll use the steps/script below to do it so we can more carefully control versioning.
 
 ## Prerequesites to install via apt-get
 
