@@ -28,9 +28,7 @@ Follow instructions in our setup.mysql.md document
 
 Not necessary if you want projectR to run on a Google Cloud Run service (configurable in gear.ini)
 
-`sudo apt install r-base`
-
-Please consult `setup.r_rpy2.md` for packages to install in order to install requisite R packages
+Please consult `setup.r_rpy2.md` for packages to install in order to install R and requisite R packages
 
 ### RabbitMQ
 
