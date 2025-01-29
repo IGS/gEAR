@@ -2382,11 +2382,8 @@ class Gene:
                     self.dbxrefs.append({'source': 'DVD', 'identifier': self.gene_symbol, 'url': dvd_url, 'title': 'Deafness Variation Database'})
 
         elif this.domain_label == 'nemo':
-            # Add one for UCSC Cell Browser, BrainSpan
-            self.dbxrefs.append({'source': 'UCSC Cell Browser', 'identifier': self.gene_symbol.upper(), 'url': None})
-            self.dbxrefs.append({'source': 'BrainSpan', 'identifier': self.gene_symbol.upper(), 'url': None})
-            self.dbxrefs.append({'source': 'Cortecon', 'identifier': self.gene_symbol.upper(), 'url': None})
-
+            pass
+            
         for dbxref in self.dbxrefs:
             source = dbxref['source']
 
@@ -2398,12 +2395,6 @@ class Gene:
                 if self.organism_id == 1:
                     dbxref['url'] = ("http://genome.ucsc.edu/cgi-bin/hgTracks?org=mouse&db=mm10&"
                                      "singleSearch=knownCanonical&position={0}".format(dbxref['identifier']))
-            elif source == 'UCSC Cell Browser':
-                dbxref['url'] = "https://cells.ucsc.edu/?ds=cortex-dev&gene={0}".format(dbxref['identifier'])
-            elif source == 'BrainSpan':
-                dbxref['url'] = "http://www.brainspan.org/rnaseq/searches?exact_match=true&search_term={0}&search_type=gene".format(dbxref['identifier'])
-            elif source == 'Cortecon':
-                dbxref['url'] = "http://cortecon.neuralsci.org/index.php?genestring={0}&cort_mode=genesearch".format(dbxref['identifier'])
             elif source == 'UniParc':
                 dbxref['url'] = "https://www.uniprot.org/uniparc/{0}?sort=score".format(dbxref['identifier'])
             elif source == 'Uniprot/SWISSPROT':
