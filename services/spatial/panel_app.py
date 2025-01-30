@@ -129,13 +129,13 @@ class SpatialPlot():
         if self.spatial_img is not None:
             self.fig.update_layout(
                 xaxis=dict(domain=[0, 0.26]),
-                xaxis2=dict(domain=[0.33, 0.59]),
+                xaxis2=dict(domain=[0.33, 0.59]),  # Leave room for cluster annotations
                 xaxis3=dict(domain=[0.74, 1.00]),
             )
         else:
             self.fig.update_layout(
                 xaxis=dict(domain=[0, 0.4]),
-                xaxis2=dict(domain=[0.5, 0.90]),
+                xaxis2=dict(domain=[0.5, 0.90]),  # Leave room for cluster annotations
             )
 
         # Get max domain for axis 1 and axis 2
@@ -218,8 +218,112 @@ class SpatialNormalSubplot(SpatialPlot):
     Class for creating a spatial plot with a gene expression heatmap, cluster markers, and an image.
     """
 
-    def refresh_fig(self):
+    def refresh_spatial_fig(self):
         return self.make_fig(static_size=False)
+
+    def make_umap_plots(self):
+        df = self.df
+        # Make "clusters" a category so that a legend will be created
+        df["clusters"] = df["clusters"].astype("category")
+        fig = make_subplots(rows=1, cols=2, column_titles=(f"{self.expression_name} UMAP", "clusters UMAP"), horizontal_spacing=0.1)
+
+        fig.update_layout(
+            xaxis=dict(domain=[0, 0.4]),
+            xaxis2=dict(domain=[0.5, 0.90]),  # Leave room for cluster annotations
+        )
+
+        max_x1 = fig.layout.xaxis.domain[1]
+        max_x2 = fig.layout.xaxis2.domain[1]
+
+        fig.add_scatter(col=1, row=1
+                        , x=df["UMAP1"]
+                        , y=df["UMAP2"]
+                        , mode="markers"
+
+                        , marker=dict(color=df["raw_value"]
+                            , colorscale="cividis_r"
+                            , size=2
+                            , colorbar=dict(
+                                len=1  # Adjust the length of the colorbar
+                                , thickness=15  # Adjust the thickness of the colorbar (default is 30)
+                                , x=max_x1  # Adjust the x position of the colorbar
+                                )
+                            )
+                        , showlegend=False
+                        , hovertemplate="Expression: %{marker.color:.2f}<extra></extra>"
+                        )
+
+        # Process clusters as individual traces so that all show on the legend
+        df["clusters"] = df["clusters"].astype("category")
+        sorted_clusters = sorted(df["clusters"].unique(), key=lambda x: int(x))
+        for cluster in sorted_clusters:
+            cluster_data = df[df["clusters"] == cluster]
+            fig.add_trace(go.Scattergl(
+                x=cluster_data["UMAP1"]
+                , y=cluster_data["UMAP2"]
+                , mode="markers"
+                , marker=dict(
+                    color=cluster_data["colors"]
+                    , size=2
+                    )
+                , name=str(cluster)
+                , text=cluster_data["clusters"]
+                ), col=2, row=1)
+
+        fig.update_xaxes(showgrid=False, showticklabels=False, ticks="", title_text="UMAP1")
+        fig.update_yaxes(showgrid=False, showticklabels=False, ticks="", title_text="UMAP2", title_standoff=0)
+
+        # make legend markers bigger
+        fig.update_layout(legend=dict(indentation=-15, itemsizing='constant', x=max_x2))
+
+        fig.update_layout(
+            margin=dict(l=20, r=0, t=50, b=10),
+            width=None,
+            height=None,
+            dragmode=False,
+            selectdirection="d"
+        )
+
+        return fig
+
+    def make_violin_plot(self):
+        df = self.df
+        # Make "clusters" a category so that the violin plot will sort the clusters in order
+        df["clusters"] = df["clusters"].astype("category")
+
+        fig = go.Figure()
+        fig.update_layout(xaxis=dict(domain=[0, 0.90])) # Leave room for cluster annotations
+
+        xmax = fig.layout.xaxis.domain[1]
+
+        # Process clusters as individual traces so that the violin widths are scaled correctly
+        sorted_clusters = sorted(df["clusters"].unique(), key=lambda x: int(x))
+        for cluster in sorted_clusters:
+            cluster_data = df[df["clusters"] == cluster]
+            fig.add_trace(go.Violin(
+                x=cluster_data["clusters"]
+                , y=cluster_data["raw_value"]
+                , fillcolor=self.color_map[cluster]
+                , line_color=self.color_map[cluster]
+                , marker=dict(
+                    color="#000000"
+                    , size=1
+                    )
+                , name=str(cluster)
+                ))
+
+        fig.update_layout(legend=dict(indentation=-15, itemsizing='constant', x=xmax))
+
+
+        fig.update_layout(
+            margin=dict(l=20, r=0, t=50, b=10),
+            width=None,
+            height=None,
+            dragmode=False,
+            selectdirection="d"
+        )
+
+        return fig
 
 class SpatialZoomSubplot(SpatialPlot):
     """
@@ -259,7 +363,7 @@ class SpatialZoomSubplot(SpatialPlot):
         # The marker size will scale larger as the range of the selection gets more precise
         self.marker_size = int(2 + 4000 / (x_range + y_range))
 
-    def refresh_fig(self):
+    def refresh_spatial_fig(self):
         return self.make_fig(static_size=False)
 
     def make_zoom_fig_callback(self, event):
@@ -290,7 +394,7 @@ class SpatialZoomSubplot(SpatialPlot):
             # TODO: Either a) clear selected points on "not this" plot or b) mirror selection on all plots
             # TODO: Sometimes the selection does not trigger the callback, need to investigate
 
-        return self.refresh_fig()
+        return self.refresh_spatial_fig()
 
 class SpatialPanel(pn.viewable.Viewer):
     """
@@ -327,6 +431,18 @@ class SpatialPanel(pn.viewable.Viewer):
                     , sizing_mode="stretch_width"
                     )
 
+        umap_pane = pn.pane.Plotly(self.umap_fig
+                    , config={"displayModeBar": False}
+                    , height=350
+                    , sizing_mode="stretch_width"
+                    )
+
+        violin_pane = pn.pane.Plotly(self.violin_fig
+                    , config={"displayModeBar": False}
+                    , height=350
+                    , sizing_mode="stretch_width"
+                    )
+
         return pn.Column(
             pn.pane.Markdown('## Select a region to modify zoomed in view in the bottom panel', height=30),
             self.min_genes_slider,
@@ -334,7 +450,13 @@ class SpatialPanel(pn.viewable.Viewer):
             pn.layout.Divider(height=5),    # default margins
             pn.pane.Markdown('## Zoomed in view',height=30),
             zoom_pane,
-            width=1100, height=725
+            pn.layout.Divider(height=5),    # default margins
+            pn.pane.Markdown("## UMAP plots", height=30),
+            umap_pane,
+            pn.layout.Divider(height=5),    # default margins
+            pn.pane.Markdown("## Violin plot", height=30),
+            violin_pane,
+            width=1100, height=1520
         )
 
     def prep_sdata(self):
@@ -384,6 +506,10 @@ class SpatialPanel(pn.viewable.Viewer):
         sc.pp.filter_cells(adata, min_genes=self.min_genes)
         sc.pp.normalize_total(adata, inplace=True)
         sc.pp.log1p(adata)
+
+        sc.pp.pca(adata)
+        sc.pp.neighbors(adata)
+        sc.tl.umap(adata)
         adata.var_names_make_unique()
         self.adata = adata
 
@@ -401,6 +527,10 @@ class SpatialPanel(pn.viewable.Viewer):
         X, Y = (0, 1)
         df["spatial1"] = selected.obsm["spatial"].transpose()[X].tolist()
         df["spatial2"] = selected.obsm["spatial"].transpose()[Y].tolist()
+
+        # Add UMAP coords
+        df["UMAP1"] = selected.obsm["X_umap"].transpose()[X].tolist()
+        df["UMAP2"] = selected.obsm["X_umap"].transpose()[Y].tolist()
 
         # Add cluster info
         if "clusters" not in selected.obs:
@@ -435,9 +565,12 @@ class SpatialPanel(pn.viewable.Viewer):
         self.normal_fig_obj = SpatialNormalSubplot(self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, self.norm_gene_symbol, "YlGn", dragmode="select")
         self.zoom_fig_obj = SpatialZoomSubplot(self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, "Local", "YlOrRd", dragmode=False)
 
-        self.normal_fig = self.normal_fig_obj.refresh_fig()
+        self.normal_fig = self.normal_fig_obj.refresh_spatial_fig()
         # The pn.bind function for the zoom callback will not trigger when the normal_fig is refreshed.
-        self.zoom_fig = self.zoom_fig_obj.refresh_fig()
+        self.zoom_fig = self.zoom_fig_obj.refresh_spatial_fig()
+
+        self.umap_fig = self.normal_fig_obj.make_umap_plots()
+        self.violin_fig = self.normal_fig_obj.make_violin_plot()
 
         # Return for the bind function
         return self.normal_fig
@@ -454,7 +587,7 @@ class SpatialPanel(pn.viewable.Viewer):
         else:
             self.color_map = {cluster: px.colors.qualitative.Alphabet[i % len(px.colors.qualitative.Alphabet)] for i, cluster in enumerate(self.unique_clusters)}
             # Map the colors to the clusters
-            df["color"] = df["clusters"].map(self.color_map)
+            df["colors"] = df["clusters"].map(self.color_map)
         self.df = df
 
 

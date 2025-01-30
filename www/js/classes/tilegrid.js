@@ -511,9 +511,12 @@ class DatasetTile {
                 const cardImage = tileElement.querySelector('.card-image');
                 cardImage.replaceChildren();
 
+                if (this.type == "multi") {
                 // Create div element under .card-image, in this we will retrieve image data from an api call and re
                 this.gene_symbols = orthologs;
                 await this.renderSpatialScanpyDisplay(null, null);
+                }
+
 
                 if (this.type == "single") {
                     const iframe = document.createElement("iframe");
