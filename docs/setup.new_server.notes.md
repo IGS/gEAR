@@ -49,8 +49,6 @@ Follow instructions in setup.apache.md document
 ### gEAR portal
 
 ```bash
-cd ~/git
-git clone https://github.com/jorvis/gEAR.git
 cd /var
 sudo rm -rf www && sudo ln -s ~/git/gEAR/www
 ```
