@@ -63,7 +63,7 @@ def create_plot(adata, gene_symbols, colorblind_mode):
 
     # Split into 2 top/bottom subfigures.  Top side will be spatial and umap plots, and bottom side will be "stacked violin" plot
     io_fig = plt.figure(figsize=(20, 10))
-    subfigs = io_fig.subfigures(2,1, height_ratios=[1, 0.5])
+    subfigs = io_fig.subfigures(2,1, height_ratios=[1, 0.5], hspace=0.05)
 
     extra_plots = 1
     library_id = None
@@ -118,25 +118,35 @@ def create_plot(adata, gene_symbols, colorblind_mode):
 
     # Stacked Violin plot
     ax1 = subfigs[1].subplots(nrows=1, ncols=1)
-    # make the aspect shorter
 
     if len(gene_symbols) > 1:
 
-        violin_fig = sc.pl.stacked_violin(adata, gene_symbols, title="Marker gene expression per cluster", groupby="clusters", ax=ax1, row_palette="Blue", show=False, return_fig=True)
+        # Currently there is a bug with retrieving categorical x-labels (clusters) after swapping axes.
+
+
+        violin_fig = sc.pl.stacked_violin(adata, gene_symbols, swap_axes=True, title="Marker gene expression per cluster", groupby=clusters, ax=ax1, row_palette="Blue", show=False, return_fig=True)
 
         # Remove the existing legend and add a new vertically-oriented one
         # Need to make the figure to have it generate axes.
         violin_fig.add_totals()
+        #violin_fig.swap_axes()
         violin_fig.make_figure()
 
+
+        """
         # At this point, the figure has a spacer above the plot that we need to remove
         # For some reason, deleting all axes and remaking the figure removes the spacer above the plot (which was in ax[2] I think)
         violin_axes = violin_fig.fig.get_axes()
+        import sys
+        print(violin_axes, file=sys.stderr)
+
         for ax in violin_axes:
             violin_fig.fig.delaxes(ax)
 
         violin_fig.swap_axes()
         violin_fig.make_figure()
+        """
+
     else:
         sc.pl.violin(adata, gene_symbols[0], groupby="clusters", ax=ax1, show=False)
         # hide legend
