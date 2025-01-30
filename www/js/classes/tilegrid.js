@@ -505,7 +505,7 @@ class DatasetTile {
             const urlParams = new URLSearchParams();
             urlParams.append("dataset_id", this.dataset.id);
             urlParams.append("gene_symbol", orthologs[0]);
-            const url = `/panel/panel_app?${urlParams.toString()}`;
+            const url = `/panel/ws/panel_app?${urlParams.toString()}`;
 
             try {
                 const cardImage = tileElement.querySelector('.card-image');

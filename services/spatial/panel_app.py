@@ -312,6 +312,10 @@ class SpatialNormalSubplot(SpatialPlot):
                 , name=str(cluster)
                 ))
 
+        # xaxis needs to be categorical, even for numerical values
+        fig.update_xaxes(type="category", title_text="Clusters")
+        fig.update_yaxes(title_text="Expression", title_standoff=0)
+
         fig.update_layout(legend=dict(indentation=-15, itemsizing='constant', x=xmax))
 
 
@@ -573,6 +577,7 @@ class SpatialPanel(pn.viewable.Viewer):
         self.violin_fig = self.normal_fig_obj.make_violin_plot()
 
         # Return for the bind function
+        # TODO: Figure out how to bind the other 3 figs to the slider value
         return self.normal_fig
 
     def map_colors(self):
