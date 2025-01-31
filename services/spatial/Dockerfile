@@ -23,7 +23,7 @@ COPY . ./
 # Install production dependencies.
 RUN pip install -r requirements.txt
 
-# Run the web service on container startup.
-CMD ["panel", "serve", "panel_app.py", "--address", "0.0.0.0", "--port", "8081", "--num-threads", "4", "--allow-websocket-origin", "*", "--global-loading-spinner"]
+EXPOSE 5006
 
-# Note: I set this to 8081 so I can use as a standalone image, where 8080 is used by the main app
+# Run the web service on container startup.
+CMD ["panel", "serve", "panel_app.py", "--address", "0.0.0.0", "--port", "5006", "--num-threads", "4", "--allow-websocket-origin", "*", "--global-loading-spinner"]

@@ -43,7 +43,7 @@ services:
     networks:
       - gear
     ports:
-      - "8081:8081" # host:container
+      - "5006:5006" # host:container
     restart: always
     volumes:
       - <dataset_path>:/gEAR/www/datasets
