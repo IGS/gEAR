@@ -2,8 +2,7 @@
 
 ## Overview
 
-These are instructions for setting up the Python environment for Python
-environment, tested on Ubuntu 22.04.  Why not virtualenv or any
+These are instructions for setting up the Python environment, tested on Ubuntu 22.04.  Why not virtualenv or any
 other isolated python environment?  You could, but for a committed
 webserver that's an unnecessary layer.  Also, maybe I'm old-school, but
 fixed paths have worked fine for decades.
