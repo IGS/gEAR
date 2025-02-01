@@ -78,7 +78,7 @@ def main():
         params[key] = gene_cart
 
     if multi:
-        key = "multigene_plots"
+        key = "is_multigene"
         if page == "p":
             key = "multipattern_plots"
         params[key] = multi
