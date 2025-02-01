@@ -7,6 +7,7 @@ Instances of a gEAR Portal are most often run within a cloud instance, where you
 ```bash
     sudo apt update
     sudo apt upgrade
+    sudo apt install build-essential
 ```
 
 Reboot if there are kernel updates (or just to be safe if you don't know.)
