@@ -423,6 +423,9 @@ const datasetTree = new DatasetTree({
             return;
         }
 
+        // Clear previous plot style so that configs don't get mixed up
+        plotStyle = null;
+
         datasetId = newDatasetId;
 
         // Click to get to next step

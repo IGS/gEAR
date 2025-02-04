@@ -543,6 +543,8 @@ class ScanpyHandler extends PlotHandler {
 class SvgHandler extends PlotHandler {
     constructor() {
         super();
+        this.plotType = "svg";
+        this.apiPlotType = "svg";
     }
 
     // These do not get passed into the API call, but want to keep the same data structure for cloning display
@@ -1546,7 +1548,10 @@ const setupSVGOptions = () => {
     for (const elt of enableMidColorElts) {
         elt.addEventListener("change", (event) => {
             for (const field of midColorFields) {
-                field.style.display = (event.target.checked) ? "" : "none";
+                field.classList.add("is-hidden");
+                if (event.target.checked) {
+                    field.classList.remove("is-hidden");
+                }
             }
             for (const midColor of midColorElts) {
                 midColor.disabled = !(event.target.checked);

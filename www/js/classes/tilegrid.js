@@ -1911,13 +1911,16 @@ const drawSVGLegend = (plotConfig, tileId, score) => {
 
     const card = document.querySelector(`#tile-${tileId}.card`);
     const node = document.querySelector(`#tile-${tileId} .legend`);
+
+    const width = node.getBoundingClientRect().width;
+
     // Create our legend svg
     const legend = new_d3.select(node)  // returns document.documentElement
         .append('svg')
         .style('position', 'absolute')
         .style('width', '100%')
-        .style("height", "40px")    // Without a fixed heigh, the box is too tall and prevents mouseover of the svg image
-        .attr('viewbox', `0 0 ${node.getBoundingClientRect().width} 40`)
+        .style("height", "40px")    // Without a fixed height, the box is too tall and prevents mouseover of the svg image
+        .attr('viewbox', `0 0 ${width} 40`)
         .attr('class', 'svg-gradient-container');
     const defs = legend.append('defs');
     // Define our gradient shape
@@ -1984,8 +1987,6 @@ const drawSVGLegend = (plotConfig, tileId, score) => {
             .attr('stop-color', highColor);
     }
 
-    const width = node.getBoundingClientRect().width;
-
     // Draw the rectangle using the linear gradient
     legend
         .append('rect')
@@ -2004,9 +2005,8 @@ const drawSVGLegend = (plotConfig, tileId, score) => {
         .range([0, width / 2]);
 
     const xAxis = new_d3
-        .axisBottom()
-        .ticks(3)
-        .scale(xScale)
+        .axisBottom(xScale)
+        .ticks(4)
 
     legend
         .append('g')
@@ -2030,9 +2030,8 @@ const drawSVGLegend = (plotConfig, tileId, score) => {
             .range([0, card.getBoundingClientRect().width / 2]);
 
         const xAxis = new_d3
-            .axisBottom()
-            .ticks(3)
-            .scale(xScale)
+            .axisBottom(xSclae)
+            .ticks(4)
 
         legend
             .append('g')
