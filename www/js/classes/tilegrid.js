@@ -26,7 +26,6 @@ class TileGrid {
 
         this.tiles = [];
         this.selector = selector;
-
     }
 
     /**
@@ -302,7 +301,7 @@ class DatasetTile {
         this.dataset = dataset; // Has dataset metadata info
 
         this.type = isMulti ? 'multi' : 'single';
-        this.typeInt = isMulti ? 1 : 0;
+        this.typeAsInt = isMulti ? 1 : 0;
 
         this.tile = this.generateTile();
 
@@ -334,6 +333,13 @@ class DatasetTile {
         // performingProjection: boolean - Indicates whether a projection is currently being performed.  We do not want to waste resources by performing the same projection multiple times.
         // success: boolean - Indicates whether the projection was successful
         this.projectR = {modeEnabled: false, projectionId: null, projectionInfo: null, performingProjection: false, success: false};
+
+        // Spatial parameters
+        this.min_genes = null;
+        this.selection_x1 = null;
+        this.selection_x2 = null;
+        this.selection_y1 = null;
+        this.selection_y2 = null;
     }
 
     /**
@@ -404,7 +410,7 @@ class DatasetTile {
 
         const dataset = this.dataset;
         try {
-            const {default_display_id: defaultDisplayId} = await apiCallsMixin.fetchDefaultDisplay(dataset.id, this.typeInt);
+            const {default_display_id: defaultDisplayId} = await apiCallsMixin.fetchDefaultDisplay(dataset.id, this.typeAsInt);
             return defaultDisplayId;
         } catch (error) {
             //pass
@@ -505,6 +511,21 @@ class DatasetTile {
             const urlParams = new URLSearchParams();
             urlParams.append("dataset_id", this.dataset.id);
             urlParams.append("gene_symbol", orthologs[0]);
+
+            // Add spatial parameters to the URL if they exist
+            if (this.min_genes) {
+                urlParams.append("min_genes", this.min_genes);
+            }
+            if (this.selection_x1) {
+                urlParams.append("selection_x1", this.selection_x1);
+            }
+            if (this.selection_x2) {
+                urlParams.append("selection_x2", this.selection_x2);
+            }
+            if (this.selection_y1) {
+                urlParams.append("selection_y1", this.selection_y1);
+            }
+
             const url = `/panel/ws/panel_app?${urlParams.toString()}`;
 
             try {
@@ -519,12 +540,62 @@ class DatasetTile {
 
 
                 if (this.type == "single") {
+                    createCardMessage(this.tile.tileId, "info", "Creating spatial visualization. This may take up to a minute to render.", "panel-loading");
+                    const panelLoadingElt = document.getElementById(`tile-${this.tile.tileId}-panel-loading`);
+
                     const iframe = document.createElement("iframe");
                     // srcDoc html requires Panel static files to be served from the same domain, so use src instead
                     iframe.src = url;
                     iframe.loading="lazy";
-                    iframe.sandbox="allow-scripts";// allow-same-origin";
-                    cardImage.prepend(iframe);
+                    iframe.referrerPolicy="origin"; // honestly doesn't matter if provided
+                    iframe.sandbox="allow-scripts allow-same-origin";
+                    cardImage.append(iframe);
+
+                    const panelUrl = iframe.contentWindow.location.href
+                    const iframeBody = iframe.contentDocument.body
+
+                    // create a mutation observer to monitor the iframe href for changes
+                    const observer = new MutationObserver((mutationsList, observer) => {
+                        for (const mutation of mutationsList) {
+                            console.log(mutation);
+                        }
+                    });
+
+                    observer.observe(iframeBody, { attributes: true, subtree: true, childList: true });
+
+                    // Create a polling function to check for changes to the iframe content URL
+                    // SAdkins - This is kind of hacky as I cannot get the mutation observer or related callback to work
+                    const pollIframe = async () => {
+                        // If iframe contentWindow is null, then return (i.e. switching genes)
+                        if (!iframe.contentWindow) {
+                            return;
+                        }
+
+                        const panelUrl = iframe.contentWindow.location.href;
+                        if (panelUrl !== iframe.src) {
+                            // If panel is loading, show the loading message
+                            if (panelUrl === "about:blank") {
+                                panelLoadingElt.classList.remove("is-hidden");
+                                return;
+                            }
+
+                            // extract query params from the URL and store to persist across iframe reloads
+                            const urlParams = new URLSearchParams(panelUrl.split("?")[1]);
+                            this.min_genes = parseInt(urlParams.get("min_genes")) || null;
+                            this.selection_x1 = parseFloat(urlParams.get("selection_x1")) || null;
+                            this.selection_x2 = parseFloat(urlParams.get("selection_x2")) || null;
+                            this.selection_y1 = parseFloat(urlParams.get("selection_y1")) || null;
+                            this.selection_y2 = parseFloat(urlParams.get("selection_y2")) || null;
+                        } else {
+                            // If panel is loading, show the loading message
+                            panelLoadingElt.classList.add("is-hidden");
+                        }
+                    }
+
+                    // Poll the iframe every 3 seconds
+                    setInterval(pollIframe, 3000);
+
+
                 }
 
             } catch (error) {
@@ -2221,11 +2292,15 @@ const getPlotlyDisplayUpdates = (plotConfObj, plotType, category) => {
  * @param {string} tileId - The ID of the dataset tile.
  * @param {string} level - The level of the message to apply to Bulma CSS class (e.g., "info", "warning", "danger").
  * @param {string} message - The message to be displayed in the card.
+ * @param {string} [id] - The ID of the message element.
  */
-const createCardMessage = (tileId, level, message) => {
+const createCardMessage = (tileId, level, message, id) => {
     const cardContent = document.querySelector(`#tile-${tileId} .card-image`);
     cardContent.replaceChildren();
     const messageElt = document.createElement("p");
+    if (id) {
+        messageElt.id = `tile-${tileId}-${id}`;
+    }
     const textLevel = `has-text-${level}-dark`;
     const bgLevel = `has-background-${level}-light`;
     messageElt.classList.add(textLevel, bgLevel, "p-2", "m-2", "has-text-weight-bold");

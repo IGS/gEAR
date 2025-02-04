@@ -29,6 +29,10 @@ spatial_path = gear_root.joinpath('www/datasets/spatial')
 
 pio.templates.default = "simple_white"  # no gridlines, white background
 
+# Ignore warnings about plotly GUI events, which propagate to the browser console
+import warnings
+warnings.filterwarnings('ignore', 'plotly.*unrecognized gui edit.*')
+
 pn.extension('plotly'
             , loading_indicator=True
             , defer_load=True
@@ -202,9 +206,7 @@ class SpatialPlot():
 
     def add_image_trace(self):
         self.convert_image()
-        # TODO: Currently if you hover over the image, this error appears: Can't serialize typed array of type 'Uint8ClampedArray'
-        # We can resolve this by adding the spatial img array to the "z" property, but this causes a big performance hit
-        # May need to convert the image to a different format or explore just using Bokeh instead of plotly, which seems more natural for Panel.
+        # Note that passing the spatial img array to the "z" property instead of the base64-encoded string causes a big performance hit
         image_trace = go.Image(source=self.base64_string
             , x0=self.range_x1
             , y0=self.range_y1
@@ -329,6 +331,25 @@ class SpatialNormalSubplot(SpatialPlot):
 
         return fig
 
+    def mirror_selection_callback(self, event):
+        """
+        For a selection event, mirror the selection across all plots.
+        """
+
+        if event and "range" in event:
+            # determine if first or second plot
+            x = "x" if "x" in event["range"] else "x2" if "x2" in event["range"] else "x3"
+            y = "y" if "y" in event["range"] else "y2" if "y2" in event["range"] else "y3"
+
+            self.range_x1 = event["range"][x][0]
+            self.range_x2 = event["range"][x][1]
+            self.range_y1 = event["range"][y][0]
+            self.range_y2 = event["range"][y][1]
+
+            self.fig.add_selection(dict(x0=self.range_x1, x1=self.range_x2, y0=self.range_y1, y1=self.range_y2))
+
+            return self.fig
+
 class SpatialZoomSubplot(SpatialPlot):
     """
     Class for creating a zoomed-in spatial plot with a gene expression heatmap, cluster markers, and an image.
@@ -407,11 +428,13 @@ class SpatialPanel(pn.viewable.Viewer):
 
     def __init__(self, dataset_id, gene_symbol, min_genes, **params):
         super().__init__(**params)
+
         self.dataset_id = dataset_id
         self.gene_symbol = gene_symbol
 
         self.prep_sdata()
-        self.prep_adata()
+        #self.prep_adata()  # Explicitly converts sdata to adata
+        self.prep_adata2()  # Uses sdata properties instead of converting to adata
 
         self.min_genes_slider = pn.widgets.IntSlider(name='Filter - Mininum genes per observation', start=0, end=500, step=25, value=min_genes)
 
@@ -427,6 +450,7 @@ class SpatialPanel(pn.viewable.Viewer):
                     , sizing_mode="stretch_width"
                     )
 
+        self.normal_fig = pn.bind(self.normal_fig_obj.mirror_selection_callback, normal_pane.param.selected_data, watch=False)
         self.zoom_fig = pn.bind(self.zoom_fig_obj.make_zoom_fig_callback, normal_pane.param.selected_data, watch=False)
 
         zoom_pane = pn.pane.Plotly(self.zoom_fig
@@ -460,6 +484,7 @@ class SpatialPanel(pn.viewable.Viewer):
             pn.layout.Divider(height=5),    # default margins
             pn.pane.Markdown("## Violin plot", height=30),
             violin_pane,
+            #self.channel,
             width=1100, height=1520
         )
 
@@ -503,9 +528,21 @@ class SpatialPanel(pn.viewable.Viewer):
         self.adata = adata
         self.orig_adata = adata.copy()  # Preserve the original adata for filtering
 
+    def prep_adata2(self):
+        # Instead of creating a new AnnData object, use the sdata properties
+        adata = self.spatial_obj.sdata["table"]
+        self.spatial_img = None
+        if self.has_images:
+            img_name = self.spatial_obj.img_name
+            self.spatial_img = self.spatial_obj.sdata["images"][img_name]["hires"]
+
+        self.adata = adata
+        self.orig_adata = adata.copy()  # Preserve the original adata for filtering
+
     def filter_adata(self):
         # Need to make a copy of the original adata to avoid modifying the original (via inplace=True)
         adata = self.orig_adata.copy()
+
         # Filter out cells that overlap with the blank space of the image.
         sc.pp.filter_cells(adata, min_genes=self.min_genes)
         sc.pp.normalize_total(adata, inplace=True)
@@ -570,6 +607,7 @@ class SpatialPanel(pn.viewable.Viewer):
         self.zoom_fig_obj = SpatialZoomSubplot(self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, "Local", "YlOrRd", dragmode=False)
 
         self.normal_fig = self.normal_fig_obj.refresh_spatial_fig()
+
         # The pn.bind function for the zoom callback will not trigger when the normal_fig is refreshed.
         self.zoom_fig = self.zoom_fig_obj.refresh_spatial_fig()
 
@@ -628,7 +666,6 @@ pn.state.location.sync(settings, {
 if not pn.state.location.query_params:
     pn.pane.Markdown("OK").servable()
 else:
-
     # Create the app
     # TODO: Defer loading of the images (https://panel.holoviz.org/how_to/callbacks/defer_load.html)
     # TODO: explore Datashader
