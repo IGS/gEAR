@@ -543,6 +543,8 @@ class ScanpyHandler extends PlotHandler {
 class SvgHandler extends PlotHandler {
     constructor() {
         super();
+        this.plotType = "svg";
+        this.apiPlotType = "svg";
     }
 
     // These do not get passed into the API call, but want to keep the same data structure for cloning display
