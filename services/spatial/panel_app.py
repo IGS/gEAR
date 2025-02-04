@@ -346,7 +346,7 @@ class SpatialNormalSubplot(SpatialPlot):
             self.range_y1 = event["range"][y][0]
             self.range_y2 = event["range"][y][1]
 
-            self.fig.add_selection(dict(x0=self.range_x1, x1=self.range_x2, y0=self.range_y1, y1=self.range_y2))
+            self.fig.add_selection(dict(x0=self.range_x1, x1=self.range_x2, y0=self.range_y1, y1=self.range_y2, row="all", col="all"))
 
             return self.fig
 
@@ -433,8 +433,7 @@ class SpatialPanel(pn.viewable.Viewer):
         self.gene_symbol = gene_symbol
 
         self.prep_sdata()
-        #self.prep_adata()  # Explicitly converts sdata to adata
-        self.prep_adata2()  # Uses sdata properties instead of converting to adata
+        self.prep_adata()   # see spatialuploader.py for an alternative way to load AnnData
 
         self.min_genes_slider = pn.widgets.IntSlider(name='Filter - Mininum genes per observation', start=0, end=500, step=25, value=min_genes)
 
@@ -524,17 +523,6 @@ class SpatialPanel(pn.viewable.Viewer):
         if self.has_images:
             img_name = self.spatial_obj.img_name
             self.spatial_img = adata.uns["spatial"][img_name]["images"]["hires"]
-
-        self.adata = adata
-        self.orig_adata = adata.copy()  # Preserve the original adata for filtering
-
-    def prep_adata2(self):
-        # Instead of creating a new AnnData object, use the sdata properties
-        adata = self.spatial_obj.sdata["table"]
-        self.spatial_img = None
-        if self.has_images:
-            img_name = self.spatial_obj.img_name
-            self.spatial_img = self.spatial_obj.sdata["images"][img_name]["hires"]
 
         self.adata = adata
         self.orig_adata = adata.copy()  # Preserve the original adata for filtering

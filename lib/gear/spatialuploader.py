@@ -93,6 +93,20 @@ class SpatialUploader(ABC):
         self.adata = adata
         return self
 
+    """alternative implementation of _convert_sdata_to_adata
+       (but has issues with reading xarray.DataArray image into numpy-array focused functions)
+        def prep_adata2(self):
+        # Instead of creating a new AnnData object, use the sdata properties
+        adata = self.spatial_obj.sdata["table"]
+        self.spatial_img = None
+        if self.has_images:
+            img_name = self.spatial_obj.img_name
+            self.spatial_img = self.spatial_obj.sdata.images[img_name]
+
+        self.adata = adata
+        self.orig_adata = adata.copy()  # Preserve the original adata for filtering
+    """
+
     def _write_to_zarr(self, filepath=None):
         if self.sdata is None:
             raise Exception("No spatial data object present to write to file.")
