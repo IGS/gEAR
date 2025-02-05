@@ -35,6 +35,7 @@ def main():
     dataset_share_id = form.getvalue('s')
     identifiers_org_id = form.getvalue('id')
     search_string = form.getvalue('ss') # URL-encoded
+    share_used = 1
 
     url_base = os.environ['REQUEST_SCHEME'] + '://' + os.environ['HTTP_HOST'] + os.environ['REQUEST_URI'].split('p')[0]
     main_page = 'expression.html'
@@ -52,6 +53,7 @@ def main():
     url = url_base + '/' + main_page
 
     params = dict()
+    params['share_used'] = share_used
 
     if dataset_share_id is not None:
         params['share_id'] = dataset_share_id
@@ -76,7 +78,7 @@ def main():
         params[key] = gene_cart
 
     if multi:
-        key = "multigene_plots"
+        key = "is_multigene"
         if page == "p":
             key = "multipattern_plots"
         params[key] = multi

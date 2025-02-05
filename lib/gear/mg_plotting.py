@@ -657,7 +657,7 @@ def create_stacked_violin_plot(df, groupby_filters, is_log10=False, colorscale=N
         , row_titles=row_titles
         , column_titles=col_titles
         , shared_yaxes="all"    # to keep the scale the same for all row facets
-        , x_title="Genes"
+        , x_title=None    # This title can sometimes run into gene names + it's implied these are genes
         , y_title="Log10 Expression" if is_log10 else "Log2 Expression"
         )
 
@@ -825,23 +825,15 @@ def update_stacked_violin_annotations(fig, primary_groups, color_map):
             , xanchor="right"
             , borderpad=5   # Unsure if this does anything but it should ensure the row titles don't come too close to the edge
         )
-        , selector=lambda a: not (a.yanchor == "bottom" or a.text == "Genes" or a.text.endswith("Expression"))
+        , selector=lambda a: not (a.yanchor == "bottom" or a.text.endswith("Expression"))
     )
 
     fig.for_each_annotation(
         # Edit y-axis title
         lambda a: a.update(
-            xshift=-170 if len(max(primary_groups, key=len)) > 5 else -40    # Varies based on len of row_facet group names
+            xshift=-170 if len(max(primary_groups, key=len)) > 5 else -50    # Varies based on len of row_facet group names
         )
         , selector=lambda a: a.text.endswith("Expression")
-    )
-
-    fig.for_each_annotation(
-        # Edit x-axis title
-        lambda a: a.update(
-            yshift=-50
-        )
-        , selector=lambda a: a.text == "Genes"
     )
 
 ### Volcano fxns

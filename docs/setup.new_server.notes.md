@@ -7,6 +7,7 @@ Instances of a gEAR Portal are most often run within a cloud instance, where you
 ```bash
     sudo apt update
     sudo apt upgrade
+    sudo apt install build-essential
 ```
 
 Reboot if there are kernel updates (or just to be safe if you don't know.)
@@ -28,9 +29,7 @@ Follow instructions in our setup.mysql.md document
 
 Not necessary if you want projectR to run on a Google Cloud Run service (configurable in gear.ini)
 
-`sudo apt install r-base`
-
-Please consult `setup.r_rpy2.md` for packages to install in order to install requisite R packages
+Please consult `setup.r_rpy2.md` for packages to install in order to install R and requisite R packages
 
 ### RabbitMQ
 
@@ -54,7 +53,7 @@ Follow instructions in setup.apache.md document
 cd ~jorvis/git
 git clone https://github.com/jorvis/gEAR.git
 cd /var
-sudo rm -rf www && sudo ln -s ~/git/gEAR/www
+sudo rm -rf www && sudo ln -s ~jorvis/git/gEAR/www
 ```
 
 ### Systemd Services

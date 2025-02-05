@@ -1234,6 +1234,20 @@ const apiCallsMixin = {
         return data;
     },
 
+    
+    /**
+     * Fetches shared dataset and layout data from the server.
+     *
+     * @param {string} datasetShareId - The ID of the shared dataset.
+     * @param {string} layoutShareId - The ID of the shared layout.
+     * @returns {Promise<Object>} A promise that resolves to the shared data.
+     */
+    async fetchShareData(datasetShareId, layoutShareId) {
+        const payload = { session_id: this.sessionId, dataset_share_id: datasetShareId, layout_share_id: layoutShareId };
+        const {data} = await axios.post("/cgi/get_shared_info.cgi", convertToFormData(payload));
+        return data;
+    },
+
     /**
      * Fetches SVG data for a given dataset, gene symbol, and projection ID.
      * @param {string} datasetId - The ID of the dataset.
