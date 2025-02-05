@@ -7,10 +7,11 @@ from .common import get_adata_shadow
 
 def normalize_searched_gene(gene_set, chosen_gene):
     """Convert to case-insensitive version of gene.  Returns None if gene not found in dataset."""
-    chosen_gene_lower = chosen_gene.lower()
+    # Some genes get read in as floats by accident
+    chosen_gene_lower = str(chosen_gene).lower()
     for gene in gene_set:
         try:
-            if chosen_gene_lower == gene.lower():
+            if chosen_gene_lower == str(gene).lower():
                 return gene
         except Exception:
             print(gene, file=sys.stderr)
