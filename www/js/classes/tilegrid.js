@@ -1893,7 +1893,7 @@ const colorSVG = async (chartData, plotConfig, datasetId, tileId, svgScoringMeth
 
     await Snap.load(svg_path, async (path) => {
         await snap.append(path);
-        const svg = snap.select("svg");
+        const svg = snap.select(`#tile-${tileId} .card-image svg`);
 
         svg.attr({
             width: "100%"
@@ -1903,7 +1903,7 @@ const colorSVG = async (chartData, plotConfig, datasetId, tileId, svgScoringMeth
         // TODO: Set at bottom of card-image
 
         // Get all paths, circles, rects, and ellipses
-        const paths = Snap.selectAll("path, circle, rect, ellipse");
+        const paths = Snap.selectAll(`#tile-${tileId} .card-image svg path,circle,rect,ellipse`);
 
         if (svgScoringMethod === 'gene' || svgScoringMethod === 'dataset') {
             const { min, max } = score;
