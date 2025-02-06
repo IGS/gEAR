@@ -29,6 +29,8 @@ spatial_path = gear_root.joinpath('www/datasets/spatial')
 
 pio.templates.default = "simple_white"  # no gridlines, white background
 
+# TODO: explore Datashader for large datasets
+
 # Ignore warnings about plotly GUI events, which propagate to the browser console
 import warnings
 warnings.filterwarnings('ignore', 'plotly.*unrecognized gui edit.*')
@@ -220,8 +222,23 @@ class SpatialNormalSubplot(SpatialPlot):
     Class for creating a spatial plot with a gene expression heatmap, cluster markers, and an image.
     """
 
+    def __init__(self, df, spatial_img, color_map, gene_symbol, expression_name, expression_color, **params):
+        super().__init__(df, spatial_img, color_map, gene_symbol, expression_name, expression_color, **params)
+
+        self.selections_dict = {}
+
+        # if all four selection range values are the same, they were not set in the query params, so use the default values
+        if settings.selection_x1 != settings.selection_x2 or settings.selection_y1 != settings.selection_y2:
+            # Occasionally, if a selection goes to the edge of the plot,
+            # the selection may not be modified and added to query_params,
+            # so use the default values if that happens
+            self.selections_dict = dict(x0=settings.selection_x1, x1=settings.selection_x2, y0=settings.selection_y1, y1=settings.selection_y2)
+
     def refresh_spatial_fig(self):
-        return self.make_fig(static_size=False)
+        self.make_fig(static_size=False)
+        if self.selections_dict:
+            self.fig.add_selection(self.selections_dict, row="all", col="all")
+        return self.fig.to_dict()
 
     def make_umap_plots(self):
         df = self.df
@@ -286,7 +303,7 @@ class SpatialNormalSubplot(SpatialPlot):
             selectdirection="d"
         )
 
-        return fig
+        return fig.to_dict()
 
     def make_violin_plot(self):
         df = self.df
@@ -329,26 +346,29 @@ class SpatialNormalSubplot(SpatialPlot):
             selectdirection="d"
         )
 
-        return fig
+        return fig.to_dict()
 
     def mirror_selection_callback(self, event):
         """
         For a selection event, mirror the selection across all plots.
         """
 
+        self.selections_dict = {}
+
         if event and "range" in event:
             # determine if first or second plot
             x = "x" if "x" in event["range"] else "x2" if "x2" in event["range"] else "x3"
             y = "y" if "y" in event["range"] else "y2" if "y2" in event["range"] else "y3"
 
-            self.range_x1 = event["range"][x][0]
-            self.range_x2 = event["range"][x][1]
-            self.range_y1 = event["range"][y][0]
-            self.range_y2 = event["range"][y][1]
+            range_x1 = event["range"][x][0]
+            range_x2 = event["range"][x][1]
+            range_y1 = event["range"][y][0]
+            range_y2 = event["range"][y][1]
 
-            self.fig.add_selection(dict(x0=self.range_x1, x1=self.range_x2, y0=self.range_y1, y1=self.range_y2, row="all", col="all"))
+            self.selections_dict = dict(x0=range_x1, x1=range_x2, y0=range_y1, y1=range_y2)
 
-            return self.fig
+        return self.refresh_spatial_fig()
+
 
 class SpatialZoomSubplot(SpatialPlot):
     """
@@ -389,7 +409,8 @@ class SpatialZoomSubplot(SpatialPlot):
         self.marker_size = int(2 + 4000 / (x_range + y_range))
 
     def refresh_spatial_fig(self):
-        return self.make_fig(static_size=False)
+        self.fig =  self.make_fig(static_size=False)
+        return self.fig.to_dict()
 
     def make_zoom_fig_callback(self, event):
         if event and "range" in event:
@@ -432,57 +453,86 @@ class SpatialPanel(pn.viewable.Viewer):
         self.dataset_id = dataset_id
         self.gene_symbol = gene_symbol
 
-        self.prep_sdata()
-        self.prep_adata()   # see spatialuploader.py for an alternative way to load AnnData
-
         self.min_genes_slider = pn.widgets.IntSlider(name='Filter - Mininum genes per observation', start=0, end=500, step=25, value=min_genes)
 
-        self.normal_fig = pn.bind(self.refresh_dataframe, self.min_genes_slider.param.value_throttled, watch=False)
+        self.normal_fig = dict(data=[], layout={})
+        self.zoom_fig = dict(data=[], layout={})
+        self.umap_fig = dict(data=[], layout={})
+        self.violin_fig = dict(data=[], layout={})
 
+        # the "figs" are dicts which allow for patching the figure objects
+        # See -> https://panel.holoviz.org/reference/panes/Plotly.html#patching
+        # You can also replace the Figure directly, but I had occasional issues with returning a figure ih the "bind" function
 
-    def __panel__(self):
-        # This is run when the app is loaded
-
-        normal_pane = pn.pane.Plotly(self.normal_fig
+        self.normal_pane = pn.pane.Plotly(self.normal_fig
                     , config={"doubleClick":"reset","displayModeBar":True, "modeBarButtonsToRemove": buttonsToRemove}
                     , height=350
                     , sizing_mode="stretch_width"
                     )
 
-        self.normal_fig = pn.bind(self.normal_fig_obj.mirror_selection_callback, normal_pane.param.selected_data, watch=False)
-        self.zoom_fig = pn.bind(self.zoom_fig_obj.make_zoom_fig_callback, normal_pane.param.selected_data, watch=False)
-
-        zoom_pane = pn.pane.Plotly(self.zoom_fig
+        self.zoom_pane = pn.pane.Plotly(self.zoom_fig
                     , config={'displayModeBar': False, 'doubleClick': None}
                     , height=350
                     , sizing_mode="stretch_width"
                     )
 
-        umap_pane = pn.pane.Plotly(self.umap_fig
+        self.umap_pane = pn.pane.Plotly(self.umap_fig
                     , config={"displayModeBar": False}
                     , height=350
                     , sizing_mode="stretch_width"
                     )
 
-        violin_pane = pn.pane.Plotly(self.violin_fig
+        self.violin_pane = pn.pane.Plotly(self.violin_fig
                     , config={"displayModeBar": False}
                     , height=350
                     , sizing_mode="stretch_width"
                     )
 
+        # This context loader does not work currently
+        with self.normal_pane.param.update(loading=True) \
+            , self.zoom_pane.param.update(loading=True) \
+            , self.umap_pane.param.update(loading=True) \
+            , self.violin_pane.param.update(loading=True) \
+            , self.min_genes_slider.param.update(disabled=True):
+            self.prep_sdata()
+            self.prep_adata()   # see spatialuploader.py for an alternative way to load AnnData
+
+            self.refresh_dataframe(min_genes)
+
+        # SAdkins - Have not quite figured out when to use "watch" but I think it mostly applies when a callback does not return a value
+
+        def refresh_dataframe_callback(value):
+            with self.normal_pane.param.update(loading=True) \
+                , self.zoom_pane.param.update(loading=True) \
+                , self.umap_pane.param.update(loading=True) \
+                , self.violin_pane.param.update(loading=True) \
+                , self.min_genes_slider.param.update(disabled=True):
+                self.refresh_dataframe(value)
+
+        pn.bind(refresh_dataframe_callback, self.min_genes_slider.param.value_throttled, watch=True)
+
+        def selection_callback(event):
+            self.zoom_pane.object = self.zoom_fig_obj.make_zoom_fig_callback(event)
+            self.normal_pane.object = self.normal_fig_obj.mirror_selection_callback(event)
+
+        pn.bind(selection_callback, self.normal_pane.param.selected_data, watch=True)
+
+
+    def __panel__(self):
+        # This is run when the app is loaded. Return the final layout of the app
         return pn.Column(
             pn.pane.Markdown('## Select a region to modify zoomed in view in the bottom panel', height=30),
             self.min_genes_slider,
-            normal_pane,
+            self.normal_pane,
             pn.layout.Divider(height=5),    # default margins
             pn.pane.Markdown('## Zoomed in view',height=30),
-            zoom_pane,
+            self.zoom_pane,
             pn.layout.Divider(height=5),    # default margins
             pn.pane.Markdown("## UMAP plots", height=30),
-            umap_pane,
+            self.umap_pane,
             pn.layout.Divider(height=5),    # default margins
             pn.pane.Markdown("## Violin plot", height=30),
-            violin_pane,
+            self.violin_pane,
             #self.channel,
             width=1100, height=1520
         )
@@ -571,17 +621,15 @@ class SpatialPanel(pn.viewable.Viewer):
         self.df = df.dropna(subset=["clusters"])
 
     def refresh_dataframe(self, min_genes):
-
+        """
+        Refresh the dataframe based on the selected gene and min_genes value.
+        Updates Plotly dicts in the Panel app in-place
+        """
         self.min_genes = min_genes
 
         # If the min_genes value has changed...
         if self.min_genes != settings.min_genes:
             settings.min_genes = self.min_genes
-            # update selection range so that an unzoomed plot is generated if the slider has changed.
-            settings.selection_x1 = 0
-            settings.selection_x2 = 0
-            settings.selection_y1 = 0
-            settings.selection_y2 = 0
 
         self.filter_adata()
         self.create_gene_df()
@@ -602,9 +650,10 @@ class SpatialPanel(pn.viewable.Viewer):
         self.umap_fig = self.normal_fig_obj.make_umap_plots()
         self.violin_fig = self.normal_fig_obj.make_violin_plot()
 
-        # Return for the bind function
-        # TODO: Figure out how to bind the other 3 figs to the slider value
-        return self.normal_fig
+        self.normal_pane.object = self.normal_fig
+        self.zoom_pane.object = self.zoom_fig
+        self.umap_pane.object = self.umap_fig
+        self.violin_pane.object = self.violin_fig
 
     def map_colors(self):
         df = self.df
@@ -655,7 +704,4 @@ if not pn.state.location.query_params:
     pn.pane.Markdown("OK").servable()
 else:
     # Create the app
-    # TODO: Defer loading of the images (https://panel.holoviz.org/how_to/callbacks/defer_load.html)
-    # TODO: explore Datashader
-    # TODO: Add some loading indicators for plot drawing (https://panel.holoviz.org/how_to/state/busy.html)
     sp_panel = SpatialPanel(settings.dataset_id, settings.gene_symbol, settings.min_genes).servable(title="Spatial Data Viewer", location=True)
