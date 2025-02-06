@@ -12,6 +12,7 @@ from PIL import Image
 import base64
 from io import BytesIO
 
+import pandas as pd
 import scanpy as sc
 
 import spatialdata as sd
@@ -608,12 +609,14 @@ class SpatialPanel(pn.viewable.Viewer):
         sc.tl.umap(adata)
         adata.var_names_make_unique()
         self.adata = adata
+        return self.adata
 
     def create_gene_df(self):
         adata = self.adata
+        dataset_genes = set(self.adata.var['gene_symbol'].unique())
+        self.norm_gene_symbol = normalize_searched_gene(dataset_genes, self.gene_symbol)
         gene_filter = adata.var.gene_symbol == self.norm_gene_symbol
         selected = adata[:, gene_filter]
-        import pandas as pd
         selected.var.index = pd.Index(["raw_value"])
         df = selected.to_df()
 
@@ -642,23 +645,16 @@ class SpatialPanel(pn.viewable.Viewer):
         """
         self.min_genes = min_genes
 
-        dataset_genes = set(self.adata.var['gene_symbol'].unique())
-        self.norm_gene_symbol = normalize_searched_gene(dataset_genes, self.gene_symbol)
+        # If the min_genes value has changed... sync to URL
+        if self.min_genes != settings.min_genes:
+            settings.min_genes = self.min_genes
 
-        df_cache_label = f"{self.dataset_id}_{self.norm_gene_symbol}_{self.min_genes}_df"
+        adata_subset_cache_label = f"{self.dataset_id}_{self.min_genes}_adata"
 
-        def create_df():
-            # If the min_genes value has changed...
-            if self.min_genes != settings.min_genes:
-                settings.min_genes = self.min_genes
+        # Load the subset Anndata object from cache or create it if it does not exist, with a 24-hour time-to-live
+        self.adata = pn.state.as_cached(adata_subset_cache_label, self.filter_adata, ttl=86400)
 
-            self.filter_adata()
-            self.create_gene_df()
-            return self.df
-
-        # Load the dataframe from cache or create it if it does not exist, with a 24-hour time-to-live
-        self.df = pn.state.as_cached(df_cache_label, create_df, ttl=86400)
-
+        self.create_gene_df()   # creating the Dataframe is generally fast
         self.map_colors()
 
         # destroy the old figure objects (to free up memory)
