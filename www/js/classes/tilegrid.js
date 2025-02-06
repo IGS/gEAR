@@ -996,6 +996,13 @@ class DatasetTile {
             document.getElementById("zoomed-panel-grid").classList.add("is-hidden");
         });
 
+        // Hide "zoom" and "shrink" buttons for spatial datasets (NOT IMPLEMENTED YET)
+        if (this.dataset.dtype === "spatial") {
+            tileElement.querySelector('.js-expand-display').classList.add("is-hidden");
+            tileElement.querySelector('.js-shrink-display').classList.add("is-hidden");
+            dropdownContent.querySelector('.dropdown-item[data-tool="display"]').classList.add("is-hidden");
+        }
+
         // Add event listener to dropdown trigger
         tileElement.querySelector("button.dropdown-trigger").addEventListener("click", (event) => {
             const item = event.currentTarget;
