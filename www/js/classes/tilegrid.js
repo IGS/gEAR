@@ -540,8 +540,6 @@ class DatasetTile {
 
 
                 if (this.type == "single") {
-                    createCardMessage(this.tile.tileId, "info", "Creating spatial visualization. This may take up to a minute to render.", "panel-loading");
-                    const panelLoadingElt = document.getElementById(`tile-${this.tile.tileId}-panel-loading`);
 
                     const iframe = document.createElement("iframe");
                     // srcDoc html requires Panel static files to be served from the same domain, so use src instead
@@ -573,12 +571,6 @@ class DatasetTile {
 
                         const panelUrl = iframe.contentWindow.location.href;
                         if (panelUrl !== iframe.src) {
-                            // If panel is loading, show the loading message
-                            if (panelUrl === "about:blank") {
-                                panelLoadingElt.classList.remove("is-hidden");
-                                return;
-                            }
-
                             // extract query params from the URL and store to persist across iframe reloads
                             const urlParams = new URLSearchParams(panelUrl.split("?")[1]);
                             this.min_genes = parseInt(urlParams.get("min_genes")) || null;
@@ -586,16 +578,10 @@ class DatasetTile {
                             this.selection_x2 = parseFloat(urlParams.get("selection_x2")) || null;
                             this.selection_y1 = parseFloat(urlParams.get("selection_y1")) || null;
                             this.selection_y2 = parseFloat(urlParams.get("selection_y2")) || null;
-                        } else {
-                            // If panel is loading, show the loading message
-                            panelLoadingElt.classList.add("is-hidden");
                         }
                     }
-
                     // Poll the iframe every 3 seconds
                     setInterval(pollIframe, 3000);
-
-
                 }
 
             } catch (error) {
