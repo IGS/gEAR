@@ -452,6 +452,7 @@ class SpatialPanel(pn.viewable.Viewer):
 
         self.dataset_id = dataset_id
         self.gene_symbol = gene_symbol
+        self.min_genes = min_genes
 
         self.min_genes_slider = pn.widgets.IntSlider(name='Filter - Mininum genes per observation', start=0, end=500, step=25, value=min_genes)
 
@@ -488,19 +489,27 @@ class SpatialPanel(pn.viewable.Viewer):
                     , sizing_mode="stretch_width"
                     )
 
-        # This context loader does not work currently
-        with self.normal_pane.param.update(loading=True) \
-            , self.zoom_pane.param.update(loading=True) \
-            , self.umap_pane.param.update(loading=True) \
-            , self.violin_pane.param.update(loading=True) \
-            , self.min_genes_slider.param.update(disabled=True):
-            self.prep_sdata()
-            self.prep_adata()   # see spatialuploader.py for an alternative way to load AnnData
+        self.layout = pn.Column(
+            pn.bind(self.init_data)
+        )
 
-            self.refresh_dataframe(min_genes)
+        self.plot_layout = pn.Column(
+            pn.pane.Markdown('## Select a region to modify zoomed in view in the bottom panel', height=30),
+            self.min_genes_slider,
+            self.normal_pane,
+            pn.layout.Divider(height=5),    # default margins
+            pn.pane.Markdown('## Zoomed in view',height=30),
+            self.zoom_pane,
+            pn.layout.Divider(height=5),    # default margins
+            pn.pane.Markdown("## UMAP plots", height=30),
+            self.umap_pane,
+            pn.layout.Divider(height=5),    # default margins
+            pn.pane.Markdown("## Violin plot", height=30),
+            self.violin_pane,
+            width=1100, height=1520
+        )
 
         # SAdkins - Have not quite figured out when to use "watch" but I think it mostly applies when a callback does not return a value
-
         def refresh_dataframe_callback(value):
             with self.normal_pane.param.update(loading=True) \
                 , self.zoom_pane.param.update(loading=True) \
@@ -520,22 +529,26 @@ class SpatialPanel(pn.viewable.Viewer):
 
     def __panel__(self):
         # This is run when the app is loaded. Return the final layout of the app
-        return pn.Column(
-            pn.pane.Markdown('## Select a region to modify zoomed in view in the bottom panel', height=30),
-            self.min_genes_slider,
-            self.normal_pane,
-            pn.layout.Divider(height=5),    # default margins
-            pn.pane.Markdown('## Zoomed in view',height=30),
-            self.zoom_pane,
-            pn.layout.Divider(height=5),    # default margins
-            pn.pane.Markdown("## UMAP plots", height=30),
-            self.umap_pane,
-            pn.layout.Divider(height=5),    # default margins
-            pn.pane.Markdown("## Violin plot", height=30),
-            self.violin_pane,
-            #self.channel,
-            width=1100, height=1520
+        return self.layout
+
+    def loading_indicator(self, label):
+        return pn.indicators.LoadingSpinner(
+            value=True, name=label, align="center", color="info"
         )
+
+    def init_data(self):
+        yield self.loading_indicator("Loading data file...")
+        self.prep_sdata()
+
+        label = f"Extracting expression data..."
+        if self.has_images:
+            label = f"Extracting image and expression data..."
+        yield self.loading_indicator(label)
+        self.prep_adata()   # see spatialuploader.py for an alternative way to load AnnData
+
+        yield self.loading_indicator("Processing data to create plots. This may take a minute...")
+
+        yield self.refresh_dataframe(self.min_genes)
 
     def prep_sdata(self):
         zarr_path = spatial_path / f"{self.dataset_id}.zarr"
@@ -655,6 +668,8 @@ class SpatialPanel(pn.viewable.Viewer):
         self.umap_pane.object = self.umap_fig
         self.violin_pane.object = self.violin_fig
 
+        return self.plot_layout
+
     def map_colors(self):
         df = self.df
         # Assuming df is your DataFrame and it has a column "clusters"
@@ -704,4 +719,5 @@ if not pn.state.location.query_params:
     pn.pane.Markdown("OK").servable()
 else:
     # Create the app
-    sp_panel = SpatialPanel(settings.dataset_id, settings.gene_symbol, settings.min_genes).servable(title="Spatial Data Viewer", location=True)
+    sp_panel = SpatialPanel(settings.dataset_id, settings.gene_symbol, settings.min_genes)
+    sp_panel.servable(title="Spatial Data Viewer", location=True)
