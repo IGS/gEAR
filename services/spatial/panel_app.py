@@ -12,7 +12,6 @@ from PIL import Image
 import base64
 from io import BytesIO
 
-import pandas as pd
 import scanpy as sc
 
 import spatialdata as sd
@@ -537,14 +536,26 @@ class SpatialPanel(pn.viewable.Viewer):
         )
 
     def init_data(self):
-        yield self.loading_indicator("Loading data file...")
-        self.prep_sdata()
+        yield self.loading_indicator("Processing data file...")
 
-        label = f"Extracting expression data..."
-        if self.has_images:
-            label = f"Extracting image and expression data..."
-        yield self.loading_indicator(label)
-        self.prep_adata()   # see spatialuploader.py for an alternative way to load AnnData
+        def create_adata_pkg():
+            self.prep_sdata()
+            self.prep_adata()
+
+            adata_pkg = {"adata": self.adata, "img_name": self.spatial_obj.img_name}
+            return adata_pkg
+
+        adata_cache_label = f"{self.dataset_id}_adata"
+
+        # Load the Anndata object (+ image name) from cache or create it if it does not exist, with a 24-hour time-to-live
+        adata_pkg = pn.state.as_cached(adata_cache_label, create_adata_pkg, ttl=86400)
+
+        self.adata = adata_pkg["adata"]
+        self.spatial_img = None
+        if adata_pkg["img_name"]:
+            self.spatial_img = self.adata.uns["spatial"][adata_pkg["img_name"]]["images"]["hires"]
+
+        self.orig_adata = self.adata.copy()  # Preserve the original adata for filtering
 
         yield self.loading_indicator("Processing data to create plots. This may take a minute...")
 
@@ -581,14 +592,7 @@ class SpatialPanel(pn.viewable.Viewer):
         # Need to include image since the bounding box query does not filter the image data by coordinates
         # Each Image is downscaled (or upscaled) during rendering to fit a 2000x2000 pixels image (downscaled_hires)
         self.spatial_obj._convert_sdata_to_adata()
-        adata = self.spatial_obj.adata
-        self.spatial_img = None
-        if self.has_images:
-            img_name = self.spatial_obj.img_name
-            self.spatial_img = adata.uns["spatial"][img_name]["images"]["hires"]
-
-        self.adata = adata
-        self.orig_adata = adata.copy()  # Preserve the original adata for filtering
+        self.adata = self.spatial_obj.adata
 
     def filter_adata(self):
         # Need to make a copy of the original adata to avoid modifying the original (via inplace=True)
@@ -607,11 +611,9 @@ class SpatialPanel(pn.viewable.Viewer):
 
     def create_gene_df(self):
         adata = self.adata
-        dataset_genes = set(adata.var['gene_symbol'].unique())
-        self.norm_gene_symbol = normalize_searched_gene(dataset_genes, self.gene_symbol)
-
         gene_filter = adata.var.gene_symbol == self.norm_gene_symbol
         selected = adata[:, gene_filter]
+        import pandas as pd
         selected.var.index = pd.Index(["raw_value"])
         df = selected.to_df()
 
@@ -640,12 +642,23 @@ class SpatialPanel(pn.viewable.Viewer):
         """
         self.min_genes = min_genes
 
-        # If the min_genes value has changed...
-        if self.min_genes != settings.min_genes:
-            settings.min_genes = self.min_genes
+        dataset_genes = set(self.adata.var['gene_symbol'].unique())
+        self.norm_gene_symbol = normalize_searched_gene(dataset_genes, self.gene_symbol)
 
-        self.filter_adata()
-        self.create_gene_df()
+        df_cache_label = f"{self.dataset_id}_{self.norm_gene_symbol}_{self.min_genes}_df"
+
+        def create_df():
+            # If the min_genes value has changed...
+            if self.min_genes != settings.min_genes:
+                settings.min_genes = self.min_genes
+
+            self.filter_adata()
+            self.create_gene_df()
+            return self.df
+
+        # Load the dataframe from cache or create it if it does not exist, with a 24-hour time-to-live
+        self.df = pn.state.as_cached(df_cache_label, create_df, ttl=86400)
+
         self.map_colors()
 
         # destroy the old figure objects (to free up memory)
