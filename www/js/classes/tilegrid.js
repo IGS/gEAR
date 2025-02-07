@@ -549,7 +549,6 @@ class DatasetTile {
                     iframe.sandbox="allow-scripts allow-same-origin";
                     cardImage.append(iframe);
 
-                    const panelUrl = iframe.contentWindow.location.href
                     const iframeBody = iframe.contentDocument.body
 
                     // create a mutation observer to monitor the iframe href for changes
