@@ -712,21 +712,22 @@ def normalize_searched_gene(gene_set, chosen_gene):
 # Reset logging level to "error" to suppress a bokeh "dropping patch" info message
 # https://github.com/bokeh/bokeh/issues/13229
 logging.getLogger().setLevel(logging.ERROR)
-
 settings = Settings()
-pn.state.location.sync(settings, {
-    'dataset_id': 'dataset_id'
-    , 'gene_symbol': 'gene_symbol'
-    , 'min_genes': 'min_genes'
-    , 'selection_x1': 'selection_x1'
-    , 'selection_x2': 'selection_x2'
-    , 'selection_y1': 'selection_y1'
-    , 'selection_y2': 'selection_y2'})
 
 # If not params passed, just show OK as a way to test the app
 if not pn.state.location.query_params:
     pn.pane.Markdown("OK").servable()
+
 else:
+    pn.state.location.sync(settings, {
+        'dataset_id': 'dataset_id'
+        , 'gene_symbol': 'gene_symbol'
+        , 'min_genes': 'min_genes'
+        , 'selection_x1': 'selection_x1'
+        , 'selection_x2': 'selection_x2'
+        , 'selection_y1': 'selection_y1'
+        , 'selection_y2': 'selection_y2'})
+
     # Create the app
     sp_panel = SpatialPanel(settings.dataset_id, settings.gene_symbol, settings.min_genes)
     sp_panel.servable(title="Spatial Data Viewer", location=True)
