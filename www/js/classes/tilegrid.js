@@ -1790,8 +1790,10 @@ const colorSVG = async (chartData, plotConfig, datasetId, tileId, svgScoringMeth
 
                 });
             });
-            return;
-            // Draw the tooltip
+
+            // Draw the legend
+            drawSVGLegend(plotConfig, tileId, score);
+
         } else if (svgScoringMethod === 'tissue') {
             // tissues scoring
             const tissues = Object.keys(score);
@@ -1847,23 +1849,23 @@ const colorSVG = async (chartData, plotConfig, datasetId, tileId, svgScoringMeth
 
                     // log-transfom the expression score
                     const math = "raw";
-                    let score;
+                    let expressionScore;
                     // Apply math transformation to expression score
                     if (math == 'log2') {
-                        score = new_d3.format('.2f')(Math.log2(expression[tissue]));
+                        expressionScore = new_d3.format('.2f')(Math.log2(expression[tissue]));
                     } else if (math == 'log10') {
-                        score = new_d3.format('.2f')(Math.log10(expression[tissue]));
+                        expressionScore = new_d3.format('.2f')(Math.log10(expression[tissue]));
                     } else {
                         //math == 'raw'
-                        score = new_d3.format('.2f')(expression[tissue]);
+                        expressionScore = new_d3.format('.2f')(expression[tissue]);
                     }
 
                     // Place tissue in score in a nice compact tooltip
-                    const tooltipText = `${tissue}: ${score}`;
+                    const tooltipText = `${tissue}: ${expressionScore}`;
 
                     // Add mouseover and mouseout events to create and destroy the tooltip
                     path.mouseover(() => {
-                        const yOffset = svgDiv.getBoundingClientRect().top - path.node.getBoundingClientRect().top;
+                        const yOffset = path.node.getBoundingClientRect().top - svgDiv.getBoundingClientRect().top;
 
                         const tooltip = document.createElement('div');
                         tooltip.classList.add('tooltip');
@@ -1878,21 +1880,25 @@ const colorSVG = async (chartData, plotConfig, datasetId, tileId, svgScoringMeth
                         tooltip.style.zIndex = 3;
                         svgDiv.appendChild(tooltip);
 
+                        const tissueScore = {min: score[tissue].min, max: score[tissue].max};
+
+                        // draw legend for this tissue class
+                        drawSVGLegend(plotConfig, tileId, tissueScore);
                     });
                     path.mouseout(() => {
                         svgDiv.querySelector('.tooltip').remove();
+                        // clear legend
+                        document.querySelector(`#tile-${tileId} .legend`).replaceChildren();
                     });
 
                 });
             });
+
         } else {
             throw new Error(`Invalid svgScoringMethod ${svgScoringMethod}.`);
         }
 
     });
-
-    drawSVGLegend(plotConfig, tileId, score);
-
 }
 
 /**
@@ -2029,7 +2035,7 @@ const drawSVGLegend = (plotConfig, tileId, score) => {
             .range([0, card.getBoundingClientRect().width / 2]);
 
         const xAxis = new_d3
-            .axisBottom(xSclae)
+            .axisBottom(xScale)
             .ticks(4)
 
         legend
