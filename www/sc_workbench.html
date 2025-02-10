@@ -111,13 +111,17 @@ Information about the individual datasets can be found in the dataset explorer."
                                 <i class="mdi mdi-text-box-search-outline"></i> <!-- Not quite the correct icon -->
                             </span>
                             <span>Select a dataset</span>
-                            <span id="dataset-s-success" class="js-step-success icon has-text-success-dark is-hidden">
+                            <span id="dataset-s-success" class="icon has-text-success-dark is-hidden">
                                 <i class="mdi mdi-check-circle"></i>
                             </span>
-                            <span id="dataset-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
+                            <span id="dataset-s-failed" class="icon has-text-danger-dark is-hidden">
                                 <i class="mdi mdi-close-circle"></i>
                             </span>
                         </h5>
+                        <div>
+                            <strong>Current dataset:</strong>
+                            <span class="js-current-dataset">None selected</span>
+                        </div>
                         <div class="mt-3" id="dataset-c">
                             <input class="input" id="dataset-query" type="text" placeholder="Enter a dataset"
                               autofocus="" />
@@ -133,14 +137,18 @@ Information about the individual datasets can be found in the dataset explorer."
                             </span>
                             <span>Select new or saved analysis</span>
                             <span id="analysis-type-select-c-success"
-                              class="js-step-success icon has-text-success-dark is-hidden">
+                              class="icon has-text-success-dark is-hidden">
                                 <i class="mdi mdi-check-circle"></i>
                             </span>
                             <span id="analysis-type-select-c-failed"
-                              class="js-step-failure icon has-text-danger-dark is-hidden">
+                              class="icon has-text-danger-dark is-hidden">
                                 <i class="mdi mdi-close-circle"></i>
                             </span>
                         </h5>
+                        <div>
+                            <strong>Current analysis:</strong>
+                            <span class="js-current-analysis">None selected</span>
+                        </div>
                         <div class="mt-3" id="analysis-c">
                             <div class="select is-fullwidth">
                                 <select id="analysis-select" disabled>
@@ -271,11 +279,11 @@ Information about the individual datasets can be found in the dataset explorer."
 
                         <div id="current-dataset-c">
                             <strong>Current dataset:</strong>
-                            <span id="current-dataset">None selected</span>
+                            <span class="js-current-dataset">None selected</span>
                         </div>
                         <div id="current-analysis-c">
                             <strong>Current analysis:</strong>
-                            <span id="current-analysis">None selected</span>
+                            <span class="js-current-analysis">None selected</span>
                         </div>
                     </header>
 

@@ -31,8 +31,9 @@ const datasetTree = new DatasetTree({
         if (e.node.type !== "dataset") {
             return;
         }
-        //document.querySelector(UI.currentDatasetContainer).classList.remove("is-hidden");
-        document.querySelector(UI.currentDatasetElt).textContent = e.node.title;
+        for (const elt of document.querySelectorAll(UI.currentDatasetElts)) {
+            elt.textContent = e.node.title;
+        }
 
         const newDatasetId = e.node.data.dataset_id;
         const organismId = e.node.data.organism_id;
@@ -47,12 +48,15 @@ const datasetTree = new DatasetTree({
         datasetId = newDatasetId;
 
         // Clear "success/failure" icons
+        // these are cleared in the "resetWorkbench" function
+        /*
         for (const elt of document.getElementsByClassName("js-step-success")) {
             elt.classList.add("is-hidden");
         }
         for (const elt of document.getElementsByClassName("js-step-failure")) {
             elt.classList.add("is-hidden");
         }
+        */
 
         // Hide Steppers
         for (const elt of document.querySelectorAll(UI.stepsElts)) {
@@ -62,11 +66,16 @@ const datasetTree = new DatasetTree({
         // collapse tree
         e.node.tree.expandAll(false);
 
+        document.querySelector(UI.datasetSectionSuccessElt).classList.remove("is-hidden");
+        document.querySelector(UI.datasetSectionFailedElt).classList.add("is-hidden");
+
         // We only want to reset these plots only if the dataset changes.
         document.querySelector(UI.primaryInitialScatterContainer).replaceChildren();
         document.querySelector(UI.primaryInitialViolinContainer).replaceChildren();
 
         if (currentAnalysis) {
+            document.querySelector(UI.analysisSelectFailedElt).classList.add("is-hidden");
+            document.querySelector(UI.analysisSelectSuccessElt).classList.add("is-hidden");
             resetWorkbench();
         }
 
@@ -75,7 +84,9 @@ const datasetTree = new DatasetTree({
         document.querySelector(UI.analysisWorkflowElt).classList.add("is-hidden");
         document.querySelector(UI.btnProgressGuideElt).classList.add("is-hidden");
 
-        document.querySelector(UI.currentAnalysisElt).textContent = "None selected";
+        for (const elt of document.querySelectorAll(UI.currentAnalysisElts)) {
+            elt.textContent = "None selected";
+        }
 
         // This is a placeholder to retrieve preliminary figures which are stored in the "primary" directory
         currentAnalysis = new Analysis({id: datasetId, type: "primary", datasetIsRaw: true});
@@ -282,7 +293,8 @@ const loadDatasetTree = async () => {
         logErrorInConsole(error);
         const msg = "Could not fetch datasets. Please contact the gEAR team."
         createToast(msg);
-        document.getElementById("dataset-s-failed").classList.remove("is-hidden");
+        document.querySelector(UI.datasetSectionSuccessElt).classList.add("is-hidden");
+        document.querySelector(UI.datasetSectionFailedElt).classList.remove("is-hidden");
     }
 
 }
@@ -677,8 +689,9 @@ for (const button of document.querySelectorAll(UI.analysisRenameElts)) {
         document.body.appendChild(popoverContent);
 
         document.getElementById("new-analysis-label").value = currentAnalysis.label;
-        document.querySelector(UI.currentAnalysisElt).textContent = currentAnalysis.label;
-
+        for (const elt of document.querySelectorAll(UI.currentAnalysisElts)) {
+            elt.textContent = currentAnalysis.label;
+        }
 
         const arrowElement = document.getElementById('arrow');
 
@@ -876,8 +889,9 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
     // Grab the dataset ID from the current analysis to reuse it
     const datasetObj = currentAnalysis.dataset;
 
-
-    document.querySelector(UI.currentAnalysisElt).textContent = event.target.selectedOptions[0].textContent;
+    for (const elt of document.querySelectorAll(UI.currentAnalysisElts)) {
+        elt.textContent = event.target.selectedOptions[0].textContent;
+    }
 
     document.querySelector(UI.deNovoStepsElt).classList.add("is-hidden");
     document.querySelector(UI.primaryStepsElt).classList.add("is-hidden");
@@ -887,10 +901,14 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
     // Analysis ID -1 is "select an analysis"
     if (event.target.value === "-1") {
         document.querySelector(UI.analysisWorkflowElt).classList.add("is-hidden");
+        document.querySelector(UI.analysisSelectFailedElt).classList.remove("is-hidden");
+        document.querySelector(UI.analysisSelectSuccessElt).classList.add("is-hidden");
         return;
     }
 
     document.querySelector(UI.analysisWorkflowElt).classList.remove("is-hidden");
+    document.querySelector(UI.analysisSelectFailedElt).classList.add("is-hidden");
+    document.querySelector(UI.analysisSelectSuccessElt).classList.remove("is-hidden");
 
     // Analysis ID 0 is the blank 'New' one
     if (event.target.value === "0") {

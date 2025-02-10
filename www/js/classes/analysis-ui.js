@@ -12,15 +12,17 @@ class AnalysisUI {
     datasetSectionSuccessElt = "#dataset-s-success"
     datasetSectionFailedElt = "#dataset-s-failed"
     currentDatasetContainer = "#current-dataset-c"
-    currentDatasetElt = "#current-dataset"
+    currentDatasetElts = ".js-current-dataset"
     datasetQueryElt = "#dataset-query"
     datasetTreeElt = "#dataset-tree"
 
     // general analysis
     analysisSection = "#analysis-s"
     analysisContainer = "#analysis-c"
-    currentAnalysisElt = "#current-analysis"
+    currentAnalysisElts = ".js-current-analysis"
     analysisSelect = "#analysis-select"
+    analysisSelectSuccessElt = "#analysis-type-select-c-success"
+    analysisSelectFailedElt = "#analysis-type-select-c-failed"
     newAnalysisOptionElt = `${this.analysisSelect} option[data-analysis-id='0']`
     analysisPrimaryElt = "#analyses-primary"
     analysisPrimaryNotificationElt = "#analysis-primary-notification"

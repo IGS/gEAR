@@ -95,6 +95,9 @@ const datasetTree = new DatasetTree({
         // collapse tree
         e.node.tree.expandAll(false);
 
+        document.getElementById("dataset-s-success").classList.remove("is-hidden");
+        document.getElementById("dataset-s-failed").classList.add("is-hidden");
+
 		const compareSeriesElt = document.getElementById("compare-series");
 		compareSeriesElt.parentElement.classList.add("is-loading");
 
@@ -483,6 +486,7 @@ const loadDatasetTree = async () => {
         datasetTree.generateTree();
     } catch (error) {
 		createToast("Could not fetch datasets. Please contact the gEAR team.");
+        document.getElementById("dataset-s-success").classList.add("is-hidden");
         document.getElementById("dataset-s-failed").classList.remove("is-hidden");
     }
 }
