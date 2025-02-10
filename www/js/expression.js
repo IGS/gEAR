@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // If the user isn't logged in, set the first organism's annotation as the default
-            if (!CURRENT_USER.session_id && tilegrid.datasets.length > 0) {
+            if (!CURRENT_USER.session_id && tilegrid?.datasets.length > 0) {
                 const first_organism_id = tilegrid.datasets[0].organism_id;
                 currently_selected_org_id = parseInt(first_organism_id);
                 document.getElementById('organism-selector').value = currently_selected_org_id;

@@ -61,13 +61,20 @@ ul#go-terms li {
     display: grid;
     grid-template-columns: repeat(12, 90px);    /* setting px instead of fr prevernts distortions if grid dimensions change */
     grid-gap: 0.5em;
-    width: 1080px;  /* grid width + 2*border width */
+    width: 1168px;  /* grid width + 2*border width + grid-gap */
 }
 
 /* tSNE plots */
 .js-tile .card-image img {
     width: fit-content;
     height: 100%;
+    margin: auto;
+}
+
+/* spatial embeds */
+.js-tile .card-image iframe {
+    width: 100%;
+    height: 1675px;  /* Enough room for the Panel app to be fully displayed without scrolling */
     margin: auto;
 }
 

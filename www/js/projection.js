@@ -354,6 +354,7 @@ const parseDatasetCollectionURLParams = () => {
 
 /**
  * Selects a pattern weight and performs various actions based on the selected weight.
+ * For unweighted patterns, "unweighted" itself is the pattern weight which is all 1 values.
  * @param {string} label - The selected weight label.
  */
 const selectPatternWeightResult = async (label) => {
@@ -366,20 +367,20 @@ const selectPatternWeightResult = async (label) => {
 
     const topDownGenesElement = document.getElementById('top-down-genes');
 
+    // Hide the unweighted gene list button
+    document.getElementById("btn-view-unweighted-genes").classList.add('is-hidden');
+
     // Hide the element initially
     topDownGenesElement.classList.add('is-hidden');
+
+    // Reset weighted gene data
+    weightedGeneData = null;
 
     if (projectionAlgorithm === 'nmf') {
         // No additional action needed as the element is already hidden
     } else if (obj.top_down) {
         // Show the element if 'top_down' property is true
         topDownGenesElement.classList.remove('is-hidden');
-    }
-
-    // if isMulti=false, show top_up and top_down genes
-    document.getElementById("top-genes-c").classList.remove('is-hidden');
-    if (isMulti || selectedPattern.gctype === "unweighted-list") {
-        document.getElementById("top-genes-c").classList.add('is-hidden');
     }
 
     // clear the top-up and top-down genes
@@ -397,13 +398,31 @@ const selectPatternWeightResult = async (label) => {
         document.querySelector("#top-down-genes p").textContent = topDown;
     }
 
-    document.getElementById("btn-view-weighted-genes").classList.remove("is-hidden");
-    try {
-        const data = await apiCallsMixin.fetchPatternWeightedGenes(selectedPattern.shareId, label);
-        weightedGeneData = data;
-    } catch (error) {
-        logErrorInConsole(error);
-        document.getElementById("btn-view-weighted-genes").classList.add("is-hidden");
+    // if isMulti=false, show top_up and top_down genes
+    document.getElementById("top-genes-c").classList.remove('is-hidden');
+    if (isMulti || selectedPattern.gctype === "unweighted-list") {
+        document.getElementById("top-genes-c").classList.add('is-hidden');
+    }
+
+    if (selectedPattern.gctype === "weighted-list") {
+        document.getElementById("btn-view-weighted-genes").classList.remove("is-hidden");
+        try {
+            const data = await apiCallsMixin.fetchPatternWeightedGenes(selectedPattern.shareId, label);
+            weightedGeneData = data;
+        } catch (error) {
+            logErrorInConsole(error);
+            document.getElementById("btn-view-weighted-genes").classList.add("is-hidden");
+        }
+    } else if (selectedPattern.gctype === "unweighted-list") {
+        // populate the gene list from this cart
+        const geneListMemberData = await apiCallsMixin.fetchGeneCartMembers(selectedPattern.shareId,);
+        const geneData = []
+        for (const member of geneListMemberData.gene_symbols) {
+            geneData.push({gene: member.label, weight: 1});
+        }
+        weightedGeneData = geneData;
+
+        document.getElementById("btn-view-unweighted-genes").classList.remove('is-hidden');
     }
 
     // Other things can be called next, such as plotting calls
@@ -414,7 +433,6 @@ const selectPatternWeightResult = async (label) => {
         tilegrid.renderDisplays(label, isMulti, svgScoringMethod, projectionOpts);
     }
 }
-
 
 /**
  * Sets up the tile grid for a given shareId and type.
@@ -504,17 +522,20 @@ const validateProjectionSearchForm = () => {
     return true;
 }
 
-document.getElementById('btn-view-weighted-genes').addEventListener('click', (event) => {
-    let htmlStream = "<table>";
-    // Gather genes and weights and show in new page
-    for (const row of weightedGeneData) {
-        htmlStream += `<tr><td>${row["gene"]}</td><td>${row["weight"]}</td></tr>`;
-    }
-    htmlStream += "</table>"
-    const tab = window.open('about:blank', '_blank');
-    tab.document.write(htmlStream);
-    tab.document.close();
-});
+// If one of the "view genes" buttons is clicked, show the genes in a new window
+for (const btn of document.getElementsByClassName("js-view-genes")) {
+    btn.addEventListener('click', (event) => {
+        let htmlStream = "<table>";
+        // Gather genes and weights and show in new page
+        for (const row of weightedGeneData) {
+            htmlStream += `<tr><td>${row["gene"]}</td><td>${row["weight"]}</td></tr>`;
+        }
+        htmlStream += "</table>"
+        const tab = window.open('about:blank', '_blank');
+        tab.document.write(htmlStream);
+        tab.document.close();
+    });
+}
 
 // Change the svg scoring method when select element is changed
 document.getElementById('svg-scoring-method').addEventListener('change', (event) => {
