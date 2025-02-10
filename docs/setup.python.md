@@ -8,25 +8,27 @@ other isolated python environment?  You could, but for a committed
 webserver that's an unnecessary layer.  Also, maybe I'm old-school, but
 fixed paths have worked fine for decades.
 
-    $ sudo apt install libffi-dev libsqlite-dev libsqlite3-dev libhdf5-dev
-    $ sudo apt install libncursesw5-dev libssl-dev python3-tk tk-dev libgdbm-dev libc6-dev libbz2-dev lzma liblzma-dev
+```bash
+    sudo apt install libffi-dev libsqlite-dev libsqlite3-dev libhdf5-dev
+    sudo apt install libncursesw5-dev libssl-dev python3-tk tk-dev libgdbm-dev libc6-dev libbz2-dev lzma liblzma-dev
 
-    $ export PYTHONV=3.10.4
-    $ export PYTHON_MINORV=3.10
-    $ sudo mkdir /opt/Python-${PYTHONV}
-    $ sudo chown $USER /opt/Python-${PYTHONV}
-    $ cd /tmp
-    $ wget https://www.python.org/ftp/python/${PYTHONV}/Python-${PYTHONV}.tar.xz
-    $ tar -xf Python-${PYTHONV}.tar.xz
-    $ cd Python-${PYTHONV}/
-    $ ./configure --prefix=/opt/Python-${PYTHONV} --enable-optimizations --enable-shared
-    $ make
-    $ make install
+    export PYTHONV=3.10.4
+    export PYTHON_MINORV=3.10
+    sudo mkdir /opt/Python-${PYTHONV}
+    sudo chown $USER /opt/Python-${PYTHONV}
+    cd /tmp
+    wget https://www.python.org/ftp/python/${PYTHONV}/Python-${PYTHONV}.tar.xz
+    tar -xf Python-${PYTHONV}.tar.xz
+    cd Python-${PYTHONV}/
+    ./configure --prefix=/opt/Python-${PYTHONV} --enable-optimizations --enable-shared
+    make
+    make install
 
-    $ cd /opt/Python-${PYTHONV}/bin
-    $ sudo ln -s /opt/Python-${PYTHONV}/lib/libpython${PYTHON_MINORV}.so.1.0 /usr/lib/
+    cd /opt/Python-${PYTHONV}/bin
+    sudo ln -s /opt/Python-${PYTHONV}/lib/libpython${PYTHON_MINORV}.so.1.0 /usr/lib/
 
-    $ sudo apt install r-base r-base-dev hdf5-helpers hdf5-tools libhdf5-dev zlib1g-dev libblas-dev liblapack-dev libxml2-dev cmake apache2 apache2-dev
+    sudo apt install r-base r-base-dev hdf5-helpers hdf5-tools libhdf5-dev zlib1g-dev libblas-dev liblapack-dev libxml2-dev cmake apache2 apache2-dev
+```
 
 ## pip install option A (reqs file)
 
