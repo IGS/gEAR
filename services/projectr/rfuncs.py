@@ -63,6 +63,7 @@ def run_projectR_cmd(target_df, loading_df, algorithm):
             target_r_index = ro.conversion.py2rpy(target_df.index)
             loading_r_index = ro.conversion.py2rpy(loading_df.index)
         # Need a ruleset without pandas with auto-converts the R matrix to a numpy array
+
         with localconverter(ro.default_converter):
             try:
                 # data.frame to data.matrix (projectR has no data.frame signature)
@@ -75,6 +76,7 @@ def run_projectR_cmd(target_df, loading_df, algorithm):
                 # print stacktrace with line numbers
                 traceback.print_exc(file=sys.stderr)
                 raise RError("Error: Could not assign rownames to matrix.\tReason: {}".format(str(e)))
+
             # The NMF projectR method signature is based on the LinearEmbeddedMatrix class,
             # Which has a featureLoadings property. That matrix is loaded and the default
             # projectR signature is returned and used. So we can just pass the matrix as-is.
@@ -95,9 +97,12 @@ def run_projectR_cmd(target_df, loading_df, algorithm):
                 # print stacktrace with line numbers
                 traceback.print_exc(file=sys.stderr)
                 raise RError("Error: Could not run projectR command.\tReason: {}".format(str(e)))
+
             # matrix back to data.frame
             projection_patterns_r_df = convert_r_matrix_to_r_df(projection_patterns_r_matrix)
+
         with local_rules:
+            # Convert from R data.frame to pandas dataframe
             projection_patterns_df = ro.conversion.rpy2py(projection_patterns_r_df)
 
             return projection_patterns_df

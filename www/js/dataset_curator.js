@@ -505,6 +505,11 @@ class ScanpyHandler extends PlotHandler {
             this.plotConfig["horizontal_legend"] = false;
         }
 
+        // if no plot-by-group is selected, ensure max columns is not passed to the scanpy code
+        if (!(document.getElementById("plot-by-group-series-post").checked)) {
+            this.plotConfig["max_columns"] = null;
+        }
+
         // If override marker size is not checked, ensure it does not get passed to the scanpy code
         if (!(document.getElementById("override-marker-size-post").checked)) {
             this.plotConfig["marker_size"] = null;

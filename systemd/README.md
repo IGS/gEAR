@@ -12,6 +12,11 @@ To start the service run `sudo systemctl start <service_filename>`. If any chang
 
 To start a service that persists during a reboot, run `sudo systemctl enable <service_filename>`. After enabling, you will still need to run the `systemctl start` command to start on this boot session.
 
+## Viewing status or logs of services
+
+`sudo journalctl -u <service-name>`
+
 ## Notes
 
 * For a service that is supposed to persist, like a RabbitMQ consumer, use Service->Type=Simple.  If you use Type->Forking, I believe systemctl will forever wait for the forked process to exit and return to command line.
+* If restarting a service that uses a target file to create groups of services, pass the target file to the systemctl command.  Otherwise, just pass the service file to systemctl.

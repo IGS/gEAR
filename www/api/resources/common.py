@@ -6,6 +6,7 @@ import os, sys
 import tempfile
 import shutil
 import anndata
+import spatialdata as sd
 import pandas as pd
 from pandas.api.types import is_integer_dtype
 
@@ -15,7 +16,7 @@ from werkzeug.utils import secure_filename
 from shadows import AnnDataShadow
 
 from gear.plotting import PlotError
-from geardb import get_user_from_session_id, Analysis
+from geardb import get_user_from_session_id, Analysis, SpatialAnalysis
 
 TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
@@ -44,17 +45,57 @@ def get_adata_shadow_from_primary(h5_path):
         raise FileNotFoundError("No h5 file found for this dataset")
     return AnnDataShadow(h5_path)
 
-def get_adata_shadow(analysis_id, dataset_id, session_id, h5_path):
+def get_adata_shadow(analysis_id, dataset_id, session_id, dataset_path):
+    if dataset_path.endswith(".zarr"):
+        # It's spatial data... probably can't use AnnDataShadow
+        return get_spatial_adata(analysis_id, dataset_id, session_id)
+
     if analysis_id:
         adata = get_adata_shadow_from_analysis(analysis_id, dataset_id, session_id)
     else:
-        adata = get_adata_shadow_from_primary(h5_path)
+        adata = get_adata_shadow_from_primary(dataset_path)
 
     # TODO: Test with https://github.com/scverse/shadows/releases/tag/v0.1a2
     # see https://github.com/scverse/shadows/issues/4
     if is_integer_dtype(adata.var.index.dtype) :
         print("Using AnnData instead of AnnDataShadow because var and obs are not correct for dataset {}".format(dataset_id), file=sys.stderr)
         adata = get_adata_from_analysis(analysis_id, dataset_id, session_id)
+    return adata
+
+def get_spatial_adata(analysis_id, dataset_id, session_id, include_images=None):
+    # Get spatial-based adata object.
+    user = get_user_from_session_id(session_id)
+    user_id = None
+    if user:
+        user_id = user.id
+    ana = SpatialAnalysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user_id)
+    ana.discover_type()
+    sdata = ana.get_sdata()
+    platform = ana.determine_platform(sdata)
+
+    from gear import spatialuploader
+
+    # Ensure the spatial data type is supported
+    if not platform or platform not in spatialuploader.SPATIALTYPE2CLASS.keys():
+        raise ValueError("Invalid or unsupported spatial data type {0}".format(platform))
+
+    spatial_obj = spatialuploader.SPATIALTYPE2CLASS[platform]()
+    spatial_obj.sdata = sdata
+
+    # Filter by bounding box (mostly for images)
+    spatial_obj._filter_sdata_by_coords()
+
+    if include_images is None:
+        include_images = spatial_obj.has_images
+
+    # Create AnnData object
+    # Do not include images in the adata object (to make it lighter)
+    spatial_obj._convert_sdata_to_adata(include_images=include_images)
+    adata = spatial_obj.adata
+    # Extra metadata to help with determining if images are available and where they are
+    adata.uns["has_images"] = spatial_obj.has_images
+    if spatial_obj.has_images:
+        adata.uns["img_name"] = spatial_obj.img_name
     return adata
 
 def create_projection_adata(dataset_adata, dataset_id, projection_id):
@@ -91,18 +132,13 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
     # This should resolve (https://github.com/IGS/gEAR/issues/951)
     # Create a temporary file
     with tempfile.NamedTemporaryFile(delete=True) as temp_file:
-        temp_file_path = temp_file.name
-    # Copy the contents of the original file to the temporary file
-    shutil.copyfile(projection_adata_path, temp_file_path)
-    # Associate with the temporary filename to ensure AnnData is read in "backed" mode
-    # This creates the h5ad file if it does not exist
-    projection_adata.filename = temp_file_path
+        temp_file_path = temp_file.name      # Associate with the temporary filename to ensure AnnData is read in "backed" mode
 
-    # Associate with a filename to ensure AnnData is read in "backed" mode
-    # This creates the h5ad file if it does not exist
-    # TODO: If too many processes read from this file, it can throw a BlockingIOError. Eventually we should
-    #       handle this by creating a copy of the file for each process, like a tempfile.
-    #projection_adata.filename = projection_adata_path
+        # Copy the contents of the original file to the temporary file
+        shutil.copyfile(projection_adata_path, temp_file_path)
+        # Associate with a filename to ensure AnnData is read in "backed" mode
+        # This creates the h5ad file if it does not exist
+        projection_adata.filename = Path(temp_file_path)
 
     return projection_adata
 

@@ -10,7 +10,6 @@ const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];   // "tsne" is
 
 // Epiviz overrides the <script> d3 version when it loads so we save as a new variable to preserve it
 const new_d3 = d3;
-
 class TileGrid {
 
     constructor(shareId, type="layout", selector ) {
@@ -21,12 +20,12 @@ class TileGrid {
 
         this.maxCols = 12 // highest number of columns in a row
         this.arrangementWidth = 1080;
+        // NOTE: The true width will be a bit wider as grid-gap is not accounted for
         this.rowWidth = this.arrangementWidth / this.maxCols; // Split width into 12 columns
         this.colHeight = this.rowWidth * 4; // A unit of height for us is 4 units of width (to make a square)
 
         this.tiles = [];
         this.selector = selector;
-
     }
 
     /**
@@ -34,6 +33,10 @@ class TileGrid {
      * @returns {Promise<void>} A promise that resolves when all displays are added.
      */
     async addAllDisplays() {
+        if (!this.datasets || !this.datasets.length) {
+            console.warn("Not rendering displays because no datasets were found.");
+            return;
+        }
 
         for (const dataset of this.datasets) {
             dataset.userDisplays = [];
@@ -58,6 +61,33 @@ class TileGrid {
         selectorElt.replaceChildren();
 
         if (this.type === "dataset") {
+
+            /*
+            if (this.shareId == "8dcfc3f6") {
+                this.datasets = [
+                    {
+                        id: "8dcfc3f6-1965-49b0-be49-e2e4d7236897",
+                        title: "Chris Shults Spatial Transcriptomics Dataset",
+                        dtype: "spatial",
+                        organsim_id: 1,
+                        organism: "Mouse",
+                        owner_id: 622,
+                        has_h5ad: true,
+                        has_tarball: false,
+                        is_downloadable: false,
+                        ownerDisplays: [],
+                        userDisplays: [],
+                        links: []
+                    }
+                ]
+            }
+            */
+
+            if (!(this.datasets || this.datasets.length)) {
+                console.error("No datasets found.");
+                return;
+            }
+
             const datasetTile = new DatasetTile(this, null, this.datasets[0], isMulti); // default display will be currentDisplayId
             this.applySingleTileGrid(datasetTile, selectorElt);
             this.tiles = [datasetTile];
@@ -271,7 +301,7 @@ class DatasetTile {
         this.dataset = dataset; // Has dataset metadata info
 
         this.type = isMulti ? 'multi' : 'single';
-        this.typeInt = isMulti ? 1 : 0;
+        this.typeAsInt = isMulti ? 1 : 0;
 
         this.tile = this.generateTile();
 
@@ -303,6 +333,13 @@ class DatasetTile {
         // performingProjection: boolean - Indicates whether a projection is currently being performed.  We do not want to waste resources by performing the same projection multiple times.
         // success: boolean - Indicates whether the projection was successful
         this.projectR = {modeEnabled: false, projectionId: null, projectionInfo: null, performingProjection: false, success: false};
+
+        // Spatial parameters
+        this.min_genes = null;
+        this.selection_x1 = null;
+        this.selection_x2 = null;
+        this.selection_y1 = null;
+        this.selection_y2 = null;
     }
 
     /**
@@ -373,7 +410,7 @@ class DatasetTile {
 
         const dataset = this.dataset;
         try {
-            const {default_display_id: defaultDisplayId} = await apiCallsMixin.fetchDefaultDisplay(dataset.id, this.typeInt);
+            const {default_display_id: defaultDisplayId} = await apiCallsMixin.fetchDefaultDisplay(dataset.id, this.typeAsInt);
             return defaultDisplayId;
         } catch (error) {
             //pass
@@ -430,7 +467,7 @@ class DatasetTile {
         }
 
         // fail fast if no h5ad file
-        if (!this.dataset.has_h5ad) {
+        if (!this.dataset.has_h5ad && !this.dataset.type === "spatial") {
             createCardMessage(tileId, "danger", "No h5ad file found for this dataset. Please contact the gEAR team.");
             return;
         }
@@ -463,6 +500,94 @@ class DatasetTile {
         // Render ortholog dropdown if in single-gene view and there is more than one ortholog for the gene
         if (this.type === "single" && this.orthologsToPlot.length > 1) {
             this.renderOrthologDropdown();
+        }
+
+        // ? Need a better spot
+        if (this.dataset.dtype === "spatial") {
+            // Add loading message
+            createCardMessage(tileId, "info", "Loading spatial display...");
+
+            // build the URL for the spatial app
+            const urlParams = new URLSearchParams();
+            urlParams.append("dataset_id", this.dataset.id);
+            urlParams.append("gene_symbol", orthologs[0]);
+
+            // Add spatial parameters to the URL if they exist
+            if (this.min_genes) {
+                urlParams.append("min_genes", this.min_genes);
+            }
+            if (this.selection_x1) {
+                urlParams.append("selection_x1", this.selection_x1);
+            }
+            if (this.selection_x2) {
+                urlParams.append("selection_x2", this.selection_x2);
+            }
+            if (this.selection_y1) {
+                urlParams.append("selection_y1", this.selection_y1);
+            }
+
+            const url = `/panel/ws/panel_app?${urlParams.toString()}`;
+
+            try {
+                const cardImage = tileElement.querySelector('.card-image');
+                cardImage.replaceChildren();
+
+                if (this.type == "multi") {
+                // Create div element under .card-image, in this we will retrieve image data from an api call and re
+                this.gene_symbols = orthologs;
+                await this.renderSpatialScanpyDisplay(null, null);
+                }
+
+
+                if (this.type == "single") {
+
+                    const iframe = document.createElement("iframe");
+                    // srcDoc html requires Panel static files to be served from the same domain, so use src instead
+                    iframe.src = url;
+                    iframe.loading="lazy";
+                    iframe.referrerPolicy="origin"; // honestly doesn't matter if provided
+                    iframe.sandbox="allow-scripts allow-same-origin";
+                    cardImage.append(iframe);
+
+                    const iframeBody = iframe.contentDocument.body
+
+                    // create a mutation observer to monitor the iframe href for changes
+                    const observer = new MutationObserver((mutationsList, observer) => {
+                        for (const mutation of mutationsList) {
+                            console.log(mutation);
+                        }
+                    });
+
+                    observer.observe(iframeBody, { attributes: true, subtree: true, childList: true });
+
+                    // Create a polling function to check for changes to the iframe content URL
+                    // SAdkins - This is kind of hacky as I cannot get the mutation observer or related callback to work
+                    const pollIframe = async () => {
+                        // If iframe contentWindow is null, then return (i.e. switching genes)
+                        if (!iframe.contentWindow) {
+                            return;
+                        }
+
+                        const panelUrl = iframe.contentWindow.location.href;
+                        if (panelUrl !== iframe.src) {
+                            // extract query params from the URL and store to persist across iframe reloads
+                            const urlParams = new URLSearchParams(panelUrl.split("?")[1]);
+                            this.min_genes = parseInt(urlParams.get("min_genes")) || null;
+                            this.selection_x1 = parseFloat(urlParams.get("selection_x1")) || null;
+                            this.selection_x2 = parseFloat(urlParams.get("selection_x2")) || null;
+                            this.selection_y1 = parseFloat(urlParams.get("selection_y1")) || null;
+                            this.selection_y2 = parseFloat(urlParams.get("selection_y2")) || null;
+                        }
+                    }
+                    // Poll the iframe every 3 seconds
+                    setInterval(pollIframe, 3000);
+                }
+
+            } catch (error) {
+                console.error(error);
+            } finally {
+                return;
+            }
         }
 
         // Plot and render the display
@@ -855,6 +980,13 @@ class DatasetTile {
             document.getElementById("result-panel-grid").classList.remove("is-hidden");
             document.getElementById("zoomed-panel-grid").classList.add("is-hidden");
         });
+
+        // Hide "zoom" and "shrink" buttons for spatial datasets (NOT IMPLEMENTED YET)
+        if (this.dataset.dtype === "spatial") {
+            tileElement.querySelector('.js-expand-display').classList.add("is-hidden");
+            tileElement.querySelector('.js-shrink-display').classList.add("is-hidden");
+            dropdownContent.querySelector('.dropdown-item[data-tool="display"]').classList.add("is-hidden");
+        }
 
         // Add event listener to dropdown trigger
         tileElement.querySelector("button.dropdown-trigger").addEventListener("click", (event) => {
@@ -1518,12 +1650,6 @@ class DatasetTile {
 
         // decode base64 image and set as src
         tsnePreview.src = URL.createObjectURL(blob);
-
-        tsnePreview.onload = () => {
-            // Revoke the object URL to free up memory
-            // ! This does prevent right-click saving though
-            //URL.revokeObjectURL(tsnePreview.src);
-        }
         return;
     }
 
@@ -1609,8 +1735,76 @@ class DatasetTile {
         plotContainer.replaceChildren();    // erase plot
 
         colorSVG(data, plotConfig.colors, datasetId, this.tile.tileId, svgScoringMethod);
-
     }
+
+    /**
+     * Renders the spatial-based Scanpy display on the tile grid.
+     *
+     * @param {Object} display - The display object containing the dataset and plot information.
+     * @param {Object} otherOpts - Additional options for rendering the display.
+     * @returns {Promise<void>} - A promise that resolves when the display is rendered.
+     * @throws {Error} - If there is an error fetching the image data or if the image data is not available.
+     */
+    async renderSpatialScanpyDisplay(display, otherOpts) {
+
+        const datasetId = this.dataset.id;
+        const analysisObj = null
+        const plotConfig = {gene_symbols: this.gene_symbols};   // applies for single and multi gene
+
+        this.resetAbortController();
+        otherOpts = {}
+        if (this.controller) {
+            otherOpts.signal = this.controller.signal;
+        }
+
+
+        /* NOT IMPLEMENTED YET
+        const datasetId = display.dataset_id;
+        // Create analysis object if it exists.  Also supports legacy "analysis_id" string
+        const analysisObj = display.plotly_config.analysis_id ? {id: display.plotly_config.analysis_id} : display.plotly_config.analysis || null;
+        const plotConfig = display.plotly_config;
+        */
+
+        const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
+        if (!this.isZoomed) {
+            plotConfig.grid_spec = tileElement.style.gridArea   // add grid spec to plot config
+            if (plotConfig.grid_spec === "auto") delete plotConfig.grid_spec;   // single dataset grid spec
+        }
+
+        const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
+        if (!plotContainer) return; // tile was removed before data was returned
+        plotContainer.replaceChildren();    // erase plot
+
+        const spatialPreview = document.createElement("img");
+        spatialPreview.classList.add("image", "is-fullwidth");
+        spatialPreview.id = `tile-${this.tile.tileId}-spatial-preview`;
+        plotContainer.append(spatialPreview);
+
+        const data = await apiCallsMixin.fetchSpatialScanpyImage(datasetId, analysisObj, plotConfig, otherOpts);
+        if (data?.success < 1) {
+            throw new Error (data?.message ? data.message : "Unknown error.")
+        }
+        const {image} = data;
+
+        if (!image) {
+            console.warn(`Could not retrieve spatial plot image data for dataset ${datasetId}. Cannot make plot.`);
+            //console.warn(`Could not retrieve plot image for dataset display ${display.id}. Cannot make plot.`);
+            return;
+        }
+
+        const blob = await fetch(`data:image/webp;base64,${image}`).then(r => r.blob());
+
+        // decode base64 image and set as src
+        spatialPreview.src = URL.createObjectURL(blob);
+
+        spatialPreview.onload = () => {
+            // Revoke the object URL to free up memory
+            // ! This does prevent right-click saving though
+            //URL.revokeObjectURL(spatialPreview.src);
+        }
+        return;
+    }
+
 
     /**
      * Resets the AbortController and cancels any previous axios requests.
@@ -2100,11 +2294,15 @@ const getPlotlyDisplayUpdates = (plotConfObj, plotType, category) => {
  * @param {string} tileId - The ID of the dataset tile.
  * @param {string} level - The level of the message to apply to Bulma CSS class (e.g., "info", "warning", "danger").
  * @param {string} message - The message to be displayed in the card.
+ * @param {string} [id] - The ID of the message element.
  */
-const createCardMessage = (tileId, level, message) => {
+const createCardMessage = (tileId, level, message, id) => {
     const cardContent = document.querySelector(`#tile-${tileId} .card-image`);
     cardContent.replaceChildren();
     const messageElt = document.createElement("p");
+    if (id) {
+        messageElt.id = `tile-${tileId}-${id}`;
+    }
     const textLevel = `has-text-${level}-dark`;
     const bgLevel = `has-background-${level}-light`;
     messageElt.classList.add(textLevel, bgLevel, "p-2", "m-2", "has-text-weight-bold");
