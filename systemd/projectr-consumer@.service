@@ -1,6 +1,6 @@
 [Unit]
 Description="ProjectR Consumer for RabbitMQ - #%i"
-Documentation=https://github.com/IGS/gEAR/blob/main/docs/setup_rabbitmq.md
+Documentation=https://github.com/IGS/gEAR/blob/main/docs/setup.rabbitmq.md
 After=rabbitmq-server.service
 
 [Service]
@@ -11,7 +11,6 @@ KillMode=mixed
 PrivateTmp=true
 Restart=always
 RestartSec=2s
-StartLimitIntervalSec=0
 
 [Install]
 WantedBy=multi-user.target

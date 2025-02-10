@@ -1,0 +1,16 @@
+[Unit]
+Description="Panel app deployment to display spatial transcriptomics plots"
+Documentation=https://github.com/IGS/gEAR/blob/main/docs/setup.new_server_notes.md
+
+[Service]
+Type=simple
+Environment=APACHE_STARTED_BY_SYSTEMD=true
+ExecStart=/opt/Python-3.10.4/bin/panel serve /home/jorvis/git/gEAR/services/spatial/panel_app.py --address=0.0.0.0 --port=5006 --num-threads=4 --allow-websocket-origin="*" --global-loading-spinner
+
+KillMode=mixed
+PrivateTmp=true
+Restart=always
+RestartSec=2s
+
+[Install]
+WantedBy=multi-user.target

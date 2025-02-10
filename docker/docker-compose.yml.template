@@ -1,5 +1,3 @@
-version: '3'
-
 networks:
   gear:
 
@@ -17,7 +15,7 @@ services:
       - "3306:3306"
     restart: always
     volumes:
-      - ./mysql:/var/lib/mysql
+      - db:/var/lib/mysql:rw
 
   web:
     build: .
@@ -40,9 +38,28 @@ services:
       - "5672:5672"
     restart: always
 
+  panel:
+    image: panel_app
+    networks:
+      - gear
+    ports:
+      - "5006:5006" # host:container
+    restart: always
+    volumes:
+      - <dataset_path>:/gEAR/www/datasets
+      - <gear_lib_path>:/gEAR/lib
+
   # consumer:
   #   image: busybox
   #   tty: true
   #   volumes:
   #     - python_vol:/opt/Python-3.10.4
   #     - ..:/opt/gEAR
+
+volumes:
+  db:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./mysql
+      o: bind

@@ -89,7 +89,7 @@ def get_verification_code_short_form(long_form):
     """
     return ''.join([x[0] for x in long_form.split('-')])
 
-def get_analysis(analysis, dataset_id, session_id):
+def get_analysis(analysis, dataset_id, session_id, is_spatial=False):
     """Return analysis object based on various factors."""
     # If an analysis is posted we want to read from its h5ad
     if analysis:
@@ -98,7 +98,11 @@ def get_analysis(analysis, dataset_id, session_id):
         if user:
             user_id = user.id
 
-        ana = Analysis(id=analysis['id'], dataset_id=dataset_id,
+        if is_spatial:
+            ana = SpatialAnalysis(id=analysis['id'], dataset_id=dataset_id,
+                                session_id=session_id, user_id=user_id)
+        else:
+            ana = Analysis(id=analysis['id'], dataset_id=dataset_id,
                                 session_id=session_id, user_id=user_id)
 
         if 'type' in analysis:
@@ -697,7 +701,6 @@ class Analysis:
     def dataset_path(self):
         return "{0}/{1}.h5ad".format(self.base_path(), self.dataset_id)
 
-
     def discover_vetting(self, current_user_id=None):
         """
         This describes the public attribution of the analysis.  Making it a derived value via this
@@ -822,7 +825,6 @@ class Analysis:
             else:
                 return sc.read_h5ad(self.dataset_path())
 
-
     def marker_gene_json_path(self):
         return "{0}/{1}.marker_gene_table.json".format(self.base_path(), self.dataset_id)
 
@@ -859,6 +861,37 @@ class Analysis:
     def settings_path(self):
         return "{0}/{1}.pipeline.json".format(self.base_path(), self.dataset_id)
 
+class SpatialAnalysis(Analysis):
+    """
+    Spatial-based analysis object.  Inherits from Analysis and adds spatial-specific methods.
+    """
+
+    def __init__(self, id=None, dataset_id=None, user_id=None, session_id=None, label=None, type=None, vetting=None):
+        super().__init__(id=id, dataset_id=dataset_id, user_id=user_id, session_id=session_id, label=label, type=type, vetting=vetting)
+
+    def dataset_path(self):
+        return "{0}/spatial/{1}.zarr".format(self.base_path(), self.dataset_id)
+
+    def determine_platform(self, sdata):
+        try:
+            platform = sdata.tables["table"].uns["platform"]
+            return platform
+        except KeyError:
+            raise ValueError("No platform information found in the dataset")
+
+    def discover_type(self):
+        return super().discover_type()
+
+    def get_sdata(self):
+        import spatialdata as sd
+
+        if not os.path.exists(self.dataset_path()):
+            raise ValueError(f"Dataset {self.dataset_id} not found")
+        return sd.read_zarr(self.dataset_path())
+
+    def settings_path(self):
+        base_path = f"{self.base_path()}/spatial"
+        return "{0}/{1}.pipeline.json".format(base_path, self.dataset_id)
 
 class AnalysisCollection:
     def __init__(self, public=None, user_saved=None, user_unsaved=None):
@@ -1938,6 +1971,14 @@ class Dataset:
         This returns where the path SHOULD be, it doesn't check that it's actually there. This
         allows for it to be used also for any process which wants to know where to write it.
         """
+        if self.dtype == "spatial":
+            if session_id is None:
+                zarr_file_path = "{0}/../www/datasets/spatial/{1}.zarr".format(
+                    os.path.dirname(os.path.abspath(__file__)), self.id)
+            else:
+                zarr_file_path = "{0}/{1}/spatial/{2}.zarr".format(this.analysis_base_dir, session_id, self.id)
+            return zarr_file_path
+
         if session_id is None:
             h5ad_file_path = "{0}/../www/datasets/{1}.h5ad".format(
                 os.path.dirname(os.path.abspath(__file__)), self.id)
@@ -1952,6 +1993,7 @@ class Dataset:
         it's actually there. This allows for it to be used also for any process which wants to
         know where to write it.
         """
+
         tarball_file_path = "{0}/../www/datasets/{1}.tar.gz".format(
             os.path.dirname(os.path.abspath(__file__)), self.id)
 
@@ -2163,7 +2205,7 @@ class DatasetCollection:
             for row in cursor:
 
                 # valid pubmed IDs are numeric
-                m = re.match("\d+", str(row[3]))
+                m = re.match(r"\d+", str(row[3]))
                 if m:
                     pubmed_id = row[3]
                 else:
@@ -2196,15 +2238,20 @@ class DatasetCollection:
                 dataset.access = 'access_level'
                 dataset.user_name = row[10]
 
-                if os.path.exists(dataset.get_tarball_path()):
-                    dataset.has_tarball = 1
-                else:
+                if dataset.dtype == "spatial":
+                    #NotImplementedError("Spatial datasets don't have permanent tarball location yet")
                     dataset.has_tarball = 0
-
-                if os.path.exists(dataset.get_file_path()):
-                    dataset.has_h5ad = 1
-                else:
                     dataset.has_h5ad = 0
+                else:
+                    if os.path.exists(dataset.get_tarball_path()):
+                        dataset.has_tarball = 1
+                    else:
+                        dataset.has_tarball = 0
+
+                    if os.path.exists(dataset.get_file_path()):
+                        dataset.has_h5ad = 1
+                    else:
+                        dataset.has_h5ad = 0
 
                 #  TODO: These all need to be tracked through the code and removed
                 dataset.dataset_id = dataset.id

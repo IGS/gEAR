@@ -23,12 +23,18 @@ NOTE: Change the SQL filename to whatever database dump you are using.
 
 ## Set up the mysql database (first-time only)
 
-1. Do `docker-compose exec db /bin/bash` to get into the docker instance.  Next do `mysql -uroot -p<ROOT_PASSWORD> gear\_portal` to log into mysql as root.  Note that the "GENERATED_ROOT_PASSWORD" was obtained from the "Get root password" section, and that there is no space between the "-p" and the password.
+1. Do `docker-compose exec db /bin/bash` to get into the docker instance.  Next do `mysql -uroot -p<ROOT_PASSWORD> gear_portal` to log into mysql as root.  Note that the "GENERATED_ROOT_PASSWORD" was obtained from the "Get root password" section, and that there is no space between the "-p" and the password.
 2. In the mysql client, run `source <db_dump.sql>` to load the SQL dump backup file.
-3. After that finishes run `grant select, insert, update, drop, delete on gear\_portal.\* to gear@localhost identified by 'gearadmin';` to set up privileges for the "gear" user.
+3. After that finishes run the following to ensure the gEAR user can do database operations in gEAR
+    1. `GRANT USAGE ON *.* TO 'gear'@'%';`
+    2. `GRANT SELECT, INSERT, UPDATE, DELETE ON gear_portal.* TO 'gear'@'%';`
 
 ## Issues
 
 ### Cannot log in
 
 Make sure the gear.ini file in the gEAR root directory has the host entry as "db" instead of "localhost".
+
+### MySQL container will not start
+
+If you check `docker compose logs db` and it says something about `chown: cannot dereference '/var/lib/mysql/mysql.sock': No such file or directory`, just delete the `./mysql/mysql.sock` file in this directory, then do `docker compose down -v; docker compose up -d`. It should start up properly with a new socket file

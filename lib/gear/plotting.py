@@ -1,3 +1,4 @@
+import sys
 from itertools import cycle
 
 import plotly.express as px
