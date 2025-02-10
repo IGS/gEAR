@@ -2730,8 +2730,8 @@ const updateDisplayAddRemoveToCollectionButtons = (modalDivId, collection=null) 
         enableAndShowElement(addToCollectionButton);
         enableAndShowElement(removeFromCollectionButton);
 
-        // if dataset collection is domain, remove the "add to collection" and "remove from collection" buttons
-        if (!collection || Boolean(collection.is_domain)) {
+        // if dataset collection, remove the "add to collection" and "remove from collection" buttons
+        if (!collection) {
             collectionAddRemoveGroup.classList.add("is-hidden");
             disableAndHideElement(addToCollectionButton);
             disableAndHideElement(removeFromCollectionButton);
