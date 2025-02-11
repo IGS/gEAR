@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>gEAR template page</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="-1">
+        <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
+
+        <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
+             to be changed for any hosts where gEAR is not at the webserver root.
+          -->
+        <base href="/" />
+
+        <link rel="stylesheet" href="css/gear-theme-purple.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css" />
+
+        <!-- Ensures we always get a new version (during our current active development cycles) -->
+        <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
+
+        <!--Page-specific CSS here -->
+        <script>document.write('<link rel="stylesheet" href="css/landing.' + (new Date()).getTime() + '.css" />');</script>
+    </head>
+    <body>
+      <div id="main-layout-c" class="is-fullheight">
+        <section id="top-with-background">
+          <header id="header-c" class="is-fullwidth">
+            <div class="columns is-gapless is-vcentered">
+              <div class="column is-2">
+                <img src="images/gear-logo.png" alt="gEAR logo" />
+              </div>
+              <div class="column is-10 has-text-right">
+                <a href="login.html" class="button is-primary">Login</a>
+                <a href="register.html" class="button is-primary">Register</a>
+              </div>
+            </div>
+          </header>
+
+          <section id="primary-intro-c" class="columns is-gapless is-vcentered">
+            <div class="column is-6">
+              <h1 class="title is-1">Welcome to gEAR</h1>
+              <p class="subtitle is-4">The ultimate tool for managing your gear</p>
+              <p>gEAR is a tool for managing your gear.  It's a place to keep track of what you have, where it is, 
+                and what condition it's in.  It's a place to keep track of what you want, what you need, and what 
+                you've sold.  It's a place to keep track of what you've lent out, what you've borrowed, and what 
+                you've lost.  It's a place to keep track of what you've used, what you've loved, and what you've 
+                hated.  It's a place to keep track of what you've fixed, what you've broken, and what you've 
+                replaced.  It's a place to keep track of what you've bought, what you've sold, and what you've 
+                traded.  It's a place to keep track of what you've made, what you've modified, and what you've 
+                estroyed.  It's a place to keep track of what you've researched, what you've learned, and what 
+                you've forgotten.  It's a place to keep track of what you've planned, what you've done, and 
+                what you've dreamed.  It's a place to keep track of what you've shared, what you've kept 
+                secret, and what you've lost track of.</p>
+            </div>
+            <div class="column is-6">
+              <img src="images/gear-landing.png" alt="gEAR landing image" />
+            </div>
+          </section>
+
+        </section>
+
+        <section id="main-c" class="pl-0 pt-0">
+
+          <section id="content-c" class="columns m-3" data-nav-link="workspace">
+            
+          </section><!-- end #content-c -->
+
+        </section> <!-- end #main-c -->
+      </div>
+      <footer>
+        <div>
+          <!-- content here TO BE inserted via common.js -->
+        </div>
+      </footer>
+
+      <script src="js/vendor/js.cookie.js"></script>
+
+      <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+      <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+      <!--<script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>-->
+
+      <!-- Page-specific JS file here -->
+      <script>document.write('<script src="js/landing.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
+    </body>
+</html>
