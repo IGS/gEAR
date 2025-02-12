@@ -1,0 +1,33 @@
+button {
+    font-weight: bold;
+}
+div#main-layout-c {
+    background-image: url(../img/landing_page_upper_background.png);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: left top;
+}
+img#landing-logo {
+    height: 50px;
+}
+section#justification-c .title {
+    font-size: 26px;
+    font-weight: semi-bold;
+}
+section#justification-c .subtitle {
+    font-size: 14px;
+    font-weight: bold;
+    color: #4e5667;
+}
+section#primary-intro-c {
+    min-height: 30em;
+}
+section#primary-intro-c .title {
+    font-size: 34px;
+    font-weight: semi-bold;
+}
+section#primary-intro-c .subtitle {
+    font-size: 18px;
+    font-weight: bold;
+    color: #4e5667;
+}
