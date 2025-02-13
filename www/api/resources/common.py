@@ -45,10 +45,10 @@ def get_adata_shadow_from_primary(h5_path):
         raise FileNotFoundError("No h5 file found for this dataset")
     return AnnDataShadow(h5_path)
 
-def get_adata_shadow(analysis_id, dataset_id, session_id, dataset_path):
+def get_adata_shadow(analysis_id, dataset_id, session_id, dataset_path, include_images=None):
     if dataset_path.endswith(".zarr"):
         # It's spatial data... probably can't use AnnDataShadow
-        return get_spatial_adata(analysis_id, dataset_id, session_id)
+        return get_spatial_adata(analysis_id, dataset_id, session_id, include_images=include_images)
 
     if analysis_id:
         adata = get_adata_shadow_from_analysis(analysis_id, dataset_id, session_id)
