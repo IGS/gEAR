@@ -1,7 +1,27 @@
 button {
     font-weight: bold;
 }
-div#main-layout-c {
+div.card-content,
+div.card-image {
+    background-color: white;
+    color: black;
+}
+div.card-content button {
+
+}
+div.card-content .title {
+    font-size: 24px;
+    font-weight: semi-bold;
+}
+div.card-content .subtitle {
+    font-size: 12px;
+    font-weight: bold;
+    color: #4e5667;
+}
+section#banded-section-c {
+    background-color: #f5f3fd;
+}
+section#top-with-background {
     background-image: url(../img/landing_page_upper_background.png);
     background-size: contain;
     background-repeat: no-repeat;
@@ -10,11 +30,13 @@ div#main-layout-c {
 img#landing-logo {
     height: 50px;
 }
-section#justification-c .title {
+section#justification-c .title,
+section#element-intro-c .title {
     font-size: 26px;
     font-weight: semi-bold;
 }
-section#justification-c .subtitle {
+section#justification-c .subtitle,
+section#element-intro-c .subtitle {
     font-size: 14px;
     font-weight: bold;
     color: #4e5667;
