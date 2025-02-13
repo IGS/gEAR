@@ -3,6 +3,7 @@
 
 #dropdown-dc .dropdown-content {
     width: 45vw;
+    max-width: 700px;
 }
 
 #dropdown-dc .dropdown-item h3 {

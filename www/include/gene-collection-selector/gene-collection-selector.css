@@ -1,22 +1,8 @@
 /* Prevent the dropdown from overflowing the left side of the screen */
 /* TODO: This was only tested on index.html.  It does not work well on expression.html + it's a hacky solution */
 #dropdown-gene-lists div.dropdown-menu {
-    width: 60vw;
-}
-@media (min-width: 1320px) {
-    #dropdown-gene-lists div.dropdown-menu {
-        width: 55vw;
-    }
-}
-@media (min-width: 1440px) {
-    #dropdown-gene-lists div.dropdown-menu {
-        width: 50vw;
-    }
-}
-@media (min-width: 1580px) {
-    #dropdown-gene-lists div.dropdown-menu {
-        width: 45vw;
-    }
+    width: 55vw;
+    max-width: 800px;
 }
 div#dropdown-gene-lists button.is-danger {
     border-color: #97172e;
