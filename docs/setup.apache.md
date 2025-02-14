@@ -157,11 +157,11 @@ There's a lot in here, but the CGI-related addition is:
 
   // Panel proxy
   // This uses the "ws" protocol for websockets as they are better are real-time two-way communication
-    ProxyPass /panel/ws ws://panel:5006
-    ProxyPassReverse /panel/ws ws://panel:5006
+  ProxyPass /panel/ws ws://127.0.0.1:5006
+  ProxyPassReverse /panel/ws ws://127.0.0.1:5006
 
-    ProxyPass /panel http://panel:5006
-    ProxyPassReverse /panel http://panel:5006
+  ProxyPass /panel http://127.0.0.1:5006
+  ProxyPassReverse /panel http://127.0.0.1:5006
 
 ## /etc/apache2/mods-available/wsgi.load
 
