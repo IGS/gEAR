@@ -147,6 +147,13 @@ There's a lot in here, but the CGI-related addition is:
             </IfVersion>
     </Directory>
 
+    # Spatial zarr store
+    <Directory /var/www/datasets/spatial/*.zarr>
+        Options Indexes FollowSymLinks MultiViews
+        Require all granted
+        IndexOptions SuppressHTMLPreamble
+        IndexIgnore ..  # hide parent directory
+    </Directory>
 
   // Panel proxy
   // This uses the "ws" protocol for websockets as they are better are real-time two-way communication
