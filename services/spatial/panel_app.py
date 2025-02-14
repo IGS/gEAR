@@ -29,6 +29,9 @@ spatial_path = gear_root.joinpath('www/datasets/spatial')
 
 pio.templates.default = "simple_white"  # no gridlines, white background
 
+SECS_IN_DAY = 86400
+CACHE_EXPIRATION = SECS_IN_DAY * 7  # 7 days
+
 # TODO: explore Datashader for large datasets
 
 # Ignore warnings about plotly GUI events, which propagate to the browser console
@@ -549,7 +552,7 @@ class SpatialPanel(pn.viewable.Viewer):
         adata_cache_label = f"{self.dataset_id}_adata"
 
         # Load the Anndata object (+ image name) from cache or create it if it does not exist, with a 24-hour time-to-live
-        adata_pkg = pn.state.as_cached(adata_cache_label, create_adata_pkg, ttl=86400)
+        adata_pkg = pn.state.as_cached(adata_cache_label, create_adata_pkg, ttl=CACHE_EXPIRATION)
 
         self.adata = adata_pkg["adata"]
         self.spatial_img = None
@@ -652,7 +655,7 @@ class SpatialPanel(pn.viewable.Viewer):
         adata_subset_cache_label = f"{self.dataset_id}_{self.min_genes}_adata"
 
         # Load the subset Anndata object from cache or create it if it does not exist, with a 24-hour time-to-live
-        self.adata = pn.state.as_cached(adata_subset_cache_label, self.filter_adata, ttl=86400)
+        self.adata = pn.state.as_cached(adata_subset_cache_label, self.filter_adata, ttl=CACHE_EXPIRATION)
 
         self.create_gene_df()   # creating the Dataframe is generally fast
         self.map_colors()
