@@ -33,6 +33,7 @@ SECS_IN_DAY = 86400
 CACHE_EXPIRATION = SECS_IN_DAY * 7  # 7 days
 
 # TODO: explore Datashader for large datasets
+# ? Maybe make a button to create UMAP instead of creating at the start
 
 # Ignore warnings about plotly GUI events, which propagate to the browser console
 import warnings
@@ -439,9 +440,6 @@ class SpatialZoomSubplot(SpatialPlot):
             settings.selection_x2 = self.range_x2
             settings.selection_y1 = self.range_y1
             settings.selection_y2 = self.range_y2
-
-            # TODO: Either a) clear selected points on "not this" plot or b) mirror selection on all plots
-            # TODO: Sometimes the selection does not trigger the callback, need to investigate
 
         return self.refresh_spatial_fig()
 
