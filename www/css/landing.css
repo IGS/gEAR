@@ -18,17 +18,30 @@ div.card-content .subtitle {
     font-weight: bold;
     color: #4e5667;
 }
+img#landing-logo {
+    height: 50px;
+}
+section#element-grid-c a.tool-link {
+    font-size: 90%;
+}
+section#element-grid-c p.description {
+    
+}
+section#element-grid-c div.tile p.title {
+    font-size: 16px;
+    font-weight: semi-bold;
+}
 section#banded-section-c {
     background-color: #f5f3fd;
+}
+section#element-grid-c img {
+    border: 1px solid black;
 }
 section#top-with-background {
     background-image: url(../img/landing_page_upper_background.png);
     background-size: contain;
     background-repeat: no-repeat;
     background-position: left top;
-}
-img#landing-logo {
-    height: 50px;
 }
 section#justification-c .title,
 section#element-intro-c .title {
