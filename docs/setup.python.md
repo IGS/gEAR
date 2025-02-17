@@ -2,8 +2,7 @@
 
 ## Overview
 
-These are instructions for setting up the Python environment for Python
-environment, tested on Ubuntu 22.04.  Why not virtualenv or any
+These are instructions for setting up the Python environment, tested on Ubuntu 22.04.  Why not virtualenv or any
 other isolated python environment?  You could, but for a committed
 webserver that's an unnecessary layer.  Also, maybe I'm old-school, but
 fixed paths have worked fine for decades.
@@ -57,16 +56,17 @@ Check the requirement.txt file in <git_repo_root>/docker for the latest packages
       matplotlib==3.9.0 \
       mod-wsgi==4.9.4 \
       more_itertools==9.0.0 \
-      mysql-connector-python==8.0.20 \
+      mysql-connector-python==8.0.28 \
       numba==0.58.1 \
       numexpr==2.8.4 \
       numpy==1.26.4 \
       opencv-python==4.5.5.64 \
       openpyxl==3.1.5 \
       pandas==2.2.1 \
+      panel==1.5.5 \
       Pillow==10.2.0 \
       pika==1.3.1 \
-      plotly==5.6.0 \
+      plotly==5.20.0 \
       python-dotenv==0.20.0 \
       requests==2.31.0 \
       rpy2==3.5.16 \
@@ -76,7 +76,10 @@ Check the requirement.txt file in <git_repo_root>/docker for the latest packages
       scipy==1.11.04 \
       seaborn==0.13.2 \
       shadows==0.1a0 \
+      spatialdata==0.3.0\
+      spatialdata_io==0.1.6 \
       tables==3.9.2 \
+      watchfiles \
       xlrd==1.2.0
     $ sudo mkdir /opt/bin
     $ sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/

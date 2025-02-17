@@ -7,6 +7,7 @@ Instances of a gEAR Portal are most often run within a cloud instance, where you
 ```bash
     sudo apt update
     sudo apt upgrade
+    sudo apt install build-essential
 ```
 
 Reboot if there are kernel updates (or just to be safe if you don't know.)
@@ -20,7 +21,7 @@ Reboot if there are kernel updates (or just to be safe if you don't know.)
 
 ### MYSQL
 
-    sudo apt install mysql-server
+`sudo apt install mysql-server`
 
 Follow instructions in our setup.mysql.md document
 
@@ -28,9 +29,7 @@ Follow instructions in our setup.mysql.md document
 
 Not necessary if you want projectR to run on a Google Cloud Run service (configurable in gear.ini)
 
-`sudo apt install r-base`
-
-Please consult `setup.r_rpy2.md` for packages to install in order to install requisite R packages
+Please consult `setup.r_rpy2.md` for packages to install in order to install R and requisite R packages
 
 ### RabbitMQ
 
@@ -44,17 +43,38 @@ Follow instructions in setup.python.md document
 
 ### APACHE
 
-    sudo apt install apache2 apache2-dev
+`sudo apt install apache2 apache2-dev`
 
 Follow instructions in setup.apache.md document
 
 ### gEAR portal
 
 ```bash
-cd ~/git
+cd ~jorvis/git
 git clone https://github.com/jorvis/gEAR.git
 cd /var
-sudo rm -rf www && sudo ln -s ~/git/gEAR/www
+sudo rm -rf www && sudo ln -s ~jorvis/git/gEAR/www
+```
+
+### Systemd Services
+
+More information about these services can be found at `gEAR/systemd/README.md`
+
+```bash
+cd ~jorvis/git/gEAR/systemd
+sudo mv *target /etc/systemd/system/
+sudo mv *service /etc/systemd/system/
+
+# Start the services
+cd /etc/systemd/system
+
+sudo systemctl enable projectr-consumer.target
+sudo systemctl start projectr-consumer.target
+
+sudo systemctl enable spatial-panel.service
+sudo systemctl start spatial-panel.service
+
+# <Add more services here>
 ```
 
 ### Data transfer

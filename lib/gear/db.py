@@ -41,3 +41,4 @@ class MySQLDB:
                 print("Database does not exist", file=sys.stderr)
             else:
                 print(err, file=sys.stderr)
+            raise

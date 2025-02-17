@@ -1234,6 +1234,20 @@ const apiCallsMixin = {
         return data;
     },
 
+    
+    /**
+     * Fetches shared dataset and layout data from the server.
+     *
+     * @param {string} datasetShareId - The ID of the shared dataset.
+     * @param {string} layoutShareId - The ID of the shared layout.
+     * @returns {Promise<Object>} A promise that resolves to the shared data.
+     */
+    async fetchShareData(datasetShareId, layoutShareId) {
+        const payload = { session_id: this.sessionId, dataset_share_id: datasetShareId, layout_share_id: layoutShareId };
+        const {data} = await axios.post("/cgi/get_shared_info.cgi", convertToFormData(payload));
+        return data;
+    },
+
     /**
      * Fetches SVG data for a given dataset, gene symbol, and projection ID.
      * @param {string} datasetId - The ID of the dataset.
@@ -1256,7 +1270,20 @@ const apiCallsMixin = {
 
         return data;
     },
-
+    /**
+     * Fetches the spatial scanpy image for a given dataset, analysis, plot type, plot configuration, and other options.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} analysis - The analysis type.
+     * @param {object} plotConfig - The plot configuration.
+     * @param {object} [otherOpts={}] - Additional options for the request.
+     * @returns {Promise<any>} - A promise that resolves to the fetched data.
+     */
+    async fetchSpatialScanpyImage(datasetId, analysis, plotConfig, otherOpts={}) {
+        // NOTE: gene_symbol should already be already passed to plotConfig
+        const payload = { ...plotConfig, analysis, colorblind_mode: this.colorblindMode };
+        const {data} = await axios.post(`/api/plot/${datasetId}/spatial_scanpy`, payload, otherOpts);
+        return data;
+    },
     /**
      * Fetches the TSNE image for a given dataset, analysis, plot type, plot configuration, and other options.
      * @param {string} datasetId - The ID of the dataset.

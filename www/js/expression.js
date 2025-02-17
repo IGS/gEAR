@@ -13,6 +13,7 @@ let svg_scoring_method = 'gene';
 
 let datasetShareId = null;
 let layoutShareId = null;
+let shareUsed = false;
 
 // Plugins can add functions to this which are called after a gene selection change is made
 let geneChangeCallbacks = [];
@@ -29,21 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // handle when the dropdown-gene-list-search-input input box is changed
     document.getElementById('genes-manually-entered').addEventListener('change', (event) => {
         const search_term_string = event.target.value;
-        const new_manually_entered_genes = search_term_string.length > 0 ? new Set(search_term_string.split(/[ ,]+/)) : new Set();
-
-        // Remove genes that have been deleted from the selectedGenes set
-        for (const gene of manually_entered_genes) {
-            if (!new_manually_entered_genes.has(gene)) {
-                selected_genes.delete(gene);
-            }
-        }
-
-        // Add new genes to the selectedGenes set
-        for (const gene of new_manually_entered_genes) {
-            selected_genes.add(gene);
-        }
-
-        manually_entered_genes = new_manually_entered_genes;
+        updateGenesSelected(search_term_string);
     });
 
     document.getElementById('functional-annotation-toggle').addEventListener('click', (event) => {
@@ -133,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // If the user isn't logged in, set the first organism's annotation as the default
-            if (!CURRENT_USER.session_id && tilegrid.datasets.length > 0) {
+            if (!CURRENT_USER.session_id && tilegrid?.datasets.length > 0) {
                 const first_organism_id = tilegrid.datasets[0].organism_id;
                 currently_selected_org_id = parseInt(first_organism_id);
                 document.getElementById('organism-selector').value = currently_selected_org_id;
@@ -353,6 +340,9 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     datasetShareId = getUrlParameter('share_id');
     layoutShareId = getUrlParameter('layout_id');
+    let cartShareId = getUrlParameter('gene_lists');
+    let geneSymbolId = getUrlParameter('gene_symbol');
+    shareUsed = getUrlParameter('share_used') === '1';
 
     // Wait until all pending API calls have completed before checking if we need to search
     document.getElementById("submit-expression-search").classList.add("is-loading");
@@ -407,6 +397,74 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
 
+    // If we entered via a share link, conditionally display the notification
+    if (shareUsed) {
+        const shareData = await apiCallsMixin.fetchShareData(datasetShareId, layoutShareId);
+        document.getElementById("share-entrance-notification").classList.remove('is-hidden');
+
+        // if an individual dataset was shared, show its info
+        if (datasetShareId) {
+            document.getElementById("share-entrance-dataset-label").innerHTML = shareData['dataset_label'];
+            document.getElementById("share-entrance-dataset").classList.remove('is-hidden');
+
+            if (shareData['owner_name']) {
+                document.getElementById("share-entrance-dataset-owner-label").innerHTML = shareData['owner_name'];
+            } else {
+                document.getElementById("share-entrance-dataset-owner-label").innerHTML = 'Unknown';
+            }
+
+        // if a dataset collection was shared, show its info
+        } else if (layoutShareId) {
+            document.getElementById("share-entrance-layout-label").innerHTML = shareData['layout_label'];
+            document.getElementById("share-entrance-layout").classList.remove('is-hidden');
+
+            if (shareData['owner_name']) {
+                document.getElementById("share-entrance-layout-owner-label").innerHTML = shareData['owner_name'];
+            } else {
+                document.getElementById("share-entrance-layout-owner-label").innerHTML = 'Unknown';
+            }
+        }
+
+        if (cartShareId || geneSymbolId) {
+            document.getElementById("share-entrance-genes-preselected").classList.remove('is-hidden');
+        } else {
+            if (shareData['gene_symbol']) {
+                document.getElementById("share-entrance-genes-autoselected").classList.remove('is-hidden');
+                document.getElementById("share-entrance-genes-label").innerHTML = shareData['gene_symbol'];
+                document.getElementById("share-entrance-genes").classList.remove('is-hidden');
+
+                // insert the gene symbol and trigger a search
+                document.getElementById('genes-manually-entered').value = shareData['gene_symbol'];
+                updateGenesSelected(shareData['gene_symbol']);
+                document.getElementById('submit-expression-search').click();
+            } else {
+                document.getElementById("share-entrance-genes-noneselected").classList.remove('is-hidden');
+            }
+        }
+    }
+}
+
+/**
+ * We need to maintain a few data structures with the selected and manually entered genes,
+ * but these can be updated when the user types or via a share URL, so let's shift this
+ * to a function.
+ */
+const updateGenesSelected = (search_term_string) => {
+    const new_manually_entered_genes = search_term_string.length > 0 ? new Set(search_term_string.split(/[ ,]+/)) : new Set();
+
+    // Remove genes that have been deleted from the selectedGenes set
+    for (const gene of manually_entered_genes) {
+        if (!new_manually_entered_genes.has(gene)) {
+            selected_genes.delete(gene);
+        }
+    }
+
+    // Add new genes to the selectedGenes set
+    for (const gene of new_manually_entered_genes) {
+        selected_genes.add(gene);
+    }
+
+    manually_entered_genes = new_manually_entered_genes;
 }
 
 /**

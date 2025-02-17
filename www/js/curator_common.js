@@ -423,6 +423,9 @@ const datasetTree = new DatasetTree({
             return;
         }
 
+        // Clear previous plot style so that configs don't get mixed up
+        plotStyle = null;
+
         datasetId = newDatasetId;
 
         // Click to get to next step
@@ -441,6 +444,7 @@ const datasetTree = new DatasetTree({
         e.node.tree.expandAll(false);
 
         document.getElementById("dataset-s-success").classList.remove("is-hidden");
+        document.getElementById("dataset-s-failed").classList.add("is-hidden");
 
         // displays
         const {userDisplays, ownerDisplays} = await curatorApiCallsMixin.fetchDatasetDisplays(datasetId);
@@ -1114,6 +1118,7 @@ const loadDatasetTree = async () => {
         logErrorInConsole(error);
         const msg = "Could not fetch datasets. Please contact the gEAR team."
         createToast(msg);
+        document.getElementById("dataset-s-success").classList.add("is-hidden");
         document.getElementById("dataset-s-failed").classList.remove("is-hidden");
     }
 

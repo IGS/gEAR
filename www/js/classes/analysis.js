@@ -600,6 +600,7 @@ class Analysis {
         }
 
         // Hide success and failed state icons
+        // These do not include dataset and analysis "success" and "failed" icons
         for (const el of document.getElementsByClassName("js-step-success")) {
             el.classList.add("is-hidden");
         }

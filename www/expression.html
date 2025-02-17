@@ -102,6 +102,72 @@
                 </template>
               </div>
               <div id="annotation-and-grid-c" class="column">
+                <div id="share-entrance-notification" class="notification is-primary is-hidden">
+                  <button id="share-entrance-notification-close" class="delete"></button>
+                  <div class="columns">
+                    <div class="column divider-right is-4 mt-0 pt-0 pr-6">
+                      <h2 class="mb-1">
+                        <span class="icon">
+                          <i class="mdi mdi-information-outline"></i>
+                        </span> 
+                        Share link detected
+                      </h2>
+                      <p>
+                        You have used a share link to get here, which is great! We have pre-loaded the
+                        dataset(s) listed on the right.
+                      </p>
+                      <br />
+                      <p id="share-entrance-genes-preselected" class="is-hidden">
+                        The share also contained gene information, so results for these will be
+                        automatically displayed. Feel free to use the controls above to perform
+                        additional searches.
+                      </p>
+                      <p id="share-entrance-genes-autoselected" class="is-hidden">
+                        The share did not contain gene information, so we've automatically selected 
+                        the first gene curated in one of the datasets for demonstration purposes. Feel 
+                        free to use the controls above to perform additional searches.
+                      </p>
+                      <p id="share-entrance-genes-noneselected" class="is-hidden">
+                        The share did not contain gene information, and we couldn't automatically
+                        select one this time. Please use the form above to enter one or more genes
+                        to see results for these data.
+                      </p>
+                    </div>
+                    <div class="column is-8 mt-0 pt-0 pl-6">
+                      <div id="share-entrance-dataset" class="is-hidden">
+                        <h3 class="mb-1">Dataset</h3>
+                        <p class="pl-3">
+                          <strong>Title:</strong>
+                          <span id="share-entrance-dataset-label"></span>
+                        </p>
+                        <p class="pl-3">
+                          <strong>Owner:</strong>
+                          <span id="share-entrance-dataset-owner-label"></span>
+                        </p>
+                      </div>
+                      <div id="share-entrance-layout" class="is-hidden">
+                        <h3 class="mb-1">Dataset Collection</h3>
+                        <p class="pl-3">
+                          <strong>Title:</strong>
+                          <span id="share-entrance-layout-label"></span>
+                        </p>
+                        <p class="pl-3">
+                          <strong>Owner:</strong>
+                          <span id="share-entrance-layout-owner-label"></span>
+                        </p>
+                      </div>
+                      <div id="share-entrance-genes" class="is-hidden mt-4">
+                        <h3 class="mb-1">Gene(s) searched</h3>
+                        <p id="share-entrance-genes-label" class="pl-3"></p>
+                      </div>
+                      <div id="share-entrance-gene-list" class="is-hidden mt-4">
+                        <h3 class="mb-1">Gene list searched</h3>
+                        <p id="share-entrance-gene-list-label" class="pl-3"></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <h3 id="currently-selected-gene-header" class="mb-2 mt-0">
                   Showing results for:
                   <span id="currently-selected-gene"></span>

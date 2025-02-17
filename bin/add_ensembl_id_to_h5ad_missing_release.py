@@ -73,6 +73,12 @@ def main():
     print("\nOriginal loaded adata\n")
     print(adata)
 
+    # If adata.var is an empty dataframe, make note that the index is the original gene symbol column
+    # Ensures the `adata_unmapped_var` rename aligns with the original gene symbol column in adata.var
+    orig_gene_column = "genes"
+    if adata.var.empty:
+        orig_gene_column = "index"
+
     for release in ensembl_releases:
         print("INFO: comparing with ensembl release: {0} ... ".format(release), end='')
         cursor.execute(query, (args.organism, release))
@@ -129,7 +135,15 @@ def main():
     adata_with_ensembl_ids = ad.AnnData(
         adata_present.X,
         obs=adata_present.obs,
-        var=ensembl_id_var)
+        var=ensembl_id_var,
+        # May not use these directly, but need to pass them through to preserve them
+        # Note: there are other fields, like layers, that could be added here if needed
+        obsm=adata_present.obsm,
+        obsp=adata_present.obsp,
+        varm=adata_present.varm,
+        varp=adata_present.varp,
+        uns=adata_present.uns
+        )
 
     ## Now combine the unmapped dataframe with this one, first making the needed edits
     if 'gene_symbol' in adata_not_present.var.columns:
@@ -139,29 +153,60 @@ def main():
     adata_unmapped_var = adata_not_present.var.reset_index() \
         .rename(columns={ \
                     #adata_not_present.var.index: "ensembl_id",
-                    "genes": "gene_symbol" \
+                    # In order to concatenate the unmapped var with the mapped var, we need to ensure the
+                    # column names are not the same as the mapped var. The "concat" function treats columns
+                    # as a set of values, so for a strategy like "unique" which requires all values
+                    # to be the same, it would see two different sets of values and not merge them.
+                    orig_gene_column: "gene_symbol_unmapped" \
                     }) \
         .set_index(args.id_prefix + adata_not_present.var.index.astype(str))
 
     adata_unmapped = ad.AnnData(
         X=adata_not_present.X,
         obs=adata_not_present.obs,
-        var=adata_unmapped_var
+        var=adata_unmapped_var,
+        obsm=adata_not_present.obsm,
+        obsp=adata_not_present.obsp,
+        varm=adata_not_present.varm,
+        varp=adata_not_present.varp,
+        uns=adata_not_present.uns
     )
     adata_unmapped.var.index.name = "ensembl_id"
 
     print("ADATA UNMAPPED.VAR")
     print(adata_unmapped.var)
 
-    adata = ad.concat([adata_with_ensembl_ids, adata_unmapped], join="outer")
+    # Concatenate the two AnnData objects, which unfortunately duplicates the observations
+    adata = ad.concat([adata_with_ensembl_ids, adata_unmapped], join="outer", merge="unique", uns_merge="unique", label="dataset")
 
-    print("ADATA CONCAT")
+    #print("ADATA CONCAT")
+    #print(adata)
+    #print("VAR CONCAT")
+    #print(adata.var)
+    #print("OBS_CONCAT")
+    #print(adata.obs)
+
+    # Backfill the gene symbol column with the unmapped gene symbols
+    adata.var['gene_symbol'] = adata.var['gene_symbol'].combine_first(adata.var['gene_symbol_unmapped'])
+
+    # Drop the unmapped gene symbol column
+    adata.var = adata.var.drop(columns=['gene_symbol_unmapped'])
+
+    # There should be duplicated indexes in the adata.obs dataframe, so drop the duplicates
+    # We could alternatively use `duplicates()` but this feels safer
+    adata = adata[adata.obs.dataset == "0"]
+    adata.obs = adata.obs.drop(columns=['dataset'])
+
+
+
+    print("FINAL ADATA")
     print(adata)
-
     print('VAR\n')
-    print(adata.var.head())
+    print(adata.var)
     print("OBS\n")
-    print(adata.obs.head())
+    print(adata.obs)
+
+
     if not args.read_only:
         adata.write(args.output_file)
     print('############################################################')

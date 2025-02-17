@@ -11,6 +11,8 @@ password = [pass]
 [content]
 ;; this is the layout users will see by default if they haven't saved one or aren't logged in
 default_layout_share_id = [default_layout_share_id]
+;; Where to read spatial datasets from
+spatial_dataset_location =
 
 [test]
 host = http://localhost/
@@ -49,11 +51,14 @@ cloud_run_enabled = 1
 queue_enabled = 0
 queue_host = localhost
 
-
 [nemoarchive_import]
 importer_id = [importer_id]
 gcp_project_id=[gcp_project_id]
 credentials_json=[path_to_credentials_json]
 ;; 0 - disable RabbitMQ, 1 - enable. Disabling could lead to potential server crashes if many jobs are run simultaneously
+queue_enabled = 1
+queue_host = localhost
+
+[uploader_service]
 queue_enabled = 1
 queue_host = localhost
