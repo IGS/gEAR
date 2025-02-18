@@ -791,16 +791,21 @@ class Analysis:
         except:
             dataset_id = jsn["dataset_id"]
 
+        try:
+            session_id = jsn["user_session_id"]
+        except:
+            session_id = jsn["analysis_session_id"]
+
         ana = Analysis(
-            id=jsn['id'], dataset_id=dataset_id, label=jsn['label'], session_id=jsn['user_session_id'],
+            id=jsn['id'], dataset_id=dataset_id, label=jsn['label'], session_id=session_id,
             user_id=None, type=jsn['type']
         )
 
-        ## get the rest
+        ## get the rest of the properties
         for k in jsn:
             if not hasattr(ana, k):
                 # some were manually named, skip them
-                if k not in ['user_session_id']:
+                if k not in ['user_session_id', 'analysis_session_id']:
                     setattr(ana, k, jsn[k])
 
         return ana
@@ -1920,7 +1925,7 @@ class Dataset:
         conn.close()
 
         return self.displays
-    
+
     def get_owner_display(self, is_multigene=False):
         """
         Returns the display object for the owner of the dataset.
@@ -2507,7 +2512,7 @@ class Gene:
 
         elif this.domain_label == 'nemo':
             pass
-            
+
         for dbxref in self.dbxrefs:
             source = dbxref['source']
 
