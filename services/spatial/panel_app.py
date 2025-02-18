@@ -102,6 +102,7 @@ class SpatialPlot():
         df = df.sort_values(by="raw_value")
 
         return go.Scattergl(x=df["spatial1"], y=df["spatial2"], mode="markers", marker=dict(
+                    cauto=False,  # Do not adjust the color scale
                     cmin=0,  # No expression
                     cmax=df["raw_value"].max(),  # Max expression value
                     # ? This would not apply if data is log-transformed
