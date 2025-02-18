@@ -111,7 +111,7 @@ class SpatialPlot():
                     colorbar=dict(
                         len=1,  # Adjust the length of the colorbar
                         thickness=15,  # Adjust the thickness of the colorbar (default is 30)
-                        x=self.max_x1 - 0.0025,  # Adjust the x position of the colorbar
+                        x=self.max_x1 - 0.005,  # Adjust the x position of the colorbar
                     ),
                     symbol="square",
                     ),
@@ -137,7 +137,7 @@ class SpatialPlot():
                     name=str(cluster),
                     text=cluster_data["clusters"],
                     unselected=dict(marker=dict(opacity=1)),
-                ), row=1, col=2
+                ), row=1, col=self.cluster_col
             )
 
     def make_fig(self, static_size=False):
@@ -145,28 +145,43 @@ class SpatialPlot():
         self.update_axes()
         # domain is adjusted whether there are images or not
         if self.spatial_img is not None:
+            self.expression_col = 2
+            self.cluster_col = 3
             self.fig.update_layout(
-                xaxis=dict(domain=[0, 0.26]),
-                xaxis2=dict(domain=[0.33, 0.59]),  # Leave room for cluster annotations
-                xaxis3=dict(domain=[0.74, 1.00]),
+                xaxis=dict(domain=[0, 0.29]),
+                xaxis2=dict(domain=[0.33, 0.62]),  # Leave room for cluster annotations
+                xaxis3=dict(domain=[0.71, 1]),
             )
         else:
+            self.expression_col = 1
+            self.cluster_col = 2
             self.fig.update_layout(
-                xaxis=dict(domain=[0, 0.4]),
-                xaxis2=dict(domain=[0.5, 0.90]),  # Leave room for cluster annotations
+                xaxis=dict(domain=[0, 0.45]),
+                xaxis2=dict(domain=[0.55, 1]),  # Leave room for cluster annotations
             )
 
         # Get max domain for axis 1 and axis 2
-        self.max_x1 = self.fig.layout.xaxis.domain[1]
-        self.max_x2 = self.fig.layout.xaxis2.domain[1]
+        if self.expression_col == 1:
+            self.max_x1 = self.fig.layout.xaxis.domain[1]
+        else:
+            self.max_x1 = self.fig.layout.xaxis2.domain[1]
 
         if self.spatial_img is not None:
             self.add_image_trace()
-        self.fig.add_trace(self.make_expression_scatter(), row=1, col=1)
+        self.fig.add_trace(self.make_expression_scatter(), row=1, col=self.expression_col)
         self.add_cluster_traces()
 
+        # Get longest cluster name for legend
+        longest_cluster = max(self.df["clusters"].astype(str).apply(len))
+        font_size = 12
+        if longest_cluster > 10:
+            font_size = 10
+
         # make legend markers bigger
-        self.fig.update_layout(legend=dict(indentation=-15, itemsizing='constant', x=self.max_x2 + 0.01))
+        self.fig.update_layout(legend=dict(
+            font=dict(size=font_size)
+            , itemsizing='constant'
+            ))
 
         # Mirror the background color of visium images
         # Do not set if image is present as there is a slight padding between data and axes ticks
@@ -205,10 +220,10 @@ class SpatialPlot():
             self.create_subplots_two()
 
     def create_subplots_two(self):
-        self.fig = make_subplots(rows=1, cols=2, column_titles=(f"{self.expression_name} Expression", "clusters"), horizontal_spacing=0.1)
+        self.fig = make_subplots(rows=1, cols=2, column_titles=(f"{self.expression_name} Expression", "Clusters"), horizontal_spacing=0.1)
 
     def create_subplots_three(self):
-        self.fig = make_subplots(rows=1, cols=3, column_titles=(f"{self.expression_name} Expression", "clusters", "Image Only"), horizontal_spacing=0.1)
+        self.fig = make_subplots(rows=1, cols=3, column_titles=("Image Only", f"{self.expression_name} Expression", "Clusters"), horizontal_spacing=0.1)
 
     def update_axes(self):
         self.fig.update_xaxes(range=[self.range_x1, self.range_x2], title_text="spatial1", showgrid=False, showticklabels=False, ticks="")
@@ -263,12 +278,11 @@ class SpatialNormalSubplot(SpatialPlot):
         fig = make_subplots(rows=1, cols=2, column_titles=(f"{self.expression_name} UMAP", "clusters UMAP"), horizontal_spacing=0.1)
 
         fig.update_layout(
-            xaxis=dict(domain=[0, 0.4]),
-            xaxis2=dict(domain=[0.5, 0.90]),  # Leave room for cluster annotations
+            xaxis=dict(domain=[0, 0.45]),
+            xaxis2=dict(domain=[0.55, 1]),  # Leave room for cluster annotations
         )
 
         max_x1 = fig.layout.xaxis.domain[1]
-        max_x2 = fig.layout.xaxis2.domain[1]
 
         fig.add_scatter(col=1, row=1
                         , x=df["UMAP1"]
@@ -290,7 +304,15 @@ class SpatialNormalSubplot(SpatialPlot):
 
         # Process clusters as individual traces so that all show on the legend
         df["clusters"] = df["clusters"].astype("category")
-        sorted_clusters = sorted(df["clusters"].unique(), key=lambda x: int(x))
+
+        # Assuming df is your DataFrame and it has a column "clusters"
+        unique_clusters = df["clusters"].unique()
+        # sort unique clusters by number if numerical, otherwise by name
+        try:
+            sorted_clusters = sorted(unique_clusters, key=lambda x: int(x))
+        except:
+            sorted_clusters = sorted(unique_clusters, key=lambda x: str(x))
+
         for cluster in sorted_clusters:
             cluster_data = df[df["clusters"] == cluster]
             fig.add_trace(go.Scattergl(
@@ -308,8 +330,18 @@ class SpatialNormalSubplot(SpatialPlot):
         fig.update_xaxes(showgrid=False, showticklabels=False, ticks="", title_text="UMAP1")
         fig.update_yaxes(showgrid=False, showticklabels=False, ticks="", title_text="UMAP2", title_standoff=0)
 
+        # Get longest cluster name for legend
+        longest_cluster = max(self.df["clusters"].astype(str).apply(len))
+        font_size = 12
+        if longest_cluster > 10:
+            font_size = 10
+
         # make legend markers bigger
-        fig.update_layout(legend=dict(indentation=-15, itemsizing='constant', x=max_x2))
+        fig.update_layout(legend=dict(
+            font=dict(size=font_size)
+            , itemclick="toggleothers"
+            , itemsizing='constant'
+            ))
 
         fig.update_layout(
             margin=dict(l=20, r=0, t=50, b=10),
@@ -328,12 +360,19 @@ class SpatialNormalSubplot(SpatialPlot):
         df["clusters"] = df["clusters"].astype("category")
 
         fig = go.Figure()
-        fig.update_layout(xaxis=dict(domain=[0, 0.90])) # Leave room for cluster annotations
+        #fig.update_layout(xaxis=dict(domain=[0, 0.90])) # Leave room for cluster annotations
 
-        xmax = fig.layout.xaxis.domain[1]
+        #xmax = fig.layout.xaxis.domain[1]
+
+        # Assuming df is your DataFrame and it has a column "clusters"
+        unique_clusters = df["clusters"].unique()
+        # sort unique clusters by number if numerical, otherwise by name
+        try:
+            sorted_clusters = sorted(unique_clusters, key=lambda x: int(x))
+        except:
+            sorted_clusters = sorted(unique_clusters, key=lambda x: str(x))
 
         # Process clusters as individual traces so that the violin widths are scaled correctly
-        sorted_clusters = sorted(df["clusters"].unique(), key=lambda x: int(x))
         for cluster in sorted_clusters:
             cluster_data = df[df["clusters"] == cluster]
             fig.add_trace(go.Violin(
@@ -352,8 +391,16 @@ class SpatialNormalSubplot(SpatialPlot):
         fig.update_xaxes(type="category", title_text="Clusters")
         fig.update_yaxes(title_text="Expression", title_standoff=0)
 
-        fig.update_layout(legend=dict(indentation=-15, itemsizing='constant', x=xmax))
+        # Get longest cluster name for legend
+        longest_cluster = max(self.df["clusters"].astype(str).apply(len))
+        font_size = 12
+        if longest_cluster > 10:
+            font_size = 10
 
+        fig.update_layout(legend=dict(
+            font=dict(size=font_size)
+            , itemsizing='constant'
+            ))
 
         fig.update_layout(
             margin=dict(l=20, r=0, t=50, b=10),
@@ -423,7 +470,7 @@ class SpatialZoomSubplot(SpatialPlot):
 
         # Calculate the marker size based on the range of the selection
         # The marker size will scale larger as the range of the selection gets more precise
-        self.marker_size = int(2 + 2500 / (x_range + y_range))
+        self.marker_size = int(1 + 2500 / (x_range + y_range))
 
     def refresh_spatial_fig(self):
         self.fig =  self.make_fig(static_size=False)
@@ -739,9 +786,14 @@ class SpatialPanel(pn.viewable.Viewer):
         df = self.df
         # Assuming df is your DataFrame and it has a column "clusters"
         unique_clusters = df["clusters"].unique()
-        # sort unique clusters by number
-        self.unique_clusters = sorted(unique_clusters, key=lambda x: int(x))
-        self.color_map = None
+        # sort unique clusters by number if numerical, otherwise by name
+        try:
+            unique_clusters = sorted(unique_clusters, key=lambda x: int(x))
+        except:
+            unique_clusters = sorted(unique_clusters, key=lambda x: str(x))
+
+        self.unique_clusters = unique_clusters
+
         if "colors" in df:
             self.color_map = {cluster: df[df["clusters"] == cluster]["colors"].values[0] for cluster in self.unique_clusters}
         else:
