@@ -97,7 +97,12 @@ class SpatialPlot():
 
     def make_expression_scatter(self):
         df = self.df
+        df = df.sort_values(by="raw_value")
+
         return go.Scattergl(x=df["spatial1"], y=df["spatial2"], mode="markers", marker=dict(
+                    cmin=0,  # No expression
+                    cmax=df["raw_value"].max(),  # Max expression value
+                    # ? This would not apply if data is log-transformed
                     color=df["raw_value"],
                     colorscale=self.expression_color,  # You can choose any colorscale you like
                     size=self.marker_size,  # Adjust the marker size as needed
@@ -115,7 +120,8 @@ class SpatialPlot():
 
     def add_cluster_traces(self):
         fig = self.fig
-        df = self.df
+        df = self.df.sort_values(by="raw_value")
+
         color_map = self.color_map
         # TODO: Add click event for removing equivalent points from expression plot if legend item is clicked
         for cluster in color_map:
@@ -245,9 +251,13 @@ class SpatialNormalSubplot(SpatialPlot):
         return self.fig.to_dict()
 
     def make_umap_plots(self):
-        df = self.df
+        # NOTE: Axes are mirrored from previous versions but the coordinates do not matter... clustering is the focus
+
+        df = self.df.sort_values(by="raw_value")
+
         # Make "clusters" a category so that a legend will be created
         df["clusters"] = df["clusters"].astype("category")
+
         fig = make_subplots(rows=1, cols=2, column_titles=(f"{self.expression_name} UMAP", "clusters UMAP"), horizontal_spacing=0.1)
 
         fig.update_layout(
@@ -310,7 +320,8 @@ class SpatialNormalSubplot(SpatialPlot):
         return fig.to_dict()
 
     def make_violin_plot(self):
-        df = self.df
+        df = self.df.sort_values(by="raw_value")
+
         # Make "clusters" a category so that the violin plot will sort the clusters in order
         df["clusters"] = df["clusters"].astype("category")
 
@@ -410,7 +421,7 @@ class SpatialZoomSubplot(SpatialPlot):
 
         # Calculate the marker size based on the range of the selection
         # The marker size will scale larger as the range of the selection gets more precise
-        self.marker_size = int(2 + 4000 / (x_range + y_range))
+        self.marker_size = int(2 + 2500 / (x_range + y_range))
 
     def refresh_spatial_fig(self):
         self.fig =  self.make_fig(static_size=False)
@@ -514,10 +525,12 @@ class SpatialPanel(pn.viewable.Viewer):
         def refresh_dataframe_callback(value):
             with self.normal_pane.param.update(loading=True) \
                 , self.zoom_pane.param.update(loading=True) \
-                , self.umap_pane.param.update(loading=True) \
                 , self.violin_pane.param.update(loading=True) \
                 , self.min_genes_slider.param.update(disabled=True):
                 self.refresh_dataframe(value)
+
+            with self.umap_pane.param.update(loading=True):
+                self.add_umap()
 
         pn.bind(refresh_dataframe_callback, self.min_genes_slider.param.value_throttled, watch=True)
 
@@ -541,16 +554,23 @@ class SpatialPanel(pn.viewable.Viewer):
         yield self.loading_indicator("Processing data file...")
 
         def create_adata_pkg():
-            self.prep_sdata()
-            self.prep_adata()
+            try:
+                self.prep_sdata()
+                self.prep_adata()
+            except ValueError as e:
+                raise
 
             adata_pkg = {"adata": self.adata, "img_name": self.spatial_obj.img_name}
             return adata_pkg
 
         adata_cache_label = f"{self.dataset_id}_adata"
 
-        # Load the Anndata object (+ image name) from cache or create it if it does not exist, with a 24-hour time-to-live
-        adata_pkg = pn.state.as_cached(adata_cache_label, create_adata_pkg, ttl=CACHE_EXPIRATION)
+        # Load the Anndata object (+ image name) from cache or create it if it does not exist, with a 1-week time-to-live
+        try:
+            adata_pkg = pn.state.as_cached(adata_cache_label, create_adata_pkg, ttl=CACHE_EXPIRATION)
+        except ValueError as e:
+            yield pn.pane.Alert(f"Error: {e}", alert_type="danger")
+            raise
 
         self.adata = adata_pkg["adata"]
         self.spatial_img = None
@@ -562,6 +582,9 @@ class SpatialPanel(pn.viewable.Viewer):
         yield self.loading_indicator("Processing data to create plots. This may take a minute...")
 
         yield self.refresh_dataframe(self.min_genes)
+
+        with self.umap_pane.param.update(loading=True):
+            self.add_umap()
 
     def prep_sdata(self):
         zarr_path = spatial_path / f"{self.dataset_id}.zarr"
@@ -605,10 +628,32 @@ class SpatialPanel(pn.viewable.Viewer):
         sc.pp.normalize_total(adata, inplace=True)
         sc.pp.log1p(adata)
 
-        sc.pp.pca(adata)
-        sc.pp.neighbors(adata)
-        sc.tl.umap(adata)
         adata.var_names_make_unique()
+        self.adata = adata
+        return self.adata
+
+    def add_umap(self):
+        # Add UMAP information to the adata object. This is a slow process, so we want to show other plots while this is processing
+
+        def create_umap():
+            adata = self.adata
+            sc.pp.pca(adata)
+            sc.pp.neighbors(adata)
+            sc.tl.umap(adata)
+            return adata
+
+        adata_subset_cache_label = f"{self.dataset_id}_{self.min_genes}_adata"
+
+        # Load the subset Anndata object from cache or create it if it does not exist, with a 1-week time-to-live
+        adata = pn.state.as_cached(adata_subset_cache_label, create_umap, ttl=CACHE_EXPIRATION)
+
+        X, Y = (0, 1)
+        self.df["UMAP1"] = adata.obsm["X_umap"].transpose()[X].tolist()
+        self.df["UMAP2"] = adata.obsm["X_umap"].transpose()[Y].tolist()
+
+        self.umap_fig = self.normal_fig_obj.make_umap_plots()
+        self.umap_pane.object = self.umap_fig
+
         self.adata = adata
         return self.adata
 
@@ -623,12 +668,8 @@ class SpatialPanel(pn.viewable.Viewer):
 
         # Add spatial coords from adata.obsm
         X, Y = (0, 1)
-        df["spatial1"] = selected.obsm["spatial"].transpose()[X].tolist()
-        df["spatial2"] = selected.obsm["spatial"].transpose()[Y].tolist()
-
-        # Add UMAP coords
-        df["UMAP1"] = selected.obsm["X_umap"].transpose()[X].tolist()
-        df["UMAP2"] = selected.obsm["X_umap"].transpose()[Y].tolist()
+        df["spatial1"] = adata.obsm["spatial"].transpose()[X].tolist()
+        df["spatial2"] = adata.obsm["spatial"].transpose()[Y].tolist()
 
         # Add cluster info
         if "clusters" not in selected.obs:
@@ -650,10 +691,7 @@ class SpatialPanel(pn.viewable.Viewer):
         if self.min_genes != settings.min_genes:
             settings.min_genes = self.min_genes
 
-        adata_subset_cache_label = f"{self.dataset_id}_{self.min_genes}_adata"
-
-        # Load the subset Anndata object from cache or create it if it does not exist, with a 24-hour time-to-live
-        self.adata = pn.state.as_cached(adata_subset_cache_label, self.filter_adata, ttl=CACHE_EXPIRATION)
+        self.adata = self.filter_adata()
 
         self.create_gene_df()   # creating the Dataframe is generally fast
         self.map_colors()
@@ -670,7 +708,22 @@ class SpatialPanel(pn.viewable.Viewer):
         # The pn.bind function for the zoom callback will not trigger when the normal_fig is refreshed.
         self.zoom_fig = self.zoom_fig_obj.refresh_spatial_fig()
 
-        self.umap_fig = self.normal_fig_obj.make_umap_plots()
+        # Add annotation to UMAP plot to indicate that it is processing
+        layout = {
+            "annotations": [
+                {
+                    "text": "Performing UMAP clustering. This may take a minute...",
+                    "font": {"size": 20},
+                    "showarrow": False,
+                    "x": 0.5,
+                    "y": 1.3,
+                    "xref": "paper",
+                    "yref": "paper"
+                }
+            ]
+        }
+
+        self.umap_fig = {"data": [], "layout": layout}  # reset the umap figure
         self.violin_fig = self.normal_fig_obj.make_violin_plot()
 
         self.normal_pane.object = self.normal_fig
