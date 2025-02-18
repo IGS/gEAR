@@ -699,7 +699,9 @@ class Analysis {
             await this.getSavedAnalysesList(this.dataset.id, this.id);
 
             // Update the current analysis label
-            document.querySelector(UI.currentAnalysisElt).textContent = this.label;
+            for (const el of document.querySelectorAll(UI.currentAnalysisElt)) {
+                el.textContent = this.label;
+            }
 
         } catch (error) {
             createToast(`Error saving analysis: ${error.message}`);
