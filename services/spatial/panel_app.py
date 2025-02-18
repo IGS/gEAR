@@ -33,6 +33,7 @@ SECS_IN_DAY = 86400
 CACHE_EXPIRATION = SECS_IN_DAY * 7  # 7 days
 
 # TODO: explore Datashader for large datasets
+# TODO: Encountering a weird bug where if I have multiple gEAR pages open, and I interact with a Pane from one tab, plots in the other tabs disappear. Hoping it's just me
 # ? Maybe make a button to create UMAP instead of creating at the start
 
 # Ignore warnings about plotly GUI events, which propagate to the browser console
@@ -47,6 +48,7 @@ pn.extension('plotly'
 
 # Keep only box select
 buttonsToRemove = ["zoom", "pan", "zoomIn", "zoomOut", "autoScale", "lasso2d"]
+zoomButtonsToRemove = buttonsToRemove + ["select2d"]
 
 class Settings(param.Parameterized):
     """
@@ -478,25 +480,25 @@ class SpatialPanel(pn.viewable.Viewer):
         # You can also replace the Figure directly, but I had occasional issues with returning a figure ih the "bind" function
 
         self.normal_pane = pn.pane.Plotly(self.normal_fig
-                    , config={"doubleClick":"reset","displayModeBar":True, "modeBarButtonsToRemove": buttonsToRemove}
+                    , config={"doubleClick":"reset","displayModeBar": True, "modeBarButtonsToRemove": buttonsToRemove}
                     , height=350
                     , sizing_mode="stretch_width"
                     )
 
         self.zoom_pane = pn.pane.Plotly(self.zoom_fig
-                    , config={'displayModeBar': False, 'doubleClick': None}
+                    , config={"displayModeBar": True, "modeBarButtonsToRemove": zoomButtonsToRemove, 'doubleClick': None}
                     , height=350
                     , sizing_mode="stretch_width"
                     )
 
         self.umap_pane = pn.pane.Plotly(self.umap_fig
-                    , config={"displayModeBar": False}
+                    , config={"displayModeBar": True, "modeBarButtonsToRemove": zoomButtonsToRemove}
                     , height=350
                     , sizing_mode="stretch_width"
                     )
 
         self.violin_pane = pn.pane.Plotly(self.violin_fig
-                    , config={"displayModeBar": False}
+                    , config={"displayModeBar": True, "modeBarButtonsToRemove": zoomButtonsToRemove}
                     , height=350
                     , sizing_mode="stretch_width"
                     )
