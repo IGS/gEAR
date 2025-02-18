@@ -47,6 +47,7 @@ pn.extension('plotly'
 
 # Keep only box select
 buttonsToRemove = ["zoom", "pan", "zoomIn", "zoomOut", "autoScale", "lasso2d"]
+zoomButtonsToRemove = buttonsToRemove + ["select2d"]
 
 class Settings(param.Parameterized):
     """
@@ -478,25 +479,25 @@ class SpatialPanel(pn.viewable.Viewer):
         # You can also replace the Figure directly, but I had occasional issues with returning a figure ih the "bind" function
 
         self.normal_pane = pn.pane.Plotly(self.normal_fig
-                    , config={"doubleClick":"reset","displayModeBar":True, "modeBarButtonsToRemove": buttonsToRemove}
+                    , config={"doubleClick":"reset","displayModeBar": True, "modeBarButtonsToRemove": buttonsToRemove}
                     , height=350
                     , sizing_mode="stretch_width"
                     )
 
         self.zoom_pane = pn.pane.Plotly(self.zoom_fig
-                    , config={'displayModeBar': False, 'doubleClick': None}
+                    , config={"displayModeBar": True, "modeBarButtonsToRemove": zoomButtonsToRemove, 'doubleClick': None}
                     , height=350
                     , sizing_mode="stretch_width"
                     )
 
         self.umap_pane = pn.pane.Plotly(self.umap_fig
-                    , config={"displayModeBar": False}
+                    , config={"displayModeBar": True, "modeBarButtonsToRemove": zoomButtonsToRemove}
                     , height=350
                     , sizing_mode="stretch_width"
                     )
 
         self.violin_pane = pn.pane.Plotly(self.violin_fig
-                    , config={"displayModeBar": False}
+                    , config={"displayModeBar": True, "modeBarButtonsToRemove": zoomButtonsToRemove}
                     , height=350
                     , sizing_mode="stretch_width"
                     )
