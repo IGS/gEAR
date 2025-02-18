@@ -33,6 +33,7 @@ SECS_IN_DAY = 86400
 CACHE_EXPIRATION = SECS_IN_DAY * 7  # 7 days
 
 # TODO: explore Datashader for large datasets
+# TODO: Display errors in Panel pane
 # ? Maybe make a button to create UMAP instead of creating at the start
 
 # Ignore warnings about plotly GUI events, which propagate to the browser console
@@ -98,6 +99,9 @@ class SpatialPlot():
     def make_expression_scatter(self):
         df = self.df
         return go.Scattergl(x=df["spatial1"], y=df["spatial2"], mode="markers", marker=dict(
+                    cmin=0,  # No expression
+                    cmax=df["raw_value"].max(),  # Max expression value
+                    # ? This would not apply if data is log-transformed
                     color=df["raw_value"],
                     colorscale=self.expression_color,  # You can choose any colorscale you like
                     size=self.marker_size,  # Adjust the marker size as needed
@@ -410,7 +414,7 @@ class SpatialZoomSubplot(SpatialPlot):
 
         # Calculate the marker size based on the range of the selection
         # The marker size will scale larger as the range of the selection gets more precise
-        self.marker_size = int(2 + 4000 / (x_range + y_range))
+        self.marker_size = int(2 + 2500 / (x_range + y_range))
 
     def refresh_spatial_fig(self):
         self.fig =  self.make_fig(static_size=False)
@@ -541,8 +545,11 @@ class SpatialPanel(pn.viewable.Viewer):
         yield self.loading_indicator("Processing data file...")
 
         def create_adata_pkg():
-            self.prep_sdata()
-            self.prep_adata()
+            try:
+                self.prep_sdata()
+                self.prep_adata()
+            except ValueError as e:
+                raise
 
             adata_pkg = {"adata": self.adata, "img_name": self.spatial_obj.img_name}
             return adata_pkg
@@ -550,7 +557,11 @@ class SpatialPanel(pn.viewable.Viewer):
         adata_cache_label = f"{self.dataset_id}_adata"
 
         # Load the Anndata object (+ image name) from cache or create it if it does not exist, with a 24-hour time-to-live
-        adata_pkg = pn.state.as_cached(adata_cache_label, create_adata_pkg, ttl=CACHE_EXPIRATION)
+        try:
+            adata_pkg = pn.state.as_cached(adata_cache_label, create_adata_pkg, ttl=CACHE_EXPIRATION)
+        except ValueError as e:
+            yield pn.pane.Alert(f"Error: {e}", alert_type="danger")
+            raise
 
         self.adata = adata_pkg["adata"]
         self.spatial_img = None
@@ -635,6 +646,9 @@ class SpatialPanel(pn.viewable.Viewer):
             raise ValueError("No cluster information found in adata.obs")
 
         df["clusters"] = selected.obs["clusters"].astype("category")
+
+        # Sort the DataFrame by 'raw_value' in ascending order
+        df.sort_values(by="raw_value", inplace=True)
 
         # drop NaN clusters
         self.df = df.dropna(subset=["clusters"])
