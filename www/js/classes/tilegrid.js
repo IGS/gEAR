@@ -335,11 +335,13 @@ class DatasetTile {
         this.projectR = {modeEnabled: false, projectionId: null, projectionInfo: null, performingProjection: false, success: false};
 
         // Spatial parameters
-        this.min_genes = null;
-        this.selection_x1 = null;
-        this.selection_x2 = null;
-        this.selection_y1 = null;
-        this.selection_y2 = null;
+        this.spatial = {
+            min_genes: null,
+            selection_x1: null,
+            selection_x2: null,
+            selection_y1: null,
+            selection_y2: null,
+        }
     }
 
     /**
@@ -513,17 +515,17 @@ class DatasetTile {
             urlParams.append("gene_symbol", orthologs[0]);
 
             // Add spatial parameters to the URL if they exist
-            if (this.min_genes) {
-                urlParams.append("min_genes", this.min_genes);
+            if (this.spatial.min_genes) {
+                urlParams.append("min_genes", this.spatial.min_genes);
             }
-            if (this.selection_x1) {
-                urlParams.append("selection_x1", this.selection_x1);
+            if (this.spatial.selection_x1) {
+                urlParams.append("selection_x1", this.spatial.selection_x1);
             }
-            if (this.selection_x2) {
-                urlParams.append("selection_x2", this.selection_x2);
+            if (this.spatial.selection_x2) {
+                urlParams.append("selection_x2", this.spatial.selection_x2);
             }
-            if (this.selection_y1) {
-                urlParams.append("selection_y1", this.selection_y1);
+            if (this.spatial.selection_y1) {
+                urlParams.append("selection_y1", this.spatial.selection_y1);
             }
 
             const url = `/panel/ws/panel_app?${urlParams.toString()}`;
@@ -572,11 +574,11 @@ class DatasetTile {
                         if (panelUrl !== iframe.src) {
                             // extract query params from the URL and store to persist across iframe reloads
                             const urlParams = new URLSearchParams(panelUrl.split("?")[1]);
-                            this.min_genes = parseInt(urlParams.get("min_genes")) || null;
-                            this.selection_x1 = parseFloat(urlParams.get("selection_x1")) || null;
-                            this.selection_x2 = parseFloat(urlParams.get("selection_x2")) || null;
-                            this.selection_y1 = parseFloat(urlParams.get("selection_y1")) || null;
-                            this.selection_y2 = parseFloat(urlParams.get("selection_y2")) || null;
+                            this.spatial.min_genes = parseInt(urlParams.get("min_genes")) || null;
+                            this.spatial.selection_x1 = parseFloat(urlParams.get("selection_x1")) || null;
+                            this.spatial.selection_x2 = parseFloat(urlParams.get("selection_x2")) || null;
+                            this.spatial.selection_y1 = parseFloat(urlParams.get("selection_y1")) || null;
+                            this.spatial.selection_y2 = parseFloat(urlParams.get("selection_y2")) || null;
                         }
                     }
                     // Poll the iframe every 3 seconds
