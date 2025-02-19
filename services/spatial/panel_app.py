@@ -682,6 +682,7 @@ class SpatialPanel(pn.viewable.Viewer):
 
         def create_umap():
             adata = self.adata
+            sc.pp.highly_variable_genes(adata, n_top_genes=2000)
             sc.pp.pca(adata)
             sc.pp.neighbors(adata)
             sc.tl.umap(adata)
