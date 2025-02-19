@@ -94,14 +94,13 @@ class SpatialPlot():
         self.range_x2 = self.spatial_img.shape[1] if self.spatial_img is not None else max(df["spatial1"])
         self.range_y1 = 0 if self.spatial_img is not None else min(df["spatial2"])
         self.range_y2 = self.spatial_img.shape[0] if self.spatial_img is not None else max(df["spatial2"])
-        # if image is provided, the 0,0 (origin) point is the top left corner
-        self.flip = False if self.spatial_img is not None else True
 
     def make_expression_scatter(self):
         df = self.df
         df = df.sort_values(by="raw_value")
 
         return go.Scattergl(x=df["spatial1"], y=df["spatial2"], mode="markers", marker=dict(
+                    cauto=False,  # Do not adjust the color scale
                     cmin=0,  # No expression
                     cmax=df["raw_value"].max(),  # Max expression value
                     # ? This would not apply if data is log-transformed
@@ -227,11 +226,8 @@ class SpatialPlot():
 
     def update_axes(self):
         self.fig.update_xaxes(range=[self.range_x1, self.range_x2], title_text="spatial1", showgrid=False, showticklabels=False, ticks="")
-        # flip the y-axis if an image is not present
-        if self.flip:
-            self.fig.update_yaxes(range=[self.range_y1, self.range_y2], title_text="spatial2", showgrid=False, showticklabels=False, ticks="", title_standoff=0)
-        else:
-            self.fig.update_yaxes(range=[self.range_y2, self.range_y1], title_text="spatial2", showgrid=False, showticklabels=False, ticks="", title_standoff=0)
+        # y-axis needs to be flipped. 0,0 is the top left corner
+        self.fig.update_yaxes(range=[self.range_y2, self.range_y1], title_text="spatial2", showgrid=False, showticklabels=False, ticks="", title_standoff=0)
 
     def add_image_trace(self):
         self.convert_image()
