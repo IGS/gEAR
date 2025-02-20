@@ -1,4 +1,4 @@
-import sys, logging
+import sys, logging, tempfile, shutil
 
 import panel as pn
 import param
@@ -16,11 +16,17 @@ import pandas as pd
 import scanpy as sc
 
 import spatialdata as sd
+import anndata
 
 from pathlib import Path
 
+from werkzeug.utils import secure_filename
+
 gear_root = Path(__file__).resolve().parents[2]
 lib_path = gear_root.joinpath('lib')
+
+www_path = gear_root.joinpath('www')
+PROJECTIONS_BASE_DIR = www_path.joinpath('projections')
 
 sys.path.append(str(lib_path))
 from gear import spatialuploader
@@ -69,6 +75,7 @@ class Settings(param.Parameterized):
     gene_symbol = param.String(doc="Gene symbol to display")
     dataset_id = param.String(doc="Dataset ID to display")
     min_genes = param.Integer(doc="Minimum number of genes per observation", default=200, bounds=(0, 500))
+    projection_id = param.String(doc="Projection ID to display", allow_None=True)
     selection_x1 = param.Number(doc="left selection range", allow_None=True)
     selection_x2 = param.Number(doc="right selection range", allow_None=True)
     selection_y1 = param.Number(doc="upper selection range", allow_None=True)
@@ -78,6 +85,8 @@ class SpatialPlot():
     """
     Generalized class for creating a spatial plot with a gene expression heatmap, cluster markers, and an image.
     """
+
+    # TODO: Change "expression" to "relative expression" for projections
 
     def __init__(self, df, spatial_img, color_map, gene_symbol, expression_name, expression_color, dragmode):
         self.df = df
@@ -504,14 +513,18 @@ class SpatialPanel(pn.viewable.Viewer):
     Class for prepping the spatial data and setting up the Panel app.
     """
 
-    def __init__(self, dataset_id, gene_symbol, min_genes, **params):
+    def __init__(self, dataset_id, gene_symbol, min_genes, projection_id, **params):
         super().__init__(**params)
 
         self.dataset_id = dataset_id
         self.gene_symbol = gene_symbol
         self.min_genes = min_genes
+        self.projection_id = projection_id
 
         self.min_genes_slider = pn.widgets.IntSlider(name='Filter - Mininum genes per observation', start=0, end=500, step=25, value=min_genes)
+        if self.projection_id:
+            self.min_genes_slider.disabled = True
+            self.min_genes_slider.name = "Filter - Mininum genes per observation (disabled for projections)"
 
         self.normal_fig = dict(data=[], layout={})
         self.zoom_fig = dict(data=[], layout={})
@@ -568,6 +581,8 @@ class SpatialPanel(pn.viewable.Viewer):
 
         # SAdkins - Have not quite figured out when to use "watch" but I think it mostly applies when a callback does not return a value
         def refresh_dataframe_callback(value):
+            self.dataset_adata = self.dataset_adata_orig.copy()
+
             with self.normal_pane.param.update(loading=True) \
                 , self.zoom_pane.param.update(loading=True) \
                 , self.violin_pane.param.update(loading=True) \
@@ -609,6 +624,8 @@ class SpatialPanel(pn.viewable.Viewer):
             return adata_pkg
 
         adata_cache_label = f"{self.dataset_id}_adata"
+        if self.projection_id:
+            adata_cache_label = f"{self.projection_id}_adata"
 
         # Load the Anndata object (+ image name) from cache or create it if it does not exist, with a 1-week time-to-live
         try:
@@ -621,8 +638,6 @@ class SpatialPanel(pn.viewable.Viewer):
         self.spatial_img = None
         if adata_pkg["img_name"]:
             self.spatial_img = self.adata.uns["spatial"][adata_pkg["img_name"]]["images"]["hires"]
-
-        self.orig_adata = self.adata.copy()  # Preserve the original adata for filtering
 
         yield self.loading_indicator("Processing data to create plots. This may take a minute...")
 
@@ -662,26 +677,65 @@ class SpatialPanel(pn.viewable.Viewer):
         # Need to include image since the bounding box query does not filter the image data by coordinates
         # Each Image is downscaled (or upscaled) during rendering to fit a 2000x2000 pixels image (downscaled_hires)
         self.spatial_obj._convert_sdata_to_adata()
-        self.adata = self.spatial_obj.adata
+        self.dataset_adata_orig = self.spatial_obj.adata    # Original dataset adata
+        self.dataset_adata = self.dataset_adata_orig.copy() # Copy we manipulate
+        self.adata = self.dataset_adata.copy()  # Adata to get dataframe from
+
+        # Modify the adata object to use the projection ID if it exists
+        if self.projection_id:
+            self.adata = self.create_projection_adata()
+
+    def create_projection_adata(self):
+        dataset_adata = self.adata
+        dataset_id = self.dataset_id
+        projection_id = self.projection_id
+        # Create AnnData object out of readable CSV file
+        projection_id = secure_filename(projection_id)
+        dataset_id = secure_filename(dataset_id)
+
+        projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
+        # Sanitize input to prevent path traversal
+        projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
+        projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
+        try:
+            # READ CSV to make X and var
+            df = pd.read_csv(projection_csv_path, sep=',', index_col=0, header=0)
+            X = df.to_numpy()
+            var = pd.DataFrame(index=df.columns)
+            obs = dataset_adata.obs
+            obsm = dataset_adata.obsm
+            uns = dataset_adata.uns
+            # Create the anndata object and write to h5ad
+            # Associate with a filename to ensure AnnData is read in "backed" mode
+            projection_adata = anndata.AnnData(X=X, obs=obs, var=var, obsm=obsm, uns=uns, filemode='r')
+        except Exception as e:
+            print(str(e), file=sys.stderr)
+            raise ValueError("Could not create projection AnnData object from CSV.")
+        # Close dataset adata so that we do not have a stale opened object
+        if dataset_adata.isbacked:
+            dataset_adata.file.close()
+
+        # For some reason the gene_symbol is not taken in by the constructor
+        projection_adata.var["gene_symbol"] = projection_adata.var_names
+
+        # write to projection_adata_path. This ensures that the file is created and up to date with latest projection results
+        projection_adata.write(projection_adata_path)
+        return projection_adata
 
     def filter_adata(self):
-        # Need to make a copy of the original adata to avoid modifying the original (via inplace=True)
-        adata = self.orig_adata.copy()
-
         # Filter out cells that overlap with the blank space of the image.
-        sc.pp.filter_cells(adata, min_genes=self.min_genes)
-        sc.pp.normalize_total(adata, inplace=True)
-        sc.pp.log1p(adata)
+        sc.pp.filter_cells(self.dataset_adata, min_genes=self.min_genes)
+        sc.pp.normalize_total(self.dataset_adata, inplace=True)
+        sc.pp.log1p(self.dataset_adata)
 
-        adata.var_names_make_unique()
-        self.adata = adata
-        return self.adata
+        self.dataset_adata.var_names_make_unique()
 
     def add_umap(self):
         # Add UMAP information to the adata object. This is a slow process, so we want to show other plots while this is processing
 
         def create_umap():
-            adata = self.adata
+            # We need to use the original dataset for UMAP clustering instead of the projection one
+            adata = self.dataset_adata
             sc.pp.highly_variable_genes(adata, n_top_genes=2000)
             sc.pp.pca(adata)
             sc.pp.neighbors(adata)
@@ -700,7 +754,10 @@ class SpatialPanel(pn.viewable.Viewer):
         self.umap_fig = self.normal_fig_obj.make_umap_plots()
         self.umap_pane.object = self.umap_fig
 
-        self.adata = adata
+        # Add X_umap to self.adata
+        self.adata.obs = adata.obs
+        self.adata.obsm["X_umap"] = adata.obsm["X_umap"]
+
         return self.adata
 
     def create_gene_df(self):
@@ -737,7 +794,10 @@ class SpatialPanel(pn.viewable.Viewer):
         if self.min_genes != settings.min_genes:
             settings.min_genes = self.min_genes
 
-        self.adata = self.filter_adata()
+        self.filter_adata()
+
+        # self.adata should have the same subset as self.dataset_adata
+        self.adata = self.adata[self.dataset_adata.obs.index]
 
         self.create_gene_df()   # creating the Dataframe is generally fast
         self.map_colors()
@@ -828,11 +888,12 @@ else:
         'dataset_id': 'dataset_id'
         , 'gene_symbol': 'gene_symbol'
         , 'min_genes': 'min_genes'
+        , 'projection_id': 'projection_id'
         , 'selection_x1': 'selection_x1'
         , 'selection_x2': 'selection_x2'
         , 'selection_y1': 'selection_y1'
         , 'selection_y2': 'selection_y2'})
 
     # Create the app
-    sp_panel = SpatialPanel(settings.dataset_id, settings.gene_symbol, settings.min_genes)
+    sp_panel = SpatialPanel(settings.dataset_id, settings.gene_symbol, settings.min_genes, settings.projection_id)
     sp_panel.servable(title="Spatial Data Viewer", location=True)

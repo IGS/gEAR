@@ -47,6 +47,7 @@ services:
     restart: always
     volumes:
       - <dataset_path>:/gEAR/www/datasets
+      - <projections_path>:/gEAR/www/projections
       - <gear_lib_path>:/gEAR/lib
 
   # consumer:
