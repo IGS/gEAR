@@ -587,7 +587,8 @@ class SpatialPanel(pn.viewable.Viewer):
                 , self.min_genes_slider.param.update(disabled=True):
                 self.refresh_dataframe(value)
 
-            with self.umap_pane.param.update(loading=True):
+            with self.umap_pane.param.update(loading=True) \
+                , self.min_genes_slider.param.update(disabled=True):
                 self.add_umap()
 
         pn.bind(refresh_dataframe_callback, self.min_genes_slider.param.value_throttled, watch=True)
