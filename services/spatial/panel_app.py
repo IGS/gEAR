@@ -521,10 +521,8 @@ class SpatialPanel(pn.viewable.Viewer):
         self.min_genes = min_genes
         self.projection_id = projection_id
 
+        # ? This can be useful for filtering datasets even for projections, but how best to word it?
         self.min_genes_slider = pn.widgets.IntSlider(name='Filter - Mininum genes per observation', start=0, end=500, step=25, value=min_genes)
-        if self.projection_id:
-            self.min_genes_slider.disabled = True
-            self.min_genes_slider.name = "Filter - Mininum genes per observation (disabled for projections)"
 
         self.normal_fig = dict(data=[], layout={})
         self.zoom_fig = dict(data=[], layout={})
@@ -616,16 +614,14 @@ class SpatialPanel(pn.viewable.Viewer):
         def create_adata_pkg():
             try:
                 self.prep_sdata()
-                self.prep_adata()
+                adata = self.prep_adata()
             except ValueError as e:
                 raise
 
-            adata_pkg = {"adata": self.adata, "img_name": self.spatial_obj.img_name}
+            adata_pkg = {"adata": adata, "img_name": self.spatial_obj.img_name}
             return adata_pkg
 
         adata_cache_label = f"{self.dataset_id}_adata"
-        if self.projection_id:
-            adata_cache_label = f"{self.projection_id}_adata"
 
         # Load the Anndata object (+ image name) from cache or create it if it does not exist, with a 1-week time-to-live
         try:
@@ -634,7 +630,15 @@ class SpatialPanel(pn.viewable.Viewer):
             yield pn.pane.Alert(f"Error: {e}", alert_type="danger")
             raise
 
-        self.adata = adata_pkg["adata"]
+
+        self.dataset_adata_orig = adata_pkg["adata"] # Original dataset adata
+        self.dataset_adata = self.dataset_adata_orig.copy() # Copy we manipulate
+        self.adata = self.dataset_adata.copy()  # Adata to get dataframe from
+
+        # Modify the adata object to use the projection ID if it exists
+        if self.projection_id:
+            self.adata = self.create_projection_adata()
+
         self.spatial_img = None
         if adata_pkg["img_name"]:
             self.spatial_img = self.adata.uns["spatial"][adata_pkg["img_name"]]["images"]["hires"]
@@ -677,13 +681,7 @@ class SpatialPanel(pn.viewable.Viewer):
         # Need to include image since the bounding box query does not filter the image data by coordinates
         # Each Image is downscaled (or upscaled) during rendering to fit a 2000x2000 pixels image (downscaled_hires)
         self.spatial_obj._convert_sdata_to_adata()
-        self.dataset_adata_orig = self.spatial_obj.adata    # Original dataset adata
-        self.dataset_adata = self.dataset_adata_orig.copy() # Copy we manipulate
-        self.adata = self.dataset_adata.copy()  # Adata to get dataframe from
-
-        # Modify the adata object to use the projection ID if it exists
-        if self.projection_id:
-            self.adata = self.create_projection_adata()
+        return self.spatial_obj.adata
 
     def create_projection_adata(self):
         dataset_adata = self.adata
