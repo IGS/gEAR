@@ -392,12 +392,9 @@ class SpatialNormalSubplot(SpatialPlot):
                 , name=str(cluster)
                 ))
 
-        # TODO: Suggestion by Anup to change to square root scale
-        #fig.update_yaxes(type="log", title_text="Expression")
-
         # xaxis needs to be categorical, even for numerical values
         fig.update_xaxes(type="category", title_text="Clusters")
-        fig.update_yaxes(title_text="Expression", range_mode="tozero")
+        fig.update_yaxes(title_text="Expression", rangemode="tozero")
 
         # Get longest cluster name for legend
         longest_cluster = max(self.df["clusters"].astype(str).apply(len))
