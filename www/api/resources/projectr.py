@@ -14,6 +14,8 @@ from more_itertools import sliced
 import geardb
 from gear.orthology import get_ortholog_file, map_dataframe_genes
 
+from .common import get_adata_from_analysis, get_spatial_adata
+
 # Parse gEAR config
 # https://stackoverflow.com/a/35904211/1368079
 this = sys.modules[__name__]
@@ -295,9 +297,15 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     # Drop duplicate unique identifiers. This may happen if two unweighted gene cart genes point to the same Ensembl ID in the db
     loading_df = loading_df[~loading_df.index.duplicated(keep='first')]
 
+
+    is_spatial = False
+    if ds.dtype == "spatial":
+        is_spatial = True
+
     # NOTE Currently no analyses are supported yet.
+    # TODO:- fix redundancy with "get_(spatial)_adata" functions
     try:
-        ana = geardb.get_analysis(None, dataset_id, session_id)
+        ana = geardb.get_analysis(None, dataset_id, session_id, is_spatial)
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -306,16 +314,26 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             "message": "Could not retrieve analysis."
         }
 
-    try:
-        # Using adata with "backed" mode does not work with volcano plot
-        adata = ana.get_adata(backed=True)
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return {
-            "success": -1,
-            "message": "Could not retrieve AnnData object."
-        }
+    if is_spatial:
+        try:
+            adata = get_spatial_adata(None, dataset_id, session_id, include_images=False)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {
+                "success": -1,
+                "message": "Could not retrieve AnnData object from spatial datastore."
+            }
+    else:
+        try:
+            adata = get_adata_from_analysis(None, dataset_id, session_id)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {
+                "success": -1,
+                "message": "Could not retrieve AnnData object."
+            }
 
 
     # If dataset genes have duplicated index names, we need to rename them to avoid errors

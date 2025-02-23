@@ -115,12 +115,20 @@ def get_analysis(analysis, dataset_id, session_id, is_spatial=False):
             raise FileNotFoundError("No h5 file found for the passed in analysis {}".format(ana.dataset_path()))
 
     else:
+
         ds = Dataset(id=dataset_id, has_h5ad=1)
+        filetype = "h5"
+
+        # Ensure the zarr file is retrieved instead of the h5
+        if is_spatial:
+            ds.dtype = 'spatial'
+            filetype = "zarr"
+
         h5_path = ds.get_file_path()
 
         # Let's not fail if the file isn't there
         if not os.path.exists(h5_path):
-            raise FileNotFoundError("No h5 file found for this dataset {}".format(h5_path))
+            raise FileNotFoundError("No {} file found for this dataset {}".format(filetype, h5_path))
         ana = Analysis(type='primary', dataset_id=dataset_id)
     return ana
 
@@ -1976,6 +1984,7 @@ class Dataset:
         This returns where the path SHOULD be, it doesn't check that it's actually there. This
         allows for it to be used also for any process which wants to know where to write it.
         """
+
         if self.dtype == "spatial":
             if session_id is None:
                 zarr_file_path = "{0}/../www/datasets/spatial/{1}.zarr".format(

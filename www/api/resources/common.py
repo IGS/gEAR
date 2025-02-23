@@ -114,9 +114,11 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
         X = df.to_numpy()
         var = pd.DataFrame(index=df.columns)
         obs = dataset_adata.obs
+        obsm = dataset_adata.obsm
+        uns = dataset_adata.uns
         # Create the anndata object and write to h5ad
         # Associate with a filename to ensure AnnData is read in "backed" mode
-        projection_adata = anndata.AnnData(X=X, obs=obs, var=var, obsm=dataset_adata.obsm, filemode='r')
+        projection_adata = anndata.AnnData(X=X, obs=obs, var=var, obsm=obsm, uns=uns, filemode='r')
     except Exception as e:
         print(str(e), file=sys.stderr)
         raise PlotError("Could not create projection AnnData object from CSV.")
