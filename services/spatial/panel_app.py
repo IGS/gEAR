@@ -580,9 +580,11 @@ class SpatialPanel(pn.viewable.Viewer):
         # SAdkins - Have not quite figured out when to use "watch" but I think it mostly applies when a callback does not return a value
         def refresh_dataframe_callback(value):
             self.dataset_adata = self.dataset_adata_orig.copy()
+            self.adata = self.adata_orig.copy()
 
             with self.normal_pane.param.update(loading=True) \
                 , self.zoom_pane.param.update(loading=True) \
+                , self.umap_pane.param.update(loading=True) \
                 , self.violin_pane.param.update(loading=True) \
                 , self.min_genes_slider.param.update(disabled=True):
                 self.refresh_dataframe(value)
@@ -633,12 +635,14 @@ class SpatialPanel(pn.viewable.Viewer):
 
 
         self.dataset_adata_orig = adata_pkg["adata"] # Original dataset adata
-        self.dataset_adata = self.dataset_adata_orig.copy() # Copy we manipulate
-        self.adata = self.dataset_adata.copy()  # Adata to get dataframe from
+        self.dataset_adata = self.dataset_adata_orig.copy() # Copy we manipulate (filtering, etc.)
+        self.adata = self.dataset_adata.copy()  # adata object to use for plotting
 
         # Modify the adata object to use the projection ID if it exists
         if self.projection_id:
             self.adata = self.create_projection_adata()
+
+        self.adata_orig = self.adata.copy() # This is to restore when the min_genes slider is changed
 
         self.spatial_img = None
         if adata_pkg["img_name"]:
@@ -648,7 +652,8 @@ class SpatialPanel(pn.viewable.Viewer):
 
         yield self.refresh_dataframe(self.min_genes)
 
-        with self.umap_pane.param.update(loading=True):
+        with self.umap_pane.param.update(loading=True) \
+            , self.min_genes_slider.param.update(disabled=True):
             self.add_umap()
 
     def prep_sdata(self):
