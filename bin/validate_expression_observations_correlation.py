@@ -29,11 +29,12 @@ def main():
     parser = argparse.ArgumentParser( description='Validates the correlation between expression.tab and observations.tab files.')
     parser.add_argument('-e', '--expression_file', type=str, required=True, help='Path to the expression.tab file' )
     parser.add_argument('-o', '--observations_file', type=str, required=True, help='Path to the observations.tab file' )
+    parser.add_argument('--ignore_order', action='store_true', help='If passed, ignores order of observations and treats them as an index instead')
     args = parser.parse_args()
 
     line_num = 0
     obs = list()
-    
+
     ## first read in the observations
     for line in open(args.observations_file):
         line = line.rstrip()
@@ -60,10 +61,20 @@ def main():
     ## Now actually compare
     i = 0
     for oval in obs:
-        if oval != expr[i]:
-            raise Exception("obs value {0} didn't match expr value {1} at index {2} (0-based)".format(oval, expr[i], i))
+        if args.ignore_order:
+            if oval not in expr:
+                raise Exception("obs value {0} not found in expr values".format(oval))
+        else:
+            if oval != expr[i]:
+                raise Exception("obs value {0} didn't match expr value {1} at index {2} (0-based)".format(oval, expr[i], i))
         
         i += 1
+
+    # if ignoring order, do the reverse check
+    if args.ignore_order:
+        for eval in expr:
+            if eval not in obs:
+                raise Exception("expr value {0} not found in obs values".format(eval))
         
 
     print("obs and expr values match properly")
