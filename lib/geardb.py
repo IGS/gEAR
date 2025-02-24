@@ -123,6 +123,7 @@ def get_analysis(analysis, dataset_id, session_id, is_spatial=False):
         if is_spatial:
             ds.dtype = 'spatial'
             filetype = "zarr"
+            ds.has_h5ad = 0 # does not affect get_file_path but sanity-checking
 
         h5_path = ds.get_file_path()
 
