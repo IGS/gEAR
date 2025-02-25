@@ -261,7 +261,7 @@ const fetchGeneAnnotations = async (callback) => {
         // Render template based on the number of annotations
         if (Object.keys(annotation_data).length === 0) {
             document.getElementById('gene-result-list').innerHTML = '';
-            
+
             const no_history_template = document.getElementById('tmpl-gene-result-none-found');
             document.getElementById('gene-result-list').appendChild(no_history_template.content.cloneNode(true));
         } else {
@@ -615,6 +615,18 @@ const updateAnnotationDisplay = () => {
     document.getElementById('external-resource-links').innerHTML = '';
     document.getElementById('go-terms').innerHTML = '';
     document.getElementById('go-term-count').innerHTML = '';
+
+    // Did we find annotation for this gene symbol at all?
+    if (!annotation_data.hasOwnProperty(gs)) {
+        document.getElementById('currently-selected-gene').innerHTML = "";
+        document.getElementById('currently-selected-gene-product').innerHTML = "(annotation not available for this gene)";
+        document.getElementById('currently-selected-gene-product').classList.remove('is-hidden');
+
+        const dbxref_template = document.querySelector('#tmpl-external-resource-link-none-found');
+        const dbxref_template_row = dbxref_template.content.cloneNode(true);
+        document.getElementById('external-resource-links').appendChild(dbxref_template_row);
+        return;
+    }
 
     // if the selected organism is not in the annotation data, show a message
     if (! annotation_data[gs]['by_organism'].hasOwnProperty(oid)) {
