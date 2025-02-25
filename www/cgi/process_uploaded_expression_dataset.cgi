@@ -375,8 +375,8 @@ def write_status(upload_dir, status_name, message):
         f.write(json.dumps(status))
 
 def package_content_type(filenames):
-        print("DEBUG: filenames", file=sys.stderr, flush=True)
-        print(filenames, file=sys.stderr, flush=True)
+        #print("DEBUG: filenames", file=sys.stderr, flush=True)
+        #print(filenames, file=sys.stderr, flush=True)
         """
         mex:
         matrix.mtx
