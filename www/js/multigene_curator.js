@@ -230,10 +230,12 @@ class GenesAsAxisHandler extends PlotHandler {
                     }
                     // disable primary series in secondary series
                     const opt = secondaryClassElt.querySelector(`option[value="${primarySeries}"]`);
-                    opt.setAttribute("disabled", "disabled");
-                    // If this option was selected, unselect it
-                    if (secondaryClassElt.value === primarySeries) {
-                        secondaryClassElt.value = "";
+                    if (opt) {
+                        opt.setAttribute("disabled", "disabled");
+                        // If this option was selected, unselect it
+                        if (secondaryClassElt.value === primarySeries) {
+                            secondaryClassElt.value = "";
+                        }
                     }
                 }
             })
@@ -262,6 +264,7 @@ class GenesAsAxisHandler extends PlotHandler {
                 const input = document.createElement("input");
                 input.type = "checkbox";
                 input.value = catColumn;
+                input.disabled = true;
                 input.classList.add("js-dash-clusterbar-checkbox");
                 label.appendChild(input);
                 label.innerHTML += ` ${catColumn}`;
@@ -333,6 +336,54 @@ class GenesAsAxisHandler extends PlotHandler {
             for (const item of heatmapDropdownMenuItems) {
                 item.addEventListener("click", showPostHeatmapParamSubsection);
             }
+
+            // Ensure only clusterbar checkboxes that match the primary and secondary series are enabled to be checked
+            // If a checkbox is checked and the primary or secondary series is changed, uncheck the checkbox
+            for (const classElt of document.getElementsByClassName("js-dash-primary")) {
+                classElt.addEventListener("change", (event) => {
+                    const primarySeries = event.target.value;
+                    const secondarySeries = document.querySelector(".js-dash-secondary").value;
+                    const values = [];
+                    if (primarySeries) {
+                        values.push(primarySeries);
+                    }
+                    if (secondarySeries) {
+                        values.push(secondarySeries);
+                    }
+
+                    for (const innerClassElt of document.getElementsByClassName("js-dash-clusterbar-checkbox")) {
+                        if (!(values.includes(innerClassElt.value))) {
+                            innerClassElt.checked = false;
+                            innerClassElt.disabled = true;
+                        } else {
+                            innerClassElt.disabled = false;
+                        }
+                    }
+                })
+            }
+            for (const classElt of document.getElementsByClassName("js-dash-secondary")) {
+                classElt.addEventListener("change", (event) => {
+                    const secondarySeries = event.target.value;
+                    const primarySeries = document.querySelector(".js-dash-primary").value;
+                    const values = [];
+                    if (primarySeries) {
+                        values.push(primarySeries);
+                    }
+                    if (secondarySeries) {
+                        values.push(secondarySeries);
+                    }
+
+                    for (const innerClassElt of document.getElementsByClassName("js-dash-clusterbar-checkbox")) {
+                        if (!(values.includes(innerClassElt.value))) {
+                            innerClassElt.checked = false;
+                            innerClassElt.disabled = true;
+                        } else {
+                            innerClassElt.disabled = false;
+                        }
+                    }
+                })
+            }
+
 
         }
 
