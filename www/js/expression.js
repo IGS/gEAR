@@ -260,6 +260,8 @@ const fetchGeneAnnotations = async (callback) => {
 
         // Render template based on the number of annotations
         if (Object.keys(annotation_data).length === 0) {
+            document.getElementById('gene-result-list').innerHTML = '';
+            
             const no_history_template = document.getElementById('tmpl-gene-result-none-found');
             document.getElementById('gene-result-list').appendChild(no_history_template.content.cloneNode(true));
         } else {
