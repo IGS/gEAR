@@ -228,6 +228,15 @@ const buildStateURL = () => {
     if (selected_gene_lists.size > 0) {
         const geneCartShareIds = Array.from(selected_gene_lists);
         url.searchParams.append('gene_lists', geneCartShareIds.join(','));
+
+        // select all genes from the gene lists
+        selected_genes = new Set();
+        for (const geneCartShareId of geneCartShareIds) {
+            const geneList = gene_cart_genes[geneCartShareId];
+            for (const gene of geneList) {
+                selected_genes.add(gene);
+            }
+        }
     }
 
     // add the dataset collections
@@ -349,12 +358,10 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Wait until all pending API calls have completed before checking if we need to search
     document.getElementById("submit-expression-search").classList.add("is-loading");
     try {
-        const geneListShareId = getUrlParameter('gene_cart_share_id')
-
         // SAdkins note - Promise.all fails fast,
         // but Promise.allSettled waits until all resolve/reject and lets you know which ones failed
-        const [cart_result, dc_result, org_result] = await Promise.all([
-            fetchGeneCartData(geneListShareId),
+        const [dc_result, org_result] = await Promise.all([
+            parseGeneListURLParams(),
             fetchDatasetCollections(layoutShareId),
             fetchOrganisms()
         ]);
@@ -364,7 +371,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         document.getElementById("submit-expression-search").classList.remove("is-loading");
     }
 
-    parseGeneCartURLParams();
     parseDatasetCollectionURLParams();
 
     // Trigger the default dataset collection to be selected in the
@@ -488,7 +494,7 @@ const showOrganismSelectorTooltip = () => {
 /**
  * Parses the URL parameters related to gene cart and updates the UI accordingly.
  */
-const parseGeneCartURLParams = () => {
+const parseGeneListURLParams = async () => {
     // handle manually-entered gene symbols
     const gene_symbols = getUrlParameter('gene_symbol');
     if (gene_symbols) {
@@ -507,15 +513,30 @@ const parseGeneCartURLParams = () => {
         urlParamsPassed = true;
     }
 
+    await fetchGeneCartData();
+
     if (getUrlParameter('gene_lists')) {
-        gene_lists = getUrlParameter('gene_lists').split(',');
-        selectGeneLists(gene_lists); // declared in gene-collection-selector.js
+        const geneLists = getUrlParameter('gene_lists').split(',');
+        for (const geneList of geneLists) {
+
+            const geneListMembers = await apiCallsMixin.fetchGeneCartMembers(geneList);
+            const genes = [];
+
+            for (const member of geneListMembers.gene_symbols) {
+                genes.push(member.label);
+            }
+
+            gene_cart_genes[geneList] = genes;
+            selected_genes = new Set([...selected_genes, ...genes]);
+
+        }
+        selectGeneLists(geneLists); // declared in gene-collection-selector.js
         urlParamsPassed = true;
     }
 
     // are we doing exact matches?
     const exact_match = getUrlParameter('gene_symbol_exact_match');
-    document.querySelector('#gene-search-exact-match').checked = exact_match === '1';
+    document.getElementById('gene-search-exact-match').checked = exact_match === '1';
 
     // single or multiple gene view (convert to boolean)?
     const is_multigene_param = getUrlParameter('is_multigene');
@@ -731,7 +752,9 @@ const validateExpressionSearchForm = () => {
         if (!isExactMatch) {
             const allGenesElts = document.querySelectorAll('.gene-result-list-item');
             const allGenes = Array.from(allGenesElts).map(elt => elt.textContent);
-            if (allGenes.length < 2) {
+            // Add in selected genes
+            const comboGenes = allGenes.concat(Array.from(selected_genes));
+            if (comboGenes.length < 2) {
                 createToast('Need at least two genes to proceed');
                 return false;
             }

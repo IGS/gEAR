@@ -1344,8 +1344,8 @@ class DatasetTile {
 
         this.currentDisplayId = display.id;
 
-        // handle legacy plot types
-        if (display.plot_type === "tsne_dynamic") {
+        // handle legacy plot types (+ sanity catch against tsne_dyna)
+        if (["tsne_dynamic", "tsne_dyna"].includes(display.plot_type)) {
             display.plot_type = "tsne/umap_dynamic";
         }
         if (display.plot_type === "tsne") {
