@@ -527,6 +527,13 @@ class MultigeneDashData(Resource):
             # Groupby to remove the replicates
             # Ensure the composite index is used as the index for plot labeling
             if matrixplot:
+                if not primary_col:
+                    return {
+                        'success': -1,
+                        'message': "The 'primary_col' option required for matrix plots. Please update curation"
+                    }
+
+
                 grouped = df.groupby(groupby_filters, observed=False)
                 df = grouped.mean() \
                     .dropna() \
