@@ -600,6 +600,7 @@ class Analysis {
         }
 
         // Hide success and failed state icons
+        // These do not include dataset and analysis "success" and "failed" icons
         for (const el of document.getElementsByClassName("js-step-success")) {
             el.classList.add("is-hidden");
         }
@@ -698,7 +699,9 @@ class Analysis {
             await this.getSavedAnalysesList(this.dataset.id, this.id);
 
             // Update the current analysis label
-            document.querySelector(UI.currentAnalysisElt).textContent = this.label;
+            for (const el of document.querySelectorAll(UI.currentAnalysisElt)) {
+                el.textContent = this.label;
+            }
 
         } catch (error) {
             createToast(`Error saving analysis: ${error.message}`);

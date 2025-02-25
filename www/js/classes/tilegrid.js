@@ -335,11 +335,13 @@ class DatasetTile {
         this.projectR = {modeEnabled: false, projectionId: null, projectionInfo: null, performingProjection: false, success: false};
 
         // Spatial parameters
-        this.min_genes = null;
-        this.selection_x1 = null;
-        this.selection_x2 = null;
-        this.selection_y1 = null;
-        this.selection_y2 = null;
+        this.spatial = {
+            min_genes: null,
+            selection_x1: null,
+            selection_x2: null,
+            selection_y1: null,
+            selection_y2: null,
+        }
     }
 
     /**
@@ -452,6 +454,11 @@ class DatasetTile {
 
             this.resizeCardImage();
 
+            if (this.dataset.dtype === "spatial") {
+                this.handleSpatialDisplay(geneSymbolInput);
+                return;
+            }
+
             // Plot and render the display
             await this.renderDisplay(geneSymbolInput, null, svgScoringMethod);
             return;
@@ -502,97 +509,111 @@ class DatasetTile {
             this.renderOrthologDropdown();
         }
 
-        // ? Need a better spot
         if (this.dataset.dtype === "spatial") {
-            // Add loading message
-            createCardMessage(tileId, "info", "Loading spatial display...");
-
-            // build the URL for the spatial app
-            const urlParams = new URLSearchParams();
-            urlParams.append("dataset_id", this.dataset.id);
-            urlParams.append("gene_symbol", orthologs[0]);
-
-            // Add spatial parameters to the URL if they exist
-            if (this.min_genes) {
-                urlParams.append("min_genes", this.min_genes);
-            }
-            if (this.selection_x1) {
-                urlParams.append("selection_x1", this.selection_x1);
-            }
-            if (this.selection_x2) {
-                urlParams.append("selection_x2", this.selection_x2);
-            }
-            if (this.selection_y1) {
-                urlParams.append("selection_y1", this.selection_y1);
-            }
-
-            const url = `/panel/ws/panel_app?${urlParams.toString()}`;
-
-            try {
-                const cardImage = tileElement.querySelector('.card-image');
-                cardImage.replaceChildren();
-
-                if (this.type == "multi") {
-                // Create div element under .card-image, in this we will retrieve image data from an api call and re
-                this.gene_symbols = orthologs;
-                await this.renderSpatialScanpyDisplay(null, null);
-                }
-
-
-                if (this.type == "single") {
-
-                    const iframe = document.createElement("iframe");
-                    // srcDoc html requires Panel static files to be served from the same domain, so use src instead
-                    iframe.src = url;
-                    iframe.loading="lazy";
-                    iframe.referrerPolicy="origin"; // honestly doesn't matter if provided
-                    iframe.sandbox="allow-scripts allow-same-origin";
-                    cardImage.append(iframe);
-
-                    const iframeBody = iframe.contentDocument.body
-
-                    // create a mutation observer to monitor the iframe href for changes
-                    const observer = new MutationObserver((mutationsList, observer) => {
-                        for (const mutation of mutationsList) {
-                            console.log(mutation);
-                        }
-                    });
-
-                    observer.observe(iframeBody, { attributes: true, subtree: true, childList: true });
-
-                    // Create a polling function to check for changes to the iframe content URL
-                    // SAdkins - This is kind of hacky as I cannot get the mutation observer or related callback to work
-                    const pollIframe = async () => {
-                        // If iframe contentWindow is null, then return (i.e. switching genes)
-                        if (!iframe.contentWindow) {
-                            return;
-                        }
-
-                        const panelUrl = iframe.contentWindow.location.href;
-                        if (panelUrl !== iframe.src) {
-                            // extract query params from the URL and store to persist across iframe reloads
-                            const urlParams = new URLSearchParams(panelUrl.split("?")[1]);
-                            this.min_genes = parseInt(urlParams.get("min_genes")) || null;
-                            this.selection_x1 = parseFloat(urlParams.get("selection_x1")) || null;
-                            this.selection_x2 = parseFloat(urlParams.get("selection_x2")) || null;
-                            this.selection_y1 = parseFloat(urlParams.get("selection_y1")) || null;
-                            this.selection_y2 = parseFloat(urlParams.get("selection_y2")) || null;
-                        }
-                    }
-                    // Poll the iframe every 3 seconds
-                    setInterval(pollIframe, 3000);
-                }
-
-            } catch (error) {
-                console.error(error);
-            } finally {
-                return;
-            }
+            this.handleSpatialDisplay(orthologs);
+            return;
         }
 
         // Plot and render the display
         await this.renderDisplay(orthologs, null, svgScoringMethod);
     }
+
+    async handleSpatialDisplay(geneSymbolInput) {
+        const tileId = this.tile.tileId;
+        const tileElement = document.getElementById(`tile-${tileId}`);
+
+        // Add loading message
+        createCardMessage(tileId, "info", "Loading spatial display...");
+
+        this.geneSymbol = geneSymbolInput;
+
+        geneSymbolInput = this.type === "single" ? geneSymbolInput[0] : geneSymbolInput;
+
+        // build the URL for the spatial app
+        const urlParams = new URLSearchParams();
+        urlParams.append("dataset_id", this.dataset.id);
+        urlParams.append("gene_symbol", geneSymbolInput);
+
+        // Add spatial parameters to the URL if they exist
+        if (this.spatial.min_genes) {
+            urlParams.append("min_genes", this.spatial.min_genes);
+        }
+        if (this.spatial.selection_x1) {
+            urlParams.append("selection_x1", this.spatial.selection_x1);
+        }
+        if (this.spatial.selection_x2) {
+            urlParams.append("selection_x2", this.spatial.selection_x2);
+        }
+        if (this.spatial.selection_y1) {
+            urlParams.append("selection_y1", this.spatial.selection_y1);
+        }
+
+        if (this.projectR.modeEnabled && this.projectR.projectionId) {
+            urlParams.append("projection_id", this.projectR.projectionId);
+        }
+
+        const url = `/panel/ws/panel_app?${urlParams.toString()}`;
+
+        try {
+            const cardImage = tileElement.querySelector('.card-image');
+            cardImage.replaceChildren();
+
+            if (this.type == "multi") {
+            // Create div element under .card-image, in this we will retrieve image data from an api call and re
+            await this.renderSpatialScanpyDisplay(null, null);
+            }
+
+            if (this.type == "single") {
+
+                const iframe = document.createElement("iframe");
+                // srcDoc html requires Panel static files to be served from the same domain, so use src instead
+                iframe.src = url;
+                iframe.loading="lazy";
+                iframe.referrerPolicy="origin"; // honestly doesn't matter if provided
+                iframe.sandbox="allow-scripts allow-same-origin";
+                cardImage.append(iframe);
+
+                const iframeBody = iframe.contentDocument.body
+
+                // create a mutation observer to monitor the iframe href for changes
+                const observer = new MutationObserver((mutationsList, observer) => {
+                    for (const mutation of mutationsList) {
+                        console.log(mutation);
+                    }
+                });
+
+                observer.observe(iframeBody, { attributes: true, subtree: true, childList: true });
+
+                // Create a polling function to check for changes to the iframe content URL
+                // SAdkins - This is kind of hacky as I cannot get the mutation observer or related callback to work
+                const pollIframe = async () => {
+                    // If iframe contentWindow is null, then return (i.e. switching genes)
+                    if (!iframe.contentWindow) {
+                        return;
+                    }
+
+                    const panelUrl = iframe.contentWindow.location.href;
+                    if (panelUrl !== iframe.src) {
+                        // extract query params from the URL and store to persist across iframe reloads
+                        const urlParams = new URLSearchParams(panelUrl.split("?")[1]);
+                        this.spatial.min_genes = parseInt(urlParams.get("min_genes")) || null;
+                        this.spatial.selection_x1 = parseFloat(urlParams.get("selection_x1")) || null;
+                        this.spatial.selection_x2 = parseFloat(urlParams.get("selection_x2")) || null;
+                        this.spatial.selection_y1 = parseFloat(urlParams.get("selection_y1")) || null;
+                        this.spatial.selection_y2 = parseFloat(urlParams.get("selection_y2")) || null;
+                    }
+                }
+                // Poll the iframe every 3 seconds
+                setInterval(pollIframe, 3000);
+            }
+
+        } catch (error) {
+            console.error(error);
+        } finally {
+            return;
+        }
+    }
+
 
     /**
      * Retrieves orthologs for the given gene symbols.
@@ -1749,7 +1770,7 @@ class DatasetTile {
 
         const datasetId = this.dataset.id;
         const analysisObj = null
-        const plotConfig = {gene_symbols: this.gene_symbols};   // applies for single and multi gene
+        const plotConfig = {gene_symbols: this.geneSymbol};   // applies for single and multi gene
 
         this.resetAbortController();
         otherOpts = {}

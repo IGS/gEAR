@@ -147,14 +147,21 @@ There's a lot in here, but the CGI-related addition is:
             </IfVersion>
     </Directory>
 
+    # Spatial zarr store
+    <Directory /var/www/datasets/spatial/*.zarr>
+        Options Indexes FollowSymLinks MultiViews
+        Require all granted
+        IndexOptions SuppressHTMLPreamble
+        IndexIgnore ..  # hide parent directory
+    </Directory>
 
   // Panel proxy
   // This uses the "ws" protocol for websockets as they are better are real-time two-way communication
-    ProxyPass /panel/ws ws://panel:5006
-    ProxyPassReverse /panel/ws ws://panel:5006
+  ProxyPass /panel/ws ws://127.0.0.1:5006
+  ProxyPassReverse /panel/ws ws://127.0.0.1:5006
 
-    ProxyPass /panel http://panel:5006
-    ProxyPassReverse /panel http://panel:5006
+  ProxyPass /panel http://127.0.0.1:5006
+  ProxyPassReverse /panel http://127.0.0.1:5006
 
 ## /etc/apache2/mods-available/wsgi.load
 

@@ -279,7 +279,7 @@ class Orthologs(Resource):
         dataset_organism_id = dataset.organism_id
 
         try:
-            adata = get_adata_shadow(analysis_id, dataset_id, session_id, dataset_path)
+            adata = get_adata_shadow(analysis_id, dataset_id, session_id, dataset_path, include_images=False)
         except FileNotFoundError:
             return {
                 "success": -1,

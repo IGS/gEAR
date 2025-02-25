@@ -317,12 +317,14 @@ class VisiumHDUploader(SpatialUploader):
 
     Required files that will break the upload if not present:
     /binned_outputs/square_008um/filtered_feature_bc_matrix.h5
+    /binned_outputs/square_008um/analysis/clustering/gene_expression_graphclust/clusters.csv
     /binned_outputs/feature_slice.h5
     /binned_outputs/square_008um/spatial/scalefactors_json.json
     /binned_outputs/square_008um/spatial/tissue_hires_image.png
+    /binned_outputs/square_008um/spatial/tissue_lowres_image.png
 
     Recommended tar command to create tarball:
-    `tar cvf <dataset>.tar binned_outputs/feature_slice.h5 binned_outputs/square_008um spatial`
+    `tar cvf <dataset>.tar binned_outputs/feature_slice.h5 binned_outputs/square_008um`
 
     Special note: We have observed that bin sizes finer than 8 microns per pixel will generally have more cells, which can lead to longer analysis times.
     For now, we will attempt to use the "square_008um" binned output.

@@ -1,8 +1,9 @@
 panel==1.5.5
 plotly==5.20.0
-spatialdata==0.2.7-pre0
+spatialdata==0.3.0
 spatialdata_io==0.1.6
 scanpy==1.10.3
 pandas==2.2.1
 anndata==0.10.6
+werkzeug==2.0.2
 watchfiles
