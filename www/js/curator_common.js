@@ -1626,7 +1626,7 @@ for (const plotBtn of plotBtns) {
 
 document.getElementById("save-json-config").addEventListener("click", () => {
     // Config plot configuration to JSON for sharing (or passing to API by hand)
-    const blob = new Blob([JSON.stringify({...plotStyle.plotConfig, plot_type:plotStyle.plotType})]);
+    const blob = new Blob([JSON.stringify({...plotStyle.plotConfig, plot_type:plotStyle.apiPlotType})]);
     const link = document.createElement("a");
     link.download = "gEAR_plot_configuration.json";
     link.href = window.URL.createObjectURL(blob);
@@ -1648,7 +1648,7 @@ document.getElementById("save-display-btn").addEventListener("click", async (eve
             displayIdToUse = chosenDisplayId;
         }
 
-        const displayId = await curatorApiCallsMixin.saveDatasetDisplay(datasetId, displayIdToUse, label, plotStyle.plotType, plotStyle.plotConfig);
+        const displayId = await curatorApiCallsMixin.saveDatasetDisplay(datasetId, displayIdToUse, label, plotStyle.apiPlotType, plotStyle.plotConfig);
         createToast("Display saved.", "is-success");
 
         if (document.getElementById("make-default-display-check").checked) {
