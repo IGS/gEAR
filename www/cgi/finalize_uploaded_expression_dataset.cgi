@@ -123,10 +123,12 @@ def main():
         print(json.dumps(result))
         sys.exit(0)
     
-    if dataset_format == '3tab' or dataset_format == 'mex':
+    if dataset_format == 'mex_3tab':
         # migrate the tarball
         tarball_file = os.path.join(dataset_upload_dir, f'{share_uid}.tar.gz')
         tarball_dest = os.path.join(dataset_final_dir, f'{dataset_id}.tar.gz')
+
+        print(f"DEBUG: Attempting to do: mv {tarball_file} {tarball_dest}", file=sys.stderr)
 
         try:
             os.rename(tarball_file, tarball_dest)
@@ -135,6 +137,7 @@ def main():
             result['message'] = 'Error migrating tarball file: {}'.format(str(e))
             print(json.dumps(result))
             sys.exit(0)
+
     elif dataset_format == 'excel':
         # migrate the Excel file
         excel_file = os.path.join(dataset_upload_dir, f'{share_uid}.xlsx')
@@ -147,6 +150,8 @@ def main():
             result['message'] = 'Error migrating Excel file: {}'.format(str(e))
             print(json.dumps(result))
             sys.exit(0)
+    else:
+        print(f"DEBUG: dataset_format is {dataset_format}", file=sys.stderr)
 
     # if we made it this far, all is well, so return success
     result['success'] = 1
