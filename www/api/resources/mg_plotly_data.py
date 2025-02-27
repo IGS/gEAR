@@ -538,7 +538,7 @@ class MultigeneDashData(Resource):
                 if not primary_col:
                     return {
                         'success': -1,
-                        'message': "The 'primary_col' option is required for matrixplots. Please update this curation"
+                        'message': "A primary grouping is required for matrixplots. Please update this curation"
                     }
 
                 grouped = df.groupby(groupby_filters, observed=False)
