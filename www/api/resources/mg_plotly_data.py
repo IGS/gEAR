@@ -485,7 +485,6 @@ class MultigeneDashData(Resource):
 
         elif plot_type == "heatmap":
 
-
             # Filter genes and slice the adata to get a dataframe
             # with expression and its observation metadata
             df = selected.to_df()
@@ -502,7 +501,9 @@ class MultigeneDashData(Resource):
                 subsample_limit = min(subsample_limit, CLUSTER_LIMIT)
             df = df.sample(subsample_limit, random_state=1)
 
-            groupby_filters = [primary_col]
+            groupby_filters = []
+            if primary_col:
+                groupby_filters.append(primary_col)
             if secondary_col and not primary_col == secondary_col:
                 groupby_filters.append(secondary_col)
 
@@ -510,17 +511,24 @@ class MultigeneDashData(Resource):
                 df[gb] = selected.obs[gb]
 
             if groupby_filters:
-
                 # For the remaining data, create a special composite index for the specified groupings
                 df['groupby_composite'] = create_composite_index_column(df, groupby_filters)
                 df['groupby_composite'] = df['groupby_composite'].astype('category')
 
+                # TODO: Allow all clusterbars if matrixplot = False
+                fields_to_remove = []
                 for field in clusterbar_fields:
                     if field not in groupby_filters:
-                        return {
-                            'success': -1,
-                            'message': f"Clusterbar field '{field}' must be included in the primary or secondary groupings."
-                        }
+                        # Remove field from clusterbar_fields if it is not in the groupby_filters
+                        print(f"Clusterbar field '{field}' must be included in the primary or secondary groupings. Removing field to ensure legacy plots work.", file=sys.stderr)
+                        fields_to_remove.append(field)
+
+                        #return {
+                        #    'success': -1,
+                        #    'message': f"Clusterbar field '{field}' must be included in the primary or secondary groupings."
+                        #}
+                for field in fields_to_remove:
+                    clusterbar_fields.remove(field)
 
             groupby_filters.append("groupby_composite")
 
@@ -530,9 +538,8 @@ class MultigeneDashData(Resource):
                 if not primary_col:
                     return {
                         'success': -1,
-                        'message': "The 'primary_col' option required for matrix plots. Please update curation"
+                        'message': "The 'primary_col' option is required for matrixplots. Please update this curation"
                     }
-
 
                 grouped = df.groupby(groupby_filters, observed=False)
                 df = grouped.mean() \

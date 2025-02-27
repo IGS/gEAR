@@ -20,7 +20,7 @@ from flask_restful import Api
 
 # Import resources
 from resources.plotly_data import PlotlyData
-from resources.multigene_dash_data import MultigeneDashData
+from resources.mg_plotly_data import MultigeneDashData
 from resources.h5ad import H5ad
 from resources.svg_data import SvgData
 from resources.top_pca_genes import TopPCAGenes
