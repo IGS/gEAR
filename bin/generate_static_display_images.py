@@ -55,8 +55,12 @@ def make_static_plotly_graph(filename, config, url):
     decoded_result = result.json()
 
     # If plotly API threw an error, report as failed
-    if "success" in decoded_result and decoded_result["success"] < 0:
-        return False
+    if "success" in decoded_result:
+        # If success is a list, flatten and take the first element
+        if isinstance(decoded_result["success"], list):
+            decoded_result["success"] = decoded_result["success"][0]
+        if decoded_result["success"] < 0:
+            return False
 
     #plot_config = result["plot_config"]
     plot_json = decoded_result["plot_json"]

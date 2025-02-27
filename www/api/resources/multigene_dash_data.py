@@ -77,7 +77,7 @@ def create_composite_index_column(df, columns):
         2    3;6
         dtype: object
     """
-    return df.obs[columns].apply(lambda x: ';'.join(map(str, x)), axis=1)
+    return df[columns].apply(lambda x: ';'.join(map(str, x)), axis=1)
 
 class MultigeneDashData(Resource):
     """Resource for retrieving data from h5ad to be used to draw charts on UI.
@@ -299,9 +299,9 @@ class MultigeneDashData(Resource):
                         pass
 
             # Make a composite index of all categorical types
-            selected.obs['composite_index'] = create_composite_index_column(selected, columns)
-            selected.obs['composite_index'] = selected.obs['composite_index'].astype('category')
-            columns.append("composite_index")
+            #selected.obs['composite_index'] = create_composite_index_column(selected, columns)
+            #selected.obs['composite_index'] = selected.obs['composite_index'].astype('category')
+            #columns.append("composite_index")
 
             # Filter dataframe on the chosen observation filters
             if filters:
@@ -332,11 +332,6 @@ class MultigeneDashData(Resource):
                         "success": -1,
                         "message": "No data found for the selected filters."
                     }
-
-                # For the remaining data, create a special composite index for the specified filters
-                selected.obs['filters_composite'] = create_composite_index_column(selected, filters.keys())
-                selected.obs['filters_composite'] = selected.obs['filters_composite'].astype('category')
-                columns.append("filters_composite")
 
                 # Do another sort, this time by the filters
                 # Filtering the dataset may unsort the original sort we did.
@@ -489,12 +484,6 @@ class MultigeneDashData(Resource):
             fig = mg.create_dot_plot(df, groupby_filters, is_log10, title, colorscale, reverse_colorscale)
 
         elif plot_type == "heatmap":
-            for field in clusterbar_fields:
-                if field not in selected.obs:
-                    return {
-                        'success': -1,
-                        'message': f"Clusterbar field '{field}' not found in observation metadata for dataset. Please update curation."
-                    }
 
 
             # Filter genes and slice the adata to get a dataframe
@@ -513,55 +502,60 @@ class MultigeneDashData(Resource):
                 subsample_limit = min(subsample_limit, CLUSTER_LIMIT)
             df = df.sample(subsample_limit, random_state=1)
 
-            groupby_index = "composite_index"
-            groupby_fields = columns
-            # Create a composite to groupby
-            if filters and matrixplot:
-                union_fields = mg.union(list(filters.keys()), clusterbar_fields)
-                selected.obs['groupby_composite'] = create_composite_index_column(selected, union_fields)
-                selected.obs['groupby_composite'] = selected.obs['groupby_composite'].astype('category')
-                columns.append("groupby_composite")
-                groupby_index = "groupby_composite"
-                union_fields.extend([groupby_index, "filters_composite"])   # Preserve filters index for downstream labeling
-                groupby_fields = union_fields
+            groupby_filters = [primary_col]
+            if secondary_col and not primary_col == secondary_col:
+                groupby_filters.append(secondary_col)
 
-            # Only add the fields that will be used downstream
-            for cat in groupby_fields:
-                df[cat] = selected.obs[cat]
+            for gb in groupby_filters:
+                df[gb] = selected.obs[gb]
+
+            if groupby_filters:
+
+                # For the remaining data, create a special composite index for the specified groupings
+                df['groupby_composite'] = create_composite_index_column(df, groupby_filters)
+                df['groupby_composite'] = df['groupby_composite'].astype('category')
+
+                for field in clusterbar_fields:
+                    if field not in groupby_filters:
+                        return {
+                            'success': -1,
+                            'message': f"Clusterbar field '{field}' must be included in the primary or secondary groupings."
+                        }
+
+            groupby_filters.append("groupby_composite")
 
             # Groupby to remove the replicates
             # Ensure the composite index is used as the index for plot labeling
             if matrixplot:
-                grouped = df.groupby(groupby_fields, observed=False)
+                if not primary_col:
+                    return {
+                        'success': -1,
+                        'message': "The 'primary_col' option required for matrix plots. Please update curation"
+                    }
+
+
+                grouped = df.groupby(groupby_filters, observed=False)
                 df = grouped.mean() \
                     .dropna() \
                     .reset_index() \
-                    .set_index(groupby_index)
+                    .set_index("groupby_composite")
 
             # Since this is the new index in the matrixplot, it does not exist as a droppable series
             # These two statements ensure that the current columns are the same if that option is set or not
-            groupby_fields.remove(groupby_index)
+            groupby_filters.remove("groupby_composite")
             if not matrixplot:
-                df = df.drop(columns=groupby_index)
+                df = df.drop(columns="groupby_composite")
 
             # Sort based on the specified sort order
-            if primary_col:
-                sortby_fields = [primary_col]
-                if secondary_col and not primary_col == secondary_col:
-                    sortby_fields.append(secondary_col)
-                df = df.sort_values(by=sortby_fields)
-
-            # Drop the obs metadata now that the dataframe is sorted
-            # They cannot be in there when the clustergram is made
-            # But save it to add back in later
-            df_cols = pd.concat([df.pop(cat) for cat in groupby_fields], axis=1)
+            df = df.sort_values(by=groupby_filters)
 
             # Reverse Cividis so that dark is higher expression
             if colorblind_mode:
                 colorscale = "cividis_r"
 
             # "df" must be obs label for rows and genes for cols only
-            fig = mg.create_clustergram(df
+            fig = mg.create_clustergram(df.copy()
+                , groupby_filters
                 , normalized_genes_list
                 , is_log10
                 , cluster_obs
@@ -575,15 +569,12 @@ class MultigeneDashData(Resource):
                 , hide_gene_labels
                 )
 
-            # Need the obs metadata again for mapping clusterbars to indexes
-            df = pd.concat([df, df_cols], axis=1)
-
             clusterbar_indexes = mg.build_obs_group_indexes(df, filters, clusterbar_fields)
 
             # Create labels based only on the included filters
             obs_labels = None
-            if "filters_composite" in df and matrixplot:
-                obs_labels = mg.create_clustergram_observation_labels(df, fig, "filters_composite", flip_axes)
+            if "groupby_composite" in df and matrixplot:
+                obs_labels = mg.create_clustergram_observation_labels(df, fig, "groupby_composite", flip_axes)
 
             mg.add_clustergram_cluster_bars(fig, clusterbar_indexes, obs_labels, is_log10, flip_axes)
 

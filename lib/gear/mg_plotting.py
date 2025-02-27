@@ -163,21 +163,6 @@ def add_clustergram_cluster_bars(fig, clusterbar_indexes, obs_labels=None, is_lo
         obs_dendro_axis = "yaxis3"
         gene_dendro_axis = "xaxis3"
 
-    title_text = "Log2 Gene Expression"
-    colorbar_title = "Log2 Expr."
-    if is_log10:
-        title_text = "Log10 Gene Expression"
-        colorbar_title = "Log10 Expr."
-
-    fig.update_layout(
-        title={
-            "text":title_text
-            ,"x":0.5
-            ,"xref":"paper"
-            ,"y":0.9
-        }
-    )
-
     # Get list of observations in the order they appear on the heatmap
     obs_order = fig.layout[obs_axis]["ticktext"]
 
@@ -196,25 +181,12 @@ def add_clustergram_cluster_bars(fig, clusterbar_indexes, obs_labels=None, is_lo
     # Get the position of observations. Individual tickvals are the midpoint for the heatmap square
     obs_positions=fig.layout[obs_axis]["tickvals"]
 
-    # Offset the expresison colorbar to the right of the heatmap
-    # At this point it's the last trace added
-    # NOTE: The bar may need to be adjusted on the gene search display page
-    fig.data[-1]["colorbar"]["x"] = 1
-    fig.data[-1]["colorbar"]["xpad"] = 30
-    fig.data[-1]["colorbar"]["len"] = 0.5   # Set expression colorbar to be half as tall
-    fig.data[-1]["colorbar"]["y"] = 0.5
-    fig.data[-1]["colorbar"]["yanchor"] = "middle"
-    fig.data[-1]["name"] = "expression" # Name colorbar for easier retrieval
-    fig.data[-1]["colorbar"]["title"] = colorbar_title
-
     # Put "groups" heatmap tracks either above or to the right of the genes in heatmap
     # Makes a small space b/t the genes and groups tracks
     next_bar_position = max(fig.layout[gene_axis]["tickvals"]) + 7
 
     # Information that will help posittion the "groups" colorbars
-    num_colorbars = len(col_group_markers.keys())
-    max_heatmap_domain = max(fig.layout["yaxis11"]["domain"])
-    curr_colorbar_y = 0
+    curr_colorbar_x = 1.25
 
     for key, val in col_group_markers.items():
         z = create_clusterbar_z_value(flip_axes, groups_and_colors, key, val)
@@ -242,15 +214,13 @@ def add_clustergram_cluster_bars(fig, clusterbar_indexes, obs_labels=None, is_lo
             , y=next_y
             , z=z
             , colorbar=dict(
-                ticktext=[group for group in groups_and_colors[key]["groups"]]
-                #, tickvals=[idx for idx in range(len(groups_and_colors[key]["groups"]))]
+                ticktext=[group for group in groups_and_colors[key]["truncate"]]
                 , tickvals=tickvals
-                , title=key
-                , x=1
-                , xpad=100  # spaced far enough from the expression bar.  Needs to be adjusted for gene display panels.
-                , y=curr_colorbar_y   # Align with bottom of heatmap
-                , yanchor="bottom"
-                , len=0.9/num_colorbars
+                , thickness = 15
+                , title=dict(font=dict(size=10), text=key)
+                , x=curr_colorbar_x
+                , y=1   # Align with bottom of heatmap
+                , yanchor="top"
                 )
             , colorscale=colorscale
             , name="clusterbar"
@@ -262,7 +232,7 @@ def add_clustergram_cluster_bars(fig, clusterbar_indexes, obs_labels=None, is_lo
         fig.layout[gene_axis]["tickvals"] = fig.layout[gene_axis]["tickvals"] + (next_bar_position, )
 
         next_bar_position += 4 # add enough gap to space the "group" tracks
-        curr_colorbar_y += (max_heatmap_domain * 1/num_colorbars)
+        curr_colorbar_x += 0.25
 
     # Shift genes dendropgram to account for new cluster cols
     fig.layout[gene_dendro_axis]["range"] = (min(fig.layout[gene_axis]["tickvals"]), max(fig.layout[gene_axis]["tickvals"]))
@@ -283,7 +253,7 @@ def create_clusterbar_z_value(flip_axes, groups_and_colors, key, val):
     return [[ groups_and_colors[key]["groups"].index(cgm["group"]) for cgm in val ]]
 
 #@profile(stream=fp)
-def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, cluster_genes=False, flip_axes=False, center_around_zero=False
+def create_clustergram(df, groupby_filters, gene_symbols, is_log10=False, cluster_obs=False, cluster_genes=False, flip_axes=False, center_around_zero=False
                        , distance_metric="euclidean", colorscale=None, reverse_colorscale=False, hide_obs_labels=False, hide_gene_labels=False):
     """Generate a clustergram (heatmap+dendrogram).  Returns Plotly figure and dendrogram trace info."""
 
@@ -293,6 +263,14 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
     # gene_symbol input will be only genes shown in heatmap, and clustered
 
     # Gene symbols fail with all genes (dataset too large)
+
+    # NOTE: I attempted to use multicateogry axis labels for x-axis but the z-values were not lining up correctly
+    # This was true even with a plain go.Heatmap
+
+    # Drop the obs metadata now that the dataframe is sorted
+    # They cannot be in there when the clustergram is made
+    # But save it to add back in later
+    df_cols = pd.concat([df.pop(cat) for cat in groupby_filters], axis=1)
 
     df = df if flip_axes else df.transpose()
     columns = list(df.columns.values)
@@ -335,7 +313,35 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
     else:
         # both zmin and zmax are required
         fig.data[-1]["zmin"] = 0
-        fig.data[-1]["zmax"] = max(map(max, fig.data[-1]["z"])) # Highest z-value in 2D array
+        fig.data[-1]["zmax"] = max(map(max, fig.data[-1]["z"])) # Highest z-value in 2D arrays
+
+    title_text = "Log2 Gene Expression"
+    colorbar_title = "Log2 Expr."
+    if is_log10:
+        title_text = "Log10 Gene Expression"
+        colorbar_title = "Log10 Expr."
+
+    fig.update_layout(
+        title={
+            "text":title_text
+            ,"x":0.5
+            ,"xref":"paper"
+            ,"y":0.9
+        }
+    )
+
+    # Offset the expresison colorbar to the right of the heatmap
+    # At this point it's the last trace added
+    # NOTE: The bar may need to be adjusted on the gene search display page
+    fig.data[-1]["colorbar"]["x"] = 1.2
+    fig.data[-1]["colorbar"]["xanchor"] = "center"
+    fig.data[-1]["colorbar"]["y"] = 0.5
+    fig.data[-1]["colorbar"]["yanchor"] = "middle"
+    fig.data[-1]["colorbar"]["thickness"] = 15
+    fig.data[-1]["name"] = "expression" # Name colorbar for easier retrieval
+    fig.data[-1]["colorbar"]["title"]["text"] = colorbar_title
+    fig.data[-1]["colorbar"]["title"]["font"]["size"] = 10
+    fig.data[-1]["colorbar"]["tickfont"]["size"] = 10
 
     return fig
 
@@ -1163,6 +1169,10 @@ def union(lst1, lst2):
     """Union of two lists."""
     return list(set(lst1) | set(lst2))
 
+def truncate(group):
+    """Truncate group names to 10 characters."""
+    return group[:10] + "..." if len(group) > 10 else group
+
 def normalize_searched_genes(gene_list, chosen_genes):
     """Convert to case-insensitive.  Also will not add chosen gene if not in gene list."""
     case_insensitive_genes = [str(g) for cg in chosen_genes for g in gene_list if cg.lower() == str(g).lower()]
@@ -1181,6 +1191,7 @@ def set_obs_groups_and_colors(filter_indexes):
         color_cycler = cycle(palette)
         groups_and_colors[k]["groups"] = [elem for elem in v]
         groups_and_colors[k]["colors"] = [next(color_cycler) for elem in v]
+        groups_and_colors[k]["truncate"] = [truncate(elem) for elem in v]
     return groups_and_colors
 
 class PlotError(Exception):

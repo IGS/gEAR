@@ -38,6 +38,7 @@ def main():
     dataset_share_id = form.getvalue('dataset_share_id')
     layout_share_id = form.getvalue('layout_share_id')
     dataset = None
+    owner = None
 
     result = { 'gene_symbol': None, 'dataset_label': None, 
               'layout_label': None, 'owner_name': None }

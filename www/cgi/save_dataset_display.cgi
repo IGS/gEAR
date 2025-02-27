@@ -21,8 +21,12 @@ def make_static_plotly_graph(filename, config, url):
     # If plotly API threw an error, report as failed
     if not "success" in decoded_result:
         return False
-    if "success" in decoded_result and decoded_result["success"] < 0:
-        return False
+    if "success" in decoded_result:
+        # If success is a list, flatten and take the first element
+        if isinstance(decoded_result["success"], list):
+            decoded_result["success"] = decoded_result["success"][0]
+        if decoded_result["success"] < 0:
+            return False
 
     plot_json = decoded_result["plot_json"]
 
@@ -48,8 +52,12 @@ def make_static_tsne_graph(filename, config, url):
     # If plotly API threw an error, report as failed
     if not "success" in decoded_result:
         return False
-    if "success" in decoded_result and decoded_result["success"] < 0:
-        return False
+    if "success" in decoded_result:
+        # If success is a list, flatten and take the first element
+        if isinstance(decoded_result["success"], list):
+            decoded_result["success"] = decoded_result["success"][0]
+        if decoded_result["success"] < 0:
+            return False
 
     import base64
     img_data = base64.urlsafe_b64decode(decoded_result["image"])
