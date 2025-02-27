@@ -337,6 +337,39 @@ class GenesAsAxisHandler extends PlotHandler {
                 item.addEventListener("click", showPostHeatmapParamSubsection);
             }
 
+            // If matrixplot is unchecked enable all clusterbars.
+            for (const classElt of document.getElementsByClassName("js-dash-matrixplot")) {
+                classElt.addEventListener("change", (event) => {
+                    const checked = event.target.checked;
+                    if (checked) {
+                        // Get primary and secondary series
+                        const primarySeries = document.querySelector(".js-dash-primary").value;
+                        const secondarySeries = document.querySelector(".js-dash-secondary").value;
+                        const values = [];
+                        if (primarySeries) {
+                            values.push(primarySeries);
+                        }
+                        if (secondarySeries) {
+                            values.push(secondarySeries);
+                        }
+                        // If either series are selected, enable those checkboxes
+                        for (const innerClassElt of document.getElementsByClassName("js-dash-clusterbar-checkbox")) {
+                            if (values.includes(innerClassElt.value)) {
+                                innerClassElt.disabled = false;
+                            } else {
+                                innerClassElt.checked = false;
+                                innerClassElt.disabled = true;
+                            }
+                        }
+                    } else {
+                        for (const innerClassElt of document.getElementsByClassName("js-dash-clusterbar-checkbox")) {
+                            innerClassElt.disabled = false;
+                        }
+                    }
+                })
+            }
+
+
             // Ensure only clusterbar checkboxes that match the primary and secondary series are enabled to be checked
             // If a checkbox is checked and the primary or secondary series is changed, uncheck the checkbox
             for (const classElt of document.getElementsByClassName("js-dash-primary")) {
@@ -351,12 +384,17 @@ class GenesAsAxisHandler extends PlotHandler {
                         values.push(secondarySeries);
                     }
 
-                    for (const innerClassElt of document.getElementsByClassName("js-dash-clusterbar-checkbox")) {
-                        if (!(values.includes(innerClassElt.value))) {
-                            innerClassElt.checked = false;
-                            innerClassElt.disabled = true;
-                        } else {
-                            innerClassElt.disabled = false;
+                    // Get matrixplot value
+                    const matrixplot = document.querySelector(".js-dash-matrixplot").checked;
+
+                    if (matrixplot) {
+                        for (const innerClassElt of document.getElementsByClassName("js-dash-clusterbar-checkbox")) {
+                            if (values.includes(innerClassElt.value)) {
+                                innerClassElt.disabled = false;
+                            } else {
+                                innerClassElt.checked = false;
+                                innerClassElt.disabled = true;
+                            }
                         }
                     }
                 })
@@ -373,12 +411,17 @@ class GenesAsAxisHandler extends PlotHandler {
                         values.push(secondarySeries);
                     }
 
-                    for (const innerClassElt of document.getElementsByClassName("js-dash-clusterbar-checkbox")) {
-                        if (!(values.includes(innerClassElt.value))) {
-                            innerClassElt.checked = false;
-                            innerClassElt.disabled = true;
-                        } else {
-                            innerClassElt.disabled = false;
+                    // Get matrixplot value
+                    const matrixplot = document.querySelector(".js-dash-matrixplot").checked;
+
+                    if (matrixplot) {
+                        for (const innerClassElt of document.getElementsByClassName("js-dash-clusterbar-checkbox")) {
+                            if (values.includes(innerClassElt.value)) {
+                                innerClassElt.disabled = false;
+                            } else {
+                                innerClassElt.checked = false;
+                                innerClassElt.disabled = true;
+                            }
                         }
                     }
                 })
