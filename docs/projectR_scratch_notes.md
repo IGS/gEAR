@@ -48,7 +48,7 @@ Keep in mind this needs to ideally work on any gEAR portal
 ### ? Projection curation page
 
 * Currently building API code on projection.html but will this page be fleshed out for actual saved curations?
-* This could get complicated if single- and multi-pattern curations have to be considered, especially if they have to go through the plotly_data and multigene_dash_data.py API calls
+* This could get complicated if single- and multi-pattern curations have to be considered, especially if they have to go through the plotly_data and mg_plotly_data.py API calls
 * Save these to database
   * Save pattern source (dataset/pattern/genecart)
   * ? Do we save the projection pattern dataframe in the target dataset's AnnData file for future quick-reference?
