@@ -253,7 +253,7 @@ def create_clusterbar_z_value(flip_axes, groups_and_colors, key, val):
     return [[ groups_and_colors[key]["groups"].index(cgm["group"]) for cgm in val ]]
 
 #@profile(stream=fp)
-def create_clustergram(df, groupby_filters, gene_symbols, is_log10=False, cluster_obs=False, cluster_genes=False, flip_axes=False, center_around_zero=False
+def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, cluster_genes=False, flip_axes=False, center_around_zero=False
                        , distance_metric="euclidean", colorscale=None, reverse_colorscale=False, hide_obs_labels=False, hide_gene_labels=False):
     """Generate a clustergram (heatmap+dendrogram).  Returns Plotly figure and dendrogram trace info."""
 
@@ -266,11 +266,6 @@ def create_clustergram(df, groupby_filters, gene_symbols, is_log10=False, cluste
 
     # NOTE: I attempted to use multicateogry axis labels for x-axis but the z-values were not lining up correctly
     # This was true even with a plain go.Heatmap
-
-    # Drop the obs metadata now that the dataframe is sorted
-    # They cannot be in there when the clustergram is made
-    # But save it to add back in later
-    df_cols = pd.concat([df.pop(cat) for cat in groupby_filters], axis=1)
 
     df = df if flip_axes else df.transpose()
     columns = list(df.columns.values)

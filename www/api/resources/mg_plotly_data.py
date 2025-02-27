@@ -507,28 +507,32 @@ class MultigeneDashData(Resource):
             if secondary_col and not primary_col == secondary_col:
                 groupby_filters.append(secondary_col)
 
+            # Clusterbar field handling
+            if matrixplot:
+                # In matrixplots, only primary/secondary groups can have clusterbars
+                # These will be added to the dataframe later
+                for field in clusterbar_fields:
+                    if field not in groupby_filters:
+
+                        return {
+                            'success': -1,
+                            'message': f"Clusterbar field '{field}' must be included in the primary or secondary groupings."
+                        }
+            else:
+                # Add clusterbar fields to the dataframe
+                for cf in clusterbar_fields:
+                        df[cf] = selected.obs[cf]
+
             for gb in groupby_filters:
-                df[gb] = selected.obs[gb]
+                if gb not in df:
+                    df[gb] = selected.obs[gb]
 
             if groupby_filters:
                 # For the remaining data, create a special composite index for the specified groupings
                 df['groupby_composite'] = create_composite_index_column(df, groupby_filters)
                 df['groupby_composite'] = df['groupby_composite'].astype('category')
 
-                # TODO: Allow all clusterbars if matrixplot = False
-                fields_to_remove = []
-                for field in clusterbar_fields:
-                    if field not in groupby_filters:
-                        # Remove field from clusterbar_fields if it is not in the groupby_filters
-                        print(f"Clusterbar field '{field}' must be included in the primary or secondary groupings. Removing field to ensure legacy plots work.", file=sys.stderr)
-                        fields_to_remove.append(field)
 
-                        #return {
-                        #    'success': -1,
-                        #    'message': f"Clusterbar field '{field}' must be included in the primary or secondary groupings."
-                        #}
-                for field in fields_to_remove:
-                    clusterbar_fields.remove(field)
 
             groupby_filters.append("groupby_composite")
 
@@ -538,7 +542,7 @@ class MultigeneDashData(Resource):
                 if not primary_col:
                     return {
                         'success': -1,
-                        'message': "The 'primary_col' option is required for matrixplots. Please update this curation"
+                        'message': "A primary grouping is required for matrixplots. Please update this curation"
                     }
 
                 grouped = df.groupby(groupby_filters, observed=False)
@@ -560,9 +564,16 @@ class MultigeneDashData(Resource):
             if colorblind_mode:
                 colorscale = "cividis_r"
 
+            # Drop the obs metadata now that the dataframe is sorted
+            # They cannot be in there when the clustergram is made
+            # But save it to add back in later
+            cols_to_drop = mg.union(groupby_filters, clusterbar_fields)
+
+            orig_df = df.copy()
+            df_cols = pd.concat([df.pop(cat) for cat in cols_to_drop], axis=1)
+
             # "df" must be obs label for rows and genes for cols only
-            fig = mg.create_clustergram(df.copy()
-                , groupby_filters
+            fig = mg.create_clustergram(df
                 , normalized_genes_list
                 , is_log10
                 , cluster_obs
@@ -576,6 +587,7 @@ class MultigeneDashData(Resource):
                 , hide_gene_labels
                 )
 
+            df = orig_df
             clusterbar_indexes = mg.build_obs_group_indexes(df, filters, clusterbar_fields)
 
             # Create labels based only on the included filters
