@@ -163,9 +163,6 @@ class MultigeneDashData(Resource):
 
         adata.obs = order_by_time_point(adata.obs)
 
-        # quick check to ensure
-
-
         # get a map of all levels for each column
         columns = adata.obs.select_dtypes(include="category").columns.tolist()
 
@@ -242,6 +239,13 @@ class MultigeneDashData(Resource):
             # The "try" may fail for projections as it is already in memory
             selected = adata
 
+        # convert adata.X to a dense matrix if it is sparse
+        # This prevents potential downstream issues
+        try:
+            selected.X = selected.X.todense()
+        except:
+            pass
+
         # These plot types filter to only the specific genes.
         # The other plot types use all genes and rather annotate the specific ones.
         if plot_type in ['dotplot', 'heatmap', 'mg_violin'] and gene_filter is not None:
@@ -271,7 +275,6 @@ class MultigeneDashData(Resource):
             # Sort ensembl IDs based on the gene symbol order
             sorted_ensm = map(lambda x: gene_to_ensm[x], normalized_genes_list)
 
-
         try:
             # Reorder the categorical values in the observation dataframe
             sort_fields = []
@@ -297,11 +300,6 @@ class MultigeneDashData(Resource):
                         selected.obs[key] = reordered_col
                     except:
                         pass
-
-            # Make a composite index of all categorical types
-            #selected.obs['composite_index'] = create_composite_index_column(selected, columns)
-            #selected.obs['composite_index'] = selected.obs['composite_index'].astype('category')
-            #columns.append("composite_index")
 
             # Filter dataframe on the chosen observation filters
             if filters:
@@ -352,7 +350,6 @@ class MultigeneDashData(Resource):
                 'success': -1,
                 'message': str(pe),
             }
-
 
         var_index = selected.var.index.name
 

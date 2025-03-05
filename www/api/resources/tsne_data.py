@@ -347,6 +347,13 @@ class TSNEData(Resource):
             # The "try" may fail for projections as it is already in memory
             selected = adata[:, gene_filter]
 
+        # convert adata.X to a dense matrix if it is sparse
+        # This prevents potential downstream issues
+        try:
+            selected.X = selected.X.todense()
+        except:
+            pass
+
         # Filter by obs filters
         if filters:
             for col, values in filters.items():
