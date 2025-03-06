@@ -1,4 +1,4 @@
-import os
+import os, sys
 
 import geardb
 import numpy as np
@@ -103,6 +103,7 @@ class SvgData(Resource):
             selected = adata[:, gene_filter].to_memory()
         except:
             # The "try" may fail for projections as it is already in memory
+            print(f"Could not convert to memory for dataset {dataset_id}.  Using file-backed.", file=sys.stderr)
             selected = adata[:, gene_filter]
 
         df = selected.to_df()
