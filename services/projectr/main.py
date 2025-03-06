@@ -90,6 +90,11 @@ def index():
     target_df = pd.read_json(target, orient="split")
     loading_df = pd.read_json(loadings, orient="split")
 
+    # fill NaN values with 0
+    # This should have been done in the data processing step, but just in case.
+    target_df.fillna(0, inplace=True)
+    loading_df.fillna(0, inplace=True)
+
     if target_df.empty:
         description = "Target (dataset) dataframe is empty."
         write_entry("projectr", "ERROR", description)

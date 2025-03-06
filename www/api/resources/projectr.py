@@ -385,15 +385,18 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     # Reduce the size of both dataframes before POSTing
     adata = adata[:,index_intersection]
     loading_df = loading_df.loc[index_intersection]
+    loading_df = loading_df.fillna(0) # Fill NaN values with 0
 
     # Ensure target dataset has genes as rows
     # ! The to_df() seems to be a memory_chokepoint, doubling the memory used by the adata object
     target_df = adata.to_df().transpose()
 
     # If zscore is enabled, scale the target_df according to zscore by row (genes)
+    # For NaN values, they are ignored in the calculation
     if zscore:
-        target_df = stats.zscore(target_df, axis=1)
-        #print(target_df.head(), file=fh)
+        target_df = stats.zscore(target_df, axis=1, nan_policy="omit")
+
+    target_df = target_df.fillna(0) # Fill NaN values with 0
 
     # Close dataset adata so that we do not have a stale opened object
     adata.file.close()
@@ -548,11 +551,12 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
     projection_patterns_df = projection_patterns_df.set_axis(loading_df.columns, axis="columns")
 
-    # Assert that the dataframe has values for all samples
+    # Check that all DataFrame values are not null.  If not, we cannot proceed.
     # Ultimately, we cannot plot this and do not want to write to file.
+    # ? Change any() to all() since it can still plot with some values?
     if projection_patterns_df.isnull().values.any():
-        message = "Some samples were not projected.  Cannot proceed."
-        print(message, file=sys.stderr)
+        message = "Not all samples have valid projections.  Cannot proceed."
+        remove_lock_file(lock_fh, lockfile)
         return {
             'success': -1
             , 'message': message
@@ -560,8 +564,6 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             , "num_genecart_genes": num_loading_genes
             , "num_dataset_genes": num_target_genes
         }
-
-
 
     print("INFO: Writing projection patterns to {}".format(dataset_projection_csv), file=fh)
     projection_patterns_df.to_csv(dataset_projection_csv)
