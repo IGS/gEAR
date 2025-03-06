@@ -57,10 +57,6 @@ class SvgData(Resource):
                     'message': str(pe),
                 }
 
-        import sys
-        print("after create_projection_adata", file=sys.stderr)
-        print(adata.X, file=sys.stderr)
-
         gene_symbols = (gene_symbol,)
 
         if 'gene_symbol' not in adata.var.columns:
@@ -71,6 +67,36 @@ class SvgData(Resource):
             return {
                 "success": -1,
                 "message": "The gene symbol '{}' was not found in the dataset.".format(gene_symbol)
+            }
+
+        # SAdkins - The code was rearranged because of how projection_adatas are handled
+        # The projection_adata is file-backed to a tempfile and when the "selected" adata is created,
+        # the tempfile is closed.  This causes the adata to be file-backed to a closed file.
+
+        scores = {
+            "dataset": dict()
+            , "gene": dict()
+            , "tissue": dict()
+        }
+
+
+        min_x = np.nanmin(adata.X)
+        max_x = np.nanmax(adata.X)
+
+        scores["dataset"] = {
+            "dataset_id": dataset_id
+            , "min": float(min_x)
+            , "max": float(max_x)
+        }
+
+        tissues = adata.obs.index.tolist()
+        for tissue in tissues:
+            tissue_adata = adata[tissue, :]
+            min_x = np.nanmin(tissue_adata.X)
+            max_x = np.nanmax(tissue_adata.X)
+            scores['tissue'][tissue] = {
+                "min": float(min_x),
+                "max": float(max_x)
             }
 
         try:
@@ -88,27 +114,12 @@ class SvgData(Resource):
             message = "WARNING: Multiple Ensemble IDs found for gene symbol '{}'.  Using the first stored Ensembl ID.".format(gene_symbol)
             df = df.iloc[:,[0]] # Note, put the '0' in a list to return a DataFrame.  Not having in list returns DataSeries instead
 
-        scores = {
-            "dataset": {
-                "dataset_id": dataset_id,
-                "min": float(np.nanmin(adata.X)),
-                "max": float(np.nanmax(adata.X))
-            },
-            "gene": {
+        scores["gene"] = {
                 "gene": gene_symbol,
                 "min": float(np.nanmin(selected.X)),
                 "max": float(np.nanmax(selected.X))
-            },
-            "tissue": dict()
-        }
-
-        tissues = adata.obs.index.tolist()
-        for tissue in tissues:
-            tissue_adata = adata[tissue, :]
-            scores['tissue'][tissue] = {
-                "min": float(np.nanmin(tissue_adata.X)),
-                "max": float(np.nanmax(tissue_adata.X))
             }
+
 
         # Close adata so that we do not have a stale opened object
         if adata.isbacked:
