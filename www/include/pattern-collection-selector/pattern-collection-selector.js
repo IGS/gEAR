@@ -321,6 +321,25 @@ const populatePatternWeights = async () => {
     // data is a list of weight and top/buttom genes (if weighted-list) and if binary weights
     const data = await apiCallsMixin.fetchPatternElementList(selectedPattern.shareId, selectedPattern.gctype)
 
+    // If no data is returned (i.e. File Not Found), indicate that the pattern list is empty and disable from being selected
+    if (data.length === 0) {
+        document.getElementById('dropdown-content-weights').innerHTML = '';
+        const weightListItemTemplate = document.getElementById('tmpl-weight-item');
+
+        const row = weightListItemTemplate.content.cloneNode(true);
+        row.querySelector('.weight-item-label').textContent = 'No weights available';
+        row.querySelector('.ul-li').dataset.label = 'No weights available';
+        row.querySelector('.ul-li').classList.add("is-disabled");
+        row.querySelector('.icon').classList.add("is-hidden");
+        document.getElementById('dropdown-content-weights').appendChild(row);
+        // Disable the "Proceed" button
+        document.getElementById('dropdown-pattern-list-proceed').classList.add('is-disabled');
+        return
+    }
+
+    // Enable the "Proceed" button
+    document.getElementById('dropdown-pattern-list-proceed').classList.remove('is-disabled');
+
     // All weights are selected by default
     selectedPattern.selectedWeights = data;
 
