@@ -42,7 +42,7 @@ def convert_r_matrix_to_r_df(mtx):
     r_df = ro.r["as.data.frame"]
     return r_df(mtx)
 
-def run_projectR_cmd(target_df, loading_df, algorithm):
+def run_projectR_cmd(target_df, loading_df, algorithm, full_output=False):
     """
     Convert input Pandas dataframes to R matrix.
     Pass the inputs into the projectR function written in R.

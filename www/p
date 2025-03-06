@@ -30,6 +30,7 @@ def main():
     multi = form.getvalue("multi")
     patterns = form.getvalue("ptrns")
     algo = form.getvalue("algo")
+    zscore = form.getvalue("zscore")
     layout_share_id = form.getvalue('l')
     page = form.getvalue('p')
     dataset_share_id = form.getvalue('s')
@@ -88,6 +89,9 @@ def main():
 
     if algo and page == "p":
         params["projection_algorithm"] = algo
+
+    if zscore and page == "p":
+        params["zscore"] = zscore
 
     if search_string and (page == "de" or page == "gcm"):
         params["search_string"] = search_string

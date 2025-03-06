@@ -269,6 +269,7 @@ class TileGrid {
      * @param {string} [projectionOpts.patternSource] - The pattern source for projection.
      * @param {string} [projectionOpts.algorithm] - The algorithm for projection.
      * @param {string} [projectionOpts.gctype] - The gene correlation type for projection.
+     * @param {boolean} [projectionOpts.zscore] - If zscore is enabled for projection.
      * @returns {Promise<void>} - A promise that resolves when all displays have been rendered.
      * @throws {Error} - If geneSymbols is not provided or if an error occurs during rendering.
      */
@@ -434,8 +435,8 @@ class DatasetTile {
         // If projection mode is enabled, then perform projection
         if (this.projectR.modeEnabled) {
             if (!this.projectR.projectionId) {
-                const {patternSource, algorithm, gctype} = projectionOpts;
-                await this.getProjection(patternSource, algorithm, gctype);
+                const {patternSource, algorithm, gctype, zscore} = projectionOpts;
+                await this.getProjection(patternSource, algorithm, gctype, zscore);
             }
 
             if (!this.projectR.success) {
@@ -641,9 +642,10 @@ class DatasetTile {
      * @param {string} patternSource - The pattern source.
      * @param {string} algorithm - The algorithm to use for projection.
      * @param {string} gctype - The gctype.
+     * @param {boolean} zscore - If zscore is enabled for projection.
      * @returns {Promise<void>} A promise that resolves when the projection is retrieved.
      */
-    async getProjection(patternSource, algorithm, gctype) {
+    async getProjection(patternSource, algorithm, gctype, zscore) {
         this.resetAbortController();
         const otherOpts = {}
         if (this.controller) {
@@ -651,7 +653,7 @@ class DatasetTile {
         }
 
         try {
-            const data = await apiCallsMixin.checkForProjection(this.dataset.id, patternSource, algorithm);
+            const data = await apiCallsMixin.checkForProjection(this.dataset.id, patternSource, algorithm, zscore);
             // If file was not found, put some loading text in the plot
             if (! data.projection_id) {
                 createCardMessage(this.tile.tileId, "info", "Creating projection. This may take a few minutes.");
@@ -665,7 +667,7 @@ class DatasetTile {
         this.projectR.performingProjection = true;
 
         try {
-            const data = await apiCallsMixin.fetchProjection(this.dataset.id, this.projection_id, patternSource, algorithm, gctype, otherOpts);
+            const data = await apiCallsMixin.fetchProjection(this.dataset.id, this.projection_id, patternSource, algorithm, gctype, zscore, otherOpts);
             const message = data.message || null;
             if (data.success < 1) {
                 // throw error with message

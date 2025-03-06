@@ -70,6 +70,7 @@ def index():
     algorithm = req_json['algorithm']
     genecart_id = req_json["genecart_id"]
     dataset_id = req_json["dataset_id"]
+    full_output = req_json.get("full_output", False)
 
     global cloud_logging
     try:
@@ -81,7 +82,6 @@ def index():
 
     write_entry("projectr", "INFO", "Dataset ID: {}".format(dataset_id))
     write_entry("projectr", "INFO", "Genecart ID: {}".format(genecart_id))
-
 
     # pd.read_json gives a FutureWarning, and suggest to wrap the json in StringIO.  Needed for pandas 2.x
     target = StringIO(target)
@@ -117,7 +117,7 @@ def index():
             pass
         elif algorithm in ["nmf", "fixednmf"]:
             from rfuncs import run_projectR_cmd
-            projection_patterns_df = run_projectR_cmd(target_df, loading_df, algorithm).transpose()
+            projection_patterns_df = run_projectR_cmd(target_df, loading_df, algorithm, full_output).transpose()
         else:
             raise ValueError("Algorithm {} is not supported".format(algorithm))
     except Exception as e:

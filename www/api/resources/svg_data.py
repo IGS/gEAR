@@ -47,7 +47,7 @@ class SvgData(Resource):
             adata.X = adata.X.todense()
         except:
             pass
-        
+
         if projection_id:
             try:
                 adata = create_projection_adata(adata, dataset_id, projection_id)
@@ -57,6 +57,9 @@ class SvgData(Resource):
                     'message': str(pe),
                 }
 
+        import sys
+        print("after create_projection_adata", file=sys.stderr)
+        print(adata.X, file=sys.stderr)
 
         gene_symbols = (gene_symbol,)
 
