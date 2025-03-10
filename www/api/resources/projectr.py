@@ -66,7 +66,7 @@ parser.add_argument('genecart_id', help='Weighted (pattern) genecart id required
 parser.add_argument('scope', type=str, required=False)
 parser.add_argument('algorithm', help="An algorithm needs to be provided", type=str,  required=False)
 parser.add_argument('zscore', help="If true, compute z-score calculation before running projectR (or assume it has been calculated)", type=bool, default=False, required=False)
-parser.add_argument("full_output", help="If true, return the full output of the projection", type=bool, default=False, required=False)
+parser.add_argument("full_output", help="If true, return the full output of the projection, which includes a p-value matrix", type=bool, default=False, required=False)
 parser.add_argument('analysis', type=str, required=False)   # not used at the moment
 
 run_projectr_parser = parser.copy()
@@ -74,6 +74,10 @@ run_projectr_parser.add_argument('projection_id', type=str, required=False)
 
 def build_projection_csv_path(dir_id, file_id, scope):
     """Build the path to the csv file for a given projection. Returns a Path object."""
+    if scope == "pval":
+        # pval files are extra output for the standard "dataset" projections
+        return Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dir_id, "{}_pval.csv".format(file_id))
+
     return Path(PROJECTIONS_BASE_DIR).joinpath("by_{}".format(scope), dir_id, "{}.csv".format(file_id))
 
 def build_projection_json_path(dir_id, scope):
@@ -111,10 +115,24 @@ def calculate_chunk_size(num_genes, num_samples):
     return int(num_samples / total_data_chunks) # take floor.  returned value * num_genes < total_data_limit
 
 def concat_fetch_results_to_dataframe(res_jsons):
-    # Concatenate the dataframes back together again
-    res_dfs = [pd.read_json(StringIO(res_json), orient="split", dtype="float32") for res_json in res_jsons]
-    projection_patterns_df = pd.concat(res_dfs)
-    return projection_patterns_df
+    """
+    Concatenate the dataframes back together again for both "projection" and "pval" keys.
+    "pval" may be an empty dataframe.
+    """
+    projection_dfs = []
+    pval_dfs = []
+
+    for res_json in res_jsons:
+        res_dict = pd.read_json(StringIO(res_json), orient="split", dtype="float32")
+        if "projection" in res_dict:
+            projection_dfs.append(pd.read_json(StringIO(res_dict["projection"]), orient="split", dtype="float32"))
+        if "pval" in res_dict and res_dict["pval"]:
+            pval_dfs.append(pd.read_json(StringIO(res_dict["pval"]), orient="split", dtype="float32"))
+
+    projection_patterns_df = pd.concat(projection_dfs, ignore_index=True) if projection_dfs else pd.DataFrame()
+    pval_patterns_df = pd.concat(pval_dfs, ignore_index=True) if pval_dfs else pd.DataFrame()
+
+    return projection_patterns_df, pval_patterns_df
 
 def create_new_uuid(*args):
     """
@@ -458,6 +476,8 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         normalized_columns_sums = columns_sums / columns_sums.min()
         target_df = target_df.div(normalized_columns_sums, axis=1)
 
+    projection_pval_df = pd.DataFrame()
+
     if this.servercfg['projectR_service']['cloud_run_enabled'].startswith("1"):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -483,7 +503,11 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             loop.close()
 
         print("INFO: Concatenating results to dataframe", file=fh)
-        projection_patterns_df = concat_fetch_results_to_dataframe(results)
+
+        # single result = {"projection": "json", "pval": "json"}
+        # concatenate all the results into a single DataFrame for each key
+
+        projection_patterns_df, projection_pval_df = concat_fetch_results_to_dataframe(results)
 
         del results
         gc.collect()    # trying to clear memory
@@ -503,6 +527,8 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         # the copying of the dataset observation metadata when this output is converted
         # to an AnnData object. So reorder back to dataset sample order.
         projection_patterns_df = projection_patterns_df.reindex(adata.obs.index.tolist())
+        if not projection_pval_df.empty:
+            projection_pval_df = projection_pval_df.reindex(adata.obs.index.tolist())
     else:
         # If not using the cloud run service, do this on the server
         abs_path_gear = Path(__file__).resolve().parents[3]
@@ -525,7 +551,17 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
                 pass
             elif algorithm in ["nmf", "fixednmf"]:
                 from projectr.rfuncs import run_projectR_cmd
-                projection_patterns_df = run_projectR_cmd(target_df, loading_df, algorithm).transpose()
+                projection_patterns = run_projectR_cmd(target_df, loading_df, algorithm, full_output)
+
+                if full_output and algorithm == "nmf":
+                    # R code: projectionFit <- list('projection'=projectionPatterns, 'pval'=pval.matrix)
+                    # "projection" is a DataFrame (index 0)
+                    # "pval" is a matrix (index 1)
+                    projection_patterns_df = projection_patterns[0].transpose()
+                    projection_pval_df = projection_patterns[1].transpose()
+
+                else:
+                    projection_patterns_df = projection_patterns.transpose()
             else:
                 raise ValueError("Algorithm {} is not supported".format(algorithm))
         except Exception as e:
@@ -550,12 +586,13 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
 
     # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
     projection_patterns_df = projection_patterns_df.set_axis(loading_df.columns, axis="columns")
+    if not projection_pval_df.empty:
+        projection_pval_df = projection_pval_df.set_axis(loading_df.columns, axis="columns")
 
     # Check that all DataFrame values are not null.  If not, we cannot proceed.
     # Ultimately, we cannot plot this and do not want to write to file.
-    # ? Change any() to all() since it can still plot with some values?
     if projection_patterns_df.isnull().values.any():
-        message = "Not all samples have valid projections.  Cannot proceed."
+        message = "There are NaN values in the projection patterns.  Cannot proceed."
         remove_lock_file(lock_fh, lockfile)
         return {
             'success': -1
@@ -564,6 +601,19 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             , "num_genecart_genes": num_loading_genes
             , "num_dataset_genes": num_target_genes
         }
+
+    # if full_output = True, then write the pval matrix to file using the same name as the projection file
+    if full_output:
+        if projection_pval_df.empty:
+            return {
+                "success": -1
+                , "message": "No pval matrix was generated by projectR."
+                , "num_common_genes": intersection_size
+                , "num_genecart_genes": num_loading_genes
+                , "num_dataset_genes": num_target_genes
+            }
+        projection_pval_csv = build_projection_csv_path(dataset_id, projection_id, "pval")
+        projection_pval_df.to_csv(projection_pval_csv)
 
     print("INFO: Writing projection patterns to {}".format(dataset_projection_csv), file=fh)
     projection_patterns_df.to_csv(dataset_projection_csv)
@@ -580,7 +630,6 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         "uuid": projection_id
         , "algorithm": algorithm
         , "zscore": zscore
-        , "full_output": full_output
         , "num_common_genes": intersection_size
         , "num_genecart_genes": num_loading_genes
         , "num_dataset_genes": num_target_genes
@@ -604,7 +653,6 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         "uuid": projection_id
         , "algorithm": algorithm
         , "zscore": zscore
-        , "full_output": full_output
         , "num_common_genes": intersection_size
         , "num_genecart_genes": num_loading_genes
         , "num_dataset_genes": num_target_genes
@@ -634,17 +682,9 @@ class ProjectROutputFile(Resource):
         genecart_id = args['genecart_id']
         algorithm = args['algorithm']
         zscore = args['zscore']
-        full_output = args['full_output']
 
         if not zscore:
             zscore = False
-
-        if not full_output:
-            full_output = False
-
-        # Currently only NMF runs through the actual projectR code and can give full output
-        if algorithm not in ["nmf"]:
-            full_output = False
 
         # Create the directory if it doesn't exist
         # NOTE: The "mkdir" and "touch" commands are not atomic. Do not fail if directory or file was created by another process.
@@ -696,11 +736,9 @@ class ProjectROutputFile(Resource):
                 config["algorithm"] = "pca" if config["is_pca"] == 1 else "nmf"
             if "zscore" not in config:
                 config["zscore"] = False
-            if "full_output" not in config:
-                config["full_output"] = False
 
-            # Check if the config matches the current request
-            if algorithm == config["algorithm"] and zscore == config["zscore"] and full_output == config["full_output"]:
+            # Check if the config matches the current request (full output does not matter here)
+            if algorithm == config["algorithm"] and zscore == config["zscore"]:
                 projection_id = config['uuid']
                 dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
                 return {
@@ -732,53 +770,62 @@ class ProjectR(Resource):
         if algorithm not in ["nmf"]:
             full_output = False
 
-        uuid_args = (dataset_id, genecart_id, algorithm, zscore, full_output)
+        uuid_args = (dataset_id, genecart_id, algorithm, zscore)
 
         projection_id = projection_id or create_new_uuid(*uuid_args)
         dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
         dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
 
+        run_projectr = True
+
         # If projectR has already been run, we can just load the csv file.  Otherwise, let it rip!
         if Path(dataset_projection_csv).is_file():
             print("INFO: Found exisitng dataset_projection_csv file {}, loading it.".format(dataset_projection_csv))
 
-            # Projection already exists, so we can just return info we want to return in a message
-            with open(dataset_projection_json_file) as projection_fh:
-                projections_dict = json.load(projection_fh)
-            common_genes = None
-            genecart_genes = None
-            dataset_genes = None
+            run_projectr = False
+            if full_output:
+                # does pval matrix exist?
+                pval_csv = build_projection_csv_path(dataset_id, projection_id, "pval")
+                if not Path(pval_csv).is_file():
+                    print("INFO: Full output requested but pval matrix file {} does not exist.".format(pval_csv))
+                    run_projectr = True
 
-            # Get projection info from the json file if it already exists
-            if genecart_id in projections_dict:
-                for config in projections_dict[genecart_id]:
-                    # Handle legacy JSON outputs (i.e. old or non-existing names)
-                    if "is_pca" in config:
-                        config["algorithm"] = "pca" if config["is_pca"] == 1 else "nmf"
-                    if "zscore" not in config:
-                        config["zscore"] = False
-                    if "full_output" not in config:
-                        config["full_output"] = False
-                    # TODO: Eventually update the projection and genecart json files to include these values
+            if not run_projectr:
+                # Projection already exists, so we can just return info we want to return in a message
+                with open(dataset_projection_json_file) as projection_fh:
+                    projections_dict = json.load(projection_fh)
+                common_genes = None
+                genecart_genes = None
+                dataset_genes = None
 
-                    if algorithm == config["algorithm"] and zscore == config["zscore"] and full_output == config["full_output"]:
-                        common_genes = config.get('num_common_genes', None)
-                        genecart_genes = config.get('num_genecart_genes', -1)
-                        dataset_genes = config.get('num_dataset_genes', -1)
-                        break
+                # Get projection info from the json file if it already exists
+                if genecart_id in projections_dict:
+                    for config in projections_dict[genecart_id]:
+                        # Handle legacy JSON outputs (i.e. old or non-existing names)
+                        if "is_pca" in config:
+                            config["algorithm"] = "pca" if config["is_pca"] == 1 else "nmf"
+                        if "zscore" not in config:
+                            config["zscore"] = False
 
-            message = ""
-            if common_genes:
-                message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(common_genes, dataset_genes, genecart_genes)
+                        # Check if the config matches the current request
+                        if algorithm == config["algorithm"] and zscore == config["zscore"]:
+                                common_genes = config.get('num_common_genes', None)
+                                genecart_genes = config.get('num_genecart_genes', -1)
+                                dataset_genes = config.get('num_dataset_genes', -1)
+                                break
 
-            return {
-                "success": 1
-                , "message": message
-                , "projection_id": projection_id
-                , "num_common_genes": common_genes
-                , "num_genecart_genes": genecart_genes
-                , "num_dataset_genes": dataset_genes
-            }
+                message = ""
+                if common_genes:
+                    message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(common_genes, dataset_genes, genecart_genes)
+
+                return {
+                    "success": 1
+                    , "message": message
+                    , "projection_id": projection_id
+                    , "num_common_genes": common_genes
+                    , "num_genecart_genes": genecart_genes
+                    , "num_dataset_genes": dataset_genes
+                }
 
 
         # Create a messaging queue if necessary. Make it persistent across the lifetime of the Flask server.
