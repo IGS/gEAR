@@ -2294,8 +2294,6 @@ const renderLayoutArranger = async (collection) => {
 
     const combinedLayoutMembers = singleLayoutMembers.concat(multiLayoutMembers);
 
-    const legacyMode = combinedLayoutMembers.every((display) => JSON.parse(display).start_col === 1);
-
     let currentCol = 1;
     let currentRow = 1;
 
@@ -2323,23 +2321,6 @@ const renderLayoutArranger = async (collection) => {
 
         const singleMember = new LayoutArrangementMember(singleArrangement, displayId, member.grid_position, member.start_col, member.start_row, member.grid_width, member.grid_height);
 
-        // If in legacy mode, then we need to calculate the startCol and endCol and startRow and endRow
-        // so the arrangement view can be displayed correctly
-        if (legacyMode) {
-            const width = member.grid_width;
-
-            // If endCol is greater than 13, then this tile is in the next row
-            if (currentCol + width > maxEndCol) {
-                currentCol = 1;
-                currentRow++;
-            }
-
-            singleMember.startCol = currentCol;
-            singleMember.startRow = currentRow;
-
-            currentCol += width;
-        }
-
         singleMember.image = await apiCallsMixin.fetchDatasetDisplayImage(datasetId, displayId)
 
         singleMember.datasetTitle = titles[datasetId];
@@ -2361,22 +2342,6 @@ const renderLayoutArranger = async (collection) => {
         const datasetId = member.dataset_id;
 
         const multiMember = new LayoutArrangementMember(multiArrangement, displayId, member.grid_position, member.start_col, member.start_row, member.grid_width, member.grid_height);
-
-        if (legacyMode) {
-            const width = member.grid_width;
-
-            // If endCol is greater than 13, then this tile is in the next row
-            if (currentCol + width > maxEndCol) {
-                currentCol = 1;
-                currentRow++;
-            }
-
-            multiMember.startCol = currentCol;
-            multiMember.startRow = currentRow;
-
-            currentCol += width;
-
-        }
 
         multiMember.image = await apiCallsMixin.fetchDatasetDisplayImage(datasetId, displayId)
 

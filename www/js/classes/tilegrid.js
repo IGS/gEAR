@@ -61,28 +61,6 @@ class TileGrid {
         selectorElt.replaceChildren();
 
         if (this.type === "dataset") {
-
-            /*
-            if (this.shareId == "8dcfc3f6") {
-                this.datasets = [
-                    {
-                        id: "8dcfc3f6-1965-49b0-be49-e2e4d7236897",
-                        title: "Chris Shults Spatial Transcriptomics Dataset",
-                        dtype: "spatial",
-                        organsim_id: 1,
-                        organism: "Mouse",
-                        owner_id: 622,
-                        has_h5ad: true,
-                        has_tarball: false,
-                        is_downloadable: false,
-                        ownerDisplays: [],
-                        userDisplays: [],
-                        links: []
-                    }
-                ]
-            }
-            */
-
             if (!(this.datasets || this.datasets.length)) {
                 console.error("No datasets found.");
                 return;
@@ -132,40 +110,11 @@ class TileGrid {
         // sort by grid position
         this.tiles.sort((a, b) => a.tile.gridPosition - b.tile.gridPosition);
 
-        // Legacy mode - if all tiles have startCol = 1, then we are in legacy mode
-        // These layouts were generated only with a "width" property
-        const legacyMode = this.tiles.every(tile => tile.tile.startCol === 1);
-
-        // If in legacy mode, then we need to calculate the startCol and endCol and startRow and endRow
-        if (legacyMode) {
-            let currentCol = 1;
-            let currentRow = 1;
-            const maxEndCol = 13;   // 12 grid slots. CSS grid is 1-indexed, so 13 is the max
-            for (const tile of this.tiles) {
-                const tileWidth = Number(tile.tile.width);
-                const tileHeight = Number(tile.tile.height);
-
-                // If endCol is greater than 13, then this tile is in the next row
-                if (currentCol + tileWidth > maxEndCol) {
-                    currentCol = 1;
-                    currentRow++;
-                }
-
-                // TODO: Eventually change "end" values to a "span" value
-                tile.tile.startCol = currentCol;
-                tile.tile.endCol = currentCol + tileWidth;
-                tile.tile.startRow = currentRow;
-                tile.tile.endRow = currentRow + tileHeight;
-
-                currentCol += tileWidth;
-            }
-        }
-
         // Add grid template information to the selector element.
         // Max col is going to be 12 (since width is stored as 12-col format in db),
         // and max row is max(endRow)
 
-        const maxRows = Math.max(...this.tiles.map(tile => tile.tile.endRow)) - 1; // Subtract 1 because endRow is first row tile is not in
+        const maxRows = Math.max(...this.tiles.map(tile => tile.tile.height + tile.tile.startRow)) - 1; // Subtract 1 because endRow is first row tile is not in
         selectorElt.style.gridTemplateRows = `repeat(${maxRows}, ${this.colHeight}px)`;
         // if going from single dataset to layout, need to unset gridTemplateColumns. Otherwise the grid will be messed up
         selectorElt.style.gridTemplateColumns = "";
