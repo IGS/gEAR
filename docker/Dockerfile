@@ -99,8 +99,10 @@ RUN wget $CMAKE_URL \
 # NOTE: Speed this up... so slow for Linux install.  Maybe build on actual linux hardware, or do a multi-stage docker build
 COPY ./install_bioc.sh /tmp/
 COPY ./install_bioc.R /tmp/
+COPY ./install_packages.R /tmp/
 WORKDIR /tmp
 RUN /tmp/install_bioc.sh
+RUN Rscript --vanilla install_packages.R || exit 1
 
 # Install Python (with configuration options needed for gEAR)
 # TODO: test using a apt install instead, now that virtualenv is not needed
