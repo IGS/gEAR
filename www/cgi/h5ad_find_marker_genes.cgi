@@ -32,9 +32,12 @@ def main():
     user = geardb.get_user_from_session_id(session_id)
     n_genes = int(form.getvalue('n_genes'))
     compute_marker_genes = form.getvalue('compute_marker_genes')
+    user_id = None
+    if user and user.id:
+        user_id = user.id
 
     ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
-                          session_id=session_id, user_id=user.id)
+                          session_id=session_id, user_id=user_id)
 
     adata = ana.get_adata()
 
