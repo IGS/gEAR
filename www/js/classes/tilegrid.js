@@ -1800,10 +1800,12 @@ class DatasetTile {
 
     async saveSpatialParameters(displayName, makeDefault) {
         const spatialConfig = this.spatial;
-        spatialConfig["gene_symbol"] = this.geneSymbol;
+        if (this.type === "single" ) {
+            spatialConfig["gene_symbol"] = this.geneSymbol[0];
+        }
         const datasetId = this.dataset.id;
         const plotType = "spatial_panel";
-        const isMultigene = (this.type === "multi") ? 1: 0;  // Should be 0 for now.
+        const isMultigene = (this.type === "single") ? 0 : 1;  // Should be 0 for now.
 
         try {
             const {display_id: displayId, success: saveSuccess} = await apiCallsMixin.saveDatasetDisplay(datasetId, null, displayName, plotType, spatialConfig);
