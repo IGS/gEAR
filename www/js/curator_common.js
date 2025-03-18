@@ -370,11 +370,11 @@ const curatorApiCallsMixin = {
         try {
             const {success} = await super.saveDefaultDisplay(datasetId, displayId, isMultigene);
             if (!success) {
-                throw new Error("Could not save this display as your default. Please contact the gEAR team.");
+                throw new Error("Could not make this display your default, but it is saved. Please contact the gEAR team.");
             }
         } catch (error) {
             logErrorInConsole(error);
-            const msg = "Could not save this display as your default. Please contact the gEAR team."
+            const msg = "Could not make this display your default, but it is saved. Please contact the gEAR team.";
             createToast(msg);
             throw new Error(msg);
         };

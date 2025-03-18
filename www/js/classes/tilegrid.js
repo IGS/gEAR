@@ -524,16 +524,8 @@ class DatasetTile {
                 iframe.sandbox="allow-scripts allow-same-origin";
                 cardImage.append(iframe);
 
-                const iframeBody = iframe.contentDocument.body
-
-                // create a mutation observer to monitor the iframe href for changes
-                const observer = new MutationObserver((mutationsList, observer) => {
-                    for (const mutation of mutationsList) {
-                        console.log(mutation);
-                    }
-                });
-
-                observer.observe(iframeBody, { attributes: true, subtree: true, childList: true });
+                const iframeSearch = iframe.contentWindow.location.search;
+                let urlParams = new URLSearchParams(iframeSearch);  // initially empty
 
                 // Create a polling function to check for changes to the iframe content URL
                 // SAdkins - This is kind of hacky as I cannot get the mutation observer or related callback to work
@@ -543,17 +535,45 @@ class DatasetTile {
                         return;
                     }
 
-                    const panelUrl = iframe.contentWindow.location.href;
-                    if (panelUrl !== iframe.src) {
-                        // extract query params from the URL and store to persist across iframe reloads
-                        const urlParams = new URLSearchParams(panelUrl.split("?")[1]);
-                        this.spatial.min_genes = parseInt(urlParams.get("min_genes")) || null;
-                        this.spatial.selection_x1 = parseFloat(urlParams.get("selection_x1")) || null;
-                        this.spatial.selection_x2 = parseFloat(urlParams.get("selection_x2")) || null;
-                        this.spatial.selection_y1 = parseFloat(urlParams.get("selection_y1")) || null;
-                        this.spatial.selection_y2 = parseFloat(urlParams.get("selection_y2")) || null;
+                    // If params are the same, then return
+                    const newUrlParams = new URLSearchParams(iframe.contentWindow.location.search);
+                    if (urlParams.toString() === newUrlParams.toString()) {
+                        return;
+                    }
+
+                    urlParams = newUrlParams;
+
+                    // extract query params from the URL and store to persist across iframe reloads
+                    this.spatial.min_genes = parseInt(urlParams.get("min_genes")) || null;
+                    this.spatial.selection_x1 = parseFloat(urlParams.get("selection_x1")) || null;
+                    this.spatial.selection_x2 = parseFloat(urlParams.get("selection_x2")) || null;
+                    this.spatial.selection_y1 = parseFloat(urlParams.get("selection_y1")) || null;
+                    this.spatial.selection_y2 = parseFloat(urlParams.get("selection_y2")) || null;
+
+                    if (urlParams.get("save")) {
+                        urlParams.delete("save");
+
+                        // save the spatial parameters as a new configured display
+                        const displayName = urlParams.get("display_name");
+                        const makeDefault = urlParams.get("make_default");
+
+                        // load the URL so that the "save" parameter is removed.
+                        // This should prevent endless loop of saving the display
+                        // ? Alternatively should "save" be synced after button is clicked, then immediately unsynced in Panel?
+                        iframe.src = `/panel/ws/panel_app?${urlParams.toString()}`;
+
+                        try {
+                            if (!apiCallsMixin.sessionId) {
+                                createToast("Must be logged in to save as a display.");
+                                throw new Error("Must be logged in to save as a display.");
+                            }
+                            await this.saveSpatialParameters(displayName, makeDefault);
+                        } catch (error) {
+                            console.error(error);
+                        }
                     }
                 }
+
                 // Poll the iframe every 3 seconds
                 setInterval(pollIframe, 3000);
             }
@@ -1778,6 +1798,33 @@ class DatasetTile {
         return;
     }
 
+    async saveSpatialParameters(displayName, makeDefault) {
+        const spatialConfig = this.spatial;
+        spatialConfig["gene_symbol"] = this.geneSymbol;
+        const datasetId = this.dataset.id;
+        const plotType = "spatial_panel";
+        const isMultigene = (this.type === "multi") ? 1: 0;  // Should be 0 for now.
+
+        try {
+            const {display_id: displayId, success: saveSuccess} = await apiCallsMixin.saveDatasetDisplay(datasetId, null, displayName, plotType, spatialConfig);
+            if (!saveSuccess) {
+                throw new Error("Could not save this new display. Please contact the gEAR team.");
+            }
+            createToast("Display saved.", "is-success");
+
+            if (!makeDefault) return;
+
+            const {success: defaultSuccess} = await apiCallsMixin.saveDefaultDisplay(datasetId, displayId, isMultigene);
+            if (!defaultSuccess) {
+                throw new Error("Could not make this display as your default, but it is saved. Please contact the gEAR team.");
+            }
+
+        } catch (error) {
+            logErrorInConsole(error);
+            createToast(error);
+            return
+        }
+    }
 
     /**
      * Resets the AbortController and cancels any previous axios requests.

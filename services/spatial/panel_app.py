@@ -80,6 +80,9 @@ class Settings(param.Parameterized):
     selection_x2 = param.Number(doc="right selection range", allow_None=True)
     selection_y1 = param.Number(doc="upper selection range", allow_None=True)
     selection_y2 = param.Number(doc="lower selection range", allow_None=True)
+    save = param.Boolean(doc="If true, save this configuration as a new display.", default=False)
+    display_name = param.String(doc="Display name for the saved configuration", allow_None=True)
+    make_default = param.Boolean(doc="If true, make this the default display.", default=False)
 
 class SpatialPlot():
     """
@@ -88,7 +91,8 @@ class SpatialPlot():
 
     # TODO: Change "expression" to "relative expression" for projections
 
-    def __init__(self, df, spatial_img, color_map, gene_symbol, expression_name, expression_color, dragmode):
+    def __init__(self, settings, df, spatial_img, color_map, gene_symbol, expression_name, expression_color, dragmode):
+        self.settings = settings
         self.df = df
         self.spatial_img = spatial_img  # None or numpy array
         self.color_map = color_map
@@ -254,17 +258,17 @@ class SpatialNormalSubplot(SpatialPlot):
     Class for creating a spatial plot with a gene expression heatmap, cluster markers, and an image.
     """
 
-    def __init__(self, df, spatial_img, color_map, gene_symbol, expression_name, expression_color, **params):
-        super().__init__(df, spatial_img, color_map, gene_symbol, expression_name, expression_color, **params)
+    def __init__(self, settings, df, spatial_img, color_map, gene_symbol, expression_name, expression_color, **params):
+        super().__init__(settings, df, spatial_img, color_map, gene_symbol, expression_name, expression_color, **params)
 
         self.selections_dict = {}
 
         # if all four selection range values are the same, they were not set in the query params, so use the default values
-        if settings.selection_x1 != settings.selection_x2 or settings.selection_y1 != settings.selection_y2:
+        if self.settings.selection_x1 != self.settings.selection_x2 or self.settings.selection_y1 != self.settings.selection_y2:
             # Occasionally, if a selection goes to the edge of the plot,
             # the selection may not be modified and added to query_params,
             # so use the default values if that happens
-            self.selections_dict = dict(x0=settings.selection_x1, x1=settings.selection_x2, y0=settings.selection_y1, y1=settings.selection_y2)
+            self.selections_dict = dict(x0=self.settings.selection_x1, x1=self.settings.selection_x2, y0=self.settings.selection_y1, y1=self.settings.selection_y2)
 
     def refresh_spatial_fig(self):
         self.make_fig(static_size=False)
@@ -444,25 +448,25 @@ class SpatialZoomSubplot(SpatialPlot):
     Class for creating a zoomed-in spatial plot with a gene expression heatmap, cluster markers, and an image.
     """
 
-    def __init__(self, df, spatial_img, color_map, gene_symbol, expression_name, expression_color, **params):
-        super().__init__(df, spatial_img, color_map, gene_symbol, expression_name, expression_color, **params)
+    def __init__(self, settings, df, spatial_img, color_map, gene_symbol, expression_name, expression_color, **params):
+        super().__init__(settings, df, spatial_img, color_map, gene_symbol, expression_name, expression_color, **params)
 
         # Preserve the original dataframe for filtering
         self.orig_df = df
 
         # if all four selection range values are the same, they were not set in the query params, so use the default values
-        if settings.selection_x1 != settings.selection_x2 or settings.selection_y1 != settings.selection_y2:
+        if self.settings.selection_x1 != self.settings.selection_x2 or self.settings.selection_y1 != self.settings.selection_y2:
             # Occasionally, if a selection goes to the edge of the plot,
             # the selection may not be modified and added to query_params,
             # so use the default values if that happens
-            if settings.selection_x1:
-                self.range_x1 = settings.selection_x1
-            if settings.selection_x2:
-                self.range_x2 = settings.selection_x2
-            if settings.selection_y1:
-                self.range_y1 = settings.selection_y1
-            if settings.selection_y2:
-                self.range_y2 = settings.selection_y2
+            if self.settings.selection_x1:
+                self.range_x1 = self.settings.selection_x1
+            if self.settings.selection_x2:
+                self.range_x2 = self.settings.selection_x2
+            if self.settings.selection_y1:
+                self.range_y1 = self.settings.selection_y1
+            if self.settings.selection_y2:
+                self.range_y2 = self.settings.selection_y2
 
             # Viewing a selection, so increase the marker size
             self.calculate_marker_size()
@@ -501,10 +505,10 @@ class SpatialZoomSubplot(SpatialPlot):
             # Filter the data based on the selected range
             self.df = df[(df["spatial1"] >= self.range_x1) & (df["spatial1"] <= self.range_x2) & (df["spatial2"] >= self.range_y1) & (df["spatial2"] <= self.range_y2)]
 
-            settings.selection_x1 = self.range_x1
-            settings.selection_x2 = self.range_x2
-            settings.selection_y1 = self.range_y1
-            settings.selection_y2 = self.range_y2
+            self.settings.selection_x1 = self.range_x1
+            self.settings.selection_x2 = self.range_x2
+            self.settings.selection_y1 = self.range_y1
+            self.settings.selection_y2 = self.range_y2
 
         return self.refresh_spatial_fig()
 
@@ -513,16 +517,36 @@ class SpatialPanel(pn.viewable.Viewer):
     Class for prepping the spatial data and setting up the Panel app.
     """
 
-    def __init__(self, dataset_id, gene_symbol, min_genes, projection_id, **params):
+    def __init__(self, settings, **params):
         super().__init__(**params)
 
-        self.dataset_id = dataset_id
-        self.gene_symbol = gene_symbol
-        self.min_genes = min_genes
-        self.projection_id = projection_id
+        self.settings = settings
+
+        pn.state.location.sync(self.settings, {
+            'dataset_id': 'dataset_id'
+            , 'gene_symbol': 'gene_symbol'
+            , 'min_genes': 'min_genes'
+            , 'projection_id': 'projection_id'
+            , 'selection_x1': 'selection_x1'
+            , 'selection_x2': 'selection_x2'
+            , 'selection_y1': 'selection_y1'
+            , 'selection_y2': 'selection_y2'
+            , 'save': 'save'
+            , 'display_name': 'display_name'
+            , 'make_default': 'make_default'})
+
+        self.dataset_id = self.settings.dataset_id
+        self.gene_symbol = self.settings.gene_symbol
+        self.min_genes = self.settings.min_genes
+        self.projection_id = self.settings.projection_id
 
         # ? This can be useful for filtering datasets even for projections, but how best to word it?
-        self.min_genes_slider = pn.widgets.IntSlider(name='Filter - Mininum genes per observation', start=0, end=500, step=25, value=min_genes)
+        self.min_genes_slider = pn.widgets.IntSlider(name='Filter - Mininum genes per observation', start=0, end=500, step=25, value=self.min_genes)
+
+        self.display_name = pn.widgets.TextInput(name='Display name', placeholder='Name this display to save...', width=250)
+        self.save_button = pn.widgets.Button(name="Save settings", button_type="primary", width=100, align="end")
+        self.make_default = pn.widgets.Checkbox(name='Make this the default display', value=False)
+
 
         self.normal_fig = dict(data=[], layout={})
         self.zoom_fig = dict(data=[], layout={})
@@ -562,8 +586,16 @@ class SpatialPanel(pn.viewable.Viewer):
         )
 
         self.plot_layout = pn.Column(
-            pn.pane.Markdown('## Select a region to modify zoomed in view in the bottom panel', height=30),
-            self.min_genes_slider,
+            pn.Row(
+                pn.pane.Markdown('## Select a region to modify zoomed in view in the bottom panel', height=30, width=700),
+                self.display_name,
+                self.save_button
+            ),
+            pn.Row(
+                self.min_genes_slider,
+                pn.Spacer(width=400),
+                self.make_default,
+            ),
             self.normal_pane,
             pn.layout.Divider(height=5),    # default margins
             pn.pane.Markdown('## Zoomed in view',height=30),
@@ -600,6 +632,27 @@ class SpatialPanel(pn.viewable.Viewer):
             self.normal_pane.object = self.normal_fig_obj.mirror_selection_callback(event)
 
         pn.bind(selection_callback, self.normal_pane.param.selected_data, watch=True)
+
+        def save_settings_callback(event):
+            self.settings.save = True
+            self.settings.display_name = self.display_name.value
+            self.settings.make_default = self.make_default.value
+            # Make button "is-loading" while saving
+            self.save_button.button_type = "success"
+            self.save_button.name = "Saving..."
+            self.save_button.disabled = True
+            print(self.settings, file=sys.stderr)
+
+        def reset_save_button_callback(event):
+            if not event.name == "save":
+                return
+            self.settings.save = False
+            self.save_button.button_type = "primary"
+            self.save_button.name = "Save settings"
+            self.save_button.disabled = False
+
+        pn.bind(save_settings_callback, self.save_button, watch=True)
+        self.settings.param.watch(reset_save_button_callback, "save", onlychanged=True)
 
 
     def __panel__(self):
@@ -795,8 +848,8 @@ class SpatialPanel(pn.viewable.Viewer):
         self.min_genes = min_genes
 
         # If the min_genes value has changed... sync to URL
-        if self.min_genes != settings.min_genes:
-            settings.min_genes = self.min_genes
+        if self.min_genes != self.settings.min_genes:
+            self.settings.min_genes = self.min_genes
 
         self.filter_adata()
 
@@ -810,8 +863,8 @@ class SpatialPanel(pn.viewable.Viewer):
         self.normal_fig_obj = None
         self.zoom_fig_obj = None
 
-        self.normal_fig_obj = SpatialNormalSubplot(self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, self.norm_gene_symbol, "YlGn", dragmode="select")
-        self.zoom_fig_obj = SpatialZoomSubplot(self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, "Local", "YlOrRd", dragmode=False)
+        self.normal_fig_obj = SpatialNormalSubplot(self.settings, self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, self.norm_gene_symbol, "YlGn", dragmode="select")
+        self.zoom_fig_obj = SpatialZoomSubplot(self.settings, self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, "Local", "YlOrRd", dragmode=False)
 
         self.normal_fig = self.normal_fig_obj.refresh_spatial_fig()
 
@@ -888,16 +941,6 @@ if not pn.state.location.query_params:
     pn.pane.Markdown("OK").servable()
 
 else:
-    pn.state.location.sync(settings, {
-        'dataset_id': 'dataset_id'
-        , 'gene_symbol': 'gene_symbol'
-        , 'min_genes': 'min_genes'
-        , 'projection_id': 'projection_id'
-        , 'selection_x1': 'selection_x1'
-        , 'selection_x2': 'selection_x2'
-        , 'selection_y1': 'selection_y1'
-        , 'selection_y2': 'selection_y2'})
-
     # Create the app
-    sp_panel = SpatialPanel(settings.dataset_id, settings.gene_symbol, settings.min_genes, settings.projection_id)
+    sp_panel = SpatialPanel(settings)
     sp_panel.servable(title="Spatial Data Viewer", location=True)
