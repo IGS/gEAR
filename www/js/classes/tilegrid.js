@@ -852,7 +852,6 @@ class DatasetTile {
         if (this.dataset.dtype === "spatial") {
             tileElement.querySelector('.js-expand-display').classList.add("is-hidden");
             tileElement.querySelector('.js-shrink-display').classList.add("is-hidden");
-            dropdownContent.querySelector('.dropdown-item[data-tool="display"]').classList.add("is-hidden");
         }
 
         // Add event listener to dropdown trigger
