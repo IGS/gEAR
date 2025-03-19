@@ -229,6 +229,22 @@ class ResultItem {
 
     }
 
+    /**
+     * Asynchronously renders and opens a modal for displaying dataset information.
+     *
+     * This function calls `renderDisplaysModal` with the dataset's ID, title, and
+     * public status, then retrieves the modal element by its ID and opens it.
+     *
+     * @async
+     * @function displaysModalCallback
+     * @returns {Promise<void>} A promise that resolves when the modal has been rendered and opened.
+     */
+    async displaysModalCallback() {
+        await renderDisplaysModal(this.datasetId, this.title, this.isPublic);
+        const modalElt = document.getElementById(`displays-modal-${this.datasetId}`);
+        openModal(modalElt);
+    }
+
     // *** Table row stuff ***
     addTableVisibilityInfo() {
         const tableVisibility = this.rowItem.querySelector(`.js-display-visibility`);
@@ -254,6 +270,11 @@ class ResultItem {
             // Original state is collapsed
             e.currentTarget.querySelector(".icon").innerHTML = '<i class="mdi mdi-24px mdi-chevron-up"></i>';
         });
+
+        this.rowItem.querySelector(".js-view-displays").addEventListener("click", async (e) => {
+            await this.displaysModalCallback();
+        });
+
     }
 
     // *** List item stuff ***
@@ -401,10 +422,7 @@ class ResultItem {
         });
 
         parentElt.querySelector(".js-view-displays").addEventListener("click", async (e) => {
-            await renderDisplaysModal(this.datasetId, this.title, this.isPublic);
-            const modalElt = document.getElementById(`displays-modal-${this.datasetId}`);
-            openModal(modalElt);
-
+            await this.displaysModalCallback();
         });
 
         // Cancel button for editing a dataset
@@ -1901,14 +1919,9 @@ const datasetCollectionSelectionCallback = async () => {
     // Update action buttons for the dataset collection or datasets
     updateDatasetCollectionButtons(data);
 
-    // Also hide js-view-displays buttons if user is not the owner of the collection
-    const viewDisplayButtons = document.getElementsByClassName("js-view-displays");
-    for (const classElt of viewDisplayButtons) {
-        disableAndHideElement(classElt);
-        if (data?.is_owner) {
-            enableAndShowElement(classElt);
-        }
-    }
+    // Hide js-view-displays buttons if user is not the owner of the collection
+    // Also hide the "Displays" table column under the same condition
+    updateViewDisplayAccess(data);
 
     // If the selected dataset collection is the current collection, make it look like the primary collection
     // ! Currently the selector will auto-make that collection the primary collection
@@ -2059,13 +2072,8 @@ const processSearchResults = (data) => {
     } catch (error) {
         // pass
     }
-    const viewDisplayButtons = document.getElementsByClassName("js-view-displays");
-    for (const classElt of viewDisplayButtons) {
-        disableAndHideElement(classElt);
-        if (collection?.is_owner) {
-            enableAndShowElement(classElt);
-        }
-    }
+
+    updateViewDisplayAccess(collection);
 
     // Now that tooltips have been populated we can remove buttons and add event listeners
     for (const resultItem of resultItems) {
@@ -2711,6 +2719,37 @@ const updateDisplayAddRemoveToCollectionButtons = (modalDivId, collection=null) 
     }
 }
 
+/**
+ * Updates the display access for view display buttons and table columns based on the provided data.
+ *
+ * @param {Object} data - The data object containing user information.
+ * @param {boolean} data.is_owner - Indicates if the current user is the owner.
+ */
+const updateViewDisplayAccess = (data) => {
+    const viewDisplayButtons = document.getElementsByClassName("js-view-displays");
+    for (const classElt of viewDisplayButtons) {
+        disableAndHideElement(classElt);
+        if (data?.is_owner) {
+            enableAndShowElement(classElt);
+        }
+    }
+    const viewDisplaysTableHeader = document.getElementById("view-displays-header");
+    viewDisplaysTableHeader.classList.add("is-hidden");
+    if (data?.is_owner) {
+        viewDisplaysTableHeader.classList.remove("is-hidden");
+    }
+    const columnIndex = viewDisplaysTableHeader.cellIndex;
+    // get all rows in the table
+    const rows = document.querySelectorAll("#results-table tbody tr.js-table-row");
+    for (const row of rows) {
+        const cell = row.cells[columnIndex];
+        cell.classList.add("is-hidden");
+        if (data?.is_owner) {
+            cell.classList.remove("is-hidden");
+        }
+    }
+}
+
 /* --- Entry point --- */
 const handlePageSpecificLoginUIUpdates = async (event) => {
 
@@ -3090,3 +3129,4 @@ document.getElementById("btn-share-collection").addEventListener("click", (e) =>
     const shareUrl = currentPage.toString();
     copyPermalink(shareUrl);
 });
+
