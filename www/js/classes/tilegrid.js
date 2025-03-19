@@ -405,11 +405,6 @@ class DatasetTile {
 
             this.resizeCardImage();
 
-            if (this.dataset.dtype === "spatial") {
-                this.handleSpatialDisplay(geneSymbolInput);
-                return;
-            }
-
             // Plot and render the display
             await this.renderDisplay(geneSymbolInput, null, svgScoringMethod);
             return;
@@ -460,129 +455,8 @@ class DatasetTile {
             this.renderOrthologDropdown();
         }
 
-        if (this.dataset.dtype === "spatial") {
-            this.handleSpatialDisplay(orthologs);
-            return;
-        }
-
         // Plot and render the display
         await this.renderDisplay(orthologs, null, svgScoringMethod);
-    }
-
-    async handleSpatialDisplay(geneSymbolInput) {
-        const tileId = this.tile.tileId;
-        const tileElement = document.getElementById(`tile-${tileId}`);
-
-        // Add loading message
-        createCardMessage(tileId, "info", "Loading spatial display...");
-
-        this.geneSymbol = geneSymbolInput;
-
-        geneSymbolInput = this.type === "single" ? geneSymbolInput[0] : geneSymbolInput;
-
-        // build the URL for the spatial app
-        const urlParams = new URLSearchParams();
-        urlParams.append("dataset_id", this.dataset.id);
-        urlParams.append("gene_symbol", geneSymbolInput);
-
-        // Add spatial parameters to the URL if they exist
-        if (this.spatial.min_genes) {
-            urlParams.append("min_genes", this.spatial.min_genes);
-        }
-        if (this.spatial.selection_x1) {
-            urlParams.append("selection_x1", this.spatial.selection_x1);
-        }
-        if (this.spatial.selection_x2) {
-            urlParams.append("selection_x2", this.spatial.selection_x2);
-        }
-        if (this.spatial.selection_y1) {
-            urlParams.append("selection_y1", this.spatial.selection_y1);
-        }
-
-        if (this.projectR.modeEnabled && this.projectR.projectionId) {
-            urlParams.append("projection_id", this.projectR.projectionId);
-        }
-
-        const url = `/panel/ws/panel_app?${urlParams.toString()}`;
-
-        try {
-            const cardImage = tileElement.querySelector('.card-image');
-            cardImage.replaceChildren();
-
-            if (this.type == "multi") {
-            // Create div element under .card-image, in this we will retrieve image data from an api call and re
-            await this.renderSpatialScanpyDisplay(null, null);
-            }
-
-            if (this.type == "single") {
-
-                const iframe = document.createElement("iframe");
-                // srcDoc html requires Panel static files to be served from the same domain, so use src instead
-                iframe.src = url;
-                iframe.loading="lazy";
-                iframe.referrerPolicy="origin"; // honestly doesn't matter if provided
-                iframe.sandbox="allow-scripts allow-same-origin";
-                cardImage.append(iframe);
-
-                const iframeSearch = iframe.contentWindow.location.search;
-                let urlParams = new URLSearchParams(iframeSearch);  // initially empty
-
-                // Create a polling function to check for changes to the iframe content URL
-                // SAdkins - This is kind of hacky as I cannot get the mutation observer or related callback to work
-                const pollIframe = async () => {
-                    // If iframe contentWindow is null, then return (i.e. switching genes)
-                    if (!iframe.contentWindow) {
-                        return;
-                    }
-
-                    // If params are the same, then return
-                    const newUrlParams = new URLSearchParams(iframe.contentWindow.location.search);
-                    if (urlParams.toString() === newUrlParams.toString()) {
-                        return;
-                    }
-
-                    urlParams = newUrlParams;
-
-                    // extract query params from the URL and store to persist across iframe reloads
-                    this.spatial.min_genes = parseInt(urlParams.get("min_genes")) || null;
-                    this.spatial.selection_x1 = parseFloat(urlParams.get("selection_x1")) || null;
-                    this.spatial.selection_x2 = parseFloat(urlParams.get("selection_x2")) || null;
-                    this.spatial.selection_y1 = parseFloat(urlParams.get("selection_y1")) || null;
-                    this.spatial.selection_y2 = parseFloat(urlParams.get("selection_y2")) || null;
-
-                    if (urlParams.get("save")) {
-                        urlParams.delete("save");
-
-                        // save the spatial parameters as a new configured display
-                        const displayName = urlParams.get("display_name");
-                        const makeDefault = urlParams.get("make_default");
-
-                        // load the URL so that the "save" parameter is removed.
-                        // This should prevent endless loop of saving the display
-                        // ? Alternatively should "save" be synced after button is clicked, then immediately unsynced in Panel?
-                        iframe.src = `/panel/ws/panel_app?${urlParams.toString()}`;
-
-                        try {
-                            if (!apiCallsMixin.sessionId) {
-                                createToast("Must be logged in to save as a display.");
-                                throw new Error("Must be logged in to save as a display.");
-                            }
-                            await this.saveSpatialParameters(displayName, makeDefault);
-                        } catch (error) {
-                            console.error(error);
-                        }
-                    }
-                }
-
-                // Poll the iframe every 3 seconds
-                setInterval(pollIframe, 3000);
-            }
-
-        } catch (error) {
-            console.error(error);
-        } finally {
-            return;
-        }
     }
 
 
@@ -1288,7 +1162,7 @@ class DatasetTile {
         // add console warning if default display id was not found in the user or owner display lists
         if (!userDisplay && !ownerDisplay && !layoutDisplay) {
             // This can happen if the display ID for a layout member is owned by a different user that is not the dataset owner.
-            console.warn(`Selected display id ${this.currentDisplayId} for dataset ${this.dataset.title} was not found. Will show first available.`);
+            console.warn(`Selected display id '${this.currentDisplayId}' for dataset ${this.dataset.title} was not found. Will show first available.`);
 
             // last chance... if still no display config (i.e default display was not found), then use the first display config
             if (!userDisplay) userDisplay = this.dataset.userDisplays.find((d) => d.plotly_config.hasOwnProperty(filterKey));
@@ -1298,6 +1172,27 @@ class DatasetTile {
         // if the display config was not found, then do not render
         if (!userDisplay && !ownerDisplay && !layoutDisplay) {
             console.warn(`Display config for dataset ${this.dataset.title} was not found.`)
+
+            // If the dataset is spatial, we can still render a spatial panel
+            if (this.dataset.dtype === "spatial") {
+                console.log("Rendering configless spatial panel display.");
+                const display = {
+                    plot_type: "spatial_panel",
+                    plotly_config: {
+                        gene_symbol: geneSymbolInput,
+                    }
+                };
+
+                // if projection ran, add the projection info to the plotly config
+                if (this.projectR.modeEnabled && this.projectR.projectionId) {
+                    display.plotly_config.projection_id = this.projectR.projectionId;
+                }
+
+                await this.renderSpatialPanelDisplay(display, otherOpts);
+                return;
+            }
+
+
             // Let the user know that the display config was not found
             const message = `This dataset has no viewable curations for this view. Create a new curation in the ${this.type === "single" ? "Single-gene" : "Multi-gene"} Curator to view this dataset.`;
             createCardMessage(this.tile.tileId, "warning", message);
@@ -1363,10 +1258,17 @@ class DatasetTile {
 
             } else if (display.plot_type === "svg") {
                 await this.renderSVG(display, this.svgScoringMethod, otherOpts);
+            } else if (display.plot_type === "spatial_panel") {
+                await this.renderSpatialPanelDisplay(display, otherOpts);
             } else if (display.plot_type === "epiviz") {
                 await this.renderEpivizDisplay(display, otherOpts);
             } else if (this.type === "multi") {
-                await this.renderMultiGeneDisplay(display, otherOpts);
+                if (this.dataset.dtype === "spatial") {
+                    // Matplotlib-based display for spatial datasets
+                    await this.renderSpatialScanpyDisplay(null, null);
+                } else {
+                    await this.renderMultiGeneDisplay(display, otherOpts);
+                }
             } else {
                 throw new Error(`Display config for dataset ${this.dataset.id} has an invalid plot type ${display.plot_type}.`);
             }
@@ -1798,10 +1700,133 @@ class DatasetTile {
         return;
     }
 
+    async renderSpatialPanelDisplay(display, otherOpts) {
+
+        const tileId = this.tile.tileId;
+        const tileElement = document.getElementById(`tile-${tileId}`);
+
+        // Add loading message
+        createCardMessage(tileId, "info", "Loading spatial display...");
+
+        const plotConfig = display.plotly_config;
+        const {gene_symbol: geneSymbol} = plotConfig;
+
+        // build spatial object from the plotly config
+        // This spatial object will keep the current state as the user switches genes
+        this.spatial = {
+            min_genes: plotConfig.min_genes,
+            selection_x1: plotConfig.selection_x1,
+            selection_x2: plotConfig.selection_x2,
+            selection_y1: plotConfig.selection_y1,
+            selection_y2: plotConfig.selection_y2,
+            projection_id: plotConfig.projection_id
+        };
+
+        // build the URL for the spatial app
+        const urlParams = new URLSearchParams();
+        urlParams.append("dataset_id", this.dataset.id);
+        urlParams.append("gene_symbol", geneSymbol);
+
+        // Add spatial parameters to the URL if they exist
+        if (this.spatial.min_genes) {
+            urlParams.append("min_genes", this.spatial.min_genes);
+        }
+        if (this.spatial.selection_x1) {
+            urlParams.append("selection_x1", this.spatial.selection_x1);
+        }
+        if (this.spatial.selection_x2) {
+            urlParams.append("selection_x2", this.spatial.selection_x2);
+        }
+        if (this.spatial.selection_y1) {
+            urlParams.append("selection_y1", this.spatial.selection_y1);
+        }
+        if (this.spatial.selection_y2) {
+            urlParams.append("selection_y2", this.spatial.selection_y2);
+        }
+
+
+        if (this.spatial.projection_id) {
+            urlParams.append("projection_id", this.spatial.projection_id);
+        }
+
+        const url = `/panel/ws/panel_app?${urlParams.toString()}`;
+
+        try {
+            const cardImage = tileElement.querySelector('.card-image');
+            cardImage.replaceChildren();
+
+            const iframe = document.createElement("iframe");
+            // srcDoc html requires Panel static files to be served from the same domain, so use src instead
+            iframe.src = url;
+            iframe.loading="lazy";
+            iframe.referrerPolicy="origin"; // honestly doesn't matter if provided
+            iframe.sandbox="allow-scripts allow-same-origin";
+            cardImage.append(iframe);
+
+            const iframeSearch = iframe.contentWindow.location.search;
+            let urlParams = new URLSearchParams(iframeSearch);  // initially empty
+
+            // Create a polling function to check for changes to the iframe content URL
+            // SAdkins - This is kind of hacky as I cannot get the mutation observer or related callback to work
+            const pollIframe = async () => {
+                // If iframe contentWindow is null, then return (i.e. switching genes)
+                if (!iframe.contentWindow) {
+                    return;
+                }
+
+                // If params are the same, then return
+                const newUrlParams = new URLSearchParams(iframe.contentWindow.location.search);
+                if (urlParams.toString() === newUrlParams.toString()) {
+                    return;
+                }
+
+                urlParams = newUrlParams;
+
+                // extract query params from the URL and store to persist across iframe reloads
+                this.spatial.min_genes = parseInt(urlParams.get("min_genes")) || null;
+                this.spatial.selection_x1 = parseFloat(urlParams.get("selection_x1")) || null;
+                this.spatial.selection_x2 = parseFloat(urlParams.get("selection_x2")) || null;
+                this.spatial.selection_y1 = parseFloat(urlParams.get("selection_y1")) || null;
+                this.spatial.selection_y2 = parseFloat(urlParams.get("selection_y2")) || null;
+
+                if (urlParams.get("save")) {
+                    urlParams.delete("save");
+
+                    // save the spatial parameters as a new configured display
+                    const displayName = urlParams.get("display_name");
+                    const makeDefault = urlParams.get("make_default");
+
+                    // load the URL so that the "save" parameter is removed.
+                    // This should prevent endless loop of saving the display
+                    // ? Alternatively should "save" be synced after button is clicked, then immediately unsynced in Panel?
+                    iframe.src = `/panel/ws/panel_app?${urlParams.toString()}`;
+
+                    try {
+                        if (!apiCallsMixin.sessionId) {
+                            createToast("Must be logged in to save as a display.");
+                            throw new Error("Must be logged in to save as a display.");
+                        }
+                        await this.saveSpatialParameters(displayName, makeDefault);
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+            }
+
+            // Poll the iframe every 3 seconds
+            setInterval(pollIframe, 3000);
+
+        } catch (error) {
+            console.error(error);
+        } finally {
+            return;
+        }
+    }
+
     async saveSpatialParameters(displayName, makeDefault) {
         const spatialConfig = this.spatial;
         if (this.type === "single" ) {
-            spatialConfig["gene_symbol"] = this.geneSymbol[0];
+            spatialConfig["gene_symbol"] = this.geneSymbol;
         }
         const datasetId = this.dataset.id;
         const plotType = "spatial_panel";
