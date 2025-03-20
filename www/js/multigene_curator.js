@@ -960,6 +960,13 @@ const fetchDashData = async (datasetId, analysis, plotType, plotConfig)  => {
         }
         return data
     } catch (error) {
+        const data = error?.response?.data;
+        if (data?.success < 1) {
+            const msg = "Exceeded memory limit. Please try to filter or subsample the dataset in the post-plotting view, or contact the gEAR team."
+            createToast(msg);
+            throw error;
+        }
+
         logErrorInConsole(error);
         const msg = "Could not create plot for this dataset and parameters. Please contact the gEAR team."
         createToast(msg);
