@@ -6,6 +6,7 @@ const isMultigene = 1;
 // let selected_genes = new Set();
 
 let manuallyEnteredGenes = new Set();
+let datasetGenes = new Set();
 
 let plotSelectedGenes = []; // genes selected from plot "select" utility
 
@@ -792,6 +793,13 @@ const chooseGenes = (event) => {
     const geneTagsElt = document.getElementById("gene-tags");
     geneTagsElt.replaceChildren();
 
+    // Remove selected genes that are not in datasetGenes
+    for (const gene of selected_genes) {
+        if (!datasetGenes.has(gene)) {
+            selected_genes.delete(gene);
+        }
+    }
+
     document.getElementById("num-selected-genes-c").classList.remove("is-hidden");
     document.getElementById("num-selected-genes").textContent = selected_genes.size;
     document.getElementById("num-selected-genes-post").textContent = selected_genes.size;
@@ -893,7 +901,9 @@ const curatorSpecificPlotTypeAdjustments = (plotType) => {
 }
 
 const curatorSpecificUpdateDatasetGenes = async (geneSymbols) => {
-    //pass
+    // Convert geneSymbols to a set
+    // This will be used to check manually entered genes and those from gene lists
+    datasetGenes = new Set(geneSymbols);
 }
 
 const curatorSpecificValidationChecks = () => {
