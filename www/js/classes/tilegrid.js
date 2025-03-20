@@ -1427,15 +1427,16 @@ class DatasetTile {
         const plotType = display.plot_type;
         const plotConfig = display.plotly_config;
 
+        let data;
         // Get data and set up the image area
         try {
-            const data = await apiCallsMixin.fetchDashData(datasetId, analysisObj, plotType, plotConfig, otherOpts);
+            data = await apiCallsMixin.fetchDashData(datasetId, analysisObj, plotType, plotConfig, otherOpts);
             if (data?.success < 1) {
                 throw new Error (data?.message ? data.message : "Unknown error.")
             }
         }
         catch (error) {
-            const data = error?.response?.data;
+            data = error?.response?.data;
             if (data?.success < 1) {
                 createCardMessage(this.tile.tileId, "danger", `Error showing plot: ${data.message}`);
             }
