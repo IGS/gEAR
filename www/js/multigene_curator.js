@@ -778,6 +778,7 @@ const clearGenes = (event) => {
 	selected_genes.clear();
 	document.getElementById("dropdown-gene-list-cancel").click();	// clear the dropdown
     document.getElementById("clear-genes-btn").classList.remove("is-loading");
+    document.getElementById("genes-manually-entered").value = "";
 }
 
 /**
