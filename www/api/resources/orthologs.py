@@ -3,7 +3,7 @@ from flask_restful import Resource
 import os, sys
 import geardb
 from gear.orthology import get_ortholog_file, get_ortholog_files_from_dataset, map_single_gene, map_multiple_genes
-from .common import get_adata_shadow
+from .common import get_adata_shadow, catch_memory_error
 
 def normalize_searched_gene(gene_set, chosen_gene):
     """Convert to case-insensitive version of gene.  Returns None if gene not found in dataset."""
@@ -221,7 +221,7 @@ class Orthologs(Resource):
 
         return {"success": 1, "mapping": mapped_gene_symbols_dict}, 200
 
-
+    @catch_memory_error()
     def post(self, dataset_id):
         """
         Handles POST requests to map gene symbols to their orthologs within a specified dataset.

@@ -426,14 +426,11 @@ class DatasetTile {
         }
 
         // Not projection mode, so get orthologs
-        await this.getOrthologs(geneSymbolInput)
-
-        // If no genes were found, then raise an error
-        // This should never happen as geneSymbolInput should be a key in the orthologs object
-        if (!this.orthologs || Object.keys(this.orthologs).length === 0) {
-
-            createCardMessage(tileId, "danger", "No orthologs were mapped for this dataset. This should not have happened.");
-            throw new Error("Should never happen. Please contact the gEAR team.");
+        try {
+            await this.getOrthologs(geneSymbolInput);
+        }
+        catch (error) {
+            return;
         }
 
         // Make a flattened list of all orthologs to plot
@@ -476,8 +473,24 @@ class DatasetTile {
             const data = await apiCallsMixin.fetchOrthologs(this.dataset.id, geneSymbols, geneOrganismId);
 
             this.orthologs = data.mapping;
+
+            // If no genes were found, then raise an error
+            // This should never happen as geneSymbolInput should be a key in the orthologs object
+            if (!this.orthologs || Object.keys(this.orthologs).length === 0) {
+
+                createCardMessage(this.tile.tileId, "danger", "No orthologs were mapped for this dataset. This should not have happened.");
+                throw new Error("Should never happen. Please contact the gEAR team.");
+            }
+
+
         } catch (error) {
+            const data = error?.response?.data;
+            if (data?.success < 1) {
+                createCardMessage(this.tile.tileId, "danger", `Error computing orthologs: ${data.message}`);
+            }
+
             logErrorInConsole(error);
+            throw error;
         }
     }
 
@@ -527,7 +540,12 @@ class DatasetTile {
                 return;
             }
 
-            createCardMessage(this.tile.tileId, "danger", error);
+            const data = error?.response?.data;
+            if (data?.success < 1) {
+                createCardMessage(this.tile.tileId, "danger", `Error computing projections: ${data.message}`);
+            } else {
+                createCardMessage(this.tile.tileId, "danger", error);
+            }
 
             logErrorInConsole(error);
         } finally {
@@ -1410,9 +1428,18 @@ class DatasetTile {
         const plotConfig = display.plotly_config;
 
         // Get data and set up the image area
-        const data = await apiCallsMixin.fetchDashData(datasetId, analysisObj, plotType, plotConfig, otherOpts);
-        if (data?.success < 1) {
-            throw new Error (data?.message ? data.message : "Unknown error.")
+        try {
+            const data = await apiCallsMixin.fetchDashData(datasetId, analysisObj, plotType, plotConfig, otherOpts);
+            if (data?.success < 1) {
+                throw new Error (data?.message ? data.message : "Unknown error.")
+            }
+        }
+        catch (error) {
+            const data = error?.response?.data;
+            if (data?.success < 1) {
+                createCardMessage(this.tile.tileId, "danger", `Error showing plot: ${data.message}`);
+            }
+            throw error;
         }
         const {plot_json: plotJson} = data;
 

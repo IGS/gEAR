@@ -15,7 +15,7 @@ from more_itertools import sliced
 import geardb
 from gear.orthology import get_ortholog_file, map_dataframe_genes
 
-from .common import get_adata_from_analysis, get_spatial_adata
+from .common import get_adata_from_analysis, get_spatial_adata, catch_memory_error
 
 # Parse gEAR config
 # https://stackoverflow.com/a/35904211/1368079
@@ -246,6 +246,7 @@ async def fetch_one(client, payload):
 
         return await response.json()
 
+@catch_memory_error()
 def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, algorithm, zscore, full_output, fh):
     success = 1
     message = ""
