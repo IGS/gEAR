@@ -18,12 +18,6 @@ class TileGrid {
         this.datasets = []; // this.getDatasets();
         this.layout = {};   // this.getLayout();
 
-        this.maxCols = 12 // highest number of columns in a row
-        this.arrangementWidth = 1080;
-        // NOTE: The true width will be a bit wider as grid-gap is not accounted for
-        this.rowWidth = this.arrangementWidth / this.maxCols; // Split width into 12 columns
-        this.colHeight = this.rowWidth * 4; // A unit of height for us is 4 units of width (to make a square)
-
         this.tiles = [];
         this.selector = selector;
     }
@@ -105,20 +99,10 @@ class TileGrid {
         }
         this.tiles = tiles;
 
-
-
         // sort by grid position
         this.tiles.sort((a, b) => a.tile.gridPosition - b.tile.gridPosition);
 
-        // Add grid template information to the selector element.
-        // Max col is going to be 12 (since width is stored as 12-col format in db),
-        // and max row is max(endRow)
-
-        // endRow is the same as startRow + colHeight
-        const maxRows = Math.max(...this.tiles.map(tile => tile.tile.endRow)) - 1; // Subtract 1 because endRow is first row tile is not in
-        selectorElt.style.gridTemplateRows = `repeat(${maxRows}, ${this.colHeight}px)`;
-        // if going from single dataset to layout, need to unset gridTemplateColumns. Otherwise the grid will be messed up
-        selectorElt.style.gridTemplateColumns = "";
+        const specialRows = new Set();
 
         // Build the CSS grid using the startRow, startCol, endRow, and endCol properties of each tile
         for (const datasetTile of this.tiles) {
@@ -132,6 +116,26 @@ class TileGrid {
             // Set the grid-area property of the tile. Must be added after the tile is appended to the DOM
             const tileElement = document.getElementById(`tile-${tile.tileId}`);
             tileElement.style.gridArea = `${tile.startRow} / ${tile.startCol} / ${tile.endRow} / ${tile.endCol}`;
+
+            // If the dataset type is epiviz or spatial, then add grid-template-rows so that this tile takes up the full height
+            //if (datasetTile.dataset.dtype === "epiviz" || datasetTile.dataset.dtype === "spatial") {
+            if (datasetTile.dataset.dtype === "spatial") {
+                specialRows.add(tile.startRow);
+            }
+        }
+
+        // Set grid-template-rows for special rows
+        // ? This feels hacky... this property could get crazy long if there are a lot of rows.
+        if (specialRows.size > 0) {
+            const uniqueRows = [...specialRows];
+            let gridTemplateRows = "";
+            const maxStartRow = Math.max(...this.tiles.map(t => t.tile.startRow));
+            // Normal datasets get "auto", epiviz and spatial datasets get "1fr"
+            for (let i = 1; i <= maxStartRow; i++) {
+                gridTemplateRows += uniqueRows.includes(i) ? "1fr " : "auto ";
+            }
+            selectorElt.style.gridTemplateRows = gridTemplateRows;
+
         }
     }
 

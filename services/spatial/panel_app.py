@@ -39,7 +39,7 @@ SECS_IN_DAY = 86400
 CACHE_EXPIRATION = SECS_IN_DAY * 7  # 7 days
 
 # TODO: explore Datashader for large datasets
-# TODO: Encountering a weird bug where if I have multiple gEAR pages open, and I interact with a Pane from one tab, plots in the other tabs disappear. Hoping it's just me
+# TODO: Encountering a weird bug where if I have multiple gEAR pages open, and I interact with a Pane from one tab, plots in the other tabs disappear. Doesn't affect simulatenous users
 # ? Maybe make a button to create UMAP instead of creating at the start
 
 # Ignore warnings about plotly GUI events, which propagate to the browser console
