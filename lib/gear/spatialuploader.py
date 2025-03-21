@@ -446,14 +446,14 @@ class XeniumUploader(SpatialUploader):
     Called by datasetuploader.py (factory) when a Xenium dataset is going to be uploaded
 
     Standardized names for different files:
-    * 'experiment.xenium': File containing specifications.
+    * (REQ) 'experiment.xenium': File containing specifications.
+    * (REQ) 'cell_feature_matrix.h5': File containing cell feature matrix.
+    * (REQ) 'cells.parquet': File containing cell metadata.
+    * (REQ) 'morphology_focus.ome.tif': File containing morphology focus or a "morphology_focus" directory containing multiple images.
     * 'nucleus_boundaries.parquet': Polygons of nucleus boundaries.
     * 'cell_boundaries.parquet': Polygons of cell boundaries.
     * 'transcripts.parquet': File containing transcripts.
-    * 'cell_feature_matrix.h5': File containing cell feature matrix.
-    * 'cells.parquet': File containing cell metadata.
-    * 'morphology_mip.ome.tif': File containing morphology mip.
-    * 'morphology_focus.ome.tif': File containing morphology focus.
+    * 'cells.zarr.zip': Zarr file containing cell and nucleus label data
 
     More information on Xenium Ranger outputs can be found here: https://www.10xgenomics.com/support/software/xenium-ranger/latest/analysis/outputs/XR-output-overview
     """
@@ -464,7 +464,7 @@ class XeniumUploader(SpatialUploader):
 
     @property
     def coordinate_system(self):
-        return "downscaled_hires"
+        return "global"
 
     @property
     def platform(self):
@@ -472,7 +472,7 @@ class XeniumUploader(SpatialUploader):
 
     @property
     def img_name(self):
-        return "spatialdata_hires_image"
+        return "morphology_focus"
 
     def _read_file(self, filepath):
         # Get tar filename so tmp directory can be assigned
@@ -483,6 +483,12 @@ class XeniumUploader(SpatialUploader):
             # Remove any existing directory
             os.system("rm -rf {}".format(tmp_dir))
 
+        # settings to enable or disable based on if a file is present in the uploaded tarball
+        include_raster_labels = False
+        cell_boundaries_present = False
+        nucleus_boundaries_present = False
+        transcripts_present = False
+
         with tarfile.open(filepath) as tf:
             for entry in tf:
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
@@ -492,7 +498,23 @@ class XeniumUploader(SpatialUploader):
                 filepath = "{0}/{1}".format(tmp_dir, entry.name)
                 tf.extract(entry, path=tmp_dir)
 
-            sdata = sdio.xenium(tmp_dir)
+                if entry.name == "cells.zarr.zip":
+                    include_raster_labels = True
+                if entry.name == "cell_boundaries.parquet":
+                    cell_boundaries_present = True
+                if entry.name == "nucleus_boundaries.parquet":
+                    nucleus_boundaries_present = True
+                if entry.name == "transcripts.parquet":
+                    transcripts_present = True
+
+            sdata = sdio.xenium(tmp_dir
+                                , cells_labels=include_raster_labels
+                                , nucleus_labels=include_raster_labels
+                                , cell_boundaries=cell_boundaries_present
+                                , nucleus_boundaries=nucleus_boundaries_present
+                                , transcripts=transcripts_present
+                                , morpohology_mip=False   # Using the morphology_focus image instead
+                                )
 
             # To get the adata equivalent, look at sdata.tables["table"]
 
@@ -521,7 +543,7 @@ class XeniumUploader(SpatialUploader):
 ### Helper constants
 
 SPATIALTYPE2CLASS = {
-    "visium": VisiumUploader,
+    #"visium": VisiumUploader,
     "visium_hd": VisiumHDUploader,
     "xenium": XeniumUploader,
     "curio": CurioUploader
