@@ -4,6 +4,11 @@
   * If you tag it under a new image, ensure it is reflected in the docker-compose.yml file
 * Changed some hardcoded paths that pointed to "/home/jorvis/git/gEAR" to reflect the relative path of the executed file looking for that path.  This should make it compatible with both Docker with devel/production versions of the codebase.
 * Later on I would love to do a multi-stage build of the Dockerfile so that the "-dev" ubuntu packages are not in the final container... only compiled Ubuntu and Python packages we need.
+* Copy your `gear.ini` file to `gear.ini.docker` so that it will be used in the Dockerfile to create the gear.ini after the gEAR github repository is cloned into the image.
+
+## "panel" service
+
+You can pre-build the "panel_app" image using the Dockerfile from `<gear_root>/services/spatial/Dockerfile`
 
 ## Annotations and Datasets
 
