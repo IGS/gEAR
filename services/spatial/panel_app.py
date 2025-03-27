@@ -29,7 +29,7 @@ www_path = gear_root.joinpath('www')
 PROJECTIONS_BASE_DIR = www_path.joinpath('projections')
 
 sys.path.append(str(lib_path))
-from gear import spatialuploader
+from gear.spatialuploader import SPATIALTYPE2CLASS
 
 spatial_path = gear_root.joinpath('www/datasets/spatial')
 
@@ -721,13 +721,13 @@ class SpatialPanel(pn.viewable.Viewer):
             raise ValueError("No platform information found in the dataset")
 
         # Ensure the spatial data type is supported
-        if platform not in spatialuploader.SPATIALTYPE2CLASS.keys():
+        if platform not in SPATIALTYPE2CLASS.keys():
             print("Invalid or unsupported spatial data type")
-            print("Supported types: {0}".format(spatialuploader.SPATIALTYPE2CLASS.keys()))
+            print("Supported types: {0}".format(SPATIALTYPE2CLASS.keys()))
             sys.exit(1)
 
         # Use uploader class to determine correct helper functions
-        self.spatial_obj = spatialuploader.SPATIALTYPE2CLASS[platform]()
+        self.spatial_obj = SPATIALTYPE2CLASS[platform]()
         self.spatial_obj.sdata = sdata
         # Dictates if this will be a 2- or 3-plot figure
         self.has_images = self.spatial_obj.has_images
@@ -781,6 +781,8 @@ class SpatialPanel(pn.viewable.Viewer):
 
     def filter_adata(self):
         # Filter out cells that overlap with the blank space of the image.
+        print(self.dataset_adata.X, file=sys.stderr)
+
         sc.pp.filter_cells(self.dataset_adata, min_genes=self.min_genes)
         sc.pp.normalize_total(self.dataset_adata, inplace=True)
         sc.pp.log1p(self.dataset_adata)
