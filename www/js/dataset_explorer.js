@@ -411,7 +411,7 @@ class ResultItem {
 
         parentElt.querySelector(".js-share-dataset").addEventListener("click", (e) => {
 
-            let currentPage = new URL(`${getRootUrl()}`);
+            let currentPage = new URL(`${getRootUrl()}/p`);
             const params = new URLSearchParams(currentPage.search);
 
             params.set('s', this.shareId);
