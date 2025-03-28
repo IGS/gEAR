@@ -6,6 +6,7 @@ const isMultigene = 1;
 // let selected_genes = new Set();
 
 let manuallyEnteredGenes = new Set();
+let datasetGenes = new Set();
 
 let plotSelectedGenes = []; // genes selected from plot "select" utility
 
@@ -778,6 +779,7 @@ const clearGenes = (event) => {
 	selected_genes.clear();
 	document.getElementById("dropdown-gene-list-cancel").click();	// clear the dropdown
     document.getElementById("clear-genes-btn").classList.remove("is-loading");
+    document.getElementById("genes-manually-entered").value = "";
 }
 
 /**
@@ -790,6 +792,13 @@ const chooseGenes = (event) => {
     // Delete existing tags
     const geneTagsElt = document.getElementById("gene-tags");
     geneTagsElt.replaceChildren();
+
+    // Remove selected genes that are not in datasetGenes
+    for (const gene of selected_genes) {
+        if (!datasetGenes.has(gene)) {
+            selected_genes.delete(gene);
+        }
+    }
 
     document.getElementById("num-selected-genes-c").classList.remove("is-hidden");
     document.getElementById("num-selected-genes").textContent = selected_genes.size;
@@ -892,7 +901,9 @@ const curatorSpecificPlotTypeAdjustments = (plotType) => {
 }
 
 const curatorSpecificUpdateDatasetGenes = async (geneSymbols) => {
-    //pass
+    // Convert geneSymbols to a set
+    // This will be used to check manually entered genes and those from gene lists
+    datasetGenes = new Set(geneSymbols);
 }
 
 const curatorSpecificValidationChecks = () => {
@@ -959,6 +970,13 @@ const fetchDashData = async (datasetId, analysis, plotType, plotConfig)  => {
         }
         return data
     } catch (error) {
+        const data = error?.response?.data;
+        if (data?.success < 1) {
+            const msg = "Exceeded memory limit. Please try to filter or subsample the dataset in the post-plotting view, or contact the gEAR team."
+            createToast(msg);
+            throw error;
+        }
+
         logErrorInConsole(error);
         const msg = "Could not create plot for this dataset and parameters. Please contact the gEAR team."
         createToast(msg);

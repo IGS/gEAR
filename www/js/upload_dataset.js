@@ -463,6 +463,10 @@ const loadUploadsInProgress = async () => {
 
             document.getElementById('submissions-in-progress').classList.remove('is-hidden');
         } else {
+            // remove the last row of the table and hide the submissions in progress section
+            document.querySelector('#submissions-in-progress-table-tbody').innerHTML = '';
+            document.getElementById('submissions-in-progress').classList.add('is-hidden');
+
             document.getElementById('submission-c').classList.remove('is-hidden');
         }
 

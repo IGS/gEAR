@@ -30,9 +30,12 @@ def main():
     dataset_id = form.getvalue('dataset_id')
     session_id = form.getvalue('session_id')
     user = geardb.get_user_from_session_id(session_id)
+    user_id = None
+    if user and user.id:
+        user_id = user.id
 
     ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
-                          session_id=session_id, user_id=user.id)
+                          session_id=session_id, user_id=user_id)
 
     genes_prefix = form.getvalue('genes_prefix')
     filter_mito_perc = form.getvalue('filter_mito_perc')

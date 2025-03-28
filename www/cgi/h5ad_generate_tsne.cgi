@@ -47,9 +47,12 @@ def main():
 
     plot_tsne = int(form.getvalue('plot_tsne'))
     plot_umap = int(form.getvalue('plot_umap'))
+    user_id = None
+    if user and user.id:
+        user_id = user.id
 
     ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
-                          session_id=session_id, user_id=user.id)
+                          session_id=session_id, user_id=user_id)
 
     if genes_to_color:
         genes_to_color = genes_to_color.replace(' ', '')

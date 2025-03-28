@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript --vanilla
 
-install.packages(c("BiocManager", "devtools"), dependencies=TRUE, repos="http://lib.stat.cmu.edu/R/CRAN/")
+# Install required packages
+install.packages(c("BiocManager", "devtools", "remotes"), dependencies=TRUE, repos="http://lib.stat.cmu.edu/R/CRAN/")
 BiocManager::install(version = "3.19", ask=FALSE)  # required for R 4.4.0
-BiocManager::install(c("genesofeve/projectR", "biomaRt"), ask=FALSE)
-library(devtools); install_github("CHuanSite/SJD")
+
+# Individual packages are installed in a separate script so that the lengthy installation process can be cached

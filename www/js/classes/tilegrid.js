@@ -18,12 +18,6 @@ class TileGrid {
         this.datasets = []; // this.getDatasets();
         this.layout = {};   // this.getLayout();
 
-        this.maxCols = 12 // highest number of columns in a row
-        this.arrangementWidth = 1080;
-        // NOTE: The true width will be a bit wider as grid-gap is not accounted for
-        this.rowWidth = this.arrangementWidth / this.maxCols; // Split width into 12 columns
-        this.colHeight = this.rowWidth * 4; // A unit of height for us is 4 units of width (to make a square)
-
         this.tiles = [];
         this.selector = selector;
     }
@@ -61,28 +55,6 @@ class TileGrid {
         selectorElt.replaceChildren();
 
         if (this.type === "dataset") {
-
-            /*
-            if (this.shareId == "8dcfc3f6") {
-                this.datasets = [
-                    {
-                        id: "8dcfc3f6-1965-49b0-be49-e2e4d7236897",
-                        title: "Chris Shults Spatial Transcriptomics Dataset",
-                        dtype: "spatial",
-                        organsim_id: 1,
-                        organism: "Mouse",
-                        owner_id: 622,
-                        has_h5ad: true,
-                        has_tarball: false,
-                        is_downloadable: false,
-                        ownerDisplays: [],
-                        userDisplays: [],
-                        links: []
-                    }
-                ]
-            }
-            */
-
             if (!(this.datasets || this.datasets.length)) {
                 console.error("No datasets found.");
                 return;
@@ -127,48 +99,10 @@ class TileGrid {
         }
         this.tiles = tiles;
 
-
-
         // sort by grid position
         this.tiles.sort((a, b) => a.tile.gridPosition - b.tile.gridPosition);
 
-        // Legacy mode - if all tiles have startCol = 1, then we are in legacy mode
-        // These layouts were generated only with a "width" property
-        const legacyMode = this.tiles.every(tile => tile.tile.startCol === 1);
-
-        // If in legacy mode, then we need to calculate the startCol and endCol and startRow and endRow
-        if (legacyMode) {
-            let currentCol = 1;
-            let currentRow = 1;
-            const maxEndCol = 13;   // 12 grid slots. CSS grid is 1-indexed, so 13 is the max
-            for (const tile of this.tiles) {
-                const tileWidth = Number(tile.tile.width);
-                const tileHeight = Number(tile.tile.height);
-
-                // If endCol is greater than 13, then this tile is in the next row
-                if (currentCol + tileWidth > maxEndCol) {
-                    currentCol = 1;
-                    currentRow++;
-                }
-
-                // TODO: Eventually change "end" values to a "span" value
-                tile.tile.startCol = currentCol;
-                tile.tile.endCol = currentCol + tileWidth;
-                tile.tile.startRow = currentRow;
-                tile.tile.endRow = currentRow + tileHeight;
-
-                currentCol += tileWidth;
-            }
-        }
-
-        // Add grid template information to the selector element.
-        // Max col is going to be 12 (since width is stored as 12-col format in db),
-        // and max row is max(endRow)
-
-        const maxRows = Math.max(...this.tiles.map(tile => tile.tile.endRow)) - 1; // Subtract 1 because endRow is first row tile is not in
-        selectorElt.style.gridTemplateRows = `repeat(${maxRows}, ${this.colHeight}px)`;
-        // if going from single dataset to layout, need to unset gridTemplateColumns. Otherwise the grid will be messed up
-        selectorElt.style.gridTemplateColumns = "";
+        const specialRows = new Set();
 
         // Build the CSS grid using the startRow, startCol, endRow, and endCol properties of each tile
         for (const datasetTile of this.tiles) {
@@ -182,6 +116,26 @@ class TileGrid {
             // Set the grid-area property of the tile. Must be added after the tile is appended to the DOM
             const tileElement = document.getElementById(`tile-${tile.tileId}`);
             tileElement.style.gridArea = `${tile.startRow} / ${tile.startCol} / ${tile.endRow} / ${tile.endCol}`;
+
+            // If the dataset type is epiviz or spatial, then add grid-template-rows so that this tile takes up the full height
+            //if (datasetTile.dataset.dtype === "epiviz" || datasetTile.dataset.dtype === "spatial") {
+            if (datasetTile.dataset.dtype === "spatial") {
+                specialRows.add(tile.startRow);
+            }
+        }
+
+        // Set grid-template-rows for special rows
+        // ? This feels hacky... this property could get crazy long if there are a lot of rows.
+        if (specialRows.size > 0) {
+            const uniqueRows = [...specialRows];
+            let gridTemplateRows = "";
+            const maxStartRow = Math.max(...this.tiles.map(t => t.tile.startRow));
+            // Normal datasets get "auto", epiviz and spatial datasets get "1fr"
+            for (let i = 1; i <= maxStartRow; i++) {
+                gridTemplateRows += uniqueRows.includes(i) ? "1fr " : "auto ";
+            }
+            selectorElt.style.gridTemplateRows = gridTemplateRows;
+
         }
     }
 
@@ -269,6 +223,7 @@ class TileGrid {
      * @param {string} [projectionOpts.patternSource] - The pattern source for projection.
      * @param {string} [projectionOpts.algorithm] - The algorithm for projection.
      * @param {string} [projectionOpts.gctype] - The gene correlation type for projection.
+     * @param {boolean} [projectionOpts.zscore] - If zscore is enabled for projection.
      * @returns {Promise<void>} - A promise that resolves when all displays have been rendered.
      * @throws {Error} - If geneSymbols is not provided or if an error occurs during rendering.
      */
@@ -434,8 +389,8 @@ class DatasetTile {
         // If projection mode is enabled, then perform projection
         if (this.projectR.modeEnabled) {
             if (!this.projectR.projectionId) {
-                const {patternSource, algorithm, gctype} = projectionOpts;
-                await this.getProjection(patternSource, algorithm, gctype);
+                const {patternSource, algorithm, gctype, zscore} = projectionOpts;
+                await this.getProjection(patternSource, algorithm, gctype, zscore);
             }
 
             if (!this.projectR.success) {
@@ -453,11 +408,6 @@ class DatasetTile {
             }
 
             this.resizeCardImage();
-
-            if (this.dataset.dtype === "spatial") {
-                this.handleSpatialDisplay(geneSymbolInput);
-                return;
-            }
 
             // Plot and render the display
             await this.renderDisplay(geneSymbolInput, null, svgScoringMethod);
@@ -480,14 +430,11 @@ class DatasetTile {
         }
 
         // Not projection mode, so get orthologs
-        await this.getOrthologs(geneSymbolInput)
-
-        // If no genes were found, then raise an error
-        // This should never happen as geneSymbolInput should be a key in the orthologs object
-        if (!this.orthologs || Object.keys(this.orthologs).length === 0) {
-
-            createCardMessage(tileId, "danger", "No orthologs were mapped for this dataset. This should not have happened.");
-            throw new Error("Should never happen. Please contact the gEAR team.");
+        try {
+            await this.getOrthologs(geneSymbolInput);
+        }
+        catch (error) {
+            return;
         }
 
         // Make a flattened list of all orthologs to plot
@@ -509,109 +456,8 @@ class DatasetTile {
             this.renderOrthologDropdown();
         }
 
-        if (this.dataset.dtype === "spatial") {
-            this.handleSpatialDisplay(orthologs);
-            return;
-        }
-
         // Plot and render the display
         await this.renderDisplay(orthologs, null, svgScoringMethod);
-    }
-
-    async handleSpatialDisplay(geneSymbolInput) {
-        const tileId = this.tile.tileId;
-        const tileElement = document.getElementById(`tile-${tileId}`);
-
-        // Add loading message
-        createCardMessage(tileId, "info", "Loading spatial display...");
-
-        this.geneSymbol = geneSymbolInput;
-
-        geneSymbolInput = this.type === "single" ? geneSymbolInput[0] : geneSymbolInput;
-
-        // build the URL for the spatial app
-        const urlParams = new URLSearchParams();
-        urlParams.append("dataset_id", this.dataset.id);
-        urlParams.append("gene_symbol", geneSymbolInput);
-
-        // Add spatial parameters to the URL if they exist
-        if (this.spatial.min_genes) {
-            urlParams.append("min_genes", this.spatial.min_genes);
-        }
-        if (this.spatial.selection_x1) {
-            urlParams.append("selection_x1", this.spatial.selection_x1);
-        }
-        if (this.spatial.selection_x2) {
-            urlParams.append("selection_x2", this.spatial.selection_x2);
-        }
-        if (this.spatial.selection_y1) {
-            urlParams.append("selection_y1", this.spatial.selection_y1);
-        }
-
-        if (this.projectR.modeEnabled && this.projectR.projectionId) {
-            urlParams.append("projection_id", this.projectR.projectionId);
-        }
-
-        const url = `/panel/ws/panel_app?${urlParams.toString()}`;
-
-        try {
-            const cardImage = tileElement.querySelector('.card-image');
-            cardImage.replaceChildren();
-
-            if (this.type == "multi") {
-            // Create div element under .card-image, in this we will retrieve image data from an api call and re
-            await this.renderSpatialScanpyDisplay(null, null);
-            }
-
-            if (this.type == "single") {
-
-                const iframe = document.createElement("iframe");
-                // srcDoc html requires Panel static files to be served from the same domain, so use src instead
-                iframe.src = url;
-                iframe.loading="lazy";
-                iframe.referrerPolicy="origin"; // honestly doesn't matter if provided
-                iframe.sandbox="allow-scripts allow-same-origin";
-                cardImage.append(iframe);
-
-                const iframeBody = iframe.contentDocument.body
-
-                // create a mutation observer to monitor the iframe href for changes
-                const observer = new MutationObserver((mutationsList, observer) => {
-                    for (const mutation of mutationsList) {
-                        console.log(mutation);
-                    }
-                });
-
-                observer.observe(iframeBody, { attributes: true, subtree: true, childList: true });
-
-                // Create a polling function to check for changes to the iframe content URL
-                // SAdkins - This is kind of hacky as I cannot get the mutation observer or related callback to work
-                const pollIframe = async () => {
-                    // If iframe contentWindow is null, then return (i.e. switching genes)
-                    if (!iframe.contentWindow) {
-                        return;
-                    }
-
-                    const panelUrl = iframe.contentWindow.location.href;
-                    if (panelUrl !== iframe.src) {
-                        // extract query params from the URL and store to persist across iframe reloads
-                        const urlParams = new URLSearchParams(panelUrl.split("?")[1]);
-                        this.spatial.min_genes = parseInt(urlParams.get("min_genes")) || null;
-                        this.spatial.selection_x1 = parseFloat(urlParams.get("selection_x1")) || null;
-                        this.spatial.selection_x2 = parseFloat(urlParams.get("selection_x2")) || null;
-                        this.spatial.selection_y1 = parseFloat(urlParams.get("selection_y1")) || null;
-                        this.spatial.selection_y2 = parseFloat(urlParams.get("selection_y2")) || null;
-                    }
-                }
-                // Poll the iframe every 3 seconds
-                setInterval(pollIframe, 3000);
-            }
-
-        } catch (error) {
-            console.error(error);
-        } finally {
-            return;
-        }
     }
 
 
@@ -631,8 +477,24 @@ class DatasetTile {
             const data = await apiCallsMixin.fetchOrthologs(this.dataset.id, geneSymbols, geneOrganismId);
 
             this.orthologs = data.mapping;
+
+            // If no genes were found, then raise an error
+            // This should never happen as geneSymbolInput should be a key in the orthologs object
+            if (!this.orthologs || Object.keys(this.orthologs).length === 0) {
+
+                createCardMessage(this.tile.tileId, "danger", "No orthologs were mapped for this dataset. This should not have happened.");
+                throw new Error("Should never happen. Please contact the gEAR team.");
+            }
+
+
         } catch (error) {
+            const data = error?.response?.data;
+            if (data?.success < 1) {
+                createCardMessage(this.tile.tileId, "danger", `Error computing orthologs: ${data.message}`);
+            }
+
             logErrorInConsole(error);
+            throw error;
         }
     }
 
@@ -641,9 +503,10 @@ class DatasetTile {
      * @param {string} patternSource - The pattern source.
      * @param {string} algorithm - The algorithm to use for projection.
      * @param {string} gctype - The gctype.
+     * @param {boolean} zscore - If zscore is enabled for projection.
      * @returns {Promise<void>} A promise that resolves when the projection is retrieved.
      */
-    async getProjection(patternSource, algorithm, gctype) {
+    async getProjection(patternSource, algorithm, gctype, zscore) {
         this.resetAbortController();
         const otherOpts = {}
         if (this.controller) {
@@ -651,7 +514,7 @@ class DatasetTile {
         }
 
         try {
-            const data = await apiCallsMixin.checkForProjection(this.dataset.id, patternSource, algorithm);
+            const data = await apiCallsMixin.checkForProjection(this.dataset.id, patternSource, algorithm, zscore);
             // If file was not found, put some loading text in the plot
             if (! data.projection_id) {
                 createCardMessage(this.tile.tileId, "info", "Creating projection. This may take a few minutes.");
@@ -665,7 +528,7 @@ class DatasetTile {
         this.projectR.performingProjection = true;
 
         try {
-            const data = await apiCallsMixin.fetchProjection(this.dataset.id, this.projection_id, patternSource, algorithm, gctype, otherOpts);
+            const data = await apiCallsMixin.fetchProjection(this.dataset.id, this.projection_id, patternSource, algorithm, gctype, zscore, otherOpts);
             const message = data.message || null;
             if (data.success < 1) {
                 // throw error with message
@@ -681,7 +544,12 @@ class DatasetTile {
                 return;
             }
 
-            createCardMessage(this.tile.tileId, "danger", error);
+            const data = error?.response?.data;
+            if (data?.success < 1) {
+                createCardMessage(this.tile.tileId, "danger", `Error computing projections: ${data.message}`);
+            } else {
+                createCardMessage(this.tile.tileId, "danger", error);
+            }
 
             logErrorInConsole(error);
         } finally {
@@ -1006,7 +874,6 @@ class DatasetTile {
         if (this.dataset.dtype === "spatial") {
             tileElement.querySelector('.js-expand-display').classList.add("is-hidden");
             tileElement.querySelector('.js-shrink-display').classList.add("is-hidden");
-            dropdownContent.querySelector('.dropdown-item[data-tool="display"]').classList.add("is-hidden");
         }
 
         // Add event listener to dropdown trigger
@@ -1316,7 +1183,7 @@ class DatasetTile {
         // add console warning if default display id was not found in the user or owner display lists
         if (!userDisplay && !ownerDisplay && !layoutDisplay) {
             // This can happen if the display ID for a layout member is owned by a different user that is not the dataset owner.
-            console.warn(`Selected display id ${this.currentDisplayId} for dataset ${this.dataset.title} was not found. Will show first available.`);
+            console.warn(`Selected display id '${this.currentDisplayId}' for dataset ${this.dataset.title} was not found. Will show first available.`);
 
             // last chance... if still no display config (i.e default display was not found), then use the first display config
             if (!userDisplay) userDisplay = this.dataset.userDisplays.find((d) => d.plotly_config.hasOwnProperty(filterKey));
@@ -1326,6 +1193,27 @@ class DatasetTile {
         // if the display config was not found, then do not render
         if (!userDisplay && !ownerDisplay && !layoutDisplay) {
             console.warn(`Display config for dataset ${this.dataset.title} was not found.`)
+
+            // If the dataset is spatial, we can still render a spatial panel
+            if (this.dataset.dtype === "spatial") {
+                console.log("Rendering configless spatial panel display.");
+                const display = {
+                    plot_type: "spatial_panel",
+                    plotly_config: {
+                        gene_symbol: geneSymbolInput,
+                    }
+                };
+
+                // if projection ran, add the projection info to the plotly config
+                if (this.projectR.modeEnabled && this.projectR.projectionId) {
+                    display.plotly_config.projection_id = this.projectR.projectionId;
+                }
+
+                await this.renderSpatialPanelDisplay(display, otherOpts);
+                return;
+            }
+
+
             // Let the user know that the display config was not found
             const message = `This dataset has no viewable curations for this view. Create a new curation in the ${this.type === "single" ? "Single-gene" : "Multi-gene"} Curator to view this dataset.`;
             createCardMessage(this.tile.tileId, "warning", message);
@@ -1391,10 +1279,17 @@ class DatasetTile {
 
             } else if (display.plot_type === "svg") {
                 await this.renderSVG(display, this.svgScoringMethod, otherOpts);
+            } else if (display.plot_type === "spatial_panel") {
+                await this.renderSpatialPanelDisplay(display, otherOpts);
             } else if (display.plot_type === "epiviz") {
                 await this.renderEpivizDisplay(display, otherOpts);
             } else if (this.type === "multi") {
-                await this.renderMultiGeneDisplay(display, otherOpts);
+                if (this.dataset.dtype === "spatial") {
+                    // Matplotlib-based display for spatial datasets
+                    await this.renderSpatialScanpyDisplay(null, null);
+                } else {
+                    await this.renderMultiGeneDisplay(display, otherOpts);
+                }
             } else {
                 throw new Error(`Display config for dataset ${this.dataset.id} has an invalid plot type ${display.plot_type}.`);
             }
@@ -1536,10 +1431,20 @@ class DatasetTile {
         const plotType = display.plot_type;
         const plotConfig = display.plotly_config;
 
+        let data;
         // Get data and set up the image area
-        const data = await apiCallsMixin.fetchDashData(datasetId, analysisObj, plotType, plotConfig, otherOpts);
-        if (data?.success < 1) {
-            throw new Error (data?.message ? data.message : "Unknown error.")
+        try {
+            data = await apiCallsMixin.fetchDashData(datasetId, analysisObj, plotType, plotConfig, otherOpts);
+            if (data?.success < 1) {
+                throw new Error (data?.message ? data.message : "Unknown error.")
+            }
+        }
+        catch (error) {
+            data = error?.response?.data;
+            if (data?.success < 1) {
+                createCardMessage(this.tile.tileId, "danger", `Error showing plot: ${data.message}`);
+            }
+            throw error;
         }
         const {plot_json: plotJson} = data;
 
@@ -1826,6 +1731,158 @@ class DatasetTile {
         return;
     }
 
+    async renderSpatialPanelDisplay(display, otherOpts) {
+
+        const tileId = this.tile.tileId;
+        const tileElement = document.getElementById(`tile-${tileId}`);
+
+        // Add loading message
+        createCardMessage(tileId, "info", "Loading spatial display...");
+
+        const plotConfig = display.plotly_config;
+        const {gene_symbol: geneSymbol} = plotConfig;
+
+        // build spatial object from the plotly config
+        // This spatial object will keep the current state as the user switches genes
+        this.spatial = {
+            min_genes: plotConfig.min_genes,
+            selection_x1: plotConfig.selection_x1,
+            selection_x2: plotConfig.selection_x2,
+            selection_y1: plotConfig.selection_y1,
+            selection_y2: plotConfig.selection_y2,
+            projection_id: plotConfig.projection_id
+        };
+
+        // build the URL for the spatial app
+        const urlParams = new URLSearchParams();
+        urlParams.append("dataset_id", this.dataset.id);
+        urlParams.append("gene_symbol", geneSymbol);
+
+        // Add spatial parameters to the URL if they exist
+        if (this.spatial.min_genes) {
+            urlParams.append("min_genes", this.spatial.min_genes);
+        }
+        if (this.spatial.selection_x1) {
+            urlParams.append("selection_x1", this.spatial.selection_x1);
+        }
+        if (this.spatial.selection_x2) {
+            urlParams.append("selection_x2", this.spatial.selection_x2);
+        }
+        if (this.spatial.selection_y1) {
+            urlParams.append("selection_y1", this.spatial.selection_y1);
+        }
+        if (this.spatial.selection_y2) {
+            urlParams.append("selection_y2", this.spatial.selection_y2);
+        }
+
+
+        if (this.spatial.projection_id) {
+            urlParams.append("projection_id", this.spatial.projection_id);
+        }
+
+        const url = `/panel/ws/panel_app?${urlParams.toString()}`;
+
+        try {
+            const cardImage = tileElement.querySelector('.card-image');
+            cardImage.replaceChildren();
+
+            const iframe = document.createElement("iframe");
+            // srcDoc html requires Panel static files to be served from the same domain, so use src instead
+            iframe.src = url;
+            iframe.loading="lazy";
+            iframe.referrerPolicy="origin"; // honestly doesn't matter if provided
+            iframe.sandbox="allow-scripts allow-same-origin";
+            cardImage.append(iframe);
+
+            const iframeSearch = iframe.contentWindow.location.search;
+            let urlParams = new URLSearchParams(iframeSearch);  // initially empty
+
+            // Create a polling function to check for changes to the iframe content URL
+            // SAdkins - This is kind of hacky as I cannot get the mutation observer or related callback to work
+            const pollIframe = async () => {
+                // If iframe contentWindow is null, then return (i.e. switching genes)
+                if (!iframe.contentWindow) {
+                    return;
+                }
+
+                // If params are the same, then return
+                const newUrlParams = new URLSearchParams(iframe.contentWindow.location.search);
+                if (urlParams.toString() === newUrlParams.toString()) {
+                    return;
+                }
+
+                urlParams = newUrlParams;
+
+                // extract query params from the URL and store to persist across iframe reloads
+                this.spatial.min_genes = parseInt(urlParams.get("min_genes")) || null;
+                this.spatial.selection_x1 = parseFloat(urlParams.get("selection_x1")) || null;
+                this.spatial.selection_x2 = parseFloat(urlParams.get("selection_x2")) || null;
+                this.spatial.selection_y1 = parseFloat(urlParams.get("selection_y1")) || null;
+                this.spatial.selection_y2 = parseFloat(urlParams.get("selection_y2")) || null;
+
+                if (urlParams.get("save")) {
+                    urlParams.delete("save");
+
+                    // save the spatial parameters as a new configured display
+                    const displayName = urlParams.get("display_name");
+                    const makeDefault = urlParams.get("make_default");
+
+                    // load the URL so that the "save" parameter is removed.
+                    // This should prevent endless loop of saving the display
+                    // ? Alternatively should "save" be synced after button is clicked, then immediately unsynced in Panel?
+                    iframe.src = `/panel/ws/panel_app?${urlParams.toString()}`;
+
+                    try {
+                        if (!apiCallsMixin.sessionId) {
+                            createToast("Must be logged in to save as a display.");
+                            throw new Error("Must be logged in to save as a display.");
+                        }
+                        await this.saveSpatialParameters(displayName, makeDefault);
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+            }
+
+            // Poll the iframe every 3 seconds
+            setInterval(pollIframe, 3000);
+
+        } catch (error) {
+            console.error(error);
+        } finally {
+            return;
+        }
+    }
+
+    async saveSpatialParameters(displayName, makeDefault) {
+        const spatialConfig = this.spatial;
+        if (this.type === "single" ) {
+            spatialConfig["gene_symbol"] = this.geneSymbol;
+        }
+        const datasetId = this.dataset.id;
+        const plotType = "spatial_panel";
+        const isMultigene = (this.type === "single") ? 0 : 1;  // Should be 0 for now.
+
+        try {
+            const {display_id: displayId, success: saveSuccess} = await apiCallsMixin.saveDatasetDisplay(datasetId, null, displayName, plotType, spatialConfig);
+            if (!saveSuccess) {
+                throw new Error("Could not save this new display. Please contact the gEAR team.");
+            }
+            createToast("Display saved.", "is-success");
+
+            if (!makeDefault) return;
+
+            const {success: defaultSuccess} = await apiCallsMixin.saveDefaultDisplay(datasetId, displayId, isMultigene);
+            if (!defaultSuccess) {
+                throw new Error("Could not make this display as your default, but it is saved. Please contact the gEAR team.");
+            }
+
+        } catch (error) {
+            logErrorInConsole(error);
+            createToast(error);
+            return
+        }
+    }
 
     /**
      * Resets the AbortController and cancels any previous axios requests.

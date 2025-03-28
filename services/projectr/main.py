@@ -70,6 +70,7 @@ def index():
     algorithm = req_json['algorithm']
     genecart_id = req_json["genecart_id"]
     dataset_id = req_json["dataset_id"]
+    full_output = req_json.get("full_output", False)
 
     global cloud_logging
     try:
@@ -82,13 +83,17 @@ def index():
     write_entry("projectr", "INFO", "Dataset ID: {}".format(dataset_id))
     write_entry("projectr", "INFO", "Genecart ID: {}".format(genecart_id))
 
-
     # pd.read_json gives a FutureWarning, and suggest to wrap the json in StringIO.  Needed for pandas 2.x
     target = StringIO(target)
     loadings = StringIO(loadings)
 
     target_df = pd.read_json(target, orient="split")
     loading_df = pd.read_json(loadings, orient="split")
+
+    # fill NaN values with 0
+    # This should have been done in the data processing step, but just in case.
+    target_df.fillna(0, inplace=True)
+    loading_df.fillna(0, inplace=True)
 
     if target_df.empty:
         description = "Target (dataset) dataframe is empty."
@@ -104,20 +109,37 @@ def index():
     write_entry("projectr", "INFO", "TARGET_DF SHAPE - {}".format(target_df.shape))
     write_entry("projectr", "INFO", "LOADING_DF SHAPE - {}".format(loading_df.shape))
 
+    response = {
+        "projection": pd.DataFrame().to_json(orient="split"),
+        "pval": pd.DataFrame().to_json(orient="split")
+    }
+
     # https://github.com/IGS/gEAR/issues/442#issuecomment-1317239909
     # Basically this is a stopgap until projectR has an option to remove
     # centering around zero for PCA loadings.  Chunking the data breaks
     # the output due to the centering around zero step.
     try:
         if algorithm == "pca":
-            return jsonify(do_pca_projection(target_df,loading_df).to_json(orient="split"))
+            response["projection"] = do_pca_projection(target_df, loading_df).to_json(orient="split")
         elif algorithm == "binary":
-            return jsonify(do_binary_projection(target_df, loading_df).to_json(orient="split"))
+            response["projection"] = do_binary_projection(target_df, loading_df).to_json(orient="split")
         elif algorithm == "2silca":
             pass
         elif algorithm in ["nmf", "fixednmf"]:
             from rfuncs import run_projectR_cmd
-            projection_patterns_df = run_projectR_cmd(target_df, loading_df, algorithm).transpose()
+            projection_patterns = run_projectR_cmd(target_df, loading_df, algorithm, full_output)
+            if full_output and algorithm == "nmf":
+                # R code: projectionFit <- list('projection'=projectionPatterns, 'pval'=pval.matrix)
+                # "projection" is a DataFrame (index 0)
+                # "pval" is a matrix (index 1)
+
+                projection_patterns_df = projection_patterns[0].transpose()
+                projection_pval_df = projection_patterns[1].transpose()
+                response["projection"] = projection_patterns_df.to_json(orient="split")
+                response["pval"] = projection_pval_df.to_json(orient="split")
+
+            else:
+                projection_patterns_df = projection_patterns.transpose()
         else:
             raise ValueError("Algorithm {} is not supported".format(algorithm))
     except Exception as e:
@@ -126,7 +148,7 @@ def index():
 
         return abort(500, description=description)
 
-    return jsonify(projection_patterns_df.to_json(orient="split"))
+    return jsonify(response)
 
 if __name__ == "__main__":
     app.run(debug=debug, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
