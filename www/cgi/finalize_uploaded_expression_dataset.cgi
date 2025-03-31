@@ -128,7 +128,7 @@ def main():
         tarball_file = os.path.join(dataset_upload_dir, f'{share_uid}.tar.gz')
         tarball_dest = os.path.join(dataset_final_dir, f'{dataset_id}.tar.gz')
 
-        print(f"DEBUG: Attempting to do: mv {tarball_file} {tarball_dest}", file=sys.stderr)
+        #print(f"DEBUG: Attempting to do: mv {tarball_file} {tarball_dest}", file=sys.stderr)
 
         try:
             shutil.move(tarball_file, tarball_dest)
