@@ -205,8 +205,6 @@ const buildStateURL = () => {
     const url = new URL('/expression.html', window.location.origin);
 
     // add the manually-entered genes
-    // TODO: need to combine selected_genes here to accommodate the case where a gene cart
-    //  chosen but the individual genes removed.
 
     const manuallyEnteredGenes = Array.from(manually_entered_genes);
     if (manuallyEnteredGenes.length > 0) {
@@ -228,15 +226,6 @@ const buildStateURL = () => {
     if (selected_gene_lists.size > 0) {
         const geneCartShareIds = Array.from(selected_gene_lists);
         url.searchParams.append('gene_lists', geneCartShareIds.join(','));
-
-        // select all genes from the gene lists
-        selected_genes = new Set();
-        for (const geneCartShareId of geneCartShareIds) {
-            const geneList = gene_cart_genes[geneCartShareId];
-            for (const gene of geneList) {
-                selected_genes.add(gene);
-            }
-        }
     }
 
     // add the dataset collections

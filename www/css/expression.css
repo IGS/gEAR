@@ -84,7 +84,8 @@ ul#go-terms li {
 
 #result-panel-grid {
     display: grid;
-    grid-template-columns: repeat(12, 90px);    /* setting px instead of fr prevernts distortions if grid dimensions change */
+    grid-auto-rows: 360px;
+    grid-auto-columns: 90px; /* Explicitly set column width. Internally we limit to 12 columns */
     grid-gap: 0.5em;
     width: 1168px;  /* grid width + 2*border width + grid-gap */
 }

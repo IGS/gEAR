@@ -42,7 +42,7 @@ def convert_r_matrix_to_r_df(mtx):
     r_df = ro.r["as.data.frame"]
     return r_df(mtx)
 
-def run_projectR_cmd(target_df, loading_df, algorithm):
+def run_projectR_cmd(target_df, loading_df, algorithm, full_output=False):
     """
     Convert input Pandas dataframes to R matrix.
     Pass the inputs into the projectR function written in R.
@@ -85,7 +85,24 @@ def run_projectR_cmd(target_df, loading_df, algorithm):
             try:
                 if algorithm == "nmf":
                     projectR = importr('projectR')
-                    projection_patterns_r_matrix = projectR.projectR(data=target_r_matrix, loadings=loading_r_matrix, full=False)
+                    if full_output:
+                        # R code: projectionFit <- list('projection'=projectionPatterns, 'pval'=pval.matrix)
+                        projection_fit_r = projectR.projectR(data=target_r_matrix, loadings=loading_r_matrix, full=True)
+                        # convert obj back to Python
+                        projection_fit = ro.conversion.rpy2py(projection_fit_r)
+
+                        # Both projection and pval are R-style matrices that need to be converted to R-style dataframes
+                        projection_patterns_r_matrix = projection_fit[0]
+                        pval_r_matrix = projection_fit[1]
+                        projection_patterns_r_df = convert_r_matrix_to_r_df(projection_patterns_r_matrix)
+                        pval_r_df = convert_r_matrix_to_r_df(pval_r_matrix)
+
+                        with local_rules:
+                            projection_patterns_df = ro.conversion.rpy2py(projection_patterns_r_df)
+                            pval_df = ro.conversion.rpy2py(pval_r_df)
+                            return [projection_patterns_df, pval_df]
+                    else:
+                        projection_patterns_r_matrix = projectR.projectR(data=target_r_matrix, loadings=loading_r_matrix, full=False)
                 elif algorithm == "fixednmf":
                     sjd = importr('SJD')
                     loading_list = ro.ListVector({"genesig": loading_r_matrix})

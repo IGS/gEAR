@@ -40,6 +40,8 @@ def _on_request(channel, method_frame, properties, body):
     session_id = deserialized_body["session_id"]
     scope = deserialized_body["scope"]
     algorithm = deserialized_body["algorithm"]
+    zscore = deserialized_body["zscore"]
+    full_output = deserialized_body["full_output"]
 
     with open(stream, "a") as fh:
         print("{} - [x] - Received request for dataset {} and genecart {}".format(pid, dataset_id, genecart_id), flush=True, file=fh)
@@ -47,7 +49,7 @@ def _on_request(channel, method_frame, properties, body):
 
         try:
             # Run the callback function to generate the reply payload
-            output_payload = projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, algorithm, fh)
+            output_payload = projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, algorithm, zscore, full_output, fh)
 
             # Send the output back to the Flask API call
             channel.basic_publish(

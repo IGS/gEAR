@@ -6,6 +6,7 @@ from io import StringIO
 import pandas as pd
 import asyncio, aiohttp
 import gc
+import scipy.stats as stats
 
 from os import getpid
 from time import sleep
@@ -14,7 +15,7 @@ from more_itertools import sliced
 import geardb
 from gear.orthology import get_ortholog_file, map_dataframe_genes
 
-from .common import get_adata_from_analysis, get_spatial_adata
+from .common import get_adata_from_analysis, get_spatial_adata, catch_memory_error
 
 # Parse gEAR config
 # https://stackoverflow.com/a/35904211/1368079
@@ -64,6 +65,8 @@ parser = reqparse.RequestParser(bundle_errors=True)
 parser.add_argument('genecart_id', help='Weighted (pattern) genecart id required', type=str, required=True)
 parser.add_argument('scope', type=str, required=False)
 parser.add_argument('algorithm', help="An algorithm needs to be provided", type=str,  required=False)
+parser.add_argument('zscore', help="If true, compute z-score calculation before running projectR (or assume it has been calculated)", type=bool, default=False, required=False)
+parser.add_argument("full_output", help="If true, return the full output of the projection, which includes a p-value matrix", type=bool, default=False, required=False)
 parser.add_argument('analysis', type=str, required=False)   # not used at the moment
 
 run_projectr_parser = parser.copy()
@@ -71,6 +74,10 @@ run_projectr_parser.add_argument('projection_id', type=str, required=False)
 
 def build_projection_csv_path(dir_id, file_id, scope):
     """Build the path to the csv file for a given projection. Returns a Path object."""
+    if scope == "pval":
+        # pval files are extra output for the standard "dataset" projections
+        return Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dir_id, "{}_pval.csv".format(file_id))
+
     return Path(PROJECTIONS_BASE_DIR).joinpath("by_{}".format(scope), dir_id, "{}.csv".format(file_id))
 
 def build_projection_json_path(dir_id, scope):
@@ -108,14 +115,37 @@ def calculate_chunk_size(num_genes, num_samples):
     return int(num_samples / total_data_chunks) # take floor.  returned value * num_genes < total_data_limit
 
 def concat_fetch_results_to_dataframe(res_jsons):
-    # Concatenate the dataframes back together again
-    res_dfs = [pd.read_json(StringIO(res_json), orient="split", dtype="float32") for res_json in res_jsons]
-    projection_patterns_df = pd.concat(res_dfs)
-    return projection_patterns_df
+    """
+    Concatenate the dataframes back together again for both "projection" and "pval" keys.
+    "pval" may be an empty dataframe.
+    """
+    projection_dfs = []
+    pval_dfs = []
 
-def create_new_uuid(dataset_id, genecart_id, algorithm):
+    for res_json in res_jsons:
+        res_dict = pd.read_json(StringIO(res_json), orient="split", dtype="float32")
+        if "projection" in res_dict:
+            projection_dfs.append(pd.read_json(StringIO(res_dict["projection"]), orient="split", dtype="float32"))
+        if "pval" in res_dict and res_dict["pval"]:
+            pval_dfs.append(pd.read_json(StringIO(res_dict["pval"]), orient="split", dtype="float32"))
+
+    projection_patterns_df = pd.concat(projection_dfs, ignore_index=True) if projection_dfs else pd.DataFrame()
+    pval_patterns_df = pd.concat(pval_dfs, ignore_index=True) if pval_dfs else pd.DataFrame()
+
+    return projection_patterns_df, pval_patterns_df
+
+def create_new_uuid(*args):
+    """
+    Generates a new UUID based on the provided arguments.
+
+    Args:
+        *args: Variable length argument list. Each argument will be converted to a string and concatenated with a hyphen.
+
+    Returns:
+        uuid.UUID: A UUID object generated from the MD5 hash of the concatenated string of arguments.
+    """
     import hashlib, uuid
-    uuid_str = "{}-{}-{}".format(dataset_id, genecart_id, algorithm)
+    uuid_str = "-".join(map(str, args))
     md5 = hashlib.md5()
     md5.update(uuid_str.encode("utf-8"))
     return uuid.UUID(md5.hexdigest())
@@ -172,7 +202,7 @@ def limited_as_completed(coros, limit):
     while futures:
         yield first_to_finish()
 
-async def fetch_all(target_df, loading_df, algorithm, genecart_id, dataset_id, chunk_size):
+async def fetch_all(target_df, loading_df, algorithm, full_output, genecart_id, dataset_id, chunk_size):
     """Create coroutine tasks out of all chunked projection cloud run service POST requests."""
 
     async with aiohttp.ClientSession() as client:
@@ -182,6 +212,7 @@ async def fetch_all(target_df, loading_df, algorithm, genecart_id, dataset_id, c
                 "target": chunk_df.to_json(orient="split")
                 , "loadings": loadings_json
                 , "algorithm": algorithm
+                , "full_output": full_output
                 , "genecart_id":genecart_id # This helps in identifying which combinations are going through
                 , "dataset_id":dataset_id
                 }) for chunk_df in chunk_dataframe(target_df, chunk_size))
@@ -215,9 +246,16 @@ async def fetch_one(client, payload):
 
         return await response.json()
 
-def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, algorithm, fh):
+@catch_memory_error()
+def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, algorithm, zscore, full_output, fh):
     success = 1
     message = ""
+
+    if not zscore:
+        zscore = False
+
+    if not full_output:
+        full_output = False
 
     if not fh:
         fh=sys.stderr
@@ -297,7 +335,6 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     # Drop duplicate unique identifiers. This may happen if two unweighted gene cart genes point to the same Ensembl ID in the db
     loading_df = loading_df[~loading_df.index.duplicated(keep='first')]
 
-
     is_spatial = False
     if ds.dtype == "spatial":
         is_spatial = True
@@ -367,10 +404,18 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     # Reduce the size of both dataframes before POSTing
     adata = adata[:,index_intersection]
     loading_df = loading_df.loc[index_intersection]
+    loading_df = loading_df.fillna(0) # Fill NaN values with 0
 
     # Ensure target dataset has genes as rows
     # ! The to_df() seems to be a memory_chokepoint, doubling the memory used by the adata object
     target_df = adata.to_df().transpose()
+
+    # If zscore is enabled, scale the target_df according to zscore by row (genes)
+    # For NaN values, they are ignored in the calculation
+    if zscore:
+        target_df = stats.zscore(target_df, axis=1, nan_policy="omit")
+
+    target_df = target_df.fillna(0) # Fill NaN values with 0
 
     # Close dataset adata so that we do not have a stale opened object
     adata.file.close()
@@ -432,12 +477,14 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         normalized_columns_sums = columns_sums / columns_sums.min()
         target_df = target_df.div(normalized_columns_sums, axis=1)
 
+    projection_pval_df = pd.DataFrame()
+
     if this.servercfg['projectR_service']['cloud_run_enabled'].startswith("1"):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
         try:
-            results = loop.run_until_complete(fetch_all(target_df, loading_df, algorithm, genecart_id, dataset_id, chunk_size))
+            results = loop.run_until_complete(fetch_all(target_df, loading_df, algorithm, full_output, genecart_id, dataset_id, chunk_size))
             print("INFO: All fetch tasks have completed", file=fh)
         except Exception as e:
             print(str(e), file=fh)
@@ -457,7 +504,11 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
             loop.close()
 
         print("INFO: Concatenating results to dataframe", file=fh)
-        projection_patterns_df = concat_fetch_results_to_dataframe(results)
+
+        # single result = {"projection": "json", "pval": "json"}
+        # concatenate all the results into a single DataFrame for each key
+
+        projection_patterns_df, projection_pval_df = concat_fetch_results_to_dataframe(results)
 
         del results
         gc.collect()    # trying to clear memory
@@ -477,6 +528,8 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         # the copying of the dataset observation metadata when this output is converted
         # to an AnnData object. So reorder back to dataset sample order.
         projection_patterns_df = projection_patterns_df.reindex(adata.obs.index.tolist())
+        if not projection_pval_df.empty:
+            projection_pval_df = projection_pval_df.reindex(adata.obs.index.tolist())
     else:
         # If not using the cloud run service, do this on the server
         abs_path_gear = Path(__file__).resolve().parents[3]
@@ -499,7 +552,17 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
                 pass
             elif algorithm in ["nmf", "fixednmf"]:
                 from projectr.rfuncs import run_projectR_cmd
-                projection_patterns_df = run_projectR_cmd(target_df, loading_df, algorithm).transpose()
+                projection_patterns = run_projectR_cmd(target_df, loading_df, algorithm, full_output)
+
+                if full_output and algorithm == "nmf":
+                    # R code: projectionFit <- list('projection'=projectionPatterns, 'pval'=pval.matrix)
+                    # "projection" is a DataFrame (index 0)
+                    # "pval" is a matrix (index 1)
+                    projection_patterns_df = projection_patterns[0].transpose()
+                    projection_pval_df = projection_patterns[1].transpose()
+
+                else:
+                    projection_patterns_df = projection_patterns.transpose()
             else:
                 raise ValueError("Algorithm {} is not supported".format(algorithm))
         except Exception as e:
@@ -524,6 +587,34 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
 
     # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
     projection_patterns_df = projection_patterns_df.set_axis(loading_df.columns, axis="columns")
+    if not projection_pval_df.empty:
+        projection_pval_df = projection_pval_df.set_axis(loading_df.columns, axis="columns")
+
+    # Check that all DataFrame values are not null.  If not, we cannot proceed.
+    # Ultimately, we cannot plot this and do not want to write to file.
+    if projection_patterns_df.isnull().values.any():
+        message = "There are NaN values in the projection patterns.  Cannot proceed."
+        remove_lock_file(lock_fh, lockfile)
+        return {
+            'success': -1
+            , 'message': message
+            , "num_common_genes": intersection_size
+            , "num_genecart_genes": num_loading_genes
+            , "num_dataset_genes": num_target_genes
+        }
+
+    # if full_output = True, then write the pval matrix to file using the same name as the projection file
+    if full_output:
+        if projection_pval_df.empty:
+            return {
+                "success": -1
+                , "message": "No pval matrix was generated by projectR."
+                , "num_common_genes": intersection_size
+                , "num_genecart_genes": num_loading_genes
+                , "num_dataset_genes": num_target_genes
+            }
+        projection_pval_csv = build_projection_csv_path(dataset_id, projection_id, "pval")
+        projection_pval_df.to_csv(projection_pval_csv)
 
     print("INFO: Writing projection patterns to {}".format(dataset_projection_csv), file=fh)
     projection_patterns_df.to_csv(dataset_projection_csv)
@@ -539,6 +630,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     dataset_projections_dict.setdefault(genecart_id, []).append({
         "uuid": projection_id
         , "algorithm": algorithm
+        , "zscore": zscore
         , "num_common_genes": intersection_size
         , "num_genecart_genes": num_loading_genes
         , "num_dataset_genes": num_target_genes
@@ -561,6 +653,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     genecart_projections_dict.setdefault(dataset_id, []).append({
         "uuid": projection_id
         , "algorithm": algorithm
+        , "zscore": zscore
         , "num_common_genes": intersection_size
         , "num_genecart_genes": num_loading_genes
         , "num_dataset_genes": num_target_genes
@@ -589,6 +682,10 @@ class ProjectROutputFile(Resource):
         args = parser.parse_args()
         genecart_id = args['genecart_id']
         algorithm = args['algorithm']
+        zscore = args['zscore']
+
+        if not zscore:
+            zscore = False
 
         # Create the directory if it doesn't exist
         # NOTE: The "mkdir" and "touch" commands are not atomic. Do not fail if directory or file was created by another process.
@@ -621,7 +718,6 @@ class ProjectROutputFile(Resource):
         # "cart.{projection_id}" added for backwards compatability
         if not (genecart_id in projections_dict or "cart.{}".format(genecart_id) in projections_dict):
             # NOTE: tried to write JSON with empty list but it seems that empty keys are skipped over.
-
             return {
                 "projection_id": None
             }
@@ -629,7 +725,6 @@ class ProjectROutputFile(Resource):
         # If legacy version exists, copy to current format.
         if (not genecart_id in projections_dict) and "cart.{}".format(genecart_id) in projections_dict:
             print("Copying legacy cart.{} to {} in the projection json file.".format(genecart_id, genecart_id), file=sys.stderr)
-            projections_dict[genecart_id] == projections_dict["cart.{}".format(genecart_id)]
             projections_dict.pop("cart.{}".format(genecart_id), None)
             # move legacy genecart projection stuff to new version
             print("Moving legacy cart.{} contents to {} in the projection genecart directory.".format(genecart_id, genecart_id), file=sys.stderr)
@@ -637,11 +732,14 @@ class ProjectROutputFile(Resource):
             old_genecart_projection_json_file.parent.rename(dataset_projection_json_file.parent)
 
         for config in projections_dict[genecart_id]:
-            # Handle legacy algorithm
+            # Handle legacy JSON outputs (i.e. old or non-existing names)
             if "is_pca" in config:
                 config["algorithm"] = "pca" if config["is_pca"] == 1 else "nmf"
+            if "zscore" not in config:
+                config["zscore"] = False
 
-            if algorithm == config["algorithm"]:
+            # Check if the config matches the current request (full output does not matter here)
+            if algorithm == config["algorithm"] and zscore == config["zscore"]:
                 projection_id = config['uuid']
                 dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
                 return {
@@ -666,47 +764,69 @@ class ProjectR(Resource):
         algorithm = args['algorithm']
         projection_id = args['projection_id']
         scope = args['scope']
+        zscore = args['zscore']
+        full_output = args['full_output']
 
-        projection_id = projection_id or create_new_uuid(dataset_id, genecart_id, algorithm)
+        # Currently only NMF runs through the actual projectR code and can give full output
+        if algorithm not in ["nmf"]:
+            full_output = False
+
+        uuid_args = (dataset_id, genecart_id, algorithm, zscore)
+
+        projection_id = projection_id or create_new_uuid(*uuid_args)
         dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
         dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
+
+        run_projectr = True
 
         # If projectR has already been run, we can just load the csv file.  Otherwise, let it rip!
         if Path(dataset_projection_csv).is_file():
             print("INFO: Found exisitng dataset_projection_csv file {}, loading it.".format(dataset_projection_csv))
 
-            # Projection already exists, so we can just return info we want to return in a message
-            with open(dataset_projection_json_file) as projection_fh:
-                projections_dict = json.load(projection_fh)
-            common_genes = None
-            genecart_genes = None
-            dataset_genes = None
+            run_projectr = False
+            if full_output:
+                # does pval matrix exist?
+                pval_csv = build_projection_csv_path(dataset_id, projection_id, "pval")
+                if not Path(pval_csv).is_file():
+                    print("INFO: Full output requested but pval matrix file {} does not exist.".format(pval_csv))
+                    run_projectr = True
 
-            # Get projection info from the json file if it already exists
-            if genecart_id in projections_dict:
-                for config in projections_dict[genecart_id]:
-                    # Handle legacy algorithm
-                    if "is_pca" in config:
-                        config["algorithm"] = "pca" if config["is_pca"] == 1 else "nmf"
+            if not run_projectr:
+                # Projection already exists, so we can just return info we want to return in a message
+                with open(dataset_projection_json_file) as projection_fh:
+                    projections_dict = json.load(projection_fh)
+                common_genes = None
+                genecart_genes = None
+                dataset_genes = None
 
-                    if algorithm == config["algorithm"]:
-                        common_genes = config.get('num_common_genes', None)
-                        genecart_genes = config.get('num_genecart_genes', -1)
-                        dataset_genes = config.get('num_dataset_genes', -1)
-                        break
+                # Get projection info from the json file if it already exists
+                if genecart_id in projections_dict:
+                    for config in projections_dict[genecart_id]:
+                        # Handle legacy JSON outputs (i.e. old or non-existing names)
+                        if "is_pca" in config:
+                            config["algorithm"] = "pca" if config["is_pca"] == 1 else "nmf"
+                        if "zscore" not in config:
+                            config["zscore"] = False
 
-            message = ""
-            if common_genes:
-                message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(common_genes, dataset_genes, genecart_genes)
+                        # Check if the config matches the current request
+                        if algorithm == config["algorithm"] and zscore == config["zscore"]:
+                                common_genes = config.get('num_common_genes', None)
+                                genecart_genes = config.get('num_genecart_genes', -1)
+                                dataset_genes = config.get('num_dataset_genes', -1)
+                                break
 
-            return {
-                "success": 1
-                , "message": message
-                , "projection_id": projection_id
-                , "num_common_genes": common_genes
-                , "num_genecart_genes": genecart_genes
-                , "num_dataset_genes": dataset_genes
-            }
+                message = ""
+                if common_genes:
+                    message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(common_genes, dataset_genes, genecart_genes)
+
+                return {
+                    "success": 1
+                    , "message": message
+                    , "projection_id": projection_id
+                    , "num_common_genes": common_genes
+                    , "num_genecart_genes": genecart_genes
+                    , "num_dataset_genes": dataset_genes
+                }
 
 
         # Create a messaging queue if necessary. Make it persistent across the lifetime of the Flask server.
@@ -754,6 +874,8 @@ class ProjectR(Resource):
                 payload["genecart_id"] = genecart_id
                 payload["scope"] = scope
                 payload["algorithm"] = algorithm
+                payload["zscore"] = zscore
+                payload["full_output"] = full_output
 
                 try:
                     connection.publish(
@@ -773,4 +895,4 @@ class ProjectR(Resource):
                 print("[x] sending payload response back to client for dataset {} and genecart {}".format(dataset_id, genecart_id), file=sys.stderr)
                 return response
         else:
-            return projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, algorithm, sys.stderr)
+            return projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, algorithm, zscore, full_output, sys.stderr)

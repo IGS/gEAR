@@ -7,7 +7,9 @@ import anndata as ad
 import spatialdata as sd
 
 import spatialdata_io as sdio
-from spatialdata_io.experimental import to_legacy_anndata
+from spatialdata_io.experimental import to_legacy_anndata, from_legacy_anndata
+
+from utils import update_adata_with_ensembl_ids
 
 class SpatialUploader(ABC):
 
@@ -116,9 +118,16 @@ class SpatialUploader(ABC):
             # Add platform type as metadata. Can use downstream
             self.sdata.tables[self.NORMALIZED_TABLE_NAME].uns["platform"] = self.platform
 
+            # See https://github.com/pydata/xarray/issues/3476#issuecomment-1115045538 for why we need to convert to unicode
+            self.sdata.tables[self.NORMALIZED_TABLE_NAME].X = self.sdata.tables[self.NORMALIZED_TABLE_NAME].X.astype("float")
+
             # Will fail if file already exists
             self.sdata.write(file_path=filepath)
         except Exception as err:
+            # remove the directory if it was created
+            if os.path.exists(filepath):
+                import shutil
+                shutil.rmtree(filepath)
             raise Exception("Error occurred while writing to file: ", err)
         return self
 
@@ -130,6 +139,9 @@ class SpatialUploader(ABC):
         try:
             self.adata.write(filename=filepath)
         except Exception as err:
+            # remove the file if it was created
+            if os.path.exists(filepath):
+                os.remove(filepath)
             raise Exception("Error occurred while writing to file: ", err)
         return self
 
@@ -165,7 +177,7 @@ class CurioUploader(SpatialUploader):
     def img_name(self):
         return None
 
-    def _read_file(self, filepath):
+    def _read_file(self, filepath, **kwargs):
         # Get tar filename so tmp directory can be assigned
         tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
         tmp_dir = '/tmp/' + tar_filename
@@ -193,14 +205,34 @@ class CurioUploader(SpatialUploader):
 
             """
             The sdio.curio function below uses the Moran's I-score file to overwrite the adata.var that was previously set
-            with gene IDs. We need to pull out the original h5ad file and set the adata.var back to the original Dataframe
+            with gene IDs. We need to pull out the original h5ad file and modify the Moran's I-score file to use the ensembl IDs.
             """
+
+            if h5ad_file is None:
+                raise Exception("h5ad file not found in tarball.")
+
+            from geardb import get_dataset_by_id
+            organism_id = None
+            if not kwargs.get("organism_id"):
+                dataset = get_dataset_by_id(kwargs.get("dataset_id"))
+                if dataset:
+                    organism_id = dataset.organism_id
+
+            if not organism_id:
+                raise Exception("Organism ID not found in dataset metadata or provided as an argument.")
 
             # Read in the h5ad file
             adata = ad.read_h5ad(h5ad_file)
+
+            # Add ensemble IDs to the adata.var
+            adata = update_adata_with_ensembl_ids(adata, organism_id, "UNMAPPED_")
+
             # Create mapping dict.
             # Original index name (ensembl_id) was created in add_ensembl_id_to_h5ad_missing_release.py
             gene_symbol_to_ensembl_id = adata.var.reset_index().set_index("gene_symbol").to_dict()["ensembl_id"]
+            if spatial_moransi_file is None:
+                raise Exception("Moran's I score file not found in tarball.")
+
             var_features_moransi = pd.read_csv(spatial_moransi_file, sep="\t", header=0)
 
             # Replace the gene symbols with the ensembl ids
@@ -222,6 +254,148 @@ class CurioUploader(SpatialUploader):
 
             # table name should already be "table" for Visium
 
+            self.originalFile = filepath
+            return self
+
+    def _convert_sdata_to_adata(self, include_images=None):
+        return super()._convert_sdata_to_adata(include_images)
+
+    def _write_to_zarr(self, filepath=None):
+        return super()._write_to_zarr(filepath)
+
+    def _write_to_h5ad(self, filepath=None):
+        return super()._write_to_h5ad(filepath)
+
+class GeoMxUploader(SpatialUploader):
+    """
+    Code is mostly inspired by https://github.com/LiHongCSBLab/SOAPy/blob/153095a44200a07a73a6a72c9978adfa1581c853/SOAPy_st/pp/all2adata.py#L229
+    I wanted to install SOAPy but ran into pip requirement compatibility issues.  For example, we use a later version of AnnData in gEAR than SOAPy does.
+
+    Called by datasetuploader.py (factory) when a GeoMx dataset is going to be uploaded
+
+    Required files:
+    * "xlsx" file with information.
+      * This Excel file must contain a sheet named "SegmentProperties" with a column named "SegmentDisplayName" which will be used as the cell ID.
+      * This Excel file must contain a sheet named "TargetCountMatrix" or "BioProbeCountMatrix" with the counts matrix.
+
+    NOT IMPLEMENTED - Polygon data from XML files
+
+    It seems GeoMx Excel data has gene IDs but can have multiple accessions (none are ensembl IDs),
+    so you need to modify add the ensembl IDs to the adata.var.
+    You can use add_ensembl_id_to_h5ad_missing_release.py for that, and include the revisted h5ad file in the tarball.
+
+    """
+
+    @property
+    def has_images(self):
+        return False
+
+    @property
+    def coordinate_system(self):
+        return "global"
+
+    @property
+    def platform(self):
+        return "geomx"
+
+    @property
+    def img_name(self):
+        return None
+
+    def _read_file(self, filepath, **kwargs):
+        # Get tar filename so tmp directory can be assigned
+        tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
+        tmp_dir = '/tmp/' + tar_filename
+
+        if os.path.isdir(tmp_dir):
+            # Remove any existing directory
+            os.system("rm -rf {}".format(tmp_dir))
+
+        information_file = None
+
+        with tarfile.open(filepath) as tf:
+            for entry in tf:
+                # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
+                if entry.name.startswith("._") or entry.name.startswith(".DS_Store"):
+                    continue
+                # Extract file into tmp dir
+                filepath = "{0}/{1}".format(tmp_dir, entry.name)
+                tf.extract(entry, path=tmp_dir)
+
+                if entry.name.endswith(".xlsx"):
+                    information_file = filepath
+
+            if information_file is None:
+                raise Exception("Excel file containing sample and count information not found in tarball.")
+
+            # Validate the Excel file
+            import openpyxl
+            wb = openpyxl.load_workbook(information_file)
+            if "SegmentProperties" not in wb.sheetnames:
+                raise Exception("Excel file must contain a sheet named 'SegmentProperties' with a column named 'SegmentDisplayName'.")
+            # Determine if the count matrix is in "TargetCountMatrix" or "BioProbeCountMatrix" and store sheet name as variable
+            if "TargetCountMatrix" in wb.sheetnames:
+                count_matrix_sheet = "TargetCountMatrix"
+            elif "BioProbeCountMatrix" in wb.sheetnames:
+                count_matrix_sheet = "BioProbeCountMatrix"
+            else:
+                raise Exception("Excel file must contain a sheet named 'TargetCountMatrix' or 'BioProbeCountMatrix' with the counts matrix.")
+
+            from geardb import get_dataset_by_id
+            organism_id = kwargs.get("organism_id", None)
+            if not organism_id:
+                dataset = get_dataset_by_id(kwargs.get("dataset_id"))
+                if dataset:
+                    organism_id = dataset.organism_id
+
+            if not organism_id:
+                raise Exception("Organism ID not found in dataset metadata or provided as an argument.")
+
+            # Get observation table data
+            roi_obs_df = pd.read_excel(
+                information_file,
+                sheet_name='SegmentProperties',
+                index_col='SegmentDisplayName',
+                header=0,
+            )
+            obs = roi_obs_df
+
+            # Get count matrix data
+            roi_counts_df = pd.read_excel(
+                information_file,
+                sheet_name=count_matrix_sheet,
+                index_col=0,
+                header=0,
+            ).T
+
+            if count_matrix_sheet == "BioProbeCountMatrix":
+                # If the count matrix is from BioProbeCountMatrix, need to set TargetName values as the column names
+                # The sheet has accession IDs but some entries have multiple IDs, so we will map Ensembl IDs later
+                roi_counts_df.columns = roi_counts_df.loc["TargetName"]
+                roi_counts_df.drop("TargetName", inplace=True)
+
+            counts = roi_counts_df.loc[obs.index, :]
+
+            var = pd.DataFrame(index=counts.columns)
+
+            adata = ad.AnnData(counts.values, obs=obs, var=var, uns={}, obsm={})
+            adata.obsm['spatial'] = obs.loc[:, ['ROICoordinateX', 'ROICoordinateY']].values
+
+            # Sanitize adata.obs so that column names only contain alphanumeric characters, underscores, dots and hyphens.
+            adata.obs.columns = adata.obs.columns.str.replace(r'+', '_Plus')    # special case for '+' character
+            adata.obs.columns = adata.obs.columns.str.replace(r'[^a-zA-Z0-9_.-]', '_')
+            adata.obs.columns = adata.obs.columns.str.replace(r' ', '_')
+
+            # Add ensemble IDs to the adata.var
+            adata = update_adata_with_ensembl_ids(adata, organism_id, "UNMAPPED_")
+
+            # Convert to SpatialData object
+            sdata = from_legacy_anndata(adata)
+
+            # GeoMx is focused more on spatial bulk rather than spatial single-cell, so we will set the clusters to the index
+            sdata[self.NORMALIZED_TABLE_NAME].obs["clusters"] = sdata[self.NORMALIZED_TABLE_NAME].obs.index
+
+            self.sdata = sdata
             self.originalFile = filepath
             return self
 
@@ -264,7 +438,7 @@ class VisiumUploader(SpatialUploader):
     def img_name(self):
         return "spatialdata_hires_image"
 
-    def _read_file(self, filepath):
+    def _read_file(self, filepath, **kwargs):
 
         # Get tar filename so tmp directory can be assigned
         tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
@@ -349,7 +523,7 @@ class VisiumHDUploader(SpatialUploader):
     def img_name(self):
         return "spatialdata_hires_image"
 
-    def _read_file(self, filepath):
+    def _read_file(self, filepath, **kwargs):
         # Get tar filename so tmp directory can be assigned
         tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
         tmp_dir = '/tmp/' + tar_filename
@@ -446,14 +620,14 @@ class XeniumUploader(SpatialUploader):
     Called by datasetuploader.py (factory) when a Xenium dataset is going to be uploaded
 
     Standardized names for different files:
-    * 'experiment.xenium': File containing specifications.
+    * (REQ) 'experiment.xenium': File containing specifications.
+    * (REQ) 'cell_feature_matrix.h5': File containing cell feature matrix.
+    * (REQ) 'cells.parquet': File containing cell metadata.
+    * (REQ) 'morphology_focus.ome.tif': File containing morphology focus or a "morphology_focus" directory containing multiple images.
     * 'nucleus_boundaries.parquet': Polygons of nucleus boundaries.
     * 'cell_boundaries.parquet': Polygons of cell boundaries.
     * 'transcripts.parquet': File containing transcripts.
-    * 'cell_feature_matrix.h5': File containing cell feature matrix.
-    * 'cells.parquet': File containing cell metadata.
-    * 'morphology_mip.ome.tif': File containing morphology mip.
-    * 'morphology_focus.ome.tif': File containing morphology focus.
+    * 'cells.zarr.zip': Zarr file containing cell and nucleus label data
 
     More information on Xenium Ranger outputs can be found here: https://www.10xgenomics.com/support/software/xenium-ranger/latest/analysis/outputs/XR-output-overview
     """
@@ -464,7 +638,7 @@ class XeniumUploader(SpatialUploader):
 
     @property
     def coordinate_system(self):
-        return "downscaled_hires"
+        return "global"
 
     @property
     def platform(self):
@@ -472,9 +646,9 @@ class XeniumUploader(SpatialUploader):
 
     @property
     def img_name(self):
-        return "spatialdata_hires_image"
+        return "morphology_focus"
 
-    def _read_file(self, filepath):
+    def _read_file(self, filepath, **kwargs):
         # Get tar filename so tmp directory can be assigned
         tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
         tmp_dir = '/tmp/' + tar_filename
@@ -482,6 +656,12 @@ class XeniumUploader(SpatialUploader):
         if os.path.isdir(tmp_dir):
             # Remove any existing directory
             os.system("rm -rf {}".format(tmp_dir))
+
+        # settings to enable or disable based on if a file is present in the uploaded tarball
+        include_raster_labels = False
+        cell_boundaries_present = False
+        nucleus_boundaries_present = False
+        transcripts_present = False
 
         with tarfile.open(filepath) as tf:
             for entry in tf:
@@ -492,7 +672,23 @@ class XeniumUploader(SpatialUploader):
                 filepath = "{0}/{1}".format(tmp_dir, entry.name)
                 tf.extract(entry, path=tmp_dir)
 
-            sdata = sdio.xenium(tmp_dir)
+                if entry.name == "cells.zarr.zip":
+                    include_raster_labels = True
+                if entry.name == "cell_boundaries.parquet":
+                    cell_boundaries_present = True
+                if entry.name == "nucleus_boundaries.parquet":
+                    nucleus_boundaries_present = True
+                if entry.name == "transcripts.parquet":
+                    transcripts_present = True
+
+            sdata = sdio.xenium(tmp_dir
+                                , cells_labels=include_raster_labels
+                                , nucleus_labels=include_raster_labels
+                                , cell_boundaries=cell_boundaries_present
+                                , nucleus_boundaries=nucleus_boundaries_present
+                                , transcripts=transcripts_present
+                                , morpohology_mip=False   # Using the morphology_focus image instead
+                                )
 
             # To get the adata equivalent, look at sdata.tables["table"]
 
@@ -521,8 +717,9 @@ class XeniumUploader(SpatialUploader):
 ### Helper constants
 
 SPATIALTYPE2CLASS = {
-    "visium": VisiumUploader,
+    "curio": CurioUploader,
+    "geomx": GeoMxUploader,
+    #"visium": VisiumUploader,
     "visium_hd": VisiumHDUploader,
-    "xenium": XeniumUploader,
-    "curio": CurioUploader
+    "xenium": XeniumUploader
 }

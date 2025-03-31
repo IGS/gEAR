@@ -9,7 +9,7 @@ from flask_restful import Resource
 from plotly.utils import PlotlyJSONEncoder
 
 from gear.mg_plotting import PlotError
-from .common import create_projection_adata, order_by_time_point
+from .common import create_projection_adata, order_by_time_point, catch_memory_error
 
 
 # SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
@@ -93,6 +93,7 @@ class MultigeneDashData(Resource):
         Plot data
     """
 
+    @catch_memory_error()
     def post(self, dataset_id):
         session_id = request.cookies.get('gear_session_id')
         req = request.get_json()

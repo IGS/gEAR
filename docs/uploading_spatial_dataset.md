@@ -30,6 +30,8 @@ If the dataset is already in .zarr format (converted previously and copying to a
 
 ### Getting Ensembl IDs
 
+UPDATED: This step is now integrated into the Curio and GeoMx dataset uploaders. Either pass in the organism ID directly to `upload_spatial_dataset.py` as an argument or let it be read from existing uploaded metadata.
+
 It seems that the 10x platforms (i.e. Visium and Xenium) have Ensembl IDs in the output that can be converted into the format we need... as the index for that DataFrame.  However for other platforms, like Curio Seeker, only gene symbols are present in the output files.  So we need to use other scripts to determine the Ensembl ID annotations.
 
 Run the following to map gene symbols to Ensembl IDs stored in the database (this example is for Curio which outputs an H5AD file):

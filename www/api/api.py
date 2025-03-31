@@ -39,6 +39,13 @@ app = Flask(__name__)
 api = Api(app)
 # Add API endpoints to resources
 
+# Set the maximum memory usage for the process
+# to 95% of the system's maximum memory usage
+import resource
+soft, hard = resource.getrlimit(resource.RLIMIT_DATA)
+soft95 = int(soft * 0.95)
+resource.setrlimit(resource.RLIMIT_DATA, (soft95, hard))
+
 api.add_resource(PlotlyData, '/plot/<dataset_id>') # May want to add /plotly to this endpoint for consistency
 api.add_resource(MultigeneDashData, '/plot/<dataset_id>/mg_dash')
 api.add_resource(SvgData, '/plot/<dataset_id>/svg')

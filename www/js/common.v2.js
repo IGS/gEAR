@@ -811,10 +811,11 @@ const apiCallsMixin = {
      * @param {string} datasetId - The ID of the dataset.
      * @param {string} patternSource - The source of the pattern.
      * @param {string} algorithm - The algorithm to use for projection.
+     * @param {boolean} zscore - If zscore scaling should be applied.
      * @returns {Promise<any>} - A promise that resolves to the projection data.
      */
-    async checkForProjection(datasetId, patternSource, algorithm) {
-        const payload = { session_id: this.sessionId, genecart_id: patternSource, algorithm };
+    async checkForProjection(datasetId, patternSource, algorithm, zscore) {
+        const payload = { session_id: this.sessionId, genecart_id: patternSource, algorithm, zscore };
         const {data} = await axios.post(`api/projectr/${datasetId}/output_file`, payload);
         return data;
     },
@@ -1225,16 +1226,17 @@ const apiCallsMixin = {
      * @param {string} patternSource - The source of the pattern.
      * @param {string} algorithm - The algorithm used for projection.
      * @param {string} gctype - The type of gene cart.
+     * @param {boolean} [zscore=false] - Indicates whether to apply zscore scaling.
      * @param {Object} [otherOpts={}] - Additional options for the request.
      * @returns {Promise} - A promise that resolves with the fetched data.
      */
-    async fetchProjection(datasetId, projectionId, patternSource, algorithm, gctype, otherOpts={}) {
-        const payload = { session_id: this.sessionId, projection_id: projectionId, genecart_id: patternSource, algorithm, scope: gctype};
+    async fetchProjection(datasetId, projectionId, patternSource, algorithm, gctype, zscore, otherOpts={}) {
+        const payload = { session_id: this.sessionId, projection_id: projectionId, genecart_id: patternSource, algorithm, scope: gctype, zscore };
         const {data} = await axios.post(`api/projectr/${datasetId}`, payload, otherOpts);
         return data;
     },
 
-    
+
     /**
      * Fetches shared dataset and layout data from the server.
      *

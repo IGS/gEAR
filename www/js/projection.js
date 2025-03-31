@@ -205,6 +205,9 @@ const buildStateUrl = () => {
     const algorithm = document.getElementById('algorithm').value;
     url.searchParams.set('projection_algorithm', algorithm);
 
+    const zscore = document.getElementById('zscore').checked;
+    url.searchParams.set('zscore', zscore);
+
     // Add the multipattern_plots value to the URL
     const multipatternPlots = document.getElementById('single-multi-multi').checked ? 1 : 0;
     url.searchParams.set('multipattern_plots', multipatternPlots);
@@ -284,6 +287,12 @@ const parsePatternCartURLParams = async () => {
     const projectionAlgorithm = getUrlParameter('projection_algorithm', urlParams);
     if (projectionAlgorithm) {
         document.getElementById('algorithm').value = projectionAlgorithm;
+    }
+
+    // if zscore is passed, set it in #zscore
+    const zscore = getUrlParameter('zscore', urlParams);
+    if (zscore === 'true') {
+        document.getElementById('zscore').checked = true;
     }
 
     // single or multiple pattern view (convert to boolean)?
@@ -457,12 +466,14 @@ const setupTileGrid = async (shareId, type="layout") => {
         tilegrid.applyTileGrid(isMulti);
 
         const algorithm = document.getElementById('algorithm').value;
+        const zscore = document.getElementById('zscore').checked;
 
         // create projectionOpts object out of selectedPattern.shareId, algorithm, and selectedPattern.gctype
         projectionOpts = {
             patternSource: selectedPattern.shareId,
             algorithm,
-            gctype: selectedPattern.gctype
+            gctype: selectedPattern.gctype,
+            zscore
         };
 
         for (const tile of tilegrid.tiles) {

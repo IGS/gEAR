@@ -31,6 +31,7 @@ def main():
     parser.add_argument('-i', '--input_file', type=str, required=True, help='Path to an input spatial tarball to be read' )
     parser.add_argument('-t', '--type', type=str, required=True, help='Type of spatial data being uploaded')
     parser.add_argument('-d', '--dataset_id', type=str, required=True, help='Numerical dataset ID to be used' )
+    parser.add_argument('-org', '--organism_id', type=int, required=False, help='Organism ID of the spatial data. Only needed if data requires remapping of gene symbols to ensembl IDs and metadata is not present in database.' )
     args = parser.parse_args()
 
     # Ensure the spatial data type is supported
@@ -41,7 +42,8 @@ def main():
     print("Processing spatial data of type: {0}".format(args.type))
     print("Input file: {0}".format(args.input_file))
     sp_class = spatialuploader.SPATIALTYPE2CLASS[args.type]()
-    sp_class._read_file(args.input_file)
+
+    sp_class._read_file(args.input_file, organism_id=args.organism_id, dataset_id=args.dataset_id)
 
     output_filename = args.dataset_id
 

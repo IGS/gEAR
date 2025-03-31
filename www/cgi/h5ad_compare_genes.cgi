@@ -52,9 +52,12 @@ def main():
         sys.stdout = original_stdout
         print('Content-Type: application/json\n\n')
         print(json.dumps({'success': 0, 'error': 'Invalid session'}))
+    user_id = None
+    if user and user.id:
+        user_id = user.id
 
     ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
-                          session_id=session_id, user_id=user.id)
+                          session_id=session_id, user_id=user_id)
 
     # Recent upgrade of scanpy/anndata/pandas modules have issues where the sc.pl.rank_genes_groups_violin function
     # fails as pandas throws an error saying the data is not 1-dimensional.  This only happens if the AnnData object is a dense matrix
