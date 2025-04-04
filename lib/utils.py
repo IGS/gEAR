@@ -3,7 +3,7 @@
 # Some of these originally started out as code from individual scripts, such as the "bin" directory,
 # but were moved to a common location to be shared across multiple scripts.
 
-def update_adata_with_ensembl_ids(adata, organism, id_prefix):
+def update_adata_with_ensembl_ids(adata, organism, id_prefix, verbose=False):
 
     import geardb
     import pandas as pd
@@ -32,13 +32,15 @@ def update_adata_with_ensembl_ids(adata, organism, id_prefix):
     # var later on.
     duplicated_genes = adata.var.index.duplicated()
 
-    print(f"Duplicated Genes: {duplicated_genes.sum()}")
+    if verbose:
+        print(f"Duplicated Genes: {duplicated_genes.sum()}")
 
     # print(f"The file, {args.input_file} has {duplicated_genes.sum()} duplicate genes. These will be dropped.")
     adata = adata[:, ~duplicated_genes]
 
-    print("\nOriginal loaded adata\n")
-    print(adata)
+    if verbose:
+        print("\nOriginal loaded adata\n")
+        print(adata)
 
     # If adata.var is an empty dataframe, make note that the index is the original gene symbol column
     # Ensures the `adata_unmapped_var` rename aligns with the original gene symbol column in adata.var
@@ -47,7 +49,8 @@ def update_adata_with_ensembl_ids(adata, organism, id_prefix):
         orig_gene_column = "index"
 
     for release in ensembl_releases:
-        print("INFO: comparing with ensembl release: {0} ... ".format(release), end='')
+        if verbose:
+            print("INFO: comparing with ensembl release: {0} ... ".format(release), end='')
         cursor.execute(query, (organism, release))
 
         df = pd.DataFrame(cursor.fetchall(), columns=cursor.column_names)
@@ -61,17 +64,19 @@ def update_adata_with_ensembl_ids(adata, organism, id_prefix):
         merged_df = adata.var.join(df, how='inner')
         (row_count, _) = merged_df.shape
 
-        print(" found {0} matches".format(row_count))
+        if verbose:
+            print(" found {0} matches".format(row_count))
 
         if row_count > best_count:
             best_count = row_count
             best_release = release
             best_df = merged_df
 
-    print(f"\nBest release: {best_release}")
-    print(f"Matches for release: {best_count}")
-    print(f"Original # Genes: {n_genes}")
-    print(f"Genes lost: {n_genes - best_count}\n")
+    if verbose:
+        print(f"\nBest release: {best_release}")
+        print(f"Matches for release: {best_count}")
+        print(f"Original # Genes: {n_genes}")
+        print(f"Genes lost: {n_genes - best_count}\n")
 
     # Now we have our best release and ensembl ids for those gene symbols,
 
@@ -82,7 +87,8 @@ def update_adata_with_ensembl_ids(adata, organism, id_prefix):
 
     # If the data already had a 'gene symbol' let's rename it
     if 'gene_symbol' in best_df.columns:
-        print("WARN: Found gene_symbol column already in dataset, renaming to gene_symbol_original")
+        if verbose:
+            print("WARN: Found gene_symbol column already in dataset, renaming to gene_symbol_original")
         best_df = best_df.rename(columns={"gene_symbol": "gene_symbol_original"})
 
     ensembl_id_var = (
@@ -94,8 +100,9 @@ def update_adata_with_ensembl_ids(adata, organism, id_prefix):
         .set_index('ensembl_id')
     )
 
-    print("ENSEMBL_ID_VAR")
-    print(ensembl_id_var)
+    if verbose:
+        print("ENSEMBL_ID_VAR")
+        print(ensembl_id_var)
 
     # Currently creating a new AnnData object because of
     # trouble getting adata.var = merged_var to persist
@@ -112,15 +119,17 @@ def update_adata_with_ensembl_ids(adata, organism, id_prefix):
         uns=adata_present.uns
         )
 
-    print(adata_with_ensembl_ids.obs.columns)
+    if verbose:
+        print(adata_with_ensembl_ids.obs.columns)
 
     ## Now combine the unmapped dataframe with this one, first making the needed edits
     if 'gene_symbol' in adata_not_present.var.columns:
         adata_not_present.var = adata_not_present.var.rename(columns={"gene_symbol": "gene_symbol_original"})
 
-    print("ADATA_NOT_PRESENT.VAR")
-    print(adata_not_present.var)
-    print(adata_not_present.obs.columns)
+    if verbose:
+        print("ADATA_NOT_PRESENT.VAR")
+        print(adata_not_present.var)
+        print(adata_not_present.obs.columns)
 
     # Splitting code over multiple lines requires a "\" at the end.
     adata_unmapped_var = adata_not_present.var.reset_index(names=orig_gene_column) \
@@ -141,8 +150,9 @@ def update_adata_with_ensembl_ids(adata, organism, id_prefix):
     )
     adata_unmapped.var.index.name = "ensembl_id"
 
-    print("ADATA UNMAPPED.VAR")
-    print(adata_unmapped.var)
+    if verbose:
+        print("ADATA UNMAPPED.VAR")
+        print(adata_unmapped.var)
 
     # Concatenate the two AnnData objects (adata_with_ensembl_ids and adata_unmapped)
     # This will leave an index-only set of observations (WHY?) so we need to reassign the obs.
@@ -155,12 +165,13 @@ def update_adata_with_ensembl_ids(adata, organism, id_prefix):
     adata.varp = adata_present.varp
     adata.uns = adata_present.uns
 
-    print("ADATA CONCAT")
-    print(adata)
-    #print("VAR CONCAT")
-    #print(adata.var)
-    #print("OBS_CONCAT")
-    #print(adata.obs)
-    #print(adata.X)
+    if verbose:
+        print("ADATA CONCAT")
+        print(adata)
+        #print("VAR CONCAT")
+        #print(adata.var)
+        #print("OBS_CONCAT")
+        #print(adata.obs)
+        #print(adata.X)
 
     return adata
