@@ -707,6 +707,7 @@ class XeniumUploader(SpatialUploader):
                                 , cell_boundaries=cell_boundaries_present
                                 , nucleus_boundaries=nucleus_boundaries_present
                                 , transcripts=transcripts_present
+                                , cells_as_circles=True   # Should render faster (at cost of accuracy)
                                 , morpohology_mip=False   # Using the morphology_focus image instead
                                 )
 
@@ -736,6 +737,11 @@ class XeniumUploader(SpatialUploader):
 
             # set the index to the ensembl id (gene_ids)
             sdata[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids", inplace=True)
+
+            # Change sparse matrix to dense matrix to resolve some potential issues
+            # Dense matrices are more memory intensive so it would be better to fix empty values in the sparse matrix
+            #sdata[self.NORMALIZED_TABLE_NAME].X = sdata[self.NORMALIZED_TABLE_NAME].X.todense()
+
 
             self.sdata = sdata
             self.originalFile = filepath

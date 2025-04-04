@@ -563,8 +563,8 @@ class SpatialPanel(pn.viewable.Viewer):
 
         self.normal_pane = pn.pane.Plotly(self.normal_fig
                     , config={"doubleClick":"reset","displayModeBar": True, "modeBarButtonsToRemove": buttonsToRemove}
-                    , height=350
-                    , sizing_mode="stretch_width"
+                    , height=350 if self.expanded else None
+                    , sizing_mode="stretch_width" if self.expanded else "stretch_both"
                     )
 
         self.zoom_pane = pn.pane.Plotly(self.zoom_fig
@@ -589,9 +589,14 @@ class SpatialPanel(pn.viewable.Viewer):
             pn.bind(self.init_data)
         )
 
-        layout_height = 360
+        layout_height = 312 # 360px - tile header height
         if self.expanded:
             layout_height = 1520
+
+        self.nonexpanded_pre = pn.pane.Markdown(
+            "## Click the Expand icon in the top right corner to see all plots",
+            height=30, visible=True if not self.expanded else False
+        )
 
         self.expanded_pre = pn.Column(
              pn.Row(
@@ -604,6 +609,7 @@ class SpatialPanel(pn.viewable.Viewer):
                 pn.Spacer(width=400),
                 self.make_default
             ),
+            visible=True if self.expanded else False,
         )
 
         self.expanded_post = pn.Column(
@@ -616,14 +622,15 @@ class SpatialPanel(pn.viewable.Viewer):
             pn.layout.Divider(height=5),    # default margins
             pn.pane.Markdown("## Violin plot", height=30),
             self.violin_pane,
+            visible=True if self.expanded else False,
         )
 
         # A condensed layout should only have the normal pane.
         self.plot_layout = pn.Column(
-            self.expanded_pre if self.expanded else None,
-            pn.pane.Markdown("## Click the Expand icon in the top right corner to see all plots", height=30) if not self.expanded else None,
+            self.expanded_pre,
+            self.nonexpanded_pre,
             self.normal_pane,
-            self.expanded_post if self.expanded else None,
+            self.expanded_post,
 
             width=1100, height=layout_height
         )
@@ -690,11 +697,6 @@ class SpatialPanel(pn.viewable.Viewer):
             try:
                 self.prep_sdata()
                 adata = self.prep_adata()
-                # Change sparse matrix to dense matrix to resolve some potential issues
-                try:
-                    adata.X = adata.X.todense()
-                except:
-                    pass
             except ValueError as e:
                 raise
 
