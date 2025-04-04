@@ -189,12 +189,10 @@ Modern apache documentation suggests using mpm_event over mpm_prefork as it is m
 ### Settings
 
 ```text
-<IfModule mpm_event_module>
+<IfModule mpm_prefork_module>
         StartServers                     4
-        MinSpareThreads          25
-        MaxSpareThreads          75
-        ThreadLimit                      64
-        ThreadsPerChild         40
+        MinSpareServers          25
+        MaxSpareServers          75
         MaxRequestWorkers        160
         MaxConnectionsPerChild   0
 </IfModule>
