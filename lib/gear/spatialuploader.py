@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 import pandas as pd
 import anndata as ad
 import spatialdata as sd
+import xarray
 
 import spatialdata_io as sdio
 from spatialdata_io.experimental import to_legacy_anndata, from_legacy_anndata
@@ -64,8 +65,15 @@ class SpatialUploader(ABC):
         if not self.img_name:
             return self
 
-        x = len(self.sdata.images[self.img_name].x)
-        y = len(self.sdata.images[self.img_name].y)
+        # Image can be DataArray or DataTree depending on if multiple scales are present for the image
+        if type(self.sdata[self.img_name]) == xarray.DataTree:
+            coords = sd.get_pyramid_levels(self.sdata[self.img_name], n=0)
+        else:
+            coords = self.sdata.images[self.img_name]
+
+        # Get the coordinates of the image
+        x = len(coords.x)
+        y = len(coords.y)
         sdata = sd.bounding_box_query(self.sdata,
                 axes=("x", "y"),
                 min_coordinate=[0, 0],
@@ -628,6 +636,7 @@ class XeniumUploader(SpatialUploader):
     * 'cell_boundaries.parquet': Polygons of cell boundaries.
     * 'transcripts.parquet': File containing transcripts.
     * 'cells.zarr.zip': Zarr file containing cell and nucleus label data
+    * 'analysis/clustering/gene_expression_graphclust/clusters.csv': Clustering information. Preferable if "Cluster" column has actual labels instead of numbers.
 
     More information on Xenium Ranger outputs can be found here: https://www.10xgenomics.com/support/software/xenium-ranger/latest/analysis/outputs/XR-output-overview
     """
@@ -681,6 +690,17 @@ class XeniumUploader(SpatialUploader):
                 if entry.name == "transcripts.parquet":
                     transcripts_present = True
 
+        # If clustering file does not exist, raise an exception
+        clustering_csv_path = "{}/analysis/clustering/gene_expression_graphclust/clusters.csv".format(tmp_dir)
+        if not os.path.exists(clustering_csv_path):
+            raise Exception("clusters.csv file not found in tarball.")
+
+        # If clustering file does not have "Barcode" and "Cluster" columns, raise an exception
+        with open(clustering_csv_path, 'r') as f:
+            first_line = f.readline()
+            if "Barcode" not in first_line or "Cluster" not in first_line:
+                raise Exception("clusters.csv file does not have 'Barcode' and 'Cluster' columns in clusters.csv file in tarball.")
+
             sdata = sdio.xenium(tmp_dir
                                 , cells_labels=include_raster_labels
                                 , nucleus_labels=include_raster_labels
@@ -689,6 +709,22 @@ class XeniumUploader(SpatialUploader):
                                 , transcripts=transcripts_present
                                 , morpohology_mip=False   # Using the morphology_focus image instead
                                 )
+
+            # In code, it seems that the Xenium reader is supposed to set the index to the "barcodes" column
+            # But this column is not found, so we need to manually replace with "cell_id"
+            sdata.set_index("cell_id", inplace=True)
+
+            # add clustering information to the vis_sdata.table.obs dataframe
+            clustering = pd.read_csv(clustering_csv_path)
+            # make barcode as index
+            clustering.set_index('Barcode', inplace=True)
+            sdata[self.table_name].obs['clusters'] = clustering['Cluster'].astype('category')
+
+            # Change annotation target from "cell_circles" to "cell_labels"
+            sdata["table"].obs["region"] = "cell_labels"
+            sdata.set_table_annotates_spatialelement(
+                table_name="table", region="cell_labels", region_key="region", instance_key="cell_labels"
+            )
 
             # To get the adata equivalent, look at sdata.tables["table"]
 
