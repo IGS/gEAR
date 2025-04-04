@@ -83,6 +83,7 @@ class Settings(param.Parameterized):
     save = param.Boolean(doc="If true, save this configuration as a new display.", default=False)
     display_name = param.String(doc="Display name for the saved configuration", allow_None=True)
     make_default = param.Boolean(doc="If true, make this the default display.", default=False)
+    expanded = param.Boolean(doc="If true, show the full range of plots.", default=False)
 
 class SpatialPlot():
     """
@@ -533,7 +534,8 @@ class SpatialPanel(pn.viewable.Viewer):
             , 'selection_y2': 'selection_y2'
             , 'save': 'save'
             , 'display_name': 'display_name'
-            , 'make_default': 'make_default'})
+            , 'make_default': 'make_default'
+            , 'expanded': 'expanded'})
 
         self.dataset_id = self.settings.dataset_id
         self.gene_symbol = self.settings.gene_symbol
@@ -547,6 +549,8 @@ class SpatialPanel(pn.viewable.Viewer):
         self.save_button = pn.widgets.Button(name="Save settings", button_type="primary", width=100, align="end")
         self.make_default = pn.widgets.Checkbox(name='Make this the default display', value=False)
 
+        # NOTE: We will perform the entire computation whether expanded or not, to avoid having to recompute the data
+        self.expanded = self.settings.expanded
 
         self.normal_fig = dict(data=[], layout={})
         self.zoom_fig = dict(data=[], layout={})
@@ -585,18 +589,24 @@ class SpatialPanel(pn.viewable.Viewer):
             pn.bind(self.init_data)
         )
 
-        self.plot_layout = pn.Column(
-            pn.Row(
+        layout_height = 360
+        if self.expanded:
+            layout_height = 1520
+
+        self.expanded_pre = pn.Column(
+             pn.Row(
                 pn.pane.Markdown('## Select a region to modify zoomed in view in the bottom panel', height=30, width=700),
                 self.display_name,
-                self.save_button
+                self.save_button,
             ),
             pn.Row(
                 self.min_genes_slider,
                 pn.Spacer(width=400),
-                self.make_default,
+                self.make_default
             ),
-            self.normal_pane,
+        )
+
+        self.expanded_post = pn.Column(
             pn.layout.Divider(height=5),    # default margins
             pn.pane.Markdown('## Zoomed in view',height=30),
             self.zoom_pane,
@@ -606,7 +616,16 @@ class SpatialPanel(pn.viewable.Viewer):
             pn.layout.Divider(height=5),    # default margins
             pn.pane.Markdown("## Violin plot", height=30),
             self.violin_pane,
-            width=1100, height=1520
+        )
+
+        # A condensed layout should only have the normal pane.
+        self.plot_layout = pn.Column(
+            self.expanded_pre if self.expanded else None,
+            pn.pane.Markdown("## Click the Expand icon in the top right corner to see all plots", height=30) if not self.expanded else None,
+            self.normal_pane,
+            self.expanded_post if self.expanded else None,
+
+            width=1100, height=layout_height
         )
 
         # SAdkins - Have not quite figured out when to use "watch" but I think it mostly applies when a callback does not return a value
@@ -671,6 +690,11 @@ class SpatialPanel(pn.viewable.Viewer):
             try:
                 self.prep_sdata()
                 adata = self.prep_adata()
+                # Change sparse matrix to dense matrix to resolve some potential issues
+                try:
+                    adata.X = adata.X.todense()
+                except:
+                    pass
             except ValueError as e:
                 raise
 
@@ -781,7 +805,6 @@ class SpatialPanel(pn.viewable.Viewer):
 
     def filter_adata(self):
         # Filter out cells that overlap with the blank space of the image.
-        print(self.dataset_adata.X, file=sys.stderr)
 
         sc.pp.filter_cells(self.dataset_adata, min_genes=self.min_genes)
         sc.pp.normalize_total(self.dataset_adata, inplace=True)
