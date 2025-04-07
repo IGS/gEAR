@@ -10,7 +10,7 @@ import xarray
 import spatialdata_io as sdio
 from spatialdata_io.experimental import to_legacy_anndata, from_legacy_anndata
 
-from utils import update_adata_with_ensembl_ids
+from gear.utils import update_adata_with_ensembl_ids
 
 class SpatialUploader(ABC):
 
@@ -99,23 +99,10 @@ class SpatialUploader(ABC):
             # table name should already be "table" for Visium
             adata = to_legacy_anndata(self.sdata, include_images=include_images, coordinate_system=self.coordinate_system, table_name=table_name)
         except Exception as err:
+            print(str(err))
             raise Exception("Error occurred while converting spatial data object to AnnData object: ", err)
         self.adata = adata
         return self
-
-    """alternative implementation of _convert_sdata_to_adata
-       (but has issues with reading xarray.DataArray image into numpy-array focused functions)
-        def prep_adata2(self):
-        # Instead of creating a new AnnData object, use the sdata properties
-        adata = self.spatial_obj.sdata["table"]
-        self.spatial_img = None
-        if self.has_images:
-            img_name = self.spatial_obj.img_name
-            self.spatial_img = self.spatial_obj.sdata.images[img_name]
-
-        self.adata = adata
-        self.orig_adata = adata.copy()  # Preserve the original adata for filtering
-    """
 
     def _write_to_zarr(self, filepath=None):
         if self.sdata is None:
@@ -635,8 +622,10 @@ class XeniumUploader(SpatialUploader):
     * 'nucleus_boundaries.parquet': Polygons of nucleus boundaries.
     * 'cell_boundaries.parquet': Polygons of cell boundaries.
     * 'transcripts.parquet': File containing transcripts.
-    * 'cells.zarr.zip': Zarr file containing cell and nucleus label data
+    * 'cells.zarr.zip': Zarr file containing cell and nucleus label data (NOT USING FOR NOW)
     * 'analysis/clustering/gene_expression_graphclust/clusters.csv': Clustering information. Preferable if "Cluster" column has actual labels instead of numbers.
+
+    Currently we are not using the cells.zarr.zip file because of memory issues when converting the resulting cell labels as part of the AnnData conversion process.
 
     More information on Xenium Ranger outputs can be found here: https://www.10xgenomics.com/support/software/xenium-ranger/latest/analysis/outputs/XR-output-overview
     """
@@ -702,30 +691,31 @@ class XeniumUploader(SpatialUploader):
                 raise Exception("clusters.csv file does not have 'Barcode' and 'Cluster' columns in clusters.csv file in tarball.")
 
             sdata = sdio.xenium(tmp_dir
-                                , cells_labels=include_raster_labels
-                                , nucleus_labels=include_raster_labels
+                                , cells_labels=False # Avoid adding polygons to SpatialData object (for now due to out-of-memory issues)
+                                , nucleus_labels=False
                                 , cell_boundaries=cell_boundaries_present
                                 , nucleus_boundaries=nucleus_boundaries_present
                                 , transcripts=transcripts_present
-                                , cells_as_circles=True   # Should render faster (at cost of accuracy)
-                                , morpohology_mip=False   # Using the morphology_focus image instead
+                                , cells_as_circles=True  # Table is associated with the cells instead of the nuclei (faster performance)
+                                , morphology_mip=False   # Using the morphology_focus image instead
                                 )
 
             # In code, it seems that the Xenium reader is supposed to set the index to the "barcodes" column
             # But this column is not found, so we need to manually replace with "cell_id"
-            sdata.set_index("cell_id", inplace=True)
+            sdata[self.NORMALIZED_TABLE_NAME].obs["Barcode"] = sdata[self.NORMALIZED_TABLE_NAME].obs["cell_id"]
+            sdata[self.NORMALIZED_TABLE_NAME].obs.set_index("Barcode", inplace=True)
+
+            # Change annotation target from "cell_circles" to "cell_labels"
+            #sdata["table"].obs["region"] = "cell_labels"
+            #sdata.set_table_annotates_spatialelement(
+            #    table_name="table", region="cell_labels", region_key="region", instance_key="cell_labels"
+            #)
 
             # add clustering information to the vis_sdata.table.obs dataframe
             clustering = pd.read_csv(clustering_csv_path)
             # make barcode as index
             clustering.set_index('Barcode', inplace=True)
-            sdata[self.table_name].obs['clusters'] = clustering['Cluster'].astype('category')
-
-            # Change annotation target from "cell_circles" to "cell_labels"
-            sdata["table"].obs["region"] = "cell_labels"
-            sdata.set_table_annotates_spatialelement(
-                table_name="table", region="cell_labels", region_key="region", instance_key="cell_labels"
-            )
+            sdata[self.NORMALIZED_TABLE_NAME].obs['clusters'] = clustering['Cluster'].astype('category')
 
             # To get the adata equivalent, look at sdata.tables["table"]
 
@@ -737,11 +727,6 @@ class XeniumUploader(SpatialUploader):
 
             # set the index to the ensembl id (gene_ids)
             sdata[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids", inplace=True)
-
-            # Change sparse matrix to dense matrix to resolve some potential issues
-            # Dense matrices are more memory intensive so it would be better to fix empty values in the sparse matrix
-            #sdata[self.NORMALIZED_TABLE_NAME].X = sdata[self.NORMALIZED_TABLE_NAME].X.todense()
-
 
             self.sdata = sdata
             self.originalFile = filepath

@@ -109,6 +109,7 @@ class SpatialPlot():
         self.range_y1 = 0 if self.spatial_img is not None else min(df["spatial2"])
         self.range_y2 = self.spatial_img.shape[0] if self.spatial_img is not None else max(df["spatial2"])
 
+
     def make_expression_scatter(self):
         df = self.df
         df = df.sort_values(by="raw_value")
@@ -133,7 +134,7 @@ class SpatialPlot():
                     hovertemplate="Expression: %{marker.color:.2f}<extra></extra>"
                 )
 
-    def add_cluster_traces(self):
+    def add_cluster_traces(self, df):
         fig = self.fig
         df = self.df.sort_values(by="raw_value")
 
@@ -182,10 +183,12 @@ class SpatialPlot():
         if self.spatial_img is not None:
             self.add_image_trace()
         self.fig.add_trace(self.make_expression_scatter(), row=1, col=self.expression_col)
-        self.add_cluster_traces()
+
+        df = self.df
+        self.add_cluster_traces(df)
 
         # Get longest cluster name for legend
-        longest_cluster = max(self.df["clusters"].astype(str).apply(len))
+        longest_cluster = max(df["clusters"].astype(str).apply(len))
         font_size = 12
         if longest_cluster > 10:
             font_size = 10
@@ -279,7 +282,6 @@ class SpatialNormalSubplot(SpatialPlot):
 
     def make_umap_plots(self):
         # NOTE: Axes are mirrored from previous versions but the coordinates do not matter... clustering is the focus
-
         df = self.df.sort_values(by="raw_value")
 
         # Make "clusters" a category so that a legend will be created
@@ -341,7 +343,7 @@ class SpatialNormalSubplot(SpatialPlot):
         fig.update_yaxes(showgrid=False, showticklabels=False, ticks="", title_text="UMAP2", title_standoff=0)
 
         # Get longest cluster name for legend
-        longest_cluster = max(self.df["clusters"].astype(str).apply(len))
+        longest_cluster = max(df["clusters"].astype(str).apply(len))
         font_size = 12
         if longest_cluster > 10:
             font_size = 10
@@ -402,7 +404,7 @@ class SpatialNormalSubplot(SpatialPlot):
         fig.update_yaxes(title_text="Expression", rangemode="tozero")
 
         # Get longest cluster name for legend
-        longest_cluster = max(self.df["clusters"].astype(str).apply(len))
+        longest_cluster = max(df["clusters"].astype(str).apply(len))
         font_size = 12
         if longest_cluster > 10:
             font_size = 10
@@ -599,7 +601,7 @@ class SpatialPanel(pn.viewable.Viewer):
         )
 
         self.expanded_pre = pn.Column(
-             pn.Row(
+            pn.Row(
                 pn.pane.Markdown('## Select a region to modify zoomed in view in the bottom panel', height=30, width=700),
                 self.display_name,
                 self.save_button,
@@ -725,7 +727,8 @@ class SpatialPanel(pn.viewable.Viewer):
 
         self.spatial_img = None
         if adata_pkg["img_name"]:
-            self.spatial_img = self.adata.uns["spatial"][adata_pkg["img_name"]]["images"]["hires"]
+            # In certain conditions, the image multi-array may need to be squeezed so that PIL can read it
+            self.spatial_img = self.adata.uns["spatial"][adata_pkg["img_name"]]["images"]["hires"].squeeze()
 
         yield self.loading_indicator("Processing data to create plots. This may take a minute...")
 
@@ -739,6 +742,7 @@ class SpatialPanel(pn.viewable.Viewer):
         zarr_path = spatial_path / f"{self.dataset_id}.zarr"
         if not zarr_path.exists():
             raise ValueError(f"Dataset {self.dataset_id} not found")
+
         sdata = sd.read_zarr(zarr_path)
 
         try:
@@ -765,7 +769,11 @@ class SpatialPanel(pn.viewable.Viewer):
         # Create AnnData object
         # Need to include image since the bounding box query does not filter the image data by coordinates
         # Each Image is downscaled (or upscaled) during rendering to fit a 2000x2000 pixels image (downscaled_hires)
-        self.spatial_obj._convert_sdata_to_adata()
+        try:
+            self.spatial_obj._convert_sdata_to_adata()
+        except Exception as e:
+            print("Error converting sdata to adata:", str(e), file=sys.stderr)
+            raise ValueError("Could not convert sdata to adata. Check the spatial data type and bounding box coordinates.")
         return self.spatial_obj.adata
 
     def create_projection_adata(self):
@@ -809,6 +817,11 @@ class SpatialPanel(pn.viewable.Viewer):
         # Filter out cells that overlap with the blank space of the image.
 
         sc.pp.filter_cells(self.dataset_adata, min_genes=self.min_genes)
+
+        # If adata is empty, raise an error
+        if self.dataset_adata.n_obs == 0:
+            raise ValueError(f"No cells found with at least {self.min_genes} genes. Choose a different gene or lower the filter.")
+
         sc.pp.normalize_total(self.dataset_adata, inplace=True)
         sc.pp.log1p(self.dataset_adata)
 
@@ -819,6 +832,7 @@ class SpatialPanel(pn.viewable.Viewer):
 
         def create_umap():
             # We need to use the original dataset for UMAP clustering instead of the projection one
+            # However we only want to use the cells that have clusters
             adata = self.dataset_adata
             sc.pp.highly_variable_genes(adata, n_top_genes=2000)
             sc.pp.pca(adata)
@@ -828,14 +842,32 @@ class SpatialPanel(pn.viewable.Viewer):
 
         adata_subset_cache_label = f"{self.dataset_id}_{self.min_genes}_adata"
 
-        # Load the subset Anndata object from cache or create it if it does not exist, with a 1-week time-to-live
-        adata = pn.state.as_cached(adata_subset_cache_label, create_umap, ttl=CACHE_EXPIRATION)
+        try:
+            # Load the subset Anndata object from cache or create it if it does not exist, with a 1-week time-to-live
+            adata = pn.state.as_cached(adata_subset_cache_label, create_umap, ttl=CACHE_EXPIRATION)
 
-        X, Y = (0, 1)
-        self.df["UMAP1"] = adata.obsm["X_umap"].transpose()[X].tolist()
-        self.df["UMAP2"] = adata.obsm["X_umap"].transpose()[Y].tolist()
+            X, Y = (0, 1)
+            self.df["UMAP1"] = adata.obsm["X_umap"].transpose()[X].tolist()
+            self.df["UMAP2"] = adata.obsm["X_umap"].transpose()[Y].tolist()
 
-        self.umap_fig = self.normal_fig_obj.make_umap_plots()
+            self.umap_fig = self.normal_fig_obj.make_umap_plots()
+        except ValueError as e:
+            print("Error creating UMAP:", str(e), file=sys.stderr)
+            layout = {
+                "annotations": [
+                    {
+                        "text": "Something went wrong with UMAP clustering.",
+                        "font": {"size": 20, "color": "red"},
+                        "showarrow": False,
+                        "x": 0.5,
+                        "y": 1.3,
+                        "xref": "paper",
+                        "yref": "paper"
+                    }
+                ]
+            }
+            self.umap_fig = {"data": [], "layout": layout}  # reset the umap figure
+
         self.umap_pane.object = self.umap_fig
 
         # Add X_umap to self.adata
@@ -864,8 +896,9 @@ class SpatialPanel(pn.viewable.Viewer):
 
         df["clusters"] = selected.obs["clusters"].astype("category")
 
-        # drop NaN clusters
-        self.df = df.dropna(subset=["clusters"])
+        # Drop any NA clusters
+        df = df.dropna(subset=["clusters"])
+        self.df = df
 
     def refresh_dataframe(self, min_genes):
         """
@@ -885,6 +918,9 @@ class SpatialPanel(pn.viewable.Viewer):
 
         self.create_gene_df()   # creating the Dataframe is generally fast
         self.map_colors()
+        # drop indexes from self.adata not in self.df (since clustering may have removed some cells)
+        self.dataset_adata = self.dataset_adata[self.df.index]
+        self.adata = self.adata[self.df.index]
 
         # destroy the old figure objects (to free up memory)
         self.normal_fig_obj = None
