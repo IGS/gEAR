@@ -3,6 +3,32 @@
 # Some of these originally started out as code from individual scripts, such as the "bin" directory,
 # but were moved to a common location to be shared across multiple scripts.
 
+import sys
+import functools
+
+def catch_memory_error():
+    """
+    A decorator to catch and handle MemoryError exceptions
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except MemoryError as e:
+                print(f"Exceeded memory in {func.__name__}: {e}", sys.stderr)
+
+                result = {
+                    "message": "Exceeded memory limit",
+                    "success": -1,
+                    "error": str(e)
+                }
+
+                return result, 500
+        return wrapper
+    return decorator
+
+
 def update_adata_with_ensembl_ids(adata, organism, id_prefix, verbose=False):
 
     import geardb
