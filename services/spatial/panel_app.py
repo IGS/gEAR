@@ -203,7 +203,7 @@ class SpatialPlot():
         # Do not set if image is present as there is a slight padding between data and axes ticks
         plot_bgcolor = None
         if self.spatial_img is None:
-            plot_bgcolor = "#99FFFF"
+            plot_bgcolor = "#000000"
 
         # adjust domains of all 3 plots, leaving enough space for the colorbar and legend
         self.fig.update_layout(
