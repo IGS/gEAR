@@ -1,4 +1,5 @@
 panel==1.5.5
+dask==2024.12.1 # https://github.com/scverse/spatialdata/issues/835
 plotly==5.20.0
 spatialdata==0.3.0
 spatialdata_io==0.1.6

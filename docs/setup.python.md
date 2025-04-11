@@ -46,6 +46,7 @@ Check the requirement.txt file in <git_repo_root>/docker for the latest packages
       biopython==1.79 \
       cairosvg==2.7.1 \
       dash-bio==1.0.2 \
+      dask==2024.12.1 \
       Flask==3.0.0 \
       Flask-RESTful==0.3.9 \
       gunicorn \
