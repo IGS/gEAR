@@ -6,7 +6,6 @@ import os, sys
 import tempfile
 import shutil
 import anndata
-import spatialdata as sd
 import pandas as pd
 from pandas.api.types import is_integer_dtype
 
