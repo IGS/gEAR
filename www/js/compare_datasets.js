@@ -268,6 +268,41 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
     return facetWidget;
 }
 
+/**
+ * Updates the UI to display tags for the selected filters.
+ * Converts selected filters into a "category:group" format and creates
+ * corresponding tags to display in the "selected-facets-tags" element.
+ * If no filters are selected, the "selected-facets-all" element is shown instead.
+ *
+ * @param {Object} filters - An object representing the selected filters.
+ *                            Each key is a filter category, and its value is an array of selected groups.
+ */
+const createFilterTags = (filters) => {
+	const selectedFiltersTags = document.getElementById('selected-filters-tags');
+	const allSelectedTag = document.getElementById("selected-filters-all");
+
+	// For each selected filter, convert into a "category:group" format
+	const filterGroups = [];
+	for (const filter in filters) {
+		for (const group of filters[filter]) {
+			filterGroups.push(`${filter}:${group}`);
+		}
+	}
+	selectedFiltersTags.replaceChildren();
+	allSelectedTag.classList.remove("is-hidden");
+
+	if (filterGroups.length) {
+		allSelectedTag.classList.add("is-hidden");
+		// Create a tag for each selected filter
+		for (const filter of filterGroups) {
+			const tag = document.createElement("span");
+			tag.classList.add("tag", "is-dark", "is-rounded", "is-small", "mx-1");
+			tag.textContent = filter;
+			selectedFiltersTags.appendChild(tag);
+		}
+	}
+}
+
 const downloadSelectedGenes = (event) => {
     event.preventDefault();
 
@@ -311,10 +346,7 @@ const downloadSelectedGenes = (event) => {
 	document.body.appendChild(element);
 	element.click();
 	document.body.removeChild(element);
-
-
 }
-
 
 const fetchAggregations = async (datasetId, analysisId, filters) => {
     try {
@@ -355,6 +387,7 @@ const getComparisons = async (event) => {
 	event.target.classList.add("is-loading");
 
 	const filters = JSON.stringify(facetWidget.filters);
+	createFilterTags(facetWidget.filters);
 
 	const compareSeries = document.getElementById("compare-series").value
 
