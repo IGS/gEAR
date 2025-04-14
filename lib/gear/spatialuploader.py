@@ -728,6 +728,8 @@ class XeniumUploader(SpatialUploader):
             # set the index to the ensembl id (gene_ids)
             sdata[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids", inplace=True)
 
+            # TODO: Image is very, very dark, so we need to adjust brightness
+
             self.sdata = sdata
             self.originalFile = filepath
             return self
