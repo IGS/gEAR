@@ -271,8 +271,8 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
 /**
  * Updates the UI to display tags for the selected filters.
  * Converts selected filters into a "category:group" format and creates
- * corresponding tags to display in the "selected-facets-tags" element.
- * If no filters are selected, the "selected-facets-all" element is shown instead.
+ * corresponding tags to display in the "selected-filters-tags" element.
+ * If no filters are selected, the "selected-filters-all" element is shown instead.
  *
  * @param {Object} filters - An object representing the selected filters.
  *                            Each key is a filter category, and its value is an array of selected groups.
@@ -294,10 +294,10 @@ const createFilterTags = (filters) => {
 	if (filterGroups.length) {
 		allSelectedTag.classList.add("is-hidden");
 		// Create a tag for each selected filter
-		for (const filter of filterGroups) {
+		for (const filterTag of filterGroups) {
 			const tag = document.createElement("span");
 			tag.classList.add("tag", "is-dark", "is-rounded", "is-small", "mx-1");
-			tag.textContent = filter;
+			tag.textContent = filterTag;
 			selectedFiltersTags.appendChild(tag);
 		}
 	}
