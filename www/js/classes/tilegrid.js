@@ -151,7 +151,7 @@ class TileGrid {
 
 
         selectorElt.style.gridTemplateColumns = `repeat(1, 1fr)`;
-        selectorElt.style.gridTemplateRows = `repeat(1, min-content)`; // this prevents extra space at the bottom of each grid row
+        selectorElt.style.gridTemplateRows = `repeat(1, fit-content)`;
 
         // if zoomed, create new DatasetTile object with zoomed flag
         // SAdkins - I tried to use a "clone node and change ids" approach, but it was not working.
