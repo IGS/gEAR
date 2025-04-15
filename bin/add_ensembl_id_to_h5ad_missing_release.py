@@ -16,7 +16,7 @@ import os
 lib_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'lib'))
 sys.path.append(lib_path)
 
-from utils import update_adata_with_ensembl_ids
+from gear.utils import update_adata_with_ensembl_ids
 
 
 def main():

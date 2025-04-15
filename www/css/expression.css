@@ -98,9 +98,15 @@ ul#go-terms li {
 }
 
 /* spatial embeds */
-.js-tile .card-image iframe {
+#result-panel-grid .js-tile .card-image iframe {
     width: 100%;
-    height: 1675px;  /* Enough room for the Panel app to be fully displayed without scrolling */
+    height: 100%;
+    margin: auto;
+}
+
+#zoomed-panel-grid .js-tile .card-image iframe {
+    width: 100%;
+    height: 1750px;  /* Enough room for the Panel app to be fully displayed without scrolling */
     margin: auto;
 }
 

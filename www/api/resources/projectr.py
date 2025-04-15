@@ -15,7 +15,9 @@ from more_itertools import sliced
 import geardb
 from gear.orthology import get_ortholog_file, map_dataframe_genes
 
-from .common import get_adata_from_analysis, get_spatial_adata, catch_memory_error
+from .common import get_adata_from_analysis, get_spatial_adata
+from gear.utils import catch_memory_error
+
 
 # Parse gEAR config
 # https://stackoverflow.com/a/35904211/1368079
