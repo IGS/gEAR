@@ -100,7 +100,7 @@ class SpatialUploader(ABC):
             adata = to_legacy_anndata(self.sdata, include_images=include_images, coordinate_system=self.coordinate_system, table_name=table_name)
         except Exception as err:
             print(str(err))
-            raise Exception("Error occurred while converting spatial data object to AnnData object: ", err)
+            raise Exception("Error occurred while converting spatial data object to AnnData object: " + str(err))
         self.adata = adata
         return self
 
