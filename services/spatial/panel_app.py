@@ -74,7 +74,7 @@ class Settings(param.Parameterized):
 
     gene_symbol = param.String(doc="Gene symbol to display")
     dataset_id = param.String(doc="Dataset ID to display")
-    min_genes = param.Integer(doc="Minimum number of genes per observation", default=200, bounds=(0, 500))
+    min_genes = param.Integer(doc="Minimum number of genes per observation", default=0, bounds=(0, 500))
     projection_id = param.String(doc="Projection ID to display", allow_None=True)
     selection_x1 = param.Number(doc="left selection range", allow_None=True)
     selection_x2 = param.Number(doc="right selection range", allow_None=True)
