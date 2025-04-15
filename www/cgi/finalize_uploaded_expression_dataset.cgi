@@ -116,7 +116,7 @@ def main():
         sys.exit(0)
 
     try:
-        os.rename(h5ad_file, h5ad_dest)
+        shutil.move(h5ad_file, h5ad_dest)
         result['h5ad_migrated'] = 1
     except Exception as e:
         result['message'] = 'Error migrating H5AD file: {}'.format(str(e))
@@ -128,10 +128,10 @@ def main():
         tarball_file = os.path.join(dataset_upload_dir, f'{share_uid}.tar.gz')
         tarball_dest = os.path.join(dataset_final_dir, f'{dataset_id}.tar.gz')
 
-        print(f"DEBUG: Attempting to do: mv {tarball_file} {tarball_dest}", file=sys.stderr)
+        #print(f"DEBUG: Attempting to do: mv {tarball_file} {tarball_dest}", file=sys.stderr)
 
         try:
-            os.rename(tarball_file, tarball_dest)
+            shutil.move(tarball_file, tarball_dest)
             result['userdata_migrated'] = 1
         except Exception as e:
             result['message'] = 'Error migrating tarball file: {}'.format(str(e))
@@ -144,7 +144,7 @@ def main():
         excel_dest = os.path.join(dataset_final_dir, f'{dataset_id}.xlsx')
 
         try:
-            os.rename(excel_file, excel_dest)
+            shutil.move(excel_file, excel_dest)
             result['userdata_migrated'] = 1
         except Exception as e:
             result['message'] = 'Error migrating Excel file: {}'.format(str(e))

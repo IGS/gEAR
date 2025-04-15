@@ -21,7 +21,7 @@ You can pre-build the "panel_app" image using the Dockerfile from `<gear_root>/s
 * After launching the Docker containers via docker-compose, the annotation data may not be loaded into the MySQL database.  To do this (substitute species and release number as needed):
 
 1. Run `docker-compose exec web /bin/bash`
-2. `cd /opt/gEAR-dockerized/annotations/mouse`
+2. `cd /opt/gEAR/annotations/mouse`
 3. Run `../../bin/load_genbank_annotations.py -i ./release-94 -id 1 -r 94` which will load the annotation file
 
 ## Issues and potential solutions

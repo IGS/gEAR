@@ -5,10 +5,12 @@ FROM python:3.12
 # Allow statements and log messages to immediately appear in the Knative logs
 ENV PYTHONUNBUFFERED=True
 
+# NOTE: Installing vim so I can debug the container
 RUN apt-get -qq update \
   && DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
   gcc \
   libblosc-dev \
+  vim \
   # Cleanup
   && apt -qq clean autoclean \
   && apt -qq autoremove -y \

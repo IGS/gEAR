@@ -3,11 +3,9 @@ Common functions shared across several resources
 """
 
 import os, sys
-import functools
 import tempfile
 import shutil
 import anndata
-import spatialdata as sd
 import pandas as pd
 from pandas.api.types import is_integer_dtype
 
@@ -22,29 +20,6 @@ from geardb import get_user_from_session_id, Analysis, SpatialAnalysis
 TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
 PROJECTIONS_BASE_DIR = abs_path_www.joinpath('projections')
-
-def catch_memory_error():
-    """
-    A decorator to catch and handle MemoryError exceptions
-    """
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            try:
-                return func(*args, **kwargs)
-            except MemoryError as e:
-                print(f"Exceeded memory in {func.__name__}: {e}", sys.stderr)
-
-                result = {
-                    "message": "Exceeded memory limit",
-                    "success": -1,
-                    "error": str(e)
-                }
-
-                return result, 500
-        return wrapper
-    return decorator
-
 
 def get_adata_from_analysis(analysis_id, dataset_id, session_id):
     user = get_user_from_session_id(session_id)

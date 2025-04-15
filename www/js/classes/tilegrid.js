@@ -119,9 +119,9 @@ class TileGrid {
 
             // If the dataset type is epiviz or spatial, then add grid-template-rows so that this tile takes up the full height
             //if (datasetTile.dataset.dtype === "epiviz" || datasetTile.dataset.dtype === "spatial") {
-            if (datasetTile.dataset.dtype === "spatial") {
+            /*if (datasetTile.dataset.dtype === "spatial") {
                 specialRows.add(tile.startRow);
-            }
+            }*/
         }
 
         // Set grid-template-rows for special rows
@@ -869,12 +869,6 @@ class DatasetTile {
             document.getElementById("result-panel-grid").classList.remove("is-hidden");
             document.getElementById("zoomed-panel-grid").classList.add("is-hidden");
         });
-
-        // Hide "zoom" and "shrink" buttons for spatial datasets (NOT IMPLEMENTED YET)
-        if (this.dataset.dtype === "spatial") {
-            tileElement.querySelector('.js-expand-display').classList.add("is-hidden");
-            tileElement.querySelector('.js-shrink-display').classList.add("is-hidden");
-        }
 
         // Add event listener to dropdown trigger
         tileElement.querySelector("button.dropdown-trigger").addEventListener("click", (event) => {
@@ -1775,6 +1769,9 @@ class DatasetTile {
             urlParams.append("selection_y2", this.spatial.selection_y2);
         }
 
+        if (this.isZoomed) {
+            urlParams.append("expanded", true);
+        }
 
         if (this.spatial.projection_id) {
             urlParams.append("projection_id", this.spatial.projection_id);

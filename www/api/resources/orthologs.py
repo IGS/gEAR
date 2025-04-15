@@ -3,7 +3,8 @@ from flask_restful import Resource
 import os, sys
 import geardb
 from gear.orthology import get_ortholog_file, get_ortholog_files_from_dataset, map_single_gene, map_multiple_genes
-from .common import get_adata_shadow, catch_memory_error
+from .common import get_adata_shadow
+from gear.utils import catch_memory_error
 
 def normalize_searched_gene(gene_set, chosen_gene):
     """Convert to case-insensitive version of gene.  Returns None if gene not found in dataset."""
