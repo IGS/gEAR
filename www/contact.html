@@ -85,17 +85,25 @@
                     <input type="file" name="files[]" class="input" id="screenshot" placeholder="Optional - attach helpful screenshot" accept="image/*,.pdf">
                   </div>
                 </div>
-                <div class="field">
-                  <label class="label" id="label_comment_tag" for="comment_tag">
-                    Tag(s)
-                    <small class="help is-info">Optional - This can be a 1 or 2 word subject or category your comment touches on. (TAB or ENTER to confirm)</small>
-                  </label>
+                <label class="label" id="label_comment_tag" for="comment_tag">
+                  Tag(s)
+                  <small class="help is-info">
+                    Optional - This can be a 1 or 2 word subject or category your comment touches on. 
+                    Examples include things like "bug", "scRNA-Seq", "plotting", etc. Adding multiple tags
+                    is great, just do them one at a time!
+                  </small>
+                </label>
+                <div class="field has-addons">
                   <div class="control">
-                    <div class="select is-multiple">
-                      <select name="comment_tag" id="comment_tag" multiple></select>
-                    </div>
+                    <input id="tag-input" class="input" type="text" placeholder="Add new tag...">
+                  </div>
+                  <div class="control">
+                    <a id="add-tag" class="button is-link">
+                      Add
+                    </a>
                   </div>
                 </div>
+                <div id="tag-field" class="field is-grouped is-grouped-multiline"></div>
                 <div class="field">
                   <label class="label" id="label_super_impressive_security_check" for="super_impressive_security_check">Please enter product of 7 x 4</label>
                   <div class="control">
