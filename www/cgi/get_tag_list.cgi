@@ -8,9 +8,7 @@ Tags are used as an autocomplete for the comment form
 
 import cgi
 import json
-import math
 import re, sys, os
-from xml.dom import minidom
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
