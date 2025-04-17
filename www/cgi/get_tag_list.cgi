@@ -15,7 +15,6 @@ from xml.dom import minidom
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
-import loaderutils
 
 def main():
     print('Content-Type: application/json\n\n')
