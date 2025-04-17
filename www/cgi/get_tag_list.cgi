@@ -19,8 +19,6 @@ import loaderutils
 
 def main():
     print('Content-Type: application/json\n\n')
-    user_upload_file_base = '../uploads/files'
-    user_upload_dest_base = '../datasets_uploaded'
     result = { 'success':0, 'tags': list() }
 
     cnx = geardb.Connection()
