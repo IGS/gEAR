@@ -80,7 +80,6 @@ $("#btn_submit_comment").click((_e) => {
   } else {
     $('#confirmModal').modal("show");
   }
-
 });
 
 // Modal "OK" was clicked
