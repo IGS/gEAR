@@ -37,17 +37,5 @@ def main():
     print(json.dumps(result))
 
 
-
-def get_user_id_from_session_id(cursor, session_id):
-    qry = ( "SELECT user_id FROM user_session WHERE session_id = %s" )
-    cursor.execute(qry, (session_id, ) )
-    user_id = None
-
-    for (uid,) in cursor:
-        user_id = uid
-
-    return user_id
-
-
 if __name__ == '__main__':
     main()
