@@ -16,6 +16,25 @@ window.onload=function() {
     // generate list of tags from database
     get_tag_list();
 
+    document.getElementById("btn_submit_comment").addEventListener("click", (_e) => {
+        // If user confirmed private data in the form, skip the modal
+        if (document.getElementById("private_check").checked) {
+            document.getElementById("actual_submit").click();
+        } else {
+            
+        }
+    });
+
+    //remove warning label on focus
+    document.querySelectorAll("input, textarea").forEach((element) => {
+        element.addEventListener("focus", () => {
+            const warningEl = document.getElementById(`label-warning-${element.id}`);
+            if (warningEl) {
+                warningEl.remove();
+            }
+        });
+    });
+
     //TODO prepopulate email field if user is logged in
 };
 
@@ -32,6 +51,65 @@ tagInput.addEventListener("keyup", (event) => {
       tagInput.value = "";
     }
 });
+
+//checks required fields for input.
+function check_required_fields() {
+    let pass = true;
+
+    // Helper function to add warning labels
+    function addWarningLabel(inputId, labelId, message) {
+        const label = document.getElementById(labelId);
+        if (!document.getElementById(`label-warning-${inputId}`)) {
+            const warningSpan = document.createElement("span");
+            warningSpan.id = `label-warning-${inputId}`;
+            warningSpan.className = "label label-warning";
+            warningSpan.textContent = message;
+            label.appendChild(warningSpan);
+        }
+        document.getElementById(inputId).classList.add("highlight");
+    }
+
+    // Helper function to highlight fields
+    function highlightField(inputId) {
+        const field = document.getElementById(inputId);
+        field.classList.add("highlight");
+        setTimeout(() => field.classList.remove("highlight"), 1000);
+    }
+
+    // Test whether required fields were filled in
+    if (!document.getElementById("submitter_firstname").value) {
+        addWarningLabel("submitter_firstname", "label_submitter_firstname", "Oops. This is required.");
+        highlightField("submitter_firstname");
+        pass = false;
+    }
+    if (!document.getElementById("submitter_lastname").value) {
+        addWarningLabel("submitter_lastname", "label_submitter_lastname", "Oops. This is required.");
+        highlightField("submitter_lastname");
+        pass = false;
+    }
+    if (!document.getElementById("submitter_email").value) {
+        addWarningLabel("submitter_email", "label_submitter_email", "Oops. This is required.");
+        highlightField("submitter_email");
+        pass = false;
+    }
+    if (!document.getElementById("comment_title").value) {
+        addWarningLabel("comment_title", "label_comment_title", "Oops. This is required.");
+        highlightField("comment_title");
+        pass = false;
+    }
+    if (!document.getElementById("comment").value) {
+        addWarningLabel("comment", "label_comment", "Oops. This is required.");
+        highlightField("comment");
+        pass = false;
+    }
+    if (document.getElementById("super_impressive_security_check").value != 28) {
+        addWarningLabel("super_impressive_security_check", "label_super_impressive_security_check", "Oops. This is required.");
+        highlightField("super_impressive_security_check");
+        return false;
+    }
+
+    return pass;
+}
 
 /* Credit (adapted from)
     https://codepen.io/yanniskatsaros/pen/ZEQByPj

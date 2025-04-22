@@ -39,6 +39,49 @@
           <section id="content-c" class="columns m-3" data-nav-link="workspace">
             
             <div id="contact_form_c" class="column is-two-thirds">
+              <p class="mb-6">
+                Please use this form if you have comments you'd like to send, problems to report, or
+                general questions to submit.
+              </p>
+
+              <!-- Modal - Successful Comment submission-->
+              <div id="modal-success" class="modal">
+                <div class="modal-background"></div>
+
+                <div class="modal-content">
+                  <div class="box">
+                    <h4>Success!</h4>
+                    <p>
+                      Thank you! We will contact you soon!
+                    </p>
+                  </div>
+                </div>
+
+                <button class="modal-close is-large" aria-label="close"></button>
+              </div>
+
+              <!-- Modal - Confirm public submisison-->
+              <div id="modal-confirm" class="modal">
+                <div class="modal-background"></div>
+
+                <div class="modal-content">
+                  <div class="box">
+                    <h4>Confirm submission</h4>
+                    <p>
+                      By clicking "OK", you acknowledge that your question or comment has no private data within and will be posted as an issue in the public IGS/gEAR Github repository.
+                      If there is private data, please click "Cancel" and check the "private data" checkbox on the form
+                    </p>
+                    <div class="buttons are-medium">
+                      <button type="submit" id="actual_submit" class="btn btn-primary">OK</button>
+                      <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    </div>
+                  </div>
+                </div>
+
+                <button class="modal-close is-large" aria-label="close"></button>
+              </div>
+              <!-- end confirm modal -->
+
               <form id="upload_form" name="upload_form">
                 <div class="field">
                   <label class="label" id="label_submitter_firstname" for="submitter_firstname">First name</label>
@@ -78,6 +121,7 @@
                     </label>
                   </div>
                 </div>
+                <hr />
                 <div class="field">
                   <label class="label" id="label_screenshot" for="files[]">Attach optional screenshot detailing issue (highly recommended) - 10MB limit, image files or PDF only</label>
                   <div id="upload_status" style="display:none;"></div>
@@ -85,6 +129,7 @@
                     <input type="file" name="files[]" class="input" id="screenshot" placeholder="Optional - attach helpful screenshot" accept="image/*,.pdf">
                   </div>
                 </div>
+                <hr />
                 <label class="label" id="label_comment_tag" for="comment_tag">
                   Tag(s)
                   <small class="help is-info">
@@ -104,6 +149,7 @@
                   </div>
                 </div>
                 <div id="tag-field" class="field is-grouped is-grouped-multiline"></div>
+                <hr />
                 <div class="field">
                   <label class="label" id="label_super_impressive_security_check" for="super_impressive_security_check">Please enter product of 7 x 4</label>
                   <div class="control">
