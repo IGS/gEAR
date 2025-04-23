@@ -16,12 +16,57 @@ window.onload=function() {
     // generate list of tags from database
     get_tag_list();
 
-    document.getElementById("btn_submit_comment").addEventListener("click", (_e) => {
-        // If user confirmed private data in the form, skip the modal
-        if (document.getElementById("private_check").checked) {
-            document.getElementById("actual_submit").click();
+    document.getElementById("btn_submit_comment").addEventListener("click", (e) => {
+        e.preventDefault();
+
+        // check if required fields were filled in
+        const pass = check_required_fields();
+
+        if (pass == true) {
+            //submit the upload form
+            const formData = new FormData($("#upload_form")[0]);
+            // Replace the binary screenshot with the filename, since the file is uploaded.
+            formData.delete("files[]");
+            formData.append("screenshot", screenshot);
+            formData.append("private_check", $('#private_check').is(':checked'));
+
+            // since comment tags come from "select2" now,
+            // need to format this attribute to only pass a single array instead of multiple scalars
+            formData.delete("comment_tag");
+            comment_tags = $('#comment_tag').select2('data').map((elem) => elem.id);
+            formData.append("comment_tag", comment_tags);
+
+            $.ajax({
+            url: "./cgi/create_github_issue.cgi",
+            type: "POST",
+            data: formData,
+            dataType: "json",
+            contentType: false, // contentType and processData need to be false when using FormData objects and jQuery AJAX
+            processData: false,
+            success(data, _textStatus, _jqXHR) {
+                if (data.success == 1) {
+                //activate a 'Thank you' modal
+                $("#successModal").modal("show");
+                // redirect to the data manager page
+                setTimeout(() => {
+                    window.location.replace("index.html");
+                }, 2000);
+                return;
+                }
+                const msg =
+                "Something went wrong. Please try again, but if this continues please contact jorvis@gmail.com for help.";
+                const error = `Error during creation: ${data.error}`;
+                display_error_bar(msg, error);
+            },
+            error(jqXHR, _textStatus, errorThrown) {
+                const msg =
+                "Something went wrong. Please try again, but if this continues please contact jorvis@gmail.com for help.";
+                const error = `${jqXHR.status} ${errorThrown}`;
+                display_error_bar(msg, error);
+            },
+            }); //end ajax
         } else {
-            
+            console.error("Some required fields were left blank.");
         }
     });
 
@@ -105,7 +150,11 @@ function check_required_fields() {
     if (document.getElementById("super_impressive_security_check").value != 28) {
         addWarningLabel("super_impressive_security_check", "label_super_impressive_security_check", "Oops. This is required.");
         highlightField("super_impressive_security_check");
-        return false;
+        pass = false;
+    }
+    if (!document.querySelector("input[name='data_type']:checked")) {
+        addWarningLabel("data_type", "label_data_type", "Oops. This is required.");
+        pass = false;
     }
 
     return pass;
