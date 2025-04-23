@@ -1428,7 +1428,7 @@ class DatasetTile {
         let data;
         // Get data and set up the image area
         try {
-            data = await apiCallsMixin.fetchDashData(datasetId, analysisObj, plotType, plotConfig, otherOpts);
+            data = await apiCallsMixin.fetchMgPlotlyData(datasetId, analysisObj, plotType, plotConfig, otherOpts);
             if (data?.success < 1) {
                 throw new Error (data?.message ? data.message : "Unknown error.")
             }

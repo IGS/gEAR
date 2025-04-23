@@ -80,7 +80,7 @@ def create_composite_index_column(df, columns):
     """
     return df[columns].apply(lambda x: ';'.join(map(str, x)), axis=1)
 
-class MultigeneDashData(Resource):
+class MGPlotlyData(Resource):
     """Resource for retrieving data from h5ad to be used to draw charts on UI.
     Parameters
     ----------

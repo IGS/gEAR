@@ -20,7 +20,7 @@ from flask_restful import Api
 
 # Import resources
 from resources.plotly_data import PlotlyData
-from resources.mg_plotly_data import MultigeneDashData
+from resources.mg_plotly_data import MGPlotlyData
 from resources.h5ad import H5ad
 from resources.svg_data import SvgData
 from resources.top_pca_genes import TopPCAGenes
@@ -46,8 +46,9 @@ soft, hard = resource.getrlimit(resource.RLIMIT_DATA)
 soft95 = int(soft * 0.95)
 resource.setrlimit(resource.RLIMIT_DATA, (soft95, hard))
 
-api.add_resource(PlotlyData, '/plot/<dataset_id>') # May want to add /plotly to this endpoint for consistency
-api.add_resource(MultigeneDashData, '/plot/<dataset_id>/mg_dash')
+api.add_resource(PlotlyData, '/plot/<dataset_id>'   # Default endpoint
+                 , "/plot/<dataset_id>/plotly")     # add /plotly to this endpoint for name consistency with other endpoints
+api.add_resource(MGPlotlyData,'/plot/<dataset_id>/mg_plotly')
 api.add_resource(SvgData, '/plot/<dataset_id>/svg')
 api.add_resource(TSNEData, '/plot/<dataset_id>/tsne')
 api.add_resource(EpivizData, '/plot/<dataset_id>/epiviz')
