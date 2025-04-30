@@ -1,4 +1,4 @@
-import sys, logging, tempfile, shutil
+import sys, logging
 
 # Holoviz imports
 import panel as pn
@@ -9,7 +9,6 @@ import datashader as ds
 
 # Plotly imports
 import plotly.io as pio
-import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -1034,7 +1033,8 @@ class SpatialPanel(pn.viewable.Viewer):
             self.color_map = {cluster: df[df["clusters"] == cluster]["colors"].values[0] for cluster in self.unique_clusters}
         else:
             # Some glasbey_bw_colors may not show well on a dark background so use "light" colors if images are not present
-            swatch_color = cc.glasbey_bw if self.has_images else cc.glasbey_light
+            # Prepending b_ to the name will return a list of RGB colors (though glasbey_light seems to already do this)
+            swatch_color = cc.b_glasbey_bw if self.spatial_img is not None else cc.glasbey_light
 
             self.color_map = {cluster: swatch_color[i % len(swatch_color)] for i, cluster in enumerate(self.unique_clusters)}
             # Map the colors to the clusters
