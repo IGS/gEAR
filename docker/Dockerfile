@@ -136,7 +136,8 @@ RUN ./pip3 install --upgrade pip \
   # wheel is needed for the installation of biopython
   && ./pip3 install wheel \
   && ./pip3 install -r /opt/gEAR/docker/requirements.txt \
-  && ./python3 -m pip install git+https://github.com/theislab/diffxpy.git@7609ea935936e3739fc4c71b75c8ee8ca57f51ea \
+  # Uninstall dask-expr to avoid issues with spatialdata (https://github.com/scverse/spatialdata/pull/570)
+  && pip uninstall dask-expr -y \
   && apt-get -qq update \
   && (chmod 777 /opt/Python-${PYTHON_VERSION}/lib/python${PYTHON_VERSION}/site-packages/scanpy/preprocessing/__pycache__ || true)
 

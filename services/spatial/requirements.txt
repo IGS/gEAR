@@ -1,10 +1,12 @@
-panel==1.5.5
+panel==1.6.3
 plotly==5.20.0
-spatialdata==0.3.0
+spatialdata==0.4.0
 spatialdata_io==0.1.6
 scanpy==1.10.3
 pandas==2.2.1
 anndata==0.10.6
 werkzeug==2.0.2
 watchfiles
-numcodecs==0.15.1    # 0.16.0 calls an import removed from 0.15.0
+numcodecs==0.15.1    # 0.16.0 calls an import removed from 0.15.0.
+datashader==0.18.0
+colorcet==3.1.0
