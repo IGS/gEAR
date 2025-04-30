@@ -202,6 +202,7 @@ class SpatialPlot():
                     name=str(cluster),
                     text=cluster_data["clusters"],
                     unselected=dict(marker=dict(opacity=1)),
+                    hovertemplate="Cluster: %{text}<extra></extra>"
                 ), row=1, col=self.cluster_col
             )
 
@@ -1032,8 +1033,10 @@ class SpatialPanel(pn.viewable.Viewer):
         if "colors" in df:
             self.color_map = {cluster: df[df["clusters"] == cluster]["colors"].values[0] for cluster in self.unique_clusters}
         else:
-            # ? Change to colorcet palette
-            self.color_map = {cluster: px.colors.qualitative.Alphabet[i % len(px.colors.qualitative.Alphabet)] for i, cluster in enumerate(self.unique_clusters)}
+            # Some glasbey_bw_colors may not show well on a dark background so use "light" colors if images are not present
+            swatch_color = cc.glasbey_bw if self.has_images else cc.glasbey_light
+
+            self.color_map = {cluster: swatch_color[i % len(swatch_color)] for i, cluster in enumerate(self.unique_clusters)}
             # Map the colors to the clusters
             df["colors"] = df["clusters"].map(self.color_map)
         self.df = df
