@@ -197,7 +197,10 @@ class SpatialPlot():
                     x=cluster_data["spatial1"],
                     y=cluster_data["spatial2"],
                     mode="markers",
-                    marker=dict(color=color_map[cluster], size=self.marker_size),
+                    marker=dict(
+                        color=color_map[cluster]
+                        , size=self.marker_size
+                        ),
                     name=str(cluster),
                     text=cluster_data["clusters"],
                     unselected=dict(marker=dict(opacity=1)),
@@ -523,19 +526,6 @@ class SpatialZoomSubplot(SpatialPlot):
                 self.range_y1 = self.settings.selection_y1
             if self.settings.selection_y2:
                 self.range_y2 = self.settings.selection_y2
-
-            # Viewing a selection, so increase the marker size
-            self.calculate_marker_size()
-
-    def calculate_marker_size(self):
-        """Dynamically calculate the marker size based on the range of the selection."""
-        # Calculate the range of the selection
-        x_range = self.range_x2 - self.range_x1
-        y_range = self.range_y2 - self.range_y1
-
-        # Calculate the marker size based on the range of the selection
-        # The marker size will scale larger as the range of the selection gets more precise
-        self.marker_size = int(1 + 2500 / (x_range + y_range))
 
     def refresh_spatial_fig(self):
         self.fig =  self.make_fig(static_size=False)
