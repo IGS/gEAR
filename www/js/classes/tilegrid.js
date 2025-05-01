@@ -1834,7 +1834,7 @@ class DatasetTile {
                             createToast("Must be logged in to save as a display.");
                             throw new Error("Must be logged in to save as a display.");
                         }
-                        await this.saveSpatialParameters(displayName, makeDefault);
+                        await this.saveSpatialParameters(displayName, makeDefault, geneSymbol);
                     } catch (error) {
                         console.error(error);
                     }
@@ -1851,10 +1851,11 @@ class DatasetTile {
         }
     }
 
-    async saveSpatialParameters(displayName, makeDefault) {
+    async saveSpatialParameters(displayName, makeDefault, geneSymbol) {
         const spatialConfig = this.spatial;
         if (this.type === "single" ) {
-            spatialConfig["gene_symbol"] = this.geneSymbol;
+            console.log(geneSymbol)
+            spatialConfig["gene_symbol"] = geneSymbol;
         }
         const datasetId = this.dataset.id;
         const plotType = "spatial_panel";
