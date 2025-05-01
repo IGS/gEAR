@@ -1,10 +1,14 @@
-import sys, logging, tempfile, shutil
+import sys, logging
 
+# Holoviz imports
 import panel as pn
 import param
+import colorcet as cc
+import datashader as ds
+#import datashader.transfer_functions as tf
 
+# Plotly imports
 import plotly.io as pio
-import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -12,6 +16,7 @@ from PIL import Image
 import base64
 from io import BytesIO
 
+import numpy as np
 import pandas as pd
 import scanpy as sc
 
@@ -104,59 +109,112 @@ class SpatialPlot():
         self.dragmode = dragmode
         self.marker_size = 2
         self.base64_string = None
+        self.PLOT_WIDTH = 300
+        self.PLOT_HEIGHT = 300
+
+        # https://spatialdata.scverse.org/projects/io/en/latest/generated/spatialdata_io.experimental.to_legacy_anndata.html
+        # (see section Matching of spatial coordinates and pixel coordinates)
+        # The downscaled image (x,y) coordinate matches (spatial2, spatial1) in the dataframe
+        # We traditionally use the 1-coord as x and the 2-coord as y, so we need to address these in various plots.
         self.range_x1 = 0 if self.spatial_img is not None else min(df["spatial1"])
         self.range_x2 = self.spatial_img.shape[1] if self.spatial_img is not None else max(df["spatial1"])
         self.range_y1 = 0 if self.spatial_img is not None else min(df["spatial2"])
         self.range_y2 = self.spatial_img.shape[0] if self.spatial_img is not None else max(df["spatial2"])
 
+        # The range of the x-axis for the expression plot
+        self.max_x1 = 0.5
 
     def make_expression_scatter(self):
         df = self.df
-        df = df.sort_values(by="raw_value")
 
-        return go.Scattergl(x=df["spatial1"], y=df["spatial2"], mode="markers", marker=dict(
+        cvs = ds.Canvas(plot_width=self.PLOT_WIDTH, plot_height=self.PLOT_HEIGHT)
+
+        # If multiple data points are in the same location, use the max gene expression value (raw_value)
+        # Oddly, we need to swap the x and y coordinates to match the image, but this is not a problem for the scatter plot
+        agg = cvs.points(df, x='spatial2', y='spatial1', agg=ds.max('raw_value'))
+
+        # NOTE: I attempted to use tf.Shade for an image (as I've seen in various examples) but the image was not appearing in the plot
+
+        # There is an agg.to_dataframe(name="raw_value") method, but I elected to use what Copilot suggested
+        # Extract x and y coordinates
+        x_coords = agg.coords['spatial1'].values
+        y_coords = agg.coords['spatial2'].values
+
+        # Flatten the data and create a mask for non-NaN values
+        agg_values = agg.values.flatten()
+        x_flat = np.repeat(x_coords, len(y_coords))
+        y_flat = np.tile(y_coords, len(x_coords))
+
+        # Filter out NaN values (if any)
+        mask = ~np.isnan(agg_values)
+        x_filtered = x_flat[mask]
+        y_filtered = y_flat[mask]
+        values_filtered = agg_values[mask]
+
+        return go.Scatter(
+                x=x_filtered,
+                y=y_filtered,
+                mode="markers",
+                marker=dict(
                     cauto=False,  # Do not adjust the color scale
                     cmin=0,  # No expression
                     cmax=df["raw_value"].max(),  # Max expression value
                     # ? This would not apply if data is log-transformed
-                    color=df["raw_value"],
+                    color=values_filtered,
                     colorscale=self.expression_color,  # You can choose any colorscale you like
                     size=self.marker_size,  # Adjust the marker size as needed
                     colorbar=dict(
                         len=1,  # Adjust the length of the colorbar
                         thickness=15,  # Adjust the thickness of the colorbar (default is 30)
                         x=self.max_x1 - 0.005,  # Adjust the x position of the colorbar
-                    ),
-                    symbol="square",
-                    ),
-                    showlegend=False,
-                    unselected=dict(marker=dict(opacity=1)),    # Helps with viewing unselected regions
-                    hovertemplate="Expression: %{marker.color:.2f}<extra></extra>"
-                )
+                    )
+                ),
+                showlegend=False,
+                unselected=dict(marker=dict(opacity=1)),    # Helps with viewing unselected regions
+                hovertemplate="Expression: %{marker.color:.2f}<extra></extra>"
+            )
 
     def add_cluster_traces(self, df):
         fig = self.fig
-        df = self.df.sort_values(by="raw_value")
+
+        cvs = ds.Canvas(plot_width=self.PLOT_WIDTH, plot_height=self.PLOT_HEIGHT)
+        agg = cvs.points(df, x='spatial2', y='spatial1', agg=ds.by('clusters', ds.any()))
+
+        # ? Is there a more efficient way to do this?
+        agg_df = agg.to_dataframe(name="clusters")
+        # Drop rows where "clusters" is False
+        agg_df = agg_df[agg_df["clusters"] != False]
+
+        # Move spatial coordinates as columns
+        agg_df = agg_df.reset_index(level=["spatial1", "spatial2"])
+        # Drop the True/False column and set clusters as a column
+        df = agg_df.drop("clusters", axis=1).reset_index()
 
         color_map = self.color_map
+
         # TODO: Add click event for removing equivalent points from expression plot if legend item is clicked
         for cluster in color_map:
             cluster_data = df[df["clusters"] == cluster]
             fig.add_trace(
-                go.Scattergl(
+                go.Scatter(
                     x=cluster_data["spatial1"],
                     y=cluster_data["spatial2"],
                     mode="markers",
-                    marker=dict(color=color_map[cluster], size=self.marker_size, symbol="square"),
+                    marker=dict(
+                        color=color_map[cluster]
+                        , size=self.marker_size
+                        ),
                     name=str(cluster),
                     text=cluster_data["clusters"],
                     unselected=dict(marker=dict(opacity=1)),
+                    hovertemplate="Cluster: %{text}<extra></extra>"
                 ), row=1, col=self.cluster_col
             )
 
     def make_fig(self, static_size=False):
         self.create_subplots()  # sets self.fig
         self.update_axes()
+
         # domain is adjusted whether there are images or not
         if self.spatial_img is not None:
             self.expression_col = 2
@@ -217,17 +275,21 @@ class SpatialPlot():
         )
         return self.fig
 
-    def convert_image(self):
+    def encode_pil_image(self, pil_img):
+        prefix = "data:image/png;base64,"
+        with BytesIO() as stream:
+            pil_img.save(stream, format="png")
+            return prefix + base64.b64encode(stream.getvalue()).decode("utf-8")
+
+    def convert_background_image(self):
         # Convert image array to base64 string for performance in loading
         # https://plotly.com/python/imshow/#passing-image-data-as-a-binary-string-to-goimage
         pil_img = Image.fromarray(self.spatial_img)  # PIL image object
         # Crop the image to the selected range
         # https://pillow.readthedocs.io/en/stable/reference/Image.html#PIL.Image.Image.crop
         pil_img = pil_img.crop((self.range_x1, self.range_y1, self.range_x2, self.range_y2))
-        prefix = "data:image/png;base64,"
-        with BytesIO() as stream:
-            pil_img.save(stream, format="png")
-            self.base64_string = prefix + base64.b64encode(stream.getvalue()).decode("utf-8")
+
+        self.base64_string = self.encode_pil_image(pil_img)
 
     def create_subplots(self):
         if self.spatial_img is not None:
@@ -247,7 +309,7 @@ class SpatialPlot():
         self.fig.update_yaxes(range=[self.range_y2, self.range_y1], title_text="spatial2", showgrid=False, showticklabels=False, ticks="", title_standoff=0)
 
     def add_image_trace(self):
-        self.convert_image()
+        self.convert_background_image()
         # Note that passing the spatial img array to the "z" property instead of the base64-encoded string causes a big performance hit
         image_trace = go.Image(source=self.base64_string
             , x0=self.range_x1
@@ -281,11 +343,8 @@ class SpatialNormalSubplot(SpatialPlot):
         return self.fig.to_dict()
 
     def make_umap_plots(self):
-        # NOTE: Axes are mirrored from previous versions but the coordinates do not matter... clustering is the focus
-        df = self.df.sort_values(by="raw_value")
-
-        # Make "clusters" a category so that a legend will be created
-        df["clusters"] = df["clusters"].astype("category")
+        df = self.df
+        cvs = ds.Canvas(plot_width=self.PLOT_WIDTH, plot_height=self.PLOT_HEIGHT)
 
         fig = make_subplots(rows=1, cols=2, column_titles=(f"{self.expression_name} UMAP", "clusters UMAP"), horizontal_spacing=0.1)
 
@@ -294,16 +353,40 @@ class SpatialNormalSubplot(SpatialPlot):
             xaxis2=dict(domain=[0.55, 1]),  # Leave room for cluster annotations
         )
 
+        ### Expression UMAP
+
+        # NOTE: I have absolutely no clue why this needs to be swapper here but not in the clusters one.
+        # I think it may be because of how I process the "agg" dataframe in each case.
+        agg = cvs.points(df, x='UMAP2', y='UMAP1', agg=ds.max('raw_value'))
+
+        # NOTE: I attempted to use tf.Shade for an image (as I've seen in various examples) but the image was not appearing in the plot
+
+        # There is an agg.to_dataframe(name="raw_value") method, but I elected to use what Copilot suggested
+        # Extract x and y coordinates
+        x_coords = agg.coords['UMAP1'].values
+        y_coords = agg.coords['UMAP2'].values
+
+        # Flatten the data and create a mask for non-NaN values
+        agg_values = agg.values.flatten()
+        x_flat = np.repeat(x_coords, len(y_coords))
+        y_flat = np.tile(y_coords, len(x_coords))
+
+        # Filter out NaN values (if any)
+        mask = ~np.isnan(agg_values)
+        x_filtered = x_flat[mask]
+        y_filtered = y_flat[mask]
+        values_filtered = agg_values[mask]
+
         max_x1 = fig.layout.xaxis.domain[1]
 
         fig.add_scatter(col=1, row=1
-                        , x=df["UMAP1"]
-                        , y=df["UMAP2"]
+                        , x=x_filtered
+                        , y=y_filtered
                         , mode="markers"
 
-                        , marker=dict(color=df["raw_value"]
+                        , marker=dict(color=values_filtered
                             , colorscale="cividis_r"
-                            , size=2
+                            , size=self.marker_size
                             , colorbar=dict(
                                 len=1  # Adjust the length of the colorbar
                                 , thickness=15  # Adjust the thickness of the colorbar (default is 30)
@@ -314,10 +397,23 @@ class SpatialNormalSubplot(SpatialPlot):
                         , hovertemplate="Expression: %{marker.color:.2f}<extra></extra>"
                         )
 
-        # Process clusters as individual traces so that all show on the legend
+        ### Clusters UMAP
+
+        agg = cvs.points(df, x='UMAP1', y='UMAP2', agg=ds.by('clusters', ds.any()))
+
+        # ? Is there a more efficient way to do this?
+        agg_df = agg.to_dataframe(name="clusters")
+        # Drop rows where "clusters" is False
+        agg_df = agg_df[agg_df["clusters"] != False]
+
+        # Move spatial coordinates as columns
+        agg_df = agg_df.reset_index(level=["UMAP1", "UMAP2"])
+        # Drop the True/False column and set clusters as a column
+        df = agg_df.drop("clusters", axis=1).reset_index()
+
+        # Make "clusters" a category so that a legend will be created
         df["clusters"] = df["clusters"].astype("category")
 
-        # Assuming df is your DataFrame and it has a column "clusters"
         unique_clusters = df["clusters"].unique()
         # sort unique clusters by number if numerical, otherwise by name
         try:
@@ -327,16 +423,17 @@ class SpatialNormalSubplot(SpatialPlot):
 
         for cluster in sorted_clusters:
             cluster_data = df[df["clusters"] == cluster]
-            fig.add_trace(go.Scattergl(
+            fig.add_trace(go.Scatter(
                 x=cluster_data["UMAP1"]
                 , y=cluster_data["UMAP2"]
                 , mode="markers"
                 , marker=dict(
-                    color=cluster_data["colors"]
-                    , size=2
+                    color=self.color_map[cluster]
+                    , size=self.marker_size
                     )
                 , name=str(cluster)
                 , text=cluster_data["clusters"]
+                , hovertemplate="Cluster: %{text}<extra></extra>"
                 ), col=2, row=1)
 
         fig.update_xaxes(showgrid=False, showticklabels=False, ticks="", title_text="UMAP1")
@@ -372,9 +469,6 @@ class SpatialNormalSubplot(SpatialPlot):
         df["clusters"] = df["clusters"].astype("category")
 
         fig = go.Figure()
-        #fig.update_layout(xaxis=dict(domain=[0, 0.90])) # Leave room for cluster annotations
-
-        #xmax = fig.layout.xaxis.domain[1]
 
         # Assuming df is your DataFrame and it has a column "clusters"
         unique_clusters = df["clusters"].unique()
@@ -471,19 +565,6 @@ class SpatialZoomSubplot(SpatialPlot):
             if self.settings.selection_y2:
                 self.range_y2 = self.settings.selection_y2
 
-            # Viewing a selection, so increase the marker size
-            self.calculate_marker_size()
-
-    def calculate_marker_size(self):
-        """Dynamically calculate the marker size based on the range of the selection."""
-        # Calculate the range of the selection
-        x_range = self.range_x2 - self.range_x1
-        y_range = self.range_y2 - self.range_y1
-
-        # Calculate the marker size based on the range of the selection
-        # The marker size will scale larger as the range of the selection gets more precise
-        self.marker_size = int(1 + 2500 / (x_range + y_range))
-
     def refresh_spatial_fig(self):
         self.fig =  self.make_fig(static_size=False)
         return self.fig.to_dict()
@@ -565,7 +646,7 @@ class SpatialPanel(pn.viewable.Viewer):
 
         self.normal_pane = pn.pane.Plotly(self.normal_fig
                     , config={"doubleClick":"reset","displayModeBar": True, "modeBarButtonsToRemove": buttonsToRemove}
-                    , height=350 if self.expanded else None
+                    , height=350 if self.expanded else 275
                     , sizing_mode="stretch_width" if self.expanded else "stretch_both"
                     )
 
@@ -596,8 +677,8 @@ class SpatialPanel(pn.viewable.Viewer):
             layout_height = 1520
 
         self.nonexpanded_pre = pn.pane.Markdown(
-            "## Click the Expand icon in the top right corner to see all plots",
-            height=30, visible=True if not self.expanded else False
+            "### Click the Expand icon in the top right corner to see all plots",
+            height=20, visible=True if not self.expanded else False
         )
 
         self.expanded_pre = pn.Column(
@@ -926,6 +1007,11 @@ class SpatialPanel(pn.viewable.Viewer):
         self.normal_fig_obj = None
         self.zoom_fig_obj = None
 
+        # CET_L19 is "WhBuPrRd"
+        # CET_L18 is "YlOrRd"
+        #normal_color = cc.cm.CET_L19
+        #zoom_color = cc.cm.CET_L18
+
         self.normal_fig_obj = SpatialNormalSubplot(self.settings, self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, self.norm_gene_symbol, "YlGn", dragmode="select")
         self.zoom_fig_obj = SpatialZoomSubplot(self.settings, self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, "Local", "YlOrRd", dragmode=False)
 
@@ -974,7 +1060,11 @@ class SpatialPanel(pn.viewable.Viewer):
         if "colors" in df:
             self.color_map = {cluster: df[df["clusters"] == cluster]["colors"].values[0] for cluster in self.unique_clusters}
         else:
-            self.color_map = {cluster: px.colors.qualitative.Alphabet[i % len(px.colors.qualitative.Alphabet)] for i, cluster in enumerate(self.unique_clusters)}
+            # Some glasbey_bw_colors may not show well on a dark background so use "light" colors if images are not present
+            # Prepending b_ to the name will return a list of RGB colors (though glasbey_light seems to already do this)
+            swatch_color = cc.b_glasbey_bw if self.spatial_img is not None else cc.glasbey_light
+
+            self.color_map = {cluster: swatch_color[i % len(swatch_color)] for i, cluster in enumerate(self.unique_clusters)}
             # Map the colors to the clusters
             df["colors"] = df["clusters"].map(self.color_map)
         self.df = df

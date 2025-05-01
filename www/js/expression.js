@@ -446,22 +446,22 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
  * but these can be updated when the user types or via a share URL, so let's shift this
  * to a function.
  */
-const updateGenesSelected = (search_term_string) => {
-    const new_manually_entered_genes = search_term_string.length > 0 ? new Set(search_term_string.split(/[ ,]+/)) : new Set();
+const updateGenesSelected = (searchTermString) => {
+    const newManuallyEnteredGenes = searchTermString?.length > 0 ? new Set(searchTermString.split(/[ ,]+/)) : new Set();
 
     // Remove genes that have been deleted from the selectedGenes set
     for (const gene of manually_entered_genes) {
-        if (!new_manually_entered_genes.has(gene)) {
+        if (!newManuallyEnteredGenes.has(gene)) {
             selected_genes.delete(gene);
         }
     }
 
     // Add new genes to the selectedGenes set
-    for (const gene of new_manually_entered_genes) {
+    for (const gene of newManuallyEnteredGenes) {
         selected_genes.add(gene);
     }
 
-    manually_entered_genes = new_manually_entered_genes;
+    manually_entered_genes = newManuallyEnteredGenes;
 }
 
 /**
