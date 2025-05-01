@@ -121,6 +121,8 @@ class SpatialPlot():
         self.range_y1 = 0 if self.spatial_img is not None else min(df["spatial2"])
         self.range_y2 = self.spatial_img.shape[0] if self.spatial_img is not None else max(df["spatial2"])
 
+        # The range of the x-axis for the expression plot
+        self.max_x1 = 0.5
 
     def make_expression_scatter(self):
         df = self.df
@@ -174,7 +176,6 @@ class SpatialPlot():
 
     def add_cluster_traces(self, df):
         fig = self.fig
-        df = df.sort_values(by="raw_value")
 
         cvs = ds.Canvas(plot_width=self.PLOT_WIDTH, plot_height=self.PLOT_HEIGHT)
         agg = cvs.points(df, x='spatial2', y='spatial1', agg=ds.by('clusters', ds.any()))
@@ -195,7 +196,7 @@ class SpatialPlot():
         for cluster in color_map:
             cluster_data = df[df["clusters"] == cluster]
             fig.add_trace(
-                go.Scattergl(
+                go.Scatter(
                     x=cluster_data["spatial1"],
                     y=cluster_data["spatial2"],
                     mode="markers",
@@ -342,11 +343,8 @@ class SpatialNormalSubplot(SpatialPlot):
         return self.fig.to_dict()
 
     def make_umap_plots(self):
-        # NOTE: Axes are mirrored from previous versions but the coordinates do not matter... clustering is the focus
-        df = self.df.sort_values(by="raw_value")
-
-        # Make "clusters" a category so that a legend will be created
-        df["clusters"] = df["clusters"].astype("category")
+        df = self.df
+        cvs = ds.Canvas(plot_width=self.PLOT_WIDTH, plot_height=self.PLOT_HEIGHT)
 
         fig = make_subplots(rows=1, cols=2, column_titles=(f"{self.expression_name} UMAP", "clusters UMAP"), horizontal_spacing=0.1)
 
@@ -355,16 +353,40 @@ class SpatialNormalSubplot(SpatialPlot):
             xaxis2=dict(domain=[0.55, 1]),  # Leave room for cluster annotations
         )
 
+        ### Expression UMAP
+
+        # NOTE: I have absolutely no clue why this needs to be swapper here but not in the clusters one.
+        # I think it may be because of how I process the "agg" dataframe in each case.
+        agg = cvs.points(df, x='UMAP2', y='UMAP1', agg=ds.max('raw_value'))
+
+        # NOTE: I attempted to use tf.Shade for an image (as I've seen in various examples) but the image was not appearing in the plot
+
+        # There is an agg.to_dataframe(name="raw_value") method, but I elected to use what Copilot suggested
+        # Extract x and y coordinates
+        x_coords = agg.coords['UMAP1'].values
+        y_coords = agg.coords['UMAP2'].values
+
+        # Flatten the data and create a mask for non-NaN values
+        agg_values = agg.values.flatten()
+        x_flat = np.repeat(x_coords, len(y_coords))
+        y_flat = np.tile(y_coords, len(x_coords))
+
+        # Filter out NaN values (if any)
+        mask = ~np.isnan(agg_values)
+        x_filtered = x_flat[mask]
+        y_filtered = y_flat[mask]
+        values_filtered = agg_values[mask]
+
         max_x1 = fig.layout.xaxis.domain[1]
 
         fig.add_scatter(col=1, row=1
-                        , x=df["UMAP1"]
-                        , y=df["UMAP2"]
+                        , x=x_filtered
+                        , y=y_filtered
                         , mode="markers"
 
-                        , marker=dict(color=df["raw_value"]
+                        , marker=dict(color=values_filtered
                             , colorscale="cividis_r"
-                            , size=2
+                            , size=self.marker_size
                             , colorbar=dict(
                                 len=1  # Adjust the length of the colorbar
                                 , thickness=15  # Adjust the thickness of the colorbar (default is 30)
@@ -375,10 +397,23 @@ class SpatialNormalSubplot(SpatialPlot):
                         , hovertemplate="Expression: %{marker.color:.2f}<extra></extra>"
                         )
 
-        # Process clusters as individual traces so that all show on the legend
+        ### Clusters UMAP
+
+        agg = cvs.points(df, x='UMAP1', y='UMAP2', agg=ds.by('clusters', ds.any()))
+
+        # ? Is there a more efficient way to do this?
+        agg_df = agg.to_dataframe(name="clusters")
+        # Drop rows where "clusters" is False
+        agg_df = agg_df[agg_df["clusters"] != False]
+
+        # Move spatial coordinates as columns
+        agg_df = agg_df.reset_index(level=["UMAP1", "UMAP2"])
+        # Drop the True/False column and set clusters as a column
+        df = agg_df.drop("clusters", axis=1).reset_index()
+
+        # Make "clusters" a category so that a legend will be created
         df["clusters"] = df["clusters"].astype("category")
 
-        # Assuming df is your DataFrame and it has a column "clusters"
         unique_clusters = df["clusters"].unique()
         # sort unique clusters by number if numerical, otherwise by name
         try:
@@ -388,16 +423,17 @@ class SpatialNormalSubplot(SpatialPlot):
 
         for cluster in sorted_clusters:
             cluster_data = df[df["clusters"] == cluster]
-            fig.add_trace(go.Scattergl(
+            fig.add_trace(go.Scatter(
                 x=cluster_data["UMAP1"]
                 , y=cluster_data["UMAP2"]
                 , mode="markers"
                 , marker=dict(
-                    color=cluster_data["colors"]
-                    , size=2
+                    color=self.color_map[cluster]
+                    , size=self.marker_size
                     )
                 , name=str(cluster)
                 , text=cluster_data["clusters"]
+                , hovertemplate="Cluster: %{text}<extra></extra>"
                 ), col=2, row=1)
 
         fig.update_xaxes(showgrid=False, showticklabels=False, ticks="", title_text="UMAP1")
@@ -610,7 +646,7 @@ class SpatialPanel(pn.viewable.Viewer):
 
         self.normal_pane = pn.pane.Plotly(self.normal_fig
                     , config={"doubleClick":"reset","displayModeBar": True, "modeBarButtonsToRemove": buttonsToRemove}
-                    , height=350 if self.expanded else None
+                    , height=350 if self.expanded else 275
                     , sizing_mode="stretch_width" if self.expanded else "stretch_both"
                     )
 
@@ -641,8 +677,8 @@ class SpatialPanel(pn.viewable.Viewer):
             layout_height = 1520
 
         self.nonexpanded_pre = pn.pane.Markdown(
-            "## Click the Expand icon in the top right corner to see all plots",
-            height=30, visible=True if not self.expanded else False
+            "### Click the Expand icon in the top right corner to see all plots",
+            height=20, visible=True if not self.expanded else False
         )
 
         self.expanded_pre = pn.Column(
