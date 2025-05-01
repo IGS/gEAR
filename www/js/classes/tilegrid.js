@@ -1428,7 +1428,7 @@ class DatasetTile {
         let data;
         // Get data and set up the image area
         try {
-            data = await apiCallsMixin.fetchDashData(datasetId, analysisObj, plotType, plotConfig, otherOpts);
+            data = await apiCallsMixin.fetchMgPlotlyData(datasetId, analysisObj, plotType, plotConfig, otherOpts);
             if (data?.success < 1) {
                 throw new Error (data?.message ? data.message : "Unknown error.")
             }
@@ -1834,7 +1834,7 @@ class DatasetTile {
                             createToast("Must be logged in to save as a display.");
                             throw new Error("Must be logged in to save as a display.");
                         }
-                        await this.saveSpatialParameters(displayName, makeDefault);
+                        await this.saveSpatialParameters(displayName, makeDefault, geneSymbol);
                     } catch (error) {
                         console.error(error);
                     }
@@ -1851,10 +1851,10 @@ class DatasetTile {
         }
     }
 
-    async saveSpatialParameters(displayName, makeDefault) {
+    async saveSpatialParameters(displayName, makeDefault, geneSymbol) {
         const spatialConfig = this.spatial;
         if (this.type === "single" ) {
-            spatialConfig["gene_symbol"] = this.geneSymbol;
+            spatialConfig["gene_symbol"] = geneSymbol;
         }
         const datasetId = this.dataset.id;
         const plotType = "spatial_panel";

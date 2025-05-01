@@ -191,7 +191,7 @@ def main():
         if plot_type.lower() in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
             image_success = make_static_plotly_graph(filename, config, url)
         elif plot_type.lower() in ["mg_violin", "dotplot", "volcano", "heatmap", "quadrant"]:
-            url += "/mg_dash"
+            url += "/mg_plotly"
             image_success = make_static_plotly_graph(filename, config, url)
         elif plot_type.lower() in ["tsne_static", "umap_static", "pca_static", "tsne"]:
             url += "/tsne"
@@ -215,7 +215,7 @@ def main():
             if plot_type.lower() in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
                 image_success = make_static_plotly_graph(filename, config, url)
             elif plot_type.lower() in ["mg_violin", "dotplot", "volcano", "heatmap", "quadrant"]:
-                url += "/mg_dash"
+                url += "/mg_plotly"
                 image_success = make_static_plotly_graph(filename, config, url)
             elif plot_type.lower() in ["tsne_static", "umap_static", "pca_static", "tsne"]:
                 url += "/tsne"

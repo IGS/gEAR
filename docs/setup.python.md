@@ -33,9 +33,15 @@ fixed paths have worked fine for decades.
 
 Check the requirement.txt file in <git_repo_root>/docker for the latest packages that have been tested locally. They work in a Dockerized ubuntu environment so should be able to work on the VMs. You can run `./pip3 install -r requirements.txt` as a shortcut.
 
-``./pip3 install -r <git_repo_root/docker/requirements.txt`
+`./pip3 install -r <git_repo_root/docker/requirements.txt`
+`./pip3 uninstall dask-expr -y`
+
 
 ## pip install option B (manual)
+
+NOTE: Some of the packages will indirectly install dask-expr, which is currently broken for spatialdata, with no intention of fixing. So it is necessary to uninstall dask-expr to avoid issues with spatialdata (https://github.com/scverse/spatialdata/pull/570)
+
+
 
     $ ./pip3 install --upgrade pip
 
@@ -45,7 +51,9 @@ Check the requirement.txt file in <git_repo_root>/docker for the latest packages
       biocode==0.10.0 \
       biopython==1.79 \
       cairosvg==2.7.1 \
+      colorcet==3.1.0 \
       dash-bio==1.0.2 \
+      datashader==0.18.0 \
       Flask==3.0.0 \
       Flask-RESTful==0.3.9 \
       gunicorn \
@@ -65,7 +73,7 @@ Check the requirement.txt file in <git_repo_root>/docker for the latest packages
       opencv-python==4.5.5.64 \
       openpyxl==3.1.5 \
       pandas==2.2.1 \
-      panel==1.5.5 \
+      panel==1.6.3 \
       Pillow==10.2.0 \
       pika==1.3.1 \
       plotly==5.20.0 \
@@ -78,11 +86,12 @@ Check the requirement.txt file in <git_repo_root>/docker for the latest packages
       scipy==1.11.04 \
       seaborn==0.13.2 \
       shadows==0.1a0 \
-      spatialdata==0.3.0\
+      spatialdata==0.4.0\
       spatialdata_io==0.1.6 \
       tables==3.9.2 \
       watchfiles \
       xlrd==1.2.0
+    $ ./pip3 uninstall dask-expr -y
     $ sudo mkdir /opt/bin
     $ sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/
 

@@ -909,7 +909,7 @@ const apiCallsMixin = {
         return data;
     },
     /**
-     * Fetches dashboard data from the server.
+     * Fetches multigene plotly data from the server.
      * @param {string} datasetId - The ID of the dataset.
      * @param {string} analysis - The type of analysis.
      * @param {string} plotType - The type of plot.
@@ -917,10 +917,10 @@ const apiCallsMixin = {
      * @param {object} [otherOpts={}] - Additional options for the request.
      * @returns {Promise<object>} - The fetched data.
      */
-    async fetchDashData(datasetId, analysis, plotType, plotConfig, otherOpts={}) {
+    async fetchMgPlotlyData(datasetId, analysis, plotType, plotConfig, otherOpts={}) {
         // NOTE: gene_symbol should already be already passed to plotConfig
         const payload = { ...plotConfig, plot_type: plotType, analysis, colorblind_mode: this.colorblindMode };
-        const {data} = await axios.post(`/api/plot/${datasetId}/mg_dash`, payload, otherOpts);
+        const {data} = await axios.post(`/api/plot/${datasetId}/mg_plotly`, payload, otherOpts);
         return data;
     },
     /**

@@ -151,7 +151,7 @@ def main():
                 if props["plot_type"].lower() in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
                     success = make_static_plotly_graph(filename, config, url)
                 elif props["plot_type"].lower() in ["mg_violin", "dotplot", "volcano", "heatmap", "quadrant"]:
-                    url += "/mg_dash"
+                    url += "/mg_plotly"
                     gene = "multi"
                     success = make_static_plotly_graph(filename, config, url)
                 # tSNE (todo later)

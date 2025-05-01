@@ -96,7 +96,7 @@ class GenesAsAxisHandler extends PlotHandler {
     async createPlot(datasetId, analysisObj) {
         // Get data and set up the image area
         try {
-            const data = await fetchDashData(datasetId, analysisObj,  this.apiPlotType, this.plotConfig);
+            const data = await fetchMgPlotlyData(datasetId, analysisObj,  this.apiPlotType, this.plotConfig);
             ({plot_json: this.plotJson} = data);
         } catch (error) {
             return;
@@ -523,7 +523,7 @@ class GenesAsDataHandler extends PlotHandler {
     async createPlot(datasetId, analysisObj) {
         // Get data and set up the image area
         try {
-            const data = await fetchDashData(datasetId, analysisObj,  this.apiPlotType, this.plotConfig);
+            const data = await fetchMgPlotlyData(datasetId, analysisObj,  this.apiPlotType, this.plotConfig);
             ({plot_json: this.plotJson} = data);
         } catch (error) {
             return;
@@ -962,9 +962,9 @@ const downloadSelectedGenes = (event) => {
 	document.body.removeChild(element);
 }
 
-const fetchDashData = async (datasetId, analysis, plotType, plotConfig)  => {
+const fetchMgPlotlyData = async (datasetId, analysis, plotType, plotConfig)  => {
     try {
-        const data = await apiCallsMixin.fetchDashData(datasetId, analysis, plotType, plotConfig);
+        const data = await apiCallsMixin.fetchMgPlotlyData(datasetId, analysis, plotType, plotConfig);
         if (data?.success < 1) {
             throw new Error (data?.message || "Unknown error.")
         }

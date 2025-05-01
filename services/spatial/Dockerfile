@@ -16,14 +16,17 @@ RUN apt-get -qq update \
   && apt -qq autoremove -y \
   && rm -rf /var/lib/apt/lists/*
 
+# Install production dependencies.
+COPY ./requirements.txt ./
+RUN pip install -r requirements.txt
+# Uninstall dask-expr to avoid issues with spatialdata (https://github.com/scverse/spatialdata/pull/570)
+RUN pip uninstall dask-expr -y
+
 # Copy local code to the container image.
 # App home is reflecting the relative levels within the gEAR repo
 ENV APP_HOME=/gEAR/services/spatial
 WORKDIR $APP_HOME
 COPY . ./
-
-# Install production dependencies.
-RUN pip install -r requirements.txt
 
 EXPOSE 5006
 
