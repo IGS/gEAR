@@ -1854,7 +1854,6 @@ class DatasetTile {
     async saveSpatialParameters(displayName, makeDefault, geneSymbol) {
         const spatialConfig = this.spatial;
         if (this.type === "single" ) {
-            console.log(geneSymbol)
             spatialConfig["gene_symbol"] = geneSymbol;
         }
         const datasetId = this.dataset.id;
