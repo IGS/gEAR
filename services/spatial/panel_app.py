@@ -1,4 +1,4 @@
-import sys, logging
+import sys, logging, gc
 
 # Holoviz imports
 import panel as pn
@@ -109,8 +109,8 @@ class SpatialPlot():
         self.dragmode = dragmode
         self.marker_size = 2
         self.base64_string = None
-        self.PLOT_WIDTH = 300
-        self.PLOT_HEIGHT = 300
+        self.PLOT_WIDTH = 200
+        self.PLOT_HEIGHT = 200
 
         # https://spatialdata.scverse.org/projects/io/en/latest/generated/spatialdata_io.experimental.to_legacy_anndata.html
         # (see section Matching of spatial coordinates and pixel coordinates)
@@ -273,6 +273,10 @@ class SpatialPlot():
             dragmode=self.dragmode,
             selectdirection="d"
         )
+
+        # garbage collection
+        gc.collect()
+
         return self.fig
 
     def encode_pil_image(self, pil_img):
@@ -460,6 +464,9 @@ class SpatialNormalSubplot(SpatialPlot):
             selectdirection="d"
         )
 
+        # garbage collection
+        gc.collect()
+
         return fig.to_dict()
 
     def make_violin_plot(self):
@@ -515,7 +522,6 @@ class SpatialNormalSubplot(SpatialPlot):
             dragmode=False,
             selectdirection="d"
         )
-
         return fig.to_dict()
 
     def mirror_selection_callback(self, event):
@@ -564,6 +570,19 @@ class SpatialZoomSubplot(SpatialPlot):
                 self.range_y1 = self.settings.selection_y1
             if self.settings.selection_y2:
                 self.range_y2 = self.settings.selection_y2
+
+            # Viewing a selection, so increase the marker size
+            self.calculate_marker_size()
+
+    def calculate_marker_size(self):
+        """Dynamically calculate the marker size based on the range of the selection."""
+        # Calculate the range of the selection
+        x_range = self.range_x2 - self.range_x1
+        y_range = self.range_y2 - self.range_y1
+
+        # Calculate the marker size based on the range of the selection
+        # The marker size will scale larger as the range of the selection gets more precise
+        self.marker_size = int(1 + 2500 / (x_range + y_range))
 
     def refresh_spatial_fig(self):
         self.fig =  self.make_fig(static_size=False)
