@@ -109,6 +109,8 @@ class SpatialPlot():
         self.dragmode = dragmode
         self.marker_size = 2
         self.base64_string = None
+        self.PLOT_WIDTH = 300
+        self.PLOT_HEIGHT = 300
 
         # https://spatialdata.scverse.org/projects/io/en/latest/generated/spatialdata_io.experimental.to_legacy_anndata.html
         # (see section Matching of spatial coordinates and pixel coordinates)
@@ -123,7 +125,7 @@ class SpatialPlot():
     def make_expression_scatter(self):
         df = self.df
 
-        cvs = ds.Canvas(plot_width=300, plot_height=300)
+        cvs = ds.Canvas(plot_width=self.PLOT_WIDTH, plot_height=self.PLOT_HEIGHT)
 
         # If multiple data points are in the same location, use the max gene expression value (raw_value)
         # Oddly, we need to swap the x and y coordinates to match the image, but this is not a problem for the scatter plot
@@ -174,7 +176,7 @@ class SpatialPlot():
         fig = self.fig
         df = df.sort_values(by="raw_value")
 
-        cvs = ds.Canvas(plot_width=300, plot_height=300)
+        cvs = ds.Canvas(plot_width=self.PLOT_WIDTH, plot_height=self.PLOT_HEIGHT)
         agg = cvs.points(df, x='spatial2', y='spatial1', agg=ds.by('clusters', ds.any()))
 
         # ? Is there a more efficient way to do this?
