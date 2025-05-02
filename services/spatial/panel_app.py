@@ -97,11 +97,12 @@ class SpatialPlot():
 
     # TODO: Change "expression" to "relative expression" for projections
 
-    def __init__(self, settings, df, spatial_img, color_map, gene_symbol, expression_name, expression_color, dragmode):
+    def __init__(self, settings, df, spatial_img, color_map, cluster_map, gene_symbol, expression_name, expression_color, dragmode):
         self.settings = settings
         self.df = df
         self.spatial_img = spatial_img  # None or numpy array
         self.color_map = color_map
+        self.cluster_map = cluster_map
         self.gene_symbol = gene_symbol
         self.fig = go.Figure()
         self.expression_name = expression_name
@@ -124,43 +125,24 @@ class SpatialPlot():
         # The range of the x-axis for the expression plot
         self.max_x1 = 0.5
 
-    def make_expression_scatter(self):
+    def make_expression_scatter(self, expression_agg):
         df = self.df
 
-        cvs = ds.Canvas(plot_width=self.PLOT_WIDTH, plot_height=self.PLOT_HEIGHT)
-
-        # If multiple data points are in the same location, use the max gene expression value (raw_value)
-        # Oddly, we need to swap the x and y coordinates to match the image, but this is not a problem for the scatter plot
-        agg = cvs.points(df, x='spatial2', y='spatial1', agg=ds.max('raw_value'))
-
-        # NOTE: I attempted to use tf.Shade for an image (as I've seen in various examples) but the image was not appearing in the plot
-
-        # There is an agg.to_dataframe(name="raw_value") method, but I elected to use what Copilot suggested
-        # Extract x and y coordinates
-        x_coords = agg.coords['spatial1'].values
-        y_coords = agg.coords['spatial2'].values
-
-        # Flatten the data and create a mask for non-NaN values
-        agg_values = agg.values.flatten()
-        x_flat = np.repeat(x_coords, len(y_coords))
-        y_flat = np.tile(y_coords, len(x_coords))
-
-        # Filter out NaN values (if any)
-        mask = ~np.isnan(agg_values)
-        x_filtered = x_flat[mask]
-        y_filtered = y_flat[mask]
-        values_filtered = agg_values[mask]
+        agg_df = expression_agg.to_dataframe(name="raw_value")
+        # Drop missing values
+        agg_df = agg_df.dropna()
+        df = agg_df.reset_index()
 
         return go.Scatter(
-                x=x_filtered,
-                y=y_filtered,
+                x=df["spatial1"],
+                y=df["spatial2"],
                 mode="markers",
                 marker=dict(
                     cauto=False,  # Do not adjust the color scale
                     cmin=0,  # No expression
                     cmax=df["raw_value"].max(),  # Max expression value
                     # ? This would not apply if data is log-transformed
-                    color=values_filtered,
+                    color=df["raw_value"],
                     colorscale=self.expression_color,  # You can choose any colorscale you like
                     size=self.marker_size,  # Adjust the marker size as needed
                     colorbar=dict(
@@ -174,23 +156,19 @@ class SpatialPlot():
                 hovertemplate="Expression: %{marker.color:.2f}<extra></extra>"
             )
 
-    def add_cluster_traces(self, df):
+    def add_cluster_traces(self, cluster_agg):
         fig = self.fig
 
-        cvs = ds.Canvas(plot_width=self.PLOT_WIDTH, plot_height=self.PLOT_HEIGHT)
-        agg = cvs.points(df, x='spatial2', y='spatial1', agg=ds.by('clusters', ds.any()))
-
-        # ? Is there a more efficient way to do this?
-        agg_df = agg.to_dataframe(name="clusters")
+        agg_df = cluster_agg.to_dataframe(name="clusters_cat_codes")
         # Drop rows where "clusters" is False
-        agg_df = agg_df[agg_df["clusters"] != False]
-
-        # Move spatial coordinates as columns
-        agg_df = agg_df.reset_index(level=["spatial1", "spatial2"])
-        # Drop the True/False column and set clusters as a column
-        df = agg_df.drop("clusters", axis=1).reset_index()
+        agg_df = agg_df[agg_df["clusters_cat_codes"] != False]
+        # The columns we want are in the multi-index, so we need to make them into a dataframe
+        df = agg_df.index.to_frame(index=False)
 
         color_map = self.color_map
+
+        # map cluster cat_codes to cluster names
+        df["clusters"] = df["clusters_cat_codes"].map(self.cluster_map)
 
         # TODO: Add click event for removing equivalent points from expression plot if legend item is clicked
         for cluster in color_map:
@@ -210,6 +188,19 @@ class SpatialPlot():
                     hovertemplate="Cluster: %{text}<extra></extra>"
                 ), row=1, col=self.cluster_col
             )
+
+    def create_datashader_agg(self, x, y):
+        """
+        Create a datashader aggregation object for the given DataFrame and x, y coordinates.
+        """
+        # Create a canvas with the specified width and height
+        cvs = ds.Canvas(plot_width=self.PLOT_WIDTH, plot_height=self.PLOT_HEIGHT)
+
+        # NOTE: This seems to affect the expression aggregation but does not matter for the clusters
+        # We need to swap the x and y values for aggregation compared to what we eventually plot.
+
+        agg = cvs.points(self.df, x=x, y=y, agg=ds.summary(expression=ds.max('raw_value'), clusters=ds.by('clusters_cat_codes', ds.any())))
+        return agg
 
     def make_fig(self, static_size=False):
         self.create_subplots()  # sets self.fig
@@ -240,11 +231,13 @@ class SpatialPlot():
 
         if self.spatial_img is not None:
             self.add_image_trace()
-        self.fig.add_trace(self.make_expression_scatter(), row=1, col=self.expression_col)
+
+        agg = self.create_datashader_agg(x='spatial2', y='spatial1')
+
+        self.fig.add_trace(self.make_expression_scatter(agg["expression"]), row=1, col=self.expression_col)
+        self.add_cluster_traces(agg["clusters"])
 
         df = self.df
-        self.add_cluster_traces(df)
-
         # Get longest cluster name for legend
         longest_cluster = max(df["clusters"].astype(str).apply(len))
         font_size = 12
@@ -328,8 +321,8 @@ class SpatialNormalSubplot(SpatialPlot):
     Class for creating a spatial plot with a gene expression heatmap, cluster markers, and an image.
     """
 
-    def __init__(self, settings, df, spatial_img, color_map, gene_symbol, expression_name, expression_color, **params):
-        super().__init__(settings, df, spatial_img, color_map, gene_symbol, expression_name, expression_color, **params)
+    def __init__(self, settings, df, spatial_img, color_map, cluster_map, gene_symbol, expression_name, expression_color, **params):
+        super().__init__(settings, df, spatial_img, color_map, cluster_map, gene_symbol, expression_name, expression_color, **params)
 
         self.selections_dict = {}
 
@@ -348,7 +341,6 @@ class SpatialNormalSubplot(SpatialPlot):
 
     def make_umap_plots(self):
         df = self.df
-        cvs = ds.Canvas(plot_width=self.PLOT_WIDTH, plot_height=self.PLOT_HEIGHT)
 
         fig = make_subplots(rows=1, cols=2, column_titles=(f"{self.expression_name} UMAP", "clusters UMAP"), horizontal_spacing=0.1)
 
@@ -357,38 +349,25 @@ class SpatialNormalSubplot(SpatialPlot):
             xaxis2=dict(domain=[0.55, 1]),  # Leave room for cluster annotations
         )
 
+        agg = self.create_datashader_agg(x='UMAP2', y='UMAP1')
+
         ### Expression UMAP
 
-        # NOTE: I have absolutely no clue why this needs to be swapper here but not in the clusters one.
-        # I think it may be because of how I process the "agg" dataframe in each case.
-        agg = cvs.points(df, x='UMAP2', y='UMAP1', agg=ds.max('raw_value'))
+        expression_agg_df = agg["expression"].to_dataframe(name="raw_value")
+        # Drop missing values
+        expression_agg_df = expression_agg_df.dropna()
+        expression_df = expression_agg_df.reset_index()
 
         # NOTE: I attempted to use tf.Shade for an image (as I've seen in various examples) but the image was not appearing in the plot
-
-        # There is an agg.to_dataframe(name="raw_value") method, but I elected to use what Copilot suggested
-        # Extract x and y coordinates
-        x_coords = agg.coords['UMAP1'].values
-        y_coords = agg.coords['UMAP2'].values
-
-        # Flatten the data and create a mask for non-NaN values
-        agg_values = agg.values.flatten()
-        x_flat = np.repeat(x_coords, len(y_coords))
-        y_flat = np.tile(y_coords, len(x_coords))
-
-        # Filter out NaN values (if any)
-        mask = ~np.isnan(agg_values)
-        x_filtered = x_flat[mask]
-        y_filtered = y_flat[mask]
-        values_filtered = agg_values[mask]
 
         max_x1 = fig.layout.xaxis.domain[1]
 
         fig.add_scatter(col=1, row=1
-                        , x=x_filtered
-                        , y=y_filtered
+                        , x=expression_df["UMAP1"]
+                        , y=expression_df["UMAP2"]
                         , mode="markers"
 
-                        , marker=dict(color=values_filtered
+                        , marker=dict(color=expression_df["raw_value"]
                             , colorscale="cividis_r"
                             , size=self.marker_size
                             , colorbar=dict(
@@ -403,20 +382,14 @@ class SpatialNormalSubplot(SpatialPlot):
 
         ### Clusters UMAP
 
-        agg = cvs.points(df, x='UMAP1', y='UMAP2', agg=ds.by('clusters', ds.any()))
-
-        # ? Is there a more efficient way to do this?
-        agg_df = agg.to_dataframe(name="clusters")
+        clusters_agg_df = agg["clusters"].to_dataframe(name="clusters_cat_codes")
         # Drop rows where "clusters" is False
-        agg_df = agg_df[agg_df["clusters"] != False]
+        clusters_agg_df = clusters_agg_df[clusters_agg_df["clusters_cat_codes"] != False]
+        # The columns we want are in the multi-index, so we need to make them into a dataframe
+        clusters_df = clusters_agg_df.index.to_frame(index=False)
 
-        # Move spatial coordinates as columns
-        agg_df = agg_df.reset_index(level=["UMAP1", "UMAP2"])
-        # Drop the True/False column and set clusters as a column
-        df = agg_df.drop("clusters", axis=1).reset_index()
-
-        # Make "clusters" a category so that a legend will be created
-        df["clusters"] = df["clusters"].astype("category")
+        # map cluster cat_codes to cluster names
+        clusters_df["clusters"] = clusters_df["clusters_cat_codes"].map(self.cluster_map).astype("category")
 
         unique_clusters = df["clusters"].unique()
         # sort unique clusters by number if numerical, otherwise by name
@@ -426,7 +399,7 @@ class SpatialNormalSubplot(SpatialPlot):
             sorted_clusters = sorted(unique_clusters, key=lambda x: str(x))
 
         for cluster in sorted_clusters:
-            cluster_data = df[df["clusters"] == cluster]
+            cluster_data = clusters_df[clusters_df["clusters"] == cluster]
             fig.add_trace(go.Scatter(
                 x=cluster_data["UMAP1"]
                 , y=cluster_data["UMAP2"]
@@ -551,8 +524,8 @@ class SpatialZoomSubplot(SpatialPlot):
     Class for creating a zoomed-in spatial plot with a gene expression heatmap, cluster markers, and an image.
     """
 
-    def __init__(self, settings, df, spatial_img, color_map, gene_symbol, expression_name, expression_color, **params):
-        super().__init__(settings, df, spatial_img, color_map, gene_symbol, expression_name, expression_color, **params)
+    def __init__(self, settings, df, spatial_img, color_map, cluster_map, gene_symbol, expression_name, expression_color, **params):
+        super().__init__(settings, df, spatial_img, color_map, cluster_map, gene_symbol, expression_name, expression_color, **params)
 
         # Preserve the original dataframe for filtering
         self.orig_df = df
@@ -995,6 +968,9 @@ class SpatialPanel(pn.viewable.Viewer):
             raise ValueError("No cluster information found in adata.obs")
 
         df["clusters"] = selected.obs["clusters"].astype("category")
+        df["clusters_cat_codes"] = df["clusters"].cat.codes.astype("category")
+
+        self.cluster_map = {code: df[df["clusters_cat_codes"] == code]["clusters"].values[0] for code in df["clusters_cat_codes"].unique()}
 
         # Drop any NA clusters
         df = df.dropna(subset=["clusters"])
@@ -1031,8 +1007,8 @@ class SpatialPanel(pn.viewable.Viewer):
         #normal_color = cc.cm.CET_L19
         #zoom_color = cc.cm.CET_L18
 
-        self.normal_fig_obj = SpatialNormalSubplot(self.settings, self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, self.norm_gene_symbol, "YlGn", dragmode="select")
-        self.zoom_fig_obj = SpatialZoomSubplot(self.settings, self.df, self.spatial_img, self.color_map, self.norm_gene_symbol, "Local", "YlOrRd", dragmode=False)
+        self.normal_fig_obj = SpatialNormalSubplot(self.settings, self.df, self.spatial_img, self.color_map, self.cluster_map, self.norm_gene_symbol, self.norm_gene_symbol, "YlGn", dragmode="select")
+        self.zoom_fig_obj = SpatialZoomSubplot(self.settings, self.df, self.spatial_img, self.color_map, self.cluster_map, self.norm_gene_symbol, "Local", "YlOrRd", dragmode=False)
 
         self.normal_fig = self.normal_fig_obj.refresh_spatial_fig()
 
