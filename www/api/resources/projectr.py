@@ -125,14 +125,19 @@ def concat_fetch_results_to_dataframe(res_jsons):
     pval_dfs = []
 
     for res_json in res_jsons:
-        res_dict = pd.read_json(StringIO(res_json), orient="split", dtype="float32")
-        if "projection" in res_dict:
-            projection_dfs.append(pd.read_json(StringIO(res_dict["projection"]), orient="split", dtype="float32"))
-        if "pval" in res_dict and res_dict["pval"]:
-            pval_dfs.append(pd.read_json(StringIO(res_dict["pval"]), orient="split", dtype="float32"))
+        # res_json is a dictionary. Each value is a JSON string
+        if "projection" in res_json:
+            projection_json = res_json["projection"]
+            projection_df = pd.read_json(StringIO(projection_json), orient="split", dtype="float32")
+            projection_dfs.append(projection_df)
+        if "pval" in res_json:
+            pval_json = res_json["pval"]
+            print(pval_json, file=sys.stderr)
+            pval_df = pd.read_json(StringIO(pval_json), orient="split", dtype="float32")
+            pval_dfs.append(pval_df)
 
-    projection_patterns_df = pd.concat(projection_dfs, ignore_index=True) if projection_dfs else pd.DataFrame()
-    pval_patterns_df = pd.concat(pval_dfs, ignore_index=True) if pval_dfs else pd.DataFrame()
+    projection_patterns_df = pd.concat(projection_dfs) if projection_dfs else pd.DataFrame()
+    pval_patterns_df = pd.concat(pval_dfs) if pval_dfs else pd.DataFrame()
 
     return projection_patterns_df, pval_patterns_df
 
@@ -606,7 +611,7 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         }
 
     # if full_output = True, then write the pval matrix to file using the same name as the projection file
-    if full_output:
+    if full_output and algorithm == "nmf":
         if projection_pval_df.empty:
             return {
                 "success": -1
