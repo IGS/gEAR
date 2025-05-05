@@ -132,7 +132,6 @@ def concat_fetch_results_to_dataframe(res_jsons):
             projection_dfs.append(projection_df)
         if "pval" in res_json:
             pval_json = res_json["pval"]
-            print(pval_json, file=sys.stderr)
             pval_df = pd.read_json(StringIO(pval_json), orient="split", dtype="float32")
             pval_dfs.append(pval_df)
 
