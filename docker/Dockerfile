@@ -14,7 +14,7 @@ ARG PYTHON_VERSION=3.10.4
 ARG PYTHON_URL=https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tar.xz
 
 ARG GEAR_URL=https://www.github.com/IGS/gEAR.git
-ARG GEAR_BRANCH=main
+ARG GEAR_BRANCH=devel
 
 # Install packages to Ubuntu
 RUN apt-get -qq update \
