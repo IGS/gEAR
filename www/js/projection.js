@@ -553,12 +553,12 @@ document.getElementById('svg-scoring-method').addEventListener('change', (event)
     if (isMulti) return;   // multi does not use this
 
     svgScoringMethod = event.target.value;
-    // Get pattern symbol from currently selected list item
-    let listItem = document.querySelector('.pattern-result-list-item.is-selected');
-    if (!listItem) {
-        listItem = document.querySelector('.pattern-result-list-item');
+
+    // Loop through all tiles with svgData and update the display based on the selected method
+    for (const tile of tilegrid.tiles) {
+        if (tile.svg) {
+            tile.updateSVGDisplay(svgScoringMethod);
+        }
     }
 
-    const pattern = listItem.textContent;
-    selectPatternWeightResult(pattern);
 });
