@@ -63,6 +63,9 @@ const datasetTree = new DatasetTree({
             elt.classList.add("is-hidden");
         }
 
+        // Click the Show/Hide button to collapse the tree
+        document.querySelector(UI.btnToggleDatasetTreeElt).click();
+
         // collapse tree
         e.node.tree.expandAll(false);
 
@@ -930,10 +933,13 @@ document.querySelector(UI.analysisSelect).addEventListener("change", async (even
         document.querySelector(UI.deNovoStepsElt).classList.remove("is-hidden");
         document.querySelector(UI.btnProgressGuideElt).classList.remove("is-hidden");
         // Reset the stepper
-        resetStepperWithHrefs("#primary-filter-s");
+        resetStepperWithHrefs(UI.primaryFilterSection);
+
+        // Icon counter adjustment from if we were previously in primary analysis (and tSNE was calculated)
+        document.querySelector(`${UI.markerGenesSection} i`).classList.replace("mdi-numeric-3-circle", "mdi-numeric-9-circle")
+        document.querySelector(`${UI.markerGenesSection} i`).classList.replace("mdi-numeric-4-circle", "mdi-numeric-9-circle")
 
         // Jump to the primary filter step
-        document.querySelector(UI.primaryFilterSection).click();
         document.querySelector(`a[href='${UI.primaryFilterSection}']`).click();
         return;
     }
@@ -1316,4 +1322,16 @@ document.querySelector(UI.compareGenesMethodSelectElt).addEventListener("change"
         document.querySelector(UI.compareGenesCorrMethodSelectElt).classList.remove("is-hidden");
     }
 
+});
+
+document.querySelector(UI.btnToggleDatasetTreeElt).addEventListener("click", (event) => {
+    // Toggle the dataset selection div
+    const selectionDiv = document.querySelector(UI.datasetSelectionContainer);
+    if (selectionDiv.classList.contains("is-hidden")) {
+        selectionDiv.classList.remove("is-hidden");
+        event.target.textContent = "Collapse dataset selection tool";
+    } else {
+        selectionDiv.classList.add("is-hidden");
+        event.target.textContent = "Expand dataset selection tool";
+    }
 });

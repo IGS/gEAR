@@ -75,7 +75,7 @@ Information about the individual datasets can be found in the dataset explorer."
                     <div id="guides-outer-c" class="column is-offset-1 has-background-white-bis notification">
                         <h3 class="mt-4 mb-4">
                             <span>GUIDES</span>
-                            <span class="icon is-pulled-right delete">
+                            <span class="icon delete">
                                 <i class="mdi mdi-close"></i>
                             </span>
                         </h3>
@@ -103,53 +103,66 @@ Information about the individual datasets can be found in the dataset explorer."
                     </div>
                 </header>
 
-                <div class="columns">
-                    <section class="has-background-light section column is-half" id="dataset-s">
-                        <!-- Dataset selection -->
-                        <h5 class="title is-5">
-                            <span class="icon">
-                                <i class="mdi mdi-text-box-search-outline"></i> <!-- Not quite the correct icon -->
+                <section class="has-background-light section" id="dataset-s">
+                    <!-- Dataset selection -->
+                    <h5 class="title is-5">
+                        <span class="icon-text is-flex is-align-items-center">
+                            <span class="icon is-medium">
+                                <i class="mdi mdi-36px mdi-numeric-1-circle"></i>
                             </span>
                             <span>Select a dataset</span>
+
                             <span id="dataset-s-success" class="icon has-text-success-dark is-hidden">
                                 <i class="mdi mdi-check-circle"></i>
                             </span>
                             <span id="dataset-s-failed" class="icon has-text-danger-dark is-hidden">
                                 <i class="mdi mdi-close-circle"></i>
                             </span>
-                        </h5>
-                        <div>
-                            <strong>Current dataset:</strong>
-                            <span class="js-current-dataset">None selected</span>
-                        </div>
-                        <div class="mt-3" id="dataset-c">
-                            <input class="input" id="dataset-query" type="text" placeholder="Enter a dataset"
-                              autofocus="" />
-                            <div id="dataset-tree" class="wb-skeleton wb-initializing js-tree">
+
+                        </span>
+                    </h5>
+                    <div>
+                        <strong>Current dataset:</strong>
+                        <span class="js-current-dataset">None selected</span>
+                    </div>
+                    <div class="mt-3 columns" id="dataset-c">
+                        <div class="column is-half">
+                            <button id="btn-toggle-dataset-tree" class="button is-small is-primary">
+                                <span>Collapse dataset selection tool</span>
+                            </button>
+                            <div id="dataset-selection-c">
+                                <input class="input" id="dataset-query" type="text" placeholder="Enter a dataset" autofocus="" />
+                                <div id="dataset-tree" class="wb-skeleton wb-initializing js-tree"></div>
                             </div>
                         </div>
-                    </section>
+                    </div>
+                </section>
 
-                    <section class="has-background-light section column is-half" id="analysis-s">
-                        <h5 class="title is-5">
-                            <span class="icon">
-                                <i class="mdi mdi-chart-scatter-plot"></i> <!-- Not quite the correct icon -->
+                <section class="has-background-light section" id="analysis-s">
+                    <h5 class="title is-5">
+                        <span class="icon-text is-flex is-align-items-center">
+                            <span class="icon is-medium">
+                                <i class="mdi mdi-36px mdi-numeric-2-circle"></i>
                             </span>
                             <span>Select new or saved analysis</span>
+
                             <span id="analysis-type-select-c-success"
-                              class="icon has-text-success-dark is-hidden">
+                                class="icon has-text-success-dark is-hidden">
                                 <i class="mdi mdi-check-circle"></i>
                             </span>
                             <span id="analysis-type-select-c-failed"
-                              class="icon has-text-danger-dark is-hidden">
+                                class="icon has-text-danger-dark is-hidden">
                                 <i class="mdi mdi-close-circle"></i>
                             </span>
-                        </h5>
-                        <div>
-                            <strong>Current analysis:</strong>
-                            <span class="js-current-analysis">None selected</span>
-                        </div>
-                        <div class="mt-3" id="analysis-c">
+                        </span>
+
+                    </h5>
+                    <div>
+                        <strong>Current analysis:</strong>
+                        <span class="js-current-analysis">None selected</span>
+                    </div>
+                    <div class="mt-3 columns" id="analysis-c">
+                        <div class="column is-half">
                             <div class="select is-fullwidth">
                                 <select id="analysis-select" disabled>
                                     <option data-analysis-id="-1" value="" disabled selected>Select an analysis</option>
@@ -161,16 +174,19 @@ Information about the individual datasets can be found in the dataset explorer."
                                 </select>
                             </div>
                         </div>
-                    </section>
-                </div>
+
+                    </div>
+                </section>
 
                 <!-- Initial dataset information -->
                 <section class="has-background-light section is-hidden" id="initial-info-s">
                     <h5 class="title is-5">
-                        <span class="icon">
-                            <i class="mdi mdi-file-upload-outline"></i> <!-- Not quite the correct icon -->
+                        <span class="icon-text is-flex is-align-items-center">
+                            <span class="icon is-medium">
+                                <i class="mdi mdi-36px mdi-information-slab-circle"></i>
+                            </span>
+                            <span>Preliminary dataset information</span>
                         </span>
-                        <span>Preliminary dataset information </span>
                     </h5>
                     <div class="mt-3 content" id="initial-info-c">
                         <p class="has-text-weight-semibold">
@@ -192,7 +208,7 @@ Information about the individual datasets can be found in the dataset explorer."
 
                 <section id="summary-s" class="box has-background-primary-light">
                     <header class="content">
-                        <div id="analysis-optc-c" class="is-pulled-right">
+                        <div id="analysis-opts-c" class="is-pulled-right">
                             <div id="analysis-action-c" class="field is-horizontal has-addons is-hidden is-pulled-right">
                                 <div class="field-label is-normal">
                                     <label class="label">Analysis options:</label>
@@ -498,10 +514,12 @@ Information about the individual datasets can be found in the dataset explorer."
                     <!-- Labeled t-SNE -->
                     <section class="has-background-white-bis section is-hidden" id="labeled-tsne-s">
                         <h5 class="title is-5">
-                            <span class="icon">
-                                <i class="mdi mdi-chart-scatter-plot-hexbin"></i> <!-- Not quite the correct icon -->
+                            <span class="icon-text is-flex is-align-items-center">
+                                <span class="icon is-medium">
+                                    <i class="mdi mdi-36px mdi-numeric-3-circle"></i>
+                                </span>
+                                <span>Create a labeled t-SNE</span>
                             </span>
-                            <span>Create a labeled t-SNE </span>
                         </h5>
                         <div class="mt-3 container" id="labeled-tsne-c">
                             <div class="tool-instructions">
@@ -535,20 +553,22 @@ Information about the individual datasets can be found in the dataset explorer."
                     <!-- Primary filtering -->
                     <section class="has-background-white-bis section js-step" id="primary-filter-s">
                         <h5 class="title is-5">
-                            <span class="icon">
-                                <i class="mdi mdi-air-filter"></i> <!-- Not quite the correct icon -->
-                            </span>
-                            <span>Primary dataset filtering</span>
-                            <span id="primary-filter-s-success"
-                              class="js-step-success icon has-text-success-dark is-hidden">
-                                <i class="mdi mdi-check-circle"></i>
-                            </span>
-                            <span id="primary-filter-s-failed"
-                              class="js-step-failure icon has-text-danger-dark is-hidden">
-                                <i class="mdi mdi-close-circle"></i>
-                            </span>
-                            <span class="icon is-pulled-right">
-                                <i class="mdi mdi-chevron-down"></i>
+                            <span class="icon-text is-flex is-align-items-center">
+                                <span class="icon is-medium">
+                                    <i class="mdi mdi-36px mdi-numeric-3-circle"></i>
+                                </span>
+                                <span>Primary dataset filtering</span>
+                                <span id="primary-filter-s-success"
+                                    class="js-step-success icon has-text-success-dark is-hidden">
+                                    <i class="mdi mdi-check-circle"></i>
+                                </span>
+                                <span id="primary-filter-s-failed"
+                                    class="js-step-failure icon has-text-danger-dark is-hidden">
+                                    <i class="mdi mdi-close-circle"></i>
+                                </span>
+                                <span class="icon">
+                                    <i class="mdi mdi-chevron-down"></i>
+                                </span>
                             </span>
                         </h5>
                         <div class="js-step-collapsable container mt-3" id="primary-filter-collapsable">
@@ -628,20 +648,23 @@ Information about the individual datasets can be found in the dataset explorer."
                     <!-- QC by mitochondrial content -->
                     <section class="has-background-white-bis section is-pointer-events-none js-step" id="qc-by-mito-s">
                         <h5 class="title is-5">
-                            <span class="icon">
-                                <i class="mdi mdi-filter"></i> <!-- Not quite the correct icon -->
+                            <span class="icon-text is-flex is-align-items-center">
+                                <span class="icon is-medium">
+                                    <i class="mdi mdi-36px mdi-numeric-4-circle"></i>
+                                </span>
+                                <span>QC - filter out mitochondrial content</span>
+                                <span id="qc-by-mito-s-success"
+                                    class="js-step-success icon has-text-success-dark is-hidden">
+                                    <i class="mdi mdi-check-circle"></i>
+                                </span>
+                                <span id="qc-by-mito-s-failed" class="js-step-failure icon has-text-danger-dark is-hidden">
+                                    <i class="mdi mdi-close-circle"></i>
+                                </span>
+                                <span class="icon">
+                                    <i class="mdi mdi-chevron-down"></i>
+                                </span>
                             </span>
-                            <span>QC - filter out mitochondrial content </span>
-                            <span id="qc-by-mito-s-success"
-                              class="js-step-success icon has-text-success-dark is-hidden">
-                                <i class="mdi mdi-check-circle"></i>
-                            </span>
-                            <span id="qc-by-mito-s-failed" class="js-step-failure icon has-text-danger-dark is-hidden">
-                                <i class="mdi mdi-close-circle"></i>
-                            </span>
-                            <span class="icon is-pulled-right">
-                                <i class="mdi mdi-chevron-down"></i>
-                            </span>
+
                         </h5>
                         <div class="js-step-collapsable container mt-3" id="qc-by-mito-collapsable">
                             <div class="tool-instructions">
@@ -725,21 +748,24 @@ Information about the individual datasets can be found in the dataset explorer."
                     <!-- Select variable genes -->
                     <section class="has-background-white-bis section is-pointer-events-none js-step" id="select-variable-genes-s">
                         <h5 class="title is-5">
-                            <span class="icon">
-                                <i class="mdi mdi-view-list-outline"></i> <!-- Not quite the correct icon -->
+                            <span class="icon-text is-flex is-align-items-center">
+                                <span class="icon is-medium">
+                                    <i class="mdi mdi-36px mdi-numeric-5-circle"></i>
+                                </span>
+                                <span>Identify highly-variable genes</span>
+                                <span id="select-variable-genes-s-success"
+                                    class="js-step-success icon has-text-success-dark is-hidden">
+                                    <i class="mdi mdi-check-circle"></i>
+                                </span>
+                                <span id="select-variable-genes-s-failed"
+                                    class="js-step-failure icon has-text-danger-dark is-hidden">
+                                    <i class="mdi mdi-close-circle"></i>
+                                </span>
+                                <span class="icon">
+                                    <i class="mdi mdi-chevron-down"></i>
+                                </span>
                             </span>
-                            <span>Identify highly-variable genes </span>
-                            <span id="select-variable-genes-s-success"
-                              class="js-step-success icon has-text-success-dark is-hidden">
-                                <i class="mdi mdi-check-circle"></i>
-                            </span>
-                            <span id="select-variable-genes-s-failed"
-                              class="js-step-failure icon has-text-danger-dark is-hidden">
-                                <i class="mdi mdi-close-circle"></i>
-                            </span>
-                            <span class="icon is-pulled-right">
-                                <i class="mdi mdi-chevron-down"></i>
-                            </span>
+
                         </h5>
                         <div class="js-step-collapsable container mt-3" id="select-variable-genes-collapsable">
                             <div class="tool-instructions">
@@ -858,18 +884,20 @@ At the completion of this step press on ‘save these genes’.
                     <!-- Perform PCA -->
                     <section class="has-background-white-bis section is-pointer-events-none js-step" id="pca-s">
                         <h5 class="title is-5">
-                            <span class="icon">
-                                <i class="mdi mdi-chart-scatter-plot"></i> <!-- Not quite the correct icon -->
-                            </span>
-                            <span>Perform Principal Component Analysis (PCA) </span>
-                            <span id="pca-s-success" class="js-step-success icon has-text-success-dark is-hidden">
-                                <i class="mdi mdi-check-circle"></i>
-                            </span>
-                            <span id="pca-s-failed" class="js-step-failure icon has-text-danger-dark is-hidden">
-                                <i class="mdi mdi-close-circle"></i>
-                            </span>
-                            <span class="icon is-pulled-right">
-                                <i class="mdi mdi-chevron-down"></i>
+                            <span class="icon-text is-flex is-align-items-center">
+                                <span class="icon is-medium">
+                                    <i class="mdi mdi-36px mdi-numeric-6-circle"></i>
+                                </span>
+                                <span>Perform Principal Component Analysis (PCA)</span>
+                                <span id="pca-s-success" class="js-step-success icon has-text-success-dark is-hidden">
+                                    <i class="mdi mdi-check-circle"></i>
+                                </span>
+                                <span id="pca-s-failed" class="js-step-failure icon has-text-danger-dark is-hidden">
+                                    <i class="mdi mdi-close-circle"></i>
+                                </span>
+                                <span class="icon">
+                                    <i class="mdi mdi-chevron-down"></i>
+                                </span>
                             </span>
                         </h5>
                         <div class="js-step-collapsable container mt-3" id="pca-collapsable">
@@ -954,18 +982,20 @@ At the completion of this step press on ‘save these genes’.
                     <!-- Perform t-SNE or UMAP analysis -->
                     <section class="has-background-white-bis section is-pointer-events-none js-step" id="tsne-s">
                         <h5 class="title is-5">
-                            <span class="icon">
-                                <i class="mdi mdi-chart-scatter-plot-hexbin"></i> <!-- Not quite the correct icon -->
-                            </span>
-                            <span>Perform t-SNE or UMAP analysis </span>
-                            <span id="tsne-s-success" class="js-step-success icon has-text-success-dark is-hidden">
-                                <i class="mdi mdi-check-circle"></i>
-                            </span>
-                            <span id="tsne-s-failed" class="js-step-failure icon has-text-danger-dark is-hidden">
-                                <i class="mdi mdi-close-circle"></i>
-                            </span>
-                            <span class="icon is-pulled-right">
-                                <i class="mdi mdi-chevron-down"></i>
+                            <span class="icon-text is-flex is-align-items-center">
+                                <span class="icon is-medium">
+                                    <i class="mdi mdi-36px mdi-numeric-7-circle"></i>
+                                </span>
+                                <span>Perform t-SNE or UMAP analysis</span>
+                                <span id="tsne-s-success" class="js-step-success icon has-text-success-dark is-hidden">
+                                    <i class="mdi mdi-check-circle"></i>
+                                </span>
+                                <span id="tsne-s-failed" class="js-step-failure icon has-text-danger-dark is-hidden">
+                                    <i class="mdi mdi-close-circle"></i>
+                                </span>
+                                <span class="icon">
+                                    <i class="mdi mdi-chevron-down"></i>
+                                </span>
                             </span>
                         </h5>
                         <div class="js-step-collapsable container mt-3" id="tsne-collapsable">
@@ -1041,20 +1071,23 @@ At the completion of this step press on ‘save these genes’.
                     <!-- Perform clustering -->
                     <section class="has-background-white-bis section is-pointer-events-none js-step" id="clustering-s">
                         <h5 class="title is-5">
-                            <span class="icon">
-                                <i class="mdi mdi-vector-polyline"></i> <!-- Not quite the correct icon -->
+                            <span class="icon-text is-flex is-align-items-center">
+                                <span class="icon is-medium">
+                                    <i class="mdi mdi-36px mdi-numeric-8-circle"></i>
+                                </span>
+                                <span>Perform clustering</span>
+                                <span id="clustering-s-success"
+                                    class="js-step-success icon has-text-success-dark is-hidden">
+                                    <i class="mdi mdi-check-circle"></i>
+                                </span>
+                                <span id="clustering-s-failed" class="js-step-failure icon has-text-danger-dark is-hidden">
+                                    <i class="mdi mdi-close-circle"></i>
+                                </span>
+                                <span class="icon">
+                                    <i class="mdi mdi-chevron-down"></i>
+                                </span>
                             </span>
-                            <span>Perform clustering </span>
-                            <span id="clustering-s-success"
-                              class="js-step-success icon has-text-success-dark is-hidden">
-                                <i class="mdi mdi-check-circle"></i>
-                            </span>
-                            <span id="clustering-s-failed" class="js-step-failure icon has-text-danger-dark is-hidden">
-                                <i class="mdi mdi-close-circle"></i>
-                            </span>
-                            <span class="icon is-pulled-right">
-                                <i class="mdi mdi-chevron-down"></i>
-                            </span>
+
                         </h5>
                         <div class="js-step-collapsable container mt-3" id="clustering-collapsable">
                             <div class="tool-instructions">
@@ -1101,21 +1134,24 @@ At the completion of this step press on ‘save these genes’.
                     <!-- Find marker genes -->
                     <section class="has-background-white-bis section is-pointer-events-none js-step" id="marker-genes-s">
                         <h5 class="title is-5">
-                            <span class="icon">
-                                <i class="mdi mdi-format-list-group"></i> <!-- Not quite the correct icon -->
+                            <span class="icon-text is-flex is-align-items-center">
+                                <span class="icon is-medium">
+                                    <i class="mdi mdi-36px mdi-numeric-9-circle"></i>
+                                </span>
+                                <span>Find marker genes</span>
+                                <span id="marker-genes-s-success"
+                                    class="js-step-success icon has-text-success-dark is-hidden">
+                                    <i class="mdi mdi-check-circle"></i>
+                                </span>
+                                <span id="marker-genes-s-failed"
+                                    class="js-step-failure icon has-text-danger-dark is-hidden">
+                                    <i class="mdi mdi-close-circle"></i>
+                                </span>
+                                <span class="icon">
+                                    <i class="mdi mdi-chevron-down"></i>
+                                </span>
                             </span>
-                            <span>Find marker genes </span>
-                            <span id="marker-genes-s-success"
-                              class="js-step-success icon has-text-success-dark is-hidden">
-                                <i class="mdi mdi-check-circle"></i>
-                            </span>
-                            <span id="marker-genes-s-failed"
-                              class="js-step-failure icon has-text-danger-dark is-hidden">
-                                <i class="mdi mdi-close-circle"></i>
-                            </span>
-                            <span class="icon is-pulled-right">
-                                <i class="mdi mdi-chevron-down"></i>
-                            </span>
+
                         </h5>
                         <div class="js-step-collapsable container mt-3" id="marker-genes-collapsable">
                             <div class="tool-instructions">
@@ -1218,20 +1254,22 @@ At the completion of this step press on ‘save these genes’.
                     <!-- Rename, merge, or delete clusters -->
                     <section class="has-background-white-bis section is-pointer-events-none js-step" id="clustering-edit-s">
                         <h5 class="title is-5">
-                            <span class="icon">
-                                <i class="mdi mdi-vector-polyline-edit"></i> <!-- Not quite the correct icon -->
-                            </span>
-                            <span>Rename, merge, or delete clusters </span>
-                            <span id="clustering-edit-s-success"
-                              class="js-step-success icon has-text-success-dark is-hidden">
-                                <i class="mdi mdi-check-circle"></i>
-                            </span>
-                            <span id="clustering-edit-s-failed"
-                              class="js-step-failure icon has-text-danger-dark is-hidden">
-                                <i class="mdi mdi-close-circle"></i>
-                            </span>
-                            <span class="icon is-pulled-right">
-                                <i class="mdi mdi-chevron-down"></i>
+                            <span class="icon-text is-flex is-align-items-center">
+                                <span class="icon is-medium">
+                                    <i class="mdi mdi-36px mdi-numeric-10-circle"></i>
+                                </span>
+                                <span>Rename, merge, or delete clusters </span>
+                                <span id="clustering-edit-s-success"
+                                    class="js-step-success icon has-text-success-dark is-hidden">
+                                    <i class="mdi mdi-check-circle"></i>
+                                </span>
+                                <span id="clustering-edit-s-failed"
+                                    class="js-step-failure icon has-text-danger-dark is-hidden">
+                                    <i class="mdi mdi-close-circle"></i>
+                                </span>
+                                <span class="icon">
+                                    <i class="mdi mdi-chevron-down"></i>
+                                </span>
                             </span>
                         </h5>
                         <div class="js-step-collapsable container mt-3" id="clustering-edit-collapsable">
@@ -1303,21 +1341,24 @@ At the completion of this step press on ‘save these genes’.
                     <!-- Compare genes and clusters -->
                     <section class="has-background-white-bis section is-pointer-events-none js-step" id="compare-genes-s">
                         <h5 class="title is-5">
-                            <span class="icon">
-                                <i class="mdi mdi-compare-horizontal"></i> <!-- Not quite the correct icon -->
+                            <span class="icon-text is-flex is-align-items-center">
+                                <span class="icon is-medium">
+                                    <i class="mdi mdi-36px mdi-star-circle"></i>
+                                </span>
+                                <span>Compare genes and clusters</span>
+                                <span id="compare-genes-s-success"
+                                    class="js-step-success icon has-text-success-dark is-hidden">
+                                    <i class="mdi mdi-check-circle"></i>
+                                </span>
+                                <span id="compare-genes-s-failed"
+                                    class="js-step-failure icon has-text-danger-dark is-hidden">
+                                    <i class="mdi mdi-close-circle"></i>
+                                </span>
+                                <span class="icon">
+                                    <i class="mdi mdi-chevron-down"></i>
+                                </span>
                             </span>
-                            <span>Compare genes and clusters </span>
-                            <span id="compare-genes-s-success"
-                              class="js-step-success icon has-text-success-dark is-hidden">
-                                <i class="mdi mdi-check-circle"></i>
-                            </span>
-                            <span id="compare-genes-s-failed"
-                              class="js-step-failure icon has-text-danger-dark is-hidden">
-                                <i class="mdi mdi-close-circle"></i>
-                            </span>
-                            <span class="icon is-pulled-right">
-                                <i class="mdi mdi-chevron-down"></i>
-                            </span>
+
                         </h5>
                         <div class="js-step-collapsable container mt-3" id="compare-genes-collapsable">
 

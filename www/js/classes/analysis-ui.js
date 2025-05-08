@@ -9,12 +9,14 @@ class AnalysisUI {
     // dataset elemnents
     datasetSection = "#dataset-s"
     datasetContainer = "#dataset-c"
+    datasetSelectionContainer = "#dataset-selection-c"
     datasetSectionSuccessElt = "#dataset-s-success"
     datasetSectionFailedElt = "#dataset-s-failed"
     currentDatasetContainer = "#current-dataset-c"
     currentDatasetElts = ".js-current-dataset"
     datasetQueryElt = "#dataset-query"
     datasetTreeElt = "#dataset-tree"
+    btnToggleDatasetTreeElt = "#btn-toggle-dataset-tree"
 
     // general analysis
     analysisSection = "#analysis-s"
