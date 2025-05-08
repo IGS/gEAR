@@ -19,7 +19,7 @@ load_dotenv(dotenv_path=env_path)
 
 GITHUB_ACCESS_TOKEN=os.getenv("GITHUB_ACCESS_TOKEN")
 GEAR_GIT_URL="https://api.github.com/repos/jorvis/gEAR/issues"
-ASSIGNEES=["songeric1107"]
+ASSIGNEES=["jorvis"]
 
 PRIVATE_COL_ID = "8150789"  # "Site Comments" project column to jorvis/gEAR
 PUBLIC_COL_ID = "15595055"  # same column but for IGS/gEAR
