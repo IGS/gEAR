@@ -62,8 +62,8 @@ More information about these services can be found at `gEAR/systemd/README.md`
 
 ```bash
 cd ~jorvis/git/gEAR/systemd
-sudo mv *target /etc/systemd/system/
-sudo mv *service /etc/systemd/system/
+sudo cp *target /etc/systemd/system/
+sudo cp *service /etc/systemd/system/
 
 # Start the services
 cd /etc/systemd/system
@@ -93,12 +93,6 @@ Permissions need to be writeable for your apache user.
 cd /var/www
 chmod 777 datasets analyses/* carts/ projections/ uploads/files/ img/dataset_previews/
 ```
-
-### (For devel servers) Github Actions self-hosted runner
-
-The idea here is that when commiting code, we can use Github Actions to pull the code down on to the server to do things like automated testing.
-
-(to be continued in https://github.com/IGS/gEAR/issues/632)
 
 ### Undocumented currently
 
