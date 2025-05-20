@@ -6,6 +6,8 @@ rfuncs.py - Miscellaneous R-style functions called through rpy2
 import sys  # for print debugging
 import traceback
 
+import pandas as pd  # for dataframe manipulation
+
 # rpy2.robjects calls rinterface.initr() under-the-hood when initialized to start the R session
 import rpy2.robjects as ro
 # The number of R sessions appears to be limited to the number of threads apache allocates to the Flask API
@@ -14,7 +16,6 @@ import rpy2.robjects as ro
 from rpy2.robjects import pandas2ri
 from rpy2.robjects.packages import importr
 from rpy2.robjects.conversion import localconverter
-from rpy2.robjects.vectors import StrVector
 
 # If running locally, need to ensure that multiple concurrent R calls do not conflict
 from rpy2.rinterface_lib import openrlib
@@ -26,7 +27,7 @@ class RError(Exception):
         self.message = message
         super().__init__(self.message)
 
-def convert_r_df_to_r_matrix(df):
+def convert_r_df_to_r_matrix(df: pd.DataFrame):
     """
     Convert R-style dataframe to R-style matrix
     """
@@ -34,7 +35,7 @@ def convert_r_df_to_r_matrix(df):
     r_matrix = ro.r["as.matrix"]
     return r_matrix(df)
 
-def convert_r_matrix_to_r_df(mtx):
+def convert_r_matrix_to_r_df(mtx) -> pd.DataFrame:
     """
     Convert R-style matrix to R-style dataframe
     """
@@ -42,7 +43,7 @@ def convert_r_matrix_to_r_df(mtx):
     r_df = ro.r["as.data.frame"]
     return r_df(mtx)
 
-def run_projectR_cmd(target_df, loading_df, algorithm, full_output=False):
+def run_projectR_cmd(target_df: pd.DataFrame, loading_df: pd.DataFrame, algorithm: str, full_output:bool =False)-> list[pd.DataFrame]:
     """
     Convert input Pandas dataframes to R matrix.
     Pass the inputs into the projectR function written in R.
@@ -122,6 +123,6 @@ def run_projectR_cmd(target_df, loading_df, algorithm, full_output=False):
             # Convert from R data.frame to pandas dataframe
             projection_patterns_df = ro.conversion.rpy2py(projection_patterns_r_df)
 
-            return projection_patterns_df
+            return [projection_patterns_df]
 
 
