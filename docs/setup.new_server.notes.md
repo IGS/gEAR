@@ -91,7 +91,7 @@ Permissions need to be writeable for your apache user.
 
 ```bash
 cd /var/www
-chmod 777 datasets analyses/* uploads/files/ img/dataset_previews/
+chmod 777 datasets analyses/* carts/* projections/* uploads/files/ img/dataset_previews/
 ```
 
 ### (For devel servers) Github Actions self-hosted runner
