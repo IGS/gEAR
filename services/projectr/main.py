@@ -27,13 +27,13 @@ def random_string(length: int = 4) -> str:
 
     return "".join(random.choices(string.ascii_letters + string.digits, k=length))
 
+identifier = random_string(4)
 
 def write_entry(logger_name: str, severity: str, message: str) -> None:
     """Writes log entries to the given logger."""
 
     global cloud_logging
 
-    identifier = random_string(4)
     message = "{} - {}".format(identifier, message)
 
     if not cloud_logging:
@@ -107,8 +107,8 @@ def index():
         )
         write_entry("projectr", "DEBUG", "Falling back to stderr logging.")
 
-    write_entry("projectr", "INFO", "Dataset ID: {}".format(dataset_id))
-    write_entry("projectr", "INFO", "Genecart ID: {}".format(genecart_id))
+    # Print the request payload to stderr
+    write_entry("projectr", "DEBUG", "Request payload: {}".format(req_json))
 
     # pd.read_json gives a FutureWarning, and suggest to wrap the json in StringIO.  Needed for pandas 2.x
     target = StringIO(target)
