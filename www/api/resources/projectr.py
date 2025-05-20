@@ -1,37 +1,39 @@
+import asyncio
+import fcntl
+import gc
+import json
+import sys
+from io import StringIO
+from os import getpid
+from pathlib import Path
+from time import sleep
+
+import aiohttp
+import geardb
+import pandas as pd
+import scipy.stats as stats
 from flask import request
 from flask_restful import Resource, reqparse
-from pathlib import Path
-import json, sys, fcntl
-from io import StringIO
-import pandas as pd
-import asyncio, aiohttp
-import gc
-import scipy.stats as stats
-
-from os import getpid
-from time import sleep
+from gear.orthology import get_ortholog_file, map_dataframe_genes
+from gear.utils import catch_memory_error
 from more_itertools import sliced
 
-import geardb
-from gear.orthology import get_ortholog_file, map_dataframe_genes
-
 from .common import get_adata_from_analysis, get_spatial_adata
-from gear.utils import catch_memory_error
-
 
 # Parse gEAR config
 # https://stackoverflow.com/a/35904211/1368079
 this = sys.modules[__name__]
 from gear.serverconfig import ServerConfig
+
 this.servercfg = ServerConfig().parse()
 
 TWO_LEVELS_UP = 2
-abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
+abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP]  # web-root dir
 CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 PROJECTIONS_BASE_DIR = abs_path_www.joinpath("projections")
 PROJECTIONS_JSON_BASENAME = "projections.json"
 
-ANNOTATION_TYPE = "ensembl" # NOTE: This will change in the future to be varied.
+ANNOTATION_TYPE = "ensembl"  # NOTE: This will change in the future to be varied.
 
 # limit of asynchronous tasks that can happen at a time
 # I am setting this slightly under the "MaxKeepAliveRequests" in apache.conf
@@ -64,27 +66,55 @@ Total number of projections in whole by_genecart directory = total number in by_
 """
 
 parser = reqparse.RequestParser(bundle_errors=True)
-parser.add_argument('genecart_id', help='Weighted (pattern) genecart id required', type=str, required=True)
-parser.add_argument('scope', type=str, required=False)
-parser.add_argument('algorithm', help="An algorithm needs to be provided", type=str,  required=False)
-parser.add_argument('zscore', help="If true, compute z-score calculation before running projectR (or assume it has been calculated)", type=bool, default=False, required=False)
-parser.add_argument("full_output", help="If true, return the full output of the projection, which includes a p-value matrix", type=bool, default=False, required=False)
-parser.add_argument('analysis', type=str, required=False)   # not used at the moment
+parser.add_argument(
+    "genecart_id",
+    help="Weighted (pattern) genecart id required",
+    type=str,
+    required=True,
+)
+parser.add_argument("scope", type=str, required=False)
+parser.add_argument(
+    "algorithm", help="An algorithm needs to be provided", type=str, required=False
+)
+parser.add_argument(
+    "zscore",
+    help="If true, compute z-score calculation before running projectR (or assume it has been calculated)",
+    type=bool,
+    default=False,
+    required=False,
+)
+parser.add_argument(
+    "full_output",
+    help="If true, return the full output of the projection, which includes a p-value matrix",
+    type=bool,
+    default=False,
+    required=False,
+)
+parser.add_argument("analysis", type=str, required=False)  # not used at the moment
 
 run_projectr_parser = parser.copy()
-run_projectr_parser.add_argument('projection_id', type=str, required=False)
+run_projectr_parser.add_argument("projection_id", type=str, required=False)
+
 
 def build_projection_csv_path(dir_id, file_id, scope):
     """Build the path to the csv file for a given projection. Returns a Path object."""
     if scope == "pval":
         # pval files are extra output for the standard "dataset" projections
-        return Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dir_id, "{}_pval.csv".format(file_id))
+        return Path(PROJECTIONS_BASE_DIR).joinpath(
+            "by_dataset", dir_id, "{}_pval.csv".format(file_id)
+        )
 
-    return Path(PROJECTIONS_BASE_DIR).joinpath("by_{}".format(scope), dir_id, "{}.csv".format(file_id))
+    return Path(PROJECTIONS_BASE_DIR).joinpath(
+        "by_{}".format(scope), dir_id, "{}.csv".format(file_id)
+    )
+
 
 def build_projection_json_path(dir_id, scope):
     """Build the path to the projections json for a given dataset or genecart directory. Returns a Path object."""
-    return Path(PROJECTIONS_BASE_DIR).joinpath("by_{}".format(scope), dir_id, PROJECTIONS_JSON_BASENAME)
+    return Path(PROJECTIONS_BASE_DIR).joinpath(
+        "by_{}".format(scope), dir_id, PROJECTIONS_JSON_BASENAME
+    )
+
 
 def create_lock_file(filepath):
     """Create an exclusive lock file for the given filepath.  Return the file descriptor."""
@@ -93,9 +123,10 @@ def create_lock_file(filepath):
     fcntl.flock(fd, fcntl.LOCK_EX)
     return fd
 
+
 def remove_lock_file(fd, filepath):
     """Release the lock file."""
-    #fcntl.flock(fd, fcntl.LOCK_UN)
+    # fcntl.flock(fd, fcntl.LOCK_UN)
     fd.close()
     try:
         Path(filepath).unlink()
@@ -103,9 +134,11 @@ def remove_lock_file(fd, filepath):
         # This is fine, as the lock file may have been removed by another process
         pass
 
+
 def write_to_json(projections_dict, projection_json_file):
-    with open(projection_json_file, 'w') as f:
+    with open(projection_json_file, "w") as f:
         json.dump(projections_dict, f, ensure_ascii=False, indent=4)
+
 
 def calculate_chunk_size(num_genes, num_samples):
     """
@@ -114,7 +147,10 @@ def calculate_chunk_size(num_genes, num_samples):
     TOTAL_DATA_LIMIT = 1e6
     total_data = num_genes * num_samples
     total_data_chunks = total_data / TOTAL_DATA_LIMIT
-    return int(num_samples / total_data_chunks) # take floor.  returned value * num_genes < total_data_limit
+    return int(
+        num_samples / total_data_chunks
+    )  # take floor.  returned value * num_genes < total_data_limit
+
 
 def concat_fetch_results_to_dataframe(res_jsons):
     """
@@ -128,17 +164,22 @@ def concat_fetch_results_to_dataframe(res_jsons):
         # res_json is a dictionary. Each value is a JSON string
         if "projection" in res_json:
             projection_json = res_json["projection"]
-            projection_df = pd.read_json(StringIO(projection_json), orient="split", dtype="float32")
+            projection_df = pd.read_json(
+                StringIO(projection_json), orient="split", dtype="float32"
+            )
             projection_dfs.append(projection_df)
         if "pval" in res_json:
             pval_json = res_json["pval"]
             pval_df = pd.read_json(StringIO(pval_json), orient="split", dtype="float32")
             pval_dfs.append(pval_df)
 
-    projection_patterns_df = pd.concat(projection_dfs) if projection_dfs else pd.DataFrame()
+    projection_patterns_df = (
+        pd.concat(projection_dfs) if projection_dfs else pd.DataFrame()
+    )
     pval_patterns_df = pd.concat(pval_dfs) if pval_dfs else pd.DataFrame()
 
     return projection_patterns_df, pval_patterns_df
+
 
 def create_new_uuid(*args):
     """
@@ -150,21 +191,32 @@ def create_new_uuid(*args):
     Returns:
         uuid.UUID: A UUID object generated from the MD5 hash of the concatenated string of arguments.
     """
-    import hashlib, uuid
+    import hashlib
+    import uuid
+
     uuid_str = "-".join(map(str, args))
     md5 = hashlib.md5()
     md5.update(uuid_str.encode("utf-8"))
     return uuid.UUID(md5.hexdigest())
 
+
 def create_unweighted_loading_df(genecart):
     # Now convert into a GeneCollection to get the Ensembl IDs (which will be the unique identifiers)
     gene_collection = geardb.GeneCollection()
-    gene_collection.get_by_gene_symbol(gene_symbol=" ".join(genecart.genes), exact=True, organism_id=genecart.organism_id)
+    gene_collection.get_by_gene_symbol(
+        gene_symbol=" ".join(genecart.genes),
+        exact=True,
+        organism_id=genecart.organism_id,
+    )
 
-    #TODO: Need to filter by organism
+    # TODO: Need to filter by organism
 
-    loading_data = ({"dataRowNames": gene.ensembl_id, "gene_sym":gene.gene_symbol, "unweighted":1} for gene in gene_collection.genes)
+    loading_data = (
+        {"dataRowNames": gene.ensembl_id, "gene_sym": gene.gene_symbol, "unweighted": 1}
+        for gene in gene_collection.genes
+    )
     return pd.DataFrame(loading_data)
+
 
 def create_weighted_loading_df(genecart_id):
     file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + genecart_id))
@@ -173,12 +225,14 @@ def create_weighted_loading_df(genecart_id):
     except FileNotFoundError:
         raise FileNotFoundError("Could not find pattern file {}".format(file_path))
 
+
 def chunk_dataframe(df, chunk_size):
     # Chunk dataset by samples/cells (cols). Is a generator function
     # Help from: https://stackoverflow.com/questions/51674751/using-requests-library-to-make-asynchronous-requests-with-python-3-7
     index_slices = sliced(range(len(df.columns)), chunk_size)
     for idx, index_slice in enumerate(index_slices):
-        yield df.iloc[:,index_slice]
+        yield df.iloc[:, index_slice]
+
 
 def limited_as_completed(coros, limit):
     """A version of asyncio.as_completed that takes a generator of coroutines instead of a list."""
@@ -186,10 +240,7 @@ def limited_as_completed(coros, limit):
     # Uses far less memory than the list version (asyncio.as_completed)
     from itertools import islice
 
-    futures = [
-        asyncio.ensure_future(c)
-        for c in islice(coros, 0, limit)
-        ]
+    futures = [asyncio.ensure_future(c) for c in islice(coros, 0, limit)]
 
     async def first_to_finish():
         while True:
@@ -199,8 +250,7 @@ def limited_as_completed(coros, limit):
                     futures.remove(f)
                     try:
                         newf = next(coros)
-                        futures.append(
-                            asyncio.ensure_future(newf))
+                        futures.append(asyncio.ensure_future(newf))
                     except StopIteration as e:
                         pass
                     return f.result()
@@ -208,23 +258,33 @@ def limited_as_completed(coros, limit):
     while futures:
         yield first_to_finish()
 
-async def fetch_all(target_df, loading_df, algorithm, full_output, genecart_id, dataset_id, chunk_size):
+
+async def fetch_all(
+    target_df, loading_df, algorithm, full_output, genecart_id, dataset_id, chunk_size
+):
     """Create coroutine tasks out of all chunked projection cloud run service POST requests."""
 
     async with aiohttp.ClientSession() as client:
         # Create coroutines to be executed.
         loadings_json = loading_df.to_json(orient="split")
-        coros = (fetch_one(client, {
-                "target": chunk_df.to_json(orient="split")
-                , "loadings": loadings_json
-                , "algorithm": algorithm
-                , "full_output": full_output
-                , "genecart_id":genecart_id # This helps in identifying which combinations are going through
-                , "dataset_id":dataset_id
-                }) for chunk_df in chunk_dataframe(target_df, chunk_size))
+        coros = (
+            fetch_one(
+                client,
+                {
+                    "target": chunk_df.to_json(orient="split"),
+                    "loadings": loadings_json,
+                    "algorithm": algorithm,
+                    "full_output": full_output,
+                    "genecart_id": genecart_id,  # This helps in identifying which combinations are going through
+                    "dataset_id": dataset_id,
+                },
+            )
+            for chunk_df in chunk_dataframe(target_df, chunk_size)
+        )
 
         # This loop processes results as they come in.
         return [await res for res in limited_as_completed(coros, SEMAPHORE_LIMIT)]
+
 
 async def fetch_one(client, payload):
     """
@@ -236,24 +296,41 @@ async def fetch_one(client, payload):
     # For Cloud Run, `endpoint` is the URL (hostname + path) receiving the request
     # endpoint = 'https://my-cloud-run-service.run.app/my/awesome/url'
 
-    audience=this.servercfg['projectR_service']['hostname']
-    endpoint="{}/".format(audience)
+    audience = this.servercfg["projectR_service"]["hostname"]
+    endpoint = "{}/".format(audience)
     headers = {"content_type": "application/json"}
 
     # https://docs.aiohttp.org/en/stable/client_reference.html
     # (semaphore) https://stackoverflow.com/questions/40836800/python-asyncio-semaphore-in-async-await-function
-    async with client.post(url=endpoint, json=payload, headers=headers, raise_for_status=True) as response:
-
-        #TODO: Figure out how to get the response status code and payload to print to stderr
+    async with client.post(
+        url=endpoint, json=payload, headers=headers, raise_for_status=True
+    ) as response:
+        # TODO: Figure out how to get the response status code and payload to print to stderr
         if response.status != 200:
             # print payload to stderr
-            print("ERROR: POST request to {} failed with status code {}".format(endpoint, response.status), file=sys.stderr)
+            print(
+                "ERROR: POST request to {} failed with status code {}".format(
+                    endpoint, response.status
+                ),
+                file=sys.stderr,
+            )
             print("ERROR: Payload was: {}".format(payload), file=sys.stderr)
 
         return await response.json()
 
+
 @catch_memory_error()
-def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, algorithm, zscore, full_output, fh):
+def projectr_callback(
+    dataset_id,
+    genecart_id,
+    projection_id,
+    session_id,
+    scope,
+    algorithm,
+    zscore,
+    full_output,
+    fh,
+):
     success = 1
     message = ""
 
@@ -264,12 +341,12 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         full_output = False
 
     if not fh:
-        fh=sys.stderr
+        fh = sys.stderr
 
     if scope == "unweighted-list" and algorithm in ["nmf", "fixednmf"]:
         return {
-            'success': -1
-            , 'message': "Unweighted gene lists cannot be used with NMF algorithms."
+            "success": -1,
+            "message": "Unweighted gene lists cannot be used with NMF algorithms.",
         }
 
     """
@@ -283,43 +360,38 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     Only step 3 needs to be in R, and we use rpy2 to call that.
     """
 
-
     # Unweighted carts get a "1" weight for each gene
     genecart = geardb.get_gene_cart_by_share_id(genecart_id)
     if not genecart:
-        return {
-            'success': -1
-            , 'message': "Could not find gene cart in database"
-        }
+        return {"success": -1, "message": "Could not find gene cart in database"}
 
     genecart.get_genes()
 
     if not len(genecart.genes):
-        return {
-            'success': -1
-            , 'message': "No genes found within this gene cart"
-        }
+        return {"success": -1, "message": "No genes found within this gene cart"}
 
     # Row: Genes
     # Col: Pattern weights
     try:
-        loading_df = create_unweighted_loading_df(genecart) if scope == "unweighted-list" else create_weighted_loading_df(genecart_id)
+        loading_df = (
+            create_unweighted_loading_df(genecart)
+            if scope == "unweighted-list"
+            else create_weighted_loading_df(genecart_id)
+        )
     except Exception as e:
         print(str(e), file=fh)
         import traceback
+
         traceback.print_exc()
-        return {
-            'success': -1
-            , 'message': str(e)
-        }
+        return {"success": -1, "message": str(e)}
 
     # Assumes first column is unique identifiers. Standardize on a common index name
-    loading_df.rename(columns={ loading_df.columns[0]:"dataRowNames" }, inplace=True)
+    loading_df.rename(columns={loading_df.columns[0]: "dataRowNames"}, inplace=True)
 
     # Drop the gene symbol column
     loading_df = loading_df.drop(loading_df.columns[1], axis=1)
 
-    loading_df.set_index('dataRowNames', inplace=True)
+    loading_df.set_index("dataRowNames", inplace=True)
 
     # If cross-species, remap the genecart genes to the orthologous genes for the dataset's organism
     try:
@@ -327,19 +399,24 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         try:
             ds = geardb.get_dataset_by_id(dataset_id)
         except:
-            raise Exception("Dataset was not found in the database. Please contact a gEAR admin.")
+            raise Exception(
+                "Dataset was not found in the database. Please contact a gEAR admin."
+            )
 
         if not genecart.organism_id == ds.organism_id:
-            ortholog_file = get_ortholog_file(genecart.organism_id, ds.organism_id, ANNOTATION_TYPE)
+            ortholog_file = get_ortholog_file(
+                genecart.organism_id, ds.organism_id, ANNOTATION_TYPE
+            )
             loading_df = map_dataframe_genes(loading_df, ortholog_file)
     except Exception as e:
         print(str(e), file=fh)
         import traceback
+
         traceback.print_exc()
         return {"success": -1, "message": str(e)}
 
     # Drop duplicate unique identifiers. This may happen if two unweighted gene cart genes point to the same Ensembl ID in the db
-    loading_df = loading_df[~loading_df.index.duplicated(keep='first')]
+    loading_df = loading_df[~loading_df.index.duplicated(keep="first")]
 
     is_spatial = False
     if ds.dtype == "spatial":
@@ -351,42 +428,42 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         ana = geardb.get_analysis(None, dataset_id, session_id, is_spatial)
     except Exception as e:
         import traceback
+
         traceback.print_exc()
-        return {
-            "success": -1,
-            "message": "Could not retrieve analysis."
-        }
+        return {"success": -1, "message": "Could not retrieve analysis."}
 
     if is_spatial:
         try:
-            adata = get_spatial_adata(None, dataset_id, session_id, include_images=False)
+            adata = get_spatial_adata(
+                None, dataset_id, session_id, include_images=False
+            )
         except Exception as e:
             import traceback
+
             traceback.print_exc()
             return {
                 "success": -1,
-                "message": "Could not retrieve AnnData object from spatial datastore."
+                "message": "Could not retrieve AnnData object from spatial datastore.",
             }
     else:
         try:
             adata = get_adata_from_analysis(None, dataset_id, session_id)
         except Exception as e:
             import traceback
-            traceback.print_exc()
-            return {
-                "success": -1,
-                "message": "Could not retrieve AnnData object."
-            }
 
+            traceback.print_exc()
+            return {"success": -1, "message": "Could not retrieve AnnData object."}
 
     # If dataset genes have duplicated index names, we need to rename them to avoid errors
     # in collecting rownames in projectR (which gives invalid output)
     # This means these duplicated genes will not be in the intersection of the dataset and pattern genes
-    dedup_copy = Path(ana.dataset_path().replace('.h5ad', '.dups_removed.h5ad'))
+    dedup_copy = Path(ana.dataset_path().replace(".h5ad", ".dups_removed.h5ad"))
     if (adata.var.index.duplicated(keep="first") == True).any():
         if dedup_copy.exists():
             dedup_copy.unlink()
-        adata = adata[:, adata.var.index.duplicated(keep="first") == False].copy(filename=dedup_copy)
+        adata = adata[:, adata.var.index.duplicated(keep="first") == False].copy(
+            filename=dedup_copy
+        )
 
     num_target_genes = adata.shape[1]
     num_loading_genes = loading_df.shape[0]
@@ -396,21 +473,25 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     intersection_size = index_intersection.size
 
     if intersection_size == 0:
-        message = "No common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(num_target_genes, num_loading_genes)
+        message = "No common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(
+            num_target_genes, num_loading_genes
+        )
         return {
-            "success": -1
-            , "message": message
-            , "num_common_genes": intersection_size
-            , "num_genecart_genes": num_loading_genes
-            , "num_dataset_genes": num_target_genes
+            "success": -1,
+            "message": message,
+            "num_common_genes": intersection_size,
+            "num_genecart_genes": num_loading_genes,
+            "num_dataset_genes": num_target_genes,
         }
 
-    message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(intersection_size, num_target_genes, num_loading_genes)
+    message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(
+        intersection_size, num_target_genes, num_loading_genes
+    )
 
     # Reduce the size of both dataframes before POSTing
-    adata = adata[:,index_intersection]
+    adata = adata[:, index_intersection]
     loading_df = loading_df.loc[index_intersection]
-    loading_df = loading_df.fillna(0) # Fill NaN values with 0
+    loading_df = loading_df.fillna(0)  # Fill NaN values with 0
 
     # Ensure target dataset has genes as rows
     # ! The to_df() seems to be a memory_chokepoint, doubling the memory used by the adata object
@@ -421,17 +502,24 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     if zscore:
         target_df = stats.zscore(target_df, axis=1, nan_policy="omit")
 
-    target_df = target_df.fillna(0) # Fill NaN values with 0
+    target_df = target_df.fillna(0)  # Fill NaN values with 0
 
     # Close dataset adata so that we do not have a stale opened object
     adata.file.close()
 
-    dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
+    dataset_projection_csv = build_projection_csv_path(
+        dataset_id, projection_id, "dataset"
+    )
 
     # Create lock file if it does not exist
     lockfile = str(dataset_projection_csv) + ".lock"
     if Path(lockfile).exists():
-        print("INFO: Found lockfile for another current projectR run of {}.  Going to wait for that run to finish and steal its output.".format(projection_id), file=fh)
+        print(
+            "INFO: Found lockfile for another current projectR run of {}.  Going to wait for that run to finish and steal its output.".format(
+                projection_id
+            ),
+            file=fh,
+        )
         try:
             # Test to see if the exclusive lock has expired
             lock_fh = create_lock_file(lockfile)
@@ -445,12 +533,12 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
                 sleep(1)
                 if not Path(lockfile).exists():
                     return {
-                        "success": 2
-                        , "message": message
-                        , "projection_id": projection_id
-                        , "num_common_genes": intersection_size
-                        , "num_genecart_genes": num_loading_genes
-                        , "num_dataset_genes": num_target_genes
+                        "success": 2,
+                        "message": message,
+                        "projection_id": projection_id,
+                        "num_common_genes": intersection_size,
+                        "num_genecart_genes": num_loading_genes,
+                        "num_dataset_genes": num_target_genes,
                     }
 
     try:
@@ -460,11 +548,11 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         # This should ideally never be encountered as the previous code should handle existing locked files
         message = "Could not create lock file for this projectR run."
         return {
-            'success': -1
-            , 'message': message
-            , "num_common_genes": intersection_size
-            , "num_genecart_genes": num_loading_genes
-            , "num_dataset_genes": num_target_genes
+            "success": -1,
+            "message": message,
+            "num_common_genes": intersection_size,
+            "num_genecart_genes": num_loading_genes,
+            "num_dataset_genes": num_target_genes,
         }
 
     # Chunk size needs to adjusted by how many genes are present, so that the payload always stays under the body size limit
@@ -472,7 +560,12 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     if len(target_df.columns) < chunk_size:
         chunk_size = len(target_df.columns)
 
-    print("TARGET: {}\nGENECART: {}\nTARGET DF (genes,samples): {}\nSAMPLES PER CHUNK: {}".format(dataset_id, genecart_id, target_df.shape, chunk_size), file=fh)
+    print(
+        "TARGET: {}\nGENECART: {}\nTARGET DF (genes,samples): {}\nSAMPLES PER CHUNK: {}".format(
+            dataset_id, genecart_id, target_df.shape, chunk_size
+        ),
+        file=fh,
+    )
 
     # shuffle target dataframe rows.  Needed to balance out the chunks in the NMF algorithms
     target_df = target_df.sample(frac=1)
@@ -485,28 +578,38 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
 
     projection_pval_df = pd.DataFrame()
 
-    if this.servercfg['projectR_service']['cloud_run_enabled'].startswith("1"):
+    if this.servercfg["projectR_service"]["cloud_run_enabled"].startswith("1"):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
         try:
-            results = loop.run_until_complete(fetch_all(target_df, loading_df, algorithm, full_output, genecart_id, dataset_id, chunk_size))
+            results = loop.run_until_complete(
+                fetch_all(
+                    target_df,
+                    loading_df,
+                    algorithm,
+                    full_output,
+                    genecart_id,
+                    dataset_id,
+                    chunk_size,
+                )
+            )
             print("INFO: All fetch tasks have completed", file=fh)
         except Exception as e:
             print(str(e), file=fh)
             # Raises as soon as one "gather" task has an exception
             remove_lock_file(lock_fh, lockfile)
             return {
-                'success': -1
-                , 'message': "Something went wrong with the projection-creating step."
-                , "num_common_genes": intersection_size
-                , "num_genecart_genes": num_loading_genes
-                , "num_dataset_genes": num_target_genes
+                "success": -1,
+                "message": "Something went wrong with the projection-creating step.",
+                "num_common_genes": intersection_size,
+                "num_genecart_genes": num_loading_genes,
+                "num_dataset_genes": num_target_genes,
             }
         finally:
             # Wait 250 ms for the underlying SSL connections to close
             loop.run_until_complete(asyncio.sleep(0.250))
-            loop.stop() # prevent "Task was destroyed but it is pending!" messages
+            loop.stop()  # prevent "Task was destroyed but it is pending!" messages
             loop.close()
 
         print("INFO: Concatenating results to dataframe", file=fh)
@@ -514,32 +617,36 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         # single result = {"projection": "json", "pval": "json"}
         # concatenate all the results into a single DataFrame for each key
 
-        projection_patterns_df, projection_pval_df = concat_fetch_results_to_dataframe(results)
+        projection_patterns_df, projection_pval_df = concat_fetch_results_to_dataframe(
+            results
+        )
 
         del results
-        gc.collect()    # trying to clear memory
+        gc.collect()  # trying to clear memory
 
         if len(projection_patterns_df.index) != len(adata.obs.index):
             message = "Not all chunked sample rows were returned by projectR.  Cannot proceed."
             print(message, file=sys.stderr)
             return {
-                'success': -1
-                , 'message': message
-                , "num_common_genes": intersection_size
-                , "num_genecart_genes": num_loading_genes
-                , "num_dataset_genes": num_target_genes
+                "success": -1,
+                "message": message,
+                "num_common_genes": intersection_size,
+                "num_genecart_genes": num_loading_genes,
+                "num_dataset_genes": num_target_genes,
             }
 
         # There is a good chance the samples are now out of order, which will break
         # the copying of the dataset observation metadata when this output is converted
         # to an AnnData object. So reorder back to dataset sample order.
-        projection_patterns_df = projection_patterns_df.reindex(adata.obs.index.tolist())
+        projection_patterns_df = projection_patterns_df.reindex(
+            adata.obs.index.tolist()
+        )
         if not projection_pval_df.empty:
             projection_pval_df = projection_pval_df.reindex(adata.obs.index.tolist())
     else:
         # If not using the cloud run service, do this on the server
         abs_path_gear = Path(__file__).resolve().parents[3]
-        service_path = abs_path_gear.joinpath('services')
+        service_path = abs_path_gear.joinpath("services")
         # abs_path_lib is a Path object so we need to convert to string
         sys.path.insert(0, str(service_path))
 
@@ -550,15 +657,20 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         try:
             if algorithm == "pca":
                 from projectr.main import do_pca_projection
-                projection_patterns_df = do_pca_projection(target_df,loading_df)
+
+                projection_patterns_df = do_pca_projection(target_df, loading_df)
             elif algorithm == "binary":
                 from projectr.main import do_binary_projection
-                projection_patterns_df = do_binary_projection(target_df,loading_df)
+
+                projection_patterns_df = do_binary_projection(target_df, loading_df)
             elif algorithm == "2silca":
                 pass
             elif algorithm in ["nmf", "fixednmf"]:
                 from projectr.rfuncs import run_projectR_cmd
-                projection_patterns = run_projectR_cmd(target_df, loading_df, algorithm, full_output)
+
+                projection_patterns = run_projectR_cmd(
+                    target_df, loading_df, algorithm, full_output
+                )
 
                 if full_output and algorithm == "nmf":
                     # R code: projectionFit <- list('projection'=projectionPatterns, 'pval'=pval.matrix)
@@ -577,11 +689,11 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
 
             print(str(e), file=sys.stderr)
             return {
-                'success': -1
-                , 'message': "Something went wrong with the projection-creating step."
-                , "num_common_genes": intersection_size
-                , "num_genecart_genes": num_loading_genes
-                , "num_dataset_genes": num_target_genes
+                "success": -1,
+                "message": "Something went wrong with the projection-creating step.",
+                "num_common_genes": intersection_size,
+                "num_genecart_genes": num_loading_genes,
+                "num_dataset_genes": num_target_genes,
             }
 
     # Close adata so that we do not have a stale opened object
@@ -592,9 +704,13 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         dedup_copy.unlink()
 
     # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
-    projection_patterns_df = projection_patterns_df.set_axis(loading_df.columns, axis="columns")
+    projection_patterns_df = projection_patterns_df.set_axis(
+        loading_df.columns, axis="columns"
+    )
     if not projection_pval_df.empty:
-        projection_pval_df = projection_pval_df.set_axis(loading_df.columns, axis="columns")
+        projection_pval_df = projection_pval_df.set_axis(
+            loading_df.columns, axis="columns"
+        )
 
     # Check that all DataFrame values are not null.  If not, we cannot proceed.
     # Ultimately, we cannot plot this and do not want to write to file.
@@ -602,49 +718,58 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
         message = "There are NaN values in the projection patterns.  Cannot proceed."
         remove_lock_file(lock_fh, lockfile)
         return {
-            'success': -1
-            , 'message': message
-            , "num_common_genes": intersection_size
-            , "num_genecart_genes": num_loading_genes
-            , "num_dataset_genes": num_target_genes
+            "success": -1,
+            "message": message,
+            "num_common_genes": intersection_size,
+            "num_genecart_genes": num_loading_genes,
+            "num_dataset_genes": num_target_genes,
         }
 
     # if full_output = True, then write the pval matrix to file using the same name as the projection file
     if full_output and algorithm == "nmf":
         if projection_pval_df.empty:
             return {
-                "success": -1
-                , "message": "No pval matrix was generated by projectR."
-                , "num_common_genes": intersection_size
-                , "num_genecart_genes": num_loading_genes
-                , "num_dataset_genes": num_target_genes
+                "success": -1,
+                "message": "No pval matrix was generated by projectR.",
+                "num_common_genes": intersection_size,
+                "num_genecart_genes": num_loading_genes,
+                "num_dataset_genes": num_target_genes,
             }
-        projection_pval_csv = build_projection_csv_path(dataset_id, projection_id, "pval")
+        projection_pval_csv = build_projection_csv_path(
+            dataset_id, projection_id, "pval"
+        )
         projection_pval_df.to_csv(projection_pval_csv)
 
-    print("INFO: Writing projection patterns to {}".format(dataset_projection_csv), file=fh)
+    print(
+        "INFO: Writing projection patterns to {}".format(dataset_projection_csv),
+        file=fh,
+    )
     projection_patterns_df.to_csv(dataset_projection_csv)
 
     del projection_patterns_df
-    gc.collect()    # trying to clear memory
+    gc.collect()  # trying to clear memory
 
     dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
 
     # Add new configuration to the list for this dictionary key
     with open(dataset_projection_json_file) as projection_fh:
-            dataset_projections_dict = json.load(projection_fh)
-    dataset_projections_dict.setdefault(genecart_id, []).append({
-        "uuid": projection_id
-        , "algorithm": algorithm
-        , "zscore": zscore
-        , "num_common_genes": intersection_size
-        , "num_genecart_genes": num_loading_genes
-        , "num_dataset_genes": num_target_genes
-    })
+        dataset_projections_dict = json.load(projection_fh)
+    dataset_projections_dict.setdefault(genecart_id, []).append(
+        {
+            "uuid": projection_id,
+            "algorithm": algorithm,
+            "zscore": zscore,
+            "num_common_genes": intersection_size,
+            "num_genecart_genes": num_loading_genes,
+            "num_dataset_genes": num_target_genes,
+        }
+    )
     write_to_json(dataset_projections_dict, dataset_projection_json_file)
 
     # Do the same for the genecart version
-    genecart_projection_csv = build_projection_csv_path(genecart_id, projection_id, "genecart")
+    genecart_projection_csv = build_projection_csv_path(
+        genecart_id, projection_id, "genecart"
+    )
     genecart_projection_json_file = build_projection_json_path(genecart_id, "genecart")
 
     # Symlink dataset_projection_csv to genecart_projection_csv (this syntax feels like it's in reverse but it is correct)
@@ -656,14 +781,16 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
 
     with open(genecart_projection_json_file) as projection_fh:
         genecart_projections_dict = json.load(projection_fh)
-    genecart_projections_dict.setdefault(dataset_id, []).append({
-        "uuid": projection_id
-        , "algorithm": algorithm
-        , "zscore": zscore
-        , "num_common_genes": intersection_size
-        , "num_genecart_genes": num_loading_genes
-        , "num_dataset_genes": num_target_genes
-    })
+    genecart_projections_dict.setdefault(dataset_id, []).append(
+        {
+            "uuid": projection_id,
+            "algorithm": algorithm,
+            "zscore": zscore,
+            "num_common_genes": intersection_size,
+            "num_genecart_genes": num_loading_genes,
+            "num_dataset_genes": num_target_genes,
+        }
+    )
     write_to_json(genecart_projections_dict, genecart_projection_json_file)
 
     # Remove file lock
@@ -671,13 +798,14 @@ def projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope,
     remove_lock_file(lock_fh, lockfile)
 
     return {
-        "success": success
-        , "message": message
-        , "projection_id": projection_id
-        , "num_common_genes": intersection_size
-        , "num_genecart_genes": num_loading_genes
-        , "num_dataset_genes": num_target_genes
+        "success": success,
+        "message": message,
+        "projection_id": projection_id,
+        "num_common_genes": intersection_size,
+        "num_genecart_genes": num_loading_genes,
+        "num_dataset_genes": num_target_genes,
     }
+
 
 class ProjectROutputFile(Resource):
     """
@@ -686,9 +814,9 @@ class ProjectROutputFile(Resource):
 
     def post(self, dataset_id):
         args = parser.parse_args()
-        genecart_id = args['genecart_id']
-        algorithm = args['algorithm']
-        zscore = args['zscore']
+        genecart_id = args["genecart_id"]
+        algorithm = args["algorithm"]
+        zscore = args["zscore"]
 
         if not zscore:
             zscore = False
@@ -699,7 +827,9 @@ class ProjectROutputFile(Resource):
         if not dataset_projection_json_file.parent.is_dir():
             dataset_projection_json_file.parent.mkdir(parents=True, exist_ok=True)
 
-        genecart_projection_json_file = build_projection_json_path(genecart_id, "genecart")
+        genecart_projection_json_file = build_projection_json_path(
+            genecart_id, "genecart"
+        )
         if not genecart_projection_json_file.parent.is_dir():
             genecart_projection_json_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -707,35 +837,50 @@ class ProjectROutputFile(Resource):
         # We will use the dataset json file as a check if a projection already exists though
         if not genecart_projection_json_file.is_file():
             genecart_projection_json_file.touch(exist_ok=True)
-            write_to_json({}, genecart_projection_json_file) # create empty json file
+            write_to_json({}, genecart_projection_json_file)  # create empty json file
 
         # If the dataset json file exists, we can read it and get the output file path
         if not dataset_projection_json_file.is_file():
             dataset_projection_json_file.touch(exist_ok=True)
-            write_to_json({}, dataset_projection_json_file) # create empty json file
-            return {
-                "projection_id": None
-            }
+            write_to_json({}, dataset_projection_json_file)  # create empty json file
+            return {"projection_id": None}
 
         with open(dataset_projection_json_file) as projection_fh:
             projections_dict = json.load(projection_fh)
 
         # If the pattern was not projected onto this dataset, initialize a list of configs
         # "cart.{projection_id}" added for backwards compatability
-        if not (genecart_id in projections_dict or "cart.{}".format(genecart_id) in projections_dict):
+        if not (
+            genecart_id in projections_dict
+            or "cart.{}".format(genecart_id) in projections_dict
+        ):
             # NOTE: tried to write JSON with empty list but it seems that empty keys are skipped over.
-            return {
-                "projection_id": None
-            }
+            return {"projection_id": None}
 
         # If legacy version exists, copy to current format.
-        if (not genecart_id in projections_dict) and "cart.{}".format(genecart_id) in projections_dict:
-            print("Copying legacy cart.{} to {} in the projection json file.".format(genecart_id, genecart_id), file=sys.stderr)
+        if (not genecart_id in projections_dict) and "cart.{}".format(
+            genecart_id
+        ) in projections_dict:
+            print(
+                "Copying legacy cart.{} to {} in the projection json file.".format(
+                    genecart_id, genecart_id
+                ),
+                file=sys.stderr,
+            )
             projections_dict.pop("cart.{}".format(genecart_id), None)
             # move legacy genecart projection stuff to new version
-            print("Moving legacy cart.{} contents to {} in the projection genecart directory.".format(genecart_id, genecart_id), file=sys.stderr)
-            old_genecart_projection_json_file = build_projection_json_path("cart.{}".format(genecart_id), "genecart")
-            old_genecart_projection_json_file.parent.rename(dataset_projection_json_file.parent)
+            print(
+                "Moving legacy cart.{} contents to {} in the projection genecart directory.".format(
+                    genecart_id, genecart_id
+                ),
+                file=sys.stderr,
+            )
+            old_genecart_projection_json_file = build_projection_json_path(
+                "cart.{}".format(genecart_id), "genecart"
+            )
+            old_genecart_projection_json_file.parent.rename(
+                dataset_projection_json_file.parent
+            )
 
         for config in projections_dict[genecart_id]:
             # Handle legacy JSON outputs (i.e. old or non-existing names)
@@ -746,16 +891,19 @@ class ProjectROutputFile(Resource):
 
             # Check if the config matches the current request (full output does not matter here)
             if algorithm == config["algorithm"] and zscore == config["zscore"]:
-                projection_id = config['uuid']
-                dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
+                projection_id = config["uuid"]
+                dataset_projection_csv = build_projection_csv_path(
+                    dataset_id, projection_id, "dataset"
+                )
                 return {
-                    "projection_id": projection_id  if Path(dataset_projection_csv).is_file() else None
+                    "projection_id": projection_id
+                    if Path(dataset_projection_csv).is_file()
+                    else None
                 }
 
         # If we get here, we didn't find a file for this config
-        return {
-            "projection_id": None
-        }
+        return {"projection_id": None}
+
 
 class ProjectR(Resource):
     """
@@ -763,15 +911,15 @@ class ProjectR(Resource):
     """
 
     def post(self, dataset_id):
-        session_id = request.cookies.get('gear_session_id')
+        session_id = request.cookies.get("gear_session_id")
         args = run_projectr_parser.parse_args()
 
-        genecart_id = args['genecart_id']
-        algorithm = args['algorithm']
-        projection_id = args['projection_id']
-        scope = args['scope']
-        zscore = args['zscore']
-        full_output = args['full_output']
+        genecart_id = args["genecart_id"]
+        algorithm = args["algorithm"]
+        projection_id = args["projection_id"]
+        scope = args["scope"]
+        zscore = args["zscore"]
+        full_output = args["full_output"]
 
         # Currently only NMF runs through the actual projectR code and can give full output
         if algorithm not in ["nmf"]:
@@ -780,21 +928,31 @@ class ProjectR(Resource):
         uuid_args = (dataset_id, genecart_id, algorithm, zscore)
 
         projection_id = projection_id or create_new_uuid(*uuid_args)
-        dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
+        dataset_projection_csv = build_projection_csv_path(
+            dataset_id, projection_id, "dataset"
+        )
         dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
 
         run_projectr = True
 
         # If projectR has already been run, we can just load the csv file.  Otherwise, let it rip!
         if Path(dataset_projection_csv).is_file():
-            print("INFO: Found exisitng dataset_projection_csv file {}, loading it.".format(dataset_projection_csv))
+            print(
+                "INFO: Found exisitng dataset_projection_csv file {}, loading it.".format(
+                    dataset_projection_csv
+                )
+            )
 
             run_projectr = False
             if full_output:
                 # does pval matrix exist?
                 pval_csv = build_projection_csv_path(dataset_id, projection_id, "pval")
                 if not Path(pval_csv).is_file():
-                    print("INFO: Full output requested but pval matrix file {} does not exist.".format(pval_csv))
+                    print(
+                        "INFO: Full output requested but pval matrix file {} does not exist.".format(
+                            pval_csv
+                        )
+                    )
                     run_projectr = True
 
             if not run_projectr:
@@ -810,73 +968,82 @@ class ProjectR(Resource):
                     for config in projections_dict[genecart_id]:
                         # Handle legacy JSON outputs (i.e. old or non-existing names)
                         if "is_pca" in config:
-                            config["algorithm"] = "pca" if config["is_pca"] == 1 else "nmf"
+                            config["algorithm"] = (
+                                "pca" if config["is_pca"] == 1 else "nmf"
+                            )
                         if "zscore" not in config:
                             config["zscore"] = False
 
                         # Check if the config matches the current request
-                        if algorithm == config["algorithm"] and zscore == config["zscore"]:
-                                common_genes = config.get('num_common_genes', None)
-                                genecart_genes = config.get('num_genecart_genes', -1)
-                                dataset_genes = config.get('num_dataset_genes', -1)
-                                break
+                        if (
+                            algorithm == config["algorithm"]
+                            and zscore == config["zscore"]
+                        ):
+                            common_genes = config.get("num_common_genes", None)
+                            genecart_genes = config.get("num_genecart_genes", -1)
+                            dataset_genes = config.get("num_dataset_genes", -1)
+                            break
 
                 message = ""
                 if common_genes:
-                    message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(common_genes, dataset_genes, genecart_genes)
+                    message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(
+                        common_genes, dataset_genes, genecart_genes
+                    )
 
                 return {
-                    "success": 1
-                    , "message": message
-                    , "projection_id": projection_id
-                    , "num_common_genes": common_genes
-                    , "num_genecart_genes": genecart_genes
-                    , "num_dataset_genes": dataset_genes
+                    "success": 1,
+                    "message": message,
+                    "projection_id": projection_id,
+                    "num_common_genes": common_genes,
+                    "num_genecart_genes": genecart_genes,
+                    "num_dataset_genes": dataset_genes,
                 }
-
 
         # Create a messaging queue if necessary. Make it persistent across the lifetime of the Flask server.
         # Channels will be spawned during each task.
-        if this.servercfg['projectR_service']['queue_enabled'].startswith("1"):
+        if this.servercfg["projectR_service"]["queue_enabled"].startswith("1"):
             import gearqueue
-            host = this.servercfg['projectR_service']['queue_host']
+
+            host = this.servercfg["projectR_service"]["queue_host"]
             try:
                 # Connect as a blocking RabbitMQ publisher
-                connection = gearqueue.Connection(host=host, publisher_or_consumer="publisher")
+                connection = gearqueue.Connection(
+                    host=host, publisher_or_consumer="publisher"
+                )
             except Exception as e:
-                return {
-                    'success': -1
-                , 'message': str(e)
-                }
+                return {"success": -1, "message": str(e)}
             # Connect as a blocking RabbitMQ publisher
             with connection:
                 connection.open_channel()
                 task_finished = False
                 response = {}
+
                 def _on_response(channel, method_frame, properties, body):
                     nonlocal task_finished
                     nonlocal response
                     task_finished = True
                     response = json.loads(body)
-                    print("[x] - Received response for dataset {} and genecart {}".format(payload["dataset_id"], payload["genecart_id"]), file=sys.stderr)
+                    print(
+                        "[x] - Received response for dataset {} and genecart {}".format(
+                            payload["dataset_id"], payload["genecart_id"]
+                        ),
+                        file=sys.stderr,
+                    )
 
                 # Create a "reply-to" consumer
                 # see https://pika.readthedocs.io/en/stable/examples/direct_reply_to.html?highlight=reply_to#direct-reply-to-example
                 try:
-                    connection.replyto_consume(
-                        on_message_callback=_on_response
-                    )
+                    connection.replyto_consume(on_message_callback=_on_response)
                 except Exception as e:
-                    return {
-                        'success': -1
-                    , 'message': str(e)
-                    }
+                    return {"success": -1, "message": str(e)}
 
                 # Create the publisher
                 payload = dict()
                 payload["dataset_id"] = dataset_id
                 payload["session_id"] = session_id
-                payload["projection_id"] = projection_id    # the "arg" was assigned and potentially modified
+                payload["projection_id"] = (
+                    projection_id  # the "arg" was assigned and potentially modified
+                )
                 payload["genecart_id"] = genecart_id
                 payload["scope"] = scope
                 payload["algorithm"] = algorithm
@@ -885,20 +1052,37 @@ class ProjectR(Resource):
 
                 try:
                     connection.publish(
-                        queue_name="projectr"
-                        , reply_to="amq.rabbitmq.reply-to"
-                        , message=payload   # method dumps JSON
+                        queue_name="projectr",
+                        reply_to="amq.rabbitmq.reply-to",
+                        message=payload,  # method dumps JSON
                     )
-                    print("[x] Requesting for dataset {} and genecart {}".format(dataset_id, genecart_id), file=sys.stderr)
+                    print(
+                        "[x] Requesting for dataset {} and genecart {}".format(
+                            dataset_id, genecart_id
+                        ),
+                        file=sys.stderr,
+                    )
                 except Exception as e:
-                    return {
-                        'success': -1
-                    , 'message': str(e)
-                    }
+                    return {"success": -1, "message": str(e)}
                 # Wait for callback to finish, then return the response
                 while not task_finished:
                     pass
-                print("[x] sending payload response back to client for dataset {} and genecart {}".format(dataset_id, genecart_id), file=sys.stderr)
+                print(
+                    "[x] sending payload response back to client for dataset {} and genecart {}".format(
+                        dataset_id, genecart_id
+                    ),
+                    file=sys.stderr,
+                )
                 return response
         else:
-            return projectr_callback(dataset_id, genecart_id, projection_id, session_id, scope, algorithm, zscore, full_output, sys.stderr)
+            return projectr_callback(
+                dataset_id,
+                genecart_id,
+                projection_id,
+                session_id,
+                scope,
+                algorithm,
+                zscore,
+                full_output,
+                sys.stderr,
+            )
