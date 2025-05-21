@@ -237,8 +237,6 @@ def chunk_dataframe(df: pd.DataFrame, chunk_size: int, fh: TextIO):
     # Help from: https://stackoverflow.com/questions/51674751/using-requests-library-to-make-asynchronous-requests-with-python-3-7
     index_slices = sliced(range(len(df.columns)), chunk_size)
 
-    print("INFO: NUMBER OF CHUNKS: {}".format(len(list(index_slices))), file=fh)
-
     for idx, index_slice in enumerate(index_slices):
         yield df.iloc[:, list(index_slice)]
 
@@ -282,6 +280,9 @@ async def fetch_all(
     async with aiohttp.ClientSession() as client:
         # Create coroutines to be executed.
         loadings_json = loading_df.to_json(orient="split")
+
+        # NOTE: For some reason I think printing anything inside the "coros" generator will break the client.post
+
         coros = (
             fetch_one(
                 client,
@@ -320,8 +321,10 @@ async def fetch_one(client: aiohttp.ClientSession, payload: dict, fh: TextIO) ->
     # (semaphore) https://stackoverflow.com/questions/40836800/python-asyncio-semaphore-in-async-await-function
     try:
         async with client.post(
-            url=endpoint, json=payload, headers=headers, raise_for_status=True
+            url=endpoint, json=payload, headers=headers
         ) as response:
+            print(response.status, file=fh)
+            response.raise_for_status()  # Raise an error for bad status codes
             return await response.json()
     except aiohttp.ClientResponseError as e:
         print(f"ERROR: POST request failed with status code {e.status}", file=fh)
@@ -592,6 +595,10 @@ def projectr_callback(
         ),
         file=fh,
     )
+
+    # report number of chunks to make
+    index_slices = sliced(range(len(target_df.columns)), chunk_size)
+    print("NUMBER OF CHUNKS: {}".format(len(list(index_slices))), file=fh)
 
     # shuffle target dataframe rows.  Needed to balance out the chunks in the NMF algorithms
     target_df = target_df.sample(frac=1)
