@@ -8,14 +8,15 @@ from flask import Flask, abort, jsonify, request
 cloud_logging = False
 try:
     # Imports the Google Cloud client library
-    from google.cloud import logging
+    import google.cloud.logging
 
     cloud_logging = True
-except:
+except Exception:
     pass
 
 
-debug = os.environ.get("DEBUG", False)
+debug_str = os.environ.get("DEBUG")
+debug = bool(debug_str) if debug_str else False
 
 app = Flask(__name__)
 
@@ -40,7 +41,7 @@ def write_entry(logger_name: str, severity: str, message: str) -> None:
         print(message, file=sys.stderr)
         return
 
-    logging_client = logging.Client()
+    logging_client = google.cloud.logging.Client()
 
     # This log can be found in the Cloud Logging console under 'Custom Logs'.
     logger = logging_client.logger(logger_name)
@@ -108,7 +109,10 @@ def index():
         write_entry("projectr", "DEBUG", "Falling back to stderr logging.")
 
     # Print the request payload to stderr
-    write_entry("projectr", "DEBUG", "Request payload: {}".format(req_json))
+    write_entry("projectr", "DEBUG", "Genecart ID: {}".format(genecart_id))
+    write_entry("projectr", "DEBUG", "Dataset ID: {}".format(dataset_id))
+    write_entry("projectr", "DEBUG", "Algorithm: {}".format(algorithm))
+    write_entry("projectr", "DEBUG", "Full output: {}".format(full_output))
 
     # pd.read_json gives a FutureWarning, and suggest to wrap the json in StringIO.  Needed for pandas 2.x
     target = StringIO(target)
