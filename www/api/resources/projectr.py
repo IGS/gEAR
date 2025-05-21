@@ -289,6 +289,7 @@ async def fetch_all(
                     "genecart_id": genecart_id,  # This helps in identifying which combinations are going through
                     "dataset_id": dataset_id,
                 },
+                fh
             )
             for chunk_df in chunk_dataframe(target_df, chunk_size, fh)
         )
@@ -297,7 +298,7 @@ async def fetch_all(
         return [await res for res in limited_as_completed(coros, SEMAPHORE_LIMIT)]
 
 
-async def fetch_one(client: aiohttp.ClientSession, payload: dict) -> dict:
+async def fetch_one(client: aiohttp.ClientSession, payload: dict, fh: TextIO) -> dict:
     """
     makes an non-authorized POST request to the specified HTTP endpoint
     """
@@ -313,21 +314,15 @@ async def fetch_one(client: aiohttp.ClientSession, payload: dict) -> dict:
 
     # https://docs.aiohttp.org/en/stable/client_reference.html
     # (semaphore) https://stackoverflow.com/questions/40836800/python-asyncio-semaphore-in-async-await-function
-    async with client.post(
-        url=endpoint, json=payload, headers=headers, raise_for_status=True
-    ) as response:
-        # TODO: Figure out how to get the response status code and payload to print to stderr
-        if response.status != 200:
-            # print payload to stderr
-            print(
-                "ERROR: POST request to {} failed with status code {}".format(
-                    endpoint, response.status
-                ),
-                file=sys.stderr,
-            )
-            print("ERROR: Payload was: {}".format(payload), file=sys.stderr)
-
-        return await response.json()
+    try:
+        async with client.post(
+            url=endpoint, json=payload, headers=headers, raise_for_status=True
+        ) as response:
+            return await response.json()
+    except aiohttp.ClientResponseError as e:
+        print(f"ERROR: POST request failed with status code {e.status}", file=fh)
+        print(f"ERROR: Response body: {e.message}", file=fh)
+        raise
 
 
 @catch_memory_error()
