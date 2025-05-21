@@ -10,6 +10,9 @@ import os
 import sys
 from pathlib import Path
 
+lib_path = str(Path(__file__).resolve().parents[1].joinpath("lib"))
+sys.path.append(lib_path)
+
 # https://stackoverflow.com/a/35904211/1368079
 this = sys.modules[__name__]
 from gear.serverconfig import ServerConfig  # noqa: E402
@@ -119,8 +122,6 @@ class Consumer:
         self._reconnect_delay = 0
         self.host = host
 
-        lib_path = str(Path(__file__).resolve().parents[1].joinpath("lib"))
-        sys.path.append(lib_path)
         import gearqueue
 
         # This differences from the example implementation

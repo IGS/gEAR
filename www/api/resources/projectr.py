@@ -233,7 +233,7 @@ def chunk_dataframe(df: pd.DataFrame, chunk_size: int, fh: TextIO):
     # Help from: https://stackoverflow.com/questions/51674751/using-requests-library-to-make-asynchronous-requests-with-python-3-7
     index_slices = sliced(range(len(df.columns)), chunk_size)
 
-    print("INFO: Number of chunks: {}".format(len(list(index_slices))), file=fh)
+    print("INFO: NUMBER OF CHUNKS: {}".format(len(list(index_slices))), file=fh)
 
     for idx, index_slice in enumerate(index_slices):
         yield df.iloc[:, list(index_slice)]
