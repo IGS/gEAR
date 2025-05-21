@@ -14,7 +14,7 @@ from pathlib import Path
 this = sys.modules[__name__]
 from gear.serverconfig import ServerConfig  # noqa: E402
 
-this.servercfg = ServerConfig().parse()
+this.servercfg = ServerConfig().parse() # type: ignore
 
 queue_name = "projectr"
 os.makedirs("/var/log/gEAR_queue", exist_ok=True)

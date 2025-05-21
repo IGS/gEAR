@@ -15,8 +15,10 @@ except Exception:
     pass
 
 
-debug_str = os.environ.get("DEBUG")
-debug = bool(debug_str) if debug_str else False
+debug_str = os.environ.get("DEBUG", "False")
+debug = False
+if debug_str.lower() == "true":
+    debug = True
 
 app = Flask(__name__)
 
