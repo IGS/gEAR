@@ -545,7 +545,7 @@ def projectr_callback(
         try:
             # Test to see if the exclusive lock has expired
             lock_fh = create_lock_file(lockfile)
-            print("INFO: Lock for {} seems to be stale".format(projection_id), file=fh)
+            print("INFO: Lock for {} seems to be stale. Removing it.".format(projection_id), file=fh)
             remove_lock_file(lock_fh, lockfile)
         except Exception:
             print("INFO: Lock for {} seems to be valid.".format(projection_id), file=fh)
@@ -649,7 +649,8 @@ def projectr_callback(
 
         if len(projection_patterns_df.index) != len(adata.obs.index):
             message = "Not all chunked sample rows were returned by projectR.  Cannot proceed."
-            print(message, file=sys.stderr)
+            print(message, file=fh)
+            remove_lock_file(lock_fh, lockfile)
             return {
                 "success": -1,
                 "message": message,
@@ -714,7 +715,7 @@ def projectr_callback(
             # clear lock file
             remove_lock_file(lock_fh, lockfile)
 
-            print(str(e), file=sys.stderr)
+            print(str(e), file=fh)
             return {
                 "success": -1,
                 "message": "Something went wrong with the projection-creating step.",

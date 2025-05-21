@@ -8,7 +8,7 @@ from flask import Flask, abort, jsonify, request
 cloud_logging = False
 try:
     # Imports the Google Cloud client library
-    import google.cloud.logging
+    from google.cloud import logging
 
     cloud_logging = True
 except Exception:
@@ -41,7 +41,7 @@ def write_entry(logger_name: str, severity: str, message: str) -> None:
         print(message, file=sys.stderr)
         return
 
-    logging_client = google.cloud.logging.Client()
+    logging_client = logging.Client()
 
     # This log can be found in the Cloud Logging console under 'Custom Logs'.
     logger = logging_client.logger(logger_name)
@@ -198,4 +198,5 @@ def index():
 
 
 if __name__ == "__main__":
+    write_entry("projectr", "INFO", "Starting projectR service.")
     app.run(debug=debug, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
