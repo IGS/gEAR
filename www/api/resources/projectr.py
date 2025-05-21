@@ -1,5 +1,6 @@
 import asyncio
 import fcntl
+import functools
 import gc
 import hashlib
 import json
@@ -23,6 +24,9 @@ from gear.utils import catch_memory_error
 from more_itertools import sliced
 
 from .common import get_adata_from_analysis, get_spatial_adata
+
+# Have all print statements flush immediately (for debugging)
+print = functools.partial(print, flush=True)
 
 # Parse gEAR config
 # https://stackoverflow.com/a/35904211/1368079
