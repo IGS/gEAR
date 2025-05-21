@@ -525,8 +525,8 @@ def projectr_callback(
     # If zscore is enabled, scale the target_df according to zscore by row (genes)
     # For NaN values, they are ignored in the calculation
     if zscore:
-        target_df.apply(
-            lambda row: stats.zscore(row, nan_policy="omit"), axis=1, inplace=True
+        target_df = target_df.apply(
+            lambda row: stats.zscore(row, nan_policy="omit")
         )
 
     target_df = target_df.fillna(0)  # Fill NaN values with 0
