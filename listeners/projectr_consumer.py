@@ -34,7 +34,7 @@ def _on_request(channel, method_frame, properties, body):
     www_path = str(Path(__file__).resolve().parents[1].joinpath("www"))
     sys.path.append(www_path)
 
-    from api.resources.projectr import projectr_callback # type: ignore
+    from api.resources.projectr import projectr_callback  # type: ignore
 
     delivery_tag = method_frame.delivery_tag
     deserialized_body = json.loads(body)
@@ -148,8 +148,9 @@ class Consumer:
             self._maybe_reconnect()
 
     def _maybe_reconnect(self) -> None:
-        import gearqueue
         import time
+
+        import gearqueue
 
         if self._consumer.should_reconnect:
             self._consumer.stop()

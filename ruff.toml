@@ -1,3 +1,3 @@
 exclude = ["bin"]
 extend-include = ["*.cgi"]
-select = ["E4", "E7", "E9", "F", "PD"]
+select = ["E4", "E7", "E9", "F", "I", "PD"]
