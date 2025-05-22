@@ -190,6 +190,8 @@ def index():
 
         return abort(500, description=description)
 
+    write_entry("projectr", "INFO", "Projection dataframe shape: {}".format(response["projection"].shape))
+
     # Convert the response to JSON
     response_json = {
         "projection": response["projection"].to_json(orient="split"),
