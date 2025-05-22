@@ -258,7 +258,9 @@ def limited_as_completed(coros, limit: int, delay: float = BATCH_DELAY):
                     try:
                         newf = next(coros)
                         futures.append(asyncio.ensure_future(newf))
-                        if delay > 0:
+                        # Only stagger the next batch if we are at the limit of futures
+                        # This way the delay is not too frequent
+                        if delay > 0 and len(futures) >= limit:
                             await asyncio.sleep(delay)
                     except StopIteration:
                         pass
