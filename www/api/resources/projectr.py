@@ -323,7 +323,6 @@ async def fetch_one(client: aiohttp.ClientSession, payload: dict, fh: TextIO) ->
         async with client.post(
             url=endpoint, json=payload, headers=headers
         ) as response:
-            print(response.status, file=fh)
             response.raise_for_status()  # Raise an error for bad status codes
             return await response.json()
     except aiohttp.ClientResponseError as e:
