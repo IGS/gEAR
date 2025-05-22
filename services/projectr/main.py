@@ -3,7 +3,7 @@ import sys
 from io import StringIO
 
 import pandas as pd
-from flask import Flask, abort, jsonify, request
+from flask import Flask, abort, jsonify, request, Response
 
 cloud_logging = False
 try:
@@ -86,12 +86,13 @@ def do_pca_projection(
 
 
 @app.route("/status", methods=["GET"])
-def status():
+def status() -> str:
+    """Health check endpoint."""
     return "OK"
 
 
 @app.route("/", methods=["POST"])
-def index():
+def index() -> Response:
     req_json = request.get_json()
     target = req_json["target"]
     loadings = req_json["loadings"]
@@ -125,8 +126,8 @@ def index():
 
     # fill NaN values with 0
     # This should have been done in the data processing step, but just in case.
-    target_df.fillna(0, inplace=True)
-    loading_df.fillna(0, inplace=True)
+    target_df = target_df.fillna(0)
+    loading_df = loading_df.fillna(0)
 
     if target_df.empty:
         description = "Target (dataset) dataframe is empty."

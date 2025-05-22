@@ -398,12 +398,12 @@ def projectr_callback(
         return {"success": -1, "message": str(e)}
 
     # Assumes first column is unique identifiers. Standardize on a common index name
-    loading_df.rename(columns={loading_df.columns[0]: "dataRowNames"}, inplace=True)
+    loading_df = loading_df.rename(columns={loading_df.columns[0]: "dataRowNames"})
 
     # Drop the gene symbol column
     loading_df = loading_df.drop(loading_df.columns[1], axis=1)
 
-    loading_df.set_index("dataRowNames", inplace=True)
+    loading_df = loading_df.set_index("dataRowNames")
 
     # If cross-species, remap the genecart genes to the orthologous genes for the dataset's organism
     try:
@@ -752,7 +752,7 @@ def projectr_callback(
 
     # Check that all DataFrame values are not null.  If not, we cannot proceed.
     # Ultimately, we cannot plot this and do not want to write to file.
-    if projection_patterns_df.isnull().values.any():
+    if projection_patterns_df.isna().to_numpy().any():
         message = "There are NaN values in the projection patterns.  Cannot proceed."
         remove_lock_file(lock_fh, lockfile)
         return {

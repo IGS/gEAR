@@ -33,7 +33,7 @@ def convert_r_df_to_r_matrix(df: pd.DataFrame):
     """
 
     r_matrix = ro.r["as.matrix"]
-    return r_matrix(df)
+    return r_matrix(df) # type: ignore
 
 def convert_r_matrix_to_r_df(mtx) -> pd.DataFrame:
     """
@@ -41,7 +41,7 @@ def convert_r_matrix_to_r_df(mtx) -> pd.DataFrame:
     """
     # mtx is a matrix of numbers with PCs in columns
     r_df = ro.r["as.data.frame"]
-    return r_df(mtx)
+    return r_df(mtx) # type: ignore
 
 def run_projectR_cmd(target_df: pd.DataFrame, loading_df: pd.DataFrame, algorithm: str, full_output:bool =False)-> list[pd.DataFrame]:
     """
