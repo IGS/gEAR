@@ -46,6 +46,7 @@ ANNOTATION_TYPE = "ensembl"  # NOTE: This will change in the future to be varied
 # limit of asynchronous tasks that can happen at a time
 # I am setting this slightly under the "MaxKeepAliveRequests" in apache.conf
 SEMAPHORE_LIMIT = 50
+BATCH_DELAY = 0.5  # seconds to wait between batches
 
 """
 projections json format - one in each "projections/by_dataset/<dataset_id> subdirectory
@@ -240,7 +241,7 @@ def chunk_dataframe(df: pd.DataFrame, chunk_size: int, fh: TextIO):
     for idx, index_slice in enumerate(index_slices):
         yield df.iloc[:, list(index_slice)]
 
-def limited_as_completed(coros, limit: int):
+def limited_as_completed(coros, limit: int, delay: float = BATCH_DELAY):
     """A version of asyncio.as_completed that takes a generator of coroutines instead of a list."""
     # Source: https://www.artificialworlds.net/blog/2017/05/31/python-3-large-numbers-of-tasks-with-limited-concurrency/
     # Uses far less memory than the list version (asyncio.as_completed or asyncio.gather)
@@ -257,6 +258,8 @@ def limited_as_completed(coros, limit: int):
                     try:
                         newf = next(coros)
                         futures.append(asyncio.ensure_future(newf))
+                        if delay > 0:
+                            await asyncio.sleep(delay)
                     except StopIteration:
                         pass
                     return f.result()
