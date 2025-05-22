@@ -148,6 +148,7 @@ class Consumer:
             self._maybe_reconnect()
 
     def _maybe_reconnect(self) -> None:
+        import gearqueue
         import time
 
         if self._consumer.should_reconnect:
