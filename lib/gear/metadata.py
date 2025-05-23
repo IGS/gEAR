@@ -1,10 +1,10 @@
-import ast
 import json
 import numpy as np
 import pandas as pd
-import os, sys, re
-import requests
+import sys
 import mysql.connector
+
+from io import StringIO
 
 import geardb
 from gear.fromgeo import FromGeo
@@ -96,12 +96,12 @@ class Metadata:
 
                 with open(file_path) as json_file:
                     data = json.loads(json_file.read())
-                    
+
                     for d in data:
                         json_data['field'].append(d)
                         json_data['value'].append(data[d])
 
-                pd_df = pd.read_json(json.dumps(json_data), orient='columns')
+                pd_df = pd.read_json(StringIO(json.dumps(json_data)), orient='columns')
                 self.metadata = pd_df.set_index('field')
 
             except Exception as err:

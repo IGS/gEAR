@@ -47,6 +47,7 @@ NOTE: Some of the packages will indirectly install dask-expr, which is currently
 
     $ ./pip3 install \
       aiohttp==3.8.3 \
+      aiohttp_retry==2.9.1 \
       anndata==0.10.6 \
       biocode==0.10.0 \
       biopython==1.79 \

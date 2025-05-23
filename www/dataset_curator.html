@@ -96,18 +96,21 @@
         <section class="has-background-light section js-step step-active" id="dataset-s">
           <!-- Dataset selection -->
           <h5 class="title is-5">
-            <span class="icon">
-              <i class="mdi mdi-text-box-search-outline"></i> <!-- Not quite the correct icon -->
-            </span>
-            <span>Select a dataset</span>
-            <span id="dataset-s-success" class="js-step-success icon has-text-success-dark is-hidden">
-              <i class="mdi mdi-check-circle"></i>
-            </span>
-            <span id="dataset-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
-              <i class="mdi mdi-close-circle"></i>
-            </span>
-            <span class="icon is-pulled-right">
-              <i class="mdi mdi-chevron-up"></i>
+            <span class="icon-text is-flex is-align-items-center">
+              <span class="icon is-medium">
+                  <i class="mdi mdi-36px mdi-numeric-1-circle"></i>
+              </span>
+              <span>Select a dataset</span>
+
+              <span id="dataset-s-success" class="js-step-success icon has-text-success-dark is-hidden">
+                  <i class="mdi mdi-check-circle"></i>
+              </span>
+              <span id="dataset-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
+                  <i class="mdi mdi-close-circle"></i>
+              </span>
+              <span class="icon is-pulled-right">
+                <i class="mdi mdi-chevron-up"></i>
+              </span>
             </span>
           </h5>
           <div id="current-dataset-c" class="is-hidden">
@@ -115,26 +118,32 @@
             <span id="current-dataset"></span>
           </div>
           <div class="js-step-collapsable mt-3" id="dataset-collapsable">
-            <input class="input" id="dataset-query" type="text" placeholder="Enter a dataset" autofocus="" />
-            <div id="dataset-tree" class="wb-skeleton wb-initializing js-tree">
+            <button id="btn-toggle-dataset-tree" class="button is-small is-primary">
+              <span>Collapse dataset selection tool</span>
+            </button>
+            <div id="dataset-selection-c">
+                <input class="input" id="dataset-query" type="text" placeholder="Enter a dataset" autofocus="" />
+                <div id="dataset-tree" class="wb-skeleton wb-initializing js-tree"></div>
             </div>
           </div>
         </section>
 
         <section class="has-background-white-bis section js-step" id="load-plot-s">
           <h5 class="title is-5">
-            <span class="icon">
-              <i class="mdi mdi-file-upload-outline"></i> <!-- Not quite the correct icon -->
-            </span>
-            <span>Create new or load existing curation</span>
-            <span id="load-plot-s-success" class="js-step-success icon has-text-success-dark is-hidden">
-              <i class="mdi mdi-check-circle"></i>
-            </span>
-            <span id="load-plot-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
-              <i class="mdi mdi-close-circle"></i>
-            </span>
-            <span class="icon is-pulled-right">
-              <i class="mdi mdi-chevron-down"></i>
+            <span class="icon-text is-flex is-align-items-center">
+              <span class="icon is-medium">
+                  <i class="mdi mdi-36px mdi-numeric-2-circle"></i>
+              </span>
+              <span>Create new or load existing curation</span>
+              <span id="load-plot-s-success" class="js-step-success icon has-text-success-dark is-hidden">
+                <i class="mdi mdi-check-circle"></i>
+              </span>
+              <span id="load-plot-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
+                <i class="mdi mdi-close-circle"></i>
+              </span>
+              <span class="icon is-pulled-right">
+                <i class="mdi mdi-chevron-down"></i>
+              </span>
             </span>
           </h5>
           <div class="js-step-collapsable mt-3" id="load-plot-collapsable">
@@ -152,18 +161,20 @@
 
         <section class="has-background-white-bis section js-step" id="plot-type-s">
           <h5 class="title is-5">
-            <span class="icon">
-              <i class="mdi mdi-chart-scatter-plot"></i> <!-- Not quite the correct icon -->
-            </span>
-            <span>Select dataset plot type and analysis type</span>
-            <span id="plot-type-s-success" class="js-step-success icon has-text-success-dark is-hidden">
-              <i class="mdi mdi-check-circle"></i>
-            </span>
-            <span id="plot-type-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
-              <i class="mdi mdi-close-circle"></i>
-            </span>
-            <span class="icon is-pulled-right">
-              <i class="mdi mdi-chevron-down"></i>
+            <span class="icon-text is-flex is-align-items-center">
+              <span class="icon is-medium">
+                  <i class="mdi mdi-36px mdi-numeric-3-circle"></i>
+              </span>
+              <span>Select dataset plot type and analysis type</span>
+              <span id="plot-type-s-success" class="js-step-success icon has-text-success-dark is-hidden">
+                <i class="mdi mdi-check-circle"></i>
+              </span>
+              <span id="plot-type-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
+                <i class="mdi mdi-close-circle"></i>
+              </span>
+              <span class="icon is-pulled-right">
+                <i class="mdi mdi-chevron-down"></i>
+              </span>
             </span>
           </h5>
           <div id="current-plot-type-c" class="is-hidden">
@@ -232,18 +243,20 @@
 
         <section class="has-background-white-bis section js-step" id="gene-s">
           <h5 class="title is-5">
-            <span class="icon">
-              <i class="mdi mdi-dna"></i> <!-- Not quite the correct icon -->
-            </span>
-            <span>Select gene</span>
-            <span id="gene-s-success" class="js-step-success icon has-text-success-dark is-hidden">
-              <i class="mdi mdi-check-circle"></i>
-            </span>
-            <span id="gene-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
-              <i class="mdi mdi-close-circle"></i>
-            </span>
-            <span class="icon is-pulled-right">
-              <i class="mdi mdi-chevron-down"></i>
+            <span class="icon-text is-flex is-align-items-center">
+              <span class="icon is-medium">
+                  <i class="mdi mdi-36px mdi-numeric-4-circle"></i>
+              </span>
+              <span>Select gene</span>
+              <span id="gene-s-success" class="js-step-success icon has-text-success-dark is-hidden">
+                <i class="mdi mdi-check-circle"></i>
+              </span>
+              <span id="gene-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
+                <i class="mdi mdi-close-circle"></i>
+              </span>
+              <span class="icon is-pulled-right">
+                <i class="mdi mdi-chevron-down"></i>
+              </span>
             </span>
           </h5>
           <div id="current-gene-c" class="is-hidden">
@@ -262,18 +275,20 @@
 
         <section class="has-background-white-bis section js-step" id="plot-options-s">
           <h5 class="title is-5">
-            <span class="icon">
-              <i class="mdi mdi-tune"></i> <!-- Not quite the correct icon -->
-            </span>
-            <span>Select plotting options</span>
-            <span id="plot-options-s-success" class="js-step-success icon has-text-success-dark is-hidden">
-              <i class="mdi mdi-check-circle"></i>
-            </span>
-            <span id="plot-options-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
-              <i class="mdi mdi-close-circle"></i>
-            </span>
-            <span class="icon is-pulled-right">
-              <i class="mdi mdi-chevron-down"></i>
+            <span class="icon-text is-flex is-align-items-center">
+              <span class="icon is-medium">
+                  <i class="mdi mdi-36px mdi-numeric-5-circle"></i>
+              </span>
+              <span>Select plotting options</span>
+              <span id="plot-options-s-success" class="js-step-success icon has-text-success-dark is-hidden">
+                <i class="mdi mdi-check-circle"></i>
+              </span>
+              <span id="plot-options-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
+                <i class="mdi mdi-close-circle"></i>
+              </span>
+              <span class="icon is-pulled-right">
+                <i class="mdi mdi-chevron-down"></i>
+              </span>
             </span>
           </h5>
           <div class="js-step-collapsable mt-3" id="plot-options-collapsable"></div>

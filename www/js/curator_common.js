@@ -428,6 +428,9 @@ const datasetTree = new DatasetTree({
 
         datasetId = newDatasetId;
 
+        // Hide tree by clicking the "toggle" button
+        document.getElementById("btn-toggle-dataset-tree").click();
+
         // Click to get to next step
         document.getElementById("load-plot-s").click();
         document.getElementById('new-display').classList.add("is-loading");
@@ -1690,6 +1693,19 @@ for (const classElt of collapsableElts) {
         }
     });
 }
+
+// Use the dataset input selector button to toggle the dataset selection div
+document.getElementById("btn-toggle-dataset-tree").addEventListener("click", (event) => {
+    // Toggle the dataset selection div
+    const selectionDiv = document.getElementById("dataset-selection-c");
+    if (selectionDiv.classList.contains("is-hidden")) {
+        selectionDiv.classList.remove("is-hidden");
+        event.target.textContent = "Collapse dataset selection tool";
+    } else {
+        selectionDiv.classList.add("is-hidden");
+        event.target.textContent = "Expand dataset selection tool";
+    }
+});
 
 /* --- Entry point --- */
 /**

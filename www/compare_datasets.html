@@ -89,18 +89,21 @@
         <section class="has-background-light section js-step step-active" id="dataset-s">
           <!-- Dataset selection -->
           <h5 class="title is-5">
-            <span class="icon">
-              <i class="mdi mdi-text-box-search-outline"></i>
-            </span>
-            <span>Select a dataset</span>
-            <span id="dataset-s-success" class="js-step-success icon has-text-success-dark is-hidden">
-              <i class="mdi mdi-check-circle"></i>
-            </span>
-            <span id="dataset-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
-              <i class="mdi mdi-close-circle"></i>
-            </span>
-            <span class="icon is-pulled-right">
-              <i class="mdi mdi-chevron-up"></i>
+            <span class="icon-text is-flex is-align-items-center">
+              <span class="icon is-medium">
+                  <i class="mdi mdi-36px mdi-numeric-1-circle"></i>
+              </span>
+              <span>Select a dataset</span>
+
+              <span id="dataset-s-success" class="js-step-success icon has-text-success-dark is-hidden">
+                  <i class="mdi mdi-check-circle"></i>
+              </span>
+              <span id="dataset-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
+                  <i class="mdi mdi-close-circle"></i>
+              </span>
+              <span class="icon is-pulled-right">
+                <i class="mdi mdi-chevron-down"></i>
+              </span>
             </span>
           </h5>
           <div id="current-dataset-c" class="is-hidden">
@@ -108,26 +111,32 @@
             <span id="current-dataset"></span>
           </div>
           <div class="js-step-collapsable mt-3" id="dataset-collapsable">
-            <input class="input" id="dataset-query" type="text" placeholder="Enter a dataset" autofocus="" />
-            <div id="dataset-tree" class="wb-skeleton wb-initializing js-tree">
+            <button id="btn-toggle-dataset-tree" class="button is-small is-primary">
+              <span>Collapse dataset selection tool</span>
+            </button>
+            <div id="dataset-selection-c">
+                <input class="input" id="dataset-query" type="text" placeholder="Enter a dataset" autofocus="" />
+                <div id="dataset-tree" class="wb-skeleton wb-initializing js-tree"></div>
             </div>
           </div>
         </section>
 
         <section class="has-background-light section js-step" id="condition-compare-s">
           <h5 class="title is-5">
-            <span class="icon">
-              <i class="mdi mdi-compare-horizontal"></i>
-            </span>
-            <span>Select conditions you want to compare</span>
-            <span id="condition-compare-s-success" class="js-step-success icon has-text-success-dark is-hidden">
-              <i class="mdi mdi-check-circle"></i>
-            </span>
-            <span id="condition-compare-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
-              <i class="mdi mdi-close-circle"></i>
-            </span>
-            <span class="icon is-pulled-right">
-              <i class="mdi mdi-chevron-up"></i>
+            <span class="icon-text is-flex is-align-items-center">
+              <span class="icon is-medium">
+                <i class="mdi mdi-36px mdi-numeric-2-circle"></i>
+              </span>
+              <span>Select conditions you want to compare</span>
+              <span id="condition-compare-s-success" class="js-step-success icon has-text-success-dark is-hidden">
+                <i class="mdi mdi-check-circle"></i>
+              </span>
+              <span id="condition-compare-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
+                <i class="mdi mdi-close-circle"></i>
+              </span>
+              <span class="icon is-pulled-right">
+                <i class="mdi mdi-chevron-down"></i>
+              </span>
             </span>
           </h5>
 
@@ -181,20 +190,21 @@
 
         <section class="has-background-light section js-step" id="compare-options-s">
           <h5 class="title is-5">
-            <span class="icon">
-              <i class="mdi mdi-filter-variant"></i>
+            <span class="icon-text is-flex is-align-items-center">
+              <span class="icon is-medium">
+                <i class="mdi mdi-36px mdi-numeric-3-circle"></i>
+              </span>
+              <span>Select comparison parameters [Optional]</span>
+              <span id="compare-options-s-success" class="js-step-success icon has-text-success-dark is-hidden">
+                <i class="mdi mdi-check-circle"></i>
+              </span>
+              <span id="compare-options-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
+                <i class="mdi mdi-close-circle"></i>
+              </span>
+              <span class="icon is-pulled-right">
+                <i class="mdi mdi-chevron-up"></i>
+              </span>
             </span>
-            <span>Select comparison options</span>
-            <span id="compare-options-s-success" class="js-step-success icon has-text-success-dark is-hidden">
-              <i class="mdi mdi-check-circle"></i>
-            </span>
-            <span id="compare-options-s-failed" class="js-step-success icon has-text-danger-dark is-hidden">
-              <i class="mdi mdi-close-circle"></i>
-            </span>
-            <span class="icon is-pulled-right">
-              <i class="mdi mdi-chevron-up"></i>
-            </span>
-            <span class="has-text-weight-medium is-pulled-right">Optional</span>
           </h5>
 
           <div class="js-step-collapsable mt-3" id="compare-options-collapsable">

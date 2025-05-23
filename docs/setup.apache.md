@@ -132,7 +132,7 @@ There's a lot in here, but the CGI-related addition is:
     </Directory>
 
     # FLASK API
-    WSGIDaemonProcess api user=www-data group=www-data processes=8 threads=2
+    WSGIDaemonProcess api user=www-data group=www-data processes=16 threads=2
     WSGIScriptAlias /api /var/www/api/api.wsgi
     <Directory /var/www/api>
             WSGIProcessGroup api
@@ -162,6 +162,8 @@ There's a lot in here, but the CGI-related addition is:
 
   ProxyPass /panel http://127.0.0.1:5006
   ProxyPassReverse /panel http://127.0.0.1:5006
+
+NOTE: For the Flask-API, more processes is better.  The standard of 4 processes probably will not be enough. Set to 8 or if a high-volume site, to 16.
 
 ## /etc/apache2/mods-available/wsgi.load
 

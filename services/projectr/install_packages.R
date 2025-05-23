@@ -6,8 +6,8 @@
 library(devtools)
 library(remotes)
 
-#install_github("ctlab/fgsea", ref = "v1.14.0")
 tryCatch( {
+    install_github("ctlab/fgsea")   # needed for projectR
     install_github("genesofeve/projectR")
     BiocManager::install("biomaRt", ask=FALSE) # version 2.60.0
     install_github("CHuanSite/SJD")

@@ -381,7 +381,7 @@ class Analysis {
             const ana = await Analysis.loadFromJson(data, datasetObj);
             Object.assign(this, ana);
 
-            // If tSNE was calculate, show the labeled tSNE section
+            // If tSNE was calculatee, show the labeled tSNE section
             // Mainly for primary analyses
             // ? verify claim
             document.querySelector(UI.labeledTsneSection).classList.add("is-hidden");
@@ -390,6 +390,8 @@ class Analysis {
 
                 // Initialize the labeled tSNE step
                 this.labeledTsne = new AnalysisStepLabeledTsne(this);
+            } else {
+                document.querySelector(`${UI.markerGenesSection} i`).classList.replace("mdi-numeric-4-circle", "mdi-numeric-3-circle")
             }
 
         } catch (error) {
@@ -443,6 +445,9 @@ class Analysis {
             // This is initially unclickable due to this step being initially unclickable for de novo analyses
             document.querySelector(UI.markerGenesSection).classList.remove("is-pointer-events-none");
 
+            // change number circle icons for some steps that are in both analysis types
+            document.querySelector(`${UI.markerGenesSection} i`).classList.replace("mdi-numeric-9-circle", "mdi-numeric-4-circle")
+
             return analysis
         }
 
@@ -450,6 +455,10 @@ class Analysis {
         // Since the stepper relies on finding the "not hidden" stepper, we need to do this first.
         document.querySelector(UI.deNovoStepsElt).classList.remove("is-hidden");
         resetStepperWithHrefs(UI.primaryFilterSection);
+
+        // Icon counter changes if we are in a primary analysis (and tSNE was calculated)
+        document.querySelector(`${UI.markerGenesSection} i`).classList.replace("mdi-numeric-3-circle", "mdi-numeric-9-circle")
+        document.querySelector(`${UI.markerGenesSection} i`).classList.replace("mdi-numeric-4-circle", "mdi-numeric-9-circle")
 
         analysis.primaryFilter = AnalysisStepPrimaryFilter.loadFromJson(data.primary_filter, analysis);
 

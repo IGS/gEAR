@@ -1,19 +1,23 @@
 'use strict';
 
-let urlParamsPassed = false;
-let currently_selected_gene_symbol = null;
-let currently_selected_org_id = "";
+/* From other code */
 //let selected_dc_share_id = null;
 //let selected_dc_label = "";
-let is_multigene = false;
-let annotation_data = null;
-let manually_entered_genes = new Set();
+
+let urlParamsPassed = false;
+let isMultigene = false;
 let tilegrid = null;
-let svg_scoring_method = 'gene';
+let svgScoringMethod = 'gene';
 
 let datasetShareId = null;
 let layoutShareId = null;
 let shareUsed = false;
+
+// TODO: Make these variables camelCase to align with the rest of the code (and JS standards)
+let currently_selected_gene_symbol = null;
+let currently_selected_org_id = "";
+let annotation_data = null;
+let manually_entered_genes = new Set();
 
 // Plugins can add functions to this which are called after a gene selection change is made
 let geneChangeCallbacks = [];
@@ -24,6 +28,8 @@ TODOs:
 - When changing genes the tiles need to show 'loading' states before redrawing
 - When changing scopes the tiles need to show 'loading' states before redrawing
 */
+
+const organismSelector = document.getElementById('organism-selector');
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -58,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isExactMatch = document.getElementById('gene-search-exact-match').checked;
 
         // Validate here. However for multigene fuzzy searches, we need the gene list to be populated
-        if (!(is_multigene && !isExactMatch)) {
+        if (!(isMultigene && !isExactMatch)) {
             const status = validateExpressionSearchForm();
 
             if (! status) {
@@ -72,14 +78,14 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById("result-panel-loader").classList.remove('is-hidden');
 
         // update multigene/single gene
-        is_multigene = document.getElementById('single-multi-multi').checked;
+        isMultigene = document.getElementById('single-multi-multi').checked;
 
         // if multigene, clear the selected gene symbol and hide the gene-result-list container
         document.getElementById("gene-result-list-c").classList.remove('is-hidden');
         document.getElementById("currently-selected-gene-header").classList.remove('is-hidden');
         document.getElementById("annotation-panel").classList.remove('is-hidden');
         document.getElementById("scoring-method-div").classList.remove('is-hidden');
-        if (is_multigene) {
+        if (isMultigene) {
             currently_selected_gene_symbol = null;
             document.getElementById("gene-result-list-c").classList.add('is-hidden');
             document.getElementById("currently-selected-gene-header").classList.add('is-hidden');
@@ -96,11 +102,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // auto-select the first gene in the list
             const firstGene = document.querySelector('.gene-result-list-item');
-            if (!is_multigene && firstGene) {
+            if (!isMultigene && firstGene) {
                 // Will call renderDisplays on the selected gene downstream
                 firstGene.click();
 
-            } else if (is_multigene) {
+            } else if (isMultigene) {
                 let genes = Array.from(selected_genes);
                 if (!isExactMatch) {
                     const status = validateExpressionSearchForm();
@@ -115,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const allGenesElts = document.querySelectorAll('.gene-result-list-item');
                     genes = Array.from(allGenesElts).map(elt => elt.textContent);
                 }
-                await tilegrid.renderDisplays(genes, is_multigene);
+                await tilegrid.renderDisplays(genes, isMultigene);
 
             }
 
@@ -123,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!CURRENT_USER.session_id && tilegrid?.datasets.length > 0) {
                 const first_organism_id = tilegrid.datasets[0].organism_id;
                 currently_selected_org_id = parseInt(first_organism_id);
-                document.getElementById('organism-selector').value = currently_selected_org_id;
+                organismSelector.value = currently_selected_org_id;
                 updateAnnotationDisplay();
             }
 
@@ -142,17 +148,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     });
 
+    const setDefaultOrganism = document.getElementById('set-default-organism');
+
     // handle when the organism-selector select box is changed
-    document.querySelector('#organism-selector').addEventListener('change', (event) => {
-        if (document.querySelector('#organism-selector').value) {
-            currently_selected_org_id = parseInt(document.querySelector('#organism-selector').value);
+    organismSelector.addEventListener('change', (event) => {
+        if (organismSelector?.value) {
+            currently_selected_org_id = parseInt(organismSelector.value);
         } else {
             currently_selected_org_id = "";
         }
 
         if (currently_selected_org_id === "") {
             showOrganismSelectorTooltip();
-            document.querySelector('#set-default-organism').classList.add('is-hidden');
+            setDefaultOrganism.classList.add('is-hidden');
             return;
         }
         hideOrganismSelectorTooltip();
@@ -163,34 +171,32 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!CURRENT_USER.session_id) {
             return;
         }
-        const setDefaultOrganism = document.querySelector('#set-default-organism');
         const shouldHide = CURRENT_USER.default_org_id === currently_selected_org_id;
         setDefaultOrganism.classList.toggle('is-hidden', shouldHide);
     });
 
-    document.querySelector('#set-default-organism').addEventListener('click', (event) => {
+    setDefaultOrganism.addEventListener('click', (event) => {
         // we don't want to set to null, and the UI should have prevented this, but check just in case
         if (currently_selected_org_id === "") {
             return;
         }
         CURRENT_USER.default_org_id = currently_selected_org_id;
         apiCallsMixin.saveUserDefaultOrgId(CURRENT_USER);
-        document.querySelector('#set-default-organism').classList.add('is-hidden');
+        setDefaultOrganism.classList.add('is-hidden');
     });
 
     // Change the svg scoring method when select element is changed
     document.getElementById('svg-scoring-method').addEventListener('change', (event) => {
-        if (is_multigene) return;   // multigene does not use this
+        if (isMultigene) return;   // multigene does not use this
 
-        svg_scoring_method = event.target.value;
-        // Get gene symbol from currently selected list item
-        let list_item = document.querySelector('.gene-result-list-item.is-selected');
-        if (!list_item) {
-            list_item = document.querySelector('.gene-result-list-item');
+        svgScoringMethod = event.target.value;
+
+        // Loop through all tiles with svgData and update the display based on the selected method
+        for (const tile of tilegrid.tiles) {
+            if (tile.svg) {
+                tile.updateSVGDisplay(svgScoringMethod);
+            }
         }
-
-        const gene_symbol = list_item.textContent;
-        selectGeneResult(gene_symbol);
     });
 
 });
@@ -249,7 +255,7 @@ const fetchGeneAnnotations = async (callback) => {
             Array.from(selected_genes).join(','),
             document.getElementById('gene-search-exact-match').checked,
             selected_dc_share_id,
-            is_multigene
+            isMultigene
         );
 
         const gene_result_count_elt = document.getElementById("gene-result-count");
@@ -321,7 +327,7 @@ const fetchOrganisms = async () => {
                 currently_selected_org_id = organism.id;
             }
 
-            document.getElementById('organism-selector').appendChild(row);
+            organismSelector.appendChild(row);
         }
 
     } catch (error) {
@@ -528,9 +534,9 @@ const parseGeneListURLParams = async () => {
     document.getElementById('gene-search-exact-match').checked = exact_match === '1';
 
     // single or multiple gene view (convert to boolean)?
-    const is_multigene_param = getUrlParameter('is_multigene');
-    is_multigene = is_multigene_param === '1';
-    if (is_multigene) {
+    const isMultigeneParam = getUrlParameter('is_multigene');
+    isMultigene = isMultigeneParam === '1';
+    if (isMultigene) {
         document.getElementById('single-multi-multi').checked = true;
     } else {
         document.getElementById('single-multi-single').checked = true;
@@ -556,14 +562,14 @@ const parseDatasetCollectionURLParams = () => {
 /**
  * Selects a gene result and performs necessary actions based on the selected gene symbol.
  *
- * @param {string} gene_symbol - The symbol of the gene to be selected.
+ * @param {string} geneSymbol - The symbol of the gene to be selected.
  */
-const selectGeneResult = (gene_symbol) => {
-    const selected_organism_id = document.getElementById('organism-selector').value;
-    currently_selected_gene_symbol = gene_symbol;
+const selectGeneResult = (geneSymbol) => {
+    const selectedOrganismId = organismSelector.value;
+    currently_selected_gene_symbol = geneSymbol;
 
     // if no organism is selected, display a tooltip to choose one
-    if (selected_organism_id === "") {
+    if (selectedOrganismId === "") {
         showOrganismSelectorTooltip();
     } else {
         updateAnnotationDisplay();
@@ -575,7 +581,7 @@ const selectGeneResult = (gene_symbol) => {
         document.getElementById("result-panel-grid").classList.remove("is-hidden");
         document.getElementById("zoomed-panel-grid").classList.add("is-hidden");
 
-        tilegrid.renderDisplays(currently_selected_gene_symbol, is_multigene, svg_scoring_method);
+        tilegrid.renderDisplays(currently_selected_gene_symbol, isMultigene, svgScoringMethod);
     }
 
     // call any callbacks that have been added (usually by plugins)
@@ -604,7 +610,7 @@ const setupTileGrid = async (shareId, type="layout") => {
         tilegrid.layout = await tilegrid.getLayout();
         await tilegrid.addAllDisplays();
 
-        tilegrid.applyTileGrid(is_multigene);
+        tilegrid.applyTileGrid(isMultigene);
 
     } catch (error) {
         logErrorInConsole(error);

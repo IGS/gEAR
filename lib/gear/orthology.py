@@ -27,7 +27,7 @@ organisms = geardb.OrganismCollection().get_all()
 abs_path_www = Path(__file__).resolve().parents[2].joinpath("www") # get www directory
 ORTHOLOG_BASE_DIR = abs_path_www.joinpath("feature_mapping")
 
-def format_orthomap_file_base(first_org_id, second_org_id, annotation_source):
+def format_orthomap_file_base(first_org_id: str, second_org_id: str, annotation_source: str="ensembl") -> str:
     """
     Formats the base filename for an orthomap file.
 
@@ -41,13 +41,13 @@ def format_orthomap_file_base(first_org_id, second_org_id, annotation_source):
     """
     return "orthomap.{0}.{2}__{1}.{2}.hdf5".format(first_org_id, second_org_id, annotation_source)
 
-def get_ortholog_file(gene_organism_id: str, dataset_organism_id: str, annotation_source: str="ensembl"):
+def get_ortholog_file(gene_organism_id: str, dataset_organism_id: str, annotation_source: str="ensembl") -> Path:
     """
     Get the ortholog file for a given gene organism ID, dataset organism ID, and annotation source.
 
     Args:
-        gene_organism_id (str): The ID of the gene organism.
-        dataset_organism_id (str): The ID of the dataset organism.
+        gene_organism_id (int): The ID of the gene organism.
+        dataset_organism_id (int): The ID of the dataset organism.
         annotation_source (str, optional): The annotation source. Defaults to "ensembl".
 
     Returns:
@@ -167,7 +167,7 @@ def map_dataframe_genes(orig_df: pd.DataFrame, orthomap_file: Path):
         if matches.empty:
             return gene_id
 
-        best_match = matches.sort_values(by="algorithms_match_count", ascending=False).iloc[0]
+        best_match = matches.sort_values(by="algorithms_match_count", ascending=False).iloc[0] # type: ignore
         return best_match["id2"]
 
     # Rename orig_df index (id1) using orthologous id (id2).  If id1 maps to multiple id2, then use the id2 with the highest algorithms_match_count

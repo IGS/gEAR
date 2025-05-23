@@ -61,7 +61,7 @@ def get_adata_shadow(analysis_id, dataset_id, session_id, dataset_path, include_
         adata = get_adata_from_analysis(analysis_id, dataset_id, session_id)
     return adata
 
-def get_spatial_adata(analysis_id, dataset_id, session_id, include_images=None):
+def get_spatial_adata(analysis_id: str | None, dataset_id: str, session_id: str, include_images: bool|None = None) -> anndata.AnnData:
     # Get spatial-based adata object.
     user = get_user_from_session_id(session_id)
     user_id = None
