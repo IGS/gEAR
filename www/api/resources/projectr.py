@@ -282,29 +282,33 @@ async def fetch_all(
         # Create coroutines to be executed.
         loadings_json = loading_df.to_json(orient="split")
 
+        # Give the aiohttp client a retry option
+        retry_options = ExponentialRetry(attempts=3, start_timeout=0.5, max_timeout=0, statuses={500, 502, 503, 504})
+        async with RetryClient(client_session=client, retry_options=retry_options, raise_for_status=True) as retry_client:
+
         # NOTE: For some reason I think printing anything inside the "coros" generator will break the client.post
 
-        coros = (
-            fetch_one(
-                client,
-                {
-                    "target": chunk_df.to_json(orient="split"),
-                    "loadings": loadings_json,
-                    "algorithm": algorithm,
-                    "full_output": full_output,
-                    "genecart_id": genecart_id,  # This helps in identifying which combinations are going through
-                    "dataset_id": dataset_id,
-                },
-                fh
+            coros = (
+                fetch_one(
+                    retry_client,
+                    {
+                        "target": chunk_df.to_json(orient="split"),
+                        "loadings": loadings_json,
+                        "algorithm": algorithm,
+                        "full_output": full_output,
+                        "genecart_id": genecart_id,  # This helps in identifying which combinations are going through
+                        "dataset_id": dataset_id,
+                    },
+                    fh
+                )
+                for chunk_df in chunk_dataframe(target_df, chunk_size, fh)
             )
-            for chunk_df in chunk_dataframe(target_df, chunk_size, fh)
-        )
 
-        # This loop processes results as they come in.
-        return [await res for res in limited_as_completed(coros, SEMAPHORE_LIMIT)]
+            # This loop processes results as they come in.
+            return [await res for res in limited_as_completed(coros, SEMAPHORE_LIMIT)]
 
 
-async def fetch_one(client: aiohttp.ClientSession, payload: dict, fh: TextIO, max_retries: int = 3, retry_delay: float = 1.0) -> dict:
+async def fetch_one(client: RetryClient, payload: dict, fh: TextIO) -> dict:
     """
     makes an non-authorized POST request to the specified HTTP endpoint
     """
@@ -318,26 +322,18 @@ async def fetch_one(client: aiohttp.ClientSession, payload: dict, fh: TextIO, ma
     endpoint = "{}/".format(audience)
     headers = {"content_type": "application/json"}
 
-    # Give the aiohttp client a retry option
-    retry_options = ExponentialRetry(attempts=3)
-    retry_client = RetryClient(client_session=client, retry_options=retry_options)
-
     # https://docs.aiohttp.org/en/stable/client_reference.html
     # (semaphore) https://stackoverflow.com/questions/40836800/python-asyncio-semaphore-in-async-await-function
 
     try:
-        async with retry_client.post(
+        async with client.post(
             url=endpoint, json=payload, headers=headers
         ) as response:
-            response.raise_for_status()  # Raise an error for bad status codes
             return await response.json()
     except aiohttp.ClientResponseError as e:
         print(f"ERROR: POST request failed with status code {e.status}", file=fh)
         print(f"ERROR: Response body: {e.message}", file=fh)
         raise
-    finally:
-        # Close the client session
-        await retry_client.close()
 
 
 @catch_memory_error()
