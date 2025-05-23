@@ -17,6 +17,7 @@ import anndata
 import geardb
 import pandas as pd
 import scipy.stats as stats
+from aiohttp_retry import ExponentialRetry, RetryClient
 from flask import request
 from flask_restful import Resource, reqparse
 from gear.orthology import get_ortholog_file, map_dataframe_genes
@@ -46,7 +47,6 @@ ANNOTATION_TYPE = "ensembl"  # NOTE: This will change in the future to be varied
 # limit of asynchronous tasks that can happen at a time
 # I am setting this slightly under the "MaxKeepAliveRequests" in apache.conf
 SEMAPHORE_LIMIT = 50
-BATCH_DELAY = 0.5  # seconds to wait between batches
 
 """
 projections json format - one in each "projections/by_dataset/<dataset_id> subdirectory
@@ -241,7 +241,7 @@ def chunk_dataframe(df: pd.DataFrame, chunk_size: int, fh: TextIO):
     for idx, index_slice in enumerate(index_slices):
         yield df.iloc[:, list(index_slice)]
 
-def limited_as_completed(coros, limit: int, delay: float = BATCH_DELAY):
+def limited_as_completed(coros, limit: int):
     """A version of asyncio.as_completed that takes a generator of coroutines instead of a list."""
     # Source: https://www.artificialworlds.net/blog/2017/05/31/python-3-large-numbers-of-tasks-with-limited-concurrency/
     # Uses far less memory than the list version (asyncio.as_completed or asyncio.gather)
@@ -258,9 +258,6 @@ def limited_as_completed(coros, limit: int, delay: float = BATCH_DELAY):
                     try:
                         newf = next(coros)
                         futures.append(asyncio.ensure_future(newf))
-                        # Stagger the next batch of coroutines
-                        if delay > 0:
-                            await asyncio.sleep(delay)
                     except StopIteration:
                         pass
                     return f.result()
@@ -307,7 +304,7 @@ async def fetch_all(
         return [await res for res in limited_as_completed(coros, SEMAPHORE_LIMIT)]
 
 
-async def fetch_one(client: aiohttp.ClientSession, payload: dict, fh: TextIO) -> dict:
+async def fetch_one(client: aiohttp.ClientSession, payload: dict, fh: TextIO, max_retries: int = 3, retry_delay: float = 1.0) -> dict:
     """
     makes an non-authorized POST request to the specified HTTP endpoint
     """
@@ -321,10 +318,15 @@ async def fetch_one(client: aiohttp.ClientSession, payload: dict, fh: TextIO) ->
     endpoint = "{}/".format(audience)
     headers = {"content_type": "application/json"}
 
+    # Give the aiohttp client a retry option
+    retry_options = ExponentialRetry(attempts=3)
+    retry_client = RetryClient(client_session=client, retry_options=retry_options)
+
     # https://docs.aiohttp.org/en/stable/client_reference.html
     # (semaphore) https://stackoverflow.com/questions/40836800/python-asyncio-semaphore-in-async-await-function
+
     try:
-        async with client.post(
+        async with retry_client.post(
             url=endpoint, json=payload, headers=headers
         ) as response:
             response.raise_for_status()  # Raise an error for bad status codes
@@ -333,6 +335,9 @@ async def fetch_one(client: aiohttp.ClientSession, payload: dict, fh: TextIO) ->
         print(f"ERROR: POST request failed with status code {e.status}", file=fh)
         print(f"ERROR: Response body: {e.message}", file=fh)
         raise
+    finally:
+        # Close the client session
+        await retry_client.close()
 
 
 @catch_memory_error()
