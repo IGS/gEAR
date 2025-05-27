@@ -2,20 +2,19 @@
 Common functions shared across several resources
 """
 
-import os, sys
-import tempfile
+import os
 import shutil
-import anndata
-import pandas as pd
-from pandas.api.types import is_integer_dtype
-
+import sys
+import tempfile
 from pathlib import Path
 
-from werkzeug.utils import secure_filename
-from shadows import AnnDataShadow
-
+import anndata
+import pandas as pd
 from gear.plotting import PlotError
-from geardb import get_user_from_session_id, Analysis, SpatialAnalysis
+from geardb import Analysis, SpatialAnalysis, get_user_from_session_id
+from pandas.api.types import is_integer_dtype
+from shadows import AnnDataShadow
+from werkzeug.utils import secure_filename
 
 TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP] # web-root dir
@@ -54,8 +53,8 @@ def get_adata_shadow(analysis_id, dataset_id, session_id, dataset_path, include_
     else:
         adata = get_adata_shadow_from_primary(dataset_path)
 
-    # TODO: Test with https://github.com/scverse/shadows/releases/tag/v0.1a2
     # see https://github.com/scverse/shadows/issues/4
+    # As of 0.1a2, support for legacy AnnData objects is fixed. Leaving this check here for safeguarding.
     if is_integer_dtype(adata.var.index.dtype) :
         print("Using AnnData instead of AnnDataShadow because var and obs are not correct for dataset {}".format(dataset_id), file=sys.stderr)
         adata = get_adata_from_analysis(analysis_id, dataset_id, session_id)
@@ -104,42 +103,37 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
 
     projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
     # Sanitize input to prevent path traversal
-    projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
     projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
     try:
         import pandas as pd
         # READ CSV to make X and var
-        df = pd.read_csv(projection_csv_path, sep=',', index_col=0, header=0)
-        X = df.to_numpy()
-        var = pd.DataFrame(index=df.columns)
+        projection_dataframe = pd.read_csv(projection_csv_path, sep=',', index_col=0, header=0)
+        X = projection_dataframe.to_numpy()
+        var = pd.DataFrame(index=projection_dataframe.columns)
         obs = dataset_adata.obs
         obsm = dataset_adata.obsm
         uns = dataset_adata.uns
-        # Create the anndata object and write to h5ad
-        # Associate with a filename to ensure AnnData is read in "backed" mode
-        projection_adata = anndata.AnnData(X=X, obs=obs, var=var, obsm=obsm, uns=uns, filemode='r')
+
+        # This should resolve (https://github.com/IGS/gEAR/issues/951)
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(delete=True) as temp_file:
+            temp_file_path = temp_file.name      # Associate with the temporary filename to ensure AnnData is read in "backed" mode
+
+            # Create the anndata object in memory mode and write to h5ad (since the dataset_adata is backed)
+            # There may be a concern about memory usage if a lot of projections are visualized at once.
+            projection_adata = anndata.AnnData(X=X, obs=obs, var=var, obsm=obsm, uns=uns)
+            # For some reason the gene_symbol is not taken in by the constructor
+            projection_adata.var["gene_symbol"] = projection_adata.var_names
+            projection_adata.write_h5ad(filename=Path(temp_file_path))
+            print(projection_adata.isbacked, file=sys.stderr)
+
     except Exception as e:
         print(str(e), file=sys.stderr)
         raise PlotError("Could not create projection AnnData object from CSV.")
-    # Close dataset adata so that we do not have a stale opened object
-    if dataset_adata.isbacked:
-        dataset_adata.file.close()
-
-    # For some reason the gene_symbol is not taken in by the constructor
-    projection_adata.var["gene_symbol"] = projection_adata.var_names
-
-    # write to projection_adata_path. This ensures that the file is created and up to date with latest projection results
-    projection_adata.write(projection_adata_path)
-    # This should resolve (https://github.com/IGS/gEAR/issues/951)
-    # Create a temporary file
-    with tempfile.NamedTemporaryFile(delete=True) as temp_file:
-        temp_file_path = temp_file.name      # Associate with the temporary filename to ensure AnnData is read in "backed" mode
-
-        # Copy the contents of the original file to the temporary file
-        shutil.copyfile(projection_adata_path, temp_file_path)
-        # Associate with a filename to ensure AnnData is read in "backed" mode
-        # This creates the h5ad file if it does not exist
-        projection_adata.filename = Path(temp_file_path)
+    finally:
+        # Close dataset adata so that we do not have a stale opened object
+        if dataset_adata.isbacked:
+            dataset_adata.file.close()
 
     return projection_adata
 
