@@ -86,7 +86,7 @@ NOTE: Some of the packages will indirectly install dask-expr, which is currently
       scikit-learn==1.0.2 \
       scipy==1.11.04 \
       seaborn==0.13.2 \
-      shadows==0.1a0 \
+      shadows==0.1a2 \
       spatialdata==0.4.0\
       spatialdata_io==0.1.6 \
       tables==3.9.2 \

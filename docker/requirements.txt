@@ -41,7 +41,7 @@ scipy==1.11.04
 spatialdata==0.4.0
 spatialdata_io==0.1.6
 seaborn==0.13.2
-shadows==0.1a0
+shadows==0.1a2
 tables==3.9.2 # Read hdf5 files into pandas
 watchfiles
 xlrd==1.2.0
