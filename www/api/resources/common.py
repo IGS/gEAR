@@ -120,7 +120,6 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
             temp_file_path = temp_file.name      # Associate with the temporary filename to ensure AnnData is read in "backed" mode
 
             # Create the anndata object in memory mode and write to h5ad (since the dataset_adata is backed)
-            # There may be a concern about memory usage if a lot of projections are visualized at once.
             projection_adata = anndata.AnnData(X=X, obs=obs, var=var, obsm=obsm, uns=uns)
             # For some reason the gene_symbol is not taken in by the constructor
             projection_adata.var["gene_symbol"] = projection_adata.var_names
