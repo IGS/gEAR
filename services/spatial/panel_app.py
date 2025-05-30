@@ -1,254 +1,225 @@
-import sys, logging, gc
-
-# Holoviz imports
-import panel as pn
-import param
-import colorcet as cc
-import datashader as ds
-#import datashader.transfer_functions as tf
-
-# Plotly imports
-import plotly.io as pio
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-
-from PIL import Image
-import base64
-from io import BytesIO
-
-import numpy as np
-import pandas as pd
-import scanpy as sc
-
-import spatialdata as sd
-import anndata
-
+import gc
+import logging
+import sys
+import warnings
 from pathlib import Path
 
+import anndata
+import colorcet as cc
+import numpy as np
+import pandas as pd
+import panel as pn
+import plotly.graph_objects as go
+import plotly.io as pio
+import scanpy as sc
+import spatialdata as sd
 from werkzeug.utils import secure_filename
 
+from .common import (
+    Settings,
+    SpatialFigure,
+    normalize_searched_gene,
+    sort_clusters,
+)
+
 gear_root = Path(__file__).resolve().parents[2]
-lib_path = gear_root.joinpath('lib')
+www_path = gear_root.joinpath("www")
+PROJECTIONS_BASE_DIR = www_path.joinpath("projections")
 
-www_path = gear_root.joinpath('www')
-PROJECTIONS_BASE_DIR = www_path.joinpath('projections')
 
-sys.path.append(str(lib_path))
-from gear.spatialuploader import SPATIALTYPE2CLASS
-
-spatial_path = gear_root.joinpath('www/datasets/spatial')
+spatial_path = gear_root.joinpath("www/datasets/spatial")
 
 pio.templates.default = "simple_white"  # no gridlines, white background
 
 SECS_IN_DAY = 86400
 CACHE_EXPIRATION = SECS_IN_DAY * 7  # 7 days
 
-# TODO: explore Datashader for large datasets
-# TODO: Encountering a weird bug where if I have multiple gEAR pages open, and I interact with a Pane from one tab, plots in the other tabs disappear. Doesn't affect simulatenous users
-# ? Maybe make a button to create UMAP instead of creating at the start
-
 # Ignore warnings about plotly GUI events, which propagate to the browser console
-import warnings
-warnings.filterwarnings('ignore', 'plotly.*unrecognized gui edit.*')
+warnings.filterwarnings("ignore", "plotly.*unrecognized gui edit.*")
 
-pn.extension('plotly'
-            , loading_indicator=True
-            , defer_load=True
-            , nthreads=4
-            )
+pn.extension("plotly", loading_indicator=True, defer_load=True, nthreads=4) # type: ignore
 
 # Keep only box select
 buttonsToRemove = ["zoom", "pan", "zoomIn", "zoomOut", "autoScale", "lasso2d"]
 zoomButtonsToRemove = buttonsToRemove + ["select2d"]
 
-class Settings(param.Parameterized):
+
+class SpatialCondensedSubplot(SpatialFigure):
     """
-    Settings class for configuring parameters related to gene display and selection ranges.
+    SpatialCondensedSubplot is a specialized subclass of SpatialFigure for visualizing spatial transcriptomics data
+    in a condensed subplot layout using Plotly. It supports rendering spatial images, cluster/expression overlays,
+    and interactive zooming and selection across multiple subplots.
+
+    Args:
+        settings (Settings): Configuration and state for the figure.
+        df (pd.DataFrame): DataFrame containing spatial coordinates and expression/cluster data.
+        spatial_img (np.ndarray | None): Optional background spatial image.
+        color_map (dict): Mapping of cluster/expression values to colors.
+        cluster_map (dict): Mapping of cluster IDs to cluster names or metadata.
+        gene_symbol (str): Gene symbol for expression visualization.
+        expression_name (str): Name of the expression metric to display.
+        expression_color (str): Color to use for expression visualization.
+        use_clusters (bool, optional): Whether to display clusters instead of expression. Defaults to False.
+        **params: Additional keyword arguments for customization.
 
     Attributes:
-        gene_symbol (param.String): Gene symbol to display.
-        dataset_id (param.String): Dataset ID to display.
-        min_genes (param.Integer): Minimum number of genes per observation, with a default of 200 and bounds between 0 and 500.
-        selection_x1 (param.Integer): Left selection range.
-        selection_x2 (param.Integer): Right selection range.
-        selection_y1 (param.Integer): Upper selection range.
-        selection_y2 (param.Integer): Lower selection range.
+        orig_df (pd.DataFrame): Original unfiltered DataFrame for selection/zoom operations.
+        selections_dict (dict): Stores current selection ranges for mirroring across subplots.
+        use_clusters (bool): Indicates if clusters are visualized instead of expression.
+        annotation_col (int): Index of the subplot used for annotation/zoom.
+        max_x1 (float): Maximum x-domain value for subplot axes.
+        zoom_marker_size (int): Dynamically calculated marker size for zoomed-in views.
 
-    Info on Param module can be found at https://param.holoviz.org/
+    Methods:
+        make_fig():
+            Creates and configures the Plotly figure with subplots for spatial image, clusters/expression, and zoomed view.
+        refresh_spatial_fig():
+            Regenerates the figure and applies current selections, returning the figure as a dictionary.
+        calculate_zoom_marker_size():
+            Dynamically calculates marker size based on the zoom/selection range.
+        mirror_selection_callback(event):
+            Mirrors a selection event across all subplots and refreshes the figure.
+        make_zoom_fig_callback(event):
+            Handles zoom/selection events, filters data accordingly, and refreshes the figure.
     """
 
-    gene_symbol = param.String(doc="Gene symbol to display")
-    dataset_id = param.String(doc="Dataset ID to display")
-    min_genes = param.Integer(doc="Minimum number of genes per observation", default=0, bounds=(0, 500))
-    projection_id = param.String(doc="Projection ID to display", allow_None=True)
-    selection_x1 = param.Number(doc="left selection range", allow_None=True)
-    selection_x2 = param.Number(doc="right selection range", allow_None=True)
-    selection_y1 = param.Number(doc="upper selection range", allow_None=True)
-    selection_y2 = param.Number(doc="lower selection range", allow_None=True)
-    save = param.Boolean(doc="If true, save this configuration as a new display.", default=False)
-    display_name = param.String(doc="Display name for the saved configuration", allow_None=True)
-    make_default = param.Boolean(doc="If true, make this the default display.", default=False)
-    expanded = param.Boolean(doc="If true, show the full range of plots.", default=False)
+    def __init__(
+        self,
+        settings: Settings,
+        df: pd.DataFrame,
+        spatial_img: np.ndarray | None,
+        color_map: dict,
+        cluster_map: dict,
+        gene_symbol: str,
+        expression_name: str,
+        expression_color: str,
+        use_clusters: bool = False,
+        **params,
+    ):
+        super().__init__(
+            settings,
+            df,
+            spatial_img,
+            color_map,
+            cluster_map,
+            gene_symbol,
+            expression_name,
+            expression_color,
+            **params,
+        )
 
-class SpatialPlot():
-    """
-    Generalized class for creating a spatial plot with a gene expression heatmap, cluster markers, and an image.
-    """
+        # Preserve the original dataframe for filtering
+        self.orig_df = df
 
-    # TODO: Change "expression" to "relative expression" for projections
+        self.selections_dict = {}
+        self.use_clusters = use_clusters
 
-    def __init__(self, settings, df, spatial_img, color_map, cluster_map, gene_symbol, expression_name, expression_color, dragmode):
-        self.settings = settings
-        self.df = df
-        self.spatial_img = spatial_img  # None or numpy array
-        self.color_map = color_map
-        self.cluster_map = cluster_map
-        self.gene_symbol = gene_symbol
-        self.fig = go.Figure()
-        self.expression_name = expression_name
-        self.expression_color = expression_color
-        self.dragmode = dragmode
-        self.marker_size = 2
-        self.base64_string = None
-        self.PLOT_WIDTH = 200
-        self.PLOT_HEIGHT = 200
+        # if all four selection range values are the same, they were not set in the query params, so use the default values
+        self.update_selection_ranges(todict=True)
 
-        # https://spatialdata.scverse.org/projects/io/en/latest/generated/spatialdata_io.experimental.to_legacy_anndata.html
-        # (see section Matching of spatial coordinates and pixel coordinates)
-        # The downscaled image (x,y) coordinate matches (spatial2, spatial1) in the dataframe
-        # We traditionally use the 1-coord as x and the 2-coord as y, so we need to address these in various plots.
-        self.range_x1 = 0 if self.spatial_img is not None else min(df["spatial1"])
-        self.range_x2 = self.spatial_img.shape[1] if self.spatial_img is not None else max(df["spatial1"])
-        self.range_y1 = 0 if self.spatial_img is not None else min(df["spatial2"])
-        self.range_y2 = self.spatial_img.shape[0] if self.spatial_img is not None else max(df["spatial2"])
-
-        # The range of the x-axis for the expression plot
-        self.max_x1 = 0.5
-
-    def make_expression_scatter(self, expression_agg):
-        df = self.df
-
-        agg_df = expression_agg.to_dataframe(name="raw_value")
-        # Drop missing values
-        agg_df = agg_df.dropna()
-        df = agg_df.reset_index()
-
-        return go.Scatter(
-                x=df["spatial1"],
-                y=df["spatial2"],
-                mode="markers",
-                marker=dict(
-                    cauto=False,  # Do not adjust the color scale
-                    cmin=0,  # No expression
-                    cmax=df["raw_value"].max(),  # Max expression value
-                    # ? This would not apply if data is log-transformed
-                    color=df["raw_value"],
-                    colorscale=self.expression_color,  # You can choose any colorscale you like
-                    size=self.marker_size,  # Adjust the marker size as needed
-                    colorbar=dict(
-                        len=1,  # Adjust the length of the colorbar
-                        thickness=15,  # Adjust the thickness of the colorbar (default is 30)
-                        x=self.max_x1 - 0.005,  # Adjust the x position of the colorbar
-                    )
-                ),
-                showlegend=False,
-                unselected=dict(marker=dict(opacity=1)),    # Helps with viewing unselected regions
-                hovertemplate="Expression: %{marker.color:.2f}<extra></extra>"
-            )
-
-    def add_cluster_traces(self, cluster_agg):
-        fig = self.fig
-
-        agg_df = cluster_agg.to_dataframe(name="clusters_cat_codes")
-        # Drop rows where "clusters" is False
-        agg_df = agg_df[agg_df["clusters_cat_codes"] != False]
-        # The columns we want are in the multi-index, so we need to make them into a dataframe
-        df = agg_df.index.to_frame(index=False)
-
-        color_map = self.color_map
-
-        # map cluster cat_codes to cluster names
-        df["clusters"] = df["clusters_cat_codes"].map(self.cluster_map)
-
-        # TODO: Add click event for removing equivalent points from expression plot if legend item is clicked
-        for cluster in color_map:
-            cluster_data = df[df["clusters"] == cluster]
-            fig.add_trace(
-                go.Scatter(
-                    x=cluster_data["spatial1"],
-                    y=cluster_data["spatial2"],
-                    mode="markers",
-                    marker=dict(
-                        color=color_map[cluster]
-                        , size=self.marker_size
-                        ),
-                    name=str(cluster),
-                    text=cluster_data["clusters"],
-                    unselected=dict(marker=dict(opacity=1)),
-                    hovertemplate="Cluster: %{text}<extra></extra>"
-                ), row=1, col=self.cluster_col
-            )
-
-    def create_datashader_agg(self, x, y):
+    def make_fig(self) -> go.Figure:
         """
-        Create a datashader aggregation object for the given DataFrame and x, y coordinates.
+        Creates and configures a Plotly figure with subplots for spatial data visualization.
+
+        The figure layout and content depend on the presence of a spatial image and whether clusters are used.
+        - If a spatial image is present, three subplots are created: "Image Only", "Clusters"/"Expression", and "Zoomed View".
+        - If no spatial image is present, two subplots are created: "Clusters"/"Expression" and "Zoomed View".
+
+        The method:
+            - Sets up subplot domains and titles.
+            - Adds image and/or cluster/expression traces as appropriate.
+            - Updates axes and selection ranges.
+            - Configures legend, background color, and layout properties.
+            - Handles zoomed-in views and annotation columns.
+
+        Returns:
+            plotly.graph_objs._figure.Figure: The configured Plotly figure object.
         """
-        # Create a canvas with the specified width and height
-        cvs = ds.Canvas(plot_width=self.PLOT_WIDTH, plot_height=self.PLOT_HEIGHT)
-
-        # NOTE: This seems to affect the expression aggregation but does not matter for the clusters
-        # We need to swap the x and y values for aggregation compared to what we eventually plot.
-
-        agg = cvs.points(self.df, x=x, y=y, agg=ds.summary(expression=ds.max('raw_value'), clusters=ds.by('clusters_cat_codes', ds.any())))
-        return agg
-
-    def make_fig(self, static_size=False):
-        self.create_subplots()  # sets self.fig
-        self.update_axes()
 
         # domain is adjusted whether there are images or not
         if self.spatial_img is not None:
-            self.expression_col = 2
-            self.cluster_col = 3
+            titles = ("Image Only"
+                , "Clusters" if self.use_clusters else f"{self.expression_name} Expression"
+                , "Zoomed View"
+                )
+
+            self.create_subplots(num_cols=3, titles=titles)  # sets self.fig
+            self.update_axes()
+            self.annotation_col = 2
             self.fig.update_layout(
                 xaxis=dict(domain=[0, 0.29]),
                 xaxis2=dict(domain=[0.33, 0.62]),  # Leave room for cluster annotations
                 xaxis3=dict(domain=[0.71, 1]),
             )
         else:
-            self.expression_col = 1
-            self.cluster_col = 2
+            titles = ("Clusters" if self.use_clusters else f"{self.expression_name} Expression"
+                , "Zoomed View"
+                )
+
+            self.create_subplots(num_cols=2, titles=titles)  # sets self.fig
+            self.update_axes()
+            self.annotation_col = 1
             self.fig.update_layout(
                 xaxis=dict(domain=[0, 0.45]),
                 xaxis2=dict(domain=[0.55, 1]),  # Leave room for cluster annotations
             )
 
         # Get max domain for axis 1 and axis 2
-        if self.expression_col == 1:
-            self.max_x1 = self.fig.layout.xaxis.domain[1]
+        if self.annotation_col == 1:
+            self.max_x1 = self.fig.layout.xaxis.domain[1] # type: ignore
         else:
-            self.max_x1 = self.fig.layout.xaxis2.domain[1]
+            self.max_x1 = self.fig.layout.xaxis2.domain[1] # type: ignore
 
         if self.spatial_img is not None:
             self.add_image_trace()
 
-        agg = self.create_datashader_agg(x='spatial2', y='spatial1')
+        agg = self.create_datashader_agg(x="spatial2", y="spatial1")
 
-        self.fig.add_trace(self.make_expression_scatter(agg["expression"]), row=1, col=self.expression_col)
-        self.add_cluster_traces(agg["clusters"])
+        if self.use_clusters:
+            # If using clusters, we need to add the cluster traces first
+            self.add_cluster_traces(agg["clusters"], self.annotation_col)
+        else:
+            # If not using clusters, we can add the expression trace first
+            self.fig.add_trace(
+                self.make_expression_scatter(agg["expression"]),
+                row=1,
+                col=self.annotation_col,
+            )
 
-        df = self.df
-        # Get longest cluster name for legend
-        longest_cluster = max(df["clusters"].astype(str).apply(len))
-        font_size = 12
-        if longest_cluster > 10:
-            font_size = 10
+        # if all four selection range values are the same, they were not set in the query params, so use the default values
+        self.update_selection_ranges()
+
+        # Update the x and y axes ranges for the "zoom in" plot
+        self.annotation_col += 1
+        self.fig.update_xaxes(
+            range=[self.range_x1, self.range_x2], col=self.annotation_col
+        )
+        # y-axis needs to be flipped. 0,0 is the top left corner
+        self.fig.update_yaxes(
+            range=[self.range_y2, self.range_y1], col=self.annotation_col
+        )
+
+        # Add zoom traces
+        if self.use_clusters:
+            self.add_cluster_traces(agg["clusters"], self.annotation_col)
+        else:
+            self.fig.add_trace(
+                self.make_expression_scatter(agg["expression"]),
+                row=1,
+                col=self.annotation_col,
+            )
+
+        font_size = self.get_legend_font_size()
 
         # make legend markers bigger
-        self.fig.update_layout(legend=dict(
-            font=dict(size=font_size)
-            , itemsizing='constant'
-            ))
+        self.fig.update_layout(
+            legend=dict(font=dict(size=font_size), itemsizing="constant"),
+            margin=dict(l=20, r=0, t=50, b=10),
+            width=None,
+            height=None,
+            dragmode=self.dragmode,
+            selectdirection="d",
+        )
 
         # Mirror the background color of visium images
         # Do not set if image is present as there is a slight padding between data and axes ticks
@@ -258,297 +229,30 @@ class SpatialPlot():
 
         # adjust domains of all 3 plots, leaving enough space for the colorbar and legend
         self.fig.update_layout(
-            margin=dict(l=20, r=0, t=50, b=10),
-            width=1920 if static_size else None,
-            height=1080 if static_size else None,
             plot_bgcolor=plot_bgcolor,
-            # Set dragmode properties on the main figure
-            dragmode=self.dragmode,
-            selectdirection="d"
         )
-
-        # garbage collection
-        gc.collect()
 
         return self.fig
 
-    def encode_pil_image(self, pil_img):
-        prefix = "data:image/png;base64,"
-        with BytesIO() as stream:
-            pil_img.save(stream, format="png")
-            return prefix + base64.b64encode(stream.getvalue()).decode("utf-8")
+    def refresh_spatial_fig(self) -> dict:
+        """
+        Refreshes the spatial figure by regenerating it and applying current selections.
 
-    def convert_background_image(self):
-        # Convert image array to base64 string for performance in loading
-        # https://plotly.com/python/imshow/#passing-image-data-as-a-binary-string-to-goimage
-        pil_img = Image.fromarray(self.spatial_img)  # PIL image object
-        # Crop the image to the selected range
-        # https://pillow.readthedocs.io/en/stable/reference/Image.html#PIL.Image.Image.crop
-        pil_img = pil_img.crop((self.range_x1, self.range_y1, self.range_x2, self.range_y2))
-
-        self.base64_string = self.encode_pil_image(pil_img)
-
-    def create_subplots(self):
-        if self.spatial_img is not None:
-            self.create_subplots_three()
-        else:
-            self.create_subplots_two()
-
-    def create_subplots_two(self):
-        self.fig = make_subplots(rows=1, cols=2, column_titles=(f"{self.expression_name} Expression", "Clusters"), horizontal_spacing=0.1)
-
-    def create_subplots_three(self):
-        self.fig = make_subplots(rows=1, cols=3, column_titles=("Image Only", f"{self.expression_name} Expression", "Clusters"), horizontal_spacing=0.1)
-
-    def update_axes(self):
-        self.fig.update_xaxes(range=[self.range_x1, self.range_x2], title_text="spatial1", showgrid=False, showticklabels=False, ticks="")
-        # y-axis needs to be flipped. 0,0 is the top left corner
-        self.fig.update_yaxes(range=[self.range_y2, self.range_y1], title_text="spatial2", showgrid=False, showticklabels=False, ticks="", title_standoff=0)
-
-    def add_image_trace(self):
-        self.convert_background_image()
-        # Note that passing the spatial img array to the "z" property instead of the base64-encoded string causes a big performance hit
-        image_trace = go.Image(source=self.base64_string
-            , x0=self.range_x1
-            , y0=self.range_y1
-            )
-        self.fig.add_trace(image_trace, row=1, col=1)
-        self.fig.add_trace(image_trace, row=1, col=2)
-        self.fig.add_trace(image_trace, row=1, col=3)
-
-class SpatialNormalSubplot(SpatialPlot):
-    """
-    Class for creating a spatial plot with a gene expression heatmap, cluster markers, and an image.
-    """
-
-    def __init__(self, settings, df, spatial_img, color_map, cluster_map, gene_symbol, expression_name, expression_color, **params):
-        super().__init__(settings, df, spatial_img, color_map, cluster_map, gene_symbol, expression_name, expression_color, **params)
-
-        self.selections_dict = {}
-
-        # if all four selection range values are the same, they were not set in the query params, so use the default values
-        if self.settings.selection_x1 != self.settings.selection_x2 or self.settings.selection_y1 != self.settings.selection_y2:
-            # Occasionally, if a selection goes to the edge of the plot,
-            # the selection may not be modified and added to query_params,
-            # so use the default values if that happens
-            self.selections_dict = dict(x0=self.settings.selection_x1, x1=self.settings.selection_x2, y0=self.settings.selection_y1, y1=self.settings.selection_y2)
-
-    def refresh_spatial_fig(self):
-        self.make_fig(static_size=False)
+        Returns:
+            dict: The updated figure represented as a dictionary.
+        """
+        self.make_fig()
         if self.selections_dict:
             self.fig.add_selection(self.selections_dict, row="all", col="all")
         return self.fig.to_dict()
 
-    def make_umap_plots(self):
-        df = self.df
-
-        fig = make_subplots(rows=1, cols=2, column_titles=(f"{self.expression_name} UMAP", "clusters UMAP"), horizontal_spacing=0.1)
-
-        fig.update_layout(
-            xaxis=dict(domain=[0, 0.45]),
-            xaxis2=dict(domain=[0.55, 1]),  # Leave room for cluster annotations
-        )
-
-        agg = self.create_datashader_agg(x='UMAP2', y='UMAP1')
-
-        ### Expression UMAP
-
-        expression_agg_df = agg["expression"].to_dataframe(name="raw_value")
-        # Drop missing values
-        expression_agg_df = expression_agg_df.dropna()
-        expression_df = expression_agg_df.reset_index()
-
-        # NOTE: I attempted to use tf.Shade for an image (as I've seen in various examples) but the image was not appearing in the plot
-
-        max_x1 = fig.layout.xaxis.domain[1]
-
-        fig.add_scatter(col=1, row=1
-                        , x=expression_df["UMAP1"]
-                        , y=expression_df["UMAP2"]
-                        , mode="markers"
-
-                        , marker=dict(color=expression_df["raw_value"]
-                            , colorscale="cividis_r"
-                            , size=self.marker_size
-                            , colorbar=dict(
-                                len=1  # Adjust the length of the colorbar
-                                , thickness=15  # Adjust the thickness of the colorbar (default is 30)
-                                , x=max_x1  # Adjust the x position of the colorbar
-                                )
-                            )
-                        , showlegend=False
-                        , hovertemplate="Expression: %{marker.color:.2f}<extra></extra>"
-                        )
-
-        ### Clusters UMAP
-
-        clusters_agg_df = agg["clusters"].to_dataframe(name="clusters_cat_codes")
-        # Drop rows where "clusters" is False
-        clusters_agg_df = clusters_agg_df[clusters_agg_df["clusters_cat_codes"] != False]
-        # The columns we want are in the multi-index, so we need to make them into a dataframe
-        clusters_df = clusters_agg_df.index.to_frame(index=False)
-
-        # map cluster cat_codes to cluster names
-        clusters_df["clusters"] = clusters_df["clusters_cat_codes"].map(self.cluster_map).astype("category")
-
-        unique_clusters = df["clusters"].unique()
-        # sort unique clusters by number if numerical, otherwise by name
-        try:
-            sorted_clusters = sorted(unique_clusters, key=lambda x: int(x))
-        except:
-            sorted_clusters = sorted(unique_clusters, key=lambda x: str(x))
-
-        for cluster in sorted_clusters:
-            cluster_data = clusters_df[clusters_df["clusters"] == cluster]
-            fig.add_trace(go.Scatter(
-                x=cluster_data["UMAP1"]
-                , y=cluster_data["UMAP2"]
-                , mode="markers"
-                , marker=dict(
-                    color=self.color_map[cluster]
-                    , size=self.marker_size
-                    )
-                , name=str(cluster)
-                , text=cluster_data["clusters"]
-                , hovertemplate="Cluster: %{text}<extra></extra>"
-                ), col=2, row=1)
-
-        fig.update_xaxes(showgrid=False, showticklabels=False, ticks="", title_text="UMAP1")
-        fig.update_yaxes(showgrid=False, showticklabels=False, ticks="", title_text="UMAP2", title_standoff=0)
-
-        # Get longest cluster name for legend
-        longest_cluster = max(df["clusters"].astype(str).apply(len))
-        font_size = 12
-        if longest_cluster > 10:
-            font_size = 10
-
-        # make legend markers bigger
-        fig.update_layout(legend=dict(
-            font=dict(size=font_size)
-            , itemclick="toggleothers"
-            , itemsizing='constant'
-            ))
-
-        fig.update_layout(
-            margin=dict(l=20, r=0, t=50, b=10),
-            width=None,
-            height=None,
-            dragmode=False,
-            selectdirection="d"
-        )
-
-        # garbage collection
-        gc.collect()
-
-        return fig.to_dict()
-
-    def make_violin_plot(self):
-        df = self.df.sort_values(by="raw_value")
-
-        # Make "clusters" a category so that the violin plot will sort the clusters in order
-        df["clusters"] = df["clusters"].astype("category")
-
-        fig = go.Figure()
-
-        # Assuming df is your DataFrame and it has a column "clusters"
-        unique_clusters = df["clusters"].unique()
-        # sort unique clusters by number if numerical, otherwise by name
-        try:
-            sorted_clusters = sorted(unique_clusters, key=lambda x: int(x))
-        except:
-            sorted_clusters = sorted(unique_clusters, key=lambda x: str(x))
-
-        # Process clusters as individual traces so that the violin widths are scaled correctly
-        for cluster in sorted_clusters:
-            cluster_data = df[df["clusters"] == cluster]
-            fig.add_trace(go.Violin(
-                x=cluster_data["clusters"]
-                , y=cluster_data["raw_value"]
-                , fillcolor=self.color_map[cluster]
-                , line_color=self.color_map[cluster]
-                , marker=dict(
-                    color="#000000"
-                    , size=1
-                    )
-                , name=str(cluster)
-                ))
-
-        # xaxis needs to be categorical, even for numerical values
-        fig.update_xaxes(type="category", title_text="Clusters")
-        fig.update_yaxes(title_text="Expression", rangemode="tozero")
-
-        # Get longest cluster name for legend
-        longest_cluster = max(df["clusters"].astype(str).apply(len))
-        font_size = 12
-        if longest_cluster > 10:
-            font_size = 10
-
-        fig.update_layout(legend=dict(
-            font=dict(size=font_size)
-            , itemsizing='constant'
-            ))
-
-        fig.update_layout(
-            margin=dict(l=20, r=0, t=50, b=10),
-            width=None,
-            height=None,
-            dragmode=False,
-            selectdirection="d"
-        )
-        return fig.to_dict()
-
-    def mirror_selection_callback(self, event):
+    def calculate_zoom_marker_size(self) -> None:
         """
-        For a selection event, mirror the selection across all plots.
+        Calculates and sets the marker size for the zoomed-in plot.
+
+        Returns:
+            None
         """
-
-        self.selections_dict = {}
-
-        if event and "range" in event:
-            # determine if first or second plot
-            x = "x" if "x" in event["range"] else "x2" if "x2" in event["range"] else "x3"
-            y = "y" if "y" in event["range"] else "y2" if "y2" in event["range"] else "y3"
-
-            range_x1 = event["range"][x][0]
-            range_x2 = event["range"][x][1]
-            range_y1 = event["range"][y][0]
-            range_y2 = event["range"][y][1]
-
-            self.selections_dict = dict(x0=range_x1, x1=range_x2, y0=range_y1, y1=range_y2)
-
-        return self.refresh_spatial_fig()
-
-
-class SpatialZoomSubplot(SpatialPlot):
-    """
-    Class for creating a zoomed-in spatial plot with a gene expression heatmap, cluster markers, and an image.
-    """
-
-    def __init__(self, settings, df, spatial_img, color_map, cluster_map, gene_symbol, expression_name, expression_color, **params):
-        super().__init__(settings, df, spatial_img, color_map, cluster_map, gene_symbol, expression_name, expression_color, **params)
-
-        # Preserve the original dataframe for filtering
-        self.orig_df = df
-
-        # if all four selection range values are the same, they were not set in the query params, so use the default values
-        if self.settings.selection_x1 != self.settings.selection_x2 or self.settings.selection_y1 != self.settings.selection_y2:
-            # Occasionally, if a selection goes to the edge of the plot,
-            # the selection may not be modified and added to query_params,
-            # so use the default values if that happens
-            if self.settings.selection_x1:
-                self.range_x1 = self.settings.selection_x1
-            if self.settings.selection_x2:
-                self.range_x2 = self.settings.selection_x2
-            if self.settings.selection_y1:
-                self.range_y1 = self.settings.selection_y1
-            if self.settings.selection_y2:
-                self.range_y2 = self.settings.selection_y2
-
-            # Viewing a selection, so increase the marker size
-            self.calculate_marker_size()
-
-    def calculate_marker_size(self):
-        """Dynamically calculate the marker size based on the range of the selection."""
         # Calculate the range of the selection
         x_range = self.range_x2 - self.range_x1
         y_range = self.range_y2 - self.range_y1
@@ -557,15 +261,77 @@ class SpatialZoomSubplot(SpatialPlot):
         # The marker size will scale larger as the range of the selection gets more precise
         self.marker_size = int(1 + 2500 / (x_range + y_range))
 
-    def refresh_spatial_fig(self):
-        self.fig =  self.make_fig(static_size=False)
-        return self.fig.to_dict()
+    def mirror_selection_callback(self, event: dict) -> dict:
+        """
+        For a selection event, mirror the selection across all plots.
 
-    def make_zoom_fig_callback(self, event):
+        Args:
+            event (dict): The selection event containing range information for the plot axes.
+
+        Returns:
+            dict: The updated spatial figure after applying the selection.
+        """
+
+        self.selections_dict = {}
+
         if event and "range" in event:
             # determine if first or second plot
-            x = "x" if "x" in event["range"] else "x2" if "x2" in event["range"] else "x3"
-            y = "y" if "y" in event["range"] else "y2" if "y2" in event["range"] else "y3"
+            if self.spatial_img is not None:
+                # If there is a spatial image, we have three subplots
+                x = (
+                    "x"
+                    if "x" in event["range"]
+                    else "x2"
+
+                )
+                y = (
+                    "y"
+                    if "y" in event["range"]
+                    else "y2"
+                )
+            else:
+                x = "x"
+                y = "y"
+
+            range_x1 = event["range"][x][0]
+            range_x2 = event["range"][x][1]
+            range_y1 = event["range"][y][0]
+            range_y2 = event["range"][y][1]
+
+            self.selections_dict = dict(
+                x0=range_x1, x1=range_x2, y0=range_y1, y1=range_y2
+            )
+
+        return self.refresh_spatial_fig()
+
+    def make_zoom_fig_callback(self, event: dict) -> dict:
+        """
+        Handles zoom/selection events, filters data accordingly, and refreshes the figure.
+
+        Args:
+            event (dict): The selection event containing range information for the plot axes.
+
+        Returns:
+            dict: The updated spatial figure after applying the zoom selection.
+        """
+        if event and "range" in event:
+            # determine if first or second plot
+            if self.spatial_img is not None:
+                # If there is a spatial image, we have three subplots
+                x = (
+                    "x"
+                    if "x" in event["range"]
+                    else "x2"
+
+                )
+                y = (
+                    "y"
+                    if "y" in event["range"]
+                    else "y2"
+                )
+            else:
+                x = "x"
+                y = "y"
 
             self.range_x1 = event["range"][x][0]
             self.range_x2 = event["range"][x][1]
@@ -573,13 +339,18 @@ class SpatialZoomSubplot(SpatialPlot):
             self.range_y2 = event["range"][y][1]
 
             # Viewing a selection, so increase the marker size
-            self.calculate_marker_size()
+            self.calculate_zoom_marker_size()
 
             # If no event, use the default values
-            df = self.orig_df
+            dataframe = self.orig_df
 
             # Filter the data based on the selected range
-            self.df = df[(df["spatial1"] >= self.range_x1) & (df["spatial1"] <= self.range_x2) & (df["spatial2"] >= self.range_y1) & (df["spatial2"] <= self.range_y2)]
+            self.df = dataframe[
+                (dataframe["spatial1"] >= self.range_x1)
+                & (dataframe["spatial1"] <= self.range_x2)
+                & (dataframe["spatial2"] >= self.range_y1)
+                & (dataframe["spatial2"] <= self.range_y2)
+            ]
 
             self.settings.selection_x1 = self.range_x1
             self.settings.selection_x2 = self.range_x2
@@ -590,170 +361,98 @@ class SpatialZoomSubplot(SpatialPlot):
 
 class SpatialPanel(pn.viewable.Viewer):
     """
-    Class for prepping the spatial data and setting up the Panel app.
+    Panel view class for displaying spatial transcriptomics visualizations in a Panel dashboard.
     """
 
-    def __init__(self, settings, **params):
+    dataset_id: str
+    gene_symbol: str
+    min_genes: int
+    projection_id: str | None = None
+    selection_x1: float | None = None
+    selection_x2: float | None = None
+    selection_y1: float | None = None
+    selection_y2: float | None = None
+
+    def __init__(self, settings: Settings, **params):
         super().__init__(**params)
 
         self.settings = settings
 
-        pn.state.location.sync(self.settings, {
-            'dataset_id': 'dataset_id'
-            , 'gene_symbol': 'gene_symbol'
-            , 'min_genes': 'min_genes'
-            , 'projection_id': 'projection_id'
-            , 'selection_x1': 'selection_x1'
-            , 'selection_x2': 'selection_x2'
-            , 'selection_y1': 'selection_y1'
-            , 'selection_y2': 'selection_y2'
-            , 'save': 'save'
-            , 'display_name': 'display_name'
-            , 'make_default': 'make_default'
-            , 'expanded': 'expanded'})
+        if pn.state.location is not None:
+            pn.state.location.sync(
+                self.settings,
+                {
+                    "dataset_id": "dataset_id",
+                    "gene_symbol": "gene_symbol",
+                    "min_genes": "min_genes",
+                    "projection_id": "projection_id",
+                    "selection_x1": "selection_x1",
+                    "selection_x2": "selection_x2",
+                    "selection_y1": "selection_y1",
+                    "selection_y2": "selection_y2",
+                },
+            )
 
-        self.dataset_id = self.settings.dataset_id
-        self.gene_symbol = self.settings.gene_symbol
-        self.min_genes = self.settings.min_genes
-        self.projection_id = self.settings.projection_id
+        self.dataset_id = self.settings.dataset_id # type: ignore
+        self.gene_symbol = self.settings.gene_symbol # type: ignore
+        self.min_genes = self.settings.min_genes # type: ignore
+        self.projection_id = self.settings.projection_id # type: ignore
 
         # ? This can be useful for filtering datasets even for projections, but how best to word it?
-        self.min_genes_slider = pn.widgets.IntSlider(name='Filter - Mininum genes per observation', start=0, end=500, step=25, value=self.min_genes)
-
-        self.display_name = pn.widgets.TextInput(name='Display name', placeholder='Name this display to save...', width=250)
-        self.save_button = pn.widgets.Button(name="Save settings", button_type="primary", width=100, align="end")
-        self.make_default = pn.widgets.Checkbox(name='Make this the default display', value=False)
-
-        # NOTE: We will perform the entire computation whether expanded or not, to avoid having to recompute the data
-        self.expanded = self.settings.expanded
-
-        self.normal_fig = dict(data=[], layout={})
-        self.zoom_fig = dict(data=[], layout={})
-        self.umap_fig = dict(data=[], layout={})
-        self.violin_fig = dict(data=[], layout={})
-
-        # the "figs" are dicts which allow for patching the figure objects
-        # See -> https://panel.holoviz.org/reference/panes/Plotly.html#patching
-        # You can also replace the Figure directly, but I had occasional issues with returning a figure ih the "bind" function
-
-        self.normal_pane = pn.pane.Plotly(self.normal_fig
-                    , config={"doubleClick":"reset","displayModeBar": True, "modeBarButtonsToRemove": buttonsToRemove}
-                    , height=350 if self.expanded else 275
-                    , sizing_mode="stretch_width" if self.expanded else "stretch_both"
-                    )
-
-        self.zoom_pane = pn.pane.Plotly(self.zoom_fig
-                    , config={"displayModeBar": True, "modeBarButtonsToRemove": zoomButtonsToRemove, 'doubleClick': None}
-                    , height=350
-                    , sizing_mode="stretch_width"
-                    )
-
-        self.umap_pane = pn.pane.Plotly(self.umap_fig
-                    , config={"displayModeBar": True, "modeBarButtonsToRemove": zoomButtonsToRemove}
-                    , height=350
-                    , sizing_mode="stretch_width"
-                    )
-
-        self.violin_pane = pn.pane.Plotly(self.violin_fig
-                    , config={"displayModeBar": True, "modeBarButtonsToRemove": zoomButtonsToRemove}
-                    , height=350
-                    , sizing_mode="stretch_width"
-                    )
-
-        self.layout = pn.Column(
-            pn.bind(self.init_data)
+        self.min_genes_slider = pn.widgets.IntSlider(
+            name="Filter - Mininum genes per observation",
+            start=0,
+            end=500,
+            step=25,
+            value=self.min_genes,
         )
 
-        layout_height = 312 # 360px - tile header height
-        if self.expanded:
-            layout_height = 1520
+        self.layout = pn.Column(pn.bind(self.init_data))
 
-        self.nonexpanded_pre = pn.pane.Markdown(
+        layout_height = 312  # 360px - tile header height
+
+        self.condensed_fig = dict(data=[], layout={})
+
+        self.use_clusters = False
+        self.use_clusters_switch = pn.widgets.Switch(
+            name="Feature", value=self.use_clusters
+        )
+
+        self.condensed_pre = pn.pane.Markdown(
             "### Click the Expand icon in the top right corner to see all plots",
-            height=20, visible=True if not self.expanded else False
+            height=20,
         )
 
-        self.expanded_pre = pn.Column(
-            pn.Row(
-                pn.pane.Markdown('## Select a region to modify zoomed in view in the bottom panel', height=30, width=700),
-                self.display_name,
-                self.save_button,
-            ),
-            pn.Row(
-                self.min_genes_slider,
-                pn.Spacer(width=400),
-                self.make_default
-            ),
-            visible=True if self.expanded else False,
-        )
+        self.switch_layout = pn.Row("#### Gene Expression"
+                                , self.use_clusters_switch
+                                , "#### Clusters"
+                                )
 
-        self.expanded_post = pn.Column(
-            pn.layout.Divider(height=5),    # default margins
-            pn.pane.Markdown('## Zoomed in view',height=30),
-            self.zoom_pane,
-            pn.layout.Divider(height=5),    # default margins
-            pn.pane.Markdown("## UMAP plots", height=30),
-            self.umap_pane,
-            pn.layout.Divider(height=5),    # default margins
-            pn.pane.Markdown("## Violin plot", height=30),
-            self.violin_pane,
-            visible=True if self.expanded else False,
+        # Build a row with the following elements:
+        # 1) Blank image
+        # 2) # Normal plot
+        # 3) Zoomed in plot
+        # Above these is a toggle for switching 2) and 3) between gene expression and cluster plots
+
+        self.condensed_pane = pn.pane.Plotly(
+            self.condensed_fig,
+            config={
+                "doubleClick": "reset",
+                "displayModeBar": True,
+                "modeBarButtonsToRemove": buttonsToRemove,
+            },
+            height=350,
+            sizing_mode="stretch_both",
         )
 
         # A condensed layout should only have the normal pane.
         self.plot_layout = pn.Column(
-            self.expanded_pre,
-            self.nonexpanded_pre,
-            self.normal_pane,
-            self.expanded_post,
-
-            width=1100, height=layout_height
+            self.condensed_pre,
+            self.switch_layout,
+            self.condensed_pane,
+            width=1100,
+            height=layout_height,
         )
-
-        # SAdkins - Have not quite figured out when to use "watch" but I think it mostly applies when a callback does not return a value
-        def refresh_dataframe_callback(value):
-            self.dataset_adata = self.dataset_adata_orig.copy()
-            self.adata = self.adata_orig.copy()
-
-            with self.normal_pane.param.update(loading=True) \
-                , self.zoom_pane.param.update(loading=True) \
-                , self.umap_pane.param.update(loading=True) \
-                , self.violin_pane.param.update(loading=True) \
-                , self.min_genes_slider.param.update(disabled=True):
-                self.refresh_dataframe(value)
-
-            with self.umap_pane.param.update(loading=True) \
-                , self.min_genes_slider.param.update(disabled=True):
-                self.add_umap()
-
-        pn.bind(refresh_dataframe_callback, self.min_genes_slider.param.value_throttled, watch=True)
-
-        def selection_callback(event):
-            self.zoom_pane.object = self.zoom_fig_obj.make_zoom_fig_callback(event)
-            self.normal_pane.object = self.normal_fig_obj.mirror_selection_callback(event)
-
-        pn.bind(selection_callback, self.normal_pane.param.selected_data, watch=True)
-
-        def save_settings_callback(event):
-            self.settings.save = True
-            self.settings.display_name = self.display_name.value
-            self.settings.make_default = self.make_default.value
-            # Make button "is-loading" while saving
-            self.save_button.button_type = "success"
-            self.save_button.name = "Saving..."
-            self.save_button.disabled = True
-            print(self.settings, file=sys.stderr)
-
-        def reset_save_button_callback(event):
-            if not event.name == "save":
-                return
-            self.settings.save = False
-            self.save_button.button_type = "primary"
-            self.save_button.name = "Save settings"
-            self.save_button.disabled = False
-
-        pn.bind(save_settings_callback, self.save_button, watch=True)
-        self.settings.param.watch(reset_save_button_callback, "save", onlychanged=True)
 
 
     def __panel__(self):
@@ -772,7 +471,7 @@ class SpatialPanel(pn.viewable.Viewer):
             try:
                 self.prep_sdata()
                 adata = self.prep_adata()
-            except ValueError as e:
+            except ValueError:
                 raise
 
             adata_pkg = {"adata": adata, "img_name": self.spatial_obj.img_name}
@@ -782,34 +481,40 @@ class SpatialPanel(pn.viewable.Viewer):
 
         # Load the Anndata object (+ image name) from cache or create it if it does not exist, with a 1-week time-to-live
         try:
-            adata_pkg = pn.state.as_cached(adata_cache_label, create_adata_pkg, ttl=CACHE_EXPIRATION)
+            adata_pkg = pn.state.as_cached(
+                adata_cache_label, create_adata_pkg, ttl=CACHE_EXPIRATION
+            )
         except ValueError as e:
             yield pn.pane.Alert(f"Error: {e}", alert_type="danger")
             raise
 
-
-        self.dataset_adata_orig = adata_pkg["adata"] # Original dataset adata
-        self.dataset_adata = self.dataset_adata_orig.copy() # Copy we manipulate (filtering, etc.)
+        self.dataset_adata_orig = adata_pkg["adata"]  # Original dataset adata
+        self.dataset_adata = (
+            self.dataset_adata_orig.copy()
+        )  # Copy we manipulate (filtering, etc.)
         self.adata = self.dataset_adata.copy()  # adata object to use for plotting
 
         # Modify the adata object to use the projection ID if it exists
         if self.projection_id:
             self.adata = self.create_projection_adata()
 
-        self.adata_orig = self.adata.copy() # This is to restore when the min_genes slider is changed
+        self.adata_orig = (
+            self.adata.copy()
+        )  # This is to restore when the min_genes slider is changed
 
         self.spatial_img = None
         if adata_pkg["img_name"]:
             # In certain conditions, the image multi-array may need to be squeezed so that PIL can read it
-            self.spatial_img = self.adata.uns["spatial"][adata_pkg["img_name"]]["images"]["hires"].squeeze()
+            self.spatial_img = self.adata.uns["spatial"][adata_pkg["img_name"]][
+                "images"
+            ]["hires"].squeeze()
 
-        yield self.loading_indicator("Processing data to create plots. This may take a minute...")
+        yield self.loading_indicator(
+            "Processing data to create plots. This may take a minute..."
+        )
 
         yield self.refresh_dataframe(self.min_genes)
 
-        with self.umap_pane.param.update(loading=True) \
-            , self.min_genes_slider.param.update(disabled=True):
-            self.add_umap()
 
     def prep_sdata(self):
         zarr_path = spatial_path / f"{self.dataset_id}.zarr"
@@ -822,6 +527,11 @@ class SpatialPanel(pn.viewable.Viewer):
             platform = sdata.tables["table"].uns["platform"]
         except KeyError:
             raise ValueError("No platform information found in the dataset")
+
+        lib_path = gear_root.joinpath("lib")
+        sys.path.append(str(lib_path))
+
+        from gear.spatialuploader import SPATIALTYPE2CLASS
 
         # Ensure the spatial data type is supported
         if platform not in SPATIALTYPE2CLASS.keys():
@@ -846,7 +556,9 @@ class SpatialPanel(pn.viewable.Viewer):
             self.spatial_obj._convert_sdata_to_adata()
         except Exception as e:
             print("Error converting sdata to adata:", str(e), file=sys.stderr)
-            raise ValueError("Could not convert sdata to adata. Check the spatial data type and bounding box coordinates.")
+            raise ValueError(
+                "Could not convert sdata to adata. Check the spatial data type and bounding box coordinates."
+            )
         return self.spatial_obj.adata
 
     def create_projection_adata(self):
@@ -854,7 +566,8 @@ class SpatialPanel(pn.viewable.Viewer):
         dataset_id = self.dataset_id
         projection_id = self.projection_id
         # Create AnnData object out of readable CSV file
-        projection_id = secure_filename(projection_id)
+        if projection_id:
+            projection_id = secure_filename(projection_id)
         dataset_id = secure_filename(dataset_id)
 
         projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
@@ -863,15 +576,17 @@ class SpatialPanel(pn.viewable.Viewer):
         projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
         try:
             # READ CSV to make X and var
-            df = pd.read_csv(projection_csv_path, sep=',', index_col=0, header=0)
-            X = df.to_numpy()
-            var = pd.DataFrame(index=df.columns)
+            dataframe = pd.read_csv(projection_csv_path, sep=",", index_col=0, header=0)
+            X = dataframe.to_numpy()
+            var = pd.DataFrame(index=dataframe.columns)
             obs = dataset_adata.obs
             obsm = dataset_adata.obsm
             uns = dataset_adata.uns
             # Create the anndata object and write to h5ad
             # Associate with a filename to ensure AnnData is read in "backed" mode
-            projection_adata = anndata.AnnData(X=X, obs=obs, var=var, obsm=obsm, uns=uns, filemode='r')
+            projection_adata = anndata.AnnData(
+                X=X, obs=obs, var=var, obsm=obsm, uns=uns, filemode="r"
+            )
         except Exception as e:
             print(str(e), file=sys.stderr)
             raise ValueError("Could not create projection AnnData object from CSV.")
@@ -893,93 +608,64 @@ class SpatialPanel(pn.viewable.Viewer):
 
         # If adata is empty, raise an error
         if self.dataset_adata.n_obs == 0:
-            raise ValueError(f"No cells found with at least {self.min_genes} genes. Choose a different gene or lower the filter.")
+            raise ValueError(
+                f"No cells found with at least {self.min_genes} genes. Choose a different gene or lower the filter."
+            )
 
         sc.pp.normalize_total(self.dataset_adata, inplace=True)
         sc.pp.log1p(self.dataset_adata)
 
         self.dataset_adata.var_names_make_unique()
 
-    def add_umap(self):
-        # Add UMAP information to the adata object. This is a slow process, so we want to show other plots while this is processing
-
-        def create_umap():
-            # We need to use the original dataset for UMAP clustering instead of the projection one
-            # However we only want to use the cells that have clusters
-            adata = self.dataset_adata
-            sc.pp.highly_variable_genes(adata, n_top_genes=2000)
-            sc.pp.pca(adata)
-            sc.pp.neighbors(adata)
-            sc.tl.umap(adata)
-            return adata
-
-        adata_subset_cache_label = f"{self.dataset_id}_{self.min_genes}_adata"
-
-        try:
-            # Load the subset Anndata object from cache or create it if it does not exist, with a 1-week time-to-live
-            adata = pn.state.as_cached(adata_subset_cache_label, create_umap, ttl=CACHE_EXPIRATION)
-
-            X, Y = (0, 1)
-            self.df["UMAP1"] = adata.obsm["X_umap"].transpose()[X].tolist()
-            self.df["UMAP2"] = adata.obsm["X_umap"].transpose()[Y].tolist()
-
-            self.umap_fig = self.normal_fig_obj.make_umap_plots()
-        except ValueError as e:
-            print("Error creating UMAP:", str(e), file=sys.stderr)
-            layout = {
-                "annotations": [
-                    {
-                        "text": "Something went wrong with UMAP clustering.",
-                        "font": {"size": 20, "color": "red"},
-                        "showarrow": False,
-                        "x": 0.5,
-                        "y": 1.3,
-                        "xref": "paper",
-                        "yref": "paper"
-                    }
-                ]
-            }
-            self.umap_fig = {"data": [], "layout": layout}  # reset the umap figure
-
-        self.umap_pane.object = self.umap_fig
-
-        # Add X_umap to self.adata
-        self.adata.obs = adata.obs
-        self.adata.obsm["X_umap"] = adata.obsm["X_umap"]
-
-        return self.adata
-
     def create_gene_df(self):
         adata = self.adata
-        dataset_genes = set(self.adata.var['gene_symbol'].unique())
-        self.norm_gene_symbol = normalize_searched_gene(dataset_genes, self.gene_symbol)
+        dataset_genes = set(self.adata.var["gene_symbol"].unique())
+        norm_gene_symbol = normalize_searched_gene(dataset_genes, self.gene_symbol)
+        if norm_gene_symbol is None:
+            raise ValueError(
+                f"Gene '{self.gene_symbol}' not found in the dataset. Please choose a different gene."
+            )
+        self.norm_gene_symbol = norm_gene_symbol
         gene_filter = adata.var.gene_symbol == self.norm_gene_symbol
         selected = adata[:, gene_filter]
         selected.var.index = pd.Index(["raw_value"])
-        df = selected.to_df()
+        dataframe = selected.to_df()
 
         # Add spatial coords from adata.obsm
         X, Y = (0, 1)
-        df["spatial1"] = adata.obsm["spatial"].transpose()[X].tolist()
-        df["spatial2"] = adata.obsm["spatial"].transpose()[Y].tolist()
+        dataframe["spatial1"] = adata.obsm["spatial"].transpose()[X].tolist()
+        dataframe["spatial2"] = adata.obsm["spatial"].transpose()[Y].tolist()
 
         # Add cluster info
         if "clusters" not in selected.obs:
             raise ValueError("No cluster information found in adata.obs")
 
-        df["clusters"] = selected.obs["clusters"].astype("category")
-        df["clusters_cat_codes"] = df["clusters"].cat.codes.astype("category")
+        dataframe["clusters"] = selected.obs["clusters"].astype("category")
+        dataframe["clusters_cat_codes"] = dataframe["clusters"].cat.codes.astype(
+            "category"
+        )
 
-        self.cluster_map = {code: df[df["clusters_cat_codes"] == code]["clusters"].values[0] for code in df["clusters_cat_codes"].unique()}
+        self.cluster_map = {
+            code: dataframe[dataframe["clusters_cat_codes"] == code]["clusters"].to_numpy()[
+                0
+            ]
+            for code in dataframe["clusters_cat_codes"].unique()
+        }
 
         # Drop any NA clusters
-        df = df.dropna(subset=["clusters"])
-        self.df = df
+        dataframe = dataframe.dropna(subset=["clusters"])
+        self.df = dataframe
 
     def refresh_dataframe(self, min_genes):
         """
         Refresh the dataframe based on the selected gene and min_genes value.
         Updates Plotly dicts in the Panel app in-place
+
+        Args:
+            min_genes (int): The minimum number of genes to filter observations.
+
+        Returns:
+            None
         """
         self.min_genes = min_genes
 
@@ -992,90 +678,61 @@ class SpatialPanel(pn.viewable.Viewer):
         # self.adata should have the same subset as self.dataset_adata
         self.adata = self.adata[self.dataset_adata.obs.index]
 
-        self.create_gene_df()   # creating the Dataframe is generally fast
+        self.create_gene_df()  # creating the Dataframe is generally fast
         self.map_colors()
         # drop indexes from self.adata not in self.df (since clustering may have removed some cells)
         self.dataset_adata = self.dataset_adata[self.df.index]
         self.adata = self.adata[self.df.index]
 
-        # destroy the old figure objects (to free up memory)
-        self.normal_fig_obj = None
-        self.zoom_fig_obj = None
+        self.condensed_fig_obj = None
+        self.condensed_fig_obj = SpatialCondensedSubplot(
+            self.settings,
+            self.df,
+            self.spatial_img,
+            self.color_map,
+            self.cluster_map,
+            self.norm_gene_symbol,
+            "Local",
+            "YlOrRd",
+            self.use_clusters,
+            dragmode=False,
+        )
+        self.condensed_fig = self.condensed_fig_obj.refresh_spatial_fig()
+        self.condensed_pane.object = self.condensed_fig
 
-        # CET_L19 is "WhBuPrRd"
-        # CET_L18 is "YlOrRd"
-        #normal_color = cc.cm.CET_L19
-        #zoom_color = cc.cm.CET_L18
-
-        self.normal_fig_obj = SpatialNormalSubplot(self.settings, self.df, self.spatial_img, self.color_map, self.cluster_map, self.norm_gene_symbol, self.norm_gene_symbol, "YlGn", dragmode="select")
-        self.zoom_fig_obj = SpatialZoomSubplot(self.settings, self.df, self.spatial_img, self.color_map, self.cluster_map, self.norm_gene_symbol, "Local", "YlOrRd", dragmode=False)
-
-        self.normal_fig = self.normal_fig_obj.refresh_spatial_fig()
-
-        # The pn.bind function for the zoom callback will not trigger when the normal_fig is refreshed.
-        self.zoom_fig = self.zoom_fig_obj.refresh_spatial_fig()
-
-        # Add annotation to UMAP plot to indicate that it is processing
-        layout = {
-            "annotations": [
-                {
-                    "text": "Performing UMAP clustering. This may take a minute...",
-                    "font": {"size": 20},
-                    "showarrow": False,
-                    "x": 0.5,
-                    "y": 1.3,
-                    "xref": "paper",
-                    "yref": "paper"
-                }
-            ]
-        }
-
-        self.umap_fig = {"data": [], "layout": layout}  # reset the umap figure
-        self.violin_fig = self.normal_fig_obj.make_violin_plot()
-
-        self.normal_pane.object = self.normal_fig
-        self.zoom_pane.object = self.zoom_fig
-        self.umap_pane.object = self.umap_fig
-        self.violin_pane.object = self.violin_fig
+        gc.collect()  # Collect garbage to free up memory
 
         return self.plot_layout
 
     def map_colors(self):
-        df = self.df
+        dataframe = self.df
         # Assuming df is your DataFrame and it has a column "clusters"
-        unique_clusters = df["clusters"].unique()
-        # sort unique clusters by number if numerical, otherwise by name
-        try:
-            unique_clusters = sorted(unique_clusters, key=lambda x: int(x))
-        except:
-            unique_clusters = sorted(unique_clusters, key=lambda x: str(x))
+        unique_clusters = dataframe["clusters"].unique()
+        sorted_clusters = sort_clusters(unique_clusters)
 
-        self.unique_clusters = unique_clusters
+        self.unique_clusters = sorted_clusters
 
-        if "colors" in df:
-            self.color_map = {cluster: df[df["clusters"] == cluster]["colors"].values[0] for cluster in self.unique_clusters}
+        if "colors" in dataframe:
+            self.color_map = {
+                cluster: dataframe[dataframe["clusters"] == cluster][
+                    "colors"
+                ].to_numpy()[0]
+                for cluster in self.unique_clusters
+            }
         else:
             # Some glasbey_bw_colors may not show well on a dark background so use "light" colors if images are not present
             # Prepending b_ to the name will return a list of RGB colors (though glasbey_light seems to already do this)
-            swatch_color = cc.b_glasbey_bw if self.spatial_img is not None else cc.glasbey_light
+            swatch_color = (
+                cc.b_glasbey_bw if self.spatial_img is not None else cc.glasbey_light
+            )
 
-            self.color_map = {cluster: swatch_color[i % len(swatch_color)] for i, cluster in enumerate(self.unique_clusters)}
+            self.color_map = {
+                cluster: swatch_color[i % len(swatch_color)]
+                for i, cluster in enumerate(self.unique_clusters)
+            }
             # Map the colors to the clusters
-            df["colors"] = df["clusters"].map(self.color_map)
-        self.df = df
-
-
-def normalize_searched_gene(gene_set, chosen_gene):
-    """Convert to case-insensitive version of gene.  Returns None if gene not found in dataset."""
-    chosen_gene_lower = chosen_gene.lower()
-    for gene in gene_set:
-        try:
-            if chosen_gene_lower == gene.lower():
-                return gene
-        except Exception:
-            print(gene, file=sys.stderr)
-            raise
-    return None
+            dataframe["colors"] = dataframe["clusters"].map(self.color_map)
+        self.df = dataframe
 
 ### MAIN APP ###
 
@@ -1085,7 +742,7 @@ logging.getLogger().setLevel(logging.ERROR)
 settings = Settings()
 
 # If not params passed, just show OK as a way to test the app
-if not pn.state.location.query_params:
+if pn.state.location is None or not pn.state.location.query_params:
     pn.pane.Markdown("OK").servable()
 
 else:
