@@ -289,8 +289,8 @@ class SpatialCondensedSubplot(SpatialFigure):
             None
         """
         # Calculate the range of the selection
-        x_range = self.settings.selection_x2 - self.settings.selection_x1
-        y_range = self.settings.selection_y2 - self.settings.selection_y1
+        x_range = self.settings.selection_x2 - self.settings.selection_x1 # type: ignore
+        y_range = self.settings.selection_y2 - self.settings.selection_y1 # type: ignore
         # Calculate the marker size based on the range of the selection
         # The marker size will scale larger as the range of the selection gets more precise
         self.marker_size = int(1 + 2500 / (x_range + y_range))
@@ -374,6 +374,15 @@ class SpatialCondensedSubplot(SpatialFigure):
 
         Assumes that `self.fig`, `self.settings`, and `self.final_col` are properly initialized.
         """
+
+        if not self.fig:
+            raise ValueError("Figure is not initialized. Cannot set zoom parameters.")
+
+        if not self.settings.selection_x1 or not self.settings.selection_x2: # type: ignore
+            raise ValueError("Selection coordinates are not set. Cannot set zoom parameters.")
+
+        if not self.final_col:
+            raise ValueError("Final column is not set. Cannot set zoom parameters.")
 
         # Viewing a selection, so increase the marker size
         self.calculate_zoom_marker_size()

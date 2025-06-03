@@ -2,7 +2,7 @@
 import os
 import tarfile
 from abc import ABC, abstractmethod
-from typing import Literal, Self
+from typing import Literal, TypeVar
 
 import anndata as ad
 import pandas as pd
@@ -12,6 +12,8 @@ import xarray
 from gear.utils import update_adata_with_ensembl_ids
 from spatialdata_io.experimental import from_legacy_anndata, to_legacy_anndata
 
+# Self is a typing type starting in Python 3.11
+Self = TypeVar("Self", bound="SpatialHandler")
 
 class SpatialHandler(ABC):
 
