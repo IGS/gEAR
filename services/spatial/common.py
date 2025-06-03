@@ -456,7 +456,8 @@ class SpatialFigure:
 
         img = self.spatial_img
 
-        # (Copilot Recommendation) - Ensure image is uint8 for consistent contrast
+        # Ensure image is uint8 for consistent contrast (256-color channels)
+        # Xenium images are uint16, so this is why we need to convert
         if img.dtype != np.uint8:
             img = img.astype(np.float32)
             img = 255 * (img - img.min()) / (img.max() - img.min() + 1e-8)
@@ -466,15 +467,6 @@ class SpatialFigure:
         pil_img = pil_img.crop(
             (self.range_x1, self.range_y1, self.range_x2, self.range_y2)
         )
-
-        # Convert to RGB.
-        # For some reason, converting the mode directly in Image.fromarray() throws "Not enough image data" error
-        pil_img = pil_img.convert("RGB")
-
-        # If "xenium" platform, contrast after conversion is too high, so we reduce it
-        if self.platform == "xenium":
-            enhancer = ImageEnhance.Contrast(pil_img)
-            pil_img = enhancer.enhance(0.33)  # Reduce contrast to 33%
 
         self.base64_string = self.encode_pil_image(pil_img)
 
