@@ -74,6 +74,8 @@ class SpatialHandler(ABC):
             coords = sd.get_pyramid_levels(img, n=0)
         elif isinstance(img, xarray.DataArray):
             coords = img
+        else:
+            coords = self.sdata.images[self.img_name]  # Fallback to preserve original behavior
 
         # Get the coordinates of the image
         x = len(coords.x)
