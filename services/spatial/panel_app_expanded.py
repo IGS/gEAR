@@ -378,11 +378,17 @@ class SpatialNormalSubplot(SpatialFigure):
         Returns:
             None
         """
+
+        linecolor = "black"
+        if self.spatial_img is None or self.platform == "xenium":
+            # If there is no spatial image, use white line color for visibility
+            linecolor = "white"
+
         self.fig.add_selection(self.selections_dict,
                             line=dict(
-                                color="white",
+                                color=linecolor,
                                 width=3,
-                                dash="dash",
+                                dash="solid"
                             ),
                             row="all", col="all")
 

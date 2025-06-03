@@ -350,13 +350,19 @@ class SpatialCondensedSubplot(SpatialFigure):
         Returns:
             None
         """
+
+        linecolor = "black"
+        if self.spatial_img is None or self.platform == "xenium":
+            # If there is no spatial image, use white line color for visibility
+            linecolor = "white"
+
         cols = list(range(1, self.final_col))
         self.fig.add_selection(
             self.selections_dict,
             line=dict(
-                color="white",
+                color=linecolor,
                 width=3,
-                dash="dash",
+                dash="solid"
             ),
             row="all",
             col=cols,
@@ -447,16 +453,25 @@ class SpatialPanel(pn.viewable.Viewer):
 
         self.use_clusters = False
         self.use_clusters_switch = pn.widgets.Switch(
-            name="Feature", value=self.use_clusters
+            name="Feature", value=self.use_clusters, sizing_mode="fixed", margin=(10, 10)
         )
 
-        self.condensed_pre = pn.pane.Markdown(
+        self.condensed_intro = pn.pane.Markdown(
             "### Click the Expand icon in the top right corner to see all plots",
-            height=20,
         )
 
+        # Using HTML to center the labels (https://github.com/holoviz/panel/issues/1313#issuecomment-1582731241)
         self.switch_layout = pn.Row(
-            "#### Gene Expression", self.use_clusters_switch, "#### Clusters"
+            pn.pane.HTML("""<label><strong>Gene Expression</strong></label>""", sizing_mode="fixed", margin=(10, 10)),
+            self.use_clusters_switch,
+            pn.pane.HTML("""<label><strong>Clusters</strong></label>""", sizing_mode="fixed", margin=(10, 10))
+        )
+
+        self.condensed_pre = pn.Row(
+            self.condensed_intro,
+            pn.Spacer(width=400),
+            self.switch_layout,
+            height=30
         )
 
         # Build a row with the following elements:
@@ -472,14 +487,13 @@ class SpatialPanel(pn.viewable.Viewer):
                 "displayModeBar": True,
                 "modeBarButtonsToRemove": buttonsToRemove,
             },
-            height=350,
-            sizing_mode="stretch_both",
+            height=275,
+            sizing_mode="stretch_both"
         )
 
         # A condensed layout should only have the normal pane.
         self.plot_layout = pn.Column(
             self.condensed_pre,
-            self.switch_layout,
             self.condensed_pane,
             width=1100,
             height=layout_height,
