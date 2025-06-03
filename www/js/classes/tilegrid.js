@@ -1794,15 +1794,12 @@ class DatasetTile {
             urlParams.append("selection_y2", this.spatial.selection_y2);
         }
 
-        if (this.isZoomed) {
-            urlParams.append("expanded", true);
-        }
-
         if (this.spatial.projection_id) {
             urlParams.append("projection_id", this.spatial.projection_id);
         }
 
-        const url = `/panel/ws/panel_app?${urlParams.toString()}`;
+        const endpoint = this.isZoomed ? "panel_app_expanded" : "panel_app"
+        const url = `/panel/ws/${endpoint}?${urlParams.toString()}`;
 
         try {
             const cardImage = tileElement.querySelector('.card-image');
@@ -1842,6 +1839,7 @@ class DatasetTile {
                 this.spatial.selection_y1 = parseFloat(urlParams.get("selection_y1")) || null;
                 this.spatial.selection_y2 = parseFloat(urlParams.get("selection_y2")) || null;
 
+                // Only applies for endpoint "panel_app_expanded"
                 if (urlParams.get("save")) {
                     urlParams.delete("save");
 
@@ -1852,7 +1850,7 @@ class DatasetTile {
                     // load the URL so that the "save" parameter is removed.
                     // This should prevent endless loop of saving the display
                     // ? Alternatively should "save" be synced after button is clicked, then immediately unsynced in Panel?
-                    iframe.src = `/panel/ws/panel_app?${urlParams.toString()}`;
+                    iframe.src = `/panel/ws/panel_app_expanded?${urlParams.toString()}`;
 
                     try {
                         if (!apiCallsMixin.sessionId) {

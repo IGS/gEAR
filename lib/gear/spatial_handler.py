@@ -1,18 +1,21 @@
 
-import tarfile, os
+import os
+import tarfile
 from abc import ABC, abstractmethod
+from typing import Literal, TypeVar
 
-import pandas as pd
 import anndata as ad
+import pandas as pd
 import spatialdata as sd
-import xarray
-
 import spatialdata_io as sdio
-from spatialdata_io.experimental import to_legacy_anndata, from_legacy_anndata
-
+import xarray
 from gear.utils import update_adata_with_ensembl_ids
+from spatialdata_io.experimental import from_legacy_anndata, to_legacy_anndata
 
-class SpatialUploader(ABC):
+# Self is a typing type starting in Python 3.11
+Self = TypeVar("Self", bound="SpatialHandler")
+
+class SpatialHandler(ABC):
 
     NORMALIZED_TABLE_NAME = "table"
 
@@ -66,10 +69,13 @@ class SpatialUploader(ABC):
             return self
 
         # Image can be DataArray or DataTree depending on if multiple scales are present for the image
-        if type(self.sdata[self.img_name]) == xarray.DataTree:
-            coords = sd.get_pyramid_levels(self.sdata[self.img_name], n=0)
+        img = self.sdata[self.img_name]
+        if isinstance(img, xarray.DataTree):
+            coords = sd.get_pyramid_levels(img, n=0)
+        elif isinstance(img, xarray.DataArray):
+            coords = img
         else:
-            coords = self.sdata.images[self.img_name]
+            coords = self.sdata.images[self.img_name]  # Fallback to preserve original behavior
 
         # Get the coordinates of the image
         x = len(coords.x)
@@ -81,6 +87,7 @@ class SpatialUploader(ABC):
                 target_coordinate_system=self.coordinate_system,
                 filter_table=True,
                 )
+
         self.sdata = sdata
         return self
 
@@ -140,9 +147,51 @@ class SpatialUploader(ABC):
             raise Exception("Error occurred while writing to file: ", err)
         return self
 
-class CurioUploader(SpatialUploader):
+class CoxMxHandler(SpatialHandler):
     """
-    Called by datasetuploader.py (factory) when a Curio Seeker dataset is going to be uploaded
+    Factory class for CoxMx dataset uploads and conversions.
+
+    Standardized names for different files:
+    * <dataset_id>_`'anndata.h5ad'`: Counts and metadata file.
+    * <dataset_id>_`'cluster_assignment.txt'`: Cluster assignment file.
+    * <dataset_id>_`'Metrics.csv'`: Metrics file.
+    * <dataset_id>_`'variable_features_clusters.txt'`: Variable features clusters file.
+    * <dataset_id>_`'variable_features_spatial_moransi.txt'`: Variable features Moran’s I file.
+    """
+
+    @property
+    def has_images(self) -> Literal[False]:
+        return False
+
+    @property
+    def coordinate_system(self) -> Literal['global']:
+        return "global"
+
+    @property
+    def platform(self) -> Literal['coxmx']:
+        return "coxmx"
+
+    @property
+    def img_name(self) -> None:
+        return None
+
+    def _read_file(self, filepath, **kwargs):
+        pass
+
+    def _convert_sdata_to_adata(self, include_images=None):
+        return super()._convert_sdata_to_adata(include_images)
+
+    def _write_to_zarr(self, filepath=None):
+        return super()._write_to_zarr(filepath)
+
+    def _write_to_h5ad(self, filepath=None):
+        return super()._write_to_h5ad(filepath)
+
+
+
+class CurioHandler(SpatialHandler):
+    """
+    Factory class for Curio Seeker dataset uploads and conversions.
 
     Standardized names for different files:
     * <dataset_id>_`'anndata.h5ad'`: Counts and metadata file.
@@ -172,7 +221,7 @@ class CurioUploader(SpatialUploader):
     def img_name(self):
         return None
 
-    def _read_file(self, filepath, **kwargs):
+    def _read_file(self, filepath, **kwargs) -> Self:
         # Get tar filename so tmp directory can be assigned
         tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
         tmp_dir = '/tmp/' + tar_filename
@@ -261,12 +310,12 @@ class CurioUploader(SpatialUploader):
     def _write_to_h5ad(self, filepath=None):
         return super()._write_to_h5ad(filepath)
 
-class GeoMxUploader(SpatialUploader):
+class GeoMxHandler(SpatialHandler):
     """
     Code is mostly inspired by https://github.com/LiHongCSBLab/SOAPy/blob/153095a44200a07a73a6a72c9978adfa1581c853/SOAPy_st/pp/all2adata.py#L229
     I wanted to install SOAPy but ran into pip requirement compatibility issues.  For example, we use a later version of AnnData in gEAR than SOAPy does.
 
-    Called by datasetuploader.py (factory) when a GeoMx dataset is going to be uploaded
+    Factory class for GeoMx dataset uploads and conversions.
 
     Required files:
     * "xlsx" file with information.
@@ -403,10 +452,10 @@ class GeoMxUploader(SpatialUploader):
     def _write_to_h5ad(self, filepath=None):
         return super()._write_to_h5ad(filepath)
 
-class VisiumUploader(SpatialUploader):
+class VisiumHandler(SpatialHandler):
     # TODO: Test this class
     """
-    Called by datasetuploader.py (factory) when a Visium or Visium-HD dataset is going to be uploaded
+    Factory class for Visium dataset uploads and conversions.
 
     Standardized names for different files:
     * (<dataset_id>_)`'filtered_feature_bc_matrix.h5'`: Counts and metadata file.
@@ -478,9 +527,9 @@ class VisiumUploader(SpatialUploader):
     def _write_to_h5ad(self, filepath=None):
         return super()._write_to_h5ad(filepath)
 
-class VisiumHDUploader(SpatialUploader):
+class VisiumHDHandler(SpatialHandler):
     """
-    Called by datasetuploader.py (factory) when a Visium-HD dataset is going to be uploaded
+    Factory class for Visium HD dataset uploads and conversions.
 
     Explanation of Space Ranger v3 output here -> https://www.10xgenomics.com/support/software/space-ranger/latest/analysis/outputs/output-overview#hd-outputs
 
@@ -609,10 +658,9 @@ class VisiumHDUploader(SpatialUploader):
     def _write_to_h5ad(self, filepath=None):
         return super()._write_to_h5ad(filepath)
 
-class XeniumUploader(SpatialUploader):
-    # TODO: Test this class
+class XeniumHandler(SpatialHandler):
     """
-    Called by datasetuploader.py (factory) when a Xenium dataset is going to be uploaded
+    Factory class for Xenium dataset uploads and conversions.
 
     Standardized names for different files:
     * (REQ) 'experiment.xenium': File containing specifications.
@@ -743,12 +791,14 @@ class XeniumUploader(SpatialUploader):
     def _write_to_h5ad(self, filepath=None):
         return super()._write_to_h5ad(filepath)
 
+
 ### Helper constants
 
 SPATIALTYPE2CLASS = {
-    "curio": CurioUploader,
-    "geomx": GeoMxUploader,
-    #"visium": VisiumUploader,
-    "visium_hd": VisiumHDUploader,
-    "xenium": XeniumUploader
+    #"cosmx": CoxMxHandler,
+    "curio": CurioHandler,
+    "geomx": GeoMxHandler,
+    #"visium": VisiumHandler,
+    "visium_hd": VisiumHDHandler,
+    "xenium": XeniumHandler
 }
