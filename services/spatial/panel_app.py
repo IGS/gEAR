@@ -13,14 +13,13 @@ import plotly.graph_objects as go
 import plotly.io as pio
 import scanpy as sc
 import spatialdata as sd
-from werkzeug.utils import secure_filename
-
-from .common import (
+from common import (
     Settings,
     SpatialFigure,
     normalize_searched_gene,
     sort_clusters,
 )
+from werkzeug.utils import secure_filename
 
 gear_root = Path(__file__).resolve().parents[2]
 www_path = gear_root.joinpath("www")
@@ -37,7 +36,7 @@ CACHE_EXPIRATION = SECS_IN_DAY * 7  # 7 days
 # Ignore warnings about plotly GUI events, which propagate to the browser console
 warnings.filterwarnings("ignore", "plotly.*unrecognized gui edit.*")
 
-pn.extension("plotly", loading_indicator=True, defer_load=True, nthreads=4) # type: ignore
+pn.extension("plotly", loading_indicator=True, defer_load=True, nthreads=4)  # type: ignore
 
 # Keep only box select
 buttonsToRemove = ["zoom", "pan", "zoomIn", "zoomOut", "autoScale", "lasso2d"]
@@ -46,41 +45,45 @@ zoomButtonsToRemove = buttonsToRemove + ["select2d"]
 
 class SpatialCondensedSubplot(SpatialFigure):
     """
-    SpatialCondensedSubplot is a specialized subclass of SpatialFigure for visualizing spatial transcriptomics data
-    in a condensed subplot layout using Plotly. It supports rendering spatial images, cluster/expression overlays,
-    and interactive zooming and selection across multiple subplots.
+    SpatialCondensedSubplot is a specialized subclass of SpatialFigure designed for creating and managing spatial data visualizations with condensed subplots using Plotly.
 
-    Args:
-        settings (Settings): Configuration and state for the figure.
-        df (pd.DataFrame): DataFrame containing spatial coordinates and expression/cluster data.
-        spatial_img (np.ndarray | None): Optional background spatial image.
-        color_map (dict): Mapping of cluster/expression values to colors.
-        cluster_map (dict): Mapping of cluster IDs to cluster names or metadata.
-        gene_symbol (str): Gene symbol for expression visualization.
-        expression_name (str): Name of the expression metric to display.
-        expression_color (str): Color to use for expression visualization.
-        use_clusters (bool, optional): Whether to display clusters instead of expression. Defaults to False.
+    This class supports flexible visualization layouts depending on the presence of a spatial image and the use of clusters, enabling side-by-side comparison of raw images, cluster assignments, and gene expression data. It provides interactive selection and zooming capabilities, allowing users to focus on specific spatial regions and dynamically update the visualization based on user input.
+
+    Key Features:
+    - Dynamically generates subplots for spatial images, clusters, and gene expression.
+    - Handles interactive selection events to update and zoom into regions of interest.
+    - Supports both cluster-based and expression-based visualizations.
+    - Manages color mapping, legends, and layout adjustments for clear presentation.
+    - Integrates with a Settings object to persist and update selection ranges.
+
+        settings (Settings): Configuration object containing selection and visualization parameters.
+        df (pd.DataFrame): DataFrame containing spatial and expression data.
+        spatial_img (np.ndarray | None): Optional spatial image to display as a subplot.
+        color_map (dict): Mapping of cluster or expression values to colors.
+        cluster_map (dict): Mapping of cluster identifiers to display names or colors.
+        gene_symbol (str): The gene symbol to visualize.
+        expression_name (str): The name of the expression metric to display.
+        expression_color (str, optional): Color map for expression visualization. Defaults to "YlGn".
+        zoom_expression_color (str, optional): Color map for zoomed-in expression visualization. Defaults to "YlOrRd".
+        use_clusters (bool, optional): Whether to display cluster-based plots. Defaults to False.
         **params: Additional keyword arguments for customization.
 
     Attributes:
-        orig_df (pd.DataFrame): Original unfiltered DataFrame for selection/zoom operations.
-        selections_dict (dict): Stores current selection ranges for mirroring across subplots.
-        use_clusters (bool): Indicates if clusters are visualized instead of expression.
-        annotation_col (int): Index of the subplot used for annotation/zoom.
-        max_x1 (float): Maximum x-domain value for subplot axes.
-        zoom_marker_size (int): Dynamically calculated marker size for zoomed-in views.
+        orig_df (pd.DataFrame): Original DataFrame for filtering and reference.
+        final_col (int): Index of the final subplot column.
+        selections_dict (dict[str, float]): Stores current selection ranges for interactive updates.
+        use_clusters (bool): Indicates if cluster visualization is enabled.
+        zoom_expression_color (str): Color map for zoomed-in expression plots.
+        annotation_col (int): Index of the subplot column used for annotation.
+        marker_size (int): Size of markers in the scatter plots.
 
     Methods:
-        make_fig():
-            Creates and configures the Plotly figure with subplots for spatial image, clusters/expression, and zoomed view.
-        refresh_spatial_fig():
-            Regenerates the figure and applies current selections, returning the figure as a dictionary.
-        calculate_zoom_marker_size():
-            Dynamically calculates marker size based on the zoom/selection range.
-        mirror_selection_callback(event):
-            Mirrors a selection event across all subplots and refreshes the figure.
-        make_zoom_fig_callback(event):
-            Handles zoom/selection events, filters data accordingly, and refreshes the figure.
+        make_fig(): Creates and configures the Plotly figure with appropriate subplots and traces.
+        refresh_spatial_fig(): Regenerates the figure and applies current selections.
+        calculate_zoom_marker_size(): Adjusts marker size based on zoom selection.
+        selection_callback(event): Handles selection events and updates the figure accordingly.
+        mirror_selection(): Applies the current selection to all relevant subplots.
+        setup_zoom_fig_params(): Configures subplot parameters for zoomed-in views.
     """
 
     def __init__(
@@ -92,7 +95,8 @@ class SpatialCondensedSubplot(SpatialFigure):
         cluster_map: dict,
         gene_symbol: str,
         expression_name: str,
-        expression_color: str,
+        expression_color: str = "YlGn",
+        zoom_expression_color: str = "YlOrRd",
         use_clusters: bool = False,
         **params,
     ):
@@ -107,15 +111,17 @@ class SpatialCondensedSubplot(SpatialFigure):
             expression_color,
             **params,
         )
-
         # Preserve the original dataframe for filtering
         self.orig_df = df
 
-        self.selections_dict = {}
+        self.final_col = 3 if spatial_img is not None else 2
+
+        self.selections_dict: dict[str, float] = {}
         self.use_clusters = use_clusters
+        self.zoom_expression_color = zoom_expression_color
 
         # if all four selection range values are the same, they were not set in the query params, so use the default values
-        self.update_selection_ranges(todict=True)
+        self.update_selection_ranges()
 
     def make_fig(self) -> go.Figure:
         """
@@ -138,37 +144,46 @@ class SpatialCondensedSubplot(SpatialFigure):
 
         # domain is adjusted whether there are images or not
         if self.spatial_img is not None:
-            titles = ("Image Only"
-                , "Clusters" if self.use_clusters else f"{self.expression_name} Expression"
-                , "Zoomed View"
-                )
+            titles = (
+                "Image Only",
+                "Clusters"
+                if self.use_clusters
+                else f"{self.expression_name} Expression",
+                "Zoomed View",
+            )
 
             self.create_subplots(num_cols=3, titles=titles)  # sets self.fig
-            self.update_axes()
             self.annotation_col = 2
-            self.fig.update_layout(
-                xaxis=dict(domain=[0, 0.29]),
-                xaxis2=dict(domain=[0.33, 0.62]),  # Leave room for cluster annotations
-                xaxis3=dict(domain=[0.71, 1]),
-            )
-        else:
-            titles = ("Clusters" if self.use_clusters else f"{self.expression_name} Expression"
-                , "Zoomed View"
+            if not self.use_clusters:
+                self.fig.update_layout(
+                    xaxis=dict(domain=[0, 0.29]),
+                    xaxis2=dict(domain=[0.33, 0.62]),
+                    xaxis3=dict(domain=[0.71, 1]),
                 )
+        else:
+            titles = (
+                "Clusters"
+                if self.use_clusters
+                else f"{self.expression_name} Expression",
+                "Zoomed View",
+            )
 
             self.create_subplots(num_cols=2, titles=titles)  # sets self.fig
-            self.update_axes()
             self.annotation_col = 1
-            self.fig.update_layout(
-                xaxis=dict(domain=[0, 0.45]),
-                xaxis2=dict(domain=[0.55, 1]),  # Leave room for cluster annotations
-            )
 
-        # Get max domain for axis 1 and axis 2
+            if not self.use_clusters:
+                self.fig.update_layout(
+                    xaxis=dict(domain=[0, 0.45]),
+                    xaxis2=dict(domain=[0.55, 1]),
+                )
+        self.update_axes()
+
+        # Get max domain for axis 1 or axis 2
         if self.annotation_col == 1:
-            self.max_x1 = self.fig.layout.xaxis.domain[1] # type: ignore
+            max_x = self.fig.layout.xaxis.domain[1]  # type: ignore
         else:
-            self.max_x1 = self.fig.layout.xaxis2.domain[1] # type: ignore
+            max_x = self.fig.layout.xaxis2.domain[1]  # type: ignore
+        cbar_loc = max_x + 0.005  # Leave space for colorbar
 
         if self.spatial_img is not None:
             self.add_image_trace()
@@ -177,34 +192,53 @@ class SpatialCondensedSubplot(SpatialFigure):
 
         if self.use_clusters:
             # If using clusters, we need to add the cluster traces first
-            self.add_cluster_traces(agg["clusters"], self.annotation_col)
+            # Legend will be placed after the final plot
+            self.add_cluster_traces(
+                cluster_agg=agg["clusters"],
+                cluster_col=self.annotation_col,
+                show_legend=True,
+            )
         else:
             # If not using clusters, we can add the expression trace first
             self.fig.add_trace(
-                self.make_expression_scatter(agg["expression"]),
+                self.make_expression_scatter(
+                    agg["expression"],
+                    cbar_loc=cbar_loc,
+                    expression_color=self.expression_color,
+                ),
                 row=1,
                 col=self.annotation_col,
             )
 
         # if all four selection range values are the same, they were not set in the query params, so use the default values
-        self.update_selection_ranges()
+        if self.update_selection_ranges():
+            self.mirror_selection()
+            self.setup_zoom_fig_params()
 
         # Update the x and y axes ranges for the "zoom in" plot
         self.annotation_col += 1
-        self.fig.update_xaxes(
-            range=[self.range_x1, self.range_x2], col=self.annotation_col
-        )
-        # y-axis needs to be flipped. 0,0 is the top left corner
-        self.fig.update_yaxes(
-            range=[self.range_y2, self.range_y1], col=self.annotation_col
-        )
+
+        # Get max domain for axis 2 or axis 3
+        if self.annotation_col == 2:
+            max_x = self.fig.layout.xaxis2.domain[1]  # type: ignore
+        else:
+            max_x = self.fig.layout.xaxis3.domain[1]  # type: ignore
+        cbar_loc = max_x + 0.005  # Leave space for colorbar
 
         # Add zoom traces
         if self.use_clusters:
-            self.add_cluster_traces(agg["clusters"], self.annotation_col)
+            self.add_cluster_traces(
+                cluster_agg=agg["clusters"],
+                cluster_col=self.annotation_col,
+                show_legend=False,
+            )
         else:
             self.fig.add_trace(
-                self.make_expression_scatter(agg["expression"]),
+                self.make_expression_scatter(
+                    agg["expression"],
+                    cbar_loc=cbar_loc,
+                    expression_color=self.zoom_expression_color,
+                ),
                 row=1,
                 col=self.annotation_col,
             )
@@ -241,9 +275,10 @@ class SpatialCondensedSubplot(SpatialFigure):
         Returns:
             dict: The updated figure represented as a dictionary.
         """
-        self.make_fig()
-        if self.selections_dict:
-            self.fig.add_selection(self.selections_dict, row="all", col="all")
+        # Reset some things
+        self.marker_size = 2
+
+        self.fig = self.make_fig()
         return self.fig.to_dict()
 
     def calculate_zoom_marker_size(self) -> None:
@@ -254,41 +289,36 @@ class SpatialCondensedSubplot(SpatialFigure):
             None
         """
         # Calculate the range of the selection
-        x_range = self.range_x2 - self.range_x1
-        y_range = self.range_y2 - self.range_y1
-
+        x_range = self.settings.selection_x2 - self.settings.selection_x1
+        y_range = self.settings.selection_y2 - self.settings.selection_y1
         # Calculate the marker size based on the range of the selection
         # The marker size will scale larger as the range of the selection gets more precise
         self.marker_size = int(1 + 2500 / (x_range + y_range))
 
-    def mirror_selection_callback(self, event: dict) -> dict:
+    def selection_callback(self, event: dict) -> dict:
         """
-        For a selection event, mirror the selection across all plots.
+        Handles selection events from a plot and updates selection ranges.
+
+        This method processes the selection event dictionary, determines which subplot
+        the selection applies to (based on the presence of a spatial image), extracts
+        the selected x and y ranges, and updates both an internal selections dictionary
+        and the settings object with these values. Finally, it refreshes the spatial
+        figure to reflect the new selection.
 
         Args:
-            event (dict): The selection event containing range information for the plot axes.
+            event (dict): A dictionary containing selection event data, expected to have
+                a "range" key with x and y range information.
 
         Returns:
-            dict: The updated spatial figure after applying the selection.
+            dict: The updated spatial figure data after applying the selection.
         """
-
-        self.selections_dict = {}
 
         if event and "range" in event:
             # determine if first or second plot
             if self.spatial_img is not None:
                 # If there is a spatial image, we have three subplots
-                x = (
-                    "x"
-                    if "x" in event["range"]
-                    else "x2"
-
-                )
-                y = (
-                    "y"
-                    if "y" in event["range"]
-                    else "y2"
-                )
+                x = "x" if "x" in event["range"] else "x2"
+                y = "y" if "y" in event["range"] else "y2"
             else:
                 x = "x"
                 y = "y"
@@ -302,62 +332,62 @@ class SpatialCondensedSubplot(SpatialFigure):
                 x0=range_x1, x1=range_x2, y0=range_y1, y1=range_y2
             )
 
+            # update the Settings selection values
+            self.settings.selection_x1 = range_x1
+            self.settings.selection_x2 = range_x2
+            self.settings.selection_y1 = range_y1
+            self.settings.selection_y2 = range_y2
+
+        # Selection will be mirrored across plots in make_fig()
         return self.refresh_spatial_fig()
 
-    def make_zoom_fig_callback(self, event: dict) -> dict:
+    def mirror_selection(self):
         """
-        Handles zoom/selection events, filters data accordingly, and refreshes the figure.
+        Sets up the selection for the figure by specifying the columns to include and adding the selection to the figure.
 
-        Args:
-            event (dict): The selection event containing range information for the plot axes.
+        This method creates a list of column indices from 1 up to (but not including) `self.final_col`, and applies the selections defined in `self.selections_dict` to all rows and the specified columns of `self.fig`.
 
         Returns:
-            dict: The updated spatial figure after applying the zoom selection.
+            None
         """
-        if event and "range" in event:
-            # determine if first or second plot
-            if self.spatial_img is not None:
-                # If there is a spatial image, we have three subplots
-                x = (
-                    "x"
-                    if "x" in event["range"]
-                    else "x2"
+        cols = list(range(1, self.final_col))
+        self.fig.add_selection(
+            self.selections_dict,
+            line=dict(
+                color="white",
+                width=3,
+                dash="dash",
+            ),
+            row="all",
+            col=cols,
+        )
 
-                )
-                y = (
-                    "y"
-                    if "y" in event["range"]
-                    else "y2"
-                )
-            else:
-                x = "x"
-                y = "y"
+    def setup_zoom_fig_params(self):
+        """
+        Configures the figure parameters for zooming into a selected region.
 
-            self.range_x1 = event["range"][x][0]
-            self.range_x2 = event["range"][x][1]
-            self.range_y1 = event["range"][y][0]
-            self.range_y2 = event["range"][y][1]
+        This method performs the following actions:
+        - Adjusts the marker size for better visibility when a selection is being viewed.
+        - Updates the x-axis range of the figure to match the selected region, using `selection_x1` and `selection_x2` from the settings.
+        - Updates the y-axis range of the figure to match the selected region, flipping the axis so that (0,0) is at the top-left corner, using `selection_x2` and `selection_y1` from the settings.
+        - Applies these axis updates to the subplot column specified by `final_col`.
 
-            # Viewing a selection, so increase the marker size
-            self.calculate_zoom_marker_size()
+        Assumes that `self.fig`, `self.settings`, and `self.final_col` are properly initialized.
+        """
 
-            # If no event, use the default values
-            dataframe = self.orig_df
+        # Viewing a selection, so increase the marker size
+        self.calculate_zoom_marker_size()
 
-            # Filter the data based on the selected range
-            self.df = dataframe[
-                (dataframe["spatial1"] >= self.range_x1)
-                & (dataframe["spatial1"] <= self.range_x2)
-                & (dataframe["spatial2"] >= self.range_y1)
-                & (dataframe["spatial2"] <= self.range_y2)
-            ]
+        self.fig.update_xaxes(
+            range=[self.settings.selection_x1, self.settings.selection_x2],
+            col=self.final_col,
+        )
+        # y-axis needs to be flipped. 0,0 is the top left corner
+        self.fig.update_yaxes(
+            range=[self.settings.selection_y2, self.settings.selection_y1],
+            col=self.final_col,
+        )
 
-            self.settings.selection_x1 = self.range_x1
-            self.settings.selection_x2 = self.range_x2
-            self.settings.selection_y1 = self.range_y1
-            self.settings.selection_y2 = self.range_y2
-
-        return self.refresh_spatial_fig()
 
 class SpatialPanel(pn.viewable.Viewer):
     """
@@ -393,19 +423,12 @@ class SpatialPanel(pn.viewable.Viewer):
                 },
             )
 
-        self.dataset_id = self.settings.dataset_id # type: ignore
-        self.gene_symbol = self.settings.gene_symbol # type: ignore
-        self.min_genes = self.settings.min_genes # type: ignore
-        self.projection_id = self.settings.projection_id # type: ignore
+        self.dataset_id = self.settings.dataset_id  # type: ignore
+        self.gene_symbol = self.settings.gene_symbol  # type: ignore
+        self.min_genes = self.settings.min_genes  # type: ignore
+        self.projection_id = self.settings.projection_id  # type: ignore
 
-        # ? This can be useful for filtering datasets even for projections, but how best to word it?
-        self.min_genes_slider = pn.widgets.IntSlider(
-            name="Filter - Mininum genes per observation",
-            start=0,
-            end=500,
-            step=25,
-            value=self.min_genes,
-        )
+        self.platform = None  # Will be set in prep_sdata()
 
         self.layout = pn.Column(pn.bind(self.init_data))
 
@@ -423,10 +446,9 @@ class SpatialPanel(pn.viewable.Viewer):
             height=20,
         )
 
-        self.switch_layout = pn.Row("#### Gene Expression"
-                                , self.use_clusters_switch
-                                , "#### Clusters"
-                                )
+        self.switch_layout = pn.Row(
+            "#### Gene Expression", self.use_clusters_switch, "#### Clusters"
+        )
 
         # Build a row with the following elements:
         # 1) Blank image
@@ -454,6 +476,21 @@ class SpatialPanel(pn.viewable.Viewer):
             height=layout_height,
         )
 
+        def refresh_figures_callback(value) -> None:
+            self.use_clusters = value
+            self.refresh_figures()
+
+        pn.bind(refresh_figures_callback, self.use_clusters_switch, watch=True)
+
+        def selection_callback(event):
+            if self.condensed_fig_obj is None:
+                return
+
+            self.condensed_pane.object = self.condensed_fig_obj.selection_callback(
+                event
+            )
+
+        pn.bind(selection_callback, self.condensed_pane.param.selected_data, watch=True)
 
     def __panel__(self):
         # This is run when the app is loaded. Return the final layout of the app
@@ -513,8 +550,8 @@ class SpatialPanel(pn.viewable.Viewer):
             "Processing data to create plots. This may take a minute..."
         )
 
-        yield self.refresh_dataframe(self.min_genes)
-
+        self.refresh_dataframe(self.min_genes)
+        yield self.refresh_figures()
 
     def prep_sdata(self):
         zarr_path = spatial_path / f"{self.dataset_id}.zarr"
@@ -524,23 +561,23 @@ class SpatialPanel(pn.viewable.Viewer):
         sdata = sd.read_zarr(zarr_path)
 
         try:
-            platform = sdata.tables["table"].uns["platform"]
+            self.platform = sdata.tables["table"].uns["platform"]
         except KeyError:
             raise ValueError("No platform information found in the dataset")
 
         lib_path = gear_root.joinpath("lib")
         sys.path.append(str(lib_path))
 
-        from gear.spatialuploader import SPATIALTYPE2CLASS
+        from gear.spatial_handler import SPATIALTYPE2CLASS
 
         # Ensure the spatial data type is supported
-        if platform not in SPATIALTYPE2CLASS.keys():
+        if self.platform not in SPATIALTYPE2CLASS.keys():
             print("Invalid or unsupported spatial data type")
             print("Supported types: {0}".format(SPATIALTYPE2CLASS.keys()))
             sys.exit(1)
 
         # Use uploader class to determine correct helper functions
-        self.spatial_obj = SPATIALTYPE2CLASS[platform]()
+        self.spatial_obj = SPATIALTYPE2CLASS[self.platform]()
         self.spatial_obj.sdata = sdata
         # Dictates if this will be a 2- or 3-plot figure
         self.has_images = self.spatial_obj.has_images
@@ -580,7 +617,7 @@ class SpatialPanel(pn.viewable.Viewer):
             X = dataframe.to_numpy()
             var = pd.DataFrame(index=dataframe.columns)
             obs = dataset_adata.obs
-            obsm = dataset_adata.obsm
+            obsm: np.ndarray = dataset_adata.obsm
             uns = dataset_adata.uns
             # Create the anndata object and write to h5ad
             # Associate with a filename to ensure AnnData is read in "backed" mode
@@ -646,9 +683,9 @@ class SpatialPanel(pn.viewable.Viewer):
         )
 
         self.cluster_map = {
-            code: dataframe[dataframe["clusters_cat_codes"] == code]["clusters"].to_numpy()[
-                0
-            ]
+            code: dataframe[dataframe["clusters_cat_codes"] == code][
+                "clusters"
+            ].to_numpy()[0]
             for code in dataframe["clusters_cat_codes"].unique()
         }
 
@@ -684,7 +721,11 @@ class SpatialPanel(pn.viewable.Viewer):
         self.dataset_adata = self.dataset_adata[self.df.index]
         self.adata = self.adata[self.df.index]
 
+        return
+
+    def refresh_figures(self):
         self.condensed_fig_obj = None
+
         self.condensed_fig_obj = SpatialCondensedSubplot(
             self.settings,
             self.df,
@@ -693,9 +734,11 @@ class SpatialPanel(pn.viewable.Viewer):
             self.cluster_map,
             self.norm_gene_symbol,
             "Local",
+            "YlGn",
             "YlOrRd",
             self.use_clusters,
-            dragmode=False,
+            dragmode="select",
+            platform=self.platform,
         )
         self.condensed_fig = self.condensed_fig_obj.refresh_spatial_fig()
         self.condensed_pane.object = self.condensed_fig
@@ -733,6 +776,7 @@ class SpatialPanel(pn.viewable.Viewer):
             # Map the colors to the clusters
             dataframe["colors"] = dataframe["clusters"].map(self.color_map)
         self.df = dataframe
+
 
 ### MAIN APP ###
 

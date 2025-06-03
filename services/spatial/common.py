@@ -1,19 +1,19 @@
 import base64
 import sys
 from io import BytesIO
-from pathlib import Path
 from typing import Literal
 
 import datashader as ds
 import numpy as np
 import pandas as pd
 import param
-from PIL import Image
+from PIL import Image, ImageEnhance
 from plotly import graph_objects as go
 from plotly.subplots import make_subplots
 from xarray import DataArray
 
 ### Functions
+
 
 def normalize_searched_gene(gene_set, chosen_gene) -> str | None:
     """Convert to case-insensitive version of gene.  Returns None if gene not found in dataset."""
@@ -91,7 +91,6 @@ class SpatialFigure:
         PLOT_WIDTH (int): Width of the plot canvas for aggregation.
         PLOT_HEIGHT (int): Height of the plot canvas for aggregation.
         range_x1, range_x2, range_y1, range_y2 (float): Ranges for spatial axes.
-        max_x1 (float): Maximum x-domain value for colorbar positioning.
         fig (go.Figure): The Plotly figure object.
 
     Methods:
@@ -125,7 +124,8 @@ class SpatialFigure:
         expression_name: str,
         expression_color: str,
         dragmode: str = "select",
-    ):
+        **kwargs: dict | None,
+    ) -> None:
         self.settings = settings
         self.df = df
         self.spatial_img = spatial_img  # None or numpy array
@@ -140,6 +140,9 @@ class SpatialFigure:
         self.base64_string = None
         self.PLOT_WIDTH = 200
         self.PLOT_HEIGHT = 200
+
+        # kwargs
+        self.platform = kwargs.get("platform", None)  # e.g., "xenium"
 
         # https://spatialdata.scverse.org/projects/io/en/latest/generated/spatialdata_io.experimental.to_legacy_anndata.html
         # (see section Matching of spatial coordinates and pixel coordinates)
@@ -158,10 +161,9 @@ class SpatialFigure:
             else max(df["spatial2"])
         )
 
-        # The range of the x-axis for the expression plot
-        self.max_x1 = 0.5
-
-    def make_expression_scatter(self, expression_agg: DataArray) -> go.Scatter:
+    def make_expression_scatter(
+        self, expression_agg: DataArray, cbar_loc: float, expression_color: str | None
+    ) -> go.Scatter:
         """
         Creates a Plotly Scatter plot visualizing gene expression values in spatial coordinates.
 
@@ -184,6 +186,9 @@ class SpatialFigure:
         agg_df = agg_df.dropna()
         dataframe = agg_df.reset_index()
 
+        if expression_color is None:
+            expression_color = self.expression_color
+
         return go.Scatter(
             x=dataframe["spatial1"],
             y=dataframe["spatial2"],
@@ -194,12 +199,12 @@ class SpatialFigure:
                 cmax=dataframe["raw_value"].max(),  # Max expression value
                 # ? This would not apply if data is log-transformed
                 color=dataframe["raw_value"],
-                colorscale=self.expression_color,  # You can choose any colorscale you like
+                colorscale=expression_color,  # You can choose any colorscale you like
                 size=self.marker_size,  # Adjust the marker size as needed
                 colorbar=dict(
                     len=1,  # Adjust the length of the colorbar
                     thickness=15,  # Adjust the thickness of the colorbar (default is 30)
-                    x=self.max_x1 - 0.005,  # Adjust the x position of the colorbar
+                    x=cbar_loc,  # Adjust the x position of the colorbar
                 ),
             ),
             showlegend=False,
@@ -209,7 +214,9 @@ class SpatialFigure:
             hovertemplate="Expression: %{marker.color:.2f}<extra></extra>",
         )
 
-    def add_cluster_traces(self, cluster_agg: DataArray, cluster_col: int) -> None:
+    def add_cluster_traces(
+        self, cluster_agg: DataArray, cluster_col: int, show_legend=True
+    ) -> None:
         """
         Adds cluster scatter traces to the figure based on aggregated cluster data.
 
@@ -232,23 +239,43 @@ class SpatialFigure:
 
         # map cluster cat_codes to cluster names
         dataframe["clusters"] = dataframe["clusters_cat_codes"].map(self.cluster_map)
+        try:
+            # If clusters are float, convert to int (for later sorting)
+            dataframe["clusters"] = dataframe["clusters"].astype(int).astype("category")
+        except ValueError:
+            # If clusters are not numeric, keep as category
+            dataframe["clusters"] = dataframe["clusters"].astype("category")
 
-        self.add_cluster_scatter(fig, dataframe, dataframe["clusters"].unique().tolist(), color_map, "spatial1", "spatial2", col=cluster_col, row=1)
+        self.add_cluster_scatter(
+            fig,
+            dataframe,
+            color_map,
+            "spatial1",
+            "spatial2",
+            col=cluster_col,
+            row=1,
+            show_legend=show_legend,
+        )
         # TODO: Add click event for removing equivalent points from expression plot if legend item is clicked
 
-        fig.update_traces(unselected=dict(marker=dict(opacity=1)), col=cluster_col, row=1)
-
+        # Update the scatter trace to ensure unselected points are visible
+        fig.update_traces(
+            unselected=dict(marker=dict(opacity=1)),
+            selector=dict(type="scatter"),
+            col=cluster_col,
+            row=1,
+        )
 
     def add_cluster_scatter(
         self,
         fig: go.Figure,
         dataframe: pd.DataFrame,
-        clusters: list,
         color_map: dict,
         x_col: str,
         y_col: str,
         col: int,
-        row: int
+        row: int,
+        show_legend: bool = True,
     ) -> None:
         """
         Adds scatter plot traces for each cluster to a Plotly figure.
@@ -266,7 +293,13 @@ class SpatialFigure:
         Returns:
             None
         """
-        for cluster in clusters:
+
+        # Ensure clusters are categorical and sorted
+        dataframe["clusters"] = dataframe["clusters"].astype("category")
+        unique_clusters = dataframe["clusters"].unique()
+        sorted_clusters = sort_clusters(unique_clusters)
+
+        for cluster in sorted_clusters:
             cluster_data = dataframe[dataframe["clusters"] == cluster]
             fig.add_trace(
                 go.Scatter(
@@ -276,12 +309,12 @@ class SpatialFigure:
                     mode="markers",
                     name=str(cluster),
                     text=cluster_data["clusters"],
-                    hovertemplate="Cluster: %{text}<extra></extra>"
+                    hovertemplate="Cluster: %{text}<extra></extra>",
+                    showlegend=show_legend,  # Show legend only if specified
                 ),
                 col=col,
                 row=row,
             )
-
 
     def create_datashader_agg(self, x: str, y: str) -> DataArray:
         """
@@ -312,12 +345,12 @@ class SpatialFigure:
             y=y,
             agg=ds.summary(
                 expression=ds.max("raw_value"),
-                clusters=ds.by("clusters_cat_codes", ds.any()), # type: ignore
+                clusters=ds.by("clusters_cat_codes", ds.any()),  # type: ignore
             ),
         )
         return agg
 
-    def make_fig(self) -> go.Figure:
+    def _setup_fig(self) -> None:
         """
         Creates and configures a Plotly figure with subplots for spatial and expression data visualization.
 
@@ -328,7 +361,6 @@ class SpatialFigure:
         # domain is adjusted whether there are images or not
         if self.spatial_img is not None:
             self.create_subplots(num_cols=3)  # sets self.fig
-            self.update_axes()
             self.expression_col = 2
             self.cluster_col = 3
             self.fig.update_layout(
@@ -338,27 +370,34 @@ class SpatialFigure:
             )
         else:
             self.create_subplots(num_cols=2)  # sets self.fig
-            self.update_axes()
             self.expression_col = 1
             self.cluster_col = 2
             self.fig.update_layout(
                 xaxis=dict(domain=[0, 0.45]),
                 xaxis2=dict(domain=[0.55, 1]),  # Leave room for cluster annotations
             )
-
-        # Get max domain for axis 1 and axis 2
-        if self.expression_col == 1:
-            self.max_x1 = self.fig.layout.xaxis.domain[1] # type: ignore
-        else:
-            self.max_x1 = self.fig.layout.xaxis2.domain[1] # type: ignore
+        self.update_axes()
 
         if self.spatial_img is not None:
             self.add_image_trace()
 
+    def _add_traces_to_fig(self) -> go.Figure:
+        # Get max domain for axis 1 or axis 2
+        if self.expression_col == 1:
+            max_x = self.fig.layout.xaxis.domain[1]  # type: ignore
+        else:
+            max_x = self.fig.layout.xaxis2.domain[1]  # type: ignore
+
         agg = self.create_datashader_agg(x="spatial2", y="spatial1")
 
+        cbar_loc = max_x + 0.005  # Leave space for colorbar
+
         self.fig.add_trace(
-            self.make_expression_scatter(agg["expression"]),
+            self.make_expression_scatter(
+                agg["expression"],
+                cbar_loc=cbar_loc,
+                expression_color=self.expression_color,
+            ),
             row=1,
             col=self.expression_col,
         )
@@ -411,10 +450,24 @@ class SpatialFigure:
         Returns:
             None
         """
-        pil_img = Image.fromarray(self.spatial_img)  # PIL image object
+
+        img = self.spatial_img
+
+        pil_img = Image.fromarray(img)  # PIL image object
+
         pil_img = pil_img.crop(
             (self.range_x1, self.range_y1, self.range_x2, self.range_y2)
         )
+
+        # Convert to RGB.
+        # Reason is Xenium image mode is set to 16-bit uint which appeared as very low contrast
+        # For some reason, converting the mode directly in Image.fromarray() throws "Not enough image data" error
+        pil_img = pil_img.convert("RGB")
+
+        # If "xenium" platform, contrast after conversion is too high, so we reduce it
+        if self.platform == "xenium":
+            enhancer = ImageEnhance.Contrast(pil_img)
+            pil_img = enhancer.enhance(0.33)  # Reduce contrast to 33%
 
         self.base64_string = self.encode_pil_image(pil_img)
 
@@ -537,48 +590,28 @@ class SpatialFigure:
             font_size = 10
         return font_size
 
-    def update_selection_ranges(self, todict: bool = False) -> bool:
+    def update_selection_ranges(self) -> bool:
         """
-        Updates the selection range attributes or dictionary based on current selection settings.
+        Updates the selection ranges based on the current selection coordinates.
 
-        Args:
-            todict (bool, optional): If True, updates `self.selections_dict` with the current selection
-                coordinates. If False, updates the individual range attributes (`range_x1`, `range_x2`,
-                `range_y1`, `range_y2`) with the current selection values.
+        Checks if the selection coordinates for x and y axes have changed. If they have,
+        updates the `selections_dict` attribute with the new selection boundaries and returns True.
+        If the selection coordinates have not changed, returns False.
 
         Returns:
-            bool: True if the selection range was updated (i.e., the selection coordinates are not equal),
-                False otherwise.
-
-        Notes:
-            - If the selection coordinates are at the edge of the plot and not modified, default values
-              are used to update the range attributes.
-            - The method distinguishes between updating a dictionary or individual attributes based on
-              the `todict` flag.
+            bool: True if the selection ranges were updated, False otherwise.
         """
 
         if (
             self.settings.selection_x1 != self.settings.selection_x2
             or self.settings.selection_y1 != self.settings.selection_y2
         ):
-            if todict:
-                self.selections_dict = dict(
-                    x0=self.settings.selection_x1,
-                    x1=self.settings.selection_x2,
-                    y0=self.settings.selection_y1,
-                    y1=self.settings.selection_y2,
-                )
-            else:
-                # Occasionally, if a selection goes to the edge of the plot,
-                # the selection may not be modified and added to query_params,
-                # so use the default values if that happens
-                if self.settings.selection_x1 is not None:
-                    self.range_x1 = self.settings.selection_x1
-                if self.settings.selection_x2 is not None:
-                    self.range_x2 = self.settings.selection_x2
-                if self.settings.selection_y1 is not None:
-                    self.range_y1 = self.settings.selection_y1
-                if self.settings.selection_y2 is not None:
-                    self.range_y2 = self.settings.selection_y2
+            self.selections_dict = dict(
+                x0=self.settings.selection_x1,
+                x1=self.settings.selection_x2,
+                y0=self.settings.selection_y1,
+                y1=self.settings.selection_y2,
+            )
+
             return True
         return False

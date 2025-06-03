@@ -14,15 +14,14 @@ import plotly.graph_objects as go
 import plotly.io as pio
 import scanpy as sc
 import spatialdata as sd
-from plotly.subplots import make_subplots
-from werkzeug.utils import secure_filename
-
-from .common import (
+from common import (
     Settings,
     SpatialFigure,
     normalize_searched_gene,
     sort_clusters,
 )
+from plotly.subplots import make_subplots
+from werkzeug.utils import secure_filename
 
 gear_root = Path(__file__).resolve().parents[2]
 www_path = gear_root.joinpath("www")
@@ -108,10 +107,7 @@ class SpatialNormalSubplot(SpatialFigure):
             **params,
         )
 
-        self.selections_dict = {}
-
-        # if all four selection range values are the same, they were not set in the query params, so use the default values
-        self.update_selection_ranges(todict=True)
+        self.selections_dict: dict[str, float] = {}
 
     def refresh_spatial_fig(self) -> dict:
         """
@@ -120,10 +116,15 @@ class SpatialNormalSubplot(SpatialFigure):
         Returns:
             dict: The updated figure represented as a dictionary.
         """
-        self.make_fig()
-        if self.selections_dict:
-            self.fig.add_selection(self.selections_dict, row="all", col="all")
+
+        self.fig = self.make_fig()
         return self.fig.to_dict()
+
+    def make_fig(self) -> go.Figure:
+        self._setup_fig()
+        if self.update_selection_ranges():
+            self.mirror_selection()
+        return self._add_traces_to_fig()
 
     def setup_cluster_plot(
         self,
@@ -158,15 +159,15 @@ class SpatialNormalSubplot(SpatialFigure):
             - The function updates layout settings such as legend font size and margins.
         """
 
-        # Ensure clusters are categorical and sorted
-        dataframe["clusters"] = dataframe["clusters"].astype("category")
-        unique_clusters = dataframe["clusters"].unique()
-        sorted_clusters = sort_clusters(unique_clusters)
-
         # Add traces
         if plot_type == "scatter":
-            self.add_cluster_scatter(fig, dataframe, sorted_clusters, self.color_map, x_col, y_col, col, row)
+            self.add_cluster_scatter(fig, dataframe, self.color_map, x_col, y_col, col, row)
         elif plot_type == "violin":
+            # Ensure clusters are categorical and sorted
+            dataframe["clusters"] = dataframe["clusters"].astype("category")
+            unique_clusters = dataframe["clusters"].unique()
+            sorted_clusters = sort_clusters(unique_clusters)
+
             for cluster in sorted_clusters:
                 cluster_data = dataframe[dataframe["clusters"] == cluster]
                 fig.add_trace(
@@ -195,7 +196,6 @@ class SpatialNormalSubplot(SpatialFigure):
         return fig
 
     def make_umap_plots(self) -> dict:
-
         fig = make_subplots(
             rows=1,
             cols=2,
@@ -253,8 +253,14 @@ class SpatialNormalSubplot(SpatialFigure):
 
         # map cluster cat_codes to cluster names
         clusters_df["clusters"] = (
-            clusters_df["clusters_cat_codes"].map(self.cluster_map).astype("category")
+            clusters_df["clusters_cat_codes"].map(self.cluster_map)
         )
+        try:
+            # If clusters are float, convert to int (for later sorting)
+            clusters_df["clusters"] = clusters_df["clusters"].astype(int).astype("category")
+        except ValueError:
+            # If clusters are not numeric, keep as category
+            clusters_df["clusters"] = clusters_df["clusters"].astype("category")
 
         self.setup_cluster_plot(fig, clusters_df, "UMAP1", "UMAP2", plot_type="scatter", col=2, row=1)
 
@@ -334,8 +340,6 @@ class SpatialNormalSubplot(SpatialFigure):
             dict: The updated spatial figure after applying the selection.
         """
 
-        self.selections_dict = {}
-
         if event and "range" in event:
             # determine if first or second plot
             x = (
@@ -364,6 +368,23 @@ class SpatialNormalSubplot(SpatialFigure):
 
         return self.refresh_spatial_fig()
 
+    def mirror_selection(self):
+        """
+        Mirrors the current selection across all rows and columns in the figure.
+
+        This method adds the selections stored in `self.selections_dict` to the figure (`self.fig`)
+        so that the selection is applied to every subplot (all rows and columns).
+
+        Returns:
+            None
+        """
+        self.fig.add_selection(self.selections_dict,
+                            line=dict(
+                                color="white",
+                                width=3,
+                                dash="dash",
+                            ),
+                            row="all", col="all")
 
 class SpatialZoomSubplot(SpatialFigure):
     """
@@ -416,10 +437,16 @@ class SpatialZoomSubplot(SpatialFigure):
         # Preserve the original dataframe for filtering
         self.orig_df = df
 
-        # if all four selection range values are the same, they were not set in the query params, so use the default values
-        if self.update_selection_ranges(todict=True):
-            # Viewing a selection, so increase the marker size
-            self.calculate_marker_size()
+        # Set ranges to be the selection.
+        # This will fix image cropping issues on the intiial render
+        if (
+            self.settings.selection_x1 != self.settings.selection_x2
+            or self.settings.selection_y1 != self.settings.selection_y2
+        ):
+            self.range_x1 = self.settings.selection_x1
+            self.range_x2 = self.settings.selection_x2
+            self.range_y1 = self.settings.selection_y1
+            self.range_y2 = self.settings.selection_y2
 
     def calculate_marker_size(self) -> None:
         """
@@ -429,8 +456,8 @@ class SpatialZoomSubplot(SpatialFigure):
             None
         """
         # Calculate the range of the selection
-        x_range = self.range_x2 - self.range_x1
-        y_range = self.range_y2 - self.range_y1
+        x_range = self.settings.selection_x2 - self.settings.selection_x1
+        y_range = self.settings.selection_y2 - self.settings.selection_y1
 
         # Calculate the marker size based on the range of the selection
         # The marker size will scale larger as the range of the selection gets more precise
@@ -443,8 +470,16 @@ class SpatialZoomSubplot(SpatialFigure):
         Returns:
             dict: The updated figure represented as a dictionary.
         """
+
         self.fig = self.make_fig()
         return self.fig.to_dict()
+
+    def make_fig(self) -> go.Figure:
+        self._setup_fig()
+        if self.update_selection_ranges():
+            # Ensure the axes are set to the selection ranges
+            self.setup_zoom_fig_params()
+        return self._add_traces_to_fig()
 
     def make_zoom_fig_callback(self, event: dict) -> dict:
         """
@@ -478,19 +513,6 @@ class SpatialZoomSubplot(SpatialFigure):
             self.range_y1 = event["range"][y][0]
             self.range_y2 = event["range"][y][1]
 
-            # Viewing a selection, so increase the marker size
-            self.calculate_marker_size()
-
-            # If no event, use the default values
-            dataframe = self.orig_df
-
-            # Filter the data based on the selected range
-            self.df = dataframe[
-                (dataframe["spatial1"] >= self.range_x1)
-                & (dataframe["spatial1"] <= self.range_x2)
-                & (dataframe["spatial2"] >= self.range_y1)
-                & (dataframe["spatial2"] <= self.range_y2)
-            ]
 
             self.settings.selection_x1 = self.range_x1
             self.settings.selection_x2 = self.range_x2
@@ -498,6 +520,45 @@ class SpatialZoomSubplot(SpatialFigure):
             self.settings.selection_y2 = self.range_y2
 
         return self.refresh_spatial_fig()
+
+    def setup_zoom_fig_params(self):
+        """
+        Configures the figure parameters for zooming into a selected region.
+
+        This method performs the following actions:
+        - Adjusts the marker size for better visibility when a selection is being viewed.
+        - Updates the x-axis range of the figure to match the selected region, using `selection_x1` and `selection_x2` from the settings.
+        - Updates the y-axis range of the figure to match the selected region, flipping the axis so that (0,0) is at the top-left corner, using `selection_x2` and `selection_y1` from the settings.
+        - Applies these axis updates to all subplot columns
+
+        """
+
+        if not self.fig:
+            raise ValueError("Figure is not initialized. Cannot set zoom parameters.")
+
+        if not self.settings.selection_x1 or not self.settings.selection_x2:
+            raise ValueError("Selection coordinates are not set. Cannot set zoom parameters.")
+
+        # Preserve the original dataframe for filtering
+        dataframe = self.orig_df
+
+        # Filter the data based on the selected range
+        self.df = dataframe[
+            (dataframe["spatial1"] >= self.settings.selection_x1)
+            & (dataframe["spatial1"] <= self.settings.selection_x2)
+            & (dataframe["spatial2"] >= self.settings.selection_y1)
+            & (dataframe["spatial2"] <= self.settings.selection_y2)
+        ]
+
+        self.calculate_marker_size()
+
+        self.fig.update_xaxes(
+            range=[self.settings.selection_x1, self.settings.selection_x2], row="all", col="all"
+        )
+        # y-axis needs to be flipped. 0,0 is the top left corner
+        self.fig.update_yaxes(
+            range=[self.settings.selection_y2, self.settings.selection_y1], row="all", col="all"
+        )
 
 
 class SpatialPanel(pn.viewable.Viewer):
@@ -542,6 +603,8 @@ class SpatialPanel(pn.viewable.Viewer):
         self.gene_symbol = self.settings.gene_symbol # type: ignore
         self.min_genes = self.settings.min_genes # type: ignore
         self.projection_id = self.settings.projection_id # type: ignore
+
+        self.platform = None # Will be set in prep_sdata()
 
         # ? This can be useful for filtering datasets even for projections, but how best to word it?
         self.min_genes_slider = pn.widgets.IntSlider(
@@ -789,23 +852,23 @@ class SpatialPanel(pn.viewable.Viewer):
         sdata = sd.read_zarr(zarr_path)
 
         try:
-            platform = sdata.tables["table"].uns["platform"]
+            self.platform = sdata.tables["table"].uns["platform"]
         except KeyError:
             raise ValueError("No platform information found in the dataset")
 
         lib_path = gear_root.joinpath("lib")
         sys.path.append(str(lib_path))
 
-        from gear.spatialuploader import SPATIALTYPE2CLASS
+        from gear.spatial_handler import SPATIALTYPE2CLASS
 
         # Ensure the spatial data type is supported
-        if platform not in SPATIALTYPE2CLASS.keys():
+        if self.platform not in SPATIALTYPE2CLASS.keys():
             print("Invalid or unsupported spatial data type")
             print("Supported types: {0}".format(SPATIALTYPE2CLASS.keys()))
             sys.exit(1)
 
         # Use uploader class to determine correct helper functions
-        self.spatial_obj = SPATIALTYPE2CLASS[platform]()
+        self.spatial_obj = SPATIALTYPE2CLASS[self.platform]()
         self.spatial_obj.sdata = sdata
         # Dictates if this will be a 2- or 3-plot figure
         self.has_images = self.spatial_obj.has_images
@@ -845,7 +908,7 @@ class SpatialPanel(pn.viewable.Viewer):
             X = dataframe.to_numpy()
             var = pd.DataFrame(index=dataframe.columns)
             obs = dataset_adata.obs
-            obsm = dataset_adata.obsm
+            obsm: np.ndarray = dataset_adata.obsm
             uns = dataset_adata.uns
             # Create the anndata object and write to h5ad
             # Associate with a filename to ensure AnnData is read in "backed" mode
@@ -1023,6 +1086,7 @@ class SpatialPanel(pn.viewable.Viewer):
             self.norm_gene_symbol,
             "YlGn",
             dragmode="select",
+            platform=self.platform
         )
         self.zoom_fig_obj = SpatialZoomSubplot(
             self.settings,
@@ -1034,6 +1098,7 @@ class SpatialPanel(pn.viewable.Viewer):
             "Local",
             "YlOrRd",
             dragmode=False,
+            platform=self.platform
         )
 
         self.normal_fig = self.normal_fig_obj.refresh_spatial_fig()

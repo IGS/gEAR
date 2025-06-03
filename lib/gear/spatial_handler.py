@@ -787,22 +787,6 @@ class XeniumHandler(SpatialHandler):
     def _write_to_h5ad(self, filepath=None):
         return super()._write_to_h5ad(filepath)
 
-    def adjust_image_brightness(self, image_name=None, factor=1.0):
-        """
-        Adjust the brightness of the morphology focus image.
-        :param image_name: Name of the image to adjust brightness for.
-        :param factor: Factor by which to adjust brightness (1.0 means no change).
-        """
-        if image_name is None:
-            image_name = self.img_name
-
-        if image_name not in self.sdata.images:
-            raise Exception(f"Image '{image_name}' not found in SpatialData object.")
-
-        # Adjust brightness using xarray
-        img = self.sdata.images[image_name]
-        img.data *= factor
-        self.sdata.images[image_name] = img
 
 ### Helper constants
 
