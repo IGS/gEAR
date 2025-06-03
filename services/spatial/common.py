@@ -451,16 +451,23 @@ class SpatialFigure:
             None
         """
 
+        if self.spatial_img is None:
+            raise ValueError("Spatial image is not provided. Should not have been called.")
+
         img = self.spatial_img
 
-        pil_img = Image.fromarray(img)  # PIL image object
+        # (Copilot Recommendation) - Ensure image is uint8 for consistent contrast
+        if img.dtype != np.uint8:
+            img = img.astype(np.float32)
+            img = 255 * (img - img.min()) / (img.max() - img.min() + 1e-8)
+            img = img.astype(np.uint8)
 
+        pil_img = Image.fromarray(img)
         pil_img = pil_img.crop(
             (self.range_x1, self.range_y1, self.range_x2, self.range_y2)
         )
 
         # Convert to RGB.
-        # Reason is Xenium image mode is set to 16-bit uint which appeared as very low contrast
         # For some reason, converting the mode directly in Image.fromarray() throws "Not enough image data" error
         pil_img = pil_img.convert("RGB")
 
