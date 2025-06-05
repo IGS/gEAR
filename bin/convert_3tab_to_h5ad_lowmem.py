@@ -33,6 +33,16 @@ def main():
     obs = None
     var = None
 
+    # Get the base directory of the output file and make sure it's writable
+    output_base_dir = os.path.dirname(args.output_file)
+    if not os.path.exists(output_base_dir):
+        print("Output directory does not exist: {0}".format(output_base_dir), file=sys.stderr, flush=True)
+        sys.exit(1)
+        
+    if not os.access(output_base_dir, os.W_OK):
+        print("Output directory is not writable: {0}".format(output_base_dir), file=sys.stderr, flush=True)
+        sys.exit(1)        
+
     for infile in os.listdir(args.input_directory):
         # skip any files beginning with a dot
         if infile.startswith('.'):
