@@ -21,6 +21,30 @@ id = id from identifiers.org, in the format like d.a59037e8 or p.bfd178f5
 import cgi
 import os
 
+
+def check_for_truthy(value):
+    """
+    Checks if the given value is considered truthy.
+
+    Returns 1 if the value is considered truthy, 0 otherwise.
+    Specifically, returns 0 if the value is None or a string representing a falsy value
+    ('0', 'false', 'f', 'no', 'n', case-insensitive). For all other cases, returns 1.
+
+    Args:
+        value: The value to check for truthiness.
+
+    Returns:
+        int: 1 if the value is truthy, 0 otherwise.
+    """
+    # Return as 0/1
+    if value is None:
+        return 0
+    if isinstance(value, str):
+        value = value.lower()
+        if value in ('0', 'false', 'f', 'no', 'n'):
+            return 0
+    return 1
+
 def main():
     print('Content-Type: text/html\n\n')
     form = cgi.FieldStorage()
@@ -67,10 +91,7 @@ def main():
 
     # Set gene_symbol_exact_match to 1 by default on pages where it makes sense
     if page not in ('a', 'de', 'gcm', 'p'):
-        if gene_symbol_exact_match and gene_symbol_exact_match.lower() in [0, '0', 'false', 'f', 'no']:
-            params['gene_symbol_exact_match'] = 0
-        else:
-            params['gene_symbol_exact_match'] = 1
+        params['gene_symbol_exact_match'] = check_for_truthy(gene_symbol_exact_match)
 
     if gene_cart:
         key = 'gene_lists'
@@ -84,14 +105,14 @@ def main():
             key = "multipattern_plots"
         params[key] = multi
 
-    if patterns and page == "p":
-        params["projection_patterns"] = patterns
+    if page == "p":
+        if patterns:
+            params["projection_patterns"] = patterns
 
-    if algo and page == "p":
-        params["projection_algorithm"] = algo
+        if algo:
+            params["projection_algorithm"] = algo
 
-    if zscore and page == "p":
-        params["zscore"] = zscore
+        params["zscore"] = check_for_truthy(zscore)
 
     if search_string and (page == "de" or page == "gcm"):
         params["search_string"] = search_string
