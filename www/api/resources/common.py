@@ -124,7 +124,6 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
             # For some reason the gene_symbol is not taken in by the constructor
             projection_adata.var["gene_symbol"] = projection_adata.var_names
             projection_adata.write_h5ad(filename=Path(temp_file_path))
-            print(projection_adata.isbacked, file=sys.stderr)
 
     except Exception as e:
         print(str(e), file=sys.stderr)
