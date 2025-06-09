@@ -827,17 +827,15 @@ class Analysis:
         #  common case of most of the rest of this module where scanpy isn't needed
         import scanpy as sc
 
-        # TODO: This could be ugly if we have to keep branching on read_h5ad options.  Clean it up.
+        kwargs = {}
+
         if backed:
-            if force_sparse:
-                return sc.read_h5ad(self.dataset_path(), backed='r', as_sparse="raw.X")
-            else:
-                return sc.read_h5ad(self.dataset_path(), backed='r')
-        else:
-            if force_sparse:
-                return sc.read_h5ad(self.dataset_path(), as_sparse="raw.X")
-            else:
-                return sc.read_h5ad(self.dataset_path())
+            kwargs['backed'] = 'r'
+        if force_sparse:
+            kwargs['as_sparse'] = "raw.X"
+
+        return sc.read_h5ad(self.dataset_path(), **kwargs)
+
 
     def marker_gene_json_path(self):
         return "{0}/{1}.marker_gene_table.json".format(self.base_path(), self.dataset_id)

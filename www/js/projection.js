@@ -291,7 +291,7 @@ const parsePatternCartURLParams = async () => {
 
     // if zscore is passed, set it in #zscore
     const zscore = getUrlParameter('zscore', urlParams);
-    if (zscore === 'true') {
+    if (zscore === '1') {
         document.getElementById('zscore').checked = true;
     }
 

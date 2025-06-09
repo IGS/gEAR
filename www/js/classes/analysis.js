@@ -280,7 +280,7 @@ class Analysis {
             // unsaved
             if (data.user_unsaved.length) {
                 // if data has no label, it will be "Unlabeled"
-                const count = 1
+                let count = 1
                 data.user_unsaved.forEach(analysis => {
                     if (!analysis.label) {
                         analysis.label = `Unlabeled ${count}`;
@@ -302,7 +302,7 @@ class Analysis {
             // saved
             if (data.user_saved.length) {
                 // if data has no label, it will be "Unlabeled"
-                const count = 1
+                let count = 1
                 data.user_saved.forEach(analysis => {
                     if (!analysis.label) {
                         analysis.label = `Unlabeled ${count}`;
@@ -324,7 +324,7 @@ class Analysis {
             // public
             if (data.public.length) {
                 // if data has no label, it will be "Unlabeled"
-                const count = 1
+                let count = 1
                 data.public.forEach(analysis => {
                     if (!analysis.label) {
                         analysis.label = `Unlabeled ${count}`;
@@ -474,7 +474,11 @@ class Analysis {
         // Not doing anything with data.clustering yet but would like to
         if (data.louvain) {
             data.clustering = data.louvain;
-            if (!data.clustering?.mode) {
+            if (!data?.clustering?.mode) {
+                if (!data.clustering) {
+                    data.clustering = {};
+                };
+
                 data.clustering.mode = "initial";
             }
         }

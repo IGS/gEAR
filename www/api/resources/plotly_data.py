@@ -197,7 +197,7 @@ class PlotlyData(Resource):
                         reordered_col = col.cat.reorder_categories(
                             order[key], ordered=True)
                         adata.obs[key] = reordered_col
-                    except:
+                    except Exception:
                         pass
 
             # get a map of all levels for each column
@@ -224,7 +224,7 @@ class PlotlyData(Resource):
 
             try:
                 selected = adata[:, gene_filter].to_memory()
-            except:
+            except Exception:
                 # The "try" may fail for projections as it is already in memory
                 selected = adata[:, gene_filter]
 
@@ -232,7 +232,7 @@ class PlotlyData(Resource):
             # This prevents potential downstream issues
             try:
                 selected.X = selected.X.todense()
-            except:
+            except Exception:
                 pass
 
             # Filter by obs filters
@@ -246,7 +246,7 @@ class PlotlyData(Resource):
                     if "NA" in values and "NA" not in selected.obs[col].cat.categories:
                         values.remove("NA")
                         selected.obs[col].cat.add_categories("NA")
-                        selected.obs[col].fillna("NA", inplace=True)
+                        selected.obs[col] = selected.obs[col].fillna("NA")
 
                     selected_filter = selected.obs[col].isin(values)
                     selected = selected[selected_filter, :]
@@ -263,7 +263,7 @@ class PlotlyData(Resource):
                 # we don't want to reorder these
                 if col in [x_axis, color_name, facet_col, facet_row]:
                     order_res[col] = selected.obs[col].cat.categories.tolist()
-            except:
+            except Exception:
                 pass
 
         # Close adata so that we do not have a stale opened object
@@ -284,8 +284,8 @@ class PlotlyData(Resource):
         # This resolves https://github.com/IGS/gEAR/issues/878 where the gene_symbol index may be the same as a observation column (i.e. projections)
         selected.var.index = pd.Index(["raw_value"])
 
-        df = selected.to_df()
-        df = pd.concat([df,selected.obs], axis=1)
+        dataframe = selected.to_df()
+        dataframe = pd.concat([dataframe,selected.obs], axis=1)
 
         # fill any missing adata.obs values with "NA"
         # The below line gives the error - TypeError: Cannot setitem on a Categorical with a new category (NA), set the categories first
@@ -303,16 +303,16 @@ class PlotlyData(Resource):
                 if x_axis in analysis_tsne_columns and y_axis in analysis_tsne_columns:
                     # A filtered AnnData object is an 'ArrayView' object and must
                     # be accessed as selected.obsm["X_tsne"] rather than selected.obsm.X_tsne
-                    df[x_axis] = selected.obsm["X_tsne"].transpose()[X]
-                    df[y_axis] = selected.obsm["X_tsne"].transpose()[Y]
+                    dataframe[x_axis] = selected.obsm["X_tsne"].transpose()[X]
+                    dataframe[y_axis] = selected.obsm["X_tsne"].transpose()[Y]
             elif 'X_umap' in selected.obsm:
                 if x_axis in analysis_umap_columns and y_axis in analysis_umap_columns:
-                    df[x_axis] = selected.obsm["X_umap"].transpose()[X]
-                    df[y_axis] = selected.obsm["X_umap"].transpose()[Y]
+                    dataframe[x_axis] = selected.obsm["X_umap"].transpose()[X]
+                    dataframe[y_axis] = selected.obsm["X_umap"].transpose()[Y]
             elif 'X_pca' in selected.obsm:
                 if x_axis in analysis_pca_columns and y_axis in analysis_pca_columns:
-                    df[x_axis] = selected.obsm["X_pca"].transpose()[X]
-                    df[y_axis] = selected.obsm["X_pca"].transpose()[Y]
+                    dataframe[x_axis] = selected.obsm["X_pca"].transpose()[X]
+                    dataframe[y_axis] = selected.obsm["X_pca"].transpose()[Y]
 
         # Close adata so that we do not have a stale opened object
         if selected.isbacked:
@@ -321,7 +321,7 @@ class PlotlyData(Resource):
         if color_map and color_name:
             # Validate if all color map keys are in the dataframe columns
             # Ran into an issue where the color map keys were truncated compared to the dataframe column values
-            col_values = set(df[color_name].unique())
+            col_values = set(dataframe[color_name].unique())
             diff = col_values.difference(color_map.keys())
             if diff:
                 message =  "WARNING: Color map has values not in the dataframe column '{}': {}\n".format(color_name, diff)
@@ -330,7 +330,7 @@ class PlotlyData(Resource):
                 # If any element in diff is nan and color_map contains a valid missing value key like "NA", change the value in the dataframe to match the color_map key
                 for key in list(diff):
                     if pd.isna(key) and "NA" in color_map.keys():
-                        df[color_name] = df[color_name].replace({key: "NA"})
+                        dataframe[color_name] = dataframe[color_name].replace({key: "NA"})
                         col_values.remove(key)  # Remove the nan value from the set
                         col_values = col_values.union({"NA"})
                         break
@@ -349,7 +349,7 @@ class PlotlyData(Resource):
         if color_name and not (color_map or palette):
             # For numerical color dimensions, we want to use
             # one of plotly's baked in scales.
-            if isinstance(df[color_name].iloc[0], numbers.Number):
+            if isinstance(dataframe[color_name].iloc[0], numbers.Number):
                 purples = [
                     [0, 'rgb(218, 183, 193)'],
                     [0.35, 'rgb(194, 137, 166)'],
@@ -360,17 +360,17 @@ class PlotlyData(Resource):
                 ]
                 color_map = purples
             else:
-                names = df[color_name].unique().tolist()
+                names = dataframe[color_name].unique().tolist()
                 color_map = plotly_color_map(names)
 
                 # Check if color hexcodes exist and use if validated
                 color_code = "{}_colors".format(color_name)
-                if color_code in df.columns:
-                    grouped = df.groupby([color_name, color_code])
+                if color_code in dataframe.columns:
+                    grouped = dataframe.groupby([color_name, color_code])
                     # Ensure one-to-one mapping of color names to codes
                     if len(grouped) == len(names):
                         # Test if names are color hexcodes and use those if applicable
-                        color_hex = df[color_code].unique().tolist()
+                        color_hex = dataframe[color_code].unique().tolist()
                         if re.search(COLOR_HEX_PTRN, color_hex[0]):
                             color_map = {name[0]:name[1] for name, group in grouped}
 
@@ -394,8 +394,8 @@ class PlotlyData(Resource):
                     sampled_colors = pxc.sample_colorscale(viridis_colors, num_entries)
                     color_map = {key: value for key, value in zip(color_map.keys(), sampled_colors)}
 
-        if 'replicate' in df and plot_type == 'scatter':
-            df = df.drop(['replicate'], axis=1)
+        if 'replicate' in dataframe and plot_type == 'scatter':
+            dataframe = dataframe.drop(['replicate'], axis=1)
 
         # kwargs will equal various options that should be passed to various plotly update functions
         # keys for kwargs: 'annotations', 'coloraxes', 'layout', 'traces', 'xaxes', 'yaxes'
@@ -433,7 +433,7 @@ class PlotlyData(Resource):
         # Create plot
         try:
             fig = generate_plot(
-                df,
+                dataframe,
                 x=x_axis,
                 y=y_axis,
                 z=z_axis,
