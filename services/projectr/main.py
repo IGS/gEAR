@@ -3,7 +3,7 @@ import sys
 from io import StringIO
 
 import pandas as pd
-from flask import Flask, abort, jsonify, request, Response
+from flask import Flask, Response, abort, jsonify, request
 
 cloud_logging = False
 try:
@@ -116,6 +116,7 @@ def index() -> Response:
     write_entry("projectr", "DEBUG", "Dataset ID: {}".format(dataset_id))
     write_entry("projectr", "DEBUG", "Algorithm: {}".format(algorithm))
     write_entry("projectr", "DEBUG", "Full output: {}".format(full_output))
+
 
     # pd.read_json gives a FutureWarning, and suggest to wrap the json in StringIO.  Needed for pandas 2.x
     target = StringIO(target)
