@@ -68,7 +68,7 @@ class TileGrid {
                 noDatasets.classList.add("no-displays", "notification", "is-warning", "has-text-centered", "p-2", "m-2", "has-text-weight-bold");
                 noDatasets.style.gridColumn = "1 / 12";
                 noDatasets.style.height = "50px";
-                noDatasets.textContent = "This shared dataset for this shared ID cannot be found or has been deleted.";
+                noDatasets.textContent = "The dataset for this shared ID cannot be found or has been deleted.";
                 selectorElt.append(noDatasets);
                 return;
             }
