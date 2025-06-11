@@ -16,7 +16,6 @@ document.querySelector("#dropdown-pattern-lists > button.dropdown-trigger").addE
     // Close all other dropdowns
     const dropdowns = document.querySelectorAll('.dropdown.is-active');
     dropdowns.forEach((dropdown) => {
-        console.log(`Closing dropdown: ${dropdown}`);
         if (dropdown !== item.closest('.dropdown')) {
             dropdown.classList.remove('is-active');
         }
