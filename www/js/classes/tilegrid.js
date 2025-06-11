@@ -55,7 +55,7 @@ class TileGrid {
         selectorElt.replaceChildren();
 
         if (this.type === "dataset") {
-            if (!(this.datasets || this.datasets.length)) {
+            if (!(this.datasets?.length)) {
                 console.error("No datasets found.");
                 return;
             }
