@@ -54,9 +54,22 @@ class TileGrid {
         const selectorElt = document.querySelector(selector);
         selectorElt.replaceChildren();
 
+        // clear any no-displays message
+        const noDisplaysElt = selectorElt.querySelector(".no-displays");
+        if (noDisplaysElt) {
+            noDisplaysElt.remove();
+        }
+
         if (this.type === "dataset") {
             if (!(this.datasets?.length)) {
                 console.error("No datasets found.");
+                // Create notification element to say no datasets found
+                const noDatasets = document.createElement("div");
+                noDatasets.classList.add("no-displays", "notification", "is-warning", "has-text-centered", "p-2", "m-2", "has-text-weight-bold");
+                noDatasets.style.gridColumn = "1 / 12";
+                noDatasets.style.height = "50px";
+                noDatasets.textContent = "This shared dataset for this shared ID cannot be found or has been deleted.";
+                selectorElt.append(noDatasets);
                 return;
             }
 
@@ -70,16 +83,12 @@ class TileGrid {
 
         const layout = isMulti ? this.layout.multi : this.layout.single;
 
-        // clear any no-displays message
-        const noDisplaysElt = selectorElt.querySelector(".no-displays");
-        if (noDisplaysElt) {
-            noDisplaysElt.remove();
-        }
-        if (!layout || layout.length === 0) {
+        if (!(layout?.length)) {
             // create element to say this dataset collection has no saved displays.
             const noDisplays = document.createElement("div");
-            noDisplays.classList.add("no-displays", "notification", "is-warning", "has-text-centered");
-            noDisplays.style.gridColumn = "1 / -1";
+            noDisplays.classList.add("no-displays", "notification", "is-warning", "has-text-centered", "p-2", "m-2", "has-text-weight-bold");
+            noDisplays.style.gridColumn = "1 / 12";
+            noDisplays.style.height = "50px";
             const keyword = isMulti ? "multi" : "single";
             noDisplays.textContent = `No ${keyword}-gene displays were saved for this dataset collection. Add some in the Dataset Explorer.`;
             selectorElt.append(noDisplays);
