@@ -13,6 +13,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add event listener to dropdown trigger
     document.querySelector("#dropdown-dc > button.dropdown-trigger").addEventListener("click", (event) => {
         const item = event.currentTarget;
+        // Close all other dropdowns
+        const dropdowns = document.querySelectorAll('.dropdown.is-active');
+        dropdowns.forEach((dropdown) => {
+            if (dropdown !== item.closest('.dropdown')) {
+                dropdown.classList.remove('is-active');
+            }
+        });
         item.closest(".dropdown").classList.toggle('is-active');
     });
 

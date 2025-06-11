@@ -13,6 +13,14 @@ let selectedPattern = {shareId: null, label: null, gctype: null, organismId: nul
 // Add event listener to dropdown trigger
 document.querySelector("#dropdown-pattern-lists > button.dropdown-trigger").addEventListener("click", (event) => {
     const item = event.currentTarget;
+    // Close all other dropdowns
+    const dropdowns = document.querySelectorAll('.dropdown.is-active');
+    dropdowns.forEach((dropdown) => {
+        console.log(`Closing dropdown: ${dropdown}`);
+        if (dropdown !== item.closest('.dropdown')) {
+            dropdown.classList.remove('is-active');
+        }
+    });
     item.closest(".dropdown").classList.toggle('is-active');
 });
 
