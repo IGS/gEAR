@@ -46,7 +46,7 @@ ANNOTATION_TYPE = "ensembl"  # NOTE: This will change in the future to be varied
 
 # limit of asynchronous tasks that can happen at a time
 # I am setting this slightly under the "MaxKeepAliveRequests" in apache.conf
-SEMAPHORE_LIMIT = 50
+CONCURRENT_REQUEST_LIMIT = 50
 
 """
 projections json format - one in each "projections/by_dataset/<dataset_id> subdirectory
@@ -241,32 +241,9 @@ def chunk_dataframe(df: pd.DataFrame, chunk_size: int, fh: TextIO):
     for idx, index_slice in enumerate(index_slices):
         yield df.iloc[:, list(index_slice)]
 
-def limited_as_completed(coros, limit: int):
-    """A version of asyncio.as_completed that takes a generator of coroutines instead of a list."""
-    # Source: https://www.artificialworlds.net/blog/2017/05/31/python-3-large-numbers-of-tasks-with-limited-concurrency/
-    # Uses far less memory than the list version (asyncio.as_completed or asyncio.gather)
-    from itertools import islice
+import asyncio
 
-    futures = [asyncio.ensure_future(c) for c in islice(coros, 0, limit)]
-
-    async def first_to_finish():
-        while True:
-            await asyncio.sleep(0)
-            for f in futures:
-                if f.done():
-                    futures.remove(f)
-                    try:
-                        newf = next(coros)
-                        futures.append(asyncio.ensure_future(newf))
-                    except StopIteration:
-                        pass
-                    return f.result()
-
-    while futures:
-        yield first_to_finish()
-
-
-async def fetch_all(
+async def fetch_all_queue(
     target_df: pd.DataFrame,
     loading_df: pd.DataFrame,
     algorithm: str,
@@ -275,38 +252,64 @@ async def fetch_all(
     dataset_id: str,
     chunk_size: int,
     fh: TextIO,
+    concurrency: int = CONCURRENT_REQUEST_LIMIT,
 ) -> list[dict]:
-    """Create coroutine tasks out of all chunked projection cloud run service POST requests."""
+    """
+    Asynchronously processes a target DataFrame in chunks, sending each chunk along with loading data to a remote service using retry logic, and collects the results.
+    Uses an asyncio.Queue to buffer coroutines and a pool of workers to process them.
+    """
+
+    loadings_json = loading_df.to_json(orient="split")
+    results = []
+    queue = asyncio.Queue(maxsize=concurrency * 2)
+
 
     async with aiohttp.ClientSession() as client:
-        # Create coroutines to be executed.
-        loadings_json = loading_df.to_json(orient="split")
-
-        # Give the aiohttp client a retry option
-        retry_options = ExponentialRetry(attempts=3, start_timeout=0.5, max_timeout=0, statuses={500, 502, 503, 504})
+        retry_options = ExponentialRetry(
+            attempts=3, start_timeout=0.5, max_timeout=0, statuses={500, 502, 503, 504}
+        )
         async with RetryClient(client_session=client, retry_options=retry_options, raise_for_status=True) as retry_client:
-
-        # NOTE: For some reason I think printing anything inside the "coros" generator will break the client.post
-
-            coros = (
-                fetch_one(
-                    retry_client,
-                    {
+            # Producer: puts coroutines into the queue
+            async def producer():
+                for chunk_df in chunk_dataframe(target_df, chunk_size, fh):
+                    payload = {
                         "target": chunk_df.to_json(orient="split"),
                         "loadings": loadings_json,
                         "algorithm": algorithm,
                         "full_output": full_output,
-                        "genecart_id": genecart_id,  # This helps in identifying which combinations are going through
+                        "genecart_id": genecart_id,
                         "dataset_id": dataset_id,
-                    },
-                    fh
-                )
-                for chunk_df in chunk_dataframe(target_df, chunk_size, fh)
-            )
+                    }
+                    await queue.put((retry_client, payload, fh))
+                # Signal to workers that production is done
+                for _ in range(concurrency):
+                    await queue.put(None)
 
-            # This loop processes results as they come in.
-            return [await res for res in limited_as_completed(coros, SEMAPHORE_LIMIT)]
+            # Worker: gets tasks from the queue and awaits them
+            async def worker():
+                while True:
+                    item = await queue.get()
+                    if item is None:
+                        queue.task_done()
+                        break
+                    retry_client, payload, fh = item
+                    try:
+                        result = await fetch_one(retry_client, payload, fh)
+                        results.append(result)
+                    except Exception as e:
+                        print(f"Worker error: {e}", file=fh)
+                    queue.task_done()
 
+            # Start producer and workers
+            producer_task = asyncio.create_task(producer())
+            worker_tasks = [asyncio.create_task(worker()) for _ in range(concurrency)]
+
+            await producer_task
+            await queue.join()
+            for w in worker_tasks:
+                await w
+
+    return results
 
 async def fetch_one(client: RetryClient, payload: dict, fh: TextIO) -> dict:
     """
@@ -326,15 +329,21 @@ async def fetch_one(client: RetryClient, payload: dict, fh: TextIO) -> dict:
     # (semaphore) https://stackoverflow.com/questions/40836800/python-asyncio-semaphore-in-async-await-function
 
     try:
+        timeout = aiohttp.ClientTimeout(total=500)
         async with client.post(
-            url=endpoint, json=payload, headers=headers
+            url=endpoint, json=payload, headers=headers, timeout=timeout
         ) as response:
             return await response.json()
     except aiohttp.ClientResponseError as e:
         print(f"ERROR: POST request failed with status code {e.status}", file=fh)
         print(f"ERROR: Response body: {e.message}", file=fh)
         raise
-
+    except aiohttp.ClientError as e:
+        print(f"ERROR: Client error occurred: {str(e)}", file=fh)
+        raise
+    except asyncio.exceptions.TimeoutError:
+        print("ERROR: POST request timed out", file=fh)
+        raise
 
 @catch_memory_error()
 def projectr_callback(
@@ -621,7 +630,7 @@ def projectr_callback(
 
         try:
             results = loop.run_until_complete(
-                fetch_all(
+                fetch_all_queue(
                     target_df,
                     loading_df,
                     algorithm,
@@ -630,9 +639,19 @@ def projectr_callback(
                     dataset_id,
                     chunk_size,
                     fh,
+                    concurrency=CONCURRENT_REQUEST_LIMIT,
                 )
             )
             print("INFO: All fetch tasks have completed", file=fh)
+        except asyncio.TimeoutError:
+            remove_lock_file(lock_fh, lockfile)
+            return {
+                "success": -1,
+                "message": "Timeout while waiting for projectR to complete.",
+                "num_common_genes": intersection_size,
+                "num_genecart_genes": num_loading_genes,
+                "num_dataset_genes": num_target_genes,
+            }
         except Exception as e:
             print(str(e), file=fh)
             # Raises as soon as one "gather" task has an exception
