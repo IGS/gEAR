@@ -332,6 +332,13 @@ def _update_axis_titles(
 
 def _update_by_plot_type(fig, plot_type, force_overlay=False, use_jitter=False):
     """Updates specific to certain plot types.  Updates 'fig' inplace."""
+
+    # It seems that plotly will determine axis type based on first value's type
+    # So if it reads 0, it will assume a linear axis.
+    # For some plot types like violin, we need to force the axis type to categorical
+    if plot_type in ["violin", "bar", "box", "strip"]:
+        fig.update_xaxes(type="category")
+
     if plot_type == "violin":
         fig.update_traces(
             spanmode="hard",  # Do not extend violin tails beyond the min/max values
@@ -577,7 +584,7 @@ def generate_plot(
             # Groupby will not include combinations with missing data.  This can result in missing traces for a group
             grouped = df.groupby(priority_groups, observed=False)
             names_in_legend = {}
-            # Name is a tuple of groupings, or a string if grouped by only 1 dataseries
+            # Name is a tuple of groupings, as priority_groups was passed in as a
             # Group is the 'groupby' dataframe
             for name, group in grouped:
                 for k, v in {"x": x, "y": y, "text": text_name}.items():
@@ -593,7 +600,7 @@ def generate_plot(
                 # Each individual trace is a separate scalegroup to ensure plots are scaled correctly for violin plots
                 new_plotting_args["scalegroup"] = name
                 if isinstance(name, tuple):
-                    new_plotting_args["scalegroup"] = "_".join(str(name))
+                    new_plotting_args["scalegroup"] = "_".join(name)
 
                 # If color dataseries is present, add some special configurations
                 if color_name:
