@@ -333,9 +333,8 @@ def _update_axis_titles(
 def _update_by_plot_type(fig, plot_type, force_overlay=False, use_jitter=False):
     """Updates specific to certain plot types.  Updates 'fig' inplace."""
 
-    # It seems that plotly will determine axis type based on first value's type
-    # So if it reads 0, it will assume a linear axis.
     # For some plot types like violin, we need to force the axis type to categorical
+    # in case plotly's "rules" determine it should be a linear axis.
     if plot_type in ["violin", "bar", "box", "strip"]:
         fig.update_xaxes(type="category")
 
