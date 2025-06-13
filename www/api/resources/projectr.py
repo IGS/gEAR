@@ -47,6 +47,8 @@ ANNOTATION_TYPE = "ensembl"  # NOTE: This will change in the future to be varied
 # limit of asynchronous tasks that can happen at a time
 # I am setting this slightly under the "MaxKeepAliveRequests" in apache.conf
 CONCURRENT_REQUEST_LIMIT = 50
+# timeout for the POST request to projectR service
+REQUEST_TIMEOUT = 500
 
 """
 projections json format - one in each "projections/by_dataset/<dataset_id> subdirectory
@@ -261,7 +263,6 @@ async def fetch_all_queue(
     results = []
     queue = asyncio.Queue(maxsize=concurrency * 2)
 
-
     async with aiohttp.ClientSession() as client:
         retry_options = ExponentialRetry(
             attempts=3, start_timeout=0.5, max_timeout=0, statuses={500, 502, 503, 504}
@@ -294,9 +295,13 @@ async def fetch_all_queue(
                     try:
                         result = await fetch_one(retry_client, payload, fh)
                         results.append(result)
-                    except Exception as e:
-                        print(f"Worker error: {e}", file=fh)
-                    queue.task_done()
+                    except asyncio.TimeoutError:
+                        print("ERROR: Request timed out, requeuing item", file=fh)
+                        await queue.put(item)  # Requeue the item if it times out
+                    except Exception:
+                        raise
+                    finally:
+                        queue.task_done()
 
             # Start producer and workers
             producer_task = asyncio.create_task(producer())
@@ -304,8 +309,12 @@ async def fetch_all_queue(
 
             await producer_task
             await queue.join()
-            for w in worker_tasks:
-                await w
+            try:
+                for w in worker_tasks:
+                    await w
+            except Exception as e:
+                print(f"Error in worker tasks: {e}", file=fh)
+                raise
 
     return results
 
@@ -327,7 +336,7 @@ async def fetch_one(client: RetryClient, payload: dict, fh: TextIO) -> dict:
     # (semaphore) https://stackoverflow.com/questions/40836800/python-asyncio-semaphore-in-async-await-function
 
     try:
-        timeout = aiohttp.ClientTimeout(total=500)
+        timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
         async with client.post(
             url=endpoint, json=payload, headers=headers, timeout=timeout
         ) as response:
@@ -339,8 +348,8 @@ async def fetch_one(client: RetryClient, payload: dict, fh: TextIO) -> dict:
     except aiohttp.ClientError as e:
         print(f"ERROR: Client error occurred: {str(e)}", file=fh)
         raise
-    except asyncio.exceptions.TimeoutError:
-        print("ERROR: POST request timed out", file=fh)
+    except asyncio.TimeoutError:
+        #print("ERROR: POST request timed out", file=fh)
         raise
 
 @catch_memory_error()
