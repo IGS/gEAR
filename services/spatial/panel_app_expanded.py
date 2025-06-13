@@ -615,7 +615,7 @@ class SpatialPanel(pn.viewable.Viewer):
         self.min_genes = self.settings.min_genes # type: ignore
         self.projection_id = self.settings.projection_id # type: ignore
 
-        self.nosave = self.settings.nosave # type: ignore
+        self.nosave: bool = self.settings.nosave # type: ignore
 
         self.platform = None # Will be set in prep_sdata()
 
