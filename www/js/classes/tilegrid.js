@@ -1807,6 +1807,11 @@ class DatasetTile {
             urlParams.append("projection_id", this.spatial.projection_id);
         }
 
+        // If not logged in, then do not allow saving the display
+        if (!apiCallsMixin.sessionId && this.isZoomed) {
+            urlParams.append("nosave", true);
+        }
+
         const endpoint = this.isZoomed ? "panel_app_expanded" : "panel_app"
         const url = `/panel/ws/${endpoint}?${urlParams.toString()}`;
 

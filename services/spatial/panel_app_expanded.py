@@ -54,6 +54,10 @@ class ExpandedSettings(Settings):
         doc="If true, make this the default display.", default=False
     )
 
+    nosave = param.Boolean(
+        doc="If true, do not show the contents related to saving.", default=False
+    )
+
 
 class SpatialNormalSubplot(SpatialFigure):
     """
@@ -602,6 +606,7 @@ class SpatialPanel(pn.viewable.Viewer):
                     "save": "save",
                     "display_name": "display_name",
                     "make_default": "make_default",
+                    "nosave": "nosave",
                 },
             )
 
@@ -609,6 +614,8 @@ class SpatialPanel(pn.viewable.Viewer):
         self.gene_symbol = self.settings.gene_symbol # type: ignore
         self.min_genes = self.settings.min_genes # type: ignore
         self.projection_id = self.settings.projection_id # type: ignore
+
+        self.nosave = self.settings.nosave # type: ignore
 
         self.platform = None # Will be set in prep_sdata()
 
@@ -625,12 +632,15 @@ class SpatialPanel(pn.viewable.Viewer):
             name="Display name",
             placeholder="Name this display to save...",
             width=250,
+            visible=not self.nosave,
         )
         self.save_button = pn.widgets.Button(
             name="Save settings", button_type="primary", width=100, align="end"
+            , visible=not self.nosave
         )
         self.make_default = pn.widgets.Checkbox(
             name="Make this the default display", value=False
+            , visible=not self.nosave
         )
 
         self.normal_fig = dict(data=[], layout={})
