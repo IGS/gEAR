@@ -241,8 +241,6 @@ def chunk_dataframe(df: pd.DataFrame, chunk_size: int, fh: TextIO):
     for idx, index_slice in enumerate(index_slices):
         yield df.iloc[:, list(index_slice)]
 
-import asyncio
-
 async def fetch_all_queue(
     target_df: pd.DataFrame,
     loading_df: pd.DataFrame,
