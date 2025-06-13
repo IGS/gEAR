@@ -95,6 +95,48 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+document.getElementById("onboarding-btn").addEventListener("click", (event) => {
+    // Start the onboarding process
+    // NOTE: Click out of the intro will exit the intro
+    introJs().setOptions({
+    steps: [{
+        intro: "Welcome to the main page."
+    }, {
+        element: document.querySelector("aside.menu"),
+        intro: "Here you can navigate to different analysis tools as well as find or manage your gene lists and datasets.",
+    }, {
+        intro: "To perform a basic search, a collection of datasets, as well as one or more genes are necessary."
+    }, {
+        intro: "Let's start with searching for a gene in a collection of datasets. <br/><br/> When searching for genes, you can either select a gene list or enter genes manually.",
+    }, {
+        element: document.getElementById("genes-manually-entered"),
+        intro: "You can enter genes manually here. You can enter multiple genes separated by commas or spaces.",
+    }, {
+        element: document.getElementById("dropdown-gene-lists"),
+        intro: "You can also optionally select a gene list from the dropdown. <br/><br/> These genes will be added to the manually entered genes with the genes in the list.",
+    }, {
+        element: document.querySelector('#gene-search-exact-match').parentElement,
+        intro: "You can choose to search for exact matches of the gene symbols. <br/><br/> If this is not checked, the search will match any gene with this text.",
+    }, {
+        element: document.querySelector('input[name="single-multi"][value="multi"]').parentElement,
+        intro: "Currently plots specific to single genes will be shown. <br/><br/> If 'Multi-gene Display' is selected, plots that use all searched genes (such as heatmaps) will be shown instead.",
+    }, {
+        element: document.getElementById("dropdown-dc"),
+        intro: "Next, select a dataset collection to search in. <br/><br/> These collections contain datasets under a certain theme, such as from a specific region, organism, or from a research paper",
+    }, {
+        element: document.getElementById("submit-expression-search"),
+        intro: "Once you have selected your genes and dataset collections, click here to search for expression data.",
+    }, {
+        element: document.getElementById("user-history-table"),
+        intro: "Finally, you can view your user history here. This will show you your recent searches and actions."
+    }
+
+
+    ]
+    }).start();
+});
+
+
 const populateUserHistoryTable = async () => {
     const numEntries = 5;
 
