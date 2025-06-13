@@ -32,7 +32,7 @@ EXPOSE 5006
 
 # Run the web service on container startup.
 # NOTE: num-threads is set in the app, and will throw an error if also set here
-CMD ["panel", "serve", "panel_app.py", "--address", "0.0.0.0", "--port", "5006", "--allow-websocket-origin", "*", "--global-loading-spinner"]
+CMD ["panel", "serve", "panel_app.py", "panel_app_expanded.py", "--address", "0.0.0.0", "--port", "5006", "--allow-websocket-origin", "*", "--global-loading-spinner"]
 
 # For the future.  Is added to systemd service file
 #"--num-procs", "4",
