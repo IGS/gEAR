@@ -60,6 +60,38 @@ class TileGrid {
             noDisplaysElt.remove();
         }
 
+        function getTotalAncestorHorizontalPadding(element) {
+            let totalPadding = 0;
+            let current = element.parentElement;
+            while (current && current !== document.body) {
+                const style = getComputedStyle(current);
+                totalPadding += parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+                current = current.parentElement;
+            }
+            return totalPadding;
+        }
+
+
+        // setup grid-auto-rows and grid-auto-columns based on the width of the parent element(s)
+        const ancestorPaddingWidth = getTotalAncestorHorizontalPadding(selectorElt);
+
+        const parentElt = selectorElt.parentElement
+        const parentWidth = parentElt.offsetWidth;
+
+        selectorElt.style.display = "grid";
+        selectorElt.style.gridGap = `${0.5}em`; // 8px
+        const gridGap = parseFloat(selectorElt.style.gridGap);
+        const borderWidth = parseFloat(getComputedStyle(selectorElt).borderWidth) || 0; // Get border width, default to 0 if not set
+        // usable width = grid width - 2*border width - ancestor-paddings - grid-gap
+        // NOTE: Not sure why it works better with ancestor padding x 2 instead of just ancestor padding.
+        const usableWidth = parentWidth - (2 * (borderWidth + ancestorPaddingWidth)) - gridGap;
+        // 12 columns
+        selectorElt.style.gridAutoColumns = `${usableWidth / 12}px`;
+        const columnWidth = parseFloat(selectorElt.style.gridAutoColumns); // Column width in pixels
+        // Row height should be 1/4th of the column width
+        selectorElt.style.gridAutoRows = `${columnWidth * 4}px`;
+
+
         if (this.type === "dataset") {
             if (!(this.datasets?.length)) {
                 console.error("No datasets found.");

@@ -57,14 +57,6 @@ ul#go-terms li {
     border-bottom: 1px solid #e9eef1;
 }
 
-#result-panel-grid {
-    display: grid;
-    grid-auto-rows: 360px;
-    grid-auto-columns: 90px; /* Explicitly set column width. Internally we limit to 12 columns */
-    grid-gap: 0.5em;
-    width: 1168px;  /* grid width + 2*border width + grid-gap */
-}
-
 /* tSNE plots */
 .js-tile .card-image img {
     width: fit-content;
