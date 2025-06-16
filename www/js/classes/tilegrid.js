@@ -71,26 +71,41 @@ class TileGrid {
             return totalPadding;
         }
 
+        function getTotalAncestorHorizontalMargin(element) {
+            let totalMargin = 0;
+            let current = element.parentElement;
+            while (current && current !== document.body) {
+                const style = getComputedStyle(current);
+                totalMargin += parseFloat(style.marginLeft) + parseFloat(style.marginRight);
+                current = current.parentElement;
+            }
+            return totalMargin;
+        }
+
 
         // setup grid-auto-rows and grid-auto-columns based on the width of the parent element(s)
         const ancestorPaddingWidth = getTotalAncestorHorizontalPadding(selectorElt);
+        const ancestorMarginWidth = getTotalAncestorHorizontalMargin(selectorElt);
 
         const parentElt = selectorElt.parentElement
         const parentWidth = parentElt.offsetWidth;
 
+        // Got some oddness when adding these to the CSS... probably because of race conditions with the CSS loading.
         selectorElt.style.display = "grid";
         selectorElt.style.gridGap = `${0.5}em`; // 8px
+        selectorElt.style.width = "max-content"; // This is needed to make the grid auto-size to the content
+
         const gridGap = parseFloat(selectorElt.style.gridGap);
         const borderWidth = parseFloat(getComputedStyle(selectorElt).borderWidth) || 0; // Get border width, default to 0 if not set
         // usable width = grid width - 2*border width - ancestor-paddings - grid-gap
         // NOTE: Not sure why it works better with ancestor padding x 2 instead of just ancestor padding.
-        const usableWidth = parentWidth - (2 * (borderWidth + ancestorPaddingWidth)) - gridGap;
+        const usableWidth = parentWidth - (2 * (borderWidth + ancestorPaddingWidth + ancestorMarginWidth)) - gridGap;
+        selectorElt.style.minWidth = `${usableWidth}px`;
         // 12 columns
         selectorElt.style.gridAutoColumns = `${usableWidth / 12}px`;
         const columnWidth = parseFloat(selectorElt.style.gridAutoColumns); // Column width in pixels
         // Row height should be 1/4th of the column width
         selectorElt.style.gridAutoRows = `${columnWidth * 4}px`;
-
 
         if (this.type === "dataset") {
             if (!(this.datasets?.length)) {
