@@ -280,7 +280,7 @@ async def fetch_all_queue(
                         "dataset_id": dataset_id,
                     }
                     await queue.put((retry_client, payload, fh))
-                # Signal to workers that production is done
+                # Signal to workers that production is done (sentinel value)
                 for _ in range(concurrency):
                     await queue.put(None)
 
@@ -295,9 +295,6 @@ async def fetch_all_queue(
                     try:
                         result = await fetch_one(retry_client, payload, fh)
                         results.append(result)
-                    except asyncio.TimeoutError:
-                        print("ERROR: Request timed out, requeuing item", file=fh)
-                        await queue.put(item)  # Requeue the item if it times out
                     except Exception:
                         raise
                     finally:
