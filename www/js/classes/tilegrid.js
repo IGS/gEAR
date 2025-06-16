@@ -1819,6 +1819,15 @@ class DatasetTile {
             const cardImage = tileElement.querySelector('.card-image');
             cardImage.replaceChildren();
 
+            // Clear all references to the previous iframe (to help with memory leaks)
+            const existingIframe = cardImage.querySelector("iframe");
+            if (existingIframe) {
+                existingIframe.src = "about:blank";
+                // Remove any event listeners or timers
+                clearInterval(existingIframe.pollInterval)
+                existingIframe.remove();
+            }
+
             const iframe = document.createElement("iframe");
             // srcDoc html requires Panel static files to be served from the same domain, so use src instead
             iframe.src = url;
