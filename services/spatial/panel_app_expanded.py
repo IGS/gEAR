@@ -875,7 +875,7 @@ class SpatialPanel(pn.viewable.Viewer):
         lib_path = gear_root.joinpath("lib")
         sys.path.append(str(lib_path))
 
-        from gear.spatial_handler import SPATIALTYPE2CLASS
+        from gear.spatialhandler import SPATIALTYPE2CLASS
 
         # Ensure the spatial data type is supported
         if self.platform not in SPATIALTYPE2CLASS.keys():

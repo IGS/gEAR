@@ -24,7 +24,7 @@ Note that the python path and that the owner ID for the dataset will both be var
 
 ## File prep
 
-Our data format type of choice for spatial data is ZARR, which is a data storage specification for storage of large N-dimensional typed arrays (tensors). Spatial data can come from a variety of platforms, and we have utilities in `<gear-path>/lib/gear/spatial_handler.py` to harmonize some of these by converting into a .zarr file. This module also has a dictionary that maps supported formats to the right uploader class, and this can be used to see what platforms are supported.
+Our data format type of choice for spatial data is ZARR, which is a data storage specification for storage of large N-dimensional typed arrays (tensors). Spatial data can come from a variety of platforms, and we have utilities in `<gear-path>/lib/gear/spatialhandler.py` to harmonize some of these by converting into a .zarr file. This module also has a dictionary that maps supported formats to the right uploader class, and this can be used to see what platforms are supported.
 
 If the dataset is already in .zarr format (converted previously and copying to a new server, for instance), you can just move the dataset by doing `mv <dataset>.zarr <gear-path>/www/datasets/spatial/<dataset-id>.zarr` where the dataset_id is the uuid4 you got from uploading the metadata.
 
@@ -42,7 +42,7 @@ For this example, you need the organism_id for the correct organism, found in th
 
 ### Uploading the file
 
-Before uploading the spatial dataset, ensure that it is in a tarball format and it has the requisitie files.  You can check the documentation for each class in `<gear-path>/lib/gear/spatial_handler.py` to learn what files are required at minimum and where they should be in the tarball. In general though, the output contents and structure for the platform should be preserved within the tarball.
+Before uploading the spatial dataset, ensure that it is in a tarball format and it has the requisitie files.  You can check the documentation for each class in `<gear-path>/lib/gear/spatialhandler.py` to learn what files are required at minimum and where they should be in the tarball. In general though, the output contents and structure for the platform should be preserved within the tarball.
 
 This it the command to convert and upload the spatial dataset to the correct location in gEAR.:
 

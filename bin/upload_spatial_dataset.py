@@ -18,7 +18,7 @@ from pathlib import Path
 
 lib_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'lib'))
 sys.path.append(lib_path)
-from gear import spatial_handler
+from gear import spatialhandler
 
 DEST_DIRPATH = Path(__file__).resolve().parent.parent / "www" / "datasets" / "spatial"
 OUTPUT_SUFFIX = ".zarr"
@@ -35,13 +35,13 @@ def main():
     args = parser.parse_args()
 
     # Ensure the spatial data type is supported
-    if args.type not in spatial_handler.SPATIALTYPE2CLASS.keys():
+    if args.type not in spatialhandler.SPATIALTYPE2CLASS.keys():
         print("Invalid or unsupported spatial data type")
-        print("Supported types: {0}".format(spatial_handler.SPATIALTYPE2CLASS.keys()))
+        print("Supported types: {0}".format(spatialhandler.SPATIALTYPE2CLASS.keys()))
         sys.exit(1)
     print("Processing spatial data of type: {0}".format(args.type))
     print("Input file: {0}".format(args.input_file))
-    sp_class = spatial_handler.SPATIALTYPE2CLASS[args.type]()
+    sp_class = spatialhandler.SPATIALTYPE2CLASS[args.type]()
 
     sp_class._read_file(args.input_file, organism_id=args.organism_id, dataset_id=args.dataset_id)
 

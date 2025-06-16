@@ -71,13 +71,13 @@ def get_spatial_adata(analysis_id: str | None, dataset_id: str, session_id: str,
     sdata = ana.get_sdata()
     platform = ana.determine_platform(sdata)
 
-    from gear import spatial_handler
+    from gear import spatialhandler
 
     # Ensure the spatial data type is supported
-    if not platform or platform not in spatial_handler.SPATIALTYPE2CLASS.keys():
+    if not platform or platform not in spatialhandler.SPATIALTYPE2CLASS.keys():
         raise ValueError("Invalid or unsupported spatial data type {0}".format(platform))
 
-    spatial_obj = spatial_handler.SPATIALTYPE2CLASS[platform]()
+    spatial_obj = spatialhandler.SPATIALTYPE2CLASS[platform]()
     spatial_obj.sdata = sdata
 
     # Filter by bounding box (mostly for images)
