@@ -308,6 +308,9 @@ class Metadata:
         default_data_format = 'raw'
         has_h5ad = 1
 
+        if dtype == "spatial":
+            has_h5ad = 0
+
         pubmed_id = str( get_value_from_df(df, 'pubmed_id') ).strip()
 
         # Users entering multiple pubmed IDs will cause failure.  Take the first

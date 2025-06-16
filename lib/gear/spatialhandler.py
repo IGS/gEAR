@@ -236,7 +236,7 @@ class CurioHandler(SpatialHandler):
         with tarfile.open(filepath) as tf:
             for entry in tf:
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
-                if entry.name.startswith("._") or entry.name.startswith(".DS_Store"):
+                if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
                 # Extract file into tmp dir
                 filepath = "{0}/{1}".format(tmp_dir, entry.name)
@@ -360,7 +360,7 @@ class GeoMxHandler(SpatialHandler):
         with tarfile.open(filepath) as tf:
             for entry in tf:
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
-                if entry.name.startswith("._") or entry.name.startswith(".DS_Store"):
+                if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
                 # Extract file into tmp dir
                 filepath = "{0}/{1}".format(tmp_dir, entry.name)
@@ -495,7 +495,7 @@ class VisiumHandler(SpatialHandler):
         with tarfile.open(filepath) as tf:
             for entry in tf:
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
-                if entry.name.startswith("._") or entry.name.startswith(".DS_Store"):
+                if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
                 # Extract file into tmp dir
                 filepath = "{0}/{1}".format(tmp_dir, entry.name)
@@ -512,7 +512,7 @@ class VisiumHandler(SpatialHandler):
             sdata[self.NORMALIZED_TABLE_NAME].var["gene_symbol"] = sdata[self.NORMALIZED_TABLE_NAME].var.index
 
             # set the index to the ensembl id (gene_ids)
-            sdata[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids", inplace=True)
+            sdata = sdata[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids")
 
             self.sdata = sdata
             self.originalFile = filepath
@@ -585,7 +585,7 @@ class VisiumHDHandler(SpatialHandler):
         with tarfile.open(filepath) as tf:
             for entry in tf:
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
-                if entry.name.startswith("._") or entry.name.startswith(".DS_Store"):
+                if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
 
                 # IF directory has "square_" but not "square_008um", skip
@@ -621,7 +621,7 @@ class VisiumHDHandler(SpatialHandler):
                                    , dataset_id="spatialdata"   # Provide a name to standarize downstream usage
                                    , bin_size=8
                                    , filtered_counts_file=True
-                                   , load_all_images=False
+                                   , load_all_images=False  # CytAssist image is not helpful for us.
                                    , fullres_image_file=None
                                    , bins_as_squares=True
                                    )
@@ -629,7 +629,7 @@ class VisiumHDHandler(SpatialHandler):
             # add clustering information to the vis_sdata.table.obs dataframe
             clustering = pd.read_csv(clustering_csv_path)
             # make barcode as index
-            clustering.set_index('Barcode', inplace=True)
+            clustering = clustering.set_index('Barcode')
             sdata[self.table_name].obs['clusters'] = clustering['Cluster'].astype('category')
 
             # To get the adata equivalent, look at sdata.tables["table"]
@@ -712,7 +712,7 @@ class XeniumHandler(SpatialHandler):
         with tarfile.open(filepath) as tf:
             for entry in tf:
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
-                if entry.name.startswith("._") or entry.name.startswith(".DS_Store"):
+                if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
                 # Extract file into tmp dir
                 filepath = "{0}/{1}".format(tmp_dir, entry.name)
