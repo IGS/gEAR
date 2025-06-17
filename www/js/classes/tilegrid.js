@@ -97,10 +97,12 @@ class TileGrid {
             columnWidth = MIN_COLUMN_WIDTH;
         }
 
+        const rowWidth = columnWidth * 4; // Row height should be 1/4th of the column width
+
         // 12 columns
         selectorElt.style.gridAutoColumns = `${columnWidth}px`;
         // Row height should be 1/4th of the column width
-        selectorElt.style.gridAutoRows = `${columnWidth * 4}px`;
+        selectorElt.style.gridAutoRows = `${rowWidth}px`;
 
 
 
@@ -148,7 +150,7 @@ class TileGrid {
                 console.warn(`Dataset with ID ${member.dataset_id} not found.`);
                 continue;
             }
-            const datasetTile = new DatasetTile(this, member, dataset, isMulti);
+            const datasetTile = new DatasetTile(this, member, dataset, isMulti, false);
             tiles.push(datasetTile);
         }
         this.tiles = tiles;
