@@ -11,6 +11,13 @@ html, body {
     padding: 0;
 }
 
+#main-layout-c, #main-c, #content-c {
+    width: 100%; /* ensure full width for the main layout and content */
+    box-sizing: border-box; /* include padding and border in element's total width */
+    min-width: 0; /* allow flex items to shrink */
+}
+
+
 /* Get rid of underlines on the tooltip elements */
 [data-tooltip] {
     border-bottom-width: 0 !important;

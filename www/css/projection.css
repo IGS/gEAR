@@ -17,7 +17,7 @@ div#results-main-c {
     margin-top: 50px;
 }
 
-#main-layout-c, #main-c, #content-c, #results-main-c, #annotation-and-grid-c {
+#results-main-c, #annotation-and-grid-c {
     width: 100%; /* ensure full width for the main layout and content */
     box-sizing: border-box; /* include padding and border in element's total width */
     min-width: 0; /* allow flex items to shrink */
