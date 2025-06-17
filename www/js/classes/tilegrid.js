@@ -104,9 +104,6 @@ class TileGrid {
         // Row height should be 1/4th of the column width
         selectorElt.style.gridAutoRows = `${rowWidth}px`;
 
-
-
-
         if (this.type === "dataset") {
             if (!(this.datasets?.length)) {
                 console.error("No datasets found.");
@@ -208,6 +205,7 @@ class TileGrid {
 
         selectorElt.style.gridTemplateColumns = `repeat(1, 1fr)`;
         selectorElt.style.gridTemplateRows = `repeat(1, fit-content)`;
+        selectorElt.style.width = "unset"; // This is needed to make the grid auto-size to the content
 
         // if zoomed, create new DatasetTile object with zoomed flag
         // SAdkins - I tried to use a "clone node and change ids" approach, but it was not working.
