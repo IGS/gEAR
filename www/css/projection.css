@@ -16,6 +16,23 @@ div#results-main-c {
     border-top: 1px solid rgb(220, 220, 220);
     margin-top: 50px;
 }
+
+#main-layout-c, #main-c, #content-c, #results-main-c, #annotation-and-grid-c {
+    width: 100%; /* ensure full width for the main layout and content */
+    box-sizing: border-box; /* include padding and border in element's total width */
+    min-width: 0; /* allow flex items to shrink */
+}
+
+#result-panel {
+    overflow-x: auto; /* allow horizontal scrolling if needed */
+    width: 100%;
+}
+
+#result-panel-grid {
+    min-width: 1168px;
+}
+
+
 div#result-panel-grid .card {
     /* https://github.com/jgthms/bulma/issues/218 */
     height: 100%;
