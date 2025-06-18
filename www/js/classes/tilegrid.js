@@ -1815,6 +1815,7 @@ class DatasetTile {
         const plotConfig = display.plotly_config;
         const {gene_symbol: geneSymbol} = plotConfig;
 
+
         // build spatial object from the plotly config
         // This spatial object will keep the current state as the user switches genes
         this.spatial = {
@@ -1823,7 +1824,7 @@ class DatasetTile {
             selection_x2: plotConfig.selection_x2,
             selection_y1: plotConfig.selection_y1,
             selection_y2: plotConfig.selection_y2,
-            projection_id: plotConfig.projection_id
+            projection_id: plotConfig.projection_id,
         };
 
         // build the URL for the spatial app
@@ -1851,6 +1852,15 @@ class DatasetTile {
         if (this.spatial.projection_id) {
             urlParams.append("projection_id", this.spatial.projection_id);
         }
+
+        // Adjust the spatial panel dimensions.
+        if (this.cardImgHeight) {
+            urlParams.append("height", this.cardImgHeight);
+        }
+        if (this.cardImgWidth) {
+            urlParams.append("width", this.cardImgWidth);
+        }
+
 
         // If not logged in, then do not allow saving the display
         if (!apiCallsMixin.sessionId && this.isZoomed) {
@@ -1997,6 +2007,9 @@ class DatasetTile {
             offsetHeight += cardExtras.offsetHeight;
         }
         cardImage.style.height = `calc(100% - ${offsetHeight}px)`;
+
+        this.cardImgHeight = cardImage.offsetHeight; // store the height for later use
+        this.cardImgWidth = cardImage.offsetWidth; // store the width for later use
 
     }
 }

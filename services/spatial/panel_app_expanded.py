@@ -629,6 +629,11 @@ class SpatialPanel(pn.viewable.Viewer):
         if self.settings.display_width and self.settings.display_width > 0: # type: ignore
             layout_width: int = self.settings.display_width # type: ignore
 
+        # When width is too short, things break down.
+        if layout_width < 1100:
+            layout_width = 1100
+            layout_height = 1520
+
         self.normal_fig = dict(data=[], layout={})
         self.zoom_fig = dict(data=[], layout={})
         self.umap_fig = dict(data=[], layout={})
@@ -708,8 +713,11 @@ class SpatialPanel(pn.viewable.Viewer):
             , visible=not self.nosave
         )
 
-        markdown_width = 700
+        markdown_width = 675
         spacer_width = markdown_width - min_slider_width    # Make default button should left-align with the above text input
+
+        if spacer_width < 0:
+            spacer_width = 100
 
         self.pre_layout = pn.Column(
             pn.Row(

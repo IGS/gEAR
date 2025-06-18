@@ -455,6 +455,11 @@ class SpatialPanel(pn.viewable.Viewer):
         if self.settings.display_width and self.settings.display_width > 0: # type: ignore
             layout_width: int = self.settings.display_width # type: ignore
 
+        # When width is too short, things break down.
+        if layout_width < 1100:
+            layout_width = 1100
+            layout_height = 312
+
         self.layout = pn.Column(pn.bind(self.init_data), width=layout_width)
 
         self.condensed_fig = dict(data=[], layout={})
@@ -464,7 +469,8 @@ class SpatialPanel(pn.viewable.Viewer):
             name="Feature", value=self.use_clusters, sizing_mode="fixed", margin=(10, 10)
         )
 
-        markdown_width = 700
+        markdown_width = 400    # Manually measured.
+        markdown_padding = 20  # Total left/right padding for the markdown pane
         self.condensed_intro = pn.pane.Markdown(
             "### Click the Expand icon in the top right corner to see all plots", width=markdown_width
         )
@@ -478,7 +484,10 @@ class SpatialPanel(pn.viewable.Viewer):
             width=switch_content_width
         )
 
-        spacer_width = layout_width - markdown_width - switch_content_width
+        spacer_width = layout_width - markdown_width - markdown_padding - switch_content_width
+        if spacer_width < 0:
+            spacer_width = 100
+
         self.condensed_pre = pn.Row(
             self.condensed_intro,
             pn.Spacer(width=spacer_width),
