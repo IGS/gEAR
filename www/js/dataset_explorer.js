@@ -2255,15 +2255,17 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
 
         // Add tag indicating plot type
         const displayType = displayElement.querySelector('.js-modal-display-type');
-        displayType.textContent = display.plot_type;
 
         const multiGeneDisplay = ["heatmap", "dotplot", "mg_violin", "volcano", "quadrant"];
 
         // Add color tags to displayType depending on plot type
         if (multiGeneDisplay.includes(display.plot_type)) {
             displayType.classList.add("is-danger");
+            displayType.textContent = `Multigene - ${display.plot_type}`;
+
         } else {
             displayType.classList.add("is-info");
+            displayType.textContent = ${display.plot_type};
         }
 
         // Determine number of times display is in current layout
