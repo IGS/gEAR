@@ -603,6 +603,8 @@ class SpatialPanel(pn.viewable.Viewer):
                     "selection_x2": "selection_x2",
                     "selection_y1": "selection_y1",
                     "selection_y2": "selection_y2",
+                    "display_height": "height",
+                    "display_width": "width",
                     "save": "save",
                     "display_name": "display_name",
                     "make_default": "make_default",
@@ -619,29 +621,13 @@ class SpatialPanel(pn.viewable.Viewer):
 
         self.platform = None # Will be set in prep_sdata()
 
-        # ? This can be useful for filtering datasets even for projections, but how best to word it?
-        self.min_genes_slider = pn.widgets.IntSlider(
-            name="Filter - Mininum genes per observation",
-            start=0,
-            end=500,
-            step=25,
-            value=self.min_genes,
-        )
+        layout_height = 1520
+        if self.settings.display_height and self.settings.display_height > 0: # type: ignore
+            layout_height: int = self.settings.display_height # type: ignore
 
-        self.display_name = pn.widgets.TextInput(
-            name="Display name",
-            placeholder="Name this display to save...",
-            width=250,
-            visible=not self.nosave,
-        )
-        self.save_button = pn.widgets.Button(
-            name="Save settings", button_type="primary", width=100, align="end"
-            , visible=not self.nosave
-        )
-        self.make_default = pn.widgets.Checkbox(
-            name="Make this the default display", value=False
-            , visible=not self.nosave
-        )
+        layout_width = 1100  # Default width
+        if self.settings.display_width and self.settings.display_width > 0: # type: ignore
+            layout_width: int = self.settings.display_width # type: ignore
 
         self.normal_fig = dict(data=[], layout={})
         self.zoom_fig = dict(data=[], layout={})
@@ -694,21 +680,48 @@ class SpatialPanel(pn.viewable.Viewer):
             sizing_mode="stretch_width",
         )
 
-        self.layout = pn.Column(pn.bind(self.init_data))
+        self.layout = pn.Column(pn.bind(self.init_data), width=layout_width)
 
-        layout_height = 1520
+       # ? This can be useful for filtering datasets even for projections, but how best to word it?
+        min_slider_width = 300
+        self.min_genes_slider = pn.widgets.IntSlider(
+            name="Filter - Mininum genes per observation",
+            start=0,
+            end=500,
+            step=25,
+            width=min_slider_width,
+            value=self.min_genes,
+        )
+
+        self.display_name = pn.widgets.TextInput(
+            name="Display name",
+            placeholder="Name this display to save...",
+            width=250,
+            visible=not self.nosave,
+        )
+        self.save_button = pn.widgets.Button(
+            name="Save settings", button_type="primary", width=100, align="end"
+            , visible=not self.nosave
+        )
+        self.make_default = pn.widgets.Checkbox(
+            name="Make this the default display", value=False
+            , visible=not self.nosave
+        )
+
+        markdown_width = 700
+        spacer_width = markdown_width - min_slider_width    # Make default button should left-align with the above text input
 
         self.pre_layout = pn.Column(
             pn.Row(
                 pn.pane.Markdown(
                     "## Select a region to modify zoomed in view in the bottom panel",
                     height=30,
-                    width=700,
+                    width=markdown_width,
                 ),
                 self.display_name,
                 self.save_button,
             ),
-            pn.Row(self.min_genes_slider, pn.Spacer(width=400), self.make_default),
+            pn.Row(self.min_genes_slider, pn.Spacer(width=spacer_width), self.make_default),
         )
 
         self.fig_layout = pn.Column(
@@ -728,7 +741,7 @@ class SpatialPanel(pn.viewable.Viewer):
             self.pre_layout,
             self.normal_pane,
             self.fig_layout,
-            width=1100,
+            width=layout_width,
             height=layout_height,
         )
 

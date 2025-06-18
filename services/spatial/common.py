@@ -68,6 +68,8 @@ class Settings(param.Parameterized):
     selection_x2 = param.Number(doc="right selection range", allow_None=True)
     selection_y1 = param.Number(doc="upper selection range", allow_None=True)
     selection_y2 = param.Number(doc="lower selection range", allow_None=True)
+    display_height = param.Integer(doc="Height of the display in pixels", allow_None=True)
+    display_width = param.Integer(doc="Width of the display in pixels", allow_None=True)
 
 
 class SpatialFigure:

@@ -435,6 +435,8 @@ class SpatialPanel(pn.viewable.Viewer):
                     "selection_x2": "selection_x2",
                     "selection_y1": "selection_y1",
                     "selection_y2": "selection_y2",
+                    "display_height": "height",
+                    "display_width": "width",
                 },
             )
 
@@ -445,9 +447,15 @@ class SpatialPanel(pn.viewable.Viewer):
 
         self.platform = None  # Will be set in prep_sdata()
 
-        self.layout = pn.Column(pn.bind(self.init_data))
-
         layout_height = 312  # 360px - tile header height
+        if self.settings.display_height and self.settings.display_height > 0: # type: ignore
+            layout_height: int = self.settings.display_height # type: ignore
+
+        layout_width = 1100  # Default width
+        if self.settings.display_width and self.settings.display_width > 0: # type: ignore
+            layout_width: int = self.settings.display_width # type: ignore
+
+        self.layout = pn.Column(pn.bind(self.init_data), width=layout_width)
 
         self.condensed_fig = dict(data=[], layout={})
 
@@ -456,27 +464,31 @@ class SpatialPanel(pn.viewable.Viewer):
             name="Feature", value=self.use_clusters, sizing_mode="fixed", margin=(10, 10)
         )
 
+        markdown_width = 700
         self.condensed_intro = pn.pane.Markdown(
-            "### Click the Expand icon in the top right corner to see all plots",
+            "### Click the Expand icon in the top right corner to see all plots", width=markdown_width
         )
 
         # Using HTML to center the labels (https://github.com/holoviz/panel/issues/1313#issuecomment-1582731241)
+        switch_content_width = 250
         self.switch_layout = pn.Row(
             pn.pane.HTML("""<label><strong>Gene Expression</strong></label>""", sizing_mode="fixed", margin=(10, 10)),
             self.use_clusters_switch,
-            pn.pane.HTML("""<label><strong>Clusters</strong></label>""", sizing_mode="fixed", margin=(10, 10))
+            pn.pane.HTML("""<label><strong>Clusters</strong></label>""", sizing_mode="fixed", margin=(10, 10)),
+            width=switch_content_width
         )
 
+        spacer_width = layout_width - markdown_width - switch_content_width
         self.condensed_pre = pn.Row(
             self.condensed_intro,
-            pn.Spacer(width=400),
+            pn.Spacer(width=spacer_width),
             self.switch_layout,
             height=30
         )
 
         # Build a row with the following elements:
         # 1) Blank image
-        # 2) # Normal plot
+        # 2) Normal plot
         # 3) Zoomed in plot
         # Above these is a toggle for switching 2) and 3) between gene expression and cluster plots
 
@@ -488,14 +500,14 @@ class SpatialPanel(pn.viewable.Viewer):
                 "modeBarButtonsToRemove": buttonsToRemove,
             },
             height=275,
-            sizing_mode="stretch_both"
+            sizing_mode="stretch_width"
         )
 
         # A condensed layout should only have the normal pane.
         self.plot_layout = pn.Column(
             self.condensed_pre,
             self.condensed_pane,
-            width=1100,
+            width=layout_width,
             height=layout_height,
         )
 
@@ -693,7 +705,7 @@ class SpatialPanel(pn.viewable.Viewer):
 
         # Add spatial coords from adata.obsm
         X, Y = (0, 1)
-        dataframe["spatial1"] = adata.obsm["spatial"].transpose()[X].tolist()
+        dataframe["spatial1"] = adata.obsm["spatial"].transpose()[X].tolist() # type: ignore
         dataframe["spatial2"] = adata.obsm["spatial"].transpose()[Y].tolist()
 
         # Add cluster info
