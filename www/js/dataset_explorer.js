@@ -2265,7 +2265,7 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
 
         } else {
             displayType.classList.add("is-info");
-            displayType.textContent = ${display.plot_type};
+            displayType.textContent = display.plot_type;
         }
 
         // Determine number of times display is in current layout
