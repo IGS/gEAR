@@ -100,7 +100,7 @@
                             </div>
                         </div>
 
-                        <h4 class="title is-4">Filter controls</h4>
+                        <h4 id="title-filter-controls" class="title is-4">Filter controls</h4>
 
                         <!-- search field -->
                         <div class="js-trigger-dataset-search field">
@@ -603,13 +603,13 @@
 
                         <div id="dataset-arrangement-c" class="is-hidden">
                             <h4 class="title is-4">Instructions</h4>
-                            <ul class="content">
+                            <ol class="content">
                                 <li>Drag to re-arrange the dataset displays in any order you wish.</li>
-                                <li>Since this is a grid system, tiles can be freely dragged anywhere on the grid.</li>
-                                <li>You can also drag the right or bottom edges or corner of any display to change its width or height.</li>
+                                <li>This is a grid system. Tiles can be freely dragged anywhere on the grid.</li>
+                                <li>Dragging the right or bottom edges or corner of any display to change its width or height.</li>
                                 <li>Dragging or resizing below the bottom row will create a new row to work with.</li>
-                                <li>Tiles have the potential to overlap, and saving is disabled until all overlaps are resolved.</li>
-                                <li>Click "Save" to save both single- and multigene arrangements.</li>
+                                <li>Tiles have the potential to overlap (shown with a red label), and saving is disabled until all overlaps are resolved.</li>
+                                <li>IMPORTANT - Click "Save" to save both the single- and multigene arrangements.</li>
                             </ul>
                             <div class="field">
                                 <div class="control">
@@ -623,15 +623,18 @@
                             <div class="notification is-info is-hidden" id="dataset-arrangement-loading-notification">
                                 Loading arrangements...
                             </div>
-                            <div class="notification is-primary is-light is-hidden" id="dataset-arrangement-no-displays-notification">
-                                There are no single-gene or multi-gene displays saved for this collection. You can add some by clicking the "View, add or remove displays from current collection" button (+/- icon) on any dataset.
-                            </div>
                             <div id="dataset-arrangement-single-c" class="my-3">
                                 <p class="subtitle is-5 is-underlined">Single-gene view</p>
+                                <div class="notification is-warning is-light is-hidden" id="dataset-arrangement-single-no-displays-notification">
+                                    There are no single-gene displays saved for this collection. You can add some by clicking the "View, add or remove displays from current collection" button (+/- icon) on any dataset.
+                                </div>
                                 <div id="dataset-arrangement-single" class="arrangement-grid"></div>
                             </div>
                             <div id="dataset-arrangement-multi-c" class="my-3">
                                 <p class="subtitle is-5 is-underlined">Multi-gene view</p>
+                                <div class="notification is-warning is-light is-hidden" id="dataset-arrangement-multi-no-displays-notification">
+                                    There are no multi-gene displays saved for this collection. You can add some by clicking the "View, add or remove displays from current collection" button (+/- icon) on any dataset.
+                                </div>
                                 <div id="dataset-arrangement-multi" class="arrangement-grid"></div>
                             </div>
                             <template id="dataset-arrangement-tile-template">

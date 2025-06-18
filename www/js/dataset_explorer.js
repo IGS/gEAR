@@ -892,7 +892,7 @@ class LayoutArrangement {
         this.arrangement = [];
         this.arrangementDiv = document.getElementById(`dataset-arrangement-${this.type}`);
 
-        this.arrangementWidth = 1080; // NOTE: Originally used singleGeneArrangementDiv.offsetWidth, but it is 0 unless the element is visible
+        this.arrangementWidth = 960; // NOTE: Originally used singleGeneArrangementDiv.offsetWidth, but it is 0 unless the element is visible
         this.rowWidth = this.arrangementWidth / 12; // Split width into 12 columns
         this.colHeight = this.rowWidth * 4; // A unit of height for us is 4 units of width (to make a square)
     }
@@ -2297,29 +2297,16 @@ const renderLayoutArranger = async (collection) => {
     const singleLayoutMembers = layoutMembers.single || [];
     const multiLayoutMembers = layoutMembers.multi || [];
 
-    // Legacy mode - if all tiles have startCol = 1, then we are in legacy mode
-    // These layouts were generated only with a "width" property
-
-    const combinedLayoutMembers = singleLayoutMembers.concat(multiLayoutMembers);
-
-    let currentCol = 1;
-    let currentRow = 1;
-
     singleArrangement = new LayoutArrangement();
     multiArrangement = new LayoutArrangement(true);
 
-    // If no layout members, show a message and hide loading indication
-    document.getElementById("dataset-arrangement-no-displays-notification").classList.add("is-hidden");
-    if (!singleLayoutMembers.length && !multiLayoutMembers.length) {
-        document.getElementById("dataset-arrangement-loading-notification").classList.add("is-hidden");
-        document.getElementById("dataset-arrangement-no-displays-notification").classList.remove("is-hidden");
-    }
+    // Single-gene displays
 
-    const maxEndCol = 13;
-
-    document.getElementById("dataset-arrangement-single-c").classList.remove("is-hidden");
+    document.getElementById("dataset-arrangement-single").classList.remove("is-hidden");
+    document.getElementById("dataset-arrangement-single-no-displays-notification").classList.add("is-hidden");
     if (!singleLayoutMembers.length) {
-        document.getElementById("dataset-arrangement-single-c").classList.add("is-hidden");
+        document.getElementById("dataset-arrangement-single").classList.add("is-hidden");
+        document.getElementById("dataset-arrangement-single-no-displays-notification").classList.remove("is-hidden");
     }
 
     for (const display of singleLayoutMembers) {
@@ -2335,13 +2322,13 @@ const renderLayoutArranger = async (collection) => {
         singleArrangement.addMember(singleMember);
     }
 
-    // Reset for the multi-gene layout
-    currentCol = 1;
-    currentRow = 1;
+    // Multi-gene displays
 
-    document.getElementById("dataset-arrangement-multi-c").classList.remove("is-hidden");
+    document.getElementById("dataset-arrangement-multi").classList.remove("is-hidden");
+    document.getElementById("dataset-arrangement-multi-no-displays-notification").classList.add("is-hidden");
     if (!multiLayoutMembers.length) {
-        document.getElementById("dataset-arrangement-multi-c").classList.add("is-hidden");
+        document.getElementById("dataset-arrangement-multi").classList.add("is-hidden");
+        document.getElementById("dataset-arrangement-multi-no-displays-notification").classList.remove("is-hidden");
     }
 
     for (const display of multiLayoutMembers) {
@@ -2902,6 +2889,8 @@ document.getElementById("btn-table-view").addEventListener("click", () => {
     document.getElementById("btn-table-view").classList.add('is-gear-bg-secondary');
     document.getElementById("btn-table-view").classList.remove('is-dark');
 
+    document.getElementById("title-filter-controls").classList.remove("is-hidden");
+
     for (const classElt of document.getElementsByClassName("js-trigger-dataset-search")) {
         classElt.classList.remove("is-hidden");
     }
@@ -2928,6 +2917,8 @@ document.getElementById("btn-list-view-compact").addEventListener("click", () =>
 
     document.getElementById("btn-list-view-compact").classList.add('is-gear-bg-secondary');
     document.getElementById("btn-list-view-compact").classList.remove('is-dark');
+
+    document.getElementById("title-filter-controls").classList.remove("is-hidden");
 
     for (const classElt of document.getElementsByClassName("js-trigger-dataset-search")) {
         classElt.classList.remove("is-hidden");
@@ -2967,6 +2958,8 @@ document.getElementById("btn-list-view-expanded").addEventListener("click", () =
     document.getElementById("btn-list-view-expanded").classList.add('is-gear-bg-secondary');
     document.getElementById("btn-list-view-expanded").classList.remove('is-dark');
 
+    document.getElementById("title-filter-controls").classList.remove("is-hidden");
+
     for (const classElt of document.getElementsByClassName("js-trigger-dataset-search")) {
         classElt.classList.remove("is-hidden");
     }
@@ -3005,6 +2998,8 @@ document.getElementById("btn-arrangement-view").addEventListener("click", () => 
     document.getElementById("btn-arrangement-view").classList.remove('is-dark');
 
     document.getElementById("include-public-membership-c").classList.add("is-hidden");
+
+    document.getElementById("title-filter-controls").classList.add("is-hidden");
 
     // Elements that would trigger submitSearch() are hidden so that pagination and count label won't appear
     for (const classElt of document.getElementsByClassName("js-trigger-dataset-search")) {
