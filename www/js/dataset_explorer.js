@@ -2261,7 +2261,7 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
         // Add color tags to displayType depending on plot type
         if (multiGeneDisplay.includes(display.plot_type)) {
             displayType.classList.add("is-danger");
-            displayType.textContent = `Multigene - ${display.plot_type}`;
+            displayType.textContent = `${display.plot_type} [multigene]`;
 
         } else {
             displayType.classList.add("is-info");
