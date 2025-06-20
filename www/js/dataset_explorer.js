@@ -882,7 +882,6 @@ class ResultItem {
             });
         });
     }
-
 }
 
 class LayoutArrangement {
@@ -901,6 +900,17 @@ class LayoutArrangement {
         this.arrangement.push(member);
     }
 
+    /**
+     * Sets up the adjustable arrangement grid for displaying tiles.
+     *
+     * - Calculates the maximum number of rows required based on the arrangement.
+     * - Updates the CSS grid template rows for the arrangement container.
+     * - Sorts the arrangement tiles by their starting row and column.
+     * - Clears the arrangement container and appends each tile in order.
+     * - Initializes interactable behavior for each tile.
+     *
+     * @returns {void}
+     */
     setupArrangementAdjustable() {
 
         this.maxRow = Math.max(...this.arrangement.map((tile) => tile.startRow + tile.gridHeight)) -1;
@@ -944,6 +954,12 @@ class LayoutArrangementMember {
         this.snapHeight = this.parentArrangement.colHeight; // Snap to 1/4 increments for height;
     }
 
+    /**
+     * Creates a new arrangement tile element by cloning the tile template,
+     * setting its properties, grid area, title, and preview image.
+     *
+     * @returns {DocumentFragment} The newly created arrangement tile element.
+     */
     createArrangementTile() {
         const tile = this.tileTemplate.content.cloneNode(true);
 
@@ -958,6 +974,16 @@ class LayoutArrangementMember {
         return tile;
     }
 
+    /**
+     * Initializes interact.js draggable and resizable functionality on the element specified by `this.selector`.
+     *
+     * - Enables dragging within the parent container, snapping to a grid defined by `snapWidth` and `snapHeight`.
+     * - Updates the CSS Grid layout properties (`gridArea`, `gridRowStart`, `gridColumnStart`, etc.) as the element is moved or resized.
+     * - Dynamically adds new rows to the parent grid if the element is moved or resized beyond the current grid bounds.
+     * - Calls `this.determineGridOverlap` at the end of drag or resize to handle overlap logic.
+     *
+     * @returns {void}
+     */
     createInteractable() {
         const that = this;  // Preserve this context for event listeners
 
@@ -1012,27 +1038,51 @@ class LayoutArrangementMember {
                         arrangementDiv.style.gridTemplateRows = `repeat(${lastTileRow}, ${that.parentArrangement.colHeight}px)`;
                     }
                 },
-                end: this.determineGridOverlap
+                end: (event) => {
+                    this.determineGridOverlap(event);
+                }
             }
 
         }).resizable({
             // resize from only the right and bottom edges (adding top and left adds complexity)
-            edges: { left: false, right: true, bottom: true, top: false },
+            edges: { left: true, right: true, bottom: true, top: true },
             listeners: {
                 move (event) {
+                    const target = event.target;
 
                     // get current style gridArea values (at least the ones to preserve)
-                    const rowStart = parseInt(event.target.style.gridRowStart);
-                    const colStart = parseInt(event.target.style.gridColumnStart);
+                    let rowStart = parseInt(target.style.gridRowStart);
+                    let colStart = parseInt(target.style.gridColumnStart);
+                    let rowSpan = parseInt(target.style.gridRowEnd.split(" ")[1]);
+                    let colSpan = parseInt(target.style.gridColumnEnd.split(" ")[1]);
 
                     // Snap to grid in 1/6 increments for width
-                    const newSpanWidth = (Math.round(event.rect.width / that.snapWidth) * 2);  // x2 converts to 12 column grid
+                    const newSpanWidth = (Math.round(event.rect.width / that.snapWidth) * 2);  // x2 multiplier converts to 12 column grid
                     const newSpanHeight = Math.round(event.rect.height / that.snapHeight);
 
+                    // Calculate deltas for left/top resize
+                    let deltaCol = 0;
+                    let deltaRow = 0;
+                    if (event.edges.left) {
+                        deltaCol = colSpan - newSpanWidth;
+                        colStart += deltaCol;
+                    }
+                    colSpan = newSpanWidth;
+                    if (event.edges.top) {
+                        deltaRow = rowSpan - newSpanHeight;
+                        rowStart += deltaRow;
+                    }
+                    rowSpan = newSpanHeight;
+
+                    // Clamp the start positions to ensure they are within the grid bounds
+                    colStart = Math.max(1, colStart);
+                    rowStart = Math.max(1, rowStart);
+
+                    // Set new grid area for the tile
                     event.target.style.gridArea = `${rowStart} / ${colStart} / span ${newSpanHeight} / span ${newSpanWidth}`;
 
                     // When resized to the n+1 row, add a new row to the grid.
-                    const arrangementDiv = event.target.parentElement;    // AKA this.parentArrangement.arrangementDiv
+                    const arrangementDiv = target.parentElement;    // AKA this.parentArrangement.arrangementDiv
                     // get current number of rows in the grid
                     // it is stored as a string like "repeat(3, 100px)"
                     const arrangementRows = parseInt(arrangementDiv.style.gridTemplateRows.split(",")[0].split("(")[1]);
@@ -1043,72 +1093,90 @@ class LayoutArrangementMember {
                         arrangementDiv.style.gridTemplateRows = `repeat(${lastTileRow}, ${that.parentArrangement.colHeight}px)`;
                     }
                 },
-                end: this.determineGridOverlap
+                end: (event) => {
+                    this.determineGridOverlap(event);
+                }
             }
         });
     }
 
-    determineGridOverlap(event) {
-        // Determine if any tiles overlap with one another on the parent grid and provide visual cue
+    addOverlapState(tile) {
+        // Add the overlap state for a specific tile
+        tile.classList.add("js-is-overlapping");
+        tile.style.opacity = 0.5;
+        tile.querySelector(".js-sortable-tile-title").classList.add("has-text-danger-light", "has-background-danger-dark");
+        tile.querySelector(".js-sortable-tile-title").classList.remove("has-background-primary-light");
+    }
 
-        const eventRowStart = parseInt(event.target.style.gridRowStart);
-        const eventRowEnd = eventRowStart + parseInt(event.target.style.gridRowEnd.split(" ")[1]);
-        const eventColStart = parseInt(event.target.style.gridColumnStart);
-        const eventColEnd = eventColStart + parseInt(event.target.style.gridColumnEnd.split(" ")[1]);
+    removeOverlapState(tile) {
+        // Clear the overlap state for a specific tile
+        tile.classList.remove("js-is-overlapping");
+        tile.style.opacity = 1;
+        tile.querySelector(".js-sortable-tile-title").classList.remove("has-text-danger-light", "has-background-danger-dark");
+        tile.querySelector(".js-sortable-tile-title").classList.add("has-background-primary-light");
+    }
+
+    /**
+     * Determines if the currently moved/resized grid tile overlaps with any other tiles in the parent grid.
+     * Provides a visual cue for overlapping tiles and disables the save button if any overlap is detected.
+     *
+     * @param {Event} event - The event object from the tile movement or resize action. Expects `event.target` to be a grid tile element with CSS grid properties.
+     *
+     * @returns {void}
+     */
+    determineGridOverlap(event) {
 
         // Get all tiles in the arrangement
         const arrangementDiv = event.target.parentElement;
         const arrangementTiles = arrangementDiv.querySelectorAll(".js-sortable-tile");
 
-        // Check for overlap with other tiles
+        // 1. Initialize num_overlaps for all tiles
         for (const tile of arrangementTiles) {
-            if (tile === event.target) {
-                continue;
-            }
-
-            // Get the grid area of the current tile and event tile
-            const tileRowStart = parseInt(tile.style.gridRowStart);
-            const tileRowEnd = tileRowStart + parseInt(tile.style.gridRowEnd.split(" ")[1]);
-            const tileColStart = parseInt(tile.style.gridColumnStart);
-            const tileColEnd = tileColStart + parseInt(tile.style.gridColumnEnd.split(" ")[1]);
-
-            // Check for overlap
-            // This reminds me of the video game detection algorithms
-            event.target.classList.remove("js-is-overlapping")
-            event.target.style.opacity = 1;
-            event.target.querySelector(".js-sortable-tile-title").classList.remove("has-text-danger-light", "has-background-danger-dark");
-            event.target.querySelector(".js-sortable-tile-title").classList.add("has-background-primary-light");
-            document.getElementById("btn-save-arrangement").disabled = false;
-
-            if (tileRowStart < eventRowEnd
-                && tileRowEnd > eventRowStart
-                && tileColStart < eventColEnd
-                && tileColEnd > eventColStart) {
-                // Overlap detected
-                event.target.classList.add("js-is-overlapping");
-                event.target.style.opacity = 0.5;
-                event.target.querySelector(".js-sortable-tile-title").classList.add("has-text-danger-light", "has-background-danger-dark");
-                event.target.querySelector(".js-sortable-tile-title").classList.remove("has-background-primary-light");
-                break;
-            }
-
+            tile.num_overlaps = 0;
         }
 
-        // only enable when no tiles have "js-is-overlapping" class
-        if( [...document.querySelectorAll(".js-sortable-tile")].some(tile => tile.classList.contains("js-is-overlapping")) ) {
-            document.getElementById("btn-save-arrangement").disabled = true;
-        } else {
-            // All tiles are valid, clear the "overlap" appearances
-            for (const tile of document.querySelectorAll(".js-sortable-tile")) {
-                tile.classList.remove("js-is-overlapping");
-                tile.style.opacity = 1;
-                tile.querySelector(".js-sortable-tile-title").classList.remove("has-text-danger-light", "has-background-danger-dark");
-                tile.querySelector(".js-sortable-tile-title").classList.add("has-background-primary-light");
+        // 2. Check all pairs for overlap
+        // This is a brute-force O(n^2) check, but for a small number of tiles, it should be fine.
+        for (let i = 0; i < arrangementTiles.length; i++) {
+            for (let j = i + 1; j < arrangementTiles.length; j++) {
+                const tileA = arrangementTiles[i];
+                const tileB = arrangementTiles[j];
+
+                // ...calculate grid positions for tileA and tileB...
+                const tileARowStart = parseInt(tileA.style.gridRowStart);
+                const tileARowEnd = tileARowStart + parseInt(tileA.style.gridRowEnd.split(" ")[1]);
+                const tileAColStart = parseInt(tileA.style.gridColumnStart);
+                const tileAColEnd = tileAColStart + parseInt(tileA.style.gridColumnEnd.split(" ")[1]);
+
+                const tileBRowStart = parseInt(tileB.style.gridRowStart);
+                const tileBRowEnd = tileBRowStart + parseInt(tileB.style.gridRowEnd.split(" ")[1]);
+                const tileBColStart = parseInt(tileB.style.gridColumnStart);
+                const tileBColEnd = tileBColStart + parseInt(tileB.style.gridColumnEnd.split(" ")[1]);
+
+                // Check for overlap
+                // This reminds me of the video game detection algorithms
+                if (tileARowStart < tileBRowEnd
+                    && tileARowEnd > tileBRowStart
+                    && tileAColStart < tileBColEnd
+                    && tileAColEnd > tileBColStart) {
+                    tileA.num_overlaps++;
+                    tileB.num_overlaps++;
+                }
             }
         }
 
+        // 3. Update overlap state and save button
+        let anyOverlap = false;
+        for (const tile of arrangementTiles) {
+            if (tile.num_overlaps > 0) {
+                this.addOverlapState(tile);
+                anyOverlap = true;
+            } else {
+                this.removeOverlapState(tile);
+            }
+        }
+        document.getElementById("btn-save-arrangement").disabled = anyOverlap;
     }
-
 }
 
 /**
