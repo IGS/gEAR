@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
             element.classList.add('is-clickable');
         });
 
-        // clear the genes-manually-entered input element
+        // clear the searched gene list input element
         document.querySelector('#dropdown-gene-list-search-input').value = '';
         document.querySelector('#dropdown-gene-list-selector-label').innerHTML = 'Quick search using Gene Lists';
 
