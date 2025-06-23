@@ -918,7 +918,7 @@ class SpatialPanel(pn.viewable.Viewer):
         # Need to include image since the bounding box query does not filter the image data by coordinates
         # Each Image is downscaled (or upscaled) during rendering to fit a 2000x2000 pixels image (downscaled_hires)
         try:
-            self.spatial_obj._convert_sdata_to_adata()
+            self.spatial_obj.convert_sdata_to_adata()
         except Exception as e:
             print("Error converting sdata to adata:", str(e), file=sys.stderr)
             raise ValueError(

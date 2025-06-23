@@ -178,13 +178,13 @@ class CoxMxHandler(SpatialHandler):
     def _read_file(self, filepath, **kwargs):
         pass
 
-    def _convert_sdata_to_adata(self, include_images=None):
+    def convert_sdata_to_adata(self, include_images=None):
         return super()._convert_sdata_to_adata(include_images)
 
-    def _write_to_zarr(self, filepath=None):
+    def write_to_zarr(self, filepath=None):
         return super()._write_to_zarr(filepath)
 
-    def _write_to_h5ad(self, filepath=None):
+    def write_to_h5ad(self, filepath=None):
         return super()._write_to_h5ad(filepath)
 
 
@@ -301,13 +301,13 @@ class CurioHandler(SpatialHandler):
         self.originalFile = filepath
         return self
 
-    def _convert_sdata_to_adata(self, include_images=None):
+    def convert_sdata_to_adata(self, include_images=None):
         return super()._convert_sdata_to_adata(include_images)
 
-    def _write_to_zarr(self, filepath=None):
+    def write_to_zarr(self, filepath=None):
         return super()._write_to_zarr(filepath)
 
-    def _write_to_h5ad(self, filepath=None):
+    def write_to_h5ad(self, filepath=None):
         return super()._write_to_h5ad(filepath)
 
 class GeoMxHandler(SpatialHandler):
@@ -443,13 +443,13 @@ class GeoMxHandler(SpatialHandler):
         self.originalFile = filepath
         return self
 
-    def _convert_sdata_to_adata(self, include_images=None):
+    def convert_sdata_to_adata(self, include_images=None):
         return super()._convert_sdata_to_adata(include_images)
 
-    def _write_to_zarr(self, filepath=None):
+    def write_to_zarr(self, filepath=None):
         return super()._write_to_zarr(filepath)
 
-    def _write_to_h5ad(self, filepath=None):
+    def write_to_h5ad(self, filepath=None):
         return super()._write_to_h5ad(filepath)
 
 class VisiumHandler(SpatialHandler):
@@ -546,13 +546,13 @@ class VisiumHandler(SpatialHandler):
         self.originalFile = filepath
         return self
 
-    def _convert_sdata_to_adata(self, include_images=None):
+    def convert_sdata_to_adata(self, include_images=None):
         return super()._convert_sdata_to_adata(include_images)
 
-    def _write_to_zarr(self, filepath=None):
+    def write_to_zarr(self, filepath=None):
         return super()._write_to_zarr(filepath)
 
-    def _write_to_h5ad(self, filepath=None):
+    def write_to_h5ad(self, filepath=None):
         return super()._write_to_h5ad(filepath)
 
 class VisiumHDHandler(SpatialHandler):
@@ -677,13 +677,13 @@ class VisiumHDHandler(SpatialHandler):
         self.originalFile = filepath
         return self
 
-    def _convert_sdata_to_adata(self, include_images=None):
+    def convert_sdata_to_adata(self, include_images=None):
         return super()._convert_sdata_to_adata(include_images)
 
-    def _write_to_zarr(self, filepath=None):
+    def write_to_zarr(self, filepath=None):
         return super()._write_to_zarr(filepath)
 
-    def _write_to_h5ad(self, filepath=None):
+    def write_to_h5ad(self, filepath=None):
         return super()._write_to_h5ad(filepath)
 
 class XeniumHandler(SpatialHandler):
@@ -808,13 +808,13 @@ class XeniumHandler(SpatialHandler):
         self.originalFile = filepath
         return self
 
-    def _convert_sdata_to_adata(self, include_images=None):
+    def convert_sdata_to_adata(self, include_images=None):
         return super()._convert_sdata_to_adata(include_images)
 
-    def _write_to_zarr(self, filepath=None):
+    def write_to_zarr(self, filepath=None):
         return super()._write_to_zarr(filepath)
 
-    def _write_to_h5ad(self, filepath=None):
+    def write_to_h5ad(self, filepath=None):
         return super()._write_to_h5ad(filepath)
 
 

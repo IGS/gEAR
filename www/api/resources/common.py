@@ -88,7 +88,7 @@ def get_spatial_adata(analysis_id: str | None, dataset_id: str, session_id: str,
 
     # Create AnnData object
     # Do not include images in the adata object (to make it lighter)
-    spatial_obj._convert_sdata_to_adata(include_images=include_images)
+    spatial_obj.convert_sdata_to_adata(include_images=include_images)
     adata = spatial_obj.adata
     # Extra metadata to help with determining if images are available and where they are
     adata.uns["has_images"] = spatial_obj.has_images
