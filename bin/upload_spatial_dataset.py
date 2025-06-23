@@ -49,6 +49,7 @@ def main():
 
     output_filename = args.dataset_id
     if args.h5ad:
+        # This will also add image data into adata.uns
         print("Converting SpatialData to AnnData")
         sp_class.convert_sdata_to_adata()
         output_filename += H5AD_OUTPUT_SUFFIX
