@@ -247,59 +247,59 @@ class CurioHandler(SpatialHandler):
                 elif entry.name.endswith("variable_features_spatial_moransi.txt"):
                     spatial_moransi_file = filepath
 
-            """
-            The sdio.curio function below uses the Moran's I-score file to overwrite the adata.var that was previously set
-            with gene IDs. We need to pull out the original h5ad file and modify the Moran's I-score file to use the ensembl IDs.
-            """
+        """
+        The sdio.curio function below uses the Moran's I-score file to overwrite the adata.var that was previously set
+        with gene IDs. We need to pull out the original h5ad file and modify the Moran's I-score file to use the ensembl IDs.
+        """
 
-            if h5ad_file is None:
-                raise Exception("h5ad file not found in tarball.")
+        if h5ad_file is None:
+            raise Exception("h5ad file not found in tarball.")
 
-            from geardb import get_dataset_by_id
-            organism_id = None
-            if not kwargs.get("organism_id"):
-                dataset = get_dataset_by_id(kwargs.get("dataset_id"))
-                if dataset:
-                    organism_id = dataset.organism_id
+        from geardb import get_dataset_by_id
+        organism_id = None
+        if not kwargs.get("organism_id"):
+            dataset = get_dataset_by_id(kwargs.get("dataset_id"))
+            if dataset:
+                organism_id = dataset.organism_id
 
-            if not organism_id:
-                raise Exception("Organism ID not found in dataset metadata or provided as an argument.")
+        if not organism_id:
+            raise Exception("Organism ID not found in dataset metadata or provided as an argument.")
 
-            # Read in the h5ad file
-            adata = ad.read_h5ad(h5ad_file)
+        # Read in the h5ad file
+        adata = ad.read_h5ad(h5ad_file)
 
-            # Add ensemble IDs to the adata.var
-            adata = update_adata_with_ensembl_ids(adata, organism_id, "UNMAPPED_")
+        # Add ensemble IDs to the adata.var
+        adata = update_adata_with_ensembl_ids(adata, organism_id, "UNMAPPED_")
 
-            # Create mapping dict.
-            # Original index name (ensembl_id) was created in add_ensembl_id_to_h5ad_missing_release.py
-            gene_symbol_to_ensembl_id = adata.var.reset_index().set_index("gene_symbol").to_dict()["ensembl_id"]
-            if spatial_moransi_file is None:
-                raise Exception("Moran's I score file not found in tarball.")
+        # Create mapping dict.
+        # Original index name (ensembl_id) was created in add_ensembl_id_to_h5ad_missing_release.py
+        gene_symbol_to_ensembl_id = adata.var.reset_index().set_index("gene_symbol").to_dict()["ensembl_id"]
+        if spatial_moransi_file is None:
+            raise Exception("Moran's I score file not found in tarball.")
 
-            var_features_moransi = pd.read_csv(spatial_moransi_file, sep="\t", header=0)
+        var_features_moransi = pd.read_csv(spatial_moransi_file, sep="\t", header=0)
 
-            # Replace the gene symbols with the ensembl ids
-            var_features_moransi.index = var_features_moransi.index.map(gene_symbol_to_ensembl_id)
-            var_features_moransi.to_csv(spatial_moransi_file, sep="\t", header=True, index=True, index_label=False)
+        # Replace the gene symbols with the ensembl ids
+        var_features_moransi.index = var_features_moransi.index.map(gene_symbol_to_ensembl_id)
+        var_features_moransi.to_csv(spatial_moransi_file, sep="\t", header=True, index=True, index_label=False)
 
-            # Now are ready to read in to a SpatialData object
-            sdata = sdio.curio(tmp_dir)
+        # Now are ready to read in to a SpatialData object
+        sdata = sdio.curio(tmp_dir)
 
-            # To get the adata equivalent, look at sdata.tables["table"]
+        # To get the adata equivalent, look at sdata.tables["table"]
 
-            # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
-            sdata[self.NORMALIZED_TABLE_NAME].var_names_make_unique()
+        # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
+        sdata[self.NORMALIZED_TABLE_NAME].var_names_make_unique()
 
-            # Change obs "cluster" to "clusters" to harmonize
-            sdata[self.NORMALIZED_TABLE_NAME].obs.rename(columns={"cluster": "clusters"}, inplace=True)
+        # Change obs "cluster" to "clusters" to harmonize
+        sdata[self.NORMALIZED_TABLE_NAME].obs.rename(columns={"cluster": "clusters"}, inplace=True)
 
-            self.sdata = sdata
+        self.sdata = sdata
 
-            # table name should already be "table" for Visium
+        # table name should already be "table" for Visium
 
-            self.originalFile = filepath
-            return self
+        self.originalFile = filepath
+        return self
 
     def _convert_sdata_to_adata(self, include_images=None):
         return super()._convert_sdata_to_adata(include_images)
@@ -369,79 +369,79 @@ class GeoMxHandler(SpatialHandler):
                 if entry.name.endswith(".xlsx"):
                     information_file = filepath
 
-            if information_file is None:
-                raise Exception("Excel file containing sample and count information not found in tarball.")
+        if information_file is None:
+            raise Exception("Excel file containing sample and count information not found in tarball.")
 
-            # Validate the Excel file
-            import openpyxl
-            wb = openpyxl.load_workbook(information_file)
-            if "SegmentProperties" not in wb.sheetnames:
-                raise Exception("Excel file must contain a sheet named 'SegmentProperties' with a column named 'SegmentDisplayName'.")
-            # Determine if the count matrix is in "TargetCountMatrix" or "BioProbeCountMatrix" and store sheet name as variable
-            if "TargetCountMatrix" in wb.sheetnames:
-                count_matrix_sheet = "TargetCountMatrix"
-            elif "BioProbeCountMatrix" in wb.sheetnames:
-                count_matrix_sheet = "BioProbeCountMatrix"
-            else:
-                raise Exception("Excel file must contain a sheet named 'TargetCountMatrix' or 'BioProbeCountMatrix' with the counts matrix.")
+        # Validate the Excel file
+        import openpyxl
+        wb = openpyxl.load_workbook(information_file)
+        if "SegmentProperties" not in wb.sheetnames:
+            raise Exception("Excel file must contain a sheet named 'SegmentProperties' with a column named 'SegmentDisplayName'.")
+        # Determine if the count matrix is in "TargetCountMatrix" or "BioProbeCountMatrix" and store sheet name as variable
+        if "TargetCountMatrix" in wb.sheetnames:
+            count_matrix_sheet = "TargetCountMatrix"
+        elif "BioProbeCountMatrix" in wb.sheetnames:
+            count_matrix_sheet = "BioProbeCountMatrix"
+        else:
+            raise Exception("Excel file must contain a sheet named 'TargetCountMatrix' or 'BioProbeCountMatrix' with the counts matrix.")
 
-            from geardb import get_dataset_by_id
-            organism_id = kwargs.get("organism_id", None)
-            if not organism_id:
-                dataset = get_dataset_by_id(kwargs.get("dataset_id"))
-                if dataset:
-                    organism_id = dataset.organism_id
+        from geardb import get_dataset_by_id
+        organism_id = kwargs.get("organism_id", None)
+        if not organism_id:
+            dataset = get_dataset_by_id(kwargs.get("dataset_id"))
+            if dataset:
+                organism_id = dataset.organism_id
 
-            if not organism_id:
-                raise Exception("Organism ID not found in dataset metadata or provided as an argument.")
+        if not organism_id:
+            raise Exception("Organism ID not found in dataset metadata or provided as an argument.")
 
-            # Get observation table data
-            roi_obs_df = pd.read_excel(
-                information_file,
-                sheet_name='SegmentProperties',
-                index_col='SegmentDisplayName',
-                header=0,
-            )
-            obs = roi_obs_df
+        # Get observation table data
+        roi_obs_df = pd.read_excel(
+            information_file,
+            sheet_name='SegmentProperties',
+            index_col='SegmentDisplayName',
+            header=0,
+        )
+        obs = roi_obs_df
 
-            # Get count matrix data
-            roi_counts_df = pd.read_excel(
-                information_file,
-                sheet_name=count_matrix_sheet,
-                index_col=0,
-                header=0,
-            ).T
+        # Get count matrix data
+        roi_counts_df = pd.read_excel(
+            information_file,
+            sheet_name=count_matrix_sheet,
+            index_col=0,
+            header=0,
+        ).T
 
-            if count_matrix_sheet == "BioProbeCountMatrix":
-                # If the count matrix is from BioProbeCountMatrix, need to set TargetName values as the column names
-                # The sheet has accession IDs but some entries have multiple IDs, so we will map Ensembl IDs later
-                roi_counts_df.columns = roi_counts_df.loc["TargetName"]
-                roi_counts_df.drop("TargetName", inplace=True)
+        if count_matrix_sheet == "BioProbeCountMatrix":
+            # If the count matrix is from BioProbeCountMatrix, need to set TargetName values as the column names
+            # The sheet has accession IDs but some entries have multiple IDs, so we will map Ensembl IDs later
+            roi_counts_df.columns = roi_counts_df.loc["TargetName"]
+            roi_counts_df.drop("TargetName", inplace=True)
 
-            counts = roi_counts_df.loc[obs.index, :]
+        counts = roi_counts_df.loc[obs.index, :]
 
-            var = pd.DataFrame(index=counts.columns)
+        var = pd.DataFrame(index=counts.columns)
 
-            adata = ad.AnnData(counts.values, obs=obs, var=var, uns={}, obsm={})
-            adata.obsm['spatial'] = obs.loc[:, ['ROICoordinateX', 'ROICoordinateY']].values
+        adata = ad.AnnData(counts.values, obs=obs, var=var, uns={}, obsm={})
+        adata.obsm['spatial'] = obs.loc[:, ['ROICoordinateX', 'ROICoordinateY']].values
 
-            # Sanitize adata.obs so that column names only contain alphanumeric characters, underscores, dots and hyphens.
-            adata.obs.columns = adata.obs.columns.str.replace(r'+', '_Plus')    # special case for '+' character
-            adata.obs.columns = adata.obs.columns.str.replace(r'[^a-zA-Z0-9_.-]', '_')
-            adata.obs.columns = adata.obs.columns.str.replace(r' ', '_')
+        # Sanitize adata.obs so that column names only contain alphanumeric characters, underscores, dots and hyphens.
+        adata.obs.columns = adata.obs.columns.str.replace(r'+', '_Plus')    # special case for '+' character
+        adata.obs.columns = adata.obs.columns.str.replace(r'[^a-zA-Z0-9_.-]', '_')
+        adata.obs.columns = adata.obs.columns.str.replace(r' ', '_')
 
-            # Add ensemble IDs to the adata.var
-            adata = update_adata_with_ensembl_ids(adata, organism_id, "UNMAPPED_")
+        # Add ensemble IDs to the adata.var
+        adata = update_adata_with_ensembl_ids(adata, organism_id, "UNMAPPED_")
 
-            # Convert to SpatialData object
-            sdata = from_legacy_anndata(adata)
+        # Convert to SpatialData object
+        sdata = from_legacy_anndata(adata)
 
-            # GeoMx is focused more on spatial bulk rather than spatial single-cell, so we will set the clusters to the index
-            sdata[self.NORMALIZED_TABLE_NAME].obs["clusters"] = sdata[self.NORMALIZED_TABLE_NAME].obs.index
+        # GeoMx is focused more on spatial bulk rather than spatial single-cell, so we will set the clusters to the index
+        sdata[self.NORMALIZED_TABLE_NAME].obs["clusters"] = sdata[self.NORMALIZED_TABLE_NAME].obs.index
 
-            self.sdata = sdata
-            self.originalFile = filepath
-            return self
+        self.sdata = sdata
+        self.originalFile = filepath
+        return self
 
     def _convert_sdata_to_adata(self, include_images=None):
         return super()._convert_sdata_to_adata(include_images)
@@ -453,17 +453,21 @@ class GeoMxHandler(SpatialHandler):
         return super()._write_to_h5ad(filepath)
 
 class VisiumHandler(SpatialHandler):
-    # TODO: Test this class
+    # NOTE: Uploads work but it cannot be used in a spatial panel yet because clusters have not been provided.
     """
     Factory class for Visium dataset uploads and conversions.
 
     Standardized names for different files:
     * (<dataset_id>_)`'filtered_feature_bc_matrix.h5'`: Counts and metadata file.
+    * 'analysis/clustering/gene_expression_graphclust/clusters.csv': Clustering information. Preferable if "Cluster" column has actual labels instead of numbers.
     * 'spatial/tissue_hires_image.png': High resolution image.
     * 'spatial/tissue_lowres_image.png': Low resolution image.
-    * 'scalefactors_json.json': Scalefactors file.
-    * 'tissue_positions_list.csv' (SpaceRanger 1) or 'tissue_positions.csv' (SpaceRanger 2): Spots positions file.
-    * fullres_image_file: large microscopy image used as input for space ranger.
+    * 'spatial/scalefactors_json.json': Scalefactors file.
+    * 'spatial/tissue_positions_list.csv' (SpaceRanger 1) or 'spatial/tissue_positions.csv' (SpaceRanger 2): Spots positions file.
+    * fullres_image_file: (NOT USED) large microscopy image used as input for space ranger.
+
+    Recommended tar command to create tarball:
+    `tar cvf <dataset>.tar <dataset>_filtered_feature_bc_matrix.h5 spatial analysis`
     """
 
     @property
@@ -501,22 +505,46 @@ class VisiumHandler(SpatialHandler):
                 filepath = "{0}/{1}".format(tmp_dir, entry.name)
                 tf.extract(entry, path=tmp_dir)
 
-            sdata = sdio.visium(tmp_dir)#, dataset_id="spatialdata")    # Provide a name to standarize downstream usage
 
-            # To get the adata equivalent, look at sdata.tables["table"]
+        clustering_csv_path = "{}/analysis/clustering/gene_expression_graphclust/clusters.csv".format(tmp_dir)
+        # If clustering file does not exist, raise an exception
+        if not os.path.exists(clustering_csv_path):
+            raise Exception("clusters.csv file not found in tarball.")
 
-            # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
-            sdata[self.NORMALIZED_TABLE_NAME].var_names_make_unique()
+        # If clustering file does not have "Barcode" and "Cluster" columns, raise an exception
+        with open(clustering_csv_path, 'r') as f:
+            first_line = f.readline()
+            if "Barcode" not in first_line or "Cluster" not in first_line:
+                raise Exception("clusters.csv file does not have 'Barcode' and 'Cluster' columns in clusters.csv file in tarball.")
 
-            # currently gene symbols are the index, need to move them to a column
-            sdata[self.NORMALIZED_TABLE_NAME].var["gene_symbol"] = sdata[self.NORMALIZED_TABLE_NAME].var.index
 
-            # set the index to the ensembl id (gene_ids)
-            sdata = sdata[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids")
 
-            self.sdata = sdata
-            self.originalFile = filepath
-            return self
+        sdata = sdio.visium(path=tmp_dir, dataset_id="spatialdata")    # Provide a name to standarize downstream usage
+
+        # add clustering information to the vis_sdata.table.obs dataframe
+        clustering = pd.read_csv(clustering_csv_path)
+        # make barcode as index
+        clustering = clustering.set_index('Barcode')
+        sdata[self.NORMALIZED_TABLE_NAME].obs['clusters'] = clustering['Cluster'].astype('category')
+
+
+        # To get the adata equivalent, look at sdata.tables["table"]
+
+        # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
+        sdata[self.NORMALIZED_TABLE_NAME].var_names_make_unique()
+
+        # currently gene symbols are the index, need to move them to a column
+        sdata[self.NORMALIZED_TABLE_NAME].var["gene_symbol"] = sdata[self.NORMALIZED_TABLE_NAME].var.index
+
+        # set the index to the ensembl id (gene_ids)
+        sdata[self.NORMALIZED_TABLE_NAME].var = sdata[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids")
+
+        # TODO: Get and add cluster information
+
+
+        self.sdata = sdata
+        self.originalFile = filepath
+        return self
 
     def _convert_sdata_to_adata(self, include_images=None):
         return super()._convert_sdata_to_adata(include_images)
@@ -617,37 +645,37 @@ class VisiumHDHandler(SpatialHandler):
         if not os.path.exists("{}/spatialdata_feature_slice.h5".format(binned_outputs_dir)):
             os.symlink("{}/feature_slice.h5".format(absolute_path), "{}/spatialdata_feature_slice.h5".format(binned_outputs_dir))
 
-            sdata = sdio.visium_hd(binned_outputs_dir
-                                   , dataset_id="spatialdata"   # Provide a name to standarize downstream usage
-                                   , bin_size=8
-                                   , filtered_counts_file=True
-                                   , load_all_images=False  # CytAssist image is not helpful for us.
-                                   , fullres_image_file=None
-                                   , bins_as_squares=True
-                                   )
+        sdata = sdio.visium_hd(binned_outputs_dir
+                                , dataset_id="spatialdata"   # Provide a name to standarize downstream usage
+                                , bin_size=8
+                                , filtered_counts_file=True
+                                , load_all_images=False  # CytAssist image is not helpful for us.
+                                , fullres_image_file=None
+                                , bins_as_squares=True
+                                )
 
-            # add clustering information to the vis_sdata.table.obs dataframe
-            clustering = pd.read_csv(clustering_csv_path)
-            # make barcode as index
-            clustering = clustering.set_index('Barcode')
-            sdata[self.table_name].obs['clusters'] = clustering['Cluster'].astype('category')
+        # add clustering information to the vis_sdata.table.obs dataframe
+        clustering = pd.read_csv(clustering_csv_path)
+        # make barcode as index
+        clustering = clustering.set_index('Barcode')
+        sdata[self.table_name].obs['clusters'] = clustering['Cluster'].astype('category')
 
-            # To get the adata equivalent, look at sdata.tables["table"]
-            # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
-            sdata[self.table_name].var_names_make_unique()
+        # To get the adata equivalent, look at sdata.tables["table"]
+        # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
+        sdata[self.table_name].var_names_make_unique()
 
-            # currently gene symbols are the index, need to move them to a column
-            sdata[self.table_name].var["gene_symbol"] = sdata[self.table_name].var.index
+        # currently gene symbols are the index, need to move them to a column
+        sdata[self.table_name].var["gene_symbol"] = sdata[self.table_name].var.index
 
-            # set the index to the ensembl id (gene_ids)
-            sdata[self.table_name].var.set_index("gene_ids", inplace=True)
+        # set the index to the ensembl id (gene_ids)
+        sdata[self.table_name].var = sdata[self.table_name].var.set_index("gene_ids")
 
-            # Set the table name to the normalized table name
-            sdata.tables[self.normalized_table_name] = sdata[self.table_name]
+        # Set the table name to the normalized table name
+        sdata.tables[self.NORMALIZED_TABLE_NAME] = sdata[self.table_name]
 
-            self.sdata = sdata
-            self.originalFile = filepath
-            return self
+        self.sdata = sdata
+        self.originalFile = filepath
+        return self
 
     def _convert_sdata_to_adata(self, include_images=None):
         return super()._convert_sdata_to_adata(include_images)
@@ -738,49 +766,47 @@ class XeniumHandler(SpatialHandler):
             if "Barcode" not in first_line or "Cluster" not in first_line:
                 raise Exception("clusters.csv file does not have 'Barcode' and 'Cluster' columns in clusters.csv file in tarball.")
 
-            sdata = sdio.xenium(tmp_dir
-                                , cells_labels=False # Avoid adding polygons to SpatialData object (for now due to out-of-memory issues)
-                                , nucleus_labels=False
-                                , cell_boundaries=cell_boundaries_present
-                                , nucleus_boundaries=nucleus_boundaries_present
-                                , transcripts=transcripts_present
-                                , cells_as_circles=True  # Table is associated with the cells instead of the nuclei (faster performance)
-                                , morphology_mip=False   # Using the morphology_focus image instead
-                                )
+        sdata = sdio.xenium(tmp_dir
+                            , cells_labels=False # Avoid adding polygons to SpatialData object (for now due to out-of-memory issues)
+                            , nucleus_labels=False
+                            , cell_boundaries=cell_boundaries_present
+                            , nucleus_boundaries=nucleus_boundaries_present
+                            , transcripts=transcripts_present
+                            , cells_as_circles=True  # Table is associated with the cells instead of the nuclei (faster performance)
+                            , morphology_mip=False   # Using the morphology_focus image instead
+                            )
 
-            # In code, it seems that the Xenium reader is supposed to set the index to the "barcodes" column
-            # But this column is not found, so we need to manually replace with "cell_id"
-            sdata[self.NORMALIZED_TABLE_NAME].obs["Barcode"] = sdata[self.NORMALIZED_TABLE_NAME].obs["cell_id"]
-            sdata[self.NORMALIZED_TABLE_NAME].obs.set_index("Barcode", inplace=True)
+        # In code, it seems that the Xenium reader is supposed to set the index to the "barcodes" column
+        # But this column is not found, so we need to manually replace with "cell_id"
+        sdata[self.NORMALIZED_TABLE_NAME].obs["Barcode"] = sdata[self.NORMALIZED_TABLE_NAME].obs["cell_id"]
+        sdata[self.NORMALIZED_TABLE_NAME].obs.set_index("Barcode", inplace=True)
 
-            # Change annotation target from "cell_circles" to "cell_labels"
-            #sdata["table"].obs["region"] = "cell_labels"
-            #sdata.set_table_annotates_spatialelement(
-            #    table_name="table", region="cell_labels", region_key="region", instance_key="cell_labels"
-            #)
+        # Change annotation target from "cell_circles" to "cell_labels"
+        #sdata["table"].obs["region"] = "cell_labels"
+        #sdata.set_table_annotates_spatialelement(
+        #    table_name="table", region="cell_labels", region_key="region", instance_key="cell_labels"
+        #)
 
-            # add clustering information to the vis_sdata.table.obs dataframe
-            clustering = pd.read_csv(clustering_csv_path)
-            # make barcode as index
-            clustering.set_index('Barcode', inplace=True)
-            sdata[self.NORMALIZED_TABLE_NAME].obs['clusters'] = clustering['Cluster'].astype('category')
+        # add clustering information to the vis_sdata.table.obs dataframe
+        clustering = pd.read_csv(clustering_csv_path)
+        # make barcode as index
+        clustering = clustering.set_index('Barcode')
+        sdata[self.NORMALIZED_TABLE_NAME].obs['clusters'] = clustering['Cluster'].astype('category')
 
-            # To get the adata equivalent, look at sdata.tables["table"]
+        # To get the adata equivalent, look at sdata.tables["table"]
 
-            # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
-            sdata[self.NORMALIZED_TABLE_NAME].var_names_make_unique()
+        # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
+        sdata[self.NORMALIZED_TABLE_NAME].var_names_make_unique()
 
-            # currently gene symbols are the index, need to move them to a column
-            sdata[self.NORMALIZED_TABLE_NAME].var["gene_symbol"] = sdata[self.NORMALIZED_TABLE_NAME].var.index
+        # currently gene symbols are the index, need to move them to a column
+        sdata[self.NORMALIZED_TABLE_NAME].var["gene_symbol"] = sdata[self.NORMALIZED_TABLE_NAME].var.index
 
-            # set the index to the ensembl id (gene_ids)
-            sdata[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids", inplace=True)
+        # set the index to the ensembl id (gene_ids)
+        sdata[self.NORMALIZED_TABLE_NAME].var = sdata[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids")
 
-            # TODO: Image is very, very dark, so we need to adjust brightness
-
-            self.sdata = sdata
-            self.originalFile = filepath
-            return self
+        self.sdata = sdata
+        self.originalFile = filepath
+        return self
 
     def _convert_sdata_to_adata(self, include_images=None):
         return super()._convert_sdata_to_adata(include_images)
@@ -798,7 +824,7 @@ SPATIALTYPE2CLASS = {
     #"cosmx": CoxMxHandler,
     "curio": CurioHandler,
     "geomx": GeoMxHandler,
-    #"visium": VisiumHandler,
+    "visium": VisiumHandler,
     "visium_hd": VisiumHDHandler,
     "xenium": XeniumHandler
 }
