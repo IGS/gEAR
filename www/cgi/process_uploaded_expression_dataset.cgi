@@ -191,6 +191,7 @@ def process_3tab(upload_dir):
 
     adata.X = sparse.vstack(expression_matrix)
     adata = adata.transpose()
+    adata.obs = sanitize_obs_for_h5ad(adata.obs)
 
     h5ad_path = os.path.join(upload_dir, f"{share_uid}.h5ad")
     adata.write(h5ad_path)
@@ -277,7 +278,8 @@ def process_excel(upload_dir):
         return
 
     # Create AnnData object and return it
-    adata = anndata.AnnData(X=X, obs=obs_df, var=genes_df)    
+    adata = anndata.AnnData(X=X, obs=obs_df, var=genes_df)
+    adata.obs = sanitize_obs_for_h5ad(adata.obs)
 
     h5ad_path = os.path.join(upload_dir, f"{share_uid}.h5ad")
     adata.write(h5ad_path)
@@ -368,6 +370,12 @@ def process_mex_3tab(upload_dir):
     elif dataset_type == 'mex':
         process_mex(upload_dir)
 
+def sanitize_obs_for_h5ad(obs_df):
+    for col in obs_df.columns:
+        if obs_df[col].dtype == 'object':
+            obs_df[col] = obs_df[col].fillna('').astype(str)
+    return obs_df
+        
 def write_status(upload_dir, status_name, message):
     status['status'] = status_name
     status['message'] = message
