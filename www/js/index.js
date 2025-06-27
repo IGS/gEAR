@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-/*
+
 document.getElementById("onboarding-btn").addEventListener("click", (event) => {
     // Start the onboarding process
     // NOTE: Click out of the intro will exit the intro
@@ -136,7 +136,7 @@ document.getElementById("onboarding-btn").addEventListener("click", (event) => {
     ]
     }).start();
 });
-*/
+
 
 const populateUserHistoryTable = async () => {
     const numEntries = 5;

@@ -40,18 +40,171 @@
 
           <section id="content-c" class="m-3" data-nav-link="workspace">
             <!-- New user onboarding -->
-            <!--<div id="onboarding-c">
+            <div id="onboarding-c">
               <button id="onboarding-btn" class="button is-primary is-dark">
                 New to gEAR? Click here.
               </button>
-            </div> -->
+            </div>
 
-            <!-- This is the section to be populated for new pages -->
-            <h3 class="mt-4 mb-4">
-              <span class="icon">
-                <i class="mdi mdi-book-outline"></i>
+            <h3 class="mt-5 mb-3">
+              <span class="icon is-medium">
+                <i class="mdi mdi-magnify mdi-24px"></i>
               </span>
-              <span>Guides</span>
+              <span class="is-size-4">Search</span>
+            </h3>
+            <div class="tabs-wrapper">
+              <div class="tabs">
+                  <ul>
+                      <li data-tab-id="gene_expression" class="is-active">
+                          <a>Gene Expression</a>
+                      </li>
+                      <li data-tab-id="datasets">
+                          <a>Explore Datasets</a>
+                      </li>
+                  </ul>
+              </div>
+              <div class="tabs-content">
+                  <ul>
+                      <li data-tab-id="gene_expression" class="is-active">
+
+                        <div class="columns">
+                          <div class="column pr-1">
+                            
+                            <div class="control has-icons-left mr-0">
+                              <input class="input" type="input" id="genes-manually-entered" placeholder="Type here to search using specific gene symbols"\>
+                              <span class="icon is-small is-left">
+                                <i class="mdi mdi-magnify"></i>
+                              </span>
+                            </div>
+                          </div>
+
+                          <!-- has-addons connects, is-grouped makes together inline-->
+                          <div class="column is-narrow field has-addons is-grouped mb-0 pl-1">
+
+                            <!-- div with the text 'OR' centered vertically. this is awkward -->
+                            <div class="columns">
+                              <div class="column is-1">
+                                <div class="is-vertical is-size-7 ml-1 mr-2">OR</div>
+                              </div>
+                            </div>
+
+                            <!--#include virtual="/include/gene-collection-selector/gene-collection-selector.html" -->
+
+                            <div class="columns">
+                              <div class="column is-1">
+                                <div class="is-vertical is-size-7 ml-2 mr-2">IN</div>
+                              </div>
+                            </div>
+
+                            <!--#include virtual="/include/dataset-collection-selector/dataset-collection-selector.html" -->
+
+                            <div class="control">
+                              <button id="submit-expression-search" class="button is-primary ml-3">
+                                <span class="icon is-small">
+                                  <i class="mdi mdi-magnify"></i>
+                                </span>
+                              </button>
+                            </div>
+                          </div>  <!-- end .column is-11 -->
+
+                        </div>  <!-- end .columns test -->
+                        
+
+
+                        <div class="field is-grouped">
+                          <div class="control">
+                            <label class="checkbox">
+                              <input type="checkbox" id="gene-search-exact-match" checked>
+                              Exact
+                            </label>
+                          </div>
+                          <div class="control">
+                            <label class="radio">
+                              <input type="radio" name="single-multi" id="single-multi-single" value="single" checked="checked">
+                              Single-gene Display
+                            </label>
+                            <label class="radio">
+                              <input type="radio" name="single-multi" id="single-multi-multi" value="multi">
+                              Multi-gene Display
+                            </label>
+                          </div>
+                        </div>
+                      </li>
+                      <li data-tab-id="datasets">
+                          <h1>This tab feature coming soon!</h1>
+                      </li>
+                  </ul>
+              </div>
+          </div>
+            <h3 class="mt-6 mb-4">
+              <span class="icon">
+                <i class="mdi mdi-history mdi-24px"></i>
+              </span>
+              <span class="is-size-4">Resume</span>
+            </h3>
+            <table class="table is-striped is-hoverable is-fullwidth is-size-7">
+              <thead class="has-text-weight-semibold">
+                <tr>
+                  <td>&nbsp;</td>
+                  <td>Category</td>
+                  <td>Action</td>
+                  <td>Date</td>
+                </tr>
+              </thead>
+              <tbody id="user-history-table-tbody">
+                <tr>
+                  <td colspan="4">
+                    <div class="has-text-centered">
+                      <span class="icon is-large">
+                        <i class="mdi mdi-account-off mdi-48px"></i>
+                      </span>
+                      <p class="mt-2">Login to show recent activity</p>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+              <template id="user-history-row">
+                <tr>
+                  <td><button class="button is-small">
+                    <a class="url" href="">
+                      <span class="icon"><i class="mdi mdi-arrow-top-right-thick"></i></span>
+                    </a>
+                  </button></td>
+                  <td class="category is-vcentered"></td>
+                  <td class="action-label is-vcentered"></td>
+                  <td class="date is-vcentered"></td>
+                </tr>
+              </template>
+              <template id="user-history-no-entries">
+                <tr>
+                  <td colspan="4">
+                    <div class="has-text-centered">
+                      <span class="icon is-large">
+                        <i class="mdi mdi-alert-outline mdi-48px"></i>
+                      </span>
+                      <p class="mt-2">No history found. As you use the site entries will appear here</p>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+              <template id="user-history-loading">
+                <tr>
+                  <td colspan="4">
+                    <div class="has-text-centered">
+                      <span class="icon is-large">
+                        <i class="mdi mdi-loading mdi-spin mdi-48px"></i>
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </table>
+
+            <h3 class="mt-6 mb-4">
+              <span class="icon">
+                <i class="mdi mdi-book-outline mdi-24px"></i>
+              </span>
+              <span class="is-size-4">Guides</span>
             </h3>
             <div id="guides_c" class="columns">
               <div class="column">
@@ -131,147 +284,7 @@
                 </div>
               </div>
             </div>
-            <h3 class="mt-6 mb-3">
-              <span class="icon">
-                <i class="mdi mdi-magnify"></i>
-              </span>
-              <span>Search</span>
-            </h3>
-            <div class="tabs-wrapper">
-              <div class="tabs">
-                  <ul>
-                      <li data-tab-id="gene_expression" class="is-active">
-                          <a>Gene Expression</a>
-                      </li>
-                      <li data-tab-id="datasets">
-                          <a>Explore Datasets</a>
-                      </li>
-                  </ul>
-              </div>
-              <div class="tabs-content">
-                  <ul>
-                      <li data-tab-id="gene_expression" class="is-active">
-                        <!-- has-addons connects, is-grouped makes together inline-->
-                        <div class="field has-addons is-grouped mb-0">
-                          <div class="control has-icons-left mr-0">
-                            <input class="input" type="input" id="genes-manually-entered" placeholder="Type here to search using specific gene symbols"\>
-                            <span class="icon is-small is-left">
-                              <i class="mdi mdi-magnify"></i>
-                            </span>
-                          </div>
-                          <!-- div with the text 'OR' centered vertically. this is awkward -->
-                          <div class="columns">
-                            <div class="column is-1">
-                              <div class="is-vertical is-size-7 ml-2 mr-2">OR</div>
-                            </div>
-                          </div>
 
-                          <!--#include virtual="/include/gene-collection-selector/gene-collection-selector.html" -->
-
-                          <div class="columns">
-                            <div class="column is-1">
-                              <div class="is-vertical is-size-7 ml-2 mr-2">IN</div>
-                            </div>
-                          </div>
-
-                          <!--#include virtual="/include/dataset-collection-selector/dataset-collection-selector.html" -->
-
-                          <div class="control">
-                            <button id="submit-expression-search" class="button is-primary ml-3">
-                              <span class="icon is-small">
-                                <i class="mdi mdi-magnify"></i>
-                              </span>
-                            </button>
-                          </div>
-                        </div>
-                        <div class="field is-grouped">
-                          <div class="control">
-                            <label class="checkbox">
-                              <input type="checkbox" id="gene-search-exact-match" checked>
-                              Exact
-                            </label>
-                          </div>
-                          <div class="control">
-                            <label class="radio">
-                              <input type="radio" name="single-multi" id="single-multi-single" value="single" checked="checked">
-                              Single-gene Display
-                            </label>
-                            <label class="radio">
-                              <input type="radio" name="single-multi" id="single-multi-multi" value="multi">
-                              Multi-gene Display
-                            </label>
-                          </div>
-                        </div>
-                      </li>
-                      <li data-tab-id="datasets">
-                          <h1>This tab feature coming soon!</h1>
-                      </li>
-                  </ul>
-              </div>
-          </div>
-            <h3 class="mt-6 mb-4">
-              <span class="icon">
-                <i class="mdi mdi-history"></i>
-              </span>
-              <span>Resume</span>
-            </h3>
-            <table class="table is-striped is-hoverable is-fullwidth is-size-7">
-              <thead class="has-text-weight-semibold">
-                <tr>
-                  <td>&nbsp;</td>
-                  <td>Category</td>
-                  <td>Action</td>
-                  <td>Date</td>
-                </tr>
-              </thead>
-              <tbody id="user-history-table-tbody">
-                <tr>
-                  <td colspan="4">
-                    <div class="has-text-centered">
-                      <span class="icon is-large">
-                        <i class="mdi mdi-account-off mdi-48px"></i>
-                      </span>
-                      <p class="mt-2">Login to show recent activity</p>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-              <template id="user-history-row">
-                <tr>
-                  <td><button class="button is-small">
-                    <a class="url" href="">
-                      <span class="icon"><i class="mdi mdi-arrow-top-right-thick"></i></span>
-                    </a>
-                  </button></td>
-                  <td class="category is-vcentered"></td>
-                  <td class="action-label is-vcentered"></td>
-                  <td class="date is-vcentered"></td>
-                </tr>
-              </template>
-              <template id="user-history-no-entries">
-                <tr>
-                  <td colspan="4">
-                    <div class="has-text-centered">
-                      <span class="icon is-large">
-                        <i class="mdi mdi-alert-outline mdi-48px"></i>
-                      </span>
-                      <p class="mt-2">No history found. As you use the site entries will appear here</p>
-                    </div>
-                  </td>
-                </tr>
-              </template>
-              <template id="user-history-loading">
-                <tr>
-                  <td colspan="4">
-                    <div class="has-text-centered">
-                      <span class="icon is-large">
-                        <i class="mdi mdi-loading mdi-spin mdi-48px"></i>
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              </template>
-            </table>
           </section><!-- end #content-c -->
         </section> <!-- end #main-c -->
       </div>
