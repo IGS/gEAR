@@ -3,6 +3,7 @@
 // SAdkins - I let Github Copilot write this class for me (with minor adjustments)
 class FacetWidget {
     constructor({aggregations, filters, onFilterChange, facetContainer, selectedFacetsTags, filterHeaderExtraClasses}) {
+        this.origAggregations = aggregations || []; // Original aggregations from the server
         this.aggregations = aggregations || {}; // Counts of all categories (filter)
         this.filters = filters || {};   // Selected categories and values
         this.onFilterChange = onFilterChange || {}; // Callback function when a filter is changed
@@ -39,9 +40,27 @@ class FacetWidget {
         this.render();
     }
 
+    /**
+     * Updates the UI to reflect the latest aggregation data for filters.
+     *
+     * Iterates through the provided aggregations, updating the count and visibility
+     * of each filter item in the DOM. If an item's count is zero, it hides the count
+     * unless the item is currently selected in the filters, in which case the count is shown.
+     * If the item is not part of the current filter category, the entire item is hidden.
+     *
+     * @param {Array<Object>} aggregations - An array of aggregation objects, each containing:
+     *   @param {string} aggregations[].name - The name of the filter category.
+     *   @param {Array<Object>} aggregations[].items - The items within the filter category.
+     *     @param {string} aggregations[].items[].name - The name of the filter item.
+     *     @param {number} aggregations[].items[].count - The count associated with the filter item.
+     */
     updateAggregations(aggregations) {
+        // If no aggregations are provided, reset to original aggregation counts
         this.aggregations = aggregations;
-        // Update counts
+        if (Object.keys(this.filters).length === 0) {
+            this.aggregations = this.origAggregations;
+        }
+        // Update counts shown
         for (const filter of this.aggregations) {
             const escapedFilterName = CSS.escape(filter.name);
 
@@ -53,7 +72,6 @@ class FacetWidget {
                 // show item
                 filterItemCount.classList.remove('is-hidden');
                 filterItem.classList.remove('is-hidden');
-                filterItemCount.innerHTML = item.count;
                 // if count is 0, hide item count
                 if (item.count === 0) {
                     filterItemCount.classList.add('is-hidden');
@@ -179,6 +197,16 @@ class FacetWidget {
         }
     }
 
+    /**
+     * Handles the click event on a filter item, toggling its state, updating the UI,
+     * and triggering any filter change callbacks.
+     *
+     * @async
+     * @param {Object} item - The filter item that was clicked.
+     * @param {string} filterName - The name of the filter group.
+     * @param {boolean} isChecked - Whether the filter item is being checked or unchecked.
+     * @returns {Promise<void>} Resolves when filter change handling is complete.
+     */
     async onFilterItemClick(item, filterName, isChecked) {
         this.toggleFilterItem(item, filterName, isChecked);
         const escapedFilterName = CSS.escape(filterName);
@@ -201,8 +229,18 @@ class FacetWidget {
 
     }
 
+    /**
+     * Toggles the selection state of a filter item for a given filter category.
+     *
+     * Adds or removes the specified item from the filter list based on the checkbox state.
+     * If all items in a filter are selected, the filter is removed (interpreted as "no filter").
+     * If no filters are selected, the method returns early.
+     *
+     * @param {Object} item - The filter item to toggle. Should have a `name` property.
+     * @param {string} filterName - The name of the filter category.
+     * @param {boolean} isChecked - Whether the item is being checked (true) or unchecked (false).
+     */
     toggleFilterItem(item, filterName, isChecked) {
-
         // Explicitly check for isChecked to ensure toggling aligns with the checkbox state
         if (isChecked) {
             // If filterName is a key in filters, add the item to the list (assuming it's not already there)
