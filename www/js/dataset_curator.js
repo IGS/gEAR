@@ -225,9 +225,16 @@ class PlotlyHandler extends PlotHandler {
 
         // Filtered observation groups
         this.plotConfig["obs_filters"] = facetWidget?.filters || {};
+        if (Object.keys(this.plotConfig["obs_filters"]).length === 0) {
+            this.plotConfig["obs_filters"] = null;
+        }
 
         // Get order
         this.plotConfig["order"] = getPlotOrderFromSortable();
+        if (!sortOrderChanged) {
+            // If no order was changed, set to null so API does not try to sort by the default order
+            this.plotConfig["order"] = null;
+        }
 
         // Get colors
         const colorElts = document.getElementsByClassName("js-plot-color");
@@ -485,6 +492,9 @@ class ScanpyHandler extends PlotHandler {
 
         // Filtered observation groups
         this.plotConfig["obs_filters"] = facetWidget?.filters || {};
+        if (Object.keys(this.plotConfig["obs_filters"]).length === 0) {
+            this.plotConfig["obs_filters"] = null;
+        }
 
         // Get colors
         const colorElts = document.getElementsByClassName("js-plot-color");

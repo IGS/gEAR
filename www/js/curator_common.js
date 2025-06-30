@@ -19,6 +19,9 @@ let analysisObj = null;
 let analysisSelect = null;
 let plotTypeSelect = null;
 
+// Relates to https://github.com/IGS/gEAR/issues/923
+let sortOrderChanged = false; // Flag to indicate if the sort order has changed
+
 /*
 ! Quick note -
 This code uses a lot of "for...in..." and "for...of..." syntax
@@ -788,7 +791,7 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
         aggregations,
         filters,
         onFilterChange: async (filters, seriesName) => {
-            if (filters) {
+            if (Object.keys(filters).length > 0) {
                 try {
                     const {aggregations, total_count:totalCount} = await curatorApiCallsMixin.fetchAggregations(datasetId, analysisId, filters);
                     facetWidget.updateAggregations(aggregations);
@@ -798,17 +801,29 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
                     createToast("Could not update aggregations. You should still be able to plot.", "is-warning");
                     return facetWidget
                 }
+
+                // Update levels for based on chosen filter groups
+                for (const filterGroup of Object.keys(facetWidget.filters)) {
+                    levels[filterGroup] = facetWidget.filters[filterGroup];
+                }
+
             } else {
                 // Save an extra API call
                 facetWidget.updateAggregations(facetWidget.aggregations);
+
+                // Revert levels to original state
+                for (const filter of facetWidget.aggregations) {
+                    const name = filter.name;
+                    const items = filter.items;
+                    const itemCats = items.map(item => item.name);
+                    levels[name] = itemCats;
+                }
+                document.getElementById("num-selected").textContent = totalCount;
+
             }
+
             // Sortable lists need to reflect groups filtered out or unfiltered
             updateOrderSortable();
-
-            // Update levels for based on chosen filter groups
-            for (const filterGroup of Object.keys(facetWidget.filters)) {
-                levels[filterGroup] = facetWidget.filters[filterGroup];
-            }
 
             curatorSpecifcFacetItemSelectCallback(seriesName);
         }
@@ -1249,6 +1264,13 @@ const renderOrderSortableSeries = (series) => {
         },
     });
 
+    // Make note if user changes the order
+    const list = document.getElementById(`${CSS.escape(series)}-order-list`);
+    list.addEventListener('sortupdate', (event) => {
+        // e.detail contains {origin, destination, item, oldIndex, newIndex}
+        sortOrderChanged = true;
+    });
+
 }
 
 /**
@@ -1521,6 +1543,10 @@ const updateDatasetGenes = async (analysisId=null) => {
  * Updates the sortable order of plot param series based on the current selection.
  */
 const updateOrderSortable = () => {
+
+    // This function will reset the sortables.
+    sortOrderChanged = false;
+
     // Get all current plot param series for plotting order and save as a set
     const plotOrderElts = document.getElementsByClassName("js-plot-order");
     const seriesSet = new Set();
@@ -1555,6 +1581,16 @@ const updateOrderSortable = () => {
             const orderElt = document.getElementById(`${series}-order`);
             orderElt.remove();
         }
+
+        // Remove sortupdate event listener if it exists
+        const list = document.getElementById(`${CSS.escape(series)}-order-list`);
+        if (list) {
+            list.removeEventListener('sortupdate', (event) => {
+                // e.detail contains {origin, destination, item, oldIndex, newIndex}
+                sortOrderChanged = true;
+            });
+        }
+
     }
 
 
