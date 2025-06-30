@@ -63,7 +63,7 @@ class SpatialHandler(ABC):
     def _read_file(self, filepath):
         pass
 
-    def _filter_sdata_by_coords(self):
+    def filter_sdata_by_coords(self):
         # Filter to only the hires image boundaries
         if not self.img_name:
             return self
@@ -221,7 +221,7 @@ class CurioHandler(SpatialHandler):
     def img_name(self):
         return None
 
-    def _read_file(self, filepath, **kwargs) -> Self:
+    def _read_file(self, filepath, **kwargs):
         # Get tar filename so tmp directory can be assigned
         tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
         tmp_dir = '/tmp/' + tar_filename
@@ -289,10 +289,10 @@ class CurioHandler(SpatialHandler):
         # To get the adata equivalent, look at sdata.tables["table"]
 
         # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
-        sdata[self.NORMALIZED_TABLE_NAME].var_names_make_unique()
+        sdata.tables[self.NORMALIZED_TABLE_NAME].var_names_make_unique()
 
         # Change obs "cluster" to "clusters" to harmonize
-        sdata[self.NORMALIZED_TABLE_NAME].obs.rename(columns={"cluster": "clusters"}, inplace=True)
+        sdata.tables[self.NORMALIZED_TABLE_NAME].obs = sdata.tables[self.NORMALIZED_TABLE_NAME].obs.rename(columns={"cluster": "clusters"})
 
         self.sdata = sdata
 
@@ -415,15 +415,15 @@ class GeoMxHandler(SpatialHandler):
         if count_matrix_sheet == "BioProbeCountMatrix":
             # If the count matrix is from BioProbeCountMatrix, need to set TargetName values as the column names
             # The sheet has accession IDs but some entries have multiple IDs, so we will map Ensembl IDs later
-            roi_counts_df.columns = roi_counts_df.loc["TargetName"]
-            roi_counts_df.drop("TargetName", inplace=True)
+            roi_counts_df.columns = roi_counts_df.loc["TargetName"].to_numpy()
+            roi_counts_df = roi_counts_df.drop("TargetName")
 
         counts = roi_counts_df.loc[obs.index, :]
 
         var = pd.DataFrame(index=counts.columns)
 
         adata = ad.AnnData(counts.values, obs=obs, var=var, uns={}, obsm={})
-        adata.obsm['spatial'] = obs.loc[:, ['ROICoordinateX', 'ROICoordinateY']].values
+        adata.obsm['spatial'] = obs.loc[:, ['ROICoordinateX', 'ROICoordinateY']].to_numpy()
 
         # Sanitize adata.obs so that column names only contain alphanumeric characters, underscores, dots and hyphens.
         adata.obs.columns = adata.obs.columns.str.replace(r'+', '_Plus')    # special case for '+' character
@@ -437,7 +437,7 @@ class GeoMxHandler(SpatialHandler):
         sdata = from_legacy_anndata(adata)
 
         # GeoMx is focused more on spatial bulk rather than spatial single-cell, so we will set the clusters to the index
-        sdata[self.NORMALIZED_TABLE_NAME].obs["clusters"] = sdata[self.NORMALIZED_TABLE_NAME].obs.index
+        sdata.tables[self.NORMALIZED_TABLE_NAME].obs["clusters"] = sdata.tables[self.NORMALIZED_TABLE_NAME].obs.index
 
         self.sdata = sdata
         self.originalFile = filepath
@@ -525,22 +525,16 @@ class VisiumHandler(SpatialHandler):
         clustering = pd.read_csv(clustering_csv_path)
         # make barcode as index
         clustering = clustering.set_index('Barcode')
-        sdata[self.NORMALIZED_TABLE_NAME].obs['clusters'] = clustering['Cluster'].astype('category')
-
-
-        # To get the adata equivalent, look at sdata.tables["table"]
+        sdata.tables[self.NORMALIZED_TABLE_NAME].obs['clusters'] = clustering['Cluster'].astype('category')
 
         # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
-        sdata[self.NORMALIZED_TABLE_NAME].var_names_make_unique()
+        sdata.tables[self.NORMALIZED_TABLE_NAME].var_names_make_unique()
 
         # currently gene symbols are the index, need to move them to a column
-        sdata[self.NORMALIZED_TABLE_NAME].var["gene_symbol"] = sdata[self.NORMALIZED_TABLE_NAME].var.index
+        sdata.tables[self.NORMALIZED_TABLE_NAME].var["gene_symbol"] = sdata.tables[self.NORMALIZED_TABLE_NAME].var.index
 
         # set the index to the ensembl id (gene_ids)
-        sdata[self.NORMALIZED_TABLE_NAME].var = sdata[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids")
-
-        # TODO: Get and add cluster information
-
+        sdata.tables[self.NORMALIZED_TABLE_NAME].var = sdata.tables[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids")
 
         self.sdata = sdata
         self.originalFile = filepath
@@ -658,20 +652,20 @@ class VisiumHDHandler(SpatialHandler):
         clustering = pd.read_csv(clustering_csv_path)
         # make barcode as index
         clustering = clustering.set_index('Barcode')
-        sdata[self.table_name].obs['clusters'] = clustering['Cluster'].astype('category')
+        sdata.tables[self.table_name].obs['clusters'] = clustering['Cluster'].astype('category')
 
         # To get the adata equivalent, look at sdata.tables["table"]
         # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
-        sdata[self.table_name].var_names_make_unique()
+        sdata.tables[self.table_name].var_names_make_unique()
 
         # currently gene symbols are the index, need to move them to a column
-        sdata[self.table_name].var["gene_symbol"] = sdata[self.table_name].var.index
+        sdata.tables[self.table_name].var["gene_symbol"] = sdata.tables[self.table_name].var.index
 
         # set the index to the ensembl id (gene_ids)
-        sdata[self.table_name].var = sdata[self.table_name].var.set_index("gene_ids")
+        sdata.tables[self.table_name].var = sdata.tables[self.table_name].var.set_index("gene_ids")
 
         # Set the table name to the normalized table name
-        sdata.tables[self.NORMALIZED_TABLE_NAME] = sdata[self.table_name]
+        sdata.tables[self.NORMALIZED_TABLE_NAME] = sdata.tables[self.table_name]
 
         self.sdata = sdata
         self.originalFile = filepath
@@ -778,8 +772,8 @@ class XeniumHandler(SpatialHandler):
 
         # In code, it seems that the Xenium reader is supposed to set the index to the "barcodes" column
         # But this column is not found, so we need to manually replace with "cell_id"
-        sdata[self.NORMALIZED_TABLE_NAME].obs["Barcode"] = sdata[self.NORMALIZED_TABLE_NAME].obs["cell_id"]
-        sdata[self.NORMALIZED_TABLE_NAME].obs.set_index("Barcode", inplace=True)
+        sdata.tables[self.NORMALIZED_TABLE_NAME].obs["Barcode"] = sdata.tables[self.NORMALIZED_TABLE_NAME].obs["cell_id"]
+        sdata.tables[self.NORMALIZED_TABLE_NAME].obs = sdata.tables[self.NORMALIZED_TABLE_NAME].obs.set_index("Barcode")
 
         # Change annotation target from "cell_circles" to "cell_labels"
         #sdata["table"].obs["region"] = "cell_labels"
@@ -791,18 +785,16 @@ class XeniumHandler(SpatialHandler):
         clustering = pd.read_csv(clustering_csv_path)
         # make barcode as index
         clustering = clustering.set_index('Barcode')
-        sdata[self.NORMALIZED_TABLE_NAME].obs['clusters'] = clustering['Cluster'].astype('category')
-
-        # To get the adata equivalent, look at sdata.tables["table"]
+        sdata.tables[self.NORMALIZED_TABLE_NAME].obs['clusters'] = clustering['Cluster'].astype('category')
 
         # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
-        sdata[self.NORMALIZED_TABLE_NAME].var_names_make_unique()
+        sdata.tables[self.NORMALIZED_TABLE_NAME].var_names_make_unique()
 
         # currently gene symbols are the index, need to move them to a column
-        sdata[self.NORMALIZED_TABLE_NAME].var["gene_symbol"] = sdata[self.NORMALIZED_TABLE_NAME].var.index
+        sdata.tables[self.NORMALIZED_TABLE_NAME].var["gene_symbol"] = sdata.tables[self.NORMALIZED_TABLE_NAME].var.index
 
         # set the index to the ensembl id (gene_ids)
-        sdata[self.NORMALIZED_TABLE_NAME].var = sdata[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids")
+        sdata.tables[self.NORMALIZED_TABLE_NAME].var = sdata.tables[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids")
 
         self.sdata = sdata
         self.originalFile = filepath
