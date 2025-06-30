@@ -77,6 +77,10 @@ def main():
     print("Finished reading expression matrix file", file=sys.stderr, flush=True)
     adata = adata.transpose()
 
+    for col in adata.obs.columns:
+        if adata.obs[col].dtype == 'object':
+            adata.obs[col] = adata.obs[col].fillna('').astype(str)
+            
     adata.write(args.output_file)
             
 if __name__ == '__main__':
