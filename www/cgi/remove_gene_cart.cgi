@@ -15,12 +15,15 @@ Requires:
 
 """
 
-import cgi, json
-import sys, os
+import cgi
+import json
+import os
+import sys
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+
 
 def main():
     print('Content-Type: application/json\n\n')
@@ -45,7 +48,7 @@ def main():
     # Does user own the cart...
     owns_gc = check_cart_ownership(cursor, current_user_id, gene_cart_id)
 
-    if owns_gc == True:
+    if owns_gc:
         result = { 'success': 1, 'gc':[] }
 
         cart = geardb.GeneCart(id=gene_cart_id)
@@ -71,7 +74,7 @@ def check_cart_ownership(cursor, current_user_id, gc_id):
     cursor.execute(qry, (gc_id,))
 
     for row in cursor:
-        print(row[1], current_user_id, file=sys.stderr)
+        #print(row[1], current_user_id, file=sys.stderr)
         # Change access if user owns it
         if row[1] == current_user_id:
             return True
