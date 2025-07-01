@@ -1,7 +1,11 @@
 #!/opt/bin/python3
 
-import cgi, json, requests
-import os, sys
+import cgi
+import json
+import os
+import sys
+
+import requests
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
@@ -19,7 +23,7 @@ def make_static_plotly_graph(filename, config, url):
     decoded_result = result.json()
 
     # If plotly API threw an error, report as failed
-    if not "success" in decoded_result:
+    if "success" not in decoded_result:
         return False
     if "success" in decoded_result:
         # If success is a list, flatten and take the first element
@@ -50,7 +54,7 @@ def make_static_tsne_graph(filename, config, url):
     decoded_result = result.json()
 
     # If plotly API threw an error, report as failed
-    if not "success" in decoded_result:
+    if "success" not in decoded_result:
         return False
     if "success" in decoded_result:
         # If success is a list, flatten and take the first element
@@ -111,27 +115,39 @@ def main():
 
     user_id = user.id
 
+    if user_id is None:
+        print('User ID is None for session_id {}'.format(session_id), file=sys.stderr)
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(dict(display_id=None, success=False)))
+        return
+
     if display_id:
         # display_id exists, so update
 
         query = "SELECT user_id FROM dataset_display WHERE id = %s"
         cursor.execute(query, (display_id,))
-        (display_owner,) = cursor.fetchone()
+        row = cursor.fetchone()
+        if row is not None:
+            (display_owner,) = row
 
-        if int(user_id) == display_owner:
-            # A user must be the owner of the particular
-            # display in order to save/update. We check here
-            # in case a user maliciously changes the HTML id of the display
-            # and then saves
-            query = """
-                UPDATE dataset_display
-                SET label = %s, plot_type = %s, plotly_config = %s
-                WHERE id = %s;
-            """
-            cursor.execute(query, (label, plot_type, plotly_config, display_id))
-            result = dict(display_id=display_id, success=True)
+            if int(user_id) == display_owner:
+                # A user must be the owner of the particular
+                # display in order to save/update. We check here
+                # in case a user maliciously changes the HTML id of the display
+                # and then saves
+                query = """
+                    UPDATE dataset_display
+                    SET label = %s, plot_type = %s, plotly_config = %s
+                    WHERE id = %s;
+                """
+                cursor.execute(query, (label, plot_type, plotly_config, display_id))
+                result = dict(display_id=display_id, success=True)
+            else:
+                print('UPDATE DIDNT HAPPEN?', file=sys.stderr)
+                result = dict(display_id=display_id, success=False)
         else:
-            print('UPDATE DIDNT HAPPEN?', file=sys.stderr)
+            print('Display ID {} not found in database.'.format(display_id), file=sys.stderr)
             result = dict(display_id=display_id, success=False)
     else:
         # Display doesn't exist yet, insert new
@@ -158,10 +174,14 @@ def main():
         cursor.execute(query,
             (dataset_id, user_id, label, plot_type, plotly_config))
 
-        for (d_id,) in cursor:
-            display_id = d_id
+        row = cursor.fetchone()
+        if row:
+            (display_id,) = row
             result["display_id"] = display_id
-            break
+
+        if not display_id:
+            print('Display ID not found after insert.', file=sys.stderr)
+            result = dict(success=False)
 
     filename = os.path.join(DATASET_PREVIEWS_DIR, "{}.{}.png".format(dataset_id, display_id))
 
