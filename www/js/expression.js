@@ -285,18 +285,18 @@ const fetchGeneAnnotations = async (callback) => {
             }
 
             // add event listeners to the gene result list items
-            for (const gene_result of document.querySelectorAll('.gene-result-list-item')) {
+            for (const gene_result of document.getElementsByClassName('gene-result-list-item')) {
                 gene_result.addEventListener('click', (event) => {
                     const gene_symbol = event.target.textContent;
-                    document.querySelector('#currently-selected-gene').innerHTML = gene_symbol;
+                    document.getElementById('currently-selected-gene').innerHTML = gene_symbol;
 
                     // remove is-selected from all the existing rows, then add it to this one
-                    const rows = document.querySelectorAll('.gene-result-list-item');
-                    rows.forEach((row) => {
+                    const rows = document.getElementsByClassName('gene-result-list-item');
+                    for (const row of rows) {
                         row.classList.remove('is-selected');
-                    });
+                    }
 
-                    event.target.classList.add('is-selected');
+                    event.currentTarget.classList.add('is-selected');
                     selectGeneResult(gene_symbol);
                 });
             }
@@ -564,7 +564,7 @@ const parseDatasetCollectionURLParams = () => {
  *
  * @param {string} geneSymbol - The symbol of the gene to be selected.
  */
-const selectGeneResult = (geneSymbol) => {
+const selectGeneResult = async (geneSymbol) => {
     const selectedOrganismId = organismSelector.value;
     currently_selected_gene_symbol = geneSymbol;
 
@@ -581,7 +581,7 @@ const selectGeneResult = (geneSymbol) => {
         document.getElementById("result-panel-grid").classList.remove("is-hidden");
         document.getElementById("zoomed-panel-grid").classList.add("is-hidden");
 
-        tilegrid.renderDisplays(currently_selected_gene_symbol, isMultigene, svgScoringMethod);
+        await tilegrid.renderDisplays(currently_selected_gene_symbol, isMultigene, svgScoringMethod);
     }
 
     // call any callbacks that have been added (usually by plugins)
