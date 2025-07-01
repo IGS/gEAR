@@ -2,7 +2,7 @@
 
 """
 Sends email to user
-Scopes: 'forgot_password'
+Scopes: 'forgot_password' or 'user_verification'
 
 """
 
@@ -38,6 +38,8 @@ def main():
     form = cgi.FieldStorage()
     email = form.getvalue('email')
     scope = form.getvalue('scope')
+
+    print(f"Got email ({email}) and scope ({scope})")
 
     #print("Got e-mail: {0}".format(email))
     #print("Got scope: {0}".format(scope))
@@ -121,6 +123,7 @@ def main():
         try:
             # http://stackoverflow.com/a/17596848/2900840
             s = smtplib.SMTP('smtp.gmail.com:587')
+            #s.set_debuglevel(1)
             s.ehlo()
             s.starttls()
             s.login(sender, password)

@@ -20,6 +20,8 @@ class TileGrid {
 
         this.tiles = [];
         this.selector = selector;
+
+        this.zoomId = null; // The tile ID of the zoomed display, if any
     }
 
     /**
@@ -200,8 +202,7 @@ class TileGrid {
      * @param {boolean} [isZoomed=false] - Indicates whether the grid layout is a zoomed dataset.
      * @returns {void}
      */
-    applySingleTileGrid(datasetTile, selectorElt, isZoomed=false) {
-
+    async applySingleTileGrid(datasetTile, selectorElt, isZoomed=false) {
 
         selectorElt.style.gridTemplateColumns = `repeat(1, 1fr)`;
         selectorElt.style.gridTemplateRows = `repeat(1, fit-content)`;
@@ -212,7 +213,7 @@ class TileGrid {
         const createZoomedTile = () => {
             const zoomedDatasetTile = new DatasetTile(this, datasetTile.display, datasetTile.dataset, datasetTile.type === "multi", true);
             // add gene symbol to zoomed tile
-            zoomedDatasetTile.geneSymbol = datasetTile.geneSymbol;
+            zoomedDatasetTile.geneInput = datasetTile.geneInput;
             zoomedDatasetTile.currentDisplayId = datasetTile.currentDisplayId;
             zoomedDatasetTile.svgScoringMethod = datasetTile.svgScoringMethod;
             return zoomedDatasetTile;
@@ -232,7 +233,7 @@ class TileGrid {
         tileElement.style.gridArea = "auto";
 
         if (isZoomed) {
-            zoomedDatasetTile.renderDisplay(zoomedDatasetTile.geneSymbol, zoomedDatasetTile.currentDisplayId, zoomedDatasetTile.svgScoringMethod);
+            await zoomedDatasetTile.renderDisplay(zoomedDatasetTile.geneInput, zoomedDatasetTile.currentDisplayId, zoomedDatasetTile.svgScoringMethod);
         }
 
     }
@@ -295,11 +296,20 @@ class TileGrid {
         // sort tiles by height, ascending.  This should help cases where taller plots render as same height as shorter plots
         this.tiles.sort((a, b) => a.tile.height - b.tile.height);
 
-        // Sometimes fails to render due to OOM errors, so we want to try each tile individually
-        // Orthology mapping also seems to fail due to file locking as well.
-        this.tiles.map(async tile => {
-            await tile.processTileForRenderingDisplay(projectionOpts, geneSymbolInput, svgScoringMethod);
-        });
+        await Promise.all(
+            // Sometimes fails to render due to OOM errors, so we want to try each tile individually
+            // Orthology mapping also seems to fail due to file locking as well.
+            this.tiles.map(tile =>
+                tile.processTileForRenderingDisplay(projectionOpts, geneSymbolInput, svgScoringMethod)
+            )
+        );
+
+        if (this.zoomId) {
+            // If one of the tiles was zoomed in when the gene was selected, we need to preserve that zoom
+            const tileElement = document.getElementById(`tile-${this.zoomId}`);
+            tileElement.querySelector('.js-expand-display').click();
+        }
+
 
     }
 };
@@ -329,10 +339,10 @@ class DatasetTile {
 
         this.controller = new AbortController(); // Create new controller for new set of frames
 
+        this.geneInput = null;
         this.orthologs = null;  // Mapping of all orthologs for all gene symbol inputs for this dataset
         this.orthologsToPlot = null;    // A flattened list of all orthologs to plot
 
-        this.geneSymbol = null;
         this.currentDisplayId = this.display?.display_id || this.addDefaultDisplay().then((displayId) => this.currentDisplayId = displayId);
 
         this.svg = null; // The SVG element for the plot
@@ -910,20 +920,24 @@ class DatasetTile {
         } else {
             tileElement.querySelector('.js-shrink-display').classList.add("is-hidden");
         }
-        tileElement.querySelector('.js-expand-display').addEventListener("click", (event) => {
+        tileElement.querySelector('.js-expand-display').addEventListener("click", async (event) => {
             // Apply a zoomed-in display
             document.getElementById("result-panel-grid").classList.add("is-hidden");
             document.getElementById("zoomed-panel-grid").replaceChildren();
             document.getElementById("zoomed-panel-grid").classList.remove("is-hidden");
 
+            this.parentTileGrid.zoomId = this.tile.tileId; // Set the zoomed display ID in the parent tile grid
             // Apply single tile grid
-            this.parentTileGrid.applySingleTileGrid(this, document.getElementById("zoomed-panel-grid"), true);
+            await this.parentTileGrid.applySingleTileGrid(this, document.getElementById("zoomed-panel-grid"), true);
 
         });
         tileElement.querySelector('.js-shrink-display').addEventListener("click", (event) => {
             // Revert back to "#result-panel-grid" display
             document.getElementById("result-panel-grid").classList.remove("is-hidden");
             document.getElementById("zoomed-panel-grid").classList.add("is-hidden");
+
+            this.parentTileGrid.zoomId = null; // Clear the zoomed display ID in the parent tile grid
+
         });
 
         // Add event listener to dropdown trigger
@@ -1107,7 +1121,7 @@ class DatasetTile {
                     const displayId = parseInt(displayElement.dataset.displayId);
                     // Render display
                     if (!this.svgScoringMethod) this.svgScoringMethod = "gene";
-                    this.renderDisplay(this.geneSymbol, displayId, this.svgScoringMethod);
+                    this.renderDisplay(this.geneInput, displayId, this.svgScoringMethod);
 
                     // Close modal
                     closeModal(modalDiv);
@@ -1188,7 +1202,7 @@ class DatasetTile {
 
         // Store gene symbol for future use (i.e. changing display, etc.)
         // Since this method manipulates the geneSymbolInput, we need to store the original input
-        this.geneSymbol = geneSymbolInput;
+        this.geneInput = geneSymbolInput;
 
         createCardMessage(this.tile.tileId, "info", "Loading display...");
 
@@ -1748,7 +1762,7 @@ class DatasetTile {
 
         const datasetId = this.dataset.id;
         const analysisObj = null
-        const plotConfig = {gene_symbols: this.geneSymbol};   // applies for single and multi gene
+        const plotConfig = {gene_symbols: this.geneInput};   // applies for single and multi gene
 
         this.resetAbortController();
         otherOpts = {}
