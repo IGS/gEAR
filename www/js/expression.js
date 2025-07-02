@@ -533,7 +533,9 @@ const parseGeneListURLParams = async () => {
 
     // are we doing exact matches?
     const exact_match = getUrlParameter('gene_symbol_exact_match');
-    document.getElementById('gene-search-exact-match').checked = exact_match === '1';
+    if (exact_match !== null && exact_match !== undefined) {
+        document.getElementById('gene-search-exact-match').checked = exact_match === '1';
+    }
 
     // single or multiple gene view (convert to boolean)?
     const isMultigeneParam = getUrlParameter('is_multigene');
