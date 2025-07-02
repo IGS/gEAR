@@ -32,7 +32,6 @@ TODOs:
 const organismSelector = document.getElementById('organism-selector');
 
 document.addEventListener('DOMContentLoaded', () => {
-
     // handle when the dropdown-gene-list-search-input input box is changed
     document.getElementById('genes-manually-entered').addEventListener('change', (event) => {
         const search_term_string = event.target.value;
@@ -469,8 +468,8 @@ const updateGenesSelected = (searchTermString) => {
 
     manually_entered_genes = newManuallyEnteredGenes;
 
-    console.log("Selected genes updated:", Array.from(selected_genes));
-    console.log("Manually entered genes updated:", Array.from(manually_entered_genes));
+    //console.log("Selected genes updated:", Array.from(selected_genes));
+    //console.log("Manually entered genes updated:", Array.from(manually_entered_genes));
 }
 
 /**
