@@ -468,6 +468,9 @@ const updateGenesSelected = (searchTermString) => {
     }
 
     manually_entered_genes = newManuallyEnteredGenes;
+
+    console.log("Selected genes updated:", Array.from(selected_genes));
+    console.log("Manually entered genes updated:", Array.from(manually_entered_genes));
 }
 
 /**

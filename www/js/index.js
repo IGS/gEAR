@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location = url.toString();
     }
 
-    // handle when the dropdown-gene-list-search-input input box is changed
+    // handle when the box for manually entering genes is changed
     document.getElementById('genes-manually-entered').addEventListener('change', (event) => {
         const search_term_string = event.target.value;
         let previously_manual_genes = manually_entered_genes;
