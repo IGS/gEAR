@@ -1,10 +1,11 @@
-from datetime import datetime
-import json
-import os, sys
 import functools
-import pika
+import json
+import os
+import sys
+from datetime import datetime
 
 import gear.queue
+import pika
 
 # SAdkins - Originally this module created module global variables for the connection and a single channel
 # However, this conection was being shared among each of the Flask API requests, so if one threw an error, they all did
@@ -193,6 +194,8 @@ class AsyncConnection(Connection):
     """Class to implement a callback-style SelectConnection.
     This is more performant and can handle situations such as unexpected failures."""
 
+    connection: pika.SelectConnection
+
     def __init__(self, host="localhost", publisher_or_consumer=None, queue_name=None, on_message_callback=None,pid=None, logfile=None):
         super().__init__(host=host, publisher_or_consumer=publisher_or_consumer, async_connection=True, pid=pid)
         # At this point we should have self.channel defined
@@ -297,7 +300,7 @@ class AsyncConnection(Connection):
         be invoked by pika.
         :param str|unicode exchange_name: The name of the exchange to declare
         """
-        print("{} - Declaring exchange".format(self.pid, exchange_name), flush=True, file=self.log_fh)
+        print("{} - Declaring exchange {}".format(self.pid, exchange_name), flush=True, file=self.log_fh)
         # Note: using functools.partial is not required, it is demonstrating
         # how arbitrary data can be passed to the callback when it is called
         cb = functools.partial(
@@ -314,7 +317,7 @@ class AsyncConnection(Connection):
         :param pika.Frame.Method unused_frame: Exchange.DeclareOk response frame
         :param str|unicode userdata: Extra user data (exchange name)
         """
-        print("{} - Exchange declared".format(self.pid, userdata), flush=True, file=self.log_fh)
+        print("{} - Exchange declared {}".format(self.pid, userdata), flush=True, file=self.log_fh)
         self.setup_queue(self.queue)
 
     def setup_queue(self, queue_name):
@@ -323,7 +326,7 @@ class AsyncConnection(Connection):
         be invoked by pika.
         :param str|unicode queue_name: The name of the queue to declare.
         """
-        print("{} - Declaring queue".format(self.pid, queue_name), flush=True, file=self.log_fh)
+        print("{} - Declaring queue {}".format(self.pid, queue_name), flush=True, file=self.log_fh)
         cb = functools.partial(self.on_queue_declareok, userdata=queue_name)
         self.channel.queue_declare(queue=queue_name, callback=cb)
 
