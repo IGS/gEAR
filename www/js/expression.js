@@ -32,7 +32,6 @@ TODOs:
 const organismSelector = document.getElementById('organism-selector');
 
 document.addEventListener('DOMContentLoaded', () => {
-
     // handle when the dropdown-gene-list-search-input input box is changed
     document.getElementById('genes-manually-entered').addEventListener('change', (event) => {
         const search_term_string = event.target.value;
@@ -468,6 +467,9 @@ const updateGenesSelected = (searchTermString) => {
     }
 
     manually_entered_genes = newManuallyEnteredGenes;
+
+    //console.log("Selected genes updated:", Array.from(selected_genes));
+    //console.log("Manually entered genes updated:", Array.from(manually_entered_genes));
 }
 
 /**
@@ -531,7 +533,9 @@ const parseGeneListURLParams = async () => {
 
     // are we doing exact matches?
     const exact_match = getUrlParameter('gene_symbol_exact_match');
-    document.getElementById('gene-search-exact-match').checked = exact_match === '1';
+    if (exact_match !== null && exact_match !== undefined) {
+        document.getElementById('gene-search-exact-match').checked = exact_match === '1';
+    }
 
     // single or multiple gene view (convert to boolean)?
     const isMultigeneParam = getUrlParameter('is_multigene');
