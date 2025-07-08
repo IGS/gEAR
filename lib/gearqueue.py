@@ -6,6 +6,7 @@ from datetime import datetime
 
 import gear.queue
 import pika
+from pika.exceptions import ConnectionClosed, UnroutableError
 
 # SAdkins - Originally this module created module global variables for the connection and a single channel
 # However, this conection was being shared among each of the Flask API requests, so if one threw an error, they all did
@@ -20,7 +21,7 @@ class Connection:
         www/cgi/load_dataset_queue_consumer.cgi
     '''
 
-    def __init__(self, host="localhost", publisher_or_consumer=None, async_connection=False, pid=None):
+    def __init__(self, host="localhost", publisher_or_consumer=None, async_connection=False, purge_queue=False, pid=None):
         '''
         Establish a connection to RabbitMQ queue as a queue publisher or consumer
 
@@ -96,11 +97,11 @@ class Connection:
                                     , content_type="application/json"
                                     , **kwargs
                                 ))
-        except pika.exceptions.UnroutableError:
+        except UnroutableError:
             print('Message was returned')
             raise
 
-        self.connection.process_data_events(time_limit=None)
+        self.connection.process_data_events(time_limit=0)  # Process events to ensure the message is sent
 
     def consume(self, queue_name=None, on_message_callback=None, num_messages=1, auto_ack=False, skip_queue_declare=False):
         '''
@@ -178,8 +179,8 @@ class Connection:
 
             try:
                 print("{0}\tWaiting for messages. To exit press CTRL+C".format( str(datetime.now()) ), file=stream_fh)
-                self.channel.start_consuming()
-            except pika.exceptions.ConnectionClosed:
+            except ConnectionClosed:
+                print("{0}\tConnection to queue lost. Restarting consumer...".format( str(datetime.now()) ), file=stream_fh)
                 print("{0}\tConnection to queue lost. Restarting consumer...".format( str(datetime.now()) ), file=stream_fh)
         return self
 
@@ -196,7 +197,7 @@ class AsyncConnection(Connection):
 
     connection: pika.SelectConnection
 
-    def __init__(self, host="localhost", publisher_or_consumer=None, queue_name=None, on_message_callback=None,pid=None, logfile=None):
+    def __init__(self, host="localhost", publisher_or_consumer=None, queue_name=None, on_message_callback=None, pid=None, purge_queue=False, logfile=None):
         super().__init__(host=host, publisher_or_consumer=publisher_or_consumer, async_connection=True, pid=pid)
         # At this point we should have self.channel defined
 
@@ -206,6 +207,8 @@ class AsyncConnection(Connection):
 
         self.queue = queue_name
         self.on_message = on_message_callback
+
+        self.purge_queue = purge_queue
 
         # Callback code snippets are from https://github.com/pika/pika/blob/main/examples/asynchronous_consumer_example.py
         # The example code makes a callback out of each individual step, which I think is a bit overkill (and does not mesh well
@@ -228,7 +231,7 @@ class AsyncConnection(Connection):
             # If logfile is not sys.stderr, close at this time.
             if not self.log_fh.closed:
                 self.log_fh.close()
-        except:
+        except Exception:
             pass
 
     ### Connection callback functions
@@ -240,9 +243,8 @@ class AsyncConnection(Connection):
 
     def _on_connection_closed(self, _unused_connection, reason):
         """Callback for when connection has closed unexpectedly."""
-        self.connection.channel = None
         if self._closing:
-            self.connection.connection.ioloop.stop()
+            self.connection.ioloop.stop()
         else:
             print("{} - Connection closed - {}".format(self.pid, reason), flush=True, file=self.log_fh)
             self.reconnect()
@@ -253,6 +255,11 @@ class AsyncConnection(Connection):
         """Callback for when the channel opens."""
         self.channel = channel
         print("{} - Channel opened".format(self.pid), flush=True, file=self.log_fh)
+
+        if self.purge_queue:
+            print("{} - Purging queue {}".format(self.pid, self.queue), flush=True, file=self.log_fh)
+            self.channel.queue_purge(queue=self.queue)
+
         self.channel.add_on_close_callback(self._on_channel_closed)
         self.setup_exchange(self.exchange)
 
