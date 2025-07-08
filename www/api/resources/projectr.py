@@ -49,7 +49,7 @@ ANNOTATION_TYPE = "ensembl"  # NOTE: This will change in the future to be varied
 # I am setting this slightly under the "MaxKeepAliveRequests" in apache.conf
 CONCURRENT_REQUEST_LIMIT = 75
 # timeout for the POST request to projectR service
-REQUEST_TIMEOUT = 600
+REQUEST_TIMEOUT = 1200
 
 """
 projections json format - one in each "projections/by_dataset/<dataset_id> subdirectory
