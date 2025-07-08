@@ -287,7 +287,7 @@ const fetchGeneAnnotations = async (callback) => {
             for (const gene_result of document.getElementsByClassName('gene-result-list-item')) {
                 gene_result.addEventListener('click', (event) => {
                     const gene_symbol = event.target.textContent;
-                    document.getElementById('currently-selected-gene').innerHTML = gene_symbol;
+                    document.getElementById('currently-selected-gene').textContent = gene_symbol;
 
                     // remove is-selected from all the existing rows, then add it to this one
                     const rows = document.getElementsByClassName('gene-result-list-item');
