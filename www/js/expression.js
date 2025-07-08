@@ -32,7 +32,6 @@ TODOs:
 const organismSelector = document.getElementById('organism-selector');
 
 document.addEventListener('DOMContentLoaded', () => {
-
     // handle when the dropdown-gene-list-search-input input box is changed
     document.getElementById('genes-manually-entered').addEventListener('change', (event) => {
         const search_term_string = event.target.value;
@@ -285,18 +284,18 @@ const fetchGeneAnnotations = async (callback) => {
             }
 
             // add event listeners to the gene result list items
-            for (const gene_result of document.querySelectorAll('.gene-result-list-item')) {
+            for (const gene_result of document.getElementsByClassName('gene-result-list-item')) {
                 gene_result.addEventListener('click', (event) => {
                     const gene_symbol = event.target.textContent;
-                    document.querySelector('#currently-selected-gene').innerHTML = gene_symbol;
+                    document.getElementById('currently-selected-gene').textContent = gene_symbol;
 
                     // remove is-selected from all the existing rows, then add it to this one
-                    const rows = document.querySelectorAll('.gene-result-list-item');
-                    rows.forEach((row) => {
+                    const rows = document.getElementsByClassName('gene-result-list-item');
+                    for (const row of rows) {
                         row.classList.remove('is-selected');
-                    });
+                    }
 
-                    event.target.classList.add('is-selected');
+                    event.currentTarget.classList.add('is-selected');
                     selectGeneResult(gene_symbol);
                 });
             }
@@ -468,6 +467,9 @@ const updateGenesSelected = (searchTermString) => {
     }
 
     manually_entered_genes = newManuallyEnteredGenes;
+
+    //console.log("Selected genes updated:", Array.from(selected_genes));
+    //console.log("Manually entered genes updated:", Array.from(manually_entered_genes));
 }
 
 /**
@@ -531,7 +533,9 @@ const parseGeneListURLParams = async () => {
 
     // are we doing exact matches?
     const exact_match = getUrlParameter('gene_symbol_exact_match');
-    document.getElementById('gene-search-exact-match').checked = exact_match === '1';
+    if (exact_match !== null && exact_match !== undefined) {
+        document.getElementById('gene-search-exact-match').checked = exact_match === '1';
+    }
 
     // single or multiple gene view (convert to boolean)?
     const isMultigeneParam = getUrlParameter('is_multigene');
@@ -564,7 +568,7 @@ const parseDatasetCollectionURLParams = () => {
  *
  * @param {string} geneSymbol - The symbol of the gene to be selected.
  */
-const selectGeneResult = (geneSymbol) => {
+const selectGeneResult = async (geneSymbol) => {
     const selectedOrganismId = organismSelector.value;
     currently_selected_gene_symbol = geneSymbol;
 
@@ -581,7 +585,7 @@ const selectGeneResult = (geneSymbol) => {
         document.getElementById("result-panel-grid").classList.remove("is-hidden");
         document.getElementById("zoomed-panel-grid").classList.add("is-hidden");
 
-        tilegrid.renderDisplays(currently_selected_gene_symbol, isMultigene, svgScoringMethod);
+        await tilegrid.renderDisplays(currently_selected_gene_symbol, isMultigene, svgScoringMethod);
     }
 
     // call any callbacks that have been added (usually by plugins)

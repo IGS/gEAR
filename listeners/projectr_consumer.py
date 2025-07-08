@@ -134,6 +134,7 @@ class Consumer:
             on_message_callback=_on_request,
             pid=pid,
             logfile=stream,
+            purge_queue=True,  # Purge the queue before starting
         )
 
     def run(self) -> None:

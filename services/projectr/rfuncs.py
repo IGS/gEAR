@@ -10,15 +10,15 @@ import pandas as pd  # for dataframe manipulation
 
 # rpy2.robjects calls rinterface.initr() under-the-hood when initialized to start the R session
 import rpy2.robjects as ro
-# The number of R sessions appears to be limited to the number of threads apache allocates to the Flask API
-# If this number of sessions exceeds number of threads, a RNotReady error will be thrown for each subsequent session
-
-from rpy2.robjects import pandas2ri
-from rpy2.robjects.packages import importr
-from rpy2.robjects.conversion import localconverter
 
 # If running locally, need to ensure that multiple concurrent R calls do not conflict
 from rpy2.rinterface_lib import openrlib
+
+# The number of R sessions appears to be limited to the number of threads apache allocates to the Flask API
+# If this number of sessions exceeds number of threads, a RNotReady error will be thrown for each subsequent session
+from rpy2.robjects import pandas2ri
+from rpy2.robjects.conversion import localconverter
+from rpy2.robjects.packages import importr
 
 
 class RError(Exception):
@@ -111,6 +111,10 @@ def run_projectR_cmd(target_df: pd.DataFrame, loading_df: pd.DataFrame, algorith
                     projection_patterns_r_matrix = projection.rx2("proj_score_list").rx2("genesig")
                 else:
                     raise ValueError("Algorithm {} is not supported".format(algorithm))
+            except ValueError as ve:
+                # print stacktrace with line numbers
+                traceback.print_exc(file=sys.stderr)
+                raise
             except Exception as e:
                 # print stacktrace with line numbers
                 traceback.print_exc(file=sys.stderr)

@@ -14,6 +14,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add event listener to dropdown trigger
     document.querySelector("#dropdown-gene-lists > button.dropdown-trigger").addEventListener("click", (event) => {
         const item = event.currentTarget;
+
+        // Close all other dropdowns
+        const dropdowns = document.querySelectorAll('.dropdown.is-active');
+        dropdowns.forEach((dropdown) => {
+            if (dropdown !== item.closest('.dropdown')) {
+                dropdown.classList.remove('is-active');
+            }
+        });
+
         item.closest(".dropdown").classList.toggle('is-active');
 
         // in case it was in errored state
@@ -94,13 +103,18 @@ document.addEventListener('DOMContentLoaded', () => {
             element.classList.add('is-clickable');
         });
 
-        // clear the genes-manually-entered input element
+        // clear the searched gene list input element
         document.querySelector('#dropdown-gene-list-search-input').value = '';
         document.querySelector('#dropdown-gene-list-selector-label').innerHTML = 'Quick search using Gene Lists';
 
         // and finally the related gene lists and genes
         selected_gene_lists.clear();
         selected_genes.clear();
+
+        // Add back any manually-entered genes
+        if (manually_entered_genes.length > 0) {
+            selected_genes = new Set([...manually_entered_genes,]);
+        }
     });
 
     document.querySelector('#dropdown-gene-list-proceed').addEventListener('click', (event) => {
@@ -215,7 +229,7 @@ const setActiveGeneCart = async (cart_row, mode) => {
     // if adding or removing, update the inventory
     if (mode === 'add') {
         selected_gene_lists.add(cart_row.dataset.shareId);
-        selected_genes = new Set([...selected_genes, ...genes]);
+        selected_genes = new Set([...selected_genes, ...genes, ...manually_entered_genes]);
     } else if (mode === 'remove') {
         selected_gene_lists.delete(cart_row.dataset.shareId);
 
@@ -320,7 +334,7 @@ const selectGeneLists = (share_ids) => {
     //   them preselected
     for (const share_id of share_ids) {
         selected_gene_lists.add(share_id);
-        selected_genes = new Set([...selected_genes, ...gene_cart_genes[share_id]]);
+        selected_genes = new Set([...selected_genes, ...gene_cart_genes[share_id], ...manually_entered_genes]);
     }
 
     updateGeneListSelectorLabel();

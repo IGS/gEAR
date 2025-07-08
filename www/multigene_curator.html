@@ -277,14 +277,18 @@
 
                 <!--#include virtual="/include/gene-collection-selector/gene-collection-selector.html" -->
               </div>
-              <span class="has-text-success-dark has-text-weight-bold">At least 2 genes required</span>
+              <span class="has-text-success-dark has-text-weight-bold">At least 2 found genes required</span>
             </div>
             <div id="gene-tags-c" class="box is-hidden">
               <p class="subtitle is-5" id="genes-selected">Genes selected:</p>
               <div id="gene-tags" class="tags"></div>
               <div class="buttons">
-                <button id="clear-genes-btn" class="button is-primary is-outlined"> Clear selection</button>
+                <button id="clear-genes-btn" class="button is-primary is-outlined is-small"> Clear selection</button>
               </div>
+            </div>
+            <div id="genes-not-found-c" class="box is-hidden">
+              <p class="subtitle is-5">Genes selected not found in this dataset:</p>
+              <div id="genes-not-found-tags" class="tags"></div>
             </div>
             <div id="continue-to-plot-options" class="content has-text-weight-semibold is-hidden">
               You can click on the "Select plotting options" section at any time

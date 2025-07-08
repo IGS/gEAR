@@ -71,24 +71,24 @@ def get_spatial_adata(analysis_id: str | None, dataset_id: str, session_id: str,
     sdata = ana.get_sdata()
     platform = ana.determine_platform(sdata)
 
-    from gear import spatialuploader
+    from gear import spatialhandler
 
     # Ensure the spatial data type is supported
-    if not platform or platform not in spatialuploader.SPATIALTYPE2CLASS.keys():
+    if not platform or platform not in spatialhandler.SPATIALTYPE2CLASS.keys():
         raise ValueError("Invalid or unsupported spatial data type {0}".format(platform))
 
-    spatial_obj = spatialuploader.SPATIALTYPE2CLASS[platform]()
+    spatial_obj = spatialhandler.SPATIALTYPE2CLASS[platform]()
     spatial_obj.sdata = sdata
 
     # Filter by bounding box (mostly for images)
-    spatial_obj._filter_sdata_by_coords()
+    spatial_obj.filter_sdata_by_coords()
 
     if include_images is None:
         include_images = spatial_obj.has_images
 
     # Create AnnData object
     # Do not include images in the adata object (to make it lighter)
-    spatial_obj._convert_sdata_to_adata(include_images=include_images)
+    spatial_obj.convert_sdata_to_adata(include_images=include_images)
     adata = spatial_obj.adata
     # Extra metadata to help with determining if images are available and where they are
     adata.uns["has_images"] = spatial_obj.has_images
@@ -124,7 +124,6 @@ def create_projection_adata(dataset_adata, dataset_id, projection_id):
             # For some reason the gene_symbol is not taken in by the constructor
             projection_adata.var["gene_symbol"] = projection_adata.var_names
             projection_adata.write_h5ad(filename=Path(temp_file_path))
-            print(projection_adata.isbacked, file=sys.stderr)
 
     except Exception as e:
         print(str(e), file=sys.stderr)

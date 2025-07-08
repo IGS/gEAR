@@ -20,7 +20,7 @@
 
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
-
+        <link rel="stylesheet" href="https://unpkg.com/intro.js/introjs.css" />
         <!-- Ensures we always get a new version (during our current active development cycles) -->
         <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
 
@@ -39,6 +39,13 @@
           <!--#include virtual="/include/header_bar.html" -->
 
           <section id="content-c" class="m-3" data-nav-link="workspace">
+            <!-- New user onboarding -->
+            <!--<div id="onboarding-c">
+              <button id="onboarding-btn" class="button is-primary is-dark">
+                New to gEAR? Click here.
+              </button>
+            </div> -->
+
             <!-- This is the section to be populated for new pages -->
             <h3 class="mt-4 mb-4">
               <span class="icon">
@@ -279,6 +286,10 @@
 
       <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
       <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+      <!-- Onboarding new users -->
+      <script src="https://unpkg.com/intro.js/intro.js"></script>
+
       <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
       <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
 

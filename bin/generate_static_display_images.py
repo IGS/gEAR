@@ -142,7 +142,7 @@ def main():
                     except:
                         print("Symlink for {} to default already exists. Skipping".format(filename))
                 continue
-                print("Overwriting file {}".format(filename))
+                #print("Overwriting file {}".format(filename))
 
             success = False
             url = "{}localhost/api/plot/{}".format(uri_identifier, dataset_id)

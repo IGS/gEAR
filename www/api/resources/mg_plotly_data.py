@@ -237,7 +237,7 @@ class MGPlotlyData(Resource):
         # ADATA - Observations are rows, genes are columns
         try:
             selected = adata.to_memory()
-        except:
+        except Exception:
             # The "try" may fail for projections as it is already in memory
             selected = adata
 
@@ -245,7 +245,7 @@ class MGPlotlyData(Resource):
         # This prevents potential downstream issues
         try:
             selected.X = selected.X.todense()
-        except:
+        except Exception:
             pass
 
         # These plot types filter to only the specific genes.
@@ -316,7 +316,7 @@ class MGPlotlyData(Resource):
                     if "NA" in values and "NA" not in selected.obs[field].cat.categories:
                         values.remove("NA")
                         selected.obs[field].cat.add_categories("NA")
-                        selected.obs[field].fillna("NA", inplace=True)
+                        selected.obs[field] = selected.obs[field].fillna("NA")
 
                     mask = selected.obs[field].isin(values)
                     selected = selected[mask, :]

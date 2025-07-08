@@ -16,6 +16,23 @@ div#results-main-c {
     border-top: 1px solid rgb(220, 220, 220);
     margin-top: 50px;
 }
+
+#results-main-c, #annotation-and-grid-c {
+    width: 100%; /* ensure full width for the main layout and content */
+    box-sizing: border-box; /* include padding and border in element's total width */
+    min-width: 0; /* allow flex items to shrink */
+}
+
+#result-panel {
+    overflow-x: auto; /* allow horizontal scrolling if needed */
+    width: 100%;
+}
+
+#result-panel-grid {
+    min-width: 1168px;
+}
+
+
 div#result-panel-grid .card {
     /* https://github.com/jgthms/bulma/issues/218 */
     height: 100%;
@@ -55,14 +72,6 @@ ul#go-terms {
 }
 ul#go-terms li {
     border-bottom: 1px solid #e9eef1;
-}
-
-#result-panel-grid {
-    display: grid;
-    grid-auto-rows: 360px;
-    grid-auto-columns: 90px; /* Explicitly set column width. Internally we limit to 12 columns */
-    grid-gap: 0.5em;
-    width: 1168px;  /* grid width + 2*border width + grid-gap */
 }
 
 /* tSNE plots */

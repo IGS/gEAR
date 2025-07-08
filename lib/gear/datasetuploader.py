@@ -44,12 +44,6 @@ class DatasetUploader:
                 elif tartype == 'threetab':
                     import gear.threetabuploader as threetabuploader
                     return threetabuploader.ThreeTabUploader()
-                elif tartype == 'visium':
-                    import gear.spatialuploader as spatialuploader
-                    return spatialuploader.VisiumUploader()
-                elif tartype == 'visiumhd':
-                    import gear.spatialuploader as spatialuploader
-                    return spatialuploader.VisiumHDUploader()
         if filetype == "h5ad":
             import gear.h5aduploader as h5aduploader
             return h5aduploader.H5adUploader()

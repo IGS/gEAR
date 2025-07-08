@@ -49,10 +49,15 @@ article[role="tooltip"] {
 /* Arrangement view as a 12-column grid */
 .arrangement-grid {
     display: grid;
-    grid-template-columns: repeat(12, 90px);    /* setting px instead of fr prevernts distortions if grid dimensions change */
+    grid-template-columns: repeat(12, 80px);    /* setting px instead of fr prevernts distortions if grid dimensions change */
     grid-gap: 0;
-    width: 1090px;  /* grid width + 2*border width */
+    width: 970px;  /* grid width + 2*border width */
     border: 5px solid black;
+}
+
+#dataset-arrangement-single-c, #dataset-arrangement-multi-c {
+    width: 100%;
+    overflow-x: auto; /* allow horizontal scrolling if needed */
 }
 
 .js-sortable-tile {

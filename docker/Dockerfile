@@ -137,7 +137,7 @@ RUN ./pip3 install --upgrade pip \
   && ./pip3 install wheel \
   && ./pip3 install -r /opt/gEAR/docker/requirements.txt \
   # Uninstall dask-expr to avoid issues with spatialdata (https://github.com/scverse/spatialdata/pull/570)
-  && pip uninstall dask-expr -y \
+  && ./pip3 uninstall dask-expr -y \
   && apt-get -qq update \
   && (chmod 777 /opt/Python-${PYTHON_VERSION}/lib/python${PYTHON_VERSION}/site-packages/scanpy/preprocessing/__pycache__ || true)
 

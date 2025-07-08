@@ -1893,6 +1893,7 @@ class Dataset:
     layouts: List[Layout] = field(default_factory=list)
     links: List[DatasetLink] = field(default_factory=list)
     user_name: Optional[str] = None
+    is_permalink: Optional[int] = None
 
     def __repr__(self):
         return json.dumps(self.__dict__)

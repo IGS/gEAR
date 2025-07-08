@@ -9,9 +9,9 @@ import pandas as pd
 import plotly.express.colors as pxc
 from flask import request
 from flask_restful import Resource
+from gear.plotting import PlotError, generate_plot, plotly_color_map
 from plotly.utils import PlotlyJSONEncoder
 
-from gear.plotting import PlotError, generate_plot, plotly_color_map
 from .common import create_projection_adata, order_by_time_point
 
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"

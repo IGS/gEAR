@@ -1771,34 +1771,36 @@ btnNewCartSave.addEventListener("click", (e) => {
         return;
     }
 
-    // Remove all "is-danger" classes from form fields
-    for (const classElt of document.querySelectorAll("#new-list-form-c .js-validation-help")) {
-        classElt.remove();
-    }
+    // sleep for a second to show the loading indicator
+    setTimeout(() => {
+        // Remove all "is-danger" classes from form fields
+        for (const classElt of document.querySelectorAll("#new-list-form-c .js-validation-help")) {
+            classElt.remove();
+        }
 
-    // Remove all "is-danger" classes from form fields
-    for (const classElt of document.querySelectorAll("#new-list-form-c .is-danger")) {
-        classElt.classList.remove("is-danger");
-    }
+        // Remove all "is-danger" classes from form fields
+        for (const classElt of document.querySelectorAll("#new-list-form-c .is-danger")) {
+            classElt.classList.remove("is-danger");
+        }
 
-    // Passed to CGI script as 1 or 0
-    const isPublic = document.getElementById("new-list-visibility").checked ? 1 : 0;
+        // Passed to CGI script as 1 or 0
+        const isPublic = document.getElementById("new-list-visibility").checked ? 1 : 0;
 
-    const payload = {
-        'new_cart_label': newCartLabel.value
-        , 'new_cart_organism_id': newCartOrganism.value
-        , 'new_cart_ldesc': document.getElementById("new-list-ldesc").value
-        , 'is_public': isPublic
-        , 'session_id': CURRENT_USER.session_id
-        , 'new_cart_upload_type': document.getElementById("new-list-upload-type").value
-        , "new_cart_pasted_genes": document.getElementById("new-list-pasted-genes").value
-        , "new_cart_file": document.getElementById("new-list-file").files[0]
-    }
+        const payload = {
+            'new_cart_label': newCartLabel.value
+            , 'new_cart_organism_id': newCartOrganism.value
+            , 'new_cart_ldesc': document.getElementById("new-list-ldesc").value
+            , 'is_public': isPublic
+            , 'session_id': CURRENT_USER.session_id
+            , 'new_cart_upload_type': document.getElementById("new-list-upload-type").value
+            , "new_cart_pasted_genes": document.getElementById("new-list-pasted-genes").value
+            , "new_cart_file": document.getElementById("new-list-file").files[0]
+        }
 
-    const gc = new GeneCart();
-    gc.addCartToDbFromForm(payload, geneListSaved, geneListFailure);
-    btnNewCartSave.classList.remove("is-loading");
-
+        const gc = new GeneCart();
+        gc.addCartToDbFromForm(payload, geneListSaved, geneListFailure);
+        btnNewCartSave.classList.remove("is-loading");
+    }, 1000);
 });
 
 document.getElementById("btn-table-view").addEventListener("click", () => {

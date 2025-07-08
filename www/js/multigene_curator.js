@@ -4,6 +4,11 @@ const isMultigene = 1;
 
 // imported from gene-collection-selector.js
 // let selected_genes = new Set();
+const getSelectedGenes = () => {
+    return selected_genes;
+}
+
+const notFoundGenes = new Set(); // Store genes that are not found in datasetGenes
 
 let manuallyEnteredGenes = new Set();
 let datasetGenes = new Set();
@@ -197,9 +202,16 @@ class GenesAsAxisHandler extends PlotHandler {
 
         // Filtered observation groups
         this.plotConfig["obs_filters"] = facetWidget?.filters || {};
+        if (Object.keys(this.plotConfig["obs_filters"]).length === 0) {
+            this.plotConfig["obs_filters"] = null; // don't send empty filters
+        }
 
         // Get order
         this.plotConfig["sort_order"] = getPlotOrderFromSortable();
+        if (!sortOrderChanged) {
+            // If no order was changed, set to null so API does not try to sort by the default order
+            this.plotConfig["sort_order"] = null;
+        }
 
     }
 
@@ -663,6 +675,9 @@ class GenesAsDataHandler extends PlotHandler {
 
         // Filtered observation groups
         this.plotConfig["obs_filters"] = facetWidget?.filters || {};
+        if (Object.keys(this.plotConfig["obs_filters"]).length === 0) {
+            this.plotConfig["obs_filters"] = null; // don't send empty filters
+        }
 
     }
 
@@ -751,7 +766,7 @@ const appendGeneTagButton = (geneTagElt) => {
     deleteBtnElt.classList.add("delete", "is-small");
     geneTagElt.appendChild(deleteBtnElt);
     deleteBtnElt.addEventListener("click", (event) => {
-        // Remove gene from selected_genes
+        // Remove gene from selectedGenes
         const gene = event.target.parentNode.textContent;
 		selected_genes.delete(gene);
 		event.target.parentNode.remove();
@@ -793,11 +808,28 @@ const chooseGenes = (event) => {
     const geneTagsElt = document.getElementById("gene-tags");
     geneTagsElt.replaceChildren();
 
-    // Remove selected genes that are not in datasetGenes
+    const genesNotFoundTagsElt = document.getElementById("genes-not-found-tags");
+    genesNotFoundTagsElt.replaceChildren();
+
+    // Remove selected genes that are not in datasetGenes (case-insensitive)
+    const datasetGenesLower = new Set(Array.from(datasetGenes, g => g.toLowerCase()));
+
     for (const gene of selected_genes) {
-        if (!datasetGenes.has(gene)) {
+        if (gene.trim() === "") continue;  // Skip empty genes
+
+        if (!datasetGenesLower.has(gene.toLowerCase())) {
             selected_genes.delete(gene);
+            notFoundGenes.add(gene);
         }
+    }
+
+    // Create tags for each gene not found.
+    document.getElementById("genes-not-found-c").classList.remove("is-hidden");
+    for (const gene of notFoundGenes) {
+        const geneTagElt = document.createElement("span");
+        geneTagElt.classList.add("tag", "is-primary", "is-light", "mx-1");
+        geneTagElt.textContent = gene;
+        genesNotFoundTagsElt.appendChild(geneTagElt);
     }
 
     document.getElementById("num-selected-genes-c").classList.remove("is-hidden");
@@ -1333,10 +1365,11 @@ document.getElementById('genes-manually-entered').addEventListener('change', (ev
     for (const gene of manuallyEnteredGenes) {
         if (!newManuallyEnteredGenes.has(gene)) {
             selected_genes.delete(gene);
+            notFoundGenes.delete(gene);
         }
     }
 
-    // Add new genes to the selected_genes set
+    // Add new genes to the selectedGenes set
     for (const gene of newManuallyEnteredGenes) {
         selected_genes.add(gene);
     }
