@@ -607,6 +607,7 @@ class DatasetTile {
             // If the earliest tile is performing a projection, wait for it to finish
             if (earliestTile.projectR.performingProjection) {
                 console.info(`Waiting for tile ${earliestTile.tile.tileId} to finish projection...`);
+                createCardMessage(this.tile.tileId, "info", `Waiting for projection to finish for another display using the same dataset...`);
                 await earliestTile.projectR.performingProjection;
 
                 if (!earliestTile.projectR.success) {
