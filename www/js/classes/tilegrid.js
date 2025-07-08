@@ -351,9 +351,9 @@ class DatasetTile {
         // modeEnabled: boolean - Indicates whether projection mode is enabled for this tile
         // projectionId: string - The ID of the projection returned
         // projectionInfo: string - The information about the projection (like common genes, etc.)
-        // performingProjection: boolean - Indicates whether a projection is currently being performed.  We do not want to waste resources by performing the same projection multiple times.
+        // performingProjection: Promise - The promise that resolves when the projection is performed
         // success: boolean - Indicates whether the projection was successful
-        this.projectR = {modeEnabled: false, projectionId: null, projectionInfo: null, performingProjection: false, success: false};
+        this.projectR = {modeEnabled: false, projectionId: null, projectionInfo: null, performingProjection: null, success: false};
 
         // Spatial parameters
         this.spatial = {
@@ -565,12 +565,17 @@ class DatasetTile {
     }
 
     /**
-     * Retrieves the projection for the given pattern source, algorithm, and gctype.
-     * @param {string} patternSource - The pattern source.
-     * @param {string} algorithm - The algorithm to use for projection.
-     * @param {string} gctype - The gctype.
-     * @param {boolean} zscore - If zscore is enabled for projection.
-     * @returns {Promise<void>} A promise that resolves when the projection is retrieved.
+     * Computes or retrieves a projection for the current tile's dataset, ensuring that
+     * projections are only computed once per dataset even if multiple tiles share the same dataset.
+     * If another tile with the same dataset is already computing or has computed the projection,
+     * this method waits for or reuses that result.
+     *
+     * @async
+     * @param {string} patternSource - The source pattern for the projection.
+     * @param {string} algorithm - The algorithm to use for the projection.
+     * @param {string} gctype - The gene category type for the projection.
+     * @param {number} zscore - The z-score threshold for the projection.
+     * @returns {Promise<void>} Resolves when the projection is available or reused.
      */
     async getProjection(patternSource, algorithm, gctype, zscore) {
         this.resetAbortController();
@@ -579,48 +584,86 @@ class DatasetTile {
             otherOpts.signal = this.controller.signal;
         }
 
-        try {
-            const data = await apiCallsMixin.checkForProjection(this.dataset.id, patternSource, algorithm, zscore);
-            // If file was not found, put some loading text in the plot
-            if (! data.projection_id) {
-                createCardMessage(this.tile.tileId, "info", "Creating projection. This may take a few minutes.");
-            }
-            this.projection_id = data.projection_id || null;
-        } catch (error) {
-            logErrorInConsole(error);
-            return;
-        }
+        const parentTileGrid = this.parentTileGrid;
+        // check if any tiles share this tile's datasetId
+        const datasetId = this.dataset.id
+        const otherTiles = parentTileGrid.tiles.filter(t => t.dataset.id === datasetId);
+        // if the earliest tile in parentTileGrid.tiles array, run projection
+        // otherwise wait for that tile to have a projectionId
+        const earliestTile = otherTiles.reduce((earliest, current) => {
+            return current.tile.gridPosition < earliest.tile.gridPosition ? current : earliest;
+        }, otherTiles[0]);
 
-        this.projectR.performingProjection = true;
+        if (earliestTile.tile.tileId !== this.tile.tileId) {
+            // Wait for the earliest tile to have a projectionId
 
-        try {
-            const data = await apiCallsMixin.fetchProjection(this.dataset.id, this.projection_id, patternSource, algorithm, gctype, zscore, otherOpts);
-            const message = data.message || null;
-            if (data.success < 1) {
-                // throw error with message
-                throw new Error(message);
-            }
-            this.projectR.projectionId = data.projection_id;
-            this.projectR.projectionInfo = data.message;
-            this.projectR.success = true;
-
-        } catch (error) {
-            if (error.name == "CanceledError") {
-                console.info("display draw canceled for previous request");
+            if (earliestTile.projectR.projectionId) {
+                this.projectR.projectionId = earliestTile.projectR.projectionId;
+                this.projectR.projectionInfo = earliestTile.projectR.projectionInfo;
+                this.projectR.success = earliestTile.projectR.success;
+                this.projectR.performingProjection = null;
                 return;
             }
+            // If the earliest tile is performing a projection, wait for it to finish
+            if (earliestTile.projectR.performingProjection) {
+                console.info(`Waiting for tile ${earliestTile.tile.tileId} to finish projection...`);
+                await earliestTile.projectR.performingProjection;
 
-            const data = error?.response?.data;
-            if (data?.success < 1) {
-                createCardMessage(this.tile.tileId, "danger", `Error computing projections: ${data.message}`);
-            } else {
-                createCardMessage(this.tile.tileId, "danger", error);
+                if (!earliestTile.projectR.success) {
+                    createCardMessage(this.tile.tileId, "danger", "Projection failed on this dataset for another display.");
+                    this.projectR.performingProjection = null;
+                    return;
+                }
+
+                this.projectR.projectionId = earliestTile.projectR.projectionId;
+                this.projectR.projectionInfo = earliestTile.projectR.projectionInfo;
+                this.projectR.success = earliestTile.projectR.success;
+                this.projectR.performingProjection = null;
+                return;
             }
-
-            logErrorInConsole(error);
-        } finally {
-            this.projectR.performingProjection = false;
         }
+
+        this.projectR.performingProjection = (async () => {
+
+            try {
+                const data = await apiCallsMixin.checkForProjection(this.dataset.id, patternSource, algorithm, zscore);
+                // If file was not found, put some loading text in the plot
+                if (! data.projection_id) {
+                    createCardMessage(this.tile.tileId, "info", "Creating projection. This may take a few minutes.");
+                }
+                this.projection_id = data.projection_id || null;
+
+                const fetchData = await apiCallsMixin.fetchProjection(this.dataset.id, this.projection_id, patternSource, algorithm, gctype, zscore, otherOpts);
+                const message = fetchData.message || null;
+                if (fetchData.success < 1) {
+                    // throw error with message
+                    throw new Error(message);
+                }
+                this.projectR.projectionId = fetchData.projection_id;
+                this.projectR.projectionInfo = fetchData.message;
+                this.projectR.success = true;
+
+            } catch (error) {
+                if (error.name == "CanceledError") {
+                    console.info("display draw canceled for previous request");
+                    return;
+                }
+
+                const data = error?.response?.data;
+                if (data?.success < 1) {
+                    createCardMessage(this.tile.tileId, "danger", `Error computing projections: ${data.message}`);
+                } else {
+                    createCardMessage(this.tile.tileId, "danger", error);
+                }
+
+                logErrorInConsole(error);
+            } finally {
+                this.projectR.performingProjection = null;
+            }
+        })();
+
+        await this.projectR.performingProjection;
+
     }
 
     /**
