@@ -47,7 +47,7 @@
                   <span class="icon is-medium">
                     <i class="mdi mdi-magnify mdi-24px"></i>
                   </span>
-                  <span class="is-size-4">Search</span>
+                  <span class="is-size-4">Search by</span>
                 </h3>
               </div>
               <div class="column mt-0 mb-0 pt-0 pb-0 is-narrow has-text-right">
@@ -59,29 +59,37 @@
               </div>
             </div>
 
-            <div class="tabs-wrapper">
+            <div id="search-tabs-c" class="tabs-wrapper pl-3 pr-3 pb-3">
               <div class="tabs">
                   <ul>
                       <li data-tab-id="gene_expression" class="is-active">
                           <a>Gene Expression</a>
                       </li>
                       <li data-tab-id="datasets">
-                          <a>Explore Datasets</a>
+                          <a>Datasets</a>
                       </li>
                   </ul>
               </div>
-              <div class="tabs-content">
+              <div class="tabs-content mb-5">
                   <ul>
                       <li data-tab-id="gene_expression" class="is-active">
 
+                        <h2><span class="expression-search-step-number">1. </span>Enter one or more genes manually or choose a Gene List</h2>
+
                         <div class="columns">
-                          <div class="column pr-1">
-                            
+                          
+                          <div class="column pr-1 pl-5">
                             <div class="control has-icons-left mr-0">
                               <input class="input" type="input" id="genes-manually-entered" placeholder="Type here to search using specific gene symbols"\>
                               <span class="icon is-small is-left">
                                 <i class="mdi mdi-magnify"></i>
                               </span>
+                            </div>
+                            <div class="control has-text-right">
+                              <label class="checkbox">
+                                <input type="checkbox" id="gene-search-exact-match" checked>
+                                Exact gene names only
+                              </label>
                             </div>
                           </div>
 
@@ -96,58 +104,89 @@
                             </div>
 
                             <!--#include virtual="/include/gene-collection-selector/gene-collection-selector.html" -->
+                          </div>  <!-- end .column is-11 -->
 
-                            <div class="columns">
-                              <div class="column is-1">
-                                <div class="is-vertical is-size-7 ml-2 mr-2">IN</div>
+                        </div>  <!-- end .columns for step 1 -->
+
+
+                        <div class="columns">
+                          <div class="column">
+                            <h2 class="mb-1"><span class="expression-search-step-number">2. </span>See results for one gene at a time or multiple?</h2>
+                            
+                            <div class="columns pl-4">
+                              <div class="column">
+                                <div class="card">
+                                  <header class="card-header p-2">
+                                    <label class="radio">
+                                      <input type="radio" name="single-multi" id="single-multi-single" value="single" checked="checked">
+                                      Single-gene Display
+                                    </label>
+                                  </header>
+                                  <div class="card-image">
+                                    <figure class="image">
+                                      <img
+                                        src="/img/single-gene-examples.png"
+                                        alt="Placeholder image"
+                                      />
+                                    </figure>
+                                  </div>
+                                </div> <!-- end .card for single-gene display -->
+                              </div>
+                              <div class="column">
+                                <div class="card">
+                                  <header class="card-header p-2">
+                                    <label class="radio">
+                                      <input type="radio" name="single-multi" id="single-multi-multi" value="multi">
+                                      Multi-gene Display
+                                    </label>
+                                  </header>
+                                  <div class="card-image">
+                                    <figure class="image">
+                                      <img
+                                        src="/img/multi-gene-examples.png"
+                                        alt="Placeholder image"
+                                      />
+                                    </figure>
+                                  </div>
+                                </div> <!-- end .card for single-gene display -->
                               </div>
                             </div>
 
-                            <!--#include virtual="/include/dataset-collection-selector/dataset-collection-selector.html" -->
-
-                            <div class="control">
-                              <button id="submit-expression-search" class="button is-primary ml-3">
-                                <span class="icon is-small">
-                                  <i class="mdi mdi-magnify"></i>
-                                </span>
-                              </button>
-                            </div>
-                          </div>  <!-- end .column is-11 -->
-
-                        </div>  <!-- end .columns test -->
-                        
-
-
-                        <div class="field is-grouped">
-                          <div class="control">
-                            <label class="checkbox">
-                              <input type="checkbox" id="gene-search-exact-match" checked>
-                              Exact
-                            </label>
                           </div>
-                          <div class="control">
-                            <label class="radio">
-                              <input type="radio" name="single-multi" id="single-multi-single" value="single" checked="checked">
-                              Single-gene Display
-                            </label>
-                            <label class="radio">
-                              <input type="radio" name="single-multi" id="single-multi-multi" value="multi">
-                              Multi-gene Display
-                            </label>
+                          <div class="column ml-6">
+                            <h2 class="mb-3"><span class="expression-search-step-number">3. </span>Choose a collection of datasets to search within and submit</h2>
+
+                            <div class="pl-5">
+
+                                <div class="field">
+                                   <!--#include virtual="/include/dataset-collection-selector/dataset-collection-selector.html" -->
+                                </div>
+                                <div class="control">
+                                  <button id="submit-expression-search" class="button is-primary">
+                                    <span class="icon is-small">
+                                      <i class="mdi mdi-magnify"></i>
+                                    </span>
+                                    <span>Search</span>
+                                  </button>
+                                </div>
+                            </div>
                           </div>
                         </div>
+
+
                       </li>
                       <li data-tab-id="datasets">
                           <h1>This tab feature coming soon!</h1>
                       </li>
                   </ul>
               </div>
+              
           </div>
             <h3 class="mt-6 mb-4">
               <span class="icon">
                 <i class="mdi mdi-history mdi-24px"></i>
               </span>
-              <span class="is-size-4">Resume</span>
+              <span class="is-size-4">Resume your work</span>
             </h3>
             <table class="table is-striped is-hoverable is-fullwidth is-size-7">
               <thead class="has-text-weight-semibold">

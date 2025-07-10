@@ -1,6 +1,10 @@
 div.guide-element {
     border-right: 1px solid rgb(200, 200, 200);
 }
+div#search-tabs-c {
+    background-color: rgb(240,240,240);
+    border-radius: 5px;
+}
 div.tabs-content li {
     display: none;
     list-style: none;
@@ -10,4 +14,16 @@ div.tabs-content li.is-active {
 }
 input#genes-manually-entered {
     width: 100%;
+    background-color: white;
+}
+
+/*
+    Dark purple:  #362e5c
+    Mid purple:   #544a8e
+    Light purple: 
+*/
+span.expression-search-step-number {
+    font-size: 130%;
+    font-weight: bold;
+    color: #544a8e;
 }
