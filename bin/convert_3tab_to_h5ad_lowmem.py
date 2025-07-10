@@ -73,7 +73,53 @@ def main():
     adata = sc.AnnData(obs=var, var=obs)
     print("Reading expression matrix file: {0}".format(expression_matrix_path), file=sys.stderr, flush=True)    
     reader = pd.read_csv(expression_matrix_path, sep='\t', index_col=0, chunksize=args.row_chunk_size)
-    adata.X = sparse.vstack([sparse.csr_matrix(chunk.values) for chunk in reader])
+    
+    ## Try to process the file the quickest way first, assuming things are peachy. Then, if not,
+    #  do some checks and conversions (slower) as a backup.
+    try:
+        adata.X = sparse.vstack([sparse.csr_matrix(chunk.values) for chunk in reader])
+
+    except Exception as e:
+        print(f"\nOriginal vstack failed: {e}")
+        print("Retrying with per-chunk cleanup...")
+
+        expression_matrix = []
+        chunk_shapes = []
+
+        # Re-open reader here
+        reader = pd.read_csv(expression_matrix_path, sep='\t', index_col=0, chunksize=args.row_chunk_size)
+
+        for chunk_index, chunk in enumerate(reader, start=1):
+            try:
+                 # Clean each cell: strip string values
+                chunk = chunk.replace(r'^\s+|\s+$', '', regex=True)
+                chunk = chunk.apply(lambda col: col.map(lambda x: x.strip() if isinstance(x, str) else x))
+
+                # Convert to numeric (non-numeric → NaN → fill with 0)
+                chunk_numeric = chunk.apply(pd.to_numeric, errors='coerce').fillna(0)
+
+                matrix = sparse.csr_matrix(chunk_numeric.values)
+                expression_matrix.append(matrix)
+                chunk_shapes.append(matrix.shape)
+
+            except Exception as inner_e:
+                print(f"\nError in chunk {chunk_index}: {inner_e}")
+                print("Chunk head:")
+                print(chunk.head())
+                raise
+
+        # Try stacking the cleaned chunks
+        try:
+            adata.X = sparse.vstack(expression_matrix)
+        except Exception as final_e:
+            print(f"\nFinal vstack still failed: {final_e}")
+            
+            print("Collected chunk shapes:")
+            for i, shape in enumerate(chunk_shapes):
+                print(f"  Chunk {i+1}: {shape}")
+                
+            raise
+        
     print("Finished reading expression matrix file", file=sys.stderr, flush=True)
     adata = adata.transpose()
 
