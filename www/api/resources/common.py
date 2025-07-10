@@ -81,7 +81,7 @@ def get_spatial_adata(analysis_id: str | None, dataset_id: str, session_id: str,
     spatial_obj.sdata = sdata
 
     # Filter by bounding box (mostly for images)
-    spatial_obj._filter_sdata_by_coords()
+    spatial_obj.filter_sdata_by_coords()
 
     if include_images is None:
         include_images = spatial_obj.has_images

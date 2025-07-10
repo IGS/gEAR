@@ -202,9 +202,16 @@ class GenesAsAxisHandler extends PlotHandler {
 
         // Filtered observation groups
         this.plotConfig["obs_filters"] = facetWidget?.filters || {};
+        if (Object.keys(this.plotConfig["obs_filters"]).length === 0) {
+            this.plotConfig["obs_filters"] = null; // don't send empty filters
+        }
 
         // Get order
         this.plotConfig["sort_order"] = getPlotOrderFromSortable();
+        if (!sortOrderChanged) {
+            // If no order was changed, set to null so API does not try to sort by the default order
+            this.plotConfig["sort_order"] = null;
+        }
 
     }
 
@@ -668,6 +675,9 @@ class GenesAsDataHandler extends PlotHandler {
 
         // Filtered observation groups
         this.plotConfig["obs_filters"] = facetWidget?.filters || {};
+        if (Object.keys(this.plotConfig["obs_filters"]).length === 0) {
+            this.plotConfig["obs_filters"] = null; // don't send empty filters
+        }
 
     }
 

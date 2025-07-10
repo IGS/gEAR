@@ -5,6 +5,7 @@ import gc
 import hashlib
 import json
 import sys
+import traceback
 import uuid
 from io import StringIO
 from os import getpid
@@ -46,9 +47,9 @@ ANNOTATION_TYPE = "ensembl"  # NOTE: This will change in the future to be varied
 
 # limit of asynchronous tasks that can happen at a time
 # I am setting this slightly under the "MaxKeepAliveRequests" in apache.conf
-CONCURRENT_REQUEST_LIMIT = 50
+CONCURRENT_REQUEST_LIMIT = 75
 # timeout for the POST request to projectR service
-REQUEST_TIMEOUT = 500
+REQUEST_TIMEOUT = 600
 
 """
 projections json format - one in each "projections/by_dataset/<dataset_id> subdirectory
@@ -263,6 +264,8 @@ async def fetch_all_queue(
     results = []
     queue = asyncio.Queue(maxsize=concurrency * 2)
 
+    #total_chunks = sum(1 for _ in chunk_dataframe(target_df, chunk_size, fh))
+
     async with aiohttp.ClientSession() as client:
         retry_options = ExponentialRetry(
             attempts=3, start_timeout=0.5, max_timeout=0, statuses={500, 502, 503, 504}
@@ -280,38 +283,50 @@ async def fetch_all_queue(
                         "dataset_id": dataset_id,
                     }
                     await queue.put((retry_client, payload, fh))
-                # Signal to workers that production is done (sentinel value)
+                # Signal to workers that production is done (sentinel value). One for each worker
                 for _ in range(concurrency):
                     await queue.put(None)
 
             # Worker: gets tasks from the queue and awaits them
-            async def worker():
-                while True:
-                    item = await queue.get()
-                    if item is None:
-                        queue.task_done()
-                        break
-                    retry_client, payload, fh = item
-                    try:
-                        result = await fetch_one(retry_client, payload, fh)
-                        results.append(result)
-                    except Exception:
-                        raise
-                    finally:
-                        queue.task_done()
+            async def worker(idx: int):
+                #print(f"{dataset_id} - Worker {idx} started.", flush=True, file=fh)
+                try:
+                    while True:
+                        try:
+                            item = await queue.get()
+                            if item is None:
+                                #print(f"{dataset_id} - Worker {idx} received sentinel value, exiting.", flush=True, file=fh)
+                                break
+                            #print(f"{dataset_id} - Worker {idx} processing job. Remaining queue size: {queue.qsize()}", flush=True, file=fh)
+                            retry_client, payload, filehandle = item
+                            try:
+                                result = await fetch_one(retry_client, payload, filehandle)
+                                results.append(result)
+                                #print(f"{dataset_id} - Worker {idx} finished job. Progress: {len(results)}/{total_chunks}", flush=True, file=fh)
+                            except Exception as e:
+                                print(f"{dataset_id} - Worker {idx} encountered an error: {e}", flush=True, file=fh)
+                                print(traceback.format_exc(), file=fh)
+                        finally:
+                            queue.task_done()
+                except Exception as e:
+                    print(f"{dataset_id} - Worker {idx} crashed with exception: {e}", flush=True, file=fh)
+                    print(traceback.format_exc(), flush=True, file=fh)
 
             # Start producer and workers
             producer_task = asyncio.create_task(producer())
-            worker_tasks = [asyncio.create_task(worker()) for _ in range(concurrency)]
+            worker_tasks = [asyncio.create_task(worker(idx)) for idx in range(concurrency)]
 
             await producer_task
             await queue.join()
             try:
                 for w in worker_tasks:
+                    if w.done() and w.exception():
+                        print(f"Worker task exception: {w.exception()}", flush=True, file=fh)
                     await w
+                print(f"{dataset_id} - All worker tasks completed successfully.", flush=True, file=fh)
             except Exception as e:
-                print(f"Error in worker tasks: {e}", file=fh)
-                raise
+                print(f"{dataset_id} - Error in worker tasks: {e}", flush=True, file=fh)
+                raise Exception(f"Error in worker tasks: {e}") from e
 
     return results
 
@@ -332,22 +347,34 @@ async def fetch_one(client: RetryClient, payload: dict, fh: TextIO) -> dict:
     # https://docs.aiohttp.org/en/stable/client_reference.html
     # (semaphore) https://stackoverflow.com/questions/40836800/python-asyncio-semaphore-in-async-await-function
 
+    dataset_id = payload.get("dataset_id", "unknown")
+
     try:
         timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
         async with client.post(
             url=endpoint, json=payload, headers=headers, timeout=timeout
         ) as response:
             return await response.json()
-    except aiohttp.ClientResponseError as e:
-        print(f"ERROR: POST request failed with status code {e.status}", file=fh)
-        print(f"ERROR: Response body: {e.message}", file=fh)
-        raise
-    except aiohttp.ClientError as e:
-        print(f"ERROR: Client error occurred: {str(e)}", file=fh)
-        raise
-    except asyncio.TimeoutError:
-        #print("ERROR: POST request timed out", file=fh)
-        raise
+    except aiohttp.ClientResponseError as cre:
+        print(f"{dataset_id} - ERROR: POST request failed with status code {cre.status}", file=fh)
+        print(f"{dataset_id} - ERROR: Response body: {cre.message}", file=fh)
+        raise aiohttp.ClientResponseError(
+            status=cre.status,
+            message=f"POST request failed with status code {cre.status}: {cre.message}",
+            headers=cre.headers,
+            request_info=cre.request_info,
+            history=cre.history,
+        ) from cre
+    except aiohttp.ClientError as ce:
+        print(f"{dataset_id} - ERROR: Client error occurred: {str(ce)}", file=fh)
+        raise aiohttp.ClientError(
+            f"Client error occurred: {str(ce)}",
+        ) from ce
+    except asyncio.TimeoutError as te:
+        print(f"{dataset_id} - ERROR: POST request timed out", file=fh)
+        raise asyncio.TimeoutError(
+            f"POST request to {endpoint} timed out after {REQUEST_TIMEOUT} seconds"
+        ) from te
 
 @catch_memory_error()
 def projectr_callback(
@@ -410,8 +437,6 @@ def projectr_callback(
         )
     except Exception as e:
         print(str(e), file=fh)
-        import traceback
-
         traceback.print_exc()
         return {"success": -1, "message": str(e)}
 
@@ -454,8 +479,6 @@ def projectr_callback(
             loading_df = map_dataframe_genes(loading_df, ortholog_file)
     except Exception as e:
         print(str(e), file=fh)
-        import traceback
-
         traceback.print_exc()
         return {"success": -1, "message": str(e)}
 
@@ -471,8 +494,6 @@ def projectr_callback(
     try:
         ana = geardb.get_analysis(None, dataset_id, session_id, is_spatial)
     except Exception:
-        import traceback
-
         traceback.print_exc()
         return {"success": -1, "message": "Could not retrieve analysis."}
 
@@ -482,8 +503,6 @@ def projectr_callback(
                 None, dataset_id, session_id, include_images=False
             )
         except Exception:
-            import traceback
-
             traceback.print_exc()
             return {
                 "success": -1,
@@ -493,8 +512,6 @@ def projectr_callback(
         try:
             adata = get_adata_from_analysis(None, dataset_id, session_id)
         except Exception:
-            import traceback
-
             traceback.print_exc()
             return {"success": -1, "message": "Could not retrieve AnnData object."}
 

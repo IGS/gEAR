@@ -5,6 +5,8 @@
 
 const isMultigene = 0;
 
+let geneAutocomplete = null;
+let genePostAutocomplete = null;
 let selectedGene = null;
 
 const plotlyPlots = ["bar", "line", "scatter", "tsne_dyna", "violin"];
@@ -225,9 +227,16 @@ class PlotlyHandler extends PlotHandler {
 
         // Filtered observation groups
         this.plotConfig["obs_filters"] = facetWidget?.filters || {};
+        if (Object.keys(this.plotConfig["obs_filters"]).length === 0) {
+            this.plotConfig["obs_filters"] = null;
+        }
 
         // Get order
         this.plotConfig["order"] = getPlotOrderFromSortable();
+        if (!sortOrderChanged) {
+            // If no order was changed, set to null so API does not try to sort by the default order
+            this.plotConfig["order"] = null;
+        }
 
         // Get colors
         const colorElts = document.getElementsByClassName("js-plot-color");
@@ -485,6 +494,9 @@ class ScanpyHandler extends PlotHandler {
 
         // Filtered observation groups
         this.plotConfig["obs_filters"] = facetWidget?.filters || {};
+        if (Object.keys(this.plotConfig["obs_filters"]).length === 0) {
+            this.plotConfig["obs_filters"] = null;
+        }
 
         // Get colors
         const colorElts = document.getElementsByClassName("js-plot-color");
@@ -716,7 +728,10 @@ const chooseGene = () => {
     document.getElementById("current-gene").textContent = selectedGene;
     document.getElementById("current-gene-post").textContent = selectedGene;
     // Force validationcheck to see if plot button should be enabled
-    trigger(document.querySelector(".js-plot-req"), "change");
+    const plotReqElt = document.querySelector(".js-plot-req");
+    if (plotReqElt) {
+        trigger(plotReqElt, "change");
+    }
     document.getElementById("plot-options-s").click();
 }
 
@@ -817,7 +832,6 @@ const createAutocomplete = (selector, dataSource, otherAutocomplete) => {
         placeHolder: "Enter a gene",
         data: {
             src: dataSource,
-            cache: true,
         },
         resultItem: {
             class: "dropdown-item",
@@ -954,8 +968,20 @@ const curatorSpecificPlotTypeAdjustments = (plotType) => {
  * @param {Array<string>} geneSymbols - The gene symbols to update.
  */
 const curatorSpecificUpdateDatasetGenes = (geneSymbols) => {
-    const geneAutocomplete = createAutocomplete("#gene-autocomplete", geneSymbols);
-    const genePostAutocomplete = createAutocomplete("#gene-autocomplete-post", geneSymbols, geneAutocomplete);
+    // If autocomplete exists, just update the data source
+    if (geneAutocomplete) {
+        geneAutocomplete.data.src = geneSymbols;
+        //geneAutocomplete.data.cache = true;
+        geneAutocomplete.input.value = ""; // Reset input value
+        if (genePostAutocomplete) {
+            genePostAutocomplete.data.src = geneSymbols;
+            genePostAutocomplete.input.value = ""; // Reset input value
+        }
+        return;
+    }
+
+    geneAutocomplete = createAutocomplete("#gene-autocomplete", geneSymbols);
+    genePostAutocomplete = createAutocomplete("#gene-autocomplete-post", geneSymbols, geneAutocomplete);
 
     // Set the otherAutocomplete reference for geneAutocomplete after genePostAutocomplete has been created
     geneAutocomplete.linkedAutocomplete = genePostAutocomplete;

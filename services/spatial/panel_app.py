@@ -627,7 +627,7 @@ class SpatialPanel(pn.viewable.Viewer):
         self.has_images = self.spatial_obj.has_images
 
         # Filter by bounding box (mostly for images)
-        self.spatial_obj._filter_sdata_by_coords()
+        self.spatial_obj.filter_sdata_by_coords()
 
     def prep_adata(self):
         # Create AnnData object

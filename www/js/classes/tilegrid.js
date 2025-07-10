@@ -20,6 +20,8 @@ class TileGrid {
 
         this.tiles = [];
         this.selector = selector;
+
+        this.zoomId = null; // The tile ID of the zoomed display, if any
     }
 
     /**
@@ -200,8 +202,7 @@ class TileGrid {
      * @param {boolean} [isZoomed=false] - Indicates whether the grid layout is a zoomed dataset.
      * @returns {void}
      */
-    applySingleTileGrid(datasetTile, selectorElt, isZoomed=false) {
-
+    async applySingleTileGrid(datasetTile, selectorElt, isZoomed=false) {
 
         selectorElt.style.gridTemplateColumns = `repeat(1, 1fr)`;
         selectorElt.style.gridTemplateRows = `repeat(1, fit-content)`;
@@ -212,7 +213,7 @@ class TileGrid {
         const createZoomedTile = () => {
             const zoomedDatasetTile = new DatasetTile(this, datasetTile.display, datasetTile.dataset, datasetTile.type === "multi", true);
             // add gene symbol to zoomed tile
-            zoomedDatasetTile.geneSymbol = datasetTile.geneSymbol;
+            zoomedDatasetTile.geneInput = datasetTile.geneInput;
             zoomedDatasetTile.currentDisplayId = datasetTile.currentDisplayId;
             zoomedDatasetTile.svgScoringMethod = datasetTile.svgScoringMethod;
             return zoomedDatasetTile;
@@ -232,7 +233,7 @@ class TileGrid {
         tileElement.style.gridArea = "auto";
 
         if (isZoomed) {
-            zoomedDatasetTile.renderDisplay(zoomedDatasetTile.geneSymbol, zoomedDatasetTile.currentDisplayId, zoomedDatasetTile.svgScoringMethod);
+            await zoomedDatasetTile.renderDisplay(zoomedDatasetTile.geneInput, zoomedDatasetTile.currentDisplayId, zoomedDatasetTile.svgScoringMethod);
         }
 
     }
@@ -295,11 +296,20 @@ class TileGrid {
         // sort tiles by height, ascending.  This should help cases where taller plots render as same height as shorter plots
         this.tiles.sort((a, b) => a.tile.height - b.tile.height);
 
-        // Sometimes fails to render due to OOM errors, so we want to try each tile individually
-        // Orthology mapping also seems to fail due to file locking as well.
-        this.tiles.map(async tile => {
-            await tile.processTileForRenderingDisplay(projectionOpts, geneSymbolInput, svgScoringMethod);
-        });
+        await Promise.all(
+            // Sometimes fails to render due to OOM errors, so we want to try each tile individually
+            // Orthology mapping also seems to fail due to file locking as well.
+            this.tiles.map(tile =>
+                tile.processTileForRenderingDisplay(projectionOpts, geneSymbolInput, svgScoringMethod)
+            )
+        );
+
+        if (this.zoomId) {
+            // If one of the tiles was zoomed in when the gene was selected, we need to preserve that zoom
+            const tileElement = document.getElementById(`tile-${this.zoomId}`);
+            tileElement.querySelector('.js-expand-display').click();
+        }
+
 
     }
 };
@@ -329,10 +339,10 @@ class DatasetTile {
 
         this.controller = new AbortController(); // Create new controller for new set of frames
 
+        this.geneInput = null;
         this.orthologs = null;  // Mapping of all orthologs for all gene symbol inputs for this dataset
         this.orthologsToPlot = null;    // A flattened list of all orthologs to plot
 
-        this.geneSymbol = null;
         this.currentDisplayId = this.display?.display_id || this.addDefaultDisplay().then((displayId) => this.currentDisplayId = displayId);
 
         this.svg = null; // The SVG element for the plot
@@ -341,9 +351,9 @@ class DatasetTile {
         // modeEnabled: boolean - Indicates whether projection mode is enabled for this tile
         // projectionId: string - The ID of the projection returned
         // projectionInfo: string - The information about the projection (like common genes, etc.)
-        // performingProjection: boolean - Indicates whether a projection is currently being performed.  We do not want to waste resources by performing the same projection multiple times.
+        // performingProjection: Promise - The promise that resolves when the projection is performed
         // success: boolean - Indicates whether the projection was successful
-        this.projectR = {modeEnabled: false, projectionId: null, projectionInfo: null, performingProjection: false, success: false};
+        this.projectR = {modeEnabled: false, projectionId: null, projectionInfo: null, performingProjection: null, success: false};
 
         // Spatial parameters
         this.spatial = {
@@ -555,12 +565,17 @@ class DatasetTile {
     }
 
     /**
-     * Retrieves the projection for the given pattern source, algorithm, and gctype.
-     * @param {string} patternSource - The pattern source.
-     * @param {string} algorithm - The algorithm to use for projection.
-     * @param {string} gctype - The gctype.
-     * @param {boolean} zscore - If zscore is enabled for projection.
-     * @returns {Promise<void>} A promise that resolves when the projection is retrieved.
+     * Computes or retrieves a projection for the current tile's dataset, ensuring that
+     * projections are only computed once per dataset even if multiple tiles share the same dataset.
+     * If another tile with the same dataset is already computing or has computed the projection,
+     * this method waits for or reuses that result.
+     *
+     * @async
+     * @param {string} patternSource - The source pattern for the projection.
+     * @param {string} algorithm - The algorithm to use for the projection.
+     * @param {string} gctype - The gene category type for the projection.
+     * @param {number} zscore - The z-score threshold for the projection.
+     * @returns {Promise<void>} Resolves when the projection is available or reused.
      */
     async getProjection(patternSource, algorithm, gctype, zscore) {
         this.resetAbortController();
@@ -569,48 +584,87 @@ class DatasetTile {
             otherOpts.signal = this.controller.signal;
         }
 
-        try {
-            const data = await apiCallsMixin.checkForProjection(this.dataset.id, patternSource, algorithm, zscore);
-            // If file was not found, put some loading text in the plot
-            if (! data.projection_id) {
-                createCardMessage(this.tile.tileId, "info", "Creating projection. This may take a few minutes.");
-            }
-            this.projection_id = data.projection_id || null;
-        } catch (error) {
-            logErrorInConsole(error);
-            return;
-        }
+        const parentTileGrid = this.parentTileGrid;
+        // check if any tiles share this tile's datasetId
+        const datasetId = this.dataset.id
+        const otherTiles = parentTileGrid.tiles.filter(t => t.dataset.id === datasetId);
+        // if the earliest tile in parentTileGrid.tiles array, run projection
+        // otherwise wait for that tile to have a projectionId
+        const earliestTile = otherTiles.reduce((earliest, current) => {
+            return current.tile.gridPosition < earliest.tile.gridPosition ? current : earliest;
+        }, otherTiles[0]);
 
-        this.projectR.performingProjection = true;
+        if (earliestTile.tile.tileId !== this.tile.tileId) {
+            // Wait for the earliest tile to have a projectionId
 
-        try {
-            const data = await apiCallsMixin.fetchProjection(this.dataset.id, this.projection_id, patternSource, algorithm, gctype, zscore, otherOpts);
-            const message = data.message || null;
-            if (data.success < 1) {
-                // throw error with message
-                throw new Error(message);
-            }
-            this.projectR.projectionId = data.projection_id;
-            this.projectR.projectionInfo = data.message;
-            this.projectR.success = true;
-
-        } catch (error) {
-            if (error.name == "CanceledError") {
-                console.info("display draw canceled for previous request");
+            if (earliestTile.projectR.projectionId) {
+                this.projectR.projectionId = earliestTile.projectR.projectionId;
+                this.projectR.projectionInfo = earliestTile.projectR.projectionInfo;
+                this.projectR.success = earliestTile.projectR.success;
+                this.projectR.performingProjection = null;
                 return;
             }
+            // If the earliest tile is performing a projection, wait for it to finish
+            if (earliestTile.projectR.performingProjection) {
+                console.info(`Waiting for tile ${earliestTile.tile.tileId} to finish projection...`);
+                createCardMessage(this.tile.tileId, "info", `Waiting for projection to finish for another display using the same dataset...`);
+                await earliestTile.projectR.performingProjection;
 
-            const data = error?.response?.data;
-            if (data?.success < 1) {
-                createCardMessage(this.tile.tileId, "danger", `Error computing projections: ${data.message}`);
-            } else {
-                createCardMessage(this.tile.tileId, "danger", error);
+                if (!earliestTile.projectR.success) {
+                    createCardMessage(this.tile.tileId, "danger", "Projection failed on this dataset for another display.");
+                    this.projectR.performingProjection = null;
+                    return;
+                }
+
+                this.projectR.projectionId = earliestTile.projectR.projectionId;
+                this.projectR.projectionInfo = earliestTile.projectR.projectionInfo;
+                this.projectR.success = earliestTile.projectR.success;
+                this.projectR.performingProjection = null;
+                return;
             }
-
-            logErrorInConsole(error);
-        } finally {
-            this.projectR.performingProjection = false;
         }
+
+        this.projectR.performingProjection = (async () => {
+
+            try {
+                const data = await apiCallsMixin.checkForProjection(this.dataset.id, patternSource, algorithm, zscore);
+                // If file was not found, put some loading text in the plot
+                if (! data.projection_id) {
+                    createCardMessage(this.tile.tileId, "info", "Creating projection. This may take a few minutes.");
+                }
+                this.projection_id = data.projection_id || null;
+
+                const fetchData = await apiCallsMixin.fetchProjection(this.dataset.id, this.projection_id, patternSource, algorithm, gctype, zscore, otherOpts);
+                const message = fetchData.message || null;
+                if (fetchData.success < 1) {
+                    // throw error with message
+                    throw new Error(message);
+                }
+                this.projectR.projectionId = fetchData.projection_id;
+                this.projectR.projectionInfo = fetchData.message;
+                this.projectR.success = true;
+
+            } catch (error) {
+                if (error.name == "CanceledError") {
+                    console.info("display draw canceled for previous request");
+                    return;
+                }
+
+                const data = error?.response?.data;
+                if (data?.success < 1) {
+                    createCardMessage(this.tile.tileId, "danger", `Error computing projections: ${data.message}`);
+                } else {
+                    createCardMessage(this.tile.tileId, "danger", error);
+                }
+
+                logErrorInConsole(error);
+            } finally {
+                this.projectR.performingProjection = null;
+            }
+        })();
+
+        await this.projectR.performingProjection;
+
     }
 
     /**
@@ -910,20 +964,24 @@ class DatasetTile {
         } else {
             tileElement.querySelector('.js-shrink-display').classList.add("is-hidden");
         }
-        tileElement.querySelector('.js-expand-display').addEventListener("click", (event) => {
+        tileElement.querySelector('.js-expand-display').addEventListener("click", async (event) => {
             // Apply a zoomed-in display
             document.getElementById("result-panel-grid").classList.add("is-hidden");
             document.getElementById("zoomed-panel-grid").replaceChildren();
             document.getElementById("zoomed-panel-grid").classList.remove("is-hidden");
 
+            this.parentTileGrid.zoomId = this.tile.tileId; // Set the zoomed display ID in the parent tile grid
             // Apply single tile grid
-            this.parentTileGrid.applySingleTileGrid(this, document.getElementById("zoomed-panel-grid"), true);
+            await this.parentTileGrid.applySingleTileGrid(this, document.getElementById("zoomed-panel-grid"), true);
 
         });
         tileElement.querySelector('.js-shrink-display').addEventListener("click", (event) => {
             // Revert back to "#result-panel-grid" display
             document.getElementById("result-panel-grid").classList.remove("is-hidden");
             document.getElementById("zoomed-panel-grid").classList.add("is-hidden");
+
+            this.parentTileGrid.zoomId = null; // Clear the zoomed display ID in the parent tile grid
+
         });
 
         // Add event listener to dropdown trigger
@@ -1107,7 +1165,7 @@ class DatasetTile {
                     const displayId = parseInt(displayElement.dataset.displayId);
                     // Render display
                     if (!this.svgScoringMethod) this.svgScoringMethod = "gene";
-                    this.renderDisplay(this.geneSymbol, displayId, this.svgScoringMethod);
+                    this.renderDisplay(this.geneInput, displayId, this.svgScoringMethod);
 
                     // Close modal
                     closeModal(modalDiv);
@@ -1188,7 +1246,7 @@ class DatasetTile {
 
         // Store gene symbol for future use (i.e. changing display, etc.)
         // Since this method manipulates the geneSymbolInput, we need to store the original input
-        this.geneSymbol = geneSymbolInput;
+        this.geneInput = geneSymbolInput;
 
         createCardMessage(this.tile.tileId, "info", "Loading display...");
 
@@ -1748,7 +1806,7 @@ class DatasetTile {
 
         const datasetId = this.dataset.id;
         const analysisObj = null
-        const plotConfig = {gene_symbols: this.geneSymbol};   // applies for single and multi gene
+        const plotConfig = {gene_symbols: this.geneInput};   // applies for single and multi gene
 
         this.resetAbortController();
         otherOpts = {}
