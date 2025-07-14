@@ -302,12 +302,12 @@ const getTsneImageData = async (geneSymbol, config) => {
  * Generates the dataset tree using the generateTree method of the datasetTree object.
  * @throws {Error} If there is an error fetching the dataset information.
  */
-const loadDatasetTree = async () => {
+const loadDatasetTree = async (shareId) => {
     const userDatasets = [];
     const sharedDatasets = [];
     const domainDatasets = [];
     try {
-        const datasetData = await apiCallsMixin.fetchAllDatasets();
+        const datasetData = await apiCallsMixin.fetchAllDatasets(shareId);
 
         let counter = 0;
 
@@ -590,9 +590,11 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 
 	try {
-		await loadDatasetTree()
+
         // If brought here by the "gene search results" page, curate on the dataset ID that referred us
         const urlParams = new URLSearchParams(window.location.search);
+        const shareId = urlParams.get("share_id");
+		await loadDatasetTree(shareId);
 
         // Usage inside handlePageSpecificLoginUIUpdates
         if (urlParams.has("share_id")) {

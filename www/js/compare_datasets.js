@@ -113,11 +113,15 @@ const datasetTree = new DatasetTree({
 		}
 
 		// Update compare series options
-		facetWidget = await createFacetWidget(datasetId, null, {}); // Initial fetching of categorical columns
-		const catColumns = facetWidget.aggregations.map((agg) => agg.name);
-		updateSeriesOptions("js-compare", catColumns);
-
-		compareSeriesElt.parentElement.classList.remove("is-loading");
+		try {
+			facetWidget = await createFacetWidget(datasetId, null, {}); // Initial fetching of categorical columns
+			const catColumns = facetWidget.aggregations.map((agg) => agg.name);
+			updateSeriesOptions("js-compare", catColumns);
+		} catch (error) {
+			return
+		} finally {
+			compareSeriesElt.parentElement.classList.remove("is-loading");
+		}
 
     })
 });
@@ -290,9 +294,13 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
 	document.getElementById("facet-content").classList.add("is-hidden");
 	document.getElementById("selected-facets").classList.add("is-hidden");
 
-    const {aggregations, total_count:totalCount} = await fetchAggregations(datasetId, analysisId, filters);
-    document.getElementById("num-selected").textContent = totalCount;
-
+	try {
+    	const {aggregations, total_count:totalCount} = await fetchAggregations(datasetId, analysisId, filters);
+    	document.getElementById("num-selected").textContent = totalCount;
+	} catch (error) {
+		document.getElementById("num-selected").textContent = "0";
+		throw error;
+	}
 
     const facetWidget = new FacetWidget({
         aggregations,
@@ -409,6 +417,8 @@ const fetchAggregations = async (datasetId, analysisId, filters) => {
         return {aggregations, total_count};
     } catch (error) {
         logErrorInConsole(error);
+		createToast(error.message);
+		throw error
     }
 }
 
@@ -419,17 +429,6 @@ const fetchDatasetComparison = async (datasetId, filters, compareKey, conditionX
 		const msg = "Could not fetch dataset comparison. Please contact the gEAR team."
 		throw new Error(msg);
 	}
-}
-
-const fetchDatasets = async () => {
-    try {
-        return await apiCallsMixin.fetchAllDatasets();
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch datasets. Please contact the gEAR team."
-        createToast(msg);
-        throw new Error(msg);
-    }
 }
 
 const getComparisons = async (event) => {
@@ -530,12 +529,12 @@ const highlightTableGenes = (searchedGenes=[]) => {
 }
 
 /* Transform and load dataset data into a "tree" format */
-const loadDatasetTree = async () => {
+const loadDatasetTree = async (shareId) => {
     const userDatasets = [];
     const sharedDatasets = [];
     const domainDatasets = [];
     try {
-        const datasetData = await apiCallsMixin.fetchAllDatasets();
+        const datasetData = await apiCallsMixin.fetchAllDatasets(shareId);
 
         let counter = 0;
 
@@ -1411,14 +1410,14 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 
 	try {
-		await Promise.all([
-			loadDatasetTree(),
-			fetchGeneCartData()
-		]);
         // If brought here by the "gene search results" page, curate on the dataset ID that referred us
         const urlParams = new URLSearchParams(window.location.search);
+        const shareId = urlParams.get("share_id");
 
-
+		await Promise.all([
+			loadDatasetTree(shareId),
+			fetchGeneCartData()
+		]);
         // Usage inside handlePageSpecificLoginUIUpdates
         if (urlParams.has("share_id")) {
             return await activateDatasetFromParam("share_id", async (shareId) =>

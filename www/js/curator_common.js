@@ -205,14 +205,20 @@ const curatorApiCallsMixin = {
         }
     },
 
+
     /**
-     * Fetches datasets.
+     * Fetches all datasets associated with the given share ID.
+     * Handles errors by logging them, displaying a toast notification,
+     * and throwing a new error with a user-friendly message.
+     *
+     * @async
+     * @param {string} shareId - The identifier for the shared datasets to fetch.
      * @returns {Promise<any>} A promise that resolves with the fetched datasets.
-     * @throws {Error} If the datasets cannot be fetched.
+     * @throws {Error} Throws an error if the datasets could not be fetched.
      */
-    async fetchAllDatasets() {
+    async fetchAllDatasets(shareId) {
         try {
-            return await super.fetchAllDatasets();
+            return await super.fetchAllDatasets(shareId);
         } catch (error) {
             logErrorInConsole(error);
             const msg = "Could not fetch datasets. Please contact the gEAR team."
@@ -1142,12 +1148,12 @@ const loadColorscaleSelect = (isContinuous=false, isScanpy=false) => {
  * Generates the dataset tree using the generateTree method of the datasetTree object.
  * @throws {Error} If there is an error fetching the dataset information.
  */
-const loadDatasetTree = async () => {
+const loadDatasetTree = async (shareId) => {
     const userDatasets = [];
     const sharedDatasets = [];
     const domainDatasets = [];
     try {
-        const datasetData = await curatorApiCallsMixin.fetchAllDatasets();
+        const datasetData = await curatorApiCallsMixin.fetchAllDatasets(shareId);
 
         let counter = 0;
 
@@ -1808,9 +1814,11 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 
 	try {
-		await loadDatasetTree()
         // If brought here by the "gene search results" page, curate on the dataset ID that referred us
         const urlParams = new URLSearchParams(window.location.search);
+        const shareId = urlParams.get("share_id");
+
+		await loadDatasetTree(shareId);
 
         // Usage inside handlePageSpecificLoginUIUpdates
         if (urlParams.has("share_id")) {
