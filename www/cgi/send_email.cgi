@@ -4,6 +4,10 @@
 Sends email to user
 Scopes: 'forgot_password' or 'user_verification'
 
+How to test on the command line, example:
+
+./send_email.cgi 'email=jorvis@som.umaryland.edu&scope=user_verification&verification_code_long=foo-bar-long'
+
 """
 
 import cgi, json
