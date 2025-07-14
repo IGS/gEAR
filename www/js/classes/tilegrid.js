@@ -794,7 +794,7 @@ class DatasetTile {
         const dropdownContent = dropdownMenu.querySelector(".dropdown-content");
         const dropdownItems = dropdownContent.querySelectorAll('.dropdown-item');
 
-        const datasetId = dataset.id;
+        const shareId = dataset.share_id;
         const pubmedId = dataset.pubmed_id;
         const geoId = dataset.geo_id;
         const hasTarball = dataset.has_tarball;
@@ -853,7 +853,7 @@ class DatasetTile {
                 case "single-cell":
                     // Redirect to single-cell analysis workbench
                     if (hasH5ad) {
-                        const url = `./sc_workbench.html?dataset_id=${datasetId}`;
+                        const url = `./sc_workbench.html?share_id=${shareId}`;
                         //const url = `./sc_workbench.html?dataset_id=${datasetId}`;
                         item.href = url;
                     } else {
@@ -863,7 +863,7 @@ class DatasetTile {
                 case "compare":
                     // Redirect to comparison tool
                     if (hasH5ad) {
-                        const url = `./compare_datasets.html?dataset_id=${datasetId}`;
+                        const url = `./compare_datasets.html?share_id=${shareId}`;
                         item.href = url;
                     } else {
                         item.classList.add("is-hidden");
@@ -873,7 +873,7 @@ class DatasetTile {
                     // Redirect to single-gene curation tool
                     // TODO: It would be cool to pass in the gene symbol to the curation tool to auto-populate the gene symbol field
                     if (hasH5ad) {
-                        const url = `./dataset_curator.html?dataset_id=${datasetId}`;
+                        const url = `./dataset_curator.html?share_id=${shareId}`;
                         item.href = url;
                     } else {
                         item.classList.add("is-hidden");
@@ -883,7 +883,7 @@ class DatasetTile {
                     // Redirect to multi-gene curation tool
                     // TODO: It would be cool to pass in the gene symbols to the curation tool to auto-populate the gene symbol field
                     if (hasH5ad) {
-                        const url = `./multigene_curator.html?dataset_id=${datasetId}`;
+                        const url = `./multigene_curator.html?share_id=${shareId}`;
                         item.href = url;
                     } else {
                         item.classList.add("is-hidden");
@@ -893,7 +893,7 @@ class DatasetTile {
                     // Download dataset bundle
                     if (hasTarball && isDownloadable) {
                         try {
-                            const url = `./cgi/download_source_file.cgi?type=tarball&dataset_id=${datasetId}`;
+                            const url = `./cgi/download_source_file.cgi?type=tarball&share_id=${shareId}`;
                             item.href = url;
                         } catch (error) {
                             logErrorInConsole(error);
@@ -908,7 +908,7 @@ class DatasetTile {
                     // Download h5ad file
                     if (hasH5ad && isDownloadable) {
                         try {
-                            const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${datasetId}`;
+                            const url = `./cgi/download_source_file.cgi?type=h5ad&share_id=${shareId}`;
                             item.href = url;
                         } catch (error) {
                             logErrorInConsole(error);
@@ -923,7 +923,7 @@ class DatasetTile {
                     item.classList.add("is-hidden");
                     break;
                 default:
-                    console.warn(`Unknown dropdown item ${item.dataset.tool} for dataset ${datasetId}.`);
+                    console.warn(`Unknown dropdown item ${item.dataset.tool} for dataset ${shareId}.`);
                     break;
             }
 
