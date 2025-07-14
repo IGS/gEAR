@@ -476,6 +476,54 @@ const datasetTree = new DatasetTree({
 });
 
 /**
+ * Activates a dataset in the dataset tree based on a URL parameter.
+ *
+ * This function checks if the specified URL parameter exists, optionally fetches additional
+ * dataset information using a provided function, and then activates the corresponding dataset
+ * node in the dataset tree. If the dataset cannot be found or accessed, a toast notification
+ * is displayed and an error is thrown.
+ *
+ * @async
+ * @param {string} paramName - The name of the URL parameter to look for.
+ * @param {function} [fetchInfoFn] - Optional async function to fetch dataset info using the parameter value.
+ *        Should return a Promise that resolves to an array of objects containing a `dataset_id` property.
+ * @throws {Error} If the dataset cannot be accessed or found in the dataset tree.
+ */
+const activateDatasetFromParam = async (paramName, fetchInfoFn) => {
+    if (!urlParams.has(paramName)) {
+        return;
+    }
+    const paramValue = urlParams.get(paramName);
+    let linkedDatasetId;
+    try {
+        if (fetchInfoFn) {
+            const data = await fetchInfoFn(paramValue);
+            linkedDatasetId = data.datasets[0].id;
+            if (!linkedDatasetId) {
+                throw new Error(`Accessible dataset for ${paramName} ${paramValue} was not found`);
+            }
+        } else {
+            linkedDatasetId = paramValue;
+        }
+    } catch (error) {
+        createToast(error.message);
+        throw new Error(error);
+    }
+
+    try {
+        // find DatasetTree node and trigger "activate"
+        const foundNode = datasetTree.findFirst(e => e.data.dataset_id === linkedDatasetId);
+        foundNode.setActive(true, {focusTree:true});
+        datasetTree.tree.setActiveNode(foundNode);
+        datasetTree.selectCallback({node: foundNode});  // manually trigger the "activate" event.
+        datasetId = linkedDatasetId;
+    } catch (error) {
+        createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset`);
+        throw new Error(error);
+    }
+}
+
+/**
  * Updates the analysis select options based on the fetched public and private analyses.
  * @returns {Promise<void>} A promise that resolves when the analysis select options are updated.
  */
@@ -1763,19 +1811,16 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 		await loadDatasetTree()
         // If brought here by the "gene search results" page, curate on the dataset ID that referred us
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has("dataset_id")) {
-            const linkedDatasetId = urlParams.get("dataset_id");
-            try {
-                // find DatasetTree node and trigger "activate"
-                const foundNode = datasetTree.findFirst(e => e.data.dataset_id === linkedDatasetId);
-                foundNode.setActive(true);
-                datasetTree.tree.setActiveNode(foundNode);
-                datasetTree.selectCallback({node: foundNode});  // manually trigger the "activate" event.
-                datasetId = linkedDatasetId;
-            } catch (error) {
-                createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset`);
-                throw new Error(error);
-            }
+
+        // Usage inside handlePageSpecificLoginUIUpdates
+        if (urlParams.has("share_id")) {
+            return await activateDatasetFromParam("share_id", async (shareId) =>
+                await apiCallsMixin.fetchDatasetListInfo({permalink_share_id: shareId})
+            );
+        } else if (urlParams.has("dataset_id")) {
+    		// Legacy support for dataset_id
+
+            await activateDatasetFromParam("dataset_id");
         }
 	} catch (error) {
 		logErrorInConsole(error);
