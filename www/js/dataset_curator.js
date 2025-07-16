@@ -89,15 +89,12 @@ class PlotlyHandler extends PlotHandler {
                 renderColorPicker(series);
                 for (const group in config["colors"]) {
                     const color = config["colors"][group];
-                    // Sometimes we need to escape the group name
-                    // Found a case where the group in config was truncated compared to the (older) dataset's actual group
-                    // But there are cases where the group name should not be escaped (such as if slashes are in the name)
-                    try {
-                        const colorField = document.getElementById(`${group}-color`);
+                    const colorField = document.getElementById(`${CSS.escape(group)}-color`);
+                    if (colorField) {
                         colorField.value = color;
-                    } catch (error) {
-                        const colorField = document.getElementById(`${CSS.escape(group)}-color`);
-                        colorField.value = color;
+                    } else {
+                        // Optionally log or handle missing field
+                        console.warn(`Color field for group "${group}" not found.`);
                     }
                 }
             } catch (error) {
@@ -370,15 +367,12 @@ class ScanpyHandler extends PlotHandler {
                 renderColorPicker(series);
                 for (const group in config["colors"]) {
                     const color = config["colors"][group];
-                    // Sometimes we need to escape the group name
-                    // Found a case where the group in config was truncated compared to the (older) dataset's actual group
-                    // But there are cases where the group name should not be escaped (such as if slashes are in the name)
-                    try {
-                        const colorField = document.getElementById(`${group}-color`);
+                    const colorField = document.getElementById(`${CSS.escape(group)}-color`);
+                    if (colorField) {
                         colorField.value = color;
-                    } catch (error) {
-                        const colorField = document.getElementById(`${CSS.escape(group)}-color`);
-                        colorField.value = color;
+                    } else {
+                        // Optionally log or handle missing field
+                        console.warn(`Color field for group "${group}" not found.`);
                     }
                 }
             }

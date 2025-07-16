@@ -1280,7 +1280,7 @@ const renderOrderSortableSeries = (series) => {
     if (!catColumns.includes(series)) return;
 
     // Start with a fresh template
-    const orderElt = document.getElementById(`${series}-order`);
+    const orderElt = document.getElementById(`${CSS.escape(series)}-order`);
     if (orderElt) {
         orderElt.remove();
     }
@@ -1306,7 +1306,7 @@ const renderOrderSortableSeries = (series) => {
         const listElt = document.createElement("li");
         listElt.classList.add("has-background-grey-lighter", "has-text-dark");
         listElt.textContent = group;
-        document.getElementById(`${series}-order-list`).append(listElt);
+        document.getElementById(`${CSS.escape(series)}-order-list`).append(listElt);
     }
 
     // Create sortable for this series
@@ -1632,7 +1632,7 @@ const updateOrderSortable = () => {
     for (const series of sortableSet) {
         // Series is in sortableSet but not seriesSet, remove <series>-order element
         if (!seriesSet.has(series)) {
-            const orderElt = document.getElementById(`${series}-order`);
+            const orderElt = document.getElementById(`${CSS.escape(series)}-order`);
             orderElt.remove();
         }
 
