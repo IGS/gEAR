@@ -7,16 +7,17 @@ from math import ceil
 
 import geardb
 import matplotlib as mpl
+
 mpl.use("Agg")  # Prevents the need for a display when plotting, also thread-safe
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import scanpy as sc
-
 from flask import request
 from flask_restful import Resource
-
 from gear.plotting import PlotError
+from matplotlib.figure import Figure
+
 from .common import create_projection_adata
 
 sc.settings.verbosity = 0
@@ -32,22 +33,6 @@ COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 NUM_LEGENDS_PER_COL = 12    # Max number of legend items per column allowed in vertical legend
 NUM_HORIZONTAL_COLS = 8 # Number of columns in horizontal legend
 
-"""
-Taken from https://scanpy.readthedocs.io/en/stable/tutorials/plotting/advanced.html#plot-size
-TODO: Test these numbers with tweaking to our grid
-ncol = 2
-nrow = 1
-figsize = 3
-wspace = 1
-# Adapt figure size based on number of rows and columns and added space between them
-# (e.g. wspace between columns)
-fig, axs = plt.subplots(
-    nrow, ncol, figsize=(ncol * figsize + (ncol - 1) * wspace * figsize, nrow * figsize)
-)
-plt.subplots_adjust(wspace=wspace)
-sc.pl.umap(adata, color="louvain", ax=axs[0], show=False)
-sc.pl.umap(adata, color="phase", ax=axs[1])
-"""
 
 def calculate_figure_height(num_plots, span=1):
     """Determine height of tsne plot based on number of group elements."""
@@ -197,7 +182,9 @@ class TSNEData(Resource):
         plot_by_group = req.get('plot_by_group', None) # One expression plot per group
         max_columns = req.get('max_columns')   # Max number of columns before plotting to a new row
         expression_palette = req.get('expression_palette', "YlOrRd")
+        metadata_palette = req.get('metadata_palette', expression_palette)
         reverse_palette = req.get('reverse_palette', False)
+        reverse_metadata_palette = req.get('reverse_metadata_palette', False)
         two_way_palette = req.get('two_way_palette', False) # If true, data extremes are in the forefront
         colors = req.get('colors')
         order = req.get('order', {})
@@ -286,19 +273,19 @@ class TSNEData(Resource):
             analysis_pca_columns = ['X_pca_1', 'X_pca_2']
             # Safety check to ensure analysis was populated in adata.obsm if user selects those data series
             if x_axis in analysis_tsne_columns and y_axis in analysis_tsne_columns:
-                if not 'X_tsne' in adata.obsm:
+                if 'X_tsne' not in adata.obsm:
                     return {
                         'success': -1,
                         'message': 'Analysis tSNE columns were selected but values not present in adata.obsm'
                     }
             elif x_axis in analysis_umap_columns and y_axis in analysis_umap_columns:
-                if not 'X_umap' in adata.obsm:
+                if 'X_umap' not in adata.obsm:
                     return {
                         'success': -1,
                         'message': 'Analysis UMAP was selected but values not present in adata.obsm'
                     }
             elif x_axis in analysis_pca_columns and y_axis in analysis_pca_columns:
-                if not 'X_pca' in adata.obsm:
+                if 'X_pca' not in adata.obsm:
                     return {
                         'success': -1,
                         'message': 'Analysis PCA was selected but values not present in adata.obsm'
@@ -336,14 +323,14 @@ class TSNEData(Resource):
                     reordered_col = col.cat.reorder_categories(
                         order[key], ordered=True)
                     adata.obs[key] = reordered_col
-                except:
+                except AttributeError:
                     pass
 
         # Filter genes and slice the adata to get a dataframe
         # with expression and its observation metadata
         try:
             selected = adata[:, gene_filter].to_memory()
-        except:
+        except AttributeError:
             # The "try" may fail for projections as it is already in memory
             selected = adata[:, gene_filter]
 
@@ -351,7 +338,7 @@ class TSNEData(Resource):
         # This prevents potential downstream issues
         try:
             selected.X = selected.X.todense()
-        except:
+        except AttributeError:
             pass
 
         # Filter by obs filters
@@ -369,7 +356,7 @@ class TSNEData(Resource):
         if selected_gene in selected.obs.columns:
             selected.obs["{}_orig".format(selected_gene)] = selected.obs[selected_gene]
             # delete the original column
-            selected.obs.drop(selected_gene, axis=1, inplace=True)
+            selected.obs = selected.obs.drop(selected_gene, axis=1)
 
         success = 1
         message = ""
@@ -381,13 +368,13 @@ class TSNEData(Resource):
         selected.var = selected.var.rename(columns={selected.var.columns[0]: "ensembl_id"})
         # Modify the AnnData object to not include any duplicated gene symbols (keep only first entry)
         dedup_copy = ana.dataset_path().replace('.h5ad', '.dups_removed.h5ad')
-        if (selected.var.index.duplicated(keep="first") == True).any():
+        if (selected.var.index.duplicated(keep="first")).any():
             success = 2
             message = "WARNING: Multiple Ensemble IDs found for gene symbol '{}'.  Using the first stored Ensembl ID.".format(selected_gene)
 
             if os.path.exists(dedup_copy):
                 os.remove(dedup_copy)
-            selected = selected[:, selected.var.index.duplicated() == False].copy(filename=dedup_copy)
+            selected = selected[:, not selected.var.index.duplicated()].copy(filename=dedup_copy)
 
         io_fig = None
         try:
@@ -406,6 +393,9 @@ class TSNEData(Resource):
         if reverse_palette:
             expression_palette += "_r"
 
+        if reverse_metadata_palette:
+            metadata_palette += "_r"
+
         plot_sort_order = True   # scanpy auto-sorts by highest value by default
         plot_vcenter = None
 
@@ -418,14 +408,20 @@ class TSNEData(Resource):
 
         if expression_palette and expression_palette.startswith("bluered"):
             create_bluered_colorscale()
-
-        if expression_palette.startswith("bublrd"):
+        elif expression_palette and expression_palette.startswith("bublrd"):
             create_bublrd_colorscale()
+        elif expression_palette and expression_palette.startswith("multicolor_diverging"):
+            create_projection_colorscale()
 
-        if expression_palette.startswith("multicolor_diverging"):
+        if metadata_palette and metadata_palette.startswith("bluered"):
+            create_bluered_colorscale()
+        elif metadata_palette and metadata_palette.startswith("bublrd"):
+            create_bublrd_colorscale()
+        elif metadata_palette and metadata_palette.startswith("multicolor_diverging"):
             create_projection_colorscale()
 
         expression_color = create_colorscale_with_zero_gray("cividis_r" if colorblind_mode else expression_palette)
+        metadata_color = create_colorscale_with_zero_gray("cividis_r" if colorblind_mode else metadata_palette)
 
 
         # These will be passed into the sc.pl.embedding function
@@ -449,12 +445,13 @@ class TSNEData(Resource):
 
         num_plots = 1   # single plot
 
+        color_category = True if is_categorical(selected.obs[colorize_by]) else False
+
         # If colorize_by is passed we need to generate that image first, before the index is reset
         #  for gene symbols, then merge them.
         if colorize_by:
             num_plots = 2   # gene expression and colorize_by plot
 
-            color_category = True if is_categorical(selected.obs[colorize_by]) else False
 
             if color_category:
                 # were custom colors passed?  the color index is the 'colorize_by' label but with '_colors' appended
@@ -529,6 +526,9 @@ class TSNEData(Resource):
             titles.append(selected_gene)
 
         io_fig = sc.pl.embedding(selected, **kwargs)
+        if not isinstance(io_fig, Figure):
+            raise TypeError("scanpy returned an unexpected type for io_fig: {}".format(type(io_fig)))
+
         ax = io_fig.get_axes()
 
         # break grid_spec into spans
@@ -549,31 +549,37 @@ class TSNEData(Resource):
         io_fig.set_figheight(calculate_figure_height(num_plots_high, row_span))
 
         # rename axes labels
-        if type(ax) == list:
+        if isinstance(ax, list):
             for f in ax:
                 # skip colorbar
                 if f.get_label() == "<colorbar>":
                     continue
                 rename_axes_labels(f, x_axis, y_axis)
             last_ax = ax[-1]    # color axes
-            if colorize_by and color_category:
 
-                """
-                NOTE: Quick note about legend "loc" and "bbox_to_anchor" attributes:
+            if colorize_by:
+                if color_category:
+                    """
+                    NOTE: Quick note about legend "loc" and "bbox_to_anchor" attributes:
 
-                bbox_to_anchor is the location of the legend relative to the plot frame.
-                If x and y are 0, that is the lower-left corner of the plot.
-                If bbox_to_anchor has 4 options, they are x, y, width, and height.  The last two are ratios relative to the plot. And x and y are the lower corner of the bounding box
+                    bbox_to_anchor is the location of the legend relative to the plot frame.
+                    If x and y are 0, that is the lower-left corner of the plot.
+                    If bbox_to_anchor has 4 options, they are x, y, width, and height.  The last two are ratios relative to the plot. And x and y are the lower corner of the bounding box
 
-                loc is the portion of the legend that will be at the bbox_to_anchor point.
-                So, if x=0, y=0, and loc = "lower_left", the lower left corner of the legend will be anchored to the lower left corner of the plot
-                """
+                    loc is the portion of the legend that will be at the bbox_to_anchor point.
+                    So, if x=0, y=0, and loc = "lower_left", the lower left corner of the legend will be anchored to the lower left corner of the plot
+                    """
 
-                (handles, labels) = sort_legend(last_ax, colorize_by_order, horizontal_legend)
-                last_ax.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
-                if horizontal_legend:
-                    last_ax.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
-                    last_ax.get_legend().remove() # Remove legend added by scanpy
+                    (handles, labels) = sort_legend(last_ax, colorize_by_order, horizontal_legend)
+                    last_ax.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
+                    if horizontal_legend:
+                        last_ax.legend(loc="upper center", bbox_to_anchor=[0, 0, 1, 0], frameon=False, ncol=NUM_HORIZONTAL_COLS, handles=handles, labels=labels)
+                        last_ax.get_legend().remove() # Remove legend added by scanpy
+                else:
+                    pass
+                    # set the metadata color map
+                    #last_ax.get_children()[0].set_cmap(metadata_color)
+
         else:
             rename_axes_labels(ax, x_axis, y_axis)
 
