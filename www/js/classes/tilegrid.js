@@ -1728,7 +1728,8 @@ class DatasetTile {
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
         const analysisObj = display.analysis_id ? {id: display.analysis_id} : display.analysis || null;
         const plotType = display.plot_type;
-        const geneSymbol = display.plotly_config.gene_symbol;
+        const geneSymbol = isMultigene ? "multigene" : display.plotly_config.gene_symbol;
+        const shareId = this.dataset.share_id;
 
         // deep copy plotly_config to avoid modifying the original
         const plotConfig = JSON.parse(JSON.stringify(display.plotly_config));
@@ -1761,7 +1762,7 @@ class DatasetTile {
         hiddenLink.classList.add("is-hidden");
 
         // download URL
-        hiddenLink.download = `${this.dataset.id}_${geneSymbol}_${display.plot_type}.png`;
+        hiddenLink.download = `${shareId}_${geneSymbol}_${display.plot_type}.png`;
         hiddenLink.href = download;
 
         hiddenLink.setAttribute('target', '_blank');
