@@ -1302,6 +1302,21 @@ const apiCallsMixin = {
         return data;
     },
     /**
+     * Fetches the multigene TSNE image for a given dataset, analysis, plot type, plot configuration, and other options.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} analysis - The analysis type.
+     * @param {string} plotType - The type of plot.
+     * @param {object} plotConfig - The plot configuration.
+     * @param {object} [otherOpts={}] - Additional options for the request.
+     * @returns {Promise<any>} - A promise that resolves to the fetched data.
+     */
+    async fetchMgTsneImage(datasetId, analysis, plotType, plotConfig, otherOpts={}) {
+        // NOTE: gene_symbol should already be already passed to plotConfig
+        const payload = { ...plotConfig, plot_type: plotType, analysis, colorblind_mode: this.colorblindMode };
+        const {data} = await axios.post(`/api/plot/${datasetId}/mg_tsne`, payload, otherOpts);
+        return data;
+    },
+    /**
      * Fetches user history entries.
      * @param {number} numEntries - The number of entries to fetch.
      * @returns {Promise<any>} - A promise that resolves to the fetched data.

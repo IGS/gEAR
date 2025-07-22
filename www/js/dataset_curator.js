@@ -356,10 +356,9 @@ class ScanpyHandler extends PlotHandler {
             }
 
             // The "max columns" parameter is only available for categorical series
-            if (!(catColumns.includes(series))) {
-                for (const targetElt of maxColumns) {
-                    targetElt.disabled = true;
-                }
+            for (const targetElt of [...maxColumns]) {
+                targetElt.disabled = catColumns.includes(series) ? false : true;
+                disableCheckboxLabel(targetElt, targetElt.disabled);
             }
 
             // Handle colors
@@ -383,12 +382,12 @@ class ScanpyHandler extends PlotHandler {
         }
 
         if (config["plot_by_group"]) {
-            for (const targetElt of skipGenePlot) {
+            for (const targetElt of [...skipGenePlot]) {
                 targetElt.disabled = true;
                 targetElt.checked = false;
                 disableCheckboxLabel(targetElt, targetElt.disabled);
             }
-            for (const targetElt of maxColumns) {
+            for (const targetElt of [...maxColumns]) {
                 targetElt.disabled = false;
             }
         }
@@ -436,6 +435,12 @@ class ScanpyHandler extends PlotHandler {
 
         const plotContainer = document.getElementById("plot-container");
         plotContainer.replaceChildren();    // erase plot
+
+       // Add a message saying the image dimensions will change when viewed in the gene expression page
+        const dimensionMessage = document.createElement("div");
+        dimensionMessage.innerHTML = "<strong>Note:</strong> The plot image may render differently when viewed in the gene expression page based on the dimensions of the display tile.";
+        dimensionMessage.classList.add("notification", "is-info", "is-light");
+        plotContainer.append(dimensionMessage);
 
         const tsnePreview = document.createElement("img");
         tsnePreview.classList.add("image");
@@ -512,7 +517,7 @@ class ScanpyHandler extends PlotHandler {
         }
 
         // if no plot-by-group is selected, ensure max columns is not passed to the scanpy code
-        if (!(document.getElementById("plot-by-group-series-post").checked)) {
+        if (!(document.getElementById("plot-by-group-series-post").textContent)) {
             this.plotConfig["max_columns"] = null;
         }
 
@@ -1066,65 +1071,6 @@ const fetchTsneImage = async (datasetId, analysis, plotType, plotConfig) => {
     }
 }
 
-
-/**
- * Renders the color picker for a given series name.
- *
- * @param {string} seriesName - The name of the series.
- */
-const renderColorPicker = (seriesName) => {
-    const colorsContainer = document.getElementById("colors-container");
-    const colorsSection = document.getElementById("colors-section");
-
-    colorsSection.classList.add("is-hidden");
-    colorsContainer.replaceChildren();
-    if (!seriesName) {
-        return;
-    }
-
-    if (!(catColumns.includes(seriesName))) {
-        // ? Continuous series colorbar picker
-        return;
-    }
-
-    const seriesNameElt = document.createElement("p");
-    seriesNameElt.classList.add("has-text-weight-bold", "is-underlined");
-    seriesNameElt.textContent = seriesName;
-    colorsContainer.append(seriesNameElt);
-
-    // Otherwise d3 category10 colors
-    const swatchColors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"];
-
-    let counter = 0;
-    for (const group of levels[seriesName]) {
-        const darkerLevel = Math.floor(counter / 10);
-        const baseColor = swatchColors[counter%10];
-        const groupColor = darkerLevel > 0
-            ? d3.color(baseColor).darker(darkerLevel).formatHex()
-            : baseColor;    // Cycle through swatch but make darker if exceeding 10 groups
-        counter++;
-
-        const groupElt = document.createElement("p");
-        groupElt.classList.add("is-flex", "is-justify-content-space-between", "pr-3");
-
-        const groupText = document.createElement("span");
-        groupText.classList.add("has-text-weight-medium");
-        groupText.textContent = group;
-
-        const colorInput = document.createElement("input");
-        colorInput.classList.add("js-plot-color");
-        colorInput.id = `${group}-color`;
-        colorInput.type = "color";
-        colorInput.value = groupColor;
-        colorInput.setAttribute("aria-label", "Select a color");
-
-        groupElt.append(groupText, colorInput);
-        colorsContainer.append(groupElt);
-    }
-
-    colorsSection.classList.remove("is-hidden");
-}
-
 /**
  * Sets up the options for Plotly.
  * @returns {Promise<void>} A promise that resolves when the options are set up.
@@ -1456,11 +1402,9 @@ const setupScanpyOptions = async () => {
             }
 
             // The "max columns" parameter should only be disabled if the colorized legend is continuous
-            if (!(catColumns.includes(event.target.value))) {
-                for (const targetElt of maxColumns) {
-                    targetElt.disabled = true;
-                    disableCheckboxLabel(targetElt, true);
-                }
+            for (const targetElt of [...maxColumns]) {
+                targetElt.disabled = catColumns.includes(event.target.value) ? false : true;
+                disableCheckboxLabel(targetElt, targetElt.disabled);
             }
         });
 
@@ -1483,14 +1427,15 @@ const setupScanpyOptions = async () => {
     for (const elt of plotBySeries) {
         elt.addEventListener("change", (event) => {
             // Must plot gene expression if series value selected
-            for (const targetElt of skipGenePlot) {
+            for (const targetElt of [...skipGenePlot]) {
                 targetElt.disabled = event.target.value ? true : false;
                 if (event.target.value) targetElt.checked = false;
                 disableCheckboxLabel(targetElt, targetElt.disabled);
             }
             // Must be allowed to specify max columns if series value selected
-            for (const targetElt of maxColumns) {
+            for (const targetElt of [...maxColumns]) {
                 targetElt.disabled = event.target.value ? false : true;
+                disableCheckboxLabel(targetElt, targetElt.disabled);
             }
             updateOrderSortable();
 

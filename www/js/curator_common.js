@@ -725,6 +725,7 @@ const cloneDisplay = async (event, display, scope="owner") => {
         const availablePlotTypes = await curatorApiCallsMixin.fetchAvailablePlotTypes(datasetId, analysisObj?.id, isMultigene);
         for (const plotType in availablePlotTypes) {
             const isAllowed = availablePlotTypes[plotType];
+
             setPlotTypeDisabledState(plotType, isAllowed);
         }
 
@@ -733,6 +734,7 @@ const cloneDisplay = async (event, display, scope="owner") => {
         await choosePlotType();
         // In this step, a PlotStyle object is instantiated onto "plotStyle", and we will use that
     } catch (error) {
+        console.error(error);
         document.getElementById("plot-type-s-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-select-c-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-s-success").classList.add("is-hidden");
@@ -901,7 +903,7 @@ const createPlotTypeSelectInstance = (idSelector, plotTypeSelect=null) => {
 
     // Initialize fixed plot types
     return NiceSelect.bind(document.getElementById(idSelector), {
-        placeholder: 'Choose how to plot',
+        placeholder: 'Select plot type',
         minimumResultsForSearch: -1
     });
 }
@@ -1071,7 +1073,6 @@ const includePlotParamOptions = async () => {
     }
     document.getElementById("plot-type-s-failed").classList.add("is-hidden");
 
-
     // NOTE: Changing plots within the same plot style will clear the plot config as fresh templates are loaded
     await plotStyle.loadPlotHtml();
 
@@ -1224,6 +1225,64 @@ const plotTypeSelectUpdate = async (analysisId=null) => {
     } finally {
         plotTypeSelect.update();
     }
+}
+
+/**
+ * Renders the color picker for a given series name.
+ *
+ * @param {string} seriesName - The name of the series.
+ */
+const renderColorPicker = (seriesName) => {
+    const colorsContainer = document.getElementById("colors-container");
+    const colorsSection = document.getElementById("colors-section");
+
+    colorsSection.classList.add("is-hidden");
+    colorsContainer.replaceChildren();
+    if (!seriesName) {
+        return;
+    }
+
+    if (!(catColumns.includes(seriesName))) {
+        // ? Continuous series colorbar picker
+        return;
+    }
+
+    const seriesNameElt = document.createElement("p");
+    seriesNameElt.classList.add("has-text-weight-bold", "is-underlined");
+    seriesNameElt.textContent = seriesName;
+    colorsContainer.append(seriesNameElt);
+
+    // Otherwise d3 category10 colors
+    const swatchColors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"];
+
+    let counter = 0;
+    for (const group of levels[seriesName]) {
+        const darkerLevel = Math.floor(counter / 10);
+        const baseColor = swatchColors[counter%10];
+        const groupColor = darkerLevel > 0
+            ? d3.color(baseColor).darker(darkerLevel).formatHex()
+            : baseColor;    // Cycle through swatch but make darker if exceeding 10 groups
+        counter++;
+
+        const groupElt = document.createElement("p");
+        groupElt.classList.add("is-flex", "is-justify-content-space-between", "pr-3");
+
+        const groupText = document.createElement("span");
+        groupText.classList.add("has-text-weight-medium");
+        groupText.textContent = group;
+
+        const colorInput = document.createElement("input");
+        colorInput.classList.add("js-plot-color");
+        colorInput.id = `${group}-color`;
+        colorInput.type = "color";
+        colorInput.value = groupColor;
+        colorInput.setAttribute("aria-label", "Select a color");
+
+        groupElt.append(groupText, colorInput);
+        colorsContainer.append(groupElt);
+    }
+
+    colorsSection.classList.remove("is-hidden");
 }
 
 /**
@@ -1466,7 +1525,7 @@ const setPlotTypeDisabledState = (plotType, isAllowed) => {
         document.getElementById("tsne-dyna-opt").disabled = !isAllowed;
     } else {
         // replace _ with - for id
-        const fixedPlotType = plotType.replace("_", "-");
+        const fixedPlotType = plotType.replaceAll("_", "-");
         document.getElementById(`${fixedPlotType}-opt`).disabled = !isAllowed;
     }
 }
