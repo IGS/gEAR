@@ -1,4 +1,3 @@
-
 import os
 import tarfile
 import typing
@@ -54,7 +53,7 @@ class SpatialHandler(ABC):
         _convert_sdata_to_adata(include_images: bool | None = None, table_name=None) -> SpatialHandler:
             Converts the internal spatial data object to an AnnData object.
 
-        _write_to_zarr(filepath: str | None = None) -> SpatialHandler:
+        _write_to_zarr(filepath: str | None =None) -> SpatialHandler:
 
         _write_to_h5ad(filepath: str | None = None) -> SpatialHandler:
             Writes the current AnnData object to an H5AD file at the specified file path.
@@ -328,30 +327,47 @@ class CoxMxHandler(SpatialHandler):
 
     @property
     def has_images(self) -> bool:
+        """Whether this handler has associated images (always False for CoxMx)."""
         return False
 
     @property
     def coordinate_system(self) -> str:
+        """Returns the coordinate system used by CoxMx datasets."""
         return "global"
 
     @property
     def platform(self) -> str:
+        """Returns the platform name for this handler."""
         return "coxmx"
 
     @property
     def img_name(self) -> str | None:
+        """Returns the image name associated with this handler (always None for CoxMx)."""
         return None
 
     def _read_file(self, filepath: str, **kwargs) -> "SpatialHandler":
+        """
+        Reads and processes a CoxMx spatial data file from the given filepath.
+        For CoxMx, this is a stub and does not perform any operation.
+        """
         return self
 
     def convert_sdata_to_adata(self, include_images: bool | None=None) -> "SpatialHandler":
+        """
+        Converts the internal spatial data object to an AnnData object.
+        """
         return super()._convert_sdata_to_adata(include_images)
 
     def write_to_zarr(self, filepath: str | None=None) -> "SpatialHandler":
+        """
+        Writes the spatial data object to a Zarr file at the specified file path.
+        """
         return super()._write_to_zarr(filepath)
 
     def write_to_h5ad(self, filepath: str | None=None) -> "SpatialHandler":
+        """
+        Writes the current AnnData object to an H5AD file at the specified file path.
+        """
         return super()._write_to_h5ad(filepath)
 
 
@@ -374,21 +390,29 @@ class CurioHandler(SpatialHandler):
 
     @property
     def has_images(self) -> bool:
+        """Whether this handler has associated images (always False for Curio)."""
         return False
 
     @property
     def coordinate_system(self) -> str:
+        """Returns the coordinate system used by Curio datasets."""
         return "global"
 
     @property
     def platform(self) -> str:
+        """Returns the platform name for this handler."""
         return "curio"
 
     @property
     def img_name(self) -> str | None:
+        """Returns the image name associated with this handler (always None for Curio)."""
         return None
 
     def _read_file(self, filepath: str, **kwargs) -> "SpatialHandler":
+        """
+        Reads and processes a Curio Seeker spatial data tarball from the given filepath.
+        Extracts and processes the h5ad and Moran's I-score files, updates gene IDs, and loads into a SpatialData object.
+        """
         # Get tar filename so tmp directory can be assigned
         tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
         tmp_dir = '/tmp/' + tar_filename
@@ -469,12 +493,21 @@ class CurioHandler(SpatialHandler):
         return self
 
     def convert_sdata_to_adata(self, include_images: bool | None = None) -> "SpatialHandler":
+        """
+        Converts the internal spatial data object to an AnnData object.
+        """
         return super()._convert_sdata_to_adata(include_images)
 
     def write_to_zarr(self, filepath: str | None = None) -> "SpatialHandler":
+        """
+        Writes the spatial data object to a Zarr file at the specified file path.
+        """
         return super()._write_to_zarr(filepath)
 
     def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
+        """
+        Writes the current AnnData object to an H5AD file at the specified file path.
+        """
         return super()._write_to_h5ad(filepath)
 
 class GeoMxHandler(SpatialHandler):
@@ -499,21 +532,29 @@ class GeoMxHandler(SpatialHandler):
 
     @property
     def has_images(self) -> bool:
+        """Whether this handler has associated images (always False for GeoMx)."""
         return False
 
     @property
     def coordinate_system(self) -> str:
+        """Returns the coordinate system used by GeoMx datasets."""
         return "global"
 
     @property
     def platform(self) -> str:
+        """Returns the platform name for this handler."""
         return "geomx"
 
     @property
     def img_name(self) -> str | None:
+        """Returns the image name associated with this handler (always None for GeoMx)."""
         return None
 
     def _read_file(self, filepath: str, **kwargs) -> "SpatialHandler":
+        """
+        Reads and processes a GeoMx spatial data tarball from the given filepath.
+        Extracts the Excel file, validates required sheets, loads counts and metadata, updates gene IDs, and loads into a SpatialData object.
+        """
         # Get tar filename so tmp directory can be assigned
         tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
         tmp_dir = '/tmp/' + tar_filename
@@ -611,12 +652,21 @@ class GeoMxHandler(SpatialHandler):
         return self
 
     def convert_sdata_to_adata(self, include_images: bool | None = None) -> "SpatialHandler":
+        """
+        Converts the internal spatial data object to an AnnData object.
+        """
         return super()._convert_sdata_to_adata(include_images)
 
     def write_to_zarr(self, filepath: str | None = None) -> "SpatialHandler":
+        """
+        Writes the spatial data object to a Zarr file at the specified file path.
+        """
         return super()._write_to_zarr(filepath)
 
     def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
+        """
+        Writes the current AnnData object to an H5AD file at the specified file path.
+        """
         return super()._write_to_h5ad(filepath)
 
 class VisiumHandler(SpatialHandler):
@@ -639,18 +689,22 @@ class VisiumHandler(SpatialHandler):
 
     @property
     def has_images(self) -> bool:
+        """Whether this handler has associated images (always True for Visium)."""
         return True
 
     @property
     def coordinate_system(self) -> str:
+        """Returns the coordinate system used by Visium datasets."""
         return "downscaled_hires"
 
     @property
     def platform(self) -> str:
+        """Returns the platform name for this handler."""
         return "visium"
 
     @property
     def img_name(self) -> str | None:
+        """Returns the image name associated with this handler."""
         return "spatialdata_hires_image"
 
     def _read_file(self, filepath: str, **kwargs) -> "SpatialHandler":
@@ -708,12 +762,21 @@ class VisiumHandler(SpatialHandler):
         return self
 
     def convert_sdata_to_adata(self, include_images: bool | None = None) -> "SpatialHandler":
+        """
+        Converts the internal spatial data object to an AnnData object.
+        """
         return super()._convert_sdata_to_adata(include_images)
 
     def write_to_zarr(self, filepath: str | None = None) -> "SpatialHandler":
+        """
+        Writes the spatial data object to a Zarr file at the specified file path.
+        """
         return super()._write_to_zarr(filepath)
 
     def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
+        """
+        Writes the current AnnData object to an H5AD file at the specified file path.
+        """
         return super()._write_to_h5ad(filepath)
 
 class VisiumHDHandler(SpatialHandler):
@@ -742,18 +805,22 @@ class VisiumHDHandler(SpatialHandler):
 
     @property
     def has_images(self) -> bool:
+        """Whether this handler has associated images (always True for Visium HD)."""
         return True
 
     @property
     def coordinate_system(self) -> str:
+        """Returns the coordinate system used by Visium HD datasets."""
         return "downscaled_hires"
 
     @property
     def platform(self) -> str:
+        """Returns the platform name for this handler."""
         return "visium_hd"
 
     @property
     def img_name(self) -> str | None:
+        """Returns the image name associated with this handler."""
         return "spatialdata_hires_image"
 
     def _read_file(self, filepath: str, **kwargs) -> "SpatialHandler":
@@ -839,12 +906,21 @@ class VisiumHDHandler(SpatialHandler):
         return self
 
     def convert_sdata_to_adata(self, include_images: bool | None = None) -> "SpatialHandler":
+        """
+        Converts the internal spatial data object to an AnnData object.
+        """
         return super()._convert_sdata_to_adata(include_images)
 
     def write_to_zarr(self, filepath: str | None = None) -> "SpatialHandler":
+        """
+        Writes the spatial data object to a Zarr file at the specified file path.
+        """
         return super()._write_to_zarr(filepath)
 
     def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
+        """
+        Writes the current AnnData object to an H5AD file at the specified file path.
+        """
         return super()._write_to_h5ad(filepath)
 
 class XeniumHandler(SpatialHandler):
@@ -869,21 +945,29 @@ class XeniumHandler(SpatialHandler):
 
     @property
     def has_images(self) -> bool:
+        """Whether this handler has associated images (always True for Xenium)."""
         return True
 
     @property
     def coordinate_system(self) -> str:
+        """Returns the coordinate system used by Xenium datasets."""
         return "global"
 
     @property
     def platform(self) -> str:
+        """Returns the platform name for this handler."""
         return "xenium"
 
     @property
     def img_name(self) -> str | None:
+        """Returns the image name associated with this handler."""
         return "morphology_focus"
 
     def _read_file(self, filepath: str, **kwargs) -> "SpatialHandler":
+        """
+        Reads and processes a Xenium spatial data tarball from the given filepath.
+        Extracts required files, loads clustering and spatial data, updates gene IDs, and loads into a SpatialData object.
+        """
         # Get tar filename so tmp directory can be assigned
         tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
         tmp_dir = '/tmp/' + tar_filename
@@ -968,12 +1052,21 @@ class XeniumHandler(SpatialHandler):
         return self
 
     def convert_sdata_to_adata(self, include_images: bool | None = None) -> "SpatialHandler":
+        """
+        Converts the internal spatial data object to an AnnData object.
+        """
         return super()._convert_sdata_to_adata(include_images)
 
     def write_to_zarr(self, filepath: str | None = None) -> "SpatialHandler":
+        """
+        Writes the spatial data object to a Zarr file at the specified file path.
+        """
         return super()._write_to_zarr(filepath)
 
     def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
+        """
+        Writes the current AnnData object to an H5AD file at the specified file path.
+        """
         return super()._write_to_h5ad(filepath)
 
 
