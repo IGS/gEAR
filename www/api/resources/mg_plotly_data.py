@@ -3,15 +3,15 @@ import sys  # for debug prints
 
 import gear.mg_plotting as mg
 import geardb
+import numpy as np
 import pandas as pd
 from flask import request
 from flask_restful import Resource
+from gear.mg_plotting import PlotError
+from gear.utils import catch_memory_error
 from plotly.utils import PlotlyJSONEncoder
 
-from gear.mg_plotting import PlotError
 from .common import create_projection_adata, order_by_time_point
-from gear.utils import catch_memory_error
-
 
 # SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 # This is meant to be a short-term solution until more people specify their data is transformed via the metadata
@@ -243,10 +243,8 @@ class MGPlotlyData(Resource):
 
         # convert adata.X to a dense matrix if it is sparse
         # This prevents potential downstream issues
-        try:
-            selected.X = selected.X.todense()
-        except Exception:
-            pass
+        selected.X = np.array(selected.X)
+
 
         # These plot types filter to only the specific genes.
         # The other plot types use all genes and rather annotate the specific ones.
