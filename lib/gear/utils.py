@@ -3,13 +3,29 @@
 # Some of these originally started out as code from individual scripts, such as the "bin" directory,
 # but were moved to a common location to be shared across multiple scripts.
 
-import sys
 import functools
+import sys
+import typing
 
-def catch_memory_error():
+if typing.TYPE_CHECKING:
+    from anndata import AnnData
+
+
+def catch_memory_error() -> typing.Callable:
     """
-    A decorator to catch and handle MemoryError exceptions
+    A decorator factory that catches MemoryError exceptions in the decorated function.
+
+    Returns:
+        Callable: A decorator that wraps the target function. If a MemoryError is raised during
+        execution, it prints an error message to stderr and returns a tuple containing a result
+        dictionary and a 500 status code.
+
+    Example:
+        @catch_memory_error()
+        def my_function():
+            # function implementation
     """
+
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -21,19 +37,56 @@ def catch_memory_error():
                 result = {
                     "message": "Exceeded memory limit",
                     "success": -1,
-                    "error": str(e)
+                    "error": str(e),
                 }
 
                 return result, 500
+
         return wrapper
+
     return decorator
 
 
-def update_adata_with_ensembl_ids(adata, organism, id_prefix, verbose=False):
+def update_adata_with_ensembl_ids(
+    adata: "AnnData", organism: int, id_prefix: str, verbose: bool = False
+) -> "AnnData":
+    """
+    Updates the gene identifiers in an AnnData object to Ensembl IDs by mapping gene symbols to Ensembl IDs
+    using a database lookup for the specified organism and a set of Ensembl releases. The function selects
+    the Ensembl release with the highest number of matches to the gene symbols in the input AnnData object.
 
+    Genes that cannot be mapped to an Ensembl ID are retained with their original identifiers, prefixed by
+    the provided `id_prefix`. The function ensures that the shape and metadata of the AnnData object are
+    preserved, and handles duplicate gene symbols by dropping them prior to mapping.
+
+    Parameters
+    ----------
+    adata : AnnData
+        The input AnnData object containing gene expression data. Gene symbols are expected to be in `adata.var.index`.
+    organism : int
+        The organism primary key ID in the `geardb` database as found in the "organism" table.
+    id_prefix : str
+        Prefix to use for genes that cannot be mapped to an Ensembl ID.
+    verbose : bool, optional (default: False)
+        If True, prints detailed progress and debugging information.
+
+    Returns
+    -------
+    AnnData
+        A new AnnData object with gene identifiers updated to Ensembl IDs where possible. Unmapped genes are
+        retained with their original identifiers, prefixed by `id_prefix`. All original metadata and structure
+        are preserved.
+
+    Notes
+    -----
+    - Requires access to a `geardb` database with gene symbol to Ensembl ID mappings.
+    - Drops duplicate gene symbols prior to mapping to ensure one-to-one mapping.
+    - Preserves all AnnData fields (obs, obsm, obsp, varm, varp, uns) in the output.
+    """
+
+    import anndata as ad
     import geardb
     import pandas as pd
-    import anndata as ad
 
     (_, n_genes) = adata.shape
     ensembl_releases = [84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94]
@@ -76,7 +129,9 @@ def update_adata_with_ensembl_ids(adata, organism, id_prefix, verbose=False):
 
     for release in ensembl_releases:
         if verbose:
-            print("INFO: comparing with ensembl release: {0} ... ".format(release), end='')
+            print(
+                "INFO: comparing with ensembl release: {0} ... ".format(release), end=""
+            )
         cursor.execute(query, (organism, release))
 
         df = pd.DataFrame(cursor.fetchall(), columns=cursor.column_names)
@@ -84,10 +139,10 @@ def update_adata_with_ensembl_ids(adata, organism, id_prefix, verbose=False):
         # Query can return different ensembl ids for a gene symbol,
         # we want to drop duplicates so we have only one ensembl id
         # per gene symbol
-        df = df.drop_duplicates(subset=['gene_symbol'])
-        df = df.set_index('gene_symbol')
+        df = df.drop_duplicates(subset=["gene_symbol"])
+        df = df.set_index("gene_symbol")
 
-        merged_df = adata.var.join(df, how='inner')
+        merged_df = adata.var.join(df, how="inner")
         (row_count, _) = merged_df.shape
 
         if verbose:
@@ -112,18 +167,17 @@ def update_adata_with_ensembl_ids(adata, organism, id_prefix, verbose=False):
     adata_not_present = adata[:, ~genes_present_filter]
 
     # If the data already had a 'gene symbol' let's rename it
-    if 'gene_symbol' in best_df.columns:
+    if "gene_symbol" in best_df.columns:
         if verbose:
-            print("WARN: Found gene_symbol column already in dataset, renaming to gene_symbol_original")
+            print(
+                "WARN: Found gene_symbol column already in dataset, renaming to gene_symbol_original"
+            )
         best_df = best_df.rename(columns={"gene_symbol": "gene_symbol_original"})
 
     ensembl_id_var = (
-        best_df
-        .reset_index()
-        .rename(columns={
-            "index": "gene_symbol"
-        })
-        .set_index('ensembl_id')
+        best_df.reset_index()
+        .rename(columns={"index": "gene_symbol"})
+        .set_index("ensembl_id")
     )
 
     if verbose:
@@ -142,15 +196,17 @@ def update_adata_with_ensembl_ids(adata, organism, id_prefix, verbose=False):
         obsp=adata_present.obsp,
         varm=adata_present.varm,
         varp=adata_present.varp,
-        uns=adata_present.uns
-        )
+        uns=adata_present.uns,
+    )
 
     if verbose:
         print(adata_with_ensembl_ids.obs.columns)
 
     ## Now combine the unmapped dataframe with this one, first making the needed edits
-    if 'gene_symbol' in adata_not_present.var.columns:
-        adata_not_present.var = adata_not_present.var.rename(columns={"gene_symbol": "gene_symbol_original"})
+    if "gene_symbol" in adata_not_present.var.columns:
+        adata_not_present.var = adata_not_present.var.rename(
+            columns={"gene_symbol": "gene_symbol_original"}
+        )
 
     if verbose:
         print("ADATA_NOT_PRESENT.VAR")
@@ -158,11 +214,11 @@ def update_adata_with_ensembl_ids(adata, organism, id_prefix, verbose=False):
         print(adata_not_present.obs.columns)
 
     # Splitting code over multiple lines requires a "\" at the end.
-    adata_unmapped_var = adata_not_present.var.reset_index(names=orig_gene_column) \
-        .rename(columns={ \
-                    orig_gene_column: "gene_symbol" \
-                    }) \
+    adata_unmapped_var = (
+        adata_not_present.var.reset_index(names=orig_gene_column)
+        .rename(columns={orig_gene_column: "gene_symbol"})
         .set_index(id_prefix + adata_not_present.var.index.astype(str))
+    )
 
     adata_unmapped = ad.AnnData(
         X=adata_not_present.X,
@@ -172,7 +228,7 @@ def update_adata_with_ensembl_ids(adata, organism, id_prefix, verbose=False):
         obsp=adata_not_present.obsp,
         varm=adata_not_present.varm,
         varp=adata_not_present.varp,
-        uns=adata_not_present.uns
+        uns=adata_not_present.uns,
     )
     adata_unmapped.var.index.name = "ensembl_id"
 
@@ -194,10 +250,10 @@ def update_adata_with_ensembl_ids(adata, organism, id_prefix, verbose=False):
     if verbose:
         print("ADATA CONCAT")
         print(adata)
-        #print("VAR CONCAT")
-        #print(adata.var)
-        #print("OBS_CONCAT")
-        #print(adata.obs)
-        #print(adata.X)
+        # print("VAR CONCAT")
+        # print(adata.var)
+        # print("OBS_CONCAT")
+        # print(adata.obs)
+        # print(adata.X)
 
     return adata

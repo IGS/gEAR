@@ -1,8 +1,9 @@
 
 import os
 import tarfile
+import typing
 from abc import ABC, abstractmethod
-from typing import Literal, TypeVar
+from pathlib import Path
 
 import anndata as ad
 import pandas as pd
@@ -12,58 +13,177 @@ import xarray
 from gear.utils import update_adata_with_ensembl_ids
 from spatialdata_io.experimental import from_legacy_anndata, to_legacy_anndata
 
-# Self is a typing type starting in Python 3.11
-Self = TypeVar("Self", bound="SpatialHandler")
+if typing.TYPE_CHECKING:
+    from anndata import AnnData
+    from spatialdata import SpatialData
 
 class SpatialHandler(ABC):
+    """
+    Abstract base class for handling spatial transcriptomics data, providing a unified interface for managing and processing spatial and annotated data objects.
+
+    This class defines properties and methods for:
+    - Managing normalized table names.
+    - Accessing and setting AnnData and SpatialData objects.
+    - Querying metadata such as image presence, coordinate system, platform, and image names.
+    - Reading spatial data files.
+    - Filtering spatial data to image boundaries.
+    - Converting spatial data to AnnData format.
+    - Writing spatial data to Zarr and AnnData (H5AD) file formats.
+
+    Subclasses must implement abstract properties and methods to specify platform-specific details and file reading logic.
+
+    Attributes:
+        NORMALIZED_TABLE_NAME (str): Default name for the normalized table.
+
+    Properties:
+        normalized_table_name (str): Name of the normalized table.
+        adata (AnnData): The AnnData object associated with this handler.
+        sdata (SpatialData): The SpatialData object associated with this handler.
+        has_images (bool): Whether the handler has associated images (abstract).
+        coordinate_system (str): The coordinate system used (abstract).
+        platform (str): The name of the platform (abstract).
+        img_name (str | None): The name of the associated image (abstract).
+
+    Methods:
+        _read_file(filepath: str) -> SpatialHandler:
+            Reads and processes a spatial data file from the given filepath (abstract).
+
+        filter_sdata_by_coords() -> SpatialHandler:
+            Filters the spatial data to include only elements within the boundaries of the high-resolution image.
+
+        _convert_sdata_to_adata(include_images: bool | None = None, table_name=None) -> SpatialHandler:
+            Converts the internal spatial data object to an AnnData object.
+
+        _write_to_zarr(filepath: str | None = None) -> SpatialHandler:
+
+        _write_to_h5ad(filepath: str | None = None) -> SpatialHandler:
+            Writes the current AnnData object to an H5AD file at the specified file path.
+    """
 
     NORMALIZED_TABLE_NAME = "table"
 
     @property
     def normalized_table_name(self):
+        """
+        Returns the name of the normalized table associated with this instance.
+
+        Returns:
+            str: The normalized table name.
+        """
         return self.NORMALIZED_TABLE_NAME
 
     @property
-    def adata(self):
+    def adata(self) -> "AnnData":
+        """
+        Returns the AnnData object associated with this instance.
+
+        Returns:
+            AnnData: The underlying AnnData object.
+        """
         return self._adata
 
     @adata.setter
-    def adata(self, adata=ad.AnnData()):
+    def adata(self, adata: "AnnData") -> None:
+        """
+        Sets the AnnData object for the instance.
+
+        Parameters:
+            adata (AnnData): The annotated data matrix to be assigned to the instance.
+        """
         self._adata = adata
 
     @property
-    def sdata(self):
+    def sdata(self) -> "SpatialData":
+        """
+        Returns the associated SpatialData object.
+
+        Returns:
+            SpatialData: The spatial data instance associated with this handler.
+        """
         return self._sdata
 
     @sdata.setter
-    def sdata(self, sdata=sd.SpatialData()):
+    def sdata(self, sdata: "SpatialData") -> None:
+        """
+        Sets the SpatialData object for the handler.
+
+        Parameters:
+            sdata (SpatialData): The SpatialData instance to assign to the handler.
+        """
         self._sdata = sdata
 
     @property
     @abstractmethod
-    def has_images(self):
+    def has_images(self) -> bool:
+        """
+        Checks if the spatial handler has associated images.
+
+        Returns:
+            bool: True if images are present, False otherwise.
+        """
         pass
 
     @property
     @abstractmethod
-    def coordinate_system(self):
+    def coordinate_system(self) -> str:
+        """
+        Returns the coordinate system used by the spatial handler.
+
+        Returns:
+            str: A string representing the name or type of the coordinate system (e.g., 'WGS84', 'UTM', etc.).
+        """
         pass
 
     @property
     @abstractmethod
-    def platform(self):
+    def platform(self) -> str:
+        """
+        Returns the name of the platform as a string.
+
+        Returns:
+            str: The name of the platform.
+        """
         pass
 
     @property
     @abstractmethod
-    def img_name(self):
+    def img_name(self) -> str | None:
+        """
+        Returns the name of the image associated with the current instance.
+
+        Returns:
+            str | None: The image name if available, otherwise None.
+        """
         pass
 
     @abstractmethod
-    def _read_file(self, filepath):
+    def _read_file(self, filepath: str) -> "SpatialHandler":
+        """
+        Reads and processes a spatial data file from the given filepath.
+
+        Args:
+            filepath (str): The path to the spatial data file to be read.
+
+        Returns:
+            SpatialHandler: An instance of SpatialHandler containing the loaded spatial data.
+
+        Raises:
+            FileNotFoundError: If the specified file does not exist.
+            IOError: If there is an error reading the file.
+            ValueError: If the file format is invalid or unsupported.
+        """
         pass
 
-    def filter_sdata_by_coords(self):
+    def filter_sdata_by_coords(self) -> "SpatialHandler":
+        """
+        Filters the spatial data (`self.sdata`) to include only elements within the boundaries of the high-resolution image.
+
+        The method determines the spatial extent of the image specified by `self.img_name` and restricts the spatial data to this region.
+        It supports images stored as either `xarray.DataArray` or `xarray.DataTree`. If the image is not found, the method returns the object unchanged.
+
+        Returns:
+            SpatialHandler: The current instance with `self.sdata` filtered to the image boundaries.
+        """
         # Filter to only the hires image boundaries
         if not self.img_name:
             return self
@@ -78,20 +198,33 @@ class SpatialHandler(ABC):
             coords = self.sdata.images[self.img_name]  # Fallback to preserve original behavior
 
         # Get the coordinates of the image
-        x = len(coords.x)
-        y = len(coords.y)
-        sdata = sd.bounding_box_query(self.sdata,
+        x = len(coords.x) # type: ignore
+        y = len(coords.y) # type: ignore
+        sdata: "SpatialData" = sd.bounding_box_query(self.sdata,
                 axes=("x", "y"),
                 min_coordinate=[0, 0],
                 max_coordinate=[x, y],
                 target_coordinate_system=self.coordinate_system,
                 filter_table=True,
-                )
+                ) # type: ignore
 
         self.sdata = sdata
         return self
 
-    def _convert_sdata_to_adata(self, include_images=None, table_name=None):
+    def _convert_sdata_to_adata(self, include_images: bool | None = None, table_name=None) -> "SpatialHandler":
+        """
+        Converts the internal spatial data object (`sdata`) to an AnnData object and assigns it to `self.adata`.
+
+        Parameters:
+            include_images (bool | None, optional): Whether to include image data in the conversion. If None, defaults to `self.has_images`.
+            table_name (str, optional): The name of the table to use for conversion. If None, defaults to `self.NORMALIZED_TABLE_NAME`.
+
+        Returns:
+            SpatialHandler: The current instance with the `adata` attribute set.
+
+        Raises:
+            Exception: If `self.sdata` is None or if an error occurs during conversion.
+        """
         if self.sdata is None:
             raise Exception("No spatial data object present to convert to AnnData object.")
 
@@ -111,7 +244,27 @@ class SpatialHandler(ABC):
         self.adata = adata
         return self
 
-    def _write_to_zarr(self, filepath=None):
+    def _write_to_zarr(self, filepath: str | None =None) -> "SpatialHandler":
+        """
+        Writes the spatial data object to a Zarr file at the specified file path.
+
+        This method performs the following steps:
+        - Checks that a spatial data object (`self.sdata`) is present.
+        - Ensures a destination file path is provided.
+        - Adds the platform type as metadata to the normalized table.
+        - Converts the data matrix to float type for compatibility.
+        - Attempts to write the spatial data to the specified file path.
+        - If an error occurs during writing, removes any partially created directory.
+
+        Args:
+            filepath (str | None): The destination file path where the Zarr file will be written.
+
+        Returns:
+            SpatialHandler: The current instance of the SpatialHandler.
+
+        Raises:
+            Exception: If no spatial data object is present, no file path is provided, or an error occurs during writing.
+        """
         if self.sdata is None:
             raise Exception("No spatial data object present to write to file.")
         if filepath is None:
@@ -130,16 +283,30 @@ class SpatialHandler(ABC):
             if os.path.exists(filepath):
                 import shutil
                 shutil.rmtree(filepath)
-            raise Exception("Error occurred while writing to file: ", err)
+            raise Exception("Error occurred while writing to file: " + str(err))
         return self
 
-    def _write_to_h5ad(self, filepath=None):
+    def _write_to_h5ad(self, filepath: str | None=None) -> "SpatialHandler":
+        """
+        Writes the current AnnData object (`self.adata`) to an H5AD file at the specified file path.
+
+        Parameters:
+            filepath (str | None): The destination file path where the AnnData object should be written.
+                If None, an exception is raised.
+
+        Returns:
+            SpatialHandler: Returns self after successfully writing the file.
+
+        Raises:
+            Exception: If no AnnData object is present, if no file path is provided, or if an error occurs during writing.
+                In case of a write error, any partially written file at the destination path is removed.
+        """
         if self.adata is None:
             raise Exception("No AnnData object present to write to file.")
         if filepath is None:
             raise Exception("No destination file path given. Provide one to write file.")
         try:
-            self.adata.write(filename=filepath)
+            self.adata.write(filename=Path(filepath))
         except Exception as err:
             # remove the file if it was created
             if os.path.exists(filepath):
@@ -160,31 +327,31 @@ class CoxMxHandler(SpatialHandler):
     """
 
     @property
-    def has_images(self) -> Literal[False]:
+    def has_images(self) -> bool:
         return False
 
     @property
-    def coordinate_system(self) -> Literal['global']:
+    def coordinate_system(self) -> str:
         return "global"
 
     @property
-    def platform(self) -> Literal['coxmx']:
+    def platform(self) -> str:
         return "coxmx"
 
     @property
-    def img_name(self) -> None:
+    def img_name(self) -> str | None:
         return None
 
-    def _read_file(self, filepath, **kwargs):
-        pass
+    def _read_file(self, filepath: str, **kwargs) -> "SpatialHandler":
+        return self
 
-    def convert_sdata_to_adata(self, include_images=None):
+    def convert_sdata_to_adata(self, include_images: bool | None=None) -> "SpatialHandler":
         return super()._convert_sdata_to_adata(include_images)
 
-    def write_to_zarr(self, filepath=None):
+    def write_to_zarr(self, filepath: str | None=None) -> "SpatialHandler":
         return super()._write_to_zarr(filepath)
 
-    def write_to_h5ad(self, filepath=None):
+    def write_to_h5ad(self, filepath: str | None=None) -> "SpatialHandler":
         return super()._write_to_h5ad(filepath)
 
 
@@ -206,22 +373,22 @@ class CurioHandler(SpatialHandler):
     """
 
     @property
-    def has_images(self):
+    def has_images(self) -> bool:
         return False
 
     @property
-    def coordinate_system(self):
+    def coordinate_system(self) -> str:
         return "global"
 
     @property
-    def platform(self):
+    def platform(self) -> str:
         return "curio"
 
     @property
-    def img_name(self):
+    def img_name(self) -> str | None:
         return None
 
-    def _read_file(self, filepath, **kwargs):
+    def _read_file(self, filepath: str, **kwargs) -> "SpatialHandler":
         # Get tar filename so tmp directory can be assigned
         tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
         tmp_dir = '/tmp/' + tar_filename
@@ -301,13 +468,13 @@ class CurioHandler(SpatialHandler):
         self.originalFile = filepath
         return self
 
-    def convert_sdata_to_adata(self, include_images=None):
+    def convert_sdata_to_adata(self, include_images: bool | None = None) -> "SpatialHandler":
         return super()._convert_sdata_to_adata(include_images)
 
-    def write_to_zarr(self, filepath=None):
+    def write_to_zarr(self, filepath: str | None = None) -> "SpatialHandler":
         return super()._write_to_zarr(filepath)
 
-    def write_to_h5ad(self, filepath=None):
+    def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
         return super()._write_to_h5ad(filepath)
 
 class GeoMxHandler(SpatialHandler):
@@ -331,22 +498,22 @@ class GeoMxHandler(SpatialHandler):
     """
 
     @property
-    def has_images(self):
+    def has_images(self) -> bool:
         return False
 
     @property
-    def coordinate_system(self):
+    def coordinate_system(self) -> str:
         return "global"
 
     @property
-    def platform(self):
+    def platform(self) -> str:
         return "geomx"
 
     @property
-    def img_name(self):
+    def img_name(self) -> str | None:
         return None
 
-    def _read_file(self, filepath, **kwargs):
+    def _read_file(self, filepath: str, **kwargs) -> "SpatialHandler":
         # Get tar filename so tmp directory can be assigned
         tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
         tmp_dir = '/tmp/' + tar_filename
@@ -443,13 +610,13 @@ class GeoMxHandler(SpatialHandler):
         self.originalFile = filepath
         return self
 
-    def convert_sdata_to_adata(self, include_images=None):
+    def convert_sdata_to_adata(self, include_images: bool | None = None) -> "SpatialHandler":
         return super()._convert_sdata_to_adata(include_images)
 
-    def write_to_zarr(self, filepath=None):
+    def write_to_zarr(self, filepath: str | None = None) -> "SpatialHandler":
         return super()._write_to_zarr(filepath)
 
-    def write_to_h5ad(self, filepath=None):
+    def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
         return super()._write_to_h5ad(filepath)
 
 class VisiumHandler(SpatialHandler):
@@ -471,22 +638,22 @@ class VisiumHandler(SpatialHandler):
     """
 
     @property
-    def has_images(self):
+    def has_images(self) -> bool:
         return True
 
     @property
-    def coordinate_system(self):
+    def coordinate_system(self) -> str:
         return "downscaled_hires"
 
     @property
-    def platform(self):
+    def platform(self) -> str:
         return "visium"
 
     @property
-    def img_name(self):
+    def img_name(self) -> str | None:
         return "spatialdata_hires_image"
 
-    def _read_file(self, filepath, **kwargs):
+    def _read_file(self, filepath: str, **kwargs) -> "SpatialHandler":
 
         # Get tar filename so tmp directory can be assigned
         tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
@@ -540,13 +707,13 @@ class VisiumHandler(SpatialHandler):
         self.originalFile = filepath
         return self
 
-    def convert_sdata_to_adata(self, include_images=None):
+    def convert_sdata_to_adata(self, include_images: bool | None = None) -> "SpatialHandler":
         return super()._convert_sdata_to_adata(include_images)
 
-    def write_to_zarr(self, filepath=None):
+    def write_to_zarr(self, filepath: str | None = None) -> "SpatialHandler":
         return super()._write_to_zarr(filepath)
 
-    def write_to_h5ad(self, filepath=None):
+    def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
         return super()._write_to_h5ad(filepath)
 
 class VisiumHDHandler(SpatialHandler):
@@ -574,22 +741,22 @@ class VisiumHDHandler(SpatialHandler):
     table_name = "square_008um"
 
     @property
-    def has_images(self):
+    def has_images(self) -> bool:
         return True
 
     @property
-    def coordinate_system(self):
+    def coordinate_system(self) -> str:
         return "downscaled_hires"
 
     @property
-    def platform(self):
+    def platform(self) -> str:
         return "visium_hd"
 
     @property
-    def img_name(self):
+    def img_name(self) -> str | None:
         return "spatialdata_hires_image"
 
-    def _read_file(self, filepath, **kwargs):
+    def _read_file(self, filepath: str, **kwargs) -> "SpatialHandler":
         # Get tar filename so tmp directory can be assigned
         tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
         tmp_dir = '/tmp/' + tar_filename
@@ -671,13 +838,13 @@ class VisiumHDHandler(SpatialHandler):
         self.originalFile = filepath
         return self
 
-    def convert_sdata_to_adata(self, include_images=None):
+    def convert_sdata_to_adata(self, include_images: bool | None = None) -> "SpatialHandler":
         return super()._convert_sdata_to_adata(include_images)
 
-    def write_to_zarr(self, filepath=None):
+    def write_to_zarr(self, filepath: str | None = None) -> "SpatialHandler":
         return super()._write_to_zarr(filepath)
 
-    def write_to_h5ad(self, filepath=None):
+    def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
         return super()._write_to_h5ad(filepath)
 
 class XeniumHandler(SpatialHandler):
@@ -701,22 +868,22 @@ class XeniumHandler(SpatialHandler):
     """
 
     @property
-    def has_images(self):
+    def has_images(self) -> bool:
         return True
 
     @property
-    def coordinate_system(self):
+    def coordinate_system(self) -> str:
         return "global"
 
     @property
-    def platform(self):
+    def platform(self) -> str:
         return "xenium"
 
     @property
-    def img_name(self):
+    def img_name(self) -> str | None:
         return "morphology_focus"
 
-    def _read_file(self, filepath, **kwargs):
+    def _read_file(self, filepath: str, **kwargs) -> "SpatialHandler":
         # Get tar filename so tmp directory can be assigned
         tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
         tmp_dir = '/tmp/' + tar_filename
@@ -800,13 +967,13 @@ class XeniumHandler(SpatialHandler):
         self.originalFile = filepath
         return self
 
-    def convert_sdata_to_adata(self, include_images=None):
+    def convert_sdata_to_adata(self, include_images: bool | None = None) -> "SpatialHandler":
         return super()._convert_sdata_to_adata(include_images)
 
-    def write_to_zarr(self, filepath=None):
+    def write_to_zarr(self, filepath: str | None = None) -> "SpatialHandler":
         return super()._write_to_zarr(filepath)
 
-    def write_to_h5ad(self, filepath=None):
+    def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
         return super()._write_to_h5ad(filepath)
 
 

@@ -1,4 +1,3 @@
-
 import base64
 import io
 import os
@@ -37,7 +36,7 @@ sc.settings.verbosity = 0
 
 PLOT_TYPE_TO_BASIS = {
     "tsne_static": "tsne",
-    "tsne": "tsne",             # legacy
+    "tsne": "tsne",  # legacy
     "umap_static": "umap",
     "pca_static": "pca",
     "mg_tsne_static": "tsne",
@@ -46,41 +45,58 @@ PLOT_TYPE_TO_BASIS = {
 }
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
-NUM_LEGENDS_PER_COL = 12    # Max number of legend items per column allowed in vertical legend
+NUM_LEGENDS_PER_COL = (
+    12  # Max number of legend items per column allowed in vertical legend
+)
 
 parser = reqparse.RequestParser(bundle_errors=True)
 
 # Common for both MGTSNEData and TSNEData
 # NOTE: By default the parser assumes the location is coming from "values", which breaks lists, so we set the location to "json" explicitly for that.
-parser.add_argument('plot_type', type=str, default="tsne_static")
-parser.add_argument('analysis', type=str, default=None)
-parser.add_argument('colorize_legend_by', type=str, default=None)
-parser.add_argument('max_columns', type=int, default=None)   # Max number of columns before plotting to a new row
-parser.add_argument('expression_palette', type=str, default="YlOrRd")
-parser.add_argument('reverse_palette', type=bool, default=False)
-parser.add_argument('colors', type=dict, default={})
-parser.add_argument('order', type=dict, default={})
-parser.add_argument('x_axis', type=str, default='tSNE_1')   # Add here in case old tSNE plotly configs are missing axes data
-parser.add_argument('y_axis', type=str, default='tSNE_2')
-parser.add_argument('flip_x', type=bool, default=False)
-parser.add_argument('flip_y', type=bool, default=False)
-parser.add_argument('horizontal_legend', type=bool, default=False)
-parser.add_argument('marker_size', type=int, default=None)
-parser.add_argument('center_around_median', type=bool, default=False)
-parser.add_argument('obs_filters', type=dict, default={})    # dict of lists
-parser.add_argument('projection_id', type=str, default=None)    # projection id of csv output
-parser.add_argument('colorblind_mode', type=bool, default=False)
-parser.add_argument('high_dpi', type=bool, default=False)
-parser.add_argument('grid_spec', type=str, default="1/1/2/2")  # start_row/start_col/end_row/end_col (end not inclusive)
+parser.add_argument("plot_type", type=str, default="tsne_static")
+parser.add_argument("analysis", type=str, default=None)
+parser.add_argument("colorize_legend_by", type=str, default=None)
+parser.add_argument(
+    "max_columns", type=int, default=None
+)  # Max number of columns before plotting to a new row
+parser.add_argument("expression_palette", type=str, default="YlOrRd")
+parser.add_argument("reverse_palette", type=bool, default=False)
+parser.add_argument("colors", type=dict, default={})
+parser.add_argument("order", type=dict, default={})
+parser.add_argument(
+    "x_axis", type=str, default="tSNE_1"
+)  # Add here in case old tSNE plotly configs are missing axes data
+parser.add_argument("y_axis", type=str, default="tSNE_2")
+parser.add_argument("flip_x", type=bool, default=False)
+parser.add_argument("flip_y", type=bool, default=False)
+parser.add_argument("horizontal_legend", type=bool, default=False)
+parser.add_argument("marker_size", type=int, default=None)
+parser.add_argument("center_around_median", type=bool, default=False)
+parser.add_argument("obs_filters", type=dict, default={})  # dict of lists
+parser.add_argument(
+    "projection_id", type=str, default=None
+)  # projection id of csv output
+parser.add_argument("colorblind_mode", type=bool, default=False)
+parser.add_argument("high_dpi", type=bool, default=False)
+parser.add_argument(
+    "grid_spec", type=str, default="1/1/2/2"
+)  # start_row/start_col/end_row/end_col (end not inclusive)
 
 single_gene_parser = parser.copy()
-single_gene_parser.add_argument('gene_symbol', type=str, default=None)
-single_gene_parser.add_argument("plot_by_group", type=str, default=None)  # If true, plot by group
-single_gene_parser.add_argument('skip_gene_plot', type=bool, default=False)  # If true, skip the gene expression plot
-single_gene_parser.add_argument('two_way_palette', type=bool, default=False)  # If true, data extremes are in the forefront
+single_gene_parser.add_argument("gene_symbol", type=str, default=None)
+single_gene_parser.add_argument(
+    "plot_by_group", type=str, default=None
+)  # If true, plot by group
+single_gene_parser.add_argument(
+    "skip_gene_plot", type=bool, default=False
+)  # If true, skip the gene expression plot
+single_gene_parser.add_argument(
+    "two_way_palette", type=bool, default=False
+)  # If true, data extremes are in the forefront
 
 multi_gene_parser = parser.copy()
-multi_gene_parser.add_argument('gene_symbols', type=list, default=[], location="json")
+multi_gene_parser.add_argument("gene_symbols", type=list, default=[], location="json")
+
 
 def calculate_figure_height(num_plots: int, span: int = 1) -> int:
     """
@@ -94,6 +110,7 @@ def calculate_figure_height(num_plots: int, span: int = 1) -> int:
         int: The calculated height of the figure.
     """
     return ((num_plots * 4) * span) + (num_plots - 1)
+
 
 def calculate_figure_width(num_plots: int, span: int = 1) -> int:
     """
@@ -109,6 +126,7 @@ def calculate_figure_width(num_plots: int, span: int = 1) -> int:
     # The + (num_plots - 1) is to account for the space between plots
     return ((num_plots * 2) * span) + (num_plots - 1)
 
+
 def calculate_num_legend_cols(group_len: int) -> int:
     """
     Calculates the number of columns needed to display legend items, given the total number of groups.
@@ -121,6 +139,7 @@ def calculate_num_legend_cols(group_len: int) -> int:
     """
     return ceil(group_len / NUM_LEGENDS_PER_COL)
 
+
 def create_bluered_colorscale() -> None:
     """
     Creates and registers a custom blue-to-red linear colormap and its reversed version with Matplotlib.
@@ -130,12 +149,15 @@ def create_bluered_colorscale() -> None:
     Returns:
         None
     """
-    bluered = mcolors.LinearSegmentedColormap.from_list("bluered", [(0, "blue"), (1, "red")])
+    bluered = mcolors.LinearSegmentedColormap.from_list(
+        "bluered", [(0, "blue"), (1, "red")]
+    )
     bluered_r = bluered.reversed()
 
     # register the color map with matplotlib
     register_colormap("bluered", bluered)
     register_colormap("bluered_r", bluered_r)
+
 
 def create_colorscale_with_zero_gray(colorscale: str) -> mcolors.ListedColormap:
     """
@@ -154,10 +176,13 @@ def create_colorscale_with_zero_gray(colorscale: str) -> mcolors.ListedColormap:
     # Create custom colorscale with gray at the 0.0 level
     # Src: https://matplotlib.org/tutorials/colors/colormap-manipulation.html
     cmap = plt.get_cmap(colorscale, 256)
-    newcolors = cmap(np.linspace(0, 1, 256))  # split colormap into 256 parts over 0:1 range
-    gray = np.array([192/256, 192/256, 192/256, 1])
+    newcolors = cmap(
+        np.linspace(0, 1, 256)
+    )  # split colormap into 256 parts over 0:1 range
+    gray = np.array([192 / 256, 192 / 256, 192 / 256, 1])
     newcolors[0, :] = gray
     return mcolors.ListedColormap(newcolors)
+
 
 def create_bublrd_colorscale() -> None:
     """
@@ -171,8 +196,17 @@ def create_bublrd_colorscale() -> None:
     """
     nodes = [0.0, 0.25, 0.4, 0.5, 0.6, 0.75, 1.0]
     colors = ["lightblue", "blue", "darkblue", "black", "darkred", "red", "lightcoral"]
-    register_colormap("bublrd", mcolors.LinearSegmentedColormap.from_list("bublrd", list(zip(nodes, colors))))
-    register_colormap("bublrd_r", mcolors.LinearSegmentedColormap.from_list("bublrd_r", list(zip(nodes, colors[::-1]))))
+    register_colormap(
+        "bublrd",
+        mcolors.LinearSegmentedColormap.from_list("bublrd", list(zip(nodes, colors))),
+    )
+    register_colormap(
+        "bublrd_r",
+        mcolors.LinearSegmentedColormap.from_list(
+            "bublrd_r", list(zip(nodes, colors[::-1]))
+        ),
+    )
+
 
 def create_projection_colorscale() -> None:
     """
@@ -187,11 +221,32 @@ def create_projection_colorscale() -> None:
     """
     # Src: https://matplotlib.org/stable/tutorials/colors/colormap-manipulation.html#directly-creating-a-segmented-colormap-from-a-list
     nodes = [0.0, 0.12, 0.25, 0.38, 0.5, 0.62, 0.75, 0.88, 1.0]
-    colors = ["violet", "blue", "indigo", "darkblue", "black", "darkred", "red", "orange", "yellow"]
-    #create a colormap with the name "multicolor_diverging"
-    register_colormap("multicolor_diverging", mcolors.LinearSegmentedColormap.from_list("multicolor_diverging", list(zip(nodes, colors))))
-    #create a colormap with the name "multicolor_diverging_r"
-    register_colormap("multicolor_diverging_r", mcolors.LinearSegmentedColormap.from_list("multicolor_diverging_r", list(zip(nodes, colors[::-1]))))
+    colors = [
+        "violet",
+        "blue",
+        "indigo",
+        "darkblue",
+        "black",
+        "darkred",
+        "red",
+        "orange",
+        "yellow",
+    ]
+    # create a colormap with the name "multicolor_diverging"
+    register_colormap(
+        "multicolor_diverging",
+        mcolors.LinearSegmentedColormap.from_list(
+            "multicolor_diverging", list(zip(nodes, colors))
+        ),
+    )
+    # create a colormap with the name "multicolor_diverging_r"
+    register_colormap(
+        "multicolor_diverging_r",
+        mcolors.LinearSegmentedColormap.from_list(
+            "multicolor_diverging_r", list(zip(nodes, colors[::-1]))
+        ),
+    )
+
 
 def create_two_way_sorting(adata: "AnnData", gene_symbol: str) -> "AnnData":
     """
@@ -211,7 +266,8 @@ def create_two_way_sorting(adata: "AnnData", gene_symbol: str) -> "AnnData":
     median = np.median(x_dense)
     sort_order = np.argsort(np.abs(median - x_dense))
     ordered_obs = adata.obs.iloc[sort_order].index
-    return adata[ordered_obs, :] # type: ignore
+    return adata[ordered_obs, :]  # type: ignore
+
 
 def get_colorblind_scale(n_colors: int) -> list[str]:
     """
@@ -231,6 +287,7 @@ def get_colorblind_scale(n_colors: int) -> list[str]:
     # convert to hex since I ran into some issues using rpg colors
     return [mcolors.rgb2hex(color) for color in colors]
 
+
 def is_categorical(series: "pd.Series") -> bool:
     """
     Check if a pandas Series has a categorical data type.
@@ -241,9 +298,12 @@ def is_categorical(series: "pd.Series") -> bool:
     Returns:
         bool: True if the Series has a 'category' dtype, False otherwise.
     """
-    return series.dtype.name == 'category'
+    return series.dtype.name == "category"
 
-def sort_legend(ax: "Axes", sort_order: list[str], num_cols: int, horizontal_legend: bool = False) -> tuple[list["Artist"], list[str]]:
+
+def sort_legend(
+    ax: "Axes", sort_order: list[str], num_cols: int, horizontal_legend: bool = False
+) -> tuple[list["Artist"], list[str]]:
     """
     Sorts and arranges the legend entries of a Matplotlib figure according to a specified order and layout.
 
@@ -284,8 +344,12 @@ def sort_legend(ax: "Axes", sort_order: list[str], num_cols: int, horizontal_leg
             handles_leftover = new_handles[-leftover_cards:]
             labels_leftover = new_labels[-leftover_cards:]
 
-            handles_sublists = np.array_split(np.array(new_handles[:-leftover_cards]), num_chunks)
-            labels_sublists = np.array_split(np.array(new_labels[:-leftover_cards]), num_chunks)
+            handles_sublists = np.array_split(
+                np.array(new_handles[:-leftover_cards]), num_chunks
+            )
+            labels_sublists = np.array_split(
+                np.array(new_labels[:-leftover_cards]), num_chunks
+            )
 
         # Zip numpy arrays, then flatten into a 1D list.  Add leftover cards as well to end
         new_handles = np.column_stack(handles_sublists).flatten().tolist()
@@ -293,10 +357,11 @@ def sort_legend(ax: "Axes", sort_order: list[str], num_cols: int, horizontal_leg
 
         # Insert leftover cards back into the list. Start from back to front so indexes are not manipulated.
         for i in reversed(range(leftover_cards)):
-            new_handles.insert(num_chunks * (i+1), handles_leftover[i])
-            new_labels.insert(num_chunks * (i+1), labels_leftover[i])
+            new_handles.insert(num_chunks * (i + 1), handles_leftover[i])
+            new_labels.insert(num_chunks * (i + 1), labels_leftover[i])
 
     return (new_handles, new_labels)
+
 
 def register_colormap(name: str, cmap: "Colormap") -> None:
     """
@@ -316,7 +381,8 @@ def register_colormap(name: str, cmap: "Colormap") -> None:
         if name not in mpl.colormaps:
             mpl.colormaps.register(cmap, name=name)
     except AttributeError:
-        cm.register_cmap(name, cmap) # type: ignore
+        cm.register_cmap(name, cmap)  # type: ignore
+
 
 def rename_axes_labels(ax: "Axes", x_axis: str, y_axis: str) -> None:
     """
@@ -334,7 +400,14 @@ def rename_axes_labels(ax: "Axes", x_axis: str, y_axis: str) -> None:
         ax.set_xlabel(x_axis)
         ax.set_ylabel(y_axis)
 
-def validate_args(dataset_id: str, gene_symbol: str | None, analysis: str | None, session_id: str, projection_id: str | None) -> dict:
+
+def validate_args(
+    dataset_id: str,
+    gene_symbol: str | None,
+    analysis: str | None,
+    session_id: str,
+    projection_id: str | None,
+) -> dict:
     """
     Validates and processes arguments required for t-SNE data analysis.
 
@@ -358,58 +431,46 @@ def validate_args(dataset_id: str, gene_symbol: str | None, analysis: str | None
     """
 
     if not dataset_id:
-        return {
-            "success": -1,
-            "message": "Request needs a dataset id."
-        }
+        return {"success": -1, "message": "Request needs a dataset id."}
 
     if not gene_symbol:
-        return {
-            "success": -1,
-            "message": "Request needs a gene symbol or symbols."
-        }
+        return {"success": -1, "message": "Request needs a gene symbol or symbols."}
 
     try:
         ana: "Analysis" = geardb.get_analysis(analysis, dataset_id, session_id)
     except Exception:
         import traceback
+
         traceback.print_exc()
-        return {
-            "success": -1,
-            "message": "Could not retrieve analysis."
-        }
+        return {"success": -1, "message": "Could not retrieve analysis."}
 
     try:
         adata = ana.get_adata(backed=True)
     except Exception:
         import traceback
+
         traceback.print_exc()
-        return {
-            "success": -1,
-            "message": "Could not retrieve AnnData object."
-        }
+        return {"success": -1, "message": "Could not retrieve AnnData object."}
 
     if projection_id:
         try:
             adata = create_projection_adata(adata, dataset_id, projection_id)
         except PlotError as pe:
             return {
-                'success': -1,
-                'message': str(pe),
+                "success": -1,
+                "message": str(pe),
             }
 
-    if 'gene_symbol' not in adata.var.columns:
-        return {
-            "success": -1,
-            "message": "The h5ad is missing the gene_symbol column."
-        }
+    if "gene_symbol" not in adata.var.columns:
+        return {"success": -1, "message": "The h5ad is missing the gene_symbol column."}
 
     return {
         "success": 1,
         "message": "Validation successful.",
         "adata": adata,
-        "ana": ana
+        "ana": ana,
     }
+
 
 def filter_adata_genes(adata: "AnnData", gene_symbols: list) -> "AnnData":
     """
@@ -434,9 +495,11 @@ def filter_adata_genes(adata: "AnnData", gene_symbols: list) -> "AnnData":
     # with expression and its observation metadata
     gene_filter = adata.var.gene_symbol.isin(gene_symbols)
     if not gene_filter.any():
-        message = 'The searched gene symbols could not be found in the dataset.'
+        message = "The searched gene symbols could not be found in the dataset."
         if len(gene_symbols) == 1:
-            message = 'The searched gene symbol "{}" could not be found in the dataset.'.format(gene_symbols[0])
+            message = 'The searched gene symbol "{}" could not be found in the dataset.'.format(
+                gene_symbols[0]
+            )
         raise ValueError(message)
 
     # Filter genes and slice the adata to get a dataframe
@@ -457,7 +520,10 @@ def filter_adata_genes(adata: "AnnData", gene_symbols: list) -> "AnnData":
 
     return selected
 
-def validate_analysis_inputs(adata: "AnnData", analysis: str | None, dataset_id: str, x_axis: str, y_axis: str) -> "AnnData":
+
+def validate_analysis_inputs(
+    adata: "AnnData", analysis: str | None, dataset_id: str, x_axis: str, y_axis: str
+) -> "AnnData":
     """
     Validates and prepares analysis input data for dimensionality reduction visualizations.
 
@@ -483,39 +549,48 @@ def validate_analysis_inputs(adata: "AnnData", analysis: str | None, dataset_id:
     # Primary dataset - find tSNE_1 and tSNE_2 in obs and build X_tsne
     if analysis is None or analysis in ["null", "undefined", dataset_id]:
         # Valid analysis column names from api/resources/h5ad.py
-        analysis_tsne_columns = ['X_tsne_1', 'X_tsne_2']
-        analysis_umap_columns = ['X_umap_1', 'X_umap_2']
-        analysis_pca_columns = ['X_pca_1', 'X_pca_2']
+        analysis_tsne_columns = ["X_tsne_1", "X_tsne_2"]
+        analysis_umap_columns = ["X_umap_1", "X_umap_2"]
+        analysis_pca_columns = ["X_pca_1", "X_pca_2"]
         # Safety check to ensure analysis was populated in adata.obsm if user selects those data series
         if x_axis in analysis_tsne_columns and y_axis in analysis_tsne_columns:
-            if 'X_tsne' not in adata.obsm:
+            if "X_tsne" not in adata.obsm:
                 raise ValueError(
-                    'Analysis tSNE columns were selected but values not present in adata.obsm'
+                    "Analysis tSNE columns were selected but values not present in adata.obsm"
                 )
         elif x_axis in analysis_umap_columns and y_axis in analysis_umap_columns:
-            if 'X_umap' not in adata.obsm:
+            if "X_umap" not in adata.obsm:
                 raise ValueError(
-                    'Analysis UMAP was selected but values not present in adata.obsm'
+                    "Analysis UMAP was selected but values not present in adata.obsm"
                 )
         elif x_axis in analysis_pca_columns and y_axis in analysis_pca_columns:
-            if 'X_pca' not in adata.obsm:
+            if "X_pca" not in adata.obsm:
                 raise ValueError(
-                    'Analysis PCA was selected but values not present in adata.obsm'
+                    "Analysis PCA was selected but values not present in adata.obsm"
                 )
         else:
             # If using user-provided columns, perform safety check and create adata.obsm entry
             for ds in [x_axis, y_axis]:
                 if ds not in adata.obs:
                     raise ValueError(
-                        'Dataseries {} was selected but not present in adata.obs'.format(ds)
+                        "Dataseries {} was selected but not present in adata.obs".format(
+                            ds
+                        )
                     )
-            adata.obsm['X_tsne'] = adata.obs[[x_axis, y_axis]].to_numpy()
-            adata.obsm['X_umap'] = adata.obs[[x_axis, y_axis]].to_numpy()
-            adata.obsm['X_pca'] = adata.obs[[x_axis, y_axis]].to_numpy()
+            adata.obsm["X_tsne"] = adata.obs[[x_axis, y_axis]].to_numpy()
+            adata.obsm["X_umap"] = adata.obs[[x_axis, y_axis]].to_numpy()
+            adata.obsm["X_pca"] = adata.obs[[x_axis, y_axis]].to_numpy()
 
     return adata
 
-def prepare_adata(adata: "AnnData", flip_x: bool = False, flip_y: bool = False, order: dict = {}, filters: dict ={}) -> "AnnData":
+
+def prepare_adata(
+    adata: "AnnData",
+    flip_x: bool = False,
+    flip_y: bool = False,
+    order: dict = {},
+    filters: dict = {},
+) -> "AnnData":
     """
     Prepares an AnnData object by optionally flipping embedding axes, reordering categorical observation columns, and filtering observations.
     Args:
@@ -528,12 +603,12 @@ def prepare_adata(adata: "AnnData", flip_x: bool = False, flip_y: bool = False, 
         AnnData: The modified AnnData object with updated embeddings, reordered categories, and/or filtered observations.
     """
     # Flip x or y axis if requested
-    for key in ['X_tsne', 'X_umap', 'X_pca']:
+    for key in ["X_tsne", "X_umap", "X_pca"]:
         if key in adata.obsm:
             if flip_x:
-                adata.obsm[key][:,0] = -1 * adata.obsm[key][:,0] # type: ignore
+                adata.obsm[key][:, 0] = -1 * adata.obsm[key][:, 0]  # type: ignore
             if flip_y:
-                adata.obsm[key][:,1] = -1 * adata.obsm[key][:,1] # type: ignore
+                adata.obsm[key][:, 1] = -1 * adata.obsm[key][:, 1]  # type: ignore
 
     # Reorder the categorical values in the observation dataframe
     # Currently in UI only "plot_by_group" has reordering capabilities
@@ -545,8 +620,7 @@ def prepare_adata(adata: "AnnData", flip_x: bool = False, flip_y: bool = False, 
             try:
                 # Some columns might be numeric, therefore
                 # we don't want to reorder these
-                reordered_col = col.cat.reorder_categories(
-                    order[key], ordered=True)
+                reordered_col = col.cat.reorder_categories(order[key], ordered=True)
                 adata.obs[key] = reordered_col
             except AttributeError:
                 pass
@@ -559,7 +633,10 @@ def prepare_adata(adata: "AnnData", flip_x: bool = False, flip_y: bool = False, 
 
     return adata
 
-def modify_genes_found_as_obs_columns(adata: "AnnData", gene_symbols: list) -> "AnnData":
+
+def modify_genes_found_as_obs_columns(
+    adata: "AnnData", gene_symbols: list
+) -> "AnnData":
     """
     Modifies the AnnData object to ensure that gene symbols found in observation columns are renamed with an '_orig' suffix.
 
@@ -578,6 +655,7 @@ def modify_genes_found_as_obs_columns(adata: "AnnData", gene_symbols: list) -> "
             adata.obs = adata.obs.drop(selected_gene, axis=1)
     return adata
 
+
 def dedup_genes(adata: "AnnData", ana: "Analysis") -> dict:
     """
     Removes duplicate gene symbols from the AnnData object's `.var` DataFrame, ensuring that only one Ensembl ID is associated with each gene symbol.
@@ -595,41 +673,63 @@ def dedup_genes(adata: "AnnData", ana: "Analysis") -> dict:
             - 'dedup_copy' (str): Path to the deduplicated AnnData file.
     """
     # Drop duplicate gene symbols so that only 1 ensemble ID is used in scanpy
-    adata.var = adata.var.reset_index().set_index('gene_symbol')
+    adata.var = adata.var.reset_index().set_index("gene_symbol")
     # Currently the ensembl_id column is still called 'index', which could be confusing when looking at the new .index
     # Rename to end the confusion
     adata.var = adata.var.rename(columns={adata.var.columns[0]: "ensembl_id"})
     # Modify the AnnData object to not include any duplicated gene symbols (keep only first entry)
-    dedup_copy = ana.dataset_path().replace('.h5ad', '.dups_removed.h5ad')
+    dedup_copy = ana.dataset_path().replace(".h5ad", ".dups_removed.h5ad")
 
     success = 1
     message = ""
 
     if (adata.var.index.duplicated(keep="first")).any():
         success = 2
-        message = "WARNING: The dataset contains gene symbols that are duplicated across multiple Ensembl IDs. " \
-                  "The first Ensembl ID will be used for each gene symbol."
+        message = (
+            "WARNING: The dataset contains gene symbols that are duplicated across multiple Ensembl IDs. "
+            "The first Ensembl ID will be used for each gene symbol."
+        )
 
         if os.path.exists(dedup_copy):
             os.remove(dedup_copy)
         from pathlib import Path
+
         adata = adata[:, ~adata.var.index.duplicated()].copy(filename=Path(dedup_copy))
     return {
-            'success': success,
-            'message': message,
-            'adata': adata,
-            "dedup_copy": dedup_copy
+        "success": success,
+        "message": message,
+        "adata": adata,
+        "dedup_copy": dedup_copy,
     }
 
 
-def generate_tsne_figure( adata: "AnnData", ana: "Analysis", gene_symbols:list, plot_type: str, analysis: str | None, x_axis: str, y_axis: str
-                         , order: dict = {}, filters: dict = {}, flip_x: bool = False, flip_y: bool = False,
-                         marker_size: int | None = None, colorize_by: str | None = None, colors: dict = {}, colorblind_mode: bool = False,
-                         center_around_median: bool = False, expression_palette: str = "viridis",
-                         reverse_palette: bool = False, high_dpi: bool = False, grid_spec: str = "1/1/2/2",
-                         max_columns: int | None = None, horizontal_legend: bool = False, skip_gene_plot=None,
-                         plot_by_group=None, two_way_palette=None
-    ) -> dict:
+def generate_tsne_figure(
+    adata: "AnnData",
+    ana: "Analysis",
+    gene_symbols: list,
+    plot_type: str,
+    analysis: str | None,
+    x_axis: str,
+    y_axis: str,
+    order: dict = {},
+    filters: dict = {},
+    flip_x: bool = False,
+    flip_y: bool = False,
+    marker_size: int | None = None,
+    colorize_by: str | None = None,
+    colors: dict = {},
+    colorblind_mode: bool = False,
+    center_around_median: bool = False,
+    expression_palette: str = "viridis",
+    reverse_palette: bool = False,
+    high_dpi: bool = False,
+    grid_spec: str = "1/1/2/2",
+    max_columns: int | None = None,
+    horizontal_legend: bool = False,
+    skip_gene_plot=None,
+    plot_by_group=None,
+    two_way_palette=None,
+) -> dict:
     """
     Generates a t-SNE (or other embedding) figure for single-cell gene expression data.
 
@@ -703,27 +803,31 @@ def generate_tsne_figure( adata: "AnnData", ana: "Analysis", gene_symbols:list, 
 
     dataset_id = ana.dataset_id
     if not dataset_id:
-        return {'success': -1, 'message': "Request needs a dataset id."}
+        return {"success": -1, "message": "Request needs a dataset id."}
 
     try:
         selected = filter_adata_genes(adata, gene_symbols)
-        selected = validate_analysis_inputs(selected, analysis, dataset_id, x_axis, y_axis)
+        selected = validate_analysis_inputs(
+            selected, analysis, dataset_id, x_axis, y_axis
+        )
     except ValueError as ve:
-        return {'success': -1, 'message': str(ve)}
+        return {"success": -1, "message": str(ve)}
 
-    selected = prepare_adata(selected, flip_x=flip_x, flip_y=flip_y, order=order, filters=filters)
+    selected = prepare_adata(
+        selected, flip_x=flip_x, flip_y=flip_y, order=order, filters=filters
+    )
     selected = modify_genes_found_as_obs_columns(selected, list(gene_symbols))
 
     dedup = dedup_genes(selected, ana)
-    selected = dedup['adata']
-    success = dedup['success']
-    message = dedup['message']
-    dedup_copy = dedup['dedup_copy']
+    selected = dedup["adata"]
+    success = dedup["success"]
+    message = dedup["message"]
+    dedup_copy = dedup["dedup_copy"]
 
     try:
         basis = PLOT_TYPE_TO_BASIS[plot_type]
     except ValueError:
-        return {'success': -1, 'message': f"{plot_type} was not a valid plot type"}
+        return {"success": -1, "message": f"{plot_type} was not a valid plot type"}
 
     if marker_size:
         marker_size = int(marker_size)
@@ -749,7 +853,9 @@ def generate_tsne_figure( adata: "AnnData", ana: "Analysis", gene_symbols:list, 
         elif expression_palette.startswith("multicolor_diverging"):
             create_projection_colorscale()
 
-    expression_color = create_colorscale_with_zero_gray("cividis_r" if colorblind_mode else expression_palette)
+    expression_color = create_colorscale_with_zero_gray(
+        "cividis_r" if colorblind_mode else expression_palette
+    )
 
     # --- Plot setup ---
     columns = []
@@ -767,19 +873,35 @@ def generate_tsne_figure( adata: "AnnData", ana: "Analysis", gene_symbols:list, 
         if color_category:
             color_idx_name = f"{colorize_by}_colors"
             if colors is not None and len(colors) > 2:
-                selected.uns[color_idx_name] = [colors[idx] for idx in selected.obs[colorize_by].cat.categories]
+                selected.uns[color_idx_name] = [
+                    colors[idx] for idx in selected.obs[colorize_by].cat.categories
+                ]
             elif color_idx_name in selected.obs:
-                grouped = selected.obs.groupby([colorize_by, color_idx_name], observed=False)
+                grouped = selected.obs.groupby(
+                    [colorize_by, color_idx_name], observed=False
+                )
                 if len(selected.obs[colorize_by].unique()) == len(grouped):
                     color_hex = selected.obs[color_idx_name].unique().tolist()
                     if re.search(COLOR_HEX_PTRN, color_hex[0]):
                         color_map = {name[0]: name[1] for name, group in grouped}
-                        selected.uns[color_idx_name] = [color_map[k] for k in selected.obs[colorize_by].cat.categories]
+                        selected.uns[color_idx_name] = [
+                            color_map[k]
+                            for k in selected.obs[colorize_by].cat.categories
+                        ]
             if colorblind_mode:
-                cb_colors = get_colorblind_scale(len(selected.obs[colorize_by].unique()))
-                color_map = {name: cb_colors[idx] for idx, name in enumerate(selected.obs[colorize_by].cat.categories)}
-                selected.uns[color_idx_name] = [color_map[k] for k in selected.obs[colorize_by].cat.categories]
-            num_cols = calculate_num_legend_cols(len(selected.obs[colorize_by].unique()))
+                cb_colors = get_colorblind_scale(
+                    len(selected.obs[colorize_by].unique())
+                )
+                color_map = {
+                    name: cb_colors[idx]
+                    for idx, name in enumerate(selected.obs[colorize_by].cat.categories)
+                }
+                selected.uns[color_idx_name] = [
+                    color_map[k] for k in selected.obs[colorize_by].cat.categories
+                ]
+            num_cols = calculate_num_legend_cols(
+                len(selected.obs[colorize_by].unique())
+            )
             colorize_by_order = selected.obs[colorize_by].unique().tolist()
         else:
             colorize_by_order = []
@@ -806,7 +928,12 @@ def generate_tsne_figure( adata: "AnnData", ana: "Analysis", gene_symbols:list, 
             # This will create a new column for each group in the plot_by_group
             for _, name in enumerate(column_order):
                 group_name = name + "_split_by_group"
-                selected.obs[group_name] = selected.obs.apply(lambda row: row["gene_expression"] if row[plot_by_group] == name else 0, axis=1)
+                selected.obs[group_name] = selected.obs.apply(
+                    lambda row: row["gene_expression"]
+                    if row[plot_by_group] == name
+                    else 0,
+                    axis=1,
+                )
                 columns.append(group_name)
                 titles.append(name)
             kwargs_ncols = max_cols
@@ -844,11 +971,11 @@ def generate_tsne_figure( adata: "AnnData", ana: "Analysis", gene_symbols:list, 
     if kwargs_vmax is not None:
         kwargs["vmax"] = kwargs_vmax
 
-    io_fig: "Figure" = sc.pl.embedding(selected, **kwargs) # type: ignore
+    io_fig: "Figure" = sc.pl.embedding(selected, **kwargs)  # type: ignore
     ax = io_fig.get_axes()
 
     # Grid/figsize logic (shared)
-    grid_spec_list = [int(x) for x in grid_spec.split('/')]
+    grid_spec_list = [int(x) for x in grid_spec.split("/")]
     row_span = grid_spec_list[2] - grid_spec_list[0]
     col_span = ceil((grid_spec_list[3] - grid_spec_list[1]) / 3)
     num_plots_wide = kwargs_ncols
@@ -858,14 +985,13 @@ def generate_tsne_figure( adata: "AnnData", ana: "Analysis", gene_symbols:list, 
 
     # Axes/legend logic (shared)
     if isinstance(ax, list):
-
         # Rename axes labels for each subplot
         for f in ax:
             if f.get_label() == "<colorbar>":
                 continue
             rename_axes_labels(f, x_axis, y_axis)
 
-        last_ax = ax[-1]    # color axes
+        last_ax = ax[-1]  # color axes
         if colorize_by and color_category:
             """
             NOTE: Quick note about legend "loc" and "bbox_to_anchor" attributes:
@@ -878,13 +1004,28 @@ def generate_tsne_figure( adata: "AnnData", ana: "Analysis", gene_symbols:list, 
             So, if x=0, y=0, and loc = "lower_left", the lower left corner of the legend will be anchored to the lower left corner of the plot
             """
 
-            num_horizontal_cols = 2 * num_cols # Number of columns in horizontal legend
+            num_horizontal_cols = 2 * num_cols  # Number of columns in horizontal legend
 
-            (handles, labels) = sort_legend(last_ax, colorize_by_order, num_horizontal_cols, horizontal_legend)
-            last_ax.legend(ncol=num_cols, bbox_to_anchor=[1, 1], frameon=False, handles=handles, labels=labels)
+            (handles, labels) = sort_legend(
+                last_ax, colorize_by_order, num_horizontal_cols, horizontal_legend
+            )
+            last_ax.legend(
+                ncol=num_cols,
+                bbox_to_anchor=[1, 1],
+                frameon=False,
+                handles=handles,
+                labels=labels,
+            )
             if horizontal_legend:
-                last_ax.get_legend().remove() # Remove legend added by scanpy
-                last_ax.legend(loc="upper right", bbox_to_anchor=[1, -0.05, 0, 0], frameon=False, ncol=num_horizontal_cols, handles=handles, labels=labels)
+                last_ax.get_legend().remove()  # Remove legend added by scanpy
+                last_ax.legend(
+                    loc="upper right",
+                    bbox_to_anchor=[1, -0.05, 0, 0],
+                    frameon=False,
+                    ncol=num_horizontal_cols,
+                    handles=handles,
+                    labels=labels,
+                )
     else:
         rename_axes_labels(ax, x_axis, y_axis)
 
@@ -900,88 +1041,99 @@ def generate_tsne_figure( adata: "AnnData", ana: "Analysis", gene_symbols:list, 
             sc.settings.set_figure_params(dpi_save=dpi)
             io_fig.set_figwidth(num_plots_wide * 10)
             io_fig.set_figheight(num_plots_high * 10)
-            io_fig.savefig(io_pic, format='png', bbox_inches="tight")
+            io_fig.savefig(io_pic, format="png", bbox_inches="tight")
         else:
             sc.settings.set_figure_params(dpi_save=150)
-            io_fig.savefig(io_pic, format='webp', bbox_inches="tight")
+            io_fig.savefig(io_pic, format="webp", bbox_inches="tight")
         io_pic.seek(0)
         plt.close()
         image = base64.b64encode(io_pic.read()).decode("utf-8")
 
-    return {
-        "success": success,
-        "message": message,
-        "image": image
-    }
+    return {"success": success, "message": message, "image": image}
+
 
 # --- Resource classes ---
+
 
 class MGTSNEData(Resource):
     def post(self, dataset_id):
         session_id = request.cookies.get("gear_session_id", "")
         args = multi_gene_parser.parse_args()
 
-        gene_symbols = args.get('gene_symbols', [])
+        gene_symbols = args.get("gene_symbols", [])
         validation = validate_args(
-            dataset_id, gene_symbols, args.get('analysis'), session_id, args.get('projection_id')
+            dataset_id,
+            gene_symbols,
+            args.get("analysis"),
+            session_id,
+            args.get("projection_id"),
         )
-        if validation['success'] != 1:
+        if validation["success"] != 1:
             return validation
         return generate_tsne_figure(
-            validation['adata'], validation['ana'], gene_symbols,
-            args.get('plot_type', "tsne_static"),
-            args.get('analysis', None),
-            args.get('x_axis', 'tSNE_1'),
-            args.get('y_axis', 'tSNE_2'),
-            args.get('order', {}),
-            args.get('obs_filters', {}),
-            args.get('flip_x', False),
-            args.get('flip_y', False),
-            args.get('marker_size', None),
-            args.get('colorize_legend_by', None),
-            args.get('colors', {}),
-            args.get('colorblind_mode', False),
-            args.get('center_around_median', False),
-            args.get('expression_palette', "YlOrRd"),
-            args.get('reverse_palette', False),
-            args.get('high_dpi', False),
-            args.get('grid_spec', "1/1/2/2"),
-            args.get('max_columns', None),
-            args.get('horizontal_legend', False),
+            validation["adata"],
+            validation["ana"],
+            gene_symbols,
+            args.get("plot_type", "tsne_static"),
+            args.get("analysis", None),
+            args.get("x_axis", "tSNE_1"),
+            args.get("y_axis", "tSNE_2"),
+            args.get("order", {}),
+            args.get("obs_filters", {}),
+            args.get("flip_x", False),
+            args.get("flip_y", False),
+            args.get("marker_size", None),
+            args.get("colorize_legend_by", None),
+            args.get("colors", {}),
+            args.get("colorblind_mode", False),
+            args.get("center_around_median", False),
+            args.get("expression_palette", "YlOrRd"),
+            args.get("reverse_palette", False),
+            args.get("high_dpi", False),
+            args.get("grid_spec", "1/1/2/2"),
+            args.get("max_columns", None),
+            args.get("horizontal_legend", False),
         )
+
 
 class TSNEData(Resource):
     def post(self, dataset_id):
         session_id = request.cookies.get("gear_session_id", "")
         args = single_gene_parser.parse_args()
-        gene_symbol = args.get('gene_symbol', None)
+        gene_symbol = args.get("gene_symbol", None)
         validation = validate_args(
-            dataset_id, gene_symbol, args.get('analysis'), session_id, args.get('projection_id')
+            dataset_id,
+            gene_symbol,
+            args.get("analysis"),
+            session_id,
+            args.get("projection_id"),
         )
-        if validation['success'] != 1:
+        if validation["success"] != 1:
             return validation
         return generate_tsne_figure(
-            validation['adata'], validation['ana'], [gene_symbol],
-            args.get('plot_type', "tsne_static"),
-            args.get('analysis', None),
-            args.get('x_axis', 'tSNE_1'),
-            args.get('y_axis', 'tSNE_2'),
-            args.get('order', {}),
-            args.get('obs_filters', {}),
-            args.get('flip_x', False),
-            args.get('flip_y', False),
-            args.get('marker_size', 5),
-            args.get('colorize_legend_by', None),
-            args.get('colors', {}),
-            args.get('colorblind_mode', False),
-            args.get('center_around_median', False),
-            args.get('expression_palette', "YlOrRd"),
-            args.get('reverse_palette', False),
-            args.get('high_dpi', False),
-            args.get('grid_spec', "1/1/2/2"),
-            args.get('max_columns', None),
-            args.get('horizontal_legend', False),
-            args.get('skip_gene_plot', False),
-            args.get('plot_by_group', None),
-            args.get('two_way_palette', False)
+            validation["adata"],
+            validation["ana"],
+            [gene_symbol],
+            args.get("plot_type", "tsne_static"),
+            args.get("analysis", None),
+            args.get("x_axis", "tSNE_1"),
+            args.get("y_axis", "tSNE_2"),
+            args.get("order", {}),
+            args.get("obs_filters", {}),
+            args.get("flip_x", False),
+            args.get("flip_y", False),
+            args.get("marker_size", 5),
+            args.get("colorize_legend_by", None),
+            args.get("colors", {}),
+            args.get("colorblind_mode", False),
+            args.get("center_around_median", False),
+            args.get("expression_palette", "YlOrRd"),
+            args.get("reverse_palette", False),
+            args.get("high_dpi", False),
+            args.get("grid_spec", "1/1/2/2"),
+            args.get("max_columns", None),
+            args.get("horizontal_legend", False),
+            args.get("skip_gene_plot", False),
+            args.get("plot_by_group", None),
+            args.get("two_way_palette", False),
         )

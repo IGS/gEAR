@@ -438,7 +438,7 @@ def get_user_count():
         conn.close()
         return c[0]
 
-def get_user_by_id(user_id):
+def get_user_by_id(user_id) -> "User" | None:
     """
        Given a user_id string this returns a User object with
        all attributes populated.  Returns None if no user with
@@ -458,27 +458,42 @@ def get_user_by_id(user_id):
     cursor.execute(qry, (user_id, ) )
 
     user = None
-    for (id, user_name, email, institution, password, updates_wanted, is_admin,
-         default_org_id, is_curator, help_id, colorblind_mode, layout_share_id) in cursor:
+    row = cursor.fetchone()
+    if row:
+        (id, user_name, email, institution, password, updates_wanted, is_admin,
+         default_org_id, is_curator, help_id, colorblind_mode, layout_share_id) = row
         user = User(id=id, user_name=user_name, email=email, institution=institution,
                     password=password, updates_wanted=updates_wanted, is_admin=is_admin,
                     default_org_id=default_org_id, is_curator=is_curator, help_id=help_id,
                     colorblind_mode=colorblind_mode, layout_share_id=layout_share_id)
-        break
 
     cursor.close()
     conn.close()
     return user
 
-def get_user_from_session_id(session_id):
+def get_user_from_session_id(session_id: str | None) -> "User | None":
     """
-       Given a session_id string this returns a User object with
-       all attributes populated.  Returns None if no user for
-       that session is known.
+    Retrieve a User object based on the provided session ID.
+
+    Args:
+        session_id (str | None): The session ID associated with the user session.
+
+    Returns:
+        User | None: A User object if a matching session is found; otherwise, None.
+
+    Queries the database to find a user associated with the given session ID by joining
+    the `guser`, `user_session`, and `layout` tables. Returns a User object populated
+    with user details if a valid session is found, or None if not.
+
     """
 
     conn = Connection()
     cursor = conn.get_cursor()
+
+    if not session_id:
+        cursor.close()
+        conn.close()
+        return None
 
     qry = """
           SELECT g.id, g.user_name, g.email, g.institution, g.pass, g.updates_wanted,

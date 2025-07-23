@@ -882,7 +882,7 @@ const apiCallsMixin = {
      * @returns {Promise<object>} - The aggregated data.
      */
     async fetchAggregations(datasetId, analysisId, filters) {
-        const payload = {session_id: this.sessionId, dataset_id: datasetId, analysis_id: analysisId, filters};
+        const payload = {dataset_id: datasetId, analysis_id: analysisId, filters};
         const {data} = await axios.post(`/api/h5ad/${datasetId}/aggregations`, payload)
         return data;
     },
