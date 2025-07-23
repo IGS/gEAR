@@ -801,7 +801,6 @@ class ScanpyHandler extends PlotHandler {
         }
 
         // Restoring some disabled/checked elements in UI
-        const maxColumns = document.getElementsByClassName('js-tsne-max-columns');
         const horizontalLegend = document.getElementsByClassName("js-tsne-horizontal-legend");
 
         if (config["colorize_legend_by"]) {
@@ -813,12 +812,6 @@ class ScanpyHandler extends PlotHandler {
                 }
 
                 // Applies to horizontal legend
-                disableCheckboxLabel(targetElt, targetElt.disabled);
-            }
-
-            // The "max columns" parameter is only available for categorical series
-            for (const targetElt of [...maxColumns]) {
-                targetElt.disabled = catColumns.includes(series) ? false : true;
                 disableCheckboxLabel(targetElt, targetElt.disabled);
             }
 
@@ -1464,7 +1457,6 @@ const setupScanpyOptions = async () => {
     updateSeriesOptions("js-tsne-colorize-legend-by", allColumns, false);
 
     const colorizeLegendBy = document.getElementsByClassName("js-tsne-colorize-legend-by");
-    const maxColumns = document.getElementsByClassName('js-tsne-max-columns');
     const horizontalLegend = document.getElementsByClassName("js-tsne-horizontal-legend");
 
     // Do certain things if the chosen annotation series is categorical or continuous
@@ -1478,12 +1470,6 @@ const setupScanpyOptions = async () => {
                     targetElt.disabled = false;
                     disableCheckboxLabel(targetElt, false);
                 }
-            }
-
-            // The "max columns" parameter should only be disabled if the colorized legend is continuous
-            for (const targetElt of [...maxColumns]) {
-                targetElt.disabled = catColumns.includes(event.target.value) ? false : true;
-                disableCheckboxLabel(targetElt, targetElt.disabled);
             }
         });
 
