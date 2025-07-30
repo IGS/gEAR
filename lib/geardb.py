@@ -438,7 +438,7 @@ def get_user_count():
         conn.close()
         return c[0]
 
-def get_user_by_id(user_id) -> "User" | None:
+def get_user_by_id(user_id) -> "User | None":
     """
        Given a user_id string this returns a User object with
        all attributes populated.  Returns None if no user with
