@@ -56,6 +56,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // are we doing exact matches?
         if (document.querySelector('#gene-search-exact-match').checked) {
             url.searchParams.append('gene_symbol_exact_match', '1');
+        } else {
+            url.searchParams.append('gene_symbol_exact_match', '0');
         }
 
         // get the value of the single-multi radio box
