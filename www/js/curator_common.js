@@ -1159,9 +1159,12 @@ const plotTypeSelectUpdate = async (analysisId=null) => {
             setPlotTypeDisabledState(plotType, isAllowed);
         }
 
+        document.getElementById("plot-type-select").disabled = false;
+
         // set plot type to first option
         setSelectBoxByValue("plot-type-select", "nope");
     } catch (error) {
+        logErrorInConsole(error);
         document.getElementById("plot-type-s-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-select-c-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-s-success").classList.add("is-hidden");
@@ -1428,7 +1431,9 @@ const setSelectBoxByValue = (eid, val) => {
     const elt = document.getElementById(eid);
 
     // Clear selected attribute from the selected value (if multiple, only the first value)
-    elt.options[elt.selectedIndex].removeAttribute("selected");
+    if (elt?.selectedIndex > -1) {
+        elt.options[elt.selectedIndex].removeAttribute("selected");
+    }
 
     for (const i in elt.options) {
         if (elt.options[i].value === val) {
