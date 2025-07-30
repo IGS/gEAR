@@ -300,7 +300,13 @@ class Metadata:
         for (id, ) in cursor:
             organism_id = id
 
-        geo_id = str( get_value_from_df(df, 'geo_accession') ).strip()
+        geo_id = get_value_from_df(df, 'geo_accession')
+        if 'geo_id' == 'None':
+            geo_id = None
+        
+        if type(geo_id) is str:            
+            geo_id = geo_id.strip()      
+
         ldesc = get_value_from_df(df, 'summary')
         dtype = get_value_from_df(df, 'dataset_type')
         schematic_image = get_value_from_df(df, 'schematic_image')
@@ -311,17 +317,22 @@ class Metadata:
         if dtype == "spatial":
             has_h5ad = 0
 
-        pubmed_id = str( get_value_from_df(df, 'pubmed_id') ).strip()
+        pubmed_id = get_value_from_df(df, 'pubmed_id')
+        if 'pubmed_id' == 'None':
+            pubmed_id = None
+        
+        if type(pubmed_id) is str:            
+            pubmed_id = geo_id.strip()
 
-        # Users entering multiple pubmed IDs will cause failure.  Take the first
-        # one instead and append the rest to the Long description.
-        pubmed_id = pubmed_id.replace(' ', ',')
-        pubmed_ids = pubmed_id.split(',')
-        pubmed_ids = [i for i in pubmed_ids if len(i) > 3]
-        pubmed_id = pubmed_ids.pop()
+            # Users entering multiple pubmed IDs will cause failure.  Take the first
+            # one instead and append the rest to the Long description.
+            pubmed_id = pubmed_id.replace(' ', ',')
+            pubmed_ids = pubmed_id.split(',')
+            pubmed_ids = [i for i in pubmed_ids if len(i) > 3]
+            pubmed_id = pubmed_ids.pop()
 
-        if len(pubmed_ids):
-            ldesc += "<br>Additional Pubmed IDS: {0}".format(', '.join(pubmed_ids))
+            if len(pubmed_ids):
+                ldesc += "<br>Additional Pubmed IDS: {0}".format(', '.join(pubmed_ids))
 
         platform_id = get_value_from_df(df, 'platform_id')
         instrument_model = get_value_from_df(df, 'instrument_model')
