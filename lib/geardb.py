@@ -2775,7 +2775,7 @@ class Gene:
         # Does the user want Homologene links?
         if 'HomoloGene' in this.links_out and this.links_out['HomoloGene'] is True:
             if self.gene_symbol is not None:
-                hg_url = 'https://www.ncbi.nlm.nih.gov/homologene/?term=' + self.gene_symbol.upper()
+                hg_url = 'https://www.ncbi.nlm.nih.gov/datasets/gene/taxon/1/?search=' + self.gene_symbol.upper()
                 self.dbxrefs.append({'source': 'HomoloGene', 'identifier': self.gene_symbol, 'url': hg_url})
 
         if this.domain_label == 'gear':
