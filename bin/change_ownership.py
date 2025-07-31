@@ -42,7 +42,7 @@ def main():
     cnx.close()
 
 def reown_dataset(cursor, dataset_id, user_id, include_displays):
-    dataset = geardb.get_dataset_by_id(id=dataset_id)
+    dataset = geardb.get_dataset_by_id(d_id=dataset_id)
 
     if dataset is None:
         raise Exception("ERROR: No dataset found of ID: {0}".format(dataset_id))

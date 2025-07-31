@@ -4,7 +4,6 @@ import os
 import re
 import sys
 import uuid
-
 from collections import defaultdict
 from dataclasses import dataclass, field
 from json import JSONEncoder
@@ -17,23 +16,25 @@ import gear.db
 this = sys.modules[__name__]
 
 from gear.serverconfig import ServerConfig
-this.servercfg = ServerConfig().parse()
+
+setattr(this, "servercfg", ServerConfig().parse())
 
 # This is where things specific to dynamic analyses will be stored, such as intermediate
 #  H5AD files, images, etc.
-this.analysis_base_dir = '/tmp'
+setattr(this, "analysis_base_dir", "/tmp")
 
 # Overrides the json module so JSONEncoder.default() automatically checks for to_json()
 #  in any class to be directly serializable.
 #  Ref: https://stackoverflow.com/a/38764817/1368079
+#TODO: Change to CustomJSONEncoder as suggested by Copilot
 def _default(self, obj):
     try:
         return getattr(obj.__class__, "_serialize_json", _default.default)(obj)
-    except:
+    except Exception:
         return str(obj)
 
 _default.default = JSONEncoder().default
-JSONEncoder.default = _default
+JSONEncoder.default = _default  # type: ignore
 
 def _read_site_domain_config():
     """Convert site domain preferences into a dictionary."""
@@ -63,10 +64,10 @@ def _read_domain_short_label():
 # For those functional differences we have depending on the site domain
 #  Current values are gear, nemo.  Value kept in www/site_domain_prefs.json
 # TODO: each of these, as currently implemented, causes file I/O and shouldn't.
-this.domain_url = _read_domain_url()
-this.domain_label = _read_domain_label()
-this.domain_short_label = _read_domain_short_label()
-this.links_out = _read_domain_links_out()
+setattr(this, "domain_url", _read_domain_url())
+setattr(this, "domain_label", _read_domain_label())
+setattr(this, "domain_short_label", _read_domain_short_label())
+setattr(this, "links_out", _read_domain_links_out())
 
 def check_verification_code(long_form, short_form):
     """
@@ -132,7 +133,7 @@ def get_analysis(analysis, dataset_id, session_id, is_spatial=False):
         ana = Analysis(type='primary', dataset_id=dataset_id)
     return ana
 
-def get_dataset_by_id(id=None, include_shape=None):
+def get_dataset_by_id(d_id=None, include_shape=None):
     """
     Given a dataset ID string this returns a Dataset object with all attributes
     populated which come directly from the table.  Secondary things, such as tags,
@@ -151,20 +152,22 @@ def get_dataset_by_id(id=None, include_shape=None):
            FROM dataset
           WHERE id = %s
     """
-    cursor.execute(qry, (id, ))
+    cursor.execute(qry, (d_id, ))
     dataset = None
 
-    for (id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc, date_added,
+    row = cursor.fetchone()
+    if row:
+        (d_id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc, date_added,
          dtype, schematic_image, share_id, math_default, marked_for_removal, load_status,
-         has_h5ad) in cursor:
-        dataset = Dataset(id=id, owner_id=owner_id, title=title, organism_id=organism_id,
+         has_h5ad) = row
+        dataset = Dataset(id=d_id, owner_id=owner_id, title=title, organism_id=organism_id,
                           pubmed_id=pubmed_id, geo_id=geo_id, is_public=is_public, is_downloadable=is_downloadable, ldesc=ldesc,
                           date_added=date_added, dtype=dtype, schematic_image=schematic_image,
                           share_id=share_id, math_default=math_default,
                           marked_for_removal=marked_for_removal, load_status=load_status,
                           has_h5ad=has_h5ad)
 
-    if include_shape == '1':
+    if include_shape == '1' and dataset:
         dataset.get_shape()
 
     cursor.close()
@@ -193,17 +196,19 @@ def get_dataset_by_share_id(share_id=None, include_shape=None):
     cursor.execute(qry, (share_id, ))
     dataset = None
 
-    for (id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc, date_added,
+    row = cursor.fetchone()
+    if row:
+        (d_id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc, date_added,
          dtype, schematic_image, share_id, math_default, marked_for_removal, load_status,
-         has_h5ad) in cursor:
-        dataset = Dataset(id=id, owner_id=owner_id, title=title, organism_id=organism_id,
+         has_h5ad) = row
+        dataset = Dataset(id=d_id, owner_id=owner_id, title=title, organism_id=organism_id,
                           pubmed_id=pubmed_id, geo_id=geo_id, is_public=is_public, is_downloadable=is_downloadable, ldesc=ldesc,
                           date_added=date_added, dtype=dtype, schematic_image=schematic_image,
                           share_id=share_id, math_default=math_default,
                           marked_for_removal=marked_for_removal, load_status=load_status,
                           has_h5ad=has_h5ad)
 
-    if include_shape == '1':
+    if include_shape == '1' and dataset:
         dataset.get_shape()
 
     cursor.close()
@@ -237,10 +242,16 @@ def get_dataset_by_title(title=None, include_shape=None):
 
     found = 0
 
-    for (id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc, date_added,
+    rows = cursor.fetchall()
+    if not rows or len(rows) == 0:
+        cursor.close()
+        conn.close()
+        return None
+
+    for (d_id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc, date_added,
          dtype, schematic_image, share_id, math_default, marked_for_removal, load_status,
-         has_h5ad) in cursor:
-        dataset = Dataset(id=id, owner_id=owner_id, title=title, organism_id=organism_id,
+         has_h5ad) in rows:
+        dataset = Dataset(id=d_id, owner_id=owner_id, title=title, organism_id=organism_id,
                           pubmed_id=pubmed_id, geo_id=geo_id, is_public=is_public, is_downloadable=is_downloadable, ldesc=ldesc,
                           date_added=date_added, dtype=dtype, schematic_image=schematic_image,
                           share_id=share_id, math_default=math_default,
@@ -252,15 +263,14 @@ def get_dataset_by_title(title=None, include_shape=None):
     conn.close()
 
     if found == 1:
-        if include_shape == '1':
+        if include_shape == '1' and dataset:
             dataset.get_shape()
 
         return dataset
-    elif found == 0:
-        return None
-    raise Exception("Error: More than one dataset found with the same title: {0}".format(dataset.title))
+    raise Exception("Error: More than one dataset found with the same title: {0}".format(title))
 
 def get_dataset_collection(ids=None):
+    # TODO: implement
     return 1
 
 def get_dataset_count():
@@ -270,10 +280,14 @@ def get_dataset_count():
     qry = "SELECT count(id) FROM dataset WHERE marked_for_removal = 0"
     cursor.execute(qry)
 
-    for (c) in cursor:
-        cursor.close()
-        conn.close()
-        return c[0]
+    count = None
+    row = cursor.fetchone()
+    if row:
+        count = row[0]
+
+    cursor.close()
+    conn.close()
+    return count
 
 def get_dataset_id_from_share_id(share_id):
     """
@@ -287,7 +301,8 @@ def get_dataset_id_from_share_id(share_id):
     qry = "SELECT id FROM dataset WHERE share_id = %s"
     cursor.execute(qry, (share_id,))
 
-    for row in cursor:
+    row = cursor.fetchone()
+    if row:
         dataset_id = row[0]
 
     cursor.close()
@@ -314,10 +329,11 @@ def get_gene_by_id(gene_id):
     cursor.execute(qry, (gene_id,))
     gene = None
 
-    for (id, ensembl_id, genbank_acc, organism_id, gene_symbol, product, biotype) in cursor:
+    row = cursor.fetchone()
+    if row:
+        (id, ensembl_id, genbank_acc, organism_id, gene_symbol, product, biotype) = row
         gene = Gene(id=id, ensembl_id=ensembl_id, genbank_acc=genbank_acc, organism_id=organism_id,
                     gene_symbol=gene_symbol, product=product, biotype=biotype)
-        break
 
     cursor.close()
     conn.close()
@@ -339,10 +355,11 @@ def get_gene_cart_by_id(gc_id):
     cursor.execute(qry, (gc_id,))
     gc = None
 
-    for (id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added) in cursor:
+    row = cursor.fetchone()
+    if row:
+        (id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added) = row
         gc = GeneCart(id=id, user_id=user_id, organism_id=organism_id, gctype=gctype, label=label, ldesc=ldesc,
                       share_id=share_id, is_public=is_public, date_added=date_added)
-        break
 
     cursor.close()
     conn.close()
@@ -364,10 +381,11 @@ def get_gene_cart_by_share_id(share_id):
     cursor.execute(qry, (share_id,))
     gc = None
 
-    for (id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added) in cursor:
+    row = cursor.fetchone()
+    if row:
+        (id, user_id, organism_id, gctype, label, ldesc, share_id, is_public, date_added) = row
         gc = GeneCart(id=id, user_id=user_id, organism_id=organism_id, gctype=gctype, label=label, ldesc=ldesc,
                       share_id=share_id, is_public=is_public, date_added=date_added)
-        break
 
     cursor.close()
     conn.close()
@@ -389,11 +407,12 @@ def get_layout_by_id(layout_id):
     """
     cursor.execute(qry, (layout_id,))
 
-    for (id, user_id, label, is_current, is_domain, share_id, is_public) in cursor:
+    row = cursor.fetchone()
+    if row:
+        (id, user_id, label, is_current, is_domain, share_id, is_public) = row
         layout = Layout(id=id, user_id=user_id, is_domain=is_domain,
                         label=label, is_current=is_current,
                         share_id=share_id, is_public=is_public)
-        break
 
     cursor.close()
     conn.close()
@@ -415,11 +434,12 @@ def get_layout_by_share_id(layout_share_id):
     """
     cursor.execute(qry, (layout_share_id,))
 
-    for (id, user_id, label, is_current, is_domain, share_id, is_public) in cursor:
+    row = cursor.fetchone()
+    if row:
+        (id, user_id, label, is_current, is_domain, share_id, is_public) = row
         layout = Layout(id=id, user_id=user_id, is_domain=is_domain,
                         label=label, is_current=is_current,
                         share_id=share_id, is_public=is_public)
-        break
 
     cursor.close()
     conn.close()
@@ -432,10 +452,15 @@ def get_user_count():
     qry = "SELECT count(id) FROM guser"
     cursor.execute(qry)
 
-    for (c) in cursor:
-        cursor.close()
-        conn.close()
-        return c[0]
+    row = cursor.fetchone()
+    count = None
+
+    if row:
+        count = row[0]
+
+    cursor.close()
+    conn.close()
+    return count
 
 def get_user_by_id(user_id: int | None) -> "User | None":
     """
@@ -511,13 +536,20 @@ def get_user_from_session_id(session_id: str | None) -> "User | None":
     cursor.execute(qry, (session_id, ) )
 
     user = None
-    for (id, user_name, email, institution, password, updates_wanted, is_admin, default_org_id,
-         is_curator, help_id, colorblind_mode, layout_share_id) in cursor:
-        user = User(id=id, user_name=user_name, email=email, institution=institution,
-                    password=password, updates_wanted=updates_wanted, is_admin=is_admin,
-                    default_org_id=default_org_id, is_curator=is_curator, help_id=help_id,
-                    colorblind_mode=colorblind_mode, layout_share_id=layout_share_id)
-        break
+
+    row = cursor.fetchone()
+    if row is None:
+        cursor.close()
+        conn.close()
+        return None
+
+    (id, user_name, email, institution, password, updates_wanted, is_admin,
+         default_org_id, is_curator, help_id, colorblind_mode, layout_share_id) = row
+
+    user = User(id=id, user_name=user_name, email=email, institution=institution,
+                password=password, updates_wanted=updates_wanted, is_admin=is_admin,
+                default_org_id=default_org_id, is_curator=is_curator, help_id=help_id,
+                colorblind_mode=colorblind_mode, layout_share_id=layout_share_id)
 
     cursor.close()
     conn.close()
@@ -530,17 +562,19 @@ def get_display_by_id(display_id):
     qry = "SELECT * from dataset_display where id = %s"
     cursor.execute(qry, (display_id,))
 
-    try:
-        (id, dataset_id, user_id, label, plot_type, plotly_config) = cursor.fetchone()
-        return dict(
+    row = cursor.fetchone()
+    if row is None:
+        cursor.close()
+        conn.close()
+        return {}
+
+    (id, dataset_id, user_id, label, plot_type, plotly_config) = row
+    cursor.close()
+    conn.close()
+    return dict(
             id=id, dataset_id=dataset_id, user_id=user_id, label=label,
             plot_type=plot_type, plotly_config=json.loads(plotly_config)
         )
-    except:
-        return None
-    finally:
-        cursor.close()
-        conn.close()
 
 def get_default_display(user_id, dataset_id, is_multigene=0):
     """Return user's display preference for given dataset."""
@@ -551,15 +585,14 @@ def get_default_display(user_id, dataset_id, is_multigene=0):
         where user_id = %s and dataset_id = %s and is_multigene = %s
     """
     cursor.execute(qry, (user_id, dataset_id, is_multigene))
-    try:
-        (default_display_id,) = cursor.fetchone()
-        return default_display_id
-    except:
-        # User has no display preference for this dataset
-        return None
-    finally:
-        cursor.close()
-        conn.close()
+    row = cursor.fetchone()
+    default_display_id = None
+
+    if row:
+        (default_display_id,) = row
+    cursor.close()
+    conn.close()
+    return default_display_id
 
 def get_displays_by_user_id(user_id, dataset_id):
     """Given user id, return all datasets representations from dataset display table."""
@@ -567,12 +600,19 @@ def get_displays_by_user_id(user_id, dataset_id):
     cursor = conn.get_cursor()
     qry = "SELECT * from dataset_display where user_id = %s and dataset_id = %s"
     cursor.execute(qry, (user_id, dataset_id))
+
+    rows = cursor.fetchall()
+    if not rows:
+        cursor.close()
+        conn.close()
+        return []
+
     displays = [
         dict(
             id=id, dataset_id=dataset_id, user_id=user_id, label=label,
             plot_type=plot_type, plotly_config=json.loads(plotly_config)
         )
-        for (id, dataset_id, user_id, label, plot_type, plotly_config) in cursor
+        for (id, dataset_id, user_id, label, plot_type, plotly_config) in rows
      ]
     cursor.close()
     conn.close()
@@ -586,8 +626,9 @@ def get_user_id_from_session_id(session_id):
     cursor.execute(qry, (session_id, ) )
     user_id = None
 
-    for (uid,) in cursor:
-        user_id = uid
+    row = cursor.fetchone()
+    if row:
+        (user_id,) = row
     cursor.close()
     conn.close()
     return user_id
@@ -600,7 +641,13 @@ def get_gene_by_gene_symbol(gene_symbol, dataset_id):
     cursor = conn.get_cursor()
     cursor.execute(qry_org_id, (dataset_id,))
 
-    (org_id,) = cursor.fetchone()
+    row = cursor.fetchone()
+    if row is None:
+        cursor.close()
+        conn.close()
+        raise ValueError("No organism found for dataset ID {0}".format(dataset_id))
+
+    (org_id,) = row
 
     qry_gene_location = """
             SELECT id, ensembl_id, ensembl_version, ensembl_release, genbank_acc, organism_id, molecule, start, stop, gene_symbol, product, biotype
@@ -610,16 +657,20 @@ def get_gene_by_gene_symbol(gene_symbol, dataset_id):
 
     cursor.execute(qry_gene_location, (gene_symbol, org_id,))
 
-    (id, ensembl_id, ensembl_version, ensembl_release, genbank_acc, organism_id, molecule, start, stop, gene_symbol, product, biotype,) = cursor.fetchone()
+    row = cursor.fetchone()
+    gene = None
+
+    if row:
+        (id, ensembl_id, ensembl_version, ensembl_release, genbank_acc, organism_id, molecule, start, stop, gene_symbol, product, biotype,) = row
+
+        gene = Gene(id=id, ensembl_id=ensembl_id, ensembl_version=ensembl_version,
+                    ensembl_release=ensembl_release, genbank_acc=genbank_acc,
+                    organism_id=organism_id, molecule=molecule, start=start,
+                    stop=stop, gene_symbol=gene_symbol, product=product,
+                    biotype=biotype)
 
     cursor.close()
     conn.close()
-
-    gene = Gene(id=id, ensembl_id=ensembl_id, ensembl_version=ensembl_version,
-                ensembl_release=ensembl_release, genbank_acc=genbank_acc,
-                organism_id=organism_id, molecule=molecule, start=start,
-                stop=stop, gene_symbol=gene_symbol, product=product,
-                biotype=biotype)
 
     return gene
 
@@ -999,7 +1050,7 @@ class Connection:
             self.mysql_cnx.close()
 
     def get_cursor(self, use_dict=False):
-        if use_dict == True:
+        if use_dict:
             return self.mysql_cnx.cursor(dictionary=True)
         else:
             return self.mysql_cnx.cursor()
@@ -1047,7 +1098,14 @@ class OrganismCollection:
         """
         cursor.execute(qry)
 
-        for row in cursor:
+        rows = cursor.fetchall()
+        if not rows:
+            # No organisms found, return empty list
+            cursor.close()
+            conn.close()
+            return self.organisms
+
+        for row in rows:
             org = Organism(id=row[0], label=row[1], genus=row[2], species=row[3],
                            strain=row[4], taxon_id=row[5]
             )
@@ -1106,6 +1164,9 @@ class Layout:
         conn = Connection()
         cursor = conn.get_cursor()
 
+        if member is None:
+            raise Exception("ERROR: Attempted to add a None member to Layout {0}".format(self.id))
+
         qry = """
              INSERT INTO layout_displays (layout_id, display_id, grid_position, start_col, grid_width, start_row, grid_height)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -1113,6 +1174,9 @@ class Layout:
         cursor.execute(qry, (self.id, member.display_id, member.grid_position, member.start_col,
                              member.grid_width, member.start_row, member.grid_height))
         member.id = cursor.lastrowid
+        if not self.members:
+            self.members = list()
+
         self.members.append(member)
 
         cursor.close()
@@ -1125,6 +1189,9 @@ class Layout:
         """
         ids = set()
 
+        if not self.members:
+            return list(ids)
+
         for ds in self.members:
             ds.get_dataset_id()
             ids.add(ds.dataset_id)
@@ -1135,6 +1202,9 @@ class Layout:
         Returns a list of the unique display IDs belonging to this layout
         """
         ids = set()
+
+        if not self.members:
+            return list(ids)
 
         for ds in self.members:
             if ds.display_id not in ids:
@@ -1169,7 +1239,14 @@ class Layout:
 
         cursor.execute(qry, (self.id,))
 
-        for row in cursor:
+        rows = cursor.fetchall()
+        if not rows:
+            # No members found, return empty list
+            cursor.close()
+            conn.close()
+            return self.members
+
+        for row in rows:
             lm = LayoutDisplay(id=row[0], display_id=row[1], grid_position=row[2], start_col=row[3],
                                  grid_width=row[4], start_row=row[5], grid_height=row[6]
                 )
@@ -1214,8 +1291,11 @@ class Layout:
         """
         cursor.execute(qry, (self.id,))
 
-        for row in cursor:
-            (self.user_id, self.label, self.is_current, self.is_domain, self.share_id) = row
+        row = cursor.fetchone()
+        if not row:
+            raise Exception("ERROR: No layout found with ID {0}".format(self.id))
+
+        (self.user_id, self.label, self.is_current, self.is_domain, self.share_id) = row
 
         self.get_members()
 
@@ -1438,7 +1518,13 @@ class LayoutCollection:
         cursor = self._cnx.get_cursor()
         cursor.execute(qry)
 
-        for row in cursor:
+        rows = cursor.fetchall()
+        if rows is None:
+            # No folders in the database, return empty index
+            cursor.close()
+            return
+
+        for row in rows:
             self.folder_idx[row[0]] = row[1]
 
         cursor.close()
@@ -1449,13 +1535,19 @@ class LayoutCollection:
         folder ID and value is root folder ID the ones in gear.ini[folders]
         """
         if len(self.folder_idx):
-            return False
+            return
 
         qry = "SELECT id, parent_id FROM folder"
         cursor = self._cnx.get_cursor()
         cursor.execute(qry)
 
-        for row in cursor:
+        rows = cursor.fetchall()
+        if rows is None:
+            # No folders in the database, return empty index
+            cursor.close()
+            return
+
+        for row in rows:
             # if the parent_id is empty, we don't need to store it because it's a top-level node
             if row[1]:
                 self.root_folder_idx[row[0]] = self._get_root_folder_id(row[1])
@@ -1479,7 +1571,13 @@ class LayoutCollection:
         """
         cursor.execute(qry, (share_id,))
 
-        for row in cursor:
+        rows = cursor.fetchall()
+        if not rows:
+            # No layouts for this share_id, return empty list
+            cursor.close()
+            return self.layouts
+
+        for row in rows:
             layout = Layout(
                 id=row[0],
                 label=row[1],
@@ -1491,9 +1589,9 @@ class LayoutCollection:
             )
 
 
-            if self.include_datasets == True:
+            if self.include_datasets:
                 layout.get_members()
-                layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
+                layout.dataset_count = len(layout.members or [])  # Excludes datasets marked for removal
 
             self.layouts.append(layout)
 
@@ -1516,7 +1614,13 @@ class LayoutCollection:
         """
         cursor.execute(qry, (user.id,))
 
-        for row in cursor:
+        rows = cursor.fetchall()
+        if not rows:
+            # No layouts for this user, return empty list
+            cursor.close()
+            return self.layouts
+
+        for row in rows:
             layout = Layout(
                 id=row[0],
                 label=row[1],
@@ -1527,9 +1631,9 @@ class LayoutCollection:
                 is_public=row[6]
             )
 
-            if self.include_datasets == True:
+            if self.include_datasets:
                 layout.get_members()
-                layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
+                layout.dataset_count = len(layout.members or [])  # Excludes datasets marked for removal
                 print(layout.members, file=sys.stderr)
 
             self.layouts.append(layout)
@@ -1547,7 +1651,7 @@ class LayoutCollection:
         if not isinstance(user, User):
             raise Exception("LayoutCollection.get_by_users_groups() requires an instance of User to be passed.")
 
-        if append == False:
+        if not append:
             self.layouts = list()
 
         cursor = self._cnx.get_cursor()
@@ -1563,7 +1667,13 @@ class LayoutCollection:
         """
         cursor.execute(qry, (user.id,))
 
-        for row in cursor:
+        rows = cursor.fetchall()
+        if not rows:
+            # No layouts in groups, return empty list
+            cursor.close()
+            return self.layouts
+
+        for row in rows:
             layout = Layout(
                 id=row[0],
                 label=row[1],
@@ -1574,9 +1684,9 @@ class LayoutCollection:
                 is_public=row[6],
             )
 
-            if self.include_datasets == True:
+            if self.include_datasets:
                 layout.get_members()
-                layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
+                layout.dataset_count = len(layout.members or [])  # Excludes datasets marked for removal
 
             self.layouts.append(layout)
 
@@ -1597,7 +1707,13 @@ class LayoutCollection:
 
         cursor.execute(qry)
 
-        for row in cursor:
+        rows = cursor.fetchall()
+        if not rows:
+            # No domain layouts, return empty list
+            cursor.close()
+            return self.layouts
+
+        for row in rows:
             layout = Layout(
                 id=row[0],
                 label=row[1],
@@ -1608,9 +1724,9 @@ class LayoutCollection:
                 is_public=row[6]
             )
 
-            if self.include_datasets == True:
+            if self.include_datasets:
                 layout.get_members()
-                layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
+                layout.dataset_count = len(layout.members or [])  # Excludes datasets marked for removal
 
             self.layouts.append(layout)
 
@@ -1631,7 +1747,13 @@ class LayoutCollection:
 
         cursor.execute(qry)
 
-        for row in cursor:
+        rows = cursor.fetchall()
+        if not rows:
+            # No public layouts, return empty list
+            cursor.close()
+            return self.layouts
+
+        for row in rows:
             layout = Layout(
                 id=row[0],
                 label=row[1],
@@ -1642,9 +1764,9 @@ class LayoutCollection:
                 is_public=row[6]
             )
 
-            if self.include_datasets == True:
+            if self.include_datasets:
                 layout.get_members()
-                layout.dataset_count = len(layout.members)  # Excludes datasets marked for removal
+                layout.dataset_count = len(layout.members or [])  # Excludes datasets marked for removal
 
             self.layouts.append(layout)
 
@@ -1653,9 +1775,9 @@ class LayoutCollection:
 
 @dataclass
 class Folder:
-    id: int = None
-    parent_id: int = None
-    label: str = None
+    id: int | None= None
+    parent_id: int | None = None
+    label: str | None= None
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -1683,6 +1805,12 @@ class FolderCollection:
         cursor = conn.get_cursor(use_dict=True)
         self.folders = list()
 
+        if not ids or len(ids) == 0:
+            # If no IDs were passed, return empty list
+            cursor.close()
+            conn.close()
+            return self.folders
+
         ## Sanitize the IDs
         cleaned = [ str(x) for x in ids if isinstance(x, int) ]
 
@@ -1694,7 +1822,14 @@ class FolderCollection:
 
         cursor.execute(qry)
 
-        for row in cursor:
+        rows = cursor.fetchall()
+        if not rows:
+            # No rows, return empty list
+            cursor.close()
+            conn.close()
+            return self.folders
+
+        for row in rows:
             folder = Folder(row)
             self.folders.append(folder)
 
@@ -1717,7 +1852,15 @@ class FolderCollection:
         # Create an index of all the root folders.  Still need to filter/map
         # them based on their type
         rfs = dict()
-        for row in cursor:
+
+        rows = cursor.fetchall()
+        if not rows:
+            # No root folders, return empty list
+            cursor.close()
+            conn.close()
+            return self.folders
+
+        for row in rows:
             rfs[row['id']] = row['label']
 
         for scope in ['domain', 'user', 'group', 'shared', 'public']:
@@ -1754,6 +1897,12 @@ class FolderCollection:
 
         new_ids_found = ids
 
+        if new_ids_found is None or len(new_ids_found) == 0:
+            # If no IDs were passed, just return the root folders
+            return self.folders
+
+        # If IDs were passed, we need to find all the folders that are parents of these
+        #  IDs, and then recursively find their parents until we reach the root folders.
         while len(new_ids_found) > 0:
             cleaned = [ str(x) for x in new_ids_found if isinstance(x, int) ]
 
@@ -1766,7 +1915,12 @@ class FolderCollection:
             cursor.execute(qry)
             new_ids_found = list()
 
-            for row in cursor:
+            rows = cursor.fetchall()
+            if not rows:
+                # No rows, break out of the loop
+                break
+
+            for row in rows:
                 folder = Folder(id=row['id'], parent_id=row['parent_id'], label=row['label'])
 
                 if folder.id not in all_ids:
@@ -1942,7 +2096,13 @@ class Dataset:
         cursor.execute(qry, (self.id,))
         self.displays.clear()
 
-        for (display_id, user_id, label, plot_type, plotly_config) in cursor:
+        rows = cursor.fetchall()
+        if rows is None or len(rows) == 0:
+            cursor.close()
+            conn.close()
+            return self.displays
+
+        for (display_id, user_id, label, plot_type, plotly_config) in rows:
             display = DatasetDisplay(
                 id=display_id,
                 dataset_id=self.id,
@@ -1981,7 +2141,13 @@ class Dataset:
 
         cursor.execute(qry, (is_multigene, self.id))
 
-        for row in cursor:
+        rows = cursor.fetchall()
+        if rows is None or len(rows) == 0:
+            cursor.close()
+            conn.close()
+            return None
+
+        for row in rows:
             display = DatasetDisplay(
                 id=row[0],
                 dataset_id=self.id,
