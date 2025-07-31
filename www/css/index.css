@@ -5,6 +5,11 @@ div#search-tabs-c {
     background-color: rgb(240,240,240);
     border-radius: 5px;
 }
+div.single-multi-choice-card .card-header {
+    background-color: white;
+    color: black;
+    border-bottom: 1px solid rgb(200, 200, 200);
+}
 div.tabs-content li {
     display: none;
     list-style: none;
