@@ -7,7 +7,6 @@ import uuid
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import List, Optional
 from json import JSONEncoder
 
 gear_lib_path = os.path.dirname(os.path.realpath(__file__))
@@ -438,7 +437,7 @@ def get_user_count():
         conn.close()
         return c[0]
 
-def get_user_by_id(user_id) -> "User | None":
+def get_user_by_id(user_id: int | None) -> "User | None":
     """
        Given a user_id string this returns a User object with
        all attributes populated.  Returns None if no user with
@@ -446,6 +445,11 @@ def get_user_by_id(user_id) -> "User | None":
     """
     conn = Connection()
     cursor = conn.get_cursor()
+
+    if user_id is None:
+        cursor.close()
+        conn.close()
+        return None
 
     qry = """
           SELECT g.id, g.user_name, g.email, g.institution, g.pass, g.updates_wanted,
@@ -725,7 +729,7 @@ class Analysis:
     def dataset_path(self):
         return "{0}/{1}.h5ad".format(self.base_path(), self.dataset_id)
 
-    def discover_vetting(self, current_user_id=None):
+    def discover_vetting(self, current_user_id: int | None=None):
         """
         This describes the public attribution of the analysis.  Making it a derived value via this
         method rather an than explicitly stored one in the database or JSON layer so that changes
@@ -739,22 +743,23 @@ class Analysis:
 
         # Analysis.user_id must be knownor we can't do this
         if self.user_id is None:
-            return Exception("ERROR: Attempted to call Analysis.discover_vetting() without an owner assigned to the analysis")
+            raise Exception("ERROR: Attempted to call Analysis.discover_vetting() without an owner assigned to the analysis")
 
         current_user = get_user_by_id(current_user_id)
+
+        if current_user is None:
+            raise Exception("ERROR: Attempted to call Analysis.discover_vetting() without a current user assigned to the analysis")
 
         # if the user who created it is a gear curator, return that
         if current_user.is_curator:
             self.vetting = 'gear'
-            return 'gear'
         # Are the current user and dataset owner the same?
         elif self.user_id == current_user_id:
             self.vetting = 'owner'
-            return 'owner'
         else:
             self.vetting = 'community'
-            return 'community'
 
+        return self.vetting
 
     def discover_type(self):
         """
@@ -777,31 +782,29 @@ class Analysis:
         """
         this_dir = os.path.dirname(os.path.abspath(__file__))
 
+        # Default value if type is not found after all checks
+        self.type = None
+
         # if the analysis ID and dataset ID are the same, it's a primary analysis
         if self.id == self.dataset_id:
             self.type = 'primary'
-            return 'primary'
 
         # check user_saved
         test_path = "{0}/../www/analyses/by_user/{1}/{2}/{3}/{2}.h5ad".format(this_dir, self.user_id, self.dataset_id, self.id)
         if os.path.exists(test_path):
             self.type = 'user_saved'
-            return 'user_saved'
 
         # check user_unsaved
         test_path = "/tmp/{0}/{1}/{2}/{1}.h5ad".format(self.session_id, self.dataset_id, self.id)
         if os.path.exists(test_path):
             self.type = 'user_unsaved'
-            return 'user_unsaved'
 
         # Check for public first
         test_path = "{0}/../www/analyses/by_dataset/{1}/{2}/{1}.h5ad".format(this_dir, self.dataset_id, self.id)
         if os.path.exists(test_path):
             self.type = 'public'
-            return 'public'
 
-        # Didn't find it if we got this far
-        return None
+        return self.type
 
     @classmethod
     def from_json(cls, jsn):
@@ -1018,7 +1021,7 @@ class Organism:
 
 @dataclass
 class OrganismCollection:
-    organisms: List[Organism] = field(default_factory=list)
+    organisms: list["Organism"] = field(default_factory=list)
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -1389,7 +1392,7 @@ class LayoutCollection:
     # a simple index of folders and their parent IDs (this is a simple db query)
     folder_idx: dict = field(default_factory=dict, repr=False)
 
-    layouts: List[Layout] = field(default_factory=list)
+    layouts: list["Layout"] = field(default_factory=list)
 
     # should dataset-populating methods called (adds overhead if you only need layout names)
     include_datasets: bool = True
@@ -1662,7 +1665,7 @@ class Folder:
 
 @dataclass
 class FolderCollection:
-    folders: List[Folder] = field(default_factory=list)
+    folders: list["Folder"] = field(default_factory=list)
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -1673,8 +1676,8 @@ class FolderCollection:
 
     def get_by_folder_ids(self, ids=None):
         """
-        Populates the self.folders attribute with the passed list of
-        folder IDs. Resets self.folders on each execution.
+        Populates the self.folders attribute with a dictionary where the index is
+        folder ID and value is that folder's parent ID.
         """
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
@@ -1779,11 +1782,11 @@ class FolderCollection:
 
 @dataclass
 class DatasetLink:
-    id: Optional[int] = None
-    dataset_id: Optional[str] = None
-    resource: Optional[str] = None
-    label: Optional[str] = None
-    url: Optional[str] = None
+    id: int | None = None
+    dataset_id: str | None = None
+    resource: str | None = None
+    label: str | None = None
+    url: str | None = None
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -1793,12 +1796,12 @@ class DatasetLink:
 
 @dataclass
 class DatasetDisplay:
-    id: Optional[int] = None
-    dataset_id: Optional[str] = None
-    user_id: Optional[int] = None
-    label: Optional[str] = None
-    plot_type: Optional[str] = None
-    plotly_config: Optional[str] = None
+    id: int | None = None
+    dataset_id: str | None = None
+    user_id: int | None = None
+    label: str | None = None
+    plot_type: str | None = None
+    plotly_config: str | None = None
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -1872,43 +1875,50 @@ class DatasetDisplay:
 @dataclass
 class Dataset:
     id: str
-    owner_id: Optional[int] = None
-    title: Optional[str] = None
-    organism_id: Optional[int] = None
-    pubmed_id: Optional[str] = None
-    geo_id: Optional[str] = None
-    is_public: Optional[int] = None
-    is_downloadable: Optional[int] = None
-    ldesc: Optional[str] = None
-    date_added: Optional[datetime.datetime] = None
-    dtype: Optional[str] = None
-    schematic_image: Optional[str] = None
-    share_id: Optional[str] = None
-    math_default: Optional[str] = None
-    marked_for_removal: Optional[int] = None
-    load_status: Optional[str] = None
-    has_h5ad: Optional[int] = None
-    platform_id: Optional[str] = None
-    instrument_model: Optional[str] = None
-    library_selection: Optional[str] = None
-    library_source: Optional[str] = None
-    library_strategy: Optional[str] = None
-    contact_email: Optional[str] = None
-    contact_institute: Optional[str] = None
-    contact_name: Optional[str] = None
-    annotation_source: Optional[str] = None
-    plot_default: Optional[str] = None
-    annotation_release: Optional[int] = None
+    owner_id: int | None = None
+    title: str | None = None
+    organism_id: int | None = None
+    pubmed_id: str | None = None
+    geo_id: str | None = None
+    is_public: int | None = None
+    is_downloadable: int | None = None
+    ldesc: str | None = None
+    date_added: datetime.datetime | None = None
+    dtype: str | None = None
+    schematic_image: str | None = None
+    share_id: str | None = None
+    math_default: str | None = None
+    marked_for_removal: int | None = None
+    load_status: str | None = None
+    has_h5ad: int | None = None
+    platform_id: str | None = None
+    instrument_model: str | None = None
+    library_selection: str | None = None
+    library_source: str | None = None
+    library_strategy: str | None = None
+    contact_email: str | None = None
+    contact_institute: str | None = None
+    contact_name: str | None = None
+    annotation_source: str | None = None
+    plot_default: str | None = None
+    annotation_release: int | None = None
     # derived, here for convenience
-    gene_count: Optional[int] = None
-    obs_count: Optional[int] = None
+    gene_count: int | None = None
+    obs_count: int | None = None
     has_tarball: int = 0
-    displays: List[DatasetDisplay] = field(default_factory=list)
-    tags: List[str] = field(default_factory=list)
-    layouts: List[Layout] = field(default_factory=list)
-    links: List[DatasetLink] = field(default_factory=list)
-    user_name: Optional[str] = None
-    is_permalink: Optional[int] = None
+    displays: list["DatasetDisplay"] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
+    layouts: list["Layout"] = field(default_factory=list)
+    links: list["DatasetLink"] = field(default_factory=list)
+    user_name: str | None = None
+    is_permalink: int | None = None
+
+    # properties used elsewhere (like in the DatasetCollection methods)
+    organism: str | None = None # organism label
+    access: str | None = None # access level
+    dataset_id: str | None = None
+    user_id: int | None = None
+    math_format: str | None = None
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -2063,10 +2073,16 @@ class Dataset:
                 """
                 cursor.execute(qry, (self.id,))
 
-            for row in cursor:
-                l = Layout(id=row[0], user_id=row[1], is_domain=row[2], label=row[3],
-                           is_current=row[4], share_id=row[5])
-                self.layouts.append(l)
+            rows = cursor.fetchall()
+            if rows is None or len(rows) == 0:
+                cursor.close()
+                conn.close()
+                return
+
+            for row in rows:
+                layout_obj = Layout(id=row[0], user_id=row[1], is_domain=row[2], label=row[3],
+                                   is_current=row[4], share_id=row[5])
+                self.layouts.append(layout_obj)
 
             if include_public:
                 qry = """
@@ -2081,16 +2097,23 @@ class Dataset:
                 """
                 cursor.execute(qry, (self.id,))
 
-                for row in cursor:
-                    l = Layout(id=row[0], user_id=row[1], is_domain=row[2], label=row[3],
-                               is_current=row[4], share_id=row[5])
-                    self.layouts.append(l)
+                rows = cursor.fetchall()
+                if rows is None or len(rows) == 0:
+                    cursor.close()
+                    conn.close()
+                    return
+
+                for row in rows:
+                    layout_obj = Layout(id=row[0], user_id=row[1], is_domain=row[2], label=row[3],
+                                       is_current=row[4], share_id=row[5])
+                    self.layouts.append(layout_obj)
 
             # deduplicate based on a layout's ID (in case user and public layouts overlap)
             # (normal set->list conversion doesn't work for objects)
-            self.layouts = list({l.id: l for l in self.layouts}.values())
+            self.layouts = list({layout_obj.id: layout_obj for layout_obj in self.layouts}.values())
 
             cursor.close()
+            conn.close()
 
         return self.layouts
 
@@ -2109,11 +2132,18 @@ class Dataset:
             qry = "SELECT id, resource, label, url FROM dataset_link WHERE dataset_id = %s"
             cursor.execute(qry, (self.id,))
 
-            for (id, resource, label, url) in cursor:
+            rows = cursor.fetchall()
+            if rows is None or len(rows) == 0:
+                cursor.close()
+                conn.close()
+                return
+
+            for (id, resource, label, url) in rows:
                 dsl = DatasetLink(dataset_id=self.id, resource=resource, label=label, url=url)
                 self.links.append(dsl)
 
             cursor.close()
+            conn.close()
 
         return self.links
 
@@ -2140,8 +2170,8 @@ class Dataset:
             if tuple_only:
                 return (n_obs, n_vars)
 
-            self.gene_count = n_vars
-            self.obs_count = n_obs
+            self.gene_count = n_vars # type: ignore
+            self.obs_count = n_obs # type: ignore
 
             return "{0}x{1}".format(self.gene_count, self.obs_count)
 
@@ -2184,7 +2214,7 @@ class Dataset:
 
 @dataclass
 class DatasetCollection:
-    datasets: List[Dataset] = field(default_factory=list)
+    datasets: list["Dataset"] = field(default_factory=list)
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -2199,6 +2229,10 @@ class DatasetCollection:
         """
         datasets_to_keep = []
 
+        if types is None or len(types) == 0:
+            # If no types are passed, keep all datasets
+            return datasets_to_keep
+
         for dataset in self.datasets:
             if dataset.dtype in types:
                 datasets_to_keep.append(dataset)
@@ -2208,6 +2242,13 @@ class DatasetCollection:
     def get_by_dataset_ids(self, ids=None, get_links=False):
         conn = Connection()
         cursor = conn.get_cursor()
+
+        if not ids or len(ids) == 0:
+            # If no IDs are passed, return an empty collection
+            cursor.close()
+            conn.close()
+            self.datasets = []
+            return self.datasets
 
         # I tried but couldn't make this work in a single query with IN () instead.
         qry = """
@@ -2231,7 +2272,11 @@ class DatasetCollection:
         for id in ids:
             cursor.execute(qry, (id,))
 
-            for row in cursor:
+            rows = cursor.fetchall()
+            if rows is None or len(rows) == 0:
+                continue
+
+            for row in rows:
 
                 # valid pubmed IDs are numeric
                 m = re.match(r"\d+", str(row[3]))
@@ -2343,7 +2388,15 @@ class DatasetCollection:
             qry += " LIMIT {0}".format(n)
 
         cursor.execute(qry, qry_args)
-        for r in cursor:
+
+        rows = cursor.fetchall()
+        if rows is None or len(rows) == 0:
+            cursor.close()
+            conn.close()
+            self.datasets = []
+            return
+
+        for r in rows:
             dataset = Dataset(id=r['id'], owner_id=r['owner_id'], title=r['title'],
                               organism_id=r['organism_id'], pubmed_id=r['pubmed_id'],
                               geo_id=r['geo_id'], is_public=r['is_public'], is_downloadable=r['is_downloadable'], ldesc=r['ldesc'],
@@ -2363,6 +2416,9 @@ class DatasetCollection:
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
 
+        if user is None:
+            raise Exception("Error: get_owned_by_user() requires a User object to be passed.")
+
         qry = """
               SELECT d.id, d.owner_id, d.title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc,
                      date_added, dtype, schematic_image, share_id, math_default, marked_for_removal,
@@ -2380,7 +2436,15 @@ class DatasetCollection:
         qry += " ORDER BY d.title"
 
         cursor.execute(qry, qry_args)
-        for r in cursor:
+
+        rows = cursor.fetchall()
+        if rows is None or len(rows) == 0:
+            cursor.close()
+            conn.close()
+            self.datasets = []
+            return
+
+        for r in rows:
             dataset = Dataset(id=r['id'], owner_id=r['owner_id'], title=r['title'],
                               organism_id=r['organism_id'], pubmed_id=r['pubmed_id'],
                               geo_id=r['geo_id'], is_public=r['is_public'], is_downloadable=r['is_downloadable'], ldesc=r['ldesc'],
@@ -2401,6 +2465,9 @@ class DatasetCollection:
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
 
+        if user is None:
+            raise Exception("Error: get_shared_with_user() requires a User object to be passed.")
+
         qry = """
               SELECT d.id, d.owner_id, d.title, organism_id, pubmed_id, geo_id, is_public, is_downloadable, ldesc,
                      date_added, dtype, schematic_image, share_id, math_default, marked_for_removal,
@@ -2420,7 +2487,14 @@ class DatasetCollection:
         qry += " ORDER BY d.title"
 
         cursor.execute(qry, qry_args)
-        for r in cursor:
+        rows = cursor.fetchall()
+        if rows is None or len(rows) == 0:
+            cursor.close()
+            conn.close()
+            self.datasets = []
+            return
+
+        for r in rows:
             dataset = Dataset(id=r['id'], owner_id=r['owner_id'], title=r['title'],
                               organism_id=r['organism_id'], pubmed_id=r['pubmed_id'],
                               geo_id=r['geo_id'], is_public=r['is_public'], is_downloadable=r['is_downloadable'], ldesc=r['ldesc'],
@@ -2441,23 +2515,23 @@ class DatasetCollection:
 
 @dataclass
 class Gene:
-    id: Optional[int] = None
-    ensembl_id: Optional[str] = None
-    ensembl_version: Optional[str] = None
-    ensembl_release: Optional[int] = None
-    genbank_acc: Optional[str] = None
-    organism_id: Optional[int] = None
-    molecule: Optional[str] = None
-    start: Optional[int] = None
-    stop: Optional[int] = None
-    gene_symbol: Optional[str] = None
-    product: Optional[str] = None
-    biotype: Optional[str] = None
+    id: int | None = None
+    ensembl_id: list[str] | None = None
+    ensembl_version: str | None = None
+    ensembl_release: int | None = None
+    genbank_acc: str | None = None
+    organism_id: int | None = None
+    molecule: str | None = None
+    start: int | None = None
+    stop: int | None = None
+    gene_symbol: str | None = None
+    product: str | None = None
+    biotype: str | None = None
 
     # derived, not in the relational DB
-    go_terms: List[dict] = field(default_factory=list)
-    dbxrefs: List[dict] = field(default_factory=list)
-    aliases: List[dict] = field(default_factory=list)
+    go_terms: list[dict] = field(default_factory=list)
+    dbxrefs: list[dict] = field(default_factory=list)
+    aliases: list[dict] = field(default_factory=list)
 
     def __repr__(self):
         return json.dumps(self.__dict__)
@@ -2470,7 +2544,14 @@ class Gene:
         cursor = conn.get_cursor()
         cursor.execute(qry, (self.id, ))
 
-        for (alias,) in cursor:
+        rows = cursor.fetchall()
+        if rows is None or len(rows) == 0:
+            # No aliases found, return empty list
+            cursor.close()
+            conn.close()
+            return
+
+        for (alias,) in rows:
             self.aliases.append({'label': alias})
 
         cursor.close()
@@ -2484,7 +2565,14 @@ class Gene:
         cursor = conn.get_cursor()
         cursor.execute(qry, (self.id, ))
 
-        for (dbxref,) in cursor:
+        rows = cursor.fetchall()
+        if rows is None or len(rows) == 0:
+            # No dbxrefs found, return empty list
+            cursor.close()
+            conn.close()
+            return
+
+        for (dbxref,) in rows:
             dbxref_parts = dbxref.split(':')
             source = dbxref_parts[0]
             identifier = dbxref_parts[1]
@@ -2520,8 +2608,9 @@ class Gene:
 
         # Does the user want Homologene links?
         if 'HomoloGene' in this.links_out and this.links_out['HomoloGene'] is True:
-            hg_url = 'https://www.ncbi.nlm.nih.gov/homologene/?term=' + self.gene_symbol.upper()
-            self.dbxrefs.append({'source': 'HomoloGene', 'identifier': self.gene_symbol, 'url': hg_url})
+            if self.gene_symbol is not None:
+                hg_url = 'https://www.ncbi.nlm.nih.gov/homologene/?term=' + self.gene_symbol.upper()
+                self.dbxrefs.append({'source': 'HomoloGene', 'identifier': self.gene_symbol, 'url': hg_url})
 
         if this.domain_label == 'gear':
             # Add one for the SHIELD
@@ -2530,7 +2619,7 @@ class Gene:
             # Hack to add DVD links until they have SSL enabled and we can use their API instead
             if 'DVD' in this.links_out and this.links_out['DVD'] is True:
                 dvd_genes = ["ACTG1","ADCY1","ADGRV1","GPR98","AIFM1","ALMS1","ATP2B2","ATP6V1B1","BDP1","BSND","C10orf2","CABP2","CACNA1D","CCDC50","CD164","CDC14A","CDH23","CEACAM16","CIB2","CISD2","CLDN14","CLIC5","CLPP","CLRN1","COCH","COL11A1","COL11A2","COL2A1","COL4A3","COL4A4","COL4A5","COL4A6","COL9A1","COL9A2","CRYM","DCDC2","DFNA5","DFNB31 (WHRN)","DFNB59 (PJVK)","DIABLO","DIAPH1","DIAPH3","DSPP","EDN3","EDNRB","ELMOD3","EPS8","EPS8L2","ESPN","ESRRB","EYA1","EYA4","FAM65B","FGF3","FGFR1","FGFR2","FOXI1","GATA3","GIPC3","GJB2","GJB3","GJB6","GPSM2","GRHL2","GRXCR1","GRXCR2","HARS2","HGF","HOMER2","HSD17B4","ILDR1","KARS","KCNE1","KCNJ10","KCNQ1","KCNQ4","KITLG","LARS2","LHFPL5","LOXHD1","LOXL3","LRTOMT","MARVELD2","MCM2","MET","MIR96","MITF","MSRB3","MT-RNR1","MT-TL1","MT-TS1","MYH14","MYH9","MYO15A","MYO3A","MYO6","MYO7A","NARS2","NLRP3","OPA1","OSBPL2","OTOA","OTOF","OTOG","OTOGL","P2RX2","PAX3","PCDH15","PDZD7","PEX1","PEX6","PNPT1","POLR1C","POLR1D","POU3F4","POU4F3","PRPS1","PTPRQ","RDX","ROR1","S1PR2","SERPINB6","SIX1","SIX5","SLC17A8","SLC22A4","SLC26A4","SLC26A5","SLITRK6","SMPX","SNAI2","SOX10","STRC","SYNE4","TBC1D24","TBX1","TCOF1","TECTA","TECTB","TIMM8A","TJP2","TMC1","TMEM132E","TMIE","TMPRSS3","TNC","TPRN","TRIOBP","TSPEAR","USH1C","USH1G","USH2A","WFS1"]
-                if self.gene_symbol.upper() in dvd_genes:
+                if self.gene_symbol and self.gene_symbol.upper() in dvd_genes:
                     dvd_url = 'http://deafnessvariationdatabase.org/gene/' + self.gene_symbol.upper()
                     self.dbxrefs.append({'source': 'DVD', 'identifier': self.gene_symbol, 'url': dvd_url, 'title': 'Deafness Variation Database'})
 
@@ -2570,7 +2659,13 @@ class Gene:
         cursor = conn.get_cursor()
         cursor.execute(qry, (self.id, ))
 
-        for (go_id, go_name) in cursor:
+        rows = cursor.fetchall()
+        if not rows or len(rows) == 0:
+            cursor.close()
+            conn.close()
+            return
+
+        for (go_id, go_name) in rows:
             self.go_terms.append({'go_id':go_id, 'name':go_name})
 
         cursor.close()
@@ -2580,7 +2675,7 @@ class Gene:
 
 @dataclass
 class GeneCollection:
-    genes: List[Gene] = field(default_factory=list)
+    genes: list["Gene"] = field(default_factory=list)
 
     def add_gene(self, gene):
         self.genes.append(gene)
@@ -2598,6 +2693,11 @@ class GeneCollection:
         #  The count is how many of that gene symbol were in that release.
         # h{gene_symbol}{organism_id} = {'ensembl_release': 93, count: 3}
         found = defaultdict(dict)
+
+        if gene_symbol is None or len(gene_symbol) == 0:
+            cursor.close()
+            conn.close()
+            return
 
         gene_symbols = gene_symbol.split(' ')
 
@@ -2629,8 +2729,12 @@ class GeneCollection:
                 """.format(org_addendum)
                 cursor.execute(qry, ('%' + gene_symbol + '%',))
 
+            rows = cursor.fetchall()
+            if rows is None or len(rows) == 0:
+                continue
+
             for (id, ensembl_id, ensembl_version, ensembl_release, genbank_acc, organism_id,
-                 molecule, start, stop, gene_symbol, product, biotype) in cursor:
+                 molecule, start, stop, gene_symbol, product, biotype) in rows:
 
                 lc_gene_symbol = gene_symbol.lower()
 
@@ -2697,7 +2801,14 @@ class GeneCart:
 
         self.genes = list()
 
-        for row in cursor:
+        rows = cursor.fetchall()
+        if rows is None or len(rows) == 0:
+            self.num_genes = 0
+            cursor.close()
+            conn.close()
+            return
+
+        for row in rows:
             self.genes.append(row[0])
 
         self.num_genes = len(self.genes)
@@ -2711,7 +2822,8 @@ class GeneCart:
 
         qry = "SELECT COUNT(*) FROM gene_cart_member WHERE gene_cart_id = %s"
         cursor.execute(qry, (self.id,))
-        self.num_genes = cursor.fetchone()[0]
+        result = cursor.fetchone()
+        self.num_genes = result[0] if result is not None else 0
 
         cursor.close()
         conn.close()
@@ -2761,7 +2873,7 @@ class GeneCart:
 
         else:
             # ID already populated
-            #  Update cart properties, delete existing members, add current ones
+            #  TODO: Update cart properties, delete existing members, add current ones
             raise Exception("Called feature not yet implemented")
 
         cursor.close()
@@ -2818,6 +2930,8 @@ class GeneCart:
 
         if 'session_id' in json_obj and not self.user_id:
             user_logged_in = get_user_from_session_id(json_obj['session_id'])
+            if user_logged_in is None:
+                raise Exception("Error: No user logged in with session_id {0}".format(json_obj['session_id']))
             self.user_id = user_logged_in.id
 
         if 'gctype' in json_obj:
@@ -2839,7 +2953,7 @@ class GeneCart:
 
 @dataclass
 class GeneCartCollection:
-    carts: List[GeneCart] = field(default_factory=list)
+    carts: list["GeneCart"] = field(default_factory=list)
 
     # should gene-populating methods called to include gene members (lots of overhead)
     include_genes: bool = True
@@ -2895,10 +3009,18 @@ class GeneCartCollection:
         for id in ids:
             cursor.execute(qry, (id,))
 
-            for row in cursor:
+            rows = cursor.fetchall()
+            if not rows:
+                cursor.close()
+                conn.close()
+                # No carts found, return empty list
+                self.carts = []
+                return self.carts
+
+            for row in rows:
                 cart = self._row_to_cart_object(row)
 
-                if self.include_genes == True:
+                if self.include_genes:
                     cart.get_genes()
                 else:
                     cart.get_gene_counts()
@@ -2931,10 +3053,17 @@ class GeneCartCollection:
         for share_id in share_ids:
             cursor.execute(qry, (share_id,))
 
-            for row in cursor:
-                cart = self._row_to_cart_object(row)
+            rows = cursor.fetchall()
+            if not rows:
+                cursor.close()
+                conn.close()
+                # No carts found, return empty list
+                self.carts = []
+                return self.carts
 
-                if self.include_genes == True:
+            for row in rows:
+                cart = self._row_to_cart_object(row)
+                if self.include_genes:
                     cart.get_genes()
                 else:
                     cart.get_gene_counts()
@@ -2966,10 +3095,18 @@ class GeneCartCollection:
 
         cursor.execute(qry, (user.id,))
 
-        for row in cursor:
+        rows = cursor.fetchall()
+        if not rows:
+            cursor.close()
+            conn.close()
+            # No carts found, return empty list
+            self.carts = []
+            return self.carts
+
+        for row in rows:
             cart = self._row_to_cart_object(row)
 
-            if self.include_genes == True:
+            if self.include_genes:
                 cart.get_genes()
             else:
                 cart.get_gene_counts()
@@ -3008,10 +3145,18 @@ class GeneCartCollection:
         """
         cursor.execute(qry, (user.id,))
 
-        for row in cursor:
+        rows = cursor.fetchall()
+        if not rows:
+            cursor.close()
+            conn.close()
+            # No carts found, return empty list
+            self.carts = []
+            return self.carts
+
+        for row in rows:
             cart = self._row_to_cart_object(row)
 
-            if self.include_genes == True:
+            if self.include_genes:
                 cart.get_genes()
             else:
                 cart.get_gene_counts()
@@ -3044,10 +3189,18 @@ class GeneCartCollection:
 
         rows_returned = 0
 
-        for row in cursor:
+        rows = cursor.fetchall()
+        if not rows:
+            cursor.close()
+            conn.close()
+            # No carts found, return empty list
+            self.carts = []
+            return self.carts
+
+        for row in rows:
             cart = self._row_to_cart_object(row)
 
-            if self.include_genes == True:
+            if self.include_genes:
                 cart.get_genes()
             else:
                 cart.get_gene_counts()
@@ -3079,10 +3232,18 @@ class GeneCartCollection:
         """
         cursor.execute(qry)
 
-        for row in cursor:
+        rows = cursor.fetchall()
+        if not rows:
+            cursor.close()
+            conn.close()
+            # No carts found, return empty list
+            self.carts = []
+            return self.carts
+
+        for row in rows:
             cart = self._row_to_cart_object(row)
 
-            if self.include_genes == True:
+            if self.include_genes:
                 cart.get_genes()
             else:
                 cart.get_gene_counts()
@@ -3110,10 +3271,18 @@ class GeneCartCollection:
         """
         cursor.execute(qry)
 
-        for row in cursor:
+        rows = cursor.fetchall()
+
+        if not rows:
+            cursor.close()
+            conn.close()
+            # No carts found, return empty list
+            self.carts = []
+            return self.carts
+        for row in rows:
             cart = self._row_to_cart_object(row)
 
-            if self.include_genes == True:
+            if self.include_genes:
                 cart.get_genes()
             else:
                 cart.get_gene_counts()
@@ -3238,7 +3407,9 @@ class LayoutDisplay:
         qry = "SELECT dataset_id FROM dataset_display WHERE id = %s"
         cursor.execute(qry, (self.display_id,))
 
-        for (dataset_id,) in cursor:
+        row = cursor.fetchone()
+        if row:
+            (dataset_id,) = row
             self.dataset_id = dataset_id
 
         cursor.close()
@@ -3254,12 +3425,16 @@ class LayoutDisplay:
         conn = Connection()
         cursor = conn.get_cursor()
         cursor.execute(qry, (self.display_id,))
-        (plot_type,) = cursor.fetchone()
+        result = cursor.fetchone()
+        if result is not None:
+            (plot_type,) = result
 
-        is_single = plot_type in single_plot_types
-        is_multi = plot_type in multi_plot_types
+            #is_single = plot_type in single_plot_types
+            is_multi = plot_type in multi_plot_types
 
-        self.is_multigene = is_multi
+            self.is_multigene = is_multi
+        else:
+            self.is_multigene = None
 
         cursor.close()
         conn.close()
@@ -3315,7 +3490,6 @@ class User:
         self.updates_wanted = updates_wanted
         self.is_admin = is_admin
         self.default_org_id = default_org_id
-        self.is_curator = is_curator
         self.help_id = help_id
         self.layout_share_id = layout_share_id
 
@@ -3325,6 +3499,9 @@ class User:
 
         # This is a list of Layout objects
         self._layouts = None
+
+        # Flag to determine if the user has super-curator privileges
+        self.is_curator = is_curator if is_curator is not None else False
 
     def __repr__(self):
         return json.dumps(self.__dict__)
