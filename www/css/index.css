@@ -1,6 +1,11 @@
 div.guide-element {
     border-right: 1px solid rgb(200, 200, 200);
 }
+div#guides_c div.card-content{
+    background-color: white;
+    color: black;
+    border-top: 1px solid rgb(200, 200, 200);
+}
 div#search-tabs-c {
     background-color: rgb(240,240,240);
     border-radius: 5px;

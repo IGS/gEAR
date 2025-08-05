@@ -62,11 +62,12 @@
             <div id="search-tabs-c" class="tabs-wrapper pl-3 pr-3 pb-3">
               <div class="tabs">
                   <ul>
+                    <!-- genes larger and bolder -->
                       <li data-tab-id="gene_expression" class="is-active">
-                          <a>Gene</a>
+                          <a>Genes</a>
                       </li>
                       <li data-tab-id="datasets">
-                          <a>Dataset</a>
+                          <a>Datasets</a>
                       </li>
                   </ul>
               </div>
@@ -80,7 +81,8 @@
                           
                           <div class="column pr-1 pl-5">
                             <div class="control has-icons-left mr-0">
-                              <input class="input" type="input" id="genes-manually-entered" placeholder="Type here to search using specific gene symbols"\>
+                              <!-- TODO make example gene customizable by domain -->
+                              <input class="input" type="input" id="genes-manually-entered" placeholder="Type here to search using specific gene symbols, such as Sox2"\>
                               <span class="icon is-small is-left">
                                 <i class="mdi mdi-magnify"></i>
                               </span>
@@ -123,12 +125,7 @@
                                     </label>
                                   </header>
                                   <div class="card-image">
-                                    <figure class="image">
-                                      <img
-                                        src="/img/single-gene-examples.png"
-                                        alt="Example image of single-gene display"
-                                      />
-                                    </figure>
+                                    
                                   </div>
                                 </div> <!-- end .card for single-gene display -->
                               </div>
@@ -141,12 +138,7 @@
                                     </label>
                                   </header>
                                   <div class="card-image">
-                                    <figure class="image">
-                                      <img
-                                        src="/img/multi-gene-examples.png"
-                                        alt="Example image of multi-gene display"
-                                      />
-                                    </figure>
+                                    
                                   </div>
                                 </div> <!-- end .card for single-gene display -->
                               </div>
@@ -253,82 +245,111 @@
               <span class="is-size-4">Guides</span>
             </h3>
             <div id="guides_c" class="columns">
+
               <div class="column">
-                <div class="guide-element pr-3">
-                  <div><!-- without the 2nd level div here the images disappears -->
+                <div class="card">
+                  <div class="card-image">
+                    <figure class="image is-5by3">
+                      <a href="https://youtu.be/guI161nTv2U" target="_blank">
+                        <img 
+                          src="./img/gear_guide_preview_new_look_with_play_button.png"
+                          alt="Preview of the new look of gEAR"
+                        />
+                      </a>
+                    </figure>
+                  </div>
+                  <div class="card-content">
                     <div class="media">
-                      <div class="media-left">
-                        <figure class="image is-96x96">
-                          <img src="/img/guide_image_mag_dna.png" alt="Placeholder image">
-                        </figure>
+                      <div class="media-content has-text-centered">
+                        <p class="title is-size-6">We have a new look!</p>
+                        <p class="subtitle is-size-6">Take a tour of our refreshed dashboard</p>
                       </div>
-                      <div class="media-content is-size-7 has-text-weight-semibold">
-                        <p>
-                          What's new in gEAR 2.0? Watch our video guide.
-                        </p>
-                        <p class="mt-2"><a class="guide-launcher" href="https://youtu.be/guI161nTv2U" target="_blank">Watch now</a></p>
-                      </div>
+                    </div>
+                    <div class="content has-text-centered">
+                        <a href="https://youtu.be/guI161nTv2U" target="_blank">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
                     </div>
                   </div>
                 </div>
               </div>
+            
               <div class="column">
-                <div class="guide-element pr-3">
-                  <div><!-- without the 2nd level div here the images disappears -->
+                <div class="card">
+                  <div class="card-image">
+                    <figure class="image is-5by3">
+                      <a href="https://youtu.be/bKTzGKAvn7w" target="_blank">
+                        <img
+                          src="./img/gear_guide_preview_gene_list_manager_with_play_button.png"
+                          alt="Preview of the gene list manager"
+                        />
+                      </a>
+                    </figure>
+                  </div>
+                  <div class="card-content">
                     <div class="media">
-                      <div class="media-left">
-                        <figure class="image is-96x96">
-                          <img src="/img/guide_image_bidirectional.png" alt="Placeholder image">
-                        </figure>
+                      <div class="media-content has-text-centered">
+                        <p class="title is-size-6">Search Faster</p>
+                        <p class="subtitle is-size-6">With gene lists and dataset collections</p>
                       </div>
-                      <div class="media-content is-size-7 has-text-weight-semibold">
-                        <p>
-                          Compare two conditions within a dataset
-                        </p>
-                        <p class="mt-2"><a class="guide-launcher" href="https://youtu.be/7vsldnrjETw" target="_blank">Watch now</a></p>
-                      </div>
+                    </div>
+                    <div class="content has-text-centered">
+                        <a href="https://youtu.be/bKTzGKAvn7w" target="_blank">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
                     </div>
                   </div>
                 </div>
               </div>
+
               <div class="column">
-                <div class="guide-element pr-3">
-                  <div><!-- without the 2nd level div here the images disappears -->
+                <div class="card">
+                  <div class="card-image">
+                    <figure class="image is-5by3">
+                      <a href="https://youtu.be/7vsldnrjETw" target="_blank">
+                        <img
+                          src="./img/gear_guide_preview_comparison_tool_with_play_button.png"
+                          alt="Preview of the dataset explorer"
+                        />
+                      </a>
+                    </figure>
+                  </div>
+                  <div class="card-content">
                     <div class="media">
-                      <div class="media-left">
-                        <figure class="image is-96x96">
-                          <img src="/img/guide_image_dna_folder.png" alt="Placeholder image">
-                        </figure>
+                      <div class="media-content has-text-centered">
+                        <p class="title is-size-6">Compare conditions</p>
+                        <p class="subtitle is-size-6">Compare two conditions within a dataset</p>
                       </div>
-                      <div class="media-content is-size-7 has-text-weight-semibold">
-                        <p>
-                          Create and curate your own dataset collections
-                        </p>
-                        <p class="mt-2"><a class="guide-launcher" href="https://youtu.be/DItayfJsldI" target="_blank">Watch now</a></p>
-                      </div>
+                    </div>
+                    <div class="content has-text-centered">
+                        <a href="https://youtu.be/7vsldnrjETw" target="_blank">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
                     </div>
                   </div>
                 </div>
               </div>
+
               <div class="column">
-                <div class="guide-element pr-3">
-                  <div><!-- without the 2nd level div here the images disappears -->
+                <div class="card">
+                  <div class="card-image">
+                    <figure class="image is-5by3">
+                      <a href="https://youtu.be/DItayfJsldI" target="_blank">
+                        <img
+                          src="./img/gear_guide_preview_dataset_explorer_with_play_button.png"
+                          alt="Preview of the dataset explorer"
+                        />
+                      </a>
+                    </figure>
+                  </div>
+                  <div class="card-content">
                     <div class="media">
-                      <div class="media-left">
-                        <figure class="image is-96x96">
-                          <img src="/img/guide_image_mag_lines.png" alt="Placeholder image">
-                        </figure>
+                      <div class="media-content has-text-centered">
+                        <p class="title is-size-6">Create & Curate</p>
+                        <p class="subtitle is-size-6">Build and organize datasets your way</p>
                       </div>
-                      <div class="media-content is-size-7 has-text-weight-semibold">
-                        <p>
-                          Search faster using gene lists and dataset collections
-                        </p>
-                        <p class="mt-2"><a class="guide-launcher" href="https://youtu.be/bKTzGKAvn7w" target="_blank">Watch now</a></p>
-                      </div>
+                    </div>
+                    <div class="content has-text-centered">
+                        <a href="https://youtu.be/DItayfJsldI" target="_blank">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
                     </div>
                   </div>
                 </div>
               </div>
+
             </div>
 
           </section><!-- end #content-c -->
