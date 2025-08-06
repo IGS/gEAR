@@ -75,7 +75,7 @@
                   <ul>
                       <li data-tab-id="gene_expression" class="is-active">
 
-                        <h2><span class="expression-search-step-number">1. </span>Enter one or more genes manually or choose a Gene List</h2>
+                        <h2><span class="expression-search-step-number">1. </span>Enter gene symbols</h2>
 
                         <div class="columns">
                           
@@ -90,7 +90,7 @@
                             <div class="control pl-3">
                               <label class="checkbox">
                                 <input type="checkbox" id="gene-search-exact-match" checked>
-                                Exact gene names only
+                                Exact gene symbols only
                               </label>
                             </div>
                           </div>
@@ -112,10 +112,20 @@
 
 
                         <div class="columns">
-                          <div class="column">
-                            <h2 class="mb-1"><span class="expression-search-step-number">2. </span>See results for one gene at a time or multiple?</h2>
+                          <div class="column is-3">
+                            <h2 class="mb-3"><span class="expression-search-step-number">2. </span>Choose a dataset collection</h2>
+
+                            <div class="pl-5">
+
+                                <div class="field">
+                                   <!--#include virtual="/include/dataset-collection-selector/dataset-collection-selector.html" -->
+                                </div>
+                            </div>
+                          </div>
+                          <div class="column is-5">
+                            <h2 class="mb-1"><span class="expression-search-step-number">3. </span>Choose display type</h2>
                             
-                            <div class="columns pl-4">
+                            <div class="columns">
                               <div class="column">
                                 <div class="card single-multi-choice-card">
                                   <header class="card-header p-2">
@@ -145,14 +155,10 @@
                             </div>
 
                           </div>
-                          <div class="column ml-6">
-                            <h2 class="mb-3"><span class="expression-search-step-number">3. </span>Choose a collection of datasets to search within and submit</h2>
+                          <div class="column is-4">
+                            <h2 class="mb-3"><span class="expression-search-step-number">4. </span>Go!</h2>
 
                             <div class="pl-5">
-
-                                <div class="field">
-                                   <!--#include virtual="/include/dataset-collection-selector/dataset-collection-selector.html" -->
-                                </div>
                                 <div class="control">
                                   <button id="submit-expression-search" class="button is-primary">
                                     <span class="icon is-small">
