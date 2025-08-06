@@ -82,6 +82,11 @@ document.addEventListener('DOMContentLoaded', () => {
     geneCollectionDropdown.classList.remove('is-left');
     geneCollectionDropdown.classList.add('is-right');
 
+    // For this page we want the dataset collection dropdown to be left-aligned
+    const datasetCollectionDropdown = document.querySelector('#dropdown-dc');
+    datasetCollectionDropdown.classList.remove('is-right');
+    datasetCollectionDropdown.classList.add('is-left');
+
     // Bulma gives the styling for tabs, but not the functionality
     const tabs = document.querySelectorAll('div.tabs li a');
     tabs.forEach((element) => {
