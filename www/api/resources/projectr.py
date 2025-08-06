@@ -99,7 +99,7 @@ parser.add_argument(
     "full_output",
     help="If true, return the full output of the projection, which includes a p-value matrix",
     type=bool,
-    default=False,
+    default=True,
     required=False,
 )
 parser.add_argument("analysis", type=str, required=False)  # not used at the moment
