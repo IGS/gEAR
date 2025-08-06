@@ -47,7 +47,8 @@ def get_adata_from_analysis(
     ana = Analysis(
         id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user_id
     )
-    ana.discover_type()
+    if ana.type is None:
+        ana.discover_type()
     return ana.get_adata()
 
 
@@ -79,7 +80,8 @@ def get_adata_shadow_from_analysis(
     ana = Analysis(
         id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user_id
     )
-    ana.discover_type()
+    if ana.type is None:
+        ana.discover_type()
     return AnnDataShadow(ana.dataset_path())
 
 
@@ -180,7 +182,8 @@ def get_spatial_adata(
     ana = SpatialAnalysis(
         id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user_id
     )
-    ana.discover_type()
+    if ana.type is None:
+        ana.discover_type()
     sdata = ana.get_sdata()
     platform = ana.determine_platform(sdata)
 
