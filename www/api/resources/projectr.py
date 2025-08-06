@@ -562,7 +562,7 @@ def projectr_callback(
     # For NaN values, they are ignored in the calculation
     if zscore:
         target_df = target_df.apply(
-            lambda row: stats.zscore(row, nan_policy="omit")
+            lambda row: stats.zscore(row, ddof=1,nan_policy="omit")
         )
 
     target_df = target_df.fillna(0)  # Fill NaN values with 0
