@@ -717,6 +717,12 @@ class Analysis:
         self.session_id = session_id
         self.user_id = user_id
 
+        if self.dataset_id is None:
+            raise Exception("ERROR: Analysis object must have a dataset_id set.")
+
+        if self.id is None:
+            self.id = self.dataset_id
+
         # types are 'primary', 'public', 'user_saved', 'user_unsaved'
         self.type = type if type is not None else 'primary'
 
