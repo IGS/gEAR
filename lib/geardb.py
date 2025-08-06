@@ -10,12 +10,12 @@ from json import JSONEncoder
 
 gear_lib_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(gear_lib_path)
-import gear.db
+import gear.db  # noqa: E402
 
 # https://stackoverflow.com/a/35904211/1368079
 this = sys.modules[__name__]
 
-from gear.serverconfig import ServerConfig
+from gear.serverconfig import ServerConfig  # noqa: E402
 
 setattr(this, "servercfg", ServerConfig().parse())
 
@@ -861,6 +861,9 @@ class Analysis:
         if os.path.exists(test_path):
             self.type = 'public'
 
+        if self.type is None:
+            raise Exception("ERROR: Unable to determine type for analysis {0} with dataset ID {1}.".format(self.id, self.dataset_id))
+
         return self.type
 
     @classmethod
@@ -872,12 +875,12 @@ class Analysis:
         # Dataset ID is now saved only in the dataset object, but some analyses may have it as a top-level attribute
         try:
             dataset_id = jsn["dataset"]["id"]
-        except:
+        except KeyError:
             dataset_id = jsn["dataset_id"]
 
         try:
             session_id = jsn["user_session_id"]
-        except:
+        except KeyError:
             session_id = jsn["analysis_session_id"]
 
         ana = Analysis(
@@ -1852,7 +1855,7 @@ class FolderCollection:
         conn = Connection()
         cursor = conn.get_cursor(use_dict=True)
 
-        qry = "SELECT id, label FROM folder WHERE parent_id IS NULL";
+        qry = "SELECT id, label FROM folder WHERE parent_id IS NULL"
         cursor.execute(qry)
 
         # Create an index of all the root folders.  Still need to filter/map
@@ -3588,8 +3591,8 @@ class LayoutDisplay:
         conn.close()
 
     def get_is_multigene(self):
-        single_plot_types = ["bar", "line", "scatter", "tsne/umap_dynamic", "tsne_dynamic", "violin", "pca_static", "tsne_static", "tsne", "umap_static", "svg", "epiviz"]
-        multi_plot_types = ["dotplot", "heatmap", "mg_violin", "quadrant", "volcano"]
+        #single_plot_types = ["bar", "line", "scatter", "tsne/umap_dynamic", "tsne_dynamic", "violin", "pca_static", "tsne_static", "tsne", "umap_static", "svg", "epiviz"]
+        multi_plot_types = ["dotplot", "heatmap", "mg_violin", "quadrant", "volcano", "mg_tsne", "mg_umap", "mg_pca"]
 
         qry = """
             SELECT plot_type from dataset_display WHERE id = %s
