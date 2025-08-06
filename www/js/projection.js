@@ -64,9 +64,6 @@ const createSelectedPatternProxy = (selectedPattern) => {
                     }
                 }
             }
-
-
-
             return true;
         }
     });
