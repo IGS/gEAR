@@ -49,7 +49,7 @@ ANNOTATION_TYPE = "ensembl"  # NOTE: This will change in the future to be varied
 # I am setting this slightly under the "MaxKeepAliveRequests" in apache.conf
 CONCURRENT_REQUEST_LIMIT = 75
 # timeout for the POST request to projectR service
-REQUEST_TIMEOUT = 600
+REQUEST_TIMEOUT = 1200
 
 """
 projections json format - one in each "projections/by_dataset/<dataset_id> subdirectory
@@ -99,7 +99,7 @@ parser.add_argument(
     "full_output",
     help="If true, return the full output of the projection, which includes a p-value matrix",
     type=bool,
-    default=False,
+    default=True,
     required=False,
 )
 parser.add_argument("analysis", type=str, required=False)  # not used at the moment
@@ -562,7 +562,7 @@ def projectr_callback(
     # For NaN values, they are ignored in the calculation
     if zscore:
         target_df = target_df.apply(
-            lambda row: stats.zscore(row, nan_policy="omit")
+            lambda row: stats.zscore(row, ddof=1,nan_policy="omit")
         )
 
     target_df = target_df.fillna(0)  # Fill NaN values with 0
@@ -1005,7 +1005,7 @@ class ProjectR(Resource):
         full_output = args["full_output"]
 
         # Currently only NMF runs through the actual projectR code and can give full output
-        if algorithm not in ["nmf"]:
+        if algorithm not in ["nmf", "fixednmf"]:
             full_output = False
 
         uuid_args = (dataset_id, genecart_id, algorithm, zscore)

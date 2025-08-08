@@ -77,7 +77,7 @@ describe('Dataset Curator', function () {
                     await page.getByText("Curate new display").click();
 
                     // Should now be on Plot Type and Analysis select part
-                    await page.getByText("Choose how to plot").click();
+                    await page.getByText("Select plot type").click();
                 });
 
                 it.only("should plot a scatterplot", async () => {
@@ -171,7 +171,7 @@ describe('Dataset Curator', function () {
                 await page.getByText("Curate new display").click();
 
                 // Should now be on Plot Type and Analysis select part
-                await page.getByText("Choose how to plot").click();
+                await page.getByText("Select plot type").click();
                 const plotSelect = page.locator("css=#plot-type-select-c .nice-select-dropdown .list");
                 await plotSelect.getByText("SVG image").click();
 

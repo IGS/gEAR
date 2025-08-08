@@ -156,10 +156,10 @@ class ResultItem {
         setElementProperties(listItemView, ".js-edit-dataset-save", { value: datasetId });
         setElementProperties(listItemView, ".js-edit-dataset-cancel", { value: datasetId });
 
-        setElementProperties(listItemView, ".js-dataset-curator", { href: `./dataset_curator.html?dataset_id=${datasetId}`});
-        setElementProperties(listItemView, ".js-multigene-viewer", { href: `./multigene_curator.html?dataset_id=${datasetId}`});
-        setElementProperties(listItemView, ".js-compare-tool", { href: `./compare_datasets.html?dataset_id=${datasetId}`});
-        setElementProperties(listItemView, ".js-sc-workbench", { href: `./sc_workbench.html?dataset_id=${datasetId}`});
+        setElementProperties(listItemView, ".js-dataset-curator", { href: `./dataset_curator.html?share_id=${this.shareId}`});
+        setElementProperties(listItemView, ".js-multigene-viewer", { href: `./multigene_curator.html?share_id=${this.shareId}`});
+        setElementProperties(listItemView, ".js-compare-tool", { href: `./compare_datasets.html?share_id=${this.shareId}`});
+        setElementProperties(listItemView, ".js-sc-workbench", { href: `./sc_workbench.html?share_id=${this.shareId}`});
 
 
         // dataset type section
@@ -395,7 +395,7 @@ class ResultItem {
                 try {
                     // download the h5ad
                     const datasetId = this.datasetId;
-                    const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${datasetId}`;
+                    const url = `./cgi/download_source_file.cgi?type=h5ad&share_id=${this.shareId}`;
                     const a = document.createElement('a');
                     a.href = url;
                     a.click();

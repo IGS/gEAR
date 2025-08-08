@@ -45,6 +45,11 @@ const createSelectedPatternProxy = (selectedPattern) => {
                 const binary = value.every((w) => w.binary);
                 algorithmElt.querySelector('option[value="binary"]').disabled  = !binary;
 
+                // if "binary" is selected, reset the algorithm "select" box to "pca"
+                if (algorithmElt.value === 'binary') {
+                    algorithmElt.value = 'pca';
+                }
+
             } else if (key === "gctype") {
                 // Adjust algorithm options based on gctype
                 algorithmElt.querySelector('option[value="nmf"]').disabled = false;
@@ -53,6 +58,10 @@ const createSelectedPatternProxy = (selectedPattern) => {
                 if (value === "unweighted-list") {
                     algorithmElt.querySelector('option[value="nmf"]').disabled = true;
                     algorithmElt.querySelector('option[value="fixednmf"]').disabled = true;
+                    // Reset the algorithm "select" box
+                    if (['nmf', 'fixednmf'].includes(algorithmElt.value)) {
+                        algorithmElt.value = 'pca';
+                    }
                 }
             }
             return true;

@@ -17,6 +17,7 @@ let plotSelectedGenes = []; // genes selected from plot "select" utility
 
 const genesAsAxisPlots = ["dotplot", "heatmap", "mg_violin"];
 const genesAsDataPlots = ["quadrant", "volcano"];
+const scanpyPlots = ["mg_pca_static", "mg_tsne_static", "mg_umap_static"];
 
 class GenesAsAxisHandler extends PlotHandler {
     constructor(plotType) {
@@ -744,6 +745,238 @@ class GenesAsDataHandler extends PlotHandler {
     }
 }
 
+/**
+ * Represents a ScanpyHandler class that extends PlotHandler.
+ * This class is responsible for creating and manipulating plots for a given dataset using the Scanpy analysis object.
+ */
+class ScanpyHandler extends PlotHandler {
+    constructor(plotType) {
+        super();
+        this.plotType = plotType;
+        this.apiPlotType = plotType;
+    }
+
+    classElt2Prop = {
+        "js-tsne-x-axis":"x_axis"
+        , "js-tsne-y-axis":"y_axis"
+        , "js-tsne-flip-x":"flip_x"
+        , "js-tsne-flip-y":"flip_y"
+        , "js-tsne-colorize-legend-by":"colorize_legend_by"
+        , "js-tsne-max-columns":"max_columns"
+        , "js-tsne-horizontal-legend":"horizontal_legend"
+        , "js-tsne-marker-size":"marker_size"
+        , "js-tsne-color-palette":"expression_palette"
+        , "js-tsne-reverse-palette":"reverse_palette"
+        , "js-tsne-center-around-median":"center_around_median"
+    }
+
+    configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
+
+    plotConfig = {};  // Plot config that is passed to API
+
+    /**
+     * Clones the display based on the given configuration.
+     * @param {Object} config - The configuration object.
+     */
+    cloneDisplay(config) {
+        for (const prop in config) {
+            setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config[prop]);
+        }
+
+        // Handle order
+        if (config["order"]) {
+            for (const series in config["order"]) {
+                const order = config["order"][series];
+                // sort "levels" series by order
+                levels[series].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+                renderOrderSortableSeries(series);
+            }
+
+            document.getElementById("order-section").classList.remove("is-hidden");
+        }
+
+        // Handle filters
+        if (config["obs_filters"]) {
+            facetWidget.filters = config["obs_filters"];
+        }
+
+        // Restoring some disabled/checked elements in UI
+        const horizontalLegend = document.getElementsByClassName("js-tsne-horizontal-legend");
+
+        if (config["colorize_legend_by"]) {
+            const series = config["colorize_legend_by"];
+            for (const targetElt of [...horizontalLegend]) {
+                targetElt.disabled = true;
+                if (catColumns.includes(series)) {
+                    targetElt.disabled = false;
+                }
+
+                // Applies to horizontal legend
+                disableCheckboxLabel(targetElt, targetElt.disabled);
+            }
+
+            // Handle colors
+            if (config["colors"]) {
+                renderColorPicker(series);
+                for (const group in config["colors"]) {
+                    const color = config["colors"][group];
+                    const colorField = document.getElementById(`${CSS.escape(group)}-color`);
+                    if (colorField) {
+                        colorField.value = color;
+                    } else {
+                        // Optionally log or handle missing field
+                        console.warn(`Color field for group "${group}" not found.`);
+                    }
+                }
+            }
+        }
+
+        if (config["expression_palette"]) {
+            setSelectBoxByValue("color-palette-post", config["expression_palette"]);
+        }
+
+        // If marker size is present, enable the override option
+        if (config["marker_size"]) {
+            for (const classElt of document.getElementsByClassName("js-tsne-marker-size")) {
+                classElt.disabled = false;
+            }
+            for (const classElt of document.getElementsByClassName("js-tsne-override-marker-size")) {
+                classElt.checked = true;
+            }
+        }
+    }
+
+    /**
+     * Creates a plot for a given dataset using the provided analysis object.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {Object} analysisObj - The analysis object.
+     * @returns {void}
+     */
+    async createPlot(datasetId, analysisObj) {
+        let image;
+        try {
+            const data = await fetchMgTsneImage(datasetId, analysisObj, this.apiPlotType, this.plotConfig);
+            ({image} = data);
+        } catch (error) {
+            return;
+        }
+
+        const plotContainer = document.getElementById("plot-container");
+        plotContainer.replaceChildren();    // erase plot
+
+        // Add a message saying the image dimensions will change when viewed in the gene expression page
+        const dimensionMessage = document.createElement("div");
+        dimensionMessage.innerHTML = "<strong>Note:</strong> The plot image may render differently when viewed in the gene expression page based on the dimensions of the display tile.";
+        dimensionMessage.classList.add("notification", "is-info", "is-light");
+        plotContainer.append(dimensionMessage);
+
+        const tsnePreview = document.createElement("img");
+        tsnePreview.classList.add("image");
+        tsnePreview.id = "tsne-preview";
+        plotContainer.append(tsnePreview);
+
+        if (!image) {
+            createToast("Could not retrieve plot image. Cannot make plot.");
+            return;
+        }
+        const blob = await fetch(`data:image/webp;base64,${image}`).then(r => r.blob());
+        tsnePreview.src = URL.createObjectURL(blob);
+        tsnePreview.onload = () => {
+            // Revoke the object URL to free up memory
+            URL.revokeObjectURL(tsnePreview.src);
+        }
+        return;
+
+    }
+
+    /**
+     * Loads the plot HTML by replacing the content of prePlotOptionsElt and postPlotOptionsElt elements.
+     * @returns {Promise<void>} A promise that resolves when the plot HTML is loaded.
+     */
+    async loadPlotHtml() {
+        const prePlotOptionsElt = document.getElementById("plot-options-collapsable");
+        prePlotOptionsElt.replaceChildren();
+
+        const postPlotOptionsElt = document.getElementById("post-plot-adjustments");
+        postPlotOptionsElt.replaceChildren();
+
+        prePlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/tsne_static.html");
+        postPlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/post_plot/tsne_static.html");
+
+        // Remove some single-gene options from the post-plot adjustments
+        const plotBySeries = document.querySelector(".js-tsne-plot-by-series");
+        const skipGenePlot = document.querySelector(".js-tsne-skip-gene-plot");
+        const twoWayPalette = document.querySelector(".js-tsne-two-way-palette");
+        for (const targetElt of [plotBySeries, skipGenePlot, twoWayPalette]) {
+            targetElt.closest(".is-justify-content-space-between").remove();
+        }
+
+        document.querySelector(".js-tsne-max-columns").disabled = false;
+
+        loadColorscaleSelect(true, true);
+    }
+
+    /**
+     * Populates the plot configuration based on various elements and values.
+     */
+    populatePlotConfig() {
+        this.plotConfig = {};   // Reset plot config
+
+        for (const classElt in this.classElt2Prop) {
+            this.plotConfig[this.classElt2Prop[classElt]] = getPlotConfigValueFromClassName(classElt)
+        }
+
+        // Get order
+        this.plotConfig["order"] = getPlotOrderFromSortable();
+
+        // Filtered observation groups
+        this.plotConfig["obs_filters"] = facetWidget?.filters || {};
+        if (Object.keys(this.plotConfig["obs_filters"]).length === 0) {
+            this.plotConfig["obs_filters"] = null;
+        }
+
+        // Get colors
+        const colorElts = document.getElementsByClassName("js-plot-color");
+        const colorSeries = document.getElementById("colorize-legend-by-post").textContent;
+        if (colorSeries && colorElts.length) {
+            this.plotConfig["colors"] = {};
+            [...colorElts].map((field) => {
+                const group = field.id.replace("-color", "");
+                this.plotConfig["colors"][group] = field.value;
+            })
+        }
+
+        // If user did not want to have a colorized annotation, ensure it does not get passed to the scanpy code
+        if (!(colorSeries)) {
+            this.plotConfig["max_columns"] = null;
+            this.plotConfig["horizontal_legend"] = false;
+        }
+
+        // If override marker size is not checked, ensure it does not get passed to the scanpy code
+        if (!(document.getElementById("override-marker-size-post").checked)) {
+            this.plotConfig["marker_size"] = null;
+        }
+
+    }
+
+    /**
+     * Sets up the event for copying parameter values.
+     * @returns {Promise<void>} A promise that resolves when the event setup is complete.
+     */
+    async setupParamValueCopyEvent() {
+        //pass
+    }
+
+    /**
+     * Sets up plot-specific events.
+     * @returns {Promise<void>} A promise that resolves when the setup is complete.
+     */
+    async setupPlotSpecificEvents() {
+        await setupScanpyOptions();
+    }
+
+}
+
 const adjustGeneTableLabels = (plotType) => {
     const geneX = document.getElementById("tbl-gene-x");
     const geneY = document.getElementById("tbl-gene-y");
@@ -923,6 +1156,8 @@ const curatorSpecificPlotStyle = (plotType) => {
         return new GenesAsAxisHandler(plotType);
     } else if (genesAsDataPlots.includes(plotType)) {
         return new GenesAsDataHandler(plotType);
+    } else if (scanpyPlots.includes(plotType)) {
+        return new ScanpyHandler(plotType);
     } else {
         return null;
     }
@@ -1011,6 +1246,32 @@ const fetchMgPlotlyData = async (datasetId, analysis, plotType, plotConfig)  => 
 
         logErrorInConsole(error);
         const msg = "Could not create plot for this dataset and parameters. Please contact the gEAR team."
+        createToast(msg);
+        throw new Error(msg);
+    }
+}
+
+/**
+ * Fetches the multigene TSNE image for a given dataset, analysis, plot type, and plot configuration.
+ *
+ * @param {string} datasetId - The ID of the dataset.
+ * @param {string} analysis - The analysis type.
+ * @param {string} plotType - The type of plot.
+ * @param {object} plotConfig - The configuration for the plot.
+ * @returns {Promise<object>} - The fetched data.
+ * @throws {Error} - If there is an error fetching the data or creating the plot image.
+ */
+const fetchMgTsneImage = async (datasetId, analysis, plotType, plotConfig) => {
+    // NOTE: gene_symbol already passed to plotConfig
+    try {
+        const data = await apiCallsMixin.fetchMgTsneImage(datasetId, analysis, plotType, plotConfig);
+        if (data?.success < 1) {
+            throw new Error (data?.message ? data.message : "Unknown error.")
+        }
+        return data;
+    } catch (error) {
+        logErrorInConsole(error);
+        const msg = "Could not create plot image for this dataset and parameters. Please contact the gEAR team."
         createToast(msg);
         throw new Error(msg);
     }
@@ -1140,6 +1401,139 @@ const saveWeightedGeneCart = () => {
     };
 
 	gc.save(updateUIAfterGeneCartSaveSuccess, updateUIAfterGeneCartSaveFailure);
+}
+
+/**
+ * Sets up the options for Scanpy analysis.
+ * @returns {Promise<void>} A promise that resolves when the setup is complete.
+ */
+const setupScanpyOptions = async () => {
+    const analysisId = getAnalysisId();
+    const plotType = getSelect2Value(plotTypeSelect);
+    try {
+        ({obs_columns: allColumns, obs_levels: levels} = await curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
+    } catch (error) {
+        document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
+        return;
+    }
+
+    // Filter out values we don't want of "levels", like "colors"
+    allColumns = allColumns.filter((col) => !col.includes("_colors"));
+    for (const key in levels) {
+        if (key.includes("_colors")) {
+            delete levels[key];
+        }
+    }
+
+    if (!allColumns.length) {
+        document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
+        createToast("No metadata columns found in dataset. Cannot create a plot. Please choose another analysis or choose another dataset.");
+        return;
+    }
+
+    catColumns = Object.keys(levels);
+
+    let xDefaultOption = null;
+    let yDefaultOption = null;
+
+    // If these exist, make the default option
+    switch (plotType) {
+        case "mg_pca_static":
+            xDefaultOption = "X_pca_1";
+            yDefaultOption = "X_pca_2";
+            break;
+        case "mg_tsne_static":
+            xDefaultOption = "X_tsne_1";
+            yDefaultOption = "X_tsne_2";
+            break;
+        case "mg_umap_static":
+            xDefaultOption = "X_umap_1";
+            yDefaultOption = "X_umap_2";
+            break;
+    }
+
+    updateSeriesOptions("js-tsne-x-axis", allColumns, true, xDefaultOption);
+    updateSeriesOptions("js-tsne-y-axis", allColumns, true, yDefaultOption);
+    updateSeriesOptions("js-tsne-colorize-legend-by", allColumns, false);
+
+    const colorizeLegendBy = document.getElementsByClassName("js-tsne-colorize-legend-by");
+    const horizontalLegend = document.getElementsByClassName("js-tsne-horizontal-legend");
+
+    // Do certain things if the chosen annotation series is categorical or continuous
+    for (const elt of colorizeLegendBy) {
+        elt.addEventListener("change", (event) => {
+            for (const targetElt of [...horizontalLegend]) {
+                targetElt.disabled = true;
+                // If colorized legend is continuous, we cannot plot by group
+                // So all dependencies need to be disabled.
+                if ((catColumns.includes(event.target.value))) {
+                    targetElt.disabled = false;
+                    disableCheckboxLabel(targetElt, false);
+                }
+            }
+        });
+
+        //
+        elt.addEventListener("change", (event) => {
+            // if series is empty or not categorical, remove color picker
+            if ((catColumns.includes(event.target.value))) {
+                renderColorPicker(event.target.value);
+                return;
+            }
+            const colorsContainer = document.getElementById("colors-container");
+            const colorsSection = document.getElementById("colors-section");
+            colorsSection.classList.add("is-hidden");
+            colorsContainer.replaceChildren();
+            return;
+        })
+    }
+
+    // Ensure that the same series is not selected for both x-axis and y-axis (plot would be meaningless)
+    for (const classElt of [...document.getElementsByClassName("js-tsne-x-axis"), ...document.getElementsByClassName("js-tsne-y-axis")]) {
+        // if x-axis series changes, disable that option in y-axis series, and vice versa
+        classElt.addEventListener("change", (event) => {
+            const series = event.target.value;
+            if (!series) {
+                return;
+            }
+
+            const otherClass = event.target.classList.contains("js-tsne-x-axis") ? "js-tsne-y-axis" : "js-tsne-x-axis";
+
+            for (const otherClassElt of [...document.getElementsByClassName(otherClass)]) {
+                // enable all series
+                for (const opt of otherClassElt.options) {
+                    opt.removeAttribute("disabled");
+                }
+                // disable selected series in other series
+                const opt = otherClassElt.querySelector(`option[value="${series}"]`);
+                opt.setAttribute("disabled", "disabled");
+                // If this option was selected, unselect it
+                if (otherClassElt.value === series) {
+                    otherClassElt.value = "";
+                }
+            }
+        });
+    }
+
+    // Trigger event to enable plot button (in case we switched between plot types, since the HTML vals are saved)
+    if (document.getElementById("x-axis-series").value) {
+        trigger(document.getElementById("x-axis-series"), "change");
+    }
+    if (document.getElementById("y-axis-series").value) {
+        trigger(document.getElementById("y-axis-series"), "change");
+    }
+
+    // If override marker size is checked, enable the marker size field
+    const overrideMarkerSize = document.getElementsByClassName("js-tsne-override-marker-size");
+    const markerSize = document.getElementsByClassName("js-tsne-marker-size");
+    for (const elt of overrideMarkerSize) {
+        elt.addEventListener("change", (event) => {
+            for (const targetElt of markerSize) {
+                targetElt.disabled = event.target.checked ? false : true;
+            }
+        });
+    }
+
 }
 
 /**

@@ -7,7 +7,7 @@ const urlParams = new URLSearchParams(window.location.search);
 
 // Handle unhandled promise rejections (general catch-all for anything that wasn't caught)
 // https://developer.mozilla.org/en-US/docs/Web/API/Window/unhandledrejection_event
-window.addEventListener("unhandledrejection", function (event) {
+window.addEventListener("unhandledrejection", (event) => {
     createToast("Something went wrong. Please contact the gEAR team and provide steps to reproduce.");
 });
 
@@ -882,8 +882,8 @@ const apiCallsMixin = {
      * @returns {Promise<object>} - The aggregated data.
      */
     async fetchAggregations(datasetId, analysisId, filters) {
-        const payload = {session_id: this.sessionId, dataset_id: datasetId, analysis_id: analysisId, filters};
-        const {data} = await axios.post(`/api/h5ad/${datasetId}/aggregations`, payload);
+        const payload = {dataset_id: datasetId, analysis_id: analysisId, filters};
+        const {data} = await axios.post(`/api/h5ad/${datasetId}/aggregations`, payload)
         return data;
     },
     /**
@@ -927,8 +927,8 @@ const apiCallsMixin = {
      * Fetches all datasets asynchronously.
      * @returns {Promise<any>} The fetched data.
      */
-    async fetchAllDatasets() {
-        const payload = {session_id: this.sessionId};
+    async fetchAllDatasets(shareId) {
+        const payload = {session_id: this.sessionId, share_id: shareId};
         const {data} = await axios.post("cgi/get_h5ad_dataset_list.cgi", convertToFormData(payload));
         return data;
     },
@@ -1299,6 +1299,21 @@ const apiCallsMixin = {
         // NOTE: gene_symbol should already be already passed to plotConfig
         const payload = { ...plotConfig, plot_type: plotType, analysis, colorblind_mode: this.colorblindMode };
         const {data} = await axios.post(`/api/plot/${datasetId}/tsne`, payload, otherOpts);
+        return data;
+    },
+    /**
+     * Fetches the multigene TSNE image for a given dataset, analysis, plot type, plot configuration, and other options.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {string} analysis - The analysis type.
+     * @param {string} plotType - The type of plot.
+     * @param {object} plotConfig - The plot configuration.
+     * @param {object} [otherOpts={}] - Additional options for the request.
+     * @returns {Promise<any>} - A promise that resolves to the fetched data.
+     */
+    async fetchMgTsneImage(datasetId, analysis, plotType, plotConfig, otherOpts={}) {
+        // NOTE: gene_symbol should already be already passed to plotConfig
+        const payload = { ...plotConfig, plot_type: plotType, analysis, colorblind_mode: this.colorblindMode };
+        const {data} = await axios.post(`/api/plot/${datasetId}/mg_tsne`, payload, otherOpts);
         return data;
     },
     /**

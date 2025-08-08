@@ -7,6 +7,7 @@ For the given layout, a single-gene grid and a multi-gene grid are generated.
 
 const plotlyPlots = ["bar", "line", "scatter", "tsne/umap_dynamic", "violin"];  // "tsne_dynamic" is a legacy option
 const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];   // "tsne" is a legacy option
+const mgScanpyPlots = ["mg_pca_static", "mg_tsne_static", "mg_umap_static"];
 
 // Epiviz overrides the <script> d3 version when it loads so we save as a new variable to preserve it
 const new_d3 = d3;
@@ -794,7 +795,7 @@ class DatasetTile {
         const dropdownContent = dropdownMenu.querySelector(".dropdown-content");
         const dropdownItems = dropdownContent.querySelectorAll('.dropdown-item');
 
-        const datasetId = dataset.id;
+        const shareId = dataset.share_id;
         const pubmedId = dataset.pubmed_id;
         const geoId = dataset.geo_id;
         const hasTarball = dataset.has_tarball;
@@ -853,7 +854,7 @@ class DatasetTile {
                 case "single-cell":
                     // Redirect to single-cell analysis workbench
                     if (hasH5ad) {
-                        const url = `./sc_workbench.html?dataset_id=${datasetId}`;
+                        const url = `./sc_workbench.html?share_id=${shareId}`;
                         //const url = `./sc_workbench.html?dataset_id=${datasetId}`;
                         item.href = url;
                     } else {
@@ -863,7 +864,7 @@ class DatasetTile {
                 case "compare":
                     // Redirect to comparison tool
                     if (hasH5ad) {
-                        const url = `./compare_datasets.html?dataset_id=${datasetId}`;
+                        const url = `./compare_datasets.html?share_id=${shareId}`;
                         item.href = url;
                     } else {
                         item.classList.add("is-hidden");
@@ -873,7 +874,7 @@ class DatasetTile {
                     // Redirect to single-gene curation tool
                     // TODO: It would be cool to pass in the gene symbol to the curation tool to auto-populate the gene symbol field
                     if (hasH5ad) {
-                        const url = `./dataset_curator.html?dataset_id=${datasetId}`;
+                        const url = `./dataset_curator.html?share_id=${shareId}`;
                         item.href = url;
                     } else {
                         item.classList.add("is-hidden");
@@ -883,7 +884,7 @@ class DatasetTile {
                     // Redirect to multi-gene curation tool
                     // TODO: It would be cool to pass in the gene symbols to the curation tool to auto-populate the gene symbol field
                     if (hasH5ad) {
-                        const url = `./multigene_curator.html?dataset_id=${datasetId}`;
+                        const url = `./multigene_curator.html?share_id=${shareId}`;
                         item.href = url;
                     } else {
                         item.classList.add("is-hidden");
@@ -893,7 +894,7 @@ class DatasetTile {
                     // Download dataset bundle
                     if (hasTarball && isDownloadable) {
                         try {
-                            const url = `./cgi/download_source_file.cgi?type=tarball&dataset_id=${datasetId}`;
+                            const url = `./cgi/download_source_file.cgi?type=tarball&share_id=${shareId}`;
                             item.href = url;
                         } catch (error) {
                             logErrorInConsole(error);
@@ -908,7 +909,7 @@ class DatasetTile {
                     // Download h5ad file
                     if (hasH5ad && isDownloadable) {
                         try {
-                            const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${datasetId}`;
+                            const url = `./cgi/download_source_file.cgi?type=h5ad&share_id=${shareId}`;
                             item.href = url;
                         } catch (error) {
                             logErrorInConsole(error);
@@ -923,7 +924,7 @@ class DatasetTile {
                     item.classList.add("is-hidden");
                     break;
                 default:
-                    console.warn(`Unknown dropdown item ${item.dataset.tool} for dataset ${datasetId}.`);
+                    console.warn(`Unknown dropdown item ${item.dataset.tool} for dataset ${shareId}.`);
                     break;
             }
 
@@ -1364,7 +1365,7 @@ class DatasetTile {
             if (plotlyPlots.includes(display.plot_type)) {
                 await this.renderPlotlyDisplay(display, otherOpts);
             } else if (scanpyPlots.includes(display.plot_type)) {
-                await this.renderScanpyDisplay(display, otherOpts);
+                await this.renderScanpyDisplay(display, false, otherOpts);
 
                 // Determine how "download_png" is handled for scanpy plots
                 const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-png"]`);
@@ -1380,7 +1381,7 @@ class DatasetTile {
                     newDownloadPNG.classList.remove("is-hidden");
                     newDownloadPNG.addEventListener("click", async (event) => {
                         // get the download URL
-                        await this.getScanpyPNG(display);
+                        await this.getScanpyPNG(display, false);
                     });
 
                 }
@@ -1395,6 +1396,29 @@ class DatasetTile {
                 if (this.dataset.dtype === "spatial") {
                     // Matplotlib-based display for spatial datasets
                     await this.renderSpatialScanpyDisplay(null, null);
+                } else if (mgScanpyPlots.includes(display.plot_type)) {
+                    // Render multi-gene scanpy display
+                    await this.renderScanpyDisplay(display, true, otherOpts);
+
+                    // Determine how "download_png" is handled for scanpy plots
+                    const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-png"]`);
+                    if (downloadPNG) {
+
+                        // If I use the existing "download image" button after switching displays, all previous tsne-static displays will
+                        // also be downloaded becuase event listeners are not removed. So, I will remove the button and re-add it.
+                        // Source -> https://stackoverflow.com/a/9251864
+
+                        const newDownloadPNG = downloadPNG.cloneNode(true);
+                        downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
+
+                        newDownloadPNG.classList.remove("is-hidden");
+                        newDownloadPNG.addEventListener("click", async (event) => {
+                            // get the download URL
+                            await this.getScanpyPNG(display, true);
+                        });
+
+                    }
+
                 } else {
                     await this.renderMultiGeneDisplay(display, otherOpts);
                 }
@@ -1589,7 +1613,6 @@ class DatasetTile {
         const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout");
         Plotly.relayout(plotlyPreview.id , customLayout);
 
-
     }
 
     /**
@@ -1642,11 +1665,12 @@ class DatasetTile {
      * Renders the Scanpy display on the tile grid.
      *
      * @param {Object} display - The display object containing the dataset and plot information.
+     * @param {boolean} [isMultigene=false] - Indicates if the display is for multiple genes.
      * @param {Object} otherOpts - Additional options for rendering the display.
      * @returns {Promise<void>} - A promise that resolves when the display is rendered.
      * @throws {Error} - If there is an error fetching the image data or if the image data is not available.
      */
-    async renderScanpyDisplay(display, otherOpts) {
+    async renderScanpyDisplay(display, isMultigene=false, otherOpts) {
 
         const datasetId = display.dataset_id;
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
@@ -1669,7 +1693,9 @@ class DatasetTile {
         tsnePreview.id = `tile-${this.tile.tileId}-tsne-preview`;
         plotContainer.append(tsnePreview);
 
-        const data = await apiCallsMixin.fetchTsneImage(datasetId, analysisObj, plotType, plotConfig, otherOpts);
+        const func = isMultigene ? apiCallsMixin.fetchMgTsneImage : apiCallsMixin.fetchTsneImage;
+
+        const data = await func(datasetId, analysisObj, plotType, plotConfig, otherOpts);
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
@@ -1693,15 +1719,17 @@ class DatasetTile {
      *
      * @async
      * @param {Object} display - The display object containing information about the dataset and plot configuration.
+     * @param {boolean} [isMultigene=false] - Indicates if the display is for multiple genes.
      * @returns {Promise<void>} - A promise that resolves when the PNG image is downloaded.
      * @throws {Error} - If the image retrieval is unsuccessful or encounters an unknown error.
      */
-    async getScanpyPNG(display) {
+    async getScanpyPNG(display, isMultigene=false) {
         const datasetId = display.dataset_id;
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
         const analysisObj = display.analysis_id ? {id: display.analysis_id} : display.analysis || null;
         const plotType = display.plot_type;
-        const geneSymbol = display.plotly_config.gene_symbol;
+        const geneSymbol = isMultigene ? "multigene" : display.plotly_config.gene_symbol;
+        const shareId = this.dataset.share_id;
 
         // deep copy plotly_config to avoid modifying the original
         const plotConfig = JSON.parse(JSON.stringify(display.plotly_config));
@@ -1713,7 +1741,9 @@ class DatasetTile {
             if (plotConfig.grid_spec === "auto") delete plotConfig.grid_spec;   // single dataset grid spec
         }
 
-        const data = await apiCallsMixin.fetchTsneImage(datasetId, analysisObj, plotType, plotConfig);
+        const func = isMultigene ? apiCallsMixin.fetchMgTsneImage : apiCallsMixin.fetchTsneImage;
+
+        const data = await func(datasetId, analysisObj, plotType, plotConfig);
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
@@ -1732,7 +1762,7 @@ class DatasetTile {
         hiddenLink.classList.add("is-hidden");
 
         // download URL
-        hiddenLink.download = `${this.dataset.id}_${geneSymbol}_${display.plot_type}.png`;
+        hiddenLink.download = `${shareId}_${geneSymbol}_${display.plot_type}.png`;
         hiddenLink.href = download;
 
         hiddenLink.setAttribute('target', '_blank');

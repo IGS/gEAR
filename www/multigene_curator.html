@@ -207,6 +207,11 @@
                       <option value="quadrant" id="quadrant-opt">Quadrant</option>
                       <option value="volcano" id="volcano-opt">Volcano</option>
                     </optgroup>
+                    <optgroup label="Embeddings (non-interactive)">
+                      <option value="mg_pca_static" id="mg-pca-static-opt">PCA</option>
+                      <option value="mg_tsne_static" id="mg-tsne-static-opt">tSNE</option>
+                      <option value="mg_umap_static" id="mg-umap-static-opt">UMAP</option>
+                    </optgroup>
                   </select>
                 </div>
               </div>
@@ -366,17 +371,28 @@
                 </div>
               </section>
 
-              <section id="order-section" class="my-3 is-hidden">
-                <h5 class="title is-5 is-clickable js-collapsable-trigger">
-                  <span>Change sort order</span>
-                  <span class="icon is-pulled-right">
-                    <i class="mdi mdi-chevron-down"></i>
-                  </span>
-                </h5>
-                <div class="is-hidden js-collapsable-content">
-                  <p class="help">Drag-and-drop to determine order of plotting</p>
-                  <div id="order-container" class="container"></div>
-                </div>
+              <section id="order-and-colors">
+                <section id="order-section" class="my-3 is-hidden">
+                  <h5 class="title is-5 is-clickable js-collapsable-trigger">
+                    <span>Change sort order</span>
+                    <span class="icon is-pulled-right">
+                      <i class="mdi mdi-chevron-down"></i>
+                    </span>
+                  </h5>
+                  <div class="is-hidden js-collapsable-content">
+                    <p class="help">Drag-and-drop to determine order of plotting</p>
+                    <div id="order-container" class="container"></div>
+                  </div>
+                </section>
+                <section id="colors-section" class="my-3 is-hidden">
+                  <h5 class="title is-5 is-clickable js-collapsable-trigger">
+                    <span>Change colors</span>
+                    <span class="icon is-pulled-right">
+                      <i class="mdi mdi-chevron-down"></i>
+                    </span>
+                  </h5>
+                  <div id="colors-container" class="container is-hidden js-collapsable-content"></div>
+                </section>
               </section>
             </div>
           </div>
@@ -525,6 +541,7 @@
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
   <script src="js/vendor/js.cookie.js"></script>
+  <script src="https://d3js.org/d3.v5.min.js"></script>
   <script src="https://cdn.plot.ly/plotly-2.26.0.min.js" charset="utf-8"></script>
 
   <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->

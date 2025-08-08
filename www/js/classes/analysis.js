@@ -182,7 +182,8 @@ class Analysis {
         // create URL parameters
         const params = {
             session_id: this.analysisSessionId,
-            dataset_id: this.dataset.id,
+            //dataset_id: this.dataset.id,
+            share_id: this.dataset.share_id,
             analysis_id: this.id,
             type: "h5ad",
         }
@@ -195,7 +196,7 @@ class Analysis {
             const downloadUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = downloadUrl;
-            a.download = `${this.dataset.id}.${this.id}.h5ad`;
+            a.download = `${this.dataset.share_id}.${this.id}.h5ad`;
             a.click();
         } catch (error) {
             console.error("Error downloading analysis h5ad", this);

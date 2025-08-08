@@ -30,11 +30,32 @@ def download_file(file_path, file_name):
 
 def main():
     form = cgi.FieldStorage()
-    dataset_id = html.escape(form.getvalue('dataset_id'))
+    dataset_id = html.escape(form.getvalue('dataset_id', ""))
+    share_id = html.escape(form.getvalue("share_id", ""))
     analysis_id = html.escape(form.getvalue('analysis_id', ""))
     session_id = html.escape(form.getvalue('session_id', ""))
-    dtype = html.escape(form.getvalue('type'))
-    dataset = geardb.Dataset(id=dataset_id)
+    dtype = html.escape(form.getvalue('type', ""))
+
+    if not dataset_id and not share_id:
+        raise ValueError("Either dataset ID or share ID must be provided")
+
+    if not dtype:
+        raise ValueError("Type must be provided (tarball or h5ad)")
+
+    # if share ID is passed, retrieve the dataset by share ID
+    if share_id:
+        dataset = geardb.get_dataset_by_share_id(share_id, False)
+        if not dataset:
+            raise FileNotFoundError(f"Dataset not found for the provided share ID {share_id}")
+        dataset_id = dataset.id
+
+    elif dataset_id:
+        # Legacy support
+        dataset = geardb.get_dataset_by_id(dataset_id, False)
+        if not dataset:
+            raise FileNotFoundError(f"Dataset not found for the provided dataset ID {dataset_id}")
+        share_id = dataset.share_id
+
     tarball_path = dataset.get_tarball_path()
     h5ad_path = dataset.get_file_path()
 
@@ -54,9 +75,9 @@ def main():
           h5ad_path = ""
 
     if dtype == 'tarball' and os.path.isfile(tarball_path):
-        download_file(tarball_path, f"{dataset_id}.tar.gz")
+        download_file(tarball_path, f"{share_id}.tar.gz")
     elif dtype == 'h5ad' and os.path.isfile(h5ad_path):
-        download_file(h5ad_path, f"{dataset_id}.h5ad")
+        download_file(h5ad_path, f"{share_id}.h5ad")
     else:
         raise FileNotFoundError("File not found")
 

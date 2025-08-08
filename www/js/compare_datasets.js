@@ -113,14 +113,66 @@ const datasetTree = new DatasetTree({
 		}
 
 		// Update compare series options
-		facetWidget = await createFacetWidget(datasetId, null, {}); // Initial fetching of categorical columns
-		const catColumns = facetWidget.aggregations.map((agg) => agg.name);
-		updateSeriesOptions("js-compare", catColumns);
-
-		compareSeriesElt.parentElement.classList.remove("is-loading");
+		try {
+			facetWidget = await createFacetWidget(datasetId, null, {}); // Initial fetching of categorical columns
+			const catColumns = facetWidget.aggregations.map((agg) => agg.name);
+			updateSeriesOptions("js-compare", catColumns);
+		} catch (error) {
+			return
+		} finally {
+			compareSeriesElt.parentElement.classList.remove("is-loading");
+		}
 
     })
 });
+
+/**
+ * Activates a dataset in the dataset tree based on a URL parameter.
+ *
+ * This function checks if the specified URL parameter exists, optionally fetches additional
+ * dataset information using a provided function, and then activates the corresponding dataset
+ * node in the dataset tree. If the dataset cannot be found or accessed, a toast notification
+ * is displayed and an error is thrown.
+ *
+ * @async
+ * @param {string} paramName - The name of the URL parameter to look for.
+ * @param {function} [fetchInfoFn] - Optional async function to fetch dataset info using the parameter value.
+ *        Should return a Promise that resolves to an array of objects containing a `dataset_id` property.
+ * @throws {Error} If the dataset cannot be accessed or found in the dataset tree.
+ */
+const activateDatasetFromParam = async (paramName, fetchInfoFn) => {
+    if (!urlParams.has(paramName)) {
+        return;
+    }
+    const paramValue = urlParams.get(paramName);
+    let linkedDatasetId;
+    try {
+        if (fetchInfoFn) {
+            const data = await fetchInfoFn(paramValue);
+            linkedDatasetId = data.datasets[0].id;
+            if (!linkedDatasetId) {
+                throw new Error(`Accessible dataset for ${paramName} ${paramValue} was not found`);
+            }
+        } else {
+            linkedDatasetId = paramValue;
+        }
+    } catch (error) {
+        createToast(error.message);
+        throw new Error(error);
+    }
+
+    try {
+        // find DatasetTree node and trigger "activate"
+        const foundNode = datasetTree.findFirst(e => e.data.dataset_id === linkedDatasetId);
+        foundNode.setActive(true, {focusTree:true});
+        datasetTree.tree.setActiveNode(foundNode);
+        datasetTree.selectCallback({node: foundNode});  // manually trigger the "activate" event.
+        datasetId = linkedDatasetId;
+    } catch (error) {
+        createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset`);
+        throw new Error(error);
+    }
+}
 
 const adjustGeneTableLabels = () => {
     const geneFoldchanges = document.getElementById("tbl-gene-foldchanges");
@@ -242,9 +294,13 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
 	document.getElementById("facet-content").classList.add("is-hidden");
 	document.getElementById("selected-facets").classList.add("is-hidden");
 
-    const {aggregations, total_count:totalCount} = await fetchAggregations(datasetId, analysisId, filters);
-    document.getElementById("num-selected").textContent = totalCount;
-
+	try {
+    	const {aggregations, total_count:totalCount} = await fetchAggregations(datasetId, analysisId, filters);
+    	document.getElementById("num-selected").textContent = totalCount;
+	} catch (error) {
+		document.getElementById("num-selected").textContent = "0";
+		throw error;
+	}
 
     const facetWidget = new FacetWidget({
         aggregations,
@@ -361,6 +417,8 @@ const fetchAggregations = async (datasetId, analysisId, filters) => {
         return {aggregations, total_count};
     } catch (error) {
         logErrorInConsole(error);
+		createToast(error.message);
+		throw error
     }
 }
 
@@ -371,17 +429,6 @@ const fetchDatasetComparison = async (datasetId, filters, compareKey, conditionX
 		const msg = "Could not fetch dataset comparison. Please contact the gEAR team."
 		throw new Error(msg);
 	}
-}
-
-const fetchDatasets = async () => {
-    try {
-        return await apiCallsMixin.fetchAllDatasets();
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch datasets. Please contact the gEAR team."
-        createToast(msg);
-        throw new Error(msg);
-    }
 }
 
 const getComparisons = async (event) => {
@@ -482,12 +529,12 @@ const highlightTableGenes = (searchedGenes=[]) => {
 }
 
 /* Transform and load dataset data into a "tree" format */
-const loadDatasetTree = async () => {
+const loadDatasetTree = async (shareId) => {
     const userDatasets = [];
     const sharedDatasets = [];
     const domainDatasets = [];
     try {
-        const datasetData = await apiCallsMixin.fetchAllDatasets();
+        const datasetData = await apiCallsMixin.fetchAllDatasets(shareId);
 
         let counter = 0;
 
@@ -1363,25 +1410,23 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 
 	try {
-		await Promise.all([
-			loadDatasetTree(),
-			fetchGeneCartData()
-		]);
         // If brought here by the "gene search results" page, curate on the dataset ID that referred us
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has("dataset_id")) {
-            const linkedDatasetId = urlParams.get("dataset_id");
-            try {
-                // find DatasetTree node and trigger "activate"
-                const foundNode = datasetTree.findFirst(e => e.data.dataset_id === linkedDatasetId);
-                foundNode.setActive(true);
-                datasetTree.tree.setActiveNode(foundNode);
-                datasetTree.selectCallback({node: foundNode});  // manually trigger the "activate" event.
-                datasetId = linkedDatasetId;
-            } catch (error) {
-                createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset`);
-                throw new Error(error);
-            }
+        const shareId = urlParams.get("share_id");
+
+		await Promise.all([
+			loadDatasetTree(shareId),
+			fetchGeneCartData()
+		]);
+        // Usage inside handlePageSpecificLoginUIUpdates
+        if (urlParams.has("share_id")) {
+            return await activateDatasetFromParam("share_id", async (shareId) =>
+                await apiCallsMixin.fetchDatasetListInfo({permalink_share_id: shareId})
+            );
+        } else if (urlParams.has("dataset_id")) {
+    		// Legacy support for dataset_id
+
+            await activateDatasetFromParam("dataset_id");
         }
 	} catch (error) {
 		logErrorInConsole(error);

@@ -5,6 +5,7 @@ import re
 import sys
 
 import geardb
+import numpy as np
 import pandas as pd
 import plotly.express.colors as pxc
 from flask import request
@@ -230,10 +231,8 @@ class PlotlyData(Resource):
 
             # convert adata.X to a dense matrix if it is sparse
             # This prevents potential downstream issues
-            try:
-                selected.X = selected.X.todense()
-            except Exception:
-                pass
+            selected.X = np.array(selected.X)
+
 
             # Filter by obs filters
             if filters:

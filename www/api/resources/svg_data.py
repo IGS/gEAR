@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 
 import geardb
 import numpy as np
@@ -6,8 +7,8 @@ import pandas as pd
 import scanpy as sc
 from flask import request
 from flask_restful import Resource
-
 from gear.plotting import PlotError
+
 from .common import create_projection_adata
 
 
@@ -43,10 +44,8 @@ class SvgData(Resource):
         adata = sc.read_h5ad(h5_path)
         # convert adata.X to a dense matrix if it is sparse
         # This prevents issues with the min/max functions
-        try:
-            adata.X = adata.X.todense()
-        except:
-            pass
+        adata.X = np.array(adata.X)
+
 
         if projection_id:
             try:

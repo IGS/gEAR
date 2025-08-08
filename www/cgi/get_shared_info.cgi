@@ -6,7 +6,7 @@ display with selected gene information. If so, returns the gene information.
 
 Also returns some basic dataset information for display for a dataset share.
 
-If only a layout share is given, the first dataset in the layout is retrieved 
+If only a layout share is given, the first dataset in the layout is retrieved
 and information is returned for that dataset.
 
 Returns a JSON object with the following
@@ -19,14 +19,16 @@ Returns a JSON object with the following
 }
 """
 
-import cgi, json
-import os, sys
+import cgi
 import configparser
 import json
+import os
+import sys
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+
 
 def main():
     print('Content-Type: application/json\n\n')
@@ -40,9 +42,9 @@ def main():
     dataset = None
     owner = None
 
-    result = { 'gene_symbol': None, 'dataset_label': None, 
+    result = { 'gene_symbol': None, 'dataset_label': None,
               'layout_label': None, 'owner_name': None }
-    
+
     if dataset_share_id and dataset_share_id != 'null':
         dataset = geardb.get_dataset_by_share_id(share_id=dataset_share_id)
 
@@ -57,10 +59,14 @@ def main():
             owner = geardb.get_user_by_id(layout.user_id)
             layout.get_members()
 
-            # just get the first dataset in the layout and use that one for search
-            for layout_display in layout.members:
-                dataset = geardb.get_dataset_by_id(id=layout_display.dataset_id)
-                break
+            if not layout.members:
+                # If the layout has no members, we can't get a dataset from it.
+                dataset = None
+            else:
+                # just get the first dataset in the layout and use that one for search
+                for layout_display in layout.members:
+                    dataset = geardb.get_dataset_by_id(d_id=layout_display.dataset_id)
+                    break
 
     if owner:
         result['owner_name'] = owner.user_name
@@ -76,7 +82,7 @@ def main():
 
             except json.JSONDecodeError:
                 display_json = {}
-               
+
     print(json.dumps(result))
 
 if __name__ == '__main__':
