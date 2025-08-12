@@ -57,6 +57,7 @@ NOTE: Some of the packages will indirectly install dask-expr, which is currently
       datashader==0.18.0 \
       Flask==3.0.0 \
       Flask-RESTful==0.3.9 \
+      gosling[all]==0.3.0 \
       gunicorn \
       h5py==3.10.0 \
       jupyterlab==4.0.5 \

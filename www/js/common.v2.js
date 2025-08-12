@@ -1232,7 +1232,7 @@ const apiCallsMixin = {
      */
     async fetchProjection(datasetId, projectionId, patternSource, algorithm, gctype, zscore, otherOpts={}) {
         const payload = { session_id: this.sessionId, projection_id: projectionId, genecart_id: patternSource, algorithm, scope: gctype, zscore };
-        const {data} = await axios.post(`api/projectr/${datasetId}`, payload, otherOpts);
+        const {data} = await axios.post(`/api/projectr/${datasetId}`, payload, otherOpts);
         return data;
     },
 

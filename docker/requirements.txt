@@ -10,6 +10,7 @@ datashader==0.18.0
 diffxpy @ git+https://github.com/theislab/diffxpy.git@7609ea935936e3739fc4c71b75c8ee8ca57f51ea
 Flask==3.0.0
 Flask-RESTful==0.3.9
+gosling[all]==0.3.0
 gunicorn
 h5py==3.10.0
 jupyterlab==4.0.5
