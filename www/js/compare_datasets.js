@@ -1433,3 +1433,5 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 	}
 
 };
+
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);

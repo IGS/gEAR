@@ -613,8 +613,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 	} catch (error) {
 		logErrorInConsole(error);
 	}
-
 }
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
 
 /* Event listeners for elements already loaded */
 

@@ -36,7 +36,7 @@ document.getElementById("update-password-toggle").addEventListener("click", () =
     document.getElementById("update-password-toggle").classList.add("is-hidden");
     document.getElementById("password-update-section").classList.remove("is-hidden");
     document.getElementById("new-password").focus();
-    passwordUpdateWanted = true; 
+    passwordUpdateWanted = true;
 });
 
 // submit the form
@@ -115,3 +115,4 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         document.getElementById("repeat-password").value = "";
     }, 500);
 };
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);

@@ -69,6 +69,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         document.getElementById('initial-form').classList.remove('is-hidden');
     }
 }
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
 
 async function sendVerificationEmail(verification_uuid) {
     console.debug("Sending verification email");

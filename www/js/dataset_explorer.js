@@ -2933,6 +2933,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 
 };
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
 
 document.getElementById("search-clear").addEventListener("click", async () => {
     document.getElementById("search-terms").value = "";

@@ -215,5 +215,5 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     if (CURRENT_USER.layout_share_id) {
         selectDatasetCollection(CURRENT_USER.layout_share_id);
     }
-
 }
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);

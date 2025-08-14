@@ -1902,3 +1902,4 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     curatorSpecificOnLoad();
 
 };
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);

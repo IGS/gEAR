@@ -445,6 +445,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         }
     }
 }
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
 
 /**
  * We need to maintain a few data structures with the selected and manually entered genes,

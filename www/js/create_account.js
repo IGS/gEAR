@@ -65,10 +65,6 @@ window.onload=function() {
     });
 };
 
-const handlePageSpecificLoginUIUpdates = async (event) => {
-    // Nothing to do here at the moment
-}
-
 async function createAccount(verification_uuid) {
     // disable the button so it's not clicked again
     document.getElementById('btn-email-verification-submit').classList.add('is-loading');

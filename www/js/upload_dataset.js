@@ -1,5 +1,5 @@
 /*
- 
+
 */
 
 'use strict';
@@ -17,7 +17,7 @@ let required_metadata_fields = ['metadata-title', 'metadata-summary', 'metadata-
     'metadata-taxon-id', 'metadata-organism'
 ];
 
-let optional_metadata_fields = ['metadata-contact-institute', 'metadata-platform-id', 
+let optional_metadata_fields = ['metadata-contact-institute', 'metadata-platform-id',
     'metadata-instrument', 'metadata-library-selection', 'metadata-library-source',
     'metadata-geo-id', 'metadata-library-strategy', 'metadata-pubmed-id'
 ];
@@ -33,7 +33,7 @@ window.onload=function() {
     // Add click listeners for all buttons of class 'format-selector'
     document.querySelectorAll('.format-selector').forEach((btn) => {
         btn.addEventListener('click', (event) => {
-                
+
             // Reset each as selectable
             document.querySelectorAll('.format-selector').forEach((element) => {
                 if (! element.disabled) {
@@ -56,20 +56,20 @@ window.onload=function() {
 
     document.getElementById('new-submission-toggle').addEventListener('click', (event) => {
         event.preventDefault();
-        
+
         document.getElementById('submissions-in-progress').classList.add('is-hidden');
         document.getElementById('submission-c').classList.remove('is-hidden');
     });
 
     document.getElementById('dataset-processing-submit').addEventListener('click', (event) => {
         event.preventDefault();
-        
+
         stepTo('finalize-dataset');
     });
 
     document.getElementById('dataset-curate-submit').addEventListener('click', (event) => {
         event.preventDefault();
-        
+
         let url = `/dataset_curator.html?dataset_id=${dataset_uid}`;
         window.location.href = url;
     });
@@ -150,7 +150,7 @@ window.onload=function() {
             document.getElementById('dataset-upload-status').classList.remove('is-hidden');
             return;
         }
-        
+
         // change submit button to spinner
         let button = document.getElementById('dataset-upload-submit');
         button.disabled = true;
@@ -316,6 +316,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         document.getElementById('not-logged-in-c').classList.remove('is-hidden');
     }
 }
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
 
 const getGeoData = async () => {
     const geo_id = document.getElementsByName('metadata-geo-id')[0].value;
@@ -385,7 +386,7 @@ const stepTo = (step) => {
     if (step === 'process-dataset') {
         // Check the status immediately, then set an interval to keep doing it.
         checkDatasetProcessingStatus();
-        
+
         setInterval(() => {
             if (processing_status !== 'complete' && processing_status !== 'error') {
                 checkDatasetProcessingStatus();
@@ -439,7 +440,7 @@ const loadUploadsInProgress = async () => {
                     if (row.dataset.datasetId) {
                         dataset_uid = row.dataset.datasetId;
                     }
-                     
+
                     // Do we want to dynamically load the next step or page refresh for it?
                     //  If dynamic we have to reset all the forms.
                     stepTo(step);
@@ -454,7 +455,7 @@ const loadUploadsInProgress = async () => {
                 row.addEventListener('click', (event) => {
                     // reset row to be the parent tr element
                     let row = event.target.closest('tr');
-                        
+
                     share_uid = row.dataset.shareId;
                     const dataset_id = row.dataset.datasetId;
                     deleteUploadInProgress(share_uid, dataset_id);
@@ -541,7 +542,7 @@ const uploadDataset = () => {
     formData.append('session_id', CURRENT_USER.session_id);
     formData.append('dataset_format', dataset_format);
     formData.append('dataset_file', document.getElementById('dataset-file-input').files[0]);
-    
+
     const xhr = new XMLHttpRequest();
     xhr.open('POST', './cgi/store_expression_dataset.cgi', true);
 
@@ -569,7 +570,7 @@ const uploadDataset = () => {
             // (called above) will run for a long time and be monitored separately
             setTimeout(() => {
                 stepTo('process-dataset');
-            }, 3000);            
+            }, 3000);
 
         } else {
             document.getElementById('dataset-upload-status-message').textContent = response.message;
@@ -632,7 +633,7 @@ const validateMetadataForm = () => {
         'metadata-library-strategy': 65535,
         'metadata-pubmed-id': 20
     };
-    
+
     for (const field in field_character_limits) {
         const element = document.getElementsByName(field)[0];
         if (element.value.length > field_character_limits[field]) {

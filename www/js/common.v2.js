@@ -5,6 +5,12 @@ let SITE_PREFS = null;
 // if certain legacy or shorthand URL parameters are passed, change the parameter to the new ones
 const urlParams = new URLSearchParams(window.location.search);
 
+// If a page wants to use this action, it can register a callback function
+let pageSpecificLoginUIUpdates = () => {};
+export const registerPageSpecificLoginUIUpdates = (fn) => {
+    pageSpecificLoginUIUpdates = fn;
+}
+
 // Handle unhandled promise rejections (general catch-all for anything that wasn't caught)
 // https://developer.mozilla.org/en-US/docs/Web/API/Window/unhandledrejection_event
 window.addEventListener("unhandledrejection", (event) => {
@@ -481,9 +487,9 @@ const handleLoginUIUpdates = () => {
         hideLoggedInElements();
         showNotLoggedInElements();
     }
-    document.querySelector("#navbar-login-controls").classList.remove("is-hidden");
 
-    trigger(document, handlePageSpecificLoginUIUpdates);
+    pageSpecificLoginUIUpdates();
+    document.querySelector("#navbar-login-controls").classList.remove("is-hidden");
 }
 
 /*************************************************************************************
@@ -1149,6 +1155,29 @@ const apiCallsMixin = {
         const {data} = await axios.post(`/cgi/get_metadata_from_geo.cgi`, convertToFormData(payload));
         return data;
     },
+
+    /**
+     * Fetches Gosling display data for a given dataset, gene symbol, and genome.
+     *
+     * @async
+     * @param {string} datasetId - The ID of the dataset to fetch data from.
+     * @param {string} geneSymbol - The gene symbol to query.
+     * @param {string} genome - The genome identifier.
+     * @param {boolean} [zoom=false] - Whether to enable zoom in the display.
+     * @param {object} [otherOpts={}] - Additional options for the request.
+     * @returns {Promise<Object>} The data returned from the Gosling display API.
+     */
+    async fetchGoslingDisplay(datasetId, geneSymbol, genome, zoom=false, otherOpts={}) {
+        const urlParams = new URLSearchParams();
+        urlParams.append('gene', geneSymbol);
+        urlParams.append('genome', genome);
+        urlParams.append('zoom', zoom);
+
+        // JSON is returned
+        const {data} = await axios.get(`/api/plot/${datasetId}/gosling?${urlParams.toString()}`, otherOpts);
+        return data;
+    },
+
     /**
      * Fetches H5ad info from the server.
      * @param {string} datasetId - The ID of the dataset.

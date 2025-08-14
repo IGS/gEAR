@@ -1560,8 +1560,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             await submitSearch();
         });
     }
-
 };
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
 
 // validate that #new-list-label input has a value
 document.getElementById("new-list-label").addEventListener("blur", (e) => {

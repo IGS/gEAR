@@ -200,6 +200,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
 }
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
 
 /**
  * Builds the state URL with the selected parameters.
