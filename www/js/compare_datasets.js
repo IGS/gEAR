@@ -1,5 +1,8 @@
 'use strict';
 
+import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
+import { fetchGeneCartData, geneCollectionState } from '../include/gene-collection-selector/gene-collection-selector.js';
+
 // SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 // This is meant to be a short-term solution until more people specify their data is transformed via the metadata
 const LOG10_TRANSFORMED_DATASETS = [
@@ -53,7 +56,7 @@ let selectedGeneData;
 let manuallyEnteredGenes = new Set();
 
 // imported from gene-collection-selector.js
-// let selected_genes = new Set();
+// let geneCollectionState.selectedGenes = new Set();
 
 // Storing user's plot text edits, so they can be restored if user replots
 let titleText = null;
@@ -200,9 +203,9 @@ const appendGeneTagButton = (geneTagElt) => {
     deleteBtnElt.classList.add("delete", "is-small");
     geneTagElt.appendChild(deleteBtnElt);
     deleteBtnElt.addEventListener("click", (event) => {
-        // Remove gene from selected_genes
+        // Remove gene from geneCollectionState.selectedGenes
         const gene = event.target.parentNode.textContent;
-		selected_genes.delete(gene);
+		geneCollectionState.selectedGenes.delete(gene);
 		event.target.parentNode.remove();
 
 		// Remove gene from manually entered genes textbox
@@ -210,7 +213,7 @@ const appendGeneTagButton = (geneTagElt) => {
 		document.getElementById("genes-manually-entered").value = Array.from(manuallyEnteredGenes).join(" ");
 
 		// Update graph
-		updatePlotAnnotations(Array.from(selected_genes).sort());
+		updatePlotAnnotations(Array.from(geneCollectionState.selectedGenes).sort());
 
         // Remove checkmark from gene lists dropdown
         const geneListLabel = document.querySelector(`#dropdown-content-genes .gene-item-label[text="${gene}"]`);
@@ -237,10 +240,10 @@ const chooseGenes = (event) => {
     const geneTagsElt = document.getElementById("gene-tags");
     geneTagsElt.replaceChildren();
 
-	if (selected_genes.size == 0) return;  // Do not trigger after initial population
+	if (geneCollectionState.selectedGenes.size == 0) return;  // Do not trigger after initial population
 
     // Update list of gene tags
-	const sortedGenes = Array.from(selected_genes).sort();
+	const sortedGenes = Array.from(geneCollectionState.selectedGenes).sort();
     for (const opt in sortedGenes) {
         const geneTagElt = document.createElement("span");
         geneTagElt.classList.add("tag", "is-primary", "mx-1");
@@ -252,7 +255,7 @@ const chooseGenes = (event) => {
     document.getElementById("gene-tags-c").classList.remove("is-hidden");
 
     // If more than 10 tags, hide the rest and add a "show more" button
-    if (selected_genes.size > 10) {
+    if (geneCollectionState.selectedGenes.size > 10) {
         const geneTags = geneTagsElt.querySelectorAll("span.tag");
         for (let i = 10; i < geneTags.length; i++) {
             geneTags[i].classList.add("is-hidden");
@@ -260,7 +263,7 @@ const chooseGenes = (event) => {
         // Add show more button
         const showMoreBtnElt = document.createElement("button");
         showMoreBtnElt.classList.add("tag", "button", "is-small", "is-primary", "is-light");
-        const numToDisplay = selected_genes.size - 10;
+        const numToDisplay = geneCollectionState.selectedGenes.size - 10;
         showMoreBtnElt.textContent = `+${numToDisplay} more`;
         showMoreBtnElt.addEventListener("click", (event) => {
             const geneTags = geneTagsElt.querySelectorAll("span.tag");
@@ -279,7 +282,7 @@ const chooseGenes = (event) => {
 const clearGenes = (event) => {
     document.getElementById("clear-genes-btn").classList.add("is-loading");
 	document.getElementById("gene-tags").replaceChildren();
-	selected_genes.clear();
+	geneCollectionState.selectedGenes.clear();
 	document.getElementById("dropdown-gene-list-cancel").click();	// clear the dropdown
 	// Remove gene from manually entered genes textbox
 	manuallyEnteredGenes.clear();
@@ -400,7 +403,7 @@ const downloadSelectedGenes = (event) => {
 		"href",
 		`data:text/tab-separated-values;charset=utf-8,${encodeURIComponent(fileContents)}`
 	);
-	element.setAttribute("download", "selected_genes.tsv");
+	element.setAttribute("download", "geneCollectionState.selectedGenes.tsv");
 	element.style.display = "none";
 	document.body.appendChild(element);
 	element.click();
@@ -459,7 +462,7 @@ const getComparisons = async (event) => {
 		plotDataToGraph(compareData);
 
 		// If any genes selected, update plot annotations (since plot was previously purged)
-		const sortedGenes = Array.from(selected_genes).sort();
+		const sortedGenes = Array.from(geneCollectionState.selectedGenes).sort();
 		updatePlotAnnotations(sortedGenes);
 
 		// Hide this view
@@ -612,8 +615,8 @@ const plotDataToGraph = (data) => {
 
 		});
 
-		const passColor = CURRENT_USER.colorblind_mode ? 'rgb(0, 34, 78)' : "#FF0000";
-		const failColor = CURRENT_USER.colorblind_mode ? 'rgb(254, 232, 56)' : "#A1A1A1";
+		const passColor = getCurrentUser().colorblind_mode ? 'rgb(0, 34, 78)' : "#FF0000";
+		const failColor = getCurrentUser().colorblind_mode ? 'rgb(254, 232, 56)' : "#A1A1A1";
 
 		const statAction = document.getElementById("cutoff-filter-action").value;
 		if (statAction === "colorize") {
@@ -1089,7 +1092,7 @@ const updatePlotAnnotations = (genes) => {
 	const plotData = plotlyPreview.data;
 	const layout = plotlyPreview.layout;
 
-	const annotationColor = CURRENT_USER.colorblind_mode ? "orange" : "cyan";
+	const annotationColor = getCurrentUser().colorblind_mode ? "orange" : "cyan";
 
 	layout.annotations = [];
 
@@ -1347,7 +1350,7 @@ document.getElementById("save-genecart-btn").addEventListener("click", (event) =
     event.target.classList.add("is-loading");
     // get value of genecart radio button group
     const geneCartName = document.querySelector("input[name='genecart_type']:checked").value;
-    if (CURRENT_USER) {
+    if (getCurrentUser()) {
         if (geneCartName === "unweighted") {
             saveGeneCart();
         } else {
@@ -1362,16 +1365,16 @@ document.getElementById('genes-manually-entered').addEventListener('change', (ev
     const searchTermString = event.target.value;
     const newManuallyEnteredGenes = searchTermString.length > 0 ? new Set(searchTermString.split(/[ ,]+/)) : new Set();
 
-    // Remove genes that have been deleted from the selected_genes set
+    // Remove genes that have been deleted from the geneCollectionState.selectedGenes set
     for (const gene of manuallyEnteredGenes) {
         if (!newManuallyEnteredGenes.has(gene)) {
-            selected_genes.delete(gene);
+            geneCollectionState.selectedGenes.delete(gene);
         }
     }
 
-    // Add new genes to the selected_genes set
+    // Add new genes to the geneCollectionState.selectedGenes set
     for (const gene of newManuallyEnteredGenes) {
-        selected_genes.add(gene);
+        geneCollectionState.selectedGenes.add(gene);
     }
 
     manuallyEnteredGenes = newManuallyEnteredGenes;
@@ -1400,7 +1403,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 	// Update with current page info
 	document.getElementById("page-header-label").textContent = "Comparison Tool";
-    sessionId = CURRENT_USER.session_id;
+    sessionId = getCurrentUser().session_id;
 
 	if (! sessionId ) {
 		// TODO: Add master override to prevent other triggers from enabling saving

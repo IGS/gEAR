@@ -317,7 +317,12 @@ class GoslingSpec(Resource):
         #args = parser.parse_args()
         #gene_symbol = args.get("gene")
         #genome = args.get("genome")
-        zoom = req.get("zoom", False)
+        zoom = req.get("zoom", "false")
+        # Set zoom from string to bool
+        if zoom.lower() == 'true':
+            zoom = True
+        else:
+            zoom = False
 
         # Implement your logic to retrieve the Gosling spec for the given dataset_id
         # return view.to_json(indent)

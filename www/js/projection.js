@@ -1,20 +1,25 @@
 'use strict';
 
+import { apiCallsMixin, createToast, getCurrentUser, getUrlParameter, logErrorInConsole, rebindUrlParam, registerPageSpecificLoginUIUpdates } from './common.v2.js';
+import { datasetCollectionState, fetchDatasetCollections, selectDatasetCollection } from '../include/dataset-collection-selector/dataset-collection-selector.js';
+import { fetchPatternsData, getFlatPatternCartData, getSelectedPattern, populatePatternWeights, selectPatternWeights } from '../include/pattern-collection-selector/pattern-collection-selector.js';
+import { TileGrid } from './classes/tilegrid.js';
+
+let selectedPattern;
 let urlParamsPassed = false;
 let isMulti = false;
 let tilegrid = null;
 let svgScoringMethod = 'gene';
-let projectionOpts = {patternSource: null, algorithm: null, gctype: null};
+let projectionOpts = { patternSource: null, algorithm: null, gctype: null };
 let weightedGeneData = null;
 let datasetShareId = null;
 let layoutShareId = null;
 
+// if certain legacy or shorthand URL parameters are passed, change the parameter to the new ones
+const urlParams = new URLSearchParams(window.location.search);
+
 // imported from pattern-collection-selector.js
 // selectedPattern = {shareId: null, label: null, gctype: null, selectedWeights: []};
-
-// imported from dataset-collection-selector.js
-// selected_dc_share_id = null;
-// selected_dc_label = null;
 
 /**
  * Creates a proxy object for the selected pattern.
@@ -36,14 +41,14 @@ const createSelectedPatternProxy = (selectedPattern) => {
                 if (!value.length) {
                     // Reset button was hit
                     enableAndShowElement(document.getElementById("single-multi-multi"), true);
-                } else if(value.length < 2) {
+                } else if (value.length < 2) {
                     disableAndHideElement(document.getElementById("single-multi-multi"), true);
                     document.getElementById("single-multi-single").checked = true;
                     isMulti = false;
                 }
                 // Enable or disable the "binary" option if all selectedWeights have "binary" property set to True
                 const binary = value.every((w) => w.binary);
-                algorithmElt.querySelector('option[value="binary"]').disabled  = !binary;
+                algorithmElt.querySelector('option[value="binary"]').disabled = !binary;
 
                 // if "binary" is selected, reset the algorithm "select" box to "pca"
                 if (algorithmElt.value === 'binary') {
@@ -67,7 +72,7 @@ const createSelectedPatternProxy = (selectedPattern) => {
             return true;
         }
     });
-}
+};
 
 /**
  * Handles the UI updates specific to the page login.
@@ -82,12 +87,12 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     layoutShareId = getUrlParameter('layout_id');
 
     // There are some shorthand URL parameters (not on the shorthand URL) that need to be converted to the longform
-    rebindUrlParam("multi", "multipattern_plots");
-    rebindUrlParam("c", "projection_source");
-    rebindUrlParam("ptrns", "projection_patterns");
-    rebindUrlParam("algo", "projection_algorithm");
+    rebindUrlParam(urlParams, "multi", "multipattern_plots");
+    rebindUrlParam(urlParams, "c", "projection_source");
+    rebindUrlParam(urlParams, "ptrns", "projection_patterns");
+    rebindUrlParam(urlParams, "algo", "projection_algorithm");
 
-    selectedPattern = createSelectedPatternProxy(selectedPattern);
+    selectedPattern = createSelectedPatternProxy(getSelectedPattern());
 
     // add event listener for when the submit-projection-search button is clicked
     document.getElementById('submit-projection-search').addEventListener('click', async (event) => {
@@ -97,7 +102,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
         const status = validateProjectionSearchForm();
 
-        if (! status) {
+        if (!status) {
             console.info("Aborting search");
             event.currentTarget.classList.remove("is-loading");
             return;
@@ -120,8 +125,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         }
 
         try {
-            const setupTileGridFn = (datasetShareId) ? setupTileGrid(datasetShareId, "dataset") : setupTileGrid(selected_dc_share_id);
-            tilegrid =  await setupTileGridFn;
+            const setupTileGridFn = (datasetShareId) ? setupTileGrid(datasetShareId, "dataset") : setupTileGrid(datasetCollectionState.selectedShareId);
+            tilegrid = await setupTileGridFn;
 
             // auto-select the first pattern in the list
             const firstPattern = document.querySelector('.pattern-result-list-item');
@@ -172,18 +177,18 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         selectDatasetCollection(null);  // Clear the label
         urlParamsPassed = true;
     } else if (layoutShareId) {
-        selected_dc_share_id = layoutShareId;
+        datasetCollectionState.selectedShareId = layoutShareId;
         selectDatasetCollection(layoutShareId);
         urlParamsPassed = true;
-    } else if (CURRENT_USER.layout_share_id) {
-        selectDatasetCollection(CURRENT_USER.layout_share_id);
+    } else if (getCurrentUser().layout_share_id) {
+        selectDatasetCollection(getCurrentUser().layout_share_id);
     }
 
     // Now, if URL params were passed and we have both patterns and a dataset collection,
     //  run the search
     if (urlParamsPassed) {
 
-        if ((datasetShareId || selected_dc_share_id) && selectedPattern.shareId !== null && selectedPattern.selectedWeights.length > 0) {
+        if ((datasetShareId || datasetCollectionState.selectedShareId) && selectedPattern.shareId !== null && selectedPattern.selectedWeights.length > 0) {
             document.getElementById('submit-projection-search').click();
         }
     }
@@ -199,7 +204,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     });
 
     observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
-}
+};
 registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
 
 /**
@@ -228,8 +233,8 @@ const buildStateUrl = () => {
     // Add the dataset collection to the URL
     if (datasetShareId) {
         url.searchParams.append('share_id', datasetShareId);
-    } else if (selected_dc_share_id) {
-        url.searchParams.append('layout_id', selected_dc_share_id);
+    } else if (datasetCollectionState.selectedShareId) {
+        url.searchParams.append('layout_id', datasetCollectionState.selectedShareId);
     }
 
     // Add the selected pattern weights to the URL
@@ -237,7 +242,7 @@ const buildStateUrl = () => {
     url.searchParams.set('projection_patterns', weights.join(','));
 
     return url.toString();
-}
+};
 
 /**
  * Sorts an array of strings in ascending order based on the numeric value at the end of each string. (i.e. PC1, PC2, etc.)
@@ -249,7 +254,7 @@ const buildStateUrl = () => {
 const customNumericSort = (a, b) => {
     // NOTE: Ignores the leading string altogether, so this still applies even if that is not consistent.
     return (Number(a.match(/(\d+)$/g)[0]) - Number((b.match(/(\d+)$/g)[0])));
-}
+};
 
 /**
  * Populates the pattern results list with weights.
@@ -286,7 +291,7 @@ const populatePatternResultsList = () => {
             selectPatternWeightResult(label);
         });
     }
-}
+};
 
 /**
  * Parses the URL parameters and updates the UI based on the values.
@@ -321,15 +326,15 @@ const parsePatternCartURLParams = async () => {
         return;
     }
     urlParamsPassed = true;
-    const foundPattern = flatPatternsCartData.find((p) => p.share_id === pattern);
+    const foundPattern = getFlatPatternCartData().find((p) => p.share_id === pattern);
     if (!foundPattern) {
         console.warn(`Pattern ${pattern} not found in pattern cart data. Perhaps the user does not have access to it.`);
         return;
     }
-    selectedPattern = {shareId: foundPattern.share_id, label: foundPattern.label, gctype: foundPattern.gctype, selectedWeights: []};
+    selectedPattern = { shareId: foundPattern.share_id, label: foundPattern.label, gctype: foundPattern.gctype, selectedWeights: [] };
 
     // Update proxy so that multi-gene radio button can be enabled/disabled
-    selectedPattern = createSelectedPatternProxy(selectedPattern);
+    selectedPattern = createSelectedPatternProxy(getSelectedPattern());
 
     // we cannot the click event, since the pattern list items only render when an intiial category is selected
     // so we need to manually populate the pattern weights
@@ -352,7 +357,7 @@ const parsePatternCartURLParams = async () => {
 
     // click "proceed" button in pattern selector to update the UI
     document.getElementById('dropdown-pattern-list-proceed').click();
-}
+};
 
 /**
  * Parses the URL parameters to extract the dataset collection information.
@@ -366,10 +371,10 @@ const parseDatasetCollectionURLParams = () => {
         return;
     }
 
-    selected_dc_share_id = layoutShareId;
-    selected_dc_label = dataset_collection_label_index[layoutShareId];
-    document.querySelector('#dropdown-dc-selector-label').innerHTML = selected_dc_label;
-}
+    datasetCollectionState.selectedShareId = layoutShareId;
+    datasetCollectionState.selectedLabel = datasetCollectionState.labelIndex[layoutShareId];
+    document.querySelector('#dropdown-dc-selector-label').innerHTML = datasetCollectionState.selectedLabel;
+};
 
 /**
  * Selects a pattern weight and performs various actions based on the selected weight.
@@ -435,9 +440,9 @@ const selectPatternWeightResult = async (label) => {
     } else if (selectedPattern.gctype === "unweighted-list") {
         // populate the gene list from this cart
         const geneListMemberData = await apiCallsMixin.fetchGeneCartMembers(selectedPattern.shareId,);
-        const geneData = []
+        const geneData = [];
         for (const member of geneListMemberData.gene_symbols) {
-            geneData.push({gene: member.label, weight: 1});
+            geneData.push({ gene: member.label, weight: 1 });
         }
         weightedGeneData = geneData;
 
@@ -451,7 +456,7 @@ const selectPatternWeightResult = async (label) => {
         document.getElementById("zoomed-panel-grid").classList.add("is-hidden");
         await tilegrid.renderDisplays(label, isMulti, svgScoringMethod, projectionOpts);
     }
-}
+};
 
 /**
  * Sets up the tile grid for a given shareId and type.
@@ -460,7 +465,7 @@ const selectPatternWeightResult = async (label) => {
  * @param {string} [type="layout"] - The type of the tile grid. Defaults to "layout".
  * @returns {Promise<TileGrid>} - A promise that resolves to the initialized TileGrid object.
  */
-const setupTileGrid = async (shareId, type="layout") => {
+const setupTileGrid = async (shareId, type = "layout") => {
 
     // Cannot proceed without a shareId
     if (!shareId) {
@@ -490,7 +495,7 @@ const setupTileGrid = async (shareId, type="layout") => {
             tile.enableProjectR();
         }
 
-        // NOTE - the tilegrid.renderDisplays() call below can check and use the first array element of the selected_genes array if single_pattern
+        // NOTE - the tilegrid.renderDisplays() call below can check and use the first array element of the geneCollectionState.selectedGenes array if single_pattern
         // We do not render for single-gene searches because the first pattern result is "clicked" and the tilegrid is rendered in the event listener.
 
         if (isMulti && selectedPattern.selectedWeights.length) {
@@ -503,7 +508,7 @@ const setupTileGrid = async (shareId, type="layout") => {
     } finally {
         return tilegrid;
     }
-}
+};
 
 /**
  * Validates the projection search form.
@@ -528,7 +533,7 @@ const validateProjectionSearchForm = () => {
 
     // Check if the user has selected any dataset collections
     document.querySelector('#dropdown-dc button').classList.remove('is-danger');
-    if (!selected_dc_share_id) {
+    if (!datasetCollectionState.selectedShareId) {
         createToast('Please select at least one dataset to proceed');
         document.querySelector('#dropdown-dc button').classList.add('is-danger');
         return false;
@@ -541,7 +546,7 @@ const validateProjectionSearchForm = () => {
     }
 
     return true;
-}
+};
 
 // If one of the "view genes" buttons is clicked, show the genes in a new window
 for (const btn of document.getElementsByClassName("js-view-genes")) {
@@ -551,7 +556,7 @@ for (const btn of document.getElementsByClassName("js-view-genes")) {
         for (const row of weightedGeneData) {
             htmlStream += `<tr><td>${row["gene"]}</td><td>${row["weight"]}</td></tr>`;
         }
-        htmlStream += "</table>"
+        htmlStream += "</table>";
         const tab = window.open('about:blank', '_blank');
         tab.document.write(htmlStream);
         tab.document.close();

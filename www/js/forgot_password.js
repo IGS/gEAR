@@ -1,5 +1,7 @@
 'use strict';
 
+import { registerPageSpecificLoginUIUpdates } from './common.v2.js';
+
 let help_id = null;
 
 window.onload=function() {

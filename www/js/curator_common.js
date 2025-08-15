@@ -1,5 +1,14 @@
 'use strict';
 
+import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
+import { availablePalettes, plotly2MatplotlibNames } from './plot_display_config.js';
+import { geneCollectionState } from '../include/gene-collection-selector/gene-collection-selector.js';
+
+let isMultigene;
+export const setIsMultigene = (val) => {
+    isMultigene = val;
+}
+
 /* These are functions that are common to the "curator" pages, (i.e. single-gene, multi-gene) */
 
 let plotStyle;  // Plot style object
@@ -749,7 +758,7 @@ const cloneDisplay = async (event, display, scope="owner") => {
     // Choose gene from config
     if (isMultigene) {
         manuallyEnteredGenes = new Set(config.gene_symbols);
-        selected_genes = manuallyEnteredGenes;
+        geneCollectionState.selectedGenes = manuallyEnteredGenes;
         const geneSymbolString = config.gene_symbols.join(" ");
         document.getElementById('genes-manually-entered').value = geneSymbolString;
         // Mostly need this to populate the current gene(s) in the display contaainer
@@ -928,7 +937,7 @@ const createPlot = async (event) => {
 
     // Add gene or genes to plot config
     if (isMultigene) {
-        plotStyle.plotConfig["gene_symbols"] = Array.from(selected_genes);
+        plotStyle.plotConfig["gene_symbols"] = Array.from(geneCollectionState.selectedGenes);
     } else {
         plotStyle.plotConfig["gene_symbol"] = selectedGene
     }
@@ -1871,7 +1880,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     curatorSpecificNavbarUpdates();
 
-    const sessionId = CURRENT_USER.session_id;
+    const sessionId = getCurrentUser().session_id;
     if (! sessionId ) {
         createToast("Not logged in so saving displays is disabled.", "is-warning");
         document.getElementById("save-display-btn").disabled = true;

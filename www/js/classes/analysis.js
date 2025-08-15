@@ -4,7 +4,7 @@
     Classes representing overall analysis (pipeline) elements and their child classes.
 */
 
-// requires common.js
+import { createToast, getCurrentUser, logErrorInConsole } from '../common.v2.js';
 
 let analysisLabels = new Set();
 
@@ -18,7 +18,7 @@ class Analysis {
         label = `Unlabeled ${commonDateTime()}`,
         type,
         vetting,
-        analysisSessionId = CURRENT_USER.session_id,
+        analysisSessionId = getCurrentUser().session_id,
         genesOfInterest = [],
         groupLabels = []
     } = {}) {
@@ -131,7 +131,7 @@ class Analysis {
 
             this.type = 'user_unsaved';
             this.id = newAnalysisId;
-            this.analysisSessionId = CURRENT_USER.session_id;
+            this.analysisSessionId = getCurrentUser().session_id;
 
             document.querySelector(UI.analysisActionContainer).classList.remove("is-hidden");
             document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
@@ -240,7 +240,7 @@ class Analysis {
                 const option = document.createElement("option");
                 option.dataset.analysisId = analysis.id;
                 option.dataset.analysisType = analysis.type;
-                option.dataset.analysisSessionId = analysis.session_id || CURRENT_USER.session_id;
+                option.dataset.analysisSessionId = analysis.session_id || getCurrentUser().session_id;
                 option.dataset.datasetId = analysis.dataset_id;
                 option.textContent = analysis.label || "Unlabeled"
                 // ? Using standard HTML, cannot add icons to options, so making icons by vetting status is not possible
@@ -420,7 +420,7 @@ class Analysis {
             datasetIsRaw: data.dataset_is_raw,
             label: data.label,
             type: data.type,
-            analysisSessionId: data.session_id || CURRENT_USER.session_id,
+            analysisSessionId: data.session_id || getCurrentUser().session_id,
             groupLabels: data.group_labels,
             genesOfInterest: data.genesOfInterest
         });

@@ -245,7 +245,7 @@ $("#submit").click(function(e) {
         files[dataset_uid]["file_organism"] = file_organism.val();
         files[dataset_uid]["file_title"] = file_title.val();
         files[dataset_uid]["file_access"] = file_access.val();
-        files[dataset_uid]["session_id"] = CURRENT_USER.session_id;
+        files[dataset_uid]["session_id"] = getCurrentUser().session_id;
 
         if (is_url || files_done[file_input.parent().find(".custom-file-label").html()]) {
             $.ajax({
@@ -349,7 +349,7 @@ $("#submit_trackhub").click(function(e) {
                     files[dataset_uid]["file_organism"] = $("#trackhub_genome").val();
                     files[dataset_uid]["file_title"] = dfile.name;
                     files[dataset_uid]["file_access"] = "1";
-                    files[dataset_uid]["session_id"] = CURRENT_USER.session_id;
+                    files[dataset_uid]["session_id"] = getCurrentUser().session_id;
 
                     // very redundant, refactor & add method to send load requests between this and #submit!
                     $.ajax({

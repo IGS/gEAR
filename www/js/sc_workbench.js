@@ -1,5 +1,7 @@
 "use strict";
 
+import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
+
 let currentAnalysis;
 let clickedMarkerGenes = new Set();
 let typedMarkerGenes = new Set();
@@ -276,7 +278,7 @@ const getGenesFromCells = (cells) => {
  * @returns {Promise<string>} - The t-SNE image data.
  */
 const getTsneImageData = async (geneSymbol, config) => {
-    config.colorblind_mode = CURRENT_USER.colorblind_mode;
+    config.colorblind_mode = getCurrentUser().colorblind_mode;
     config.gene_symbol = geneSymbol;
 
     // in order to avoid circular references (since analysis is referenced in the individual step objects),
@@ -396,7 +398,7 @@ const resetWorkbench = () => {
 const saveMarkerGeneList = async () => {
     // must have access to USER_SESSION_ID
     const gc = new GeneCart({
-        session_id: CURRENT_USER.session_id,
+        session_id: getCurrentUser().session_id,
         label: document.querySelector(UI.markerGenesListNameElt).value,
         gctype: 'unweighted-list',
         organism_id: currentAnalysis.dataset.organism_id,
@@ -441,7 +443,7 @@ const savePcaGeneList = async () => {
         const weightLabels = data.pc_data.columns;
 
         const geneList = new WeightedGeneCart({
-                session_id: CURRENT_USER.session_id,
+                session_id: getCurrentUser().session_id,
                 label: document.querySelector(UI.pcaGeneListNameElt).value,
                 gctype: 'weighted-list',
                 organism_id: currentAnalysis.dataset.organism_id,
@@ -581,7 +583,7 @@ const validateMarkerGeneSelection = () => {
 const handlePageSpecificLoginUIUpdates = async (event) => {
 	document.getElementById("page-header-label").textContent = "Single Cell Workbench";
 
-    const sessionId = CURRENT_USER.session_id;
+    const sessionId = getCurrentUser().session_id;
     if (! sessionId ) {
         createToast("Not logged in so saving analyses is disabled.", "is-warning");
         document.querySelector(UI.btnSaveAnalysisElt).disabled = true;
@@ -1137,7 +1139,7 @@ document.querySelector(UI.pcaGeneListNameElt).addEventListener("input", (event) 
 
 document.querySelector(UI.btnSavePcaGeneListElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
-    if (CURRENT_USER) {
+    if (getCurrentUser()) {
         await savePcaGeneList();
     } else {
         createToast("You must be signed in to save a PCA gene list.");
@@ -1292,7 +1294,7 @@ document.querySelector(UI.markerGenesListNameElt).addEventListener("input", (eve
 
 document.querySelector(UI.btnSaveMarkerGeneListElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
-    if (CURRENT_USER) {
+    if (getCurrentUser()) {
         await saveMarkerGeneList();
     } else {
         createToast("You must be signed in to save a marker gene list.");

@@ -25,8 +25,8 @@ function add_dga_button_listeners() {
 }
 
 
-function deafness_plugin_gene_change() {
-    const gene_symbol = currently_selected_gene_symbol.toLowerCase();
+function deafness_plugin_gene_change(selected_gene) {
+    const gene_symbol = selected_gene.toLowerCase();
 
     // remove the active class from all dropdowns
     document.querySelectorAll('.dropdown').forEach(item => {
@@ -198,6 +198,7 @@ fetch("./plugins/deafness_gene_annotation/mgi_data.json")
     .catch(function(err) {
         console.error('Fetch Error :-S', err);
     });
-    
-geneChangeCallbacks.push(deafness_plugin_gene_change);
+
+window.geneChangeCallbacks = [deafness_plugin_gene_change]
+
 add_dga_button_listeners();

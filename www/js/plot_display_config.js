@@ -13,7 +13,7 @@ const TICK_LABEL_TRUNCATION_LEN=7    // How much of the original text to use (fo
 // Obtained from https://plotly.com/python/builtin-colorscales/
 // and https://plotly.com/python/discrete-color/
 // The "dotplot" property means these are possible for dotplots
-const availablePalettes = [
+export const availablePalettes = [
     {
         label: "Qualitative Scales",
         continuous: false,
@@ -66,7 +66,7 @@ const availablePalettes = [
 ];
 
 // Convert the plotly colorscale names from availablePalettes to their matplotlib equivalent names
-const plotly2MatplotlibNames = {
+export const plotly2MatplotlibNames = {
     "cividis": "cividis",
     "inferno": "inferno",
     "viridis": "viridis",
@@ -90,7 +90,7 @@ const plotly2MatplotlibNames = {
 // invert the plotly2MatplotlibNames object
 const matplotlib2PlotlyNames = Object.fromEntries(Object.entries(plotly2MatplotlibNames).map(([key, value]) => [value, key]));
 
-const postPlotlyConfig = {
+export const postPlotlyConfig = {
     expression: [
         {
             plot_type: "all"
@@ -191,7 +191,7 @@ const postPlotlyConfig = {
 // Functions that cannot be encapsulated by a general config change
 // ! These will modify an object reference in place if the param argument is an object property
 
-function adjustExpressionColorbar(plotData) {
+export const adjustExpressionColorbar = (plotData) => {
     // The colorbar is outside of the graph div.  Need to adjust to bring back in.
     for (const element of plotData) {
         if ("colorbar" in element && element.name === "expression") {
@@ -203,7 +203,7 @@ function adjustExpressionColorbar(plotData) {
     }
 }
 
-function adjustClusterColorbars(plotData) {
+export const adjustClusterColorbars = (plotData) => {
     const plotMinDomain = 0;
     const plotMaxDomain = 1;
     const newMinDomain = -0.5;
@@ -224,27 +224,27 @@ function adjustClusterColorbars(plotData) {
     }
 }
 
-function setHeatmapHeightBasedOnGenes(plotLayout, genesFilter) {
+export const setHeatmapHeightBasedOnGenes = (plotLayout, genesFilter) => {
     if (genesFilter.length > 20) {
         plotLayout.height = genesFilter.length * 20;
     }
 }
 
-function adjustStackedViolinHeight(plotLayout) {
+export const adjustStackedViolinHeight = (plotLayout) => {
     plotLayout.height = 800;
 }
 
-function adjustStackedViolinSharedAxes(plotLayout) {
+const adjustStackedViolinSharedAxes = (plotLayout) => {
     return;
 }
 
 // Scaling a number from one range to another range (Source: https://stackoverflow.com/a/31687097)
-function scaleBetween(unscaledNum, minAllowed, maxAllowed, min, max) {
+const scaleBetween = (unscaledNum, minAllowed, maxAllowed, min, max) => {
     return (maxAllowed - minAllowed) * (unscaledNum - min) / (max - min) + minAllowed;
 }
 
 // Truncate axis labels to a fixed length. Add a hover property to the label to show the full label. Edits inplace.
-function truncateAxisLabels(plotLayout) {
+const truncateAxisLabels = (plotLayout) =>  {
     const selector = document.querySelectorAll('.xaxislayer-above text');
     for (const el of selector) {
         const elText = el.textContent;

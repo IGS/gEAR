@@ -177,17 +177,9 @@
       <script src="https://d3js.org/d3.v5.min.js"></script>
       <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
 
-      <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-      <script>document.write('<script src="js/classes/tilegrid.' + (new Date()).getTime() + '.js"><\/script>');</script>
-      <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
-      <script>document.write('<script src="js/plot_display_config.' + (new Date()).getTime() + '.js"><\/script>');</script>
-
-      <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-      <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
-
 
       <!-- Page-specific JS file here -->
-      <script>document.write('<script src="js/projection.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script>document.write('<script type="module" src="js/projection.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
     </body>
 </html>

@@ -1,8 +1,11 @@
 "use strict";
 
+import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
+import { datasetCollectionState, fetchDatasetCollections, selectDatasetCollection } from '../include/dataset-collection-selector/dataset-collection-selector.js';
+
 /* Imported variables
-let dataset_collection_data; // from dataset-collection-selector
-let selected_dc_share_id; // from dataset-collection-selector
+let datasetCollectionState.data; // from dataset-collection-selector
+let datasetCollectionState.selectedShareId; // from dataset-collection-selector
 
 */
 
@@ -1201,7 +1204,7 @@ const addModalEventListeners = () => {
             const displayId = parseInt(displayElement.dataset.displayId);
 
             try {
-                const data = await apiCallsMixin.addDisplayToCollection(selected_dc_share_id, displayId);
+                const data = await apiCallsMixin.addDisplayToCollection(datasetCollectionState.selectedShareId, displayId);
                 if (!data.success) {
                     throw new Error(data.error);
                 }
@@ -1234,7 +1237,7 @@ const addModalEventListeners = () => {
             const displayId = parseInt(displayElement.dataset.displayId);
 
             try {
-                const data = await apiCallsMixin.deleteDisplayFromCollection(selected_dc_share_id, displayId);
+                const data = await apiCallsMixin.deleteDisplayFromCollection(datasetCollectionState.selectedShareId, displayId);
                 if (!data.success) {
                     throw new Error(data.error);
                 }
@@ -1482,10 +1485,10 @@ const createDeleteCollectionConfirmationPopover = () => {
         document.getElementById('confirm-collection-delete').addEventListener('click', async (event) => {
             event.target.classList.add("is-loading");
             try {
-                const data = await apiCallsMixin.deleteDatasetCollection(selected_dc_share_id);
+                const data = await apiCallsMixin.deleteDatasetCollection(datasetCollectionState.selectedShareId);
 
                 if (data['success'] === 1) {
-                    selected_dc_share_id = CURRENT_USER.layout_share_id;
+                    datasetCollectionState.selectedShareId = getCurrentUser().layout_share_id;
 
                     // This will trigger
                     // a) selectDatasetCollection
@@ -1623,7 +1626,7 @@ const createNewCollectionPopover = () => {
                 const data = await apiCallsMixin.createDatasetCollection(newName);
 
                 if (data['layout_share_id']) {
-                    selected_dc_share_id = data['layout_share_id'];
+                    datasetCollectionState.selectedShareId = data['layout_share_id'];
                     // This will trigger
                     // a) selectDatasetCollection
                     // b) datasetCollectionSelectorCallback
@@ -1732,7 +1735,7 @@ const createRenameCollectionPopover = () => {
             const newCollectionName = document.getElementById("collection-name");
             const confirmRenameCollection = document.getElementById("confirm-collection-rename");
 
-            if (newCollectionName.value.length === 0 || newCollectionName.value === selected_dc_label) {
+            if (newCollectionName.value.length === 0 || newCollectionName.value === datasetCollectionState.selectedLabel) {
                 confirmRenameCollection.disabled = true;
                 return;
             }
@@ -1750,10 +1753,10 @@ const createRenameCollectionPopover = () => {
             const newName = document.getElementById("collection-name").value;
 
             try {
-                const data = await apiCallsMixin.renameDatasetCollection(selected_dc_share_id, newName);
+                const data = await apiCallsMixin.renameDatasetCollection(datasetCollectionState.selectedShareId, newName);
 
                 if (data['layout_label']) {
-                    selected_dc_share_id = data['layout_share_id'];
+                    datasetCollectionState.selectedShareId = data['layout_share_id'];
                     // This will trigger
                     // a) selectDatasetCollection
                     // b) datasetCollectionSelectorCallback
@@ -1807,7 +1810,7 @@ const createRenameCollectionPermalinkPopover = () => {
                         </a>
                     </div>
                     <div class='control'>
-                        <input id='collection-link-name' class='input' type='text' placeholder='permalink' value=${selected_dc_share_id}>
+                        <input id='collection-link-name' class='input' type='text' placeholder='permalink' value=${datasetCollectionState.selectedShareId}>
                     </div>
                 </div>
                 <div class='field is-grouped' style='width:250px'>
@@ -1867,7 +1870,7 @@ const createRenameCollectionPermalinkPopover = () => {
             const newLinkName = document.getElementById("collection-link-name");
             const confirmRenameLink = document.getElementById("confirm-collection-link-rename");
 
-            if (newLinkName.value.length === 0 || newLinkName.value === selected_dc_share_id) {
+            if (newLinkName.value.length === 0 || newLinkName.value === datasetCollectionState.selectedShareId) {
                 confirmRenameLink.disabled = true;
                 return;
             }
@@ -1885,7 +1888,7 @@ const createRenameCollectionPermalinkPopover = () => {
             const newShareId = document.getElementById("collection-link-name").value;
 
             try {
-                const data = await apiCallsMixin.updateShareId(selected_dc_share_id, newShareId, "layout");
+                const data = await apiCallsMixin.updateShareId(datasetCollectionState.selectedShareId, newShareId, "layout");
 
                 if ((!data.success) || (data.success < 1)) {
                     const error = data.error || "Unknown error. Please contact gEAR support.";
@@ -1965,7 +1968,7 @@ const datasetCollectionSelectionCallback = async () => {
     arrangementViewMulti.innerHTML = "";
 
     // Get collection with displays
-    const data = await apiCallsMixin.fetchDatasetCollectionMembers(selected_dc_share_id);
+    const data = await apiCallsMixin.fetchDatasetCollectionMembers(datasetCollectionState.selectedShareId);
     document.getElementById("btn-arrangement-view").classList.add("is-hidden");
     // If user owns collection, show layout arranger
     if (data.is_owner) {
@@ -1994,7 +1997,7 @@ const datasetCollectionSelectionCallback = async () => {
     // If the selected dataset collection is the current collection, make it look like the primary collection
     // ! Currently the selector will auto-make that collection the primary collection
     document.getElementById("btn-set-primary-collection").classList.add("is-outlined");
-    if (selected_dc_share_id === CURRENT_USER.layout_share_id) {
+    if (datasetCollectionState.selectedShareId === getCurrentUser().layout_share_id) {
         document.getElementById("btn-set-primary-collection").classList.remove("is-outlined");
     }
 }
@@ -2029,8 +2032,8 @@ const initializeDatasetCollectionSelection = () => {
     observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
 
     // Trigger the default dataset collection to be selected at the start
-    if (CURRENT_USER.layout_share_id) {
-        selectDatasetCollection(CURRENT_USER.layout_share_id);
+    if (getCurrentUser().layout_share_id) {
+        selectDatasetCollection(getCurrentUser().layout_share_id);
     }
 
     // Show action buttons
@@ -2136,7 +2139,7 @@ const processSearchResults = (data) => {
     // to ensure the table-view button is shown/hid when filters are applied
     let collection = null;
     try {
-        collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
+        collection = flatDatasetCollectionData.find((collection) => collection.share_id === datasetCollectionState.selectedShareId);
     } catch (error) {
         // pass
     }
@@ -2200,9 +2203,9 @@ const renderDisplaysModal = async (datasetId, title, isPublic) => {
     const ownerDisplaysElt = modalContent.querySelector(".js-modal-owner-displays");
     ownerDisplaysElt.replaceChildren();
 
-    const collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
+    const collection = flatDatasetCollectionData.find((collection) => collection.share_id === datasetCollectionState.selectedShareId);
     if (collection) {
-        const layoutMemberData = await apiCallsMixin.fetchDatasetCollectionMembers(selected_dc_share_id);
+        const layoutMemberData = await apiCallsMixin.fetchDatasetCollectionMembers(datasetCollectionState.selectedShareId);
         collection.members = layoutMemberData.layout_members.single.concat(layoutMemberData.layout_members.multi);
     }
 
@@ -2363,7 +2366,7 @@ const renderLayoutArranger = async (collection) => {
     document.getElementById("dataset-arrangement-loading-notification").classList.remove("is-hidden");
 
     // The share_id should be updated in the component when a new dataset collection is selected
-    const datasetData = await apiCallsMixin.fetchDatasets({layout_share_id: selected_dc_share_id, sort_by: "date_added"})
+    const datasetData = await apiCallsMixin.fetchDatasets({layout_share_id: datasetCollectionState.selectedShareId, sort_by: "date_added"})
 
     // Get the titles of the datasets
     const titles = {};
@@ -2610,13 +2613,13 @@ const submitSearch = async (page=1) => {
     }
 
     const searchCriteria = {
-        'session_id': CURRENT_USER.session_id,
+        'session_id': getCurrentUser().session_id,
         'search_terms': searchTerms,
         'sort_by': document.getElementById("sort-by").value
     };
 
     if (searchByCollection) {
-        searchCriteria.layout_share_id = selected_dc_share_id;
+        searchCriteria.layout_share_id = datasetCollectionState.selectedShareId;
     }
 
     if (includePublicMembership) {
@@ -2719,7 +2722,7 @@ const updateDatasetCollectionButtons = (collection=null) => {
     collectionVisibilityInput.addEventListener("change", async (event) => {
         const visibility = event.target.checked;
         try {
-            await apiCallsMixin.updateDatasetCollectionVisibility(selected_dc_share_id, visibility);
+            await apiCallsMixin.updateDatasetCollectionVisibility(datasetCollectionState.selectedShareId, visibility);
             createToast("Collection visibility updated", "is-success");
         } catch (error) {
             logErrorInConsole(error);
@@ -2742,7 +2745,7 @@ const updateDatasetCollections = async () => {
     await fetchDatasetCollections()
 
     // Uses dataset-collection-selector.js variable
-    const datasetCollectionData = dataset_collection_data;
+    const datasetCollectionData = datasetCollectionState.data;
     // merge all dataset collection data from domain_layouts, group_layouts, public_layouts, shared_layouts, and user_layouts into one array
     flatDatasetCollectionData = [...datasetCollectionData.domain_layouts, ...datasetCollectionData.group_layouts, ...datasetCollectionData.public_layouts, ...datasetCollectionData.shared_layouts, ...datasetCollectionData.user_layouts];
 
@@ -2822,7 +2825,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 	// User settings has no "active" state for the sidebar
 	document.getElementById("page-header-label").textContent = "Dataset Explorer";
 
-    const sessionId = CURRENT_USER.session_id;
+    const sessionId = getCurrentUser().session_id;
 	if (! sessionId ) {
         // ? Technically we can show profiles, but I would need to build in "logged out controls".
         document.getElementById("collection-management").classList.add("is-hidden");
@@ -2854,7 +2857,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     const defaultDateAddedView = Cookies.get("default_collection_date_added_view");
     const defaultDatasetTypeView = Cookies.get("default_collection_dataset_type_view");
 
-    if (defaultOwnershipView && CURRENT_USER.session_id) {
+    if (defaultOwnershipView && getCurrentUser().session_id) {
         // deselect All
         document.querySelector("#controls-ownership li.js-all-selector").classList.remove("js-selected");
 
@@ -2862,17 +2865,17 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             document.querySelector(`#controls-ownership li[data-dbval='${ownership}']`).classList.add("js-selected");
         }
     }
-    if (defaultOrganismView && CURRENT_USER.session_id) {
+    if (defaultOrganismView && getCurrentUser().session_id) {
         // deselect All
         document.querySelector("#controls-organism li.js-all-selector").classList.remove("js-selected");
         for (const organism of defaultOrganismView.split(",")) {
             document.querySelector(`#controls-organism li[data-dbval='${organism}']`).classList.add("js-selected");
         }
     }
-    if (defaultDateAddedView && CURRENT_USER.session_id) {
-        document.querySelector(`#controls-date-added li[data-dbval='${CURRENT_USER.default_date_added_view}']`).classList.add("js-selected");
+    if (defaultDateAddedView && getCurrentUser().session_id) {
+        document.querySelector(`#controls-date-added li[data-dbval='${getCurrentUser().default_date_added_view}']`).classList.add("js-selected");
     }
-    if (defaultDatasetTypeView && CURRENT_USER.session_id) {
+    if (defaultDatasetTypeView && getCurrentUser().session_id) {
         // deselect All
         document.querySelector("#controls-dataset-type li.js-all-selector").classList.remove("js-selected");
         for (const dtype of defaultDatasetTypeView.split(",")) {
@@ -3169,7 +3172,7 @@ document.getElementById("btn-save-arrangement").addEventListener("click", async 
     }
 
 
-    const data = await apiCallsMixin.saveDatasetCollectionArrangement(selected_dc_share_id, layoutArrangement)
+    const data = await apiCallsMixin.saveDatasetCollectionArrangement(datasetCollectionState.selectedShareId, layoutArrangement)
     if (data.success) {
         createToast("Layout arrangement saved successfully", "is-success");
     } else {
@@ -3179,11 +3182,11 @@ document.getElementById("btn-save-arrangement").addEventListener("click", async 
 
 document.getElementById("btn-set-primary-collection").addEventListener("click", async () => {
     try {
-        const data = await apiCallsMixin.setUserPrimaryDatasetCollection(selected_dc_share_id)
+        const data = await apiCallsMixin.setUserPrimaryDatasetCollection(datasetCollectionState.selectedShareId)
         if (data.success) {
             createToast("Primary collection set successfully", "is-success");
 
-            Cookies.set('gear_default_domain', selected_dc_share_id);
+            Cookies.set('gear_default_domain', datasetCollectionState.selectedShareId);
 
             // Make button outlined to look "official"
             document.getElementById("btn-set-primary-collection").classList.remove("is-outlined");
@@ -3199,7 +3202,7 @@ document.getElementById("btn-set-primary-collection").addEventListener("click", 
 document.getElementById("btn-share-collection").addEventListener("click", (e) => {
     let currentPage = new URL(`${getRootUrl()}/p`);
     let params = new URLSearchParams(currentPage.search);
-    params.set("l", selected_dc_share_id);
+    params.set("l", datasetCollectionState.selectedShareId);
     currentPage.search = params.toString();
     const shareUrl = currentPage.toString();
     copyPermalink(shareUrl);

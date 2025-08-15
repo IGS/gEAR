@@ -1,12 +1,11 @@
 'use strict';
 
-const isMultigene = 1;
+import { apiCallsMixin, getCurrentUser, logErrorInConsole } from './common.v2.js';
+import { setIsMultigene } from './curator_common.js'
+import { adjustStackedViolinHeight, postPlotlyConfig, setHeatmapHeightBasedOnGenes } from './plot_display_config.js';
+import { fetchGeneCartData, geneCollectionState } from '../include/gene-collection-selector/gene-collection-selector.js';
 
-// imported from gene-collection-selector.js
-// let selected_genes = new Set();
-const getSelectedGenes = () => {
-    return selected_genes;
-}
+setIsMultigene(1);
 
 const notFoundGenes = new Set(); // Store genes that are not found in datasetGenes
 
@@ -1001,7 +1000,7 @@ const appendGeneTagButton = (geneTagElt) => {
     deleteBtnElt.addEventListener("click", (event) => {
         // Remove gene from selectedGenes
         const gene = event.target.parentNode.textContent;
-		selected_genes.delete(gene);
+		geneCollectionState.selectedGenes.delete(gene);
 		event.target.parentNode.remove();
 
         // Remove checkmark from gene lists dropdown
@@ -1024,7 +1023,7 @@ const appendGeneTagButton = (geneTagElt) => {
 const clearGenes = (event) => {
     document.getElementById("clear-genes-btn").classList.add("is-loading");
 	document.getElementById("gene-tags").replaceChildren();
-	selected_genes.clear();
+	geneCollectionState.selectedGenes.clear();
 	document.getElementById("dropdown-gene-list-cancel").click();	// clear the dropdown
     document.getElementById("clear-genes-btn").classList.remove("is-loading");
     document.getElementById("genes-manually-entered").value = "";
@@ -1047,11 +1046,11 @@ const chooseGenes = (event) => {
     // Remove selected genes that are not in datasetGenes (case-insensitive)
     const datasetGenesLower = new Set(Array.from(datasetGenes, g => g.toLowerCase()));
 
-    for (const gene of selected_genes) {
+    for (const gene of geneCollectionState.selectedGenes) {
         if (gene.trim() === "") continue;  // Skip empty genes
 
         if (!datasetGenesLower.has(gene.toLowerCase())) {
-            selected_genes.delete(gene);
+            geneCollectionState.selectedGenes.delete(gene);
             notFoundGenes.add(gene);
         }
     }
@@ -1066,13 +1065,13 @@ const chooseGenes = (event) => {
     }
 
     document.getElementById("num-selected-genes-c").classList.remove("is-hidden");
-    document.getElementById("num-selected-genes").textContent = selected_genes.size;
-    document.getElementById("num-selected-genes-post").textContent = selected_genes.size;
+    document.getElementById("num-selected-genes").textContent = geneCollectionState.selectedGenes.size;
+    document.getElementById("num-selected-genes-post").textContent = geneCollectionState.selectedGenes.size;
 
-	if (selected_genes.size == 0) return;  // Do not trigger after initial population
+	if (geneCollectionState.selectedGenes.size == 0) return;  // Do not trigger after initial population
 
     // Update list of gene tags
-	const sortedGenes = Array.from(selected_genes).sort();
+	const sortedGenes = Array.from(geneCollectionState.selectedGenes).sort();
     for (const opt in sortedGenes) {
         const geneTagElt = document.createElement("span");
         geneTagElt.classList.add("tag", "is-primary", "mx-1");
@@ -1083,7 +1082,7 @@ const chooseGenes = (event) => {
 
     document.getElementById("gene-tags-c").classList.remove("is-hidden");
 
-    if (selected_genes.size < 2) {
+    if (geneCollectionState.selectedGenes.size < 2) {
         document.getElementById("gene-s-failed").classList.remove("is-hidden");
         document.getElementById("gene-s-success").classList.add("is-hidden");
         for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
@@ -1094,7 +1093,7 @@ const chooseGenes = (event) => {
     }
 
     // If more than 10 tags, hide the rest and add a "show more" button
-    if (selected_genes.size > 10) {
+    if (geneCollectionState.selectedGenes.size > 10) {
         const geneTags = geneTagsElt.querySelectorAll("span.tag");
         for (let i = 10; i < geneTags.length; i++) {
             geneTags[i].classList.add("is-hidden");
@@ -1102,7 +1101,7 @@ const chooseGenes = (event) => {
         // Add show more button
         const showMoreBtnElt = document.createElement("button");
         showMoreBtnElt.classList.add("tag", "button", "is-small", "is-primary", "is-light");
-        const numToDisplay = selected_genes.size - 10;
+        const numToDisplay = geneCollectionState.selectedGenes.size - 10;
         showMoreBtnElt.textContent = `+${numToDisplay} more`;
         showMoreBtnElt.addEventListener("click", (event) => {
             const geneTags = geneTagsElt.querySelectorAll("span.tag");
@@ -1222,7 +1221,7 @@ const downloadSelectedGenes = (event) => {
 		"href",
 		`data:text/tab-separated-values;charset=utf-8,${encodeURIComponent(fileContents)}`
 	);
-	element.setAttribute("download", "selected_genes.tsv");
+	element.setAttribute("download", "geneCollectionState.selectedGenes.tsv");
 	element.style.display = "none";
 	document.body.appendChild(element);
 	element.click();
@@ -1738,7 +1737,7 @@ document.getElementById("save-genecart-btn").addEventListener("click", (event) =
     event.target.classList.add("is-loading");
     // get value of genecart radio button group
     const geneCartName = document.querySelector("input[name='genecart_type']:checked").value;
-    if (CURRENT_USER) {
+    if (getCurrentUser()) {
         if (geneCartName === "unweighted") {
             saveGeneCart();
         } else {
@@ -1755,17 +1754,17 @@ document.getElementById('genes-manually-entered').addEventListener('change', (ev
     const searchTermString = event.target.value;
     const newManuallyEnteredGenes = searchTermString.length > 0 ? new Set(searchTermString.split(/[ ,]+/)) : new Set();
 
-    // Remove genes that have been deleted from the selected_genes set
+    // Remove genes that have been deleted from the geneCollectionState.selectedGenes set
     for (const gene of manuallyEnteredGenes) {
         if (!newManuallyEnteredGenes.has(gene)) {
-            selected_genes.delete(gene);
+            geneCollectionState.selectedGenes.delete(gene);
             notFoundGenes.delete(gene);
         }
     }
 
     // Add new genes to the selectedGenes set
     for (const gene of newManuallyEnteredGenes) {
-        selected_genes.add(gene);
+        geneCollectionState.selectedGenes.add(gene);
     }
 
     manuallyEnteredGenes = newManuallyEnteredGenes;

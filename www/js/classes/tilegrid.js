@@ -1,7 +1,9 @@
 'use strict';
 
 // This doesn't work unless we refactor everything to use ES modules
-//import { embed } from 'https://esm.sh/gosling.js@1.0.5';
+import { apiCallsMixin, getCurrentUser, logErrorInConsole } from '../common.v2.js';
+import { adjustClusterColorbars, adjustExpressionColorbar, postPlotlyConfig } from '../plot_display_config.js';
+import { embed } from 'https://esm.sh/gosling.js@1.0.5';
 
 /* Given a passed-in layout_id, genereate a 2-dimensional tile-based grid object.
 This uses Bulma CSS for stylings (https://bulma.io/documentation/layout/tiles/)
@@ -14,7 +16,7 @@ const mgScanpyPlots = ["mg_pca_static", "mg_tsne_static", "mg_umap_static"];
 
 // Epiviz overrides the <script> d3 version when it loads so we save as a new variable to preserve it
 const new_d3 = d3;
-class TileGrid {
+export class TileGrid {
 
     constructor(shareId, type="layout", selector ) {
         this.shareId = shareId;
@@ -555,7 +557,7 @@ class DatasetTile {
             this.orthologs = null;
         }
 
-        const geneOrganismId = CURRENT_USER.default_org_id || null;
+        const geneOrganismId = getCurrentUser().default_org_id || null;
 
         try {
             const data = await apiCallsMixin.fetchOrthologs(this.dataset.id, geneSymbols, geneOrganismId);
@@ -1299,7 +1301,7 @@ class DatasetTile {
         }
         const layoutDisplay = layouts.find((d) => JSON.parse(d).display_id === displayId);
 
-        // Try epiviz display if no plotly display was found
+        // Try epiviz/gosling display if no plotly display was found
         if (this.type === "single") {
             if (!userDisplay) userDisplay = this.dataset.userDisplays.find((d) => d.id === displayId && ["epiviz", "gosling"].includes(d.plot_type));
 
@@ -1478,8 +1480,8 @@ class DatasetTile {
         const datasetId = display.dataset_id;
         const orgId = this.dataset.organism_id;
         const plotConfig = display.plotly_config;
-        const panelAGeneSymbol = plotConfig.geneSymbol;
-        const genome = plotConfig.assembly;
+        const panelAGeneSymbol = plotConfig.gene_symbol;
+        const assembly = plotConfig.assembly;
         const ucscHubUrl = plotConfig.hubUrl;
         const zoom = this.isZoomed;
         let positionArr = ["", ""]; // [leftPosition, rightPosition]
@@ -1494,7 +1496,7 @@ class DatasetTile {
 
         let spec;
         try {
-            spec = await apiCallsMixin.fetchGoslingDisplay(datasetId, panelAGeneSymbol, genome, zoom, otherOpts)
+            spec = await apiCallsMixin.fetchGoslingDisplay(datasetId, panelAGeneSymbol, assembly, zoom, otherOpts)
         } catch (error) {
             logErrorInConsole(error);
             createCardMessage(this.tile.tileId, "danger", "An error occurred while fetching the Gosling spec.");
@@ -1505,9 +1507,11 @@ class DatasetTile {
         // This gene is determined from the expression search results, so not triggered by an event
 
         let panelAGeneResults = null;
+        const basePadding = 1500; // Base padding for zooming
         try {
-            const panelAData = await apiCallsMixin.fetchGeneAnnotations([panelAGeneSymbol], true, null, null )
-            panelAGeneResults = panelAData[gene.toLowerCase()];
+            const panelAData = await apiCallsMixin.fetchGeneAnnotations(panelAGeneSymbol, true, null, null )
+
+            panelAGeneResults = panelAData[panelAGeneSymbol.toLowerCase()];
 
             const geneData = panelAGeneResults.by_organism[orgId];
             if (!geneData || geneData.length === 0) {
@@ -1539,6 +1543,14 @@ class DatasetTile {
             spec.views[1].views[0].xDomain = {
                 "chromosome": chr, "interval": [start-basePadding, end+basePadding]
             };
+
+            if (zoom) {
+                // Add a domain to the right-view spec
+                spec.views[1].views[1].xDomain = {
+                    "chromosome": chr, "interval": [start-basePadding, end+basePadding]
+                };
+            }
+
         } catch (error) {
             console.error("Error searching for gene:", error);
         }
@@ -1546,15 +1558,14 @@ class DatasetTile {
         // Themes -> https://gosling-lang.org/themes/
         const embedOpts = { "padding": 0, "theme": null };
         // NOTE: re-embedding does work but it causes some stability issues
-        console.log(this)
-        const goslingApi = await embed(document.getElementById('gosling-expanded'), spec, embedOpts);
+        const goslingApi = await embed(document.getElementById(goslingContainer.id), spec, embedOpts);
 
         // If the view is a zoomed view extra controls and events are added.
         if (zoom) {
             const exportButton = createExportButton(this.tile.tileId, goslingContainer.id);
             const searchButton = createPanelBSearchBox(this.tile.tileId, exportButton.id);
 
-            document.getElementByID(exportButton.id).addEventListener('click', () => {
+            document.getElementById(exportButton.id).addEventListener('click', () => {
                 const url = "https://genome.ucsc.edu/cgi-bin/hgTracks";
                 // add DB and Hub parameters
                 const urlParams = new URLSearchParams({
@@ -1583,7 +1594,7 @@ class DatasetTile {
 
                 let panelBGeneResults = null;
                 try {
-                    const panelBData = await apiCallsMixin.fetchGeneAnnotations([gene], true, null, null )
+                    const panelBData = await apiCallsMixin.fetchGeneAnnotations(gene, true, null, null )
                     panelBGeneResults = panelBData[gene.toLowerCase()];
                 } catch (error) {
                     console.error("Error searching for gene:", error);
@@ -2193,7 +2204,7 @@ class DatasetTile {
  */
 const colorSVG = async (chartData, plotConfig, datasetId, tileId, geneSymbol, svgScoringMethod="gene") => {
     // I found adding the mid color for the colorblind mode  skews the whole scheme towards the high color
-    const colorblindMode = CURRENT_USER.colorblind_mode;
+    const colorblindMode = getCurrentUser().colorblind_mode;
     const lowColor = colorblindMode ? 'rgb(254, 232, 56)' : (plotConfig?.low_color || '#e7d1d5');
     const midColor = colorblindMode ? null : (plotConfig?.mid_color || null);
     const highColor = colorblindMode ? 'rgb(0, 34, 78)' : (plotConfig?.high_color || '#401362');
@@ -2490,7 +2501,7 @@ const colorSVG = async (chartData, plotConfig, datasetId, tileId, geneSymbol, sv
  * @param {Object} score - The score object containing the minimum and maximum values.
  */
 const drawSVGLegend = (plotConfig, tileId, title, score) => {
-    const colorblindMode = CURRENT_USER.colorblind_mode;
+    const colorblindMode = getCurrentUser().colorblind_mode;
     const lowColor = colorblindMode ? 'rgb(254, 232, 56)' : plotConfig.low_color;
     const midColor = colorblindMode ? null : plotConfig.mid_color
     const highColor = colorblindMode ? 'rgb(0, 34, 78)' : plotConfig.high_color;
@@ -2734,8 +2745,10 @@ const createPanelBSearchBox = (tileId, selectorId) => {
 
     // Add label for the input
     const searchLabel = document.createElement('label');
-    searchLabel.setAttribute('for', 'panel-b-gene-input');
+    searchLabel.setAttribute('for', searchInput.id);
     searchLabel.textContent = 'Search for a gene in Panel B:';
+    searchLabel.style.fontWeight = 'bold';
+    searchLabel.style.color = "black";
     searchLabel.style.marginRight = '4px';
 
     const searchButton = document.createElement('button');

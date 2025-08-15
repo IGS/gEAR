@@ -3,7 +3,11 @@
 
 'use strict';
 
-const isMultigene = 0;
+import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole } from './common.v2.js';
+import { setIsMultigene } from './curator_common.js'
+import { postPlotlyConfig } from './plot_display_config.js';
+
+setIsMultigene(0);
 
 let geneAutocomplete = null;
 let genePostAutocomplete = null;
@@ -741,7 +745,7 @@ const chooseGene = () => {
  */
 const colorSVG = (chartData, plotConfig) => {
     // I found adding the mid color for the colorblind mode  skews the whole scheme towards the high color
-    const colorblindMode = CURRENT_USER.colorblind_mode;
+    const colorblindMode = getCurrentUser().colorblind_mode;
     const lowColor = colorblindMode ? 'rgb(254, 232, 56)' : plotConfig["low_color"];
     const midColor = colorblindMode ? null : plotConfig["mid_color"];
     const highColor = colorblindMode ? 'rgb(0, 34, 78)' : plotConfig["high_color"];

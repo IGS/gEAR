@@ -1,8 +1,6 @@
-/*
-
-*/
-
 'use strict';
+
+import { apiCallsMixin, createToast, getCurrentUser, registerPageSpecificLoginUIUpdates } from './common.v2.js';
 
 let dataset_uid = null;
 let share_uid = null;
@@ -182,7 +180,7 @@ window.onload=function() {
 const checkDatasetProcessingStatus = async () => {
     const {data} = await axios.post('./cgi/check_dataset_processing_status.cgi', convertToFormData({
         share_uid: share_uid,
-        session_id: CURRENT_USER.session_id
+        session_id: getCurrentUser().session_id
     }));
 
     processing_status = data.status;
@@ -200,7 +198,7 @@ const deleteUploadInProgress = async (share_uid, dataset_id) => {
     const {data} = await axios.post('./cgi/delete_upload_in_progress.cgi', convertToFormData({
         share_uid: share_uid,
         dataset_id: dataset_id,
-        session_id: CURRENT_USER.session_id
+        session_id: getCurrentUser().session_id
     }));
 
     if (data.success) {
@@ -213,7 +211,7 @@ const deleteUploadInProgress = async (share_uid, dataset_id) => {
 const finalizeUpload = async () => {
     let formData = new FormData();
     formData.append('share_uid', share_uid);
-    formData.append('session_id', CURRENT_USER.session_id);
+    formData.append('session_id', getCurrentUser().session_id);
     formData.append('dataset_uid', dataset_uid);
     formData.append('dataset_format', dataset_format);
 
@@ -309,7 +307,7 @@ const populateMetadataFormFromFile = async () => {
 }
 
 const handlePageSpecificLoginUIUpdates = async (event) => {
-    if (CURRENT_USER.session_id) {
+    if (getCurrentUser().session_id) {
         document.getElementById('logged-in-c').classList.remove('is-hidden');
         loadUploadsInProgress();
     } else {
@@ -407,7 +405,7 @@ const stepTo = (step) => {
 
 const loadUploadsInProgress = async () => {
     const {data} = await axios.post('./cgi/get_uploads_in_progress.cgi', convertToFormData({
-        session_id: CURRENT_USER.session_id
+        session_id: getCurrentUser().session_id
     }));
 
     if (data.success) {
@@ -487,7 +485,7 @@ const storeMetadata = async () => {
     const {data} = await axios.post('./cgi/store_expression_metadata.cgi', convertToFormData({
         dataset_uid: dataset_uid,
         share_uid: share_uid,
-        session_id: CURRENT_USER.session_id,
+        session_id: getCurrentUser().session_id,
         title: document.getElementsByName('metadata-title')[0].value,
         summary: document.getElementsByName('metadata-summary')[0].value,
         dataset_type: document.getElementsByName('metadata-dataset-type')[0].value,
@@ -539,7 +537,7 @@ const uploadDataset = () => {
     const formData = new FormData();
     formData.append('dataset_uid', dataset_uid);
     formData.append('share_uid', share_uid);
-    formData.append('session_id', CURRENT_USER.session_id);
+    formData.append('session_id', getCurrentUser().session_id);
     formData.append('dataset_format', dataset_format);
     formData.append('dataset_file', document.getElementById('dataset-file-input').files[0]);
 
@@ -585,7 +583,7 @@ const processDataset = async () => {
     const formData = new FormData();
     formData.append('share_uid', share_uid);
     formData.append('dataset_format', dataset_format);
-    formData.append('session_id', CURRENT_USER.session_id);
+    formData.append('session_id', getCurrentUser().session_id);
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', './cgi/process_uploaded_expression_dataset.cgi', true);
