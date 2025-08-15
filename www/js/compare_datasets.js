@@ -1,6 +1,9 @@
 'use strict';
 
 import { apiCallsMixin, createToast, disableAndHideElement, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
+import { Gene, WeightedGene } from "./classes/gene.js";
+import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js";
+import { DatasetTree } from "./classes/tree.js";
 import { fetchGeneCartData, geneCollectionState } from '../include/gene-collection-selector/gene-collection-selector.js';
 
 // SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option

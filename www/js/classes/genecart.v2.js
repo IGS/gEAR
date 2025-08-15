@@ -1,6 +1,8 @@
 "use strict";
 
-class GeneCart {
+import { convertToFormData } from '../common.v2.js';
+
+export class GeneCart {
     constructor ({id, session_id, label, organism_id, share_id, is_public, is_domain,
                   genes = [], gctype, ldesc} = {}) {
         this.id = id;
@@ -92,7 +94,7 @@ class GeneCart {
     }
 }
 
-class WeightedGeneCart extends GeneCart {
+export class WeightedGeneCart extends GeneCart {
     constructor ({...args} = {}, weightLabels) {
         super(args);
         this.weight_labels = weightLabels || [];

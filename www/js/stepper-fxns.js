@@ -33,7 +33,7 @@
  * Blocks a step with the specified href.
  * @param {string} selectorHref - The href of the step to be blocked.
  */
-const blockStepWithHref = (selectorHref) => {
+export const blockStepWithHref = (selectorHref) => {
     document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}']`).parentElement.classList.remove("is-dashed", "is-active", "is-light");
     document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}']`).classList.add("is-dark");
     document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}'] i`).classList.remove("mdi-check", "mdi-pencil");
@@ -55,7 +55,7 @@ const blockStep = (selector) => {
  * Marks a step as failed by adding appropriate CSS classes to the step element.
  * @param {string} selectorHref - The href attribute value of the step element to mark as failed.
  */
-const failStepWithHref = (selectorHref) => {
+export const failStepWithHref = (selectorHref) => {
     document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}']`).parentElement.classList.add("is-active")
     document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}']`).classList.remove("is-light")
     document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}']`).classList.add("is-danger")
@@ -78,7 +78,7 @@ const failStep = (selector) => {
  * Marks a step as passed by adding appropriate CSS classes to the step element.
  * @param {string} selectorHref - The href attribute value of the step element to mark as passed.
  */
-const passStepWithHref = (selectorHref) => {
+export const passStepWithHref = (selectorHref) => {
     document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}']`).parentElement.classList.remove("is-active")
     document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}']`).parentElement.classList.add("is-dashed")
     document.querySelector(`.steps:not(.is-hidden) a[href='${selectorHref}']`).classList.remove("is-danger", "is-light")
@@ -104,7 +104,7 @@ const passStep = (selector) => {
  * @param {string|null} activeSelectorHref - The href of the active selector. Defaults to null.
  * @param {boolean} clickActive - Specifies whether to click the active step. Defaults to false.
  */
-const openNextStepWithHrefs = (selectorHrefs, activeSelectorHref=null, clickActive=false) => {
+export const openNextStepWithHrefs = (selectorHrefs, activeSelectorHref=null, clickActive=false) => {
 
     // if length of selectorHrefs is 1, then the step is the active step
     if (selectorHrefs.length === 1) {
@@ -155,7 +155,7 @@ const openNextSteps = (selectors, activeSelector=null) => {
  *
  * @param {string|null} activeSelectorHref - The href of the step to set as active. Default is null.
  */
-const resetStepperWithHrefs = (activeSelectorHref=null) => {
+export const resetStepperWithHrefs = (activeSelectorHref=null) => {
     const steps = document.querySelectorAll(".steps:not(.is-hidden) .steps-marker")
     for (const step of steps) {
         step.classList.remove("is-light", "is-danger", "is-dark");

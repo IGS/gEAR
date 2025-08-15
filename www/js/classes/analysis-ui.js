@@ -1,5 +1,7 @@
 'use strict';
 
+import { blockStepWithHref, openNextStepWithHrefs } from "../stepper-fxns.js";
+
 class AnalysisUI {
     // This class is a singleton that manages the UI elements of the analysis pipeline.
 
@@ -251,13 +253,13 @@ class AnalysisUI {
 }
 
 // Singleton instance of the AnalysisUI class
-const UI = new AnalysisUI();
+export const UI = new AnalysisUI();
 
 /**
  * Blocks a step from being opened, such as an irreversible step.
  * @param {string} selector - The CSS selector for the step element.
  */
-const blockAnalysisStep = (selector) => {
+export const blockAnalysisStep = (selector) => {
     blockStepWithHref(selector);
     // disable all buttons in the blocked step
     document.querySelectorAll(`${selector} button`).forEach((button) => {
@@ -272,8 +274,8 @@ const blockAnalysisStep = (selector) => {
  * @param {string|null} activeSelectorHref - The href of the active selector. Defaults to null.
  * @param {boolean} clickActive - Specifies whether to click the active selector. Defaults to false.
  */
-const openNextAnalysisStep = (selectors, activeSelectorHref=null, clickActive=false) => {
-    for (let selector of selectors) {
+export const openNextAnalysisStep = (selectors, activeSelectorHref=null, clickActive=false) => {
+    for (const selector of selectors) {
         document.querySelector(selector).classList.remove("is-pointer-events-none");
     }
     openNextStepWithHrefs(selectors, activeSelectorHref, clickActive);

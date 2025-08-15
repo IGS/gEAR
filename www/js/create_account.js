@@ -1,5 +1,7 @@
 'use strict';
 
+import { convertToFormData } from './common.v2.js';
+
 let verification_uuid = null;
 
 window.onload=function() {
@@ -22,7 +24,7 @@ window.onload=function() {
             }
 
             // generate a UUID for the user
-            verification_uuid = uuid();
+            verification_uuid = crypto.randomUUID();
             const email_sent = await sendVerificationEmail(verification_uuid);
 
             if (email_sent == false) {

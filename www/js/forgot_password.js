@@ -1,6 +1,6 @@
 'use strict';
 
-import { registerPageSpecificLoginUIUpdates } from './common.v2.js';
+import { convertToFormData, registerPageSpecificLoginUIUpdates } from './common.v2.js';
 
 let help_id = null;
 

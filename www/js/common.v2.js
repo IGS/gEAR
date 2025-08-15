@@ -361,7 +361,7 @@ const checkForLogin = async () => {
  * Returns the current date and time in the format "YYYY-MM-DD HH:MM:SS".
  * @returns {string} The current date and time.
  */
-const commonDateTime = () => {
+export const commonDateTime = () => {
     const today = new Date();
     const date = `${today.getFullYear()}-${today.getMonth()+1}-${today.getDate()}`;
     const time = `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()}`;
@@ -553,7 +553,7 @@ export const logErrorInConsole = (error) => {
  * @param {string} text - The text to be copied.
  * @returns {Promise<boolean>} - A promise that resolves to true if the text was successfully copied, false otherwise.
  */
-const copyToClipboard = async (text) => {
+export const copyToClipboard = async (text) => {
     try {
         await navigator.clipboard.writeText(text);
         return true;
@@ -569,7 +569,7 @@ const copyToClipboard = async (text) => {
  * @param {Object} object - The object to be converted.
  * @returns {FormData} - The converted FormData object.
  */
-const convertToFormData = (object) => {
+export const convertToFormData = (object) => {
     // Source -> https://stackoverflow.com/a/66611630
     // NOTE: When using FormData do not set headers to application/json
     const formData = new FormData();

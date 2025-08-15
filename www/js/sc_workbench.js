@@ -1,6 +1,12 @@
 "use strict";
 
-import { apiCallsMixin, createToast, disableAndHideElement, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
+import { Analysis, getAnalysisLabels, setAnalysisLabels } from './classes/analysis.js';
+import { UI } from './classes/analysis-ui.js';
+import { Gene, WeightedGene } from "./classes/gene.js";
+import { GeneCart, WeightedGeneCart } from './classes/genecart.v2.js';
+import { DatasetTree } from "./classes/tree.js";
+import { resetStepperWithHrefs } from "./stepper-fxns.js";
+import { apiCallsMixin, convertToFormData, createToast, disableAndHideElement, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
 
 let currentAnalysis;
 let clickedMarkerGenes = new Set();
@@ -98,7 +104,8 @@ const datasetTree = new DatasetTree({
 
         try {
             document.querySelector(UI.analysisSelect).disabled = true;
-            analysisLabels = await currentAnalysis.getSavedAnalysesList(datasetId, -1, 'sc_workbench');
+            const labels = await currentAnalysis.getSavedAnalysesList(datasetId, -1, 'sc_workbench');
+            setAnalysisLabels(labels);
         } catch (error) {
             createToast("Failed to access analyses for this dataset");
             logErrorInConsole(error);
@@ -255,11 +262,6 @@ const getDatasetInfo = async (datasetId) => {
     }
 }
 
-const getEmbeddedTsneDisplay = async (datasetId) => {
-    const {data} = await axios.post("./cgi/get_embedded_tsne_display.cgi", convertToFormData({ dataset_id: datasetId }));
-    return data;
-}
-
 /**
  * Retrieves an array of genes from a collection of cells.
  *
@@ -268,34 +270,6 @@ const getEmbeddedTsneDisplay = async (datasetId) => {
  */
 const getGenesFromCells = (cells) => {
     return [...cells].map(cell => cell.textContent.trim());
-}
-
-/**
- * Retrieves the t-SNE image data for a given gene symbol and configuration.
- *
- * @param {string} geneSymbol - The gene symbol to retrieve t-SNE image data for.
- * @param {object} config - The configuration object.
- * @returns {Promise<string>} - The t-SNE image data.
- */
-const getTsneImageData = async (geneSymbol, config) => {
-    config.colorblind_mode = getCurrentUser().colorblind_mode;
-    config.gene_symbol = geneSymbol;
-
-    // in order to avoid circular references (since analysis is referenced in the individual step objects),
-    //  we need to create a smaller analysis object to pass to the API
-
-    const analysis = {
-        "id": currentAnalysis.id,
-        "type": currentAnalysis.type,
-    }
-
-    const data = await apiCallsMixin.fetchTsneImage(currentAnalysis.dataset.id, analysis, "tsne_static", config);
-
-    if (!data.success || data.success < 1) {
-        const message = data.message || "Unknown error";
-        throw new Error(message);
-    }
-    return data.image;
 }
 
 /**
@@ -786,7 +760,7 @@ for (const button of document.querySelectorAll(UI.analysisRenameElts)) {
 
         document.getElementById("new-analysis-label").addEventListener("keyup", (event) => {
             // Update the new analysis label if it is not a duplicate
-            if (analysisLabels.has(event.target.value.trim())) {
+            if (getAnalysisLabels().has(event.target.value.trim())) {
                 if (event.target.value.trim() !== currentLabel) {
                     event.target.classList.add("duplicate");
                     document.getElementById("confirm-analysis-rename").disabled = true;

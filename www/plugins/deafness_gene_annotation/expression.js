@@ -199,6 +199,8 @@ fetch("./plugins/deafness_gene_annotation/mgi_data.json")
         console.error('Fetch Error :-S', err);
     });
 
+// Due to the variance of the import name for a plugin given different domains,
+//   it seems best to add the property to "window" (global scope) and access that way.
 window.geneChangeCallbacks = [deafness_plugin_gene_change]
 
 add_dga_button_listeners();

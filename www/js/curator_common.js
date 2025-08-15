@@ -2,6 +2,7 @@
 
 import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
 import { availablePalettes, plotly2MatplotlibNames } from './plot_display_config.js';
+import { DatasetTree } from "./classes/tree.js";
 import { geneCollectionState } from '../include/gene-collection-selector/gene-collection-selector.js';
 
 let isMultigene;

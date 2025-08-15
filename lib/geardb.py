@@ -1090,6 +1090,10 @@ class Analysis:
         If the owner is also a curator it gives priority to the curator status (gear)
         """
 
+        if self.type == "primary":
+            # ? is this right
+            self.vetting = "gear"
+
         # Analysis.user_id must be knownor we can't do this
         if self.user_id is None:
             raise Exception(

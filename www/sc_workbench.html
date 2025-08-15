@@ -1539,16 +1539,10 @@ At the completion of this step press on ‘save these genes’.
     <script src="https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.5.3"></script>
 
     <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-    <script>document.write('<script src="js/stepper-fxns.' + (new Date()).getTime() + '.js"><\/script>');</script>
     <script>document.write('<script src="js/classes/dataset.' + (new Date()).getTime() + '.js"><\/script>');</script>
-    <script>document.write('<script src="js/classes/gene.' + (new Date()).getTime() + '.js"><\/script>');</script>
-    <script>document.write('<script src="js/classes/genecart.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
-    <script>document.write('<script src="js/classes/tree.' + (new Date()).getTime() + '.js"><\/script>');</script>
-    <script>document.write('<script src="js/classes/analysis-ui.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
     <!-- Page-specific JS file here -->
-    <script>document.write('<script src="js/classes/analysis.' + (new Date()).getTime() + '.js"><\/script>');</script>
-    <script>document.write('<script src="js/sc_workbench.' + (new Date()).getTime() + '.js"><\/script>');</script>
+    <script>document.write('<script type="module" src="js/sc_workbench.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
     <!-- Global site tag (gtag.js) - Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
