@@ -1,6 +1,6 @@
 'use strict';
 
-import { apiCallsMixin, createToast, getCurrentUser, getUrlParameter, logErrorInConsole, rebindUrlParam, registerPageSpecificLoginUIUpdates } from './common.v2.js';
+import { apiCallsMixin, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, getUrlParameter, logErrorInConsole, rebindUrlParam, registerPageSpecificLoginUIUpdates } from './common.v2.js';
 import { datasetCollectionState, fetchDatasetCollections, selectDatasetCollection } from '../include/dataset-collection-selector/dataset-collection-selector.js';
 import { fetchPatternsData, getFlatPatternCartData, getSelectedPattern, populatePatternWeights, selectPatternWeights } from '../include/pattern-collection-selector/pattern-collection-selector.js';
 import { TileGrid } from './classes/tilegrid.js';

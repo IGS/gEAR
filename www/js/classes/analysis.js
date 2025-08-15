@@ -4,7 +4,7 @@
     Classes representing overall analysis (pipeline) elements and their child classes.
 */
 
-import { createToast, getCurrentUser, logErrorInConsole } from '../common.v2.js';
+import { createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, logErrorInConsole } from '../common.v2.js';
 
 let analysisLabels = new Set();
 

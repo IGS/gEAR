@@ -416,7 +416,7 @@ const doLogin = async (doReload=true) => {
  * @param {HTMLElement} element - The element to disable and hide.
  * @param {boolean} hideParent - Indicates whether to hide the parent element instead of the element itself.
  */
-const disableAndHideElement = (element, hideParent=false) => {
+export const disableAndHideElement = (element, hideParent=false) => {
     element.disabled = true;
     if (hideParent) {
         // This is useful for where the parent is a ".control" and
@@ -432,7 +432,7 @@ const disableAndHideElement = (element, hideParent=false) => {
  * @param {HTMLElement} element - The element to enable and show.
  * @param {boolean} showParent - Indicates whether to show the parent element instead of the element itself.
  */
-const enableAndShowElement = (element, showParent=false) => {
+export const enableAndShowElement = (element, showParent=false) => {
     element.disabled = false;
     if (showParent) {
         element.parentNode.classList.remove('is-hidden');

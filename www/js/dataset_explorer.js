@@ -1,6 +1,6 @@
 "use strict";
 
-import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
+import { apiCallsMixin, createToast, getCurrentUser, disableAndHideElement, enableAndShowElement, getUrlParameter, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
 import { datasetCollectionState, fetchDatasetCollections, selectDatasetCollection } from '../include/dataset-collection-selector/dataset-collection-selector.js';
 
 /* Imported variables

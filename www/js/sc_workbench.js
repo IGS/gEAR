@@ -1,6 +1,6 @@
 "use strict";
 
-import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
+import { apiCallsMixin, createToast, disableAndHideElement, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
 
 let currentAnalysis;
 let clickedMarkerGenes = new Set();
