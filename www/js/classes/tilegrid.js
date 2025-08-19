@@ -643,9 +643,6 @@ class DatasetTile {
                 const fetchResult = fetchData.result;
                 this.projectR.projectionId = fetchResult.projection_id;
 
-                console.log(this.projectR.projectionId);
-                console.log(fetchData.status);
-
                 if (fetchData.status === "complete") {
                     const message = fetchResult?.message || null;
                     this.projectR.projectionId = fetchResult.projection_id;
