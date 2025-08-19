@@ -662,6 +662,7 @@ class DatasetTile {
                     if (pollData.status === "failed") {
                         throw new Error(pollData?.error || "Something went wrong with creating a projection.");
                     } else if (pollData.status === "complete") {
+                        // TODO: check that "message" (which has gene info prompt) is in the job status file.
                         this.projectR.projectionInfo = pollData?.message || null;
                         this.projectR.success = true;
                         return;
