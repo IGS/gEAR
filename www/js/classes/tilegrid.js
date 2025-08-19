@@ -662,9 +662,6 @@ class DatasetTile {
                 const fetchResult = fetchData.result;
                 this.projectR.projectionId = fetchResult.projection_id;
 
-                console.log(this.projectR.projectionId);
-                console.log(fetchData.status);
-
                 if (fetchData.status === "complete") {
                     const message = fetchResult?.message || null;
                     this.projectR.projectionId = fetchResult.projection_id;
@@ -684,6 +681,7 @@ class DatasetTile {
                     if (pollData.status === "failed") {
                         throw new Error(pollData?.error || "Something went wrong with creating a projection.");
                     } else if (pollData.status === "complete") {
+                        // TODO: check that "message" (which has gene info prompt) is in the job status file.
                         this.projectR.projectionInfo = pollData?.message || null;
                         this.projectR.success = true;
                         return;
