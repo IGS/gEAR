@@ -167,6 +167,8 @@ def index() -> Response:
             # "projection" is a DataFrame (index 0)
             # "pval" is a matrix (index 1)
 
+            # ! Bug where if column has a period, it is mis-interpreted downstream (an R thing) leading to NaN
+
             projection_patterns = run_projectR_cmd(
                 target_df, loading_df, algorithm, full_output
             )

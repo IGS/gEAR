@@ -645,7 +645,6 @@ class DatasetTile {
         }
 
         this.projectR.performingProjection = (async () => {
-
             try {
                 const data = await apiCallsMixin.checkForProjection(this.dataset.id, patternSource, algorithm, zscore);
                 // If file was not found, put some loading text in the plot
@@ -655,14 +654,44 @@ class DatasetTile {
                 this.projection_id = data.projection_id || null;
 
                 const fetchData = await apiCallsMixin.fetchProjection(this.dataset.id, this.projection_id, patternSource, algorithm, gctype, zscore, otherOpts);
-                const message = fetchData.message || null;
-                if (fetchData.success < 1) {
+                if (fetchData.status === "failed") {
                     // throw error with message
-                    throw new Error(message);
+                    throw new Error(fetchData?.error || "Something went wrong with creating a projection.");
                 }
-                this.projectR.projectionId = fetchData.projection_id;
-                this.projectR.projectionInfo = fetchData.message;
-                this.projectR.success = true;
+
+                const fetchResult = fetchData.result;
+                this.projectR.projectionId = fetchResult.projection_id;
+
+                console.log(this.projectR.projectionId);
+                console.log(fetchData.status);
+
+                if (fetchData.status === "complete") {
+                    const message = fetchResult?.message || null;
+                    this.projectR.projectionId = fetchResult.projection_id;
+                    this.projectR.projectionInfo = message;
+                    this.projectR.success = true;
+                    return;
+                }
+
+                while (["running", "pending"].includes(fetchData.status)) {
+                    console.log("here");
+                    // Run the polling API call to get a status.
+                    // If status is "complete" it will delete the JSON job log off the server.
+                    // If status is "failed", then we need to handle on the client.
+                    // If status is "pending" or "running" let it do its thing.
+
+                    const pollData = await apiCallsMixin.pollProjectRStatus(this.projectR.projectionId);
+                    if (pollData.status === "failed") {
+                        throw new Error(pollData?.error || "Something went wrong with creating a projection.");
+                    } else if (pollData.status === "complete") {
+                        this.projectR.projectionInfo = pollData?.message || null;
+                        this.projectR.success = true;
+                        return;
+                    }
+
+                    // Timeout for a bit before starting the while loop again
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
 
             } catch (error) {
                 if (error.name == "CanceledError") {

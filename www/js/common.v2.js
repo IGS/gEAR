@@ -1396,6 +1396,17 @@ export const apiCallsMixin = {
         return data;
     },
     /**
+     * Asynchronously polls the status of a Project R projection by its ID.
+     *
+     * @async
+     * @param {string|number} projectionId - The unique identifier of the Project R projection.
+     * @returns {Promise<Object>} A promise that resolves to the status data of the projection.
+     */
+    async pollProjectRStatus(projectionId) {
+        const {data} = await axios.get(`/api/projectr/${projectionId}/status`);
+        return data;
+    },
+    /**
      * Renames a dataset collection.
      *
      * @param {string} layoutShareId - The ID of the layout share.

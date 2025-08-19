@@ -37,7 +37,7 @@ from resources.orthologs import Orthologs  # noqa: E402
 
 # Import resources
 from resources.plotly_data import PlotlyData  # noqa: E402
-from resources.projectr import ProjectR, ProjectROutputFile  # noqa: E402
+from resources.projectr import ProjectR, ProjectROutputFile, ProjectRStatus  # noqa: E402
 from resources.spatial_scanpy_data import SpatialScanpyData  # noqa: E402
 from resources.svg_data import SvgData  # noqa: E402
 from resources.top_pca_genes import TopPCAGenes  # noqa: E402
@@ -66,6 +66,7 @@ api.add_resource(GoslingSpec, '/plot/<dataset_id>/gosling')
 api.add_resource(SpatialScanpyData, '/plot/<dataset_id>/spatial_scanpy')
 api.add_resource(ProjectR, '/projectr/<dataset_id>')
 api.add_resource(ProjectROutputFile, '/projectr/<dataset_id>/output_file')
+api.add_resource(ProjectRStatus, '/projectr/<projection_id>/status')
 api.add_resource(H5ad, '/h5ad/<dataset_id>')
 api.add_resource(AvailableDisplayTypes, '/h5ad/<dataset_id>/availableDisplayTypes')
 api.add_resource(MGAvailableDisplayTypes, '/h5ad/<dataset_id>/mg_availableDisplayTypes')

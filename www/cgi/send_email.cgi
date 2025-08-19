@@ -43,8 +43,6 @@ def main():
     email = form.getvalue('email')
     scope = form.getvalue('scope')
 
-    print(f"Got email ({email}) and scope ({scope})")
-
     #print("Got e-mail: {0}".format(email))
     #print("Got scope: {0}".format(scope))
     
