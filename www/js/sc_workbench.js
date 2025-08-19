@@ -2,6 +2,7 @@
 
 import { Analysis, getAnalysisLabels, setAnalysisLabels } from './classes/analysis.js';
 import { UI } from './classes/analysis-ui.js';
+import { Dataset } from "./classes/dataset.js";
 import { Gene, WeightedGene } from "./classes/gene.js";
 import { GeneCart, WeightedGeneCart } from './classes/genecart.v2.js';
 import { DatasetTree } from "./classes/tree.js";
