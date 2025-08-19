@@ -137,12 +137,10 @@ def main():
 
     if dtypes:
         # Fix to catch single-cell variations
-        fixed_dtypes = []
         for item in dtypes:
-            if item in ["scRNA-seq".lower()]:
-                item = "single-cell rna sequencing"
-            fixed_dtypes.append(item)
-        dtypes = fixed_dtypes
+            if item == "single-cell-rnaseq":
+                dtypes.push("scRNA-seq")
+                break
 
         ## only alphanumeric characters and the dash are allowed here
         dtypes = re.sub("[^,\-A-Za-z0-9]", "", dtypes).split(',')
