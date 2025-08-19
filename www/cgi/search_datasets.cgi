@@ -136,6 +136,14 @@ def main():
         wheres.append("d.organism_id in ({0})".format(organism_ids))
 
     if dtypes:
+        # Fix to catch single-cell variations
+        fixed_dtypes = []
+        for item in dtypes:
+            if item in ["scRNA-seq".lower()]:
+                item = "single-cell rna sequencing"
+            fixed_dtypes.append(item)
+        dtypes = fixed_dtypes
+
         ## only alphanumeric characters and the dash are allowed here
         dtypes = re.sub("[^,\-A-Za-z0-9]", "", dtypes).split(',')
         dtype_str = (', '.join('"' + item + '"' for item in dtypes))
