@@ -2304,24 +2304,24 @@ class AnalysisStepMarkerGenes {
     /**
      * Downloads marker genes as an Excel file.
      */
-    downloadMarkerGenes() {
+    downloadMarkerGenesTable() {
 
         // Do the header row
         let row = [];
 
-        for (const elt in document.querySelectorAll(UI.markerGenesTableHeadCellElts)) {
+        for (const elt of document.querySelectorAll(UI.markerGenesTableHeadCellElts)) {
             row.push(elt.textContent);
         }
-        const fileContentsheaders = row.join("\t") + "\n";
+        const fileContentsheaders = `${row.join("\t")}\n`;
 
         // Now all the other rows
         let fileContents = fileContentsheaders;
-        for (const elt in document.querySelectorAll(UI.markerGenesTableBodyElts)) {
+        for (const elt of document.querySelectorAll(`${UI.markerGenesTableBodyElt} tr`)) {
             row = [];
-            for (const cell in elt.querySelectorAll("td")) {
+            for (const cell of elt.querySelectorAll("td")) {
                 row.push(cell.textContent);
             }
-            fileContents += row.join("\t") + "\n";
+            fileContents += `${row.join("\t")}\n`;
         }
 
         // Now download the file
