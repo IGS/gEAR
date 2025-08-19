@@ -1,6 +1,7 @@
 'use strict';
 
 import { apiCallsMixin, createToast, disableAndHideElement, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
+import { FacetWidget } from "./classes/facets.js";
 import { Gene, WeightedGene } from "./classes/gene.js";
 import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js";
 import { DatasetTree } from "./classes/tree.js";
@@ -300,33 +301,38 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
 	document.getElementById("facet-content").classList.add("is-hidden");
 	document.getElementById("selected-facets").classList.add("is-hidden");
 
+	let aggregations = {};
+    let totalCount = 0;
+
 	try {
-    	const {aggregations, total_count:totalCount} = await fetchAggregations(datasetId, analysisId, filters);
+    	({aggregations, total_count: totalCount}= await fetchAggregations(datasetId, analysisId, filters));
     	document.getElementById("num-selected").textContent = totalCount;
 	} catch (error) {
 		document.getElementById("num-selected").textContent = "0";
+		console.error(error);
 		throw error;
 	}
 
-    const facetWidget = new FacetWidget({
-        aggregations,
-        filters,
-        onFilterChange: async (filters) => {
-            if (filters) {
-                try {
-                    const {aggregations, total_count:totalCount} = await fetchAggregations(datasetId, analysisId, filters);
-                    facetWidget.updateAggregations(aggregations);
-                    document.getElementById("num-selected").textContent = totalCount;
-                } catch (error) {
-                    logErrorInConsole(error);
-                }
-            } else {
-                // Save an extra API call
-                facetWidget.updateAggregations(facetWidget.aggregations);
-            }
-        },
+	const facetWidget = new FacetWidget({
+		aggregations,
+		filters,
+		onFilterChange: async (filters) => {
+			if (filters) {
+				try {
+					const {aggregations, total_count:totalCount} = await fetchAggregations(datasetId, analysisId, filters);
+					facetWidget.updateAggregations(aggregations);
+					document.getElementById("num-selected").textContent = totalCount;
+				} catch (error) {
+					logErrorInConsole(error);
+				}
+			} else {
+				// Save an extra API call
+				facetWidget.updateAggregations(facetWidget.aggregations);
+			}
+		},
 		filterHeaderExtraClasses:"has-background-white"
-    });
+	});
+
     document.getElementById("selected-facets-loader").classList.add("is-hidden")
 	document.getElementById("facet-content").classList.remove("is-hidden");
 	document.getElementById("selected-facets").classList.remove("is-hidden");

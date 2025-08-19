@@ -478,12 +478,8 @@
   <script src="js/vendor/js.cookie.js"></script>
   <script src="https://cdn.plot.ly/plotly-2.26.0.min.js" charset="utf-8"></script>
 
-  <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-  <script>document.write('<script src="js/classes/facets.' + (new Date()).getTime() + '.js"><\/script>');</script>
-  <script>document.write('<script src="js/classes/gene.' + (new Date()).getTime() + '.js"><\/script>');</script>
-
   <!-- Page-specific JS file here -->
-  <script>document.write('<script src="js/compare_datasets.' + (new Date()).getTime() + '.js"><\/script>');</script>
+  <script>document.write('<script type="module" src="js/compare_datasets.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
   <!-- Global site tag (gtag.js) - Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>

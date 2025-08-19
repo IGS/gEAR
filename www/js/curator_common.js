@@ -2,6 +2,7 @@
 
 import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
 import { availablePalettes, plotly2MatplotlibNames } from './plot_display_config.js';
+import { FacetWidget } from "./classes/facets.js";
 import { DatasetTree } from "./classes/tree.js";
 import { geneCollectionState } from '../include/gene-collection-selector/gene-collection-selector.js';
 
@@ -843,7 +844,7 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
     let totalCount = 0;
 
     try {
-        ({aggregations, total_count:totalCount} = await curatorApiCallsMixin.fetchAggregations(datasetId, analysisId, filters));
+        ({aggregations, total_count: totalCount} = await curatorApiCallsMixin.fetchAggregations(datasetId, analysisId, filters));
 
     } catch (error) {
         logErrorInConsole(error);
