@@ -1,0 +1,33 @@
+.bottom-image {
+    display: inline-block;
+    vertical-align: bottom; /* anchor to baseline/bottom */
+    margin: 0 1em;
+    width: 200px;
+}
+
+.bottom-image img {
+    display: block;
+    margin: 0 auto; /* center the image inside its span */
+}
+div#figure-set-1 {
+    margin-left: 100px;
+    margin-right: 100px;
+}
+h1, h2, h3 {
+    font-weight: bold;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+h1 {
+    font-size: 130%;
+}
+h2 {
+    font-size: 120%;
+}
+h2 {
+    font-size: 110%;
+}
+ol {
+    margin: 10px 10px 10px 20px;
+}
+
