@@ -1151,12 +1151,16 @@ class ProjectR(Resource):
         if Path(JOB_STATUS_FILE).is_file():
             with open(JOB_STATUS_FILE, "r") as fh:
                 status = json.load(fh)
-                # If the status is not failed, we can use it
-                if status["status"] != "failed":
+                if status["status"] in ["pending", "running", "complete"]:
                     print(f"[x] Job {projection_id} is already {status['status']}", file=sys.stderr)
                     return status
-        write_projection_status(JOB_STATUS_FILE, status)
+                elif status["status"] == "failed":
+                    # delete status file so we can start a rerun
+                    print(f"[x] Job {projection_id} has failed. Attempting a rerun", file=sys.stderr)
+                    Path(JOB_STATUS_FILE).unlink(missing_ok=True)
 
+        # Write pending state
+        write_projection_status(JOB_STATUS_FILE, status)
 
         # Create a messaging queue if necessary. Make it persistent across the lifetime of the Flask server.
         # Channels will be spawned during each task.
@@ -1173,6 +1177,7 @@ class ProjectR(Resource):
             except Exception as e:
                 status["status"] = "failed"
                 status["error"] = str(e)
+                traceback.print_exc(file=sys.stderr)
                 return status
 
             # Connect as a blocking RabbitMQ publisher
@@ -1204,11 +1209,12 @@ class ProjectR(Resource):
                         file=sys.stderr,
                     )
 
-                    status["result"]["projection_id"] = projection_id
+                    status["result"] = {"projection_id": projection_id}
                     return status
                 except Exception as e:
                     status["status"] = "failed"
                     status["error"] = str(e)
+                    traceback.print_exc(file=sys.stderr)
                     write_projection_status(JOB_STATUS_FILE, status)
                     return status
 
