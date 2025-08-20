@@ -1,11 +1,14 @@
 'use strict';
 
-import { apiCallsMixin, createToast, disableAndHideElement, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
+import { apiCallsMixin, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
 import { FacetWidget } from "./classes/facets.js";
 import { Gene, WeightedGene } from "./classes/gene.js";
 import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js";
 import { DatasetTree } from "./classes/tree.js";
 import { fetchGeneCartData, geneCollectionState } from '../include/gene-collection-selector/gene-collection-selector.js';
+
+// Pre-initialize some stuff
+initCommonUI();
 
 // SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 // This is meant to be a short-term solution until more people specify their data is transformed via the metadata
@@ -580,6 +583,7 @@ const loadDatasetTree = async (shareId) => {
         datasetTree.domainDatasets = domainDatasets;
         datasetTree.generateTree();
     } catch (error) {
+		console.error(error);
 		createToast("Could not fetch datasets. Please contact the gEAR team.");
         document.getElementById("dataset-s-success").classList.add("is-hidden");
         document.getElementById("dataset-s-failed").classList.remove("is-hidden");

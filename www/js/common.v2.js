@@ -19,8 +19,31 @@ window.addEventListener("unhandledrejection", (event) => {
     createToast("Something went wrong. Please contact the gEAR team and provide steps to reproduce.");
 });
 
-document.addEventListener('DOMContentLoaded', () => {
-    // load the site preferences JSON file, then call any functions which need it
+//document.addEventListener('DOMContentLoaded', () => {
+//    initCommonUI();
+//});
+
+/**
+ * Initializes and configures the common UI elements and behaviors for the application.
+ *
+ * This function performs the following tasks:
+ * - Loads site preferences and updates UI elements (title, logos, analytics) accordingly.
+ * - Sets the active state for the primary navigation based on the current page.
+ * - Adds event listeners for closing notifications and modals, including keyboard shortcuts.
+ * - Handles the beta site modal and user agreement via cookies.
+ * - Enables copying the site citation to the clipboard with user feedback.
+ * - Manages the visibility and animation of the left navigation bar, including tooltip handling and persistence via cookies.
+ * - Adds event listeners for login and logout actions, and checks for user login status.
+ *
+ * Dependencies:
+ * - Assumes global variables/functions: SITE_PREFS, SIDEBAR_COLLAPSED, CURRENT_USER, getDomainPreferences, loadPlugins, closeModal, closeAllModals, Cookies, copyToClipboard, createToast, doLogin, checkForLogin.
+ * - Relies on specific DOM structure and element IDs/classes.
+ *
+ * @function
+ * @returns {void}
+ */
+export const initCommonUI = () => {
+        // load the site preferences JSON file, then call any functions which need it
     getDomainPreferences().then((result) => {
         SITE_PREFS = result;
         loadPlugins();
@@ -111,11 +134,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('citation-copy').addEventListener('click', () => {
-        let citation_text = `gEAR: Gene Expression Analysis Resource portal for community-driven, multi-omic data exploration.
+        const citationText = `gEAR: Gene Expression Analysis Resource portal for community-driven, multi-omic data exploration.
 Orvis J, et al. Nat Methods. 2021 Jun 25.
 doi: 10.1038/s41592-021-01200-9
 PMID: 34172972`;
-        copyToClipboard(citation_text).then((copied) => {
+        copyToClipboard(citationText).then((copied) => {
             if (copied) {
                 createToast("Citation copied to clipboard.", "is-success");
             } else {
@@ -259,7 +282,8 @@ PMID: 34172972`;
 
 
     checkForLogin();
-});
+}
+
 
 const getDomainPreferences = async () => {
     const response = await fetch('/site_domain_prefs.json');

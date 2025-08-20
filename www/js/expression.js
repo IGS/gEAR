@@ -1,10 +1,12 @@
 'use strict';
 
-import { apiCallsMixin, createToast, getCurrentUser, getUrlParameter, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
+import { apiCallsMixin, createToast, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
 import { datasetCollectionState, fetchDatasetCollections, selectDatasetCollection } from '../include/dataset-collection-selector/dataset-collection-selector.js';
 import { fetchGeneCartData, geneCollectionState } from '../include/gene-collection-selector/gene-collection-selector.js';
 import { TileGrid } from './classes/tilegrid.js';
 
+// Pre-initialize some stuff
+initCommonUI();
 
 let urlParamsPassed = false;
 let isMultigene = false;
@@ -28,172 +30,169 @@ TODOs:
 
 const organismSelector = document.getElementById('organism-selector');
 
-document.addEventListener('DOMContentLoaded', () => {
-    // handle when the dropdown-gene-list-search-input input box is changed
-    document.getElementById('genes-manually-entered').addEventListener('change', (event) => {
-        const searchTermString = event.target.value;
-        updateGenesSelected(searchTermString);
-    });
+// handle when the dropdown-gene-list-search-input input box is changed
+document.getElementById('genes-manually-entered').addEventListener('change', (event) => {
+    const searchTermString = event.target.value;
+    updateGenesSelected(searchTermString);
+});
 
-    document.getElementById('functional-annotation-toggle').addEventListener('click', (event) => {
-        const annotationPanel = document.getElementById('extended-annotation-panel');
-        const toggleIcon = document.querySelector('#functional-annotation-toggle i');
-        const organismSelector = document.getElementById('annotation-panel-organism-selector-c');
+document.getElementById('functional-annotation-toggle').addEventListener('click', (event) => {
+    const annotationPanel = document.getElementById('extended-annotation-panel');
+    const toggleIcon = document.querySelector('#functional-annotation-toggle i');
+    const organismSelector = document.getElementById('annotation-panel-organism-selector-c');
 
-        if (annotationPanel.classList.contains('is-hidden')) {
-            annotationPanel.classList.remove('is-hidden');
-            organismSelector.classList.remove('is-hidden');
-            toggleIcon.classList.remove('mdi-chevron-down');
-            toggleIcon.classList.add('mdi-chevron-up');
+    if (annotationPanel.classList.contains('is-hidden')) {
+        annotationPanel.classList.remove('is-hidden');
+        organismSelector.classList.remove('is-hidden');
+        toggleIcon.classList.remove('mdi-chevron-down');
+        toggleIcon.classList.add('mdi-chevron-up');
+        return;
+    }
+    annotationPanel.classList.add('is-hidden');
+    organismSelector.classList.add('is-hidden');
+    toggleIcon.classList.remove('mdi-chevron-up');
+    toggleIcon.classList.add('mdi-chevron-down');
+});
+
+// add event listener for when the submit-expression-search button is clicked
+document.getElementById('submit-expression-search').addEventListener('click', async (event) => {
+    const currentTarget = event.currentTarget;
+    currentTarget.classList.add('is-loading');
+    const isExactMatch = document.getElementById('gene-search-exact-match').checked;
+
+    // Validate here. However for multigene fuzzy searches, we need the gene list to be populated
+    if (!(isMultigene && !isExactMatch)) {
+        const status = validateExpressionSearchForm();
+
+        if (!status) {
+            console.info("Aborting search");
+            event.currentTarget.classList.remove('is-loading');
             return;
         }
-        annotationPanel.classList.add('is-hidden');
-        organismSelector.classList.add('is-hidden');
-        toggleIcon.classList.remove('mdi-chevron-up');
-        toggleIcon.classList.add('mdi-chevron-down');
-    });
+    }
 
-    // add event listener for when the submit-expression-search button is clicked
-    document.getElementById('submit-expression-search').addEventListener('click', async (event) => {
-        const currentTarget = event.currentTarget;
-        currentTarget.classList.add('is-loading');
-        const isExactMatch = document.getElementById('gene-search-exact-match').checked;
+    document.getElementById("result-panel-initial-notification").classList.add('is-hidden');
+    document.getElementById("result-panel-loader").classList.remove('is-hidden');
 
-        // Validate here. However for multigene fuzzy searches, we need the gene list to be populated
-        if (!(isMultigene && !isExactMatch)) {
-            const status = validateExpressionSearchForm();
+    // update multigene/single gene
+    isMultigene = document.getElementById('single-multi-multi').checked;
 
-            if (!status) {
-                console.info("Aborting search");
-                event.currentTarget.classList.remove('is-loading');
-                return;
-            }
-        }
+    // if multigene, clear the selected gene symbol and hide the gene-result-list container
+    document.getElementById("gene-result-list-c").classList.remove('is-hidden');
+    document.getElementById("currently-selected-gene-header").classList.remove('is-hidden');
+    document.getElementById("annotation-panel").classList.remove('is-hidden');
+    document.getElementById("scoring-method-div").classList.remove('is-hidden');
+    if (isMultigene) {
+        currentlySelectedGeneSymbol = null;
+        document.getElementById("gene-result-list-c").classList.add('is-hidden');
+        document.getElementById("currently-selected-gene-header").classList.add('is-hidden');
+        document.getElementById("annotation-panel").classList.add('is-hidden');
+        document.getElementById("scoring-method-div").classList.add('is-hidden');
+    }
+    try {
 
-        document.getElementById("result-panel-initial-notification").classList.add('is-hidden');
-        document.getElementById("result-panel-loader").classList.remove('is-hidden');
+        const setupTileGridFn = (datasetShareId) ? setupTileGrid(datasetShareId, "dataset") : setupTileGrid(datasetCollectionState.selectedShareId);
 
-        // update multigene/single gene
-        isMultigene = document.getElementById('single-multi-multi').checked;
+        const [annotRes, tilegridRes] = await Promise.allSettled([fetchGeneAnnotations(), setupTileGridFn]);
+        tilegrid = tilegridRes.value;
 
-        // if multigene, clear the selected gene symbol and hide the gene-result-list container
-        document.getElementById("gene-result-list-c").classList.remove('is-hidden');
-        document.getElementById("currently-selected-gene-header").classList.remove('is-hidden');
-        document.getElementById("annotation-panel").classList.remove('is-hidden');
-        document.getElementById("scoring-method-div").classList.remove('is-hidden');
-        if (isMultigene) {
-            currentlySelectedGeneSymbol = null;
-            document.getElementById("gene-result-list-c").classList.add('is-hidden');
-            document.getElementById("currently-selected-gene-header").classList.add('is-hidden');
-            document.getElementById("annotation-panel").classList.add('is-hidden');
-            document.getElementById("scoring-method-div").classList.add('is-hidden');
-        }
-        try {
+        // auto-select the first gene in the list
+        const firstGene = document.querySelector('.gene-result-list-item');
+        if (!isMultigene && firstGene) {
+            // Will call renderDisplays on the selected gene downstream
+            firstGene.click();
 
-            const setupTileGridFn = (datasetShareId) ? setupTileGrid(datasetShareId, "dataset") : setupTileGrid(datasetCollectionState.selectedShareId);
+        } else if (isMultigene) {
+            let genes = Array.from(geneCollectionState.selectedGenes);
+            if (!isExactMatch) {
+                const status = validateExpressionSearchForm();
 
-            const [annotRes, tilegridRes] = await Promise.allSettled([fetchGeneAnnotations(), setupTileGridFn]);
-            tilegrid = tilegridRes.value;
-
-            // auto-select the first gene in the list
-            const firstGene = document.querySelector('.gene-result-list-item');
-            if (!isMultigene && firstGene) {
-                // Will call renderDisplays on the selected gene downstream
-                firstGene.click();
-
-            } else if (isMultigene) {
-                let genes = Array.from(geneCollectionState.selectedGenes);
-                if (!isExactMatch) {
-                    const status = validateExpressionSearchForm();
-
-                    if (!status) {
-                        console.info("Aborting search");
-                        event.currentTarget.classList.remove('is-loading');
-                        return;
-                    }
-
-                    // If multigene and not exact match, render all the genes
-                    const allGenesElts = document.querySelectorAll('.gene-result-list-item');
-                    genes = Array.from(allGenesElts).map(elt => elt.textContent);
+                if (!status) {
+                    console.info("Aborting search");
+                    event.currentTarget.classList.remove('is-loading');
+                    return;
                 }
-                await tilegrid.renderDisplays(genes, isMultigene);
 
+                // If multigene and not exact match, render all the genes
+                const allGenesElts = document.querySelectorAll('.gene-result-list-item');
+                genes = Array.from(allGenesElts).map(elt => elt.textContent);
             }
+            await tilegrid.renderDisplays(genes, isMultigene);
 
-            // If the user isn't logged in, set the first organism's annotation as the default
-            if (!getCurrentUser().session_id && tilegrid?.datasets.length > 0) {
-                const first_organism_id = tilegrid.datasets[0].organism_id;
-                currentlySelectedOrgId = parseInt(first_organism_id);
-                organismSelector.value = currentlySelectedOrgId;
-                updateAnnotationDisplay();
-            }
-
-        } catch (error) {
-            logErrorInConsole(error);
-            return;
-        } finally {
-            currentTarget.classList.remove('is-loading');
-            document.getElementById("result-panel-loader").classList.add('is-hidden');
         }
 
-        const url = buildStateURL();
-
-        // add to state history
-        history.pushState(null, '', url);
-
-    });
-
-    const setDefaultOrganism = document.getElementById('set-default-organism');
-
-    // handle when the organism-selector select box is changed
-    organismSelector.addEventListener('change', (event) => {
-        if (organismSelector?.value) {
-            currentlySelectedOrgId = parseInt(organismSelector.value);
-        } else {
-            currentlySelectedOrgId = "";
+        // If the user isn't logged in, set the first organism's annotation as the default
+        if (!getCurrentUser().session_id && tilegrid?.datasets.length > 0) {
+            const first_organism_id = tilegrid.datasets[0].organism_id;
+            currentlySelectedOrgId = parseInt(first_organism_id);
+            organismSelector.value = currentlySelectedOrgId;
+            updateAnnotationDisplay();
         }
 
-        if (currentlySelectedOrgId === "") {
-            showOrganismSelectorTooltip();
-            setDefaultOrganism.classList.add('is-hidden');
-            return;
-        }
-        hideOrganismSelectorTooltip();
-        updateAnnotationDisplay();
+    } catch (error) {
+        logErrorInConsole(error);
+        return;
+    } finally {
+        currentTarget.classList.remove('is-loading');
+        document.getElementById("result-panel-loader").classList.add('is-hidden');
+    }
 
-        // If the user is logged in and doesn't have a default org ID or it's different from their current,
-        //  show the control
-        if (!getCurrentUser().session_id) {
-            return;
-        }
-        const shouldHide = getCurrentUser().default_org_id === currentlySelectedOrgId;
-        setDefaultOrganism.classList.toggle('is-hidden', shouldHide);
-    });
+    const url = buildStateURL();
 
-    setDefaultOrganism.addEventListener('click', (event) => {
-        // we don't want to set to null, and the UI should have prevented this, but check just in case
-        if (currentlySelectedOrgId === "") {
-            return;
-        }
-        getCurrentUser().default_org_id = currentlySelectedOrgId;
-        apiCallsMixin.saveUserDefaultOrgId(getCurrentUser());
+    // add to state history
+    history.pushState(null, '', url);
+
+});
+
+const setDefaultOrganism = document.getElementById('set-default-organism');
+
+// handle when the organism-selector select box is changed
+organismSelector.addEventListener('change', (event) => {
+    if (organismSelector?.value) {
+        currentlySelectedOrgId = parseInt(organismSelector.value);
+    } else {
+        currentlySelectedOrgId = "";
+    }
+
+    if (currentlySelectedOrgId === "") {
+        showOrganismSelectorTooltip();
         setDefaultOrganism.classList.add('is-hidden');
-    });
+        return;
+    }
+    hideOrganismSelectorTooltip();
+    updateAnnotationDisplay();
 
-    // Change the svg scoring method when select element is changed
-    document.getElementById('svg-scoring-method').addEventListener('change', (event) => {
-        if (isMultigene) return;   // multigene does not use this
+    // If the user is logged in and doesn't have a default org ID or it's different from their current,
+    //  show the control
+    if (!getCurrentUser().session_id) {
+        return;
+    }
+    const shouldHide = getCurrentUser().default_org_id === currentlySelectedOrgId;
+    setDefaultOrganism.classList.toggle('is-hidden', shouldHide);
+});
 
-        svgScoringMethod = event.target.value;
+setDefaultOrganism.addEventListener('click', (event) => {
+    // we don't want to set to null, and the UI should have prevented this, but check just in case
+    if (currentlySelectedOrgId === "") {
+        return;
+    }
+    getCurrentUser().default_org_id = currentlySelectedOrgId;
+    apiCallsMixin.saveUserDefaultOrgId(getCurrentUser());
+    setDefaultOrganism.classList.add('is-hidden');
+});
 
-        // Loop through all tiles with svgData and update the display based on the selected method
-        for (const tile of tilegrid.tiles) {
-            if (tile.svg) {
-                tile.updateSVGDisplay(svgScoringMethod);
-            }
+// Change the svg scoring method when select element is changed
+document.getElementById('svg-scoring-method').addEventListener('change', (event) => {
+    if (isMultigene) return;   // multigene does not use this
+
+    svgScoringMethod = event.target.value;
+
+    // Loop through all tiles with svgData and update the display based on the selected method
+    for (const tile of tilegrid.tiles) {
+        if (tile.svg) {
+            tile.updateSVGDisplay(svgScoringMethod);
         }
-    });
-
+    }
 });
 
 /**

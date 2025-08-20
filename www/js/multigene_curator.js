@@ -1,11 +1,14 @@
 'use strict';
 
-import { apiCallsMixin, getCurrentUser, logErrorInConsole } from './common.v2.js';
-import { setIsMultigene } from './curator_common.js'
+import { apiCallsMixin, getCurrentUser, initCommonUI, logErrorInConsole } from './common.v2.js';
+import { getPlotStyle, PlotHandler, registerCuratorSpecifcCreatePlot, registerCuratorSpecifcDatasetTreeCallback, registerCuratorSpecificNavbarUpdates, registerCuratorSpecificOnLoad, registerCuratorSpecificPlotStyle, registerCuratorSpecificPlotTypeAdjustments, registerCuratorSpecificValidationChecks, setIsMultigene } from './curator_common.js';
 import { Gene, WeightedGene } from "./classes/gene.js";
 import { GeneCart, WeightedGeneCart } from './classes/genecart.v2.js';
 import { adjustStackedViolinHeight, postPlotlyConfig, setHeatmapHeightBasedOnGenes } from './plot_display_config.js';
 import { fetchGeneCartData, geneCollectionState } from '../include/gene-collection-selector/gene-collection-selector.js';
+
+// Pre-initialize some stuff
+initCommonUI();
 
 setIsMultigene(1);
 
@@ -1124,32 +1127,30 @@ const chooseGenes = (event) => {
 
 const curatorSpecifcCreatePlot = async (plotType) => {
     // Call API route by plot type
-    await plotStyle.createPlot(datasetId, analysisObj);
+    await getPlotStyle().createPlot(datasetId, analysisObj);
 }
+registerCuratorSpecifcCreatePlot(curatorSpecifcCreatePlot);
 
 const curatorSpecifcDatasetTreeCallback = async () => {
     document.getElementById("num-selected-genes").textContent = 0;
     document.getElementById("num-selected-genes-post").textContent = 0;
 }
+registerCuratorSpecifcDatasetTreeCallback(curatorSpecifcDatasetTreeCallback);
 
-/**
- * Callback function for selecting a specific facet item in the curator.
- * @param {string} seriesName - The name of the series.
- */
-const curatorSpecifcFacetItemSelectCallback = (seriesName) => {
-    // pass
-}
 
 const curatorSpecificNavbarUpdates = () => {
 	// Update with current page info
 	document.getElementById("page-header-label").textContent = "Multi-gene Displays";
 }
+registerCuratorSpecificNavbarUpdates(curatorSpecificNavbarUpdates);
+
 
 const curatorSpecificOnLoad = async () => {
     await fetchGeneCartData();
     // Should help with lining things up on index page
     document.getElementById("dropdown-gene-lists").classList.remove("is-right");
 }
+registerCuratorSpecificOnLoad(curatorSpecificOnLoad);
 
 const curatorSpecificPlotStyle = (plotType) => {
     // include plotting backend options
@@ -1163,20 +1164,24 @@ const curatorSpecificPlotStyle = (plotType) => {
         return null;
     }
 }
+registerCuratorSpecificPlotStyle(curatorSpecificPlotStyle);
 
 const curatorSpecificPlotTypeAdjustments = (plotType) => {
     return plotType;
 }
+registerCuratorSpecificPlotTypeAdjustments(curatorSpecificPlotTypeAdjustments);
 
 const curatorSpecificUpdateDatasetGenes = async (geneSymbols) => {
     // Convert geneSymbols to a set
     // This will be used to check manually entered genes and those from gene lists
     datasetGenes = new Set(geneSymbols);
 }
+registerCuratorSpecificUpdateDatasetGenes(curatorSpecificUpdateDatasetGenes);
 
 const curatorSpecificValidationChecks = () => {
     return true;
 }
+registerCuratorSpecificValidationChecks(curatorSpecificValidationChecks);
 
 const downloadSelectedGenes = (event) => {
     event.preventDefault();
@@ -1184,6 +1189,8 @@ const downloadSelectedGenes = (event) => {
 	// Builds a file in memory for the user to download.  Completely client-side.
 	// plot_data contains three keys: x, y and symbols
 	// build the file string from this
+
+    const plotStyle = getPlotStyle();
 
     const plotType = plotStyle.plotType;
     const plotConfig = plotStyle.plotConfig;
@@ -1345,10 +1352,13 @@ const saveGeneCart = () => {
         gc.addGene(gene);
     }
 
-    gc.save(updateUIAfterGeneCartSaveSuccess, updateUIAfterGeneCartSaveFailure);
+    gc.save(()=>{}, updateUIAfterGeneCartSaveFailure);
 }
 
 const saveWeightedGeneCart = () => {
+
+    const plotStyle = getPlotStyle();
+
 	// must have access to USER_SESSION_ID
     const plotType = plotStyle.plotType;
     const plotConfig = plotStyle.plotConfig;
@@ -1401,7 +1411,7 @@ const saveWeightedGeneCart = () => {
         }
     };
 
-	gc.save(updateUIAfterGeneCartSaveSuccess, updateUIAfterGeneCartSaveFailure);
+	gc.save(()=>{}, updateUIAfterGeneCartSaveFailure);
 }
 
 /**
@@ -1709,9 +1719,6 @@ const updateGroupOptions = (classSelector, groupsArray) => {
         }
     }
 
-}
-
-const updateUIAfterGeneCartSaveSuccess = (gc) => {
 }
 
 const updateUIAfterGeneCartSaveFailure = (gc, message) => {

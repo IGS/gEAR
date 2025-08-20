@@ -11,9 +11,53 @@ export const setIsMultigene = (val) => {
     isMultigene = val;
 }
 
+// If a page wants to use this action, it can register a callback function
+let curatorSpecifcCreatePlot = () => {};
+export const registerCuratorSpecifcCreatePlot = (fn) => {
+    curatorSpecifcCreatePlot = fn;
+}
+
+let curatorSpecifcDatasetTreeCallback = () => {};
+export const registerCuratorSpecifcDatasetTreeCallback = (fn) => {
+    curatorSpecifcDatasetTreeCallback = fn;
+}
+
+let curatorSpecificNavbarUpdates = () => {};
+export const registerCuratorSpecificNavbarUpdates = (fn) => {
+    curatorSpecificNavbarUpdates = fn;
+}
+
+let curatorSpecificOnLoad = () => {};
+export const registerCuratorSpecificOnLoad = (fn) => {
+    curatorSpecificOnLoad = fn;
+}
+
+let curatorSpecificPlotStyle = () => {};
+export const registerCuratorSpecificPlotStyle = (fn) => {
+    curatorSpecificPlotStyle = fn;
+}
+
+let curatorSpecificPlotTypeAdjustments = () => {};
+export const registerCuratorSpecificPlotTypeAdjustments = (fn) => {
+    curatorSpecificPlotTypeAdjustments = fn;
+}
+
+let curatorSpecificUpdateDatasetGenes = () => {};
+export const registerCuratorSpecificUpdateDatasetGenes = (fn) => {
+    curatorSpecificUpdateDatasetGenes = fn;
+}
+
+let curatorSpecificValidationChecks = () => {};
+export const registerCuratorSpecificValidationChecks = (fn) => {
+    curatorSpecificValidationChecks = fn;
+}
+
 /* These are functions that are common to the "curator" pages, (i.e. single-gene, multi-gene) */
 
 let plotStyle;  // Plot style object
+export const getPlotStyle = () => {
+    return plotStyle;
+}
 
 let facetWidget = null;
 
@@ -53,7 +97,7 @@ To make it a "multiple" select object, add "multiple" to the original "select" e
  * Represents a base class for handling plots.
  * @class
  */
-class PlotHandler {
+export class PlotHandler {
     constructor() {
         // Check if this is an abstract class
         // (new PlotStyle() will fail)
@@ -892,7 +936,11 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
             // Sortable lists need to reflect groups filtered out or unfiltered
             updateOrderSortable();
 
-            curatorSpecifcFacetItemSelectCallback(seriesName);
+            // Update the color picker in case some elements of the color series were filtered out
+            if(plotStyle.plotConfig?.color_name) {
+                renderColorPicker(plotStyle.plotConfig.color_name);
+            }
+
         }
     });
     document.getElementById("selected-facets-loader").classList.add("is-hidden")

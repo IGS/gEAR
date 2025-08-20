@@ -12,9 +12,9 @@ Also if building on an M1 Mac, you need to add platform information to make it b
 
 Google Artifact Registry has recently replaced Google Container Registry for the de facto location to store Docker container images along with other artifact types. When selecting the Artifact Registry from the Google Cloud web console, you will see two tabs: Artifact Registry and Container Registry. Container Registry is just a holdover from the older service, so we will focus on Artifact Registry
 
-To create a repository for storing images, on the Artifact Registry console select Create Repository and give your service a name. I named it "cloud-run-source-deploy" since I intend on potentially hosting multiple Cloud Run Services there, not just projectR.  Also set the region to us-east4.
+To create a repository for storing images, on the Artifact Registry console select Create Repository and give your service a name. I named it "cloud-run-source-deploy" since I intend on potentially hosting multiple Cloud Run Services there, not just projectR.  Also set the region to us-east1.
 
-We need to have our Docker configuration file modified to support gcloud credentials when pushing images. Since we set our Cloud Run region to us-east4, we need to run `gcloud auth configure-docker us-east4-docker.pkg.dev`, which modifies `~/.docker/config.json`
+We need to have our Docker configuration file modified to support gcloud credentials when pushing images. Since we set our Cloud Run region to us-east1, we need to run `gcloud auth configure-docker us-east1-docker.pkg.dev`, which modifies `~/.docker/config.json`
 
 To push our created image, we need to give it a specific tag after building. Follow the instructions at https://cloud.google.com/artifact-registry/docs/docker/pushing-and-pulling#pushing for pushing the image. It has instructions for both tagging the image with `docker tag` and pushing with `docker push`.  Upon pushing you should be able to see the image inside of the Artifact Registry within the repository directory.
 

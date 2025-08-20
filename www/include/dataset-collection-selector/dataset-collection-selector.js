@@ -10,79 +10,77 @@ export const datasetCollectionState = {
 }
 
 // This many characters will be included and then three dots will be appended
-const DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT = 35;
+const DatasetCollectionSelectorLabelMaxLength = 35;
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Add event listener to dropdown trigger
-    document.querySelector("#dropdown-dc > button.dropdown-trigger").addEventListener("click", (event) => {
-        const item = event.currentTarget;
-        // Close all other dropdowns
-        const dropdowns = document.querySelectorAll('.dropdown.is-active');
-        dropdowns.forEach((dropdown) => {
-            if (dropdown !== item.closest('.dropdown')) {
-                dropdown.classList.remove('is-active');
-            }
-        });
-        item.closest(".dropdown").classList.toggle('is-active');
-    });
-
-    // Add event listeners to the dataset collection category selectors
-    const categorySelectors = document.querySelectorAll('#dropdown-content-dc-category .ul-li');
-    categorySelectors.forEach((element) => {
-        element.addEventListener('click', (event) => {
-            const category = event.target.dataset.category;
-            setActiveDCCategory(category);
-
-            categorySelectors.forEach((element) => {
-                element.classList.remove('is-selected');
-                element.classList.add('is-clickable');
-            });
-
-            event.target.classList.add('is-selected');
-            event.target.classList.remove('is-clickable');
-        });
-    });
-
-    // Add a click listener to the dancel button
-    document.querySelector('#dropdown-dc-cancel').addEventListener('click', (event) => {
-        document.querySelector('#dropdown-dc-search-input').value = '';
-        document.querySelector('#dropdown-content-dc').innerHTML = '';
-        document.querySelector('#dropdown-dc').classList.remove('is-active');
-    });
-
-    // Monitor key strokes after user types more than 2 characters in the search box
-    document.querySelector('#dropdown-dc-search-input').addEventListener('keyup', (event) => {
-        const search_term = event.target.value;
-
-        if (search_term.length === 0) {
-            document.querySelector('#dropdown-content-dc').innerHTML = '';
+// Add event listener to dropdown trigger
+document.querySelector("#dropdown-dc > button.dropdown-trigger").addEventListener("click", (event) => {
+    const item = event.currentTarget;
+    // Close all other dropdowns
+    const dropdowns = document.querySelectorAll('.dropdown.is-active');
+    dropdowns.forEach((dropdown) => {
+        if (dropdown !== item.closest('.dropdown')) {
+            dropdown.classList.remove('is-active');
         }
+    });
+    item.closest(".dropdown").classList.toggle('is-active');
+});
 
-        if (search_term.length <= 2) {return}
+// Add event listeners to the dataset collection category selectors
+const categorySelectors = document.querySelectorAll('#dropdown-content-dc-category .ul-li');
+categorySelectors.forEach((element) => {
+    element.addEventListener('click', (event) => {
+        const category = event.target.dataset.category;
+        setActiveDCCategory(category);
 
-        const categorySelectors = document.querySelectorAll('#dropdown-content-dc-category .ul-li');
         categorySelectors.forEach((element) => {
             element.classList.remove('is-selected');
             element.classList.add('is-clickable');
         });
 
+        event.target.classList.add('is-selected');
+        event.target.classList.remove('is-clickable');
+    });
+});
+
+// Add a click listener to the dancel button
+document.querySelector('#dropdown-dc-cancel').addEventListener('click', (event) => {
+    document.querySelector('#dropdown-dc-search-input').value = '';
+    document.querySelector('#dropdown-content-dc').innerHTML = '';
+    document.querySelector('#dropdown-dc').classList.remove('is-active');
+});
+
+// Monitor key strokes after user types more than 2 characters in the search box
+document.querySelector('#dropdown-dc-search-input').addEventListener('keyup', (event) => {
+    const search_term = event.target.value;
+
+    if (search_term.length === 0) {
         document.querySelector('#dropdown-content-dc').innerHTML = '';
+    }
 
-        const dc_item_template = document.querySelector('#tmpl-dc');
+    if (search_term.length <= 2) {return}
 
-        // build a label index for the dataset collections
-        for (const category in datasetCollectionState.data) {
-            // This data structure has mixed types - we only care about the arrayed categories
-            if (!Array.isArray(datasetCollectionState.data[category])) {continue}
+    const categorySelectors = document.querySelectorAll('#dropdown-content-dc-category .ul-li');
+    categorySelectors.forEach((element) => {
+        element.classList.remove('is-selected');
+        element.classList.add('is-clickable');
+    });
 
-            for (const entry of datasetCollectionState.data[category]) {
-                if (entry.label.toLowerCase().includes(search_term.toLowerCase())) {
-                    const row = dc_item_template.content.cloneNode(true);
-                    createDatasetCollectionListItem(row, entry);
-                }
+    document.querySelector('#dropdown-content-dc').innerHTML = '';
+
+    const dc_item_template = document.querySelector('#tmpl-dc');
+
+    // build a label index for the dataset collections
+    for (const category in datasetCollectionState.data) {
+        // This data structure has mixed types - we only care about the arrayed categories
+        if (!Array.isArray(datasetCollectionState.data[category])) {continue}
+
+        for (const entry of datasetCollectionState.data[category]) {
+            if (entry.label.toLowerCase().includes(search_term.toLowerCase())) {
+                const row = dc_item_template.content.cloneNode(true);
+                createDatasetCollectionListItem(row, entry);
             }
         }
-    });
+    }
 });
 
 /**
@@ -200,8 +198,8 @@ const setActiveDCCategory = (category) => {
  * If the datasetCollectionState.selectedLabel exceeds the length limit, it will be truncated and displayed with ellipsis.
  */
 const updateDatasetCollectionSelectorLabel = () => {
-    if (datasetCollectionState.selectedLabel.length > DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT) {
-        const truncated_label = `${datasetCollectionState.selectedLabel.substring(0, DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT)}...`;
+    if (datasetCollectionState.selectedLabel.length > DatasetCollectionSelectorLabelMaxLength) {
+        const truncated_label = `${datasetCollectionState.selectedLabel.substring(0, DatasetCollectionSelectorLabelMaxLength)}...`;
         document.querySelector('#dropdown-dc-selector-label').innerHTML = truncated_label;
     } else {
         document.querySelector('#dropdown-dc-selector-label').innerHTML = datasetCollectionState.selectedLabel;

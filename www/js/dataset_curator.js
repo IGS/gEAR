@@ -3,9 +3,12 @@
 
 'use strict';
 
-import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole } from './common.v2.js';
-import { setIsMultigene } from './curator_common.js'
+import { apiCallsMixin, createToast, getCurrentUser, initCommonUI, logErrorInConsole } from './common.v2.js';
+import { getPlotStyle, PlotHandler, registerCuratorSpecifcCreatePlot, registerCuratorSpecifcDatasetTreeCallback, registerCuratorSpecificNavbarUpdates, registerCuratorSpecificPlotStyle, registerCuratorSpecificPlotTypeAdjustments, registerCuratorSpecificUpdateDatasetGenes, registerCuratorSpecificValidationChecks, setIsMultigene } from './curator_common.js';
 import { postPlotlyConfig } from './plot_display_config.js';
+
+// Pre-initialize some stuff
+initCommonUI();
 
 setIsMultigene(0);
 
@@ -884,6 +887,8 @@ const createAutocomplete = (selector, dataSource, otherAutocomplete) => {
  * @returns {Promise<void>} - A promise that resolves when the plot is created.
  */
 const curatorSpecifcCreatePlot = async (plotType) => {
+
+    const plotStyle = getPlotStyle();
     // Call API route by plot type
     if (plotlyPlots.includes(plotType)) {
         await plotStyle.createPlot(datasetId, analysisObj);
@@ -897,8 +902,8 @@ const curatorSpecifcCreatePlot = async (plotType) => {
         console.warn(`Plot type ${plotType} selected for plotting is not a valid type.`)
         return;
     }
-
 }
+registerCuratorSpecifcCreatePlot(curatorSpecifcCreatePlot);
 
 /**
  * Callback function for curator specific dataset tree.
@@ -908,17 +913,7 @@ const curatorSpecifcDatasetTreeCallback = () => {
     document.getElementById("current-gene").textContent = "";
     document.getElementById("current-gene-post").textContent = "";
 }
-
-/**
- * Callback function for selecting a specific facet item in the curator.
- * @param {string} seriesName - The name of the series.
- */
-const curatorSpecifcFacetItemSelectCallback = (seriesName) => {
-    // Update the color picker in case some elements of the color series were filtered out
-    if(plotStyle.plotConfig?.color_name) {
-        renderColorPicker(plotStyle.plotConfig.color_name);
-    }
-}
+registerCuratorSpecifcDatasetTreeCallback(curatorSpecifcDatasetTreeCallback);
 
 /**
  * Updates the curator-specific navbar with the current page information.
@@ -926,10 +921,8 @@ const curatorSpecifcFacetItemSelectCallback = (seriesName) => {
 const curatorSpecificNavbarUpdates = () => {
 	document.getElementById("page-header-label").textContent = "Single-gene Displays";
 }
+registerCuratorSpecificNavbarUpdates(curatorSpecificNavbarUpdates);
 
-const curatorSpecificOnLoad = async () => {
-    // pass
-}
 
 /**
  * Returns a specific plot style handler based on the given plot type.
@@ -948,6 +941,7 @@ const curatorSpecificPlotStyle = (plotType) => {
         return null;
     }
 }
+registerCuratorSpecificPlotStyle(curatorSpecificPlotStyle);
 
 /**
  * Adjusts the plot type for the dataset curator.
@@ -964,6 +958,7 @@ const curatorSpecificPlotTypeAdjustments = (plotType) => {
     }
     return plotType
 }
+registerCuratorSpecificPlotTypeAdjustments(curatorSpecificPlotTypeAdjustments);
 
 /**
  * Updates the dataset genes for the curator.
@@ -989,6 +984,7 @@ const curatorSpecificUpdateDatasetGenes = (geneSymbols) => {
     // Set the otherAutocomplete reference for geneAutocomplete after genePostAutocomplete has been created
     geneAutocomplete.linkedAutocomplete = genePostAutocomplete;
 }
+registerCuratorSpecificUpdateDatasetGenes(curatorSpecificUpdateDatasetGenes);
 
 /**
  * Performs specific validation checks for the curator.
@@ -1000,6 +996,7 @@ const curatorSpecificValidationChecks = () => {
     }
     return true;
 }
+registerCuratorSpecificValidationChecks(curatorSpecificValidationChecks);
 
 /**
  * Fetches Plotly data for a given dataset, analysis, plot type, and plot configuration.

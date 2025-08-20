@@ -7,7 +7,10 @@ import { Gene, WeightedGene } from "./classes/gene.js";
 import { GeneCart, WeightedGeneCart } from './classes/genecart.v2.js';
 import { DatasetTree } from "./classes/tree.js";
 import { resetStepperWithHrefs } from "./stepper-fxns.js";
-import { apiCallsMixin, convertToFormData, createToast, disableAndHideElement, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
+import { apiCallsMixin, convertToFormData, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
+
+// Pre-initialize some stuff
+initCommonUI();
 
 let currentAnalysis;
 let clickedMarkerGenes = new Set();

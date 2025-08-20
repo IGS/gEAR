@@ -72,7 +72,7 @@ export class GeneCart {
         this.genes.push(gene)
     }
 
-    async save(callback=null, errCallback=null) {
+    async save(callback=()=>{}, errCallback=()=>{}) {
         /*
         If the 'id' is empty, it's assumed to be new, so an INSERT is
         performed.  Otherwise, if ID is populated this does an

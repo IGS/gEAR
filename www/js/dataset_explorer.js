@@ -1,12 +1,14 @@
 "use strict";
 
-import { apiCallsMixin, createToast, getCurrentUser, disableAndHideElement, enableAndShowElement, getUrlParameter, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
+import { apiCallsMixin, createToast, getCurrentUser, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
 import { datasetCollectionState, fetchDatasetCollections, selectDatasetCollection } from '../include/dataset-collection-selector/dataset-collection-selector.js';
+
+// Pre-initialize some stuff
+initCommonUI();
 
 /* Imported variables
 let datasetCollectionState.data; // from dataset-collection-selector
 let datasetCollectionState.selectedShareId; // from dataset-collection-selector
-
 */
 
 let firstSearch = true;
