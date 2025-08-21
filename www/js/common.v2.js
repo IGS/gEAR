@@ -4,12 +4,12 @@ let CURRENT_USER = undefined ;
 let SIDEBAR_COLLAPSED = false;
 let SITE_PREFS = null;
 
-export const getCurrentUser = () => {
+const getCurrentUser = () => {
     return CURRENT_USER;
 }
 // If a page wants to use this action, it can register a callback function
 let pageSpecificLoginUIUpdates = () => {};
-export const registerPageSpecificLoginUIUpdates = (fn) => {
+const registerPageSpecificLoginUIUpdates = (fn) => {
     pageSpecificLoginUIUpdates = fn;
 }
 
@@ -42,7 +42,7 @@ window.addEventListener("unhandledrejection", (event) => {
  * @function
  * @returns {void}
  */
-export const initCommonUI = () => {
+const initCommonUI = () => {
         // load the site preferences JSON file, then call any functions which need it
     getDomainPreferences().then((result) => {
         SITE_PREFS = result;
@@ -298,7 +298,7 @@ const getDomainPreferences = async () => {
  * @param {URLSearchParams} [urlParams=null] - Optional URLSearchParams object to parse.
  * @returns {string|null} - The value of the URL parameter, or null if it doesn't exist.
  */
-export const getUrlParameter = (sParam, urlParams=null) => {
+const getUrlParameter = (sParam, urlParams=null) => {
     const params = urlParams || new URLSearchParams(window.location.search);
     if (params.has(sParam)) {
         return params.get(sParam);
@@ -314,7 +314,7 @@ export const getUrlParameter = (sParam, urlParams=null) => {
  * @param {string} newParam - The new parameter name to replace the old parameter.
  * @returns {URLSearchParams} - The updated URLSearchParams object.
  */
-export const rebindUrlParam = (urlParams, oldParam, newParam) => {
+const rebindUrlParam = (urlParams, oldParam, newParam) => {
     if (urlParams.has(oldParam)) {
         urlParams.set(newParam, urlParams.get(oldParam));
         urlParams.delete(oldParam);
@@ -385,7 +385,7 @@ const checkForLogin = async () => {
  * Returns the current date and time in the format "YYYY-MM-DD HH:MM:SS".
  * @returns {string} The current date and time.
  */
-export const commonDateTime = () => {
+const commonDateTime = () => {
     const today = new Date();
     const date = `${today.getFullYear()}-${today.getMonth()+1}-${today.getDate()}`;
     const time = `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()}`;
@@ -440,7 +440,7 @@ const doLogin = async (doReload=true) => {
  * @param {HTMLElement} element - The element to disable and hide.
  * @param {boolean} hideParent - Indicates whether to hide the parent element instead of the element itself.
  */
-export const disableAndHideElement = (element, hideParent=false) => {
+const disableAndHideElement = (element, hideParent=false) => {
     element.disabled = true;
     if (hideParent) {
         // This is useful for where the parent is a ".control" and
@@ -456,7 +456,7 @@ export const disableAndHideElement = (element, hideParent=false) => {
  * @param {HTMLElement} element - The element to enable and show.
  * @param {boolean} showParent - Indicates whether to show the parent element instead of the element itself.
  */
-export const enableAndShowElement = (element, showParent=false) => {
+const enableAndShowElement = (element, showParent=false) => {
     element.disabled = false;
     if (showParent) {
         element.parentNode.classList.remove('is-hidden');
@@ -547,7 +547,7 @@ const trigger = (el, eventType) => {
  * Logs the error details to the console.
  * @param {Error} error - The error object.
  */
-export const logErrorInConsole = (error) => {
+const logErrorInConsole = (error) => {
     if (error.response) {
         // The request was made and the server responded with a status code
         // that falls out of the range of 2xx
@@ -577,7 +577,7 @@ export const logErrorInConsole = (error) => {
  * @param {string} text - The text to be copied.
  * @returns {Promise<boolean>} - A promise that resolves to true if the text was successfully copied, false otherwise.
  */
-export const copyToClipboard = async (text) => {
+const copyToClipboard = async (text) => {
     try {
         await navigator.clipboard.writeText(text);
         return true;
@@ -593,7 +593,7 @@ export const copyToClipboard = async (text) => {
  * @param {Object} object - The object to be converted.
  * @returns {FormData} - The converted FormData object.
  */
-export const convertToFormData = (object) => {
+const convertToFormData = (object) => {
     // Source -> https://stackoverflow.com/a/66611630
     // NOTE: When using FormData do not set headers to application/json
     const formData = new FormData();
@@ -611,7 +611,7 @@ export const convertToFormData = (object) => {
  * @param {string} [levelClass="is-danger"] - The CSS class for the toast level. Defaults to "is-danger".
  * @param {boolean} [closeManually=false] - Indicates whether the toast can be closed manually or after a timeout. Defaults to false.
  */
-export const createToast = (msg, levelClass="is-danger", closeManually=false) => {
+const createToast = (msg, levelClass="is-danger", closeManually=false) => {
     const toast = document.createElement("div");
     toast.classList.add("notification", "js-toast", levelClass, "animate__animated", "animate__fadeInUp");
     const toastButton = document.createElement("button");
@@ -809,7 +809,7 @@ Any axios methods that impolement these calls, must provide their own success/er
  * Mixin containing various API calls for interacting with datasets, displays, and analyses.
  * @mixin
  */
-export const apiCallsMixin = {
+const apiCallsMixin = {
 
     // NOTE: These need to be called with apiCallsMixin.sessionId in the method definitions, not this.sessionID. Otherwise you get "undefined"
     sessionId: null,
@@ -1575,3 +1575,21 @@ export const apiCallsMixin = {
     }
 
 }
+
+// Export all the curator-specific functions and classes (named export)
+export {
+    apiCallsMixin,
+    createToast,
+    getCurrentUser,
+    logErrorInConsole,
+    registerPageSpecificLoginUIUpdates,
+    initCommonUI,
+    getUrlParameter,
+    rebindUrlParam,
+    disableAndHideElement,
+    enableAndShowElement,
+    commonDateTime,
+    copyToClipboard,
+    convertToFormData,
+    trigger
+};

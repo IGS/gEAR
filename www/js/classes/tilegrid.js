@@ -1519,6 +1519,7 @@ class DatasetTile {
 
         const goslingContainer = document.createElement("div");
         goslingContainer.id = `tile-${this.tile.tileId}-gosling`;
+        goslingContainer.style.marginTop = "5px";
         plotContainer.append(goslingContainer);
 
         let spec;
@@ -2763,6 +2764,7 @@ const createPanelBSearchBox = (tileId, selectorId) => {
     // Add a search box that will link to Panel B
     const searchBox = document.createElement('div');
     searchBox.id = `tile-${tileId}-panel-b-gene-input-search;`
+    searchBox.style.float = "right";
 
     const searchInput = document.createElement('input');
     searchInput.id = `tile-${tileId}-panel-b-gene-input`;
