@@ -88,7 +88,7 @@
               <div class="column is-6">
                 <h2>Account creation failed</h2>
                 <p>
-                  There was a problem creating your account. Please try again later or 
+                  There was a problem creating your account. Please try again later or
                   <a href="./contact.html">contact</a> us for assistance.
                 </p>
                 <br />
@@ -233,11 +233,8 @@
 
       <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
       <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-      <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
-      <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
-
       <!-- Page-specific JS file here -->
-      <script>document.write('<script src="js/create_account.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script>document.write('<script type="module" src="js/create_account.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
     </body>
 </html>
