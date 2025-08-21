@@ -1577,6 +1577,7 @@ export {
     apiCallsMixin,
     createToast,
     getCurrentUser,
+    getRootUrl,
     logErrorInConsole,
     registerPageSpecificLoginUIUpdates,
     initCommonUI,
