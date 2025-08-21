@@ -1,6 +1,6 @@
 "use strict";
 
-import { apiCallsMixin, createToast, getCurrentUser, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
+import { apiCallsMixin, closeModal, screateToast, getCurrentUser, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from './common.v2.js';
 import { datasetCollectionState, fetchDatasetCollections, selectDatasetCollection } from '../include/dataset-collection-selector/dataset-collection-selector.js';
 
 // Pre-initialize some stuff

@@ -60,7 +60,6 @@ let datasetId;
 let organismId;	// Used for saving as gene cart
 let compareData;;
 let selectedGeneData;
-let manuallyEnteredGenes = new Set();
 
 // imported from gene-collection-selector.js
 // let geneCollectionState.selectedGenes = new Set();
@@ -216,8 +215,8 @@ const appendGeneTagButton = (geneTagElt) => {
 		event.target.parentNode.remove();
 
 		// Remove gene from manually entered genes textbox
-		manuallyEnteredGenes.delete(gene);
-		document.getElementById("genes-manually-entered").value = Array.from(manuallyEnteredGenes).join(" ");
+		geneCollectionState.manuallyEnteredGenes.delete(gene);
+		document.getElementById("genes-manually-entered").value = Array.from(geneCollectionState.manuallyEnteredGenes).join(" ");
 
 		// Update graph
 		updatePlotAnnotations(Array.from(geneCollectionState.selectedGenes).sort());
@@ -240,7 +239,7 @@ const appendGeneTagButton = (geneTagElt) => {
     });
 }
 
-const chooseGenes = (event) => {
+const chooseGenes = () => {
     // Triggered when a gene is selected
 
     // Delete existing tags
@@ -292,7 +291,7 @@ const clearGenes = (event) => {
 	geneCollectionState.selectedGenes.clear();
 	document.getElementById("dropdown-gene-list-cancel").click();	// clear the dropdown
 	// Remove gene from manually entered genes textbox
-	manuallyEnteredGenes.clear();
+	geneCollectionState.manuallyEnteredGenes.clear();
 	document.getElementById("genes-manually-entered").value = "";
 
 	updatePlotAnnotations([]);
@@ -1379,7 +1378,7 @@ document.getElementById('genes-manually-entered').addEventListener('change', (ev
     const newManuallyEnteredGenes = searchTermString.length > 0 ? new Set(searchTermString.split(/[ ,]+/)) : new Set();
 
     // Remove genes that have been deleted from the geneCollectionState.selectedGenes set
-    for (const gene of manuallyEnteredGenes) {
+    for (const gene of geneCollectionState.manuallyEnteredGenes) {
         if (!newManuallyEnteredGenes.has(gene)) {
             geneCollectionState.selectedGenes.delete(gene);
         }
@@ -1390,8 +1389,8 @@ document.getElementById('genes-manually-entered').addEventListener('change', (ev
         geneCollectionState.selectedGenes.add(gene);
     }
 
-    manuallyEnteredGenes = newManuallyEnteredGenes;
-    chooseGenes(null);
+    geneCollectionState.manuallyEnteredGenes = newManuallyEnteredGenes;
+    chooseGenes();
 });
 
 // Use the dataset input selector button to toggle the dataset selection div
@@ -1407,7 +1406,7 @@ document.getElementById("btn-toggle-dataset-tree").addEventListener("click", (ev
     }
 });
 
-document.getElementById('dropdown-gene-list-proceed').addEventListener('click', chooseGenes);
+document.getElementById('dropdown-gene-list-proceed').addEventListener('click', (event) => {chooseGenes()});
 
 document.getElementById("download-selected-genes-btn").addEventListener("click", downloadSelectedGenes);
 

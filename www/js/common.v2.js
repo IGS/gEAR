@@ -1591,5 +1591,7 @@ export {
     commonDateTime,
     copyToClipboard,
     convertToFormData,
-    trigger
+    trigger,
+    openModal,
+    closeModal,
 };

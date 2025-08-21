@@ -1,7 +1,7 @@
 'use strict';
 
 // This doesn't work unless we refactor everything to use ES modules
-import { apiCallsMixin, getCurrentUser, logErrorInConsole } from '../common.v2.js';
+import { apiCallsMixin, closeModal, getCurrentUser, logErrorInConsole, openModal } from '../common.v2.js';
 import { adjustClusterColorbars, adjustExpressionColorbar, postPlotlyConfig } from '../plot_display_config.js';
 import { embed } from 'https://esm.sh/gosling.js@1.0.5';
 

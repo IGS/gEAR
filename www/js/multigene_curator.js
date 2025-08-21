@@ -1,6 +1,6 @@
 'use strict';
 
-import { apiCallsMixin, getCurrentUser, initCommonUI, logErrorInConsole, trigger } from './common.v2.js';
+import { apiCallsMixin, getCurrentUser, initCommonUI, logErrorInConsole, openModal, trigger } from './common.v2.js';
 import { curatorCommon } from './curator_common.js';
 import { Gene, WeightedGene } from "./classes/gene.js";
 import { GeneCart, WeightedGeneCart } from './classes/genecart.v2.js';
@@ -16,7 +16,6 @@ let allColumns = [];
 
 const notFoundGenes = new Set(); // Store genes that are not found in datasetGenes
 
-let manuallyEnteredGenes = new Set();
 let datasetGenes = new Set();
 
 let plotSelectedGenes = []; // genes selected from plot "select" utility
@@ -1050,12 +1049,14 @@ const clearGenes = (event) => {
  *
  * @param {Array} genes - The selected genes.
  */
-const chooseGenes = (genes=[]) => {
+const chooseGenes = (genes=null) => {
 
-    manuallyEnteredGenes = new Set(genes);
-    geneCollectionState.selectedGenes = manuallyEnteredGenes;
-    const geneSymbolString = genes.join(" ");
-    document.getElementById('genes-manually-entered').value = geneSymbolString;
+    if (genes) {
+        geneCollectionState.manuallyEnteredGenes = new Set(genes);
+        geneCollectionState.selectedGenes = geneCollectionState.manuallyEnteredGenes;
+        const geneSymbolString = genes.join(" ");
+        document.getElementById('genes-manually-entered').value = geneSymbolString;
+    }
 
     // Delete existing tags
     const geneTagsElt = document.getElementById("gene-tags");
@@ -1200,7 +1201,7 @@ const curatorSpecificUpdateDatasetGenes = async (geneSymbols) => {
     // This will be used to check manually entered genes and those from gene lists
     datasetGenes = new Set(geneSymbols);
 };
-registerCuratorSpecificUpdateDatasetGenes(curatorSpecificUpdateDatasetGenes);
+curatorCommon.registerCuratorSpecificUpdateDatasetGenes(curatorSpecificUpdateDatasetGenes);
 
 const curatorSpecificValidationChecks = () => {
     return true;
@@ -1795,7 +1796,7 @@ document.getElementById('genes-manually-entered').addEventListener('change', (ev
     const newManuallyEnteredGenes = searchTermString.length > 0 ? new Set(searchTermString.split(/[ ,]+/)) : new Set();
 
     // Remove genes that have been deleted from the geneCollectionState.selectedGenes set
-    for (const gene of manuallyEnteredGenes) {
+    for (const gene of geneCollectionState.manuallyEnteredGenes) {
         if (!newManuallyEnteredGenes.has(gene)) {
             geneCollectionState.selectedGenes.delete(gene);
             notFoundGenes.delete(gene);
@@ -1807,8 +1808,9 @@ document.getElementById('genes-manually-entered').addEventListener('change', (ev
         geneCollectionState.selectedGenes.add(gene);
     }
 
-    manuallyEnteredGenes = newManuallyEnteredGenes;
-    chooseGenes([]);
+    geneCollectionState.manuallyEnteredGenes = newManuallyEnteredGenes;
+
+    chooseGenes();
 });
 
-document.getElementById('dropdown-gene-list-proceed').addEventListener('click', (event) => {chooseGenes([])});
+document.getElementById('dropdown-gene-list-proceed').addEventListener('click', (event) => {chooseGenes()});
