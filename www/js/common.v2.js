@@ -19,10 +19,6 @@ window.addEventListener("unhandledrejection", (event) => {
     createToast("Something went wrong. Please contact the gEAR team and provide steps to reproduce.");
 });
 
-//document.addEventListener('DOMContentLoaded', () => {
-//    initCommonUI();
-//});
-
 /**
  * Initializes and configures the common UI elements and behaviors for the application.
  *
