@@ -696,6 +696,7 @@ const loadPlugin = async (pluginName, pageName, pluginImportBasename) => {
     style.rel = 'stylesheet';
     head.append(style);
 
+    // TODO: Look into changing into a dynamic ESM import (https://dmitripavlutin.com/ecmascript-modules-dynamic-import/)
     const pluginImportJsUrl = `./plugins/${pluginName}/${pluginImportBasename}.js`;
     const script = document.createElement('script');
     script.src = pluginImportJsUrl;

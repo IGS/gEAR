@@ -68,7 +68,7 @@ export class TileGrid {
             noDisplaysElt.remove();
         }
 
-        function getTotalAncestorHorizontalPadding(element) {
+        const getTotalAncestorHorizontalPadding = (element) => {
             let totalPadding = 0;
             let current = element.parentElement;
             while (current && current !== document.body) {
@@ -1437,6 +1437,13 @@ class DatasetTile {
             } else if (display.plot_type === "spatial_panel") {
                 await this.renderSpatialPanelDisplay(display, otherOpts);
             } else if (display.plot_type === "gosling") {
+
+                // Unset the autoGridRows of the parent selector
+                const parentSelector = this.parentTileGrid.selector;
+                if (parentSelector) {
+                    document.querySelector(parentSelector).style.gridAutoRows = "unset";
+                }
+
                 await this.renderGoslingDisplay(display, otherOpts);
             } else if (display.plot_type === "epiviz") {
                 await this.renderEpivizDisplay(display, otherOpts);
