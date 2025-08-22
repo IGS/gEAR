@@ -26,8 +26,15 @@ jobs:
       - name: Add version to JS and CSS references in HTML
         run: |
           find www/ -type f -name "*.html" | while read file; do
+          # Clear all existing version tags (in case they are present for files we don't want it on)
+          sed -i -E 's|(\?v=[^"]*)|"|g' "$file"
+
           # If path contains "vendor" or "tools" skip
           if [[ "$file" == *"vendor"* || "$file" == *"tools"* ]]; then
+            continue
+          fi
+          # If file starts with "http" or "https" then skip (remote file)
+          if [[ "$file" == http* ]]; then
             continue
           fi
           #echo $file
@@ -39,8 +46,15 @@ jobs:
       - name: Add version to JS imports in JS files
         run: |
           find www/js www/include -type f -name "*.js" | while read file; do
+          # Clear all existing version tags (in case they are present for files we don't want it on)
+          sed -i -E 's|(\?v=[^"\s]*)|"|g' "$file"
+
           # If path contains "vendor" or "tools" skip
           if [[ "$file" == *"vendor"* || "$file" == *"tools"* ]]; then
+            continue
+          fi
+          # If file starts with "http" or "https" then skip (remote file)
+          if [[ "$file" == http* ]]; then
             continue
           fi
           #echo $file
