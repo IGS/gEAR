@@ -1,9 +1,9 @@
 'use strict';
 
-import { apiCallsMixin, createToast, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
-import { datasetCollectionState, fetchDatasetCollections, selectDatasetCollection } from '../include/dataset-collection-selector/dataset-collection-selector.js';
-import { fetchGeneCartData, geneCollectionState, selectGeneLists } from '../include/gene-collection-selector/gene-collection-selector.js';
-import { TileGrid } from '/classes/tilegrid.js';
+import { apiCallsMixin, createToast, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js?v=90ca195';
+import { datasetCollectionState, fetchDatasetCollections, selectDatasetCollection } from '../include/dataset-collection-selector/dataset-collection-selector.js?v=90ca195';
+import { fetchGeneCartData, geneCollectionState, selectGeneLists } from '../include/gene-collection-selector/gene-collection-selector.js?v=90ca195';
+import { TileGrid } from '/classes/tilegrid.js?v=90ca195';
 
 // Pre-initialize some stuff
 initCommonUI();

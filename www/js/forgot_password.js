@@ -1,6 +1,6 @@
 'use strict';
 
-import { convertToFormData, initCommonUI, registerPageSpecificLoginUIUpdates } from './common.v2.js';
+import { convertToFormData, initCommonUI, registerPageSpecificLoginUIUpdates } from './common.v2.js?v=90ca195';
 // Pre-initialize some stuff
 initCommonUI();
 
