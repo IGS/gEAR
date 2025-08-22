@@ -1,13 +1,13 @@
 "use strict";
 
-import { Analysis, getAnalysisLabels, setAnalysisLabels } from "./classes/analysis.js?v=d26d84e";
-import { UI } from "./classes/analysis-ui.js?v=d26d84e";
-import { Dataset } from "./classes/dataset.js?v=d26d84e";
-import { Gene, WeightedGene } from "./classes/gene.js?v=d26d84e";
-import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=d26d84e";
-import { DatasetTree } from "./classes/tree.js?v=d26d84e";
-import { resetStepperWithHrefs } from "./stepper-fxns.js?v=d26d84e";
-import { apiCallsMixin, convertToFormData, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=d26d84e";
+import { Analysis, getAnalysisLabels, setAnalysisLabels } from "./classes/analysis.js?v=261bfe3";
+import { UI } from "./classes/analysis-ui.js?v=261bfe3";
+import { Dataset } from "./classes/dataset.js?v=261bfe3";
+import { Gene, WeightedGene } from "./classes/gene.js?v=261bfe3";
+import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=261bfe3";
+import { DatasetTree } from "./classes/tree.js?v=261bfe3";
+import { resetStepperWithHrefs } from "./stepper-fxns.js?v=261bfe3";
+import { apiCallsMixin, convertToFormData, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=261bfe3";
 
 // Pre-initialize some stuff
 initCommonUI();

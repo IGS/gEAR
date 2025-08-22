@@ -3,9 +3,9 @@
 
 'use strict';
 
-import { apiCallsMixin, createToast, getCurrentUser, initCommonUI, logErrorInConsole, trigger } from "./common.v2.js?v=d26d84e";
-import { curatorCommon } from "./curator_common.js?v=d26d84e";
-import { postPlotlyConfig } from "./plot_display_config.js?v=d26d84e";
+import { apiCallsMixin, createToast, getCurrentUser, initCommonUI, logErrorInConsole, trigger } from "./common.v2.js?v=261bfe3";
+import { curatorCommon } from "./curator_common.js?v=261bfe3";
+import { postPlotlyConfig } from "./plot_display_config.js?v=261bfe3";
 
 // Pre-initialize some stuff
 initCommonUI();

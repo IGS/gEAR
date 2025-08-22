@@ -1,7 +1,7 @@
 "use strict";
 
-import { apiCallsMixin, convertToFormData, createToast, getCurrentUser, getRootUrl, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=d26d84e";
-import { GeneCart } from "./classes/genecart.v2.js?v=d26d84e";
+import { apiCallsMixin, convertToFormData, createToast, getCurrentUser, getRootUrl, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=261bfe3";
+import { GeneCart } from "./classes/genecart.v2.js?v=261bfe3";
 
 // Pre-initialize some stuff
 initCommonUI();

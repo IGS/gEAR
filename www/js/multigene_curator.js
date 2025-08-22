@@ -1,11 +1,11 @@
 'use strict';
 
-import { apiCallsMixin, getCurrentUser, initCommonUI, logErrorInConsole, openModal, trigger } from "./common.v2.js?v=d26d84e";
-import { curatorCommon } from "./curator_common.js?v=d26d84e";
-import { Gene, WeightedGene } from "./classes/gene.js?v=d26d84e";
-import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=d26d84e";
-import { adjustStackedViolinHeight, postPlotlyConfig, setHeatmapHeightBasedOnGenes } from "./plot_display_config.js?v=d26d84e";
-import { fetchGeneCartData, geneCollectionState } from "../include/gene-collection-selector/gene-collection-selector.js?v=d26d84e";
+import { apiCallsMixin, getCurrentUser, initCommonUI, logErrorInConsole, openModal, trigger } from "./common.v2.js?v=261bfe3";
+import { curatorCommon } from "./curator_common.js?v=261bfe3";
+import { Gene, WeightedGene } from "./classes/gene.js?v=261bfe3";
+import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=261bfe3";
+import { adjustStackedViolinHeight, postPlotlyConfig, setHeatmapHeightBasedOnGenes } from "./plot_display_config.js?v=261bfe3";
+import { fetchGeneCartData, geneCollectionState } from "../include/gene-collection-selector/gene-collection-selector.js?v=261bfe3";
 
 // Pre-initialize some stuff
 initCommonUI();
