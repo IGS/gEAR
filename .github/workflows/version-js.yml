@@ -23,7 +23,6 @@ jobs:
           find www/ -type f -name "*.html" | while read file; do
           # If path contains "vendor" or "tools" skip
           if [[ "$file" == *"vendor"* || "$file" == *"tools"* ]]; then
-            echo "Skipping $file"
             continue
           fi
           echo $file
@@ -37,7 +36,6 @@ jobs:
           find www/js www/include -type f -name "*.js" | while read file; do
           # If path contains "vendor" or "tools" skip
           if [[ "$file" == *"vendor"* || "$file" == *"tools"* ]]; then
-            echo "Skipping $file"
             continue
           fi
           echo $file
