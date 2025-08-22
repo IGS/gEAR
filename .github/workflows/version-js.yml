@@ -36,10 +36,9 @@ jobs:
             #echo $file
 
             # Add or replace ?v=... for script src and link href (for .js and .css)
-            # Only add version to src/href= lines that do NOT contain "http" or "vendor"
-            # God, this is a lot of slop... thanks Copilot.
-            sed -i -E '/src="(http|\/\/|[^"]*vendor)/!s|(src="[^"]+\.js)(\?v=[^"]*)?"|\1?v='"${VERSION}"'"|g' "$file"
-            sed -i -E '/href="(http|\/\/|[^"]*vendor)/!s|(href="[^"]+\.css)(\?v=[^"]*)?"|\1?v='"${VERSION}"'"|g' "$file"
+            # Only add version to src/href= lines that are local
+            sed -i -E 's|(src="(js|include)/[^"]+\.js)(\?v=[^"]*)?"|\1?v='"${VERSION}"'"|g' "$file"
+            sed -i -E 's|(href="(css|include)/[^"]+\.css)(\?v=[^"]*)?"|\1?v='"${VERSION}"'"|g' "$file"
 
           done
 
