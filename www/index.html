@@ -21,13 +21,11 @@
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
         <link rel="stylesheet" href="https://unpkg.com/intro.js/introjs.css" />
-        <!-- Ensures we always get a new version (during our current active development cycles) -->
-        <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
 
-        <!-- Any other extension here -->
+        <link rel="stylesheet" href="css/common.v2.css" />
 
         <!--Page-specific CSS here -->
-        <script>document.write('<link rel="stylesheet" href="css/index.' + (new Date()).getTime() + '.css" />');</script>
+        <link rel="stylesheet" href="css/index.css" />
     </head>
     <body>
       <div id="main-layout-c" class="columns is-fullheight">
@@ -284,13 +282,12 @@
       <script src="js/vendor/js.cookie.js"></script>
       <script src="js/vendor/jsrender.20181003.min.js"></script>
 
-      <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
       <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
       <!-- Onboarding new users -->
       <script src="https://unpkg.com/intro.js/intro.js"></script>
 
       <!-- Page-specific JS file here -->
-      <script>document.write('<script type="module" src="js/index.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script type="module" src="js/index.js"></script>
     </body>
 </html>
