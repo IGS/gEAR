@@ -1,6 +1,6 @@
 "use strict";
 
-import { apiCallsMixin } from '../common.v2.js?v=b26f875';
+import { apiCallsMixin } from '../common.v2.js?v=2f12103';
 
 export class User {
     constructor ({id, user_name, email, institution, colorblind_mode, updates_wanted, is_admin,
