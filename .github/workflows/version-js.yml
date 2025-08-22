@@ -6,6 +6,10 @@ on:
       #- main  # or your default branch
       #- devel
       - feature-gosling-implementation
+    paths:
+      - 'www/**/*.html'
+      - 'www/**/*.js'
+      #- 'www/**/*.css'
 
 jobs:
   version-js:
@@ -29,6 +33,10 @@ jobs:
             # Add or replace ?v=... for script src and link href (for .js and .css)
             sed -i -E 's|(src="[^"]+\.js)(\?v=[^"]*)?"|\1?v='${VERSION}'"|g' "$file"
             sed -i -E 's|(href="[^"]+\.css)(\?v=[^"]*)?"|\1?v='${VERSION}'"|g' "$file"
+            # If the file was changed, note it
+            if [[ "$(git diff --name-only)" == *"$file"* ]]; then
+              echo "Updated $file"
+            fi
           done
 
       - name: Add version to JS imports in JS files
@@ -42,6 +50,9 @@ jobs:
             # Add or replace ?v=... for import statements (single/double quotes)
             sed -i -E "s|(from ['\"][^'\"]+\.js)(\?v=[^'\"]*)?(['\"])|\1?v=${VERSION}\3|g" "$file"
             sed -i -E "s|(import\(['\"][^'\"]+\.js)(\?v=[^'\"]*)?(['\"])|\1?v=${VERSION}\3|g" "$file"
+            if [[ "$(git diff --name-only)" == *"$file"* ]]; then
+              echo "Updated $file"
+            fi
           done
 
       # Optional: Commit and push changes back to the repo
