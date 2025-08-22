@@ -1,9 +1,9 @@
 'use strict';
 
-import { apiCallsMixin, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, rebindUrlParam, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=a14c1ad"";
-import { datasetCollectionState, fetchDatasetCollections, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=a14c1ad"";
-import { fetchPatternsData, getFlatPatternCartData, getSelectedPattern, populatePatternWeights, selectPatternWeights } from "../include/pattern-collection-selector/pattern-collection-selector.js?v=a14c1ad"";
-import { TileGrid } from "./classes/tilegrid.js?v=a14c1ad"";
+import { apiCallsMixin, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, rebindUrlParam, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=a14c1ad";
+import { datasetCollectionState, fetchDatasetCollections, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=a14c1ad";
+import { fetchPatternsData, getFlatPatternCartData, getSelectedPattern, populatePatternWeights, selectPatternWeights } from "../include/pattern-collection-selector/pattern-collection-selector.js?v=a14c1ad";
+import { TileGrid } from "./classes/tilegrid.js?v=a14c1ad";
 
 // Pre-initialize some stuff
 initCommonUI();

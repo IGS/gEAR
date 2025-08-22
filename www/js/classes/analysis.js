@@ -4,9 +4,9 @@
     Classes representing overall analysis (pipeline) elements and their child classes.
 */
 
-import { blockAnalysisStep, openNextAnalysisStep, UI } from './analysis-ui.js?v=a14c1ad"
-import { failStepWithHref, passStepWithHref, resetStepperWithHrefs } from "../stepper-fxns.js?v=a14c1ad"";
-import { apiCallsMixin, commonDateTime, convertToFormData, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, logErrorInConsole } from '../common.v2.js?v=a14c1ad"
+import { blockAnalysisStep, openNextAnalysisStep, UI } from "./analysis-ui.js?v=a14c1ad";
+import { failStepWithHref, passStepWithHref, resetStepperWithHrefs } from "../stepper-fxns.js?v=a14c1ad";
+import { apiCallsMixin, commonDateTime, convertToFormData, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, logErrorInConsole } from "../common.v2.js?v=a14c1ad";
 
 let analysisLabels = new Set();
 

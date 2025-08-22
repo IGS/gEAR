@@ -27,7 +27,7 @@ jobs:
         run: |
           find www/ -type f -name "*.html" | while read file; do
           # Clear all existing version tags (in case they are present for files we don't want it on)
-          sed -i -E 's|(\?v=[^"]*)|"|g' "$file"
+          sed -i -E 's/(\.js|\.css)\?v=[^"]*/\1/g' "$file"
 
           # If path contains "vendor" or "tools" skip
           if [[ "$file" == *"vendor"* || "$file" == *"tools"* ]]; then
@@ -47,7 +47,7 @@ jobs:
         run: |
           find www/js www/include -type f -name "*.js" | while read file; do
           # Clear all existing version tags (in case they are present for files we don't want it on)
-          sed -i -E 's|(\?v=[^"\s]*)|"|g' "$file"
+          sed -i -E 's/(\.js)\?v=[^"\']*/\1/g' "$file"
 
           # If path contains "vendor" or "tools" skip
           if [[ "$file" == *"vendor"* || "$file" == *"tools"* ]]; then
