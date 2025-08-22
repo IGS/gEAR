@@ -45,6 +45,7 @@ jobs:
 
       - name: Add version to JS imports in JS files
         run: |
+          set -x
           find www/js www/include -type f -name "*.js" | while read file; do
             # Clear all existing version tags (in case they are present for files we don't want it on)
             sed -i -E 's/(\.js)\?v=[^"\']*/\1/g' "$file"
@@ -53,7 +54,7 @@ jobs:
             if [[ "$file" == *"vendor"* || "$file" == *"tools"* ]]; then
               continue
             fi
-            echo $file
+            #echo $file
 
             # Add or replace ?v=... for import statements (single/double quotes)
             # Skip lines with http, //, or vendor in the import path
