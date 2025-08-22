@@ -9,7 +9,7 @@ on:
     paths:
       - 'www/**/*.html'
       - 'www/**/*.js'
-      - '.github/workflows/version-js.yml'
+      - '.github/workflows/version-js.yml'  # force retrigger if action is modified
       #- 'www/**/*.css'
 
 jobs:
@@ -30,7 +30,7 @@ jobs:
           if [[ "$file" == *"vendor"* || "$file" == *"tools"* ]]; then
             continue
           fi
-          echo $file
+          #echo $file
             # Add or replace ?v=... for script src and link href (for .js and .css)
             sed -i -E 's|(src="[^"]+\.js)(\?v=[^"]*)?"|\1?v='${VERSION}'"|g' "$file"
             sed -i -E 's|(href="[^"]+\.css)(\?v=[^"]*)?"|\1?v='${VERSION}'"|g' "$file"
@@ -43,7 +43,7 @@ jobs:
           if [[ "$file" == *"vendor"* || "$file" == *"tools"* ]]; then
             continue
           fi
-          echo $file
+          #echo $file
             # Add or replace ?v=... for import statements (single/double quotes)
             sed -i -E "s|(from ['\"][^'\"]+\.js)(\?v=[^'\"]*)?(['\"])|\1?v=${VERSION}\3|g" "$file"
             sed -i -E "s|(import\(['\"][^'\"]+\.js)(\?v=[^'\"]*)?(['\"])|\1?v=${VERSION}\3|g" "$file"
