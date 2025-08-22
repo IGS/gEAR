@@ -1,8 +1,8 @@
 'use strict';
 
 // This doesn't work unless we refactor everything to use ES modules
-import { apiCallsMixin, closeModal, getCurrentUser, logErrorInConsole, openModal } from '../common.v2.js?v=2f12103';
-import { adjustClusterColorbars, adjustExpressionColorbar, postPlotlyConfig } from '../plot_display_config.js?v=2f12103';
+import { apiCallsMixin, closeModal, getCurrentUser, logErrorInConsole, openModal } from '../common.v2.js?v=5210039';
+import { adjustClusterColorbars, adjustExpressionColorbar, postPlotlyConfig } from '../plot_display_config.js?v=5210039';
 import { embed } from 'https://esm.sh/gosling.js@1.0.5';
 
 /* Given a passed-in layout_id, genereate a 2-dimensional tile-based grid object.
