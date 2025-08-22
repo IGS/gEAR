@@ -1,6 +1,6 @@
 "use strict";
 
-import { apiCallsMixin } from "../../js/common.v2.js";
+import { apiCallsMixin } from "../../js/common.v2.js?v=3dd4d96";
 
 // NOTE: This component depends on common.js and on Bulma CSS being imported in the parent HTML file
 
