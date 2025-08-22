@@ -20,7 +20,7 @@ jobs:
 
       - name: Add version to JS and CSS references in HTML
         run: |
-          find www/ -f -name "*.html" | while read file; do
+          find www/ -type f -name "*.html" | while read file; do
           echo $file
             # Add or replace ?v=... for script src and link href (for .js and .css)
             sed -i -E 's|(src="[^"]+\.js)(\?v=[^"]*)?"|\1?v='${VERSION}'"|g' "$file"
@@ -29,7 +29,7 @@ jobs:
 
       - name: Add version to JS imports in JS files
         run: |
-          find www/js www/include -f -name "*.js" | while read file; do
+          find www/js www/include -type f -name "*.js" | while read file; do
           echo $file
             # Add or replace ?v=... for import statements (single/double quotes)
             sed -i -E "s|(from ['\"][^'\"]+\.js)(\?v=[^'\"]*)?(['\"])|\1?v=${VERSION}\3|g" "$file"
