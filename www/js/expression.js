@@ -3,7 +3,7 @@
 import { apiCallsMixin, createToast, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
 import { datasetCollectionState, fetchDatasetCollections, selectDatasetCollection } from '../include/dataset-collection-selector/dataset-collection-selector.js';
 import { fetchGeneCartData, geneCollectionState, selectGeneLists } from '../include/gene-collection-selector/gene-collection-selector.js';
-import { TileGrid } from './classes/tilegrid.js';
+import { TileGrid } from '/classes/tilegrid.js';
 
 // Pre-initialize some stuff
 initCommonUI();

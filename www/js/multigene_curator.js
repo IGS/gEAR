@@ -2,8 +2,8 @@
 
 import { apiCallsMixin, getCurrentUser, initCommonUI, logErrorInConsole, openModal, trigger } from './common.v2.js';
 import { curatorCommon } from './curator_common.js';
-import { Gene, WeightedGene } from "./classes/gene.js";
-import { GeneCart, WeightedGeneCart } from './classes/genecart.v2.js';
+import { Gene, WeightedGene } from "/classes/gene.js";
+import { GeneCart, WeightedGeneCart } from '/classes/genecart.v2.js';
 import { adjustStackedViolinHeight, postPlotlyConfig, setHeatmapHeightBasedOnGenes } from './plot_display_config.js';
 import { fetchGeneCartData, geneCollectionState } from '../include/gene-collection-selector/gene-collection-selector.js';
 

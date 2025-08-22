@@ -2,8 +2,8 @@
 
 import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates, trigger } from './common.v2.js';
 import { availablePalettes, plotly2MatplotlibNames } from './plot_display_config.js';
-import { FacetWidget } from "./classes/facets.js";
-import { DatasetTree } from "./classes/tree.js";
+import { FacetWidget } from "/classes/facets.js";
+import { DatasetTree } from "/classes/tree.js";
 
 let isMultigene;
 const setIsMultigene = (val) => { isMultigene = val; }

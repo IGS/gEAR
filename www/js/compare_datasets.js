@@ -1,10 +1,10 @@
 'use strict';
 
 import { apiCallsMixin, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from './common.v2.js';
-import { FacetWidget } from "./classes/facets.js";
-import { Gene, WeightedGene } from "./classes/gene.js";
-import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js";
-import { DatasetTree } from "./classes/tree.js";
+import { FacetWidget } from "/classes/facets.js";
+import { Gene, WeightedGene } from "/classes/gene.js";
+import { GeneCart, WeightedGeneCart } from "/classes/genecart.v2.js";
+import { DatasetTree } from "/classes/tree.js";
 import { fetchGeneCartData, geneCollectionState } from '../include/gene-collection-selector/gene-collection-selector.js';
 
 // Pre-initialize some stuff

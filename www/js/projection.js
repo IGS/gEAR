@@ -3,7 +3,7 @@
 import { apiCallsMixin, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, rebindUrlParam, registerPageSpecificLoginUIUpdates } from './common.v2.js';
 import { datasetCollectionState, fetchDatasetCollections, selectDatasetCollection } from '../include/dataset-collection-selector/dataset-collection-selector.js';
 import { fetchPatternsData, getFlatPatternCartData, getSelectedPattern, populatePatternWeights, selectPatternWeights } from '../include/pattern-collection-selector/pattern-collection-selector.js';
-import { TileGrid } from './classes/tilegrid.js';
+import { TileGrid } from '/classes/tilegrid.js';
 
 // Pre-initialize some stuff
 initCommonUI();
