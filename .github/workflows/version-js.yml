@@ -9,6 +9,7 @@ on:
     paths:
       - 'www/**/*.html'
       - 'www/**/*.js'
+      - '.github/workflows/version-js.yml'
       #- 'www/**/*.css'
 
 jobs:
