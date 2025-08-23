@@ -35,11 +35,11 @@ jobs:
             fi
             #echo $file
 
-            # Add or replace ?v=... for script src and link href for .js and .css
+            # Add ?v=... for script src and link href for .js and .css
             # Only add version to src/href= lines that are local
 
-            sed -i -E "s/(src=\"(js|include)[^\"]+\\.js)(\\?v=[^\"]*)?\"/\\1?v=${VERSION}\"/g" "$file"
-            sed -i -E "s/(href=\"(css|include)[^\"]+\\.css)(\\?v=[^\"]*)?\"/\\1?v=${VERSION}\"/g" "$file"
+            sed -i -E "s/(src=\"(js|include)[^\"]+\\.js)\"/\\1?v=${VERSION}\"/g" "$file"
+            sed -i -E "s/(href=\"(css|include)[^\"]+\\.css)\"/\\1?v=${VERSION}\"/g" "$file"
           done
 
       - name: Add version to JS imports in JS files
@@ -54,8 +54,8 @@ jobs:
             fi
             #echo $file
 
-            # Add or replace ?v=... for import statements - single/double quotes
-            sed -i -E "s/(from ['\"][^'\"]+\\.js)(\\?v=[^'\"]*)?(['\"])/\\1?v=${VERSION}\\3/g" "$file"
+            # Add ?v=... for import statements - single/double quotes
+            sed -i -E "s/(from ['\"][^'\"]+\\.js)(['\"])/\\1?v=${VERSION}\\2/g" "$file"
             # will add 'await import(...)' syntax later if we add those in code.
           done
 
