@@ -26,7 +26,7 @@ jobs:
       - name: Add version to JS and CSS references in HTML
         run: |
           find www/ -type f -name "*.html" | while read file; do
-            # I had trouble with syntax when using "choice" regex operators so I just broke the options up.
+            # NOTE: I had trouble with syntax when using "choice" regex operators so I just broke the options up.
 
             # Clear all existing version tags (in case they are present for files we don't want it on)
             sed -i -E 's|(\.js)\?v=[^"]*|\1|g' "$file"
@@ -51,7 +51,7 @@ jobs:
         run: |
           find www/js www/include -type f -name "*.js" | while read file; do
             # Clear all existing version tags (in case they are present for files we don't want it on)
-            sed -i -E 's|(\.js)\?v=[^"\']*|\1|g' "$file"
+            sed -i -E "s|(\.js)\?v=[^'\"]*|\1|g" "$file"
 
             # If path contains "vendor" or "tools" skip
             if [[ "$file" == *"vendor"* || "$file" == *"tools"* ]]; then
