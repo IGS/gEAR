@@ -37,8 +37,9 @@ jobs:
 
             # Add or replace ?v=... for script src and link href for .js and .css
             # Only add version to src/href= lines that are local
-            sed -i -E "s/(src=\"(js|include)[^\"]+\.js)(\?v=[^\"]*)?\"/\1?v=${VERSION}\"/g" "$file"
-            sed -i -E "s/(href=\"(css|include)[^\"]+\.css)(\?v=[^\"]*)?\"/\1?v=${VERSION}\"/g" "$file"
+
+            #sed -i -E "s/(src=\"(js|include)[^\"]+\.js)(\?v=[^\"]*)?\"/\1?v=${VERSION}\"/g" "$file"
+            #sed -i -E "s/(href=\"(css|include)[^\"]+\.css)(\?v=[^\"]*)?\"/\1?v=${VERSION}\"/g" "$file"
           done
 
       - name: Add version to JS imports in JS files
