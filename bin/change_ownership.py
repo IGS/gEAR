@@ -21,7 +21,8 @@ def main():
     parser = argparse.ArgumentParser( description='Changes ownership of datasets or profiles')
     parser.add_argument('-no', '--new_owner_id', type=int, required=True, help='New owner guser.ID' )
     parser.add_argument('-id', '--include_displays', action='store_true', help='Changes configured displays also' )
-    parser.add_argument('-d', '--dataset_id', type=str, required=False, help='Pass a single dataset.id' )
+    parser.add_argument('-ds', '--dataset_share_id', type=str, required=False, help='Pass a single dataset.id' )
+    parser.add_argument('-d', '--dataset_id', type=str, required=False, help='Pass a single dataset.share_id' )
     parser.add_argument('-p', '--profile_id', type=str, required=False, help='Pass a profile/layout id' )
     args = parser.parse_args()
 
@@ -32,7 +33,12 @@ def main():
     cursor = cnx.get_cursor()
 
     if args.dataset_id:
-        reown_dataset(cursor, args.dataset_id, args.new_owner_id, args.include_displays)
+        dataset = geardb.get_dataset_by_id(d_id=args.dataset_id)
+    elif args.dataset_share_id:
+        dataset = geardb.get_dataset_by_id(share_id=args.dataset_share_id)
+
+    if args.dataset_id:
+        reown_dataset(cursor, dataset, args.new_owner_id, args.include_displays)
 
     if args.profile_id:
         reown_profile(cursor, args.profile_id, args.new_owner_id, args.include_displays)
@@ -41,20 +47,18 @@ def main():
     cursor.close()
     cnx.close()
 
-def reown_dataset(cursor, dataset_id, user_id, include_displays):
-    dataset = geardb.get_dataset_by_id(d_id=dataset_id)
-
+def reown_dataset(cursor, dataset, user_id, include_displays):
     if dataset is None:
-        raise Exception("ERROR: No dataset found of ID: {0}".format(dataset_id))
+        raise Exception("ERROR: Dataset not found")
 
     original_owner = dataset.owner_id
-    print("\nDataset:{0} Changing owner from {1} to {2}".format(dataset_id, original_owner, user_id))
+    print("\nDataset:{0} Changing owner from {1} to {2}".format(dataset.id, original_owner, user_id))
     dataset.save_change(attribute='owner_id', value=user_id)
 
     ## check, are we doing curated displays too?
     if include_displays:
         qry = "SELECT id, user_id FROM dataset_display WHERE dataset_id = %s"
-        cursor.execute(qry, (dataset_id,))
+        cursor.execute(qry, (dataset.id,))
 
         display_ids_to_update = list()
 
@@ -75,8 +79,8 @@ def reown_dataset(cursor, dataset_id, user_id, include_displays):
             print("Dataset display:{0} Changing owner to {1}".format(display_id, user_id))
             cursor.execute(display_qry, (user_id, display_id))
 
-            print("Dataset preference: Setting user_id to {0} where user_id was {1}, dataset_id {2} and display_id:{3}".format(user_id, original_owner, dataset_id, display_id))
-            cursor.execute(pref_update_qry, (user_id, original_owner, dataset_id, display_id))
+            print("Dataset preference: Setting user_id to {0} where user_id was {1}, dataset_id {2} and display_id:{3}".format(user_id, original_owner, dataset.id, display_id))
+            cursor.execute(pref_update_qry, (user_id, original_owner, dataset.id, display_id))
 
 
 def reown_profile(cursor, profile_id, user_id, include_displays):
