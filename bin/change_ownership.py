@@ -26,8 +26,8 @@ def main():
     parser.add_argument('-p', '--profile_id', type=str, required=False, help='Pass a profile/layout id' )
     args = parser.parse_args()
 
-    if not args.dataset_id and not args.profile_id:
-        print("ERROR: You must specify either --dataset_id or --profile_id (or both)")
+    if not args.dataset_id and not args.profile_id and not args.dataset_share_id:
+        print("ERROR: You must specify one of --dataset_id, --dataset_share_id --profile_id (or both)")
 
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
@@ -35,9 +35,9 @@ def main():
     if args.dataset_id:
         dataset = geardb.get_dataset_by_id(d_id=args.dataset_id)
     elif args.dataset_share_id:
-        dataset = geardb.get_dataset_by_id(share_id=args.dataset_share_id)
+        dataset = geardb.get_dataset_by_share_id(share_id=args.dataset_share_id)
 
-    if args.dataset_id:
+    if args.dataset_id or args.dataset_share_id:
         reown_dataset(cursor, dataset, args.new_owner_id, args.include_displays)
 
     if args.profile_id:
