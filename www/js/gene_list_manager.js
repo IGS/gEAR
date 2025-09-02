@@ -1523,7 +1523,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         }
     }
     if (defaultDateAddedView && getCurrentUser().session_id) {
-        document.querySelector(`#controls-date-added li[data-dbval='${getCurrentUser().default_date_added_view}']`).classList.add("js-selected");
+        document.querySelector(`#controls-date-added li[data-dbval='${defaultDateAddedView}']`).classList.add("js-selected");
     }
 
     await submitSearch();
