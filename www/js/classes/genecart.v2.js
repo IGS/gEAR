@@ -24,11 +24,19 @@ export class GeneCart {
         */
 
         try {
-            const {data} = await axios.post("./cgi/save_new_genecart_json.cgi", this);
+            const response = await axios.post("./cgi/save_new_genecart_json.cgi", this);
+            const {data} = response;
             this.id = data.id
             if (callback) callback(this);
         } catch (error) {
-            const msg = error?.message || "Something went wrong saving genecart to database."
+            let msg;
+            if (error.response?.data) {
+                msg = typeof error.response.data === 'string'
+                    ? error.response.data
+                    : (error.response.data.message || JSON.stringify(error.response.data));
+            } else {
+                msg = error?.message || "Something went wrong saving genecart to database.";
+            }
             console.error(msg);
             if (errCallback) {
                 errCallback(this, msg);
@@ -54,12 +62,20 @@ export class GeneCart {
                 formData.append("new_cart_file", payload.new_cart_file);
             }
 
-            const {data} = await axios.post("./cgi/save_new_genecart_form.cgi", formData);
+            const response = await axios.post("./cgi/save_new_genecart_form.cgi", formData);
+            const {data} = response;
 
             this.id = data.id
             if (callback) callback(this);
         } catch (error) {
-            const msg = error?.message || "Something went wrong saving genecart to database."
+            let msg;
+            if (error.response?.data) {
+                msg = typeof error.response.data === 'string'
+                    ? error.response.data
+                    : (error.response.data.message || JSON.stringify(error.response.data));
+            } else {
+                msg = error?.message || "Something went wrong saving genecart to database.";
+            }
             console.error(msg);
             if (errCallback) {
                 errCallback(this, msg);
