@@ -3809,12 +3809,15 @@ class GeneCart:
             )
             self.id = cursor.lastrowid
 
-            for gene in self.genes:
-                cursor.execute(gcm_insert_qry, (self.id, gene.gene_symbol))
+            # Only save unweighted-list genes as members.  Weighted lists will have lots more members
+            # and can be read from disk instead of storing in the db.
+            if self.gctype == "unweighted-list":
+                for gene in self.genes:
+                    cursor.execute(gcm_insert_qry, (self.id, gene.gene_symbol))
 
         else:
             # ID already populated
-            #  TODO: Update cart properties, delete existing members, add current ones
+            # TODO: Update cart properties, delete existing members, add current ones
             raise Exception("Called feature not yet implemented")
 
         cursor.close()

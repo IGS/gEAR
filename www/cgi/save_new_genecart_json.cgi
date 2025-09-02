@@ -10,10 +10,10 @@ This script is appropriate to call when passing JSON directly.
 
 import json
 import sys
+from pathlib import Path
+
 import anndata
 import pandas as pd
-
-from pathlib import Path
 
 TWO_LEVELS_UP = 2
 abs_path_gear = Path(__file__).resolve().parents[TWO_LEVELS_UP]
@@ -57,16 +57,16 @@ def main():
             print(str(e))
             sys.exit(1)
 
-        df = pd.read_csv(source_file_path, sep='\t')
+        dataframe = pd.read_csv(source_file_path, sep='\t')
 
         # Write the h5ad file out
         try:
             # First two columns make adata.var
-            var = df[df.columns[:2]]
-            var.set_index(var.columns[0], inplace=True)
+            var = dataframe[dataframe.columns[:2]]
+            var = var.set_index(var.columns[0])
             # Remaining columns make adata.X
-            X = df[df.columns[2:]].transpose().to_numpy()
-            obs = pd.DataFrame(index=df.columns[2:])
+            X = dataframe[dataframe.columns[2:]].transpose().to_numpy()
+            obs = pd.DataFrame(index=dataframe.columns[2:])
             # Create the anndata object and write to h5ad
             adata = anndata.AnnData(X=X, obs=obs, var=var)
             adata.write(filename=h5dest_file_path)
