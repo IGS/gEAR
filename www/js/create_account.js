@@ -1,6 +1,6 @@
 'use strict';
 
-import { convertToFormData, initCommonUI } from "./common.v2.js?v=056890d";
+import { convertToFormData, initCommonUI } from "./common.v2.js?v=2860b88";
 
 // Pre-initialize some stuff
 initCommonUI();
