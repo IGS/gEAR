@@ -4,21 +4,31 @@
     Classes representing overall analysis (pipeline) elements and their child classes.
 */
 
-// requires common.js
+import { blockAnalysisStep, openNextAnalysisStep, UI } from "./analysis-ui.js?v=2860b88";
+import { failStepWithHref, passStepWithHref, resetStepperWithHrefs } from "../stepper-fxns.js?v=2860b88";
+import { apiCallsMixin, commonDateTime, convertToFormData, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, logErrorInConsole } from "../common.v2.js?v=2860b88";
 
 let analysisLabels = new Set();
 
+export const getAnalysisLabels = () => {
+    return analysisLabels;
+}
+
+export const setAnalysisLabels = (val) => {
+    analysisLabels = val
+}
+
 // TODO; Standardize runAnalysis() steps and similar functions in terms of UI manipulation (i.e. disable/hide buttons)
 
-class Analysis {
+export class Analysis {
     constructor ({
-        id = uuid(),
+        id = crypto.randomUUID(),
         datasetObj = null,
         datasetIsRaw = true,
         label = `Unlabeled ${commonDateTime()}`,
         type,
         vetting,
-        analysisSessionId = CURRENT_USER.session_id,
+        analysisSessionId = getCurrentUser().session_id,
         genesOfInterest = [],
         groupLabels = []
     } = {}) {
@@ -119,7 +129,7 @@ class Analysis {
      * @param {Object} opts - Additional options for the copy operation.
      */
     async copyToUserUnsaved(callback, opts) {
-        const newAnalysisId = uuid();
+        const newAnalysisId = crypto.randomUUID();
 
         try {
             const data = await this.copyDatasetAnalysis('user_unsaved');
@@ -131,7 +141,7 @@ class Analysis {
 
             this.type = 'user_unsaved';
             this.id = newAnalysisId;
-            this.analysisSessionId = CURRENT_USER.session_id;
+            this.analysisSessionId = getCurrentUser().session_id;
 
             document.querySelector(UI.analysisActionContainer).classList.remove("is-hidden");
             document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
@@ -240,7 +250,7 @@ class Analysis {
                 const option = document.createElement("option");
                 option.dataset.analysisId = analysis.id;
                 option.dataset.analysisType = analysis.type;
-                option.dataset.analysisSessionId = analysis.session_id || CURRENT_USER.session_id;
+                option.dataset.analysisSessionId = analysis.session_id || getCurrentUser().session_id;
                 option.dataset.datasetId = analysis.dataset_id;
                 option.textContent = analysis.label || "Unlabeled"
                 // ? Using standard HTML, cannot add icons to options, so making icons by vetting status is not possible
@@ -396,7 +406,7 @@ class Analysis {
             }
 
         } catch (error) {
-            logErrorInConsole(`Failed ID was: ${datasetId} because msg: ${error}`);
+            logErrorInConsole(`Failed ID was: ${this.dataset.id} because msg: ${error}`);
             createToast(`Error retrieving stored analysis`);
         }
 
@@ -420,7 +430,7 @@ class Analysis {
             datasetIsRaw: data.dataset_is_raw,
             label: data.label,
             type: data.type,
-            analysisSessionId: data.session_id || CURRENT_USER.session_id,
+            analysisSessionId: data.session_id || getCurrentUser().session_id,
             groupLabels: data.group_labels,
             genesOfInterest: data.genesOfInterest
         });
@@ -534,7 +544,7 @@ class Analysis {
 
         } catch (error) {
             createToast("Failed to access dataset");
-            logErrorInConsole(`Failed ID was: ${datasetId} because msg: ${error.message}`);
+            logErrorInConsole(`Failed ID was: ${this.dataset.id} because msg: ${error.message}`);
         }
     }
 
@@ -643,7 +653,7 @@ class Analysis {
 
 
         this.datasetIsRaw = true;
-        this.id = uuid();
+        this.id = crypto.randomUUID();
         this.label = null;
 
         // Hide tSNE section
@@ -789,11 +799,44 @@ class AnalysisStepLabeledTsne {
         document.querySelector(UI.labeledTsneSection).classList.remove("is-hidden");
     }
 
+    async getEmbeddedTsneDisplay (datasetId) {
+        const {data} = await axios.post("./cgi/get_embedded_tsne_display.cgi", convertToFormData({ dataset_id: datasetId }));
+        return data;
+    }
+
+    /**
+     * Retrieves the t-SNE image data for a given gene symbol and configuration.
+     *
+     * @param {string} geneSymbol - The gene symbol to retrieve t-SNE image data for.
+     * @param {object} config - The configuration object.
+     * @returns {Promise<string>} - The t-SNE image data.
+     */
+    async getTsneImageData(geneSymbol, config) {
+        config.colorblind_mode = getCurrentUser().colorblind_mode;
+        config.gene_symbol = geneSymbol;
+
+        // in order to avoid circular references (since analysis is referenced in the individual step objects),
+        //  we need to create a smaller analysis object to pass to the API
+
+        const analysis = {
+            "id": this.analysis.id,
+            "type": this.analysis.type,
+        }
+
+        const data = await apiCallsMixin.fetchTsneImage(this.analysis.dataset.id, analysis, "tsne_static", config);
+
+        if (!data.success || data.success < 1) {
+            const message = data.message || "Unknown error";
+            throw new Error(message);
+        }
+        return data.image;
+    }
+
     async runAnalysis() {
 
         // Get the tSNE config
         const dataset = this.analysis.dataset;
-        const data = await getEmbeddedTsneDisplay(dataset.id);
+        const data = await this.getEmbeddedTsneDisplay(dataset.id);
         const config = data.plotly_config;
 
         const img = document.createElement('img');
@@ -801,7 +844,7 @@ class AnalysisStepLabeledTsne {
 
         // Generate the tSNE plot
         try {
-            const image = await getTsneImageData(document.querySelector(UI.labeledTsneGeneSymbolElt).value, config);
+            const image = await this.getTsneImageData(document.querySelector(UI.labeledTsneGeneSymbolElt).value, config);
             if (typeof image === 'object' || typeof image === "undefined") {
                 throw new Error("No image data returned");
             } else {

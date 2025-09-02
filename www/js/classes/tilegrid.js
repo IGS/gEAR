@@ -1,5 +1,10 @@
 'use strict';
 
+// This doesn't work unless we refactor everything to use ES modules
+import { apiCallsMixin, closeModal, getCurrentUser, logErrorInConsole, openModal } from "../common.v2.js?v=2860b88";
+import { adjustClusterColorbars, adjustExpressionColorbar, postPlotlyConfig } from "../plot_display_config.js?v=2860b88";
+import { embed } from 'https://esm.sh/gosling.js@1.0.5';
+
 /* Given a passed-in layout_id, genereate a 2-dimensional tile-based grid object.
 This uses Bulma CSS for stylings (https://bulma.io/documentation/layout/tiles/)
 For the given layout, a single-gene grid and a multi-gene grid are generated.
@@ -11,7 +16,7 @@ const mgScanpyPlots = ["mg_pca_static", "mg_tsne_static", "mg_umap_static"];
 
 // Epiviz overrides the <script> d3 version when it loads so we save as a new variable to preserve it
 const new_d3 = d3;
-class TileGrid {
+export class TileGrid {
 
     constructor(shareId, type="layout", selector ) {
         this.shareId = shareId;
@@ -63,7 +68,7 @@ class TileGrid {
             noDisplaysElt.remove();
         }
 
-        function getTotalAncestorHorizontalPadding(element) {
+        const getTotalAncestorHorizontalPadding = (element) => {
             let totalPadding = 0;
             let current = element.parentElement;
             while (current && current !== document.body) {
@@ -455,6 +460,13 @@ class DatasetTile {
 
         // If projection mode is enabled, then perform projection
         if (this.projectR.modeEnabled) {
+
+            if (["epiviz", "gosling"].includes(this.dataset.dtype)) {
+                // If the dataset type is epiviz or gosling, cannot run projectR
+                createCardMessage(tileId, "danger", `Project R mode is not supported for ${this.dataset.dtype} datasets.`);
+                return;
+            }
+
             if (!this.projectR.projectionId) {
                 const {patternSource, algorithm, gctype, zscore} = projectionOpts;
                 await this.getProjection(patternSource, algorithm, gctype, zscore);
@@ -487,6 +499,13 @@ class DatasetTile {
         // If the dataset type is epiviz, then give warning that it hasn't been implemented yet
         if (this.dataset.dtype === "epiviz") {
             createCardMessage(tileId, "warning", "Epiviz datasets are not yet supported.");
+            return;
+        }
+
+        // If the dataset type is gosling, there is no dataset to collect orthologs
+        // So just render using the original gene input(s)
+        if (this.dataset.dtype === "gosling") {
+            await this.renderDisplay(geneSymbolInput, null, svgScoringMethod);
             return;
         }
 
@@ -538,7 +557,7 @@ class DatasetTile {
             this.orthologs = null;
         }
 
-        const geneOrganismId = CURRENT_USER.default_org_id || null;
+        const geneOrganismId = getCurrentUser().default_org_id || null;
 
         try {
             const data = await apiCallsMixin.fetchOrthologs(this.dataset.id, geneSymbols, geneOrganismId);
@@ -1309,11 +1328,11 @@ class DatasetTile {
         }
         const layoutDisplay = layouts.find((d) => JSON.parse(d).display_id === displayId);
 
-        // Try epiviz display if no plotly display was found
+        // Try epiviz/gosling display if no plotly display was found
         if (this.type === "single") {
-            if (!userDisplay) userDisplay = this.dataset.userDisplays.find((d) => d.id === displayId && d.plot_type === "epiviz");
+            if (!userDisplay) userDisplay = this.dataset.userDisplays.find((d) => d.id === displayId && ["epiviz", "gosling"].includes(d.plot_type));
 
-            if (!ownerDisplay) ownerDisplay = this.dataset.ownerDisplays.find((d) => d.id === displayId && d.plot_type === "epiviz");
+            if (!ownerDisplay) ownerDisplay = this.dataset.ownerDisplays.find((d) => d.id === displayId && ["epiviz", "gosling"].includes(d.plot_type));
         }
 
         // add console warning if default display id was not found in the user or owner display lists
@@ -1417,6 +1436,15 @@ class DatasetTile {
                 await this.renderSVG(display, this.svgScoringMethod, otherOpts);
             } else if (display.plot_type === "spatial_panel") {
                 await this.renderSpatialPanelDisplay(display, otherOpts);
+            } else if (display.plot_type === "gosling") {
+
+                // Unset the autoGridRows of the parent selector
+                const parentSelector = this.parentTileGrid.selector;
+                if (parentSelector) {
+                    document.querySelector(parentSelector).style.gridAutoRows = "unset";
+                }
+
+                await this.renderGoslingDisplay(display, otherOpts);
             } else if (display.plot_type === "epiviz") {
                 await this.renderEpivizDisplay(display, otherOpts);
             } else if (this.type === "multi") {
@@ -1472,106 +1500,176 @@ class DatasetTile {
 
         createCardMessage(this.tile.tileId, "warning", "Epiviz displays have not been implemented yet.");
         return;
+    }
 
-        let genome = null;
-        const genesTrack = display.plotly_config.tracks["EPIVIZ-GENES-TRACK"];
-        if (genesTrack.length > 0) {
-            const gttrack = genesTrack[0];
-            genome = gttrack.measurements ? gttrack.measurements[0].id : gttrack.id[0].id;
-        }
+    /**
+     * Renders the Gosling-based display.
+     *
+     * @param {Object} display - The display object.
+     * @param {Object} otherOpts - Other options.
+     * @returns {Promise<void>} - A promise that resolves when the rendering is complete.
+     * @throws {Error} - If there is an error fetching the data or rendering the plot.
+     */
+    async renderGoslingDisplay(display, otherOpts) {
+        const datasetId = display.dataset_id;
+        const orgId = this.dataset.organism_id;
+        const plotConfig = display.plotly_config;
+        const panelAGeneSymbol = plotConfig.gene_symbol;
+        const assembly = plotConfig.assembly;
+        const ucscHubUrl = plotConfig.hubUrl;
+        const zoom = this.isZoomed;
+        let positionArr = ["", ""]; // [leftPosition, rightPosition]
 
-        // Get data and set up the image area
-        const data = await apiCallsMixin.fetchEpivizDisplay(datasetId, geneSymbol, genome, otherOpts);
-        if (data.hasOwnProperty("success") && data.success === -1) {
-            throw new Error (data?.message ? data.message : "Unknown error.")
-        }
-
-        const extendRangeRatio = 10;
-
-        // generate the epiviz panel + tracks
-        const epiviznav = document.querySelector(`#epiviznav_${this.tile.tileId}`);
         const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned
+        plotContainer.replaceChildren();    // erase plot
 
-        if (!epiviznav) {
-            // epiviz container already exists, so only update gneomic position in the browser
+        const goslingContainer = document.createElement("div");
+        goslingContainer.id = `tile-${this.tile.tileId}-gosling`;
+        goslingContainer.style.marginTop = "5px";
+        plotContainer.append(goslingContainer);
 
-            plotContainer.replaceChildren();    // erase plot
-            try {
-                plotContainer.append(this.renderEpivizTemplate(data, display.plotly_config, extendRangeRatio));
-            } catch (error) {
-                logErrorInConsole(error);
-                throw new Error(`Could not render Epiviz display. Please contact gEAR support`);
-            }
+        let spec;
+        try {
+            spec = await apiCallsMixin.fetchGoslingDisplay(datasetId, panelAGeneSymbol, assembly, zoom, otherOpts)
+        } catch (error) {
+            logErrorInConsole(error);
+            createCardMessage(this.tile.tileId, "danger", "An error occurred while fetching the Gosling spec.");
             return;
         }
-        const nStart = epivizNavStart(data, extendRangeRatio);
-        const nEnd = epivizNavEnd(data, extendRangeRatio);
 
-        // epiviz container already exists, so only update gneomic position in the browser
-        epiviznav.setAttribute("chr", data.chr);
-        epiviznav.setAttribute("start", nStart);
-        epiviznav.setAttribute("end", nEnd);
-        epiviznav.range = epiviznav.getGenomicRange(data.chr, nstart, nend);    // function is imported from epiviz JS
-    }
+        // Determine the initial domain for panel A, based on the current ortholog
+        // This gene is determined from the expression search results, so not triggered by an event
 
-    /**
-     * Renders an Epiviz template with the provided data and configuration.
-     * @param {Object} data - The data to be rendered in the template.
-     * @param {Object} plotConfig - The configuration for the plot.
-     * @param {number} extendRangeRatio - The ratio by which to extend the range.
-     * @returns {HTMLElement} - The rendered Epiviz template.
-     */
-    renderEpivizTemplate(data, plotConfig, extendRangeRatio) {
-        const template = document.getElementById('tmpl-epiviz-container');
-        const epivizHTML = template.content.cloneNode(true);
-        // Add in properties to the epiviz container
-        const epivizContainer = epivizHTML.querySelector('.epiviz-container');
-        epivizContainer.id = `epiviz_${this.tile.tileId}`;
-        const epivizDataSource = epivizHTML.querySelector('epiviz-data-source');
-        epivizDataSource.id = `${this.tile.tileId}epivizds`;
-        epivizDataSource.setAttribute("provider-url", plotConfig.dataserver);
+        let panelAGeneResults = null;
+        const basePadding = 1500; // Base padding for zooming
+        try {
+            const panelAData = await apiCallsMixin.fetchGeneAnnotations(panelAGeneSymbol, true, null, null )
 
-        const epivizNavigation = epivizHTML.querySelector('epiviz-navigation');
-        epivizNavigation.id = `${this.tile.tileId}_epiviznav`;
-        // the chr, start and end should come from query - map gene to genomic position.
-        epivizNavigation.setAttribute("chr", data.chr);
-        epivizNavigation.setAttribute("start", epivizNavStart(data, extendRangeRatio));
-        epivizNavigation.setAttribute("end", epivizNavEnd(data, extendRangeRatio));
-        epivizNavigation.setAttribute("viewer", `/epiviz.html?dataset_id=${this.dataset.id}&chr=${data.chr}&start=${data.start}&end=${data.end}`);
-        epivizNavigation.innerHTML(this.renderEpivizTracks(plotConfig));
-        return epivizHTML;
-    }
+            panelAGeneResults = panelAData[panelAGeneSymbol.toLowerCase()];
 
-    /**
-     * Renders Epiviz tracks based on the provided plot configuration.
-     * @param {Object} plotConfig - The plot configuration object.
-     * @returns {string} - The HTML template for the Epiviz tracks.
-     */
-    renderEpivizTracks(plotConfig) {
-        //Create the tracks
-        let epivizTracksTemplate = "";
-        for (const track in plotConfig.tracks) {
-            const trackConfig = plotConfig.tracks[track];
-            trackConfig.forEach((tc) => {
-                let tempTrack = `<${track} slot='charts' `;
-                tempTrack += Object.keys(tc).includes("id") ? ` dim-s='${JSON.stringify(tc.id)}' ` : ` measurements='${JSON.stringify(tc.measurements)}' `;
+            const geneData = panelAGeneResults.by_organism[orgId];
+            if (!geneData || geneData.length === 0) {
+                alert(`Gene ${gene} not found.`);
+                return;
+            }
+            // Parse the first result (assuming it's the most relevant)
+            const geneInfo = JSON.parse(geneData[0]);
+            // Get start, end, strand, chromosome (as molecule
+            const start = geneInfo.start;
+            const end = geneInfo.stop;
+            //dconst strand = geneInfo.strand || "+"; // Default to positive strand if not provided
+            // TODO: Standardize the chromosome adjustments
+            let chr = geneInfo.molecule || "unknown"; // Default to unknown chromosome if not provided
+            // if chr is a number, convert it to a string with "chr" prefix
+            if (!isNaN(Number(chr)) || chr === "X" || chr === "Y") {
+                chr = `chr${chr}`;
+            }
+            // if chr is MT, convert to "chrM"
+            if (chr === "MT") {
+                chr = "chrM";
+            }
 
-                if (tc.colors != null) {
-                    tempTrack += ` chart-colors='${JSON.stringify(tc.colors)}' `;
-                }
+            const leftPosition = `${chr}:${start}-${end}`;
+            const postitionStr = `${assembly}.${leftPosition}`; // Update the global position variable
+            positionArr[0] = postitionStr;
 
-                if (tc.settings != null) {
-                    tempTrack += ` chart-settings='${JSON.stringify(tc.settings)}' `;
-                }
+            // Add a domain to the left-view spec
+            spec.views[1].views[0].xDomain = {
+                "chromosome": chr, "interval": [start-basePadding, end+basePadding]
+            };
 
-                tempTrack += ` style='min-height:200px;'></${track}> `;
+            if (zoom) {
+                // Add a domain to the right-view spec
+                spec.views[1].views[1].xDomain = {
+                    "chromosome": chr, "interval": [start-basePadding, end+basePadding]
+                };
+            }
 
-                epivizTracksTemplate += tempTrack;
-            });
+        } catch (error) {
+            console.error("Error searching for gene:", error);
         }
 
-        return epivizTracksTemplate;
+        // Themes -> https://gosling-lang.org/themes/
+        const embedOpts = { "padding": 0, "theme": null };
+        // NOTE: re-embedding does work but it causes some stability issues
+        const goslingApi = await embed(document.getElementById(goslingContainer.id), spec, embedOpts);
+
+        // If the view is a zoomed view extra controls and events are added.
+        if (zoom) {
+            const exportButton = createExportButton(this.tile.tileId, goslingContainer.id);
+            const searchButton = createPanelBSearchBox(this.tile.tileId, exportButton.id);
+
+            document.getElementById(exportButton.id).addEventListener('click', () => {
+                const url = "https://genome.ucsc.edu/cgi-bin/hgTracks";
+                // add DB and Hub parameters
+                const urlParams = new URLSearchParams({
+                    db: assembly,
+                    hubUrl: ucscHubUrl,    // preconfigured hub file
+                    ignoreCookie: 1, // Ignore cookie to ensure trackHub changes are respected. Unfortunately, adds default tracks.
+                })
+
+                if (positionArr) {
+                    // if an element in positionArr is not empty, add it to the URL, separated by a pipe
+                    const highlightedPositions = positionArr.filter(pos => pos).join('|');
+                    urlParams.set('highlight', highlightedPositions);
+                }
+
+                // open in a new tab
+                window.open(`${url}?${urlParams.toString()}`, '_blank');
+            });
+
+            document.getElementById(searchButton.id).addEventListener('click', async () => {
+                const geneInput = document.getElementById(`tile-${this.tile.tileId}-panel-b-gene-input`);
+                const gene = geneInput.value.trim();
+                if (!gene) {
+                    alert("Please enter a gene name.");
+                    return;
+                }
+
+                let panelBGeneResults = null;
+                try {
+                    const panelBData = await apiCallsMixin.fetchGeneAnnotations(gene, true, null, null )
+                    panelBGeneResults = panelBData[gene.toLowerCase()];
+                } catch (error) {
+                    console.error("Error searching for gene:", error);
+                }
+
+                const geneData = panelBGeneResults.by_organism[orgId];
+                if (!geneData || geneData.length === 0) {
+                    alert(`Gene ${gene} not found.`);
+                    return;
+                }
+                // Parse the first result (assuming it's the most relevant)
+                const geneInfo = JSON.parse(geneData[0]);
+                // Get start, end, strand, chromosome (as molecule
+                const start = geneInfo.start;
+                const end = geneInfo.stop;
+                //dconst strand = geneInfo.strand || "+"; // Default to positive strand if not provided
+                let chr = geneInfo.molecule || "unknown"; // Default to unknown chromosome if not provided
+                // if chr is a number, convert it to a string with "chr" prefix
+                if (!isNaN(Number(chr)) || chr === "X" || chr === "Y") {
+                    chr = `chr${chr}`;
+                }
+                // if chr is MT, convert to "chrM"
+                if (chr === "MT") {
+                    chr = "chrM";
+                }
+
+                const rightPosition = `${chr}:${start}-${end}`;
+                const postitionStr = `${assembly}.${rightPosition}`; // Update the global position variable
+                positionArr[1] = postitionStr;
+                await goslingApi.zoomTo("right-annotation", rightPosition, basePadding); // track name, position, padding, duration (ms)
+
+            });
+
+
+        }
+
+
+
+
+        return;
     }
 
     /**
@@ -2141,7 +2239,7 @@ class DatasetTile {
  */
 const colorSVG = async (chartData, plotConfig, datasetId, tileId, geneSymbol, svgScoringMethod="gene") => {
     // I found adding the mid color for the colorblind mode  skews the whole scheme towards the high color
-    const colorblindMode = CURRENT_USER.colorblind_mode;
+    const colorblindMode = getCurrentUser().colorblind_mode;
     const lowColor = colorblindMode ? 'rgb(254, 232, 56)' : (plotConfig?.low_color || '#e7d1d5');
     const midColor = colorblindMode ? null : (plotConfig?.mid_color || null);
     const highColor = colorblindMode ? 'rgb(0, 34, 78)' : (plotConfig?.high_color || '#401362');
@@ -2438,7 +2536,7 @@ const colorSVG = async (chartData, plotConfig, datasetId, tileId, geneSymbol, sv
  * @param {Object} score - The score object containing the minimum and maximum values.
  */
 const drawSVGLegend = (plotConfig, tileId, title, score) => {
-    const colorblindMode = CURRENT_USER.colorblind_mode;
+    const colorblindMode = getCurrentUser().colorblind_mode;
     const lowColor = colorblindMode ? 'rgb(254, 232, 56)' : plotConfig.low_color;
     const midColor = colorblindMode ? null : plotConfig.mid_color
     const highColor = colorblindMode ? 'rgb(0, 34, 78)' : plotConfig.high_color;
@@ -2607,27 +2705,6 @@ const drawSVGLegend = (plotConfig, tileId, title, score) => {
 
     });
 }
-
-/**
- * Calculates the start position for the epiviz navigation based on the given data and extend range ratio.
- * @param {Object} data - The data object containing the start and end positions.
- * @param {number} extendRangeRatio - The ratio by which to extend the range.
- * @returns {number} - The calculated start position.
- */
-const epivizNavStart = (data, extendRangeRatio) => {
-    return data.start - Math.round((data.end - data.start) * extendRangeRatio);
-}
-
-/**
- * Calculates the end position of a navigation based on the given data and extend range ratio.
- * @param {Object} data - The data object containing the start and end positions.
- * @param {number} extendRangeRatio - The ratio by which to extend the range.
- * @returns {number} - The calculated end position.
- */
-const epivizNavEnd = (data, extendRangeRatio) => {
-    return data.end + Math.round((data.end - data.start) * extendRangeRatio);
-}
-
 /**
  * Retrieves updates and additions to the plot from the plot_display_config JS object.
  *
@@ -2669,4 +2746,54 @@ const createCardMessage = (tileId, level, message, id) => {
     messageElt.classList.add(textLevel, bgLevel, "p-2", "m-2", "has-text-weight-bold");
     messageElt.textContent = message;
     cardContent.append(messageElt);
+}
+
+const createExportButton = (tileId, selectorId) => {
+    // Add a button to export the current view to UCSC Genome Browser
+    const exportButton = document.createElement('button');
+    exportButton.id = `tile-${tileId}-ucsc-export-button`;
+    exportButton.textContent = 'View in UCSC Genome Browser';
+    // stylize the button
+    exportButton.style.zIndex = '1000';
+    exportButton.style.padding = '10px';
+    exportButton.style.marginBottom = '10px';
+    exportButton.style.marginRight = '10px';
+    exportButton.style.backgroundColor = 'purple'; // Purple background
+    exportButton.style.color = 'white'; // White text
+    exportButton.style.border = 'none';
+    exportButton.style.borderRadius = '5px';
+    exportButton.style.cursor = 'pointer';
+    document.getElementById(selectorId).prepend(exportButton);
+    return exportButton
+}
+
+const createPanelBSearchBox = (tileId, selectorId) => {
+    // Add a search box that will link to Panel B
+    const searchBox = document.createElement('div');
+    searchBox.id = `tile-${tileId}-panel-b-gene-input-search;`
+    searchBox.style.float = "right";
+
+    const searchInput = document.createElement('input');
+    searchInput.id = `tile-${tileId}-panel-b-gene-input`;
+    searchInput.type = 'text';
+    searchInput.placeholder = 'Enter gene name';
+    searchInput.style.marginRight = '4px'; // for some reason the label and input are not aligned propely with the panel A search box outside the gosling container
+
+    // Add label for the input
+    const searchLabel = document.createElement('label');
+    searchLabel.setAttribute('for', searchInput.id);
+    searchLabel.textContent = 'Search for a gene in Panel B:';
+    searchLabel.style.fontWeight = 'bold';
+    searchLabel.style.color = "black";
+    searchLabel.style.marginRight = '4px';
+
+    const searchButton = document.createElement('button');
+    searchButton.id = `tile-${tileId}-panel-b-search-button`;
+    searchButton.textContent = 'Search';
+
+    searchBox.appendChild(searchLabel);
+    searchBox.appendChild(searchInput);
+    searchBox.appendChild(searchButton);
+    document.getElementById(selectorId).before (searchBox);
+    return searchButton;
 }

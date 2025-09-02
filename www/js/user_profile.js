@@ -1,5 +1,10 @@
 'use strict';
 
+import { convertToFormData, createToast, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=2860b88";
+
+// Pre-initialize some stuff
+initCommonUI();
+
 let passwordUpdateWanted = false;
 
 // When password and repeated password are not the same, add a tooltip
@@ -36,7 +41,7 @@ document.getElementById("update-password-toggle").addEventListener("click", () =
     document.getElementById("update-password-toggle").classList.add("is-hidden");
     document.getElementById("password-update-section").classList.remove("is-hidden");
     document.getElementById("new-password").focus();
-    passwordUpdateWanted = true; 
+    passwordUpdateWanted = true;
 });
 
 // submit the form
@@ -48,8 +53,8 @@ document.getElementById("submit-preferences").addEventListener("click", async (e
 
     const formData ={
         scope: "settings_change",
-        session_id: CURRENT_USER.session_id,
-        help_id: CURRENT_USER.help_id,
+        session_id: getCurrentUser().session_id,
+        help_id: getCurrentUser().help_id,
         email: document.getElementById("email").value,
         institution: document.getElementById("institution").value,
         colorblind_mode: document.getElementById("colorblind-mode").checked,
@@ -91,7 +96,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 		elt.classList.remove("is-active");
 	}
 
-    const sessionId = CURRENT_USER.session_id;
+    const sessionId = getCurrentUser().session_id;
 
 	if (! sessionId ) {
         document.getElementById("not-logged-in-msg").classList.remove("is-hidden");
@@ -99,10 +104,10 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 
     // Get the user's settings from the server
-    document.getElementById("email").value = CURRENT_USER.email;
-    document.getElementById("institution").value = CURRENT_USER.institution;
-    document.getElementById("colorblind-mode").checked = CURRENT_USER.colorblind_mode;
-    document.getElementById("want-updates").checked = CURRENT_USER.updates_wanted;
+    document.getElementById("email").value = getCurrentUser().email;
+    document.getElementById("institution").value = getCurrentUser().institution;
+    document.getElementById("colorblind-mode").checked = getCurrentUser().colorblind_mode;
+    document.getElementById("want-updates").checked = getCurrentUser().updates_wanted;
 
     // Forcibly empty the password fields so the browser's don't autofill.
     //  Then wait and do it again.
@@ -115,3 +120,4 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         document.getElementById("repeat-password").value = "";
     }, 500);
 };
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);

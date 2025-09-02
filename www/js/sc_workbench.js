@@ -1,5 +1,17 @@
 "use strict";
 
+import { Analysis, getAnalysisLabels, setAnalysisLabels } from "./classes/analysis.js?v=2860b88";
+import { UI } from "./classes/analysis-ui.js?v=2860b88";
+import { Dataset } from "./classes/dataset.js?v=2860b88";
+import { Gene, WeightedGene } from "./classes/gene.js?v=2860b88";
+import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=2860b88";
+import { DatasetTree } from "./classes/tree.js?v=2860b88";
+import { resetStepperWithHrefs } from "./stepper-fxns.js?v=2860b88";
+import { apiCallsMixin, convertToFormData, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=2860b88";
+
+// Pre-initialize some stuff
+initCommonUI();
+
 let currentAnalysis;
 let clickedMarkerGenes = new Set();
 let typedMarkerGenes = new Set();
@@ -96,7 +108,8 @@ const datasetTree = new DatasetTree({
 
         try {
             document.querySelector(UI.analysisSelect).disabled = true;
-            analysisLabels = await currentAnalysis.getSavedAnalysesList(datasetId, -1, 'sc_workbench');
+            const labels = await currentAnalysis.getSavedAnalysesList(datasetId, -1, 'sc_workbench');
+            setAnalysisLabels(labels);
         } catch (error) {
             createToast("Failed to access analyses for this dataset");
             logErrorInConsole(error);
@@ -253,11 +266,6 @@ const getDatasetInfo = async (datasetId) => {
     }
 }
 
-const getEmbeddedTsneDisplay = async (datasetId) => {
-    const {data} = await axios.post("./cgi/get_embedded_tsne_display.cgi", convertToFormData({ dataset_id: datasetId }));
-    return data;
-}
-
 /**
  * Retrieves an array of genes from a collection of cells.
  *
@@ -266,34 +274,6 @@ const getEmbeddedTsneDisplay = async (datasetId) => {
  */
 const getGenesFromCells = (cells) => {
     return [...cells].map(cell => cell.textContent.trim());
-}
-
-/**
- * Retrieves the t-SNE image data for a given gene symbol and configuration.
- *
- * @param {string} geneSymbol - The gene symbol to retrieve t-SNE image data for.
- * @param {object} config - The configuration object.
- * @returns {Promise<string>} - The t-SNE image data.
- */
-const getTsneImageData = async (geneSymbol, config) => {
-    config.colorblind_mode = CURRENT_USER.colorblind_mode;
-    config.gene_symbol = geneSymbol;
-
-    // in order to avoid circular references (since analysis is referenced in the individual step objects),
-    //  we need to create a smaller analysis object to pass to the API
-
-    const analysis = {
-        "id": currentAnalysis.id,
-        "type": currentAnalysis.type,
-    }
-
-    const data = await apiCallsMixin.fetchTsneImage(currentAnalysis.dataset.id, analysis, "tsne_static", config);
-
-    if (!data.success || data.success < 1) {
-        const message = data.message || "Unknown error";
-        throw new Error(message);
-    }
-    return data.image;
 }
 
 /**
@@ -396,7 +376,7 @@ const resetWorkbench = () => {
 const saveMarkerGeneList = async () => {
     // must have access to USER_SESSION_ID
     const gc = new GeneCart({
-        session_id: CURRENT_USER.session_id,
+        session_id: getCurrentUser().session_id,
         label: document.querySelector(UI.markerGenesListNameElt).value,
         gctype: 'unweighted-list',
         organism_id: currentAnalysis.dataset.organism_id,
@@ -441,7 +421,7 @@ const savePcaGeneList = async () => {
         const weightLabels = data.pc_data.columns;
 
         const geneList = new WeightedGeneCart({
-                session_id: CURRENT_USER.session_id,
+                session_id: getCurrentUser().session_id,
                 label: document.querySelector(UI.pcaGeneListNameElt).value,
                 gctype: 'weighted-list',
                 organism_id: currentAnalysis.dataset.organism_id,
@@ -581,7 +561,7 @@ const validateMarkerGeneSelection = () => {
 const handlePageSpecificLoginUIUpdates = async (event) => {
 	document.getElementById("page-header-label").textContent = "Single Cell Workbench";
 
-    const sessionId = CURRENT_USER.session_id;
+    const sessionId = getCurrentUser().session_id;
     if (! sessionId ) {
         createToast("Not logged in so saving analyses is disabled.", "is-warning");
         document.querySelector(UI.btnSaveAnalysisElt).disabled = true;
@@ -613,8 +593,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 	} catch (error) {
 		logErrorInConsole(error);
 	}
-
 }
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
 
 /* Event listeners for elements already loaded */
 
@@ -784,7 +764,7 @@ for (const button of document.querySelectorAll(UI.analysisRenameElts)) {
 
         document.getElementById("new-analysis-label").addEventListener("keyup", (event) => {
             // Update the new analysis label if it is not a duplicate
-            if (analysisLabels.has(event.target.value.trim())) {
+            if (getAnalysisLabels().has(event.target.value.trim())) {
                 if (event.target.value.trim() !== currentLabel) {
                     event.target.classList.add("duplicate");
                     document.getElementById("confirm-analysis-rename").disabled = true;
@@ -1137,7 +1117,7 @@ document.querySelector(UI.pcaGeneListNameElt).addEventListener("input", (event) 
 
 document.querySelector(UI.btnSavePcaGeneListElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
-    if (CURRENT_USER) {
+    if (getCurrentUser()) {
         await savePcaGeneList();
     } else {
         createToast("You must be signed in to save a PCA gene list.");
@@ -1292,7 +1272,7 @@ document.querySelector(UI.markerGenesListNameElt).addEventListener("input", (eve
 
 document.querySelector(UI.btnSaveMarkerGeneListElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
-    if (CURRENT_USER) {
+    if (getCurrentUser()) {
         await saveMarkerGeneList();
     } else {
         createToast("You must be signed in to save a marker gene list.");

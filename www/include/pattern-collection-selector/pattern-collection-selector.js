@@ -1,5 +1,7 @@
 "use strict";
 
+import { apiCallsMixin } from "../../js/common.v2.js?v=2860b88";
+
 // NOTE: This component depends on common.js and on Bulma CSS being imported in the parent HTML file
 
 // Terminology:
@@ -9,6 +11,14 @@
 let patternsCartData = null;
 let flatPatternsCartData = null;
 let selectedPattern = {shareId: null, label: null, gctype: null, organismId: null, selectedWeights: []}; // This is used by the script that includes this file
+
+export const getFlatPatternCartData = () => {
+    return flatPatternsCartData;
+}
+
+export const getSelectedPattern = () => {
+    return selectedPattern;
+}
 
 // Add event listener to dropdown trigger
 document.querySelector("#dropdown-pattern-lists > button.dropdown-trigger").addEventListener("click", (event) => {
@@ -261,7 +271,7 @@ const createPatternListItem = (item, cart) => {
  * @returns {Promise<void>} - A promise that resolves when the patterns data is fetched.
  * @throws {Error} - If an error occurs during the fetch.
  */
-const fetchPatternsData = async (shareId=null) => {
+export const fetchPatternsData = async (shareId=null) => {
     try {
         patternsCartData = await apiCallsMixin.fetchGeneCarts({gcShareId: shareId, includeMembers: false});
 
@@ -324,7 +334,7 @@ const setActivePatternCartCategory = (category) => {
  * Populates the weights dropdown with data fetched from the API.
  * @returns {Promise<void>} A promise that resolves once the weights dropdown is populated.
  */
-const populatePatternWeights = async () => {
+export const populatePatternWeights = async () => {
     // data is a list of weight and top/buttom genes (if weighted-list) and if binary weights
     const data = await apiCallsMixin.fetchPatternElementList(selectedPattern.shareId, selectedPattern.gctype)
 
@@ -427,7 +437,7 @@ const selectPatternList = (shareId) => {
     updatePatternListSelectorLabel();
 }
 
-const selectPatternWeights = (labels) => {
+export const selectPatternWeights = (labels) => {
 
     // uncheck all the existing rows
     const rows = document.getElementsByClassName('.dropdown-weight-item');

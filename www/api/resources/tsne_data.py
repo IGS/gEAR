@@ -54,7 +54,7 @@ parser = reqparse.RequestParser(bundle_errors=True)
 # Common for both MGTSNEData and TSNEData
 # NOTE: By default the parser assumes the location is coming from "values", which breaks lists, so we set the location to "json" explicitly for that.
 parser.add_argument("plot_type", type=str, default="tsne_static")
-parser.add_argument("analysis", type=str, default=None)
+parser.add_argument("analysis", type=dict, default=None)
 parser.add_argument("colorize_legend_by", type=str, default=None)
 parser.add_argument(
     "max_columns", type=int, default=None

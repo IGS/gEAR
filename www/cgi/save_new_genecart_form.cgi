@@ -153,7 +153,10 @@ def main():
     else:
         raise Exception("Invalid upload type: {0}".format(upload_type))
 
-    gc.save()
+    try:
+        gc.save()
+    except Exception as e:
+        raise Exception("Could not save gene cart: {0}".format(str(e)))
 
     result = { 'id': gc.id }
     print(json.dumps(result))

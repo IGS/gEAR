@@ -1,26 +1,93 @@
 'use strict';
 
+import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates, trigger } from "./common.v2.js?v=2860b88";
+import { availablePalettes, plotly2MatplotlibNames } from "./plot_display_config.js?v=2860b88";
+import { FacetWidget } from "./classes/facets.js?v=2860b88";
+import { DatasetTree } from "./classes/tree.js?v=2860b88";
+
+let isMultigene;
+const setIsMultigene = (val) => { isMultigene = val; }
+
+let chooseGenes;
+const registerChooseGenes = (fn) => {
+    chooseGenes = fn;
+}
+
+// If a page wants to use this action, it can register a callback function
+let curatorSpecifcCreatePlot = () => {};
+const registerCuratorSpecifcCreatePlot = (fn) => {
+    curatorSpecifcCreatePlot = fn;
+}
+
+let curatorSpecifcDatasetTreeCallback = () => {};
+const registerCuratorSpecifcDatasetTreeCallback = (fn) => {
+    curatorSpecifcDatasetTreeCallback = fn;
+}
+
+let curatorSpecificNavbarUpdates = () => {};
+const registerCuratorSpecificNavbarUpdates = (fn) => {
+    curatorSpecificNavbarUpdates = fn;
+}
+
+let curatorSpecificOnLoad = () => {};
+const registerCuratorSpecificOnLoad = (fn) => {
+    curatorSpecificOnLoad = fn;
+}
+
+let curatorSpecificPlotStyle = () => {};
+const registerCuratorSpecificPlotStyle = (fn) => {
+    curatorSpecificPlotStyle = fn;
+}
+
+let curatorSpecificPlotTypeAdjustments = () => {};
+const registerCuratorSpecificPlotTypeAdjustments = (fn) => {
+    curatorSpecificPlotTypeAdjustments = fn;
+}
+
+let curatorSpecificUpdateDatasetGenes = () => {};
+const registerCuratorSpecificUpdateDatasetGenes = (fn) => {
+    curatorSpecificUpdateDatasetGenes = fn;
+}
+
+let curatorSpecificValidationChecks = () => {};
+const registerCuratorSpecificValidationChecks = (fn) => {
+    curatorSpecificValidationChecks = fn;
+}
+
 /* These are functions that are common to the "curator" pages, (i.e. single-gene, multi-gene) */
 
 let plotStyle;  // Plot style object
+const getPlotStyle = () => {
+    return plotStyle;
+}
 
 let facetWidget = null;
+const getFacetWidget = () => facetWidget;
 
 //let plotConfig = {};  // Plot config that is passed to API or stored in DB
-let allColumns = [];
 let catColumns = [];
+const getCatColumns = () => catColumns;
+const setCatColumns = (catCols) => { catColumns = catCols; }
+
 let levels = {};    // categorical columns as keys + groups as values
+const getLevels = () => levels;
+const setLevels = (newLevels) => { levels = newLevels; }
 
-let datasetId = null;
-let chosenDisplayId = null;
 let organismId = null;
-let analysisObj = null;
+const getOrganismId = () => organismId;
 
-let analysisSelect = null;
 let plotTypeSelect = null;
+const getPlotTypeSelect = () => plotTypeSelect;
 
 // Relates to https://github.com/IGS/gEAR/issues/923
 let sortOrderChanged = false; // Flag to indicate if the sort order has changed
+const getSortOrderChanged = () => sortOrderChanged;
+
+// Not exported to dataset/multigene_curator
+let datasetId = null;
+let chosenDisplayId = null;
+let analysisSelect = null;
+let analysisObj = null;
 
 /*
 ! Quick note -
@@ -746,21 +813,10 @@ const cloneDisplay = async (event, display, scope="owner") => {
         cloneElt.classList.remove("is-loading");
     }
 
+    const geneInput = isMultigene ? config.gene_symbols : config.gene_symbol;
+
     // Choose gene from config
-    if (isMultigene) {
-        manuallyEnteredGenes = new Set(config.gene_symbols);
-        selected_genes = manuallyEnteredGenes;
-        const geneSymbolString = config.gene_symbols.join(" ");
-        document.getElementById('genes-manually-entered').value = geneSymbolString;
-        // Mostly need this to populate the current gene(s) in the display contaainer
-        chooseGenes();
-    } else {
-        selectedGene = config.gene_symbol;
-        // Mostly need this to populate the current gene(s) in the display contaainer
-        chooseGene();
-    }
-
-
+    chooseGenes(geneInput)
 
     try {
         plotStyle.cloneDisplay(config);
@@ -833,7 +889,7 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
     let totalCount = 0;
 
     try {
-        ({aggregations, total_count:totalCount} = await curatorApiCallsMixin.fetchAggregations(datasetId, analysisId, filters));
+        ({aggregations, total_count: totalCount} = await curatorApiCallsMixin.fetchAggregations(datasetId, analysisId, filters));
 
     } catch (error) {
         logErrorInConsole(error);
@@ -881,7 +937,11 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
             // Sortable lists need to reflect groups filtered out or unfiltered
             updateOrderSortable();
 
-            curatorSpecifcFacetItemSelectCallback(seriesName);
+            // Update the color picker in case some elements of the color series were filtered out
+            if(plotStyle.plotConfig?.color_name) {
+                renderColorPicker(plotStyle.plotConfig.color_name);
+            }
+
         }
     });
     document.getElementById("selected-facets-loader").classList.add("is-hidden")
@@ -916,7 +976,6 @@ const createPlotTypeSelectInstance = (idSelector, plotTypeSelect=null) => {
 const createPlot = async (event) => {
 
     const plotType = getSelect2Value(plotTypeSelect);
-
     const plotBtns = document.getElementsByClassName("js-plot-btn");
 
     // Set loading
@@ -926,15 +985,7 @@ const createPlot = async (event) => {
 
     plotStyle.populatePlotConfig();
 
-    // Add gene or genes to plot config
-    if (isMultigene) {
-        plotStyle.plotConfig["gene_symbols"] = Array.from(selected_genes);
-    } else {
-        plotStyle.plotConfig["gene_symbol"] = selectedGene
-    }
-
-    await curatorSpecifcCreatePlot(plotType);
-
+    await curatorSpecifcCreatePlot(plotType, datasetId, analysisObj);
 
     // Stop loader
     for (const plotBtn of plotBtns) {
@@ -1085,7 +1136,7 @@ const includePlotParamOptions = async () => {
     }
     plotStyle.setupParamValueCopyEvent();   // handle some copy events that could not be handled in the loop above
     setupValidationEvents();        // Set up validation events required to plot at a minimum
-    await plotStyle.setupPlotSpecificEvents()       // Set up plot-specific events
+    await plotStyle.setupPlotSpecificEvents(datasetId)       // Set up plot-specific events
 
 }
 
@@ -1661,7 +1712,6 @@ const updateDatasetGenes = async (analysisId=null) => {
  * Updates the sortable order of plot param series based on the current selection.
  */
 const updateOrderSortable = () => {
-
     // This function will reset the sortables.
     sortOrderChanged = false;
 
@@ -1871,7 +1921,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     curatorSpecificNavbarUpdates();
 
-    const sessionId = CURRENT_USER.session_id;
+    const sessionId = getCurrentUser().session_id;
     if (! sessionId ) {
         createToast("Not logged in so saving displays is disabled.", "is-warning");
         document.getElementById("save-display-btn").disabled = true;
@@ -1902,3 +1952,44 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     curatorSpecificOnLoad();
 
 };
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
+
+// Barrel export: group all exports under a single object for easier import
+const curatorCommon = {
+    curatorApiCallsMixin,
+    disableCheckboxLabel,
+    getAnalysisId,
+    getCatColumns,
+    getFacetWidget,
+    getLevels,
+    getOrganismId,
+    getPlotConfigValueFromClassName,
+    getPlotOrderFromSortable,
+    getPlotStyle,
+    getPlotTypeSelect,
+    getPlotlyDisplayUpdates,
+    getSelect2Value,
+    getSortOrderChanged,
+    includeHtml,
+    loadColorscaleSelect,
+    PlotHandler,
+    registerCuratorSpecifcCreatePlot,
+    registerCuratorSpecifcDatasetTreeCallback,
+    registerCuratorSpecificNavbarUpdates,
+    registerCuratorSpecificOnLoad,
+    registerCuratorSpecificPlotStyle,
+    registerCuratorSpecificPlotTypeAdjustments,
+    registerCuratorSpecificUpdateDatasetGenes,
+    registerCuratorSpecificValidationChecks,
+    renderColorPicker,
+    renderOrderSortableSeries,
+    setCatColumns,
+    setLevels,
+    registerChooseGenes,
+    setIsMultigene,
+    setPlotEltValueFromConfig,
+    setSelectBoxByValue,
+    setupParamValueCopyEvent,
+    updateOrderSortable
+};
+export { curatorCommon };

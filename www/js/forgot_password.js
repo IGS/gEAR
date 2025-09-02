@@ -1,5 +1,9 @@
 'use strict';
 
+import { convertToFormData, initCommonUI, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=2860b88";
+// Pre-initialize some stuff
+initCommonUI();
+
 let help_id = null;
 
 window.onload=function() {
@@ -69,6 +73,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         document.getElementById('initial-form').classList.remove('is-hidden');
     }
 }
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
 
 async function sendVerificationEmail(verification_uuid) {
     console.debug("Sending verification email");

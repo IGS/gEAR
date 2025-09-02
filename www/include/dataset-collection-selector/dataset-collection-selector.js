@@ -1,85 +1,86 @@
 "use strict";
 
-let dataset_collection_data = null;
-let dataset_collection_label_index = {};
+import { apiCallsMixin, getCurrentUser } from "../../js/common.v2.js?v=2860b88";
 
-let selected_dc_share_id = null;
-let selected_dc_label = null;
+export const datasetCollectionState = {
+    "data": null,
+    "labelIndex": {},
+    "selectedShareId": null,
+    "selectedLabel": null
+}
 
 // This many characters will be included and then three dots will be appended
-const DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT = 35;
+const DatasetCollectionSelectorLabelMaxLength = 35;
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Add event listener to dropdown trigger
-    document.querySelector("#dropdown-dc > button.dropdown-trigger").addEventListener("click", (event) => {
-        const item = event.currentTarget;
-        // Close all other dropdowns
-        const dropdowns = document.querySelectorAll('.dropdown.is-active');
-        dropdowns.forEach((dropdown) => {
-            if (dropdown !== item.closest('.dropdown')) {
-                dropdown.classList.remove('is-active');
-            }
-        });
-        item.closest(".dropdown").classList.toggle('is-active');
-    });
-
-    // Add event listeners to the dataset collection category selectors
-    const categorySelectors = document.querySelectorAll('#dropdown-content-dc-category .ul-li');
-    categorySelectors.forEach((element) => {
-        element.addEventListener('click', (event) => {
-            const category = event.target.dataset.category;
-            setActiveDCCategory(category);
-
-            categorySelectors.forEach((element) => {
-                element.classList.remove('is-selected');
-                element.classList.add('is-clickable');
-            });
-
-            event.target.classList.add('is-selected');
-            event.target.classList.remove('is-clickable');
-        });
-    });
-
-    // Add a click listener to the dancel button
-    document.querySelector('#dropdown-dc-cancel').addEventListener('click', (event) => {
-        document.querySelector('#dropdown-dc-search-input').value = '';
-        document.querySelector('#dropdown-content-dc').innerHTML = '';
-        document.querySelector('#dropdown-dc').classList.remove('is-active');
-    });
-
-    // Monitor key strokes after user types more than 2 characters in the search box
-    document.querySelector('#dropdown-dc-search-input').addEventListener('keyup', (event) => {
-        const search_term = event.target.value;
-
-        if (search_term.length === 0) {
-            document.querySelector('#dropdown-content-dc').innerHTML = '';
+// Add event listener to dropdown trigger
+document.querySelector("#dropdown-dc > button.dropdown-trigger").addEventListener("click", (event) => {
+    const item = event.currentTarget;
+    // Close all other dropdowns
+    const dropdowns = document.querySelectorAll('.dropdown.is-active');
+    dropdowns.forEach((dropdown) => {
+        if (dropdown !== item.closest('.dropdown')) {
+            dropdown.classList.remove('is-active');
         }
+    });
+    item.closest(".dropdown").classList.toggle('is-active');
+});
 
-        if (search_term.length <= 2) {return}
+// Add event listeners to the dataset collection category selectors
+const categorySelectors = document.querySelectorAll('#dropdown-content-dc-category .ul-li');
+categorySelectors.forEach((element) => {
+    element.addEventListener('click', (event) => {
+        const category = event.target.dataset.category;
+        setActiveDCCategory(category);
 
-        const categorySelectors = document.querySelectorAll('#dropdown-content-dc-category .ul-li');
         categorySelectors.forEach((element) => {
             element.classList.remove('is-selected');
             element.classList.add('is-clickable');
         });
 
+        event.target.classList.add('is-selected');
+        event.target.classList.remove('is-clickable');
+    });
+});
+
+// Add a click listener to the dancel button
+document.querySelector('#dropdown-dc-cancel').addEventListener('click', (event) => {
+    document.querySelector('#dropdown-dc-search-input').value = '';
+    document.querySelector('#dropdown-content-dc').innerHTML = '';
+    document.querySelector('#dropdown-dc').classList.remove('is-active');
+});
+
+// Monitor key strokes after user types more than 2 characters in the search box
+document.querySelector('#dropdown-dc-search-input').addEventListener('keyup', (event) => {
+    const search_term = event.target.value;
+
+    if (search_term.length === 0) {
         document.querySelector('#dropdown-content-dc').innerHTML = '';
+    }
 
-        const dc_item_template = document.querySelector('#tmpl-dc');
+    if (search_term.length <= 2) {return}
 
-        // build a label index for the dataset collections
-        for (const category in dataset_collection_data) {
-            // This data structure has mixed types - we only care about the arrayed categories
-            if (!Array.isArray(dataset_collection_data[category])) {continue}
+    const categorySelectors = document.querySelectorAll('#dropdown-content-dc-category .ul-li');
+    categorySelectors.forEach((element) => {
+        element.classList.remove('is-selected');
+        element.classList.add('is-clickable');
+    });
 
-            for (const entry of dataset_collection_data[category]) {
-                if (entry.label.toLowerCase().includes(search_term.toLowerCase())) {
-                    const row = dc_item_template.content.cloneNode(true);
-                    createDatasetCollectionListItem(row, entry);
-                }
+    document.querySelector('#dropdown-content-dc').innerHTML = '';
+
+    const dc_item_template = document.querySelector('#tmpl-dc');
+
+    // build a label index for the dataset collections
+    for (const category in datasetCollectionState.data) {
+        // This data structure has mixed types - we only care about the arrayed categories
+        if (!Array.isArray(datasetCollectionState.data[category])) {continue}
+
+        for (const entry of datasetCollectionState.data[category]) {
+            if (entry.label.toLowerCase().includes(search_term.toLowerCase())) {
+                const row = dc_item_template.content.cloneNode(true);
+                createDatasetCollectionListItem(row, entry);
             }
         }
-    });
+    }
 });
 
 /**
@@ -89,27 +90,27 @@ document.addEventListener('DOMContentLoaded', () => {
  * @returns {Promise<void>} - A promise that resolves when the dataset collections are fetched.
  * @throws {Error} - If an error occurs during the fetch.
  */
-const fetchDatasetCollections = async (shareId=null) => {
-    const layoutShareId = shareId || selected_dc_share_id || null;
+export const fetchDatasetCollections = async (shareId=null) => {
+    const layoutShareId = shareId || datasetCollectionState.selectedShareId || null;
 
     try {
-        dataset_collection_data = await apiCallsMixin.fetchDatasetCollections({includeMembers: false, layoutShareId});
+        datasetCollectionState.data = await apiCallsMixin.fetchDatasetCollections({includeMembers: false, layoutShareId});
 
         document.querySelector('#dropdown-dc').classList.remove('is-loading');
         document.querySelector('#dropdown-dc').classList.remove('is-disabled');
 
         // build a label index for the dataset collections
-        for (const category in dataset_collection_data) {
+        for (const category in datasetCollectionState.data) {
             // This data structure has mixed types - we only care about the arrayed categories
-            if (!Array.isArray(dataset_collection_data[category])) {continue}
+            if (!Array.isArray(datasetCollectionState.data[category])) {continue}
 
-            for (const entry of dataset_collection_data[category]) {
-                dataset_collection_label_index[entry.share_id] = entry.label;
+            for (const entry of datasetCollectionState.data[category]) {
+                datasetCollectionState.labelIndex[entry.share_id] = entry.label;
             }
         }
 
-        if (dataset_collection_data.selected) {
-            selectDatasetCollection(dataset_collection_data.selected);
+        if (datasetCollectionState.data.selected) {
+            selectDatasetCollection(datasetCollectionState.data.selected);
         }
 
     } catch (error) {
@@ -122,13 +123,13 @@ const fetchDatasetCollections = async (shareId=null) => {
  *
  * @param {string} share_id - The share ID of the dataset collection to be selected.
  */
-const selectDatasetCollection = (share_id) => {
+export const selectDatasetCollection = (share_id) => {
     // reads the DC share_id passed and handles any UI and data updates to make
     //   it preselected
 
     const defaultLabel = "Choose a Dataset Collection";
-    selected_dc_share_id = share_id || null;
-    selected_dc_label = dataset_collection_label_index[selected_dc_share_id] || defaultLabel;
+    datasetCollectionState.selectedShareId = share_id || null;
+    datasetCollectionState.selectedLabel = datasetCollectionState.labelIndex[datasetCollectionState.selectedShareId] || defaultLabel;
 
     updateDatasetCollectionSelectorLabel();
 }
@@ -152,20 +153,20 @@ const setActiveDCCategory = (category) => {
 
     switch (category) {
         case 'domain':
-            data = dataset_collection_data.domain_layouts;
+            data = datasetCollectionState.data.domain_layouts;
             break;
         case 'user':
-            data = dataset_collection_data.user_layouts;
+            data = datasetCollectionState.data.user_layouts;
             break;
         case 'recent':
-            //data = dataset_collection_data.recent_layouts;
+            //data = datasetCollectionState.data.recent_layouts;
             recentChosen = true;
             break;
         case 'group':
-            data = dataset_collection_data.group_layouts;
+            data = datasetCollectionState.data.group_layouts;
             break;
         case 'shared':
-            data = dataset_collection_data.shared_layouts;
+            data = datasetCollectionState.data.shared_layouts;
             break;
     }
 
@@ -193,15 +194,15 @@ const setActiveDCCategory = (category) => {
 }
 
 /**
- * Updates the label of the dataset collection selector based on the selected_dc_label.
- * If the selected_dc_label exceeds the length limit, it will be truncated and displayed with ellipsis.
+ * Updates the label of the dataset collection selector based on the datasetCollectionState.selectedLabel.
+ * If the datasetCollectionState.selectedLabel exceeds the length limit, it will be truncated and displayed with ellipsis.
  */
 const updateDatasetCollectionSelectorLabel = () => {
-    if (selected_dc_label.length > DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT) {
-        const truncated_label = `${selected_dc_label.substring(0, DATASET_COLLECTION_SELECTOR_PROFILE_LABEL_LENGTH_LIMIT)}...`;
+    if (datasetCollectionState.selectedLabel.length > DatasetCollectionSelectorLabelMaxLength) {
+        const truncated_label = `${datasetCollectionState.selectedLabel.substring(0, DatasetCollectionSelectorLabelMaxLength)}...`;
         document.querySelector('#dropdown-dc-selector-label').innerHTML = truncated_label;
     } else {
-        document.querySelector('#dropdown-dc-selector-label').innerHTML = selected_dc_label;
+        document.querySelector('#dropdown-dc-selector-label').innerHTML = datasetCollectionState.selectedLabel;
     }
 }
 
@@ -237,10 +238,10 @@ const createDatasetCollectionListItem = (row, entry) => {
 
         const row_div = event.target.closest('div');
         row_div.classList.toggle('is-selected');
-        selected_dc_share_id = row_div.dataset.shareId;
-        selected_dc_label = dataset_collection_label_index[selected_dc_share_id];
-        CURRENT_USER.saveLayoutShareId(selected_dc_share_id);
-        console.debug("Selected DC: ", selected_dc_share_id, selected_dc_label);
+        datasetCollectionState.selectedShareId = row_div.dataset.shareId;
+        datasetCollectionState.selectedLabel = datasetCollectionState.labelIndex[datasetCollectionState.selectedShareId];
+        getCurrentUser().saveLayoutShareId(datasetCollectionState.selectedShareId);
+        console.debug("Selected DC: ", datasetCollectionState.selectedShareId, datasetCollectionState.selectedLabel);
 
         updateDatasetCollectionSelectorLabel();
 
