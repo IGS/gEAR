@@ -1255,7 +1255,7 @@ const downloadSelectedGenes = (event) => {
         "href",
         `data:text/tab-separated-values;charset=utf-8,${encodeURIComponent(fileContents)}`
     );
-    element.setAttribute("download", "geneCollectionState.selectedGenes.tsv");
+    element.setAttribute("download", "selected_genes.tsv");
     element.style.display = "none";
     document.body.appendChild(element);
     element.click();
