@@ -322,7 +322,7 @@ class Metadata:
             pubmed_id = None
         
         if type(pubmed_id) is str:            
-            pubmed_id = geo_id.strip()
+            pubmed_id = pubmed_id.strip()
 
             # Users entering multiple pubmed IDs will cause failure.  Take the first
             # one instead and append the rest to the Long description.
