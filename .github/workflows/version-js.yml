@@ -3,9 +3,9 @@ name: Version JS with Commit Hash
 on:
   push:
     branches:
-      #- main  # or your default branch
+      - main  # or your default branch
       #- devel
-      - feature-gosling-implementation
+      # - feature-gosling-implementation
     paths:
       - 'www/**/*.html'
       - 'www/**/*.js'
