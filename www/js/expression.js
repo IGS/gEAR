@@ -6,7 +6,7 @@ import { fetchGeneCartData, geneCollectionState, selectGeneLists } from "../incl
 import { TileGrid } from "./classes/tilegrid.js?v=2860b88";
 
 // Pre-initialize some stuff
-initCommonUI();
+await initCommonUI();
 
 let urlParamsPassed = false;
 let isMultigene = false;

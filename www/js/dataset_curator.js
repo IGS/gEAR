@@ -8,7 +8,7 @@ import { curatorCommon } from "./curator_common.js?v=2860b88";
 import { postPlotlyConfig } from "./plot_display_config.js?v=2860b88";
 
 // Pre-initialize some stuff
-initCommonUI();
+await initCommonUI();
 
 curatorCommon.setIsMultigene(0);
 

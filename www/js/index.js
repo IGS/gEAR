@@ -5,7 +5,7 @@ import { datasetCollectionState, fetchDatasetCollections, selectDatasetCollectio
 import { fetchGeneCartData, geneCollectionState } from "../include/gene-collection-selector/gene-collection-selector.js?v=2860b88";
 
 // Pre-initialize some stuff
-initCommonUI();
+await initCommonUI();
 
 // if URL params are present, the user probably pasted a v1 URL into the browser
 //  so we should redirect them to the new expression URL but keep the same parameters

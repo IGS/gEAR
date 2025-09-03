@@ -6,7 +6,7 @@ import { fetchPatternsData, getFlatPatternCartData, getSelectedPattern, populate
 import { TileGrid } from "./classes/tilegrid.js?v=2860b88";
 
 // Pre-initialize some stuff
-initCommonUI();
+await initCommonUI();
 
 let selectedPattern;
 let urlParamsPassed = false;

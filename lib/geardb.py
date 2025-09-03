@@ -3713,6 +3713,11 @@ class GeneCart:
         self.folder_parent_id = folder_parent_id
         self.folder_label = folder_label
 
+        # Derived from other scripts (i.e. search_gene_carts.cgi)
+        self.user_name: str | None = None
+        self.organism: str | None = None
+        self.is_owner = False
+
     def __repr__(self):
         return json.dumps(self.__dict__)
 
@@ -3720,6 +3725,7 @@ class GeneCart:
         self.genes.append(gene)
 
     def get_genes(self):
+        # Only works for unweighted-list gctype.
         conn = Connection()
         cursor = conn.get_cursor()
 

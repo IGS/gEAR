@@ -3,7 +3,7 @@
 import { convertToFormData, createToast, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=2860b88";
 
 // Pre-initialize some stuff
-initCommonUI();
+await initCommonUI();
 
 let passwordUpdateWanted = false;
 

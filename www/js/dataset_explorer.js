@@ -4,7 +4,7 @@ import { apiCallsMixin, closeModal, createToast, getCurrentUser, getRootUrl, dis
 import { datasetCollectionState, fetchDatasetCollections, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=2860b88";
 
 // Pre-initialize some stuff
-initCommonUI();
+await initCommonUI();
 
 /* Imported variables
 let datasetCollectionState.data; // from dataset-collection-selector
