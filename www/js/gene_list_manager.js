@@ -1098,7 +1098,7 @@ const fetchGeneCartMembers = async (geneCartShareId) => {
 // Callbacks after attempting to save a gene list
 const geneListFailure = (gc, message) => {
     logErrorInConsole(message);
-    createToast("Failed to save gene list");
+    createToast(message);
 }
 
 const geneListSaved = async (gc) => {

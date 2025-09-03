@@ -25,8 +25,6 @@ abs_path_www = Path(__file__).resolve().parents[1] # web-root dir
 CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 
 def main():
-    print("Content-Type: application/json\n\n")
-
     # NOTE: Not going to add weighted gene and cart info, but may add subclasses in the future
     gc = geardb.GeneCart()
     data = json.load(sys.stdin)
@@ -54,7 +52,9 @@ def main():
                     row.extend(weights)
                     sfh.write(('\t'.join(row) + '\n').encode())
         except AttributeError as e:
-            print(str(e))
+            print("Status: 500 Internal Server Error")
+            print("Content-Type: application/json\n")
+            print(json.dumps({"message": str(e)}))
             sys.exit(1)
 
         dataframe = pd.read_csv(source_file_path, sep='\t')
@@ -72,18 +72,27 @@ def main():
             adata.write(filename=h5dest_file_path)
 
         except Exception as e:
-            print(str(e))
+            print("Status: 500 Internal Server Error")
+            print("Content-Type: application/json\n")
+            print(json.dumps({"message": str(e)}))
             sys.exit(1)
 
     elif gc.gctype == 'labeled-list':
-        raise NotImplementedError("Not implemented")
+            print("Status: 500 Internal Server Error")
+            print("Content-Type: application/json\n")
+            print(json.dumps({"error": "Not implemented"}))
+            sys.exit(1)
 
     try:
         gc.save()
     except Exception as e:
-        print(str(e))
+        print("Status: 500 Internal Server Error")
+        print("Content-Type: application/json\n")
+        print(json.dumps({"message": str(e)}))
         sys.exit(1)
 
+
+    print("Content-Type: application/json\n\n")
     result = { 'id': gc.id }
     print(json.dumps(result))
 
