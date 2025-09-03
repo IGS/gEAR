@@ -3,9 +3,6 @@
 import { apiCallsMixin, convertToFormData, createToast, getCurrentUser, getRootUrl, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=2860b88";
 import { GeneCart } from "./classes/genecart.v2.js?v=2860b88";
 
-// Pre-initialize some stuff
-await initCommonUI();
-
 let firstSearch = true;
 let isAddFormOpen = false;
 const resultsPerPage = 20;
@@ -1482,15 +1479,10 @@ const toggleEditableMode = (hideEditable, target="") => {
 
 /* --- Entry point --- */
 const handlePageSpecificLoginUIUpdates = async (event) => {
-
-    console.log("Page specific login UI updates");
-
 	// User settings has no "active" state for the sidebar
 	document.getElementById("page-header-label").textContent = "Gene List Manager";
 
     const sessionId = getCurrentUser().session_id;
-
-    console.log(sessionId);
 
 	if (! sessionId ) {
         document.getElementById("not-logged-in-msg").classList.remove("is-hidden");
@@ -1572,6 +1564,9 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 };
 registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
+
+// Pre-initialize some stuff
+await initCommonUI();
 
 // validate that #new-list-label input has a value
 document.getElementById("new-list-label").addEventListener("blur", (e) => {

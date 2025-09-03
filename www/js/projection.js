@@ -5,9 +5,6 @@ import { datasetCollectionState, fetchDatasetCollections, selectDatasetCollectio
 import { fetchPatternsData, getFlatPatternCartData, getSelectedPattern, populatePatternWeights, selectPatternWeights } from "../include/pattern-collection-selector/pattern-collection-selector.js?v=2860b88";
 import { TileGrid } from "./classes/tilegrid.js?v=2860b88";
 
-// Pre-initialize some stuff
-await initCommonUI();
-
 let selectedPattern;
 let urlParamsPassed = false;
 let isMulti = false;
@@ -76,139 +73,6 @@ const createSelectedPatternProxy = (selectedPattern) => {
         }
     });
 };
-
-/**
- * Handles the UI updates specific to the page login.
- * @param {Event} event - The event object.
- * @returns {Promise<void>} - A promise that resolves when the UI updates are completed.
- */
-const handlePageSpecificLoginUIUpdates = async (event) => {
-
-    // Set the page header title
-    document.getElementById('page-header-label').textContent = 'Projection Search';
-    datasetShareId = getUrlParameter('share_id');
-    layoutShareId = getUrlParameter('layout_id');
-
-    // There are some shorthand URL parameters (not on the shorthand URL) that need to be converted to the longform
-    rebindUrlParam(urlParams, "multi", "multipattern_plots");
-    rebindUrlParam(urlParams, "c", "projection_source");
-    rebindUrlParam(urlParams, "ptrns", "projection_patterns");
-    rebindUrlParam(urlParams, "algo", "projection_algorithm");
-
-    selectedPattern = createSelectedPatternProxy(getSelectedPattern());
-
-    // add event listener for when the submit-projection-search button is clicked
-    document.getElementById('submit-projection-search').addEventListener('click', async (event) => {
-
-        const currentTarget = event.currentTarget;
-        currentTarget.classList.add("is-loading");
-
-        const status = validateProjectionSearchForm();
-
-        if (!status) {
-            console.info("Aborting search");
-            event.currentTarget.classList.remove("is-loading");
-            return;
-        }
-
-        document.getElementById("result-panel-initial-notification").classList.add('is-hidden');
-        document.getElementById("result-panel-loader").classList.remove('is-hidden');
-
-        // update multi/single pattern
-        isMulti = document.getElementById('single-multi-multi').checked;
-
-        populatePatternResultsList();
-
-        // if multi, clear the selected pattern symbol and hide the pattern-result-list container
-        document.getElementById("pattern-result-list-c").classList.remove('is-hidden');
-        document.getElementById("scoring-method-div").classList.remove('is-hidden');
-        if (isMulti) {
-            document.getElementById("pattern-result-list-c").classList.add('is-hidden');
-            document.getElementById("scoring-method-div").classList.add('is-hidden');
-        }
-
-        try {
-            const setupTileGridFn = (datasetShareId) ? setupTileGrid(datasetShareId, "dataset") : setupTileGrid(datasetCollectionState.selectedShareId);
-            tilegrid = await setupTileGridFn;
-
-            // auto-select the first pattern in the list
-            const firstPattern = document.querySelector('.pattern-result-list-item');
-            if (!isMulti && firstPattern) {
-                firstPattern.click();
-            }
-
-        } catch (error) {
-            logErrorInConsole(error);
-            return;
-        } finally {
-            currentTarget.classList.remove("is-loading");
-            document.getElementById("result-panel-loader").classList.add('is-hidden');
-
-        }
-
-        const url = buildStateUrl();
-        // add to state history
-        history.pushState(null, '', url);
-    });
-
-    // Wait until all pending API calls have completed before checking if we need to search
-    document.getElementById("submit-projection-search").classList.add("is-loading");
-    try {
-        const pattern = getUrlParameter('projection_source', urlParams);
-
-        // SAdkins note - Promise.all fails fast,
-        // but Promise.allSettled waits until all resolve/reject and lets you know which ones failed
-        const [cartResult, dcResult,] = await Promise.all([
-            fetchPatternsData(pattern),
-            fetchDatasetCollections(layoutShareId),
-        ]);
-
-        parseDatasetCollectionURLParams();
-        await parsePatternCartURLParams();
-
-        // Should help with lining things up on index page
-        document.getElementById("dropdown-dc").classList.remove("is-right");
-
-    } catch (error) {
-        logErrorInConsole(error);
-    } finally {
-        document.getElementById("submit-projection-search").classList.remove("is-loading");
-    }
-
-    // Trigger the default dataset collection to be selected in the
-    if (datasetShareId) {
-        selectDatasetCollection(null);  // Clear the label
-        urlParamsPassed = true;
-    } else if (layoutShareId) {
-        datasetCollectionState.selectedShareId = layoutShareId;
-        selectDatasetCollection(layoutShareId);
-        urlParamsPassed = true;
-    } else if (getCurrentUser().layout_share_id) {
-        selectDatasetCollection(getCurrentUser().layout_share_id);
-    }
-
-    // Now, if URL params were passed and we have both patterns and a dataset collection,
-    //  run the search
-    if (urlParamsPassed) {
-
-        if ((datasetShareId || datasetCollectionState.selectedShareId) && selectedPattern.shareId !== null && selectedPattern.selectedWeights.length > 0) {
-            document.getElementById('submit-projection-search').click();
-        }
-    }
-
-    // Add mutation observer to watch if #dropdown-dc-selector-label changes
-    const observer = new MutationObserver((mutationsList, observer) => {
-        for (const mutation of mutationsList) {
-            if (mutation.type === 'childList') {
-                // If the user selects a collection, clear the datasetShareId as scope has changed
-                datasetShareId = null;
-            }
-        }
-    });
-
-    observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
-};
-registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
 
 /**
  * Builds the state URL with the selected parameters.
@@ -550,6 +414,142 @@ const validateProjectionSearchForm = () => {
 
     return true;
 };
+
+/**
+ * Handles the UI updates specific to the page login.
+ * @param {Event} event - The event object.
+ * @returns {Promise<void>} - A promise that resolves when the UI updates are completed.
+ */
+const handlePageSpecificLoginUIUpdates = async (event) => {
+
+    // Set the page header title
+    document.getElementById('page-header-label').textContent = 'Projection Search';
+    datasetShareId = getUrlParameter('share_id');
+    layoutShareId = getUrlParameter('layout_id');
+
+    // There are some shorthand URL parameters (not on the shorthand URL) that need to be converted to the longform
+    rebindUrlParam(urlParams, "multi", "multipattern_plots");
+    rebindUrlParam(urlParams, "c", "projection_source");
+    rebindUrlParam(urlParams, "ptrns", "projection_patterns");
+    rebindUrlParam(urlParams, "algo", "projection_algorithm");
+
+    selectedPattern = createSelectedPatternProxy(getSelectedPattern());
+
+    // add event listener for when the submit-projection-search button is clicked
+    document.getElementById('submit-projection-search').addEventListener('click', async (event) => {
+
+        const currentTarget = event.currentTarget;
+        currentTarget.classList.add("is-loading");
+
+        const status = validateProjectionSearchForm();
+
+        if (!status) {
+            console.info("Aborting search");
+            event.currentTarget.classList.remove("is-loading");
+            return;
+        }
+
+        document.getElementById("result-panel-initial-notification").classList.add('is-hidden');
+        document.getElementById("result-panel-loader").classList.remove('is-hidden');
+
+        // update multi/single pattern
+        isMulti = document.getElementById('single-multi-multi').checked;
+
+        populatePatternResultsList();
+
+        // if multi, clear the selected pattern symbol and hide the pattern-result-list container
+        document.getElementById("pattern-result-list-c").classList.remove('is-hidden');
+        document.getElementById("scoring-method-div").classList.remove('is-hidden');
+        if (isMulti) {
+            document.getElementById("pattern-result-list-c").classList.add('is-hidden');
+            document.getElementById("scoring-method-div").classList.add('is-hidden');
+        }
+
+        try {
+            const setupTileGridFn = (datasetShareId) ? setupTileGrid(datasetShareId, "dataset") : setupTileGrid(datasetCollectionState.selectedShareId);
+            tilegrid = await setupTileGridFn;
+
+            // auto-select the first pattern in the list
+            const firstPattern = document.querySelector('.pattern-result-list-item');
+            if (!isMulti && firstPattern) {
+                firstPattern.click();
+            }
+
+        } catch (error) {
+            logErrorInConsole(error);
+            return;
+        } finally {
+            currentTarget.classList.remove("is-loading");
+            document.getElementById("result-panel-loader").classList.add('is-hidden');
+
+        }
+
+        const url = buildStateUrl();
+        // add to state history
+        history.pushState(null, '', url);
+    });
+
+    // Wait until all pending API calls have completed before checking if we need to search
+    document.getElementById("submit-projection-search").classList.add("is-loading");
+    try {
+        const pattern = getUrlParameter('projection_source', urlParams);
+
+        // SAdkins note - Promise.all fails fast,
+        // but Promise.allSettled waits until all resolve/reject and lets you know which ones failed
+        const [cartResult, dcResult,] = await Promise.all([
+            fetchPatternsData(pattern),
+            fetchDatasetCollections(layoutShareId),
+        ]);
+
+        parseDatasetCollectionURLParams();
+        await parsePatternCartURLParams();
+
+        // Should help with lining things up on index page
+        document.getElementById("dropdown-dc").classList.remove("is-right");
+
+    } catch (error) {
+        logErrorInConsole(error);
+    } finally {
+        document.getElementById("submit-projection-search").classList.remove("is-loading");
+    }
+
+    // Trigger the default dataset collection to be selected in the
+    if (datasetShareId) {
+        selectDatasetCollection(null);  // Clear the label
+        urlParamsPassed = true;
+    } else if (layoutShareId) {
+        datasetCollectionState.selectedShareId = layoutShareId;
+        selectDatasetCollection(layoutShareId);
+        urlParamsPassed = true;
+    } else if (getCurrentUser().layout_share_id) {
+        selectDatasetCollection(getCurrentUser().layout_share_id);
+    }
+
+    // Now, if URL params were passed and we have both patterns and a dataset collection,
+    //  run the search
+    if (urlParamsPassed) {
+
+        if ((datasetShareId || datasetCollectionState.selectedShareId) && selectedPattern.shareId !== null && selectedPattern.selectedWeights.length > 0) {
+            document.getElementById('submit-projection-search').click();
+        }
+    }
+
+    // Add mutation observer to watch if #dropdown-dc-selector-label changes
+    const observer = new MutationObserver((mutationsList, observer) => {
+        for (const mutation of mutationsList) {
+            if (mutation.type === 'childList') {
+                // If the user selects a collection, clear the datasetShareId as scope has changed
+                datasetShareId = null;
+            }
+        }
+    });
+
+    observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
+};
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
+
+// Pre-initialize some stuff
+await initCommonUI();
 
 // If one of the "view genes" buttons is clicked, show the genes in a new window
 for (const btn of document.getElementsByClassName("js-view-genes")) {

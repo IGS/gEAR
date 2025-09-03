@@ -2,9 +2,6 @@
 
 import { convertToFormData, initCommonUI } from "./common.v2.js?v=2860b88";
 
-// Pre-initialize some stuff
-await initCommonUI();
-
 let verification_uuid = null;
 
 window.onload=function() {
@@ -303,3 +300,6 @@ async function validateAccountCreationForm() {
     // if we made it this far, things are good
     return true;
 }
+
+// Pre-initialize some stuff
+await initCommonUI();

@@ -9,9 +9,6 @@ import { DatasetTree } from "./classes/tree.js?v=2860b88";
 import { resetStepperWithHrefs } from "./stepper-fxns.js?v=2860b88";
 import { apiCallsMixin, convertToFormData, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=2860b88";
 
-// Pre-initialize some stuff
-await initCommonUI();
-
 let currentAnalysis;
 let clickedMarkerGenes = new Set();
 let typedMarkerGenes = new Set();
@@ -595,6 +592,9 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 	}
 }
 registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
+
+// Pre-initialize some stuff
+await initCommonUI();
 
 /* Event listeners for elements already loaded */
 

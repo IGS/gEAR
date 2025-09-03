@@ -2,9 +2,6 @@
 
 import { convertToFormData, createToast, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=2860b88";
 
-// Pre-initialize some stuff
-await initCommonUI();
-
 let passwordUpdateWanted = false;
 
 // When password and repeated password are not the same, add a tooltip
@@ -121,3 +118,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }, 500);
 };
 registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
+
+// Pre-initialize some stuff
+await initCommonUI();

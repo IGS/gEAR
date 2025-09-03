@@ -1,10 +1,8 @@
 'use strict';
 
-import { convertToFormData, initCommonUI, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=2860b88";
-// Pre-initialize some stuff
-await initCommonUI();
+import { convertToFormData, getUrlParameter, initCommonUI, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=2860b88";
 
-let help_id = null;
+let helpId = null;
 
 window.onload=function() {
     // Set the page title
@@ -27,7 +25,7 @@ window.onload=function() {
                 // Submit the form
                 const {data} = await axios.post('./cgi/update_password.cgi', convertToFormData({
                     'password': document.getElementById('password1').value,
-                    'help_id': help_id
+                    'help_id': helpId
                 }));
 
                 document.getElementById('btn-password-update-submit').classList.remove('is-loading');
@@ -62,18 +60,6 @@ window.onload=function() {
         validatePassword2();
     });
 };
-
-const handlePageSpecificLoginUIUpdates = async (event) => {
-    // Nothing to do here at the moment
-    help_id = getUrlParameter('help_id');
-
-    if (help_id) {
-        document.getElementById('reset-form').classList.remove('is-hidden');
-    } else {
-        document.getElementById('initial-form').classList.remove('is-hidden');
-    }
-}
-registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
 
 async function sendVerificationEmail(verification_uuid) {
     console.debug("Sending verification email");
@@ -248,3 +234,18 @@ async function validatePasswordUpdateForm() {
     // if we made it this far, things are good
     return true;
 }
+
+const handlePageSpecificLoginUIUpdates = async (event) => {
+    // Nothing to do here at the moment
+    helpId = getUrlParameter('help_id');
+
+    if (helpId) {
+        document.getElementById('reset-form').classList.remove('is-hidden');
+    } else {
+        document.getElementById('initial-form').classList.remove('is-hidden');
+    }
+}
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
+
+// Pre-initialize some stuff
+await initCommonUI();

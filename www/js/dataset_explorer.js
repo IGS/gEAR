@@ -3,9 +3,6 @@
 import { apiCallsMixin, closeModal, createToast, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=2860b88";
 import { datasetCollectionState, fetchDatasetCollections, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=2860b88";
 
-// Pre-initialize some stuff
-await initCommonUI();
-
 /* Imported variables
 let datasetCollectionState.data; // from dataset-collection-selector
 let datasetCollectionState.selectedShareId; // from dataset-collection-selector
@@ -2940,6 +2937,10 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 };
 registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
 
+// Pre-initialize some stuff
+await initCommonUI();
+
+
 document.getElementById("search-clear").addEventListener("click", async () => {
     document.getElementById("search-terms").value = "";
     await submitSearch();
@@ -3202,8 +3203,8 @@ document.getElementById("btn-set-primary-collection").addEventListener("click", 
 });
 
 document.getElementById("btn-share-collection").addEventListener("click", (e) => {
-    let currentPage = new URL(`${getRootUrl()}/p`);
-    let params = new URLSearchParams(currentPage.search);
+    const currentPage = new URL(`${getRootUrl()}/p`);
+    const params = new URLSearchParams(currentPage.search);
     params.set("l", datasetCollectionState.selectedShareId);
     currentPage.search = params.toString();
     const shareUrl = currentPage.toString();

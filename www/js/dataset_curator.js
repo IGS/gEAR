@@ -7,9 +7,6 @@ import { apiCallsMixin, createToast, getCurrentUser, initCommonUI, logErrorInCon
 import { curatorCommon } from "./curator_common.js?v=2860b88";
 import { postPlotlyConfig } from "./plot_display_config.js?v=2860b88";
 
-// Pre-initialize some stuff
-await initCommonUI();
-
 curatorCommon.setIsMultigene(0);
 
 let geneAutocomplete = null;
@@ -1672,3 +1669,6 @@ const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultO
 const validateGeneSelected = () => {
     return (selectedGene ? true : false);
 };
+
+// Pre-initialize some stuff
+await initCommonUI();

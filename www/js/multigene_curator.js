@@ -7,9 +7,6 @@ import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=2860b88";
 import { adjustStackedViolinHeight, postPlotlyConfig, setHeatmapHeightBasedOnGenes } from "./plot_display_config.js?v=2860b88";
 import { fetchGeneCartData, geneCollectionState } from "../include/gene-collection-selector/gene-collection-selector.js?v=2860b88";
 
-// Pre-initialize some stuff
-await initCommonUI();
-
 curatorCommon.setIsMultigene(1);
 
 let allColumns = [];
@@ -1756,6 +1753,9 @@ const updateGroupOptions = (classSelector, groupsArray) => {
 const updateUIAfterGeneCartSaveFailure = (gc, message) => {
     createToast(message);
 };
+
+// Pre-initialize some stuff
+await initCommonUI();
 
 document.getElementById("clear-genes-btn").addEventListener("click", clearGenes);
 

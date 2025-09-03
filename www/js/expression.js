@@ -5,9 +5,6 @@ import { datasetCollectionState, fetchDatasetCollections, selectDatasetCollectio
 import { fetchGeneCartData, geneCollectionState, selectGeneLists } from "../include/gene-collection-selector/gene-collection-selector.js?v=2860b88";
 import { TileGrid } from "./classes/tilegrid.js?v=2860b88";
 
-// Pre-initialize some stuff
-await initCommonUI();
-
 let urlParamsPassed = false;
 let isMultigene = false;
 let tilegrid = null;
@@ -330,118 +327,6 @@ const fetchOrganisms = async () => {
     }
 };
 
-/**
- * Handles the UI updates specific to the page after login.
- * @param {Event} event - The event object.
- * @returns {Promise<void>} - A promise that resolves when all UI updates are completed.
- */
-const handlePageSpecificLoginUIUpdates = async (event) => {
-    // Set the page header title
-    document.getElementById('page-header-label').textContent = 'Gene Expression Search';
-
-    datasetShareId = getUrlParameter('share_id');
-    layoutShareId = getUrlParameter('layout_id');
-    const cartShareId = getUrlParameter('gene_lists');
-    const geneSymbolId = getUrlParameter('gene_symbol');
-    shareUsed = getUrlParameter('share_used') === '1';
-
-    // Wait until all pending API calls have completed before checking if we need to search
-    document.getElementById("submit-expression-search").classList.add("is-loading");
-    try {
-        // SAdkins note - Promise.all fails fast,
-        // but Promise.allSettled waits until all resolve/reject and lets you know which ones failed
-        const [dc_result, org_result] = await Promise.all([
-            parseGeneListURLParams(),
-            fetchDatasetCollections(layoutShareId),
-            fetchOrganisms()
-        ]);
-    } catch (error) {
-        logErrorInConsole(error);
-    } finally {
-        document.getElementById("submit-expression-search").classList.remove("is-loading");
-    }
-
-    parseDatasetCollectionURLParams();
-
-    // Trigger the default dataset collection to be selected in the
-    if (datasetShareId) {
-        selectDatasetCollection(null);  // Clear the label
-        urlParamsPassed = true;
-    } else if (layoutShareId) {
-        datasetCollectionState.selectedShareId = layoutShareId;
-        selectDatasetCollection(layoutShareId);
-        urlParamsPassed = true;
-    } else if (getCurrentUser().layout_share_id) {
-        selectDatasetCollection(getCurrentUser().layout_share_id);
-    }
-
-    // Now, if URL params were passed and we have both genes and a dataset collection,
-    //  run the search
-    if (urlParamsPassed) {
-        if ((datasetShareId || datasetCollectionState.selectedShareId) && geneCollectionState.selectedGenes.size > 0) {
-            document.getElementById('submit-expression-search').click();
-        }
-    }
-
-    // Add mutation observer to watch if #dropdown-dc-selector-label changes
-    const observer = new MutationObserver((mutationsList, observer) => {
-        for (const mutation of mutationsList) {
-            if (mutation.type === 'childList') {
-                // If the user selects a collection, clear the datasetShareId as scope has changed
-                datasetShareId = null;
-            }
-        }
-    });
-
-    observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
-
-    // If we entered via a share link, conditionally display the notification
-    if (shareUsed) {
-        const shareData = await apiCallsMixin.fetchShareData(datasetShareId, layoutShareId);
-        document.getElementById("share-entrance-notification").classList.remove('is-hidden');
-
-        // if an individual dataset was shared, show its info
-        if (datasetShareId) {
-            document.getElementById("share-entrance-dataset-label").innerHTML = shareData['dataset_label'];
-            document.getElementById("share-entrance-dataset").classList.remove('is-hidden');
-
-            if (shareData['owner_name']) {
-                document.getElementById("share-entrance-dataset-owner-label").innerHTML = shareData['owner_name'];
-            } else {
-                document.getElementById("share-entrance-dataset-owner-label").innerHTML = 'Unknown';
-            }
-
-            // if a dataset collection was shared, show its info
-        } else if (layoutShareId) {
-            document.getElementById("share-entrance-layout-label").innerHTML = shareData['layout_label'];
-            document.getElementById("share-entrance-layout").classList.remove('is-hidden');
-
-            if (shareData['owner_name']) {
-                document.getElementById("share-entrance-layout-owner-label").innerHTML = shareData['owner_name'];
-            } else {
-                document.getElementById("share-entrance-layout-owner-label").innerHTML = 'Unknown';
-            }
-        }
-
-        if (cartShareId || geneSymbolId) {
-            document.getElementById("share-entrance-genes-preselected").classList.remove('is-hidden');
-        } else {
-            if (shareData['gene_symbol']) {
-                document.getElementById("share-entrance-genes-autoselected").classList.remove('is-hidden');
-                document.getElementById("share-entrance-genes-label").innerHTML = shareData['gene_symbol'];
-                document.getElementById("share-entrance-genes").classList.remove('is-hidden');
-
-                // insert the gene symbol and trigger a search
-                document.getElementById('genes-manually-entered').value = shareData['gene_symbol'];
-                updateGenesSelected(shareData['gene_symbol']);
-                document.getElementById('submit-expression-search').click();
-            } else {
-                document.getElementById("share-entrance-genes-noneselected").classList.remove('is-hidden');
-            }
-        }
-    }
-};
-registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
 
 /**
  * We need to maintain a few data structures with the selected and manually entered genes,
@@ -774,3 +659,119 @@ const validateExpressionSearchForm = () => {
 
     return true;
 };
+
+/**
+ * Handles the UI updates specific to the page after login.
+ * @param {Event} event - The event object.
+ * @returns {Promise<void>} - A promise that resolves when all UI updates are completed.
+ */
+const handlePageSpecificLoginUIUpdates = async (event) => {
+    // Set the page header title
+    document.getElementById('page-header-label').textContent = 'Gene Expression Search';
+
+    datasetShareId = getUrlParameter('share_id');
+    layoutShareId = getUrlParameter('layout_id');
+    const cartShareId = getUrlParameter('gene_lists');
+    const geneSymbolId = getUrlParameter('gene_symbol');
+    shareUsed = getUrlParameter('share_used') === '1';
+
+    // Wait until all pending API calls have completed before checking if we need to search
+    document.getElementById("submit-expression-search").classList.add("is-loading");
+    try {
+        // SAdkins note - Promise.all fails fast,
+        // but Promise.allSettled waits until all resolve/reject and lets you know which ones failed
+        const [dc_result, org_result] = await Promise.all([
+            parseGeneListURLParams(),
+            fetchDatasetCollections(layoutShareId),
+            fetchOrganisms()
+        ]);
+    } catch (error) {
+        logErrorInConsole(error);
+    } finally {
+        document.getElementById("submit-expression-search").classList.remove("is-loading");
+    }
+
+    parseDatasetCollectionURLParams();
+
+    // Trigger the default dataset collection to be selected in the
+    if (datasetShareId) {
+        selectDatasetCollection(null);  // Clear the label
+        urlParamsPassed = true;
+    } else if (layoutShareId) {
+        datasetCollectionState.selectedShareId = layoutShareId;
+        selectDatasetCollection(layoutShareId);
+        urlParamsPassed = true;
+    } else if (getCurrentUser().layout_share_id) {
+        selectDatasetCollection(getCurrentUser().layout_share_id);
+    }
+
+    // Now, if URL params were passed and we have both genes and a dataset collection,
+    //  run the search
+    if (urlParamsPassed) {
+        if ((datasetShareId || datasetCollectionState.selectedShareId) && geneCollectionState.selectedGenes.size > 0) {
+            document.getElementById('submit-expression-search').click();
+        }
+    }
+
+    // Add mutation observer to watch if #dropdown-dc-selector-label changes
+    const observer = new MutationObserver((mutationsList, observer) => {
+        for (const mutation of mutationsList) {
+            if (mutation.type === 'childList') {
+                // If the user selects a collection, clear the datasetShareId as scope has changed
+                datasetShareId = null;
+            }
+        }
+    });
+
+    observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
+
+    // If we entered via a share link, conditionally display the notification
+    if (shareUsed) {
+        const shareData = await apiCallsMixin.fetchShareData(datasetShareId, layoutShareId);
+        document.getElementById("share-entrance-notification").classList.remove('is-hidden');
+
+        // if an individual dataset was shared, show its info
+        if (datasetShareId) {
+            document.getElementById("share-entrance-dataset-label").innerHTML = shareData['dataset_label'];
+            document.getElementById("share-entrance-dataset").classList.remove('is-hidden');
+
+            if (shareData['owner_name']) {
+                document.getElementById("share-entrance-dataset-owner-label").innerHTML = shareData['owner_name'];
+            } else {
+                document.getElementById("share-entrance-dataset-owner-label").innerHTML = 'Unknown';
+            }
+
+            // if a dataset collection was shared, show its info
+        } else if (layoutShareId) {
+            document.getElementById("share-entrance-layout-label").innerHTML = shareData['layout_label'];
+            document.getElementById("share-entrance-layout").classList.remove('is-hidden');
+
+            if (shareData['owner_name']) {
+                document.getElementById("share-entrance-layout-owner-label").innerHTML = shareData['owner_name'];
+            } else {
+                document.getElementById("share-entrance-layout-owner-label").innerHTML = 'Unknown';
+            }
+        }
+
+        if (cartShareId || geneSymbolId) {
+            document.getElementById("share-entrance-genes-preselected").classList.remove('is-hidden');
+        } else {
+            if (shareData['gene_symbol']) {
+                document.getElementById("share-entrance-genes-autoselected").classList.remove('is-hidden');
+                document.getElementById("share-entrance-genes-label").innerHTML = shareData['gene_symbol'];
+                document.getElementById("share-entrance-genes").classList.remove('is-hidden');
+
+                // insert the gene symbol and trigger a search
+                document.getElementById('genes-manually-entered').value = shareData['gene_symbol'];
+                updateGenesSelected(shareData['gene_symbol']);
+                document.getElementById('submit-expression-search').click();
+            } else {
+                document.getElementById("share-entrance-genes-noneselected").classList.remove('is-hidden');
+            }
+        }
+    }
+};
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
+
+// Pre-initialize some stuff
+await initCommonUI();

@@ -7,9 +7,6 @@ import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=2860b88";
 import { DatasetTree } from "./classes/tree.js?v=2860b88";
 import { fetchGeneCartData, geneCollectionState } from "../include/gene-collection-selector/gene-collection-selector.js?v=2860b88";
 
-// Pre-initialize some stuff
-await initCommonUI();
-
 // SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 // This is meant to be a short-term solution until more people specify their data is transformed via the metadata
 const LOG10_TRANSFORMED_DATASETS = [
@@ -1450,3 +1447,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 };
 
 registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
+
+// Pre-initialize some stuff
+await initCommonUI();

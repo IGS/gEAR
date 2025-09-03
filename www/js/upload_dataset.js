@@ -2,9 +2,6 @@
 
 import { apiCallsMixin, convertToFormData, createToast, getCurrentUser, initCommonUI, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=2860b88";
 
-// Pre-initialize some stuff
-await initCommonUI();
-
 let dataset_uid = null;
 let share_uid = null;
 let dataset_format = null;
@@ -308,16 +305,6 @@ const populateMetadataFormFromFile = async () => {
     document.getElementById('metadata-upload-status').classList.remove('is-hidden');
     button.classList.remove('is-loading');
 }
-
-const handlePageSpecificLoginUIUpdates = async (event) => {
-    if (getCurrentUser().session_id) {
-        document.getElementById('logged-in-c').classList.remove('is-hidden');
-        loadUploadsInProgress();
-    } else {
-        document.getElementById('not-logged-in-c').classList.remove('is-hidden');
-    }
-}
-registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
 
 const getGeoData = async () => {
     const geo_id = document.getElementsByName('metadata-geo-id')[0].value;
@@ -668,6 +655,17 @@ function guid(uid_length) {
     }
 }
 
+const handlePageSpecificLoginUIUpdates = async (event) => {
+    if (getCurrentUser().session_id) {
+        document.getElementById('logged-in-c').classList.remove('is-hidden');
+        loadUploadsInProgress();
+    } else {
+        document.getElementById('not-logged-in-c').classList.remove('is-hidden');
+    }
+}
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
+// Pre-initialize some stuff
+await initCommonUI();
 
 /*  From Shaun, used to toggle element's stickiness */
 // if scrolling makes #summar-s go above top of screen, make it sticky
