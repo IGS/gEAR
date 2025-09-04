@@ -6,7 +6,7 @@
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-        <title>Hair Cell paper landing page</title>
+        <title>HRP landing page</title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta http-equiv="Pragma" content="no-cache">
@@ -32,10 +32,18 @@
 
           <!--#include virtual="/include/header_bar.html" -->
 
-          <section id="content-c" class="m-3" data-nav-link="workspace">
-            <div id="hhf-hrp-banner-c">
-              <img id="hhf-hrp-banner" class="img-fluid" src="./hhf_hrp_banner.png" alt="Hertzano Human Frontiers Research Program Logo" />
+          <section id="content-c" class="p-5" data-nav-link="workspace">
+            <div id="hhf-hrp-banner-c" class="columns is-vcentered">
+              <div class="column is-4">
+                <img  class="img-fluid" src="/img/by_domain/gear/hhf_logo_with_tagline_hires.png" alt="" />
+              </div>
+              <div class="column is-2"></div>
+              <div class="column is-6">
+                <img class="img-fluid" src="/img/by_domain/gear/HRP_mini_banner_hires.png" alt="" />
+              </div>
             </div>
+
+            <hr />
             
             <h1 id="page-title" class="mt-5">About the HRP</h1>
 
@@ -51,57 +59,50 @@
             </p>
             
             <div class="columns mt-5">
-              <div class="column is-6">
-                <h1>Focus</h1>
-                <p class="mt-5">
-                  Over the past decade, the main HRP focus has been collecting and analyzing transcriptomic data from hearing and vestibular 
-                  organs in zebrafish, chicken, mouse, and humans. All of these organs share a common mechanism: sound waves, head movements, 
-                  and gravitational forces each result in fluid motions that are detected by mechanosensory hair cells. Damage to hair cells 
-                  is the most common cause of hearing loss. Towards identifying and comparing gene regulatory networks associated with 
-                  regeneration or its failure, we have developed computational approaches that overcome the challenge of comparing data 
-                  generated using different methods and with different gene nomenclature. As a first step towards describing the transcriptional 
-                  trajectories that supporting cells undergo as they respond to hair cell loss, we compared transcriptomes and identified 
-                  genes that are enriched in hair cells compared to supporting cells in 36 different hair cell types. Similar analyses of 
-                  supporting cells are underway and will be shared with the community in the future.
+              <div class="column is-6 pr-5">
+                <h1><i class="mdi mdi-tools is-small"></i> Tools - HRP Hair Cell Explorer</h1>
+                <p class="mt-5 mb-5">
+                  To facilitate exploration of the data we analyzed and to use the results to design and evaluate efforts to 
+                  promote hair cell regeneration, we developed the <a href="" target="_blank">HRP Hair Cell Explorer</a>. This application can be used 
+                  to look more closely at the analyses we performed, to assess the enrichment of a gene of interest in hair 
+                  cells from other species and timepoints, and to identify potential new markers for those hair cells. We 
+                  also established a list of 884 “hair cell enriched” (HCE) genes that are enriched in developing and mature 
+                  hair cells across species, providing a common metric for assessing the nature of hair cells regenerated 
+                  experimentally. Examples of how this list can be used are provided in the application. 
                 </p>
-                
+                <img class="img-fluid" src="./cell_gene_explorer_composite.png" alt="Cell gene explorer" />
+                    
               </div>
               <div class="column is-6">
-                  <h1>Publications</h1>
-                  <h2>prdm1a drives a fate switch between hair cells of different mechanosensory organs</h2>
-                  <h3>Jeremy E. Sandler, Tatjana Piotrowski, et al.</h3>
-                  <h4>Nature Communications volume 16, Article number: 7662 (2025) <a href="#">[link]</a></h4>
-                  <div class="columns mt-5">
-                    <div class="column is-4 mt-5">
-                      <ul>
-                        <li><a href="/landing/haircell">View summary</a></li>
-                        <li><a href="#">Read paper</a></li>
-                        <li><a href="#">View data in gEAR</a></li>
-                        <li><a href="#">Download data</a></li>
-                        <li class="mt-5 mb-5"></li>
-                        <li class="mt-5"><a href="#"><br />>> Next paper</a></li>
-                      </ul>
-                    </div>
-                    <div class="column is-8">
-                      <img class="img-fluid" src="./prdm1a_paper.png" alt="Figure 1B" style="border: 1px solid black;"/>
-                    </div>
+                <h1><i class="mdi mdi-school is-small"></i> Publications</h1>
+                <div class="columns">
+                  <div class="column is-6">
+                    <p class="paper_title">Cell-type identity of the avian utricle</p>
+                    <p class="paper_authors">Scheibinger M, Janesick A, Benkafadar N, Ellwanger DC, Jan TA, Heller S.</p>
+                    <p class="paper_journal">Cell Reports. 2022;40(13). <a href="#">doi:10.1016/j.celrep.2022.111432</a></p>
+
+                    <ul class="mt-5 mb-5 ml-5">
+                      <li><i class="mdi mdi-eye-outline is-small"></i> <a href="/landing/haircell">View summary page</a></li>
+                      <li><i class="mdi mdi-book-education-outline is-small"></i> <a href="#">Read paper</a></li>
+                      <li><i class="mdi mdi-chart-scatter-plot is-small"></i> <a href="#">View data in gEAR</a></li>
+                      <li><i class="mdi mdi-download is-small"></i> <a href="#">Download data</a></li>
+                    </ul>
+
+                    <button class="button is-primary">
+                      <span class="icon is-small">
+                        <i class="mdi mdi-page-next-outline"></i>
+                      </span>
+                      <span>Next paper</span>
+                    </button>
+
                   </div>
-                  
+                  <div class="column is-6">
+                    <img class="img-fluid" src="./Heller.png" alt="Figure 1B" style="border: 1px solid black;"/>
+                  </div>
+                </div>
               </div>
             </div>
-            
-            
-            <h1>Tools - HRP Hair Cell Explorer</h1>
-            <p class="mt-5 mb-5">
-              To facilitate exploration of the data we analyzed and to use the results to design and evaluate efforts to 
-              promote hair cell regeneration, we developed the <a href="" target="_blank">HRP Hair Cell Explorer</a>. This application can be used 
-              to look more closely at the analyses we performed, to assess the enrichment of a gene of interest in hair 
-              cells from other species and timepoints, and to identify potential new markers for those hair cells. We 
-              also established a list of 884 “hair cell enriched” (HCE) genes that are enriched in developing and mature 
-              hair cells across species, providing a common metric for assessing the nature of hair cells regenerated 
-              experimentally. Examples of how this list can be used are provided in the application. 
-            </p>
-            <img class="img-fluid" src="./cell_gene_explorer_composite.png" alt="Cell gene explorer" />
+      
           </section><!-- end #content-c -->
         </section> <!-- end #main-c -->
       </div>
