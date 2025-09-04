@@ -1058,6 +1058,12 @@ class ProjectR(Resource):
         zscore = args["zscore"]
         full_output = args["full_output"]
 
+        # Use default based on gear.ini settings
+        # This should be default to True coming from the UI but this would be a nice fallback.
+        if full_output is None:
+            if "full_output" in this.servercfg["projectR_service"]:
+                full_output = this.servercfg["projectR_service"]["full_output"].startswith("1")
+
         # Currently only NMF runs through the actual projectR code and can give full output
         if algorithm not in ["nmf", "fixednmf"]:
             full_output = False

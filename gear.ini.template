@@ -50,6 +50,8 @@ cloud_run_enabled = 1
 ;; 0 - disable RabbitMQ, 1 - enable. Disabling could lead to potential server crashes if many jobs are run simultaneously
 queue_enabled = 0
 queue_host = localhost
+;; If 1, will output pvalue output in addition to the coefficient weights
+full_output = 0
 
 [nemoarchive_import]
 importer_id = [importer_id]
