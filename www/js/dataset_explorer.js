@@ -1,7 +1,7 @@
 "use strict";
 
 import { apiCallsMixin, closeModal, createToast, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=2860b88";
-import { datasetCollectionState, fetchDatasetCollections, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=2860b88";
+import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=2860b88";
 
 /* Imported variables
 let datasetCollectionState.data; // from dataset-collection-selector
@@ -2849,6 +2849,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     // Prep filters
     await loadOrganismList();
+
+    registerDatasetCollectionEventListeners();
 
     // Select the user's last remembered filter options
     const defaultOwnershipView = Cookies.get("default_collection_ownership_view");

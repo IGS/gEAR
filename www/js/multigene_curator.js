@@ -5,7 +5,7 @@ import { curatorCommon } from "./curator_common.js?v=2860b88";
 import { Gene, WeightedGene } from "./classes/gene.js?v=2860b88";
 import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=2860b88";
 import { adjustStackedViolinHeight, postPlotlyConfig, setHeatmapHeightBasedOnGenes } from "./plot_display_config.js?v=2860b88";
-import { fetchGeneCartData, geneCollectionState } from "../include/gene-collection-selector/gene-collection-selector.js?v=2860b88";
+import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventSelectors } from "../include/gene-collection-selector/gene-collection-selector.js?v=2860b88";
 
 curatorCommon.setIsMultigene(1);
 
@@ -1169,6 +1169,9 @@ curatorCommon.registerCuratorSpecificNavbarUpdates(curatorSpecificNavbarUpdates)
 
 const curatorSpecificOnLoad = async () => {
     await fetchGeneCartData();
+
+    registerGeneListEventListeners();
+
     // Should help with lining things up on index page
     document.getElementById("dropdown-gene-lists").classList.remove("is-right");
 };

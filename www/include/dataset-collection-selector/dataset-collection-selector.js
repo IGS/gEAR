@@ -12,76 +12,79 @@ export const datasetCollectionState = {
 // This many characters will be included and then three dots will be appended
 const DatasetCollectionSelectorLabelMaxLength = 35;
 
-// Add event listener to dropdown trigger
-document.querySelector("#dropdown-dc > button.dropdown-trigger").addEventListener("click", (event) => {
-    const item = event.currentTarget;
-    // Close all other dropdowns
-    const dropdowns = document.querySelectorAll('.dropdown.is-active');
-    dropdowns.forEach((dropdown) => {
-        if (dropdown !== item.closest('.dropdown')) {
-            dropdown.classList.remove('is-active');
-        }
+// SAdkins - If I leave these global, then they are registered twice (once here and once in the entrypoint JS) leading to double event handling
+export const registerEventListeners = () => {
+    // Add event listener to dropdown trigger
+    document.querySelector("#dropdown-dc > button.dropdown-trigger").addEventListener("click", (event) => {
+        const item = event.currentTarget;
+        // Close all other dropdowns
+        const dropdowns = document.querySelectorAll('.dropdown.is-active');
+        dropdowns.forEach((dropdown) => {
+            if (dropdown !== item.closest('.dropdown')) {
+                dropdown.classList.remove('is-active');
+            }
+        });
+        item.closest(".dropdown").classList.toggle('is-active');
     });
-    item.closest(".dropdown").classList.toggle('is-active');
-});
 
-// Add event listeners to the dataset collection category selectors
-const categorySelectors = document.querySelectorAll('#dropdown-content-dc-category .ul-li');
-categorySelectors.forEach((element) => {
-    element.addEventListener('click', (event) => {
-        const category = event.target.dataset.category;
-        setActiveDCCategory(category);
+    // Add event listeners to the dataset collection category selectors
+    const categorySelectors = document.querySelectorAll('#dropdown-content-dc-category .ul-li');
+    categorySelectors.forEach((element) => {
+        element.addEventListener('click', (event) => {
+            const category = event.target.dataset.category;
+            setActiveDCCategory(category);
 
+            categorySelectors.forEach((element) => {
+                element.classList.remove('is-selected');
+                element.classList.add('is-clickable');
+            });
+
+            event.target.classList.add('is-selected');
+            event.target.classList.remove('is-clickable');
+        });
+    });
+
+    // Add a click listener to the dancel button
+    document.querySelector('#dropdown-dc-cancel').addEventListener('click', (event) => {
+        document.querySelector('#dropdown-dc-search-input').value = '';
+        document.querySelector('#dropdown-content-dc').innerHTML = '';
+        document.querySelector('#dropdown-dc').classList.remove('is-active');
+    });
+
+    // Monitor key strokes after user types more than 2 characters in the search box
+    document.querySelector('#dropdown-dc-search-input').addEventListener('keyup', (event) => {
+        const search_term = event.target.value;
+
+        if (search_term.length === 0) {
+            document.querySelector('#dropdown-content-dc').innerHTML = '';
+        }
+
+        if (search_term.length <= 2) {return}
+
+        const categorySelectors = document.querySelectorAll('#dropdown-content-dc-category .ul-li');
         categorySelectors.forEach((element) => {
             element.classList.remove('is-selected');
             element.classList.add('is-clickable');
         });
 
-        event.target.classList.add('is-selected');
-        event.target.classList.remove('is-clickable');
-    });
-});
-
-// Add a click listener to the dancel button
-document.querySelector('#dropdown-dc-cancel').addEventListener('click', (event) => {
-    document.querySelector('#dropdown-dc-search-input').value = '';
-    document.querySelector('#dropdown-content-dc').innerHTML = '';
-    document.querySelector('#dropdown-dc').classList.remove('is-active');
-});
-
-// Monitor key strokes after user types more than 2 characters in the search box
-document.querySelector('#dropdown-dc-search-input').addEventListener('keyup', (event) => {
-    const search_term = event.target.value;
-
-    if (search_term.length === 0) {
         document.querySelector('#dropdown-content-dc').innerHTML = '';
-    }
 
-    if (search_term.length <= 2) {return}
+        const dc_item_template = document.querySelector('#tmpl-dc');
 
-    const categorySelectors = document.querySelectorAll('#dropdown-content-dc-category .ul-li');
-    categorySelectors.forEach((element) => {
-        element.classList.remove('is-selected');
-        element.classList.add('is-clickable');
-    });
+        // build a label index for the dataset collections
+        for (const category in datasetCollectionState.data) {
+            // This data structure has mixed types - we only care about the arrayed categories
+            if (!Array.isArray(datasetCollectionState.data[category])) {continue}
 
-    document.querySelector('#dropdown-content-dc').innerHTML = '';
-
-    const dc_item_template = document.querySelector('#tmpl-dc');
-
-    // build a label index for the dataset collections
-    for (const category in datasetCollectionState.data) {
-        // This data structure has mixed types - we only care about the arrayed categories
-        if (!Array.isArray(datasetCollectionState.data[category])) {continue}
-
-        for (const entry of datasetCollectionState.data[category]) {
-            if (entry.label.toLowerCase().includes(search_term.toLowerCase())) {
-                const row = dc_item_template.content.cloneNode(true);
-                createDatasetCollectionListItem(row, entry);
+            for (const entry of datasetCollectionState.data[category]) {
+                if (entry.label.toLowerCase().includes(search_term.toLowerCase())) {
+                    const row = dc_item_template.content.cloneNode(true);
+                    createDatasetCollectionListItem(row, entry);
+                }
             }
         }
-    }
-});
+    });
+}
 
 /**
  * Fetches dataset collections.

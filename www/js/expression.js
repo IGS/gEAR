@@ -1,8 +1,8 @@
 'use strict';
 
 import { apiCallsMixin, createToast, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=2860b88";
-import { datasetCollectionState, fetchDatasetCollections, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=2860b88";
-import { fetchGeneCartData, geneCollectionState, selectGeneLists } from "../include/gene-collection-selector/gene-collection-selector.js?v=2860b88";
+import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=2860b88";
+import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners, selectGeneLists } from "../include/gene-collection-selector/gene-collection-selector.js?v=2860b88";
 import { TileGrid } from "./classes/tilegrid.js?v=2860b88";
 
 let urlParamsPassed = false;
@@ -690,6 +690,9 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     } finally {
         document.getElementById("submit-expression-search").classList.remove("is-loading");
     }
+
+    registerGeneListEventListeners();
+    registerDatasetCollectionEventListeners();
 
     parseDatasetCollectionURLParams();
 
