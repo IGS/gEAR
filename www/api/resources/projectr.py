@@ -402,7 +402,7 @@ def projectr_callback(
     if not fh:
         fh = sys.stderr
 
-    status = {"status": "pending", "result": None, "error": None}
+    status = {"status": "pending", "result": {"projection_id": projection_id}, "error": None}
     JOB_STATUS_FILE = JOB_STATUS_DIR.joinpath(f"job_{projection_id}.json")
 
     if scope == "unweighted-list" and algorithm in ["nmf", "fixednmf"]:

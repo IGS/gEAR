@@ -20,6 +20,10 @@ export const getSelectedPattern = () => {
     return selectedPattern;
 }
 
+export const setSelectedPattern = (pattern) => {
+    selectedPattern = pattern;
+}
+
 // SAdkins - If I leave these global, then they are registered twice (once here and once in projection.js) leading to double event handling
 export const registerEventListeners = () => {
     // Add event listener to dropdown trigger

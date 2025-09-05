@@ -2,7 +2,7 @@
 
 import { apiCallsMixin, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, rebindUrlParam, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=2860b88";
 import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=2860b88";
-import { fetchPatternsData, getFlatPatternCartData, getSelectedPattern, populatePatternWeights, registerEventListeners as registerPatternEventListeners, selectPatternWeights } from "../include/pattern-collection-selector/pattern-collection-selector.js?v=2860b88";
+import { fetchPatternsData, getFlatPatternCartData, getSelectedPattern, populatePatternWeights, registerEventListeners as registerPatternEventListeners, selectPatternWeights, setSelectedPattern } from "../include/pattern-collection-selector/pattern-collection-selector.js?v=2860b88";
 import { TileGrid } from "./classes/tilegrid.js?v=2860b88";
 
 let selectedPattern;
@@ -211,7 +211,7 @@ const parsePatternCartURLParams = async () => {
         console.warn(`Pattern ${pattern} not found in pattern cart data. Perhaps the user does not have access to it.`);
         return;
     }
-    selectedPattern = { shareId: foundPattern.share_id, label: foundPattern.label, gctype: foundPattern.gctype, selectedWeights: [] };
+    setSelectedPattern({ shareId: foundPattern.share_id, label: foundPattern.label, gctype: foundPattern.gctype, selectedWeights: [] });
 
     // Update proxy so that multi-gene radio button can be enabled/disabled
     selectedPattern = createSelectedPatternProxy(getSelectedPattern());
@@ -453,6 +453,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Register event listeners for pattern and dataset collection selectors
     registerPatternEventListeners();
     registerDatasetCollectionEventListeners();
+
+    selectedPattern = createSelectedPatternProxy(getSelectedPattern());
 
     // add event listener for when the submit-projection-search button is clicked
     document.getElementById('submit-projection-search').addEventListener('click', async (event) => {
