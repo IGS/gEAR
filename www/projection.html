@@ -88,7 +88,14 @@
                     Z-score normalize gene expression
                     <p class="help">If enabled, can increase noise in dataset if too many low-expression genes are present.</p>
                   </label>
-              </div>
+                </div>
+                <div id="minclip-c" class="field">
+                  <label class="checkbox">
+                    <input type="checkbox" id="minclip">
+                    Set negative coefficient weight outputs to zero
+                    <p class="help">This will be applied at the time of plotting and not saved in projection output.</p>
+                  </label>
+                </div>
               </div>
               <div class="column is-half">
                 <article class="message">

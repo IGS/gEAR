@@ -30,7 +30,7 @@ if typing.TYPE_CHECKING:
     from matplotlib.colors import Colormap
     from matplotlib.figure import Figure
 
-from .common import create_projection_adata
+from .common import clip_expression_values, create_projection_adata
 
 sc.settings.verbosity = 0
 
@@ -726,6 +726,7 @@ def generate_tsne_figure(
     grid_spec: str = "1/1/2/2",
     max_columns: int | None = None,
     horizontal_legend: bool = False,
+    expression_min_clip: float | None = None,
     skip_gene_plot=None,
     plot_by_group=None,
     two_way_palette=None,
@@ -784,6 +785,8 @@ def generate_tsne_figure(
         Maximum number of columns in the plot grid.
     horizontal_legend : bool
         Whether to display the legend horizontally.
+    expression_min_clip : float or None
+        Minimum expression value to clip.
     skip_gene_plot : bool or None, optional
         If True, skips plotting the gene expression plot (single-gene mode).
     plot_by_group : str or None, optional
@@ -812,6 +815,10 @@ def generate_tsne_figure(
         )
     except ValueError as ve:
         return {"success": -1, "message": str(ve)}
+
+    # Apply transformations
+    if expression_min_clip is not None:
+        selected = clip_expression_values(selected, min_clip=expression_min_clip)
 
     selected = prepare_adata(
         selected, flip_x=flip_x, flip_y=flip_y, order=order, filters=filters
@@ -1093,6 +1100,7 @@ class MGTSNEData(Resource):
             args.get("grid_spec", "1/1/2/2"),
             args.get("max_columns", None),
             args.get("horizontal_legend", False),
+            args.get("expression_min_clip", None)
         )
 
 
@@ -1133,6 +1141,7 @@ class TSNEData(Resource):
             args.get("grid_spec", "1/1/2/2"),
             args.get("max_columns", None),
             args.get("horizontal_legend", False),
+            args.get("expression_min_clip", None),
             args.get("skip_gene_plot", False),
             args.get("plot_by_group", None),
             args.get("two_way_palette", False),

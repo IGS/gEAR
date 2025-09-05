@@ -18,6 +18,30 @@ TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP]  # web-root dir
 PROJECTIONS_BASE_DIR = abs_path_www.joinpath("projections")
 
+def clip_expression_values(adata: "AnnData", min_clip: float | None=None, max_clip: float | None=None) -> "AnnData":
+    """
+    Clips the expression values in an AnnData object to specified minimum and/or maximum values.
+
+    Parameters
+    ----------
+    adata : AnnData
+        The AnnData object containing expression data to be clipped.
+    min_clip : float or None, optional
+        Minimum value to clip the expression data. Values below this will be set to min_clip.
+        If None, no minimum clipping is applied.
+    max_clip : float or None, optional
+        Maximum value to clip the expression data. Values above this will be set to max_clip.
+        If None, no maximum clipping is applied.
+
+    Returns
+    -------
+    AnnData
+        The AnnData object with clipped expression values.
+    """
+    X = adata.to_df()
+    X = X.clip(lower=min_clip, upper=max_clip)
+    adata.X = X.to_numpy()
+    return adata
 
 def get_adata_from_analysis(
     analysis_id: str | None, dataset_id: str, session_id: str | None

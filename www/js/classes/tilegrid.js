@@ -279,7 +279,8 @@ export class TileGrid {
      *
      * @param {string|string[]} geneSymbols - The gene symbol or an array of gene symbols to render displays for.
      * @param {boolean} [isMultigene=false] - Indicates whether the gene symbols represent multiple genes.
-     * @param {string} svgScoringMethod - The SVG scoring method to use for rendering the displays.
+     * @param {string} [svgScoringMethod="gene"] - The SVG scoring method to use for rendering the displays.
+     * @param {number|null} [minclip=null] - The minimum clip value for rendering the displays.
      * @param {object} [projectionOpts={}] - The options for performing projection.
      * @param {string} [projectionOpts.patternSource] - The pattern source for projection.
      * @param {string} [projectionOpts.algorithm] - The algorithm for projection.
@@ -288,7 +289,7 @@ export class TileGrid {
      * @returns {Promise<void>} - A promise that resolves when all displays have been rendered.
      * @throws {Error} - If geneSymbols is not provided or if an error occurs during rendering.
      */
-    async renderDisplays(geneSymbols, isMultigene = false, svgScoringMethod, projectionOpts={}) {
+    async renderDisplays(geneSymbols, isMultigene=false, svgScoringMethod="gene", minclip=null, projectionOpts={}) {
         if (!geneSymbols) {
             throw new Error("Gene symbol or symbols are required to render displays.");
         }
@@ -306,7 +307,7 @@ export class TileGrid {
             // Sometimes fails to render due to OOM errors, so we want to try each tile individually
             // Orthology mapping also seems to fail due to file locking as well.
             this.tiles.map(tile =>
-                tile.processTileForRenderingDisplay(projectionOpts, geneSymbolInput, svgScoringMethod)
+                tile.processTileForRenderingDisplay(projectionOpts, geneSymbolInput, svgScoringMethod, minclip)
             )
         );
 
@@ -451,10 +452,11 @@ class DatasetTile {
      * Processes a tile for rendering display.
      * @param {Object} projectionOpts - The projection options.
      * @param {string} geneSymbolInput - The gene symbol input.
-     * @param {string} svgScoringMethod - The SVG scoring method.
+     * @param {string} [svgScoringMethod="gene"] - The SVG scoring method.
+     * @param {number|null} [minclip=null] - The mininum expression value to clip to, if applicable
      * @returns {Promise<void>} - A promise that resolves when the rendering is complete.
      */
-    async processTileForRenderingDisplay(projectionOpts, geneSymbolInput, svgScoringMethod) {
+    async processTileForRenderingDisplay(projectionOpts, geneSymbolInput, svgScoringMethod="gene", minclip=null) {
         const tileId = this.tile.tileId;
         const tileElement = document.getElementById(`tile-${tileId}`);
 
@@ -489,7 +491,7 @@ class DatasetTile {
             this.resizeCardImage();
 
             // Plot and render the display
-            await this.renderDisplay(geneSymbolInput, null, svgScoringMethod);
+            await this.renderDisplay(geneSymbolInput, null, svgScoringMethod, minclip);
             return;
         }
 
@@ -543,7 +545,7 @@ class DatasetTile {
         }
 
         // Plot and render the display
-        await this.renderDisplay(orthologs, null, svgScoringMethod);
+        await this.renderDisplay(orthologs, null, svgScoringMethod, minclip);
     }
 
 
@@ -671,7 +673,6 @@ class DatasetTile {
                 }
 
                 while (["running", "pending"].includes(fetchData.status)) {
-                    console.log("here");
                     // Run the polling API call to get a status.
                     // If status is "complete" it will delete the JSON job log off the server.
                     // If status is "failed", then we need to handle on the client.
@@ -967,6 +968,10 @@ class DatasetTile {
                     break;
                 case "download-png":
                     // Handle when plot type is known
+                    item.classList.add("is-hidden");
+                    break;
+                case "download-projection":
+                    // Handle if we know this is a projection run
                     item.classList.add("is-hidden");
                     break;
                 default:
@@ -1282,11 +1287,12 @@ class DatasetTile {
      * Renders the display for a given gene symbol.
      * @param {string} geneSymbolInput - The gene symbol(s) to render the display for.
      * @param {string|null} displayId - The ID of the display to render. If null, the default display ID will be used.
-     * @param {string} svgScoringMethod - The SVG scoring method to use.
+     * @param {string} [svgScoringMethod="gene"] - The SVG scoring method to use.
+     * @param {number|null} [minclip=null] - The minimum expression value to clip, if applicable.
      * @throws {Error} If geneSymbol is not provided.
      * @returns {Promise<void>} A promise that resolves when the display is rendered.
      */
-    async renderDisplay(geneSymbolInput, displayId=null, svgScoringMethod="gene") {
+    async renderDisplay(geneSymbolInput, displayId=null, svgScoringMethod="gene", minclip=null) {
         if (!geneSymbolInput) {
             throw new Error("Gene symbol or symbols are required to render this display.");
         }
@@ -1364,6 +1370,10 @@ class DatasetTile {
                     display.plotly_config.projection_id = this.projectR.projectionId;
                 }
 
+                if (minclip !== null) {
+                    display.plotly_config.expression_min_clip = minclip;
+                }
+
                 await this.renderSpatialPanelDisplay(display, otherOpts);
                 return;
             }
@@ -1400,6 +1410,10 @@ class DatasetTile {
             display.plotly_config.gene_symbols = geneSymbolInput;
         } else {
             display.plotly_config.gene_symbol = geneSymbolInput;
+        }
+
+        if (minclip !== null) {
+            display.plotly_config.expression_min_clip = minclip;
         }
 
         // if projection ran, add the projection info to the plotly config
@@ -1913,9 +1927,9 @@ class DatasetTile {
     async renderSVG(display, svgScoringMethod="gene", otherOpts) {
         const datasetId = display.dataset_id;
         const plotConfig = display.plotly_config;
-        const {gene_symbol: geneSymbol, projection_id: projectionId} = plotConfig;
+        const {gene_symbol: geneSymbol, projection_id: projectionId, expression_min_clip: expressionMinClip} = plotConfig;
 
-        const data = await apiCallsMixin.fetchSvgData(datasetId, geneSymbol, projectionId, otherOpts)
+        const data = await apiCallsMixin.fetchSvgData(datasetId, geneSymbol, projectionId, expressionMinClip, otherOpts)
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
@@ -2026,8 +2040,7 @@ class DatasetTile {
         createCardMessage(tileId, "info", "Loading spatial display...");
 
         const plotConfig = display.plotly_config;
-        const {gene_symbol: geneSymbol} = plotConfig;
-
+        const {gene_symbol: geneSymbol, expression_min_clip: minclip} = plotConfig;
 
         // build spatial object from the plotly config
         // This spatial object will keep the current state as the user switches genes
@@ -2074,6 +2087,9 @@ class DatasetTile {
             urlParams.append("width", this.cardImgWidth);
         }
 
+        if (minclip) {
+            urlParams.append("expression_min_clip", minclip);
+        }
 
         // If not logged in, then do not allow saving the display
         if (!apiCallsMixin.sessionId && this.isZoomed) {

@@ -11,7 +11,7 @@ from gear.mg_plotting import PlotError
 from gear.utils import catch_memory_error
 from plotly.utils import PlotlyJSONEncoder
 
-from .common import create_projection_adata, order_by_time_point
+from .common import clip_expression_values, create_projection_adata, order_by_time_point
 
 # SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 # This is meant to be a short-term solution until more people specify their data is transformed via the metadata
@@ -140,6 +140,7 @@ class MGPlotlyData(Resource):
         title = req.get('plot_title', None)
         legend_title = req.get('legend_title', None)
         projection_id = req.get('projection_id', None)    # projection id of csv output
+        expression_min_clip = req.get('expression_min_clip', None)
         colorblind_mode = req.get('colorblind_mode', False)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
@@ -162,6 +163,10 @@ class MGPlotlyData(Resource):
                 "success": -1,
                 "message": "Could not retrieve AnnData object."
             }
+
+        # Apply transformations
+        if expression_min_clip is not None:
+            adata = clip_expression_values(adata, min_clip=expression_min_clip)
 
         adata.obs = order_by_time_point(adata.obs)
 

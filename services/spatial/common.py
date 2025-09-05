@@ -1,5 +1,6 @@
 import base64
 import sys
+import typing
 from io import BytesIO
 from typing import Literal
 
@@ -7,13 +8,40 @@ import datashader as ds
 import numpy as np
 import pandas as pd
 import param
-from PIL import Image, ImageEnhance
+from PIL import Image
 from plotly import graph_objects as go
 from plotly.subplots import make_subplots
 from xarray import DataArray
 
+if typing.TYPE_CHECKING:
+    from anndata import AnnData
+
 ### Functions
 
+def clip_expression_values(adata: "AnnData", min_clip: float | None=None, max_clip: float | None=None) -> "AnnData":
+    """
+    Clips the expression values in an AnnData object to specified minimum and/or maximum values.
+
+    Parameters
+    ----------
+    adata : AnnData
+        The AnnData object containing expression data to be clipped.
+    min_clip : float or None, optional
+        Minimum value to clip the expression data. Values below this will be set to min_clip.
+        If None, no minimum clipping is applied.
+    max_clip : float or None, optional
+        Maximum value to clip the expression data. Values above this will be set to max_clip.
+        If None, no maximum clipping is applied.
+
+    Returns
+    -------
+    AnnData
+        The AnnData object with clipped expression values.
+    """
+    X = adata.to_df()
+    X = X.clip(lower=min_clip, upper=max_clip)
+    adata.X = X.to_numpy()
+    return adata
 
 def normalize_searched_gene(gene_set, chosen_gene) -> str | None:
     """Convert to case-insensitive version of gene.  Returns None if gene not found in dataset."""
@@ -70,6 +98,7 @@ class Settings(param.Parameterized):
     selection_y2 = param.Number(doc="lower selection range", allow_None=True)
     display_height = param.Integer(doc="Height of the display in pixels", allow_None=True)
     display_width = param.Integer(doc="Width of the display in pixels", allow_None=True)
+    expression_clip_min = param.Number(doc="Minimum expression value to clip", allow_None=True)
 
 
 class SpatialFigure:

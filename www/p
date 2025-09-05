@@ -55,6 +55,7 @@ def main():
     patterns = form.getvalue("ptrns")
     algo = form.getvalue("algo")
     zscore = form.getvalue("zscore")
+    minclip = form.getvalue("minclip", None)
     layout_share_id = form.getvalue('l')
     page = form.getvalue('p')
     dataset_share_id = form.getvalue('s')
@@ -113,6 +114,9 @@ def main():
             params["projection_algorithm"] = algo
 
         params["zscore"] = check_for_truthy(zscore)
+
+        if minclip is not None:
+            params["minclip"] = minclip
 
     if search_string and (page == "de" or page == "gcm"):
         params["search_string"] = search_string

@@ -203,6 +203,7 @@ def create_new_uuid(*args) -> uuid.UUID:
 def create_unweighted_loading_df(genecart: geardb.GeneCart) -> pd.DataFrame:
     # Now convert into a GeneCollection to get the Ensembl IDs (which will be the unique identifiers)
     gene_collection = geardb.GeneCollection()
+    genecart.get_genes()
     gene_collection.get_by_gene_symbol(
         gene_symbol=" ".join(genecart.genes),
         exact=True,
@@ -425,15 +426,15 @@ def projectr_callback(
     genecart = geardb.get_gene_cart_by_share_id(genecart_id)
     if not genecart:
         status["status"] = "failed"
-        status["error"] = "Could not find gene cart in database."
+        status["error"] = "Could not find gene list in database."
         write_projection_status(JOB_STATUS_FILE, status)
         return status
 
-    genecart.get_genes()
+    genecart.get_gene_counts()
 
-    if not len(genecart.genes):
+    if not genecart.num_genes:
         status["status"] = "failed"
-        status["error"] = "No genes found within this gene cart."
+        status["error"] = "No genes found within this gene list."
         write_projection_status(JOB_STATUS_FILE, status)
         return status
 
@@ -887,7 +888,11 @@ def projectr_callback(
 
     # Add new configuration to the list for this dictionary key
     with open(dataset_projection_json_file) as projection_fh:
-        dataset_projections_dict = json.load(projection_fh)
+        try:
+            dataset_projections_dict = json.load(projection_fh)
+        except json.JSONDecodeError:
+            dataset_projections_dict = {}
+
     dataset_projections_dict.setdefault(genecart_id, []).append(
         {
             "uuid": projection_id,
@@ -914,7 +919,10 @@ def projectr_callback(
         print("Symlink already exists for {}".format(dataset_projection_csv), file=fh)
 
     with open(genecart_projection_json_file) as projection_fh:
-        genecart_projections_dict = json.load(projection_fh)
+        try:
+            genecart_projections_dict = json.load(projection_fh)
+        except json.JSONDecodeError:
+            genecart_projections_dict = {}
     genecart_projections_dict.setdefault(dataset_id, []).append(
         {
             "uuid": projection_id,
@@ -1078,7 +1086,7 @@ class ProjectR(Resource):
 
         run_projectr = True
 
-        status = {"status": "pending", "result": None, "error": None}
+        status = {"status": "pending", "result": {"projection_id":projection_id}, "error": None}
 
         # Housekeeping... create some dir paths if they do not exist
         JOB_STATUS_DIR.mkdir(parents=True, exist_ok=True)

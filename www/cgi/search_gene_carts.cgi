@@ -16,8 +16,6 @@ sys.path.append(lib_path)
 import geardb
 from gear.userhistory import UserHistory
 
-CARTS_DIR = os.path.abspath(os.path.join('..', 'carts'))
-
 # limits the number of matches returned
 DEFAULT_MAX_RESULTS = 20
 DEBUG_MODE = False
@@ -184,17 +182,12 @@ def main():
             gc.user_name = row[1]
             gc.organism = "{0} {1}".format(row[8], row[9])
             gc.is_owner = True if user and gc.user_id == user.id else False
+
+            # Add number of genes to the collection
             if gc.gctype == "unweighted-list":
                 gc.get_genes()
             elif gc.gctype == "weighted-list":
-                # Find cart file in directory, read in and count the rows
-                file_path = os.path.join(CARTS_DIR, f"cart.{gc.share_id}.tab")
-                if os.path.isfile(file_path):
-                    with open(file_path, 'rt') as ifh:
-                        # Remove header
-                        ifh.readline()
-                        # Not saving weighted genes to return.  We don't need them (and it's too much data)
-                        gc.num_genes = len(ifh.readlines())
+                gc.get_gene_counts()
             else:
                 # failsafe
                 gc.num_genes = 0

@@ -3753,10 +3753,25 @@ class GeneCart:
         conn = Connection()
         cursor = conn.get_cursor()
 
-        qry = "SELECT COUNT(*) FROM gene_cart_member WHERE gene_cart_id = %s"
-        cursor.execute(qry, (self.id,))
-        result = cursor.fetchone()
-        self.num_genes = result[0] if result is not None else 0
+        if self.gctype == "weighted-list":
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            CARTS_DIR = os.path.abspath(os.path.join(current_dir, '..', 'www', 'carts'))
+            # Find cart file in directory, read in and count the rows
+            file_path = os.path.join(CARTS_DIR, f"cart.{self.share_id}.tab")
+            if os.path.isfile(file_path):
+                with open(file_path, 'r') as ifh:
+                    # Remove header
+                    ifh.readline()
+                    # Not saving weighted genes to return.  We don't need them (and it's too much data)
+                    self.num_genes = len(ifh.readlines())
+        elif self.gctype == "unweighted-list":
+            qry = "SELECT COUNT(*) FROM gene_cart_member WHERE gene_cart_id = %s"
+            cursor.execute(qry, (self.id,))
+            result = cursor.fetchone()
+            self.num_genes = result[0] if result is not None else 0
+        else:
+            print("Error: unknown gctype {0}".format(self.gctype), file=sys.stderr)
+            self.num_genes = 0
 
         cursor.close()
         conn.close()

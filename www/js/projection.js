@@ -1,8 +1,8 @@
 'use strict';
 
 import { apiCallsMixin, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, rebindUrlParam, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=2860b88";
-import { datasetCollectionState, fetchDatasetCollections, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=2860b88";
-import { fetchPatternsData, getFlatPatternCartData, getSelectedPattern, populatePatternWeights, selectPatternWeights } from "../include/pattern-collection-selector/pattern-collection-selector.js?v=2860b88";
+import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=2860b88";
+import { fetchPatternsData, getFlatPatternCartData, getSelectedPattern, populatePatternWeights, registerEventListeners as registerPatternEventListeners, selectPatternWeights } from "../include/pattern-collection-selector/pattern-collection-selector.js?v=2860b88";
 import { TileGrid } from "./classes/tilegrid.js?v=2860b88";
 
 let selectedPattern;
@@ -87,8 +87,15 @@ const buildStateUrl = () => {
     const algorithm = document.getElementById('algorithm').value;
     url.searchParams.set('projection_algorithm', algorithm);
 
-    const zscore = document.getElementById('zscore').checked;
+    const zscore = document.getElementById('zscore').checked ? 1 : 0;
     url.searchParams.set('zscore', zscore);
+
+    // Add the minclip value to the URL if checked.
+    // minclip can be a number
+    const minclip = document.getElementById('minclip').checked;
+    if (minclip) {
+        url.searchParams.set('minclip', 0);
+    }
 
     // Add the multipattern_plots value to the URL
     const multipatternPlots = document.getElementById('single-multi-multi').checked ? 1 : 0;
@@ -175,6 +182,12 @@ const parsePatternCartURLParams = async () => {
     const zscore = getUrlParameter('zscore', urlParams);
     if (zscore === '1') {
         document.getElementById('zscore').checked = true;
+    }
+
+    // if minclip is passed, set it in #minclip
+    const minclip = getUrlParameter('minclip', urlParams);
+    if (minclip) {
+        document.getElementById('minclip').checked = true;
     }
 
     // single or multiple pattern view (convert to boolean)?
@@ -321,7 +334,9 @@ const selectPatternWeightResult = async (label) => {
         // Revert back to "#result-panel-grid" display before rendering the new gene displays
         document.getElementById("result-panel-grid").classList.remove("is-hidden");
         document.getElementById("zoomed-panel-grid").classList.add("is-hidden");
-        await tilegrid.renderDisplays(label, isMulti, svgScoringMethod, projectionOpts);
+
+        const minclip = document.getElementById('minclip').checked ? 0 : null;
+        await tilegrid.renderDisplays(label, isMulti, svgScoringMethod, minclip, projectionOpts);
     }
 };
 
@@ -349,6 +364,7 @@ const setupTileGrid = async (shareId, type = "layout") => {
 
         const algorithm = document.getElementById('algorithm').value;
         const zscore = document.getElementById('zscore').checked;
+        const minclip = document.getElementById('minclip').checked ? 0 : null;
 
         // create projectionOpts object out of selectedPattern.shareId, algorithm, and selectedPattern.gctype
         projectionOpts = {
@@ -368,7 +384,7 @@ const setupTileGrid = async (shareId, type = "layout") => {
         if (isMulti && selectedPattern.selectedWeights.length) {
             // create array of selected weight labels
             const selectedWeights = Array.from(selectedPattern.selectedWeights).map((w) => w.label);
-            await tilegrid.renderDisplays(selectedWeights, isMulti, svgScoringMethod, projectionOpts);
+            await tilegrid.renderDisplays(selectedWeights, isMulti, svgScoringMethod, minclip, projectionOpts);
         }
     } catch (error) {
         logErrorInConsole(error);
@@ -433,7 +449,10 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     rebindUrlParam(urlParams, "ptrns", "projection_patterns");
     rebindUrlParam(urlParams, "algo", "projection_algorithm");
 
-    selectedPattern = createSelectedPatternProxy(getSelectedPattern());
+
+    // Register event listeners for pattern and dataset collection selectors
+    registerPatternEventListeners();
+    registerDatasetCollectionEventListeners();
 
     // add event listener for when the submit-projection-search button is clicked
     document.getElementById('submit-projection-search').addEventListener('click', async (event) => {
