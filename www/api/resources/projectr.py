@@ -233,7 +233,7 @@ def chunk_dataframe(df: pd.DataFrame, chunk_size: int, fh: TextIO):
     index_slices = sliced(range(len(df.columns)), chunk_size)
 
     for idx, index_slice in enumerate(index_slices):
-        yield df.iloc[:, list(index_slice)]
+        yield idx, df.iloc[:, list(index_slice)]
 
 def write_result_to_file(result):
     # Write chunked dataframe results to a file, using the projection ID and the dataframe indexes in the filename
@@ -244,8 +244,7 @@ async def fetch_all_queue(
     loading_df: pd.DataFrame,
     algorithm: str,
     full_output: bool,
-    genecart_id: str,
-    dataset_id: str,
+    projection_id: str,
     chunk_size: int,
     fh: TextIO,
     concurrency: int = CONCURRENT_REQUEST_LIMIT,
@@ -268,15 +267,15 @@ async def fetch_all_queue(
         async with RetryClient(client_session=client, retry_options=retry_options, raise_for_status=True) as retry_client:
             # Producer: puts coroutines into the queue
             async def producer():
-                for chunk_df in chunk_dataframe(target_df, chunk_size, fh):
+                for chunk_idx, chunk_df in chunk_dataframe(target_df, chunk_size, fh):
                     index_start = chunk_df.columns[0]
                     payload = {
                         "target": chunk_df.to_json(orient="split"),
                         "loadings": loadings_json,
                         "algorithm": algorithm,
                         "full_output": full_output,
-                        "genecart_id": genecart_id,
-                        "dataset_id": dataset_id,
+                        "projection_id": projection_id,
+                        "chunk_idx": chunk_idx,
                     }
                     await queue.put((retry_client, payload, fh))
                 # Signal to workers that production is done (sentinel value). One for each worker
@@ -302,12 +301,12 @@ async def fetch_all_queue(
                                 results.append(result)
                                 #print(f"{dataset_id} - Worker {idx} finished job. Progress: {len(results)}/{total_chunks}", flush=True, file=fh)
                             except Exception as e:
-                                print(f"{dataset_id} - Worker {idx} encountered an error: {e}", flush=True, file=fh)
+                                print(f"{projection_id} - Worker {idx} encountered an error: {e}", flush=True, file=fh)
                                 print(traceback.format_exc(), file=fh)
                         finally:
                             queue.task_done()
                 except Exception as e:
-                    print(f"{dataset_id} - Worker {idx} crashed with exception: {e}", flush=True, file=fh)
+                    print(f"{projection_id} - Worker {idx} crashed with exception: {e}", flush=True, file=fh)
                     print(traceback.format_exc(), flush=True, file=fh)
 
             # Start producer and workers
@@ -321,9 +320,9 @@ async def fetch_all_queue(
                     if w.done() and w.exception():
                         print(f"Worker task exception: {w.exception()}", flush=True, file=fh)
                     await w
-                print(f"{dataset_id} - All worker tasks completed successfully.", flush=True, file=fh)
+                print(f"{projection_id} - All worker tasks completed successfully.", flush=True, file=fh)
             except Exception as e:
-                print(f"{dataset_id} - Error in worker tasks: {e}", flush=True, file=fh)
+                print(f"{projection_id} - Error in worker tasks: {e}", flush=True, file=fh)
                 raise Exception(f"Error in worker tasks: {e}") from e
 
     return results
@@ -691,8 +690,7 @@ def projectr_callback(
                     loading_df,
                     algorithm,
                     full_output,
-                    genecart_id,
-                    dataset_id,
+                    projection_id,
                     chunk_size,
                     fh,
                     concurrency=CONCURRENT_REQUEST_LIMIT,
