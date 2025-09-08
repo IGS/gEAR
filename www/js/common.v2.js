@@ -1,17 +1,14 @@
 import { User } from "./classes/user.v2.js?v=2860b88";
 
-let CURRENT_USER = undefined ;
+let CURRENT_USER = undefined;
 let SIDEBAR_COLLAPSED = false;
 let SITE_PREFS = null;
 
-const getCurrentUser = () => {
-    return CURRENT_USER;
-}
+const getCurrentUser = () => CURRENT_USER;
+
 // If a page wants to use this action, it can register a callback function
 let pageSpecificLoginUIUpdates = () => {};
-const registerPageSpecificLoginUIUpdates = (fn) => {
-    pageSpecificLoginUIUpdates = fn;
-}
+const registerPageSpecificLoginUIUpdates = (fn) => pageSpecificLoginUIUpdates = fn;
 
 // Handle unhandled promise rejections (general catch-all for anything that wasn't caught)
 // https://developer.mozilla.org/en-US/docs/Web/API/Window/unhandledrejection_event
