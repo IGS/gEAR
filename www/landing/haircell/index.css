@@ -13,6 +13,9 @@ div#figure-set-1 {
     margin-left: 100px;
     margin-right: 100px;
 }
+div#hhf-hrp-banner-c img {
+    max-height: 150px;
+}
 h1, h2, h3 {
     font-weight: bold;
     margin-top: 10px;
