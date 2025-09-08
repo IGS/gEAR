@@ -29,7 +29,10 @@
     - Spatial data: backend dashboard service uses Panel (Holoviz suite); spatial data stored in Zarr file stores
         - Zarr stores are read in as `spatialdata.SpatialData` objects, and convert to `AnnData` for downstream analysis.
 - **Frontend**:
-	- JavaScript in `www/js/` (classic modules and ES modules; `.v2` files are the newer UI code)
+	- JavaScript in `www/js/`
+        - ES modules
+        - any file with `.v2` listed are newer UI code replacing legacy "classic" JS modules
+        - any code that uses jQuery is legacy and may not be maintained
 	- D3.js (SVG rendering only) and Snap.svg for graphics
 	- Plot.ly for interactive plots
 	- Bulma for CSS (`www/css/bulma/`)
