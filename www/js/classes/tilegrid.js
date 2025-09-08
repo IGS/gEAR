@@ -967,7 +967,7 @@ class DatasetTile {
                     }
                     break;
                 case "download-png":
-                    // Handle when plot type is known
+                    // Handled when plot type is known
                     item.classList.add("is-hidden");
                     break;
                 case "download-projection":
@@ -1419,6 +1419,16 @@ class DatasetTile {
         // if projection ran, add the projection info to the plotly config
         if (this.projectR.modeEnabled && this.projectR.projectionId) {
             display.plotly_config.projection_id = this.projectR.projectionId;
+
+            const downloadProjection = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-projection"]`);
+            downloadProjection.classList.remove("is-hidden");
+            try {
+                const url = `./cgi/download_projection.cgi?projection_id=${this.projectR.projectionId}&share_id=${this.dataset.share_id}`;
+                downloadProjection.href = url;
+            } catch (error) {
+                logErrorInConsole(error);
+                createToast("An error occurred while trying to download the projection output.");
+            }
         }
 
         try {
@@ -1431,7 +1441,7 @@ class DatasetTile {
                 const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-png"]`);
                 if (downloadPNG) {
 
-                    // If I use the existing "download image" button after switching displays, all previous tsne-static displays will
+                    // If I use the existing "download Image" button after switching displays, all previous tsne-static displays will
                     // also be downloaded becuase event listeners are not removed. So, I will remove the button and re-add it.
                     // Source -> https://stackoverflow.com/a/9251864
 
@@ -1472,11 +1482,7 @@ class DatasetTile {
                     // Determine how "download_png" is handled for scanpy plots
                     const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-png"]`);
                     if (downloadPNG) {
-
-                        // If I use the existing "download image" button after switching displays, all previous tsne-static displays will
-                        // also be downloaded becuase event listeners are not removed. So, I will remove the button and re-add it.
-                        // Source -> https://stackoverflow.com/a/9251864
-
+                        // See note for single-gene TSNE static display
                         const newDownloadPNG = downloadPNG.cloneNode(true);
                         downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
 
