@@ -1332,7 +1332,10 @@ for (const classElt of document.getElementsByClassName("js-compare-y")) {
 }
 
 for (const classElt of document.getElementsByClassName("js-plot-btn")) {
-	classElt.addEventListener("click", getComparisons);
+	classElt.addEventListener("click", async (event) => {
+		await getComparisons(event);
+	    window.scrollTo({ top: 0, behavior: "smooth" });
+	});
 }
 
 document.getElementById("edit-params").addEventListener("click", (event) => {

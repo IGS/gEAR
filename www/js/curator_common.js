@@ -979,18 +979,14 @@ const createPlot = async (event) => {
     const plotBtns = document.getElementsByClassName("js-plot-btn");
 
     // Set loading
-    for (const plotBtn of plotBtns) {
-        plotBtn.classList.add("is-loading");
-    }
+	event.target.classList.add("is-loading");
 
     plotStyle.populatePlotConfig();
 
     await curatorSpecifcCreatePlot(plotType, datasetId, analysisObj);
 
     // Stop loader
-    for (const plotBtn of plotBtns) {
-        plotBtn.classList.remove("is-loading");
-    }
+	event.target.classList.add("is-loading");
 
     // Hide this view
     document.getElementById("content-c").classList.add("is-hidden");
@@ -1828,7 +1824,10 @@ document.getElementById("plot-type-select").addEventListener("change", async (ev
 
 const plotBtns = document.getElementsByClassName("js-plot-btn");
 for (const plotBtn of plotBtns) {
-    plotBtn.addEventListener("click", createPlot);
+    plotBtn.addEventListener("click", async (event) => {
+        await createPlot(event);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    });
 }
 
 document.getElementById("save-json-config").addEventListener("click", () => {
