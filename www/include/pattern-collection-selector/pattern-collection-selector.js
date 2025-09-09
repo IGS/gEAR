@@ -90,14 +90,14 @@ export const registerEventListeners = () => {
 
     // Monitor key strokes after user types more than 2 characters in the dropdown-pattern-list-search-input box
     document.getElementById('dropdown-pattern-list-search-input').addEventListener('keyup', (event) => {
-        const search_term = event.target.value;
+        const searchTerm = event.target.value;
 
-        if (search_term.length === 0) {
+        if (searchTerm.length === 0) {
             // clear the gene list
             document.getElementById('dropdown-content-pattern-lists').innerHTML = '';
             document.getElementById('dropdown-content-weights').innerHTML = '';
             return;
-        } else if (search_term.length <= 2) {
+        } else if (searchTerm.length <= 2) {
             return;
         }
 
@@ -110,11 +110,16 @@ export const registerEventListeners = () => {
         document.getElementById('dropdown-content-pattern-lists').innerHTML = '';
         const patternListItemTemplate = document.getElementById('tmpl-pattern-list-item');
 
+        const listShareIdsFound = new Set();
+
         for (const cartType in patternsCartData) {
             for (const cart of patternsCartData[cartType]) {
-                if (cart.label.toLowerCase().includes(search_term.toLowerCase())) {
+                if (listShareIdsFound.has(cart.share_id)) continue;  // Skip duplicates
+                if (cart.label.toLowerCase().includes(searchTerm.toLowerCase())) {
                     const row = patternListItemTemplate.content.cloneNode(true);
                     createPatternListItem(row, cart);
+
+                    listShareIdsFound.add(cart.share_id);   // Keep track of duplicates
                 }
             }
         }
