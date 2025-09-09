@@ -155,7 +155,7 @@ def calculate_chunk_size(num_genes: int, num_samples: int) -> int:
 
 
 def concat_fetch_results_to_dataframe(
-    res_jsons: list[dict],
+    projection_id: str
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Concatenate the dataframes back together again for both "projection" and "pval" keys.
@@ -164,16 +164,20 @@ def concat_fetch_results_to_dataframe(
     projection_dfs = []
     pval_dfs = []
 
-    for res_json in res_jsons:
-        # res_json is a dictionary. Each value is a JSON string
-        if "projection" in res_json:
-            projection_json = res_json["projection"]
-            projection_df = pd.read_json(StringIO(projection_json), orient="split")
-            projection_dfs.append(projection_df)
-        if "pval" in res_json:
-            pval_json = res_json["pval"]
-            pval_df = pd.read_json(StringIO(pval_json), orient="split")
-            pval_dfs.append(pval_df)
+    # Find all the chunk output files for this projection_id
+    # If some chunked jobs failed, we will check after this function is called and re-run those chunks
+    for filepath in CHUNK_OUTPUTS_DIR.glob(f"{projection_id}_chunk*.json"):
+        with open(filepath, "r") as f:
+            res_json = json.load(f)
+            # res_json is a dictionary. Each value is a JSON string
+            if "projection" in res_json:
+                projection_json = res_json["projection"]
+                projection_df = pd.read_json(StringIO(projection_json), orient="split")
+                projection_dfs.append(projection_df)
+            if "pval" in res_json:
+                pval_json = res_json["pval"]
+                pval_df = pd.read_json(StringIO(pval_json), orient="split")
+                pval_dfs.append(pval_df)
 
     projection_patterns_df = (
         pd.concat(projection_dfs) if projection_dfs else pd.DataFrame()
@@ -235,9 +239,11 @@ def chunk_dataframe(df: pd.DataFrame, chunk_size: int, fh: TextIO):
     for idx, index_slice in enumerate(index_slices):
         yield idx, df.iloc[:, list(index_slice)]
 
-def write_result_to_file(result):
+def write_result_to_file(result, filename) -> None:
     # Write chunked dataframe results to a file, using the projection ID and the dataframe indexes in the filename
-    pass
+    filepath = CHUNK_OUTPUTS_DIR.joinpath(filename)
+    with open(filepath, "w") as f:
+        json.dump(result, f, indent=4)  # indent for debugging
 
 async def fetch_all_queue(
     target_df: pd.DataFrame,
@@ -248,14 +254,34 @@ async def fetch_all_queue(
     chunk_size: int,
     fh: TextIO,
     concurrency: int = CONCURRENT_REQUEST_LIMIT,
-) -> list[dict]:
+) -> None:
     """
-    Asynchronously processes a target DataFrame in chunks, sending each chunk along with loading data to a remote service using retry logic, and collects the results.
-    Uses an asyncio.Queue to buffer coroutines and a pool of workers to process them.
+    Asynchronously processes a DataFrame in chunks using a producer-consumer pattern with concurrency control.
+
+    This function splits the `target_df` DataFrame into chunks, enqueues processing tasks, and uses multiple worker coroutines to process each chunk concurrently. Each chunk is sent as a payload to an external service via HTTP requests, and the results are written to disk. The function ensures that already-processed chunks are skipped and supports retry logic for failed requests.
+
+    Args:
+        target_df (pd.DataFrame): The DataFrame containing the target data to be processed in chunks.
+        loading_df (pd.DataFrame): The DataFrame containing loading data to be included in each payload.
+        algorithm (str): The algorithm identifier to be used in the payload.
+        full_output (bool): Whether to request full output from the external service.
+        projection_id (str): Unique identifier for the projection, used for output file naming.
+        chunk_size (int): The number of rows per chunk.
+        fh (TextIO): File handle for logging progress and errors.
+        concurrency (int, optional): The number of concurrent worker coroutines. Defaults to CONCURRENT_REQUEST_LIMIT.
+
+    Returns:
+        None
+
+    Raises:
+        Exception: If any worker task encounters an unhandled exception.
+
+    Side Effects:
+        - Writes result files for each processed chunk to the output directory.
+        - Logs progress and errors to the provided file handle.
     """
 
     loadings_json = loading_df.to_json(orient="split")
-    results = []
     queue = asyncio.Queue(maxsize=concurrency * 2)
 
     #total_chunks = sum(1 for _ in chunk_dataframe(target_df, chunk_size, fh))
@@ -268,7 +294,14 @@ async def fetch_all_queue(
             # Producer: puts coroutines into the queue
             async def producer():
                 for chunk_idx, chunk_df in chunk_dataframe(target_df, chunk_size, fh):
-                    index_start = chunk_df.columns[0]
+
+                    # ? Should I add startcol and endcol indexes as well
+                    filename = f"{projection_id}_chunk{chunk_idx}.json"
+                    filepath = CHUNK_OUTPUTS_DIR.joinpath(filename)
+                    if filepath.is_file():
+                        print(f"{projection_id} - Chunk {chunk_idx} already processed, skipping.", flush=True, file=fh)
+                        continue
+
                     payload = {
                         "target": chunk_df.to_json(orient="split"),
                         "loadings": loadings_json,
@@ -296,10 +329,11 @@ async def fetch_all_queue(
                             retry_client, payload, filehandle = item
                             try:
                                 result = await fetch_one(retry_client, payload, filehandle)
-                                # NOTE: Not currently doable, as we same
-                                write_result_to_file(result)
-                                results.append(result)
-                                #print(f"{dataset_id} - Worker {idx} finished job. Progress: {len(results)}/{total_chunks}", flush=True, file=fh)
+                                if "chunk_idx" not in payload:
+                                    raise KeyError("chunk_idx missing from payload")
+                                chunk_idx = payload["chunk_idx"]
+                                chunk_filename = f"{projection_id}_chunk{chunk_idx}.json"
+                                write_result_to_file(result, chunk_filename)
                             except Exception as e:
                                 print(f"{projection_id} - Worker {idx} encountered an error: {e}", flush=True, file=fh)
                                 print(traceback.format_exc(), file=fh)
@@ -324,8 +358,6 @@ async def fetch_all_queue(
             except Exception as e:
                 print(f"{projection_id} - Error in worker tasks: {e}", flush=True, file=fh)
                 raise Exception(f"Error in worker tasks: {e}") from e
-
-    return results
 
 async def fetch_one(client: RetryClient, payload: dict, fh: TextIO) -> dict:
     """
@@ -668,7 +700,7 @@ def projectr_callback(
     index_slices = sliced(range(len(target_df.columns)), chunk_size)
     print("NUMBER OF CHUNKS: {}".format(len(list(index_slices))), file=fh)
 
-    # shuffle target dataframe rows.  Needed to balance out the chunks in the NMF algorithms
+    # shuffle target dataframe rows.  Needed to balance out the chunks in the NMF algorithms. Seeded for reproducibility.
     target_df = target_df.sample(frac=1, random_state=42)
 
     if algorithm == "fixednmf":
@@ -684,7 +716,7 @@ def projectr_callback(
         asyncio.set_event_loop(loop)
 
         try:
-            results = loop.run_until_complete(
+            loop.run_until_complete(
                 fetch_all_queue(
                     target_df,
                     loading_df,
@@ -734,10 +766,9 @@ def projectr_callback(
         # concatenate all the results into a single DataFrame for each key
 
         projection_patterns_df, projection_pval_df = concat_fetch_results_to_dataframe(
-            results
+            projection_id
         )
 
-        del results
         gc.collect()  # trying to clear memory
 
         if len(projection_patterns_df.index) != len(adata.obs.index):
@@ -763,6 +794,19 @@ def projectr_callback(
         )
         if not projection_pval_df.empty:
             projection_pval_df = projection_pval_df.reindex(adata.obs.index.tolist())
+
+        # Delete all the chunk output files for this projection_id
+        for filepath in CHUNK_OUTPUTS_DIR.glob(f"{projection_id}_chunk*.json"):
+            try:
+                filepath.unlink()
+            except Exception as e:
+                print(
+                    "WARNING: Could not delete chunk output file {}: {}".format(
+                        filepath, str(e)
+                    ),
+                    file=fh,
+                )
+
     else:
         # If not using the cloud run service, do this on the server
         abs_path_gear = Path(__file__).resolve().parents[3]
@@ -841,6 +885,7 @@ def projectr_callback(
 
     # Check that all DataFrame values are not null.  If not, we cannot proceed.
     # Ultimately, we cannot plot this and do not want to write to file.
+    # This could be due to an R code error or something in post-processing
     if projection_patterns_df.isna().to_numpy().any():
         message = "There are NaN values in the projection patterns.  Cannot proceed."
         remove_lock_file(lock_fh, lockfile)
