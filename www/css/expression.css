@@ -25,6 +25,11 @@ div#functional-annotation-c h3 {
 }
 div#gene-result-list-c {
     border-right: 1px solid #e9eef1;
+    position: sticky;
+    top: 0;
+    align-self: flex-start; /* doesn't seem to do anything */
+    height:100vh;
+    overflow-y: auto;   /* scroll if too long */
 }
 div#gene-result-list-c h3 {
     font-weight: bold;
@@ -32,7 +37,6 @@ div#gene-result-list-c h3 {
 }
 div#results-main-c {
     border-top: 1px solid rgb(220, 220, 220);
-    margin-top: 50px;
 }
 div#share-entrance-notification h2 {
     font-size: 120%;
@@ -156,13 +160,5 @@ ul#go-terms li {
 
 .js-choose-display-modal .modal-content {
     width: 70%; /* make wider, which makes preview images larger */
-}
-
-#gene-result-list-c {
-    position: sticky;
-    top: 0;
-    align-self: flex-start;
-    height:100vh;
-    overflow-y: auto;   /* scroll if too long */
 }
 

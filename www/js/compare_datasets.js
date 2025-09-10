@@ -1,5 +1,12 @@
 'use strict';
 
+import { apiCallsMixin, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=2860b88";
+import { FacetWidget } from "./classes/facets.js?v=2860b88";
+import { Gene, WeightedGene } from "./classes/gene.js?v=2860b88";
+import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=2860b88";
+import { DatasetTree } from "./classes/tree.js?v=2860b88";
+import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventSelectors } from "../include/gene-collection-selector/gene-collection-selector.js?v=2860b88";
+
 // SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 // This is meant to be a short-term solution until more people specify their data is transformed via the metadata
 const LOG10_TRANSFORMED_DATASETS = [
@@ -50,10 +57,9 @@ let datasetId;
 let organismId;	// Used for saving as gene cart
 let compareData;;
 let selectedGeneData;
-let manuallyEnteredGenes = new Set();
 
 // imported from gene-collection-selector.js
-// let selected_genes = new Set();
+// let geneCollectionState.selectedGenes = new Set();
 
 // Storing user's plot text edits, so they can be restored if user replots
 let titleText = null;
@@ -113,14 +119,66 @@ const datasetTree = new DatasetTree({
 		}
 
 		// Update compare series options
-		facetWidget = await createFacetWidget(datasetId, null, {}); // Initial fetching of categorical columns
-		const catColumns = facetWidget.aggregations.map((agg) => agg.name);
-		updateSeriesOptions("js-compare", catColumns);
-
-		compareSeriesElt.parentElement.classList.remove("is-loading");
+		try {
+			facetWidget = await createFacetWidget(datasetId, null, {}); // Initial fetching of categorical columns
+			const catColumns = facetWidget.aggregations.map((agg) => agg.name);
+			updateSeriesOptions("js-compare", catColumns);
+		} catch (error) {
+			return
+		} finally {
+			compareSeriesElt.parentElement.classList.remove("is-loading");
+		}
 
     })
 });
+
+/**
+ * Activates a dataset in the dataset tree based on a URL parameter.
+ *
+ * This function checks if the specified URL parameter exists, optionally fetches additional
+ * dataset information using a provided function, and then activates the corresponding dataset
+ * node in the dataset tree. If the dataset cannot be found or accessed, a toast notification
+ * is displayed and an error is thrown.
+ *
+ * @async
+ * @param {string} paramName - The name of the URL parameter to look for.
+ * @param {function} [fetchInfoFn] - Optional async function to fetch dataset info using the parameter value.
+ *        Should return a Promise that resolves to an array of objects containing a `dataset_id` property.
+ * @throws {Error} If the dataset cannot be accessed or found in the dataset tree.
+ */
+const activateDatasetFromParam = async (paramName, fetchInfoFn) => {
+    if (!urlParams.has(paramName)) {
+        return;
+    }
+    const paramValue = urlParams.get(paramName);
+    let linkedDatasetId;
+    try {
+        if (fetchInfoFn) {
+            const data = await fetchInfoFn(paramValue);
+            linkedDatasetId = data.datasets[0].id;
+            if (!linkedDatasetId) {
+                throw new Error(`Accessible dataset for ${paramName} ${paramValue} was not found`);
+            }
+        } else {
+            linkedDatasetId = paramValue;
+        }
+    } catch (error) {
+        createToast(error.message);
+        throw new Error(error);
+    }
+
+    try {
+        // find DatasetTree node and trigger "activate"
+        const foundNode = datasetTree.findFirst(e => e.data.dataset_id === linkedDatasetId);
+        foundNode.setActive(true, {focusTree:true});
+        datasetTree.tree.setActiveNode(foundNode);
+        datasetTree.selectCallback({node: foundNode});  // manually trigger the "activate" event.
+        datasetId = linkedDatasetId;
+    } catch (error) {
+        createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset`);
+        throw new Error(error);
+    }
+}
 
 const adjustGeneTableLabels = () => {
     const geneFoldchanges = document.getElementById("tbl-gene-foldchanges");
@@ -148,17 +206,17 @@ const appendGeneTagButton = (geneTagElt) => {
     deleteBtnElt.classList.add("delete", "is-small");
     geneTagElt.appendChild(deleteBtnElt);
     deleteBtnElt.addEventListener("click", (event) => {
-        // Remove gene from selected_genes
+        // Remove gene from geneCollectionState.selectedGenes
         const gene = event.target.parentNode.textContent;
-		selected_genes.delete(gene);
+		geneCollectionState.selectedGenes.delete(gene);
 		event.target.parentNode.remove();
 
 		// Remove gene from manually entered genes textbox
-		manuallyEnteredGenes.delete(gene);
-		document.getElementById("genes-manually-entered").value = Array.from(manuallyEnteredGenes).join(" ");
+		geneCollectionState.manuallyEnteredGenes.delete(gene);
+		document.getElementById("genes-manually-entered").value = Array.from(geneCollectionState.manuallyEnteredGenes).join(" ");
 
 		// Update graph
-		updatePlotAnnotations(Array.from(selected_genes).sort());
+		updatePlotAnnotations(Array.from(geneCollectionState.selectedGenes).sort());
 
         // Remove checkmark from gene lists dropdown
         const geneListLabel = document.querySelector(`#dropdown-content-genes .gene-item-label[text="${gene}"]`);
@@ -178,17 +236,17 @@ const appendGeneTagButton = (geneTagElt) => {
     });
 }
 
-const chooseGenes = (event) => {
+const chooseGenes = () => {
     // Triggered when a gene is selected
 
     // Delete existing tags
     const geneTagsElt = document.getElementById("gene-tags");
     geneTagsElt.replaceChildren();
 
-	if (selected_genes.size == 0) return;  // Do not trigger after initial population
+	if (geneCollectionState.selectedGenes.size == 0) return;  // Do not trigger after initial population
 
     // Update list of gene tags
-	const sortedGenes = Array.from(selected_genes).sort();
+	const sortedGenes = Array.from(geneCollectionState.selectedGenes).sort();
     for (const opt in sortedGenes) {
         const geneTagElt = document.createElement("span");
         geneTagElt.classList.add("tag", "is-primary", "mx-1");
@@ -200,7 +258,7 @@ const chooseGenes = (event) => {
     document.getElementById("gene-tags-c").classList.remove("is-hidden");
 
     // If more than 10 tags, hide the rest and add a "show more" button
-    if (selected_genes.size > 10) {
+    if (geneCollectionState.selectedGenes.size > 10) {
         const geneTags = geneTagsElt.querySelectorAll("span.tag");
         for (let i = 10; i < geneTags.length; i++) {
             geneTags[i].classList.add("is-hidden");
@@ -208,7 +266,7 @@ const chooseGenes = (event) => {
         // Add show more button
         const showMoreBtnElt = document.createElement("button");
         showMoreBtnElt.classList.add("tag", "button", "is-small", "is-primary", "is-light");
-        const numToDisplay = selected_genes.size - 10;
+        const numToDisplay = geneCollectionState.selectedGenes.size - 10;
         showMoreBtnElt.textContent = `+${numToDisplay} more`;
         showMoreBtnElt.addEventListener("click", (event) => {
             const geneTags = geneTagsElt.querySelectorAll("span.tag");
@@ -227,10 +285,10 @@ const chooseGenes = (event) => {
 const clearGenes = (event) => {
     document.getElementById("clear-genes-btn").classList.add("is-loading");
 	document.getElementById("gene-tags").replaceChildren();
-	selected_genes.clear();
+	geneCollectionState.selectedGenes.clear();
 	document.getElementById("dropdown-gene-list-cancel").click();	// clear the dropdown
 	// Remove gene from manually entered genes textbox
-	manuallyEnteredGenes.clear();
+	geneCollectionState.manuallyEnteredGenes.clear();
 	document.getElementById("genes-manually-entered").value = "";
 
 	updatePlotAnnotations([]);
@@ -242,29 +300,38 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
 	document.getElementById("facet-content").classList.add("is-hidden");
 	document.getElementById("selected-facets").classList.add("is-hidden");
 
-    const {aggregations, total_count:totalCount} = await fetchAggregations(datasetId, analysisId, filters);
-    document.getElementById("num-selected").textContent = totalCount;
+	let aggregations = {};
+    let totalCount = 0;
 
+	try {
+    	({aggregations, total_count: totalCount}= await fetchAggregations(datasetId, analysisId, filters));
+    	document.getElementById("num-selected").textContent = totalCount;
+	} catch (error) {
+		document.getElementById("num-selected").textContent = "0";
+		console.error(error);
+		throw error;
+	}
 
-    const facetWidget = new FacetWidget({
-        aggregations,
-        filters,
-        onFilterChange: async (filters) => {
-            if (filters) {
-                try {
-                    const {aggregations, total_count:totalCount} = await fetchAggregations(datasetId, analysisId, filters);
-                    facetWidget.updateAggregations(aggregations);
-                    document.getElementById("num-selected").textContent = totalCount;
-                } catch (error) {
-                    logErrorInConsole(error);
-                }
-            } else {
-                // Save an extra API call
-                facetWidget.updateAggregations(facetWidget.aggregations);
-            }
-        },
+	const facetWidget = new FacetWidget({
+		aggregations,
+		filters,
+		onFilterChange: async (filters) => {
+			if (filters) {
+				try {
+					const {aggregations, total_count:totalCount} = await fetchAggregations(datasetId, analysisId, filters);
+					facetWidget.updateAggregations(aggregations);
+					document.getElementById("num-selected").textContent = totalCount;
+				} catch (error) {
+					logErrorInConsole(error);
+				}
+			} else {
+				// Save an extra API call
+				facetWidget.updateAggregations(facetWidget.aggregations);
+			}
+		},
 		filterHeaderExtraClasses:"has-background-white"
-    });
+	});
+
     document.getElementById("selected-facets-loader").classList.add("is-hidden")
 	document.getElementById("facet-content").classList.remove("is-hidden");
 	document.getElementById("selected-facets").classList.remove("is-hidden");
@@ -344,7 +411,7 @@ const downloadSelectedGenes = (event) => {
 		"href",
 		`data:text/tab-separated-values;charset=utf-8,${encodeURIComponent(fileContents)}`
 	);
-	element.setAttribute("download", "selected_genes.tsv");
+	element.setAttribute("download", "geneCollectionState.selectedGenes.tsv");
 	element.style.display = "none";
 	document.body.appendChild(element);
 	element.click();
@@ -361,6 +428,8 @@ const fetchAggregations = async (datasetId, analysisId, filters) => {
         return {aggregations, total_count};
     } catch (error) {
         logErrorInConsole(error);
+		createToast(error.message);
+		throw error
     }
 }
 
@@ -371,17 +440,6 @@ const fetchDatasetComparison = async (datasetId, filters, compareKey, conditionX
 		const msg = "Could not fetch dataset comparison. Please contact the gEAR team."
 		throw new Error(msg);
 	}
-}
-
-const fetchDatasets = async () => {
-    try {
-        return await apiCallsMixin.fetchAllDatasets();
-    } catch (error) {
-        logErrorInConsole(error);
-        const msg = "Could not fetch datasets. Please contact the gEAR team."
-        createToast(msg);
-        throw new Error(msg);
-    }
 }
 
 const getComparisons = async (event) => {
@@ -412,7 +470,7 @@ const getComparisons = async (event) => {
 		plotDataToGraph(compareData);
 
 		// If any genes selected, update plot annotations (since plot was previously purged)
-		const sortedGenes = Array.from(selected_genes).sort();
+		const sortedGenes = Array.from(geneCollectionState.selectedGenes).sort();
 		updatePlotAnnotations(sortedGenes);
 
 		// Hide this view
@@ -482,12 +540,12 @@ const highlightTableGenes = (searchedGenes=[]) => {
 }
 
 /* Transform and load dataset data into a "tree" format */
-const loadDatasetTree = async () => {
+const loadDatasetTree = async (shareId) => {
     const userDatasets = [];
     const sharedDatasets = [];
     const domainDatasets = [];
     try {
-        const datasetData = await apiCallsMixin.fetchAllDatasets();
+        const datasetData = await apiCallsMixin.fetchAllDatasets(shareId);
 
         let counter = 0;
 
@@ -521,6 +579,7 @@ const loadDatasetTree = async () => {
         datasetTree.domainDatasets = domainDatasets;
         datasetTree.generateTree();
     } catch (error) {
+		console.error(error);
 		createToast("Could not fetch datasets. Please contact the gEAR team.");
         document.getElementById("dataset-s-success").classList.add("is-hidden");
         document.getElementById("dataset-s-failed").classList.remove("is-hidden");
@@ -565,8 +624,8 @@ const plotDataToGraph = (data) => {
 
 		});
 
-		const passColor = CURRENT_USER.colorblind_mode ? 'rgb(0, 34, 78)' : "#FF0000";
-		const failColor = CURRENT_USER.colorblind_mode ? 'rgb(254, 232, 56)' : "#A1A1A1";
+		const passColor = getCurrentUser().colorblind_mode ? 'rgb(0, 34, 78)' : "#FF0000";
+		const failColor = getCurrentUser().colorblind_mode ? 'rgb(254, 232, 56)' : "#A1A1A1";
 
 		const statAction = document.getElementById("cutoff-filter-action").value;
 		if (statAction === "colorize") {
@@ -1042,7 +1101,7 @@ const updatePlotAnnotations = (genes) => {
 	const plotData = plotlyPreview.data;
 	const layout = plotlyPreview.layout;
 
-	const annotationColor = CURRENT_USER.colorblind_mode ? "orange" : "cyan";
+	const annotationColor = getCurrentUser().colorblind_mode ? "orange" : "cyan";
 
 	layout.annotations = [];
 
@@ -1273,7 +1332,10 @@ for (const classElt of document.getElementsByClassName("js-compare-y")) {
 }
 
 for (const classElt of document.getElementsByClassName("js-plot-btn")) {
-	classElt.addEventListener("click", getComparisons);
+	classElt.addEventListener("click", async (event) => {
+		await getComparisons(event);
+	    window.scrollTo({ top: 0, behavior: "smooth" });
+	});
 }
 
 document.getElementById("edit-params").addEventListener("click", (event) => {
@@ -1300,7 +1362,7 @@ document.getElementById("save-genecart-btn").addEventListener("click", (event) =
     event.target.classList.add("is-loading");
     // get value of genecart radio button group
     const geneCartName = document.querySelector("input[name='genecart_type']:checked").value;
-    if (CURRENT_USER) {
+    if (getCurrentUser()) {
         if (geneCartName === "unweighted") {
             saveGeneCart();
         } else {
@@ -1315,20 +1377,20 @@ document.getElementById('genes-manually-entered').addEventListener('change', (ev
     const searchTermString = event.target.value;
     const newManuallyEnteredGenes = searchTermString.length > 0 ? new Set(searchTermString.split(/[ ,]+/)) : new Set();
 
-    // Remove genes that have been deleted from the selected_genes set
-    for (const gene of manuallyEnteredGenes) {
+    // Remove genes that have been deleted from the geneCollectionState.selectedGenes set
+    for (const gene of geneCollectionState.manuallyEnteredGenes) {
         if (!newManuallyEnteredGenes.has(gene)) {
-            selected_genes.delete(gene);
+            geneCollectionState.selectedGenes.delete(gene);
         }
     }
 
-    // Add new genes to the selected_genes set
+    // Add new genes to the geneCollectionState.selectedGenes set
     for (const gene of newManuallyEnteredGenes) {
-        selected_genes.add(gene);
+        geneCollectionState.selectedGenes.add(gene);
     }
 
-    manuallyEnteredGenes = newManuallyEnteredGenes;
-    chooseGenes(null);
+    geneCollectionState.manuallyEnteredGenes = newManuallyEnteredGenes;
+    chooseGenes();
 });
 
 // Use the dataset input selector button to toggle the dataset selection div
@@ -1344,7 +1406,7 @@ document.getElementById("btn-toggle-dataset-tree").addEventListener("click", (ev
     }
 });
 
-document.getElementById('dropdown-gene-list-proceed').addEventListener('click', chooseGenes);
+document.getElementById('dropdown-gene-list-proceed').addEventListener('click', (event) => {chooseGenes()});
 
 document.getElementById("download-selected-genes-btn").addEventListener("click", downloadSelectedGenes);
 
@@ -1353,7 +1415,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 	// Update with current page info
 	document.getElementById("page-header-label").textContent = "Comparison Tool";
-    sessionId = CURRENT_USER.session_id;
+    sessionId = getCurrentUser().session_id;
 
 	if (! sessionId ) {
 		// TODO: Add master override to prevent other triggers from enabling saving
@@ -1363,28 +1425,34 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 
 	try {
-		await Promise.all([
-			loadDatasetTree(),
-			fetchGeneCartData()
-		]);
         // If brought here by the "gene search results" page, curate on the dataset ID that referred us
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has("dataset_id")) {
-            const linkedDatasetId = urlParams.get("dataset_id");
-            try {
-                // find DatasetTree node and trigger "activate"
-                const foundNode = datasetTree.findFirst(e => e.data.dataset_id === linkedDatasetId);
-                foundNode.setActive(true);
-                datasetTree.tree.setActiveNode(foundNode);
-                datasetTree.selectCallback({node: foundNode});  // manually trigger the "activate" event.
-                datasetId = linkedDatasetId;
-            } catch (error) {
-                createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset`);
-                throw new Error(error);
-            }
+        const shareId = urlParams.get("share_id");
+
+		await Promise.all([
+			loadDatasetTree(shareId),
+			fetchGeneCartData()
+		]);
+
+		registerGeneListEventSelectors();
+
+        // Usage inside handlePageSpecificLoginUIUpdates
+        if (urlParams.has("share_id")) {
+            return await activateDatasetFromParam("share_id", async (shareId) =>
+                await apiCallsMixin.fetchDatasetListInfo({permalink_share_id: shareId})
+            );
+        } else if (urlParams.has("dataset_id")) {
+    		// Legacy support for dataset_id
+
+            await activateDatasetFromParam("dataset_id");
         }
 	} catch (error) {
 		logErrorInConsole(error);
 	}
 
 };
+
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
+
+// Pre-initialize some stuff
+await initCommonUI();

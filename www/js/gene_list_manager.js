@@ -1,5 +1,8 @@
 "use strict";
 
+import { apiCallsMixin, convertToFormData, createToast, getCurrentUser, getRootUrl, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=2860b88";
+import { GeneCart } from "./classes/genecart.v2.js?v=2860b88";
+
 let firstSearch = true;
 let isAddFormOpen = false;
 const resultsPerPage = 20;
@@ -1092,7 +1095,7 @@ const fetchGeneCartMembers = async (geneCartShareId) => {
 // Callbacks after attempting to save a gene list
 const geneListFailure = (gc, message) => {
     logErrorInConsole(message);
-    createToast("Failed to save gene list");
+    createToast(message);
 }
 
 const geneListSaved = async (gc) => {
@@ -1417,7 +1420,7 @@ const submitSearch = async (page) => {
     }
 
     const searchCriteria = {
-        'session_id': CURRENT_USER.session_id,
+        'session_id': getCurrentUser().session_id,
         'search_terms': searchTerms,
         'sort_by': document.getElementById("sort-by").value
     };
@@ -1476,11 +1479,10 @@ const toggleEditableMode = (hideEditable, target="") => {
 
 /* --- Entry point --- */
 const handlePageSpecificLoginUIUpdates = async (event) => {
-
 	// User settings has no "active" state for the sidebar
 	document.getElementById("page-header-label").textContent = "Gene List Manager";
 
-    const sessionId = CURRENT_USER.session_id;
+    const sessionId = getCurrentUser().session_id;
 
 	if (! sessionId ) {
         document.getElementById("not-logged-in-msg").classList.remove("is-hidden");
@@ -1500,7 +1502,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     const defaultOrganismView = Cookies.get("default_gene_list_organism_view");
     const defaultDateAddedView = Cookies.get("default_gene_list_date_added_view");
 
-    if (defaultOwnershipView && CURRENT_USER.session_id) {
+    if (defaultOwnershipView && getCurrentUser().session_id) {
         // deselect All
         document.querySelector("#controls-ownership li.js-all-selector").classList.remove("js-selected");
 
@@ -1508,7 +1510,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             document.querySelector(`#controls-ownership li[data-dbval='${ownership}']`).classList.add("js-selected");
         }
     }
-    if (defaultOrganismView && CURRENT_USER.session_id) {
+    if (defaultOrganismView && getCurrentUser().session_id) {
         // deselect All
         document.querySelector("#controls-organism li.js-all-selector").classList.remove("js-selected");
 
@@ -1516,8 +1518,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             document.querySelector(`#controls-organism li[data-dbval='${organism}']`).classList.add("js-selected");
         }
     }
-    if (defaultDateAddedView && CURRENT_USER.session_id) {
-        document.querySelector(`#controls-date-added li[data-dbval='${CURRENT_USER.default_date_added_view}']`).classList.add("js-selected");
+    if (defaultDateAddedView && getCurrentUser().session_id) {
+        document.querySelector(`#controls-date-added li[data-dbval='${defaultDateAddedView}']`).classList.add("js-selected");
     }
 
     await submitSearch();
@@ -1560,8 +1562,11 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             await submitSearch();
         });
     }
-
 };
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
+
+// Pre-initialize some stuff
+await initCommonUI();
 
 // validate that #new-list-label input has a value
 document.getElementById("new-list-label").addEventListener("blur", (e) => {
@@ -1791,7 +1796,7 @@ btnNewCartSave.addEventListener("click", (e) => {
             , 'new_cart_organism_id': newCartOrganism.value
             , 'new_cart_ldesc': document.getElementById("new-list-ldesc").value
             , 'is_public': isPublic
-            , 'session_id': CURRENT_USER.session_id
+            , 'session_id': getCurrentUser().session_id
             , 'new_cart_upload_type': document.getElementById("new-list-upload-type").value
             , "new_cart_pasted_genes": document.getElementById("new-list-pasted-genes").value
             , "new_cart_file": document.getElementById("new-list-file").files[0]

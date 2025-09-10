@@ -5,14 +5,16 @@ import re
 import sys
 
 import geardb
+import numpy as np
 import pandas as pd
 import plotly.express.colors as pxc
+import scipy.sparse
 from flask import request
 from flask_restful import Resource
 from gear.plotting import PlotError, generate_plot, plotly_color_map
 from plotly.utils import PlotlyJSONEncoder
 
-from .common import create_projection_adata, order_by_time_point
+from .common import clip_expression_values, create_projection_adata, order_by_time_point
 
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
@@ -73,6 +75,7 @@ class PlotlyData(Resource):
         vlines = req.get('vlines', [])    # Array of vertical line dict properties
         filters = req.get('obs_filters', {})   # Dict of lists
         projection_id = req.get('projection_id', None)    # projection id of csv output
+        expression_min_clip = req.get('expression_min_clip', None)    # Minimum clip value for expression data
         colorblind_mode = req.get('colorblind_mode', False)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
@@ -180,6 +183,10 @@ class PlotlyData(Resource):
                     'message': str(pe),
                 }
 
+        # Apply transformations
+        if expression_min_clip is not None:
+            adata = clip_expression_values(adata, min_clip=expression_min_clip)
+
         adata.obs = order_by_time_point(adata.obs)
 
         # Reorder the categorical values in the observation dataframe
@@ -230,10 +237,11 @@ class PlotlyData(Resource):
 
             # convert adata.X to a dense matrix if it is sparse
             # This prevents potential downstream issues
-            try:
-                selected.X = selected.X.todense()
-            except Exception:
-                pass
+            if scipy.sparse.issparse(selected.X):
+                selected.X = selected.X.toarray() # type: ignore
+            else:
+                selected.X = np.asarray(selected.X)
+
 
             # Filter by obs filters
             if filters:

@@ -8,11 +8,11 @@
 
     This creates the following top-level variables:
 
-    - selected_dc_share_id: The selected dataset collection share id the user selected, null if no selection made.
-    - selected_dc_label: The selcted dataset collection label the user selected, null if no selection made.
-    - dataset_collection_data: The output of the apiCallsMixin.fetchDatasetCollections() call, which needs to
+    - datasetCollectionState.selectedShareId: The selected dataset collection share id the user selected, null if no selection made.
+    - datasetCollectionState.selectedLabel: The selcted dataset collection label the user selected, null if no selection made.
+    - datasetCollectionState.data: The output of the apiCallsMixin.fetchDatasetCollections() call, which needs to
       happen in the login UI handler of the page.
-    - dataset_collection_label_index: A map of dataset collection share ids to their labels.
+    - datasetCollectionState.labelIndex: A map of dataset collection share ids to their labels.
 
     Requirements for importing this component:
 
@@ -22,7 +22,7 @@
 -->
 
 <link rel="stylesheet" href="include/dataset-collection-selector/dataset-collection-selector.css" />
-<script src="include/dataset-collection-selector/dataset-collection-selector.js"></script>
+<script type="module" src="include/dataset-collection-selector/dataset-collection-selector.js"></script>
 
 <div id="dropdown-dc" class="control dropdown is-right is-loading is-disabled mr-0">
     <button class="button dropdown-trigger">

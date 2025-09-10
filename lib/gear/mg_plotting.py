@@ -393,7 +393,7 @@ def set_hidden_labels(hide_obs, hide_genes, flip_axes):
 
 ### Quadrant fxns
 
-def add_gene_annotations_to_quadrant_plot(fig, gene_symbols_list) -> None:
+def add_gene_annotations_to_quadrant_plot(fig, gene_symbols_list) -> tuple:
     """Add annotations to point to each desired gene within the quadrant plot. Edits in-place."""
     genes_not_found = set()
     genes_none_none = set()
@@ -530,7 +530,7 @@ def create_quadrant_plot(df, control_val, compare1_val, compare2_val, colorscale
         )
     return fig
 
-def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val, de_test_algo="t_test", fc_threshold=2, fdr_threshold=0.05, include_zero_fc=True, is_log10=False):
+def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val, de_test_algo="t_test", fc_threshold: float=2, fdr_threshold=0.05, include_zero_fc=True, is_log10=False):
     """Prep the AnnData object to be a viable dataframe to use for making volcano plots."""
 
     # Create some filtered AnnData objects based on each individual comparision group

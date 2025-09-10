@@ -38,7 +38,12 @@ def main():
     if user_id:
         for atype in result:
             for ana in result[atype]:
-                ana.discover_vetting(current_user_id=user_id)
+                try:
+                    ana.discover_vetting(current_user_id=user_id)
+                except Exception as e:
+                    print(str(e), file=sys.stderr)
+
+
 
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))

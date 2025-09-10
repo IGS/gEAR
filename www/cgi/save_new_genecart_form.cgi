@@ -6,8 +6,10 @@ formData and submitted to this script.  This assumes we're creating
 a NEW GeneCart object
 """
 
-import cgi, json
-import re, sys
+import cgi
+import json
+import re
+import sys
 from pathlib import Path
 
 TWO_LEVELS_UP = 2
@@ -20,6 +22,11 @@ from gear.userhistory import UserHistory
 abs_path_www = Path(__file__).resolve().parents[1] # web-root dir
 CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 
+def exit_with_error(msg):
+    print("Status: 500 Internal Server Error")
+    print("Content-Type: application/json\n")
+    print(json.dumps({"message": msg}))
+    sys.exit(1)
 
 def validate_weighted_gene_cart(df):
     """Ensure weighted gene cart meets the requirements.  Returns a boolean."""
@@ -53,8 +60,6 @@ def validate_weighted_gene_cart(df):
     return True
 
 def main():
-    print('Content-Type: application/json\n\n')
-
     gc = geardb.GeneCart()
     form = cgi.FieldStorage()
 
@@ -64,6 +69,8 @@ def main():
     gc.is_public = form.getvalue('is_public')
 
     user_logged_in = geardb.get_user_from_session_id(form.getvalue('session_id'))
+    if not user_logged_in:
+        exit_with_error("No logged-in user detected")
     gc.user_id = user_logged_in.id
 
     upload_type = form.getvalue('new_cart_upload_type')
@@ -91,12 +98,13 @@ def main():
                 gene = geardb.Gene(gene_symbol=gene_sym)
                 gc.add_gene(gene)
         else:
-            raise Exception("Didn't detect an uploaded file for an uploaded-unweighted submission")
+            exit_with_error("Didn't detect an uploaded file for an uploaded-unweighted submission")
 
     elif upload_type == 'uploaded-weighted':
+        import string
+
         import anndata
         import pandas as pd
-        import string
         gc.gctype = 'weighted-list'
 
         # sanitize the file name
@@ -108,52 +116,52 @@ def main():
         source_file_path = CARTS_BASE_DIR.joinpath("cart.{0}{1}".format(gc.share_id, source_file_ext))
         h5dest_file_path = CARTS_BASE_DIR.joinpath("cart.{0}.h5ad".format(gc.share_id))
 
-        df = None
+        dataframe = None
         try:
             if fileitem.filename.endswith('xlsx') or fileitem.filename.endswith('xls'):
-                df = pd.read_excel(fileitem.file, sheet_name=0)
+                dataframe = pd.read_excel(fileitem.file, sheet_name=0)
             elif fileitem.filename.endswith('tab') or fileitem.filename.endswith('tsv'):
-                df = pd.read_csv(fileitem.file, sep='\t')
+                dataframe = pd.read_csv(fileitem.file, sep='\t')
             elif fileitem.filename.endswith('csv'):
-                df = pd.read_csv(fileitem.file, sep=',')
+                dataframe = pd.read_csv(fileitem.file, sep=',')
             else:
-                raise Exception("Unsupported file type for carts uploaded. File name: {0}. Supported extensions: ['xlsx', 'xls', 'tab', 'tsv', 'csv']".format(fileitem.filename))
+                exit_with_error("Unsupported file type for carts uploaded. File name: {0}. Supported extensions: ['xlsx', 'xls', 'tab', 'tsv', 'csv']".format(fileitem.filename))
 
-            is_valid = validate_weighted_gene_cart(df)
+            is_valid = validate_weighted_gene_cart(dataframe)
 
             if not is_valid:
-                raise Exception("Weighted gene cart is not valid. Ensure first column is unique identifiers, second column is gene symbols, and following columns are numeric weights.")
+                exit_with_error("Weighted gene cart is not valid. Ensure first column is unique identifiers, second column is gene symbols, and following columns are numeric weights.")
 
             # Write dataframe to tab file
             try:
-                df.to_csv(source_file_path, sep='\t', index=False)
-            except:
-                raise Exception("Could not write data to tab file: {0}".format(source_file_path))
+                dataframe.to_csv(source_file_path, sep='\t', index=False)
+            except Exception:
+                exit_with_error("Could not write data to tab file: {0}".format(source_file_path))
 
             # First two columns make adata.var
-            var = df[df.columns[:2]]
-            var.set_index(var.columns[0], inplace=True)
-            for gene_sym in var[var.columns[0]]:
-                gene = geardb.Gene(gene_symbol=gene_sym)
-                gc.add_gene(gene)
+            var = dataframe[dataframe.columns[:2]]
+            var = var.set_index(var.columns[0])
 
             # Remaining columns make adata.X
-            X = df[df.columns[2:]].transpose().to_numpy()
-            obs = pd.DataFrame(index=df.columns[2:])
+            X = dataframe[dataframe.columns[2:]].transpose().to_numpy()
+            obs = pd.DataFrame(index=dataframe.columns[2:])
             # Create the anndata object and write to h5ad
             adata = anndata.AnnData(X=X, obs=obs, var=var)
             adata.write(filename=h5dest_file_path)
 
         except Exception as e:
-            print(str(e))
-            sys.exit(1)
+            exit_with_error(str(e))
     elif upload_type == "labeled-list":
-        raise NotImplementedError("Not implemented")
+        exit_with_error("Not implemented")
     else:
-        raise Exception("Invalid upload type: {0}".format(upload_type))
+        exit_with_error("Invalid upload type: {0}".format(upload_type))
 
-    gc.save()
+    try:
+        gc.save()
+    except Exception as e:
+        exit_with_error("Could not save gene cart: {0}".format(str(e)))
 
+    print('Content-Type: application/json\n\n')
     result = { 'id': gc.id }
     print(json.dumps(result))
 

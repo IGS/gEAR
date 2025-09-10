@@ -1,5 +1,14 @@
 "use strict";
 
+import { Analysis, getAnalysisLabels, setAnalysisLabels } from "./classes/analysis.js?v=2860b88";
+import { UI } from "./classes/analysis-ui.js?v=2860b88";
+import { Dataset } from "./classes/dataset.js?v=2860b88";
+import { Gene, WeightedGene } from "./classes/gene.js?v=2860b88";
+import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=2860b88";
+import { DatasetTree } from "./classes/tree.js?v=2860b88";
+import { resetStepperWithHrefs } from "./stepper-fxns.js?v=2860b88";
+import { apiCallsMixin, convertToFormData, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=2860b88";
+
 let currentAnalysis;
 let clickedMarkerGenes = new Set();
 let typedMarkerGenes = new Set();
@@ -96,7 +105,8 @@ const datasetTree = new DatasetTree({
 
         try {
             document.querySelector(UI.analysisSelect).disabled = true;
-            analysisLabels = await currentAnalysis.getSavedAnalysesList(datasetId, -1, 'sc_workbench');
+            const labels = await currentAnalysis.getSavedAnalysesList(datasetId, -1, 'sc_workbench');
+            setAnalysisLabels(labels);
         } catch (error) {
             createToast("Failed to access analyses for this dataset");
             logErrorInConsole(error);
@@ -120,6 +130,54 @@ const datasetTree = new DatasetTree({
 
     })
 });
+
+/**
+ * Activates a dataset in the dataset tree based on a URL parameter.
+ *
+ * This function checks if the specified URL parameter exists, optionally fetches additional
+ * dataset information using a provided function, and then activates the corresponding dataset
+ * node in the dataset tree. If the dataset cannot be found or accessed, a toast notification
+ * is displayed and an error is thrown.
+ *
+ * @async
+ * @param {string} paramName - The name of the URL parameter to look for.
+ * @param {function} [fetchInfoFn] - Optional async function to fetch dataset info using the parameter value.
+ *        Should return a Promise that resolves to an array of objects containing a `dataset_id` property.
+ * @throws {Error} If the dataset cannot be accessed or found in the dataset tree.
+ */
+const activateDatasetFromParam = async (paramName, fetchInfoFn) => {
+    if (!urlParams.has(paramName)) {
+        return;
+    }
+    const paramValue = urlParams.get(paramName);
+    let linkedDatasetId;
+    try {
+        if (fetchInfoFn) {
+            const data = await fetchInfoFn(paramValue);
+            linkedDatasetId = data.datasets[0].id;
+            if (!linkedDatasetId) {
+                throw new Error(`Accessible dataset for ${paramName} ${paramValue} was not found`);
+            }
+        } else {
+            linkedDatasetId = paramValue;
+        }
+    } catch (error) {
+        createToast(error.message);
+        throw new Error(error);
+    }
+
+    try {
+        // find DatasetTree node and trigger "activate"
+        const foundNode = datasetTree.findFirst(e => e.data.dataset_id === linkedDatasetId);
+        foundNode.setActive(true, {focusTree:true});
+        datasetTree.tree.setActiveNode(foundNode);
+        datasetTree.selectCallback({node: foundNode});  // manually trigger the "activate" event.
+        datasetId = linkedDatasetId;
+    } catch (error) {
+        createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset`);
+        throw new Error(error);
+    }
+}
 
 /**
  * Counts and highlights duplicate values in the clustering group labels step.
@@ -205,11 +263,6 @@ const getDatasetInfo = async (datasetId) => {
     }
 }
 
-const getEmbeddedTsneDisplay = async (datasetId) => {
-    const {data} = await axios.post("./cgi/get_embedded_tsne_display.cgi", convertToFormData({ dataset_id: datasetId }));
-    return data;
-}
-
 /**
  * Retrieves an array of genes from a collection of cells.
  *
@@ -221,45 +274,17 @@ const getGenesFromCells = (cells) => {
 }
 
 /**
- * Retrieves the t-SNE image data for a given gene symbol and configuration.
- *
- * @param {string} geneSymbol - The gene symbol to retrieve t-SNE image data for.
- * @param {object} config - The configuration object.
- * @returns {Promise<string>} - The t-SNE image data.
- */
-const getTsneImageData = async (geneSymbol, config) => {
-    config.colorblind_mode = CURRENT_USER.colorblind_mode;
-    config.gene_symbol = geneSymbol;
-
-    // in order to avoid circular references (since analysis is referenced in the individual step objects),
-    //  we need to create a smaller analysis object to pass to the API
-
-    const analysis = {
-        "id": currentAnalysis.id,
-        "type": currentAnalysis.type,
-    }
-
-    const data = await apiCallsMixin.fetchTsneImage(currentAnalysis.dataset.id, analysis, "tsne_static", config);
-
-    if (!data.success || data.success < 1) {
-        const message = data.message || "Unknown error";
-        throw new Error(message);
-    }
-    return data.image;
-}
-
-/**
  * Loads the dataset tree by fetching dataset information from the curator API.
  * Populates the userDatasets, sharedDatasets, and domainDatasets arrays with dataset information.
  * Generates the dataset tree using the generateTree method of the datasetTree object.
  * @throws {Error} If there is an error fetching the dataset information.
  */
-const loadDatasetTree = async () => {
+const loadDatasetTree = async (shareId) => {
     const userDatasets = [];
     const sharedDatasets = [];
     const domainDatasets = [];
     try {
-        const datasetData = await apiCallsMixin.fetchAllDatasets();
+        const datasetData = await apiCallsMixin.fetchAllDatasets(shareId);
 
         let counter = 0;
 
@@ -348,7 +373,7 @@ const resetWorkbench = () => {
 const saveMarkerGeneList = async () => {
     // must have access to USER_SESSION_ID
     const gc = new GeneCart({
-        session_id: CURRENT_USER.session_id,
+        session_id: getCurrentUser().session_id,
         label: document.querySelector(UI.markerGenesListNameElt).value,
         gctype: 'unweighted-list',
         organism_id: currentAnalysis.dataset.organism_id,
@@ -393,7 +418,7 @@ const savePcaGeneList = async () => {
         const weightLabels = data.pc_data.columns;
 
         const geneList = new WeightedGeneCart({
-                session_id: CURRENT_USER.session_id,
+                session_id: getCurrentUser().session_id,
                 label: document.querySelector(UI.pcaGeneListNameElt).value,
                 gctype: 'weighted-list',
                 organism_id: currentAnalysis.dataset.organism_id,
@@ -533,7 +558,7 @@ const validateMarkerGeneSelection = () => {
 const handlePageSpecificLoginUIUpdates = async (event) => {
 	document.getElementById("page-header-label").textContent = "Single Cell Workbench";
 
-    const sessionId = CURRENT_USER.session_id;
+    const sessionId = getCurrentUser().session_id;
     if (! sessionId ) {
         createToast("Not logged in so saving analyses is disabled.", "is-warning");
         document.querySelector(UI.btnSaveAnalysisElt).disabled = true;
@@ -542,22 +567,21 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 
 	try {
-		await loadDatasetTree()
+
         // If brought here by the "gene search results" page, curate on the dataset ID that referred us
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has("dataset_id")) {
-            const linkedDatasetId = urlParams.get("dataset_id");
-            try {
-                // find DatasetTree node and trigger "activate"
-                const foundNode = datasetTree.findFirst(e => e.data.dataset_id === linkedDatasetId);
-                foundNode.setActive(true, {focusTree:true});
-                datasetTree.tree.setActiveNode(foundNode);
-                datasetTree.selectCallback({node: foundNode});  // manually trigger the "activate" event.
-                datasetId = linkedDatasetId;
-            } catch (error) {
-                createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset`);
-                throw new Error(error);
-            }
+        const shareId = urlParams.get("share_id");
+		await loadDatasetTree(shareId);
+
+        // Usage inside handlePageSpecificLoginUIUpdates
+        if (urlParams.has("share_id")) {
+            return await activateDatasetFromParam("share_id", async (shareId) =>
+                await apiCallsMixin.fetchDatasetListInfo({permalink_share_id: shareId})
+            );
+        } else if (urlParams.has("dataset_id")) {
+    		// Legacy support for dataset_id
+
+            await activateDatasetFromParam("dataset_id");
         }
 
         // ? This could be used to pre-select an analysis
@@ -566,8 +590,11 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 	} catch (error) {
 		logErrorInConsole(error);
 	}
-
 }
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
+
+// Pre-initialize some stuff
+await initCommonUI();
 
 /* Event listeners for elements already loaded */
 
@@ -737,7 +764,7 @@ for (const button of document.querySelectorAll(UI.analysisRenameElts)) {
 
         document.getElementById("new-analysis-label").addEventListener("keyup", (event) => {
             // Update the new analysis label if it is not a duplicate
-            if (analysisLabels.has(event.target.value.trim())) {
+            if (getAnalysisLabels().has(event.target.value.trim())) {
                 if (event.target.value.trim() !== currentLabel) {
                     event.target.classList.add("duplicate");
                     document.getElementById("confirm-analysis-rename").disabled = true;
@@ -1090,7 +1117,7 @@ document.querySelector(UI.pcaGeneListNameElt).addEventListener("input", (event) 
 
 document.querySelector(UI.btnSavePcaGeneListElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
-    if (CURRENT_USER) {
+    if (getCurrentUser()) {
         await savePcaGeneList();
     } else {
         createToast("You must be signed in to save a PCA gene list.");
@@ -1245,7 +1272,7 @@ document.querySelector(UI.markerGenesListNameElt).addEventListener("input", (eve
 
 document.querySelector(UI.btnSaveMarkerGeneListElt).addEventListener("click", async (event) => {
     event.target.classList.add("is-loading");
-    if (CURRENT_USER) {
+    if (getCurrentUser()) {
         await saveMarkerGeneList();
     } else {
         createToast("You must be signed in to save a marker gene list.");

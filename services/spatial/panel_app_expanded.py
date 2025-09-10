@@ -17,6 +17,7 @@ import spatialdata as sd
 from common import (
     Settings,
     SpatialFigure,
+    clip_expression_values,
     normalize_searched_gene,
     sort_clusters,
 )
@@ -605,6 +606,7 @@ class SpatialPanel(pn.viewable.Viewer):
                     "selection_y2": "selection_y2",
                     "display_height": "height",
                     "display_width": "width",
+                    "expression_min_clip": "expression_min_clip",
                     "save": "save",
                     "display_name": "display_name",
                     "make_default": "make_default",
@@ -857,6 +859,9 @@ class SpatialPanel(pn.viewable.Viewer):
         # Modify the adata object to use the projection ID if it exists
         if self.projection_id:
             self.adata = self.create_projection_adata()
+
+        if self.settings.expression_clip_min is not None:
+            self.adata = clip_expression_values(self.adata, min_clip=self.settings.expression_clip_min)
 
         self.adata_orig = (
             self.adata.copy()

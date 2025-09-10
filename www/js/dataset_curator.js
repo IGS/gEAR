@@ -3,11 +3,16 @@
 
 'use strict';
 
-const isMultigene = 0;
+import { apiCallsMixin, createToast, getCurrentUser, initCommonUI, logErrorInConsole, trigger } from "./common.v2.js?v=2860b88";
+import { curatorCommon } from "./curator_common.js?v=2860b88";
+import { postPlotlyConfig } from "./plot_display_config.js?v=2860b88";
+
+curatorCommon.setIsMultigene(0);
 
 let geneAutocomplete = null;
 let genePostAutocomplete = null;
 let selectedGene = null;
+let allColumns = [];
 
 const plotlyPlots = ["bar", "line", "scatter", "tsne_dyna", "violin"];
 const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];
@@ -15,9 +20,9 @@ const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];
 /**
  * Represents a PlotlyHandler, a class that handles Plotly plots.
  * @class
- * @extends PlotHandler
+ * @extends curatorCommon.PlotHandler
  */
-class PlotlyHandler extends PlotHandler {
+class PlotlyHandler extends curatorCommon.PlotHandler {
     constructor(plotType) {
         super();
         this.plotType = plotType;
@@ -25,27 +30,27 @@ class PlotlyHandler extends PlotHandler {
     }
 
     classElt2Prop = {
-        "js-plotly-x-axis":"x_axis"
-        , "js-plotly-y-axis":"y_axis"
-        , "js-plotly-label":"point_label"
-        , "js-plotly-hide-x-ticks":"hide_x_labels"
-        , "js-plotly-hide-y-ticks":"hide_y_labels"
-        , "js-plotly-color":"color_name"
-        , "js-plotly-size":"size_by_group"
-        , "js-plotly-facet-row":"facet_row"
-        , "js-plotly-facet-col":"facet_col"
-        , "js-plotly-x-title":"x_title"
-        , "js-plotly-y-title":"y_title"
-        , "js-plotly-x-min":"x_min"
-        , "js-plotly-y-min":"y_min"
-        , "js-plotly-x-max":"x_max"
-        , "js-plotly-y-max":"y_max"
-        , "js-plotly-hide-legend":"hide_legend"
-        , "js-plotly-add-jitter":"jitter"
-        , "js-plotly-marker-size":"marker_size"
-        , "js-plotly-color-palette":"color_palette"
-        , "js-plotly-reverse-palette":"reverse_palette"
-    }
+        "js-plotly-x-axis": "x_axis"
+        , "js-plotly-y-axis": "y_axis"
+        , "js-plotly-label": "point_label"
+        , "js-plotly-hide-x-ticks": "hide_x_labels"
+        , "js-plotly-hide-y-ticks": "hide_y_labels"
+        , "js-plotly-color": "color_name"
+        , "js-plotly-size": "size_by_group"
+        , "js-plotly-facet-row": "facet_row"
+        , "js-plotly-facet-col": "facet_col"
+        , "js-plotly-x-title": "x_title"
+        , "js-plotly-y-title": "y_title"
+        , "js-plotly-x-min": "x_min"
+        , "js-plotly-y-min": "y_min"
+        , "js-plotly-x-max": "x_max"
+        , "js-plotly-y-max": "y_max"
+        , "js-plotly-hide-legend": "hide_legend"
+        , "js-plotly-add-jitter": "jitter"
+        , "js-plotly-marker-size": "marker_size"
+        , "js-plotly-color-palette": "color_palette"
+        , "js-plotly-reverse-palette": "reverse_palette"
+    };
 
     configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
 
@@ -59,7 +64,7 @@ class PlotlyHandler extends PlotHandler {
     cloneDisplay(config) {
         // plotly plots
         for (const prop in config) {
-            setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config[prop]);
+            curatorCommon.setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config[prop]);
         }
 
         // Handle order
@@ -67,8 +72,9 @@ class PlotlyHandler extends PlotHandler {
             for (const series in config["order"]) {
                 const order = config["order"][series];
                 // sort "levels" series by order
+                const levels = curatorCommon.getLevels();
                 levels[series].sort((a, b) => order.indexOf(a) - order.indexOf(b));
-                renderOrderSortableSeries(series);
+                curatorCommon.renderOrderSortableSeries(series);
             }
 
             document.getElementById("order-section").classList.remove("is-hidden");
@@ -76,7 +82,7 @@ class PlotlyHandler extends PlotHandler {
 
         // Handle filters
         if (config["obs_filters"]) {
-            facetWidget.filters = config["obs_filters"];
+            curatorCommon.getFacetWidget().filters = config["obs_filters"];
         }
 
         // Handle colors
@@ -86,18 +92,15 @@ class PlotlyHandler extends PlotHandler {
 
             try {
                 const series = config["color_name"];
-                renderColorPicker(series);
+                curatorCommon.renderColorPicker(series);
                 for (const group in config["colors"]) {
                     const color = config["colors"][group];
-                    // Sometimes we need to escape the group name
-                    // Found a case where the group in config was truncated compared to the (older) dataset's actual group
-                    // But there are cases where the group name should not be escaped (such as if slashes are in the name)
-                    try {
-                        const colorField = document.getElementById(`${group}-color`);
+                    const colorField = document.getElementById(`${CSS.escape(group)}-color`);
+                    if (colorField) {
                         colorField.value = color;
-                    } catch (error) {
-                        const colorField = document.getElementById(`${CSS.escape(group)}-color`);
-                        colorField.value = color;
+                    } else {
+                        // Optionally log or handle missing field
+                        console.warn(`Color field for group "${group}" not found.`);
                     }
                 }
             } catch (error) {
@@ -107,7 +110,7 @@ class PlotlyHandler extends PlotHandler {
         }
 
         if (config["color_palette"]) {
-            setSelectBoxByValue("color-palette-post", config["color_palette"]);
+            curatorCommon.setSelectBoxByValue("color-palette-post", config["color_palette"]);
         }
 
         // Handle vlines
@@ -135,7 +138,7 @@ class PlotlyHandler extends PlotHandler {
         let plotJson;
         try {
             const data = await fetchPlotlyData(datasetId, analysisObj, this.apiPlotType, this.plotConfig);
-            ({plot_json: plotJson} = data);
+            ({ plot_json: plotJson } = data);
         } catch (error) {
             return;
         }
@@ -157,10 +160,10 @@ class PlotlyHandler extends PlotHandler {
         }
         // Update plot with custom plot config stuff stored in plot_display_config.js
         const curatorDisplayConf = postPlotlyConfig.curator;
-        const custonConfig = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
+        const custonConfig = curatorCommon.getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
         Plotly.newPlot("plotly-preview", plotJson.data, plotJson.layout, custonConfig);
-        const custonLayout = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout")
-        Plotly.relayout("plotly-preview", custonLayout)
+        const custonLayout = curatorCommon.getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout");
+        Plotly.relayout("plotly-preview", custonLayout);
 
         addOvercrowdedSeriesWarning(plotContainer);
 
@@ -178,8 +181,8 @@ class PlotlyHandler extends PlotHandler {
         const postPlotOptionsElt = document.getElementById("post-plot-adjustments");
         postPlotOptionsElt.replaceChildren();
 
-        prePlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/single_gene_plotly.html");
-        postPlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/post_plot/single_gene_plotly.html");
+        prePlotOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/pre_plot/single_gene_plotly.html");
+        postPlotOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/post_plot/single_gene_plotly.html");
 
         // populate advanced options for specific plot types
         const prePlotSpecificOptionsElt = document.getElementById("plot-specific-options");
@@ -188,19 +191,19 @@ class PlotlyHandler extends PlotHandler {
         // Load color palette select options
         if (["violin"].includes(this.plotType)) {
             // TODO: Discrete scale should go to color mapping
-            loadColorscaleSelect(false);
+            curatorCommon.loadColorscaleSelect(false);
         } else {
-            loadColorscaleSelect(true);
+            curatorCommon.loadColorscaleSelect(true);
         }
 
         if (["scatter", "tsne_dyna"].includes(this.plotType)) {
-            prePlotSpecificOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/advanced_scatter.html");
-            postPlotSpecificOptionselt.innerHTML = await includeHtml("../include/plot_config/post_plot/advanced_scatter.html");
+            prePlotSpecificOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/pre_plot/advanced_scatter.html");
+            postPlotSpecificOptionselt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/post_plot/advanced_scatter.html");
             return;
         }
         if (this.plotType === "violin") {
-            prePlotSpecificOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/advanced_violin.html");
-            postPlotSpecificOptionselt.innerHTML = await includeHtml("../include/plot_config/post_plot/advanced_violin.html");
+            prePlotSpecificOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/pre_plot/advanced_violin.html");
+            postPlotSpecificOptionselt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/post_plot/advanced_violin.html");
             return;
         }
     }
@@ -212,7 +215,7 @@ class PlotlyHandler extends PlotHandler {
         this.plotConfig = {};   // Reset plot config
 
         for (const classElt in this.classElt2Prop) {
-            this.plotConfig[this.classElt2Prop[classElt]] = getPlotConfigValueFromClassName(classElt)
+            this.plotConfig[this.classElt2Prop[classElt]] = curatorCommon.getPlotConfigValueFromClassName(classElt);
         }
 
         // Small fix for tsne/umap dynamic plots
@@ -226,14 +229,14 @@ class PlotlyHandler extends PlotHandler {
         }
 
         // Filtered observation groups
-        this.plotConfig["obs_filters"] = facetWidget?.filters || {};
+        this.plotConfig["obs_filters"] = curatorCommon.getFacetWidget()?.filters || {};
         if (Object.keys(this.plotConfig["obs_filters"]).length === 0) {
             this.plotConfig["obs_filters"] = null;
         }
 
         // Get order
-        this.plotConfig["order"] = getPlotOrderFromSortable();
-        if (!sortOrderChanged) {
+        this.plotConfig["order"] = curatorCommon.getPlotOrderFromSortable();
+        if (!curatorCommon.getSortOrderChanged()) {
             // If no order was changed, set to null so API does not try to sort by the default order
             this.plotConfig["order"] = null;
         }
@@ -247,7 +250,7 @@ class PlotlyHandler extends PlotHandler {
             [...colorElts].map((field) => {
                 const group = field.id.replace("-color", "");
                 this.plotConfig["colors"][group] = field.value;
-            })
+            });
         }
 
         // Get vlines
@@ -256,14 +259,14 @@ class PlotlyHandler extends PlotHandler {
             const vlinePos = field.querySelector(":scope .js-plotly-vline-pos").value;
             const vlineStyle = field.querySelector(":scope .js-plotly-vline-style-select select").value;
             // Return either objects or nothing (which will be filtered out)
-            return vlinePos ?  {"vl_pos":vlinePos, "vl_style":vlineStyle} : null;
+            return vlinePos ? { "vl_pos": vlinePos, "vl_style": vlineStyle } : null;
         }).filter(x => x !== null);
     }
 
     /**
      * Sets up the event for copying parameter values.
      * @async
-     * @function setupParamValueCopyEvent
+     * @function curatorCommon.setupParamValueCopyEvent
      * @returns {Promise<void>}
      */
     async setupParamValueCopyEvent() {
@@ -276,17 +279,17 @@ class PlotlyHandler extends PlotHandler {
      * @function setupPlotSpecificEvents
      * @returns {Promise<void>}
      */
-    async setupPlotSpecificEvents() {
-        await setupPlotlyOptions();
+    async setupPlotSpecificEvents(datasetId) {
+        await setupPlotlyOptions(datasetId);
     }
 
 }
 
 /**
- * Represents a ScanpyHandler class that extends PlotHandler.
+ * Represents a ScanpyHandler class that extends curatorCommon.PlotHandler.
  * This class is responsible for creating and manipulating plots for a given dataset using the Scanpy analysis object.
  */
-class ScanpyHandler extends PlotHandler {
+class ScanpyHandler extends curatorCommon.PlotHandler {
     constructor(plotType) {
         super();
         this.plotType = plotType;
@@ -294,21 +297,21 @@ class ScanpyHandler extends PlotHandler {
     }
 
     classElt2Prop = {
-        "js-tsne-x-axis":"x_axis"
-        , "js-tsne-y-axis":"y_axis"
-        , "js-tsne-flip-x":"flip_x"
-        , "js-tsne-flip-y":"flip_y"
-        , "js-tsne-colorize-legend-by":"colorize_legend_by"
-        , "js-tsne-plot-by-series":"plot_by_group"
-        , "js-tsne-max-columns":"max_columns"
-        , "js-tsne-skip-gene-plot":"skip_gene_plot"
-        , "js-tsne-horizontal-legend":"horizontal_legend"
-        , "js-tsne-marker-size":"marker_size"
-        , "js-tsne-color-palette":"expression_palette"
-        , "js-tsne-reverse-palette":"reverse_palette"
-        , "js-tsne-two-way-palette":"two_way_palette"
-        , "js-tsne-center-around-median":"center_around_median"
-    }
+        "js-tsne-x-axis": "x_axis"
+        , "js-tsne-y-axis": "y_axis"
+        , "js-tsne-flip-x": "flip_x"
+        , "js-tsne-flip-y": "flip_y"
+        , "js-tsne-colorize-legend-by": "colorize_legend_by"
+        , "js-tsne-plot-by-series": "plot_by_group"
+        , "js-tsne-max-columns": "max_columns"
+        , "js-tsne-skip-gene-plot": "skip_gene_plot"
+        , "js-tsne-horizontal-legend": "horizontal_legend"
+        , "js-tsne-marker-size": "marker_size"
+        , "js-tsne-color-palette": "expression_palette"
+        , "js-tsne-reverse-palette": "reverse_palette"
+        , "js-tsne-two-way-palette": "two_way_palette"
+        , "js-tsne-center-around-median": "center_around_median"
+    };
 
     configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
 
@@ -320,7 +323,7 @@ class ScanpyHandler extends PlotHandler {
      */
     cloneDisplay(config) {
         for (const prop in config) {
-            setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config[prop]);
+            curatorCommon.setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config[prop]);
         }
 
         // Handle order
@@ -329,7 +332,7 @@ class ScanpyHandler extends PlotHandler {
                 const order = config["order"][series];
                 // sort "levels" series by order
                 levels[series].sort((a, b) => order.indexOf(a) - order.indexOf(b));
-                renderOrderSortableSeries(series);
+                curatorCommon.renderOrderSortableSeries(series);
             }
 
             document.getElementById("order-section").classList.remove("is-hidden");
@@ -337,7 +340,7 @@ class ScanpyHandler extends PlotHandler {
 
         // Handle filters
         if (config["obs_filters"]) {
-            facetWidget.filters = config["obs_filters"];
+            curatorCommon.getFacetWidget().filters = config["obs_filters"];
         }
 
         // Restoring some disabled/checked elements in UI
@@ -345,6 +348,8 @@ class ScanpyHandler extends PlotHandler {
         const maxColumns = document.getElementsByClassName('js-tsne-max-columns');
         const skipGenePlot = document.getElementsByClassName("js-tsne-skip-gene-plot");
         const horizontalLegend = document.getElementsByClassName("js-tsne-horizontal-legend");
+
+        const catColumns = curatorCommon.getCatColumns();
 
         if (config["colorize_legend_by"]) {
             const series = config["colorize_legend_by"];
@@ -355,46 +360,42 @@ class ScanpyHandler extends PlotHandler {
                 }
 
                 // Applies to horizontal legend
-                disableCheckboxLabel(targetElt, targetElt.disabled);
+                curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
             }
 
             // The "max columns" parameter is only available for categorical series
-            if (!(catColumns.includes(series))) {
-                for (const targetElt of maxColumns) {
-                    targetElt.disabled = true;
-                }
+            for (const targetElt of [...maxColumns]) {
+                targetElt.disabled = catColumns.includes(series) ? false : true;
+                curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
             }
 
             // Handle colors
             if (config["colors"]) {
-                renderColorPicker(series);
+                curatorCommon.renderColorPicker(series);
                 for (const group in config["colors"]) {
                     const color = config["colors"][group];
-                    // Sometimes we need to escape the group name
-                    // Found a case where the group in config was truncated compared to the (older) dataset's actual group
-                    // But there are cases where the group name should not be escaped (such as if slashes are in the name)
-                    try {
-                        const colorField = document.getElementById(`${group}-color`);
+                    const colorField = document.getElementById(`${CSS.escape(group)}-color`);
+                    if (colorField) {
                         colorField.value = color;
-                    } catch (error) {
-                        const colorField = document.getElementById(`${CSS.escape(group)}-color`);
-                        colorField.value = color;
+                    } else {
+                        // Optionally log or handle missing field
+                        console.warn(`Color field for group "${group}" not found.`);
                     }
                 }
             }
         }
 
         if (config["expression_palette"]) {
-            setSelectBoxByValue("color-palette-post", config["expression_palette"]);
+            curatorCommon.setSelectBoxByValue("color-palette-post", config["expression_palette"]);
         }
 
         if (config["plot_by_group"]) {
-            for (const targetElt of skipGenePlot) {
+            for (const targetElt of [...skipGenePlot]) {
                 targetElt.disabled = true;
                 targetElt.checked = false;
-                disableCheckboxLabel(targetElt, targetElt.disabled);
+                curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
             }
-            for (const targetElt of maxColumns) {
+            for (const targetElt of [...maxColumns]) {
                 targetElt.disabled = false;
             }
         }
@@ -435,13 +436,19 @@ class ScanpyHandler extends PlotHandler {
         let image;
         try {
             const data = await fetchTsneImage(datasetId, analysisObj, this.apiPlotType, this.plotConfig);
-            ({image} = data);
+            ({ image } = data);
         } catch (error) {
             return;
         }
 
         const plotContainer = document.getElementById("plot-container");
         plotContainer.replaceChildren();    // erase plot
+
+        // Add a message saying the image dimensions will change when viewed in the gene expression page
+        const dimensionMessage = document.createElement("div");
+        dimensionMessage.innerHTML = "<strong>Note:</strong> The plot image may render differently when viewed in the gene expression page based on the dimensions of the display tile.";
+        dimensionMessage.classList.add("notification", "is-info", "is-light");
+        plotContainer.append(dimensionMessage);
 
         const tsnePreview = document.createElement("img");
         tsnePreview.classList.add("image");
@@ -457,7 +464,7 @@ class ScanpyHandler extends PlotHandler {
         tsnePreview.onload = () => {
             // Revoke the object URL to free up memory
             URL.revokeObjectURL(tsnePreview.src);
-        }
+        };
         return;
 
     }
@@ -473,10 +480,10 @@ class ScanpyHandler extends PlotHandler {
         const postPlotOptionsElt = document.getElementById("post-plot-adjustments");
         postPlotOptionsElt.replaceChildren();
 
-        prePlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/tsne_static.html");
-        postPlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/post_plot/tsne_static.html");
+        prePlotOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/pre_plot/tsne_static.html");
+        postPlotOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/post_plot/tsne_static.html");
 
-        loadColorscaleSelect(true, true);
+        curatorCommon.loadColorscaleSelect(true, true);
     }
 
     /**
@@ -486,14 +493,14 @@ class ScanpyHandler extends PlotHandler {
         this.plotConfig = {};   // Reset plot config
 
         for (const classElt in this.classElt2Prop) {
-            this.plotConfig[this.classElt2Prop[classElt]] = getPlotConfigValueFromClassName(classElt)
+            this.plotConfig[this.classElt2Prop[classElt]] = curatorCommon.getPlotConfigValueFromClassName(classElt);
         }
 
         // Get order
-        this.plotConfig["order"] = getPlotOrderFromSortable();
+        this.plotConfig["order"] = curatorCommon.getPlotOrderFromSortable();
 
         // Filtered observation groups
-        this.plotConfig["obs_filters"] = facetWidget?.filters || {};
+        this.plotConfig["obs_filters"] = curatorCommon.getFacetWidget()?.filters || {};
         if (Object.keys(this.plotConfig["obs_filters"]).length === 0) {
             this.plotConfig["obs_filters"] = null;
         }
@@ -506,7 +513,7 @@ class ScanpyHandler extends PlotHandler {
             [...colorElts].map((field) => {
                 const group = field.id.replace("-color", "");
                 this.plotConfig["colors"][group] = field.value;
-            })
+            });
         }
 
         // If user did not want to have a colorized annotation, ensure it does not get passed to the scanpy code
@@ -518,7 +525,7 @@ class ScanpyHandler extends PlotHandler {
         }
 
         // if no plot-by-group is selected, ensure max columns is not passed to the scanpy code
-        if (!(document.getElementById("plot-by-group-series-post").checked)) {
+        if (!(document.getElementById("plot-by-group-series-post").textContent)) {
             this.plotConfig["max_columns"] = null;
         }
 
@@ -547,17 +554,17 @@ class ScanpyHandler extends PlotHandler {
      * Sets up plot-specific events.
      * @returns {Promise<void>} A promise that resolves when the setup is complete.
      */
-    async setupPlotSpecificEvents() {
-        await setupScanpyOptions();
+    async setupPlotSpecificEvents(datasetId) {
+        await setupScanpyOptions(datasetId);
     }
 
 }
 
 /**
  * Represents a SvgHandler, a class that handles SVG plots.
- * @extends PlotHandler
+ * @extends curatorCommon.PlotHandler
  */
-class SvgHandler extends PlotHandler {
+class SvgHandler extends curatorCommon.PlotHandler {
     constructor() {
         super();
         this.plotType = "svg";
@@ -566,14 +573,14 @@ class SvgHandler extends PlotHandler {
 
     // These do not get passed into the API call, but want to keep the same data structure for cloning display
     classElt2Prop = {
-        "js-svg-low-color":"low_color"
-        , "js-svg-mid-color":"mid_color"
-        , "js-svg-high-color":"high_color"
-    }
+        "js-svg-low-color": "low_color"
+        , "js-svg-mid-color": "mid_color"
+        , "js-svg-high-color": "high_color"
+    };
 
     configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
 
-    plotConfig = {colors: {}};  // Plot config to color SVG
+    plotConfig = { colors: {} };  // Plot config to color SVG
 
     /**
      * Clones the display based on the provided configuration.
@@ -582,7 +589,7 @@ class SvgHandler extends PlotHandler {
     cloneDisplay(config) {
         // Props are in a "colors" dict
         for (const prop in config) {
-            setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config.colors[prop]);
+            curatorCommon.setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config.colors[prop]);
         }
 
         // If a mid-level color was provided, ensure checkbox to enable it is checked (for aesthetics)
@@ -602,14 +609,14 @@ class SvgHandler extends PlotHandler {
     async createPlot(datasetId) {
         let data;
         try {
-            data = await fetchSvgData(datasetId, this.plotConfig)
+            data = await fetchSvgData(datasetId, this.plotConfig);
         } catch (error) {
             return;
         }
         const plotContainer = document.getElementById("plot-container");
         plotContainer.replaceChildren();    // erase plot
 
-        colorSVG(data, this.plotConfig["colors"]);
+        colorSVG(data, datasetId, this.plotConfig["colors"]);
     }
 
     /**
@@ -626,8 +633,8 @@ class SvgHandler extends PlotHandler {
         const postPlotOptionsElt = document.getElementById("post-plot-adjustments");
         postPlotOptionsElt.replaceChildren();
 
-        prePlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/svg.html");
-        postPlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/post_plot/svg.html");
+        prePlotOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/pre_plot/svg.html");
+        postPlotOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/post_plot/svg.html");
     }
 
     /**
@@ -652,13 +659,13 @@ class SvgHandler extends PlotHandler {
      * @returns {Promise<void>} A promise that resolves when the event listener is set up.
      */
     async setupParamValueCopyEvent() {
-        setupParamValueCopyEvent("js-svg-enable-mid");
+        curatorCommon.setupParamValueCopyEvent("js-svg-enable-mid");
     }
 
     /**
      * Sets up plot-specific events.
      */
-    setupPlotSpecificEvents() {
+    setupPlotSpecificEvents(datasetId) {
         setupSVGOptions();
     }
 }
@@ -673,6 +680,7 @@ const addOvercrowdedSeriesWarning = (plotContainer) => {
     const plotlyReqSeries = document.getElementsByClassName("js-plot-req");
     const overcrowdedSeries = [...plotlyReqSeries].filter((series) => {
         const seriesValue = series.value;
+        const levels = curatorCommon.getLevels();
         if (!levels[seriesValue]) {
             return false;
         }
@@ -701,15 +709,22 @@ const addOvercrowdedSeriesWarning = (plotContainer) => {
     deleteButton.addEventListener("click", (event) => {
         event.target.parentElement.parentElement.remove();
     });
-}
+};
 
 /**
  * Function to handle the selection of a gene.
  */
-const chooseGene = () => {
+const chooseGene = (gene) => {
+
+    if (!gene) {
+        console.warn("No gene selected. Nothing downstream happens.");
+        return;
+    }
+
+    selectedGene = gene;
 
     // Cannot plot if no gene is selected
-    if (!validateGeneSelected()){
+    if (!validateGeneSelected()) {
         document.getElementById("gene-s-failed").classList.remove("is-hidden");
         document.getElementById("gene-s-success").classList.add("is-hidden");
         document.getElementById("current-gene").textContent = "";
@@ -733,16 +748,18 @@ const chooseGene = () => {
         trigger(plotReqElt, "change");
     }
     document.getElementById("plot-options-s").click();
-}
+};
+curatorCommon.registerChooseGenes(chooseGene);
 
 /**
  * Applies color to an SVG chart based on the provided data and plot configuration.
  * @param {Object} chartData - The data used to color the chart.
+ * @param {string} datasetId - The ID of the dataset being visualized.
  * @param {Object} plotConfig - The configuration settings for the chart.
  */
-const colorSVG = (chartData, plotConfig) => {
+const colorSVG = (chartData, datasetId, plotConfig) => {
     // I found adding the mid color for the colorblind mode  skews the whole scheme towards the high color
-    const colorblindMode = CURRENT_USER.colorblind_mode;
+    const colorblindMode = getCurrentUser().colorblind_mode;
     const lowColor = colorblindMode ? 'rgb(254, 232, 56)' : plotConfig["low_color"];
     const midColor = colorblindMode ? null : plotConfig["mid_color"];
     const highColor = colorblindMode ? 'rgb(0, 34, 78)' : plotConfig["high_color"];
@@ -753,7 +770,7 @@ const colorSVG = (chartData, plotConfig) => {
     const NA_FIELD_COLOR = '#808080';
 
     //const scoreMethod = document.getElementById("scoring_method").value;
-    const score = chartData.scores["gene"]
+    const score = chartData.scores["gene"];
     const { min, max } = score;
     let color = null;
     // are we doing a three- or two-color gradient?
@@ -790,14 +807,14 @@ const colorSVG = (chartData, plotConfig) => {
     const snap = Snap(svg);
     const svg_path = `datasets_uploaded/${datasetId}.svg`;
     Snap.load(svg_path, async (path) => {
-        await snap.append(path)
+        await snap.append(path);
 
         snap.select("svg").attr({
             width: "100%",
         });
 
         // Fill in tissue classes with the expression colors
-        const {data: expression} = chartData;
+        const { data: expression } = chartData;
         const tissues = Object.keys(chartData.data);   // dataframe
         const paths = Snap.selectAll("path, circle");
 
@@ -816,7 +833,7 @@ const colorSVG = (chartData, plotConfig) => {
         // TODO: Potentially replicate some of the features in display.js like log-transforms and tooltips
     });
 
-}
+};
 
 /**
  * Creates an autocomplete instance.
@@ -826,7 +843,7 @@ const colorSVG = (chartData, plotConfig) => {
  * @returns {Object} - The created autocomplete instance.
  */
 const createAutocomplete = (selector, dataSource, otherAutocomplete) => {
-    const autoCompleteJS =  new autoComplete({
+    const autoCompleteJS = new autoComplete({
         linkedAutocomplete: otherAutocomplete,
         selector,
         placeHolder: "Enter a gene",
@@ -866,21 +883,27 @@ const createAutocomplete = (selector, dataSource, otherAutocomplete) => {
                     if (autoCompleteJS.linkedAutocomplete) {
                         autoCompleteJS.linkedAutocomplete.input.value = selection;
                     }
-                    selectedGene = selection;
-                    chooseGene();
+                    chooseGene(selection);
                 }
             }
         }
     });
-    return autoCompleteJS
-}
+    return autoCompleteJS;
+};
 
 /**
  * Creates a plot based on the specified plot type.
  * @param {string} plotType - The type of plot to create.
+ * @param {string} datasetId - The ID of the dataset.
  * @returns {Promise<void>} - A promise that resolves when the plot is created.
  */
-const curatorSpecifcCreatePlot = async (plotType) => {
+const curatorSpecifcCreatePlot = async (plotType, datasetId, analysisObj) => {
+
+    const plotStyle = curatorCommon.getPlotStyle();
+
+    // Add gene or genes to plot config
+    plotStyle.plotConfig["gene_symbol"] = selectedGene;
+
     // Call API route by plot type
     if (plotlyPlots.includes(plotType)) {
         await plotStyle.createPlot(datasetId, analysisObj);
@@ -891,11 +914,11 @@ const curatorSpecifcCreatePlot = async (plotType) => {
     } else if (plotType === "svg") {
         await plotStyle.createPlot(datasetId);
     } else {
-        console.warn(`Plot type ${plotType} selected for plotting is not a valid type.`)
+        console.warn(`Plot type ${plotType} selected for plotting is not a valid type.`);
         return;
     }
-
-}
+};
+curatorCommon.registerCuratorSpecifcCreatePlot(curatorSpecifcCreatePlot);
 
 /**
  * Callback function for curator specific dataset tree.
@@ -904,29 +927,17 @@ const curatorSpecifcCreatePlot = async (plotType) => {
 const curatorSpecifcDatasetTreeCallback = () => {
     document.getElementById("current-gene").textContent = "";
     document.getElementById("current-gene-post").textContent = "";
-}
-
-/**
- * Callback function for selecting a specific facet item in the curator.
- * @param {string} seriesName - The name of the series.
- */
-const curatorSpecifcFacetItemSelectCallback = (seriesName) => {
-    // Update the color picker in case some elements of the color series were filtered out
-    if(plotStyle.plotConfig?.color_name) {
-        renderColorPicker(plotStyle.plotConfig.color_name);
-    }
-}
+};
+curatorCommon.registerCuratorSpecifcDatasetTreeCallback(curatorSpecifcDatasetTreeCallback);
 
 /**
  * Updates the curator-specific navbar with the current page information.
  */
 const curatorSpecificNavbarUpdates = () => {
-	document.getElementById("page-header-label").textContent = "Single-gene Displays";
-}
+    document.getElementById("page-header-label").textContent = "Single-gene Displays";
+};
+curatorCommon.registerCuratorSpecificNavbarUpdates(curatorSpecificNavbarUpdates);
 
-const curatorSpecificOnLoad = async () => {
-    // pass
-}
 
 /**
  * Returns a specific plot style handler based on the given plot type.
@@ -944,7 +955,8 @@ const curatorSpecificPlotStyle = (plotType) => {
     } else {
         return null;
     }
-}
+};
+curatorCommon.registerCuratorSpecificPlotStyle(curatorSpecificPlotStyle);
 
 /**
  * Adjusts the plot type for the dataset curator.
@@ -959,8 +971,9 @@ const curatorSpecificPlotTypeAdjustments = (plotType) => {
     } else if (["tsne/umap_dynamic", "tsne_dynamic"].includes(plotType.toLowerCase())) {
         plotType = "tsne_dyna";
     }
-    return plotType
-}
+    return plotType;
+};
+curatorCommon.registerCuratorSpecificPlotTypeAdjustments(curatorSpecificPlotTypeAdjustments);
 
 /**
  * Updates the dataset genes for the curator.
@@ -985,7 +998,8 @@ const curatorSpecificUpdateDatasetGenes = (geneSymbols) => {
 
     // Set the otherAutocomplete reference for geneAutocomplete after genePostAutocomplete has been created
     geneAutocomplete.linkedAutocomplete = genePostAutocomplete;
-}
+};
+curatorCommon.registerCuratorSpecificUpdateDatasetGenes(curatorSpecificUpdateDatasetGenes);
 
 /**
  * Performs specific validation checks for the curator.
@@ -996,7 +1010,8 @@ const curatorSpecificValidationChecks = () => {
         return false;
     }
     return true;
-}
+};
+curatorCommon.registerCuratorSpecificValidationChecks(curatorSpecificValidationChecks);
 
 /**
  * Fetches Plotly data for a given dataset, analysis, plot type, and plot configuration.
@@ -1007,21 +1022,21 @@ const curatorSpecificValidationChecks = () => {
  * @returns {Promise<object>} - The fetched Plotly data.
  * @throws {Error} - If the data fetch fails or an error occurs.
  */
-const fetchPlotlyData = async (datasetId, analysis, plotType, plotConfig)  => {
+const fetchPlotlyData = async (datasetId, analysis, plotType, plotConfig) => {
     // NOTE: gene_symbol already passed to plotConfig
     try {
         const data = await apiCallsMixin.fetchPlotlyData(datasetId, analysis, plotType, plotConfig);
         if (data?.success < 1) {
-            throw new Error (data?.message ? data.message : "Unknown error.")
+            throw new Error(data?.message ? data.message : "Unknown error.");
         }
-        return data
+        return data;
     } catch (error) {
         logErrorInConsole(error);
-        const msg = "Could not create Plotly plot for this dataset and parameters. Please contact the gEAR team."
+        const msg = "Could not create Plotly plot for this dataset and parameters. Please contact the gEAR team.";
         createToast(msg);
         throw new Error(msg);
     }
-}
+};
 
 /**
  * Fetches SVG data for a given dataset and gene symbol.
@@ -1032,15 +1047,15 @@ const fetchPlotlyData = async (datasetId, analysis, plotType, plotConfig)  => {
  */
 const fetchSvgData = async (datasetId, plotConfig) => {
     try {
-        const {gene_symbol: geneSymbol} = plotConfig;
+        const { gene_symbol: geneSymbol } = plotConfig;
         const data = await apiCallsMixin.fetchSvgData(datasetId, geneSymbol);
         if (data?.success < 1) {
-            throw new Error (data?.message ? data.message : "Unknown error.")
+            throw new Error(data?.message ? data.message : "Unknown error.");
         }
-        return data
+        return data;
     } catch (error) {
         logErrorInConsole(error);
-        const msg = "Could not fetch SVG data for this dataset and parameters. Please contact the gEAR team."
+        const msg = "Could not fetch SVG data for this dataset and parameters. Please contact the gEAR team.";
         createToast(msg);
         throw new Error(msg);
     }
@@ -1061,86 +1076,30 @@ const fetchTsneImage = async (datasetId, analysis, plotType, plotConfig) => {
     try {
         const data = await apiCallsMixin.fetchTsneImage(datasetId, analysis, plotType, plotConfig);
         if (data?.success < 1) {
-            throw new Error (data?.message ? data.message : "Unknown error.")
+            throw new Error(data?.message ? data.message : "Unknown error.");
         }
         return data;
     } catch (error) {
         logErrorInConsole(error);
-        const msg = "Could not create plot image for this dataset and parameters. Please contact the gEAR team."
+        const msg = "Could not create plot image for this dataset and parameters. Please contact the gEAR team.";
         createToast(msg);
         throw new Error(msg);
     }
-}
-
-
-/**
- * Renders the color picker for a given series name.
- *
- * @param {string} seriesName - The name of the series.
- */
-const renderColorPicker = (seriesName) => {
-    const colorsContainer = document.getElementById("colors-container");
-    const colorsSection = document.getElementById("colors-section");
-
-    colorsSection.classList.add("is-hidden");
-    colorsContainer.replaceChildren();
-    if (!seriesName) {
-        return;
-    }
-
-    if (!(catColumns.includes(seriesName))) {
-        // ? Continuous series colorbar picker
-        return;
-    }
-
-    const seriesNameElt = document.createElement("p");
-    seriesNameElt.classList.add("has-text-weight-bold", "is-underlined");
-    seriesNameElt.textContent = seriesName;
-    colorsContainer.append(seriesNameElt);
-
-    // Otherwise d3 category10 colors
-    const swatchColors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"];
-
-    let counter = 0;
-    for (const group of levels[seriesName]) {
-        const darkerLevel = Math.floor(counter / 10);
-        const baseColor = swatchColors[counter%10];
-        const groupColor = darkerLevel > 0
-            ? d3.color(baseColor).darker(darkerLevel).formatHex()
-            : baseColor;    // Cycle through swatch but make darker if exceeding 10 groups
-        counter++;
-
-        const groupElt = document.createElement("p");
-        groupElt.classList.add("is-flex", "is-justify-content-space-between", "pr-3");
-
-        const groupText = document.createElement("span");
-        groupText.classList.add("has-text-weight-medium");
-        groupText.textContent = group;
-
-        const colorInput = document.createElement("input");
-        colorInput.classList.add("js-plot-color");
-        colorInput.id = `${group}-color`;
-        colorInput.type = "color";
-        colorInput.value = groupColor;
-        colorInput.setAttribute("aria-label", "Select a color");
-
-        groupElt.append(groupText, colorInput);
-        colorsContainer.append(groupElt);
-    }
-
-    colorsSection.classList.remove("is-hidden");
-}
+};
 
 /**
  * Sets up the options for Plotly.
+ * @param {string} datasetId - The ID of the dataset.
  * @returns {Promise<void>} A promise that resolves when the options are set up.
  */
-const setupPlotlyOptions = async () => {
-    const analysisId = getAnalysisId();
-    const plotType = getSelect2Value(plotTypeSelect);
+const setupPlotlyOptions = async (datasetId) => {
+    const analysisId = curatorCommon.getAnalysisId();
+    const plotType = curatorCommon.getSelect2Value(curatorCommon.getPlotTypeSelect());
+    let levels;
     try {
-        ({obs_columns: allColumns, obs_levels: levels} = await curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
+        ({ obs_columns: allColumns, obs_levels: levels } = await curatorCommon.curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
     } catch (error) {
+        console.error(error)
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
         return;
     }
@@ -1151,6 +1110,7 @@ const setupPlotlyOptions = async () => {
             delete levels[key];
         }
     }
+    curatorCommon.setLevels(levels);
 
     if (!allColumns.length) {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
@@ -1158,10 +1118,10 @@ const setupPlotlyOptions = async () => {
         return;
     }
 
-    catColumns = Object.keys(levels);
+    curatorCommon.setCatColumns(Object.keys(levels));
+    const catColumns = curatorCommon.getCatColumns();
 
-
-    const difference = (arr1, arr2) => arr1.filter(x => !arr2.includes(x))
+    const difference = (arr1, arr2) => arr1.filter(x => !arr2.includes(x));
     const continuousColumns = difference(allColumns, catColumns);
 
     const xColumns = ["bar", "violin"].includes(plotType) ? catColumns : allColumns;
@@ -1201,13 +1161,13 @@ const setupPlotlyOptions = async () => {
                     // categorical x-axis
                     for (const jitterElt of jitterElts) {
                         jitterElt.disabled = false;
-                        disableCheckboxLabel(jitterElt, false);
+                        curatorCommon.disableCheckboxLabel(jitterElt, false);
                     }
                 } else {
                     for (const jitterElt of jitterElts) {
                         jitterElt.disabled = true;
                         jitterElt.checked = false;
-                        disableCheckboxLabel(jitterElt, true);
+                        curatorCommon.disableCheckboxLabel(jitterElt, true);
                     }
 
                 }
@@ -1222,7 +1182,7 @@ const setupPlotlyOptions = async () => {
         // If x-axis is categorical, enable jitter plots
         for (const elt of xAxisSeriesElts) {
             elt.addEventListener("change", (event) => {
-                const vLinesContainer = document.getElementById("vlines-container")
+                const vLinesContainer = document.getElementById("vlines-container");
                 if ((catColumns.includes(event.target.value))) {
                     vLinesContainer.classList.add("is-hidden");
                     // Remove all but first existing vline
@@ -1251,13 +1211,13 @@ const setupPlotlyOptions = async () => {
             document.querySelector(".js-plotly-vline-field:last-of-type .js-plotly-vline-style-select").value = "solid";
             // NOTE: Currently if original is set before cloning, values are copied to clone
             document.getElementById("vline-remove-btn").disabled = false;
-        })
+        });
         document.getElementById("vline-remove-btn").addEventListener("click", (event) => {
             // Remove last vline
             const lastVLine = document.querySelector(".js-plotly-vline-field:last-of-type");
             lastVLine.remove();
             if (vLineField.length < 2) document.getElementById("vline-remove-btn").disabled = true;
-        })
+        });
     }
 
     // If color series is selected, let user choose colors.
@@ -1268,13 +1228,13 @@ const setupPlotlyOptions = async () => {
     for (const elt of colorSeriesElts) {
         elt.addEventListener("change", (event) => {
             if ((catColumns.includes(event.target.value))) {
-                renderColorPicker(event.target.value);
+                curatorCommon.renderColorPicker(event.target.value);
                 for (const paletteElt of [...colorPaletteElts, ...reversePaletteElts]) {
                     paletteElt.disabled = true;
                 }
                 for (const legendElt of hideLegend) {
                     legendElt.disabled = false;
-                    disableCheckboxLabel(legendElt, false);
+                    curatorCommon.disableCheckboxLabel(legendElt, false);
                 }
                 document.getElementById("color-palette-post").disabled = true;
             } else {
@@ -1291,11 +1251,11 @@ const setupPlotlyOptions = async () => {
                 for (const legendElt of hideLegend) {
                     legendElt.disabled = true;
                     legendElt.checked = false;
-                    disableCheckboxLabel(legendElt, true);
+                    curatorCommon.disableCheckboxLabel(legendElt, true);
                 }
                 document.getElementById("color-palette-post").disabled = false;
             }
-        })
+        });
     }
 
 
@@ -1306,7 +1266,7 @@ const setupPlotlyOptions = async () => {
             const paramId = event.target.id;
             const param = paramId.replace("-series", "").replace("-post", "");
             // NOTE: continuous series will be handled in the function
-            updateOrderSortable();
+            curatorCommon.updateOrderSortable();
         });
     }
 
@@ -1351,14 +1311,14 @@ const setupPlotlyOptions = async () => {
     if (xSeries.value) {
         // If value is categorical, disable min and max boundaries
         for (const elt of [...document.getElementsByClassName("js-plotly-x-min"), ...document.getElementsByClassName("js-plotly-x-max")]) {
-            elt.disabled = catColumns.includes(xSeries.value)
+            elt.disabled = catColumns.includes(xSeries.value);
         }
         trigger(xSeries, "change");
     }
     if (ySeries.value) {
         // If value is categorical, disable min and max boundaries
         for (const elt of [...document.getElementsByClassName("js-plotly-y-min"), ...document.getElementsByClassName("js-plotly-y-max")]) {
-            elt.disabled = catColumns.includes(ySeries.value)
+            elt.disabled = catColumns.includes(ySeries.value);
         }
         trigger(ySeries, "change");
     }
@@ -1368,7 +1328,7 @@ const setupPlotlyOptions = async () => {
     plotlyDropdown.addEventListener("click", (event) => {
         event.stopPropagation();    // This prevents the document from being clicked as well.
         plotlyDropdown.classList.toggle("is-active");
-    })
+    });
 
     // Close dropdown if it is clicked off of, or ESC is pressed
     // https://siongui.github.io/2018/01/19/bulma-dropdown-with-javascript/#footnote-1
@@ -1386,17 +1346,19 @@ const setupPlotlyOptions = async () => {
         item.addEventListener("click", showPostPlotlyParamSubsection);
     }
 
-}
+};
 
 /**
  * Sets up the options for Scanpy analysis.
+ * @param {string} datasetId - The ID of the dataset.
  * @returns {Promise<void>} A promise that resolves when the setup is complete.
  */
-const setupScanpyOptions = async () => {
-    const analysisId = getAnalysisId();
-    const plotType = getSelect2Value(plotTypeSelect);
+const setupScanpyOptions = async (datasetId) => {
+    const analysisId = curatorCommon.getAnalysisId();
+    const plotType = curatorCommon.getSelect2Value(curatorCommon.getPlotTypeSelect());
+    let levels
     try {
-        ({obs_columns: allColumns, obs_levels: levels} = await curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
+        ({ obs_columns: allColumns, obs_levels: levels } = await curatorCommon.curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
     } catch (error) {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
         return;
@@ -1409,6 +1371,7 @@ const setupScanpyOptions = async () => {
             delete levels[key];
         }
     }
+    curatorCommon.setLevels(levels);
 
     if (!allColumns.length) {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
@@ -1416,7 +1379,8 @@ const setupScanpyOptions = async () => {
         return;
     }
 
-    catColumns = Object.keys(levels);
+    curatorCommon.setCatColumns(Object.keys(levels));
+    const catColumns = curatorCommon.getCatColumns();
 
     let xDefaultOption = null;
     let yDefaultOption = null;
@@ -1457,16 +1421,14 @@ const setupScanpyOptions = async () => {
                 // So all dependencies need to be disabled.
                 if ((catColumns.includes(event.target.value))) {
                     targetElt.disabled = false;
-                    disableCheckboxLabel(targetElt, false);
+                    curatorCommon.disableCheckboxLabel(targetElt, false);
                 }
             }
 
             // The "max columns" parameter should only be disabled if the colorized legend is continuous
-            if (!(catColumns.includes(event.target.value))) {
-                for (const targetElt of maxColumns) {
-                    targetElt.disabled = true;
-                    disableCheckboxLabel(targetElt, true);
-                }
+            for (const targetElt of [...maxColumns]) {
+                targetElt.disabled = catColumns.includes(event.target.value) ? false : true;
+                curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
             }
         });
 
@@ -1474,7 +1436,7 @@ const setupScanpyOptions = async () => {
         elt.addEventListener("change", (event) => {
             // if series is empty or not categorical, remove color picker
             if ((catColumns.includes(event.target.value))) {
-                renderColorPicker(event.target.value);
+                curatorCommon.renderColorPicker(event.target.value);
                 return;
             }
             const colorsContainer = document.getElementById("colors-container");
@@ -1482,23 +1444,24 @@ const setupScanpyOptions = async () => {
             colorsSection.classList.add("is-hidden");
             colorsContainer.replaceChildren();
             return;
-        })
+        });
     }
 
     // Plotting by group plots gene expression, so cannot skip gene plots.
     for (const elt of plotBySeries) {
         elt.addEventListener("change", (event) => {
             // Must plot gene expression if series value selected
-            for (const targetElt of skipGenePlot) {
+            for (const targetElt of [...skipGenePlot]) {
                 targetElt.disabled = event.target.value ? true : false;
                 if (event.target.value) targetElt.checked = false;
-                disableCheckboxLabel(targetElt, targetElt.disabled);
+                curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
             }
             // Must be allowed to specify max columns if series value selected
-            for (const targetElt of maxColumns) {
+            for (const targetElt of [...maxColumns]) {
                 targetElt.disabled = event.target.value ? false : true;
+                curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
             }
-            updateOrderSortable();
+            curatorCommon.updateOrderSortable();
 
         });
     }
@@ -1562,12 +1525,12 @@ const setupScanpyOptions = async () => {
 
             for (const targetElt of [...reversePaletteElts, ...twoWayPaletteElts]) {
                 targetElt.checked = false;
-                disableCheckboxLabel(targetElt, targetElt.disabled);
+                curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
             }
         });
     }
 
-}
+};
 
 /**
  * Sets up SVG options for dataset curator.
@@ -1598,7 +1561,7 @@ const setupSVGOptions = () => {
     if (document.getElementById("high-color").value) {
         trigger(document.getElementById("high-color"), "change");
     }
-}
+};
 
 /**
  * Shows the corresponding subsection based on the selected option in the plot configuration menu.
@@ -1630,7 +1593,7 @@ const showPostPlotlyParamSubsection = (event) => {
             break;
     }
     event.preventDefault(); // Prevent "link" clicking from "a" elements
-}
+};
 
 /**
  * Updates the series options in a select element based on the provided parameters.
@@ -1680,7 +1643,7 @@ const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultO
                 option.textContent = `${group} (from selected analysis)`;
             }
             option.value = group;
-            if (catColumns.includes(group)) {
+            if (curatorCommon.getCatColumns().includes(group)) {
                 catOptgroup.append(option);
             } else {
                 contOptgroup.append(option);
@@ -1696,7 +1659,7 @@ const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultO
         if (catOptgroup.children.length) elt.append(catOptgroup);
 
     }
-}
+};
 
 /**
  * Validates the selected gene.
@@ -1705,4 +1668,7 @@ const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultO
  */
 const validateGeneSelected = () => {
     return (selectedGene ? true : false);
-}
+};
+
+// Pre-initialize some stuff
+await initCommonUI();

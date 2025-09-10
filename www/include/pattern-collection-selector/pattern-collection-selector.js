@@ -1,5 +1,7 @@
 "use strict";
 
+import { apiCallsMixin } from "../../js/common.v2.js?v=2860b88";
+
 // NOTE: This component depends on common.js and on Bulma CSS being imported in the parent HTML file
 
 // Terminology:
@@ -10,169 +12,190 @@ let patternsCartData = null;
 let flatPatternsCartData = null;
 let selectedPattern = {shareId: null, label: null, gctype: null, organismId: null, selectedWeights: []}; // This is used by the script that includes this file
 
-// Add event listener to dropdown trigger
-document.querySelector("#dropdown-pattern-lists > button.dropdown-trigger").addEventListener("click", (event) => {
-    const item = event.currentTarget;
-    // Close all other dropdowns
-    const dropdowns = document.querySelectorAll('.dropdown.is-active');
-    dropdowns.forEach((dropdown) => {
-        if (dropdown !== item.closest('.dropdown')) {
-            dropdown.classList.remove('is-active');
-        }
+export const getFlatPatternCartData = () => {
+    return flatPatternsCartData;
+}
+
+export const getSelectedPattern = () => {
+    return selectedPattern;
+}
+
+export const setSelectedPattern = (pattern) => {
+    selectedPattern = pattern;
+}
+
+// SAdkins - If I leave these global, then they are registered twice (once here and once in projection.js) leading to double event handling
+export const registerEventListeners = () => {
+    // Add event listener to dropdown trigger
+    document.querySelector("#dropdown-pattern-lists > button.dropdown-trigger").addEventListener("click", (event) => {
+        const item = event.currentTarget;
+        // Close all other dropdowns
+        const dropdowns = document.querySelectorAll('.dropdown.is-active');
+        dropdowns.forEach((dropdown) => {
+            if (dropdown !== item.closest('.dropdown')) {
+                dropdown.classList.remove('is-active');
+            }
+        });
+        item.closest(".dropdown").classList.toggle('is-active');
     });
-    item.closest(".dropdown").classList.toggle('is-active');
-});
 
-// Add event listeners to the pattern list category selectors
-const categorySelectors = document.querySelectorAll('#dropdown-content-pattern-list-category .ul-li');
-categorySelectors.forEach((element) => {
-    element.addEventListener('click', (event) => {
-        const category = event.target.dataset.category;
-        setActivePatternCartCategory(category);
+    // Add event listeners to the pattern list category selectors
+    const categorySelectors = document.querySelectorAll('#dropdown-content-pattern-list-category .ul-li');
+    categorySelectors.forEach((element) => {
+        element.addEventListener('click', (event) => {
+            const category = event.target.dataset.category;
+            setActivePatternCartCategory(category);
 
+            categorySelectors.forEach((element) => {
+                element.classList.remove('is-selected');
+                element.classList.add('is-clickable');
+            });
+
+            event.target.classList.add('is-selected');
+            event.target.classList.remove('is-clickable');
+        });
+    });
+
+    document.getElementById('dropdown-pattern-list-proceed').addEventListener('click', (event) => {
+        updatePatternListSelectorLabel();
+
+        // close the dropdown
+        document.getElementById('dropdown-pattern-lists').classList.remove('is-active');
+    });
+
+    // Add a click listener to the dropdown-pattern-list-cancel button
+    document.getElementById('dropdown-pattern-list-cancel').addEventListener('click', (event) => {
+        // clear pattern lists and pattern list areas
+        document.getElementById('dropdown-content-pattern-lists').innerHTML = '';
+        document.getElementById('dropdown-content-weights').innerHTML = '';
+
+        const categorySelectors = document.querySelectorAll('#dropdown-content-pattern-list-category .ul-li');
         categorySelectors.forEach((element) => {
             element.classList.remove('is-selected');
             element.classList.add('is-clickable');
         });
 
-        event.target.classList.add('is-selected');
-        event.target.classList.remove('is-clickable');
-    });
-});
+        // clear the patterns-manually-entered input element
+        document.getElementById('dropdown-pattern-list-search-input').value = '';
+        document.getElementById('dropdown-pattern-list-selector-label').innerHTML = 'Quick search using pattern lists';
 
-document.getElementById('dropdown-pattern-list-proceed').addEventListener('click', (event) => {
-    updatePatternListSelectorLabel();
-
-    // close the dropdown
-    document.getElementById('dropdown-pattern-lists').classList.remove('is-active');
-});
-
-// Add a click listener to the dropdown-pattern-list-cancel button
-document.getElementById('dropdown-pattern-list-cancel').addEventListener('click', (event) => {
-    // clear pattern lists and pattern list areas
-    document.getElementById('dropdown-content-pattern-lists').innerHTML = '';
-    document.getElementById('dropdown-content-weights').innerHTML = '';
-
-    const categorySelectors = document.querySelectorAll('#dropdown-content-pattern-list-category .ul-li');
-    categorySelectors.forEach((element) => {
-        element.classList.remove('is-selected');
-        element.classList.add('is-clickable');
+        // and finally the related pattern lists and patterns
+        // Doing it this way to not break the Proxy object on projection.js
+        selectedPattern.shareId = null;
+        selectedPattern.label = null;
+        selectedPattern.gctype = null;
+        selectedPattern.organismId = null;
+        selectedPattern.selectedWeights = [];
     });
 
-    // clear the patterns-manually-entered input element
-    document.getElementById('dropdown-pattern-list-search-input').value = '';
-    document.getElementById('dropdown-pattern-list-selector-label').innerHTML = 'Quick search using pattern lists';
+    // Monitor key strokes after user types more than 2 characters in the dropdown-pattern-list-search-input box
+    document.getElementById('dropdown-pattern-list-search-input').addEventListener('keyup', (event) => {
+        const searchTerm = event.target.value;
 
-    // and finally the related pattern lists and patterns
-    // Doing it this way to not break the Proxy object on projection.js
-    selectedPattern.shareId = null;
-    selectedPattern.label = null;
-    selectedPattern.gctype = null;
-    selectedPattern.organismId = null;
-    selectedPattern.selectedWeights = [];
-});
+        if (searchTerm.length === 0) {
+            // clear the gene list
+            document.getElementById('dropdown-content-pattern-lists').innerHTML = '';
+            document.getElementById('dropdown-content-weights').innerHTML = '';
+            return;
+        } else if (searchTerm.length <= 2) {
+            return;
+        }
 
-// Monitor key strokes after user types more than 2 characters in the dropdown-pattern-list-search-input box
-document.getElementById('dropdown-pattern-list-search-input').addEventListener('keyup', (event) => {
-    const search_term = event.target.value;
+        const categorySelectors = document.querySelectorAll('#dropdown-content-pattern-list-category .ul-li');
+        categorySelectors.forEach((element) => {
+            element.classList.remove('is-selected');
+            element.classList.add('is-clickable');
+        });
 
-    if (search_term.length === 0) {
-        // clear the gene list
         document.getElementById('dropdown-content-pattern-lists').innerHTML = '';
-        document.getElementById('dropdown-content-weights').innerHTML = '';
-        return;
-    } else if (search_term.length <= 2) {
-        return;
-    }
+        const patternListItemTemplate = document.getElementById('tmpl-pattern-list-item');
 
-    const categorySelectors = document.querySelectorAll('#dropdown-content-pattern-list-category .ul-li');
-    categorySelectors.forEach((element) => {
-        element.classList.remove('is-selected');
-        element.classList.add('is-clickable');
-    });
+        const listShareIdsFound = new Set();
 
-    document.getElementById('dropdown-content-pattern-lists').innerHTML = '';
-    const patternListItemTemplate = document.getElementById('tmpl-pattern-list-item');
+        for (const cartType in patternsCartData) {
+            for (const cart of patternsCartData[cartType]) {
+                if (listShareIdsFound.has(cart.share_id)) continue;  // Skip duplicates
+                if (cart.label.toLowerCase().includes(searchTerm.toLowerCase())) {
+                    const row = patternListItemTemplate.content.cloneNode(true);
+                    createPatternListItem(row, cart);
 
-    for (const cartType in patternsCartData) {
-        for (const cart of patternsCartData[cartType]) {
-            if (cart.label.toLowerCase().includes(search_term.toLowerCase())) {
-                const row = patternListItemTemplate.content.cloneNode(true);
-                createPatternListItem(row, cart);
+                    listShareIdsFound.add(cart.share_id);   // Keep track of duplicates
+                }
             }
         }
-    }
-});
+    });
 
-document.getElementById("dropdown-pattern-list-clear-weights").addEventListener("click", (event) => {
-    // uncheck all the existing rows
-    const rows = document.getElementsByClassName('dropdown-weight-item');
+    document.getElementById("dropdown-pattern-list-clear-weights").addEventListener("click", (event) => {
+        // uncheck all the existing rows
+        const rows = document.getElementsByClassName('dropdown-weight-item');
 
-    if (rows[0].classList.contains('is-disabled')) return;  // If there is only one weight, we can't clear it
+        if (rows[0].classList.contains('is-disabled')) return;  // If there is only one weight, we can't clear it
 
-    for (const row of rows ) {
-        row.classList.remove("is-selected");
-        row.querySelector(".mdi").classList.replace("mdi-check", "mdi-plus");
-    };
+        for (const row of rows ) {
+            row.classList.remove("is-selected");
+            row.querySelector(".mdi").classList.replace("mdi-check", "mdi-plus");
+        };
 
-    selectedPattern.selectedWeights = [];
-});
+        selectedPattern.selectedWeights = [];
+    });
 
-document.getElementById("dropdown-pattern-list-top5-weights").addEventListener("click", (event) => {
-    // Get the labels of the first 5 weights and select them
-    const rows = document.getElementsByClassName('dropdown-weight-item');
-    const labels = Array.from(rows).slice(0, 5).map((row) => row.dataset.label);
-    selectedPattern.selectedWeights = [];
+    document.getElementById("dropdown-pattern-list-top5-weights").addEventListener("click", (event) => {
+        // Get the labels of the first 5 weights and select them
+        const rows = document.getElementsByClassName('dropdown-weight-item');
+        const labels = Array.from(rows).slice(0, 5).map((row) => row.dataset.label);
+        selectedPattern.selectedWeights = [];
 
-    // Some labels may already be selected, so we need to clear them first
-    for (const row of rows ) {
-        row.classList.remove("is-selected");
-        row.querySelector(".mdi").classList.replace("mdi-check", "mdi-plus");
-    };
+        // Some labels may already be selected, so we need to clear them first
+        for (const row of rows ) {
+            row.classList.remove("is-selected");
+            row.querySelector(".mdi").classList.replace("mdi-check", "mdi-plus");
+        };
 
-    selectPatternWeights(labels);
+        selectPatternWeights(labels);
 
-});
-document.getElementById("dropdown-pattern-list-top10-weights").addEventListener("click", (event) => {
-    // Get the labels of the first 10 weights and select them
-    const rows = document.getElementsByClassName('dropdown-weight-item');
-    const labels = Array.from(rows).slice(0, 10).map((row) => row.dataset.label);
-    selectedPattern.selectedWeights = [];
+    });
+    document.getElementById("dropdown-pattern-list-top10-weights").addEventListener("click", (event) => {
+        // Get the labels of the first 10 weights and select them
+        const rows = document.getElementsByClassName('dropdown-weight-item');
+        const labels = Array.from(rows).slice(0, 10).map((row) => row.dataset.label);
+        selectedPattern.selectedWeights = [];
 
-    for (const row of rows ) {
-        row.classList.remove("is-selected");
-        row.querySelector(".mdi").classList.replace("mdi-check", "mdi-plus");
-    };
+        for (const row of rows ) {
+            row.classList.remove("is-selected");
+            row.querySelector(".mdi").classList.replace("mdi-check", "mdi-plus");
+        };
 
-    selectPatternWeights(labels);
-});
+        selectPatternWeights(labels);
+    });
 
-document.getElementById("dropdown-pattern-list-top20-weights").addEventListener("click", (event) => {
-    // Get the labels of the first 20 weights and select them
-    const rows = document.getElementsByClassName('dropdown-weight-item');
-    const labels = Array.from(rows).slice(0, 20).map((row) => row.dataset.label);
-    selectedPattern.selectedWeights = [];
+    document.getElementById("dropdown-pattern-list-top20-weights").addEventListener("click", (event) => {
+        // Get the labels of the first 20 weights and select them
+        const rows = document.getElementsByClassName('dropdown-weight-item');
+        const labels = Array.from(rows).slice(0, 20).map((row) => row.dataset.label);
+        selectedPattern.selectedWeights = [];
 
-    for (const row of rows ) {
-        row.classList.remove("is-selected");
-        row.querySelector(".mdi").classList.replace("mdi-check", "mdi-plus");
-    };
+        for (const row of rows ) {
+            row.classList.remove("is-selected");
+            row.querySelector(".mdi").classList.replace("mdi-check", "mdi-plus");
+        };
 
 
-    selectPatternWeights(labels);
-});
-document.getElementById("dropdown-pattern-list-all-weights").addEventListener("click", (event) => {
-    const rows = document.getElementsByClassName('dropdown-weight-item');
-    const labels = Array.from(rows).map((row) => row.dataset.label);
-    selectedPattern.selectedWeights = [];
+        selectPatternWeights(labels);
+    });
+    document.getElementById("dropdown-pattern-list-all-weights").addEventListener("click", (event) => {
+        const rows = document.getElementsByClassName('dropdown-weight-item');
+        const labels = Array.from(rows).map((row) => row.dataset.label);
+        selectedPattern.selectedWeights = [];
 
-    for (const row of rows ) {
-        row.classList.remove("is-selected");
-        row.querySelector(".mdi").classList.replace("mdi-check", "mdi-plus");
-    };
+        for (const row of rows ) {
+            row.classList.remove("is-selected");
+            row.querySelector(".mdi").classList.replace("mdi-check", "mdi-plus");
+        };
 
-    selectPatternWeights(labels);
-});
+        selectPatternWeights(labels);
+    });
+
+}
 
 
 const createPatternListItem = (item, cart) => {
@@ -261,7 +284,7 @@ const createPatternListItem = (item, cart) => {
  * @returns {Promise<void>} - A promise that resolves when the patterns data is fetched.
  * @throws {Error} - If an error occurs during the fetch.
  */
-const fetchPatternsData = async (shareId=null) => {
+export const fetchPatternsData = async (shareId=null) => {
     try {
         patternsCartData = await apiCallsMixin.fetchGeneCarts({gcShareId: shareId, includeMembers: false});
 
@@ -324,7 +347,8 @@ const setActivePatternCartCategory = (category) => {
  * Populates the weights dropdown with data fetched from the API.
  * @returns {Promise<void>} A promise that resolves once the weights dropdown is populated.
  */
-const populatePatternWeights = async () => {
+export const populatePatternWeights = async () => {
+
     // data is a list of weight and top/buttom genes (if weighted-list) and if binary weights
     const data = await apiCallsMixin.fetchPatternElementList(selectedPattern.shareId, selectedPattern.gctype)
 
@@ -427,7 +451,7 @@ const selectPatternList = (shareId) => {
     updatePatternListSelectorLabel();
 }
 
-const selectPatternWeights = (labels) => {
+export const selectPatternWeights = (labels) => {
 
     // uncheck all the existing rows
     const rows = document.getElementsByClassName('.dropdown-weight-item');

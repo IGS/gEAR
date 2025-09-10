@@ -4,6 +4,10 @@
 Sends email to user
 Scopes: 'forgot_password' or 'user_verification'
 
+How to test on the command line, example:
+
+./send_email.cgi 'email=jorvis@som.umaryland.edu&scope=user_verification&verification_code_long=foo-bar-long'
+
 """
 
 import cgi, json
@@ -38,8 +42,6 @@ def main():
     form = cgi.FieldStorage()
     email = form.getvalue('email')
     scope = form.getvalue('scope')
-
-    print(f"Got email ({email}) and scope ({scope})")
 
     #print("Got e-mail: {0}".format(email))
     #print("Got scope: {0}".format(scope))

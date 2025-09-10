@@ -7,6 +7,11 @@
 
 div#pattern-result-list-c {
     border-right: 1px solid #e9eef1;
+    position: sticky;
+    top: 0;
+    align-self: flex-start; /* doesn't seem to do anything */
+    height:100vh;
+    overflow-y: auto;   /* scroll if too long */
 }
 div#pattern-result-list-c h3 {
     font-weight: bold;
@@ -14,7 +19,6 @@ div#pattern-result-list-c h3 {
 }
 div#results-main-c {
     border-top: 1px solid rgb(220, 220, 220);
-    margin-top: 50px;
 }
 
 #results-main-c, #annotation-and-grid-c {
@@ -28,20 +32,6 @@ div#results-main-c {
     width: 100%;
 }
 
-#result-panel-grid {
-    min-width: 1168px;
-}
-
-
-div#result-panel-grid .card {
-    /* https://github.com/jgthms/bulma/issues/218 */
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-}
-div#result-panel-grid .card-content {
-    height: 100%;
-}
 section#result-panel {
     background-color: #fbfcfd;
     border: 1px solid #e9eef1;
@@ -137,12 +127,4 @@ ul#go-terms li {
 
 .js-choose-display-modal .modal-content {
     width: 70%; /* make wider, which makes preview images larger */
-}
-
-#pattern-result-list-c {
-    position: sticky;
-    top: 0;
-    align-self: flex-start; /* doesn't seem to do anything */
-    height:100vh;
-    overflow-y: auto;   /* scroll if too long */
 }

@@ -1,7 +1,7 @@
 
 // Class for the faceted search widget
 // SAdkins - I let Github Copilot write this class for me (with minor adjustments)
-class FacetWidget {
+export class FacetWidget {
     constructor({aggregations, filters, onFilterChange, facetContainer, selectedFacetsTags, filterHeaderExtraClasses}) {
         this.origAggregations = aggregations || []; // Original aggregations from the server
         this.aggregations = aggregations || {}; // Counts of all categories (filter)

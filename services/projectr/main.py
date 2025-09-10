@@ -22,7 +22,6 @@ if debug_str.lower() == "true":
 
 app = Flask(__name__)
 
-
 # create a 4-character random string
 def random_string(length: int = 4) -> str:
     import random
@@ -31,6 +30,10 @@ def random_string(length: int = 4) -> str:
     return "".join(random.choices(string.ascii_letters + string.digits, k=length))
 
 identifier = random_string(4)
+def set_identifier(new_id: str) -> None:
+    """Set the identifier for log entries."""
+    global identifier
+    identifier = new_id
 
 def write_entry(logger_name: str, severity: str, message: str) -> None:
     """Writes log entries to the given logger."""
@@ -97,9 +100,13 @@ def index() -> Response:
     target = req_json["target"]
     loadings = req_json["loadings"]
     algorithm = req_json["algorithm"]
-    genecart_id = req_json["genecart_id"]
-    dataset_id = req_json["dataset_id"]
+    projection_id = req_json["projection_id"]
+    chunk_idx = req_json.get("chunk_idx", "")
     full_output = req_json.get("full_output", False)
+
+    # Use the projection_id as the identifier for logging
+    identifier = "{}.{}".format(projection_id, chunk_idx) if chunk_idx else projection_id
+    set_identifier(identifier)
 
     global cloud_logging
     try:
@@ -112,10 +119,8 @@ def index() -> Response:
         write_entry("projectr", "DEBUG", "Falling back to stderr logging.")
 
     # Print the request payload to stderr
-    write_entry("projectr", "DEBUG", "Genecart ID: {}".format(genecart_id))
-    write_entry("projectr", "DEBUG", "Dataset ID: {}".format(dataset_id))
-    write_entry("projectr", "DEBUG", "Algorithm: {}".format(algorithm))
-    write_entry("projectr", "DEBUG", "Full output: {}".format(full_output))
+    #write_entry("projectr", "DEBUG", "Algorithm: {}".format(algorithm))
+    #write_entry("projectr", "DEBUG", "Full output: {}".format(full_output))
 
 
     # pd.read_json gives a FutureWarning, and suggest to wrap the json in StringIO.  Needed for pandas 2.x
@@ -167,6 +172,8 @@ def index() -> Response:
             # "projection" is a DataFrame (index 0)
             # "pval" is a matrix (index 1)
 
+            # ! Bug where if column has a period, it is mis-interpreted downstream (an R thing) leading to NaN
+
             projection_patterns = run_projectR_cmd(
                 target_df, loading_df, algorithm, full_output
             )
@@ -199,6 +206,8 @@ def index() -> Response:
         "projection": response["projection"].to_json(orient="split"),
         "pval": response["pval"].to_json(orient="split"),
     }
+
+    write_entry("projectr", "INFO", "Completed projection successfully.")
 
     return jsonify(response_json)
 

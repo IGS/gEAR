@@ -18,14 +18,14 @@
           -->
         <base href="/" />
 
-        <link rel="stylesheet" href="css/gear-theme-purple.css" />
+        <link rel="stylesheet" href="css/gear-theme-purple.css?v=2860b88" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
 
         <!-- Autocomplete -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/css/autoComplete.02.min.css">
 
         <!-- Fancy animation effects -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css""/>
 
         <!-- Fancy select elements -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nice-select2@2.1.0/dist/css/nice-select2.min.css">
@@ -34,14 +34,13 @@
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.0/font/bootstrap-icons.css">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mar10/wunderbaum@v0.10.0/dist/wunderbaum.css">
 
-        <!-- Ensures we always get a new version (during our current active development cycles) -->
-        <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
+        <link rel="stylesheet" href="css/common.v2.css?v=2860b88" />
 
         <!-- Common functions for curator pages -->
-        <script>document.write('<link rel="stylesheet" href="css/curator_common.' + (new Date()).getTime() + '.css" />');</script>
+        <link rel="stylesheet" href="css/curator_common.css?v=2860b88" />
 
         <!--Page-specific CSS here -->
-            <script>document.write('<link rel="stylesheet" href="css/dataset_curator.' + (new Date()).getTime() + '.css" />');</script>
+        <link rel="stylesheet" href="css/dataset_curator.css?v=2860b88" />
     </head>
 
 <body>
@@ -436,25 +435,13 @@
   <!-- Promise based HTTP client for the browser  -->
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
-  <script src="js/vendor/js.cookie.js"></script>
-  <script src="js/vendor/snap.svg-min.js"></script>
+  <script src="js/vendor/js.cookie.js?v=2860b88"></script>
+  <script src="js/vendor/snap.svg-min.js?v=2860b88"></script>
   <script src="https://d3js.org/d3.v5.min.js"></script>
   <script src="https://cdn.plot.ly/plotly-2.26.0.min.js" charset="utf-8"></script>
 
-  <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-  <script>document.write('<script src="js/classes/facets.' + (new Date()).getTime() + '.js"><\/script>');</script>
-  <script>document.write('<script src="js/classes/tree.' + (new Date()).getTime() + '.js"><\/script>');</script>
-  <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
-  <script>document.write('<script src="js/plot_display_config.' + (new Date()).getTime() + '.js"><\/script>');</script>
-
-  <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-  <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
-
-  <!-- Common functions for curator pages -->
-  <script>document.write('<script src="js/curator_common.' + (new Date()).getTime() + '.js"><\/script>');</script>
-
   <!-- Page-specific JS file here -->
-  <script>document.write('<script src="js/dataset_curator.' + (new Date()).getTime() + '.js"><\/script>');</script>
+  <script type="module" src="js/dataset_curator.js?v=2860b88"></script>
 
 
     <!-- Global site tag (gtag.js) - Google Analytics -->

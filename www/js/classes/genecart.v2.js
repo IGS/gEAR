@@ -1,6 +1,8 @@
 "use strict";
 
-class GeneCart {
+import { convertToFormData } from "../common.v2.js?v=2860b88";
+
+export class GeneCart {
     constructor ({id, session_id, label, organism_id, share_id, is_public, is_domain,
                   genes = [], gctype, ldesc} = {}) {
         this.id = id;
@@ -22,11 +24,19 @@ class GeneCart {
         */
 
         try {
-            const {data} = await axios.post("./cgi/save_new_genecart_json.cgi", this);
+            const response = await axios.post("./cgi/save_new_genecart_json.cgi", this);
+            const {data} = response;
             this.id = data.id
             if (callback) callback(this);
         } catch (error) {
-            const msg = error?.message || "Something went wrong saving genecart to database."
+            let msg;
+            if (error.response?.data) {
+                msg = typeof error.response.data === 'string'
+                    ? error.response.data
+                    : (error.response.data.message || JSON.stringify(error.response.data));
+            } else {
+                msg = error?.message || "Something went wrong saving genecart to database.";
+            }
             console.error(msg);
             if (errCallback) {
                 errCallback(this, msg);
@@ -52,12 +62,20 @@ class GeneCart {
                 formData.append("new_cart_file", payload.new_cart_file);
             }
 
-            const {data} = await axios.post("./cgi/save_new_genecart_form.cgi", formData);
+            const response = await axios.post("./cgi/save_new_genecart_form.cgi", formData);
+            const {data} = response;
 
             this.id = data.id
             if (callback) callback(this);
         } catch (error) {
-            const msg = error?.message || "Something went wrong saving genecart to database."
+            let msg;
+            if (error.response?.data) {
+                msg = typeof error.response.data === 'string'
+                    ? error.response.data
+                    : (error.response.data.message || JSON.stringify(error.response.data));
+            } else {
+                msg = error?.message || "Something went wrong saving genecart to database.";
+            }
             console.error(msg);
             if (errCallback) {
                 errCallback(this, msg);
@@ -70,7 +88,7 @@ class GeneCart {
         this.genes.push(gene)
     }
 
-    async save(callback=null, errCallback=null) {
+    async save(callback=()=>{}, errCallback=()=>{}) {
         /*
         If the 'id' is empty, it's assumed to be new, so an INSERT is
         performed.  Otherwise, if ID is populated this does an
@@ -92,7 +110,7 @@ class GeneCart {
     }
 }
 
-class WeightedGeneCart extends GeneCart {
+export class WeightedGeneCart extends GeneCart {
     constructor ({...args} = {}, weightLabels) {
         super(args);
         this.weight_labels = weightLabels || [];

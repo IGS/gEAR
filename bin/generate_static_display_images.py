@@ -158,6 +158,9 @@ def main():
                 elif props["plot_type"].lower() in ["tsne_static", "umap_static", "pca_static", "tsne"]:
                     url += "/tsne"
                     success = make_static_tsne_graph(filename, config, url)
+                elif props["plot_type"].lower() in ["mg_tsne_static", "mg_umap_static", "mg_pca_static"]:
+                    url += "/mg_tsne"
+                    success = make_static_tsne_graph(filename, config, url)
                 # SVG (todo later)
                 elif props["plot_type"].lower() in ["svg"]:
                     url += "/svg"

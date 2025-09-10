@@ -1,26 +1,93 @@
 'use strict';
 
+import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates, trigger } from "./common.v2.js?v=2860b88";
+import { availablePalettes, plotly2MatplotlibNames } from "./plot_display_config.js?v=2860b88";
+import { FacetWidget } from "./classes/facets.js?v=2860b88";
+import { DatasetTree } from "./classes/tree.js?v=2860b88";
+
+let isMultigene;
+const setIsMultigene = (val) => { isMultigene = val; }
+
+let chooseGenes;
+const registerChooseGenes = (fn) => {
+    chooseGenes = fn;
+}
+
+// If a page wants to use this action, it can register a callback function
+let curatorSpecifcCreatePlot = () => {};
+const registerCuratorSpecifcCreatePlot = (fn) => {
+    curatorSpecifcCreatePlot = fn;
+}
+
+let curatorSpecifcDatasetTreeCallback = () => {};
+const registerCuratorSpecifcDatasetTreeCallback = (fn) => {
+    curatorSpecifcDatasetTreeCallback = fn;
+}
+
+let curatorSpecificNavbarUpdates = () => {};
+const registerCuratorSpecificNavbarUpdates = (fn) => {
+    curatorSpecificNavbarUpdates = fn;
+}
+
+let curatorSpecificOnLoad = () => {};
+const registerCuratorSpecificOnLoad = (fn) => {
+    curatorSpecificOnLoad = fn;
+}
+
+let curatorSpecificPlotStyle = () => {};
+const registerCuratorSpecificPlotStyle = (fn) => {
+    curatorSpecificPlotStyle = fn;
+}
+
+let curatorSpecificPlotTypeAdjustments = () => {};
+const registerCuratorSpecificPlotTypeAdjustments = (fn) => {
+    curatorSpecificPlotTypeAdjustments = fn;
+}
+
+let curatorSpecificUpdateDatasetGenes = () => {};
+const registerCuratorSpecificUpdateDatasetGenes = (fn) => {
+    curatorSpecificUpdateDatasetGenes = fn;
+}
+
+let curatorSpecificValidationChecks = () => {};
+const registerCuratorSpecificValidationChecks = (fn) => {
+    curatorSpecificValidationChecks = fn;
+}
+
 /* These are functions that are common to the "curator" pages, (i.e. single-gene, multi-gene) */
 
 let plotStyle;  // Plot style object
+const getPlotStyle = () => {
+    return plotStyle;
+}
 
 let facetWidget = null;
+const getFacetWidget = () => facetWidget;
 
 //let plotConfig = {};  // Plot config that is passed to API or stored in DB
-let allColumns = [];
 let catColumns = [];
+const getCatColumns = () => catColumns;
+const setCatColumns = (catCols) => { catColumns = catCols; }
+
 let levels = {};    // categorical columns as keys + groups as values
+const getLevels = () => levels;
+const setLevels = (newLevels) => { levels = newLevels; }
 
-let datasetId = null;
-let chosenDisplayId = null;
 let organismId = null;
-let analysisObj = null;
+const getOrganismId = () => organismId;
 
-let analysisSelect = null;
 let plotTypeSelect = null;
+const getPlotTypeSelect = () => plotTypeSelect;
 
 // Relates to https://github.com/IGS/gEAR/issues/923
 let sortOrderChanged = false; // Flag to indicate if the sort order has changed
+const getSortOrderChanged = () => sortOrderChanged;
+
+// Not exported to dataset/multigene_curator
+let datasetId = null;
+let chosenDisplayId = null;
+let analysisSelect = null;
+let analysisObj = null;
 
 /*
 ! Quick note -
@@ -205,14 +272,20 @@ const curatorApiCallsMixin = {
         }
     },
 
+
     /**
-     * Fetches datasets.
+     * Fetches all datasets associated with the given share ID.
+     * Handles errors by logging them, displaying a toast notification,
+     * and throwing a new error with a user-friendly message.
+     *
+     * @async
+     * @param {string} shareId - The identifier for the shared datasets to fetch.
      * @returns {Promise<any>} A promise that resolves with the fetched datasets.
-     * @throws {Error} If the datasets cannot be fetched.
+     * @throws {Error} Throws an error if the datasets could not be fetched.
      */
-    async fetchAllDatasets() {
+    async fetchAllDatasets(shareId) {
         try {
-            return await super.fetchAllDatasets();
+            return await super.fetchAllDatasets(shareId);
         } catch (error) {
             logErrorInConsole(error);
             const msg = "Could not fetch datasets. Please contact the gEAR team."
@@ -476,6 +549,54 @@ const datasetTree = new DatasetTree({
 });
 
 /**
+ * Activates a dataset in the dataset tree based on a URL parameter.
+ *
+ * This function checks if the specified URL parameter exists, optionally fetches additional
+ * dataset information using a provided function, and then activates the corresponding dataset
+ * node in the dataset tree. If the dataset cannot be found or accessed, a toast notification
+ * is displayed and an error is thrown.
+ *
+ * @async
+ * @param {string} paramName - The name of the URL parameter to look for.
+ * @param {function} [fetchInfoFn] - Optional async function to fetch dataset info using the parameter value.
+ *        Should return a Promise that resolves to an array of objects containing a `dataset_id` property.
+ * @throws {Error} If the dataset cannot be accessed or found in the dataset tree.
+ */
+const activateDatasetFromParam = async (paramName, fetchInfoFn) => {
+    if (!urlParams.has(paramName)) {
+        return;
+    }
+    const paramValue = urlParams.get(paramName);
+    let linkedDatasetId;
+    try {
+        if (fetchInfoFn) {
+            const data = await fetchInfoFn(paramValue);
+            linkedDatasetId = data.datasets[0].id;
+            if (!linkedDatasetId) {
+                throw new Error(`Accessible dataset for ${paramName} ${paramValue} was not found`);
+            }
+        } else {
+            linkedDatasetId = paramValue;
+        }
+    } catch (error) {
+        createToast(error.message);
+        throw new Error(error);
+    }
+
+    try {
+        // find DatasetTree node and trigger "activate"
+        const foundNode = datasetTree.findFirst(e => e.data.dataset_id === linkedDatasetId);
+        foundNode.setActive(true, {focusTree:true});
+        datasetTree.tree.setActiveNode(foundNode);
+        datasetTree.selectCallback({node: foundNode});  // manually trigger the "activate" event.
+        datasetId = linkedDatasetId;
+    } catch (error) {
+        createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset`);
+        throw new Error(error);
+    }
+}
+
+/**
  * Updates the analysis select options based on the fetched public and private analyses.
  * @returns {Promise<void>} A promise that resolves when the analysis select options are updated.
  */
@@ -671,6 +792,7 @@ const cloneDisplay = async (event, display, scope="owner") => {
         const availablePlotTypes = await curatorApiCallsMixin.fetchAvailablePlotTypes(datasetId, analysisObj?.id, isMultigene);
         for (const plotType in availablePlotTypes) {
             const isAllowed = availablePlotTypes[plotType];
+
             setPlotTypeDisabledState(plotType, isAllowed);
         }
 
@@ -679,6 +801,7 @@ const cloneDisplay = async (event, display, scope="owner") => {
         await choosePlotType();
         // In this step, a PlotStyle object is instantiated onto "plotStyle", and we will use that
     } catch (error) {
+        console.error(error);
         document.getElementById("plot-type-s-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-select-c-failed").classList.remove("is-hidden");
         document.getElementById("plot-type-s-success").classList.add("is-hidden");
@@ -690,21 +813,10 @@ const cloneDisplay = async (event, display, scope="owner") => {
         cloneElt.classList.remove("is-loading");
     }
 
+    const geneInput = isMultigene ? config.gene_symbols : config.gene_symbol;
+
     // Choose gene from config
-    if (isMultigene) {
-        manuallyEnteredGenes = new Set(config.gene_symbols);
-        selected_genes = manuallyEnteredGenes;
-        const geneSymbolString = config.gene_symbols.join(" ");
-        document.getElementById('genes-manually-entered').value = geneSymbolString;
-        // Mostly need this to populate the current gene(s) in the display contaainer
-        chooseGenes();
-    } else {
-        selectedGene = config.gene_symbol;
-        // Mostly need this to populate the current gene(s) in the display contaainer
-        chooseGene();
-    }
-
-
+    chooseGenes(geneInput)
 
     try {
         plotStyle.cloneDisplay(config);
@@ -777,7 +889,7 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
     let totalCount = 0;
 
     try {
-        ({aggregations, total_count:totalCount} = await curatorApiCallsMixin.fetchAggregations(datasetId, analysisId, filters));
+        ({aggregations, total_count: totalCount} = await curatorApiCallsMixin.fetchAggregations(datasetId, analysisId, filters));
 
     } catch (error) {
         logErrorInConsole(error);
@@ -825,7 +937,11 @@ const createFacetWidget = async (datasetId, analysisId, filters) => {
             // Sortable lists need to reflect groups filtered out or unfiltered
             updateOrderSortable();
 
-            curatorSpecifcFacetItemSelectCallback(seriesName);
+            // Update the color picker in case some elements of the color series were filtered out
+            if(plotStyle.plotConfig?.color_name) {
+                renderColorPicker(plotStyle.plotConfig.color_name);
+            }
+
         }
     });
     document.getElementById("selected-facets-loader").classList.add("is-hidden")
@@ -847,7 +963,7 @@ const createPlotTypeSelectInstance = (idSelector, plotTypeSelect=null) => {
 
     // Initialize fixed plot types
     return NiceSelect.bind(document.getElementById(idSelector), {
-        placeholder: 'Choose how to plot',
+        placeholder: 'Select plot type',
         minimumResultsForSearch: -1
     });
 }
@@ -860,30 +976,17 @@ const createPlotTypeSelectInstance = (idSelector, plotTypeSelect=null) => {
 const createPlot = async (event) => {
 
     const plotType = getSelect2Value(plotTypeSelect);
-
     const plotBtns = document.getElementsByClassName("js-plot-btn");
 
     // Set loading
-    for (const plotBtn of plotBtns) {
-        plotBtn.classList.add("is-loading");
-    }
+	event.target.classList.add("is-loading");
 
     plotStyle.populatePlotConfig();
 
-    // Add gene or genes to plot config
-    if (isMultigene) {
-        plotStyle.plotConfig["gene_symbols"] = Array.from(selected_genes);
-    } else {
-        plotStyle.plotConfig["gene_symbol"] = selectedGene
-    }
-
-    await curatorSpecifcCreatePlot(plotType);
-
+    await curatorSpecifcCreatePlot(plotType, datasetId, analysisObj);
 
     // Stop loader
-    for (const plotBtn of plotBtns) {
-        plotBtn.classList.remove("is-loading");
-    }
+	event.target.classList.add("is-loading");
 
     // Hide this view
     document.getElementById("content-c").classList.add("is-hidden");
@@ -1017,7 +1120,6 @@ const includePlotParamOptions = async () => {
     }
     document.getElementById("plot-type-s-failed").classList.add("is-hidden");
 
-
     // NOTE: Changing plots within the same plot style will clear the plot config as fresh templates are loaded
     await plotStyle.loadPlotHtml();
 
@@ -1030,7 +1132,7 @@ const includePlotParamOptions = async () => {
     }
     plotStyle.setupParamValueCopyEvent();   // handle some copy events that could not be handled in the loop above
     setupValidationEvents();        // Set up validation events required to plot at a minimum
-    await plotStyle.setupPlotSpecificEvents()       // Set up plot-specific events
+    await plotStyle.setupPlotSpecificEvents(datasetId)       // Set up plot-specific events
 
 }
 
@@ -1094,12 +1196,12 @@ const loadColorscaleSelect = (isContinuous=false, isScanpy=false) => {
  * Generates the dataset tree using the generateTree method of the datasetTree object.
  * @throws {Error} If there is an error fetching the dataset information.
  */
-const loadDatasetTree = async () => {
+const loadDatasetTree = async (shareId) => {
     const userDatasets = [];
     const sharedDatasets = [];
     const domainDatasets = [];
     try {
-        const datasetData = await curatorApiCallsMixin.fetchAllDatasets();
+        const datasetData = await curatorApiCallsMixin.fetchAllDatasets(shareId);
 
         let counter = 0;
 
@@ -1176,6 +1278,64 @@ const plotTypeSelectUpdate = async (analysisId=null) => {
 }
 
 /**
+ * Renders the color picker for a given series name.
+ *
+ * @param {string} seriesName - The name of the series.
+ */
+const renderColorPicker = (seriesName) => {
+    const colorsContainer = document.getElementById("colors-container");
+    const colorsSection = document.getElementById("colors-section");
+
+    colorsSection.classList.add("is-hidden");
+    colorsContainer.replaceChildren();
+    if (!seriesName) {
+        return;
+    }
+
+    if (!(catColumns.includes(seriesName))) {
+        // ? Continuous series colorbar picker
+        return;
+    }
+
+    const seriesNameElt = document.createElement("p");
+    seriesNameElt.classList.add("has-text-weight-bold", "is-underlined");
+    seriesNameElt.textContent = seriesName;
+    colorsContainer.append(seriesNameElt);
+
+    // Otherwise d3 category10 colors
+    const swatchColors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"];
+
+    let counter = 0;
+    for (const group of levels[seriesName]) {
+        const darkerLevel = Math.floor(counter / 10);
+        const baseColor = swatchColors[counter%10];
+        const groupColor = darkerLevel > 0
+            ? d3.color(baseColor).darker(darkerLevel).formatHex()
+            : baseColor;    // Cycle through swatch but make darker if exceeding 10 groups
+        counter++;
+
+        const groupElt = document.createElement("p");
+        groupElt.classList.add("is-flex", "is-justify-content-space-between", "pr-3");
+
+        const groupText = document.createElement("span");
+        groupText.classList.add("has-text-weight-medium");
+        groupText.textContent = group;
+
+        const colorInput = document.createElement("input");
+        colorInput.classList.add("js-plot-color");
+        colorInput.id = `${group}-color`;
+        colorInput.type = "color";
+        colorInput.value = groupColor;
+        colorInput.setAttribute("aria-label", "Select a color");
+
+        groupElt.append(groupText, colorInput);
+        colorsContainer.append(groupElt);
+    }
+
+    colorsSection.classList.remove("is-hidden");
+}
+
+/**
  * Renders display cards for user and owner displays.
  *
  * @param {Array} userDisplays - The array of user displays.
@@ -1229,7 +1389,7 @@ const renderOrderSortableSeries = (series) => {
     if (!catColumns.includes(series)) return;
 
     // Start with a fresh template
-    const orderElt = document.getElementById(`${series}-order`);
+    const orderElt = document.getElementById(`${CSS.escape(series)}-order`);
     if (orderElt) {
         orderElt.remove();
     }
@@ -1255,7 +1415,7 @@ const renderOrderSortableSeries = (series) => {
         const listElt = document.createElement("li");
         listElt.classList.add("has-background-grey-lighter", "has-text-dark");
         listElt.textContent = group;
-        document.getElementById(`${series}-order-list`).append(listElt);
+        document.getElementById(`${CSS.escape(series)}-order-list`).append(listElt);
     }
 
     // Create sortable for this series
@@ -1415,7 +1575,7 @@ const setPlotTypeDisabledState = (plotType, isAllowed) => {
         document.getElementById("tsne-dyna-opt").disabled = !isAllowed;
     } else {
         // replace _ with - for id
-        const fixedPlotType = plotType.replace("_", "-");
+        const fixedPlotType = plotType.replaceAll("_", "-");
         document.getElementById(`${fixedPlotType}-opt`).disabled = !isAllowed;
     }
 }
@@ -1548,7 +1708,6 @@ const updateDatasetGenes = async (analysisId=null) => {
  * Updates the sortable order of plot param series based on the current selection.
  */
 const updateOrderSortable = () => {
-
     // This function will reset the sortables.
     sortOrderChanged = false;
 
@@ -1583,7 +1742,7 @@ const updateOrderSortable = () => {
     for (const series of sortableSet) {
         // Series is in sortableSet but not seriesSet, remove <series>-order element
         if (!seriesSet.has(series)) {
-            const orderElt = document.getElementById(`${series}-order`);
+            const orderElt = document.getElementById(`${CSS.escape(series)}-order`);
             orderElt.remove();
         }
 
@@ -1665,7 +1824,10 @@ document.getElementById("plot-type-select").addEventListener("change", async (ev
 
 const plotBtns = document.getElementsByClassName("js-plot-btn");
 for (const plotBtn of plotBtns) {
-    plotBtn.addEventListener("click", createPlot);
+    plotBtn.addEventListener("click", async (event) => {
+        await createPlot(event);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    });
 }
 
 document.getElementById("save-json-config").addEventListener("click", () => {
@@ -1758,29 +1920,28 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     curatorSpecificNavbarUpdates();
 
-    const sessionId = CURRENT_USER.session_id;
+    const sessionId = getCurrentUser().session_id;
     if (! sessionId ) {
         createToast("Not logged in so saving displays is disabled.", "is-warning");
         document.getElementById("save-display-btn").disabled = true;
     }
 
 	try {
-		await loadDatasetTree()
         // If brought here by the "gene search results" page, curate on the dataset ID that referred us
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has("dataset_id")) {
-            const linkedDatasetId = urlParams.get("dataset_id");
-            try {
-                // find DatasetTree node and trigger "activate"
-                const foundNode = datasetTree.findFirst(e => e.data.dataset_id === linkedDatasetId);
-                foundNode.setActive(true);
-                datasetTree.tree.setActiveNode(foundNode);
-                datasetTree.selectCallback({node: foundNode});  // manually trigger the "activate" event.
-                datasetId = linkedDatasetId;
-            } catch (error) {
-                createToast(`Dataset id ${linkedDatasetId} was not found as a public/private/shared dataset`);
-                throw new Error(error);
-            }
+        const shareId = urlParams.get("share_id");
+
+		await loadDatasetTree(shareId);
+
+        // Usage inside handlePageSpecificLoginUIUpdates
+        if (urlParams.has("share_id")) {
+            return await activateDatasetFromParam("share_id", async (shareId) =>
+                await apiCallsMixin.fetchDatasetListInfo({permalink_share_id: shareId})
+            );
+        } else if (urlParams.has("dataset_id")) {
+    		// Legacy support for dataset_id
+
+            await activateDatasetFromParam("dataset_id");
         }
 	} catch (error) {
 		logErrorInConsole(error);
@@ -1790,3 +1951,44 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     curatorSpecificOnLoad();
 
 };
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
+
+// Barrel export: group all exports under a single object for easier import
+const curatorCommon = {
+    curatorApiCallsMixin,
+    disableCheckboxLabel,
+    getAnalysisId,
+    getCatColumns,
+    getFacetWidget,
+    getLevels,
+    getOrganismId,
+    getPlotConfigValueFromClassName,
+    getPlotOrderFromSortable,
+    getPlotStyle,
+    getPlotTypeSelect,
+    getPlotlyDisplayUpdates,
+    getSelect2Value,
+    getSortOrderChanged,
+    includeHtml,
+    loadColorscaleSelect,
+    PlotHandler,
+    registerCuratorSpecifcCreatePlot,
+    registerCuratorSpecifcDatasetTreeCallback,
+    registerCuratorSpecificNavbarUpdates,
+    registerCuratorSpecificOnLoad,
+    registerCuratorSpecificPlotStyle,
+    registerCuratorSpecificPlotTypeAdjustments,
+    registerCuratorSpecificUpdateDatasetGenes,
+    registerCuratorSpecificValidationChecks,
+    renderColorPicker,
+    renderOrderSortableSeries,
+    setCatColumns,
+    setLevels,
+    registerChooseGenes,
+    setIsMultigene,
+    setPlotEltValueFromConfig,
+    setSelectBoxByValue,
+    setupParamValueCopyEvent,
+    updateOrderSortable
+};
+export { curatorCommon };

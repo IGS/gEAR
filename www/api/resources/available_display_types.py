@@ -1,9 +1,11 @@
+import os
+
+import geardb
 from flask import request
 from flask_restful import Resource
-import os
-import geardb
 
 from .common import get_adata_shadow
+
 
 def tsne_or_umap_present(ana):
   """Return True if tSNE or UMAP plot was calculated for the given analysis."""
@@ -40,6 +42,9 @@ class MGAvailableDisplayTypes(Resource):
         mg_violin = True
         volcano = True
         quadrant = True
+        mg_tsne_static = False
+        mg_umap_static = False
+        mg_pca_static = False
 
         ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
         h5_path = ds.get_file_path()
@@ -77,12 +82,29 @@ class MGAvailableDisplayTypes(Resource):
         if len(categorical_columns) < 3:
           quadrant = False
 
+        if analysis_id:
+            if hasattr(adata, 'obsm') and 'X_tsne' in adata.obsm:
+                mg_tsne_static = True
+            elif hasattr(adata, 'obsm') and 'X_umap' in adata.obsm:
+                mg_umap_static = True
+            elif hasattr(adata, 'obsm') and 'X_pca' in adata.obsm:
+                mg_pca_static = True
+
+        # if at least two columns are float or int, enable tsne/umap/pca plots
+        if len([col for col in columns if "float" in str(adata.obs[col].dtype) or "int" in str(adata.obs[col].dtype)]) >= 2:
+          mg_tsne_static = True
+          mg_umap_static = True
+          mg_pca_static = True
+
         available_display_types = {
           "dotplot": dotplot,
           "heatmap": heatmap,
           "mg_violin": mg_violin,
           "volcano": volcano,
-          "quadrant": quadrant
+          "quadrant": quadrant,
+          "mg_pca_static": mg_pca_static,
+          "mg_tsne_static": mg_tsne_static,
+          "mg_umap_static": mg_umap_static
         }
 
         return available_display_types, 200

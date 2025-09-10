@@ -18,11 +18,11 @@
           -->
         <base href="/" />
 
-        <link rel="stylesheet" href="css/gear-theme-purple.css" />
+        <link rel="stylesheet" href="css/gear-theme-purple.css?v=2860b88" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
 
         <!-- Fancy animation effects -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css""/>
 
         <!-- Fancy select elements -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nice-select2@2.1.0/dist/css/nice-select2.min.css">
@@ -31,14 +31,13 @@
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.0/font/bootstrap-icons.css">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mar10/wunderbaum@v0.10.0/dist/wunderbaum.css">
 
-        <!-- Ensures we always get a new version (during our current active development cycles) -->
-        <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
+        <link rel="stylesheet" href="css/common.v2.css?v=2860b88" />
 
         <!-- Common functions for curator pages -->
-        <script>document.write('<link rel="stylesheet" href="css/curator_common.' + (new Date()).getTime() + '.css" />');</script>
+        <link rel="stylesheet" href="css/curator_common.css?v=2860b88" />
 
         <!--Page-specific CSS here -->
-        <script>document.write('<link rel="stylesheet" href="css/multigene_curator.' + (new Date()).getTime() + '.css" />');</script>
+        <link rel="stylesheet" href="css/multigene_curator.css?v=2860b88" />
     </head>
 
 <body>
@@ -207,6 +206,11 @@
                       <option value="quadrant" id="quadrant-opt">Quadrant</option>
                       <option value="volcano" id="volcano-opt">Volcano</option>
                     </optgroup>
+                    <optgroup label="Embeddings (non-interactive)">
+                      <option value="mg_pca_static" id="mg-pca-static-opt">PCA</option>
+                      <option value="mg_tsne_static" id="mg-tsne-static-opt">tSNE</option>
+                      <option value="mg_umap_static" id="mg-umap-static-opt">UMAP</option>
+                    </optgroup>
                   </select>
                 </div>
               </div>
@@ -366,17 +370,28 @@
                 </div>
               </section>
 
-              <section id="order-section" class="my-3 is-hidden">
-                <h5 class="title is-5 is-clickable js-collapsable-trigger">
-                  <span>Change sort order</span>
-                  <span class="icon is-pulled-right">
-                    <i class="mdi mdi-chevron-down"></i>
-                  </span>
-                </h5>
-                <div class="is-hidden js-collapsable-content">
-                  <p class="help">Drag-and-drop to determine order of plotting</p>
-                  <div id="order-container" class="container"></div>
-                </div>
+              <section id="order-and-colors">
+                <section id="order-section" class="my-3 is-hidden">
+                  <h5 class="title is-5 is-clickable js-collapsable-trigger">
+                    <span>Change sort order</span>
+                    <span class="icon is-pulled-right">
+                      <i class="mdi mdi-chevron-down"></i>
+                    </span>
+                  </h5>
+                  <div class="is-hidden js-collapsable-content">
+                    <p class="help">Drag-and-drop to determine order of plotting</p>
+                    <div id="order-container" class="container"></div>
+                  </div>
+                </section>
+                <section id="colors-section" class="my-3 is-hidden">
+                  <h5 class="title is-5 is-clickable js-collapsable-trigger">
+                    <span>Change colors</span>
+                    <span class="icon is-pulled-right">
+                      <i class="mdi mdi-chevron-down"></i>
+                    </span>
+                  </h5>
+                  <div id="colors-container" class="container is-hidden js-collapsable-content"></div>
+                </section>
               </section>
             </div>
           </div>
@@ -524,25 +539,12 @@
   <!-- Promise based HTTP client for the browser  -->
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
-  <script src="js/vendor/js.cookie.js"></script>
+  <script src="js/vendor/js.cookie.js?v=2860b88"></script>
+  <script src="https://d3js.org/d3.v5.min.js"></script>
   <script src="https://cdn.plot.ly/plotly-2.26.0.min.js" charset="utf-8"></script>
 
-  <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-  <script>document.write('<script src="js/classes/facets.' + (new Date()).getTime() + '.js"><\/script>');</script>
-  <script>document.write('<script src="js/classes/tree.' + (new Date()).getTime() + '.js"><\/script>');</script>
-  <script>document.write('<script src="js/classes/gene.' + (new Date()).getTime() + '.js"><\/script>');</script>
-  <script>document.write('<script src="js/classes/genecart.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
-  <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
-  <script>document.write('<script src="js/plot_display_config.' + (new Date()).getTime() + '.js"><\/script>');</script>
-
-  <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-  <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
-
-  <!-- Common functions for curator pages -->
-  <script>document.write('<script src="js/curator_common.' + (new Date()).getTime() + '.js"><\/script>');</script>
-
   <!-- Page-specific JS file here -->
-  <script>document.write('<script src="js/multigene_curator.' + (new Date()).getTime() + '.js"><\/script>');</script>
+  <script type="module" src="js/multigene_curator.js?v=2860b88"></script>
 
   <!-- Global site tag (gtag.js) - Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>

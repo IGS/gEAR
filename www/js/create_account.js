@@ -1,5 +1,7 @@
 'use strict';
 
+import { convertToFormData, initCommonUI } from "./common.v2.js?v=2860b88";
+
 let verification_uuid = null;
 
 window.onload=function() {
@@ -22,7 +24,7 @@ window.onload=function() {
             }
 
             // generate a UUID for the user
-            verification_uuid = uuid();
+            verification_uuid = crypto.randomUUID();
             const email_sent = await sendVerificationEmail(verification_uuid);
 
             if (email_sent == false) {
@@ -64,10 +66,6 @@ window.onload=function() {
         validatePassword2();
     });
 };
-
-const handlePageSpecificLoginUIUpdates = async (event) => {
-    // Nothing to do here at the moment
-}
 
 async function createAccount(verification_uuid) {
     // disable the button so it's not clicked again
@@ -302,3 +300,6 @@ async function validateAccountCreationForm() {
     // if we made it this far, things are good
     return true;
 }
+
+// Pre-initialize some stuff
+await initCommonUI();
