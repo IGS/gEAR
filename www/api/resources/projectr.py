@@ -1299,8 +1299,13 @@ class ProjectRStatus(Resource):
     def get(self, projection_id):
 
         JOB_STATUS_FILE = JOB_STATUS_DIR.joinpath(f"job_{projection_id}.json")
-
-        with open(JOB_STATUS_FILE, "r") as fh:
+        # Validate the final path is within the job status dir
+        resolved_status_file = JOB_STATUS_FILE.resolve()
+        if not str(resolved_status_file).startswith(str(JOB_STATUS_DIR.resolve())):
+            # Reject attempts to escape the directory
+            from flask import abort
+            abort(403, description="Invalid job id/path")
+        with open(resolved_status_file, "r") as fh:
             status = json.load(fh)
 
         # possible states - running, complete, failed
