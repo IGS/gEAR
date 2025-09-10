@@ -236,7 +236,7 @@ class PlotlyData(Resource):
 
             # convert adata.X to a dense matrix if it is sparse
             # This prevents potential downstream issues
-            selected.X = np.array(selected.X)
+            selected.X = selected.X.toarray() # type: ignore
 
 
             # Filter by obs filters

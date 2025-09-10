@@ -60,7 +60,7 @@ class SvgData(Resource):
         adata = sc.read_h5ad(h5_path)
         # convert adata.X to a dense matrix if it is sparse
         # This prevents issues with the min/max functions
-        adata.X = np.array(adata.X)
+        adata.X = adata.X.toarray() # type: ignore
 
         if projection_id:
             try:

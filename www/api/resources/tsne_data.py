@@ -262,7 +262,7 @@ def create_two_way_sorting(adata: "AnnData", gene_symbol: str) -> "AnnData":
 
     adata_subset = adata[:, gene_symbol]
 
-    x_dense = np.array(adata_subset.X).squeeze()
+    x_dense = adata_subset.X.toarray().squeeze()    # type: ignore
     median = np.median(x_dense)
     sort_order = np.argsort(np.abs(median - x_dense))
     ordered_obs = adata.obs.iloc[sort_order].index
@@ -516,7 +516,7 @@ def filter_adata_genes(adata: "AnnData", gene_symbols: list) -> "AnnData":
 
     # convert adata.X to a dense matrix if it is sparse
     # This prevents potential downstream issues
-    selected.X = np.array(selected.X)
+    selected.X = selected.X.toarray() # type: ignore
 
     return selected
 
