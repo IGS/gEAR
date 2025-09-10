@@ -1,6 +1,6 @@
 'use strict';
 
-import { apiCallsMixin, convertToFormData, createToast, getCurrentUser, initCommonUI, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=2860b88";
+import { apiCallsMixin, convertToFormData, createToast, getCurrentUser, initCommonUI, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=a6c4f04";
 
 let dataset_uid = null;
 let share_uid = null;
