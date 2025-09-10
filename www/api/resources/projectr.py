@@ -1301,7 +1301,7 @@ class ProjectRStatus(Resource):
         JOB_STATUS_FILE = JOB_STATUS_DIR.joinpath(f"job_{projection_id}.json")
         # Validate the final path is within the job status dir
         resolved_status_file = JOB_STATUS_FILE.resolve()
-        if not str(resolved_status_file).startswith(str(JOB_STATUS_DIR.resolve())):
+        if not resolved_status_file.is_relative_to(JOB_STATUS_DIR.resolve()):
             # Reject attempts to escape the directory
             from flask import abort
             abort(403, description="Invalid job id/path")
