@@ -47,6 +47,12 @@ Follow instructions in setup.python.md document
 
 Follow instructions in setup.apache.md document
 
+### Sass
+
+Used for changing theme colors between portal flavors
+
+`sudo apt install ruby-sass`
+
 ### gEAR portal
 
 ```bash
