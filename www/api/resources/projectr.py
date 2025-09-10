@@ -24,6 +24,7 @@ from flask_restful import Resource, reqparse
 from gear.orthology import get_ortholog_file, map_dataframe_genes
 from gear.utils import catch_memory_error
 from more_itertools import sliced
+from werkzeug.utils import secure_filename
 
 from .common import get_adata_from_analysis, get_spatial_adata
 
@@ -1297,8 +1298,8 @@ class ProjectRStatus(Resource):
     Get the status of a ProjectR job.
     """
     def get(self, projection_id):
-
-        JOB_STATUS_FILE = JOB_STATUS_DIR.joinpath(f"job_{projection_id}.json")
+        safe_projection_id = secure_filename(str(projection_id))
+        JOB_STATUS_FILE = JOB_STATUS_DIR.joinpath(f"job_{safe_projection_id}.json")
         # Validate the final path is within the job status dir
         resolved_status_file = JOB_STATUS_FILE.resolve()
         if not resolved_status_file.is_relative_to(JOB_STATUS_DIR.resolve()):
