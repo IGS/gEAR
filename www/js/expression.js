@@ -211,6 +211,8 @@ const buildStateURL = () => {
     // are we doing exact matches?
     if (document.getElementById('gene-search-exact-match').checked) {
         url.searchParams.append('gene_symbol_exact_match', '1');
+    } else {
+        url.searchParams.append('gene_symbol_exact_match', '0');
     }
 
     // get the value of the single-multi radio box
@@ -419,12 +421,12 @@ const parseGeneListURLParams = async () => {
     }
 
     // are we doing exact matches?
-    const exact_match = getUrlParameter('gene_symbol_exact_match');
+    const exactMatch = getUrlParameter('gene_symbol_exact_match');
 
-    if (exact_match !== null && exact_match !== undefined) {
-        document.getElementById('gene-search-exact-match').checked = exact_match === '1';
+    if (exactMatch != null) {
+        document.getElementById('gene-search-exact-match').checked = exactMatch === '1';
     } else {
-        document.getElementById('gene-search-exact-match').checked = false;
+        document.getElementById('gene-search-exact-match').checked = true;
     }
 
     // single or multiple gene view (convert to boolean)?
