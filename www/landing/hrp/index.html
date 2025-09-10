@@ -78,29 +78,28 @@
               </div>
               <div class="column is-6">
                 <h1><i class="mdi mdi-school is-small"></i> Publications</h1>
-                <div class="columns">
+                <div id="paper-container" class="columns">
                   <div class="column is-6">
-                    <p class="paper_title">Cell-type identity of the avian utricle</p>
-                    <p class="paper_authors">Scheibinger M, Janesick A, Benkafadar N, Ellwanger DC, Jan TA, Heller S.</p>
-                    <p class="paper_journal">Cell Reports. 2022;40(13). <a href="#">doi:10.1016/j.celrep.2022.111432</a></p>
+                  <p class="paper_title" id="paper-title"></p>
+                  <p class="paper_authors" id="paper-authors"></p>
+                  <p class="paper_journal" id="paper-journal"></p>
 
-                    <ul class="mt-5 mb-5 ml-5">
-                      <li><i class="mdi mdi-eye-outline is-small"></i> <a href="/landing/haircell">View summary page</a></li>
-                      <li><i class="mdi mdi-book-education-outline is-small"></i> <a href="#">Read paper</a></li>
-                      <li><i class="mdi mdi-chart-scatter-plot is-small"></i> <a href="#">View data in gEAR</a></li>
-                      <li><i class="mdi mdi-download is-small"></i> <a href="#">Download data</a></li>
-                    </ul>
+                  <ul class="mt-5 mb-5 ml-5" id="paper-links">
+                    <li><i class="mdi mdi-eye-outline is-small"></i> <a id="landing-link" href="#">View summary page</a></li>
+                    <li><i class="mdi mdi-book-education-outline is-small"></i> <a id="read-paper-link" href="#">Read paper</a></li>
+                    <li><i class="mdi mdi-chart-scatter-plot is-small"></i> <a id="view-data-link" href="#">View data in gEAR</a></li>
+                    <li><i class="mdi mdi-download is-small"></i> <a id="download-data-link" href="#">Download data</a></li>
+                  </ul>
 
-                    <button class="button is-primary">
-                      <span class="icon is-small">
-                        <i class="mdi mdi-page-next-outline"></i>
-                      </span>
-                      <span>Next paper</span>
-                    </button>
-
+                  <button id="next-paper-btn" class="button is-primary">
+                    <span class="icon is-small">
+                    <i class="mdi mdi-page-next-outline"></i>
+                    </span>
+                    <span>Next paper</span>
+                  </button>
                   </div>
                   <div class="column is-6">
-                    <img class="img-fluid" src="./Heller.png" alt="Figure 1B" style="border: 1px solid black;"/>
+                  <img id="paper-image" class="img-fluid" src="" alt="Figure" style="border: 1px solid black;"/>
                   </div>
                 </div>
               </div>

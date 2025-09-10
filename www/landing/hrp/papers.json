@@ -1,0 +1,26 @@
+[
+    {
+        "title": "Cochlear organoids reveal transcriptional programs of postnatal hair cell differentiation from supporting cells",
+        "authors": "Kalra, Edge, et al.",
+        "journal": "Cell Rep. 2023 Nov 28;42(11):113421.",
+        "doi": "10.1016/j.celrep.2023.113421",
+        "landingLink": "",
+        "pubmedId": "37952154",
+        "dataLink": "https://umgear.org/p?l=Lgr5org",
+        "downloadLink": "",
+        "image": "/images/understanding-ai.png",
+        "imageAlt": "Understanding AI cover image"
+    },
+    {
+        "title": "Machine Learning Basics",
+        "authors": "Alice Johnson, Bob Brown",
+        "journal": "ML Journal",
+        "doi": "10.5678/mlj.2023.002",
+        "summaryLink": "/summaries/ml-basics.html",
+        "readLink": "/papers/ml-basics.pdf",
+        "dataLink": "/data/ml-basics",
+        "downloadLink": "/downloads/ml-basics.zip",
+        "image": "/images/ml-basics.png",
+        "imageAlt": "Machine Learning Basics cover image"
+    }
+]
