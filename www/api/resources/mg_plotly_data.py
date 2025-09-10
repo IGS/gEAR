@@ -5,6 +5,7 @@ import gear.mg_plotting as mg
 import geardb
 import numpy as np
 import pandas as pd
+import scipy.sparse
 from flask import request
 from flask_restful import Resource
 from gear.mg_plotting import PlotError
@@ -248,7 +249,10 @@ class MGPlotlyData(Resource):
 
         # convert adata.X to a dense matrix if it is sparse
         # This prevents potential downstream issues
-        selected.X = selected.X.toarray() # type: ignore
+        if scipy.sparse.issparse(selected.X):
+            selected.X = selected.X.toarray() # type: ignore
+        else:
+            selected.X = np.asarray(selected.X)
 
 
         # These plot types filter to only the specific genes.

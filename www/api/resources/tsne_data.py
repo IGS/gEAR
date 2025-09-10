@@ -7,6 +7,7 @@ from math import ceil
 import geardb
 import matplotlib as mpl
 import matplotlib.cm as cm
+import scipy.sparse
 
 mpl.use("Agg")  # Prevents the need for a display when plotting, also thread-safe
 import typing
@@ -516,7 +517,10 @@ def filter_adata_genes(adata: "AnnData", gene_symbols: list) -> "AnnData":
 
     # convert adata.X to a dense matrix if it is sparse
     # This prevents potential downstream issues
-    selected.X = selected.X.toarray() # type: ignore
+    if scipy.sparse.issparse(selected.X):
+        selected.X = selected.X.toarray() # type: ignore
+    else:
+        selected.X = np.asarray(selected.X)
 
     return selected
 

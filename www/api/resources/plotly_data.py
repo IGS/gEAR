@@ -8,6 +8,7 @@ import geardb
 import numpy as np
 import pandas as pd
 import plotly.express.colors as pxc
+import scipy.sparse
 from flask import request
 from flask_restful import Resource
 from gear.plotting import PlotError, generate_plot, plotly_color_map
@@ -236,7 +237,10 @@ class PlotlyData(Resource):
 
             # convert adata.X to a dense matrix if it is sparse
             # This prevents potential downstream issues
-            selected.X = selected.X.toarray() # type: ignore
+            if scipy.sparse.issparse(selected.X):
+                selected.X = selected.X.toarray() # type: ignore
+            else:
+                selected.X = np.asarray(selected.X)
 
 
             # Filter by obs filters
