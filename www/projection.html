@@ -70,7 +70,25 @@
                   </div>
                 </div>
                 <div id="algorithm-c" class="field">
-                  <label class="label">Select algorithm</label>
+                  <label class="label">Select algorithm
+                    <!--<span id="algo-tooltip" class="icon has-tooltip-right has-tooltip-arrow" data-tooltip="
+Explanation of algorithms:
+
+PCA: Projects patterns using principal component analysis.  This method will produce both positive and negative weights for each sample in the dataset,
+indicating whether the pattern is positively or negatively associated with the sample.
+
+NMF: Projects patterns using non-negative matrix factorization.  This method will produce only positive weights for each sample in the dataset,
+indicating the strength of association between the pattern and the sample.
+
+Fixed NMF: Estimates the embeddings for samples in a new dataset when given a weighted pattern input based on an existing NMF decomposition of another dataset projection.
+
+Binary Gene Count: Projects patterns by counting the number of genes in the pattern that are expressed in each sample.
+This method is simple and interpretable, but may not capture complex relationships between genes and samples.
+
+                      "><i class="mdi mdi-information-slab-circle"></i>
+                    </span>-->
+
+                  </label>
                   <div class="control">
                     <div class="select is-small">
                       <select id="algorithm">
