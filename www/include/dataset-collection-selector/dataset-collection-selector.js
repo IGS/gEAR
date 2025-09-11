@@ -1,6 +1,6 @@
 "use strict";
 
-import { apiCallsMixin, getCurrentUser } from "../../js/common.v2.js?v=2860b88";
+import { apiCallsMixin, getCurrentUser } from "../../js/common.v2.js?v=a6c4f04";
 
 export const datasetCollectionState = {
     "data": null,
@@ -142,7 +142,7 @@ export const selectDatasetCollection = (share_id) => {
  *
  * @param {string} category - The category to set as active. Possible values are 'domain', 'user', 'recent', 'group', and 'shared'.
  */
-const setActiveDCCategory = (category) => {
+export const setActiveDCCategory = (category) => {
     // clear the dataset collection search input and content
     document.querySelector('#dropdown-content-dc').innerHTML = '';
     document.querySelector('#dropdown-dc-search-input').value = '';
