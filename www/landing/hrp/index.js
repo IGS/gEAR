@@ -53,8 +53,8 @@ const setLink = (elementId, link) => {
     const element = document.getElementById(elementId);
     if (link) {
         element.href = link;
-        element.style.display = 'inline'; // Show the link
+        element.parentElement.style.display = 'block'; // Show the link
     } else {
-        element.style.display = 'none'; // Hide the link
+        element.parentElement.style.display = 'none'; // Hide the link
     }
 };
