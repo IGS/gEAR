@@ -70,7 +70,7 @@ const initCommonUI = async () => {
 		elt.classList.remove("is-active");
 	}
     const this_page_tool = document.getElementById("content-c").dataset.navLink;
-    const tool_search_string = "a[tool='" + this_page_tool + "'";
+    const tool_search_string = `a[tool='${this_page_tool}'`;
 	document.querySelector(tool_search_string).classList.add("is-active");
 
 
@@ -104,13 +104,6 @@ const initCommonUI = async () => {
             closeAllModals();
         }
     });
-
-    // If the user has agreed to the site's beta status, don't show the modal
-    const betaSiteModal = document.getElementById('beta-site-modal');
-    const betaCookie = Cookies.get('gear_beta_agreed');
-    if (betaCookie != "true") {
-        //betaSiteModal.classList.add('is-active');
-    }
 
     // Makes the logo clickable as it was in v1
     document.getElementById('logo-c').addEventListener('click', () => {

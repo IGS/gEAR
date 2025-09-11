@@ -237,7 +237,7 @@ const getGeoData = async () => {
  *   'enter-metadata', 'upload-dataset', 'process-dataset', 'finalize-dataset', 'curate-dataset'.
  */
 const stepTo = (step) => {
-    // TODO: switch to using the stepper-fxns.js functions
+    // TODO: switch to using the stepper-fxns.js functions (and unify the two stepper implementations)
 
     const stepLabels = ['enter-metadata', 'upload-dataset', 'process-dataset',
         'finalize-dataset', 'curate-dataset'

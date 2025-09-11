@@ -227,6 +227,7 @@
                               <option value="single-cell-rnaseq">Single-cell RNA-seq</option>
                               <option value="bulk-rnaseq">Bulk RNA-seq</option>
                               <option value="microarray">Microarray</option>
+                              <option value="spatial">Spatial</option>
                             </select>
                           </div>
                         </div>
@@ -576,7 +577,9 @@
                           with tar/gzip or zip.
                         </p>
                         <p class="format-documentation-header">
-                          Learn more
+                          <span class="icon-text"><span class="icon"><i class="mdi mdi-school-outline"></i></span>
+                            <span>Learn more</span>
+                          </span>
                         </p>
                         <ul class="format-documentation-links">
                           <li>
@@ -620,7 +623,9 @@
                           very well for even medium-sized datasets.
                         </p>
                         <p class="format-documentation-header">
-                          Learn more
+                          <span class="icon-text"><span class="icon"><i class="mdi mdi-school-outline"></i></span>
+                            <span>Learn more</span>
+                          </span>
                         </p>
                         <ul class="format-documentation-links">
                           <li>
@@ -706,6 +711,46 @@
                             </span>
                           </li>
                         </ul>
+                        <div class="control">
+                          <button data-format="h5ad" class="button is-primary is-fullwidth format-selector" disabled>
+                            <span class="icon">
+                              <i class="mdi mdi-cancel"></i>
+                            </span>
+                            <span class="format-status">Not yet available</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="columns">
+                    <div class="column format-column is-3 is-flex">
+                      <!-- H5AD/Python -->
+                      <div class="box format-selection-box">
+                        <h3>Spatial (in tar format)</h3>
+                        <p class="format-description">
+                          Special considerations are needed for spatial datasets, as each
+                          platform has a different file requirement. Select a platform below to see
+                          specific instructions.
+
+                          You can also upload in one of the other formats but
+                          will not be able to take advantage of special features.
+                        </p>
+                        <div class="control my-3">
+                          <div class="select is-fullwidth">
+                            <select name="spatial-platform" id="spatial-platform-select">
+                              <option value="">Select one</option>
+                              <option value="curio">Curio Seeker</option>
+                              <option value="geomx">GeoMx DSP</option>
+                              <option value="visium">10x Genomics Visium</option>
+                              <option value="visiumhd">10x Genomics Visium HD</option>
+                              <option value="xenium">10x Genomics Xeniu</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div class="control">
+                          <button id="spatial-requirements" class="button is-small is-primary is-light">Show requirements</button>
+                        </div>
                         <div class="control">
                           <button data-format="h5ad" class="button is-primary is-fullwidth format-selector" disabled>
                             <span class="icon">
