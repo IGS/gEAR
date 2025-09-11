@@ -15,6 +15,15 @@
 * To build run `docker build -t umgear:main .`
   * If you tag it under a new image, ensure it is reflected in the docker-compose.yml file
 
+## Starting the stack
+
+To start:
+`docker compose up -d`
+To stop:
+`docker compose down -v`
+
+Adding a service name (i.e. "web", "db") to the end of a command just performs this for that service.
+
 ## ProjectR
 
 Currently the gear.ini.docker file is configured to send projectR jobs to the cloud, but to not use RabbitMQ.  This is to save me the hassle of managing an extra service.  What this means is that apache process will manage the jobs and job logging will write to /var/log/apache2/ssl_umgear_error.log in the container.
@@ -22,6 +31,8 @@ Currently the gear.ini.docker file is configured to send projectR jobs to the cl
 ## "panel" service
 
 You can pre-build the "panel_app" image using the Dockerfile from `<gear_root>/services/spatial/Dockerfile`
+
+You can view logs with `docker compose logs panel`
 
 ## Annotations and Datasets
 
@@ -33,7 +44,7 @@ You can pre-build the "panel_app" image using the Dockerfile from `<gear_root>/s
 
 * After launching the Docker containers via docker-compose, the annotation data may not be loaded into the MySQL database.  To do this (substitute species and release number as needed):
 
-1. Run `docker-compose exec web /bin/bash`
+1. Run `docker compose exec web /bin/bash`
 2. `cd /opt/gEAR/annotations/mouse`
 3. Run `../../bin/load_genbank_annotations.py -i ./release-94 -id 1 -r 94` which will load the annotation file
 
