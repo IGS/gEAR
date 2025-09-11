@@ -142,7 +142,7 @@ export const selectDatasetCollection = (share_id) => {
  *
  * @param {string} category - The category to set as active. Possible values are 'domain', 'user', 'recent', 'group', and 'shared'.
  */
-const setActiveDCCategory = (category) => {
+export const setActiveDCCategory = (category) => {
     // clear the dataset collection search input and content
     document.querySelector('#dropdown-content-dc').innerHTML = '';
     document.querySelector('#dropdown-dc-search-input').value = '';
