@@ -35,7 +35,7 @@ window.addEventListener("unhandledrejection", (event) => {
  * @function
  * @returns {void}
  */
-const initCommonUI = () => {
+const initCommonUI = async () => {
         // load the site preferences JSON file, then call any functions which need it
     getDomainPreferences().then((result) => {
         SITE_PREFS = result;
@@ -111,15 +111,6 @@ const initCommonUI = () => {
     if (betaCookie != "true") {
         //betaSiteModal.classList.add('is-active');
     }
-
-    /**
-     * Temporary code to handle the warning modal while in beta mode
-     */
-    document.getElementById('beta-modal-agree').addEventListener('click', () => {
-        return;
-        Cookies.set('gear_beta_agreed', 'true', { expires: 7 });
-        betaSiteModal.classList.remove('is-active');
-    });
 
     // Makes the logo clickable as it was in v1
     document.getElementById('logo-c').addEventListener('click', () => {
@@ -274,7 +265,7 @@ PMID: 34172972`;
     });
 
 
-    checkForLogin();
+    await checkForLogin();
 }
 
 
@@ -778,12 +769,21 @@ const resetSteps = (event) => {
     currentStep.classList.add("step-active")
 }
 
-// Generates an RFC4122 version 4 compliant UUID
-const uuid = () => {
-    return 'xxxxxxxx-xxxx-xxxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
+/**
+ * Generates a unique identifier (UUID).
+ *
+ * @param {'long'|'short'} uidLength - Determines the length of the generated UUID.
+ *   - 'long': Returns a full UUID string (e.g., '123e4567-e89b-12d3-a456-426614174000').
+ *   - 'short': Returns only the first segment of the UUID (e.g., '123e4567').
+ * @returns {string} The generated unique identifier.
+ */
+const guid = (uidLength) => {
+    if (uidLength == 'long') {
+        return crypto.randomUUID();
+    }
+    if (uidLength == 'short') {
+        return crypto.randomUUID().split('-')[0];
+    }
 }
 
 for (const jsStep of jsSteps) {
@@ -1584,6 +1584,7 @@ export {
     registerPageSpecificLoginUIUpdates,
     initCommonUI,
     getUrlParameter,
+    guid,
     rebindUrlParam,
     disableAndHideElement,
     enableAndShowElement,
