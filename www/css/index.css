@@ -9,6 +9,13 @@ div#guides_c div.card-content{
     color: black;
     border-top: 1px solid rgb(200, 200, 200);
 }
+div#highlighted-datasets div.card {
+    height: 100%;
+}
+div#highlighted-datasets div.card-content {
+    background-color: white;
+}
+
 div#search-tabs-c {
     background-color: rgb(240,240,240);
     border-radius: 5px;
