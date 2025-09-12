@@ -66,6 +66,13 @@
 - For Javascript, prefer "const" over "function" for arrow functions.
 - Python is using Ruff for linting and formatting.
 
+#### ES Module code order
+1. Imports (must be at top syntax-wise)
+2. Constants, variables
+3. Functions and classes
+4. Initialization logic
+5. Event listeners (bottom to avoid hoisting issues)
+
 ## Integration Points
 - **Gosling (future)**: Epigenome browser replacing Epiviz for epigenetic data visualization.
 - **Epiviz (legacy)**: Embedded for epigenetic data visualization (being sunsetted).
