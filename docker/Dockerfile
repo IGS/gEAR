@@ -41,6 +41,7 @@ RUN apt-get -qq update \
   libcairo2-dev \
   libxml2-dev \
   libhdf5-serial-dev \
+  libwebp-dev \
   cmake \
   curl \
   wget \
@@ -131,11 +132,14 @@ COPY ./gear.ini.docker /opt/gEAR/gear.ini
 # numpy is installed before requirements.txt because of dependency requirement issues
 # NOTE: Installing custom version of diffxpy that is based on the latest commit on the main branch (at the time)
 WORKDIR /opt/Python-${PYTHON_VERSION}/bin
-COPY ./requirements.txt /opt/gEAR/docker/requirements.txt
+COPY ./requirements.full.txt /opt/gEAR/docker/requirements.full.txt
 RUN ./pip3 install --upgrade pip \
   # wheel is needed for the installation of biopython
   && ./pip3 install wheel \
-  && ./pip3 install -r /opt/gEAR/docker/requirements.txt \
+
+  # Ran into "error: resolution-too-deep" so used `pip freeze` from a production env to create requirements.full.txt
+  # Source: https://medium.com/@ebenyemiriam17/error-resolution-too-deep-how-i-fixed-my-pip-dependency-resolution-error-9cb3471344f9
+  && ./pip3 install -r /opt/gEAR/docker/requirements.full.txt \
   # Uninstall dask-expr to avoid issues with spatialdata (https://github.com/scverse/spatialdata/pull/570)
   && ./pip3 uninstall dask-expr -y \
   && apt-get -qq update \

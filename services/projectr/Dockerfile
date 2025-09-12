@@ -20,6 +20,7 @@ RUN apt-get -qq update \
     libpng-dev \
     libtiff5-dev \
     libjpeg-dev \
+    libwebp-dev \
     # Cleanup
     && apt -qq clean autoclean \
     && apt -qq autoremove -y \

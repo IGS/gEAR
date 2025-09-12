@@ -1,10 +1,11 @@
 #!/usr/bin/env Rscript --vanilla
 
 # Bioconductor should already be installed.
-
 # Load libraries
-library(devtools)
-library(remotes)
+library(remotes)    # for install_version
+
+install_version("devtools", version="2.4.5", repos="https://cloud.r-project.org/", ask=FALSE)
+library(devtools)   # for install_github
 
 tryCatch( {
     install.packages("reticulate", repos = "https://cloud.r-project.org/", ask = FALSE) # Sanity check with rpy2
