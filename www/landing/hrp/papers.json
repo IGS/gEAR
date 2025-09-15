@@ -1,5 +1,17 @@
 [
     {
+        "title": "",
+        "authors": "",
+        "journal": "Journal: Submitted",
+        "doi": "",
+        "landingLink": "/landing/haircell/",
+        "pubmedId": "",
+        "dataLink": "",
+        "downloadLink": "",
+        "image": "",
+        "imageAlt": ""
+    },
+    {
         "title": "Cochlear organoids reveal transcriptional programs of postnatal hair cell differentiation from supporting cells",
         "authors": "Kalra, Edge, et al.",
         "journal": "Cell Rep. 2023 Nov 28;42(11):113421.",
@@ -8,19 +20,19 @@
         "pubmedId": "37952154",
         "dataLink": "https://umgear.org/p?l=Lgr5org",
         "downloadLink": "",
-        "image": "/images/understanding-ai.png",
-        "imageAlt": "Understanding AI cover image"
+        "image": "/landing/hrp/paper_37952154_preview.png",
+        "imageAlt": "Cochlear organoids reveal transcriptional programs of postnatal hair cell differentiation from supporting cells"
     },
     {
-        "title": "Machine Learning Basics",
-        "authors": "Alice Johnson, Bob Brown",
-        "journal": "ML Journal",
-        "doi": "10.5678/mlj.2023.002",
-        "summaryLink": "/summaries/ml-basics.html",
-        "readLink": "/papers/ml-basics.pdf",
-        "dataLink": "/data/ml-basics",
-        "downloadLink": "/downloads/ml-basics.zip",
-        "image": "/images/ml-basics.png",
-        "imageAlt": "Machine Learning Basics cover image"
+        "title": "Early Wnt Signaling Activation Promotes Inner Ear Differentiation via Cell Caudalization in Mouse Stem Cell-Derived Organoids",
+        "authors": "Tang, Nelson, et al.",
+        "journal": "Stem Cells. 2023 Jan 30;41(1):26-38",
+        "doi": "10.1093/stmcls/sxac071",
+        "landingLink": "",
+        "pubmedId": "36153788",
+        "dataLink": "",
+        "downloadLink": "",
+        "image": "/landing/hrp/paper_36153788_preview.png",
+        "imageAlt": "Early Wnt Signaling Activation Promotes Inner Ear Differentiation via Cell Caudalization in Mouse Stem Cell-Derived Organoids"
     }
 ]
