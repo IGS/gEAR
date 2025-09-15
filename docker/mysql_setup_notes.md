@@ -13,10 +13,12 @@ This step only needs to be performed the first time you create the MySQL contain
 To pull backup file to your host machine, do:
 `gcloud compute scp <server>:<db_dump.sql> .`
 
+Alternative ask Shaun for a SQL dump file.
+
 This file, when gunzipped will be about 1.6 Gb.  After this, we copy the file into the Docker "mysql" container.
 
 1. Uncompress the file with `gunzip` if you need to.
-2. Figure out the container ID with `docker ps`.  It should be the first field in the result row where the "IMAGE" is "mysql:5.7"
+2. Figure out the container ID with `docker ps`.  It should be the first field in the result row where the "IMAGE" is "mysql:8.0"
 3. Run `docker cp ./<db_dump.sql> <container_id>:/tmp/<db_dump.sql>`
 
 NOTE: Change the SQL filename to whatever database dump you are using.
