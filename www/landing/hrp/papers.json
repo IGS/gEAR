@@ -1,15 +1,15 @@
 [
     {
-        "title": "",
-        "authors": "",
-        "journal": "Journal: Submitted",
+        "title": "A comparative single-cell transcriptomic atlas for vertebrate hair cells",
+        "authors": "Basu, Goodrich, et al.",
+        "journal": "Journal: Submitted, in review",
         "doi": "",
         "landingLink": "/landing/haircell/",
         "pubmedId": "",
-        "dataLink": "",
+        "dataLink": "https://umgear.org/expression.html?gene_symbol=sox2&gene_symbol_exact_match=1&is_multigene=0&layout_id=d8a88ca9",
         "downloadLink": "",
-        "image": "",
-        "imageAlt": ""
+        "image": "/landing/haircell/profile_view_demo.png",
+        "imageAlt": "A comparative single-cell transcriptomic atlas for vertebrate hair cells"
     },
     {
         "title": "Cochlear organoids reveal transcriptional programs of postnatal hair cell differentiation from supporting cells",
