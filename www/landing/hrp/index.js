@@ -33,10 +33,14 @@ const displayPaper = (index) => {
 
     document.getElementById('paper-title').textContent = paper.title;
     document.getElementById('paper-authors').textContent = paper.authors;
-    document.getElementById('paper-journal').innerHTML = `${paper.journal} <a href="${paper.doi}" target="_blank">doi:${paper.doi}</a>`;
+    document.getElementById('paper-journal').textContent = paper.journal;
+
+    if (paper.doi) {
+        document.getElementById('paper-doi').textContent = `DOI: ${paper.doi}`;
+    }
 
     setLink('landing-link', paper.landingLink);
-    setLink('read-paper-link', pubmed_url_base + paper.pubmedID);
+    setLink('read-paper-link', pubmed_url_base + paper.pubmedId);
     
     setLink('view-data-link', paper.viewDataLink);
     setLink('download-data-link', paper.downloadLink);

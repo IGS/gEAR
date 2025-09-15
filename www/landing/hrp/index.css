@@ -47,5 +47,9 @@ p.paper_authors {
 p.paper_journal {
     font-size: 80%;
     margin-top: 5px;
+}
+p.paper_doi {
+    font-size: 80%;
+    margin-top: 5px;
     margin-bottom: 10px;
 }
