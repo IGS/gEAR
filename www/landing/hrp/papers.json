@@ -34,5 +34,101 @@
         "downloadLink": "",
         "image": "/landing/hrp/paper_36153788_preview.png",
         "imageAlt": "Early Wnt Signaling Activation Promotes Inner Ear Differentiation via Cell Caudalization in Mouse Stem Cell-Derived Organoids"
+    },
+    {
+        "title": "An essential signaling cascade for avian auditory hair cell regeneration",
+        "authors": "Benkafadar, Ling, Heller, et al.",
+        "journal": "Developmental Cell. 2024;59(2):280-291.e5",
+        "doi": "10.1016/j.devcel.2023.11.028",
+        "landingLink": "",
+        "pubmedId": "38128539",
+        "dataLink": "https://umgear.org/p?l=0c2c60ea",
+        "downloadLink": "https://umgear.org/cgi/download_source_file.cgi?type=tarball&dataset_id=6b408199-0876-689c-d9c8-fb7570a6bb42",
+        "image": "/landing/hrp/paper_38128539_preview.jpg",
+        "imageAlt": "An essential signaling cascade for avian auditory hair cell regeneration"
+    },
+    {
+        "title": "Single-cell transcriptomic profiling of the zebrafish inner ear reveals molecularly distinct hair cell and supporting cell subtypes",
+        "authors": "Shi, Raible, et al.",
+        "journal": "eLife. 2023;12:e82978",
+        "doi": "10.7554/eLife.82978",
+        "landingLink": "",
+        "pubmedId": "36598134",
+        "dataLink": "https://umgear.org/p?s=544c1894",
+        "downloadLink": "https://umgear.org/cgi/download_source_file.cgi?type=tarball&dataset_id=96cf8d7d-ebc6-3e09-baea-ad8fa4b5cfeb",
+        "image": "/landing/hrp/paper_36598134_preview.png",
+        "imageAlt": "Single-cell transcriptomic profiling of the zebrafish inner ear reveals molecularly distinct hair cell and supporting cell subtypes"
+    },
+    {
+        "title": "Cellular reprogramming with ATOH1, GFI1, and POU4F3 implicate epigenetic changes and cell-cell signaling as obstacles to hair cell regeneration in mature mammals",
+        "authors": "Iyer, Groves, et al.",
+        "journal": "eLife. 2022;11:e79712",
+        "doi": "10.7554/eLife.79712",
+        "landingLink": "",
+        "pubmedId": "36445327",
+        "dataLink": "https://umgear.org/p?l=85350c7f",
+        "downloadLink": "",
+        "image": "/landing/hrp/paper_36445327_preview.png",
+        "imageAlt": "Cellular reprogramming with ATOH1, GFI1, and POU4F3 implicate epigenetic changes and cell-cell signaling as obstacles to hair cell regeneration in mature mammals"
+    },
+    {
+        "title": "Cell-type identity of the avian cochlea",
+        "authors": "Janesick, Heller, et al.",
+        "journal": "Cell Reports. 2021;34(12):108900",
+        "doi": "10.1016/j.celrep.2021.108900",
+        "landingLink": "",
+        "pubmedId": "33761346",
+        "dataLink": "https://umgear.org/p?l=b073d741",
+        "downloadLink": "",
+        "image": "/landing/hrp/paper_33761346_preview.jpg",
+        "imageAlt": "Cell-type identity of the avian cochlea"
+    },
+    {
+        "title": "Avian auditory hair cell regeneration is accompanied by JAK/STAT-dependent expression of immune-related genes in supporting cells",
+        "authors": "Janesick, Heller, et al.",
+        "journal": "Development. 2022;149(8):dev.200113",
+        "doi": "10.1242/dev.200113",
+        "landingLink": "",
+        "pubmedId": "35420675",
+        "dataLink": "https://umgear.org/p?l=5d177e1c",
+        "downloadLink": "",
+        "image": "/landing/hrp/paper_35420675_preview.png",
+        "imageAlt": ""
+    },
+    {
+        "title": "Cell-type identity of the avian utricle",
+        "authors": "Scheibinger, Heller, et al.",
+        "journal": "Cell Reports. 2022;40(13)",
+        "doi": "10.1016/j.celrep.2022.111432",
+        "landingLink": "",
+        "pubmedId": "36170825",
+        "dataLink": "https://umgear.org/p?l=GgUtricleP7",
+        "downloadLink": "",
+        "image": "/landing/hrp/paper_36170825_preview.png",
+        "imageAlt": "Cell-type identity of the avian utricle"
+    },
+    {
+        "title": "Transcriptional response to Wnt activation regulates the regenerative capacity of the mammalian cochlea",
+        "authors": "Samarajeewa, Dabdoub, et al.",
+        "journal": "Development. 2018 Nov 27;145(23):dev166579",
+        "doi": "10.1242/dev.166579",
+        "landingLink": "",
+        "pubmedId": "30389848",
+        "dataLink": "https://umgear.org/p?s=ae03d6e9",
+        "downloadLink": "",
+        "image": "/landing/hrp/paper_30389848_preview.png",
+        "imageAlt": "Transcriptional response to Wnt activation regulates the regenerative capacity of the mammalian cochlea"
+    },
+    {
+        "title": "",
+        "authors": "",
+        "journal": "",
+        "doi": "",
+        "landingLink": "",
+        "pubmedId": "",
+        "dataLink": "",
+        "downloadLink": "",
+        "image": "",
+        "imageAlt": ""
     }
 ]

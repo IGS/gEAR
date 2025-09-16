@@ -42,7 +42,7 @@ const displayPaper = (index) => {
     setLink('landing-link', paper.landingLink);
     setLink('read-paper-link', pubmed_url_base + paper.pubmedId);
     
-    setLink('view-data-link', paper.viewDataLink);
+    setLink('view-data-link', paper.dataLink);
     setLink('download-data-link', paper.downloadLink);
     
     document.getElementById('paper-image').src = paper.image;
