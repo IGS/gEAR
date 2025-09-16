@@ -1078,5 +1078,6 @@ SPATIALTYPE2CLASS = {
     "geomx": GeoMxHandler,
     "visium": VisiumHandler,
     "visium_hd": VisiumHDHandler,
+    "visiumhd": VisiumHDHandler,    # allow both with and without underscore
     "xenium": XeniumHandler
 }

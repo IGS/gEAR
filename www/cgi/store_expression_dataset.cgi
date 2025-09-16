@@ -22,6 +22,7 @@ def main():
     dataset_uid = form.getvalue('dataset_uid')
     share_uid = form.getvalue('share_uid')
     dataset_format = form.getvalue('dataset_format')
+    spatial_format = form.getvalue('spatial_format')  # may be None
 
     user = geardb.get_user_from_session_id(session_id)
     result = {'success': 0, 'message': ''}
@@ -56,6 +57,21 @@ def main():
             print(json.dumps(result))
             sys.exit(0)
 
+    if dataset_format == 'spatial':
+        result["message"] = "NOT YET IMPLEMENTED"
+        print(json.dumps(result))
+        sys.exit(0)
+
+        if not filename.endswith('tar.gz'):
+            result['message'] = 'Invalid file extension for Spatial format. Expected .tar or .tar.gz'
+            print(json.dumps(result))
+            sys.exit(0)
+        from gear.spatialhandler import SPATIALTYPE2CLASS
+        if spatial_format not in SPATIALTYPE2CLASS:
+            result['message'] = 'Invalid spatial format specified.'
+            print(json.dumps(result))
+            sys.exit(0)
+
     try:
         with open(dataset_filename, 'wb') as f:
             f.write(form['dataset_file'].file.read())
@@ -68,7 +84,7 @@ def main():
             "message": "The dataset has been uploaded and is pending processing",
             "progress": 0
         }
-        
+
         with open(status_file, 'w') as f:
             f.write(json.dumps(status))
 

@@ -1,13 +1,14 @@
 'use strict';
 
 
-import { apiCallsMixin, convertToFormData, createToast, getCurrentUser, guid, initCommonUI } from "./common.v2.js?v=2860b88";
+import { apiCallsMixin, convertToFormData, createToast, getCurrentUser, guid, initCommonUI, openModal } from "./common.v2.js?v=2860b88";
 
 /* --- constants and variables --- */
 
 let datasetUid = null;
 let shareUid = null;
-let datasetFormat = null;
+let datasetFormat = null;   // set when user chooses a dataset type
+let spatialFormat = null;   // set when user chooses a spatial platform (if applicable)
 
 let processingStatus = null;
 const processingStatusCheckInterval = 10; // seconds
@@ -474,6 +475,9 @@ const storeMetadata = async () => {
  * - Requires DOM elements with IDs: 'dataset-file-input', 'dataset-upload-progress',
  *   'dataset-upload-status-message', 'dataset-upload-submit', 'dataset-upload-status'.
  * - Requires functions: `getCurrentUser()`, `processDataset()`, `stepTo()`.
+ * @async
+ * @function uploadDataset
+ * @returns {Promise<void>} Resolves when the upload process is complete.
  */
 const uploadDataset = () => {
     const formData = new FormData();
@@ -481,6 +485,9 @@ const uploadDataset = () => {
     formData.append('share_uid', shareUid);
     formData.append('session_id', getCurrentUser().session_id);
     formData.append('dataset_format', datasetFormat);
+    if (spatialFormat) {
+        formData.append('spatial_format', spatialFormat);
+    }
     formData.append('dataset_file', document.getElementById('dataset-file-input').files[0]);
 
     const xhr = new XMLHttpRequest();
@@ -535,6 +542,9 @@ const processDataset = async () => {
     const formData = new FormData();
     formData.append('share_uid', shareUid);
     formData.append('dataset_format', datasetFormat);
+    if (spatialFormat) {
+        formData.append('spatial_format', spatialFormat);
+    }
     formData.append('session_id', getCurrentUser().session_id);
 
     const xhr = new XMLHttpRequest();
@@ -750,12 +760,23 @@ document.getElementById('metadata-file-input').addEventListener('change', (event
 
 document.getElementById('dataset-upload-submit').addEventListener('click', (event) => {
     event.preventDefault();
-
     // make sure they chose a format
     if (!datasetFormat) {
         document.getElementById('dataset-upload-status-message').textContent = 'Please choose a format above first.';
         document.getElementById('dataset-upload-status').classList.remove('is-hidden');
         return;
+    }
+
+    if (datasetFormat === "spatial") {
+        const spatialFormatSelect = document.getElementById('select-spatial-platform');
+        if (spatialFormatSelect.value === '') {
+            document.getElementById('dataset-upload-status-message').textContent = 'Please choose a spatial platform above first.';
+            document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+            return;
+        }
+        spatialFormat = spatialFormatSelect.value;
+    } else {
+        spatialFormat = null;   // safeguard
     }
 
     // change submit button to spinner
@@ -782,6 +803,35 @@ document.getElementById('metadata-geo-lookup').addEventListener('click', (event)
     button.disabled = true;
     button.classList.add('is-loading');
     const getData = getGeoData();
+});
+
+document.getElementById('select-spatial-platform').addEventListener('change', (e) => {
+    const platform = e.target.value;
+    const reqsSpan = document.getElementById('spatial-requirements');
+
+    if (platform === '') {
+        reqsSpan.classList.add('is-hidden');
+    } else {
+        reqsSpan.classList.remove('is-hidden');
+    }
+});
+
+// Show modal of spatial requirements if clicked
+document.getElementById("spatial-requirements").addEventListener("click", (e) => {
+    e.preventDefault();
+    const modalId = e.target.dataset.target;
+    const modalElt = document.getElementById(modalId);
+    openModal(modalElt);
+
+    const platform = document.getElementById("select-spatial-platform").value;
+    // Get the text content for the selected option
+    const platformText = document.querySelector(`#select-spatial-platform option[value="${platform}"]`).textContent;
+    // populate the modal
+    document.querySelector(`#${modalId} .modal-card-body .content`).innerHTML =
+        document.getElementById(`${platform}-spatial-reqs`).innerHTML;
+
+    document.querySelector(`#${modalId} .modal-card-title`).textContent = platformText;
+
 });
 
 /*  From Shaun, used to toggle element's stickiness */

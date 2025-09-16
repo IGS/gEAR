@@ -1,8 +1,8 @@
 #!/opt/bin/python3
 
 """
-Process the uploaded expression dataset, regardless of type.  As the data are,
-a process which can take hours, the following data structure is periodically 
+Process the uploaded expression dataset, regardless of type.  As the data are uploaded,
+a process which can take hours, the following data structure is periodically
 written to the same directory as the dataset:
 
 status.json
@@ -19,14 +19,21 @@ Where status can be 'uploaded', 'extracting', 'processing', 'error', or 'complet
 
 import cgi
 import json
-import os, sys
+import os
+import sys
 import time
+import typing
+import zipfile
 
+import anndata
 import pandas as pd
 import scanpy as sc
 from scipy import sparse
-import anndata
-import zipfile
+
+if typing.TYPE_CHECKING:
+    from typing import NoReturn
+
+
 
 # This has a huge dependency stack of libraries. Occasionally, one of them has methods
 #  which prints debugging information on STDOUT, killing this CGI.  So here we redirect
@@ -51,7 +58,7 @@ status = {
 }
 
 def main():
-    result = {'success':0 }
+    result = {'success':0, "message": ""}
     global share_uid
     global session_id
 
@@ -59,6 +66,8 @@ def main():
     share_uid = form.getvalue('share_uid')
     session_id = form.getvalue('session_id')
     dataset_format = form.getvalue('dataset_format')
+    spatial_format = form.getvalue('spatial_format')  # may be None
+
 
     user = geardb.get_user_from_session_id(session_id)
     if user is None:
@@ -66,7 +75,7 @@ def main():
         print_and_go(None, json.dumps(result))
 
     # values are mex_3tab, excel, rdata, h5ad
-    dataset_formats = ['mex_3tab', 'excel', 'rdata', 'h5ad']
+    dataset_formats = ['mex_3tab', 'excel', 'rdata', 'h5ad', 'spatial']
     dataset_upload_dir = os.path.join(user_upload_file_base, session_id, share_uid)
 
     # quickly write the status so the page doesn't error out
@@ -82,6 +91,15 @@ def main():
     if dataset_format not in dataset_formats:
         result['message'] = 'Unsupported dataset format.'
         print_and_go(status_file, json.dumps(result))
+
+    if dataset_format == "spatial":
+        result["message"] = "NOT YET IMPLEMENTED"
+        print_and_go(status_file, json.dumps(result))
+
+        from gear.spatialhandler import SPATIALTYPE2CLASS
+        if spatial_format not in SPATIALTYPE2CLASS:
+            result['message'] = 'Invalid spatial format specified.'
+            print_and_go(status_file, json.dumps(result))
 
     # Since this process can take a while, we want to fork off of apache and continue
     #  processing in the background.
@@ -121,11 +139,23 @@ def main():
         process_mex_3tab(dataset_upload_dir)
     elif dataset_format == 'excel':
         process_excel(dataset_upload_dir)
+    elif dataset_format == "spatial":
+        spatial_handler_class = SPATIALTYPE2CLASS[spatial_format]
+        """
+            sp_class._read_file(args.input_file, organism_id=args.organism_id, dataset_id=args.dataset_id)
+            output_filename = args.dataset_id
+            output_path = DEST_DIRPATH / (output_filename + OUTPUT_SUFFIX)
+            print("Writing to {0}".format(output_path))
+            sp_class.write_to_zarr(filepath=output_path)
+        """
+
+        spatial_handler = spatial_handler_class(share_uid, dataset_upload_dir, status_file)
+        spatial_handler.process_spatial()
     else:
         raise Exception('Unsupported dataset format')
 
 
-def print_and_go(status_file, content):
+def print_and_go(status_file, content) -> "NoReturn":
     sys.stdout = original_stdout
     print(content)
 
@@ -149,9 +179,9 @@ def process_3tab(upload_dir):
         # skip any files beginning with a dot
         if infile.startswith('.'):
             continue
-        
+
         filepath = "{0}/{1}".format(upload_dir, infile)
-        
+
         # Read each file as pandas dataframes
         if infile == 'expression.tab' or os.path.basename(filepath) == 'expression.tab' or 'DataMTX.tab' in infile:
             expression_matrix_path = filepath
@@ -238,14 +268,14 @@ def process_3tab(upload_dir):
             adata.X = sparse.vstack(expression_matrix)
         except Exception as final_e:
             #print(f"\nFinal vstack still failed: {final_e}")
-            
+
             #print("Collected chunk shapes:")
             #for i, shape in enumerate(chunk_shapes):
             #    print(f"  Chunk {i+1}: {shape}")
-                
+
             raise
 
-    
+
     adata = adata.transpose()
     adata.obs = sanitize_obs_for_h5ad(adata.obs)
 
@@ -253,7 +283,7 @@ def process_3tab(upload_dir):
     adata.write(h5ad_path)
 
     write_status(upload_dir, 'complete', 'Dataset processed successfully.')
-    
+
 def process_excel(upload_dir):
     filepath = os.path.join(upload_dir, f"{share_uid}.xlsx")
 
@@ -262,18 +292,18 @@ def process_excel(upload_dir):
     exp_df = pd.read_excel(filepath, sheet_name='expression', index_col=0).transpose()
 
     try:
-        X = exp_df.values[:, 0:].astype(float)
-    except:
+        X = exp_df.to_numpy()[:, 0:].astype(float)
+    except ValueError:
         write_status(upload_dir, 'error', "Encountered unexpected value type. Expected float type in expression matrix.")
-        return 
-    
+        return
+
     # Get counts of genes and observations
     number_obs_from_exp, number_genes_from_exp = X.shape
 
     # Get the observations
     try:
         obs_df = pd.read_excel(filepath, sheet_name='observations', index_col='observations')
-    except:
+    except ValueError:
         write_status(upload_dir, 'error', "No observations sheet found. Expected spreadsheet sheet named 'observations'.")
         return
 
@@ -282,16 +312,16 @@ def process_excel(upload_dir):
     if number_obs != number_obs_from_exp:
         write_status(upload_dir, 'error', "Observations sheet error. Row count ({0}) in 'observations' sheet must match row count of 'expression' sheet({1}).".format(number_obs, number_obs_from_exp))
         return
-    
+
     # Verify observations index matches expression sheet col index
     if not obs_df.index.equals(exp_df.index):
         write_status(upload_dir, 'error', "Observations sheet error. The names and order of the index column in 'observations' sheet must match the rows of 'expression' sheet.")
         return
-    
+
     # Get the genes (if present), else use the .var from exp_df
     try:
         genes_df = pd.read_excel(filepath, sheet_name='genes', index_col=0, converters={'gene_symbol': str})
-    except:
+    except ValueError:
         # With 'genes' sheet absent try to get the genes from 'expression'
         try:
             # read expression sheet. Set genes as the index and only parse 1 column
@@ -303,7 +333,7 @@ def process_excel(upload_dir):
         except Exception as err:
             write_status(upload_dir, 'error', "No 'genes' sheet found. Tried using genes column from 'expression' sheet as .var, but " + str(err))
             return
-        
+
     # Check for numeric gene symbols
     if 'gene_symbol' in genes_df.columns:
         digit_count = genes_df['gene_symbol'].str.isnumeric().sum()
@@ -321,7 +351,7 @@ def process_excel(upload_dir):
     for num_type in ['replicate', 'time_point_order']:
         if num_type in obs_df.columns:
             obs_df[num_type] = pd.to_numeric(obs_df[num_type])
-            
+
     # Verify number genes equal those found in expression sheet
     number_genes, number_columns = genes_df.shape
     if number_genes != number_genes_from_exp:
@@ -378,9 +408,9 @@ def process_mex_3tab(upload_dir):
                         if entry.name.endswith(suffix):
                             suffix_found = suffix
                             # Rename the file to the appropriate name
-                            os.rename(os.path.join(upload_dir, entry.name), 
+                            os.rename(os.path.join(upload_dir, entry.name),
                                     os.path.join(upload_dir, suffix))
-                    
+
                     if suffix_found is not None:
                         files_extracted.append(suffix_found)
                     else:
@@ -403,9 +433,9 @@ def process_mex_3tab(upload_dir):
                         if entry.filename.endswith(suffix):
                             suffix_found = suffix
                             # Rename the file to the appropriate name
-                            os.rename(os.path.join(upload_dir, entry.filename), 
+                            os.rename(os.path.join(upload_dir, entry.filename),
                                     os.path.join(upload_dir, suffix))
-                    
+
                     if suffix_found is not None:
                         files_extracted.append(suffix_found)
                     else:
@@ -431,7 +461,7 @@ def sanitize_obs_for_h5ad(obs_df):
         if obs_df[col].dtype == 'object':
             obs_df[col] = obs_df[col].fillna('').astype(str)
     return obs_df
-        
+
 def write_status(upload_dir, status_name, message):
     status['status'] = status_name
     status['message'] = message
@@ -453,7 +483,7 @@ def package_content_type(filenames):
         observations.tab
 
         None is returned if neither of these is true
-        
+
         Added NEMO file format functionality.
         DataMTX.tab -> expression.tab
         COLmeta.tab -> observations.tab
@@ -461,7 +491,7 @@ def package_content_type(filenames):
         """
         if 'expression.tab' in filenames and 'genes.tab' in filenames and 'observations.tab' in filenames:
             return 'threetab'
-        
+
         if 'matrix.mtx' in filenames and 'barcodes.tsv' in filenames and 'genes.tsv' in filenames:
             return 'mex'
 
