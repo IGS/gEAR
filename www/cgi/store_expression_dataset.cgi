@@ -58,10 +58,6 @@ def main():
             sys.exit(0)
 
     if dataset_format == 'spatial':
-        result["message"] = "NOT YET IMPLEMENTED"
-        print(json.dumps(result))
-        sys.exit(0)
-
         if not filename.endswith('tar.gz'):
             result['message'] = 'Invalid file extension for Spatial format. Expected .tar or .tar.gz'
             print(json.dumps(result))

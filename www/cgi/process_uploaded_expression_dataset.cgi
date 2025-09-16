@@ -93,9 +93,6 @@ def main():
         print_and_go(status_file, json.dumps(result))
 
     if dataset_format == "spatial":
-        result["message"] = "NOT YET IMPLEMENTED"
-        print_and_go(status_file, json.dumps(result))
-
         from gear.spatialhandler import SPATIALTYPE2CLASS
         if spatial_format not in SPATIALTYPE2CLASS:
             result['message'] = 'Invalid spatial format specified.'
