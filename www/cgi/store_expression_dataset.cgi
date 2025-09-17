@@ -19,7 +19,6 @@ def main():
     print('Content-Type: application/json\n\n')
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
-    dataset_uid = form.getvalue('dataset_uid')
     share_uid = form.getvalue('share_uid')
     dataset_format = form.getvalue('dataset_format')
     spatial_format = form.getvalue('spatial_format')  # may be None

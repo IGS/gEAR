@@ -40,6 +40,10 @@ def main():
         os.makedirs(user_upload_file_base)
 
     user = geardb.get_user_from_session_id(session_id)
+    if not user:
+        print(json.dumps({'success': 0, 'error': 'Invalid session_id'}))
+        return
+
     result = {'success': 0, 'error': None}
 
     # names are changed here so the files are compatible with the legacy ones

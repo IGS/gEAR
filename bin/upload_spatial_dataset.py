@@ -45,7 +45,11 @@ def main():
     print("Input file: {0}".format(args.input_file))
     sp_class = spatialhandler.SPATIALTYPE2CLASS[args.type]()
 
-    sp_class._read_file(args.input_file, organism_id=args.organism_id, dataset_id=args.dataset_id)
+    extract_dir = Path("/tmp") / f"{args.dataset_id}"
+    # Ensure the extract directory exists
+    extract_dir.mkdir(parents=True, exist_ok=True)
+
+    sp_class.process_file(args.input_file, organism_id=args.organism_id, dataset_id=args.dataset_id, extract_dir=extract_dir)
 
     output_filename = args.dataset_id
     if args.h5ad:

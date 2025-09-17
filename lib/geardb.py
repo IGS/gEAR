@@ -623,6 +623,26 @@ def get_layout_by_share_id(layout_share_id):
     conn.close()
     return layout
 
+def get_organism_id_by_taxon_id(taxon_id) -> int | None:
+    """
+    Given a taxon_id passed this returns a numeric organism.id if a corresponding one
+    is found. Otherwise, None is returned
+    """
+    conn = Connection()
+    cursor = conn.get_cursor()
+    organism_id = None
+
+    qry = "SELECT id FROM organism WHERE taxon_id = %s"
+    cursor.execute(qry, (taxon_id,))
+
+    row = cursor.fetchone()
+    if row:
+        organism_id = row[0]
+
+    cursor.close()
+    conn.close()
+
+    return organism_id
 
 def get_user_count():
     conn = Connection()

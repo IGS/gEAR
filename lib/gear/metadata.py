@@ -293,19 +293,19 @@ class Metadata:
         dataset_title = get_value_from_df(df, 'title')
 
         # Get organism gEAR ID using taxon_id
-        organism_id = None
         organism_taxid = get_value_from_df(df, 'sample_taxid')
-        organism_qry = ( "SELECT id FROM organism WHERE taxon_id = %s" )
-        cursor.execute(organism_qry, ( str(organism_taxid), ))
-        for (id, ) in cursor:
-            organism_id = id
+        if organism_taxid is None:
+            raise Exception("No taxon_id found in metadata. Please provide a taxon_id.")
+        organism_id = geardb.get_organism_id_by_taxon_id(organism_taxid)
+        if organism_id is None:
+            raise Exception("No organism found with taxon_id: {0}. Please add the organism to gEAR before uploading this dataset.".format(organism_taxid))
 
         geo_id = get_value_from_df(df, 'geo_accession')
         if 'geo_id' == 'None':
             geo_id = None
-        
-        if type(geo_id) is str:            
-            geo_id = geo_id.strip()      
+
+        if type(geo_id) is str:
+            geo_id = geo_id.strip()
 
         ldesc = get_value_from_df(df, 'summary')
         dtype = get_value_from_df(df, 'dataset_type')
@@ -320,8 +320,8 @@ class Metadata:
         pubmed_id = get_value_from_df(df, 'pubmed_id')
         if 'pubmed_id' == 'None':
             pubmed_id = None
-        
-        if type(pubmed_id) is str:            
+
+        if type(pubmed_id) is str:
             pubmed_id = pubmed_id.strip()
 
             # Users entering multiple pubmed IDs will cause failure.  Take the first
