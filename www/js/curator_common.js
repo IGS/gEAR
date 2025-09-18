@@ -1,9 +1,9 @@
 'use strict';
 
-import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates, trigger } from "./common.v2.js?v=a6c4f04";
-import { availablePalettes, plotly2MatplotlibNames } from "./plot_display_config.js?v=a6c4f04";
-import { FacetWidget } from "./classes/facets.js?v=a6c4f04";
-import { DatasetTree } from "./classes/tree.js?v=a6c4f04";
+import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates, trigger } from "./common.v2.js?v=a4b3d6c";
+import { availablePalettes, plotly2MatplotlibNames } from "./plot_display_config.js?v=a4b3d6c";
+import { FacetWidget } from "./classes/facets.js?v=a4b3d6c";
+import { DatasetTree } from "./classes/tree.js?v=a4b3d6c";
 
 let isMultigene;
 const setIsMultigene = (val) => { isMultigene = val; }
@@ -976,7 +976,6 @@ const createPlotTypeSelectInstance = (idSelector, plotTypeSelect=null) => {
 const createPlot = async (event) => {
 
     const plotType = getSelect2Value(plotTypeSelect);
-    const plotBtns = document.getElementsByClassName("js-plot-btn");
 
     // Set loading
 	event.target.classList.add("is-loading");
@@ -986,7 +985,7 @@ const createPlot = async (event) => {
     await curatorSpecifcCreatePlot(plotType, datasetId, analysisObj);
 
     // Stop loader
-	event.target.classList.add("is-loading");
+	event.target.classList.remove("is-loading");
 
     // Hide this view
     document.getElementById("content-c").classList.add("is-hidden");
