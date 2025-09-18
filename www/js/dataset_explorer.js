@@ -1,7 +1,7 @@
 "use strict";
 
-import { apiCallsMixin, closeModal, createToast, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=a4b3d6c";
-import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, setActiveDCCategory, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=a4b3d6c";
+import { apiCallsMixin, closeModal, createToast, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=9858a6e";
+import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, setActiveDCCategory, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=9858a6e";
 
 /* Imported variables
 let datasetCollectionState.data; // from dataset-collection-selector

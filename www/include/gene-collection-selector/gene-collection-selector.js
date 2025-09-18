@@ -1,6 +1,6 @@
 "use strict";
 
-import { apiCallsMixin } from "../../js/common.v2.js?v=a4b3d6c";
+import { apiCallsMixin } from "../../js/common.v2.js?v=9858a6e";
 
 export const geneCollectionState = {
     "data": null,
