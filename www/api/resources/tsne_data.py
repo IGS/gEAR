@@ -77,6 +77,7 @@ parser.add_argument("obs_filters", type=dict, default={})  # dict of lists
 parser.add_argument(
     "projection_id", type=str, default=None
 )  # projection id of csv output
+parser.add_argument("expression_min_clip", type=float, default=None)
 parser.add_argument("colorblind_mode", type=bool, default=False)
 parser.add_argument("high_dpi", type=bool, default=False)
 parser.add_argument(

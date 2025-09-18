@@ -90,6 +90,7 @@ NOTE: Some of the packages will indirectly install dask-expr, which is currently
       shadows==0.1a2 \
       spatialdata==0.4.0\
       spatialdata_io==0.1.6 \
+      statsmodels==0.13.2 \
       tables==3.9.2 \
       watchfiles \
       xlrd==1.2.0

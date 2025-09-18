@@ -1414,7 +1414,8 @@ class Connection:
             return self.mysql_cnx.cursor()
 
     def __del__(self):
-        self.close()
+        if hasattr(self, "mysql_cnx"):
+            self.close()
 
 
 class Organism:
