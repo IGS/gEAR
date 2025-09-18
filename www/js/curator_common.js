@@ -976,7 +976,6 @@ const createPlotTypeSelectInstance = (idSelector, plotTypeSelect=null) => {
 const createPlot = async (event) => {
 
     const plotType = getSelect2Value(plotTypeSelect);
-    const plotBtns = document.getElementsByClassName("js-plot-btn");
 
     // Set loading
 	event.target.classList.add("is-loading");
@@ -986,7 +985,7 @@ const createPlot = async (event) => {
     await curatorSpecifcCreatePlot(plotType, datasetId, analysisObj);
 
     // Stop loader
-	event.target.classList.add("is-loading");
+	event.target.classList.remove("is-loading");
 
     // Hide this view
     document.getElementById("content-c").classList.add("is-hidden");
