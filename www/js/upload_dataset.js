@@ -669,6 +669,14 @@ for (const btn of formatSelectorElts) {
         btn.querySelector('span.icon i').classList.add('mdi', 'mdi-checkbox-outline');
         btn.querySelector('span.format-status').textContent = 'Selected';
         datasetFormat = btn.dataset.format;
+
+        // If the format is spatial, change text to say "Zarr store"
+        const migrateH5adSpan = document.getElementById("finalize-migrating-h5ad-text");
+        migrateH5adSpan.textContent = 'Migrating H5AD file';
+        if (datasetFormat === 'spatial') {
+            migrateH5adSpan.textContent = 'Migrating Zarr store';
+        }
+
     });
 };
 
@@ -835,8 +843,9 @@ document.getElementById("spatial-requirements").addEventListener("click", (e) =>
         document.getElementById(`${platform}-spatial-reqs`).innerHTML;
 
     document.querySelector(`#${modalId} .modal-card-title`).textContent = platformText;
-
 });
+
+
 
 /*  From Shaun, used to toggle element's stickiness */
 // if scrolling makes #summar-s go above top of screen, make it sticky
