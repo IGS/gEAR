@@ -34,7 +34,6 @@ if typing.TYPE_CHECKING:
     from typing import NoReturn
 
 
-
 # This has a huge dependency stack of libraries. Occasionally, one of them has methods
 #  which prints debugging information on STDOUT, killing this CGI.  So here we redirect
 #  STDOUT until we need it.
@@ -45,6 +44,7 @@ sys.stdout = open(os.devnull, 'w')
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.spatialhandler import SPATIALTYPE2CLASS
 
 share_uid = None
 session_id = None
@@ -68,11 +68,14 @@ def main():
     dataset_format = form.getvalue('dataset_format')
     spatial_format = form.getvalue('spatial_format')  # may be None
 
+    if share_uid is None or session_id is None or dataset_format is None:
+        result['message'] = 'Missing one or more required parameters.'
+        send_response_and_exit(None, json.dumps(result))
 
     user = geardb.get_user_from_session_id(session_id)
     if user is None:
         result['message'] = 'User ID not found. Please log in to continue.'
-        print_and_go(None, json.dumps(result))
+        send_response_and_exit(None, json.dumps(result))
 
     # values are mex_3tab, excel, rdata, h5ad
     dataset_formats = ['mex_3tab', 'excel', 'rdata', 'h5ad', 'spatial']
@@ -86,20 +89,16 @@ def main():
     # if the upload directory doesn't exist, we can't process the dataset
     if not os.path.exists(dataset_upload_dir):
         result['message'] = 'Dataset/directory not found.'
-        print_and_go(status_file, json.dumps(result))
+        send_response_and_exit(status_file, json.dumps(result))
 
     if dataset_format not in dataset_formats:
         result['message'] = 'Unsupported dataset format.'
-        print_and_go(status_file, json.dumps(result))
+        send_response_and_exit(status_file, json.dumps(result))
 
     if dataset_format == "spatial":
-        result["message"] = "NOT YET IMPLEMENTED"
-        print_and_go(status_file, json.dumps(result))
-
-        from gear.spatialhandler import SPATIALTYPE2CLASS
         if spatial_format not in SPATIALTYPE2CLASS:
             result['message'] = 'Invalid spatial format specified.'
-            print_and_go(status_file, json.dumps(result))
+            send_response_and_exit(status_file, json.dumps(result))
 
     # Since this process can take a while, we want to fork off of apache and continue
     #  processing in the background.
@@ -140,29 +139,20 @@ def main():
     elif dataset_format == 'excel':
         process_excel(dataset_upload_dir)
     elif dataset_format == "spatial":
-        spatial_handler_class = SPATIALTYPE2CLASS[spatial_format]
-        """
-            sp_class._read_file(args.input_file, organism_id=args.organism_id, dataset_id=args.dataset_id)
-            output_filename = args.dataset_id
-            output_path = DEST_DIRPATH / (output_filename + OUTPUT_SUFFIX)
-            print("Writing to {0}".format(output_path))
-            sp_class.write_to_zarr(filepath=output_path)
-        """
-
-        spatial_handler = spatial_handler_class(share_uid, dataset_upload_dir, status_file)
-        spatial_handler.process_spatial()
+        process_spatial(dataset_upload_dir, spatial_format)
     else:
         raise Exception('Unsupported dataset format')
 
 
-def print_and_go(status_file, content) -> "NoReturn":
+def send_response_and_exit(status_file: str | None, content: str) -> "NoReturn":
+    """Print the content-type and the content, then exit."""
+    global status
     sys.stdout = original_stdout
     print(content)
 
     if status_file is not None:
         with open(status_file, 'w') as f:
             f.write(json.dumps(status))
-
     sys.exit(0)
 
 def process_3tab(upload_dir):
@@ -191,6 +181,18 @@ def process_3tab(upload_dir):
         elif infile == 'genes.tab' or os.path.basename(filepath) == 'genes.tab' or 'ROWmeta.tab' in infile:
             #print("Reading genes file: {0}".format(filepath), file=sys.stderr, flush=True)
             var = pd.read_table(filepath, sep='\t', index_col=0, header=0)
+
+    if obs is None:
+        write_status(upload_dir, 'error', "No observations file found. Expected observations.tab or COLmeta.tab.")
+        return
+
+    if var is None:
+        write_status(upload_dir, 'error', "No genes file found. Expected genes.tab or ROWmeta.tab.")
+        return
+
+    if expression_matrix_path is None:
+        write_status(upload_dir, 'error', "No expression file found. Expected expression.tab or DataMTX.tab.")
+        return
 
     for str_type in ['cell_type', 'condition', 'time_point', 'time_unit']:
         if str_type in obs.columns:
@@ -455,6 +457,53 @@ def process_mex_3tab(upload_dir):
         process_3tab(upload_dir)
     elif dataset_type == 'mex':
         process_mex(upload_dir)
+
+def process_spatial(upload_dir: str, spatial_format: str) -> None:
+    """
+    Processes a spatial transcriptomics dataset uploaded to a specified directory.
+
+    This function handles the reading and conversion of spatial data files using a handler
+    class determined by the spatial_format. It expects a metadata.json file in the upload
+    directory to extract the sample's taxonomic ID, which is then used to retrieve the
+    organism ID. The function reads the spatial data archive, processes it, and writes the
+    output in Zarr format. Status updates and errors are logged using the write_status function.
+
+    Args:
+        upload_dir (str): The directory where the uploaded files are located.
+        spatial_format (str): The format of the spatial data, used to select the appropriate handler.
+
+    Raises:
+        Writes error status if the metadata file is missing or if reading/converting the spatial file fails.
+    """
+    spatial_obj = SPATIALTYPE2CLASS[spatial_format]()   # instantiate the appropriate handler class
+    metadata_file = os.path.join(upload_dir, 'metadata.json')
+    if not os.path.exists(metadata_file):
+        write_status(upload_dir, 'error', "No metadata JSON file found.")
+
+    # get organism_id by converting sample_taxid(needed for some but not all spatial handlers)
+    with open(metadata_file, 'r') as f:
+        metadata = json.load(f)
+    sample_taxid = metadata.get("sample_taxid", None)
+    organism_id=geardb.get_organism_id_by_taxon_id(sample_taxid)
+    filepath = os.path.join(upload_dir, f"{share_uid}.tar.gz")
+
+    try:
+        spatial_obj.process_file(filepath, extract_dir=upload_dir, organism_id=organism_id)
+    except Exception as e:
+        write_status(upload_dir, 'error', f"Error in uploading spatial file: {e}")
+        return
+
+    output_filename = f"{share_uid}.zarr"
+    output_path = os.path.join(upload_dir, output_filename)
+    # Remove existing Zarr store if it exists
+    # This is a safeguard; it shouldn't exist at this point, unless there was a failure post-writing
+    if os.path.exists(output_path):
+        import shutil
+        shutil.rmtree(output_path)
+
+    write_status(upload_dir, 'processing', 'Writing Zarr store')
+    spatial_obj.write_to_zarr(filepath=output_path)
+    write_status(upload_dir, 'complete', 'Dataset processed successfully.')
 
 def sanitize_obs_for_h5ad(obs_df):
     for col in obs_df.columns:

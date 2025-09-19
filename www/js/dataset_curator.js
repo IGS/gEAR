@@ -167,6 +167,9 @@ class PlotlyHandler extends curatorCommon.PlotHandler {
 
         addOvercrowdedSeriesWarning(plotContainer);
 
+        // Trigger resize to make sure it fits in the container
+        Plotly.Plots.resize(document.getElementById('plotly-preview'));
+
     }
 
     /**

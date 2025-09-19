@@ -1376,7 +1376,13 @@ const apiCallsMixin = {
         const {data} = await axios.post("/cgi/get_user_history_entries.cgi", convertToFormData(payload));
         return data;
     },
-
+    /**
+     * Finalizes the upload of an expression dataset by sending form data to the server.
+     *
+     * @async
+     * @param {FormData} formData - The form data containing the expression dataset information.
+     * @returns {Promise<any>} The response data from the server after finalizing the upload.
+     */
     async finalizeExpressionUpload(formData) {
         const payload = new URLSearchParams(formData);
         const {data} = await axios.post("/cgi/finalize_uploaded_expression_dataset.cgi", payload);

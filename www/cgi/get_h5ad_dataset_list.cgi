@@ -22,9 +22,6 @@ def main():
     if share_id == "null":
         share_id = None
 
-    # allows for filtering datasets appropriate to specific pages
-    for_page = form.getvalue("for_page")
-
     if session_id is not None:
         user = geardb.get_user_from_session_id(session_id)
     else:
@@ -34,99 +31,31 @@ def main():
     shared_with_user_collection = geardb.DatasetCollection()
     user_collection = geardb.DatasetCollection()
 
+    # Spatial datasets have no h5ad but have the "spatial" dtype.
+    # Downstream, we can convert SpatialData objects to AnnData so we should include these.
+    spatial_public_collection = geardb.DatasetCollection()
+    spatial_shared_with_user_collection = geardb.DatasetCollection()
+    spatial_user_collection = geardb.DatasetCollection()
+
     result = {"user": user_collection, "public": public_collection, "shared_with_user": shared_with_user_collection}
 
     # public datasets are displayed no matter what
-    if for_page is None:
-        public_collection.get_public(has_h5ad=1)
-    elif for_page == "analyze_dataset":
-        public_collection.get_public(has_h5ad=1, types=["single-cell-rnaseq"])
-    elif for_page == "compare_dataset":
-        public_collection.get_public(
-            has_h5ad=1,
-            types=[
-                "microarray",
-                "bulk-rnaseq",
-                "singlecell-h5ad",
-                "single-cell-rnaseq",
-                "svg-expression",
-                "violin-standard",
-            ],
-        )
-    elif for_page == "projection":
-        public_collection.get_public(
-            has_h5ad=1,
-            types=[
-                "microarray",
-                "bulk-rnaseq",
-                "singlecell-h5ad",
-                "single-cell-rnaseq",
-            ],
-        )
+    public_collection.get_public(has_h5ad=1)
+    spatial_public_collection.get_public(has_h5ad=0, types=["spatial"])
+    public_collection.datasets.extend(spatial_public_collection.datasets)
 
     result["public"] = public_collection
 
     if user is not None:
-        if for_page is None:
-            user_collection = user.datasets(has_h5ad=1)
-            shared_with_user_collection.get_shared_with_user(has_h5ad=1, user=user)
-        elif for_page == "analyze_dataset":
-            user_collection = user.datasets(has_h5ad=1, types=["single-cell-rnaseq"])
-            shared_with_user_collection.get_shared_with_user(
-                has_h5ad=1,
-                user=user,
-                types=[
-                    "microarray",
-                    "bulk-rnaseq",
-                    "singlecell-h5ad",
-                    "single-cell-rnaseq",
-                    "violin-standard",
-                ],
-            )
-        elif for_page == "compare_dataset":
-            user_collection = user.datasets(
-                has_h5ad=1,
-                types=[
-                    "microarray",
-                    "bulk-rnaseq",
-                    "singlecell-h5ad",
-                    "single-cell-rnaseq",
-                    "svg-expression",
-                    "violin-standard",
-                ],
-            )
-            shared_with_user_collection.get_shared_with_user(
-                has_h5ad=1,
-                user=user,
-                types=[
-                    "microarray",
-                    "bulk-rnaseq",
-                    "singlecell-h5ad",
-                    "single-cell-rnaseq",
-                    "svg-expression",
-                    "violin-standard",
-                ],
-            )
-        elif for_page == "projection":
-            user_collection = user.datasets(
-                has_h5ad=1,
-                types=[
-                    "microarray",
-                    "bulk-rnaseq",
-                    "singlecell-h5ad",
-                    "single-cell-rnaseq",
-                ],
-            )
-            shared_with_user_collection.get_shared_with_user(
-                has_h5ad=1,
-                user=user,
-                types=[
-                    "microarray",
-                    "bulk-rnaseq",
-                    "singlecell-h5ad",
-                    "single-cell-rnaseq",
-                ],
-            )
+        # NOTE: This previous used user.datasets() but that does not clear the "_datasets" property if called multiple times.
+        user_collection.get_owned_by_user(has_h5ad=1, user=user)
+        spatial_user_collection.get_owned_by_user(has_h5ad=0, user=user, types=["spatial"])
+        user_collection.datasets.extend(spatial_user_collection.datasets)
+
+        shared_with_user_collection.get_shared_with_user(has_h5ad=1, user=user)
+        spatial_shared_with_user_collection.get_shared_with_user(has_h5ad=0, types=["spatial"], user=user)
+        shared_with_user_collection.datasets.extend(spatial_shared_with_user_collection.datasets)
+
 
     result["user"] = user_collection
     result["shared_with_user"] = shared_with_user_collection

@@ -8,7 +8,12 @@ for permanent storage.
 
 import cgi
 import json
-import os, sys
+import os
+import sys
+import typing
+
+if typing.TYPE_CHECKING:
+    from typing import NoReturn
 
 # This has a huge dependency stack of libraries. Occasionally, one of them has methods
 #  which prints debugging information on STDERR, killing this CGI.  So here we redirect
@@ -21,6 +26,7 @@ sys.path.append(lib_path)
 import geardb
 from gear.metadata import Metadata
 
+
 def main():
     user_upload_file_base = '/tmp'
     form = cgi.FieldStorage()
@@ -28,7 +34,7 @@ def main():
     dataset_id = form.getvalue('metadata-dataset-id')
     fileitem = form['metadata-file-input']
     user = geardb.get_user_from_session_id(session_id)
-    result = {'success':0 }
+    result = {'success':0, 'message':'', 'metadata':{}}
 
     if user is None:
         result['message'] = 'User ID not found. Please log in to continue.'
@@ -40,7 +46,7 @@ def main():
     if not (filename.endswith('.xls') or filename.endswith('.xlsx')):
         result['message'] = 'Metadata file must be in Excel format (with .xls or .xlsx extension)'
         print_and_go(json.dumps(result))
-    
+
     #filename = os.path.basename(form.getvalue('metadata-file-input'))
     dest_filepath = os.path.join(user_upload_file_base, "{0}.xlsx".format(dataset_id))
 
@@ -49,7 +55,7 @@ def main():
     fh.close()
 
     metadata = Metadata(file_path=dest_filepath)
-    
+
     try:
         metadata.populate_from_geo()
     except Exception as e:
@@ -63,11 +69,12 @@ def main():
     result['success'] = 1
     print_and_go(json.dumps(result))
 
-def print_and_go(content):
+def print_and_go(content: str) -> 'NoReturn':
+    """Print the content-type and the content, then exit."""
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n', flush=True)
     print(content)
     sys.exit(0)
-    
+
 if __name__ == '__main__':
     main()

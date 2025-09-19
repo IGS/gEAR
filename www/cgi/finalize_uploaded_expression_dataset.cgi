@@ -27,7 +27,7 @@ result = {
     "success": 1,
     "metadata_loaded": 1,
     "h5ad_migrated": 1,
-    "userdata_migrated": 1,    
+    "userdata_migrated": 1,
     "message": "All steps completed successfully."
 }
 """
@@ -107,22 +107,39 @@ def main():
         print(json.dumps(result))
         sys.exit(0)
 
-    # migrate the H5AD file
-    h5ad_file = os.path.join(dataset_upload_dir, f'{share_uid}.h5ad')
-    h5ad_dest = os.path.join(dataset_final_dir, f'{dataset_id}.h5ad')
-    if not os.path.exists(h5ad_file):
-        result['message'] = 'H5AD file not found: {}'.format(h5ad_file)
-        print(json.dumps(result))
-        sys.exit(0)
+    global dataset_final_dir
+    # migrate the H5AD file or Zarr store (spatial)
+    if dataset_format == "spatial":
+        dataset_final_dir = os.path.join(dataset_final_dir, 'spatial')
+        zarr_file = os.path.join(dataset_upload_dir, f'{share_uid}.zarr')
+        if not os.path.isdir(zarr_file):
+            result['message'] = 'Zarr store not found: {}'.format(zarr_file)
+            print(json.dumps(result))
+            sys.exit(0)
+        try:
+            shutil.move(zarr_file, os.path.join(dataset_final_dir, f'{dataset_id}.zarr'))
+            result['h5ad_migrated'] = 1
+        except Exception as e:
+            result['message'] = 'Error migrating Zarr store: {}'.format(str(e))
+            print(json.dumps(result))
+            sys.exit(0)
 
-    try:
-        shutil.move(h5ad_file, h5ad_dest)
-        result['h5ad_migrated'] = 1
-    except Exception as e:
-        result['message'] = 'Error migrating H5AD file: {}'.format(str(e))
-        print(json.dumps(result))
-        sys.exit(0)
-    
+    else:
+        h5ad_file = os.path.join(dataset_upload_dir, f'{share_uid}.h5ad')
+        h5ad_dest = os.path.join(dataset_final_dir, f'{dataset_id}.h5ad')
+        if not os.path.exists(h5ad_file):
+            result['message'] = 'H5AD file not found: {}'.format(h5ad_file)
+            print(json.dumps(result))
+            sys.exit(0)
+
+        try:
+            shutil.move(h5ad_file, h5ad_dest)
+            result['h5ad_migrated'] = 1
+        except Exception as e:
+            result['message'] = 'Error migrating H5AD file: {}'.format(str(e))
+            print(json.dumps(result))
+            sys.exit(0)
+
     if dataset_format == 'mex_3tab':
         # migrate the tarball
         tarball_file = os.path.join(dataset_upload_dir, f'{share_uid}.tar.gz')
@@ -150,6 +167,19 @@ def main():
             result['message'] = 'Error migrating Excel file: {}'.format(str(e))
             print(json.dumps(result))
             sys.exit(0)
+    elif dataset_format == "spatial":
+        # migrate the spatial directory
+        spatial_src = os.path.join(dataset_upload_dir, f'{share_uid}.tar.gz')
+        spatial_dest = os.path.join(dataset_final_dir, f'{dataset_id}.tar.gz')
+
+        try:
+            shutil.move(spatial_src, spatial_dest)
+            result['userdata_migrated'] = 1
+        except Exception as e:
+            result['message'] = 'Error migrating spatial data tarball file: {}'.format(str(e))
+            print(json.dumps(result))
+            sys.exit(0)
+
     else:
         print(f"DEBUG: dataset_format is {dataset_format}", file=sys.stderr)
 

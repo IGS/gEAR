@@ -569,6 +569,9 @@ class GenesAsDataHandler extends curatorCommon.PlotHandler {
         const custonLayout = curatorCommon.getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout");
         Plotly.relayout("plotly-preview", custonLayout);
 
+        // Trigger resize to make sure it fits in the container
+        Plotly.Plots.resize(document.getElementById('plotly-preview'));
+
         // Show button to add genes to gene cart
         document.getElementById("gene-cart-btn-c").classList.remove("is-hidden");
 

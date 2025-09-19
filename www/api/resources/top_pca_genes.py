@@ -1,7 +1,11 @@
+import os
+
+import geardb
 from flask import request
 from flask_restful import Resource
-import os
-import geardb
+
+from .common import get_adata_from_analysis, get_spatial_adata
+
 
 class TopPCAGenes(Resource):
     """Plot Top Genes of Prinicpal Components"""
@@ -22,16 +26,23 @@ class TopPCAGenes(Resource):
         dataset_id = req.get('dataset_id')
         session_id = req.get('session_id')
 
-        user = geardb.get_user_from_session_id(session_id)
-        ana = geardb.Analysis(
-            id=analysis_id,
-            type=analysis_type,
-            dataset_id=dataset_id,
-            session_id=session_id,
-            user_id=user.id
-        )
+        if not dataset_id:
+            return {
+                "success": 0,
+                "message": "Missing dataset_id",
+            }
 
-        source_datafile_path = ana.dataset_path()
+        ds = geardb.get_dataset_by_id(dataset_id)
+        if not ds:
+            return {
+                "success": 0,
+                "message": "Invalid dataset_id",
+            }
+
+        is_spatial = ds.dtype == "spatial"
+
+        analysis = dict(id=analysis_id, type=analysis_type) if analysis_id and analysis_type else None
+        ana = geardb.get_analysis(analysis, dataset_id, session_id, is_spatial=is_spatial)
 
         dest_datafile_path = ana.dataset_path()
         dest_directory = os.path.dirname(dest_datafile_path)
@@ -41,9 +52,24 @@ class TopPCAGenes(Resource):
         if not os.path.exists(dest_directory):
             os.makedirs(dest_directory)
 
-        import scanpy as sc
+        try:
+            if is_spatial:
+                adata = get_spatial_adata(None, dataset_id, session_id, include_images=False)
+            else:
+                adata = get_adata_from_analysis(None, dataset_id, session_id, backed=False)
+        except FileNotFoundError:
+            return {
+                "success": 0,
+                "message": "Dataset file not found",
+            }
+        except Exception as e:
+            return {
+                "success": -1,
+                "message": str(e),
+            }
 
-        adata = sc.read_h5ad(source_datafile_path)
+
+        import scanpy as sc
         sc.settings.figdir = dest_directory + "/figures"
 
         #print("DEBUG: Writing file to path: {0}".format(dest_datafile_path), file=sys.stderr)
@@ -52,7 +78,7 @@ class TopPCAGenes(Resource):
 
         try:
             sc.pl.pca_loadings(adata, components=pcs, save='.png')
-        except:
+        except Exception as e:
             return {
                 "success": -1,
             }
