@@ -152,7 +152,10 @@ def get_analysis(analysis, dataset_id, session_id, is_spatial=False):
             raise FileNotFoundError(
                 "No {} file found for this dataset {}".format(filetype, h5_path)
             )
-        ana = Analysis(type="primary", dataset_id=dataset_id)
+        if is_spatial:
+            ana = SpatialAnalysis(type="primary", dataset_id=dataset_id)
+        else:
+            ana = Analysis(type="primary", dataset_id=dataset_id)
     return ana
 
 
@@ -1339,6 +1342,37 @@ class SpatialAnalysis(Analysis):
         if not os.path.exists(self.dataset_path()):
             raise ValueError(f"Dataset {self.dataset_id} not found")
         return sd.read_zarr(self.dataset_path())
+
+    def get_adata(self, include_images=None):
+        sdata = self.get_sdata()
+        platform = self.determine_platform(sdata)
+
+        from gear import spatialhandler
+
+        # Ensure the spatial data type is supported
+        if not platform or platform not in spatialhandler.SPATIALTYPE2CLASS.keys():
+            raise ValueError(
+                "Invalid or unsupported spatial data type {0}".format(platform)
+            )
+
+        spatial_obj = spatialhandler.SPATIALTYPE2CLASS[platform]()
+        spatial_obj.sdata = sdata
+
+        # Filter by bounding box (mostly for images)
+        spatial_obj.filter_sdata_by_coords()
+
+        if include_images is None:
+            include_images = spatial_obj.has_images
+
+        # Create AnnData object
+        # Do not include images in the adata object (to make it lighter)
+        spatial_obj.convert_sdata_to_adata(include_images=include_images)
+        adata = spatial_obj.adata
+        # Extra metadata to help with determining if images are available and where they are
+        adata.uns["has_images"] = spatial_obj.has_images
+        if spatial_obj.has_images:
+            adata.uns["img_name"] = spatial_obj.img_name
+        return adata
 
     def settings_path(self):
         base_path = f"{self.base_path()}/spatial"

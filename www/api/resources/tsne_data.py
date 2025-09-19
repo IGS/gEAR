@@ -438,8 +438,16 @@ def validate_args(
     if not gene_symbol:
         return {"success": -1, "message": "Request needs a gene symbol or symbols."}
 
+    ds = geardb.get_dataset_by_id(dataset_id)
+    if not ds:
+        return {
+            "success": -1,
+            'message': "No dataset found with that ID"
+        }
+    is_spatial = ds.dtype == "spatial"
+
     try:
-        ana: "Analysis" = geardb.get_analysis(analysis, dataset_id, session_id)
+        ana: "Analysis" = geardb.get_analysis(analysis, dataset_id, session_id, is_spatial=is_spatial)
     except Exception:
         import traceback
 
@@ -447,7 +455,12 @@ def validate_args(
         return {"success": -1, "message": "Could not retrieve analysis."}
 
     try:
-        adata = ana.get_adata(backed=True)
+            args = {}
+            if is_spatial:
+                args['include_images'] = False
+            else:
+                args['backed'] = True
+            adata = ana.get_adata(**args)
     except Exception:
         import traceback
 

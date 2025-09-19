@@ -120,8 +120,16 @@ class PlotlyData(Resource):
             return_dict["message"] = "Request needs both dataset id and gene symbol."
             return return_dict
 
+        ds = geardb.get_dataset_by_id(dataset_id)
+        if not ds:
+            return {
+                "success": -1,
+                'message': "No dataset found with that ID"
+            }
+        is_spatial = ds.dtype == "spatial"
+
         try:
-            ana = geardb.get_analysis(analysis, dataset_id, session_id)
+            ana = geardb.get_analysis(analysis, dataset_id, session_id, is_spatial=is_spatial)
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -130,7 +138,12 @@ class PlotlyData(Resource):
             return return_dict
 
         try:
-            adata = ana.get_adata(backed=True)
+            args = {}
+            if is_spatial:
+                args['include_images'] = False
+            else:
+                args['backed'] = True
+            adata = ana.get_adata(**args)
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -344,7 +357,11 @@ class PlotlyData(Resource):
                         break
 
                 # Sort both the colormap and dataframe column alphabetically
-                sorted_column_values = sorted(col_values)
+                try:
+                    sorted_column_values = sorted(col_values)
+                except TypeError:
+                    # If there are mixed types, convert all to string for sorting
+                    sorted_column_values = sorted(col_values, key=lambda x: str(x))
                 updated_color_map = {}
                 # Replace all the colormap values with the dataframe column values
                 # There is a good chance that the dataframe column values will be in the same order as the colormap values
