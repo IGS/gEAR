@@ -976,16 +976,21 @@ const createPlotTypeSelectInstance = (idSelector, plotTypeSelect=null) => {
 const createPlot = async (event) => {
 
     const plotType = getSelect2Value(plotTypeSelect);
+    const plotBtns = document.getElementsByClassName("js-plot-btn");
 
     // Set loading
-	event.target.classList.add("is-loading");
+    for (const plotBtn of plotBtns) {
+        plotBtn.classList.add("is-loading");
+    }
 
     plotStyle.populatePlotConfig();
 
     await curatorSpecifcCreatePlot(plotType, datasetId, analysisObj);
 
     // Stop loader
-	event.target.classList.remove("is-loading");
+    for (const plotBtn of plotBtns) {
+        plotBtn.classList.remove("is-loading");
+    }
 
     // Hide this view
     document.getElementById("content-c").classList.add("is-hidden");
