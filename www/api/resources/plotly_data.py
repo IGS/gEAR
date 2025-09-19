@@ -350,11 +350,13 @@ class PlotlyData(Resource):
                         break
 
                 # Sort both the colormap and dataframe column alphabetically
-                try:
-                    sorted_column_values = sorted(col_values)
-                except TypeError:
+                # Check for mixed types before sorting for efficiency
+                if len(set(type(x) for x in col_values)) > 1:
                     # If there are mixed types, convert all to string for sorting
                     sorted_column_values = sorted(col_values, key=lambda x: str(x))
+                else:
+                    sorted_column_values = sorted(col_values)
+
                 updated_color_map = {}
                 # Replace all the colormap values with the dataframe column values
                 # There is a good chance that the dataframe column values will be in the same order as the colormap values

@@ -23,6 +23,11 @@ def main():
     dataset_format = form.getvalue('dataset_format')
     spatial_format = form.getvalue('spatial_format')  # may be None
 
+    if not share_uid: # should never happen
+        result = {'success': 0, 'message': 'No share_uid provided.'}
+        print(json.dumps(result))
+        sys.exit(0)
+
     user = geardb.get_user_from_session_id(session_id)
     result = {'success': 0, 'message': ''}
 

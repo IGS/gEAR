@@ -24,7 +24,8 @@ class MetadataValidator:
         ]
 
     # check that required fields are populated
-    def validate_required_field(self, value: str | None=None) -> bool:
+    @staticmethod
+    def validate_required_field(value: str | None=None) -> bool:
         is_valid = False
         if value is None:
             return is_valid
@@ -34,7 +35,8 @@ class MetadataValidator:
 
         return is_valid
 
-    def validate_tags(self, value: str | None=None) -> bool:
+    @staticmethod
+    def validate_tags(value: str | None=None) -> bool:
         #Tags are optional so empty is okay
         is_valid = True
         if value is None:
@@ -45,7 +47,8 @@ class MetadataValidator:
                     is_valid = True
         return is_valid
 
-    def validate_email(self, email: str | None=None) -> bool:
+    @staticmethod
+    def validate_email(email: str | None=None) -> bool:
         #Check the format of the email
         is_valid = False
         if email is None:
@@ -60,7 +63,8 @@ class MetadataValidator:
 
 
     # check if pubmed id is valid through URL search
-    def validate_pubmed_id(self, pubmed_id: str | None=None) -> bool:
+    @staticmethod
+    def validate_pubmed_id(pubmed_id: str | None=None) -> bool:
         is_valid = False
         print("DEBUG: Going to validate this pubmed ID:({0})".format(pubmed_id), file=sys.stderr)
         if pubmed_id is None:
@@ -71,7 +75,8 @@ class MetadataValidator:
 
 
     # check if geo id is valid
-    def validate_geo_id(self, geo_id: str | None=None) -> bool:
+    @staticmethod
+    def validate_geo_id(geo_id: str | None=None) -> bool:
         is_valid = False
         if geo_id is None:
             return is_valid
@@ -84,8 +89,8 @@ class MetadataValidator:
 
         return is_valid
 
-
-    def validate_taxon_id(self, txid: str | None=None) -> bool:
+    @staticmethod
+    def validate_taxon_id(txid: str | None=None) -> bool:
         """
         Currently only checks that the taxon ID is numeric.
         """

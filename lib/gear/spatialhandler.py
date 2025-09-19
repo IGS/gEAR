@@ -460,7 +460,7 @@ class CurioHandler(SpatialHandler):
             if dataset:
                 organism_id = dataset.organism_id
         if organism_id is None:
-            raise Exception("Organism ID not found in dataset metadata, sample taxon id, or provided as an argument.")
+            raise Exception("Organism ID not found in dataset metadata or provided as an argument.")
 
         # Read in the h5ad file
         adata = ad.read_h5ad(h5ad_file)

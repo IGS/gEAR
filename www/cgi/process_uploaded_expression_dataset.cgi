@@ -70,12 +70,12 @@ def main():
 
     if share_uid is None or session_id is None or dataset_format is None:
         result['message'] = 'Missing one or more required parameters.'
-        print_and_go(None, json.dumps(result))
+        send_response_and_exit(None, json.dumps(result))
 
     user = geardb.get_user_from_session_id(session_id)
     if user is None:
         result['message'] = 'User ID not found. Please log in to continue.'
-        print_and_go(None, json.dumps(result))
+        send_response_and_exit(None, json.dumps(result))
 
     # values are mex_3tab, excel, rdata, h5ad
     dataset_formats = ['mex_3tab', 'excel', 'rdata', 'h5ad', 'spatial']
@@ -89,16 +89,16 @@ def main():
     # if the upload directory doesn't exist, we can't process the dataset
     if not os.path.exists(dataset_upload_dir):
         result['message'] = 'Dataset/directory not found.'
-        print_and_go(status_file, json.dumps(result))
+        send_response_and_exit(status_file, json.dumps(result))
 
     if dataset_format not in dataset_formats:
         result['message'] = 'Unsupported dataset format.'
-        print_and_go(status_file, json.dumps(result))
+        send_response_and_exit(status_file, json.dumps(result))
 
     if dataset_format == "spatial":
         if spatial_format not in SPATIALTYPE2CLASS:
             result['message'] = 'Invalid spatial format specified.'
-            print_and_go(status_file, json.dumps(result))
+            send_response_and_exit(status_file, json.dumps(result))
 
     # Since this process can take a while, we want to fork off of apache and continue
     #  processing in the background.
@@ -144,7 +144,7 @@ def main():
         raise Exception('Unsupported dataset format')
 
 
-def print_and_go(status_file: str | None, content: str) -> "NoReturn":
+def send_response_and_exit(status_file: str | None, content: str) -> "NoReturn":
     """Print the content-type and the content, then exit."""
     global status
     sys.stdout = original_stdout
@@ -181,6 +181,18 @@ def process_3tab(upload_dir):
         elif infile == 'genes.tab' or os.path.basename(filepath) == 'genes.tab' or 'ROWmeta.tab' in infile:
             #print("Reading genes file: {0}".format(filepath), file=sys.stderr, flush=True)
             var = pd.read_table(filepath, sep='\t', index_col=0, header=0)
+
+    if obs is None:
+        write_status(upload_dir, 'error', "No observations file found. Expected observations.tab or COLmeta.tab.")
+        return
+
+    if var is None:
+        write_status(upload_dir, 'error', "No genes file found. Expected genes.tab or ROWmeta.tab.")
+        return
+
+    if expression_matrix_path is None:
+        write_status(upload_dir, 'error', "No expression file found. Expected expression.tab or DataMTX.tab.")
+        return
 
     for str_type in ['cell_type', 'condition', 'time_point', 'time_unit']:
         if str_type in obs.columns:
