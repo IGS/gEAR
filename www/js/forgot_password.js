@@ -1,6 +1,6 @@
 'use strict';
 
-import { convertToFormData, getUrlParameter, initCommonUI, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=a6c4f04";
+import { convertToFormData, getUrlParameter, initCommonUI, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=a4b3d6c";
 
 let helpId = null;
 
