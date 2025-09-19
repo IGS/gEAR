@@ -19,8 +19,10 @@ Needs to return a structure like:
 """
 
 
-import cgi, json
-import os, sys
+import cgi
+import json
+import os
+import sys
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
@@ -39,8 +41,40 @@ def main():
 
     form = cgi.FieldStorage()
     dataset_id = form.getvalue('dataset_id')
-    dataset = geardb.Dataset(id=dataset_id, has_h5ad=1)
-    h5ad_path = dataset.get_file_path()
+    if not dataset_id:
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({'error': 'No dataset_id provided.'}))
+        return
+
+    ds = geardb.get_dataset_by_id(dataset_id)
+    if not ds:
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({'error': 'No dataset found with that ID.'}))
+        return
+
+    is_spatial = ds.dtype == "spatial"
+
+    analysis_obj = dict(type="primary")
+
+    try:
+        ana = geardb.get_analysis(analysis_obj, dataset_id, None, is_spatial=is_spatial)
+    except Exception:
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({'error': 'Could not retrieve analysis'}))
+        return
+
+    try:
+            args = {}
+            if is_spatial:
+                args['include_images'] = False
+            else:
+                args['backed'] = True
+            adata = ana.get_adata(**args)
+    except Exception:
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({'error': 'Could not retrieve AnnData object.'}))
+        return
 
     results = {
         'plotly_config': {
@@ -50,19 +84,17 @@ def main():
         }
     }
 
-    ana = geardb.Analysis(dataset_id=dataset_id, type='primary')
-    adata = ana.get_adata(backed=True)
     cols = adata.obs.columns.tolist()
 
     for vname in VALID_CLUSTER_COLUMN_NAMES:
         if vname in cols:
-            results['plotly_config']['colorize_legend_by'] = vname
+            results['plotly_config']['colorize_legend_by'] = vname # type: ignore
             break
 
     for pair in VALID_TSNE_PAIRS:
         if pair[0] in cols and pair[1] in cols:
-            results['plotly_config']['x_axis'] = pair[0]
-            results['plotly_config']['y_axis'] = pair[1]
+            results['plotly_config']['x_axis'] = pair[0] # type: ignore
+            results['plotly_config']['y_axis'] = pair[1] # type: ignore
             break
 
     sys.stdout = original_stdout

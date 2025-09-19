@@ -447,7 +447,7 @@ def validate_args(
     is_spatial = ds.dtype == "spatial"
 
     try:
-        ana: "Analysis" = geardb.get_analysis(analysis, dataset_id, session_id, is_spatial=is_spatial)
+        ana = geardb.get_analysis(analysis, dataset_id, session_id, is_spatial=is_spatial)
     except Exception:
         import traceback
 
