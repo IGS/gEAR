@@ -14,7 +14,7 @@ from flask_restful import Resource
 from gear.plotting import PlotError, generate_plot, plotly_color_map
 from plotly.utils import PlotlyJSONEncoder
 
-from .common import clip_expression_values, create_projection_adata, order_by_time_point
+from .common import clip_expression_values, create_projection_adata, get_adata_from_analysis, get_spatial_adata, order_by_time_point
 
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
@@ -129,27 +129,20 @@ class PlotlyData(Resource):
         is_spatial = ds.dtype == "spatial"
 
         try:
-            ana = geardb.get_analysis(analysis, dataset_id, session_id, is_spatial=is_spatial)
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return_dict["success"] = -1
-            return_dict["message"] = "Could not retrieve analysis."
-            return return_dict
-
-        try:
-            args = {}
             if is_spatial:
-                args['include_images'] = False
+                adata = get_spatial_adata(analysis, dataset_id, session_id, include_images=False)
             else:
-                args['backed'] = True
-            adata = ana.get_adata(**args)
+                adata = get_adata_from_analysis(analysis, dataset_id, session_id, backed=True)
+        except FileNotFoundError:
+            return {
+                "success": -1,
+                'message': "No dataset file found."
+            }
         except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return_dict["success"] = -1
-            return_dict["message"] = "Could not retrieve AnnData."
-            return return_dict
+            return {
+                "success": -1,
+                'message': str(e)
+            }
 
         # quick check to ensure x, y, color, facet columns are in the adata.obs
         if x_axis not in adata.obs.columns:

@@ -26,8 +26,6 @@ from gear.utils import catch_memory_error
 from more_itertools import sliced
 from werkzeug.utils import secure_filename
 
-from .common import get_adata_from_analysis, get_spatial_adata
-
 # Have all print statements flush immediately (for debugging)
 print = functools.partial(print, flush=True)
 
@@ -534,12 +532,9 @@ def projectr_callback(
     # Drop duplicate unique identifiers. This may happen if two unweighted gene cart genes point to the same Ensembl ID in the db
     loading_df = loading_df[~loading_df.index.duplicated(keep="first")]
 
-    is_spatial = False
-    if ds.dtype == "spatial":
-        is_spatial = True
+    is_spatial = ds.dtype == "spatial"
 
     # NOTE Currently no analyses are supported yet.
-    # TODO:- fix redundancy with "get_(spatial)_adata" functions
     try:
         ana = geardb.get_analysis(None, dataset_id, session_id, is_spatial)
     except Exception:
@@ -549,26 +544,19 @@ def projectr_callback(
         write_projection_status(JOB_STATUS_FILE, status)
         return status
 
-    if is_spatial:
-        try:
-            adata: anndata.AnnData = get_spatial_adata(
-                None, dataset_id, session_id, include_images=False
-            )
-        except Exception:
-            traceback.print_exc()
-            status["status"] = "failed"
-            status["error"] = "Could not retrieve AnnData object from spatial datastore."
-            write_projection_status(JOB_STATUS_FILE, status)
-            return status
-    else:
-        try:
-            adata = get_adata_from_analysis(None, dataset_id, session_id)
-        except Exception:
-            traceback.print_exc()
-            status["status"] = "failed"
-            status["error"] = "Could not retrieve AnnData object from datastore."
-            write_projection_status(JOB_STATUS_FILE, status)
-            return status
+    try:
+            args = {}
+            if is_spatial:
+                args['include_images'] = False
+            else:
+                args['backed'] = True
+            adata = ana.get_adata(**args)
+    except Exception:
+        traceback.print_exc()
+        status["status"] = "failed"
+        status["error"] = "Could not retrieve analysis data."
+        write_projection_status(JOB_STATUS_FILE, status)
+        return status
 
     # If dataset genes have duplicated index names, we need to rename them to avoid errors
     # in collecting rownames in projectR (which gives invalid output)

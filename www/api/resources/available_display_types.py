@@ -57,12 +57,16 @@ class MGAvailableDisplayTypes(Resource):
           if ds.dtype == "spatial":
               adata = get_spatial_adata(analysis_id, dataset_id, session_id, include_images=False)
           else:
-              h5_path = ds.get_file_path()
-              adata = get_adata_shadow(analysis_id, dataset_id, session_id, h5_path)
+              adata = get_adata_shadow(analysis_id, dataset_id, session_id)
         except FileNotFoundError:
             return {
                 "success": -1,
-                'message': "No h5 file found for this dataset"
+                'message': "No dataset file found."
+            }
+        except Exception as e:
+            return {
+                "success": -1,
+                'message': str(e)
             }
 
         columns = adata.obs.columns.tolist()
@@ -160,10 +164,10 @@ class AvailableDisplayTypes(Resource):
           if ds.dtype == "spatial":
               adata = get_spatial_adata(analysis_id, dataset_id, session_id, include_images=False)
           else:
-              h5_path = ds.get_file_path()
-              adata = get_adata_shadow(analysis_id, dataset_id, session_id, h5_path)
+              adata = get_adata_shadow(analysis_id, dataset_id, session_id)
 
               # Determine if SVG exists for the primary dataset.
+              h5_path = ds.get_file_path()
               (base_path, _) = h5_path.split('/datasets/')
               svg_path = f"{base_path}/datasets_uploaded/{dataset_id}.svg"
               # santize svg_path to prevent path traversal
@@ -175,7 +179,12 @@ class AvailableDisplayTypes(Resource):
         except FileNotFoundError:
             return {
                 "success": -1,
-                'message': "No h5 file found for this dataset"
+                'message': "No dataset file found."
+            }
+        except Exception as e:
+            return {
+                "success": -1,
+                'message': str(e)
             }
 
         if analysis_id:

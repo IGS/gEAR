@@ -406,7 +406,7 @@ def rename_axes_labels(ax: "Axes", x_axis: str, y_axis: str) -> None:
 def validate_args(
     dataset_id: str,
     gene_symbol: str | None,
-    analysis: str | None,
+    analysis: dict | None,
     session_id: str,
     projection_id: str | None,
 ) -> dict:
@@ -417,7 +417,7 @@ def validate_args(
         max_columns (int or str): The maximum number of columns to use; will be converted to int if provided.
         dataset_id (str): Identifier for the dataset. Required.
         gene_symbol (str or list): Gene symbol or symbols to analyze. Required.
-        analysis (Analysis | SpatialAnalysis): Analysis identifier or object.
+        analysis (dict or None): Analysis identifier or None if not applicable.
         session_id (str): Session identifier.
         projection_id (str or None): Optional projection identifier.
 
@@ -726,7 +726,6 @@ def generate_tsne_figure(
     ana: "Analysis",
     gene_symbols: list,
     plot_type: str,
-    analysis: str | None,
     x_axis: str,
     y_axis: str,
     order: dict = {},
@@ -767,8 +766,6 @@ def generate_tsne_figure(
         List of gene symbols (or a single gene symbol) to plot.
     plot_type : str
         Type of embedding plot (e.g., 'tsne', 'umap').
-    analysis : str | None
-        Analysis identifier or None if not specified. If None, uses the primary dataset's analysis.
     x_axis : str
         Name of the variable to use for the x-axis.
     y_axis : str
@@ -829,7 +826,7 @@ def generate_tsne_figure(
     try:
         selected = filter_adata_genes(adata, gene_symbols)
         selected = validate_analysis_inputs(
-            selected, analysis, dataset_id, x_axis, y_axis
+            selected, ana.id, dataset_id, x_axis, y_axis
         )
     except ValueError as ve:
         return {"success": -1, "message": str(ve)}
@@ -1100,7 +1097,6 @@ class MGTSNEData(Resource):
             validation["ana"],
             gene_symbols,
             args.get("plot_type", "tsne_static"),
-            args.get("analysis", None),
             args.get("x_axis", "tSNE_1"),
             args.get("y_axis", "tSNE_2"),
             args.get("order", {}),
@@ -1141,7 +1137,6 @@ class TSNEData(Resource):
             validation["ana"],
             [gene_symbol],
             args.get("plot_type", "tsne_static"),
-            args.get("analysis", None),
             args.get("x_axis", "tSNE_1"),
             args.get("y_axis", "tSNE_2"),
             args.get("order", {}),

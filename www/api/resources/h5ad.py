@@ -32,12 +32,16 @@ class H5ad(Resource):
             if is_spatial:
                 adata = get_spatial_adata(analysis_id, dataset_id, session_id, include_images=False)
             else:
-                h5_path = ds.get_file_path()
-                adata = get_adata_shadow(analysis_id, dataset_id, session_id, h5_path)
+                adata = get_adata_shadow(analysis_id, dataset_id, session_id)
         except FileNotFoundError:
             return {
                 "success": -1,
-                'message': "No h5 file found for this dataset"
+                'message': "No dataset file found."
+            }
+        except Exception as e:
+            return {
+                "success": -1,
+                'message': str(e)
             }
 
         columns = adata.obs.columns.tolist()

@@ -3,6 +3,7 @@ import json
 import os
 import re
 import sys
+import typing
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -23,6 +24,9 @@ setattr(this, "servercfg", ServerConfig().parse())
 #  H5AD files, images, etc.
 setattr(this, "analysis_base_dir", "/tmp")
 
+if typing.TYPE_CHECKING:
+    from anndata import AnnData
+    from spatialdata import SpatialData
 
 # Overrides the json module so JSONEncoder.default() automatically checks for to_json()
 #  in any class to be directly serializable.
@@ -98,10 +102,28 @@ def get_verification_code_short_form(long_form):
     return "".join([x[0] for x in long_form.split("-")])
 
 
-def get_analysis(analysis, dataset_id, session_id, is_spatial=False):
-    """Return analysis object based on various factors."""
+def get_analysis(analysis_data: dict | None, dataset_id: str, session_id: str | None, is_spatial: bool = False) -> "SpatialAnalysis | Analysis":
+    """
+    Retrieves an analysis object (either SpatialAnalysis or Analysis) based on the provided analysis data, dataset ID, and session ID.
+
+    If analysis data is provided, constructs the appropriate analysis object using the given information and verifies the existence of the associated h5ad file.
+    If analysis data is not provided, returns the primary analysis for the specified dataset.
+
+    Args:
+        analysis_data (dict | None): Dictionary containing analysis metadata, or None to fetch the primary analysis.
+        dataset_id (str): The unique identifier for the dataset.
+        session_id (str): The session identifier for the current user.
+        is_spatial (bool, optional): Whether to return a SpatialAnalysis object. Defaults to False.
+
+    Returns:
+        SpatialAnalysis | Analysis: The constructed or retrieved analysis object.
+
+    Raises:
+        FileNotFoundError: If the h5ad file for the specified analysis does not exist.
+    """
+
     # If an analysis is posted we want to read from its h5ad
-    if analysis:
+    if analysis_data:
         user = get_user_from_session_id(session_id)
         user_id = None
         if user:
@@ -109,21 +131,21 @@ def get_analysis(analysis, dataset_id, session_id, is_spatial=False):
 
         if is_spatial:
             ana = SpatialAnalysis(
-                id=analysis["id"],
+                id=analysis_data["id"],
                 dataset_id=dataset_id,
                 session_id=session_id,
                 user_id=user_id,
             )
         else:
             ana = Analysis(
-                id=analysis["id"],
+                id=analysis_data["id"],
                 dataset_id=dataset_id,
                 session_id=session_id,
                 user_id=user_id,
             )
 
-        if "type" in analysis:
-            ana.type = analysis["type"]
+        if "type" in analysis_data:
+            ana.type = analysis_data["type"]
         else:
             ana.discover_type()
 
@@ -134,30 +156,34 @@ def get_analysis(analysis, dataset_id, session_id, is_spatial=False):
                     ana.dataset_path()
                 )
             )
-
     else:
-        ds = Dataset(id=dataset_id, has_h5ad=1)
-        filetype = "h5"
-
-        # Ensure the zarr file is retrieved instead of the h5
-        if is_spatial:
-            ds.dtype = "spatial"
-            filetype = "zarr"
-            ds.has_h5ad = 0  # does not affect get_file_path but sanity-checking
-
-        h5_path = ds.get_file_path()
-
-        # Let's not fail if the file isn't there
-        if not os.path.exists(h5_path):
-            raise FileNotFoundError(
-                "No {} file found for this dataset {}".format(filetype, h5_path)
-            )
-        if is_spatial:
-            ana = SpatialAnalysis(type="primary", dataset_id=dataset_id)
-        else:
-            ana = Analysis(type="primary", dataset_id=dataset_id)
+        # Otherwise, return the primary analysis for the dataset
+        ana = get_primary_analysis(dataset_id, is_spatial)
     return ana
 
+def get_primary_analysis(dataset_id, is_spatial=False):
+    """Return the primary analysis for a dataset."""
+    ds = Dataset(id=dataset_id, has_h5ad=1)
+    filetype = "h5"
+
+    # Ensure the zarr file is retrieved instead of the h5
+    if is_spatial:
+        ds.dtype = "spatial"
+        filetype = "zarr"
+        ds.has_h5ad = 0  # does not affect get_file_path but sanity-checking
+
+    h5_path = ds.get_file_path()
+
+    # Let's not fail if the file isn't there
+    if not os.path.exists(h5_path):
+        raise FileNotFoundError(
+            "No {} file found for this dataset {}".format(filetype, h5_path)
+        )
+    if is_spatial:
+        ana = SpatialAnalysis(type="primary", dataset_id=dataset_id)
+    else:
+        ana = Analysis(type="primary", dataset_id=dataset_id)
+    return ana
 
 def get_dataset_by_id(d_id=None, include_shape=None):
     """
@@ -1234,7 +1260,7 @@ class Analysis:
 
         return ana
 
-    def get_adata(self, backed=False, force_sparse=False):
+    def get_adata(self, backed=False, force_sparse=False) -> "AnnData":
         """
         Returns the anndata object for the current analysis.
         """
@@ -1343,7 +1369,7 @@ class SpatialAnalysis(Analysis):
             raise ValueError(f"Dataset {self.dataset_id} not found")
         return sd.read_zarr(self.dataset_path())
 
-    def get_adata(self, include_images=None):
+    def get_adata(self, include_images=None) -> "AnnData" :
         sdata = self.get_sdata()
         platform = self.determine_platform(sdata)
 
