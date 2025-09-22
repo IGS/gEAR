@@ -240,6 +240,9 @@ def chunk_dataframe(df: pd.DataFrame, chunk_size: int, fh: TextIO):
     for idx, index_slice in enumerate(index_slices):
         yield idx, df.iloc[:, list(index_slice)]
 
+def init_job_status(projection_id: str) -> dict:
+    return {"status": "pending", "result": {"projection_id":projection_id}, "error": None}
+
 def write_result_to_file(result, filename) -> None:
     # Write chunked dataframe results to a file, using the projection ID and the dataframe indexes in the filename
     filepath = CHUNK_OUTPUTS_DIR.joinpath(filename)
@@ -531,6 +534,7 @@ def projectr_callback(
         print(str(e), file=fh)
         traceback.print_exc()
         status["status"] = "failed"
+        status["success"] = -1
         status["error"] = str(e)
         write_projection_status(JOB_STATUS_FILE, status)
         return status
@@ -777,7 +781,7 @@ def projectr_callback(
         gc.collect()  # trying to clear memory
 
         if len(projection_patterns_df.index) != len(adata.obs.index):
-            message = "Not all chunked sample rows were returned by projectR.  Cannot proceed."
+            message = "Not all chunked sample rows were returned by projectR. Saved partial results to disk. Refresh to try again."
             print(message, file=fh)
             remove_lock_file(lock_fh, lockfile)
             status["status"] = "failed"
@@ -1134,7 +1138,7 @@ class ProjectR(Resource):
 
         run_projectr = True
 
-        status = {"status": "pending", "result": {"projection_id":projection_id}, "error": None}
+        status = init_job_status(projection_id)
 
         # Housekeeping... create some dir paths if they do not exist
         JOB_STATUS_DIR.mkdir(parents=True, exist_ok=True)
@@ -1220,6 +1224,8 @@ class ProjectR(Resource):
                     # delete status file so we can start a rerun
                     print(f"[x] Job {projection_id} has failed. Attempting a rerun", file=sys.stderr)
                     Path(JOB_STATUS_FILE).unlink(missing_ok=True)
+                    # Ensure "error" status is not written to file for new polling session
+                    status = init_job_status(projection_id)
 
         # Write pending state
         write_projection_status(JOB_STATUS_FILE, status)
