@@ -73,6 +73,7 @@ parser.add_argument("flip_y", type=bool, default=False)
 parser.add_argument("horizontal_legend", type=bool, default=False)
 parser.add_argument("marker_size", type=int, default=None)
 parser.add_argument("center_around_median", type=bool, default=False)
+parser.add_argument("make_zero_gray", type=bool, default=True)  # Keep with old plot styles
 parser.add_argument("obs_filters", type=dict, default={})  # dict of lists
 parser.add_argument(
     "projection_id", type=str, default=None
@@ -732,6 +733,7 @@ def generate_tsne_figure(
     max_columns: int | None = None,
     horizontal_legend: bool = False,
     expression_min_clip: float | None = None,
+    make_zero_gray: bool = True,
     skip_gene_plot=None,
     plot_by_group=None,
     two_way_palette=None,
@@ -792,6 +794,8 @@ def generate_tsne_figure(
         Whether to display the legend horizontally.
     expression_min_clip : float or None
         Minimum expression value to clip.
+    make_zero_gray : bool
+        Whether to make the zero-value expression color gray or the minimum colorscale color.
     skip_gene_plot : bool or None, optional
         If True, skips plotting the gene expression plot (single-gene mode).
     plot_by_group : str or None, optional
@@ -865,9 +869,9 @@ def generate_tsne_figure(
         elif expression_palette.startswith("multicolor_diverging"):
             create_projection_colorscale()
 
-    expression_color = create_colorscale_with_zero_gray(
-        "cividis_r" if colorblind_mode else expression_palette
-    )
+    expression_color = "cividis_r" if colorblind_mode else expression_palette
+    if make_zero_gray:
+        expression_color = create_colorscale_with_zero_gray(expression_palette)
 
     # --- Plot setup ---
     columns = []
@@ -1105,7 +1109,8 @@ class MGTSNEData(Resource):
             args.get("grid_spec", "1/1/2/2"),
             args.get("max_columns", None),
             args.get("horizontal_legend", False),
-            args.get("expression_min_clip", None)
+            args.get("expression_min_clip", None),
+            args.get("make_zero_gray", True)
         )
 
 
@@ -1147,6 +1152,7 @@ class TSNEData(Resource):
             args.get("max_columns", None),
             args.get("horizontal_legend", False),
             args.get("expression_min_clip", None),
+            args.get("make_zero_gray", True),
             args.get("skip_gene_plot", False),
             args.get("plot_by_group", None),
             args.get("two_way_palette", False),

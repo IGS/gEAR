@@ -71,6 +71,11 @@
     <span class="has-text-weight-medium">Reverse palette</span>
     <input class="js-tsne-reverse-palette" id="reverse-palette-post" type="checkbox">
 </label>
+<label class="content is-flex is-justify-content-space-between pr-3 mb-1 checkbox">
+    <span class="has-text-weight-medium">Check to make non-expression values gray</span>
+    <input class="js-tsne-make-zero-gray" id="make-zero-gray-post" type="checkbox" checked>
+</label>
+<p class="help">Expression values that have a value of zero will be gray instead of the minimum colorscale color.</p>
 <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
     <span class="has-text-weight-medium">Check to bring highest and lowest values to front of plot</span>
     <input class="js-tsne-two-way-palette" id="two-way-palette-post" type="checkbox">

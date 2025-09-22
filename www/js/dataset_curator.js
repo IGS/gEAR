@@ -309,6 +309,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
         , "js-tsne-marker-size": "marker_size"
         , "js-tsne-color-palette": "expression_palette"
         , "js-tsne-reverse-palette": "reverse_palette"
+        , "js-tsne-make-zero-gray": "make_zero_gray"
         , "js-tsne-two-way-palette": "two_way_palette"
         , "js-tsne-center-around-median": "center_around_median"
     };
@@ -420,6 +421,10 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
                 classElt.checked = false;
             }
             for (const classElt of document.getElementsByClassName("js-tsne-two-way-palette")) {
+                classElt.disabled = true;
+                classElt.checked = false;
+            }
+            for (const classElt of document.getElementsByClassName("js-tsne-make-zero-gray")) {
                 classElt.disabled = true;
                 classElt.checked = false;
             }
@@ -1518,8 +1523,9 @@ const setupScanpyOptions = async (datasetId) => {
             const colorPaletteElts = document.getElementsByClassName("js-tsne-color-palette");
             const reversePaletteElts = document.getElementsByClassName("js-tsne-reverse-palette");
             const twoWayPaletteElts = document.getElementsByClassName("js-tsne-two-way-palette");
+            const makeZeroGrayElts = document.getElementsByClassName("js-tsne-make-zero-gray");
 
-            for (const targetElt of [...colorPaletteElts, ...reversePaletteElts, ...twoWayPaletteElts]) {
+            for (const targetElt of [...colorPaletteElts, ...reversePaletteElts, ...twoWayPaletteElts, ...makeZeroGrayElts]) {
                 targetElt.disabled = event.target.checked ? true : false;
             }
 

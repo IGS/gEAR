@@ -774,6 +774,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
         , "js-tsne-marker-size": "marker_size"
         , "js-tsne-color-palette": "expression_palette"
         , "js-tsne-reverse-palette": "reverse_palette"
+        , "js-tsne-make-zero-gray": "make_zero_gray"
         , "js-tsne-center-around-median": "center_around_median"
     };
 
