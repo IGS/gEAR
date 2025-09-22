@@ -984,7 +984,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
      * @returns {Promise<void>} A promise that resolves when the setup is complete.
      */
     async setupPlotSpecificEvents(datasetId) {
-        await setupScanpyOptions();
+        await setupScanpyOptions(datasetId);
     }
 
 }
