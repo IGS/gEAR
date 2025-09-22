@@ -689,7 +689,7 @@ class DatasetTile {
                     }
 
                     // Timeout for a bit before starting the while loop again
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    await new Promise(resolve => setTimeout(resolve, 10000)); // 10 seconds
                 }
 
             } catch (error) {
