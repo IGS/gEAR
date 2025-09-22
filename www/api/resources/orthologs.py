@@ -51,6 +51,8 @@ def get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id, e
         if gene_organism_id and gene_organism_id != dataset_organism_id:
             # Get a single ortholog file
             ortholog_files = [get_ortholog_file(gene_organism_id, dataset_organism_id, "ensembl")]
+            # Remove None values if the file was not found
+            ortholog_files = [f for f in ortholog_files if f]
             if not exclusive_org:
                 ortholog_files += get_ortholog_files_from_dataset(dataset_organism_id, "ensembl")
         else:
@@ -99,6 +101,8 @@ def get_mapped_gene_symbols(gene_symbols, gene_organism_id, dataset_organism_id,
         if is_single_ortholog_file_needed:
             # Get a single ortholog file
             ortholog_files = [get_ortholog_file(gene_organism_id, dataset_organism_id, "ensembl")]
+            # Remove None values if the file was not found
+            ortholog_files = [f for f in ortholog_files if f]
             if not exclusive_org:
                 ortholog_files += get_ortholog_files_from_dataset(dataset_organism_id, "ensembl")
 

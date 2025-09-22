@@ -522,6 +522,10 @@ def projectr_callback(
             ortholog_file = get_ortholog_file(
                 str(genecart.organism_id), str(ds.organism_id), ANNOTATION_TYPE
             )
+            if ortholog_file is None:
+                raise Exception(
+                    "Could not find an orthologous mapping file between the gene list organism and the dataset organism."
+                )
             loading_df = map_dataframe_genes(loading_df, ortholog_file)
     except Exception as e:
         print(str(e), file=fh)
