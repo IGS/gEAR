@@ -5,7 +5,7 @@ import { curatorCommon } from "./curator_common.js?v=a4b3d6c";
 import { Gene, WeightedGene } from "./classes/gene.js?v=a4b3d6c";
 import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=a4b3d6c";
 import { adjustStackedViolinHeight, postPlotlyConfig, setHeatmapHeightBasedOnGenes } from "./plot_display_config.js?v=a4b3d6c";
-import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventSelectors } from "../include/gene-collection-selector/gene-collection-selector.js?v=a4b3d6c";
+import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners } from "../include/gene-collection-selector/gene-collection-selector.js?v=a4b3d6c";
 
 curatorCommon.setIsMultigene(1);
 
@@ -777,6 +777,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
         , "js-tsne-marker-size": "marker_size"
         , "js-tsne-color-palette": "expression_palette"
         , "js-tsne-reverse-palette": "reverse_palette"
+        , "js-tsne-make-zero-gray": "make_zero_gray"
         , "js-tsne-center-around-median": "center_around_median"
     };
 
@@ -986,7 +987,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
      * @returns {Promise<void>} A promise that resolves when the setup is complete.
      */
     async setupPlotSpecificEvents(datasetId) {
-        await setupScanpyOptions();
+        await setupScanpyOptions(datasetId);
     }
 
 }

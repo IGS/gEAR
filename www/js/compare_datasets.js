@@ -5,7 +5,7 @@ import { FacetWidget } from "./classes/facets.js?v=a4b3d6c";
 import { Gene, WeightedGene } from "./classes/gene.js?v=a4b3d6c";
 import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=a4b3d6c";
 import { DatasetTree } from "./classes/tree.js?v=a4b3d6c";
-import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventSelectors } from "../include/gene-collection-selector/gene-collection-selector.js?v=a4b3d6c";
+import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners } from "../include/gene-collection-selector/gene-collection-selector.js?v=a4b3d6c";
 
 // SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 // This is meant to be a short-term solution until more people specify their data is transformed via the metadata
@@ -1437,7 +1437,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 			fetchGeneCartData()
 		]);
 
-		registerGeneListEventSelectors();
+		registerGeneListEventListeners();
 
         // Usage inside handlePageSpecificLoginUIUpdates
         if (urlParams.has("share_id")) {

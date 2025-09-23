@@ -41,7 +41,7 @@ def format_orthomap_file_base(first_org_id: str, second_org_id: str, annotation_
     """
     return "orthomap.{0}.{2}__{1}.{2}.hdf5".format(first_org_id, second_org_id, annotation_source)
 
-def get_ortholog_file(gene_organism_id: str, dataset_organism_id: str, annotation_source: str="ensembl") -> Path:
+def get_ortholog_file(gene_organism_id: str, dataset_organism_id: str, annotation_source: str="ensembl") -> Path | None:
     """
     Get the ortholog file for a given gene organism ID, dataset organism ID, and annotation source.
 
@@ -60,7 +60,8 @@ def get_ortholog_file(gene_organism_id: str, dataset_organism_id: str, annotatio
     orthomap_file = ORTHOLOG_BASE_DIR / orthomap_file_base
 
     if not orthomap_file.is_file():
-        raise FileNotFoundError(f"Orthologous mapping file not found: {orthomap_file}")
+        print(f"Orthologous mapping file not found: {orthomap_file}", file=sys.stderr)
+        return None
     return orthomap_file
 
 def get_ortholog_files_from_dataset(dataset_organism_id: str, annotation_source: str="ensembl"):
@@ -85,7 +86,8 @@ def get_ortholog_files_from_dataset(dataset_organism_id: str, annotation_source:
 
     if not orthomap_files:
         dataset_organism_name = get_organism_name_by_id(dataset_organism_id)
-        raise FileNotFoundError(f"Orthologous mapping files not found for dataset organism {dataset_organism_name}")
+        print(f"Orthologous mapping files not found for dataset organism {dataset_organism_name}", file=sys.stderr)
+        raise FileNotFoundError("Could not find any orthologous mapping files for the organism associated with this dataset")
 
     return list(orthomap_files)
 
