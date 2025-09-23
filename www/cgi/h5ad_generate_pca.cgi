@@ -13,6 +13,7 @@ sys.stdout = open(os.devnull, 'w')
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.analysis import Analysis
 
 # this is needed so that we don't get TclError failures in the underlying modules
 import matplotlib
@@ -48,7 +49,7 @@ def main():
     if user and user.id:
         user_id = user.id
 
-    ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
+    ana = Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
                           session_id=session_id, user_id=user_id)
 
     genes_to_color = form.getvalue('genes_to_color')

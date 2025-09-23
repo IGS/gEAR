@@ -19,6 +19,7 @@ import sys
 lib_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.analysis import Analysis
 
 # this is needed so that we don't get TclError failures in the underlying modules
 import matplotlib
@@ -56,7 +57,7 @@ def main():
             print("\tImages already found, skipping")
             continue
 
-        ana = geardb.Analysis(dataset_id=dataset_id, type='primary')
+        ana = Analysis(dataset_id=dataset_id, type='primary')
         adata = ana.get_adata()
 
         print("\tGenerating figures")

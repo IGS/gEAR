@@ -28,6 +28,7 @@ sys.stdout = open(os.devnull, 'w')
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.analysis import get_analysis
 
 
 matplotlib.use('Agg')
@@ -67,7 +68,7 @@ def main():
         }
 
     try:
-        ana = geardb.get_analysis(analysis_obj, dataset_id, session_id, is_spatial=is_spatial)
+        ana = get_analysis(analysis_obj, dataset_id, session_id, is_spatial=is_spatial)
     except Exception:
         print("Could not retrieve analysis.")
         result['success'] = 0

@@ -19,7 +19,7 @@ sys.stdout = open(os.devnull, 'w')
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
-import geardb
+from gear.analysis import Analysis
 
 # this is needed so that we don't get TclError failures in the underlying modules
 import matplotlib
@@ -34,10 +34,10 @@ def main():
 
     result = {'success': 1}
 
-    ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id, session_id=session_id)
+    ana = Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id, session_id=session_id)
 
     source_datafile_path = ana.dataset_path()
-    violin_path = source_datafile_path.replace('.h5ad', '.prelim_violin.png')
+    violin_path = str(source_datafile_path).replace('.h5ad', '.prelim_violin.png')
 
     if not os.path.exists(violin_path):
         result['success'] = 0

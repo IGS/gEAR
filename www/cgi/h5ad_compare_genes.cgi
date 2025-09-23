@@ -4,8 +4,11 @@
 
 """
 
-import cgi, json
-import os, sys, re
+import cgi
+import json
+import os
+import sys
+
 import numpy as np
 
 original_stdout = sys.stdout
@@ -17,14 +20,17 @@ import geardb
 
 # this is needed so that we don't get TclError failures in the underlying modules
 import matplotlib
+from gear.analysis import Analysis
+
 matplotlib.use('Agg')
 
 import scanpy as sc
+
 sc.settings.verbosity = 0
 
+import pandas as pd
 from scipy import sparse
 
-import pandas as pd
 
 def main():
     form = cgi.FieldStorage()
@@ -56,7 +62,7 @@ def main():
     if user and user.id:
         user_id = user.id
 
-    ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
+    ana = Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
                           session_id=session_id, user_id=user_id)
 
     # Recent upgrade of scanpy/anndata/pandas modules have issues where the sc.pl.rank_genes_groups_violin function

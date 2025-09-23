@@ -14,6 +14,7 @@ import scanpy as sc
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.analysis import get_analysis
 
 # This has a huge dependency stack of libraries. Occasionally, one of them has methods
 #  which prints debugging information on STDOUT, killing this CGI.  So here we redirect
@@ -55,7 +56,7 @@ def main():
         return_error_response(msg)
 
     try:
-        ana = geardb.get_analysis(None, dataset_id, None, is_spatial=is_spatial)
+        ana = get_analysis(None, dataset_id, None, is_spatial=is_spatial)
     except Exception:
         traceback.print_exc()
         return_error_response("Could not retrieve analysis.")

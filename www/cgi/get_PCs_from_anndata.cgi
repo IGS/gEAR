@@ -27,6 +27,7 @@ abs_path_lib = abs_path_gear.joinpath('lib')
 sys.path.insert(0, str(abs_path_lib))
 
 import geardb
+from gear.analysis import get_analysis
 
 
 def main():
@@ -50,7 +51,7 @@ def main():
     analysis_obj = dict(id=analysis_id, type=analysis_type) if analysis_id and analysis_type else None
 
     try:
-        ana = geardb.get_analysis(analysis_obj, dataset_id, session_id, is_spatial=is_spatial)
+        ana = get_analysis(analysis_obj, dataset_id, session_id, is_spatial=is_spatial)
     except Exception:
         return_error_response("Could not retrieve analysis.")
 

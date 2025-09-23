@@ -10,6 +10,7 @@ import os, sys
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.analysis import Analysis
 
 def main():
     form = cgi.FieldStorage()
@@ -25,7 +26,7 @@ def main():
         print('{"error": "Invalid session_id"}')
         return
 
-    ana = geardb.Analysis(id=analysis_id, dataset_id=dataset_id,
+    ana = Analysis(id=analysis_id, dataset_id=dataset_id,
                           user_id=user.id, session_id=session_id,
                           type=analysis_type)
 

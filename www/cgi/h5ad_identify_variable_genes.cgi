@@ -4,8 +4,10 @@
 
 """
 
-import cgi, json
-import os, sys
+import cgi
+import json
+import os
+import sys
 
 original_stdout = sys.stdout
 sys.stdout = open(os.devnull, 'w')
@@ -16,9 +18,12 @@ import geardb
 
 # this is needed so that we don't get TclError failures in the underlying modules
 import matplotlib
+from gear.analysis import Analysis
+
 matplotlib.use('Agg')
 
 import scanpy as sc
+
 sc.settings.verbosity = 0
 
 def main():
@@ -32,7 +37,7 @@ def main():
     if user and user.id:
         user_id = user.id
 
-    ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
+    ana = Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
                           session_id=session_id, user_id=user_id)
 
     norm_counts_per_cell = float(form.getvalue('norm_counts_per_cell'))

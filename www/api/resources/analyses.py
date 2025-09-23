@@ -1,6 +1,7 @@
 from flask import request
 from flask_restful import Resource
 import geardb
+from gear.analysis import AnalysisCollection
 
 def tsne_or_umap_present(ana):
   """Return True if tSNE or UMAP plot was calculated for the given analysis."""
@@ -15,7 +16,7 @@ class Analyses(Resource):
 
         user_id = user.id if user else None
 
-        acollection = geardb.AnalysisCollection()
+        acollection = AnalysisCollection()
 
         acollection.get_all_by_dataset_id(
             user_id=user_id,

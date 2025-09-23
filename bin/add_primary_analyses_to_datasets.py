@@ -18,7 +18,7 @@ VALID_CLUSTER_COLUMN_NAMES = ['cluster', 'cell_type', 'cluster_label', 'subclass
 And these pairs for tSNE:
 
 VALID_TSNE_PAIRS = [['tSNE_1', 'tSNE_2'], ['tSNE1', 'tSNE2'], ['tsne1_combined', 'tsne2_combined']]
-VALID_UMAP_PAIRS = [['uMAP_1', 'uMAP_2'], ['uMAP1', 'uMAP2'], 
+VALID_UMAP_PAIRS = [['uMAP_1', 'uMAP_2'], ['uMAP1', 'uMAP2'],
                     ['UMAP_1', 'UMAP_2'], ['UMAP1', 'UMAP2']]
 
 
@@ -33,6 +33,7 @@ import json
 lib_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.analysis import Analysis
 
 import numpy as np
 import anndata as ad
@@ -47,7 +48,7 @@ VALID_CLUSTER_COLUMN_NAMES = ['cluster', 'cell_type', 'cluster_label', 'subclass
 VALID_TSNE_PAIRS = [['tSNE_1', 'tSNE_2'], ['tSNE1', 'tSNE2'], ['tsne1_combined', 'tsne2_combined'],
                     # These are all carlo's custom ones.  Need to resolve this a different way later
                     ['PC1%var6.14', 'PC2%var1.79']]
-VALID_UMAP_PAIRS = [['uMAP_1', 'uMAP_2'], ['uMAP1', 'uMAP2'], 
+VALID_UMAP_PAIRS = [['uMAP_1', 'uMAP_2'], ['uMAP1', 'uMAP2'],
                     ['UMAP_1', 'UMAP_2'], ['UMAP1', 'UMAP2']]
 
 
@@ -79,7 +80,7 @@ def main():
         analysis_json["dataset_id"] = dataset_id
         analysis_json["dataset"]["id"] = dataset_id
 
-        ana = geardb.Analysis(dataset_id=dataset_id, type='primary')
+        ana = Analysis(dataset_id=dataset_id, type='primary')
         adata = ana.get_adata(backed=True)
 
         h5ad_changes_made = False
@@ -89,7 +90,7 @@ def main():
         if tsne_detected:
             if 'tsne' not in analysis_json or analysis_json['tsne']['tsne_calculated'] == False:
                 json_changes_made = True
-            
+
             analysis_json['tsne']['tsne_calculated'] = True
             analysis_json['tsne']['plot_tsne'] = 1
             if not has_tsne(adata):
@@ -101,7 +102,7 @@ def main():
         if umap_detected:
             if 'tsne' not in analysis_json or 'tsne_calculated' not in analysis_json['tsne'] or analysis_json['tsne']['tsne_calculated'] == False:
                 json_changes_made = True
-            
+
             # the parent key 'tsne' here should really be renamed to 'dimred' or something like it
             analysis_json['tsne']['umap_calculated'] = True
             analysis_json['tsne']['plot_umap'] = 1
@@ -114,7 +115,7 @@ def main():
         if clustering_detected:
             if 'louvain' not in analysis_json or analysis_json['louvain']['calculated'] == False:
                 json_changes_made = True
-            
+
             analysis_json['louvain']['calculated'] = True
             if not has_louvain(adata):
                 print("\tAdding clustering analysis")
@@ -156,7 +157,7 @@ def add_umap_analysis(adata):
         if pair[0] in cols and pair[1] in cols:
             adata.obsm['X_umap'] = adata.obs[[pair[0], pair[1]]].values
             return
-        
+
 def get_dataset_ids():
     ids = []
     for filename in os.listdir(DATASET_BASE_DIR):

@@ -17,6 +17,7 @@ from pathlib import Path
 lib_path = os.path.abspath(os.path.join('..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.analysis import Analysis
 import gear.mg_plotting as mg
 from gear.mg_plotting import PlotError
 
@@ -140,7 +141,7 @@ def get_analysis(analysis, dataset_id, session_id):
     """Return analysis object based on various factors."""
     # If an analysis is posted we want to read from its h5ad
     if analysis:
-        ana = geardb.Analysis(id=analysis['id'], dataset_id=dataset_id,
+        ana = Analysis(id=analysis['id'], dataset_id=dataset_id,
                                 session_id=session_id, user_id=user.id)
 
         try:
@@ -155,7 +156,7 @@ def get_analysis(analysis, dataset_id, session_id):
         # Let's not fail if the file isn't there
         if not os.path.exists(h5_path):
             raise PlotError("No h5 file found for this dataset")
-        ana = geardb.Analysis(type='primary', dataset_id=dataset_id)
+        ana = Analysis(type='primary', dataset_id=dataset_id)
     return ana
 
 def create_heatmap(dataset_id):

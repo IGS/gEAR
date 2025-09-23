@@ -20,6 +20,7 @@ import scipy.stats as stats
 from aiohttp_retry import ExponentialRetry, RetryClient
 from flask import request
 from flask_restful import Resource, reqparse
+from gear.analysis import get_analysis, SpatialAnalysis
 from gear.orthology import get_ortholog_file, map_dataframe_genes
 from gear.utils import catch_memory_error
 from more_itertools import sliced
@@ -543,7 +544,7 @@ def projectr_callback(
 
     # NOTE Currently no analyses are supported yet.
     try:
-        ana = geardb.get_analysis(None, dataset_id, session_id, is_spatial)
+        ana = get_analysis(None, dataset_id, session_id, is_spatial)
     except Exception:
         traceback.print_exc()
         status["status"] = "failed"
@@ -568,10 +569,11 @@ def projectr_callback(
     # If dataset genes have duplicated index names, we need to rename them to avoid errors
     # in collecting rownames in projectR (which gives invalid output)
     # This means these duplicated genes will not be in the intersection of the dataset and pattern genes
-    if isinstance(ana, geardb.SpatialAnalysis):
-        dedup_copy = Path(ana.dataset_path().replace(".zarr", ".dups_removed.h5ad"))
+    if isinstance(ana, SpatialAnalysis):
+        dedup_copy = str(ana.dataset_path().replace(".zarr", ".dups_removed.h5ad"))
     else:
-        dedup_copy = Path(ana.dataset_path().replace(".h5ad", ".dups_removed.h5ad"))
+        dedup_copy = str(ana.dataset_path().replace(".h5ad", ".dups_removed.h5ad"))
+    dedup_copy = Path(dedup_copy)
 
     if (adata.var.index.duplicated(keep="first")).any():
         if dedup_copy.exists():

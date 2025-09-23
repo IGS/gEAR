@@ -9,8 +9,13 @@ from pathlib import Path
 
 import pandas as pd
 from anndata import AnnData
+from gear.analysis import (
+    Analysis,
+    SpatialAnalysis,
+    get_analysis,
+    normalize_analysis_input,
+)
 from gear.plotting import PlotError
-from geardb import get_analysis, Analysis, SpatialAnalysis, get_user_from_session_id
 from shadows import AnnDataShadow
 from werkzeug.utils import secure_filename
 
@@ -43,29 +48,6 @@ def clip_expression_values(adata: "AnnData", min_clip: float | None=None, max_cl
     adata.X = X.to_numpy()
     return adata
 
-def normalize_analysis_input(analysis: dict | str | None) -> dict | None:
-    """
-    Ensures that the analysis parameter is a dictionary if it is not None.
-
-    Parameters
-    ----------
-    analysis : dict, str, or None
-        The analysis parameter which can be a dictionary, a string (analysis ID), or None.
-
-    Returns
-    -------
-    dict or None
-        The analysis as a dictionary if it was provided as an string, otherwise returns it unchanged.
-        If analysis is None, returns None.
-    """
-    if analysis is None:
-        return None
-    if isinstance(analysis, dict):
-        return analysis
-    if isinstance(analysis, str):
-        return {"id": analysis}
-    raise ValueError("Analysis must be a dict, int, or None.")
-
 def get_adata_from_analysis(
     analysis: dict | str | None, dataset_id: str, session_id: str | None, backed: bool = False
 ) -> AnnData:
@@ -85,7 +67,9 @@ def get_adata_from_analysis(
 
     """
     analysis_dict = normalize_analysis_input(analysis)
-    ana = get_analysis(analysis_dict, dataset_id, session_id)
+    ana: Analysis = get_analysis(analysis_dict, dataset_id, session_id, is_spatial=False)
+    if isinstance(ana, SpatialAnalysis):
+        raise ValueError("Analysis is not of type Analysis")
     return ana.get_adata(backed=backed)
 
 
@@ -221,7 +205,7 @@ def create_projection_adata(
             temp_file_path = temp_file.name  # Associate with the temporary filename to ensure AnnData is read in "backed" mode
 
             # Create the anndata object in memory mode and write to h5ad (since the dataset_adata is backed)
-            projection_adata = AnnData(X=X, obs=obs, var=var, obsm=obsm, uns=uns)
+            projection_adata = AnnData(X=X, obs=obs, var=var, obsm=obsm, uns=uns) # type: ignore
             # For some reason the gene_symbol is not taken in by the constructor
             projection_adata.var["gene_symbol"] = projection_adata.var_names
             projection_adata.write_h5ad(filename=Path(temp_file_path))

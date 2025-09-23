@@ -11,6 +11,7 @@ import os, sys
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.analysis import Analysis
 
 def main():
     form = cgi.FieldStorage()
@@ -23,7 +24,7 @@ def main():
     if user and user.id:
         user_id = user.id
 
-    ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
+    ana = Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
                           session_id=session_id, user_id=user_id)
 
     ## if the analysis is primary images are getting saved as user_unsaved

@@ -3,6 +3,7 @@ import os
 import geardb
 from flask import request
 from flask_restful import Resource
+from gear.analysis import get_analysis
 
 from .common import get_adata_from_analysis, get_spatial_adata
 
@@ -42,7 +43,7 @@ class TopPCAGenes(Resource):
         is_spatial = ds.dtype == "spatial"
 
         analysis = dict(id=analysis_id, type=analysis_type) if analysis_id and analysis_type else None
-        ana = geardb.get_analysis(analysis, dataset_id, session_id, is_spatial=is_spatial)
+        ana = get_analysis(analysis, dataset_id, session_id, is_spatial=is_spatial)
 
         dest_datafile_path = ana.dataset_path()
         dest_directory = os.path.dirname(dest_datafile_path)

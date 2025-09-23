@@ -3,6 +3,7 @@ import io
 import os
 import re
 from math import ceil
+from pathlib import Path
 
 import geardb
 import matplotlib as mpl
@@ -18,6 +19,7 @@ import numpy as np
 import scanpy as sc
 from flask import request
 from flask_restful import Resource, reqparse
+from gear.analysis import SpatialAnalysis, get_analysis
 from gear.plotting import PlotError
 
 if typing.TYPE_CHECKING:
@@ -25,7 +27,7 @@ if typing.TYPE_CHECKING:
     # To avoid having runtime errors, enclose the typing in quotes (AKA forward-reference)
     import pandas as pd
     from anndata import AnnData
-    from geardb import Analysis, SpatialAnalysis
+    from gear.analysis import Analysis
     from matplotlib.artist import Artist
     from matplotlib.axes import Axes
     from matplotlib.colors import Colormap
@@ -448,7 +450,7 @@ def validate_args(
     is_spatial = ds.dtype == "spatial"
 
     try:
-        ana = geardb.get_analysis(analysis, dataset_id, session_id, is_spatial=is_spatial)
+        ana = get_analysis(analysis, dataset_id, session_id, is_spatial=is_spatial)
     except Exception:
         import traceback
 
@@ -697,10 +699,12 @@ def dedup_genes(adata: "AnnData", ana: "Analysis | SpatialAnalysis") -> dict:
     # Rename to end the confusion
     adata.var = adata.var.rename(columns={adata.var.columns[0]: "ensembl_id"})
     # Modify the AnnData object to not include any duplicated gene symbols (keep only first entry)
-    if isinstance(ana, geardb.SpatialAnalysis):
-        dedup_copy = ana.dataset_path().replace(".zarr", ".dups_removed.h5ad")
+    if isinstance(ana, SpatialAnalysis):
+        dedup_copy = str(ana.dataset_path()).replace(".zarr", ".dups_removed.h5ad")
     else:
-        dedup_copy = ana.dataset_path().replace(".h5ad", ".dups_removed.h5ad")
+        dedup_copy = str(ana.dataset_path()).replace(".h5ad", ".dups_removed.h5ad")
+
+    dedup_copy = Path(dedup_copy)
 
     success = 1
     message = ""

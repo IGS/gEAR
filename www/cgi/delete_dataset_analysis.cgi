@@ -4,9 +4,11 @@
 
 """
 
-import cgi, json
-import os, sys, re
+import cgi
+import json
+import os
 import shutil
+import sys
 
 original_stdout = sys.stdout
 sys.stdout = open(os.devnull, 'w')
@@ -14,6 +16,8 @@ sys.stdout = open(os.devnull, 'w')
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.analysis import Analysis
+
 
 def main():
     form = cgi.FieldStorage()
@@ -28,7 +32,7 @@ def main():
         print(json.dumps({'success': 0, 'error': 'User not found'}))
         return
 
-    source_ana = geardb.Analysis(id=analysis_id, type=analysis_type,
+    source_ana = Analysis(id=analysis_id, type=analysis_type,
                                  dataset_id=dataset_id, session_id=session_id, user_id=user.id)
     source_pipeline_base = source_ana.base_path()
 

@@ -18,9 +18,12 @@ Use cases:
        - Make sure permissions are writeable
 """
 
-import cgi, json
-import os, sys, re
+import cgi
+import json
+import os
+import re
 import shutil
+import sys
 
 original_stdout = sys.stdout
 sys.stdout = open(os.devnull, 'w')
@@ -28,8 +31,9 @@ sys.stdout = open(os.devnull, 'w')
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
-
+from gear.analysis import Analysis
 from werkzeug.utils import secure_filename
+
 
 def main():
     form = cgi.FieldStorage()
@@ -51,8 +55,8 @@ def main():
     source_analysis_id = secure_filename(source_analysis_id)
     dest_analysis_id = secure_filename(dest_analysis_id)
 
-    source_ana = geardb.Analysis(id=source_analysis_id, type=source_analysis_type, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
-    dest_ana = geardb.Analysis(id=dest_analysis_id, type=dest_analysis_type, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
+    source_ana = Analysis(id=source_analysis_id, type=source_analysis_type, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
+    dest_ana = Analysis(id=dest_analysis_id, type=dest_analysis_type, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
 
     if not source_ana:
         result = {'success': 0, 'error': 'Source analysis does not exist'}

@@ -27,6 +27,7 @@ import sys
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.analysis import get_analysis
 
 # These should match in bin/add_primary_analyses_to_datasets.py
 VALID_CLUSTER_COLUMN_NAMES = ['cluster', 'cell_type', 'subclass_label', 'cluster_label', 'subclass_label', 'joint_cluster_round4_annot']
@@ -58,7 +59,7 @@ def main():
     analysis_obj = dict(type="primary")
 
     try:
-        ana = geardb.get_analysis(analysis_obj, dataset_id, None, is_spatial=is_spatial)
+        ana = get_analysis(analysis_obj, dataset_id, None, is_spatial=is_spatial)
     except Exception:
         print('Content-Type: application/json\n\n')
         print(json.dumps({'error': 'Could not retrieve analysis'}))
