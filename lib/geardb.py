@@ -1321,6 +1321,15 @@ class Analysis:
                 return "/tmp/{0}/{1}".format(self.session_id, self.dataset_id)
 
     def settings_path(self):
+        """
+        Returns the file path to the pipeline settings JSON file for the current dataset.
+
+        The path is constructed by joining the base path
+        and the dataset ID, resulting in a file named '<dataset_id>.pipeline.json'.
+
+        Returns:
+            str: The full path to the pipeline settings JSON file.
+        """
         return "{0}/{1}.pipeline.json".format(self.base_path(), self.dataset_id)
 
 
@@ -1358,9 +1367,6 @@ class SpatialAnalysis(Analysis):
             return platform
         except KeyError:
             raise ValueError("No platform information found in the dataset")
-
-    def discover_type(self):
-        return super().discover_type()
 
     def get_sdata(self):
         import spatialdata as sd
@@ -1401,6 +1407,15 @@ class SpatialAnalysis(Analysis):
         return adata
 
     def settings_path(self):
+        """
+        Returns the file path to the pipeline settings JSON file for the current dataset.
+
+        The path is constructed by joining the base path (with a 'spatial' subdirectory)
+        and the dataset ID, resulting in a file named '<dataset_id>.pipeline.json'.
+
+        Returns:
+            str: The full path to the pipeline settings JSON file.
+        """
         base_path = f"{self.base_path()}/spatial"
         return "{0}/{1}.pipeline.json".format(base_path, self.dataset_id)
 
