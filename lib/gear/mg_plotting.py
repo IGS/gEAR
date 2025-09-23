@@ -1074,7 +1074,7 @@ def build_obs_group_indexes(df, filters, clusterbar_fields):
     for k in clusterbar_fields:
         filter_indexes.setdefault(k, {})
         groups = df[k].unique().tolist()
-        if k in filters.keys():
+        if filters and k in filters.keys():
             groups = filters[k]
         for elem in groups:
             obs_index = df.index[df[k] == elem]

@@ -14,7 +14,6 @@ from time import sleep
 from typing import TextIO
 
 import aiohttp
-import anndata
 import geardb
 import pandas as pd
 import scipy.stats as stats
@@ -569,7 +568,11 @@ def projectr_callback(
     # If dataset genes have duplicated index names, we need to rename them to avoid errors
     # in collecting rownames in projectR (which gives invalid output)
     # This means these duplicated genes will not be in the intersection of the dataset and pattern genes
-    dedup_copy = Path(ana.dataset_path().replace(".h5ad", ".dups_removed.h5ad"))
+    if isinstance(ana, geardb.SpatialAnalysis):
+        dedup_copy = Path(ana.dataset_path().replace(".zarr", ".dups_removed.h5ad"))
+    else:
+        dedup_copy = Path(ana.dataset_path().replace(".h5ad", ".dups_removed.h5ad"))
+
     if (adata.var.index.duplicated(keep="first")).any():
         if dedup_copy.exists():
             dedup_copy.unlink()

@@ -25,7 +25,7 @@ if typing.TYPE_CHECKING:
     # To avoid having runtime errors, enclose the typing in quotes (AKA forward-reference)
     import pandas as pd
     from anndata import AnnData
-    from geardb import Analysis
+    from geardb import Analysis, SpatialAnalysis
     from matplotlib.artist import Artist
     from matplotlib.axes import Axes
     from matplotlib.colors import Colormap
@@ -675,7 +675,7 @@ def modify_genes_found_as_obs_columns(
     return adata
 
 
-def dedup_genes(adata: "AnnData", ana: "Analysis") -> dict:
+def dedup_genes(adata: "AnnData", ana: "Analysis | SpatialAnalysis") -> dict:
     """
     Removes duplicate gene symbols from the AnnData object's `.var` DataFrame, ensuring that only one Ensembl ID is associated with each gene symbol.
     The function resets the index of `adata.var` to use 'gene_symbol', renames the Ensembl ID column for clarity, and saves a copy of the deduplicated AnnData object if duplicates are found.
@@ -697,7 +697,10 @@ def dedup_genes(adata: "AnnData", ana: "Analysis") -> dict:
     # Rename to end the confusion
     adata.var = adata.var.rename(columns={adata.var.columns[0]: "ensembl_id"})
     # Modify the AnnData object to not include any duplicated gene symbols (keep only first entry)
-    dedup_copy = ana.dataset_path().replace(".h5ad", ".dups_removed.h5ad")
+    if isinstance(ana, geardb.SpatialAnalysis):
+        dedup_copy = ana.dataset_path().replace(".zarr", ".dups_removed.h5ad")
+    else:
+        dedup_copy = ana.dataset_path().replace(".h5ad", ".dups_removed.h5ad")
 
     success = 1
     message = ""

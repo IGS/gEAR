@@ -1022,6 +1022,7 @@ const disableCheckboxLabel = (checkboxElt, state) => {
  */
 const getAnalysisId = () => {
     const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
+    if (analysisValue === "-1") return null;  // Primary analysis
     return analysisValue || null;
 }
 

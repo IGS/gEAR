@@ -1,15 +1,19 @@
 #!/opt/bin/python3
 
-import cgi, json
+import cgi
+import json
 import math
-import sys
 import os
 import statistics
+import sys
+import traceback
+
 import pandas as pd
-from itertools import product
+import scanpy as sc
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
+import geardb
 
 # This has a huge dependency stack of libraries. Occasionally, one of them has methods
 #  which prints debugging information on STDOUT, killing this CGI.  So here we redirect
@@ -17,9 +21,6 @@ sys.path.append(lib_path)
 original_stdout = sys.stdout
 sys.stdout = open(os.devnull, 'w')
 
-from geardb import Dataset
-
-import scanpy as sc
 sc.settings.verbosity = 0
 
 def main():
@@ -37,12 +38,13 @@ def main():
     log_transformation = form.getvalue('log_transformation')
     statistical_test = form.getvalue('statistical_test')
 
-    dataset = Dataset(id=dataset_id, has_h5ad=1)
-    h5_path = dataset.get_file_path()
-
-    if not os.path.exists(h5_path):
-        msg = "No h5 file found for this dataset"
-        return_error_response(msg)
+    ds = geardb.get_dataset_by_id(dataset_id)
+    if not ds:
+        return {
+            "success": -1,
+            'message': "No dataset found with that ID"
+        }
+    is_spatial = ds.dtype == "spatial"
 
     if not x_compare or not y_compare:
         msg = "Please select a condition for both the X and Y axis"
@@ -52,12 +54,25 @@ def main():
         msg = "Selected conditions are identical. Please select different conditions."
         return_error_response(msg)
 
+    try:
+        ana = geardb.get_analysis(None, dataset_id, None, is_spatial=is_spatial)
+    except Exception:
+        traceback.print_exc()
+        return_error_response("Could not retrieve analysis.")
+
+    try:
+            args = {}
+            if is_spatial:
+                args['include_images'] = False
+            adata = ana.get_adata(**args)
+    except Exception:
+        traceback.print_exc()
+        return_error_response("Could not retrieve AnnData object.")
+
     # To support some options passed we have to do some stats
     perform_ranking = False
     if statistical_test:
         perform_ranking = True
-
-    adata = sc.read_h5ad(h5_path)
 
     filters = json.loads(filters)
     # Filter by obs filters
@@ -75,16 +90,8 @@ def main():
         msg = f"The follwing conditions were found in both X and Y: {intersection_conditions}. Please select unique conditions."
         return_error_response(msg)
 
-    condition_x_repls_filter = adata.obs[compare_key].isin(x_compare)
-    condition_y_repls_filter = adata.obs[compare_key].isin(y_compare)
-
-    # Assign categorical values if sample is in x_compare or y_compare
-    adata.obs['compare'] = 'neither'
-    adata.obs.loc[condition_x_repls_filter, 'compare'] = 'x'
-    adata.obs.loc[condition_y_repls_filter, 'compare'] = 'y'
-
     # add the composite column for ranked grouping
-    if perform_ranking == True:
+    if perform_ranking:
         try:
             # TODO: Had the tool crash here and apache restart resolved it.  Need to investigate.
             sc.pp.filter_cells(adata, min_genes=10)
@@ -92,6 +99,15 @@ def main():
         except Exception as e:
             msg = "scanpy.pp.filter_cells or scanpy.pp.filter_genes failed.\n{}".format(str(e))
             return_error_response(msg)
+
+    condition_x_repls_filter = adata.obs[compare_key].isin(x_compare)
+    condition_y_repls_filter = adata.obs[compare_key].isin(y_compare)
+
+    if perform_ranking:
+        # Assign categorical values if sample is in x_compare or y_compare
+        adata.obs['compare'] = 'neither'
+        adata.obs.loc[condition_x_repls_filter, 'compare'] = 'x'
+        adata.obs.loc[condition_y_repls_filter, 'compare'] = 'y'
 
         try:
             sc.tl.rank_genes_groups(adata, "compare", groups=["x"], reference="y", n_genes=0, rankby_abs=False, copy=False, method=statistical_test, corr_method='benjamini-hochberg', log_transformed=False)
@@ -113,8 +129,8 @@ def main():
     df_x = pd.DataFrame({
         # adata.X ends up being 2 dimensional array with gene's values going down a column.
         # We tranpose so a gene's replicate values are in a list and then we take the average
-        'e1_raw': [float(replicate_values.mean()) for replicate_values in adata_x_subset.X.transpose()],
-        'e2_raw': [float(replicate_values.mean()) for replicate_values in adata_y_subset.X.transpose()],
+        'e1_raw': [float(replicate_values.mean()) for replicate_values in adata_x_subset.X.transpose()], # type: ignore
+        'e2_raw': [float(replicate_values.mean()) for replicate_values in adata_y_subset.X.transpose()], # type: ignore
         'gene_sym': adata_x_subset.var.gene_symbol
     })
 
@@ -156,7 +172,7 @@ def main():
     filtered_symbols = list()
     filtered_fold_changes = list()
 
-    if std_dev_num_cutoff > 0:
+    if std_dev_num_cutoff and std_dev_num_cutoff > 0:
         cutoff_diff = fold_change_std_dev * std_dev_num_cutoff
         idx = 0
 
@@ -189,7 +205,7 @@ def main():
         filtered_symbols = list()
         filtered_fold_changes = list()
 
-    if fold_change_cutoff > 0:
+    if fold_change_cutoff and fold_change_cutoff > 0:
         idx = 0
 
         for (e1_raw, e2_raw) in result['values']:
