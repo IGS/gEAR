@@ -16,6 +16,9 @@ div#figure-set-1 {
 div#hhf-hrp-banner-c img {
     max-height: 150px;
 }
+div#organism-parade img {
+    max-height: 100px;
+}
 h1, h2, h3 {
     font-weight: bold;
     margin-top: 10px;
