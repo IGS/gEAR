@@ -30,17 +30,22 @@ def download_file(file_path, file_name):
 
 def main():
     form = cgi.FieldStorage()
-    dataset_id = html.escape(form.getvalue('dataset_id'))
+    dataset_id = html.escape(form.getvalue('dataset_id', ""))
+    dataset_share_id = html.escape(form.getvalue('dataset_share_id', ""))
     analysis_id = html.escape(form.getvalue('analysis_id', ""))
     session_id = html.escape(form.getvalue('session_id', ""))
     dtype = html.escape(form.getvalue('type'))
-    dataset = geardb.Dataset(id=dataset_id)
+
+    if dataset_share_id:
+        dataset = geardb.get_dataset_by_share_id(share_id=dataset_share_id)
+    else:
+        dataset = geardb.Dataset(id=dataset_id)
+
     tarball_path = dataset.get_tarball_path()
     h5ad_path = dataset.get_file_path()
 
     # if analysis ID is passed, retrieve the h5ad file for the analysis to download
     if analysis_id:
-
         # Need session id to get "user_unsaved" analyses
         if not session_id:
           session_id = None
