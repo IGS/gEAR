@@ -1,5 +1,7 @@
 # MySQL Docker setup notes
 
+Prerequisite: Create a "mysql" directory in the `<gear_root>/docker/` directory
+
 To be performed after performing "docker-compose up -d"
 
 ## Get root password
@@ -42,5 +44,7 @@ NOTE: Change the SQL filename to whatever database dump you are using.
 Make sure the gear.ini file in the gEAR root directory has the host entry as "db" instead of "localhost".
 
 ### MySQL container will not start
+
+Ensure that you created a "mysql" directory in the `<gear_root>/docker/` directory
 
 If you check `docker compose logs db` and it says something about `chown: cannot dereference '/var/lib/mysql/mysql.sock': No such file or directory`, just delete the `./mysql/mysql.sock` file in this directory, then do `docker compose down -v; docker compose up -d`. It should start up properly with a new socket file
