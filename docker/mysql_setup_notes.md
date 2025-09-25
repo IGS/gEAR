@@ -1,7 +1,5 @@
 # MySQL Docker setup notes
 
-Prerequisite: Create a "mysql" directory in the `<gear_root>/docker/` directory
-
 To be performed after performing "docker-compose up -d"
 
 ## Get root password
@@ -25,14 +23,20 @@ This file, when gunzipped will be about 1.6 Gb.  After this, we copy the file in
 
 NOTE: Change the SQL filename to whatever database dump you are using.
 
-## Set up the mysql database (first-time only)
+## Set up the mysql database
 
-1. Do `docker-compose exec db /bin/bash` to get into the docker instance.  Next do `mysql -uroot -p<ROOT_PASSWORD> gear_portal` to log into mysql as root.  Note that the "GENERATED_ROOT_PASSWORD" was obtained from the "Get root password" section, and that there is no space between the "-p" and the password.
-2. If this is a fresh db container, may need to run the following (in the mysql client) to setup the initial MySQL tables.
+### Dump file
+
+1. Do `docker-compose exec db /bin/bash` to get into the docker instance.  Next do `mysql -uroot -p<ROOT_PASSWORD>` to log into mysql as root.  Note that the "GENERATED_ROOT_PASSWORD" was obtained from the "Get root password" section, and that there is no space between the "-p" and the password.
+1. In the mysql client, run `source <db_dump.sql>` to load the SQL dump backup file.
+
+### No dump file (fresh container only)
+
+1. Do `docker-compose exec db /bin/bash` to get into the docker instance.  Next do `mysql -uroot -p<ROOT_PASSWORD>` to log into mysql as root.  Note that the "GENERATED_ROOT_PASSWORD" was obtained from the "Get root password" section, and that there is no space between the "-p" and the password.
+2. Run the following (in the mysql client) to setup the initial MySQL tables.
     1. `create database gear_portal;`
     2. `use gear_portal;`
     3. `source <gear_root> create_schema.sql`
-3. In the mysql client, run `source <db_dump.sql>` to load the SQL dump backup file.
 4. After that finishes run the following to ensure the gEAR user can do database operations in gEAR
     1. `GRANT USAGE ON *.* TO 'gear'@'%';`
     2. `GRANT SELECT, INSERT, UPDATE, DELETE ON gear_portal.* TO 'gear'@'%';`
@@ -44,7 +48,5 @@ NOTE: Change the SQL filename to whatever database dump you are using.
 Make sure the gear.ini file in the gEAR root directory has the host entry as "db" instead of "localhost".
 
 ### MySQL container will not start
-
-Ensure that you created a "mysql" directory in the `<gear_root>/docker/` directory
 
 If you check `docker compose logs db` and it says something about `chown: cannot dereference '/var/lib/mysql/mysql.sock': No such file or directory`, just delete the `./mysql/mysql.sock` file in this directory, then do `docker compose down -v; docker compose up -d`. It should start up properly with a new socket file
