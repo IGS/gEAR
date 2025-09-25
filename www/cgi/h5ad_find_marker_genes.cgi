@@ -82,7 +82,7 @@ def main():
         ]:
             cluster_method = 'subclass_label'
 
-    dest_datafile_path = ana.dataset_path()
+    dest_datafile_path = ana.dataset_path
 
     dest_datafile_dir = os.path.dirname(dest_datafile_path)
 

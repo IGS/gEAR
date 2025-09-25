@@ -155,7 +155,7 @@ def get_analysis(analysis, dataset_id, session_id):
 
         # Let's not fail if the file isn't there
         if not os.path.exists(h5_path):
-            raise PlotError("No h5 file found for this dataset")
+            raise PlotError("No file found for this dataset")
         ana = Analysis(type='primary', dataset_id=dataset_id)
     return ana
 

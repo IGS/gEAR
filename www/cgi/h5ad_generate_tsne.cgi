@@ -75,7 +75,7 @@ def main():
     if ana.type == 'primary' or ana.type == 'public':
         ana.type = 'user_unsaved'
 
-    dest_datafile_path = ana.dataset_path()
+    dest_datafile_path = ana.dataset_path
 
     if compute_neighbors == 1:
         sc.pp.neighbors(adata, n_pcs=n_pcs, n_neighbors=n_neighbors)

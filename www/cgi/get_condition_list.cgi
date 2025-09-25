@@ -174,7 +174,7 @@ def main():
 
     if not os.path.exists(h5_path):
         result['success'] = 0
-        result['error'] = f"No h5 file found for {dataset_id}."
+        result['error'] = f"No file found for {dataset_id}."
         sys.stdout = original_stdout
         print('Content-Type: application/json\n\n')
         print(json.dumps(result))

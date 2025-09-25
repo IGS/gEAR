@@ -195,7 +195,7 @@ class SpatialScanpyData(Resource):
             traceback.print_exc()
             return {
                 "success": -1,
-                "message": "Could not retrieve AnnData object."
+                "message": "Could not create dataset object using analysis."
             }
 
         if projection_id:

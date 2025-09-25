@@ -103,7 +103,7 @@ def main():
     if ana.type == 'primary' or ana.type == 'public':
         ana.type = 'user_unsaved'
 
-    dest_datafile_path = ana.dataset_path()
+    dest_datafile_path = ana.dataset_path
 
     if group_labels:
         adata.rename_categories(cluster_method, group_labels)

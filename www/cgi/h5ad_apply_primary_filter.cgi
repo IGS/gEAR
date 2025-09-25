@@ -70,7 +70,7 @@ def main():
     try:
         ana = get_analysis(analysis_obj, dataset_id, session_id, is_spatial=is_spatial)
     except Exception:
-        print("Could not retrieve analysis.")
+        print("Analysis for this dataset is unavailable.")
         result['success'] = 0
         sys.stdout = original_stdout
         print('Content-Type: application/json\n\n')
@@ -83,7 +83,7 @@ def main():
             args['include_images'] = False
         adata = ana.get_adata(**args)
     except Exception:
-        print("Could not retrieve AnnData object.")
+        print("Could not create dataset object using analysis.")
         result['success'] = 0
         sys.stdout = original_stdout
         print('Content-Type: application/json\n\n')
@@ -102,7 +102,7 @@ def main():
     else:
         raise Exception("ERROR: unsupported analysis type: {0}".format(ana.type))
 
-    dest_datafile_path = ana.dataset_path()
+    dest_datafile_path = ana.dataset_path
     dest_directory = os.path.dirname(dest_datafile_path)
 
     if not os.path.exists(dest_directory):

@@ -37,7 +37,7 @@ def main():
     args = parser.parse_args()
 
     # Ensure the spatial data type is supported
-    if args.type not in spatialhandler.SPATIALTYPE2CLASS.keys():
+    if args.type not in spatialhandler.SPATIALTYPE2CLASS:
         print("Invalid or unsupported spatial data type")
         print("Supported types: {0}".format(spatialhandler.SPATIALTYPE2CLASS.keys()))
         sys.exit(1)

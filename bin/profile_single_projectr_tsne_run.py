@@ -191,7 +191,7 @@ def get_analysis(analysis, dataset_id, session_id):
 
         # Let's not fail if the file isn't there
         if not Path(h5_path).is_file():
-            raise FileNotFoundError("No h5 file found for this dataset")
+            raise FileNotFoundError("No file found for this dataset")
         ana = Analysis(type='primary', dataset_id=dataset_id)
     return ana
 
@@ -836,7 +836,7 @@ def run_tsne(dataset_id):
     # Rename to end the confusion
     adata.var = adata.var.rename(columns={adata.var.columns[0]: "ensembl_id"})
     # Modify the AnnData object to not include any duplicated gene symbols (keep only first entry)
-    scanpy_copy = str(ana.dataset_path()).replace('.h5ad', '.scanpy_dups_removed.h5ad')
+    scanpy_copy = str(ana.dataset_path).replace('.h5ad', '.scanpy_dups_removed.h5ad')
     if len(df.columns) > 1:
         if os.path.exists(scanpy_copy):
             os.remove(scanpy_copy)

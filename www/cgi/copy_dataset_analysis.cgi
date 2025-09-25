@@ -72,20 +72,20 @@ def main():
         print(json.dumps(result))
         return
 
-    source_pipeline_base = source_ana.base_path()
-    dest_pipeline_base = dest_ana.base_path()
+    source_pipeline_base = source_ana.base_path
+    dest_pipeline_base = dest_ana.base_path
 
     if source_analysis_type == 'user_unsaved' and dest_analysis_type == 'user_saved':
         shutil.move(source_pipeline_base, dest_pipeline_base, copy_function=open_perm_changing_copy)
-        set_config_analysis_type(dest_ana.settings_path(), dest_analysis_type, session_id, dest_analysis_id)
+        set_config_analysis_type(dest_ana.settings_path, dest_analysis_type, session_id, dest_analysis_id)
     elif source_analysis_type == 'user_saved' and dest_analysis_type == 'public':
-        set_config_analysis_type(source_ana.settings_path(), dest_analysis_type, session_id, dest_analysis_id)
+        set_config_analysis_type(source_ana.settings_path, dest_analysis_type, session_id, dest_analysis_id)
         shutil.move(source_pipeline_base, dest_pipeline_base, copy_function=closed_perm_changing_copy)
     elif source_analysis_type == 'public' and dest_analysis_type == 'user_unsaved':
         dest_pipeline_base_parent = os.path.abspath(os.path.join(dest_pipeline_base, '../'))
         os.makedirs(dest_pipeline_base_parent, exist_ok=True, mode=0o777)
         shutil.copytree(source_pipeline_base, dest_pipeline_base, copy_function=open_perm_changing_copy)
-        set_config_analysis_type(dest_ana.settings_path(), dest_analysis_type, session_id, dest_analysis_id)
+        set_config_analysis_type(dest_ana.settings_path, dest_analysis_type, session_id, dest_analysis_id)
     else:
         result = {'success': 0, 'error': 'Unrecognized source and dest analysis types'}
 

@@ -92,7 +92,7 @@ def get_adata_shadow_from_analysis(
     """
     analysis_dict = normalize_analysis_input(analysis)
     ana = get_analysis(analysis_dict, dataset_id, session_id)
-    return AnnDataShadow(ana.dataset_path())
+    return AnnDataShadow(ana.dataset_path)
 
 
 def get_adata_shadow(
@@ -148,11 +148,14 @@ def get_spatial_adata(
     Raises:
         ValueError: If the spatial data type is invalid or unsupported.
     """
+
     # Get spatial-based adata object.
     analysis_dict = normalize_analysis_input(analysis)
     ana = get_analysis(analysis_dict, dataset_id, session_id, is_spatial=True)
+
     if not isinstance(ana, SpatialAnalysis):
         raise ValueError("Analysis is not spatial")
+
     adata = ana.get_adata(include_images=include_images)
     return adata
 

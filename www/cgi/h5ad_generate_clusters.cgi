@@ -50,7 +50,7 @@ def main():
     if ana.type == 'primary' or ana.type == 'public':
         ana.type = 'user_unsaved'
 
-    dest_datafile_path = ana.dataset_path()
+    dest_datafile_path = ana.dataset_path
 
     # Compute tSNE and plot
     if compute_clusters == 'true':

@@ -69,7 +69,7 @@ def main():
         analysis = Analysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id)
         analysis.discover_type()
         try:
-          h5ad_path = analysis.dataset_path()
+          h5ad_path = analysis.dataset_path
         except Exception as e:
           print(str(e), file=sys.stderr)
           h5ad_path = ""

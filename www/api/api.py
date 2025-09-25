@@ -20,6 +20,7 @@ abs_path_lib = abs_path_gear.joinpath('lib')
 sys.path.insert(0, str(abs_path_lib))
 
 debug = os.environ.get('DEBUG', False)
+debug = debug in ('1', 'true', 'True', 'TRUE')
 
 from resources.aggregations import Aggregations  # noqa: E402
 from resources.analyses import Analyses  # noqa: E402

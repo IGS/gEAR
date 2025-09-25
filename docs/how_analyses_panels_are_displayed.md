@@ -46,7 +46,7 @@ Dataset:
 
 plotly_data.py calls:
    - gear.analysis.Analysis.discover_type()
-   - gear.analysis.Analysis.dataset_path()
+   - gear.analysis.Analysis.dataset_path
    - BOTH NEED type from dataset_display JSON!
    - called from api.add_resource(PlotlyData, '/plot/<dataset_id>')
 

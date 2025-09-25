@@ -34,7 +34,7 @@ def main():
 
     source_ana = Analysis(id=analysis_id, type=analysis_type,
                                  dataset_id=dataset_id, session_id=session_id, user_id=user.id)
-    source_pipeline_base = source_ana.base_path()
+    source_pipeline_base = source_ana.base_path
 
     result = {'success': 0}
 

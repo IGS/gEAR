@@ -35,7 +35,7 @@ def main():
     #  control it: scanpy GitHub ticket #73
     analysis_name = form.getvalue('analysis_name')
 
-    data_file_path = ana.dataset_path()
+    data_file_path = ana.dataset_path
     ana_directory = os.path.normpath(os.path.dirname(data_file_path))
     image_path = "{0}/figures/{1}.png".format(ana_directory, analysis_name)
     #print("DEBUG: streaming image at path: {0}".format(image_path), file=sys.stderr)

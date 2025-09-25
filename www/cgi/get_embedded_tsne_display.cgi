@@ -62,7 +62,7 @@ def main():
         ana = get_analysis(analysis_obj, dataset_id, None, is_spatial=is_spatial)
     except Exception:
         print('Content-Type: application/json\n\n')
-        print(json.dumps({'error': 'Could not retrieve analysis'}))
+        print(json.dumps({'error': "Analysis for this dataset is unavailable."}))
         return
 
     try:

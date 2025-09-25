@@ -54,7 +54,7 @@ def main():
         h5ad_path = dataset.get_file_path()
 
         analysis = Analysis(id=dataset_id, dataset_id=dataset_id, type='primary', vetting='owner')
-        analysis_json_path = analysis.settings_path()
+        analysis_json_path = analysis.settings_path
 
         if os.path.exists(analysis_json_path):
             with open(analysis_json_path) as json_in:

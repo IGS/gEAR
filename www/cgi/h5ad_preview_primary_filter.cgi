@@ -36,7 +36,7 @@ def main():
 
     ana = Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id, session_id=session_id)
 
-    source_datafile_path = ana.dataset_path()
+    source_datafile_path = ana.dataset_path
     violin_path = str(source_datafile_path).replace('.h5ad', '.prelim_violin.png')
 
     if not os.path.exists(violin_path):

@@ -41,7 +41,7 @@ def main():
                           session_id=session_id, user_id=user.id, label=label,
                           vetting=analysis_vetting)
 
-    pipeline_path = ana.settings_path()
+    pipeline_path = ana.settings_path
     try:
         ofh = open(pipeline_path, 'wt')
         ofh.write(state)

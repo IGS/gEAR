@@ -59,7 +59,7 @@ def main():
         ana = get_analysis(None, dataset_id, None, is_spatial=is_spatial)
     except Exception:
         traceback.print_exc()
-        return_error_response("Could not retrieve analysis.")
+        return_error_response("Analysis for this dataset is unavailable.")
 
     try:
             args = {}
@@ -68,7 +68,7 @@ def main():
             adata = ana.get_adata(**args)
     except Exception:
         traceback.print_exc()
-        return_error_response("Could not retrieve AnnData object.")
+        return_error_response("Could not create dataset object using analysis.")
 
     # To support some options passed we have to do some stats
     perform_ranking = False

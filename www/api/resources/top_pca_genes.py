@@ -45,7 +45,7 @@ class TopPCAGenes(Resource):
         analysis = dict(id=analysis_id, type=analysis_type) if analysis_id and analysis_type else None
         ana = get_analysis(analysis, dataset_id, session_id, is_spatial=is_spatial)
 
-        dest_datafile_path = ana.dataset_path()
+        dest_datafile_path = ana.dataset_path
         dest_directory = os.path.dirname(dest_datafile_path)
 
         #print("DEBUG: dest_directory: {0}".format(dest_directory), file=sys.stderr)

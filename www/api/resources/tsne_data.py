@@ -455,7 +455,7 @@ def validate_args(
         import traceback
 
         traceback.print_exc()
-        return {"success": -1, "message": "Could not retrieve analysis."}
+        return {"success": -1, "message": "Analysis for this dataset is unavailable."}
 
     try:
             args = {}
@@ -468,7 +468,7 @@ def validate_args(
         import traceback
 
         traceback.print_exc()
-        return {"success": -1, "message": "Could not retrieve AnnData object."}
+        return {"success": -1, "message": "Could not create dataset object using analysis."}
 
     if projection_id:
         try:
@@ -684,7 +684,7 @@ def dedup_genes(adata: "AnnData", ana: "Analysis | SpatialAnalysis") -> dict:
 
     Args:
         adata (AnnData): The AnnData object containing gene expression data, with gene metadata in `.var`.
-        ana: An analysis object providing the `dataset_path()` method to determine file paths.
+        ana: An analysis object providing the `dataset_path` method to determine file paths.
 
     Returns:
         dict: A dictionary containing:
@@ -700,9 +700,9 @@ def dedup_genes(adata: "AnnData", ana: "Analysis | SpatialAnalysis") -> dict:
     adata.var = adata.var.rename(columns={adata.var.columns[0]: "ensembl_id"})
     # Modify the AnnData object to not include any duplicated gene symbols (keep only first entry)
     if isinstance(ana, SpatialAnalysis):
-        dedup_copy = str(ana.dataset_path()).replace(".zarr", ".dups_removed.h5ad")
+        dedup_copy = str(ana.dataset_path).replace(".zarr", ".dups_removed.h5ad")
     else:
-        dedup_copy = str(ana.dataset_path()).replace(".h5ad", ".dups_removed.h5ad")
+        dedup_copy = str(ana.dataset_path).replace(".h5ad", ".dups_removed.h5ad")
 
     dedup_copy = Path(dedup_copy)
 
@@ -718,7 +718,6 @@ def dedup_genes(adata: "AnnData", ana: "Analysis | SpatialAnalysis") -> dict:
 
         if os.path.exists(dedup_copy):
             os.remove(dedup_copy)
-        from pathlib import Path
 
         adata = adata[:, ~adata.var.index.duplicated()].copy(filename=Path(dedup_copy))
     return {

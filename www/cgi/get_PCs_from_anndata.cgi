@@ -53,7 +53,7 @@ def main():
     try:
         ana = get_analysis(analysis_obj, dataset_id, session_id, is_spatial=is_spatial)
     except Exception:
-        return_error_response("Could not retrieve analysis.")
+        return_error_response("Analysis for this dataset is unavailable.")
 
     try:
             args = {}
@@ -61,7 +61,7 @@ def main():
                 args['include_images'] = False
             adata = ana.get_adata(**args)
     except Exception:
-        return_error_response("Could not retrieve AnnData object.")
+        return_error_response("Could not create dataset object using analysis.")
 
     if "PCs" not in adata.varm:
         return_error_response("PCs not found in AnnData object")

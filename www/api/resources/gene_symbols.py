@@ -39,7 +39,7 @@ class GeneSymbols(Resource):
         except FileNotFoundError:
             return {
                 "success": -1,
-                'message': "No h5 file found for this dataset"
+                'message': "No file found for this dataset"
             }
         except Exception as e:
             return {

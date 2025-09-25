@@ -86,7 +86,7 @@ def main():
     if ana.type == 'primary' or ana.type == 'public':
         ana.type = 'user_unsaved'
 
-    dest_datafile_path = ana.dataset_path()
+    dest_datafile_path = ana.dataset_path
     dest_datafile_dir = os.path.dirname(dest_datafile_path)
 
     if not os.path.exists(dest_datafile_dir):
