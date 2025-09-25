@@ -172,6 +172,12 @@ class GenesAsAxisHandler extends curatorCommon.PlotHandler {
             return;
         }
         if (this.plotType === "mg_violin") {
+            // Remove reverse palette option since violin plots use categorical palettes
+            const revPalette = document.querySelector(".js-dash-reverse-palette");
+            for (const targetElt of [revPalette]) {
+                targetElt.closest(".is-justify-content-space-between").remove();
+            }
+
             prePlotSpecificOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/pre_plot/advanced_mg_violin.html");
             postPlotSpecificOptionselt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/post_plot/advanced_mg_violin.html");
             return;

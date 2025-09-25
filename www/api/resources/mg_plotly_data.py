@@ -481,17 +481,22 @@ class MGPlotlyData(Resource):
             df = df.sort_values(by=["gene_symbol"])
 
             # Percent of all cells in this group where the gene has expression
-            percent = lambda row: round(len([num for num in row if num > 0]) / len(row) * 100, 2)
+            def percent(row):
+                return round(len([num for num in row if num > 0]) / len(row) * 100, 2)
+
             groupby = ["gene_symbol"]
             groupby.extend(groupby_filters)
 
             # drop Ensembl ID index since it may not aggregate and throw warnings
-            df.drop(columns=[var_index], inplace=True)
+            df = df.drop(columns=[var_index])
 
             grouped = df.groupby(groupby, observed=True)
-            df = grouped.agg(['mean', 'count', ('percent', percent)]) \
-                .fillna(0) \
-                .reset_index()
+            df = grouped.agg({
+                'value': ['mean', 'count', percent]
+            }).fillna(0).reset_index()
+            # Rename the columns for clarity
+            df.columns = ['_'.join(filter(None, col)).strip('_') for col in df.columns.to_numpy()]
+            df = df.rename(columns={'value_mean': 'mean', 'value_count': 'count', 'value_percent': 'percent'})
 
             # Reverse Cividis so that dark is higher expression
             if colorblind_mode:
@@ -509,7 +514,7 @@ class MGPlotlyData(Resource):
             df = df[sorted_ensm]
 
             # Enabling subsampling to deal with potential memory issues for clustering.
-            # If clustering on observations, limit samples to 10,000 or fewer
+            # If clustering on observations, limit samples to CLUSTER_LIMIT or fewer
             # If a subsampling limit was set, sample based on the min of these two values
             if subsample_limit > len(df) or subsample_limit == 0:
                 subsample_limit = len(df)

@@ -1,11 +1,11 @@
 
-from itertools import cycle, product
+from itertools import cycle
 
+import anndata as ad
 import dash_bio as dashbio
 import diffxpy.api as de
 import numpy as np
 import pandas as pd
-import anndata as ad
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -1083,7 +1083,7 @@ def build_obs_group_indexes(df, filters, clusterbar_fields):
 
 def create_dataframe_gene_mask(df, gene_symbols):
     """Create a gene mask to filter a dataframe."""
-    if not "gene_symbol" in df:
+    if "gene_symbol" not in df:
         raise PlotError('Missing gene_symbol column in adata.var')
 
     gene_filter = None
