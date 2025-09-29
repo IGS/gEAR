@@ -48,20 +48,26 @@ def main():
 
     is_spatial = ds.dtype == "spatial"
 
-    analysis_obj = dict(id=analysis_id, type=analysis_type) if analysis_id and analysis_type else None
+    analysis_obj = None
+    if analysis_id or analysis_type:
+        analysis_obj = {}
+        if analysis_id:
+            analysis_obj['id'] = analysis_id
+        if analysis_type:
+            analysis_obj['type'] = analysis_type
 
     try:
         ana = get_analysis(analysis_obj, dataset_id, session_id, is_spatial=is_spatial)
     except Exception:
         return_error_response("Analysis for this dataset is unavailable.")
+        return
 
     try:
-            args = {}
-            if is_spatial:
-                args['include_images'] = False
-            adata = ana.get_adata(**args)
-    except Exception:
+        adata = ana.get_adata()
+    except Exception as e:
+        print(e, file=sys.stderr)
         return_error_response("Could not create dataset object using analysis.")
+        return
 
     if "PCs" not in adata.varm:
         return_error_response("PCs not found in AnnData object")

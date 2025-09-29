@@ -13,7 +13,7 @@ sys.stdout = open(os.devnull, 'w')
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
-from gear.analysis import Analysis
+from gear.analysis import get_analysis
 
 
 # this is needed so that we don't get TclError failures in the underlying modules
@@ -31,13 +31,37 @@ def main():
     analysis_type = form.getvalue('analysis_type')
     dataset_id = form.getvalue('dataset_id')
     session_id = form.getvalue('session_id')
-    user = geardb.get_user_from_session_id(session_id)
-    user_id = None
-    if user and user.id:
-        user_id = user.id
 
-    ana = Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
-                          session_id=session_id, user_id=user_id)
+    result = {"success": 0}
+
+    ds = geardb.get_dataset_by_id(dataset_id)
+    if not ds:
+        print("No dataset found with that ID.", file=sys.stderr)
+        result['success'] = 0
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+    is_spatial = ds.dtype == "spatial"
+
+    result["is_spatial"] = 1 if is_spatial else 0
+
+    analysis_obj = None
+    if analysis_id or analysis_type:
+        analysis_obj = {
+            'id': analysis_id if analysis_id else None,
+            'type': analysis_type if analysis_type else None,
+        }
+
+    try:
+        ana = get_analysis(analysis_obj, dataset_id, session_id, is_spatial=is_spatial)
+    except Exception:
+        print("Analysis for this dataset is unavailable.", file=sys.stderr)
+        result['success'] = 0
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
 
     genes_prefix = form.getvalue('genes_prefix')
     filter_mito_perc = form.getvalue('filter_mito_perc')
@@ -64,17 +88,17 @@ def main():
     # the ".A1" is only necessary, as X is sparse - it transform to a dense array after summing
     try:
         adata.obs['percent_mito'] = np.sum(
-            adata[:, mito_genes].X, axis=1).A1 / np.sum(adata.X, axis=1).A1
+            adata[:, mito_genes].to_df().values, axis=1).A1 / np.sum(adata.to_df().values, axis=1).A1
 
         # add the total counts per cell as observations-annotation to adata
-        adata.obs['n_counts'] = np.sum(adata.X, axis=1).A1
+        adata.obs['n_counts'] = np.sum(adata.to_df().values, axis=1).A1
 
     except AttributeError:
         adata.obs['percent_mito'] = np.sum(
-            adata[:, mito_genes].X, axis=1) / np.sum(adata.X, axis=1)
+            adata[:, mito_genes].to_df().values, axis=1) / np.sum(adata.to_df().values, axis=1)
 
         # add the total counts per cell as observations-annotation to adata
-        adata.obs['n_counts'] = np.sum(adata.X, axis=1)
+        adata.obs['n_counts'] = np.sum(adata.to_df().values, axis=1)
 
     os.chdir(os.path.dirname(dest_datafile_path))
 
@@ -84,7 +108,7 @@ def main():
     ax = sc.pl.scatter(adata, x='n_counts', y='percent_mito', save="_percent_mito.png")
     ax = sc.pl.scatter(adata, x='n_counts', y='n_genes', save="_n_genes.png")
 
-    result = {'success': 1}
+    result["success"] = 1
 
     if save_dataset:
         if filter_mito_count:

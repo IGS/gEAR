@@ -2301,9 +2301,7 @@ class Dataset:
             from shadows import AnnDataShadow
 
             adata = AnnDataShadow(h5ad_file_path)
-
             (n_obs, n_vars) = adata.shape
-
             adata.close()
 
             if tuple_only:
@@ -2313,6 +2311,19 @@ class Dataset:
             self.obs_count = n_obs  # type: ignore
 
             return "{0}x{1}".format(self.gene_count, self.obs_count)
+        elif self.dtype == "spatial":
+            zarr_file_path = self.get_file_path(session_id=session_id)
+
+            import spatialdata as sd
+
+            sdata = sd.read_zarr(zarr_file_path)
+            (n_obs, n_vars) = sdata.tables["table"].shape
+
+            if tuple_only:
+                return (n_obs, n_vars)
+
+            self.gene_count = n_vars  # type: ignore
+            self.obs_count = n_obs  # type: ignore
 
     def to_json(self):
         return str(self)

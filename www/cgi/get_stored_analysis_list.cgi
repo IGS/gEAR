@@ -27,8 +27,15 @@ def main():
     if user:
         user_id = user.id
 
+    ds = geardb.get_dataset_by_id(dataset_id)
+    if not ds:
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({'success': 0, 'error': 'No dataset found with that ID'}))
+        return
+    is_spatial = ds.dtype == "spatial"
+
     acollection = AnalysisCollection()
-    acollection.get_all_by_dataset_id(user_id=user_id, session_id=session_id, dataset_id=dataset_id)
+    acollection.get_all_by_dataset_id(user_id=user_id, session_id=session_id, dataset_id=dataset_id, is_spatial=is_spatial)
 
     result['primary'] = acollection.primary
     result['public'] = acollection.public

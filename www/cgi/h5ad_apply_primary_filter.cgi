@@ -44,20 +44,13 @@ def main():
 
     ds = geardb.get_dataset_by_id(dataset_id)
     if not ds:
-        return {
-            "success": -1,
-            'message': "No dataset found with that ID"
-        }
-    is_spatial = ds.dtype == "spatial"
-
-    if is_spatial:
-        # NOT IMPLEMENTED YET
-        print("Spatial datasets are not supported yet.")
+        print("No dataset found with that ID.", file=sys.stderr)
         result['success'] = 0
         sys.stdout = original_stdout
         print('Content-Type: application/json\n\n')
         print(json.dumps(result))
         return
+    is_spatial = ds.dtype == "spatial"
 
 
     analysis_obj = None
@@ -70,7 +63,7 @@ def main():
     try:
         ana = get_analysis(analysis_obj, dataset_id, session_id, is_spatial=is_spatial)
     except Exception:
-        print("Analysis for this dataset is unavailable.")
+        print("Analysis for this dataset is unavailable.", file=sys.stderr)
         result['success'] = 0
         sys.stdout = original_stdout
         print('Content-Type: application/json\n\n')
@@ -83,7 +76,7 @@ def main():
             args['include_images'] = False
         adata = ana.get_adata(**args)
     except Exception:
-        print("Could not create dataset object using analysis.")
+        print("Could not create dataset object using analysis.", file=sys.stderr)
         result['success'] = 0
         sys.stdout = original_stdout
         print('Content-Type: application/json\n\n')

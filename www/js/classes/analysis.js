@@ -537,8 +537,11 @@ export class Analysis {
                 createToast("Preliminary figures not found. You can still continue the analysis though.", "is-warning");
                 return;
             }
-            document.querySelector(UI.primaryInitialViolinContainer).innerHTML = `<a target="_blank" href="./datasets/${this.dataset.id}.prelim_violin.png"><img src="./datasets/${this.dataset.id}.prelim_violin.png" class="img-fluid img-zoomed" /></a>`;
-            document.querySelector(UI.primaryInitialScatterContainer).innerHTML = `<a target="_blank" href="./datasets/${this.dataset.id}.prelim_n_genes.png"><img src="./datasets/${this.dataset.id}.prelim_n_genes.png" class="img-fluid img-zoomed" /></a>`;
+
+            const datasetPathPrefix = data.is_spatial ? "datasets/spatial" : "datasets";
+
+            document.querySelector(UI.primaryInitialViolinContainer).innerHTML = `<a target="_blank" href="./${datasetPathPrefix}/${this.dataset.id}.prelim_violin.png"><img src="./${datasetPathPrefix}/${this.dataset.id}.prelim_violin.png" class="img-fluid img-zoomed" /></a>`;
+            document.querySelector(UI.primaryInitialScatterContainer).innerHTML = `<a target="_blank" href="./${datasetPathPrefix}/${this.dataset.id}.prelim_n_genes.png"><img src="./${datasetPathPrefix}/${this.dataset.id}.prelim_n_genes.png" class="img-fluid img-zoomed" /></a>`;
             createToast("Preliminary plots displayed", "is-success");
             document.querySelector(UI.primaryInitialPlotContainer).classList.remove("is-hidden");
 

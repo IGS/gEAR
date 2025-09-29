@@ -42,7 +42,14 @@ class TopPCAGenes(Resource):
 
         is_spatial = ds.dtype == "spatial"
 
-        analysis = dict(id=analysis_id, type=analysis_type) if analysis_id and analysis_type else None
+        analysis = None
+        if analysis_id or analysis_type:
+            analysis = {}
+            if analysis_id:
+                analysis['id'] = analysis_id
+            if analysis_type:
+                analysis['type'] = analysis_type
+
         ana = get_analysis(analysis, dataset_id, session_id, is_spatial=is_spatial)
 
         dest_datafile_path = ana.dataset_path
@@ -54,15 +61,7 @@ class TopPCAGenes(Resource):
             os.makedirs(dest_directory)
 
         try:
-            if is_spatial:
-                adata = get_spatial_adata(None, dataset_id, session_id, include_images=False)
-            else:
-                adata = get_adata_from_analysis(None, dataset_id, session_id, backed=False)
-        except FileNotFoundError:
-            return {
-                "success": 0,
-                "message": "Dataset file not found",
-            }
+            adata = ana.get_adata()
         except Exception as e:
             return {
                 "success": -1,
@@ -81,6 +80,7 @@ class TopPCAGenes(Resource):
             sc.pl.pca_loadings(adata, components=pcs, save='.png')
         except Exception as e:
             return {
+                "message": str(e),
                 "success": -1,
             }
         # Code below is to grab top genes from PCA. Will have to use

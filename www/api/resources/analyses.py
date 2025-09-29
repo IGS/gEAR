@@ -16,12 +16,23 @@ class Analyses(Resource):
 
         user_id = user.id if user else None
 
+        ds = geardb.get_dataset_by_id(dataset_id)
+        if not ds:
+            return {
+                "success": -1,
+                'message': "No dataset found with that ID"
+            }
+
+        is_spatial = ds.dtype == "spatial"
+
         acollection = AnalysisCollection()
 
         acollection.get_all_by_dataset_id(
             user_id=user_id,
             session_id=session_id,
-            dataset_id=dataset_id)
+            dataset_id=dataset_id,
+            is_spatial=is_spatial
+        )
 
 
         public_tsne = list(

@@ -45,6 +45,7 @@ def get_analysis(analysis_data: dict | None, dataset_id: str, session_id: str | 
                 dataset_id=dataset_id,
                 session_id=session_id,
                 user_id=user_id,
+                type=analysis_data.get("type", None),
             )
         else:
             ana = Analysis(
@@ -52,11 +53,10 @@ def get_analysis(analysis_data: dict | None, dataset_id: str, session_id: str | 
                 dataset_id=dataset_id,
                 session_id=session_id,
                 user_id=user_id,
+                type=analysis_data.get("type", None),
             )
 
-        if "type" in analysis_data:
-            ana.type = analysis_data["type"]
-        else:
+        if ana.type is None:
             ana.discover_type()
 
         # Check that the h5ad file exists
@@ -378,7 +378,6 @@ class Analysis:
         when searching for lists of analyses.
         """
 
-
         if atype == "primary":
             return root_dir / "www" / "datasets"
 
@@ -405,8 +404,7 @@ class Analysis:
                         "ERROR: _parent_path_by_type() called on Analysis object with no session_id attribute set."
                     )
 
-                # /tmp/$session/$dataset_id/$analysis_id/$dataset_id.h5ad
-                return Path("/tmp") / self.session_id / self.dataset_id / self.id / f"{self.dataset_id}.h5ad"
+                return Path("/tmp") / self.session_id / self.dataset_id
 
         raise Exception(f"ERROR: Invalid type '{atype}' for Analysis instance")
 
@@ -517,20 +515,6 @@ class SpatialAnalysis(Analysis):
     def primary_path(self) -> Path:
         return root_dir / "www" / "datasets" / "spatial"
 
-    @property
-    def settings_path(self) -> Path:
-        """
-        Returns the file path to the pipeline settings JSON file for the current dataset.
-
-        The path is constructed by joining the base path (with a 'spatial' subdirectory)
-        and the dataset ID, resulting in a file named '<dataset_id>.pipeline.json'.
-
-        Returns:
-            str: The full path to the pipeline settings JSON file.
-        """
-        base_path = Path(f"{self.base_path}/spatial")
-        return base_path / f"{self.dataset_id}.pipeline.json"
-
     def set_adapter(self) -> None:
         """
         Determines and returns the appropriate adapter class based on the object's type.
@@ -557,7 +541,7 @@ class AnalysisCollection:
     def __repr__(self):
         return json.dumps(self.__dict__)
 
-    def _scan_analysis_directory(self, ana: "Analysis | SpatialAnalysis", atype: str) -> list:
+    def _collect_analysis_json(self, ana: "Analysis | SpatialAnalysis", atype: str) -> list:
         """
         Searches a directory to find stored analysis files.  Assumes the dir passed is a parent directory which
         can contain more than one analysis directory.  Looking essentially for this:
@@ -569,6 +553,8 @@ class AnalysisCollection:
         analyses = list()
         a_dir = ana._parent_path_by_type(atype=atype)
 
+        ana_cls = type(ana)
+
         if a_dir.exists():
             if atype == "primary":
                 ana.type = "primary"
@@ -576,21 +562,12 @@ class AnalysisCollection:
 
                 if json_path.exists():
                     json_obj = json.loads(open(json_path).read())
-                    analyses.append(Analysis.from_json(json_obj))
+                    analyses.append(ana_cls.from_json(json_obj))
             else:
-                for thing in a_dir.iterdir():
-                    dir_path = a_dir / thing
-                    if not dir_path.is_dir():
-                        for pipeline_file in (
-                            f.name
-                            for f in thing.iterdir()
-                            if str(f).endswith(".pipeline.json")
-                        ):
-                            json_path = f"{dir_path}/{pipeline_file}"
-                            json_obj = json.loads(
-                                open(json_path, encoding="utf-8").read()
-                            )
-                            analyses.append(Analysis.from_json(json_obj))
+                for json_thing in a_dir.glob("**/*.pipeline.json"):
+                    json_path = json_thing
+                    json_obj = json.loads(open(json_path, encoding="utf-8").read())
+                    analyses.append(ana_cls.from_json(json_obj))
 
         return analyses
 
@@ -599,7 +576,7 @@ class AnalysisCollection:
         # Called when json modules attempts to serialize
         return self.__dict__
 
-    def get_all_by_dataset_id(self, user_id=None, session_id=None, dataset_id=None):
+    def get_all_by_dataset_id(self, user_id=None, session_id=None, dataset_id=None, is_spatial=False):
         """
         Gets all possible analyses for a given dataset, including primary, public, user-saved and
         user-unsaved analyses.
@@ -608,15 +585,18 @@ class AnalysisCollection:
         self.__init__()
 
         ## Create hypothetical analysis to get paths
-        ana = Analysis(dataset_id=dataset_id, user_id=user_id, session_id=session_id)
+        ana_cls = Analysis
+        if is_spatial:
+            ana_cls = SpatialAnalysis
+        ana = ana_cls(dataset_id=dataset_id, user_id=user_id, session_id=session_id)
 
         ## Each of these is a list of JSON objects
-        self.primary = self._scan_analysis_directory(ana, "primary")
-        self.public = self._scan_analysis_directory(ana, "public")
+        self.primary = self._collect_analysis_json(ana, "primary")
+        self.public = self._collect_analysis_json(ana, "public")
         if user_id:
-            self.user_saved = self._scan_analysis_directory(ana, "user_saved")
+            self.user_saved = self._collect_analysis_json(ana, "user_saved")
         if session_id:
-            self.user_unsaved = self._scan_analysis_directory(ana, "user_unsaved")
+            self.user_unsaved = self._collect_analysis_json(ana, "user_unsaved")
 
 ### File-specific adapters to load data from different formats ###
 
