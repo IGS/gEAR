@@ -2953,8 +2953,13 @@ class AnalysisStepCompareGenes {
 
         if (data.hasOwnProperty('table_json_f')) {
             this.tableJsonF = data.table_json_f;
-            data.table_json_f = JSON.parse(data.table_json_f);
-            this.populateComparisonTable(UI.compareGenesTableFElt, data.table_json_f.data);
+            if (this.tableJsonF) {
+                document.querySelector(UI.compareGenesTableContainerF).classList.remove("is-hidden");
+                data.table_json_f = JSON.parse(data.table_json_f);
+                this.populateComparisonTable(UI.compareGenesTableFElt, data.table_json_f.data);
+            } else {
+                document.querySelector(UI.compareGenesTableContainerF).classList.add("is-hidden");
+            }
         }
 
         if (this.referenceCluster === 'all-reference-clusters') {
@@ -2970,8 +2975,13 @@ class AnalysisStepCompareGenes {
 
         if (data.hasOwnProperty('table_json_r')) {
             this.tableJsonR = data.table_json_r;
-            data.table_json_r = JSON.parse(data.table_json_r);
-            this.populateComparisonTable(UI.compareGenesTableRElt, data.table_json_r.data);
+            if (this.tableJsonR) {
+                document.querySelector(UI.compareGenesTableContainerR).classList.remove("is-hidden");
+                data.table_json_r = JSON.parse(data.table_json_r);
+                this.populateComparisonTable(UI.compareGenesTableRElt, data.table_json_r.data);
+            } else {
+                document.querySelector(UI.compareGenesTableContainerR).classList.add("is-hidden");
+            }
         }
 
         // mark success

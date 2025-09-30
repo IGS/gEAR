@@ -112,6 +112,23 @@ def normalize_analysis_input(analysis: dict | str | None) -> dict | None:
         return {"id": analysis}
     raise ValueError("Analysis must be a dict, str, or None.")
 
+def test_analysis_for_zarr(analysis: "Analysis | SpatialAnalysis") -> bool:
+    """
+    Tests if the provided analysis is backed by a Zarr file store, in which AnnData objects are gotten in a different way.
+
+    Parameters
+    ----------
+    analysis : Analysis or SpatialAnalysis
+        The analysis object to be tested.
+
+    Returns
+    -------
+    bool
+        True if the analysis is a SpatialAnalysis and its type is 'primary', indicating it uses a Zarr file.
+        False otherwise.
+    """
+    return isinstance(analysis, SpatialAnalysis) and analysis.type == "primary"
+
 class Analysis:
     """
     When printed directly the JSON representation of the analysis is returned.

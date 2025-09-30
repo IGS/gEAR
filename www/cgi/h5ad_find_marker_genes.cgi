@@ -9,24 +9,22 @@ import json
 import os
 import sys
 
+import matplotlib
+import pandas as pd
+import scanpy as sc
+
 original_stdout = sys.stdout
 sys.stdout = open(os.devnull, 'w')
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.analysis import get_analysis
 
 # this is needed so that we don't get TclError failures in the underlying modules
-import matplotlib
-from gear.analysis import Analysis
-
 matplotlib.use('Agg')
-
-import scanpy as sc
-
 sc.settings.verbosity = 0
 
-import pandas as pd
 
 
 def main():
@@ -35,17 +33,36 @@ def main():
     analysis_type = form.getvalue('analysis_type')
     dataset_id = form.getvalue('dataset_id')
     session_id = form.getvalue('session_id')
-    user = geardb.get_user_from_session_id(session_id)
     n_genes = int(form.getvalue('n_genes'))
     compute_marker_genes = form.getvalue('compute_marker_genes')
-    user_id = None
-    if user and user.id:
-        user_id = user.id
+    result = {"success": 0}
 
-    ana = Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
-                          session_id=session_id, user_id=user_id)
+    ds = geardb.get_dataset_by_id(dataset_id)
+    if not ds:
+        print("No dataset found with that ID.", file=sys.stderr)
+        result['success'] = 0
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+    is_spatial = ds.dtype == "spatial"
 
-    adata = ana.get_adata()
+    analysis_obj = None
+    if analysis_id or analysis_type:
+        analysis_obj = {
+            'id': analysis_id if analysis_id else None,
+            'type': analysis_type if analysis_type else None,
+        }
+
+    try:
+        ana = get_analysis(analysis_obj, dataset_id, session_id, is_spatial=is_spatial)
+    except Exception:
+        print("Analysis for this dataset is unavailable.", file=sys.stderr)
+        result['success'] = 0
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
 
     cluster_method = 'louvain'
 
@@ -89,6 +106,8 @@ def main():
     if not os.path.exists(dest_datafile_dir):
         os.makedirs(dest_datafile_dir)
 
+    adata = ana.get_adata()
+
     # Previous steps have copied adata to raw, but if we got here via primary
     #  This probably hasn't happened.  Do it now.
     if not adata.raw:
@@ -109,11 +128,8 @@ def main():
         #print("DEBUG: dataset_id:{0} wrote image file to: {1}".format(dataset_id, dest_datafile_dir), file=sys.stderr)
 
         # The sharey parameter here controls whether all axes have the same scale
-        sc.pl.rank_genes_groups(adata, n_genes=n_genes, gene_symbols='gene_symbol', sharey=False, save='.png')
-    else:
-        # Get from the dest_datafile_path
-        adata = ana.get_adata()
-\
+        sc.pl.rank_genes_groups(adata, n_genes=n_genes, gene_symbols='gene_symbol', sharey=False, save='.png') # type: ignore
+
     df_json_str = pd.DataFrame(
         adata.uns['rank_genes_groups']['names']
     ).iloc[:n_genes].to_json(orient='split')
