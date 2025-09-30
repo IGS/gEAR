@@ -172,6 +172,14 @@ class GenesAsAxisHandler extends curatorCommon.PlotHandler {
             return;
         }
         if (this.plotType === "mg_violin") {
+            // Remove reverse palette option since violin plots use categorical palettes
+            const revPalette = document.querySelector(".js-dash-reverse-palette");
+            for (const targetElt of [revPalette]) {
+                if (targetElt) {
+                    targetElt.closest(".is-justify-content-space-between").remove();
+                }
+            }
+
             prePlotSpecificOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/pre_plot/advanced_mg_violin.html");
             postPlotSpecificOptionselt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/post_plot/advanced_mg_violin.html");
             return;
@@ -568,6 +576,9 @@ class GenesAsDataHandler extends curatorCommon.PlotHandler {
         Plotly.newPlot("plotly-preview", this.plotJson.data, this.plotJson.layout, custonConfig);
         const custonLayout = curatorCommon.getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout");
         Plotly.relayout("plotly-preview", custonLayout);
+
+        // Trigger resize to make sure it fits in the container
+        Plotly.Plots.resize(document.getElementById('plotly-preview'));
 
         // Show button to add genes to gene cart
         document.getElementById("gene-cart-btn-c").classList.remove("is-hidden");

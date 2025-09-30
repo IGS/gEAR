@@ -12,7 +12,13 @@ from gear.mg_plotting import PlotError
 from gear.utils import catch_memory_error
 from plotly.utils import PlotlyJSONEncoder
 
-from .common import clip_expression_values, create_projection_adata, order_by_time_point
+from .common import (
+    clip_expression_values,
+    create_projection_adata,
+    get_adata_from_analysis,
+    get_spatial_adata,
+    order_by_time_point,
+)
 
 # SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 # This is meant to be a short-term solution until more people specify their data is transformed via the metadata
@@ -145,24 +151,28 @@ class MGPlotlyData(Resource):
         colorblind_mode = req.get('colorblind_mode', False)
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
-        try:
-            ana = geardb.get_analysis(analysis, dataset_id, session_id)
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
+        ds = geardb.get_dataset_by_id(dataset_id)
+        if not ds:
             return {
                 "success": -1,
-                "message": "Could not retrieve analysis."
+                'message': "No dataset found with that ID"
             }
+        is_spatial = ds.dtype == "spatial"
 
         try:
-            adata = ana.get_adata(backed=True)
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
+            if is_spatial:
+                adata = get_spatial_adata(analysis, dataset_id, session_id, include_images=False)
+            else:
+                adata = get_adata_from_analysis(analysis, dataset_id, session_id, backed=True)
+        except FileNotFoundError:
             return {
                 "success": -1,
-                "message": "Could not retrieve AnnData object."
+                'message': "No dataset file found."
+            }
+        except Exception as e:
+            return {
+                "success": -1,
+                'message': str(e)
             }
 
         # Apply transformations
@@ -471,17 +481,22 @@ class MGPlotlyData(Resource):
             df = df.sort_values(by=["gene_symbol"])
 
             # Percent of all cells in this group where the gene has expression
-            percent = lambda row: round(len([num for num in row if num > 0]) / len(row) * 100, 2)
+            def percent(row):
+                return round(len([num for num in row if num > 0]) / len(row) * 100, 2)
+
             groupby = ["gene_symbol"]
             groupby.extend(groupby_filters)
 
             # drop Ensembl ID index since it may not aggregate and throw warnings
-            df.drop(columns=[var_index], inplace=True)
+            df = df.drop(columns=[var_index])
 
             grouped = df.groupby(groupby, observed=True)
-            df = grouped.agg(['mean', 'count', ('percent', percent)]) \
-                .fillna(0) \
-                .reset_index()
+            df = grouped.agg({
+                'value': ['mean', 'count', percent]
+            }).fillna(0).reset_index()
+            # Rename the columns for clarity
+            df.columns = ['_'.join(filter(None, col)).strip('_') for col in df.columns.to_numpy()]
+            df = df.rename(columns={'value_mean': 'mean', 'value_count': 'count', 'value_percent': 'percent'})
 
             # Reverse Cividis so that dark is higher expression
             if colorblind_mode:
@@ -499,7 +514,7 @@ class MGPlotlyData(Resource):
             df = df[sorted_ensm]
 
             # Enabling subsampling to deal with potential memory issues for clustering.
-            # If clustering on observations, limit samples to 10,000 or fewer
+            # If clustering on observations, limit samples to CLUSTER_LIMIT or fewer
             # If a subsampling limit was set, sample based on the min of these two values
             if subsample_limit > len(df) or subsample_limit == 0:
                 subsample_limit = len(df)

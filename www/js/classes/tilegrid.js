@@ -513,7 +513,7 @@ class DatasetTile {
 
         // fail fast if no h5ad file
         if (!this.dataset.has_h5ad && !this.dataset.type === "spatial") {
-            createCardMessage(tileId, "danger", "No h5ad file found for this dataset. Please contact the gEAR team.");
+            createCardMessage(tileId, "danger", "No file found for this dataset. Please contact the gEAR team.");
             return;
         }
 

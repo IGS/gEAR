@@ -12,7 +12,7 @@ from gear.orthology import (
 )
 from gear.utils import catch_memory_error
 
-from .common import get_adata_shadow
+from .common import get_adata_shadow, get_spatial_adata
 
 
 def normalize_searched_gene(gene_set, chosen_gene):
@@ -286,18 +286,23 @@ class Orthologs(Resource):
         if not dataset:
             return {"error": "The dataset was not found."}, 400
 
-        dataset_path = dataset.get_file_path()
-        if not os.path.exists(dataset_path):
-            return {"error": f"The dataset for id {dataset_id} was not found."}, 400
-
         dataset_organism_id = dataset.organism_id
 
         try:
-            adata = get_adata_shadow(analysis_id, dataset_id, session_id, dataset_path, include_images=False)
+            if dataset.dtype == "spatial":
+                adata = get_spatial_adata(analysis_id, dataset_id, session_id, include_images=False)
+            else:
+                adata = get_adata_shadow(analysis_id, dataset_id, session_id)
+
         except FileNotFoundError:
             return {
                 "success": -1,
-                'message': "No h5 file found for this dataset"
+                'message': "No dataset file found."
+            }
+        except Exception as e:
+            return {
+                "success": -1,
+                'message': str(e)
             }
 
         dataset_genes = set(adata.var['gene_symbol'].unique())

@@ -32,9 +32,8 @@ import json
 lib_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.analysis import Analysis
 
-import numpy as np
-import anndata as ad
 import scanpy as sc
 sc.settings.verbosity = 0
 
@@ -54,8 +53,8 @@ def main():
         dataset = geardb.Dataset(id=dataset_id, has_h5ad=1)
         h5ad_path = dataset.get_file_path()
 
-        analysis = geardb.Analysis(id=dataset_id, dataset_id=dataset_id, type='primary', vetting='owner')
-        analysis_json_path = analysis.settings_path()
+        analysis = Analysis(id=dataset_id, dataset_id=dataset_id, type='primary', vetting='owner')
+        analysis_json_path = analysis.settings_path
 
         if os.path.exists(analysis_json_path):
             with open(analysis_json_path) as json_in:
@@ -71,7 +70,7 @@ def main():
         analysis_json["dataset_id"] = dataset_id
         analysis_json["dataset"]["id"] = dataset_id
 
-        ana = geardb.Analysis(dataset_id=dataset_id, type='primary')
+        ana = Analysis(dataset_id=dataset_id, type='primary')
         adata = ana.get_adata(backed=True)
 
         changes_made = False

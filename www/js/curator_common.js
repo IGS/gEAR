@@ -978,14 +978,18 @@ const createPlot = async (event) => {
     const plotType = getSelect2Value(plotTypeSelect);
 
     // Set loading
-	event.target.classList.add("is-loading");
+    for (const plotBtn of plotBtns) {
+        plotBtn.classList.add("is-loading");
+    }
 
     plotStyle.populatePlotConfig();
 
     await curatorSpecifcCreatePlot(plotType, datasetId, analysisObj);
 
     // Stop loader
-	event.target.classList.remove("is-loading");
+    for (const plotBtn of plotBtns) {
+        plotBtn.classList.remove("is-loading");
+    }
 
     // Hide this view
     document.getElementById("content-c").classList.add("is-hidden");
@@ -1018,6 +1022,7 @@ const disableCheckboxLabel = (checkboxElt, state) => {
  */
 const getAnalysisId = () => {
     const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
+    if (analysisValue === "-1") return null;  // Primary analysis
     return analysisValue || null;
 }
 

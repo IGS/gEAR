@@ -10,6 +10,7 @@ RUN apt-get -qq update \
   && DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
   gcc \
   libblosc-dev \
+  libgdal-dev \
   vim \
   # Cleanup
   && apt -qq clean autoclean \

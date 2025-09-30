@@ -73,6 +73,8 @@
 ### For Python
     - Use snake_case for variable and function names and PascalCase for class names.
     - Use Ruff for linting and formatting if available.
+    - Type hints are encouraged but not required.
+    - Follow PEP 8 style guide.
 
 ### ES Module code order
 1. Imports (must be at top syntax-wise)

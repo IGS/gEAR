@@ -4,9 +4,11 @@
 
 """
 
-import cgi, json
-import os, sys, re
+import cgi
+import json
+import os
 import shutil
+import sys
 
 original_stdout = sys.stdout
 sys.stdout = open(os.devnull, 'w')
@@ -14,6 +16,8 @@ sys.stdout = open(os.devnull, 'w')
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.analysis import Analysis
+
 
 def main():
     form = cgi.FieldStorage()
@@ -21,28 +25,63 @@ def main():
     analysis_type = form.getvalue('analysis_type')
     dataset_id = form.getvalue('dataset_id')
     session_id = form.getvalue('session_id')
+    result = {"success": 0, "error": ""}
+
     user = geardb.get_user_from_session_id(session_id)
 
     if not user:
-        print('Content-Type: application/json\n\n')
-        print(json.dumps({'success': 0, 'error': 'User not found'}))
-        return
-
-    source_ana = geardb.Analysis(id=analysis_id, type=analysis_type,
-                                 dataset_id=dataset_id, session_id=session_id, user_id=user.id)
-    source_pipeline_base = source_ana.base_path()
-
-    result = {'success': 0}
-
-    # verify this analysis belongs to the user
-    if not os.path.exists(source_pipeline_base):
-        result = {'success': 0, 'error': 'Analysis not found'}
+        result["success"] = 0
+        result["error"] = "User not found"
         sys.stdout = original_stdout
         print('Content-Type: application/json\n\n')
         print(json.dumps(result))
         return
+
+    ds = geardb.get_dataset_by_id(dataset_id)
+    if not ds:
+        print("No dataset found with that ID.", file=sys.stderr)
+        result['success'] = 0
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+
+    # Safeguard check
+    if analysis_type and analysis_type in ["primary"]:
+        result["success"] = 0
+        result["error"] = "Cannot delete primary analyses"
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+
+    try:
+        source_ana = Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
+                          session_id=session_id, user_id=user.id)
+    except Exception:
+        print("Analysis for this dataset is unavailable.", file=sys.stderr)
+        result['success'] = 0
+        result['error'] = "Analysis could not be found."
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+
+    source_pipeline_base = source_ana.base_path
+
+    # verify this analysis belongs to the user
+    if not os.path.exists(source_pipeline_base):
+        result["success"] = 0
+        result["error"] = "Analysis not found"
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+
+    # ? Is this necessary if we already verified the session_id above?
     if not source_ana.user_id == user.id:
-        result = {'success': 0, 'error': 'Analysis does not belong to user'}
+        result["success"] = 0
+        result["error"] = "Analysis does not belong to user"
         sys.stdout = original_stdout
         print('Content-Type: application/json\n\n')
         print(json.dumps(result))
@@ -72,11 +111,12 @@ def main():
 
         #shutil.rmtree(source_pipeline_base + '.deleted')
         shutil.rmtree(source_pipeline_base)
-        result = {'success': 1}
-    except:
+        result["success"] = 1
+    except Exception:
         # restore the backup
         #shutil.move(source_pipeline_base + '.deleted', source_pipeline_base)
-        result = {'success': 0, 'error': 'Unable to delete dataset'}
+        result["success"] = 0
+        result["error"] = "Unable to delete dataset display"
 
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')

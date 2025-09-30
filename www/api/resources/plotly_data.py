@@ -14,7 +14,7 @@ from flask_restful import Resource
 from gear.plotting import PlotError, generate_plot, plotly_color_map
 from plotly.utils import PlotlyJSONEncoder
 
-from .common import clip_expression_values, create_projection_adata, order_by_time_point
+from .common import clip_expression_values, create_projection_adata, get_adata_from_analysis, get_spatial_adata, order_by_time_point
 
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
@@ -120,23 +120,29 @@ class PlotlyData(Resource):
             return_dict["message"] = "Request needs both dataset id and gene symbol."
             return return_dict
 
-        try:
-            ana = geardb.get_analysis(analysis, dataset_id, session_id)
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return_dict["success"] = -1
-            return_dict["message"] = "Could not retrieve analysis."
-            return return_dict
+        ds = geardb.get_dataset_by_id(dataset_id)
+        if not ds:
+            return {
+                "success": -1,
+                'message': "No dataset found with that ID"
+            }
+        is_spatial = ds.dtype == "spatial"
 
         try:
-            adata = ana.get_adata(backed=True)
+            if is_spatial:
+                adata = get_spatial_adata(analysis, dataset_id, session_id, include_images=False)
+            else:
+                adata = get_adata_from_analysis(analysis, dataset_id, session_id, backed=True)
+        except FileNotFoundError:
+            return {
+                "success": -1,
+                'message': "No dataset file found."
+            }
         except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return_dict["success"] = -1
-            return_dict["message"] = "Could not retrieve AnnData."
-            return return_dict
+            return {
+                "success": -1,
+                'message': str(e)
+            }
 
         # quick check to ensure x, y, color, facet columns are in the adata.obs
         if x_axis not in adata.obs.columns:
@@ -344,7 +350,13 @@ class PlotlyData(Resource):
                         break
 
                 # Sort both the colormap and dataframe column alphabetically
-                sorted_column_values = sorted(col_values)
+                # Check for mixed types before sorting for efficiency
+                if len(set(type(x) for x in col_values)) > 1:
+                    # If there are mixed types, convert all to string for sorting
+                    sorted_column_values = sorted(col_values, key=lambda x: str(x))
+                else:
+                    sorted_column_values = sorted(col_values)
+
                 updated_color_map = {}
                 # Replace all the colormap values with the dataframe column values
                 # There is a good chance that the dataframe column values will be in the same order as the colormap values

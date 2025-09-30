@@ -9,8 +9,13 @@ from pathlib import Path
 
 import pandas as pd
 from anndata import AnnData
+from gear.analysis import (
+    Analysis,
+    SpatialAnalysis,
+    get_analysis,
+    normalize_analysis_input,
+)
 from gear.plotting import PlotError
-from geardb import Analysis, SpatialAnalysis, get_user_from_session_id
 from shadows import AnnDataShadow
 from werkzeug.utils import secure_filename
 
@@ -44,52 +49,40 @@ def clip_expression_values(adata: "AnnData", min_clip: float | None=None, max_cl
     return adata
 
 def get_adata_from_analysis(
-    analysis_id: str | None, dataset_id: str, session_id: str | None
+    analysis: dict | str | None, dataset_id: str, session_id: str | None, backed: bool = False
 ) -> AnnData:
     """
-    Retrieve an AnnData object associated with a given analysis.
+    Retrieve an AnnData object associated with a specific analysis.
 
     Args:
-        analysis_id (str | None): The unique identifier for the analysis. Can be None.
-        dataset_id (str): The unique identifier for the dataset.
-        session_id (str | None): The session identifier for the user. Can be None.
+        analysis_id (str | None): The unique identifier of the analysis. Can be None.
+        dataset_id (str): The unique identifier of the dataset.
+        session_id (str | None): The session identifier. Can be None.
 
     Returns:
-        AnnData: The AnnData object corresponding to the specified analysis.
+        AnnData: The AnnData object retrieved from the specified analysis.
 
     Raises:
-        Any exceptions raised by `get_user_from_session_id`, `Analysis`, or `ana.get_adata()`.
+        Any exceptions raised by `get_analysis` or `ana.get_adata()`.
 
-    Notes:
-        - If `session_id` is provided and valid, the user ID is associated with the analysis.
-        - The function initializes an `Analysis` object, determines its type, and retrieves the associated AnnData.
     """
-    user = get_user_from_session_id(session_id)
-    user_id = None
-    if user:
-        user_id = user.id
-    ana = Analysis(
-        id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user_id
-    )
-    if ana.type is None:
-        ana.discover_type()
-    return ana.get_adata()
+    analysis_dict = normalize_analysis_input(analysis)
+    ana: Analysis = get_analysis(analysis_dict, dataset_id, session_id, is_spatial=False)
+    if isinstance(ana, SpatialAnalysis):
+        raise ValueError("Analysis is not of type Analysis")
+    return ana.get_adata(backed=backed)
 
 
 def get_adata_shadow_from_analysis(
-    analysis_id: str | None, dataset_id: str, session_id: str | None
+    analysis: dict | str | None, dataset_id: str, session_id: str | None
 ) -> AnnDataShadow:
     """
-    Retrieve an AnnDataShadow object based on analysis, dataset, and session identifiers.
-
-    This function constructs an Analysis object using the provided analysis ID, dataset ID, and session ID.
-    It attempts to resolve the user from the session ID, if available, and associates the user ID with the analysis.
-    After discovering the analysis type, it returns an AnnDataShadow object corresponding to the dataset path.
+    Retrieve an AnnData object associated with a specific analysis.
 
     Args:
-        analysis_id (str | None): The unique identifier for the analysis, or None.
-        dataset_id (str): The unique identifier for the dataset.
-        session_id (str | None): The session identifier, or None.
+        analysis_id (dict | str | None): The unique identifier of the analysis. Can be None.
+        dataset_id (str): The unique identifier of the dataset.
+        session_id (str | None): The session identifier. Can be None.
 
     Returns:
         AnnDataShadow: An object representing the shadow of the AnnData associated with the analysis.
@@ -97,71 +90,32 @@ def get_adata_shadow_from_analysis(
     Raises:
         Any exceptions raised by get_user_from_session_id, Analysis, or AnnDataShadow constructors.
     """
-    user = get_user_from_session_id(session_id)
-    user_id = None
-    if user:
-        user_id = user.id
-    ana = Analysis(
-        id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user_id
-    )
-    if ana.type is None:
-        ana.discover_type()
-    return AnnDataShadow(ana.dataset_path())
-
-
-def get_adata_shadow_from_primary(h5_path: str) -> "AnnDataShadow":
-    """
-    Creates and returns an AnnDataShadow object from the specified HDF5 file path.
-
-    Args:
-        h5_path (str): The file path to the HDF5 (.h5) file.
-
-    Returns:
-        AnnDataShadow: An instance of AnnDataShadow initialized with the given file path.
-
-    Raises:
-        FileNotFoundError: If the specified HDF5 file does not exist at the given path.
-    """
-    if not os.path.exists(h5_path):
-        raise FileNotFoundError("No h5 file found for this dataset")
-    return AnnDataShadow(h5_path)
+    analysis_dict = normalize_analysis_input(analysis)
+    ana = get_analysis(analysis_dict, dataset_id, session_id)
+    return AnnDataShadow(ana.dataset_path)
 
 
 def get_adata_shadow(
-    analysis_id: str | None,
+    analysis: dict | str | None,
     dataset_id: str,
     session_id: str | None,
-    dataset_path: str,
-    include_images: bool | None = None,
 ) -> AnnData | AnnDataShadow:
     """
     Retrieve an AnnData or AnnDataShadow object for a given dataset and analysis context.
 
     Parameters:
-        analysis_id (str | None): The analysis identifier, or None if not applicable.
+        analysis_id (dict | str | None): The analysis identifier, or None if not applicable.
         dataset_id (str): The unique identifier for the dataset.
         session_id (str | None): The session identifier, or None if not applicable.
-        dataset_path (str): The file path to the dataset.
-        include_images (bool | None, optional): Whether to include images for spatial data. Defaults to None.
 
     Returns:
         AnnData | AnnDataShadow: The loaded AnnData or AnnDataShadow object, depending on the dataset type and context.
 
     Notes:
-        - If the dataset path ends with ".zarr", spatial data is assumed and a spatial AnnData object is returned.
         - If `analysis_id` is provided, the AnnDataShadow is loaded from the analysis context; otherwise, from the primary dataset.
-        - For legacy AnnData objects with integer indices in `.var`, a standard AnnData object is returned for compatibility.
     """
-    if dataset_path.endswith(".zarr"):
-        # It's spatial data... probably can't use AnnDataShadow
-        return get_spatial_adata(
-            analysis_id, dataset_id, session_id, include_images=include_images
-        )
-
-    if analysis_id:
-        return get_adata_shadow_from_analysis(analysis_id, dataset_id, session_id)
-    else:
-        return get_adata_shadow_from_primary(dataset_path)
+    analysis_dict = normalize_analysis_input(analysis)
+    return get_adata_shadow_from_analysis(analysis_dict, dataset_id, session_id)
 
     # see https://github.com/scverse/shadows/issues/4
     # As of 0.1a2, support for legacy AnnData objects is fixed. Leaving this check here for safeguarding.
@@ -173,24 +127,20 @@ def get_adata_shadow(
 
 
 def get_spatial_adata(
-    analysis_id: str | None,
+    analysis: dict | str | None,
     dataset_id: str,
     session_id: str | None,
     include_images: bool | None = None,
 ) -> AnnData:
     """
-    Retrieve a spatial AnnData object for a given analysis and dataset.
-
-    This function initializes a SpatialAnalysis object using the provided analysis ID, dataset ID, and session ID.
-    It determines the spatial data platform, validates its support, and processes the spatial data accordingly.
-    Optionally, it includes image data in the resulting AnnData object.
+    Retrieve an AnnData object associated with a specific spatial analysis.
 
     Args:
-        analysis_id (str | None): The ID of the analysis to retrieve, or None.
+        analysis_id (dict | str | None): The ID of the analysis to retrieve, or None.
         dataset_id (str): The ID of the dataset to retrieve.
         session_id (str | None): The session ID for user authentication, or None.
         include_images (bool | None, optional): Whether to include images in the AnnData object.
-            If None, includes images if available.
+            If None, includes images if available for that platform.
 
     Returns:
         AnnData: The processed spatial AnnData object, with optional image data and metadata.
@@ -198,44 +148,15 @@ def get_spatial_adata(
     Raises:
         ValueError: If the spatial data type is invalid or unsupported.
     """
+
     # Get spatial-based adata object.
-    user = get_user_from_session_id(session_id)
-    user_id = None
-    if user:
-        user_id = user.id
-    ana = SpatialAnalysis(
-        id=analysis_id, dataset_id=dataset_id, session_id=session_id, user_id=user_id
-    )
-    if ana.type is None:
-        ana.discover_type()
-    sdata = ana.get_sdata()
-    platform = ana.determine_platform(sdata)
+    analysis_dict = normalize_analysis_input(analysis)
+    ana = get_analysis(analysis_dict, dataset_id, session_id, is_spatial=True)
 
-    from gear import spatialhandler
+    if not isinstance(ana, SpatialAnalysis):
+        raise ValueError("Analysis is not spatial")
 
-    # Ensure the spatial data type is supported
-    if not platform or platform not in spatialhandler.SPATIALTYPE2CLASS.keys():
-        raise ValueError(
-            "Invalid or unsupported spatial data type {0}".format(platform)
-        )
-
-    spatial_obj = spatialhandler.SPATIALTYPE2CLASS[platform]()
-    spatial_obj.sdata = sdata
-
-    # Filter by bounding box (mostly for images)
-    spatial_obj.filter_sdata_by_coords()
-
-    if include_images is None:
-        include_images = spatial_obj.has_images
-
-    # Create AnnData object
-    # Do not include images in the adata object (to make it lighter)
-    spatial_obj.convert_sdata_to_adata(include_images=include_images)
-    adata = spatial_obj.adata
-    # Extra metadata to help with determining if images are available and where they are
-    adata.uns["has_images"] = spatial_obj.has_images
-    if spatial_obj.has_images:
-        adata.uns["img_name"] = spatial_obj.img_name
+    adata = ana.get_adata(include_images=include_images)
     return adata
 
 
@@ -287,7 +208,7 @@ def create_projection_adata(
             temp_file_path = temp_file.name  # Associate with the temporary filename to ensure AnnData is read in "backed" mode
 
             # Create the anndata object in memory mode and write to h5ad (since the dataset_adata is backed)
-            projection_adata = AnnData(X=X, obs=obs, var=var, obsm=obsm, uns=uns)
+            projection_adata = AnnData(X=X, obs=obs, var=var, obsm=obsm, uns=uns) # type: ignore
             # For some reason the gene_symbol is not taken in by the constructor
             projection_adata.var["gene_symbol"] = projection_adata.var_names
             projection_adata.write_h5ad(filename=Path(temp_file_path))

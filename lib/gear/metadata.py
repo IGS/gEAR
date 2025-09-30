@@ -1,12 +1,11 @@
 import json
-import numpy as np
-import pandas as pd
 import sys
-import mysql.connector
-
 from io import StringIO
 
 import geardb
+import mysql.connector
+import numpy as np
+import pandas as pd
 from gear.fromgeo import FromGeo
 from gear.metadatavalidator import MetadataValidator as mdv
 
@@ -42,11 +41,16 @@ def get_value_from_df(df, index_label):
 
     # Clean up dtype labels
     if index_label == 'dataset_type':
-        if 'single' in value.lower(): value = 'single-cell-rnaseq'
-        if 'bulk' in value.lower(): value = 'bulk-rnaseq'
-        if value == 'microarray': value = 'microarray'
-        if value == 'ChIP-Seq': value = 'chip-seq'
-        if value == 'ATAC-Seq': value = 'atac-seq'
+        if 'single' in str(value).lower():
+            value = 'single-cell-rnaseq'
+        if 'bulk' in str(value).lower():
+            value = 'bulk-rnaseq'
+        if value == 'microarray':
+            value = 'microarray'
+        if value == 'ChIP-Seq':
+            value = 'chip-seq'
+        if value == 'ATAC-Seq':
+            value = 'atac-seq'
 
     if is_na(value) is True:
         return None
@@ -61,15 +65,17 @@ class Metadata:
         2. validate information
         3. upload metadata to gEAR MySQL
     """
-    def __init__(self, metadata=None, file_path=None):
+    def __init__(self, metadata=None, file_path: str | None=None):
         self.metadata = metadata
+
+        if file_path is None:
+            raise Exception("No 'file_path' provided. Please provide the path to your metadata file to continue.")
+
         self.file_path = file_path
-
-        if self.file_path is not None:
-            self.read_file(file_path=file_path)
+        self.read_file()
 
 
-    def read_file(self, file_path=None):
+    def read_file(self) -> None:
         """
         Reads dataset_metadata.xlsx or dataset_metadata.json into a pandas dataframe
 
@@ -83,6 +89,7 @@ class Metadata:
             Populates the metadata attribute of the object as a pandas
             dataframe indexed on 'fields' and has column 'values'
         """
+        file_path = self.file_path
 
         #Read in file
         if file_path.endswith('xlsx') or file_path.endswith('xls'):
@@ -146,10 +153,15 @@ class Metadata:
             return self
 
         # Get series metadata from GEO
-        series_content = FromGeo.get_geo_data(geo_id=geo_series_id)
+        series_content = FromGeo.get_geo_data(geo_id=str(geo_series_id))
 
         # Convert data into pandas dataframe
-        series_df = FromGeo.process_geo_data(content=series_content, json_or_dataframe='dataframe')
+        try:
+            series_df = FromGeo.process_geo_data(content=series_content, json_or_dataframe='dataframe')
+            if not isinstance(series_df, pd.DataFrame):
+                raise Exception(f"Expected DataFrame from process_geo_data, got {type(series_df)}")
+        except Exception as err:
+            raise Exception("Unable to process GEO data for series {0}. Error: {1}".format(geo_series_id, err))
 
         # Combine user's metdata and series metadata
         updated_metadata = FromGeo.add_geo_data(metadata=self.metadata, geo_data=series_df)
@@ -157,10 +169,12 @@ class Metadata:
         # Repeat to get sample metadata
         # sample_id = series_df.loc['sample_id', 0][0]
         sample_ids = series_df.loc['sample_id', 0]
-        sample_id = sample_ids.split(',', 1)[0]
+        sample_id = str(sample_ids).split(',', 1)[0]
 
         samp_content = FromGeo.get_geo_data(geo_id=sample_id)
         samp_df = FromGeo.process_geo_data(content=samp_content, json_or_dataframe='dataframe')
+        if not isinstance(samp_df, pd.DataFrame):
+            raise Exception(f"Expected DataFrame from process_geo_data, got {type(samp_df)}")
         self.metadata = FromGeo.add_geo_data(metadata=self.metadata, geo_data=samp_df)
 
 
@@ -184,21 +198,23 @@ class Metadata:
         is_valid = True
 
         #check for empty required fields
-        for idx, v in df.iterrows():
+        for row in df.itertuples():
+            idx = row.Index  # Index is the row label when using itertuples()
+            value = getattr(row, 'value', None)
             if idx in validator.required_atts:
                 df.loc[idx, 'is_required'] = 1
 
-                if is_na(v['value']):
+                if is_na(value):
                     is_valid = False
                     df.loc[idx, 'message'] = "This field is required. "
-                    print("This field is required - {}".format(idx), file=sys.stderr)
+                    print(f"This field is required - {idx}", file=sys.stderr)
 
         #check email format
         #email = df.loc['contact_email', 'value']
         #if is_na(email) is True:
         #    df.loc['contact_email', 'message'] = "This field is required. Please provide a valid email. "
         #else:
-        #    is_email_valid = mdv.validate_email(email)
+        #    is_email_valid = validator.validate_email(email)
         #    if is_email_valid is False:
         #        is_valid = False
         #        df.loc['contact_email', 'message'] = "This field is required. The email does not seem valid. Please check it is typed correctly. "
@@ -206,7 +222,7 @@ class Metadata:
         #check pubmed_id
         #pubmed_id = df.loc['pubmed_id', 'value']
         #if is_na(pubmed_id) is False:
-        #    is_pubmed_valid = mdv.validate_pubmed_id(pubmed_id)
+        #    is_pubmed_valid = validator.validate_pubmed_id(pubmed_id)
         #    if is_pubmed_valid is False:
         #       is_valid = False
         #        df.loc['pubmed_id', 'message'] = "Unable to confirm with URL search. Please ensure the value entered is correct. "
@@ -214,7 +230,7 @@ class Metadata:
         #check geo_id
         #geo_id = df.loc['geo_accession', 'value']
         #if is_na(geo_id) is False:
-        #    is_geo_valid = mdv.validate_geo_id(geo_id)
+        #    is_geo_valid = validator.validate_geo_id(geo_id)
         #    if is_geo_valid is False:
         #        is_valid = False
         #        df.loc['geo_accession', 'message'] = "Unable to confirm with URL search. Please ensure the value entered is correct. "
@@ -227,7 +243,7 @@ class Metadata:
             taxon_id = str(df.loc['taxon_id', 'value'])
         else:
             raise Exception("No taxon id found")
-        is_taxon_valid = mdv.validate_taxon_id(taxon_id)
+        is_taxon_valid = validator.validate_taxon_id(taxon_id)
         if is_taxon_valid is False:
             is_valid = False
             df.loc['sample_taxid', 'message'] = "Taxon ID should be numeric (only). Please ensure the value entered is correct. "
@@ -252,19 +268,6 @@ class Metadata:
         self.metadata.loc[field, 'value'] = value
 
         return self
-
-    def get_field_value(self, field=None):
-        """
-        Accessor for field attributes in the metadata dataframe.
-        """
-        fv = self.metadata.loc[field, 'value']
-        if isinstance(fv, dict):
-            if 'value' in fv:
-                fv = fv['value']
-            else:
-                raise Exception("Field value is a dict() but has no 'value' key")
-
-        return fv
 
     def save_to_mysql(self, status=None, is_public=0):
         """
@@ -293,19 +296,19 @@ class Metadata:
         dataset_title = get_value_from_df(df, 'title')
 
         # Get organism gEAR ID using taxon_id
-        organism_id = None
         organism_taxid = get_value_from_df(df, 'sample_taxid')
-        organism_qry = ( "SELECT id FROM organism WHERE taxon_id = %s" )
-        cursor.execute(organism_qry, ( str(organism_taxid), ))
-        for (id, ) in cursor:
-            organism_id = id
+        if organism_taxid is None:
+            raise Exception("No taxon_id found in metadata. Please provide a taxon_id.")
+        organism_id = geardb.get_organism_id_by_taxon_id(organism_taxid)
+        if organism_id is None:
+            raise Exception("No organism found with taxon_id: {0}. Please add the organism to gEAR before uploading this dataset.".format(organism_taxid))
 
         geo_id = get_value_from_df(df, 'geo_accession')
         if 'geo_id' == 'None':
             geo_id = None
-        
-        if type(geo_id) is str:            
-            geo_id = geo_id.strip()      
+
+        if type(geo_id) is str:
+            geo_id = geo_id.strip()
 
         ldesc = get_value_from_df(df, 'summary')
         dtype = get_value_from_df(df, 'dataset_type')
@@ -320,8 +323,8 @@ class Metadata:
         pubmed_id = get_value_from_df(df, 'pubmed_id')
         if 'pubmed_id' == 'None':
             pubmed_id = None
-        
-        if type(pubmed_id) is str:            
+
+        if type(pubmed_id) is str:
             pubmed_id = pubmed_id.strip()
 
             # Users entering multiple pubmed IDs will cause failure.  Take the first
@@ -332,6 +335,8 @@ class Metadata:
             pubmed_id = pubmed_ids.pop()
 
             if len(pubmed_ids):
+                if not isinstance(ldesc, str):
+                    ldesc = str(ldesc) if ldesc is not None else ''
                 ldesc += "<br>Additional Pubmed IDS: {0}".format(', '.join(pubmed_ids))
 
         platform_id = get_value_from_df(df, 'platform_id')
@@ -389,7 +394,11 @@ class Metadata:
             """
             cached_tags = {}
             cursor.execute(qry_get_tags)
-            for row in cursor:
+            rows = cursor.fetchall()
+            if not rows:
+                rows = []
+
+            for row in rows:
                 cached_tags[row[0].lower()] = row[1]
 
             add_tag_sql = """
@@ -416,30 +425,6 @@ class Metadata:
 
         cursor.close()
 
-    #TODO: This is not currently used anywhere.
-    def _list_invalid_fields(self):
-        """
-        Returns a multi-line string listing the invalid metadata fields
-
-        Note: Perform after validation is completed via method validate().
-        """
-
-        if 'is_valid' not in self.metadata.columns:
-            raise Exception("No column 'is_valid' in dataframe. Please first run method validate().")
-
-        msg = ''
-        false_fields = self.metadata.loc[self.metadata['is_valid'] == False]
-        ffcount, cols = false_fields.shape
-
-        if ffcount <= 0:
-            msg += "Looks good. No invalid metadata fields found."
-        else:
-            msg += "The following fields were found to contain invalid values:\n"
-            for i, row in false_fields.iterrows():
-                msg += "\tField: " + str(i) + " has invalid value: " + str(row[0]) + ".\n"
-
-        return msg
-
 
     def write_json(self, file_path=None):
         """
@@ -455,7 +440,7 @@ class Metadata:
 
         if file_path is None:
             #Remove non-metadata columns
-            for col in self.metadata.columns.values:
+            for col in self.metadata.columns.to_numpy():
                 if col != 'value' and col != 'message' and col != 'is_required':
                     self.metadata = self.metadata.drop(col, axis=1)
 
@@ -463,7 +448,7 @@ class Metadata:
             return self.metadata.to_json(path_or_buf=file_path, orient='index')
         else:
             #Only keep metadata fields and values
-            for col in self.metadata.columns.values:
+            for col in self.metadata.columns.to_numpy():
                 if col != 'value':
                     self.metadata = self.metadata.drop(col, axis=1)
 

@@ -4,8 +4,14 @@
 
 """
 
-import cgi, json
-import os, sys, re
+import cgi
+import json
+import os
+import re
+import sys
+
+import matplotlib
+import scanpy as sc
 
 original_stdout = sys.stdout
 sys.stdout = open(os.devnull, 'w')
@@ -13,12 +19,12 @@ sys.stdout = open(os.devnull, 'w')
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.analysis import get_analysis
 
 # this is needed so that we don't get TclError failures in the underlying modules
-import matplotlib
+
 matplotlib.use('Agg')
 
-import scanpy as sc
 sc.settings.verbosity = 0
 
 def normalize_genes_to_color(gene_list, chosen_genes):
@@ -33,7 +39,6 @@ def main():
     analysis_type = form.getvalue('analysis_type')
     dataset_id = form.getvalue('dataset_id')
     session_id = form.getvalue('session_id')
-    user = geardb.get_user_from_session_id(session_id)
 
     n_pcs = int(form.getvalue('n_pcs'))
     n_neighbors = int(form.getvalue('n_neighbors'))
@@ -47,12 +52,35 @@ def main():
 
     plot_tsne = int(form.getvalue('plot_tsne'))
     plot_umap = int(form.getvalue('plot_umap'))
-    user_id = None
-    if user and user.id:
-        user_id = user.id
 
-    ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
-                          session_id=session_id, user_id=user_id)
+    result = {"success": 0}
+
+    ds = geardb.get_dataset_by_id(dataset_id)
+    if not ds:
+        print("No dataset found with that ID.", file=sys.stderr)
+        result['success'] = 0
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+    is_spatial = ds.dtype == "spatial"
+
+    analysis_obj = None
+    if analysis_id or analysis_type:
+        analysis_obj = {
+            'id': analysis_id if analysis_id else None,
+            'type': analysis_type if analysis_type else None,
+        }
+
+    try:
+        ana = get_analysis(analysis_obj, dataset_id, session_id, is_spatial=is_spatial)
+    except Exception:
+        print("Analysis for this dataset is unavailable.", file=sys.stderr)
+        result['success'] = 0
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
 
     if genes_to_color:
         genes_to_color = genes_to_color.replace(' ', '')
@@ -69,7 +97,7 @@ def main():
     if ana.type == 'primary' or ana.type == 'public':
         ana.type = 'user_unsaved'
 
-    dest_datafile_path = ana.dataset_path()
+    dest_datafile_path = ana.dataset_path
 
     if compute_neighbors == 1:
         sc.pp.neighbors(adata, n_pcs=n_pcs, n_neighbors=n_neighbors)

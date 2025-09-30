@@ -12,12 +12,12 @@ defaults:
 
 on:
   push:
-    branches: [ main] #, ui-v2 ]
+    branches: [ devel ]
     paths:
       - '**/*.js'
       - '**/*.html'
   pull_request:
-    branches: [ main ]
+    branches: [ devel ]
     paths:
       - '**/*.js'
       - '**/*.html'

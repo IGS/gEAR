@@ -3,6 +3,7 @@ import io
 import os
 import re
 from math import ceil
+from pathlib import Path
 
 import geardb
 import matplotlib as mpl
@@ -18,6 +19,7 @@ import numpy as np
 import scanpy as sc
 from flask import request
 from flask_restful import Resource, reqparse
+from gear.analysis import SpatialAnalysis, get_analysis
 from gear.plotting import PlotError
 
 if typing.TYPE_CHECKING:
@@ -25,7 +27,7 @@ if typing.TYPE_CHECKING:
     # To avoid having runtime errors, enclose the typing in quotes (AKA forward-reference)
     import pandas as pd
     from anndata import AnnData
-    from geardb import Analysis
+    from gear.analysis import Analysis
     from matplotlib.artist import Artist
     from matplotlib.axes import Axes
     from matplotlib.colors import Colormap
@@ -407,7 +409,7 @@ def rename_axes_labels(ax: "Axes", x_axis: str, y_axis: str) -> None:
 def validate_args(
     dataset_id: str,
     gene_symbol: str | None,
-    analysis: str | None,
+    analysis: dict | None,
     session_id: str,
     projection_id: str | None,
 ) -> dict:
@@ -418,7 +420,7 @@ def validate_args(
         max_columns (int or str): The maximum number of columns to use; will be converted to int if provided.
         dataset_id (str): Identifier for the dataset. Required.
         gene_symbol (str or list): Gene symbol or symbols to analyze. Required.
-        analysis (Analysis | SpatialAnalysis): Analysis identifier or object.
+        analysis (dict or None): Analysis identifier or None if not applicable.
         session_id (str): Session identifier.
         projection_id (str or None): Optional projection identifier.
 
@@ -439,21 +441,34 @@ def validate_args(
     if not gene_symbol:
         return {"success": -1, "message": "Request needs a gene symbol or symbols."}
 
+    ds = geardb.get_dataset_by_id(dataset_id)
+    if not ds:
+        return {
+            "success": -1,
+            'message': "No dataset found with that ID"
+        }
+    is_spatial = ds.dtype == "spatial"
+
     try:
-        ana: "Analysis" = geardb.get_analysis(analysis, dataset_id, session_id)
+        ana = get_analysis(analysis, dataset_id, session_id, is_spatial=is_spatial)
     except Exception:
         import traceback
 
         traceback.print_exc()
-        return {"success": -1, "message": "Could not retrieve analysis."}
+        return {"success": -1, "message": "Analysis for this dataset is unavailable."}
 
     try:
-        adata = ana.get_adata(backed=True)
+            args = {}
+            if is_spatial:
+                args['include_images'] = False
+            else:
+                args['backed'] = True
+            adata = ana.get_adata(**args)
     except Exception:
         import traceback
 
         traceback.print_exc()
-        return {"success": -1, "message": "Could not retrieve AnnData object."}
+        return {"success": -1, "message": "Could not create dataset object using analysis."}
 
     if projection_id:
         try:
@@ -662,14 +677,14 @@ def modify_genes_found_as_obs_columns(
     return adata
 
 
-def dedup_genes(adata: "AnnData", ana: "Analysis") -> dict:
+def dedup_genes(adata: "AnnData", ana: "Analysis | SpatialAnalysis") -> dict:
     """
     Removes duplicate gene symbols from the AnnData object's `.var` DataFrame, ensuring that only one Ensembl ID is associated with each gene symbol.
     The function resets the index of `adata.var` to use 'gene_symbol', renames the Ensembl ID column for clarity, and saves a copy of the deduplicated AnnData object if duplicates are found.
 
     Args:
         adata (AnnData): The AnnData object containing gene expression data, with gene metadata in `.var`.
-        ana: An analysis object providing the `dataset_path()` method to determine file paths.
+        ana: An analysis object providing the `dataset_path` method to determine file paths.
 
     Returns:
         dict: A dictionary containing:
@@ -684,7 +699,12 @@ def dedup_genes(adata: "AnnData", ana: "Analysis") -> dict:
     # Rename to end the confusion
     adata.var = adata.var.rename(columns={adata.var.columns[0]: "ensembl_id"})
     # Modify the AnnData object to not include any duplicated gene symbols (keep only first entry)
-    dedup_copy = ana.dataset_path().replace(".h5ad", ".dups_removed.h5ad")
+    if isinstance(ana, SpatialAnalysis):
+        dedup_copy = str(ana.dataset_path).replace(".zarr", ".dups_removed.h5ad")
+    else:
+        dedup_copy = str(ana.dataset_path).replace(".h5ad", ".dups_removed.h5ad")
+
+    dedup_copy = Path(dedup_copy)
 
     success = 1
     message = ""
@@ -698,7 +718,6 @@ def dedup_genes(adata: "AnnData", ana: "Analysis") -> dict:
 
         if os.path.exists(dedup_copy):
             os.remove(dedup_copy)
-        from pathlib import Path
 
         adata = adata[:, ~adata.var.index.duplicated()].copy(filename=Path(dedup_copy))
     return {
@@ -714,7 +733,6 @@ def generate_tsne_figure(
     ana: "Analysis",
     gene_symbols: list,
     plot_type: str,
-    analysis: str | None,
     x_axis: str,
     y_axis: str,
     order: dict = {},
@@ -756,8 +774,6 @@ def generate_tsne_figure(
         List of gene symbols (or a single gene symbol) to plot.
     plot_type : str
         Type of embedding plot (e.g., 'tsne', 'umap').
-    analysis : str | None
-        Analysis identifier or None if not specified. If None, uses the primary dataset's analysis.
     x_axis : str
         Name of the variable to use for the x-axis.
     y_axis : str
@@ -820,7 +836,7 @@ def generate_tsne_figure(
     try:
         selected = filter_adata_genes(adata, gene_symbols)
         selected = validate_analysis_inputs(
-            selected, analysis, dataset_id, x_axis, y_axis
+            selected, ana.id, dataset_id, x_axis, y_axis
         )
     except ValueError as ve:
         return {"success": -1, "message": str(ve)}
@@ -1091,7 +1107,6 @@ class MGTSNEData(Resource):
             validation["ana"],
             gene_symbols,
             args.get("plot_type", "tsne_static"),
-            args.get("analysis", None),
             args.get("x_axis", "tSNE_1"),
             args.get("y_axis", "tSNE_2"),
             args.get("order", {}),
@@ -1133,7 +1148,6 @@ class TSNEData(Resource):
             validation["ana"],
             [gene_symbol],
             args.get("plot_type", "tsne_static"),
-            args.get("analysis", None),
             args.get("x_axis", "tSNE_1"),
             args.get("y_axis", "tSNE_2"),
             args.get("order", {}),

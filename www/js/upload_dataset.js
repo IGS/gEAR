@@ -316,9 +316,11 @@ const loadUploadsInProgress = async () => {
     }));
 
     if (data.success) {
+        const tableBody = document.getElementById('submissions-in-progress-table-tbody');
+
         if (data.uploads.length > 0) {
             const template = document.getElementById('submission-history-row');
-            document.querySelector('#submissions-in-progress-table-tbody').innerHTML = '';
+            tableBody.innerHTML = '';
 
             for (const upload of data.uploads) {
                 const clone = template.content.cloneNode(true);
@@ -330,7 +332,7 @@ const loadUploadsInProgress = async () => {
                 clone.querySelector('.submission-status').textContent = upload.status;
                 clone.querySelector('.submission-title').textContent = upload.title;
                 clone.querySelector('.submission-dataset-type').textContent = upload.dataset_type;
-                document.querySelector('#submissions-in-progress-table-tbody').appendChild(clone);
+                tableBody.appendChild(clone);
             };
 
             // Add click listeners for submissions-in-progress-table-tbody rows we just added
@@ -370,7 +372,7 @@ const loadUploadsInProgress = async () => {
             document.getElementById('submissions-in-progress').classList.remove('is-hidden');
         } else {
             // remove the last row of the table and hide the submissions in progress section
-            document.querySelector('#submissions-in-progress-table-tbody').innerHTML = '';
+            tableBody.innerHTML = '';
             document.getElementById('submissions-in-progress').classList.add('is-hidden');
 
             document.getElementById('submission-c').classList.remove('is-hidden');
@@ -480,7 +482,6 @@ const storeMetadata = async () => {
  */
 const uploadDataset = () => {
     const formData = new FormData();
-    formData.append('dataset_uid', datasetUid);
     formData.append('share_uid', shareUid);
     formData.append('session_id', getCurrentUser().session_id);
     formData.append('dataset_format', datasetFormat);
@@ -667,6 +668,14 @@ for (const btn of formatSelectorElts) {
         btn.querySelector('span.icon i').classList.add('mdi', 'mdi-checkbox-outline');
         btn.querySelector('span.format-status').textContent = 'Selected';
         datasetFormat = btn.dataset.format;
+
+        // If the format is spatial, change text to say "Zarr store"
+        const migrateH5adSpan = document.getElementById("finalize-migrating-h5ad-text");
+        migrateH5adSpan.textContent = 'Migrating H5AD file';
+        if (datasetFormat === 'spatial') {
+            migrateH5adSpan.textContent = 'Migrating Zarr store';
+        }
+
     });
 };
 
@@ -745,15 +754,16 @@ document.getElementById('dataset-finalize-next-step').addEventListener('click', 
 });
 
 document.getElementById('metadata-file-input').addEventListener('change', (event) => {
+    const metadataUploadSubmit = document.getElementById('metadata-upload-submit');
     // Was a file selected?
     if (event.currentTarget.files.length > 0) {
-        document.getElementById('metadata-upload-submit').disabled = false;
+        metadataUploadSubmit.disabled = false;
         const file = event.currentTarget.files[0];
         document.getElementById('metadata-file-name').textContent = file.name;
         document.getElementsByName('metadata-dataset-id')[0].value = datasetUid;
         return;
     }
-    document.getElementById('metadata-upload-submit').disabled = true;
+    metadataUploadSubmit.disabled = true;
     document.getElementById('metadata-file-name').textContent = 'No file selected';
 });
 
@@ -810,8 +820,10 @@ document.getElementById('select-spatial-platform').addEventListener('change', (e
 
     if (platform === '') {
         reqsSpan.classList.add('is-hidden');
+        document.getElementById("btn-spatial-format-selector").disabled = true;
     } else {
         reqsSpan.classList.remove('is-hidden');
+        document.getElementById("btn-spatial-format-selector").disabled = false;
     }
 });
 
@@ -830,8 +842,9 @@ document.getElementById("spatial-requirements").addEventListener("click", (e) =>
         document.getElementById(`${platform}-spatial-reqs`).innerHTML;
 
     document.querySelector(`#${modalId} .modal-card-title`).textContent = platformText;
-
 });
+
+
 
 /*  From Shaun, used to toggle element's stickiness */
 // if scrolling makes #summar-s go above top of screen, make it sticky

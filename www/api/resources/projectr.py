@@ -14,19 +14,17 @@ from time import sleep
 from typing import TextIO
 
 import aiohttp
-import anndata
 import geardb
 import pandas as pd
 import scipy.stats as stats
 from aiohttp_retry import ExponentialRetry, RetryClient
 from flask import request
 from flask_restful import Resource, reqparse
+from gear.analysis import get_analysis, SpatialAnalysis
 from gear.orthology import get_ortholog_file, map_dataframe_genes
 from gear.utils import catch_memory_error
 from more_itertools import sliced
 from werkzeug.utils import secure_filename
-
-from .common import get_adata_from_analysis, get_spatial_adata
 
 # Have all print statements flush immediately (for debugging)
 print = functools.partial(print, flush=True)
@@ -542,46 +540,41 @@ def projectr_callback(
     # Drop duplicate unique identifiers. This may happen if two unweighted gene cart genes point to the same Ensembl ID in the db
     loading_df = loading_df[~loading_df.index.duplicated(keep="first")]
 
-    is_spatial = False
-    if ds.dtype == "spatial":
-        is_spatial = True
+    is_spatial = ds.dtype == "spatial"
 
     # NOTE Currently no analyses are supported yet.
-    # TODO:- fix redundancy with "get_(spatial)_adata" functions
     try:
-        ana = geardb.get_analysis(None, dataset_id, session_id, is_spatial)
+        ana = get_analysis(None, dataset_id, session_id, is_spatial)
     except Exception:
         traceback.print_exc()
         status["status"] = "failed"
-        status["error"] = "Could not retrieve analysis."
+        status["error"] = "Analysis for this dataset is unavailable."
         write_projection_status(JOB_STATUS_FILE, status)
         return status
 
-    if is_spatial:
-        try:
-            adata: anndata.AnnData = get_spatial_adata(
-                None, dataset_id, session_id, include_images=False
-            )
-        except Exception:
-            traceback.print_exc()
-            status["status"] = "failed"
-            status["error"] = "Could not retrieve AnnData object from spatial datastore."
-            write_projection_status(JOB_STATUS_FILE, status)
-            return status
-    else:
-        try:
-            adata = get_adata_from_analysis(None, dataset_id, session_id)
-        except Exception:
-            traceback.print_exc()
-            status["status"] = "failed"
-            status["error"] = "Could not retrieve AnnData object from datastore."
-            write_projection_status(JOB_STATUS_FILE, status)
-            return status
+    try:
+            args = {}
+            if is_spatial:
+                args['include_images'] = False
+            else:
+                args['backed'] = True
+            adata = ana.get_adata(**args)
+    except Exception:
+        traceback.print_exc()
+        status["status"] = "failed"
+        status["error"] = "Could not create dataset object using analysis."
+        write_projection_status(JOB_STATUS_FILE, status)
+        return status
 
     # If dataset genes have duplicated index names, we need to rename them to avoid errors
     # in collecting rownames in projectR (which gives invalid output)
     # This means these duplicated genes will not be in the intersection of the dataset and pattern genes
-    dedup_copy = Path(ana.dataset_path().replace(".h5ad", ".dups_removed.h5ad"))
+    if isinstance(ana, SpatialAnalysis):
+        dedup_copy = str(ana.dataset_path.replace(".zarr", ".dups_removed.h5ad"))
+    else:
+        dedup_copy = str(ana.dataset_path.replace(".h5ad", ".dups_removed.h5ad"))
+    dedup_copy = Path(dedup_copy)
+
     if (adata.var.index.duplicated(keep="first")).any():
         if dedup_copy.exists():
             dedup_copy.unlink()

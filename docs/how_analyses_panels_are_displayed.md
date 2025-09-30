@@ -31,7 +31,7 @@ DatasetCollectionPanel:
       DatasetPanels
     - has update_by_search_result() call which iterates datasets, calling dataset.draw() on
       each with the current gene symbol
-    
+
 DatasetPanel extends Dataset:
     - has calls get get all dataset_displays as well as the current, default one.
     - has the draw() and draw_chart() methods which instantiate specific display
@@ -45,8 +45,8 @@ Dataset:
 -= Stack problem area =-
 
 plotly_data.py calls:
-   - geardb.Analysis.discover_type()
-   - geardb.Analysis.dataset_path()
+   - gear.analysis.Analysis.discover_type()
+   - gear.analysis.Analysis.dataset_path
    - BOTH NEED type from dataset_display JSON!
    - called from api.add_resource(PlotlyData, '/plot/<dataset_id>')
 

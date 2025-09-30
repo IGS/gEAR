@@ -4,7 +4,7 @@ import geardb
 from flask import request
 from flask_restful import Resource, reqparse
 
-from .common import get_adata_from_analysis, get_adata_shadow
+from .common import get_adata_from_analysis, get_adata_shadow, get_spatial_adata
 
 if typing.TYPE_CHECKING:
     from pandas import DataFrame
@@ -48,19 +48,32 @@ class Aggregations(Resource):
         analysis_id = args.get("analysis_id", None)
         filters = args.get("filters", {})  # key is column name, value is list of values
 
-        ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
-        h5_path = ds.get_file_path()
+        ds = geardb.get_dataset_by_id(dataset_id)
+        if not ds:
+            return {
+                "success": -1,
+                'message': "No dataset found with that ID"
+            }
+        is_spatial = ds.dtype == "spatial"
 
         try:
-            if not filters:
-                adata = get_adata_shadow(analysis_id, dataset_id, session_id, h5_path)
-            else:
+            if is_spatial:
+                adata = get_spatial_adata(analysis_id, dataset_id, session_id, include_images=False)
+            elif filters:
                 adata = get_adata_from_analysis(analysis_id, dataset_id, session_id)
+            else:
+                adata = get_adata_shadow(analysis_id, dataset_id, session_id)
         except FileNotFoundError:
             return {
                 "success": -1,
-                "aggretations": [],
-                "message": "No h5 file found for this dataset",
+                "aggregations": [],
+                'message': "No dataset file found."
+            }
+        except Exception as e:
+            return {
+                "success": -1,
+                "aggregations": [],
+                'message': str(e)
             }
 
         obs: "DataFrame" = adata.obs  # type: ignore

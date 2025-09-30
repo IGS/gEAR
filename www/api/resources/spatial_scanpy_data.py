@@ -188,18 +188,6 @@ class SpatialScanpyData(Resource):
                 "message": "Request needs at least one gene symbol."
             }
 
-        """ CURRENTLY UNUSED
-        try:
-            ana = geardb.get_analysis(analysis, dataset_id, session_id)
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return {
-                "success": -1,
-                "message": "Could not retrieve analysis."
-            }
-        """
-
         try:
             adata = get_spatial_adata(analysis, dataset_id, session_id)
         except Exception as e:
@@ -207,7 +195,7 @@ class SpatialScanpyData(Resource):
             traceback.print_exc()
             return {
                 "success": -1,
-                "message": "Could not retrieve AnnData object."
+                "message": "Could not create dataset object using analysis."
             }
 
         if projection_id:

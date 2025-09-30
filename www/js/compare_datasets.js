@@ -748,6 +748,9 @@ const plotDataToGraph = (data) => {
 
 	Plotly.newPlot("plotly-preview", plotData, layout, config);
 
+	// Trigger resize to make sure it fits in the container
+	Plotly.Plots.resize(document.getElementById('plotly-preview'));
+
 	// Hide table when plot is first loaded
 	document.getElementById("tbl-selected-genes").classList.add("is-hidden");
 

@@ -4,9 +4,16 @@
 
 """
 
-import cgi, json
-import os, sys, re
+import cgi
+import json
+import os
+import sys
+
+import matplotlib
 import numpy as np
+import pandas as pd
+import scanpy as sc
+from scipy import sparse
 
 original_stdout = sys.stdout
 sys.stdout = open(os.devnull, 'w')
@@ -14,17 +21,12 @@ sys.stdout = open(os.devnull, 'w')
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.analysis import get_analysis, test_analysis_for_zarr
 
 # this is needed so that we don't get TclError failures in the underlying modules
-import matplotlib
 matplotlib.use('Agg')
-
-import scanpy as sc
 sc.settings.verbosity = 0
 
-from scipy import sparse
-
-import pandas as pd
 
 def main():
     form = cgi.FieldStorage()
@@ -32,7 +34,6 @@ def main():
     analysis_type = form.getvalue('analysis_type')
     dataset_id = form.getvalue('dataset_id')
     session_id = form.getvalue('session_id')
-    user = geardb.get_user_from_session_id(session_id)
     query_cluster = form.getvalue('query_cluster')
     reference_cluster = form.getvalue('reference_cluster')
     n_genes = int(form.getvalue('n_genes'))
@@ -48,21 +49,49 @@ def main():
     if method == 'logreg':
         corr_method = None
 
-    if not user:
+    result = {"success": 0, "cluster_label": "", "table_json_f": None, "table_json_r": None }
+
+    ds = geardb.get_dataset_by_id(dataset_id)
+    if not ds:
+        print("No dataset found with that ID.", file=sys.stderr)
+        result['success'] = 0
         sys.stdout = original_stdout
         print('Content-Type: application/json\n\n')
-        print(json.dumps({'success': 0, 'error': 'Invalid session'}))
-    user_id = None
-    if user and user.id:
-        user_id = user.id
+        print(json.dumps(result))
+        return
+    is_spatial = ds.dtype == "spatial"
 
-    ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
-                          session_id=session_id, user_id=user_id)
+    analysis_obj = None
+    if analysis_id or analysis_type:
+        analysis_obj = {
+            'id': analysis_id if analysis_id else None,
+            'type': analysis_type if analysis_type else None,
+        }
+
+    try:
+        ana = get_analysis(analysis_obj, dataset_id, session_id, is_spatial=is_spatial)
+    except Exception:
+        print("Analysis for this dataset is unavailable.", file=sys.stderr)
+        result['success'] = 0
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
 
     # Recent upgrade of scanpy/anndata/pandas modules have issues where the sc.pl.rank_genes_groups_violin function
     # fails as pandas throws an error saying the data is not 1-dimensional.  This only happens if the AnnData object is a dense matrix
     # My workaround is to force it to be sparse.
-    adata = ana.get_adata(force_sparse=True)
+    kwargs = {}
+    if not test_analysis_for_zarr(ana):
+        kwargs["force_sparse"] = True
+
+    # Try to get the adata in sparse format, if that fails, fall back to non-sparse
+    try:
+        adata = ana.get_adata(**kwargs)
+    except Exception as e:
+        print(f"ERROR: {str(e)}. Switching to non-sparse representation.", file=sys.stderr)
+        adata = ana.get_adata()
+
     cluster_method = 'louvain'
 
     if ana.type == 'primary':
@@ -97,12 +126,22 @@ def main():
     if ana.type == 'primary' or ana.type == 'public':
         ana.type = 'user_unsaved'
 
-    dest_datafile_path = ana.dataset_path()
+    dest_datafile_path = ana.dataset_path
 
     if group_labels:
         adata.rename_categories(cluster_method, group_labels)
 
     if reference_cluster == 'all-reference-clusters':
+        if method == "logreg":
+            error_msg = "Logistic regression method requires a specific reference cluster."
+            print(error_msg, file=sys.stderr)
+            result['success'] = 0
+            result['error'] = error_msg
+            sys.stdout = original_stdout
+            print('Content-Type: application/json\n\n')
+            print(json.dumps(result))
+            return
+
         if corr_method is None:
             sc.tl.rank_genes_groups(adata, cluster_method, groups=[query_cluster], method=method)
         else:
@@ -134,17 +173,16 @@ def main():
         # Try 1.7.2 way first
         ax = sc.pl.rank_genes_groups_violin(adata, groups=query_cluster, use_raw = False,
                                             gene_symbols="gene_symbol", n_genes=n_genes, save="_comp_violin.png")
-    except:
+    except Exception:
         # Use gene names if that doesn't work
         gene_names = adata.var.loc[adata.uns["rank_genes_groups"]['names'][query_cluster]]["gene_symbol"][:n_genes].tolist()
         ax = sc.pl.rank_genes_groups_violin(adata, groups=query_cluster, use_raw = False,
                                             gene_symbols="gene_symbol", gene_names=gene_names, save="_comp_violin.png")
 
-    result = {'success': 1, 'cluster_label': cluster_method}
+    result["success"] = 1
+    result["cluster_label"] = cluster_method
 
-    if method == 'logreg':
-        result['table_json_f'] = ''
-    else:
+    if not method == 'logreg':
         # Yuk.
         ensembl_id_list = np.concatenate(adata.uns['rank_genes_groups']['names'].tolist()).ravel().tolist()
 
@@ -166,15 +204,13 @@ def main():
         try:
             ax = sc.pl.rank_genes_groups_violin(adata, groups=reference_cluster, use_raw = False,
                                                 gene_symbols="gene_symbol", n_genes=n_genes, save="_comp_violin_rev.png")
-        except:
+        except Exception:
             gene_names = adata.var.loc[adata.uns["rank_genes_groups"]['names'][reference_cluster]]["gene_symbol"][:n_genes].tolist()
 
             ax = sc.pl.rank_genes_groups_violin(adata, groups=reference_cluster, use_raw = False,
                                                 gene_symbols="gene_symbol", gene_names=gene_names, save="_comp_violin_rev.png")
 
-    if method == 'logreg':
-        result['table_json_r'] = ''
-    else:
+    if not method == 'logreg':
         # Yuk.
         ensembl_id_list = np.concatenate(adata.uns['rank_genes_groups']['names'].tolist()).ravel().tolist()
 

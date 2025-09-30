@@ -44,7 +44,7 @@ class SpatialHandler(ABC):
         img_name (str | None): The name of the associated image (abstract).
 
     Methods:
-        _read_file(filepath: str) -> SpatialHandler:
+        process_file(filepath: str) -> SpatialHandler:
             Reads and processes a spatial data file from the given filepath (abstract).
 
         filter_sdata_by_coords() -> SpatialHandler:
@@ -53,7 +53,7 @@ class SpatialHandler(ABC):
         _convert_sdata_to_adata(include_images: bool | None = None, table_name=None) -> SpatialHandler:
             Converts the internal spatial data object to an AnnData object.
 
-        _write_to_zarr(filepath: str | None =None) -> SpatialHandler:
+        _write_to_zarr(filepath: str | None =None, overwrite: bool = False) -> SpatialHandler:
 
         _write_to_h5ad(filepath: str | None = None) -> SpatialHandler:
             Writes the current AnnData object to an H5AD file at the specified file path.
@@ -156,7 +156,7 @@ class SpatialHandler(ABC):
         pass
 
     @abstractmethod
-    def _read_file(self, filepath: str) -> "SpatialHandler":
+    def process_file(self, filepath: str) -> "SpatialHandler":
         """
         Reads and processes a spatial data file from the given filepath.
 
@@ -243,7 +243,7 @@ class SpatialHandler(ABC):
         self.adata = adata
         return self
 
-    def _write_to_zarr(self, filepath: str | None =None) -> "SpatialHandler":
+    def _write_to_zarr(self, filepath: str | None =None, overwrite: bool = False) -> "SpatialHandler":
         """
         Writes the spatial data object to a Zarr file at the specified file path.
 
@@ -257,6 +257,7 @@ class SpatialHandler(ABC):
 
         Args:
             filepath (str | None): The destination file path where the Zarr file will be written.
+            overwrite (bool): Whether to overwrite the file if it already exists. Defaults to False.
 
         Returns:
             SpatialHandler: The current instance of the SpatialHandler.
@@ -276,7 +277,7 @@ class SpatialHandler(ABC):
             self.sdata.tables[self.NORMALIZED_TABLE_NAME].X = self.sdata.tables[self.NORMALIZED_TABLE_NAME].X.astype("float")
 
             # Will fail if file already exists
-            self.sdata.write(file_path=filepath)
+            self.sdata.write(file_path=filepath, overwrite=overwrite)
         except Exception as err:
             # remove the directory if it was created
             if os.path.exists(filepath):
@@ -345,7 +346,7 @@ class CoxMxHandler(SpatialHandler):
         """Returns the image name associated with this handler (always None for CoxMx)."""
         return None
 
-    def _read_file(self, filepath: str, **kwargs) -> "SpatialHandler":
+    def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
         """
         Reads and processes a CoxMx spatial data file from the given filepath.
         For CoxMx, this is a stub and does not perform any operation.
@@ -358,11 +359,11 @@ class CoxMxHandler(SpatialHandler):
         """
         return super()._convert_sdata_to_adata(include_images)
 
-    def write_to_zarr(self, filepath: str | None=None) -> "SpatialHandler":
+    def write_to_zarr(self, filepath: str | None=None, overwrite: bool=False) -> "SpatialHandler":
         """
         Writes the spatial data object to a Zarr file at the specified file path.
         """
-        return super()._write_to_zarr(filepath)
+        return super()._write_to_zarr(filepath, overwrite=overwrite)
 
     def write_to_h5ad(self, filepath: str | None=None) -> "SpatialHandler":
         """
@@ -408,30 +409,36 @@ class CurioHandler(SpatialHandler):
         """Returns the image name associated with this handler (always None for Curio)."""
         return None
 
-    def _read_file(self, filepath: str, **kwargs) -> "SpatialHandler":
+    def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
         """
         Reads and processes a Curio Seeker spatial data tarball from the given filepath.
         Extracts and processes the h5ad and Moran's I-score files, updates gene IDs, and loads into a SpatialData object.
         """
-        # Get tar filename so tmp directory can be assigned
-        tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
-        tmp_dir = '/tmp/' + tar_filename
+        extract_dir = kwargs.get("extract_dir", '/tmp/')
+        extract_dir = os.path.join(extract_dir, 'files')
 
         h5ad_file = None
         spatial_moransi_file = None
 
-        if os.path.isdir(tmp_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(tmp_dir))
+        if filepath.endswith(".tar.gz"):
+            mode = "r:gz"  # Read as gzipped tar file
+        elif filepath.endswith(".tar"):
+            mode = "r"     # Read as plain tar file
+        else:
+            raise Exception("File must be a .tar or .tar.gz file.")
 
-        with tarfile.open(filepath) as tf:
+        if os.path.isdir(extract_dir):
+            # Remove any existing directory
+            os.system("rm -rf {}".format(extract_dir))
+
+        with tarfile.open(filepath, mode) as tf:
             for entry in tf:
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
                 if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
                 # Extract file into tmp dir
-                filepath = "{0}/{1}".format(tmp_dir, entry.name)
-                tf.extract(entry, path=tmp_dir)
+                filepath = "{0}/{1}".format(extract_dir, entry.name)
+                tf.extract(entry, path=extract_dir)
 
                 if entry.name.endswith("anndata.h5ad"):
                     h5ad_file = filepath
@@ -446,14 +453,14 @@ class CurioHandler(SpatialHandler):
         if h5ad_file is None:
             raise Exception("h5ad file not found in tarball.")
 
-        from geardb import get_dataset_by_id
-        organism_id = None
-        if not kwargs.get("organism_id"):
-            dataset = get_dataset_by_id(kwargs.get("dataset_id"))
+        # Try to get organism id directly or through dataset metadata
+        organism_id = kwargs.get("organism_id", None)
+        if organism_id is None and "dataset_id" in kwargs:
+            from geardb import get_dataset_by_id
+            dataset = get_dataset_by_id(kwargs.get("dataset_id"))   # assumes the metadata is already present
             if dataset:
                 organism_id = dataset.organism_id
-
-        if not organism_id:
+        if organism_id is None:
             raise Exception("Organism ID not found in dataset metadata or provided as an argument.")
 
         # Read in the h5ad file
@@ -475,7 +482,7 @@ class CurioHandler(SpatialHandler):
         var_features_moransi.to_csv(spatial_moransi_file, sep="\t", header=True, index=True, index_label=False)
 
         # Now are ready to read in to a SpatialData object
-        sdata = sdio.curio(tmp_dir)
+        sdata = sdio.curio(extract_dir)
 
         # To get the adata equivalent, look at sdata.tables["table"]
 
@@ -498,11 +505,11 @@ class CurioHandler(SpatialHandler):
         """
         return super()._convert_sdata_to_adata(include_images)
 
-    def write_to_zarr(self, filepath: str | None = None) -> "SpatialHandler":
+    def write_to_zarr(self, filepath: str | None = None, overwrite: bool = False) -> "SpatialHandler":
         """
         Writes the spatial data object to a Zarr file at the specified file path.
         """
-        return super()._write_to_zarr(filepath)
+        return super()._write_to_zarr(filepath, overwrite=overwrite)
 
     def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
         """
@@ -550,29 +557,35 @@ class GeoMxHandler(SpatialHandler):
         """Returns the image name associated with this handler (always None for GeoMx)."""
         return None
 
-    def _read_file(self, filepath: str, **kwargs) -> "SpatialHandler":
+    def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
         """
         Reads and processes a GeoMx spatial data tarball from the given filepath.
         Extracts the Excel file, validates required sheets, loads counts and metadata, updates gene IDs, and loads into a SpatialData object.
         """
-        # Get tar filename so tmp directory can be assigned
-        tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
-        tmp_dir = '/tmp/' + tar_filename
+        extract_dir = kwargs.get("extract_dir", '/tmp/')
+        extract_dir = os.path.join(extract_dir, 'files')
 
-        if os.path.isdir(tmp_dir):
+        if filepath.endswith(".tar.gz"):
+            mode = "r:gz"  # Read as gzipped tar file
+        elif filepath.endswith(".tar"):
+            mode = "r"     # Read as plain tar file
+        else:
+            raise Exception("File must be a .tar or .tar.gz file.")
+
+        if os.path.isdir(extract_dir):
             # Remove any existing directory
-            os.system("rm -rf {}".format(tmp_dir))
+            os.system("rm -rf {}".format(extract_dir))
 
         information_file = None
 
-        with tarfile.open(filepath) as tf:
+        with tarfile.open(filepath, mode) as tf:
             for entry in tf:
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
                 if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
                 # Extract file into tmp dir
-                filepath = "{0}/{1}".format(tmp_dir, entry.name)
-                tf.extract(entry, path=tmp_dir)
+                filepath = "{0}/{1}".format(extract_dir, entry.name)
+                tf.extract(entry, path=extract_dir)
 
                 if entry.name.endswith(".xlsx"):
                     information_file = filepath
@@ -593,15 +606,15 @@ class GeoMxHandler(SpatialHandler):
         else:
             raise Exception("Excel file must contain a sheet named 'TargetCountMatrix' or 'BioProbeCountMatrix' with the counts matrix.")
 
-        from geardb import get_dataset_by_id
+        # Try to get organism id directly or through dataset metadata
         organism_id = kwargs.get("organism_id", None)
-        if not organism_id:
-            dataset = get_dataset_by_id(kwargs.get("dataset_id"))
+        if organism_id is None and "dataset_id" in kwargs:
+            from geardb import get_dataset_by_id
+            dataset = get_dataset_by_id(kwargs.get("dataset_id"))   # assumes the metadata is already present
             if dataset:
                 organism_id = dataset.organism_id
-
-        if not organism_id:
-            raise Exception("Organism ID not found in dataset metadata or provided as an argument.")
+        if organism_id is None:
+            raise Exception("Organism ID not found in dataset metadata, sample taxon id, or provided as an argument.")
 
         # Get observation table data
         roi_obs_df = pd.read_excel(
@@ -657,11 +670,11 @@ class GeoMxHandler(SpatialHandler):
         """
         return super()._convert_sdata_to_adata(include_images)
 
-    def write_to_zarr(self, filepath: str | None = None) -> "SpatialHandler":
+    def write_to_zarr(self, filepath: str | None = None, overwrite: bool = False) -> "SpatialHandler":
         """
         Writes the spatial data object to a Zarr file at the specified file path.
         """
-        return super()._write_to_zarr(filepath)
+        return super()._write_to_zarr(filepath, overwrite=overwrite)
 
     def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
         """
@@ -707,27 +720,33 @@ class VisiumHandler(SpatialHandler):
         """Returns the image name associated with this handler."""
         return "spatialdata_hires_image"
 
-    def _read_file(self, filepath: str, **kwargs) -> "SpatialHandler":
+    def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
 
-        # Get tar filename so tmp directory can be assigned
-        tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
-        tmp_dir = '/tmp/' + tar_filename
+        extract_dir = kwargs.get("extract_dir", '/tmp/')
+        extract_dir = os.path.join(extract_dir, 'files')
 
-        if os.path.isdir(tmp_dir):
+        if filepath.endswith(".tar.gz"):
+            mode = "r:gz"  # Read as gzipped tar file
+        elif filepath.endswith(".tar"):
+            mode = "r"     # Read as plain tar file
+        else:
+            raise Exception("File must be a .tar or .tar.gz file.")
+
+        if os.path.isdir(extract_dir):
             # Remove any existing directory
-            os.system("rm -rf {}".format(tmp_dir))
+            os.system("rm -rf {}".format(extract_dir))
 
-        with tarfile.open(filepath) as tf:
+        with tarfile.open(filepath, mode) as tf:
             for entry in tf:
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
                 if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
                 # Extract file into tmp dir
-                filepath = "{0}/{1}".format(tmp_dir, entry.name)
-                tf.extract(entry, path=tmp_dir)
+                filepath = "{0}/{1}".format(extract_dir, entry.name)
+                tf.extract(entry, path=extract_dir)
 
 
-        clustering_csv_path = "{}/analysis/clustering/gene_expression_graphclust/clusters.csv".format(tmp_dir)
+        clustering_csv_path = "{}/analysis/clustering/gene_expression_graphclust/clusters.csv".format(extract_dir)
         # If clustering file does not exist, raise an exception
         if not os.path.exists(clustering_csv_path):
             raise Exception("clusters.csv file not found in tarball.")
@@ -738,9 +757,7 @@ class VisiumHandler(SpatialHandler):
             if "Barcode" not in first_line or "Cluster" not in first_line:
                 raise Exception("clusters.csv file does not have 'Barcode' and 'Cluster' columns in clusters.csv file in tarball.")
 
-
-
-        sdata = sdio.visium(path=tmp_dir, dataset_id="spatialdata")    # Provide a name to standarize downstream usage
+        sdata = sdio.visium(path=extract_dir, dataset_id="spatialdata")    # Provide a name to standarize downstream usage
 
         # add clustering information to the vis_sdata.table.obs dataframe
         clustering = pd.read_csv(clustering_csv_path)
@@ -767,11 +784,11 @@ class VisiumHandler(SpatialHandler):
         """
         return super()._convert_sdata_to_adata(include_images)
 
-    def write_to_zarr(self, filepath: str | None = None) -> "SpatialHandler":
+    def write_to_zarr(self, filepath: str | None = None, overwrite: bool = False) -> "SpatialHandler":
         """
         Writes the spatial data object to a Zarr file at the specified file path.
         """
-        return super()._write_to_zarr(filepath)
+        return super()._write_to_zarr(filepath, overwrite=overwrite)
 
     def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
         """
@@ -823,22 +840,28 @@ class VisiumHDHandler(SpatialHandler):
         """Returns the image name associated with this handler."""
         return "spatialdata_hires_image"
 
-    def _read_file(self, filepath: str, **kwargs) -> "SpatialHandler":
-        # Get tar filename so tmp directory can be assigned
-        tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
-        tmp_dir = '/tmp/' + tar_filename
+    def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
+        extract_dir = kwargs.get("extract_dir", '/tmp/')
+        extract_dir = os.path.join(extract_dir, 'files')
 
-        binned_outputs_dir = "{}/binned_outputs".format(tmp_dir)
+        binned_outputs_dir = "{}/binned_outputs".format(extract_dir)
         bin_008_dataset_path = "{}/{}/".format(binned_outputs_dir, self.table_name)
         clustering_csv_path = "{}/analysis/clustering/gene_expression_graphclust/clusters.csv".format(bin_008_dataset_path)
 
         absolute_path = os.path.abspath(binned_outputs_dir)
 
-        if os.path.isdir(tmp_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(tmp_dir))
+        if filepath.endswith(".tar.gz"):
+            mode = "r:gz"  # Read as gzipped tar file
+        elif filepath.endswith(".tar"):
+            mode = "r"     # Read as plain tar file
+        else:
+            raise Exception("File must be a .tar or .tar.gz file.")
 
-        with tarfile.open(filepath) as tf:
+        if os.path.isdir(extract_dir):
+            # Remove any existing directory
+            os.system("rm -rf {}".format(extract_dir))
+
+        with tarfile.open(filepath, mode) as tf:
             for entry in tf:
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
                 if ".DS_Store" in entry.name or "._" in entry.name:
@@ -849,8 +872,8 @@ class VisiumHDHandler(SpatialHandler):
                     continue
 
                 # Extract file into tmp dir
-                filepath = "{0}/{1}".format(tmp_dir, entry.name)
-                tf.extract(entry, path=tmp_dir)
+                filepath = "{0}/{1}".format(extract_dir, entry.name)
+                tf.extract(entry, path=extract_dir)
 
         if not os.path.exists("{}/feature_slice.h5".format(binned_outputs_dir)):
             raise Exception("feature_slice.h5 file not found in /binned_outputs directory in tarball.")
@@ -911,11 +934,11 @@ class VisiumHDHandler(SpatialHandler):
         """
         return super()._convert_sdata_to_adata(include_images)
 
-    def write_to_zarr(self, filepath: str | None = None) -> "SpatialHandler":
+    def write_to_zarr(self, filepath: str | None = None, overwrite: bool = False) -> "SpatialHandler":
         """
         Writes the spatial data object to a Zarr file at the specified file path.
         """
-        return super()._write_to_zarr(filepath)
+        return super()._write_to_zarr(filepath, overwrite=overwrite)
 
     def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
         """
@@ -963,18 +986,24 @@ class XeniumHandler(SpatialHandler):
         """Returns the image name associated with this handler."""
         return "morphology_focus"
 
-    def _read_file(self, filepath: str, **kwargs) -> "SpatialHandler":
+    def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
         """
         Reads and processes a Xenium spatial data tarball from the given filepath.
         Extracts required files, loads clustering and spatial data, updates gene IDs, and loads into a SpatialData object.
         """
-        # Get tar filename so tmp directory can be assigned
-        tar_filename = filepath.rsplit('/', 1)[1].rsplit('.')[0]
-        tmp_dir = '/tmp/' + tar_filename
+        extract_dir = kwargs.get("extract_dir", '/tmp/')
+        extract_dir = os.path.join(extract_dir, 'files')
 
-        if os.path.isdir(tmp_dir):
+        if filepath.endswith(".tar.gz"):
+            mode = "r:gz"  # Read as gzipped tar file
+        elif filepath.endswith(".tar"):
+            mode = "r"     # Read as plain tar file
+        else:
+            raise Exception("File must be a .tar or .tar.gz file.")
+
+        if os.path.isdir(extract_dir):
             # Remove any existing directory
-            os.system("rm -rf {}".format(tmp_dir))
+            os.system("rm -rf {}".format(extract_dir))
 
         # settings to enable or disable based on if a file is present in the uploaded tarball
         include_raster_labels = False
@@ -982,14 +1011,14 @@ class XeniumHandler(SpatialHandler):
         nucleus_boundaries_present = False
         transcripts_present = False
 
-        with tarfile.open(filepath) as tf:
+        with tarfile.open(filepath, mode) as tf:
             for entry in tf:
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
                 if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
                 # Extract file into tmp dir
-                filepath = "{0}/{1}".format(tmp_dir, entry.name)
-                tf.extract(entry, path=tmp_dir)
+                filepath = "{0}/{1}".format(extract_dir, entry.name)
+                tf.extract(entry, path=extract_dir)
 
                 if entry.name == "cells.zarr.zip":
                     include_raster_labels = True
@@ -1001,7 +1030,7 @@ class XeniumHandler(SpatialHandler):
                     transcripts_present = True
 
         # If clustering file does not exist, raise an exception
-        clustering_csv_path = "{}/analysis/clustering/gene_expression_graphclust/clusters.csv".format(tmp_dir)
+        clustering_csv_path = "{}/analysis/clustering/gene_expression_graphclust/clusters.csv".format(extract_dir)
         if not os.path.exists(clustering_csv_path):
             raise Exception("clusters.csv file not found in tarball.")
 
@@ -1011,7 +1040,7 @@ class XeniumHandler(SpatialHandler):
             if "Barcode" not in first_line or "Cluster" not in first_line:
                 raise Exception("clusters.csv file does not have 'Barcode' and 'Cluster' columns in clusters.csv file in tarball.")
 
-        sdata = sdio.xenium(tmp_dir
+        sdata = sdio.xenium(extract_dir
                             , cells_labels=False # Avoid adding polygons to SpatialData object (for now due to out-of-memory issues)
                             , nucleus_labels=False
                             , cell_boundaries=cell_boundaries_present
@@ -1057,11 +1086,11 @@ class XeniumHandler(SpatialHandler):
         """
         return super()._convert_sdata_to_adata(include_images)
 
-    def write_to_zarr(self, filepath: str | None = None) -> "SpatialHandler":
+    def write_to_zarr(self, filepath: str | None = None, overwrite: bool = False) -> "SpatialHandler":
         """
         Writes the spatial data object to a Zarr file at the specified file path.
         """
-        return super()._write_to_zarr(filepath)
+        return super()._write_to_zarr(filepath, overwrite=overwrite)
 
     def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
         """
@@ -1081,3 +1110,5 @@ SPATIALTYPE2CLASS = {
     "visiumhd": VisiumHDHandler,    # allow both with and without underscore
     "xenium": XeniumHandler
 }
+
+ORG_ID_REQ_TYPES = ["curio", "geomx"]

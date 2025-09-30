@@ -90,6 +90,15 @@ The docker-compose.yml file is set up to mount the gEAR code as a volume, allowi
 
 At any time you can run `docker compose exec web tail -f /var/log/apache2/ssl_umgear_error.log` to view a running error log.
 
+## Spatial panel
+
+```
+cd <gear_root>/spatial
+docker build -t panel_app .
+```
+
+This will enable the spatial panel dashboard to be used in the docker-compose.yml stack
+
 ## Issues and potential solutions
 
 * I cannot log in
