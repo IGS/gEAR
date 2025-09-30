@@ -189,8 +189,9 @@ class Analysis:
         pipeline_file = self.settings_path
         with open(pipeline_file) as f:
             json_data = json.loads(f.read())
-            # change "user_session_id" to "session_id" for consistency
-            json_data["session_id"] = json_data.pop("user_session_id")
+            # change "user_session_id" to "analysis_session_id" for consistency
+            if "user_session_id" in json_data:
+                json_data["analysis_session_id"] = json_data.pop("user_session_id")
             return json.dumps(json_data, indent=4)
 
     def _serialize_json(self):
@@ -220,7 +221,7 @@ class Analysis:
 
             if self.type == "public":
                 # ./$dataset_id/$analysis_id
-                return this_dir.parent / "www" / "analyses" / "by_dataset" / self.dataset_id / self.id
+                return root_dir / "www" / "analyses" / "by_dataset" / self.dataset_id / self.id
 
             elif self.type == "user_saved":
                 if self.user_id is None:
@@ -229,7 +230,7 @@ class Analysis:
                     )
 
                 # ./$user_id/$dataset_id/$analysis_id/$dataset_id.h5ad
-                return this_dir.parent / "www" / "analyses" / "by_user" / str(self.user_id) / self.dataset_id / self.id
+                return root_dir / "www" / "analyses" / "by_user" / str(self.user_id) / self.dataset_id / self.id
 
             elif self.type == "user_unsaved":
                 if self.session_id is None:

@@ -648,11 +648,6 @@ for (const step of document.querySelectorAll(".js-step h5")) {
     });
 }
 
-document.querySelector(UI.btnDeleteSavedAnalysisElt).addEventListener("click", async (event) => {
-    // Delete the current analysis
-    await currentAnalysis.delete();
-});
-
 document.querySelector(UI.btnMakePublicCopyElt).addEventListener("click", async (event) => {
     // Make a public copy of the current analysis
     await currentAnalysis.makePublicCopy();
@@ -735,7 +730,7 @@ for (const button of document.querySelectorAll(UI.analysisRenameElts)) {
                 arrow({ element: arrowElement }) // add an arrow pointing to the button
             ],
         }).then(({ x, y, placement, middlewareData }) => {
-            console.log('Popover position:', x, y, placement, middlewareData);
+            //console.log('Popover position:', x, y, placement, middlewareData);
             // Position the popover
             Object.assign(popoverContent.style, {
                 left: `${x}px`,
@@ -863,7 +858,7 @@ for (const button of deleteButtons) {
                 arrow({ element: arrowElement }) // add an arrow pointing to the button
             ],
         }).then(({ x, y, placement, middlewareData }) => {
-            console.log('Popover position:', x, y, placement, middlewareData);
+            //console.log('Popover position:', x, y, placement, middlewareData);
             // Position the popover
             Object.assign(popoverContent.style, {
                 left: `${x}px`,

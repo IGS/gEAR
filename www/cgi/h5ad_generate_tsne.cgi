@@ -65,8 +65,6 @@ def main():
         return
     is_spatial = ds.dtype == "spatial"
 
-    result["is_spatial"] = 1 if is_spatial else 0
-
     analysis_obj = None
     if analysis_id or analysis_type:
         analysis_obj = {

@@ -384,8 +384,9 @@ export class Analysis {
                 dataset_id: this.dataset.id
             }));
 
-            if (data.error) {
-                throw new Error(data.error);
+            if (data.success < 1) {
+                const error = data.error || "Unknown error. Please contact gEAR support.";
+                throw new Error(error);
             }
 
             // Load the analysis data and assign it to the current instance
@@ -664,6 +665,19 @@ export class Analysis {
 
     }
 
+    /**
+     * Asynchronously saves the current analysis state to the server.
+     *
+     * - Clones the analysis object, omitting circular references.
+     * - Converts all keys to snake_case for backend compatibility.
+     * - Handles legacy field mappings and removes redundant data.
+     * - Sends the analysis state to the backend via an HTTP POST request.
+     * - Updates the UI and analysis list upon successful save.
+     * - Displays success or error notifications as appropriate.
+     *
+     * @async
+     * @returns {Promise<void>} Resolves when the save operation is complete.
+     */
     async save() {
 
         if (!this.analysisSessionId) {

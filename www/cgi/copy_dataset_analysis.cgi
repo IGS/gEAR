@@ -21,9 +21,10 @@ Use cases:
 import cgi
 import json
 import os
-import re
 import shutil
 import sys
+
+from werkzeug.utils import secure_filename
 
 original_stdout = sys.stdout
 sys.stdout = open(os.devnull, 'w')
@@ -31,8 +32,7 @@ sys.stdout = open(os.devnull, 'w')
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
-from gear.analysis import Analysis
-from werkzeug.utils import secure_filename
+from gear.analysis import get_analysis, Analysis
 
 
 def main():
@@ -43,30 +43,60 @@ def main():
     dest_analysis_type = form.getvalue('dest_analysis_type')
     dataset_id = form.getvalue('dataset_id')
     session_id = form.getvalue('session_id')
-    user = geardb.get_user_from_session_id(session_id)
 
-    if not user:
-        result = {'success': 0, 'error': 'Invalid session'}
+    result = {"success": 0, "error": ""}
+
+    ds = geardb.get_dataset_by_id(dataset_id)
+    if not ds:
+        result['success'] = 0
+        result['error'] = 'Dataset does not exist'
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+    is_spatial = ds.dtype == "spatial"
+
+    source_analysis_id = secure_filename(source_analysis_id)
+    dest_analysis_id = secure_filename(dest_analysis_id)
+
+    source_analysis_obj = None
+    if source_analysis_id or source_analysis_type:
+        source_analysis_obj = {
+            'id': source_analysis_id if source_analysis_id else None,
+            'type': source_analysis_type if source_analysis_type else None,
+        }
+
+    dest_analysis_obj = None
+    if dest_analysis_id or dest_analysis_type:
+        dest_analysis_obj = {
+            'id': dest_analysis_id if dest_analysis_id else None,
+            'type': dest_analysis_type if dest_analysis_type else None,
+        }
+
+    try:
+        source_ana = get_analysis(source_analysis_obj, dataset_id, session_id, is_spatial=is_spatial)
+    except Exception:
+        result['success'] = 0
+        result['error'] = 'Analysis for the source dataset is unavailable'
         sys.stdout = original_stdout
         print('Content-Type: application/json\n\n')
         print(json.dumps(result))
         return
 
-    source_analysis_id = secure_filename(source_analysis_id)
-    dest_analysis_id = secure_filename(dest_analysis_id)
-
-    source_ana = Analysis(id=source_analysis_id, type=source_analysis_type, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
-    dest_ana = Analysis(id=dest_analysis_id, type=dest_analysis_type, dataset_id=dataset_id, session_id=session_id, user_id=user.id)
+    dest_ana = Analysis(id=dest_analysis_id, type=dest_analysis_type,
+                        dataset_id=dataset_id, session_id=session_id)
 
     if not source_ana:
-        result = {'success': 0, 'error': 'Source analysis does not exist'}
+        result["success"] = 0
+        result["error"] = "Source analysis does not exist"
         sys.stdout = original_stdout
         print('Content-Type: application/json\n\n')
         print(json.dumps(result))
         return
 
     if not dest_ana:
-        result = {'success': 0, 'error': 'Destination analysis does not exist'}
+        result["success"] = 0
+        result["error"] = "Destination analysis does not exist"
         sys.stdout = original_stdout
         print('Content-Type: application/json\n\n')
         print(json.dumps(result))
@@ -87,9 +117,14 @@ def main():
         shutil.copytree(source_pipeline_base, dest_pipeline_base, copy_function=open_perm_changing_copy)
         set_config_analysis_type(dest_ana.settings_path, dest_analysis_type, session_id, dest_analysis_id)
     else:
-        result = {'success': 0, 'error': 'Unrecognized source and dest analysis types'}
+        result["success"] = 0
+        result["error"] = "Unrecognized source and dest analysis types"
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
 
-    result = {'success': 1}
+    result["success"] = 1
 
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')
@@ -120,7 +155,7 @@ def set_config_analysis_type(config_path, atype, session_id, analysis_id):
 
     state['id'] = analysis_id
     state['type'] = atype
-    state['user_session_id'] = session_id
+    state['analysis_session_id'] = session_id
 
     with open(config_path, 'w') as json_out_file:
         json.dump(state, json_out_file)

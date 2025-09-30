@@ -6,12 +6,15 @@ stream, suitable for serving as an img['src'] from an html page.
 """
 
 import cgi
-import os, sys
+import json
+import os
+import sys
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
-from gear.analysis import Analysis
+from gear.analysis import get_analysis
+
 
 def main():
     form = cgi.FieldStorage()
@@ -19,13 +22,32 @@ def main():
     analysis_type = form.getvalue('analysis_type')
     dataset_id = form.getvalue('dataset_id')
     session_id = form.getvalue('session_id')
-    user = geardb.get_user_from_session_id(session_id)
-    user_id = None
-    if user and user.id:
-        user_id = user.id
+    result = {"success": 0}
 
-    ana = Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
-                          session_id=session_id, user_id=user_id)
+    ds = geardb.get_dataset_by_id(dataset_id)
+    if not ds:
+        print("No dataset found with that ID.", file=sys.stderr)
+        result['success'] = 0
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+    is_spatial = ds.dtype == "spatial"
+
+    analysis_obj = None
+    if analysis_id or analysis_type:
+        analysis_obj = {
+            'id': analysis_id if analysis_id else None,
+            'type': analysis_type if analysis_type else None,
+        }
+
+    try:
+        ana = get_analysis(analysis_obj, dataset_id, session_id, is_spatial=is_spatial)
+    except Exception:
+        print("Analysis for this dataset is unavailable.", file=sys.stderr)
+        result['success'] = 0
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
 
     ## if the analysis is primary images are getting saved as user_unsaved
     if ana.type == 'primary':
