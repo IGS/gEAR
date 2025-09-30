@@ -53,7 +53,7 @@ class SpatialHandler(ABC):
         _convert_sdata_to_adata(include_images: bool | None = None, table_name=None) -> SpatialHandler:
             Converts the internal spatial data object to an AnnData object.
 
-        _write_to_zarr(filepath: str | None =None) -> SpatialHandler:
+        _write_to_zarr(filepath: str | None =None, overwrite: bool = False) -> SpatialHandler:
 
         _write_to_h5ad(filepath: str | None = None) -> SpatialHandler:
             Writes the current AnnData object to an H5AD file at the specified file path.
@@ -243,7 +243,7 @@ class SpatialHandler(ABC):
         self.adata = adata
         return self
 
-    def _write_to_zarr(self, filepath: str | None =None) -> "SpatialHandler":
+    def _write_to_zarr(self, filepath: str | None =None, overwrite: bool = False) -> "SpatialHandler":
         """
         Writes the spatial data object to a Zarr file at the specified file path.
 
@@ -257,6 +257,7 @@ class SpatialHandler(ABC):
 
         Args:
             filepath (str | None): The destination file path where the Zarr file will be written.
+            overwrite (bool): Whether to overwrite the file if it already exists. Defaults to False.
 
         Returns:
             SpatialHandler: The current instance of the SpatialHandler.
@@ -276,7 +277,7 @@ class SpatialHandler(ABC):
             self.sdata.tables[self.NORMALIZED_TABLE_NAME].X = self.sdata.tables[self.NORMALIZED_TABLE_NAME].X.astype("float")
 
             # Will fail if file already exists
-            self.sdata.write(file_path=filepath)
+            self.sdata.write(file_path=filepath, overwrite=overwrite)
         except Exception as err:
             # remove the directory if it was created
             if os.path.exists(filepath):
@@ -358,11 +359,11 @@ class CoxMxHandler(SpatialHandler):
         """
         return super()._convert_sdata_to_adata(include_images)
 
-    def write_to_zarr(self, filepath: str | None=None) -> "SpatialHandler":
+    def write_to_zarr(self, filepath: str | None=None, overwrite: bool=False) -> "SpatialHandler":
         """
         Writes the spatial data object to a Zarr file at the specified file path.
         """
-        return super()._write_to_zarr(filepath)
+        return super()._write_to_zarr(filepath, overwrite=overwrite)
 
     def write_to_h5ad(self, filepath: str | None=None) -> "SpatialHandler":
         """
@@ -504,11 +505,11 @@ class CurioHandler(SpatialHandler):
         """
         return super()._convert_sdata_to_adata(include_images)
 
-    def write_to_zarr(self, filepath: str | None = None) -> "SpatialHandler":
+    def write_to_zarr(self, filepath: str | None = None, overwrite: bool = False) -> "SpatialHandler":
         """
         Writes the spatial data object to a Zarr file at the specified file path.
         """
-        return super()._write_to_zarr(filepath)
+        return super()._write_to_zarr(filepath, overwrite=overwrite)
 
     def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
         """
@@ -669,11 +670,11 @@ class GeoMxHandler(SpatialHandler):
         """
         return super()._convert_sdata_to_adata(include_images)
 
-    def write_to_zarr(self, filepath: str | None = None) -> "SpatialHandler":
+    def write_to_zarr(self, filepath: str | None = None, overwrite: bool = False) -> "SpatialHandler":
         """
         Writes the spatial data object to a Zarr file at the specified file path.
         """
-        return super()._write_to_zarr(filepath)
+        return super()._write_to_zarr(filepath, overwrite=overwrite)
 
     def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
         """
@@ -783,11 +784,11 @@ class VisiumHandler(SpatialHandler):
         """
         return super()._convert_sdata_to_adata(include_images)
 
-    def write_to_zarr(self, filepath: str | None = None) -> "SpatialHandler":
+    def write_to_zarr(self, filepath: str | None = None, overwrite: bool = False) -> "SpatialHandler":
         """
         Writes the spatial data object to a Zarr file at the specified file path.
         """
-        return super()._write_to_zarr(filepath)
+        return super()._write_to_zarr(filepath, overwrite=overwrite)
 
     def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
         """
@@ -933,11 +934,11 @@ class VisiumHDHandler(SpatialHandler):
         """
         return super()._convert_sdata_to_adata(include_images)
 
-    def write_to_zarr(self, filepath: str | None = None) -> "SpatialHandler":
+    def write_to_zarr(self, filepath: str | None = None, overwrite: bool = False) -> "SpatialHandler":
         """
         Writes the spatial data object to a Zarr file at the specified file path.
         """
-        return super()._write_to_zarr(filepath)
+        return super()._write_to_zarr(filepath, overwrite=overwrite)
 
     def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
         """
@@ -1085,11 +1086,11 @@ class XeniumHandler(SpatialHandler):
         """
         return super()._convert_sdata_to_adata(include_images)
 
-    def write_to_zarr(self, filepath: str | None = None) -> "SpatialHandler":
+    def write_to_zarr(self, filepath: str | None = None, overwrite: bool = False) -> "SpatialHandler":
         """
         Writes the spatial data object to a Zarr file at the specified file path.
         """
-        return super()._write_to_zarr(filepath)
+        return super()._write_to_zarr(filepath, overwrite=overwrite)
 
     def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
         """
