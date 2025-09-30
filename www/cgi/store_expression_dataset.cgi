@@ -24,7 +24,9 @@ def main():
     spatial_format = form.getvalue('spatial_format')  # may be None
 
     if not share_uid: # should never happen
-        result = {'success': 0, 'message': 'No share_uid provided.'}
+        error_msg = f"Unexpected missing share_uid in store_expression_dataset.cgi. session_id={session_id!r}"
+        print(error_msg, file=sys.stderr)
+        result = {'success': 0, 'message': 'Internal error: share_uid missing (this should never happen). Please contact support.'}
         print(json.dumps(result))
         sys.exit(0)
 
