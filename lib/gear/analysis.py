@@ -61,7 +61,8 @@ def get_analysis(analysis_data: dict | None, dataset_id: str, session_id: str | 
 
         # Check that the h5ad file exists
         if not ana.dataset_path.exists():
-            raise FileNotFoundError(f"No file found for the passed in analysis {ana.dataset_path}")
+            filetype = "zarr" if is_spatial else "h5ad"
+            raise FileNotFoundError(f"No {filetype} file found for the passed in analysis: {ana.dataset_path}")
     else:
         # Otherwise, return the primary analysis for the dataset
         ana = get_primary_analysis(dataset_id, is_spatial)
