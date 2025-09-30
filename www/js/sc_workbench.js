@@ -730,7 +730,6 @@ for (const button of document.querySelectorAll(UI.analysisRenameElts)) {
                 arrow({ element: arrowElement }) // add an arrow pointing to the button
             ],
         }).then(({ x, y, placement, middlewareData }) => {
-            //console.log('Popover position:', x, y, placement, middlewareData);
             // Position the popover
             Object.assign(popoverContent.style, {
                 left: `${x}px`,
