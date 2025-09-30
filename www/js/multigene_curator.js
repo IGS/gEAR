@@ -175,7 +175,9 @@ class GenesAsAxisHandler extends curatorCommon.PlotHandler {
             // Remove reverse palette option since violin plots use categorical palettes
             const revPalette = document.querySelector(".js-dash-reverse-palette");
             for (const targetElt of [revPalette]) {
-                targetElt.closest(".is-justify-content-space-between").remove();
+                if (targetElt) {
+                    targetElt.closest(".is-justify-content-space-between").remove();
+                }
             }
 
             prePlotSpecificOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/pre_plot/advanced_mg_violin.html");
