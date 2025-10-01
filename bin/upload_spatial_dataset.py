@@ -20,7 +20,7 @@ lib_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__
 sys.path.append(lib_path)
 from gear import spatialhandler
 
-DEST_DIRPATH = Path(__file__).resolve().parent.parent / "www" / "datasets" / "spatial"
+DEST_DIRPATH = Path(__file__).resolve().parent.parent / "www" / "datasets"
 OUTPUT_SUFFIX = ".zarr"
 H5AD_OUTPUT_SUFFIX = ".h5ad"
 
@@ -61,7 +61,10 @@ def main():
         print("Writing to h5ad file: {0}".format(output_filename))
         sp_class.write_to_h5ad(filepath=DEST_DIRPATH / output_filename)
         return
-    output_path = DEST_DIRPATH / (output_filename + OUTPUT_SUFFIX)
+
+    spatial_dest_dirpath = DEST_DIRPATH / "spatial"
+
+    output_path = spatial_dest_dirpath / (output_filename + OUTPUT_SUFFIX)
     print("Writing to {0}".format(output_path))
     overwrite = False
     if args.overwrite:
