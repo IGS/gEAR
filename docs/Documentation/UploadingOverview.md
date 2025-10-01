@@ -18,7 +18,7 @@ Bulk RNAseq data can be uploaded to gEAR through three paths (from Recount3 data
 > [!NOTE]
 > Count files must be normalized prior to upload, any common normalization method is accepted
 
-> [!NOTE]
+> [!TIP]
 > To open the links in the flowchart, right click and choose open in new window otherwise link will show as blocked
 
 ```mermaid
@@ -58,7 +58,7 @@ Single cell sequencing data can be uploaded to gEAR through multiple paths. The 
 > [!NOTE]
 > Count files must be normalized prior to upload, any common normalization method is accepted
 
-> [!NOTE]
+> [!TIP]
 > To open the links in the flowchart, right click and choose open in new window otherwise link will show as blocked
 
 ```mermaid
@@ -129,9 +129,8 @@ If you are interested in uploading spatial transcriptomic data from a platform t
 
 Epigenetic data are uploaded and displayed using integration with the Gosling epigenome viewer. If your data are already in BigWig/BigBed format they can be uploaded via URL or through standard file uploads. Epigenetic uploads do not currently require a seperate metadata file (in contrast to Bulk RNAseq or Single cell data).
 
-> [!NOTE]
+> [!TIP]
 > To open the links in the flowchart, right click and choose open in new window otherwise link will show as blocked
-
 
 ```mermaid
 graph TD
