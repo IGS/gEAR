@@ -570,9 +570,9 @@ def projectr_callback(
     # in collecting rownames in projectR (which gives invalid output)
     # This means these duplicated genes will not be in the intersection of the dataset and pattern genes
     if isinstance(ana, SpatialAnalysis):
-        dedup_copy = str(ana.dataset_path.replace(".zarr", ".dups_removed.h5ad"))
+        dedup_copy = str(ana.dataset_path).replace(".zarr", ".dups_removed.h5ad")
     else:
-        dedup_copy = str(ana.dataset_path.replace(".h5ad", ".dups_removed.h5ad"))
+        dedup_copy = str(ana.dataset_path).replace(".h5ad", ".dups_removed.h5ad")
     dedup_copy = Path(dedup_copy)
 
     if (adata.var.index.duplicated(keep="first")).any():
