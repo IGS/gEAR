@@ -331,8 +331,12 @@ class Metadata:
             # one instead and append the rest to the Long description.
             pubmed_id = pubmed_id.replace(' ', ',')
             pubmed_ids = pubmed_id.split(',')
-            pubmed_ids = [i for i in pubmed_ids if len(i) > 3]
-            pubmed_id = pubmed_ids.pop()
+            pubmed_ids = [i for i in pubmed_ids if len(i) > 4]
+
+            if len(pubmed_ids):
+                pubmed_id = pubmed_ids.pop()
+            else:
+                pubmed_id = None
 
             if len(pubmed_ids):
                 if not isinstance(ldesc, str):
