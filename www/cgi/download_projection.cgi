@@ -12,7 +12,7 @@ import sys
 import zipfile
 from pathlib import Path
 
-lib_path = Path(__file__).resolve().parent.parent.parent / 'lib'
+lib_path = Path(__file__).resolve().parents[2].joinpath('lib')
 sys.path.append(str(lib_path))
 import geardb
 
