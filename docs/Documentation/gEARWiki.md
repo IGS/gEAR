@@ -126,7 +126,6 @@ By dragging, you can rearrange the order and size of each dataset within the dat
 
 <img width="700" alt="Screen Shot 2022-06-10 at 8 48 31 AM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/ArrangeDatasetCollection.png">
 
-
 ### Epigenome displays -- Under Construction
 
 The gEAR team is working on updating this module.  As this module is completed we will add documentation to help users utilize the new page.
@@ -262,7 +261,3 @@ Public data in the gEAR platform can be downloaded in two ways:
 To download a dataset, search a gene in the public dataset collection of interest then use the dropdown menu to select which download option you prefer.
 
 <img width="700" alt="Screen Shot 2022-06-09 at 9 31 35 AM" src="https://github.com/IGS/gEAR/blob/documentation/docs/Documentation/Screenshots/DownloadData.png">
-
-
-
-
