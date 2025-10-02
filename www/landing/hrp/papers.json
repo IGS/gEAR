@@ -132,6 +132,18 @@
         "imageAlt": "Biological insights from multi-omic analysis of 31 genomic risk loci for adult hearing difficulty"
     },
     {
+        "title": "scRNA-Seq reveals distinct stem cell populations that drive hair cell regeneration after loss of Fgf and Notch signaling.",
+        "authors": "Lush, Baek, Piotrowski, et al.",
+        "journal": "Elife. 2019 Jan 25;8:e44431.",
+        "doi": "10.7554/eLife.44431",
+        "landingLink": "",
+        "pubmedId": "30681411",
+        "dataLink": "https://umgear.org/p?l=f22d54a5",
+        "downloadLink": "https://umgear.org/cgi/download_source_file.cgi?type=tarball&dataset_id=af079201-c1ae-9668-433e-6e5bc113fc87",
+        "image": "/landing/hrp/paper_30681411_preview.png",
+        "imageAlt": "scRNA-Seq reveals distinct stem cell populations that drive hair cell regeneration after loss of Fgf and Notch signaling."
+    },
+    {
         "title": "",
         "authors": "",
         "journal": "",
