@@ -296,6 +296,9 @@ class SpatialCondensedSubplot(SpatialFigure):
         # The marker size will scale larger as the range of the selection gets more precise
         self.marker_size = int(1 + 2500 / (x_range + y_range))
 
+        if self.platform == "visium":
+            self.marker_size += 3
+
     def selection_callback(self, event: dict) -> dict:
         """
         Handles selection events from a plot and updates selection ranges.
