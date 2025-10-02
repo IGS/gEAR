@@ -14,8 +14,12 @@ window.onload=function() {
     .then(response => response.json())
     .then(data => {
       papers = data;
+
+      // Filter out papers without titles (usually just the template entry at the end)
+      papers = papers.filter(paper => paper.title && paper.title.trim() !== '');
+
       if (papers.length > 0) {
-      displayPaper(currentPaperIndex); // Set the initial paper
+        displayPaper(currentPaperIndex); // Set the initial paper
       }
     })
     .catch(error => console.error('Error fetching papers:', error));
