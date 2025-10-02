@@ -1,28 +1,37 @@
 #!/opt/bin/python3
 
 """
+This script is a CGI handler for adding or updating primary analysis metadata to a dataset in the gEAR platform.
+It performs the following main tasks:
+- Authenticates the user via session ID.
+- Locates the dataset using a share UID.
+- Loads the primary analysis object and its associated settings JSON.
+- Detects the presence of tSNE, UMAP, and clustering results in the dataset's AnnData object.
+- Updates the AnnData object and analysis JSON to ensure tSNE, UMAP, and clustering results are present and properly recorded.
+- Writes changes to the AnnData file and analysis JSON if modifications are made.
+- Returns a JSON response indicating success or failure.
 
-Many datasets exist in the system already with columnar elements which
-make up a user-generated analysis, such as dimensionality reduction (tSNE)
-and clustering.
+Key Functions:
+- main(): Orchestrates the process of updating the primary analysis for a dataset.
+- add_clustering_analysis(adata): Adds clustering information to the AnnData object if detected.
+- add_tsne_analysis(adata): Adds tSNE coordinates to the AnnData object if detected.
+- add_umap_analysis(adata): Adds UMAP coordinates to the AnnData object if detected.
+- detect_clustering(adata): Checks if clustering columns are present in AnnData.obs.
+- detect_tsne(adata): Checks if tSNE coordinate columns are present in AnnData.obs.
+- detect_umap(adata): Checks if UMAP coordinate columns are present in AnnData.obs.
+- has_clustering(adata): Checks if clustering results are already present in AnnData.obs.
+- has_tsne(adata): Checks if tSNE results are already present in AnnData.obsm.
+- has_umap(adata): Checks if UMAP results are already present in AnnData.obsm.
 
-This script reads these and transforms them into a structure within HDF5
-which mimics what scanpy produces.  This allows them to be used throughout
-the rest of the interface.
+Constants:
+- DATASET_BASE_DIR: Base directory for datasets.
+- VALID_CLUSTER_COLUMN_NAMES: List of valid column names for clustering.
+- VALID_TSNE_PAIRS: List of valid tSNE coordinate column pairs.
+- VALID_UMAP_PAIRS: List of valid UMAP coordinate column pairs.
 
-Autodetection isn't perfect.  Currently it checks for these columns for
-clustering identification:
-
-VALID_CLUSTER_COLUMN_NAMES = ['cluster', 'cell_type', 'cluster_label', 'subclass_label']
-
-And these pairs for tSNE:
-
-VALID_TSNE_PAIRS = [['tSNE_1', 'tSNE_2'], ['tSNE1', 'tSNE2'], ['tsne1_combined', 'tsne2_combined']]
-VALID_UMAP_PAIRS = [['uMAP_1', 'uMAP_2'], ['uMAP1', 'uMAP2'],
-                    ['UMAP_1', 'UMAP_2'], ['UMAP1', 'UMAP2']]
-
-
+The script is intended to be run as a CGI script during the upload process and outputs a JSON response.
 """
+
 
 import cgi
 import json
@@ -63,25 +72,33 @@ VALID_UMAP_PAIRS = [['uMAP_1', 'uMAP_2'], ['uMAP1', 'uMAP2'],
                     ['UMAP_1', 'UMAP_2'], ['UMAP1', 'UMAP2']]
 
 
+user_upload_file_base = gear_root_path / 'www' / 'uploads' / 'files'
+
 def main() -> dict:
     form = cgi.FieldStorage()
-    dataset_id = form.getvalue('dataset_id')
+    session_id = form.getvalue('session_id')
+    share_uid = form.getvalue('share_uid')
 
-    result = {"success": 0}
+    result = {"success": 0, "message": ""}
 
-    if not dataset_id:
-        print("No dataset ID provided. Processing all datasets.", file=sys.stderr)
+    user = geardb.get_user_from_session_id(session_id)
+    if user is None:
+        result['message'] = 'User ID not found. Please log in to continue.'
         return result
 
+    if not share_uid:
+        print("No share ID found for dataset. Please try upload again", file=sys.stderr)
+        return result
 
-    print("Processing dataset ID: {0}".format(dataset_id))
+    print("Processing share ID: {0}".format(share_uid))
 
-    ds = geardb.get_dataset_by_id(dataset_id)
-    if not ds:
+    ds = geardb.get_dataset_by_share_id(share_uid)
+    if ds is None:
         print("No dataset found with that ID.", file=sys.stderr)
         result['success'] = 0
         return result
 
+    dataset_id = ds.id
     is_spatial = ds.dtype == "spatial"
 
     try:
@@ -93,9 +110,10 @@ def main() -> dict:
 
     ana.vetting = 'owner'
 
-    analysis_json_path = ana.settings_path
-
-    if os.path.exists(analysis_json_path):
+    # Load the analysis JSON or create from template
+    dataset_upload_dir = user_upload_file_base / session_id / share_uid
+    analysis_json_path = dataset_upload_dir / f"{dataset_id}.pipeline.json"
+    if analysis_json_path.is_file():
         with open(analysis_json_path) as json_in:
             analysis_json = json.load(json_in)
     else:
