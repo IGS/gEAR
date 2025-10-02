@@ -98,7 +98,7 @@ class Settings(param.Parameterized):
     selection_y2 = param.Number(doc="lower selection range", allow_None=True)
     display_height = param.Integer(doc="Height of the display in pixels", allow_None=True)
     display_width = param.Integer(doc="Width of the display in pixels", allow_None=True)
-    expression_clip_min = param.Number(doc="Minimum expression value to clip", allow_None=True)
+    expression_min_clip = param.Number(doc="Minimum expression value to clip", allow_None=True)
 
 
 class SpatialFigure:

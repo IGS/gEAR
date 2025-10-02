@@ -860,8 +860,8 @@ class SpatialPanel(pn.viewable.Viewer):
         if self.projection_id:
             self.adata = self.create_projection_adata()
 
-        if self.settings.expression_clip_min is not None:
-            self.adata = clip_expression_values(self.adata, min_clip=self.settings.expression_clip_min)
+        if self.settings.expression_min_clip is not None:
+            self.adata = clip_expression_values(self.adata, min_clip=self.settings.expression_min_clip)
 
         self.adata_orig = (
             self.adata.copy()
