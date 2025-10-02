@@ -4,7 +4,7 @@ import typing
 from pathlib import Path
 
 # append parent directory to path
-sys.path.append(str(Path(__file__).resolve().parents[1]))
+sys.path.append(str(Path(__file__).resolve().parents[1]))   # lib
 
 from geardb import Dataset, get_user_by_id, get_user_id_from_session_id
 
@@ -12,8 +12,8 @@ if typing.TYPE_CHECKING:
     from anndata import AnnData
     from spatialdata import SpatialData
 
-this_dir = Path(__file__).resolve().parent
-root_dir = this_dir.parent.parent
+this_dir = Path(__file__).resolve().parent  # lib/gear
+root_dir = this_dir.parents[1]
 
 def get_analysis(analysis_data: dict | None, dataset_id: str, session_id: str | None, is_spatial: bool = False) -> "SpatialAnalysis | Analysis":
     """

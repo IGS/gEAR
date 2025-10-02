@@ -63,29 +63,25 @@ VALID_UMAP_PAIRS = [['uMAP_1', 'uMAP_2'], ['uMAP1', 'uMAP2'],
                     ['UMAP_1', 'UMAP_2'], ['UMAP1', 'UMAP2']]
 
 
-def main() -> None:
+def main() -> dict:
     form = cgi.FieldStorage()
     dataset_id = form.getvalue('dataset_id')
 
+    result = {"success": 0}
+
     if not dataset_id:
         print("No dataset ID provided. Processing all datasets.", file=sys.stderr)
-        sys.stdout = original_stdout
-        print('Content-Type: application/json\n\n')
-        print(json.dumps({"success": 0}))
-        return
+        return result
+
 
     print("Processing dataset ID: {0}".format(dataset_id))
-
-    result = {"success": 0}
 
     ds = geardb.get_dataset_by_id(dataset_id)
     if not ds:
         print("No dataset found with that ID.", file=sys.stderr)
         result['success'] = 0
-        sys.stdout = original_stdout
-        print('Content-Type: application/json\n\n')
-        print(json.dumps(result))
-        return
+        return result
+
     is_spatial = ds.dtype == "spatial"
 
     try:
@@ -93,10 +89,7 @@ def main() -> None:
     except Exception:
         print("Analysis for this dataset is unavailable.", file=sys.stderr)
         result['success'] = 0
-        sys.stdout = original_stdout
-        print('Content-Type: application/json\n\n')
-        print(json.dumps(result))
-        return
+        return result
 
     ana.vetting = 'owner'
 
@@ -175,9 +168,7 @@ def main() -> None:
             json.dump(analysis_json, outfile, indent=3)
 
     result['success'] = 1
-    sys.stdout = original_stdout
-    print('Content-Type: application/json\n\n')
-    print(json.dumps(result))
+    return result
 
 def add_clustering_analysis(adata: "AnnData") -> None:
     cols = adata.obs.columns.tolist()
@@ -268,4 +259,7 @@ def has_umap(adata: "AnnData") -> bool:
     return False
 
 if __name__ == '__main__':
-    main()
+    result = main()
+    sys.stdout = original_stdout
+    print('Content-Type: application/json\n\n')
+    print(json.dumps(result))
