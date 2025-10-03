@@ -15,6 +15,16 @@ if typing.TYPE_CHECKING:
 this_dir = Path(__file__).resolve().parent  # lib/gear
 root_dir = this_dir.parents[1]
 
+# You can use the analysis functions to create an Analysis|SpatialAnalysis object in a high-level way
+# without needing to know the details of the class or its path conventions
+
+# Creating the Analysis/SpatialAnalysis objects directly is useful if you are using theoretical paths instead
+# of existing ones, such as copying an analysis. However the paths are pre-determined.
+
+# If you just need to get the AnnData or SpatialData object for a custom path (i.e. the upload directory),
+# you can use the adapters directly (H5adAdapter or ZarrAdapter)
+
+
 def get_analysis(analysis_data: dict | None, dataset_id: str, session_id: str | None, is_spatial: bool = False) -> "SpatialAnalysis | Analysis":
     """
     Retrieves an analysis object (either SpatialAnalysis or Analysis) based on the provided analysis data, dataset ID, and session ID.
@@ -353,12 +363,15 @@ class Analysis:
         try:
             dataset_id = jsn["dataset"]["id"]
         except KeyError:
+            # This is for legacy pipelines.  Both entries should be present though
             dataset_id = jsn["dataset_id"]
 
         try:
-            session_id = jsn["user_session_id"]
-        except KeyError:
             session_id = jsn["analysis_session_id"]
+        except KeyError:
+            # This is for legacy pipelines.  This is the old name before it was realized
+            # that a user could have analyses across multiple user sessions
+            session_id = jsn["user_session_id"]
 
         ana = Analysis(
             id=jsn["id"],
@@ -382,7 +395,12 @@ class Analysis:
         """
         Returns the anndata object for the current analysis.
         """
-        return H5adAdapter(self.dataset_path).get_adata(**kwargs)
+        dataset_path = self.dataset_path
+        if "dataset_path" in kwargs:
+            dataset_path = kwargs["dataset_path"]
+            kwargs.pop("dataset_path")
+
+        return H5adAdapter(dataset_path).get_adata(**kwargs)
 
     @property
     def marker_gene_json_path(self):
@@ -492,7 +510,7 @@ class SpatialAnalysis(Analysis):
         self.set_adapter()
         return self.type
 
-    def get_sdata(self) -> "SpatialData":
+    def get_sdata(self, **kwargs) -> "SpatialData":
         """
         Returns a SpatialData object by loading it from a .zarr file.
 

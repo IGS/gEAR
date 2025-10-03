@@ -74,6 +74,28 @@ class Metadata:
         self.file_path = file_path
         self.read_file()
 
+    def make_spatial_h5ad_adjustment(self, dataset_format):
+        """
+        Adjusts the 'dtype' field in the metadata to 'spatial-h5ad' if the dataset format is not 'spatial'
+        but the current metadata dtype is 'spatial'. This is to accommodate spatial datasets that are
+        uploaded in h5ad format, so that they are not routed to the SpatialAnalysis class
+
+        Parameters
+        ----------
+        dataset_format : str
+            The format of the dataset to check against the metadata dtype.
+
+        Raises
+        ------
+        Exception
+            If self.metadata is None, indicating that no metadata is available.
+        """
+        if self.metadata is None:
+            raise Exception("No metadata found in self.metadata. Provide JSON or Excel metadata template file to continue.")
+        dtype = self.metadata.loc['dataset_type', 'value']
+
+        if dataset_format != "spatial" and dtype == "spatial":
+            self.metadata.loc['dataset_type', 'value'] = 'spatial-h5ad'
 
     def read_file(self) -> None:
         """
@@ -135,7 +157,7 @@ class Metadata:
             Sets self.metadata = pandas DataFrame where empty fields are now populated by GEO info
         """
         if self.metadata is None:
-            raise Exception("No metadata found in self.metadata. Provide read an excel metadata template file to continue.")
+            raise Exception("No metadata found in self.metadata. Provide JSON or Excel metadata template file to continue.")
 
         geo_series_id = self.metadata.loc['geo_accession', 'value']
 
@@ -432,30 +454,33 @@ class Metadata:
 
     def write_json(self, file_path=None):
         """
-        Writes the metadata fields and corresponding values to JSON.
+        Writes the metadata DataFrame to a JSON file or returns it as a JSON string.
 
-        If filepath is given, the JSON will write to disk where filepath specifies.
-        If filepath is None (not given), the JSON will return string
+        If no file path is provided, non-metadata columns ('value', 'message', 'is_required') are removed before exporting.
+        If a file path is provided, only the 'value' column is retained for export.
+
+        Args:
+            file_path (str, optional): The path to the output JSON file. If None, returns the JSON string.
+
+        Returns:
+            str: The JSON representation of the metadata if file_path is None; otherwise, writes to the specified file.
+
+        Raises:
+            Exception: If metadata is not loaded before calling this method.
         """
 
         if self.metadata is None:
             raise Exception("No values to evaluate. Please load a metadata file first.")
 
-
-        if file_path is None:
-            #Remove non-metadata columns
-            for col in self.metadata.columns.to_numpy():
+        for col in self.metadata.columns.to_numpy():
+            if file_path is None:
+                # Remove non-metadata columns
                 if col != 'value' and col != 'message' and col != 'is_required':
                     self.metadata = self.metadata.drop(col, axis=1)
-
-            # Return metadata as JSON
-            return self.metadata.to_json(path_or_buf=file_path, orient='index')
-        else:
-            #Only keep metadata fields and values
-            for col in self.metadata.columns.to_numpy():
+            else:
+                # Only keep metadata fields and values
                 if col != 'value':
                     self.metadata = self.metadata.drop(col, axis=1)
 
-            # Write metadata to json file
-            self.metadata.to_json(path_or_buf=file_path, orient='index')
-            return self
+        # Write metadata to json file
+        return self.metadata.to_json(path_or_buf=file_path, orient='index')

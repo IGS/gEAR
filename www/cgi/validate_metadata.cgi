@@ -15,7 +15,7 @@ def main():
 
     user_upload_file_base = '../uploads/files'
 
-    result = {'success':0}
+    result = {'success':0, 'message':'', 'metadata':{}}
 
     form = cgi.FieldStorage()
     filename = form.getvalue('filename')
@@ -24,7 +24,7 @@ def main():
 
     session_id = form.getvalue('session_id')
     user = geardb.get_user_from_session_id(session_id)
-    
+
     if user is None:
         result['message'] = 'User ID not found. Please log in to continue.'
     else:

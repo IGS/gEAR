@@ -8,6 +8,7 @@ let datasetUid = null;
 let shareUid = null;
 let datasetFormat = null;   // set when user chooses a dataset type
 let spatialFormat = null;   // set when user chooses a spatial platform (if applicable)
+let performPrimaryAnalysis = true
 
 let processingStatus = null;
 const processingStatusCheckInterval = 10; // seconds
@@ -24,6 +25,36 @@ const optionalMetadataFields = ['metadata-contact-institute', 'metadata-platform
 ];
 
 /* --- Functions and Classes --- */
+/**
+ * Sends a POST request to add a primary analysis to the current dataset upload.
+ * Displays a success toast if the operation is successful, or a warning toast if not.
+ *
+ * @async
+ * @function addPrimaryAnalysisToDataset
+ * @returns {Promise<void>} Resolves when the operation is complete and the toast is shown.
+ */
+const addPrimaryAnalysisToDataset = async () => {
+    const {data} = await axios.post('./cgi/add_primary_analysis_to_dataset_upload.cgi', convertToFormData({
+        share_uid: shareUid,
+        dataset_format: datasetFormat,
+        session_id: getCurrentUser().session_id,
+    }));
+
+    document.getElementById('finalize-migrating-primary-analysis-li').classList.remove("is-hidden");
+    if (data.success) {
+        createToast('Primary analysis added successfully', data.message, 'is-success');
+
+        // If dataset was not single-cell or spatial, then we cannot have a primary analysis
+        if (!data.valid_primary_analysis) {
+            performPrimaryAnalysis = false;
+            document.getElementById('finalize-migrating-primary-analysis-li').classList.add("is-hidden");
+        }
+    } else {
+        // This is non-fatal, so just show a warning toast
+        createToast('Error adding primary analysis to dataset', data.message);
+        processingStatus = "error";
+    }
+}
 
 /**
  * Checks the current processing status of the dataset by making an asynchronous request
@@ -47,6 +78,7 @@ const checkDatasetProcessingStatus = async () => {
 
     // TODO: Handle the different statuses here
     if (processingStatus === 'complete') {
+        await addPrimaryAnalysisToDataset();
         document.getElementById('dataset-processing-submit').disabled = false;
     }
 }
@@ -87,16 +119,17 @@ const deleteUploadInProgress = async (shareUid, datasetId) => {
  * @returns {Promise<void>} Resolves when the upload finalization process is complete.
  */
 const finalizeUpload = async () => {
-    const formData = new FormData();
-    formData.append('share_uid', shareUid);
-    formData.append('session_id', getCurrentUser().session_id);
-    formData.append('dataset_uid', datasetUid);
-    formData.append('dataset_format', datasetFormat);
 
-    const datasetVisibility = document.querySelector('input[name=dataset-visibility]:checked').value;
-    formData.append('dataset_visibility', datasetVisibility);
+    const payload = {
+        dataset_uid: datasetUid,
+        share_uid: shareUid,
+        session_id: getCurrentUser().session_id,
+        dataset_format: datasetFormat,
+        perform_analysis_migration: performPrimaryAnalysis ? 1 : 0,
+        dataset_visibility: document.querySelector('input[name=dataset-visibility]:checked').value
+    }
 
-    const data = await apiCallsMixin.finalizeExpressionUpload(formData);
+    const data = await apiCallsMixin.finalizeExpressionUpload(payload);
 
     if (data['metadata_loaded']) {
         document.getElementById('finalize-storing-metadata').classList.remove('mdi-checkbox-blank-outline');
@@ -120,6 +153,14 @@ const finalizeUpload = async () => {
     } else {
         document.getElementById('finalize-migrating-userdata').classList.remove('mdi-checkbox-blank-outline');
         document.getElementById('finalize-migrating-userdata').classList.add('mdi-skull-scan');
+    }
+
+    if (data['primary_analysis_migrated']) {
+        document.getElementById('finalize-migrating-primary-analysis').classList.remove('mdi-checkbox-blank-outline');
+        document.getElementById('finalize-migrating-primary-analysis').classList.add('mdi-checkbox-marked');
+    } else {
+        document.getElementById('finalize-migrating-primary-analysis').classList.remove('mdi-checkbox-blank-outline');
+        document.getElementById('finalize-migrating-primary-analysis').classList.add('mdi-skull-scan');
     }
 
     if (data.success) {

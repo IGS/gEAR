@@ -135,11 +135,17 @@ def main():
         organism_ids = re.sub("[^,0-9]", "", organism_ids)
         wheres.append("d.organism_id in ({0})".format(organism_ids))
 
+    SPATIAL_DTYPES = ["spatial", "spatial-h5ad"]
+
     if dtypes:
         # Fix to catch single-cell variations
         for item in dtypes:
             if item == "single-cell-rnaseq":
                 dtypes.push("scRNA-seq")
+                break
+            # Add all spatial dtype variations (i.e. spatial-h5ad)
+            if item == "spatial":
+                dtypes.extend(SPATIAL_DTYPES)
                 break
 
         ## only alphanumeric characters and the dash are allowed here

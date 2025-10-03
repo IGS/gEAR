@@ -712,11 +712,11 @@
                           </li>
                         </ul>
                         <div class="control">
-                          <button data-format="h5ad" class="button is-primary is-fullwidth format-selector" disabled>
+                          <button data-format="h5ad" class="button is-primary is-fullwidth format-selector">
                             <span class="icon">
                               <i class="mdi mdi-cancel"></i>
                             </span>
-                            <span class="format-status">Not yet available</span>
+                            <span class="format-status">Choose</span>
                           </button>
                         </div>
                       </div>
@@ -909,7 +909,6 @@
                               </span>
                               <span>Storing metadata</span>
                             </span>
-                            </li>
                           </li>
                           <li>
                             <span class="icon-text">
@@ -918,16 +917,22 @@
                               </span>
                               <span id="finalize-migrating-h5ad-text">Migrate H5AD file</span>
                             </span>
-                            </li>
                           </li>
-                          <li></li>
+                          <li>
                             <span class="icon-text">
                               <span class="icon">
                               <i id="finalize-migrating-userdata" class="mdi mdi-checkbox-blank-outline"></i>
                               </span>
                               <span>Migrate user-uploaded source file</span>
                             </span>
-                            </li>
+                          </li>
+                          <li id="finalize-migrating-primary-analysis-li">
+                            <span class="icon-text">
+                              <span class="icon">
+                              <i id="finalize-migrating-primary-analysis" class="mdi mdi-checkbox-blank-outline"></i>
+                              </span>
+                              <span>Migrate primary analysis JSON</span>
+                            </span>
                           </li>
                           <li>
                             <span class="icon-text">
@@ -936,7 +941,6 @@
                               </span>
                               <span>Setting access rights</span>
                             </span>
-                            </li>
                           </li>
                         </ul>
                         <div class="field">

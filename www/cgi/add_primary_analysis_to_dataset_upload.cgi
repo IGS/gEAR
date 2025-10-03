@@ -36,7 +36,6 @@ The script is intended to be run as a CGI script during the upload process and o
 import cgi
 import json
 import os
-import re
 import sys
 import typing
 from pathlib import Path
@@ -50,7 +49,7 @@ lib_path = Path(__file__).resolve().parents[2].joinpath('lib')
 sys.path.insert(0, str(lib_path))
 
 import geardb
-from gear.analysis import get_primary_analysis, test_analysis_for_zarr
+from gear.analysis import H5adAdapter, ZarrAdapter
 
 sc.settings.verbosity = 0
 
@@ -58,7 +57,6 @@ if typing.TYPE_CHECKING:
     # This allows type-checkers to resolve types without importing the actual modules at runtime.
     # To avoid having runtime errors, enclose the typing in quotes (AKA forward-reference)
     from anndata import AnnData
-    from gear.analysis import Analysis, SpatialAnalysis
 
 # These should match in cgi/get_embedded_tsne_display.cgi
 gear_root_path = lib_path.parents[1]
@@ -78,41 +76,44 @@ def main() -> dict:
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
     share_uid = form.getvalue('share_uid')
+    dataset_format = form.getvalue('dataset_format', 'single-cell-rnaseq')
 
-    result = {"success": 0, "message": ""}
+    result = {"success": 0, "message": "", 'valid_primary_analysis': True}
+
+    if dataset_format not in ['single-cell-rnaseq', 'spatial']:
+        result['success'] = 1
+        result['valid_primary_analysis'] = False
+        result['message'] = 'This dataset format cannot be run in the single-cell workbench. Exiting gracefully.'
+        print(result['message'], file=sys.stderr)
+        return result
 
     user = geardb.get_user_from_session_id(session_id)
     if user is None:
         result['message'] = 'User ID not found. Please log in to continue.'
+        print(result['message'], file=sys.stderr)
         return result
 
     if not share_uid:
-        print("No share ID found for dataset. Please try upload again", file=sys.stderr)
+        result['message'] = 'No share ID found for dataset. Please try upload again.'
+        print(result['message'], file=sys.stderr)
         return result
 
     print("Processing share ID: {0}".format(share_uid))
 
-    ds = geardb.get_dataset_by_share_id(share_uid)
-    if ds is None:
-        print("No dataset found with that ID.", file=sys.stderr)
-        result['success'] = 0
+    # Load the metadata, to get spatial information
+    dataset_upload_dir = user_upload_file_base / session_id / share_uid
+    metadata_file = dataset_upload_dir / "metadata.json"
+    if not metadata_file.is_file():
+        result['message'] = 'Metadata file not found.'
+        print(result['message'], file=sys.stderr)
         return result
 
-    dataset_id = ds.id
-    is_spatial = ds.dtype == "spatial"
-
-    try:
-        ana = get_primary_analysis(dataset_id, is_spatial=is_spatial)
-    except Exception:
-        print("Analysis for this dataset is unavailable.", file=sys.stderr)
-        result['success'] = 0
-        return result
-
-    ana.vetting = 'owner'
+    with open(metadata_file, 'r') as f:
+        metadata = json.load(f)
+        dataset_id = metadata.get('dataset_uid', '')
 
     # Load the analysis JSON or create from template
-    dataset_upload_dir = user_upload_file_base / session_id / share_uid
-    analysis_json_path = dataset_upload_dir / f"{dataset_id}.pipeline.json"
+    analysis_json_path = dataset_upload_dir / "analysis_pipeline.json"
     if analysis_json_path.is_file():
         with open(analysis_json_path) as json_in:
             analysis_json = json.load(json_in)
@@ -125,15 +126,27 @@ def main() -> dict:
     analysis_json["id"] = dataset_id
     analysis_json["type"] = "primary"
     analysis_json["label"] = "Primary analysis"
-    analysis_json["dataset_id"] = dataset_id
     analysis_json["dataset"]["id"] = dataset_id
 
-    # Load the AnnData object
+    # Figure out how to retrieve the AnnData object based on the file type
     kwargs = {}
-    if not test_analysis_for_zarr(ana):
+    if dataset_format == "spatial":
+        upload_file = dataset_upload_dir / f"{share_uid}.zarr"
+        if not upload_file.is_dir():
+            result['message'] = f"Spatial dataset file not found for share ID: {share_uid}"
+            print(result['message'], file=sys.stderr)
+            return result
+        adapter = ZarrAdapter(upload_file)
+    else:
+        upload_file = dataset_upload_dir / f"{share_uid}.h5ad"
+        if not upload_file.is_file():
+            result['message'] = f"Dataset file not found for share ID: {share_uid}"
+            print(result['message'], file=sys.stderr)
+            return result
+        adapter = H5adAdapter(upload_file)
         kwargs["backed"] = True
 
-    adata = ana.get_adata(**kwargs)
+    adata = adapter.get_adata(**kwargs)
 
     h5ad_changes_made = False
     json_changes_made = False

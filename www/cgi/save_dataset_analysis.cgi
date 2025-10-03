@@ -16,7 +16,7 @@ import geardb
 from gear.analysis import Analysis, SpatialAnalysis
 
 
-def main():
+def main() -> dict:
     form = cgi.FieldStorage()
     analysis_id = form.getvalue('analysis_id')
     analysis_type = form.getvalue('analysis_type')
@@ -32,10 +32,7 @@ def main():
     if user is None:
         result['success'] = 0
         result['error'] = "User not found"
-        sys.stdout = original_stdout
-        print('Content-Type: application/json\n\n')
-        print(json.dumps(result))
-        return
+        return result
 
     if analysis_vetting in ["undefined", "null", ""]:
         analysis_vetting = None
@@ -44,10 +41,8 @@ def main():
     if not ds:
         print("No dataset found with that ID.", file=sys.stderr)
         result['success'] = 0
-        sys.stdout = original_stdout
-        print('Content-Type: application/json\n\n')
-        print(json.dumps(result))
-        return
+        return result
+
     is_spatial = ds.dtype == "spatial"
 
     if is_spatial:
@@ -69,11 +64,12 @@ def main():
         result['success'] = 0
         result['error'] = "An error occurred when attempting to write analysis pipeline path file"
 
-    sys.stdout = original_stdout
-    print('Content-Type: application/json\n\n')
-    print(json.dumps(result))
+    return result
 
 
 if __name__ == '__main__':
-    main()
+    result = main()
+    sys.stdout = original_stdout
+    print('Content-Type: application/json\n\n')
+    print(json.dumps(result))
 

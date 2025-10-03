@@ -66,13 +66,6 @@ def main():
             'type': source_analysis_type if source_analysis_type else None,
         }
 
-    dest_analysis_obj = None
-    if dest_analysis_id or dest_analysis_type:
-        dest_analysis_obj = {
-            'id': dest_analysis_id if dest_analysis_id else None,
-            'type': dest_analysis_type if dest_analysis_type else None,
-        }
-
     try:
         source_ana = get_analysis(source_analysis_obj, dataset_id, session_id, is_spatial=is_spatial)
     except Exception:
