@@ -125,9 +125,9 @@ PMID: 34172972`;
         })
     });
 
-/**
- * Controls for the left navbar visibility
- */
+    /**
+     * Controls for the left navbar visibility
+     */
     const navbarElementsToAnimate = document.querySelectorAll('.icon-text-part');
 
     /**
@@ -232,9 +232,9 @@ PMID: 34172972`;
         createToast("This feature is not yet available.", "is-warning");
     });
 
-/**
- * / End controls for the left navbar visibility
- */
+    /**
+     * / End controls for the left navbar visibility
+     */
 
     /*************************************************************************************
      Code related to the login process, which is available in the header across all pages.

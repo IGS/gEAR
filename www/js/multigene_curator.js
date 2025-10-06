@@ -1180,9 +1180,10 @@ curatorCommon.registerCuratorSpecificNavbarUpdates(curatorSpecificNavbarUpdates)
 
 
 const curatorSpecificOnLoad = async () => {
-    await fetchGeneCartData();
 
-    registerGeneListEventListeners();
+    registerGeneListEventListeners(apiCallsMixin);
+
+    await fetchGeneCartData();
 
     // Should help with lining things up on index page
     document.getElementById("dropdown-gene-lists").classList.remove("is-right");

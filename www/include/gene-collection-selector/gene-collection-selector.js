@@ -1,7 +1,5 @@
 "use strict";
 
-import { apiCallsMixin } from "../../js/common.v2.js?v=a4b3d6c";
-
 export const geneCollectionState = {
     "data": null,
     "labelIndex": {},
@@ -11,9 +9,17 @@ export const geneCollectionState = {
     "manuallyEnteredGenes": new Set()
 };
 
+let apiCallsMixin = null;
 
 // SAdkins - If I leave these global, then they are registered twice (once here and once in the entrypoint JS) leading to double event handling
-export const registerEventListeners = () => {
+export const registerEventListeners = (apiCallsMixinObj=null) => {
+    if (!apiCallsMixinObj) {
+        console.error("apiCallsMixin is not set.  Cannot register event listeners.");
+        return;
+    }
+
+    apiCallsMixin = apiCallsMixinObj;
+
     // Add event listener to dropdown trigger
     document.querySelector("#dropdown-gene-lists > button.dropdown-trigger").addEventListener("click", (event) => {
         const item = event.currentTarget;
@@ -193,6 +199,10 @@ export const registerEventListeners = () => {
  */
 export const fetchGeneCartData = async (shareId=null) => {
     try {
+        if (!apiCallsMixin) {
+            throw new Error("apiCallsMixin is not set.  Cannot fetch gene lists.");
+        }
+
         geneCollectionState.data = await apiCallsMixin.fetchGeneCarts({gcShareId: shareId, cartType: 'unweighted-list', includeMembers: false});
         document.getElementById('dropdown-gene-lists').classList.remove('is-loading');
         document.getElementById('dropdown-gene-lists').classList.remove('is-disabled');
@@ -210,6 +220,14 @@ export const fetchGeneCartData = async (shareId=null) => {
     }
 }
 
+/**
+ * Sets the active gene cart, updates the gene list UI, and manages selection state.
+ *
+ * @async
+ * @param {HTMLElement} cartRow - The DOM element representing the gene cart row.
+ * @param {'add'|'remove'|'view'} mode - The operation mode: 'add' to select, 'remove' to deselect, or 'view' to display only.
+ * @returns {Promise<void>} Resolves when the gene cart has been set and the UI updated.
+ */
 const setActiveGeneCart = async (cartRow, mode) => {
     // TODO: this needs a spinner while it loads
 
@@ -217,6 +235,11 @@ const setActiveGeneCart = async (cartRow, mode) => {
     document.getElementById('dropdown-content-genes').replaceChildren();
 
     // populate the gene list from this cart
+
+    if (!apiCallsMixin) {
+        throw new Error("apiCallsMixin is not set.  Cannot fetch gene list members");
+    }
+
     const geneListMemberData = await apiCallsMixin.fetchGeneCartMembers(cartRow.dataset.shareId);
     let genes = [];
 

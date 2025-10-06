@@ -1432,12 +1432,12 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         const urlParams = new URLSearchParams(window.location.search);
         const shareId = urlParams.get("share_id");
 
+		registerGeneListEventListeners(apiCallsMixin);
+
 		await Promise.all([
 			loadDatasetTree(shareId),
 			fetchGeneCartData()
 		]);
-
-		registerGeneListEventListeners();
 
         // Usage inside handlePageSpecificLoginUIUpdates
         if (urlParams.has("share_id")) {

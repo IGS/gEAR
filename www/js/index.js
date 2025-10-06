@@ -205,15 +205,15 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         populateUserHistoryTable();
     }
 
+    registerGeneListEventListeners(apiCallsMixin);
+    registerDatasetCollectionEventListeners(apiCallsMixin);
+
     document.getElementById("submit-expression-search").classList.add("is-loading");
     await Promise.all([
         fetchGeneCartData(),
         fetchDatasetCollections()
     ]);
     document.getElementById("submit-expression-search").classList.remove("is-loading");
-
-    registerGeneListEventListeners();
-    registerDatasetCollectionEventListeners();
 
     // Trigger the default dataset collection to be selected in the
     if (getCurrentUser().layout_share_id) {

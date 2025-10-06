@@ -1357,7 +1357,7 @@ class DatasetTile {
 
             // If the dataset is spatial, we can still render a spatial panel
             if (this.dataset.dtype === "spatial") {
-                console.log("Rendering configless spatial panel display.");
+                console.info("Rendering configless spatial panel display.");
                 const display = {
                     plot_type: "spatial_panel",
                     plotly_config: {

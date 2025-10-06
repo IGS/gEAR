@@ -2742,7 +2742,7 @@ const updateDatasetCollectionButtons = (collection=null) => {
 const updateDatasetCollections = async () => {
 
     // Fetch the dataset collections, which will update the dataset collection selector
-    await fetchDatasetCollections()
+    await fetchDatasetCollections();
 
     // Uses dataset-collection-selector.js variable
     const datasetCollectionData = datasetCollectionState.data;
@@ -2851,7 +2851,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Prep filters
     await loadOrganismList();
 
-    registerDatasetCollectionEventListeners();
+    registerDatasetCollectionEventListeners(apiCallsMixin);
 
     // Select the user's last remembered filter options
     const defaultOwnershipView = Cookies.get("default_collection_ownership_view");
@@ -2886,9 +2886,9 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 
     // If they passed search_string URL parameter, set that
-    let search_string = getUrlParameter("search_string");
-    if (search_string) {
-        document.getElementById("search-terms").value = search_string;
+    let searchString = getUrlParameter("search_string");
+    if (searchString) {
+        document.getElementById("search-terms").value = searchString;
     }
 
     await submitSearch();

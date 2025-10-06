@@ -1,12 +1,12 @@
 "use strict";
 
-import { apiCallsMixin } from "../../js/common.v2.js?v=a4b3d6c";
-
 // NOTE: This component depends on common.js and on Bulma CSS being imported in the parent HTML file
 
 // Terminology:
 // - patterns - The pattern source data
 // - weights - The individual patterns
+
+let apiCallsMixin = null;
 
 let patternsCartData = null;
 let flatPatternsCartData = null;
@@ -25,7 +25,14 @@ export const setSelectedPattern = (pattern) => {
 }
 
 // SAdkins - If I leave these global, then they are registered twice (once here and once in projection.js) leading to double event handling
-export const registerEventListeners = () => {
+export const registerEventListeners = (apiCallsMixinObj=null) => {
+    if (!apiCallsMixinObj) {
+        console.error("apiCallsMixin is not set.  Cannot register event listeners.");
+        return;
+    }
+
+    apiCallsMixin = apiCallsMixinObj;
+
     // Add event listener to dropdown trigger
     document.querySelector("#dropdown-pattern-lists > button.dropdown-trigger").addEventListener("click", (event) => {
         const item = event.currentTarget;
@@ -286,6 +293,10 @@ const createPatternListItem = (item, cart) => {
  */
 export const fetchPatternsData = async (shareId=null) => {
     try {
+        if (!apiCallsMixin) {
+            throw new Error("apiCallsMixin is not set.  Cannot fetch patterns data.");
+        }
+
         patternsCartData = await apiCallsMixin.fetchGeneCarts({gcShareId: shareId, includeMembers: false});
 
         flatPatternsCartData = [...patternsCartData.domain_carts, ...patternsCartData.group_carts, ...patternsCartData.public_carts, ...patternsCartData.user_carts, ...patternsCartData.shared_carts, ...patternsCartData.recent_carts]
@@ -348,6 +359,9 @@ const setActivePatternCartCategory = (category) => {
  * @returns {Promise<void>} A promise that resolves once the weights dropdown is populated.
  */
 export const populatePatternWeights = async () => {
+    if (!apiCallsMixin) {
+        throw new Error("apiCallsMixin is not set.  Cannot fetch pattern weights.");
+    }
 
     // data is a list of weight and top/buttom genes (if weighted-list) and if binary weights
     const data = await apiCallsMixin.fetchPatternElementList(selectedPattern.shareId, selectedPattern.gctype)

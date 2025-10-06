@@ -1,6 +1,6 @@
 "use strict";
 
-import { apiCallsMixin, getCurrentUser } from "../../js/common.v2.js?v=a4b3d6c";
+import { getCurrentUser } from "../../js/common.v2.js?v=a4b3d6c";
 
 export const datasetCollectionState = {
     "data": null,
@@ -9,11 +9,20 @@ export const datasetCollectionState = {
     "selectedLabel": null
 }
 
+let apiCallsMixin = null;
+
 // This many characters will be included and then three dots will be appended
 const DatasetCollectionSelectorLabelMaxLength = 35;
 
 // SAdkins - If I leave these global, then they are registered twice (once here and once in the entrypoint JS) leading to double event handling
-export const registerEventListeners = () => {
+export const registerEventListeners = (apiCallsMixinObj=null) => {
+    if (!apiCallsMixinObj) {
+        console.error("apiCallsMixin is not set.  Cannot register event listeners.");
+        return;
+    }
+
+    apiCallsMixin = apiCallsMixinObj;
+
     // Add event listener to dropdown trigger
     document.querySelector("#dropdown-dc > button.dropdown-trigger").addEventListener("click", (event) => {
         const item = event.currentTarget;
@@ -97,10 +106,14 @@ export const fetchDatasetCollections = async (shareId=null) => {
     const layoutShareId = shareId || datasetCollectionState.selectedShareId || null;
 
     try {
+        if (!apiCallsMixin) {
+            throw new Error("apiCallsMixin is not set.  Cannot fetch dataset collections.");
+        }
+
         datasetCollectionState.data = await apiCallsMixin.fetchDatasetCollections({includeMembers: false, layoutShareId});
 
-        document.querySelector('#dropdown-dc').classList.remove('is-loading');
-        document.querySelector('#dropdown-dc').classList.remove('is-disabled');
+        document.getElementById('dropdown-dc').classList.remove('is-loading');
+        document.getElementById('dropdown-dc').classList.remove('is-disabled');
 
         // build a label index for the dataset collections
         for (const category in datasetCollectionState.data) {

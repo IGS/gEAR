@@ -351,9 +351,6 @@ const updateGenesSelected = (searchTermString) => {
     }
 
     geneCollectionState.manuallyEnteredGenes = newManuallyEnteredGenes;
-
-    //console.log("Selected genes updated:", Array.from(geneCollectionState.selectedGenes));
-    //console.log("Manually entered genes updated:", Array.from(geneCollectionState.manuallyEnteredGenes));
 };
 
 /**
@@ -677,6 +674,9 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     const geneSymbolId = getUrlParameter('gene_symbol');
     shareUsed = getUrlParameter('share_used') === '1';
 
+    registerGeneListEventListeners(apiCallsMixin);
+    registerDatasetCollectionEventListeners(apiCallsMixin);
+
     // Wait until all pending API calls have completed before checking if we need to search
     document.getElementById("submit-expression-search").classList.add("is-loading");
     try {
@@ -684,7 +684,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         // but Promise.allSettled waits until all resolve/reject and lets you know which ones failed
         const [dc_result, org_result] = await Promise.all([
             parseGeneListURLParams(),
-            fetchDatasetCollections(layoutShareId),
+            fetchDatasetCollections(apiCallsMixin, layoutShareId),
             fetchOrganisms()
         ]);
     } catch (error) {
@@ -692,9 +692,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     } finally {
         document.getElementById("submit-expression-search").classList.remove("is-loading");
     }
-
-    registerGeneListEventListeners();
-    registerDatasetCollectionEventListeners();
 
     parseDatasetCollectionURLParams();
 

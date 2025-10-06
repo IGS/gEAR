@@ -42,7 +42,7 @@ const addPrimaryAnalysisToDataset = async () => {
 
     document.getElementById('finalize-migrating-primary-analysis-li').classList.remove("is-hidden");
     if (data.success) {
-        createToast('Primary analysis added successfully', data.message, 'is-success');
+        createToast('Primary analysis added successfully','is-success');
 
         // If dataset was not single-cell or spatial, then we cannot have a primary analysis
         if (!data.valid_primary_analysis) {
@@ -51,7 +51,7 @@ const addPrimaryAnalysisToDataset = async () => {
         }
     } else {
         // This is non-fatal, so just show a warning toast
-        createToast('Error adding primary analysis to dataset', data.message);
+        createToast('Error adding primary analysis to uploaded dataset');
         processingStatus = "error";
     }
 }
@@ -171,8 +171,10 @@ const finalizeUpload = async () => {
         document.getElementById('dataset-finalize-next-step').disabled = false;
         return;
     }
-    console.error(`ERROR: ${data}`);
-    document.getElementById('dataset-finalize-status-message').innerText = data.message;
+    msg = data.message || 'Error finalizing dataset upload';
+
+    console.error(`ERROR: ${msg}`);
+    document.getElementById('dataset-finalize-status-message').innerText = msg;
     document.getElementById('dataset-finalize-status-message-c').classList.remove('is-hidden');
 }
 
