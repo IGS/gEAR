@@ -142,6 +142,10 @@ def main():
     else:
         result["success"] = 0
         result["message"] = f"Unsupported dataset format: {dataset_format}"
+        return result
+
+    result["success"] = 1
+    result["message"] = "Dataset processed successfully."
     return result
 
 def process_h5ad(upload_dir: Path) -> None:
@@ -498,6 +502,12 @@ def process_spatial(upload_dir: Path, spatial_format: str) -> None:
     # get organism_id by converting sample_taxid(needed for some but not all spatial handlers)
     with open(metadata_file, 'r') as f:
         metadata = json.load(f)
+
+    # Update metadata for downstream uses
+    metadata["dataset_is_spatial"] = True  # ensure this is set
+    with open(metadata_file, 'w') as f:
+        json.dump(metadata, f, indent=4)
+
     sample_taxid = metadata.get("sample_taxid", None)
     organism_id=geardb.get_organism_id_by_taxon_id(sample_taxid)
     filepath = upload_dir / f"{share_uid}.tar.gz"

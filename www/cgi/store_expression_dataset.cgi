@@ -68,7 +68,7 @@ def main():
 
     if dataset_format == 'spatial':
         if not filename.endswith('tar.gz'):
-            result['message'] = 'Invalid file extension for Spatial format. Expected .tar or .tar.gz'
+            result['message'] = 'Invalid file extension for Spatial format. Expected .tar.gz'
             return result
 
         from gear.spatialhandler import SPATIALTYPE2CLASS

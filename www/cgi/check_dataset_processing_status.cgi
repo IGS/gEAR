@@ -53,6 +53,7 @@ def main():
     state = status.get('status', '')
 
     if state in 'complete':
+        status['progress'] = 100
         return status
 
     if state == 'processing':

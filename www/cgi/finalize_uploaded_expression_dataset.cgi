@@ -51,6 +51,7 @@ result = {
     "metadata_loaded": 0,
     "h5ad_migrated": 0,
     "userdata_migrated": 0,
+    "primary_analysis_migrated": 0,
     "message": ""
 }
 
@@ -63,6 +64,10 @@ def main() -> dict:
     dataset_id = form.getvalue('dataset_uid')
     dataset_format = form.getvalue('dataset_format')
     dataset_visibility = form.getvalue('dataset_visibility')
+
+    if dataset_format in ["null", None]:
+        result['message'] = 'No dataset format provided.'
+        return result
 
     perform_analysis_migration = form.getvalue("perform_analysis_migration", 0)
     # if string, convert to int
@@ -94,7 +99,7 @@ def main() -> dict:
         return result
 
     # Load the metadata into the database
-    metadata = Metadata(file_path=metadata_file)
+    metadata = Metadata(file_path=str(metadata_file))
     try:
         metadata.make_spatial_h5ad_adjustment(dataset_format)
         metadata.save_to_mysql(status='completed', is_public=is_public)
@@ -119,7 +124,6 @@ def main() -> dict:
         except Exception as e:
             result['message'] = 'Error migrating Zarr store: {}'.format(str(e))
             return result
-
     else:
         h5ad_file = dataset_upload_dir / f'{share_uid}.h5ad'
         if not h5ad_file.is_file():
@@ -171,6 +175,9 @@ def main() -> dict:
         except Exception as e:
             result['message'] = 'Error migrating spatial data tarball file: {}'.format(str(e))
             return result
+    elif dataset_format == "h5ad":
+        # The h5ad is the userdata too
+        result['userdata_migrated'] = 1
     else:
         print(f"DEBUG: dataset_format is {dataset_format}", file=sys.stderr)
 
@@ -185,6 +192,8 @@ def main() -> dict:
             except Exception as e:
                 result['message'] = 'Error migrating primary analysis JSON: {}'.format(str(e))
                 return result
+    else:
+        result['primary_analysis_migrated'] = 1
 
     # if we made it this far, all is well, so return success
     result['success'] = 1

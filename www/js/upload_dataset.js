@@ -45,7 +45,7 @@ const addPrimaryAnalysisToDataset = async () => {
         createToast('Primary analysis added successfully','is-success');
 
         // If dataset was not single-cell or spatial, then we cannot have a primary analysis
-        if (!data.valid_primary_analysis) {
+        if (!data.perform_primary_analysis) {
             performPrimaryAnalysis = false;
             document.getElementById('finalize-migrating-primary-analysis-li').classList.add("is-hidden");
         }
@@ -79,7 +79,14 @@ const checkDatasetProcessingStatus = async () => {
     // TODO: Handle the different statuses here
     if (processingStatus === 'complete') {
         await addPrimaryAnalysisToDataset();
-        document.getElementById('dataset-processing-submit').disabled = false;
+
+        // If still complete after the primary analysis step, enable the next step button
+        if (processingStatus === "complete") {
+            document.getElementById('dataset-processing-submit').disabled = false;
+        } else {
+            document.getElementById('step-process-dataset-status').textContent = processingStatus.charAt(0).toUpperCase() + processingStatus.slice(1);
+            document.getElementById('step-process-dataset-status-message').textContent = "Error adding primary analysis to dataset";
+        }
     }
 }
 
@@ -370,6 +377,8 @@ const loadUploadsInProgress = async () => {
                 clone.querySelector('tr').dataset.shareId = upload.share_id;
                 clone.querySelector('tr').dataset.datasetId = upload.dataset_id;
                 clone.querySelector('tr').dataset.loadStep = upload.load_step;
+                clone.querySelector('tr').dataset.performPrimaryAnalysis = upload.perform_primary_analysis; // true/false
+                clone.querySelector('tr').dataset.datasetIsSpatial = upload.dataset_is_spatial; // true/false
 
                 clone.querySelector('.submission-share-id').textContent = upload.share_id;
                 clone.querySelector('.submission-status').textContent = upload.status;
@@ -389,6 +398,15 @@ const loadUploadsInProgress = async () => {
 
                     if (row.dataset.datasetId) {
                         datasetUid = row.dataset.datasetId;
+                    }
+
+                    performPrimaryAnalysis = row.dataset.performPrimaryAnalysis;
+                    if (performPrimaryAnalysis) {
+                        document.getElementById('finalize-migrating-primary-analysis-li').classList.add("is-hidden");
+                    }
+
+                    if (row.dataset.datasetIsSpatial) {
+                        datasetFormat = 'spatial';
                     }
 
                     // Do we want to dynamically load the next step or page refresh for it?
