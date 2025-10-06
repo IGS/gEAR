@@ -557,12 +557,13 @@ const datasetTree = new DatasetTree({
  * is displayed and an error is thrown.
  *
  * @async
+ * @param {URLSearchParams} urlParams - The URLSearchParams object containing the URL parameters.
  * @param {string} paramName - The name of the URL parameter to look for.
  * @param {function} [fetchInfoFn] - Optional async function to fetch dataset info using the parameter value.
  *        Should return a Promise that resolves to an array of objects containing a `dataset_id` property.
  * @throws {Error} If the dataset cannot be accessed or found in the dataset tree.
  */
-const activateDatasetFromParam = async (paramName, fetchInfoFn) => {
+const activateDatasetFromParam = async (urlParams, paramName, fetchInfoFn) => {
     if (!urlParams.has(paramName)) {
         return;
     }
@@ -1939,13 +1940,13 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
         // Usage inside handlePageSpecificLoginUIUpdates
         if (urlParams.has("share_id")) {
-            return await activateDatasetFromParam("share_id", async (shareId) =>
+            return await activateDatasetFromParam(urlParams, "share_id", async (shareId) =>
                 await apiCallsMixin.fetchDatasetListInfo({permalink_share_id: shareId})
             );
         } else if (urlParams.has("dataset_id")) {
     		// Legacy support for dataset_id
 
-            await activateDatasetFromParam("dataset_id");
+            await activateDatasetFromParam(urlParams, "dataset_id");
         }
 	} catch (error) {
 		logErrorInConsole(error);
