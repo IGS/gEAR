@@ -452,7 +452,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     // Register event listeners for pattern and dataset collection selectors
     registerPatternEventListeners(apiCallsMixin);
-    registerDatasetCollectionEventListeners(apiCallsMixin);
+    registerDatasetCollectionEventListeners(apiCallsMixin, getCurrentUser());
 
     selectedPattern = createSelectedPatternProxy(getSelectedPattern());
 

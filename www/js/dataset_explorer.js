@@ -2851,7 +2851,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Prep filters
     await loadOrganismList();
 
-    registerDatasetCollectionEventListeners(apiCallsMixin);
+    registerDatasetCollectionEventListeners(apiCallsMixin, getCurrentUser());
 
     // Select the user's last remembered filter options
     const defaultOwnershipView = Cookies.get("default_collection_ownership_view");

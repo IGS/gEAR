@@ -206,7 +206,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 
     registerGeneListEventListeners(apiCallsMixin);
-    registerDatasetCollectionEventListeners(apiCallsMixin);
+    registerDatasetCollectionEventListeners(apiCallsMixin, getCurrentUser());
 
     document.getElementById("submit-expression-search").classList.add("is-loading");
     await Promise.all([

@@ -675,7 +675,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     shareUsed = getUrlParameter('share_used') === '1';
 
     registerGeneListEventListeners(apiCallsMixin);
-    registerDatasetCollectionEventListeners(apiCallsMixin);
+    registerDatasetCollectionEventListeners(apiCallsMixin, getCurrentUser());
 
     // Wait until all pending API calls have completed before checking if we need to search
     document.getElementById("submit-expression-search").classList.add("is-loading");
