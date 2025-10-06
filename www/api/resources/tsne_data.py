@@ -730,7 +730,7 @@ def dedup_genes(adata: "AnnData", ana: "Analysis | SpatialAnalysis") -> dict:
 
 def generate_tsne_figure(
     adata: "AnnData",
-    ana: "Analysis" | "SpatialAnalysis",
+    ana: "Analysis | SpatialAnalysis",
     gene_symbols: list,
     plot_type: str,
     x_axis: str,
