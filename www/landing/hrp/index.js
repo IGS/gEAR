@@ -21,12 +21,25 @@ window.onload=function() {
       if (papers.length > 0) {
         displayPaper(currentPaperIndex); // Set the initial paper
       }
+
+      // Update the counter display
+      document.getElementById('total-paper-count').textContent = papers.length;
+      document.getElementById('current-paper-count').textContent = currentPaperIndex + 1;
+
     })
     .catch(error => console.error('Error fetching papers:', error));
 
     // Event listener for the next button
     document.getElementById('next-paper-btn').addEventListener('click', () => {
         currentPaperIndex = (currentPaperIndex + 1) % papers.length;
+        document.getElementById('current-paper-count').textContent = currentPaperIndex + 1;
+        displayPaper(currentPaperIndex);
+    });
+
+    // Event listener for the previous button
+    document.getElementById('prev-paper-btn').addEventListener('click', () => {
+        currentPaperIndex = (currentPaperIndex - 1 + papers.length) % papers.length;
+        document.getElementById('current-paper-count').textContent = currentPaperIndex + 1;
         displayPaper(currentPaperIndex);
     });
 };
