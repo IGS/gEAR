@@ -18,14 +18,19 @@ window.onload=function() {
       // Filter out papers without titles (usually just the template entry at the end)
       papers = papers.filter(paper => paper.title && paper.title.trim() !== '');
 
-      if (papers.length > 0) {
-        displayPaper(currentPaperIndex); // Set the initial paper
-      }
-
       // Update the counter display
       document.getElementById('total-paper-count').textContent = papers.length;
       document.getElementById('current-paper-count').textContent = currentPaperIndex + 1;
 
+      if (papers.length > 0) {
+        displayPaper(currentPaperIndex); // Set the initial paper
+      }
+
+      // shuffle all papers except the first one
+      for (let i = papers.length - 1; i > 1; i--) {
+        const j = Math.floor(Math.random() * (i - 1)) + 1; // random index from 1 to i
+        [papers[i], papers[j]] = [papers[j], papers[i]]; // swap elements
+      }
     })
     .catch(error => console.error('Error fetching papers:', error));
 
