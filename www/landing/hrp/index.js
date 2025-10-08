@@ -18,8 +18,18 @@ window.onload=function() {
       // Filter out papers without titles (usually just the template entry at the end)
       papers = papers.filter(paper => paper.title && paper.title.trim() !== '');
 
+      // Update the counter display
+      document.getElementById('total-paper-count').textContent = papers.length;
+      document.getElementById('current-paper-count').textContent = currentPaperIndex + 1;
+
       if (papers.length > 0) {
         displayPaper(currentPaperIndex); // Set the initial paper
+      }
+
+      // shuffle all papers except the first one
+      for (let i = papers.length - 1; i > 1; i--) {
+        const j = Math.floor(Math.random() * (i - 1)) + 1; // random index from 1 to i
+        [papers[i], papers[j]] = [papers[j], papers[i]]; // swap elements
       }
     })
     .catch(error => console.error('Error fetching papers:', error));
@@ -27,6 +37,14 @@ window.onload=function() {
     // Event listener for the next button
     document.getElementById('next-paper-btn').addEventListener('click', () => {
         currentPaperIndex = (currentPaperIndex + 1) % papers.length;
+        document.getElementById('current-paper-count').textContent = currentPaperIndex + 1;
+        displayPaper(currentPaperIndex);
+    });
+
+    // Event listener for the previous button
+    document.getElementById('prev-paper-btn').addEventListener('click', () => {
+        currentPaperIndex = (currentPaperIndex - 1 + papers.length) % papers.length;
+        document.getElementById('current-paper-count').textContent = currentPaperIndex + 1;
         displayPaper(currentPaperIndex);
     });
 };
