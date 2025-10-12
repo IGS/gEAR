@@ -17,11 +17,42 @@ Other things to include:
 
 ## Installation
 
-Setting up your own portal is admittedly a bit of work.  There are a lot of components to the portal and running on a server with at least 16 cores and 100GB+ of RAM is recommended.  The process is documented in the [setup.new_server.notes.md](docs/setup.new_server.notes.md) document.
+Setting up your own portal is admittedly a bit of work.  There are a lot of components to the portal and running on a server with at least 16 cores and 100GB+ of RAM is recommended.  The process is documented in the [Developer Documentation](docs/developer/README.md).
+
+For detailed setup instructions, see:
+- [Server Setup Guide](docs/developer/setup/README.md) - Complete installation guide
+- [Legacy Setup Notes](docs/setup.new_server.notes.md) - Original setup documentation (for reference)
 
 ## Usage
 
 To learn how to use the software you can go to any existing portal and click the documentation link at the top, which will take you to a page like [this one](https://umgear.org/manual.html).  It has walk-through slides and YouTube videos for most topics.
+
+## Developer Documentation
+
+For developers and team members working on gEAR:
+
+- **[Developer Guide](docs/developer/README.md)** - Main developer documentation
+  - Architecture overview
+  - Development workflow
+  - Code style guidelines
+  - Common tasks
+
+- **[Setup Guides](docs/developer/setup/README.md)** - Server installation and configuration
+  - New server setup
+  - Component-specific guides (MySQL, Apache, Python, R, RabbitMQ)
+  - Docker development environment
+
+- **[Utility Scripts](docs/developer/scripts/README.md)** - Documentation for 105+ scripts in `/bin`
+  - Data conversion and format scripts
+  - H5AD manipulation tools
+  - Database loading scripts
+  - Validation and testing utilities
+  - Dataset management tools
+
+- **[Microservices](docs/developer/services/README.md)** - Service documentation
+  - ProjectR service (matrix projection)
+  - Spatial panel service
+  - RabbitMQ consumers
 
 ## Known issues
 
