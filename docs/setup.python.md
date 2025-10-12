@@ -1,5 +1,10 @@
 # Python setup instructions
 
+> **⚠️ DEPRECATED**: This file has been moved to `/docs/developer/setup/python.md`
+> Please use the new [Developer Documentation](developer/README.md) structure.
+> See [DEPRECATED.md](DEPRECATED.md) for more information about the documentation reorganization.
+
+
 ## Overview
 
 These are instructions for setting up the Python environment, tested on Ubuntu 22.04.  Why not virtualenv or any

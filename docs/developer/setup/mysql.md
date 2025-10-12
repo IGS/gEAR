@@ -1,10 +1,5 @@
 # Set up the initial database
 
-> **⚠️ DEPRECATED**: This file has been moved to `/docs/developer/setup/mysql.md`
-> Please use the new [Developer Documentation](developer/README.md) structure.
-> See [DEPRECATED.md](DEPRECATED.md) for more information about the documentation reorganization.
-
-
 ## New portals
 
 ```bash

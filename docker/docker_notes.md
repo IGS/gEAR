@@ -1,5 +1,8 @@
 # Notes about the Docker setup
 
+> **📝 NOTE**: This documentation has been consolidated into `/docs/developer/setup/docker.md`  
+> See the [Developer Documentation](../docs/developer/README.md) for the complete guide.
+
 ## Before building
 
 * From the gEAR root, `cd docker`

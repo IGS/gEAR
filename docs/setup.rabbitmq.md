@@ -1,5 +1,10 @@
 # Setting up RabbitMQ
 
+> **⚠️ DEPRECATED**: This file has been moved to `/docs/developer/setup/rabbitmq.md`
+> Please use the new [Developer Documentation](developer/README.md) structure.
+> See [DEPRECATED.md](DEPRECATED.md) for more information about the documentation reorganization.
+
+
 RabbitMQ is needed to act as a message broker, so that some of the load is taken off of the Flask instance when performing API requests.  In particular, this is relevant to the projectR API calls, where some of the dataset operations can be memory-intensive. By putting this responsibility outside of the Apache worker, we can hopefully prevent Apache from crashing, and better control the load of memory-intensive requests
 
 To install RabbitMQ on your server, run the script here (and be sure to click the tab on this page for your specific OS version):

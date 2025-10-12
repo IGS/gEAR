@@ -1,5 +1,8 @@
 # system.d files
 
+> **📝 NOTE**: This documentation has been consolidated into `/docs/developer/setup/systemd.md`  
+> See the [Developer Documentation](../docs/developer/README.md) for the complete guide.
+
 These are service files to place in `/etc/systemd/system/` to run as a service.
 
 The "@" in the service file name indicates that this file is a template file.  You can spawn off workers off of this template by appending numbers after the "@". For instance, if you have a "worker@.service" template, you can spawn off "worker@2.service", "worker@2.service", etc. You can also just use the ".target" file to group all these workers together as a service rather than having to start each indiviudally. See https://www.stevenrombauts.be/2019/01/run-multiple-instances-of-the-same-systemd-unit/ for more info on all this.

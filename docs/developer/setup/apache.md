@@ -1,10 +1,5 @@
 # Apache configuration notes for gEAR instances
 
-> **⚠️ DEPRECATED**: This file has been moved to `/docs/developer/setup/apache.md`
-> Please use the new [Developer Documentation](developer/README.md) structure.
-> See [DEPRECATED.md](DEPRECATED.md) for more information about the documentation reorganization.
-
-
 This document is intended to capture all the customizations to the apache2 config files needed for a gEAR instance to operate properly.  The paths given are those for a standard Ubuntu installation, but adjust as needed for another platform.
 
 ## Enabling mod-rewrite, CGI and WSGI
