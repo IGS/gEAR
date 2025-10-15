@@ -174,7 +174,7 @@ def create_heatmap(dataset_id):
     adata = ana.get_adata(backed=False)
     """
     import anndata
-    adata = anndata.read("/var/www/datasets/{}.h5ad".format(dataset_id))
+    adata = anndata.read_h5ad("/var/www/datasets/{}.h5ad".format(dataset_id))
 
     adata.obs = order_by_time_point(adata.obs)
 
