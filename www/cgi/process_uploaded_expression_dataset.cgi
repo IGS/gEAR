@@ -199,16 +199,14 @@ def process_3tab(upload_dir: Path) -> None:
         if infile.name.startswith('.'):
             continue
 
-        filepath = "{0}/{1}".format(upload_dir, infile)
+        filepath = "{0}/{1}".format(upload_dir, infile.name)
 
         # Read each file as pandas dataframes
         if infile.name == 'expression.tab' or 'DataMTX.tab' in infile.name:
             expression_matrix_path = filepath
         elif infile.name == 'observations.tab' or 'COLmeta.tab' in infile.name:
-            #print("Reading observations file: {0}".format(filepath), file=sys.stderr, flush=True)
             obs = pd.read_table(filepath, sep='\t', index_col=0, header=0)
         elif infile.name == 'genes.tab' or 'ROWmeta.tab' in infile.name:
-            #print("Reading genes file: {0}".format(filepath), file=sys.stderr, flush=True)
             var = pd.read_table(filepath, sep='\t', index_col=0, header=0)
 
     if obs is None:
