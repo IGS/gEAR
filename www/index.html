@@ -200,11 +200,13 @@
                                 </div>
                                 <div class="control">
                                   <div class="select">
-                                    <select>
-                                      <option>All Technologies</option>
-                                      <option>scRNA-seq</option>
-                                      <option>RNA-seq (bulk)</option>
-                                      <option>Microarray</option>
+                                    <select id="dataset-type-choices">
+                                      <option value="all" selected>All technologies</option>
+                                      <option value="bulk-rnaseq">Bulk RNASeq</option>
+                                      <option value="epiviz">Epigenetic</option>
+                                      <option value="microarray">Microarray</option>
+                                      <option value="single-cell-rnaseq">sc-RNASeq</option>
+                                      <option value="spatial">Spatial</option>
                                     </select>
                                   </div>
                                 </div>
