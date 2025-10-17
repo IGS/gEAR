@@ -485,7 +485,7 @@ class SpatialFigure:
         if self.spatial_img is None:
             raise ValueError("Spatial image is not provided. Should not have been called.")
 
-        img = self.spatial_img
+        img = self.spatial_img.squeeze()
 
         # Ensure image is uint8 for consistent contrast (256-color channels)
         # Xenium images are uint16, so this is why we need to convert

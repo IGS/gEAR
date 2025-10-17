@@ -1,6 +1,7 @@
 import gc
 import logging
 import sys
+import traceback
 import warnings
 from pathlib import Path
 
@@ -101,6 +102,7 @@ class SpatialCondensedSubplot(SpatialFigure):
         use_clusters: bool = False,
         **params,
     ):
+
         super().__init__(
             settings,
             df,
@@ -115,7 +117,7 @@ class SpatialCondensedSubplot(SpatialFigure):
         # Preserve the original dataframe for filtering
         self.orig_df = df
 
-        self.final_col = 3 if spatial_img is not None else 2
+        self.final_col = 3 if self.spatial_img is not None else 2
 
         self.selections_dict: dict[str, float] = {}
         self.use_clusters = use_clusters
@@ -551,60 +553,54 @@ class SpatialPanel(pn.viewable.Viewer):
         )
 
     def init_data(self):
-        yield self.loading_indicator("Processing data file...")
+        try:
+            yield self.loading_indicator("Processing data file...")
 
-        def create_adata_pkg():
+            def create_adata():
+                try:
+                    self.prep_sdata()
+                    adata = self.prep_adata()
+                except ValueError:
+                    raise
+
+                return adata
+
+            # Load the Anndata object (+ image name) from cache or create it if it does not exist, with a 1-week time-to-live
             try:
-                self.prep_sdata()
-                adata = self.prep_adata()
-            except ValueError:
+                adata = create_adata()
+            except ValueError as e:
+                yield pn.pane.Alert(f"Error: {e}", alert_type="danger")
                 raise
 
-            adata_pkg = {"adata": adata, "img_name": self.spatial_obj.img_name}
-            return adata_pkg
+            self.dataset_adata_orig = adata  # Original dataset adata
+            self.dataset_adata = (
+                self.dataset_adata_orig.copy()
+            )  # Copy we manipulate (filtering, etc.)
+            self.adata = self.dataset_adata.copy()  # adata object to use for plotting
 
-        adata_cache_label = f"{self.dataset_id}_adata"
+            # Modify the adata object to use the projection ID if it exists
+            if self.projection_id:
+                self.adata = self.create_projection_adata()
 
-        # Load the Anndata object (+ image name) from cache or create it if it does not exist, with a 1-week time-to-live
-        try:
-            adata_pkg = pn.state.as_cached(
-                adata_cache_label, create_adata_pkg, ttl=CACHE_EXPIRATION
+            if self.settings.expression_min_clip is not None:
+                self.adata = clip_expression_values(self.adata, min_clip=self.settings.expression_min_clip)
+
+            self.adata_orig = (
+                self.adata.copy()
+            )  # This is to restore when the min_genes slider is changed
+
+            yield self.loading_indicator(
+                "Processing data to create plots. This may take a minute..."
             )
-        except ValueError as e:
+
+            self.refresh_dataframe(self.min_genes)
+
+            yield self.refresh_figures()
+        except Exception as e:
+            logging.error(traceback.format_exc())
             yield pn.pane.Alert(f"Error: {e}", alert_type="danger")
-            raise
 
-        self.dataset_adata_orig = adata_pkg["adata"]  # Original dataset adata
-        self.dataset_adata = (
-            self.dataset_adata_orig.copy()
-        )  # Copy we manipulate (filtering, etc.)
-        self.adata = self.dataset_adata.copy()  # adata object to use for plotting
-
-        # Modify the adata object to use the projection ID if it exists
-        if self.projection_id:
-            self.adata = self.create_projection_adata()
-
-        if self.settings.expression_min_clip is not None:
-            self.adata = clip_expression_values(self.adata, min_clip=self.settings.expression_min_clip)
-
-        self.adata_orig = (
-            self.adata.copy()
-        )  # This is to restore when the min_genes slider is changed
-
-        self.spatial_img = None
-        if adata_pkg["img_name"]:
-            # In certain conditions, the image multi-array may need to be squeezed so that PIL can read it
-            self.spatial_img = self.adata.uns["spatial"][adata_pkg["img_name"]][
-                "images"
-            ]["hires"].squeeze()
-
-        yield self.loading_indicator(
-            "Processing data to create plots. This may take a minute..."
-        )
-
-        self.refresh_dataframe(self.min_genes)
-        yield self.refresh_figures()
-
+    @pn.io.profile('prep_sdata', engine="pyinstrument")
     def prep_sdata(self):
         zarr_path = spatial_path / f"{self.dataset_id}.zarr"
         if not zarr_path.exists():
@@ -624,27 +620,62 @@ class SpatialPanel(pn.viewable.Viewer):
 
         # Ensure the spatial data type is supported
         if self.platform not in SPATIALTYPE2CLASS.keys():
-            print("Invalid or unsupported spatial data type")
-            print("Supported types: {0}".format(SPATIALTYPE2CLASS.keys()))
-            sys.exit(1)
+            logging.error("Invalid or unsupported spatial data type")
+            logging.error("Supported types: {0}".format(SPATIALTYPE2CLASS.keys()))
+            raise ValueError(
+                f"Invalid or unsupported spatial data type: {self.platform}"
+            )
 
         # Use uploader class to determine correct helper functions
         self.spatial_obj = SPATIALTYPE2CLASS[self.platform]()
         self.spatial_obj.sdata = sdata
+        self.spatial_obj.subset_sdata()
+
         # Dictates if this will be a 2- or 3-plot figure
         self.has_images = self.spatial_obj.has_images
 
-        # Filter by bounding box (mostly for images)
-        self.spatial_obj.filter_sdata_by_coords()
+        # adjust and scale coordinates and associated elements
+        self.spatial_obj = self.spatial_obj.scale_and_translate_sdata()
+
+        # Convert image to dataframe if it exists
+        self.spatial_img = None
+        try:
+            self.spatial_img = self.spatial_obj.extract_img()
+        except Exception as e:
+            # This is not a fatal error. Some datasets do not have images
+            logging.info(f"No image found or error converting image to dataframe: {e}")
+
+        # The SpatialData object table should have coordinates, but they are not translated into the image space
+        # Each observation has an associated polygon "shape" in the image space, and we can get the centroid of that shape
+        centroids_df = self.spatial_obj.convert_spots_to_df()
+        if centroids_df is None:
+            raise ValueError("Could not extract spatial observation locations")
+
+        # Add spatial coords. Not all locations may be present in adata after filtering
+        centroids_df = centroids_df.rename(columns={"x": "spatial1", "y": "spatial2"})
+        dataframe = self.spatial_obj.sdata.tables["table"].obs
+
+        # Compute the dataframe if it's a Dask dataframe (since we cannot merge into a Dask dataframe)
+        if hasattr(dataframe, "compute"):
+            dataframe = dataframe.compute()
+        if hasattr(centroids_df, "compute"):
+            centroids_df = centroids_df.compute()
+
+        # Add the centroid info to the AnnData table. Inner join in case location ID does not exist in observation
+        region_id = self.spatial_obj.region_id
+
+        self.spatial_obj.sdata.tables["table"].obs = dataframe.merge(centroids_df, on=region_id, how="inner")
 
     def prep_adata(self):
         # Create AnnData object
         # Need to include image since the bounding box query does not filter the image data by coordinates
         # Each Image is downscaled (or upscaled) during rendering to fit a 2000x2000 pixels image (downscaled_hires)
         try:
-            self.spatial_obj.convert_sdata_to_adata()
-        except Exception as e:
-            print("Error converting sdata to adata:", str(e), file=sys.stderr)
+            #self.spatial_obj.convert_sdata_to_adata()
+            self.spatial_obj.adata = self.spatial_obj.sdata.tables["table"]
+        except Exception:
+            logging.error("Error converting sdata to adata:")
+            logging.error(traceback.format_exc())
             raise ValueError(
                 "Could not convert sdata to adata. Check the spatial data type and bounding box coordinates."
             )
@@ -677,7 +708,7 @@ class SpatialPanel(pn.viewable.Viewer):
                 X=X, obs=obs, var=var, obsm=obsm, uns=uns, filemode="r"
             )
         except Exception as e:
-            print(str(e), file=sys.stderr)
+            logging.error(traceback.format_exc())
             raise ValueError("Could not create projection AnnData object from CSV.")
         # Close dataset adata so that we do not have a stale opened object
         if dataset_adata.isbacked:
@@ -720,19 +751,16 @@ class SpatialPanel(pn.viewable.Viewer):
         selected.var.index = pd.Index(["raw_value"])
         dataframe = selected.to_df()
 
-        # Add spatial coords from adata.obsm
-        X, Y = (0, 1)
-        dataframe["spatial1"] = adata.obsm["spatial"].transpose()[X].tolist() # type: ignore
-        dataframe["spatial2"] = adata.obsm["spatial"].transpose()[Y].tolist()
+        # Add spatial coords
+        dataframe["spatial1"] = selected.obs["spatial1"]
+        dataframe["spatial2"] = selected.obs["spatial2"]
 
         # Add cluster info
         if "clusters" not in selected.obs:
             raise ValueError("No cluster information found in adata.obs")
 
         dataframe["clusters"] = selected.obs["clusters"].astype("category")
-        dataframe["clusters_cat_codes"] = dataframe["clusters"].cat.codes.astype(
-            "category"
-        )
+        dataframe["clusters_cat_codes"] = dataframe["clusters"].cat.codes.astype("category")
 
         self.cluster_map = {
             code: dataframe[dataframe["clusters_cat_codes"] == code][
@@ -773,8 +801,6 @@ class SpatialPanel(pn.viewable.Viewer):
         self.dataset_adata = self.dataset_adata[self.df.index]
         self.adata = self.adata[self.df.index]
 
-        return
-
     def refresh_figures(self):
         self.condensed_fig_obj = None
 
@@ -794,8 +820,6 @@ class SpatialPanel(pn.viewable.Viewer):
         )
         self.condensed_fig = self.condensed_fig_obj.refresh_spatial_fig()
         self.condensed_pane.object = self.condensed_fig
-
-        gc.collect()  # Collect garbage to free up memory
 
         return self.plot_layout
 

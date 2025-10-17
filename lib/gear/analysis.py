@@ -735,7 +735,7 @@ class ZarrAdapter:
         spatial_obj.sdata = sdata
 
         # Filter by bounding box (mostly for images)
-        spatial_obj.filter_sdata_by_coords()
+        spatial_obj.scale_and_translate_sdata()
 
         if include_images is None:
             include_images = spatial_obj.has_images
