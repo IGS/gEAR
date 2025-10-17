@@ -884,7 +884,7 @@ class SpatialPanel(pn.viewable.Viewer):
             )
             raise
 
-    @pn.io.profile(name="prep_sdata_expanded", engine="pyinstrument")
+    #@pn.io.profile(name="prep_sdata_expanded", engine="pyinstrument")
     def prep_sdata(self):
         zarr_path = spatial_path / f"{self.dataset_id}.zarr"
         if not zarr_path.exists():

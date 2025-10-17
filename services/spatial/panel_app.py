@@ -600,7 +600,7 @@ class SpatialPanel(pn.viewable.Viewer):
             logging.error(traceback.format_exc())
             yield pn.pane.Alert(f"Error: {e}", alert_type="danger")
 
-    @pn.io.profile('prep_sdata', engine="pyinstrument")
+    #@pn.io.profile('prep_sdata', engine="pyinstrument")
     def prep_sdata(self):
         zarr_path = spatial_path / f"{self.dataset_id}.zarr"
         if not zarr_path.exists():
