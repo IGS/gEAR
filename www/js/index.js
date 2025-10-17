@@ -103,6 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     });
+
+    loadOrganismList();
 });
 
 
@@ -181,6 +183,28 @@ const populateUserHistoryTable = async () => {
         }
     } catch (error) {
         console.error(error);
+    }
+}
+
+/**
+ * Loads the list of organisms from the server and populates the organism choices on the 
+ * datasets tab
+ * @function
+ * @returns {void}
+ */
+const loadOrganismList = async () => {
+    try {
+        const data = await apiCallsMixin.fetchOrganismList();
+        const organismChoices = document.getElementById("organism-choices"); // <select> element
+        for (const organism of data.organisms) {
+            const option = document.createElement("option");
+            option.value = organism.id;
+            option.textContent = organism.label;
+            organismChoices.appendChild(option);
+        }
+    } catch (error) {
+        logErrorInConsole(error);
+        createToast("Failed to load organism list");
     }
 }
 
