@@ -2875,6 +2875,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         }
     }
     if (defaultDateAddedView && getCurrentUser().session_id) {
+        // deselect All and select the cookie saved view
+        document.querySelector("#controls-date-added li.js-all-selector").classList.remove("js-selected");
         document.querySelector(`#controls-date-added li[data-dbval='${defaultDateAddedView}']`).classList.add("js-selected");
     }
     if (defaultDatasetTypeView && getCurrentUser().session_id) {
