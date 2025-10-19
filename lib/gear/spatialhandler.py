@@ -53,7 +53,7 @@ class SpatialHandler(ABC):
 
     Methods:
         process_file(filepath: str) -> "SpatialHandler": Reads and processes a spatial data file (abstract).
-        convert_spots_to_df() -> pd.DataFrame: Converts spot data to a pandas DataFrame.
+        merge_centroids_with_obs() -> pd.DataFrame: Converts spot data to a pandas DataFrame.
         convert_sdata_to_adata(include_images: bool | None = None, table_name=None) -> "SpatialHandler": Converts SpatialData to AnnData.
         extract_img() -> np.ndarray: Extracts an image as a NumPy array.
         scale_and_translate_sdata(set_to_zero=True, apply_scale=True) -> "SpatialHandler": Scales and translates spatial data.
@@ -208,15 +208,42 @@ class SpatialHandler(ABC):
         """
         pass
 
-    def convert_spots_to_df(self) -> pd.DataFrame:
+    def merge_centroids_with_obs(self) -> "SpatialHandler":
         """
-        Converts the spot data to a pandas DataFrame.
+        Merges spatial centroid coordinates with the observation table of the spatial dataset.
+
+        This method retrieves centroid coordinates for the specified region and coordinate system,
+        renames the coordinate columns to 'spatial1' and 'spatial2', and merges them with the
+        observation DataFrame (`obs`) of the main data table. The merge is performed as an inner join
+        on the region identifier to ensure only matching observations are retained. Handles both
+        pandas and Dask DataFrames by computing them if necessary.
+
+        Raises:
+            ValueError: If centroid extraction fails.
 
         Returns:
-            pd.DataFrame: A DataFrame containing the centroid values of an observation with columns for x, y coordinates.
+            SpatialHandler: The current instance with updated observation data including centroid coordinates.
         """
 
-        return sd.get_centroids(self.sdata[self.region_name], coordinate_system=self.coordinate_system)
+        centroids_df =  sd.get_centroids(self.sdata[self.region_name], coordinate_system=self.coordinate_system)
+
+        if centroids_df is None:
+            raise ValueError("Could not extract spatial observation locations")
+
+        # Add spatial coords. Not all locations may be present in adata after filtering
+        centroids_df = centroids_df.rename(columns={"x": "spatial1", "y": "spatial2"})
+        dataframe = self.sdata.tables["table"].obs
+
+        # Compute the dataframe if it's a Dask dataframe (since we cannot merge into a Dask dataframe)
+        if hasattr(dataframe, "compute"):
+            dataframe = dataframe.compute()
+        if hasattr(centroids_df, "compute"):
+            centroids_df = centroids_df.compute()
+
+        # Add the centroid info to the AnnData table. Inner join in case location ID does not exist in observation
+        self.sdata.tables["table"].obs = dataframe.merge(centroids_df, on=self.region_id, how="inner")
+        return self
+
 
     def convert_sdata_to_adata(self, include_images: bool | None = None, table_name=None) -> "SpatialHandler":
         """

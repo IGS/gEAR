@@ -647,24 +647,7 @@ class SpatialPanel(pn.viewable.Viewer):
 
         # The SpatialData object table should have coordinates, but they are not translated into the image space
         # Each observation has an associated polygon "shape" in the image space, and we can get the centroid of that shape
-        centroids_df = self.spatial_obj.convert_spots_to_df()
-        if centroids_df is None:
-            raise ValueError("Could not extract spatial observation locations")
-
-        # Add spatial coords. Not all locations may be present in adata after filtering
-        centroids_df = centroids_df.rename(columns={"x": "spatial1", "y": "spatial2"})
-        dataframe = self.spatial_obj.sdata.tables["table"].obs
-
-        # Compute the dataframe if it's a Dask dataframe (since we cannot merge into a Dask dataframe)
-        if hasattr(dataframe, "compute"):
-            dataframe = dataframe.compute()
-        if hasattr(centroids_df, "compute"):
-            centroids_df = centroids_df.compute()
-
-        # Add the centroid info to the AnnData table. Inner join in case location ID does not exist in observation
-        region_id = self.spatial_obj.region_id
-
-        self.spatial_obj.sdata.tables["table"].obs = dataframe.merge(centroids_df, on=region_id, how="inner")
+        self.spatial_obj.merge_centroids_with_obs()
 
     def prep_adata(self):
         # Create AnnData object
