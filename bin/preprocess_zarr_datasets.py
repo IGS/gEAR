@@ -48,21 +48,31 @@ def main():
                 f"Invalid or unsupported spatial data type: {platform}"
             )
 
-        # Step 2: Run spatial_obj.subset_sdata()
         spatial_obj = sh.SPATIALTYPE2CLASS[platform]()
         spatial_obj.sdata = sdata
-        spatial_obj.subset_sdata()
 
-        # Step 3: Run spatial_obj.scale_and_translate_images()
-        spatial_obj = spatial_obj.scale_and_translate_sdata()
+        # This is the equivalent of spatial_obj.standardize_sdata()
 
-        # Step 4: Run spatial_obj.merge_centroids_with_obs()
-        # The SpatialData object table should have coordinates, but they are not translated into the image space
-        # Each observation has an associated polygon "shape" in the image space, and we can get the centroid of that shape
-        spatial_obj.merge_centroids_with_obs()
+        # If sdata.tables["table"].obs has "spatial1" and "spatial2", skip
+        if not ("spatial1" in sdata.tables["table"].obs.columns and "spatial2" in sdata.tables["table"].obs.columns):
+            # Step 2: Run spatial_obj.subset_sdata()
+            spatial_obj.subset_sdata()
+
+            # Step 3: Run spatial_obj.scale_and_translate_images()
+            spatial_obj = spatial_obj.scale_and_translate_sdata()
+
+            # Step 4: Run spatial_obj.merge_centroids_with_obs()
+            # The SpatialData object table should have coordinates, but they are not translated into the image space
+            # Each observation has an associated polygon "shape" in the image space, and we can get the centroid of that shape
+            spatial_obj.merge_centroids_with_obs()
 
         # Step 5: Run the single-cell workbench steps on the spatial_obj.tables["table"] (AnnData object) using default parameters
         adata = spatial_obj.sdata.tables["table"]
+
+        # If adata.obsm has "X_umap", skip the processing
+        if "X_umap" in adata.obsm.keys():
+            print(f"---Skipping dataset (already processed): {dataset_name}")
+            continue
 
         sc.pp.normalize_total(adata, inplace=True)
         sc.pp.log1p(adata)
@@ -76,10 +86,12 @@ def main():
 
         # Step 6: Save the processed SpatialData object back to zarr with "_new" appended
         new_zarr_path = zarr_dataset.parent / f"{dataset_name}_new{ZARR_EXTENSION}"
-        spatial_obj.save_to_zarr(new_zarr_path)
+        spatial_obj.write_to_zarr(filepath=new_zarr_path, overwrite=True)
 
         # Step 7: Replace the original dataset with the new processed dataset
-        zarr_dataset.unlink()  # Remove original dataset
+        # NOTE: Zarr is actually a directory, so we need to remove the original directory and rename the new one
+        import shutil
+        shutil.rmtree(zarr_dataset)  # Remove original dataset directory
         new_zarr_path.rename(zarr_dataset)  # Rename new dataset to original name
 
         print(f"---Finished processing dataset: {dataset_name}")

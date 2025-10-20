@@ -208,43 +208,6 @@ class SpatialHandler(ABC):
         """
         pass
 
-    def merge_centroids_with_obs(self) -> "SpatialHandler":
-        """
-        Merges spatial centroid coordinates with the observation table of the spatial dataset.
-
-        This method retrieves centroid coordinates for the specified region and coordinate system,
-        renames the coordinate columns to 'spatial1' and 'spatial2', and merges them with the
-        observation DataFrame (`obs`) of the main data table. The merge is performed as an inner join
-        on the region identifier to ensure only matching observations are retained. Handles both
-        pandas and Dask DataFrames by computing them if necessary.
-
-        Raises:
-            ValueError: If centroid extraction fails.
-
-        Returns:
-            SpatialHandler: The current instance with updated observation data including centroid coordinates.
-        """
-
-        centroids_df =  sd.get_centroids(self.sdata[self.region_name], coordinate_system=self.coordinate_system)
-
-        if centroids_df is None:
-            raise ValueError("Could not extract spatial observation locations")
-
-        # Add spatial coords. Not all locations may be present in adata after filtering
-        centroids_df = centroids_df.rename(columns={"x": "spatial1", "y": "spatial2"})
-        dataframe = self.sdata.tables["table"].obs
-
-        # Compute the dataframe if it's a Dask dataframe (since we cannot merge into a Dask dataframe)
-        if hasattr(dataframe, "compute"):
-            dataframe = dataframe.compute()
-        if hasattr(centroids_df, "compute"):
-            centroids_df = centroids_df.compute()
-
-        # Add the centroid info to the AnnData table. Inner join in case location ID does not exist in observation
-        self.sdata.tables["table"].obs = dataframe.merge(centroids_df, on=self.region_id, how="inner")
-        return self
-
-
     def convert_sdata_to_adata(self, include_images: bool | None = None, table_name=None) -> "SpatialHandler":
         """
         Converts the internal spatial data object (`sdata`) to an AnnData object and assigns it to `self.adata`.
@@ -308,6 +271,42 @@ class SpatialHandler(ABC):
 
         # Currently the image is in (c, y, x) format, and needs to be converted to (y, x, c) format
         return np.moveaxis(img, 0, -1)
+
+    def merge_centroids_with_obs(self) -> "SpatialHandler":
+        """
+        Merges spatial centroid coordinates with the observation table of the spatial dataset.
+
+        This method retrieves centroid coordinates for the specified region and coordinate system,
+        renames the coordinate columns to 'spatial1' and 'spatial2', and merges them with the
+        observation DataFrame (`obs`) of the main data table. The merge is performed as an inner join
+        on the region identifier to ensure only matching observations are retained. Handles both
+        pandas and Dask DataFrames by computing them if necessary.
+
+        Raises:
+            ValueError: If centroid extraction fails.
+
+        Returns:
+            SpatialHandler: The current instance with updated observation data including centroid coordinates.
+        """
+
+        centroids_df =  sd.get_centroids(self.sdata[self.region_name], coordinate_system=self.coordinate_system)
+
+        if centroids_df is None:
+            raise ValueError("Could not extract spatial observation locations")
+
+        # Add spatial coords. Not all locations may be present in adata after filtering
+        centroids_df = centroids_df.rename(columns={"x": "spatial1", "y": "spatial2"})
+        dataframe = self.sdata.tables["table"].obs
+
+        # Compute the dataframe if it's a Dask dataframe (since we cannot merge into a Dask dataframe)
+        if hasattr(dataframe, "compute"):
+            dataframe = dataframe.compute()
+        if hasattr(centroids_df, "compute"):
+            centroids_df = centroids_df.compute()
+
+        # Add the centroid info to the AnnData table. Inner join in case location ID does not exist in observation
+        self.sdata.tables["table"].obs = dataframe.merge(centroids_df, on=self.region_id, how="inner")
+        return self
 
     def scale_and_translate_sdata(self, set_to_zero=True, apply_scale=True) -> "SpatialHandler":
         """
@@ -385,6 +384,81 @@ class SpatialHandler(ABC):
                 sdata[self.img_name] = rasterized
 
         self.sdata = sdata
+        return self
+
+    def standardize_sdata(self) -> "SpatialHandler":
+        """
+        Normalize and preprocess the spatial dataset in self.sdata.tables["table"].
+
+        This method performs an in-place spatial and single-cell style preprocessing pipeline on the
+        SpatialHandler's SpatialData (self.sdata). It executes the following high-level steps in order:
+
+        1. Subset the SpatialData
+            - Calls self.subset_sdata() to apply any configured subsetting filters to the spatial object.
+
+        2. Scale and translate coordinates
+            - Calls self.scale_and_translate_sdata() to convert/adjust coordinate systems so that spatial
+            annotations align with image space as required.
+
+        3. Merge polygon centroids into observations
+            - Calls self.merge_centroids_with_obs() to compute centroids from per-observation polygon shapes
+            and merge those coordinates into the observation table.
+
+        4. Single-cell preprocessing on the AnnData table
+            - Loads the AnnData stored at self.sdata.tables["table"] and runs a Scanpy workflow:
+                - sc.pp.normalize_total on the AnnData (inplace)
+                - sc.pp.log1p
+                - adata.var_names_make_unique()
+                - sc.pp.highly_variable_genes(adata, n_top_genes=2000)
+                - sc.pp.pca(adata)
+                - sc.pp.neighbors(adata)
+                - sc.tl.umap(adata)
+            - The processed AnnData replaces the original in self.sdata.tables["table"].
+
+        Returns:
+            SpatialHandler: Returns self to allow method chaining.
+
+        Side effects:
+            - Modifies self.sdata in-place, including self.sdata.tables["table"] (AnnData) and any spatial
+                coordinate fields produced by the called helper methods.
+            - Requires that self.sdata.tables["table"] exists and is a valid AnnData object.
+            - Requires the scanpy library to be available; an ImportError will occur if scanpy is not installed.
+
+        Notes:
+            - The number of highly variable genes is fixed to 2000 in this method. Adjustments require
+            changing the implementation.
+            - This method assumes that polygon shapes for observations are available so centroids can be
+            computed and merged into observation metadata.
+            - Intended for workflows that combine image-based spatial annotations with single-cell-style
+            expression preprocessing.
+        """
+        obs = self.sdata.tables["table"].obs
+
+        if not ("spatial1" in obs.columns and "spatial2" in obs.columns):
+            self.subset_sdata()
+            self.scale_and_translate_sdata()
+
+            # The SpatialData object table should have coordinates, but they are not translated into the image space
+            # Each observation has an associated polygon "shape" in the image space, and we can get the centroid of that shape
+            self.merge_centroids_with_obs()
+
+        # Run the single-cell workbench steps on the spatial_obj.tables["table"] (AnnData object) using default parameters
+        adata = self.sdata.tables["table"]
+
+        if "X_umap" in adata.obsm.keys():
+            return self
+
+        import scanpy as sc
+
+        sc.pp.normalize_total(adata, inplace=True)
+        sc.pp.log1p(adata)
+        adata.var_names_make_unique()
+
+        sc.pp.highly_variable_genes(adata, n_top_genes=2000)
+        sc.pp.pca(adata)
+        sc.pp.neighbors(adata)
+        sc.tl.umap(adata)
+        self.sdata.tables["table"] = adata
         return self
 
     def subset_sdata(self) -> "SpatialHandler":
@@ -550,7 +624,7 @@ class CurioHandler(SpatialHandler):
     @property
     def region_id(self) -> str:
         """Returns the region ID used for spot data."""
-        return "spot_id"
+        return "instance_id"
 
     @property
     def region_name(self) -> str:
@@ -651,7 +725,7 @@ class CurioHandler(SpatialHandler):
         sdata.tables[self.NORMALIZED_TABLE_NAME].obs = sdata.tables[self.NORMALIZED_TABLE_NAME].obs.rename(columns={"cluster": "clusters"})
 
         self.sdata = sdata
-        self.subset_sdata()
+        self.standardize_sdata()
 
         # table name should already be "table" for Visium
 
@@ -815,7 +889,7 @@ class GeoMxHandler(SpatialHandler):
         sdata.shapes["locations"].index = sdata.tables[self.NORMALIZED_TABLE_NAME].obs[self.region_id]
 
         self.sdata = sdata
-        self.subset_sdata()
+        self.standardize_sdata()
         self.originalFile = filepath
         return self
 
@@ -922,7 +996,7 @@ class VisiumHandler(SpatialHandler):
         sdata.tables[self.NORMALIZED_TABLE_NAME].var = sdata.tables[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids")
 
         self.sdata = sdata
-        self.subset_sdata()
+        self.standardize_sdata()
         self.originalFile = filepath
         return self
 
@@ -1065,7 +1139,7 @@ class VisiumHDHandler(SpatialHandler):
         sdata.tables[self.NORMALIZED_TABLE_NAME] = sdata.tables[self.table_name]
 
         self.sdata = sdata
-        self.subset_sdata()
+        self.standardize_sdata()
         self.originalFile = filepath
         return self
 
@@ -1210,7 +1284,7 @@ class XeniumHandler(SpatialHandler):
         sdata.tables[self.NORMALIZED_TABLE_NAME].var = sdata.tables[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids")
 
         self.sdata = sdata
-        self.subset_sdata()
+        self.standardize_sdata()
         self.originalFile = filepath
         return self
 
