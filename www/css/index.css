@@ -11,11 +11,20 @@ div#guides_c div.card-content{
 }
 div#highlighted-datasets div.card {
     height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: white;
 }
 div#highlighted-datasets div.card-content {
     background-color: white;
 }
-
+div#highlighted-datasets div.card-footer {
+    background-color: white;
+    margin-top: auto;
+}
+div#highlighted-datasets div.dataset-attributes {
+    margin-top: auto;
+}
 div#search-tabs-c {
     background-color: rgb(240,240,240);
     border-radius: 5px;
