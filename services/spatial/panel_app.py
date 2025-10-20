@@ -530,6 +530,7 @@ class SpatialPanel(pn.viewable.Viewer):
         def refresh_figures_callback(value) -> None:
             self.use_clusters = value
             self.refresh_figures()
+            gc.collect()  # Collect garbage to free up memory
 
         pn.bind(refresh_figures_callback, self.use_clusters_switch, watch=True)
 
@@ -540,6 +541,7 @@ class SpatialPanel(pn.viewable.Viewer):
             self.condensed_pane.object = self.condensed_fig_obj.selection_callback(
                 event
             )
+            gc.collect()  # Collect garbage to free up memory
 
         pn.bind(selection_callback, self.condensed_pane.param.selected_data, watch=True)
 
@@ -634,8 +636,15 @@ class SpatialPanel(pn.viewable.Viewer):
         # Dictates if this will be a 2- or 3-plot figure
         self.has_images = self.spatial_obj.has_images
 
-        # adjust and scale coordinates and associated elements
-        self.spatial_obj = self.spatial_obj.scale_and_translate_sdata()
+        # Standardize the spatial data object
+        obs = self.spatial_obj.sdata.tables["table"].obs
+        if not ("spatial1" in obs.columns and "spatial2" in obs.columns):
+            self.spatial_obj.subset_sdata()
+            self.spatial_obj.scale_and_translate_sdata()
+
+            # The SpatialData object table should have coordinates, but they are not translated into the image space
+            # Each observation has an associated polygon "shape" in the image space, and we can get the centroid of that shape
+            self.spatial_obj.merge_centroids_with_obs()
 
         # Convert image to dataframe if it exists
         self.spatial_img = None
@@ -645,16 +654,12 @@ class SpatialPanel(pn.viewable.Viewer):
             # This is not a fatal error. Some datasets do not have images
             logging.info(f"No image found or error converting image to dataframe: {e}")
 
-        # The SpatialData object table should have coordinates, but they are not translated into the image space
-        # Each observation has an associated polygon "shape" in the image space, and we can get the centroid of that shape
-        self.spatial_obj.merge_centroids_with_obs()
 
     def prep_adata(self):
         # Create AnnData object
         # Need to include image since the bounding box query does not filter the image data by coordinates
         # Each Image is downscaled (or upscaled) during rendering to fit a 2000x2000 pixels image (downscaled_hires)
         try:
-            #self.spatial_obj.convert_sdata_to_adata()
             self.spatial_obj.adata = self.spatial_obj.sdata.tables["table"]
         except Exception:
             logging.error("Error converting sdata to adata:")

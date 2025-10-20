@@ -778,6 +778,9 @@ class SpatialPanel(pn.viewable.Viewer):
             ):
                 self.add_umap()
 
+            gc.collect()  # Collect garbage to free up memory
+
+
         pn.bind(
             refresh_dataframe_callback,
             self.min_genes_slider.param.value_throttled,
@@ -792,6 +795,7 @@ class SpatialPanel(pn.viewable.Viewer):
                 self.normal_pane.object = self.normal_fig_obj.mirror_selection_callback(
                     event
                 )
+            gc.collect()  # Collect garbage to free up memory
 
         pn.bind(
             selection_callback, self.normal_pane.param.selected_data, watch=True
@@ -918,8 +922,15 @@ class SpatialPanel(pn.viewable.Viewer):
         # Dictates if this will be a 2- or 3-plot figure
         self.has_images = self.spatial_obj.has_images
 
-        # adjust and scale coordinates and associated elements
-        self.spatial_obj = self.spatial_obj.scale_and_translate_sdata()
+        # Standardize the spatial data object
+        obs = self.spatial_obj.sdata.tables["table"].obs
+        if not ("spatial1" in obs.columns and "spatial2" in obs.columns):
+            self.spatial_obj.subset_sdata()
+            self.spatial_obj.scale_and_translate_sdata()
+
+            # The SpatialData object table should have coordinates, but they are not translated into the image space
+            # Each observation has an associated polygon "shape" in the image space, and we can get the centroid of that shape
+            self.spatial_obj.merge_centroids_with_obs()
 
         # Convert image to dataframe if it exists
         self.spatial_img = None
@@ -929,16 +940,12 @@ class SpatialPanel(pn.viewable.Viewer):
             # This is not a fatal error. Some datasets do not have images
             logging.info(f"No image found or error converting image to dataframe: {e}")
 
-        # The SpatialData object table should have coordinates, but they are not translated into the image space
-        # Each observation has an associated polygon "shape" in the image space, and we can get the centroid of that shape
-        self.spatial_obj.merge_centroids_with_obs()
-
     def prep_adata(self):
         # Create AnnData object
         # Need to include image since the bounding box query does not filter the image data by coordinates
         # Each Image is downscaled (or upscaled) during rendering to fit a 2000x2000 pixels image (downscaled_hires)
         try:
-            self.spatial_obj.convert_sdata_to_adata()
+            self.spatial_obj.adata = self.spatial_obj.sdata.tables["table"]
         except Exception as e:
             logging.error(f"Error converting sdata to adata: {str(e)}")
             raise ValueError(
@@ -1002,25 +1009,37 @@ class SpatialPanel(pn.viewable.Viewer):
 
         self.dataset_adata.var_names_make_unique()
 
+    #@pn.io.profile(name="add_umap_expanded", engine="pyinstrument")
     def add_umap(self):
         # Add UMAP information to the adata object. This is a slow process, so we want to show other plots while this is processing
         def create_umap():
             # We need to use the original dataset for UMAP clustering instead of the projection one
             # However we only want to use the cells that have clusters
             adata = self.dataset_adata
+
+            VALID_UMAP_PAIRS = [['uMAP_1', 'uMAP_2'], ['uMAP1', 'uMAP2'],
+                    ['UMAP_1', 'UMAP_2'], ['UMAP1', 'UMAP2']]
+
+            # If a pair in VALID_UMAP_PAIRS are already computed, convert to X_umap and return
+            cols = adata.obs.columns.tolist()
+            for umap_pair in VALID_UMAP_PAIRS:
+                if all(key in cols for key in umap_pair):
+                    adata.obsm["X_umap"] = adata.obs[[umap_pair[0], umap_pair[1]]].to_numpy()
+                    return adata
+
+            # If UMAP is already computed, return early
+            if "X_umap" in adata.obsm.keys():
+                return adata
+
             sc.pp.highly_variable_genes(adata, n_top_genes=2000)
             sc.pp.pca(adata)
             sc.pp.neighbors(adata)
             sc.tl.umap(adata)
             return adata
 
-        adata_subset_cache_label = f"{self.dataset_id}_{self.min_genes}_adata"
-
         try:
             # Load the subset AnnData object from cache or create it if it does not exist, with a 1-week time-to-live
-            adata = pn.state.as_cached(
-                adata_subset_cache_label, create_umap, ttl=CACHE_EXPIRATION
-            )
+            adata = create_umap()
 
             X, Y = (0, 1)
             self.df["UMAP1"] = adata.obsm["X_umap"].transpose()[X].tolist()
@@ -1183,8 +1202,6 @@ class SpatialPanel(pn.viewable.Viewer):
 
         self.umap_pane.object = self.umap_fig
         self.violin_pane.object = self.violin_fig
-
-        gc.collect()  # Collect garbage to free up memory
 
         return self.plot_layout
 

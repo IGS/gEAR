@@ -244,11 +244,14 @@ def detect_clustering(adata: "AnnData") -> bool:
         if vname in cols:
             return True
 
+    if has_clustering(adata):
+        return True
+
     return False
 
 def detect_tsne(adata: "AnnData") -> bool:
     """
-    Looks for the combination of pairs in VALID_TSNE_PAIRS
+    Looks for the combination of pairs in VALID_TSNE_PAIRS or existing tSNE in obsm
     """
     cols = adata.obs.columns.tolist()
 
@@ -256,17 +259,25 @@ def detect_tsne(adata: "AnnData") -> bool:
         if pair[0] in cols and pair[1] in cols:
             return True
 
+    # Maybe it's already in obsm
+    if has_tsne(adata):
+        return True
+
     return False
 
 def detect_umap(adata: "AnnData") -> bool:
     """
-    Looks for the combination of pairs in VALID_UMAP_PAIRS
+    Looks for the combination of pairs in VALID_UMAP_PAIRS or existing UMAP in obsm
     """
     cols = adata.obs.columns.tolist()
 
     for pair in VALID_UMAP_PAIRS:
         if pair[0] in cols and pair[1] in cols:
             return True
+
+    # Maybe it's already in obsm (i.e. spatial uploads)
+    if has_umap(adata):
+        return True
 
     return False
 
@@ -281,7 +292,7 @@ def has_clustering(adata: "AnnData") -> bool:
 
 def has_tsne(adata: "AnnData") -> bool:
     try:
-        if type(adata.obsm['X_tsne']):
+        if "X_tsne" in adata.obsm.keys():
             return True
     except Exception:
         pass
@@ -290,7 +301,7 @@ def has_tsne(adata: "AnnData") -> bool:
 
 def has_umap(adata: "AnnData") -> bool:
     try:
-        if type(adata.obsm['X_umap']):
+        if "X_umap" in adata.obsm.keys():
             return True
     except Exception:
         pass
