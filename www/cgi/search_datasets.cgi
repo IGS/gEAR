@@ -1,8 +1,8 @@
 #!/opt/bin/python3
 
 """
-Used by by dataset_explorer.html, this script focuses on searching datasets and
-returns a list of matches with extended attributes.
+Used by by dataset_explorer.html and index.html, this script focuses on searching 
+datasets and returns a list of matches with extended attributes.
 
 There are a few main categories of search:
 
@@ -45,7 +45,7 @@ def main():
     include_public_membership = form.getvalue('include_public_collection_membership')
     page = form.getvalue('page', "1")    # page starts at 1
     limit = form.getvalue('limit', str(DEFAULT_MAX_RESULTS))
-    sort_by = re.sub("[^[a-z]]", "", form.getvalue('sort_by'))
+    sort_by = re.sub("[^[a-z]]", "", form.getvalue('sort_by', ''))
     user = geardb.get_user_from_session_id(session_id) if session_id else None
     result = {'success': 1, 'problem': '', 'datasets': []}
 

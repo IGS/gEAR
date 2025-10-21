@@ -105,6 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     loadOrganismList();
+    populateDatasetSpinner();
 });
 
 
@@ -149,6 +150,29 @@ document.getElementById("onboarding-btn").addEventListener("click", (event) => {
     }).start();
 });
 
+const populateDatasetSpinner = async () => {
+    let spinnerDatasets = [];
+    const data = await apiCallsMixin.fetchDatasets({'limit': 10});
+    spinnerDatasets = data.datasets;
+   
+    const template = document.querySelector('#dataset-card-template');
+    const datasetSpinnerContainer = document.querySelector('#highlighted-datasets');
+    datasetSpinnerContainer.innerHTML = '';
+
+    let cardIdx = 0;
+
+    for (const dataset of spinnerDatasets) {
+        const card = template.content.cloneNode(true);
+        //card.querySelector('.dataset-link').setAttribute('href', `/dataset.html?dataset_id=${dataset.dataset_id}`);
+        //card.querySelector('.dataset-link').textContent = dataset.title;
+        datasetSpinnerContainer.appendChild(card);
+        cardIdx += 1;
+
+        if (cardIdx >= 3) {
+            break;
+        }
+    }
+}
 
 const populateUserHistoryTable = async () => {
     const numEntries = 5;
