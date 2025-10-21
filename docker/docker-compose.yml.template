@@ -46,9 +46,9 @@ services:
       - "5006:5006" # host:container
     restart: always
     volumes:
-      - <dataset_path>:/gEAR/www/datasets
-      - <projections_path>:/gEAR/www/projections
-      - <gear_lib_path>:/gEAR/lib
+      - <spatial_panel_cache_path>:/gEAR/www/spatial_panel_cache
+      - <spatial_code_path>:/gEAR/services/spatial
+
 
   # consumer:
   #   image: busybox

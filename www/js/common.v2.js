@@ -1417,6 +1417,26 @@ const apiCallsMixin = {
         return data;
     },
     /**
+     * Prepare and send a request to fetch spatial panel data for a given dataset.
+     *
+     * This function creates a shallow copy of the provided plotConfig as the request
+     * payload and posts it to the server endpoint `/api/plot/{datasetId}/spatialPanel`.
+     * Note: plotConfig is expected to already include a `gene_symbol` property.
+     *
+     * @async
+     * @param {string|number} datasetId - Identifier for the dataset used in the API path.
+     * @param {Object} plotConfig - Configuration object for the plot. Must include `gene_symbol`.
+     * @param {Object} [otherOpts={}] - Optional Axios request configuration/options forwarded to axios.post.
+     * @returns {Promise<Object>} Resolves with the response data from the API.
+     * @throws {Error} Throws/rejects with the underlying Axios error if the request fails.
+     */
+    async prepSpatialPanelData(datasetId, plotConfig, otherOpts={}) {
+        // NOTE: gene_symbol should already be already passed to plotConfig
+        const payload = { ...plotConfig };
+        const {data} = await axios.post(`/api/plot/${datasetId}/spatialpanel`, payload, otherOpts);
+        return data;
+    },
+    /**
      * Asynchronously polls the status of a Project R projection by its ID.
      *
      * @async

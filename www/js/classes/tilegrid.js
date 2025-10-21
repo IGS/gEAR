@@ -2059,10 +2059,20 @@ class DatasetTile {
             projection_id: plotConfig.projection_id,
         };
 
+        const prepPlotConfig = {
+            gene_symbol: geneSymbol,
+            projection_id: plotConfig.projection_id,
+        }
+
+        const data = await apiCallsMixin.prepSpatialPanelData(this.dataset.id, prepPlotConfig, otherOpts);
+        if (data?.success < 1) {
+            throw new Error (data?.message ? data.message : "Unknown error.")
+        }
+
         // build the URL for the spatial app
         const urlParams = new URLSearchParams();
         urlParams.append("dataset_id", this.dataset.id);
-        urlParams.append("gene_symbol", geneSymbol);
+        urlParams.append("filename", data.filename);
 
         // Add spatial parameters to the URL if they exist
         if (this.spatial.min_genes) {
@@ -2079,10 +2089,6 @@ class DatasetTile {
         }
         if (this.spatial.selection_y2) {
             urlParams.append("selection_y2", this.spatial.selection_y2);
-        }
-
-        if (this.spatial.projection_id) {
-            urlParams.append("projection_id", this.spatial.projection_id);
         }
 
         // Adjust the spatial panel dimensions.

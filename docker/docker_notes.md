@@ -104,3 +104,8 @@ This will enable the spatial panel dashboard to be used in the docker-compose.ym
 * I cannot log in
   * Clear your browser's cache
   * Use the email address in the 'username' place.  I'm an idiot and always forget that.
+  * If the logs show `ysql.connector.errors.InterfaceError: 2003: Can't connect to MySQL server on '%-.100s:%u' (%s) (Warning: %u format: a real number is required, not str):` I think the Docker program updated or something.  I do some combination of the following and it eventually works:
+    * delete <docker_dir/mysql/mysql.sock
+    * `docker compose restart db`
+    * `docker compose down -v; docker compose up -d`
+    * I really don't know the origin of this error to be honest.

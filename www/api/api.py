@@ -39,6 +39,7 @@ from resources.orthologs import Orthologs  # noqa: E402
 # Import resources
 from resources.plotly_data import PlotlyData  # noqa: E402
 from resources.projectr import ProjectR, ProjectROutputFile, ProjectRStatus  # noqa: E402
+from resources.spatialpanel import SpatialPanel  # noqa: E402
 from resources.spatial_scanpy_data import SpatialScanpyData  # noqa: E402
 from resources.svg_data import SvgData  # noqa: E402
 from resources.top_pca_genes import TopPCAGenes  # noqa: E402
@@ -64,6 +65,7 @@ api.add_resource(TSNEData, '/plot/<dataset_id>/tsne')
 api.add_resource(MGTSNEData, '/plot/<dataset_id>/mg_tsne')
 api.add_resource(EpivizData, '/plot/<dataset_id>/epiviz')
 api.add_resource(GoslingSpec, '/plot/<dataset_id>/gosling')
+api.add_resource(SpatialPanel, '/plot/<dataset_id>/spatialpanel')
 api.add_resource(SpatialScanpyData, '/plot/<dataset_id>/spatial_scanpy')
 api.add_resource(ProjectR, '/projectr/<dataset_id>')
 api.add_resource(ProjectROutputFile, '/projectr/<dataset_id>/output_file')

@@ -535,7 +535,7 @@ class SpatialHandler(ABC):
         adata.var_names_make_unique()
 
         # Add qc-metrics (so we can filter on them later if desired)
-        sc.pp.calculate_qc_metrics(adata, inplace=True)
+        sc.pp.calculate_qc_metrics(adata, log1p=False, percent_top=None, inplace=True)
 
         sc.pp.highly_variable_genes(adata, n_top_genes=2000)
         sc.pp.pca(adata)

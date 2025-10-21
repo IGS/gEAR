@@ -19,10 +19,10 @@ RUN apt-get -qq update \
   && rm -rf /var/lib/apt/lists/*
 
 # Install production dependencies.
-COPY ./requirements.full.txt ./
+COPY ./requirements.txt ./
 RUN pip install --upgrade pip
 # --prefer-binary to avoid issues with some packages
-RUN pip install -r requirements.full.txt --prefer-binary
+RUN pip install -r requirements.txt --prefer-binary
 
 ### Taken from https://www.b-list.org/weblog/2023/dec/07/pip-install-safely/
 #python -m pip install \
