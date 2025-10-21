@@ -46,7 +46,7 @@ services:
       - "5006:5006" # host:container
     restart: always
     volumes:
-      - <spatial_panel_cache_path>:/gEAR/www/spatial_panel_cache
+      - <spatial_panel_cache_path>:/gEAR/www/cache/spatial_panel
       - <spatial_code_path>:/gEAR/services/spatial
 
 

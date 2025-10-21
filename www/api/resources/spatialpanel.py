@@ -14,7 +14,8 @@ from .common import create_projection_adata
 
 TWO_LEVELS_UP = 2
 ABS_PATH_WWW = Path(__file__).resolve().parents[TWO_LEVELS_UP]  # web-root dir
-PANEL_CSV_CACHE_DIR = ABS_PATH_WWW.joinpath("spatial_panel_cache")
+PANEL_CSV_CACHE_DIR = ABS_PATH_WWW / "cache" / "spatial_panel"
+
 SPATIAL_PATH = ABS_PATH_WWW.joinpath("datasets/spatial")
 PROJECTIONS_BASE_DIR = ABS_PATH_WWW.joinpath("projections")
 

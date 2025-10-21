@@ -18,7 +18,7 @@ from werkzeug.utils import secure_filename
 
 gear_root = Path(__file__).resolve().parents[2]
 www_path = gear_root.joinpath("www")
-PANEL_CSV_CACHE_DIR = www_path.joinpath("spatial_panel_cache")
+PANEL_CSV_CACHE_DIR = www_path / "cache" / "spatial_panel"
 SPATIAL_IMAGE_NAME = "spatial_img.npy"
 
 pio.templates.default = "simple_white"  # no gridlines, white background
