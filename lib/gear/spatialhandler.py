@@ -208,6 +208,83 @@ class SpatialHandler(ABC):
         """
         pass
 
+    def close_spatialdata(self) -> None:
+        """
+        Close and clean up resources associated with the object's spatial data (self.sdata).
+
+        This method performs a best-effort teardown of common file-backed and on-disk
+        data structures used for spatial AnnData objects and Zarr stores. It is
+        intended to release file handles and other resources so that files can be
+        moved/removed or the process can exit cleanly.
+
+        Behavior:
+        - Iterates over any tables in self.sdata.tables (if present). For each table,
+            if it appears to be an AnnData object with .isbacked truthy, attempts to
+            close its underlying file handle via adata.file.close().
+        - Attempts to close any attributes on self.sdata named 'store', 'zarr_store',
+            'zarr_group', or 'zarr_root' by calling a .close() method if present and
+            callable.
+        - Deletes the self.sdata attribute (best-effort) and runs garbage collection
+            via gc.collect() to help free memory and release operating-system resources.
+
+        Notes and guarantees:
+        - This method swallows exceptions raised while closing individual resources.
+            It is intentionally tolerant to partial failures so that other resources may
+            still be released.
+        - It does not remove or modify on-disk data; it only attempts to close open
+            handles and drop in-memory references.
+        - The caller should drop any other references to the same AnnData / store
+            objects (e.g., local variables) to allow them to be fully freed.
+        - The operation is idempotent in intent (calling it multiple times should not
+            raise), but thread-safety is not guaranteed. Avoid concurrent calls from
+            multiple threads.
+
+        Parameters:
+        - None
+
+        Returns:
+        - None
+
+        NOTE: Copilot-generated function
+
+        Example:
+                # Best practice: drop other references to sdata and then call:
+                handler.close_spatialdata()
+                # If needed, reopen the data later by re-reading from disk/storage.
+        """
+        import gc
+
+        # Close backed AnnData tables (matches pattern used in your code)
+        for tbl in getattr(self.sdata, "tables", {}).values():
+            try:
+                adata = tbl
+                if getattr(adata, "isbacked", False):
+                    try:
+                        adata.file.close()
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+        # Try to close zarr/store objects if present
+        for name in ("store", "zarr_store", "zarr_group", "zarr_root"):
+            store = getattr(self.sdata, name, None)
+            if store is not None:
+                close_fn = getattr(store, "close", None)
+                if callable(close_fn):
+                    try:
+                        close_fn()
+                    except Exception:
+                        pass
+
+        # Drop references and collect
+        try:
+            # caller should also drop their reference to sdata
+            self._sdata = None
+        except Exception:
+            pass
+        gc.collect()
+
     def convert_sdata_to_adata(self, include_images: bool | None = None, table_name=None) -> "SpatialHandler":
         """
         Converts the internal spatial data object (`sdata`) to an AnnData object and assigns it to `self.adata`.
@@ -230,6 +307,9 @@ class SpatialHandler(ABC):
 
         if include_images is None:
             include_images = self.has_images
+
+            # TODO: If sdata.image has a transformation applied, we need to undo it, as to_legacy_anndata will apply it again.
+
 
         # Generally everything should already be converted to the normalized table name
         if table_name is None:
@@ -453,6 +533,9 @@ class SpatialHandler(ABC):
         sc.pp.normalize_total(adata, inplace=True)
         sc.pp.log1p(adata)
         adata.var_names_make_unique()
+
+        # Add qc-metrics (so we can filter on them later if desired)
+        sc.pp.calculate_qc_metrics(adata, inplace=True)
 
         sc.pp.highly_variable_genes(adata, n_top_genes=2000)
         sc.pp.pca(adata)
