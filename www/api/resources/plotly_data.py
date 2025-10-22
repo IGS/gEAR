@@ -130,7 +130,7 @@ class PlotlyData(Resource):
 
         try:
             if is_spatial:
-                adata = get_spatial_adata(analysis, dataset_id, session_id, include_images=False)
+                adata = get_spatial_adata(analysis, dataset_id, session_id)
             else:
                 adata = get_adata_from_analysis(analysis, dataset_id, session_id, backed=True)
         except FileNotFoundError:

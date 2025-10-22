@@ -1,6 +1,7 @@
 # Include our lib directory on system path
 # so we have access to modules
 import os
+import resource
 import sys
 from pathlib import Path
 
@@ -13,6 +14,13 @@ matplotlib.use('Agg')
 from flask import Flask
 from flask_restful import Api
 
+# Set the maximum memory usage for the process
+# to 95% of the system's maximum memory usage
+soft, hard = resource.getrlimit(resource.RLIMIT_DATA)
+soft95 = int(soft * 0.95)
+resource.setrlimit(resource.RLIMIT_DATA, (soft95, hard))
+
+
 TWO_LEVELS_UP = 2
 abs_path_gear = Path(__file__).resolve().parents[TWO_LEVELS_UP]
 abs_path_lib = abs_path_gear.joinpath('lib')
@@ -21,6 +29,13 @@ sys.path.insert(0, str(abs_path_lib))
 
 debug = os.environ.get('DEBUG', False)
 debug = debug in ('1', 'true', 'True', 'TRUE')
+
+app = Flask(__name__)
+
+### -- Anything that relies on the app object (i.e. profilers) should go before importing api resources -- ###
+
+api = Api(app)
+# Add API endpoints to resources
 
 from resources.aggregations import Aggregations  # noqa: E402
 from resources.analyses import Analyses  # noqa: E402
@@ -38,24 +53,16 @@ from resources.orthologs import Orthologs  # noqa: E402
 
 # Import resources
 from resources.plotly_data import PlotlyData  # noqa: E402
-from resources.projectr import ProjectR, ProjectROutputFile, ProjectRStatus  # noqa: E402
-from resources.spatialpanel import SpatialPanel  # noqa: E402
+from resources.projectr import (  # noqa: E402
+    ProjectR,
+    ProjectROutputFile,
+    ProjectRStatus,
+)
 from resources.spatial_scanpy_data import SpatialScanpyData  # noqa: E402
+from resources.spatialpanel import SpatialPanel  # noqa: E402
 from resources.svg_data import SvgData  # noqa: E402
 from resources.top_pca_genes import TopPCAGenes  # noqa: E402
 from resources.tsne_data import MGTSNEData, TSNEData  # noqa: E402
-
-app = Flask(__name__)
-api = Api(app)
-# Add API endpoints to resources
-
-# Set the maximum memory usage for the process
-# to 95% of the system's maximum memory usage
-import resource
-
-soft, hard = resource.getrlimit(resource.RLIMIT_DATA)
-soft95 = int(soft * 0.95)
-resource.setrlimit(resource.RLIMIT_DATA, (soft95, hard))
 
 api.add_resource(PlotlyData, '/plot/<dataset_id>'   # Default endpoint
                  , "/plot/<dataset_id>/plotly")     # add /plotly to this endpoint for name consistency with other endpoints

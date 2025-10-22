@@ -130,7 +130,6 @@ def get_spatial_adata(
     analysis: dict | str | None,
     dataset_id: str,
     session_id: str | None,
-    include_images: bool | None = None,
 ) -> AnnData:
     """
     Retrieve an AnnData object associated with a specific spatial analysis.
@@ -139,8 +138,6 @@ def get_spatial_adata(
         analysis_id (dict | str | None): The ID of the analysis to retrieve, or None.
         dataset_id (str): The ID of the dataset to retrieve.
         session_id (str | None): The session ID for user authentication, or None.
-        include_images (bool | None, optional): Whether to include images in the AnnData object.
-            If None, includes images if available for that platform.
 
     Returns:
         AnnData: The processed spatial AnnData object, with optional image data and metadata.
@@ -156,7 +153,7 @@ def get_spatial_adata(
     if not isinstance(ana, SpatialAnalysis):
         raise ValueError("Analysis is not spatial")
 
-    adata = ana.get_adata(include_images=include_images)
+    adata = ana.get_adata()
     return adata
 
 

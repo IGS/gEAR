@@ -190,6 +190,7 @@ class SpatialScanpyData(Resource):
 
         try:
             adata = get_spatial_adata(analysis, dataset_id, session_id)
+            # TODO: extract image information from using SpatialHandler.extract_img
         except Exception as e:
             import traceback
             traceback.print_exc()

@@ -697,55 +697,28 @@ class ZarrAdapter:
             raise FileNotFoundError(f"Dataset not found at {self.zarr_path}")
         return sd.read_zarr(self.zarr_path)
 
-    def get_adata(self, include_images=None) -> "AnnData" :
+    def get_adata(self) -> "AnnData" :
         """
-        Generate and return an AnnData object from the current spatial dataset.
+        Return the primary AnnData object for this analysis.
 
-        This method retrieves the spatial dataset, determines its platform type,
-        and uses the appropriate spatial handler to process the data. Optionally,
-        images can be included in the resulting AnnData object.
-
-        Args:
-            include_images (bool, optional): Whether to include images in the AnnData object.
-                If None, this is determined automatically based on the spatial handler.
+        This method obtains the SData container via self.get_sdata(), then extracts
+        and returns the AnnData object stored under the "table" key of sdata.tables.
 
         Returns:
-            AnnData: The processed AnnData object, with additional metadata in `uns`:
-                - "has_images": Whether images are available in the dataset.
-                - "img_name": The name of the image, if available.
+            AnnData: The AnnData instance found at sdata.tables["table"].
 
         Raises:
-            ValueError: If platform information is missing or unsupported.
+            AttributeError: If self.get_sdata() is not available or does not return an object
+                with a tables attribute.
+            KeyError: If the "table" key is not present in sdata.tables.
+            TypeError: If the value stored at sdata.tables["table"] is not an AnnData-like object.
         """
         sdata = self.get_sdata()
 
-        from gear import spatialhandler
-
-        # Ensure the spatial data type is supported
-        platform = None
-        try:
-            platform = sdata.tables["table"].uns["platform"]
-        except KeyError:
-            raise ValueError("No platform information found in the dataset")
-
-        if not platform or platform not in spatialhandler.SPATIALTYPE2CLASS:
-            raise ValueError(f"Invalid or unsupported spatial data type {platform}")
-
-        spatial_obj = spatialhandler.SPATIALTYPE2CLASS[platform]()
-        spatial_obj.sdata = sdata
-
-        # Filter by bounding box (mostly for images)
-        spatial_obj.scale_and_translate_sdata()
-
-        if include_images is None:
-            include_images = spatial_obj.has_images
-
         # Create AnnData object
-        # Do not include images in the adata object (to make it lighter)
-        spatial_obj.convert_sdata_to_adata(include_images=include_images)
-        adata = spatial_obj.adata
-        # Extra metadata to help with determining if images are available and where they are
-        adata.uns["has_images"] = spatial_obj.has_images
-        if spatial_obj.has_images:
-            adata.uns["img_name"] = spatial_obj.img_name
-        return adata
+        try:
+            return sdata.tables["table"]
+        except KeyError:
+            raise KeyError("No 'table' found in SpatialData tables")
+        except Exception as e:
+            raise e

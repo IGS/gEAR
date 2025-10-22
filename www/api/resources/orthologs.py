@@ -1,5 +1,4 @@
 import os
-import sys
 
 import geardb
 from flask import request
@@ -13,7 +12,6 @@ from gear.orthology import (
 from gear.utils import catch_memory_error
 
 from .common import get_adata_shadow, get_spatial_adata
-
 
 def get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id, exclusive_org=False):
     """
@@ -299,7 +297,7 @@ class Orthologs(Resource):
 
         try:
             if dataset.dtype == "spatial":
-                adata = get_spatial_adata(analysis_id, dataset_id, session_id, include_images=False)
+                adata = get_spatial_adata(analysis_id, dataset_id, session_id)
             else:
                 adata = get_adata_shadow(analysis_id, dataset_id, session_id)
 
@@ -316,8 +314,14 @@ class Orthologs(Resource):
 
         dataset_genes = set(adata.var['gene_symbol'].unique())
 
-        if adata.isbacked:
+        # If spatial and backed, close the file
+        # If AnnDataShadow, delete and gc.collect()
+        if hasattr(adata, 'isbacked') and adata.isbacked:
             adata.file.close()
+        else:
+            import gc
+            del adata
+            gc.collect()
 
         # Build once per request
         gene_map = {str(g).lower(): g for g in dataset_genes}

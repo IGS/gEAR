@@ -58,7 +58,7 @@ class Aggregations(Resource):
 
         try:
             if is_spatial:
-                adata = get_spatial_adata(analysis_id, dataset_id, session_id, include_images=False)
+                adata = get_spatial_adata(analysis_id, dataset_id, session_id)
             elif filters:
                 adata = get_adata_from_analysis(analysis_id, dataset_id, session_id)
             else:
