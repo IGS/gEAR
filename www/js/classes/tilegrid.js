@@ -174,6 +174,8 @@ export class TileGrid {
             // Add the tile to the selector element
             selectorElt.append(tileChildHTML);
 
+            createCardMessage(tile.tileId, "info", `Initializing...`);
+
             // Set the grid-area property of the tile. Must be added after the tile is appended to the DOM
             const tileElement = document.getElementById(`tile-${tile.tileId}`);
             tileElement.style.gridArea = `${tile.startRow} / ${tile.startCol} / ${tile.endRow} / ${tile.endCol}`;
@@ -234,6 +236,7 @@ export class TileGrid {
 
         // Add the tile to the selector element
         selectorElt.append(tileChildHTML);
+        createCardMessage(tile.tileId, "info", `Initializing...`);
 
         // Set the grid-area property of the tile. Must be added after the tile is appended to the DOM
         const tileElement = document.getElementById(`tile-${tile.tileId}`);
