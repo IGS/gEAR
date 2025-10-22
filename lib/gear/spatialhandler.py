@@ -407,8 +407,20 @@ class SpatialHandler(ABC):
         if not self.img_name:
             return self
 
+        if self.platform == "visium":
+            # Visium data is already in image space, so no need to scale or translate
+            # SAdkins - honestly, not sure how to fix these yet as the shapes seem to translate wildly off of the image
+            return self
+
         # Extent should be based on the image data, in case the observation data bleeds past the image
         img_extent = sd.get_extent(self.sdata[self.img_name], coordinate_system=self.coordinate_system)
+
+        MAX_X = 2000
+        # SAFETY CHECK: If img_extent width is less than or equal to MAX_X, just return.
+        # Would rather retain extra data and manually process than lose it.
+        img_x_width = img_extent["x"][1] - img_extent["x"][0]
+        if img_x_width <= MAX_X:
+            return self
 
         sdata: "SpatialData" = sd.bounding_box_query(self.sdata,
                 axes=("x", "y"),
@@ -436,7 +448,6 @@ class SpatialHandler(ABC):
             region_extent = sd.get_extent(sdata[self.region_name], coordinate_system=self.coordinate_system)
 
         # Ensure the longest dimension is no more than 2000 pixels. This is the "legacy_to_anndata" hires pixel limit.
-        MAX_X = 2000
         if apply_scale:
             region_x_width = region_extent["x"][1] - region_extent["x"][0]
 
