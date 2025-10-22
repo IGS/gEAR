@@ -98,7 +98,7 @@ Permissions need to be writeable for your apache user.
 
 ```bash
 cd /var/www
-chmod 777 datasets datasets/spatial analyses/* carts/ projections/ uploads/files/ img/dataset_previews/ cache/*
+chmod 777 datasets datasets/spatial analyses/* carts/ projections/ uploads/files/ img/dataset_previews/ cache/spatial_panel/
 ```
 
 ### Undocumented currently

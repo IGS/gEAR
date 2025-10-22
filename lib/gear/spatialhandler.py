@@ -448,20 +448,22 @@ class SpatialHandler(ABC):
                 sdata.transform_element_to_coordinate_system(self.region_name, target_coordinate_system=self.coordinate_system)
 
             # Rasterize the image if it exists
-            if self.img_name:
-                rasterized = sd.rasterize(
-                        sdata[self.img_name],
-                        axes=("x", "y"),
-                        min_coordinate=[img_extent[ax][0] for ax in ("x", "y")],
-                        max_coordinate=[img_extent[ax][1] for ax in ("x", "y")],
-                        target_coordinate_system=self.coordinate_system,
-                        target_unit_to_pixels=None,
-                        target_width=MAX_X,
-                        target_height=None,
-                        target_depth=None,
-                        return_regions_as_labels=True,
-                    )
-                sdata[self.img_name] = rasterized
+            img_x_width = img_extent["x"][1] - img_extent["x"][0]
+            if img_x_width > MAX_X:
+                if self.img_name:
+                    rasterized = sd.rasterize(
+                            sdata[self.img_name],
+                            axes=("x", "y"),
+                            min_coordinate=[img_extent[ax][0] for ax in ("x", "y")],
+                            max_coordinate=[img_extent[ax][1] for ax in ("x", "y")],
+                            target_coordinate_system=self.coordinate_system,
+                            target_unit_to_pixels=None,
+                            target_width=MAX_X,
+                            target_height=None,
+                            target_depth=None,
+                            return_regions_as_labels=True,
+                        )
+                    sdata[self.img_name] = rasterized
 
         self.sdata = sdata
         return self
