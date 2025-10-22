@@ -1,0 +1,98 @@
+/* SAdkins personal note - The landing page CSS should not be tied to the Bulma CSS in case we have a major revision later on */
+
+#content-c {
+    background-color: rgb(250, 251, 244);
+}
+
+a {
+    color: rgb(111, 148, 205);
+}
+
+/* self-notes will be for my use and removed in the final product */
+.self-note {
+    background-color: rgb(148, 131, 185);
+    color: rgb(220,219,229);
+}
+
+.secondary-color {
+    background-color: rgb(220,219,229);
+    color: black;
+}
+
+.tertiary-color {
+    background-color: rgb(233, 190, 84);
+    color: black;
+}
+
+.quaternary-color {
+    background-color: rgb(148, 131, 185);
+    color: white;
+}
+
+.table-color {
+    background-color: rgb(148, 131, 185);
+    color: black;
+}
+
+.figure-c {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+.figure-title, .figure-text {
+    font-size: 90%;
+}
+.figure-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.vertical {
+    writing-mode: vertical-rl;
+    transform: rotate(-180deg);
+}
+
+.underline {
+    text-decoration: underline;
+}
+
+h1, h2, h3 {
+    font-weight: bold;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+h1 {
+    font-size: 130%;
+}
+
+#links-section ul {
+    list-style: disc outside;
+    margin-left: 20px;
+}
+#author-list {
+    margin-bottom: 10px;
+    font-size: 90%;
+}
+
+#utility-links {
+    padding-bottom: 100px;
+}
+
+table {
+    margin: 20px;
+    border: 1px solid black;
+    min-width: 50%;
+}
+table td {
+    border: 1px solid black;
+    border-collapse: collapse;
+    padding: 10px;
+}
+table th {
+    border: 1px solid black;
+    border-collapse: collapse;
+    padding: 10px;
+}
+
+table td:first-child, table th:first-child {
+    font-weight: bold;
+}

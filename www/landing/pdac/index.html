@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>PDAC landing page</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="-1">
+        <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
+
+        <link rel="stylesheet" href="../../css/gear-theme-purple.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
+
+        <link rel="stylesheet" href="../../css/common.v2.css" />
+
+        <!--Page-specific CSS here -->
+        <link rel="stylesheet" href="./index.css" />
+
+    </head>
+    <body>
+      <div id="main-layout-c" class="columns is-fullheight">
+
+        <!--#include virtual="/include/primary_nav.html" -->
+
+        <section id="main-c" class="column pl-0 pt-0">
+
+          <!--#include virtual="/include/header_bar.html" -->
+
+          <section id="content-c" class="m-3 p-3" data-nav-link="workspace">
+            <h1><a href="https://doi.org/10.1101/2024.02.26.581612">Integrative analysis of genomic and transcriptomic data informs precancer progression in the pancreas</a></h1>
+            <span class="self-note">TODO: change DOI link for title</span>
+            <!-- This is the section to be populated for new pages -->
+            <p id="author-list">
+              Kathleen Noller, Jiaying Lai, Daniel Lesperance, Ricky S. Adkins, Ahmed Elhossiny, Paola A. Guerrero, Kimal I. Rajapakshe, Michelle Giglio, Anirban Maitra, Anup Mahurkar, Owen White, Marina Pasca Di Magliano, Michael F. Ochs, Luciane T. Kagohara, Laura D. Wood, Rachel Karchin, Elana J. Fertig
+            </p>
+            <p>
+              Pancreatic ductal adenocarcinoma (PDAC) arises from heterogeneous precursor lesions, including intraductal papillary mucinous neoplasms (IPMNs), but the features distinguishing indolent from progressive lesions remain unclear. We performed an integrative analysis of transcriptomic, genomic, and microenvironmental profiles of IPMNs to define multi-omic phenotypes. Using transfer learning, we projected IPMN-derived transcriptional programs onto spatial transcriptomic datasets from IPMNs and pancreatic intraepithelial neoplasias (PanINs). We identified two major phenotypes: one associated with cancer-associated fibroblasts and epithelial-to-mesenchymal transition, shared across IPMN, PanIN, and PDAC; and a second, glycolysis-enriched phenotype with a unique somatic variant profile specific to IPMN. Spatial mapping further revealed grade-specific enrichment of transcriptional programs and distinct interactions with stromal and immune subtypes, underscoring the role of the precancer microenvironment in progression. These findings establish multi-omic phenotypes that unify genetic, transcriptional, and microenvironmental heterogeneity, providing a framework for distinguishing progressive from indolent precancers and a web-based public atlas for future exploration of these data and transcriptional phenotypes.
+            </p>
+
+            <hr />
+
+            <div class="figure-c">
+              <img class="figure-img img-fluid" src="Figure5.jpg" alt="Figure 5">
+              <p class="figure-title">
+                Public dissemination and user-friendly analysis and visualization enabled by the cancer gEAR platform
+              </p>
+              <p class="figure-text">
+                <ul>
+                  <li><strong>A:</strong> Visualization of spatial transcriptomic IPMN data in Cancer gEAR portal.</li>
+                  <li><strong>B:</strong> Projection analysis tool using projectR in Cancer gEAR.</li>
+                  <li><strong>C:</strong> Flow chart of steps to perform projection analysis in Cancer gEAR.</li>
+                  <li><strong>D:</strong> Example visualizations of Semaan 2023 et al. Bulk RNA-Seq and Carpenter et al. 2023 Single Cell RNA-Seq analysis.</li>
+                  <li><strong>E:</strong> Table displaying the number of datasets loaded into Cancer gEAR for each publication.</li>
+                </ul>
+              </p>
+              </div>
+
+            <div class="figure-c">
+              <img class="figure-image img-fluid" src="workflow.png" alt="Semaan IPMN paper workflow">
+              <p class="figure-title">Semaan IPMN paper workflow
+              </p>
+              <p class="figure-text">
+                Workflow defining transcriptional patterns from bulk RNA-seq data of IPMN lesions from <a href="https://pubmed.ncbi.nlm.nih.gov/37721516/">Semaan et al, 2023</a>. CancerGear enables further projection of these signatures across pancreatic precancer datasets, including single-cell and spatial transcriptomics, to evaluate the impact of the microenvironment on these states and the occurrence in different subtypes of lesions. This software also allows for exploration of PanIN signatures defined in <a href="https://www.sciencedirect.com/science/article/pii/S2405471224001832">Bell et al, 2024</a>, custom gene signatures, and gene expression analyses across collated cohorts of pancreatic precancer data.
+              </p>
+            </div>
+
+            <hr />
+
+            <h3><a name="approach1"></a>1. Data collections (profiles) focused on pancreatic ductal adenocarcinoma in Cancer gEAR</h3>
+            <div id="data-collections-c">
+              <p><strong>IPMN Spatial (Sans 2023)</strong></p>
+              <p><strong>PanIN Spatial HG and LG (Bell 2024)</strong></p>
+              <p><strong>Papillary Mucinous Neoplasms (Semaan 2023)</strong></p>
+              <p><strong>Early Neoplastic Lesions (Carpentar 2023)</strong></p>
+            </div>
+
+            <h3><a name="approach2"></a>2. Pattern signatures derived from <a href="https://pubmed.ncbi.nlm.nih.gov/37989764/">CoGAPS non-negative matrix factorization (NMF)</a> projected across pancreatic precancer data using <a href="https://doi.org/10.1093/bioinformatics/btaa183">ProjectR</a>.</h3>
+            <div id="gene-signatures-c">
+              <p><strong>CoGAPS_Semaan:</strong> Noller et al 2025 - Transcriptional subtypes defined from epithelial cells in IPMN data from <a href="https://pubmed.ncbi.nlm.nih.gov/37721516/">Semaan et al, 2023</a>.</p>
+              <p><strong>CoGAPS_PDAC:</strong> Guinn et al 2024 - Transcription subtypes defined for PDAC epithelial cells <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11065624/">Guinn et al, 2024</a> and analysed in PanINs <a href="https://www.sciencedirect.com/science/article/pii/S2405471224001832">Bell et al, 2024</a>.</p>
+            </div>
+
+            <h3><a name="approach3"></a>3. Projection links to explore pattern signatures across the PDAC data collections</h3>
+            <div id="links-section">
+              <p>
+                Each cell in the table links to the projection of one of the Cancer gEAR data collections described
+                above into one of the pattern signatures described above, allowing the exploration of each of the pattern
+                signatures as they change across the samples in the Cancer gEAR data
+                collections.
+                <br /><br />
+                The first column of links can be used to view the expression of individual genes across
+                the data collections, and uses CDKN2A as an example gene to explore its expression patterns.
+              </p>
+
+              <table>
+                <thead>
+                  <tr>
+                    <th class="table-color">&nbsp;</th>
+                    <th class="vertical table-color underline">Pattern signatures</th>
+                    <th class="vertical secondary-color">Individual gene links</th>
+                    <th class="vertical secondary-color">CoGAPS_Semaan</th>
+                    <th class="vertical secondary-color">CoGAPS_PDAC</th>
+                  </tr>
+                  <tr>
+                    <th class="table-color underline">Dataset collections</th>
+                    <th class="table-color">&nbsp;</th>
+                    <th class="table-color">&nbsp;</th>
+                    <th class="table-color">&nbsp;</th>
+                    <th class="table-color">&nbsp;</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="secondary-color">IPMN Spatial (Sans 2023)</td>
+                    <td class="table-color">&nbsp;</td>
+                    <td><a href="https://cancer.umgear.org/p?l=ipmnsans&g=cdkn2a&gsem=1" target="_blank">LINK</a></td>
+                    <td><a href="https://cancer.umgear.org/p?p=p&l=ipmnsans&c=22cbec09&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                    <td><a href="https://cancer.umgear.org/p?p=p&l=ipmnsans&c=245819e7&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                  </tr>
+                  <tr>
+                    <td class="secondary-color">PanIN Spatial HG and LG (Bell 2024)</td>
+                    <td class="table-color">&nbsp;</td>
+                    <td><a href="https://cancer.umgear.org/p?l=PanINBell&g=cdkn2a&gsem=1" target="_blank">LINK</a></td>
+                    <td><a href="https://cancer.umgear.org/p?p=p&l=PanINBell&c=22cbec09&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                    <td><a href="https://cancer.umgear.org/p?p=p&l=PanINBell&c=245819e7&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                  </tr>
+                  <tr>
+                    <td class="secondary-color">Papillary Mucinous Neoplasms (Semaan 2023)</td>
+                    <td class="table-color">&nbsp;</td>
+                    <td><a href="https://cancer.umgear.org/p?l=Semaan2023&g=cdkn2a&gsem=1" target="_blank">LINK</a></td>
+                    <td><a href="https://cancer.umgear.org/p?p=p&l=Semaan2023&c=22cbec09&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                    <td><a href="https://cancer.umgear.org/p?p=p&l=Semaan2023&c=245819e7&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                  </tr>
+                  <tr>
+                    <td class="secondary-color">Early Neoplastic Lesions (Carpentar 2023)</td>
+                    <td class="table-color">&nbsp;</td>
+                    <td><a href="https://cancer.umgear.org/p?l=e979080b&g=cdkn2a&gsem=1" target="_blank">LINK</a></td>
+                    <td><a href="https://cancer.umgear.org/p?p=p&l=e979080b&c=22cbec09&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                    <td><a href="https://cancer.umgear.org/p?p=p&l=e979080b&c=245819e7&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                </tbody>
+              </table>
+
+              <h3>Helpful Links</h3>
+              <ul id="utility-links">
+                <li><a href="https://cancer.umgear.org">Cancer gEAR main page</a></li>
+                <li><a href="/upload_dataset.html">Data uploading</a></li>
+                <li><a href="/gene_list_manager.html">Gene list (pattern) uploading</a></li>
+              </ul>
+            </div>
+
+          </section><!-- end #content-c -->
+        </section> <!-- end #main-c -->
+      </div>
+      <footer>
+        <div>
+          <!-- content here TO BE inserted via common.js -->
+        </div>
+      </footer>
+
+      <script src="../../js/vendor/js.cookie.js"></script>
+
+      <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+      <script type="module">
+        import { initCommonUI } from '../../js/common.v2.js';
+        initCommonUI();
+      </script>
+
+      <!-- Page-specific JS file here -->
+      <script src="index.js"></script>
+    </body>
+</html>
