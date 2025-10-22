@@ -520,7 +520,8 @@ class DatasetTile {
 
         // Not projection mode, so get orthologs
         try {
-            createCardMessage(tileId, "info", "Finding ortholog gene(s)...");
+            const geneName = this.type === "single" ? geneSymbolInput[0] : "these genes";
+            createCardMessage(tileId, "info", `Finding ortholog mapping for ${geneName}...`);
             await this.getOrthologs(geneSymbolInput);
         }
         catch (error) {
