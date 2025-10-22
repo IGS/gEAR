@@ -87,6 +87,10 @@ table td {
     border-collapse: collapse;
     padding: 10px;
 }
+/* align text in table cells to center */
+table td.td-center, table th.td-center {
+    text-align: center;
+}
 table th {
     border: 1px solid black;
     border-collapse: collapse;
