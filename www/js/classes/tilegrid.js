@@ -173,7 +173,6 @@ export class TileGrid {
 
             // Add the tile to the selector element
             selectorElt.append(tileChildHTML);
-            createCardMessage(tile.tileId, "info", "Preprocessing...");
 
             // Set the grid-area property of the tile. Must be added after the tile is appended to the DOM
             const tileElement = document.getElementById(`tile-${tile.tileId}`);
@@ -499,6 +498,8 @@ class DatasetTile {
 
         // Resize the card image (plots) to accomodate the title header
         this.resizeCardImage();
+        createCardMessage(tileId, "info", "Preprocessing...");
+
 
         // If the dataset type is epiviz, then give warning that it hasn't been implemented yet
         if (this.dataset.dtype === "epiviz") {
@@ -2243,6 +2244,8 @@ class DatasetTile {
      * Resizes the card image based on the sibling card header height.
      */
     resizeCardImage() {
+        // SAdkins - I think this affects the current message in .card-image, clearing it out.
+
         const cardImage = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         // resize based on the sibling .card-header height
         const cardHeader = document.querySelector(`#tile-${this.tile.tileId} .card-header`);
@@ -2255,7 +2258,6 @@ class DatasetTile {
 
         this.cardImgHeight = cardImage.offsetHeight; // store the height for later use
         this.cardImgWidth = cardImage.offsetWidth; // store the width for later use
-
     }
 }
 
