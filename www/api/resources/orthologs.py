@@ -15,19 +15,6 @@ from gear.utils import catch_memory_error
 from .common import get_adata_shadow, get_spatial_adata
 
 
-def normalize_searched_gene(gene_set, chosen_gene):
-    """Convert to case-insensitive version of gene.  Returns None if gene not found in dataset."""
-    # Some genes get read in as floats by accident
-    chosen_gene_lower = str(chosen_gene).lower()
-    for gene in gene_set:
-        try:
-            if chosen_gene_lower == str(gene).lower():
-                return gene
-        except Exception:
-            print(gene, file=sys.stderr)
-            raise
-    return None
-
 def get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id, exclusive_org=False):
     """
     Retrieves the mapped gene symbol for a given gene symbol, gene organism ID, and dataset organism ID.
@@ -128,24 +115,41 @@ def get_mapped_gene_symbols(gene_symbols, gene_organism_id, dataset_organism_id,
     return {gene: [] for gene in gene_symbols}
 
 
-def check_gene_in_dataset(adata, gene_symbol):
+def check_gene_in_dataset(gene_map: set, gene_symbol: str) -> bool:
     """
-    Check if any of the given gene symbols are present in the dataset.
+    Check whether a gene symbol is present in a dataset gene map.
 
-    Args:
-        adata (AnnData): Annotated data object.
-        gene_symbols (list): List of gene symbols to check.
+    Parameters
+    ----------
+    gene_map : set
+        A set containing gene symbols (expected to be lowercase strings) that
+        represent the genes present in the dataset. Membership is tested
+        directly against this set.
+    gene_symbol : str
+        The gene symbol to check. This value will be coerced to str and
+        lowercased before testing membership.
 
-    Returns:
-        bool: True if any of the gene symbols are present in the dataset, False otherwise.
+    Returns
+    -------
+    bool
+        True if the lowercased gene_symbol is found in gene_map, False otherwise.
+
+    Notes
+    -----
+    - Non-string inputs for gene_symbol are converted via str() before lowercasing.
+    - For correct case-insensitive behavior, gene_map should contain lowercase
+      representations of gene symbols.
+    - This function performs a simple membership test and does not perform
+      additional normalization (e.g., trimming whitespace, handling synonyms).
+
+    Examples
+    --------
+    >>> check_gene_in_dataset({'tp53', 'brca1'}, 'TP53')
+    True
+    >>> check_gene_in_dataset({'tp53', 'brca1'}, 123)
+    False
     """
-
-    dataset_genes = set(adata.var['gene_symbol'].unique())
-    normalized_gene = normalize_searched_gene(dataset_genes, gene_symbol)
-
-    gene_symbols = (normalized_gene,)
-    gene_filter = adata.var.gene_symbol.isin(gene_symbols)
-    return gene_filter.any()
+    return str(gene_symbol).lower() in gene_map
 
 class Orthologs(Resource):
 
@@ -195,12 +199,17 @@ class Orthologs(Resource):
             return {"error": "The h5ad file was not found."}, 400
 
         import scanpy as sc
-        adata = sc.read_h5ad(h5_path)
+        adata = sc.read_h5ad(h5_path, backed='r')
 
         dataset_genes = set(adata.var['gene_symbol'].unique())
 
+        if adata.isbacked:
+            adata.file.close()
+
+        # Build once per request
+        gene_map = {str(g).lower(): g for g in dataset_genes}
         def normalize_gene(gene):
-            return normalize_searched_gene(dataset_genes, gene)
+            return gene_map.get(str(gene).lower())
 
         mapped_gene_symbols_dict = {gene_symbol: []}
 
@@ -222,12 +231,12 @@ class Orthologs(Resource):
                 return {"error": str(e)}, 400
 
         # Filter out genes that are not in the dataset
-        normalized_mapped_genes = [normalize_gene(mapped_gene_symbol) for mapped_gene_symbol in mapped_gene_symbols if check_gene_in_dataset(adata, mapped_gene_symbol)]
+        normalized_mapped_genes = [normalize_gene(mapped_gene_symbol) for mapped_gene_symbol in mapped_gene_symbols if check_gene_in_dataset(gene_map, mapped_gene_symbol)]
         mapped_gene_symbols_dict[gene_symbol] = normalized_mapped_genes
 
         # last chance to map.  Check if nonmapping genes are actually in the dataset (since gene_organism_id may not have been provided)
         if not normalized_mapped_genes:
-            if check_gene_in_dataset(adata, gene_symbol):
+            if check_gene_in_dataset(gene_map, gene_symbol):
                 normalized_gene = normalize_gene(gene_symbol)
                 mapped_gene_symbols_dict[gene_symbol] = [normalized_gene]
             else:
@@ -307,13 +316,17 @@ class Orthologs(Resource):
 
         dataset_genes = set(adata.var['gene_symbol'].unique())
 
+        if adata.isbacked:
+            adata.file.close()
+
+        # Build once per request
+        gene_map = {str(g).lower(): g for g in dataset_genes}
         def normalize_gene(gene):
-            return normalize_searched_gene(dataset_genes, gene)
+            return gene_map.get(str(gene).lower())
 
         mapped_gene_symbols_dict = {gene_symbol: [] for gene_symbol in gene_symbols}
 
         if gene_organism_id and gene_organism_id == dataset_organism_id:
-            # Using adata with "backed" mode does not work with volcano plot
             for gene_symbol in gene_symbols:
                 normalized_gene = normalize_gene(gene_symbol)
                 if normalized_gene:
@@ -334,7 +347,7 @@ class Orthologs(Resource):
 
         # for each mapped gene symbol, verify the mapped genes are in the dataset and normalize to those genes
         for gene_symbol in gene_symbols:
-            normalized_mapped_genes = [normalize_gene(mapped_gene_symbol) for mapped_gene_symbol in mapped_gene_symbols_dict[gene_symbol] if check_gene_in_dataset(adata, mapped_gene_symbol)]
+            normalized_mapped_genes = [normalize_gene(mapped_gene_symbol) for mapped_gene_symbol in mapped_gene_symbols_dict[gene_symbol] if check_gene_in_dataset(gene_map, mapped_gene_symbol)]
 
             if not normalized_mapped_genes:
                 genes_not_mapped.append(gene_symbol)
@@ -344,7 +357,7 @@ class Orthologs(Resource):
 
         # last chance to map.  Check if nonmapping genes are actually in the dataset (since gene_organism_id may not have been provided)
         for gene_symbol in genes_not_mapped:
-            if check_gene_in_dataset(adata, gene_symbol):
+            if check_gene_in_dataset(gene_map, gene_symbol):
                 normalized_gene = normalize_gene(gene_symbol)
                 mapped_gene_symbols_dict[gene_symbol] = [normalized_gene]
             else:
