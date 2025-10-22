@@ -314,13 +314,13 @@ class Orthologs(Resource):
 
         dataset_genes = set(adata.var['gene_symbol'].unique())
 
-        # If spatial and backed, close the file
-        # If AnnDataShadow, delete and gc.collect()
-        if hasattr(adata, 'isbacked') and adata.isbacked:
+        # Both shadows and backed files can close the file handle
+        # If this is memory-backed instead, delete and gc.collect()
+        try:
             adata.file.close()
-        else:
-            import gc
+        except AttributeError:
             del adata
+            import gc
             gc.collect()
 
         # Build once per request
