@@ -173,6 +173,7 @@ export class TileGrid {
 
             // Add the tile to the selector element
             selectorElt.append(tileChildHTML);
+            createCardMessage(tile.tileId, "info", "Preprocessing...");
 
             // Set the grid-area property of the tile. Must be added after the tile is appended to the DOM
             const tileElement = document.getElementById(`tile-${tile.tileId}`);
@@ -208,7 +209,7 @@ export class TileGrid {
      * @param {boolean} [isZoomed=false] - Indicates whether the grid layout is a zoomed dataset.
      * @returns {void}
      */
-    async applySingleTileGrid(datasetTile, selectorElt, isZoomed=false) {
+    async applySingleTileGrid(datasetTile, selectorElt, isZoomed=false, projectROpts={}) {
 
         selectorElt.style.gridTemplateColumns = `repeat(1, 1fr)`;
         selectorElt.style.gridTemplateRows = `repeat(1, fit-content)`;
@@ -222,6 +223,7 @@ export class TileGrid {
             zoomedDatasetTile.geneInput = datasetTile.geneInput;
             zoomedDatasetTile.currentDisplayId = datasetTile.currentDisplayId;
             zoomedDatasetTile.svgScoringMethod = datasetTile.svgScoringMethod;
+            zoomedDatasetTile.projectR = projectROpts;  // Ensure these are preserved so we do not have to run again.
             return zoomedDatasetTile;
         }
 
@@ -323,7 +325,7 @@ export class TileGrid {
 
 class DatasetTile {
     constructor(thisTileGrid, display, dataset, isMulti=true, isZoomed=false) {
-        this.display = display; // has the layout member info
+        this.display = display; // has the layout member info (null if single dataset view)
         this.dataset = dataset; // Has dataset metadata info
 
         this.type = isMulti ? 'multi' : 'single';
@@ -653,9 +655,9 @@ class DatasetTile {
                 if (! data.projection_id) {
                     createCardMessage(this.tile.tileId, "info", "Creating projection. This may take a few minutes.");
                 }
-                this.projection_id = data.projection_id || null;
+                const projectionId = data.projection_id || null;
 
-                const fetchData = await apiCallsMixin.fetchProjection(this.dataset.id, this.projection_id, patternSource, algorithm, gctype, zscore, otherOpts);
+                const fetchData = await apiCallsMixin.fetchProjection(this.dataset.id, projectionId, patternSource, algorithm, gctype, zscore, otherOpts);
                 if (fetchData.status === "failed") {
                     // throw error with message
                     throw new Error(fetchData?.error || "Something went wrong with creating a projection.");
@@ -1024,7 +1026,7 @@ class DatasetTile {
 
             this.parentTileGrid.zoomId = this.tile.tileId; // Set the zoomed display ID in the parent tile grid
             // Apply single tile grid
-            await this.parentTileGrid.applySingleTileGrid(this, document.getElementById("zoomed-panel-grid"), true);
+            await this.parentTileGrid.applySingleTileGrid(this, document.getElementById("zoomed-panel-grid"), true, this.projectR);
 
         });
         tileElement.querySelector('.js-shrink-display').addEventListener("click", (event) => {
@@ -1358,6 +1360,8 @@ class DatasetTile {
             // If the dataset is spatial, we can still render a spatial panel
             if (this.dataset.dtype === "spatial") {
                 console.info("Rendering configless spatial panel display.");
+
+
                 const display = {
                     plot_type: "spatial_panel",
                     plotly_config: {
