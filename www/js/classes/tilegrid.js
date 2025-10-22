@@ -498,8 +498,6 @@ class DatasetTile {
 
         // Resize the card image (plots) to accomodate the title header
         this.resizeCardImage();
-        createCardMessage(tileId, "info", "Preprocessing...");
-
 
         // If the dataset type is epiviz, then give warning that it hasn't been implemented yet
         if (this.dataset.dtype === "epiviz") {
@@ -522,6 +520,7 @@ class DatasetTile {
 
         // Not projection mode, so get orthologs
         try {
+            createCardMessage(tileId, "info", "Finding ortholog gene(s)...");
             await this.getOrthologs(geneSymbolInput);
         }
         catch (error) {
