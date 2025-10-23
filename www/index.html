@@ -226,7 +226,6 @@
                           <hr />
 
                           <div>
-                            <!-- Example dataset cards -->
                             <h3><strong>Highlighted & recently added:</strong></h3>
                             <div id="highlighted-datasets" class="columns is-multiline"></div>
                             <template id="dataset-card-template">
@@ -234,35 +233,40 @@
                                 <div class="card">
                                     <div class="card-image">
                                     <figure class="image is-4by3">
-                                      <img
-                                        src="/img/demo1.png"
+                                      <img class="dataset-preview-image"
+                                        src=""
                                         alt="Placeholder image"
                                       />
                                     </figure>
                                   </div>
                                   <div class="card-content">
-                                    <p class="title is-size-6 mb-1">Single-cell transcriptome analysis reveals three sequential phases of gene expression during zebrafish sensory hair cell regeneration</p>
+                                    <p class="title is-size-6 mb-1">Dataset title</p>
                                     <br />
                                     <p class="subtitle is-size-7 mb-2">Baek et al. 2022</p>
                                     <div class="content is-size-7">
-                                      <span class="tag is-info mr-1">Human</span>
-                                      <span class="tag is-light mr-1">RNA-seq</span>
-                                      <span class="tag is-success mr-1">Featured</span>
-                                      <p class="mt-2"><a href="#">View Dataset</a></p>
+                                      <span class="tag is-info mr-1 dataset-organism"></span>
+                                      <span class="tag is-light mr-1 dataset-dtype"></span>
+                                      <!--<span class="tag is-success mr-1">Featured</span>-->
                                     </div>
                                   </div>
                                   <div class="card-footer">
-                                    <a href="#" class="card-footer-item">
+                                    <a href="#" class="card-footer-item dataset-link">
                                       <span class="icon is-small mr-1">
                                         <i class="mdi mdi-eye"></i>
                                       </span>
-                                      <span>1.2k Views</span>
+                                      <span>View</span>
                                     </a>
-                                    <a href="#" class="card-footer-item">
+                                    <a href="#" class="card-footer-item comparison-tool-link">
                                       <span class="icon is-small mr-1">
-                                        <i class="mdi mdi-download"></i>
+                                        <i class="mdi mdi-compare-horizontal"></i>
                                       </span>
-                                      <span>300 Downloads</span>
+                                      <span>Compare</span>
+                                    </a>
+                                    <a href="#" class="card-footer-item publication-link" target="_blank">
+                                      <span class="icon is-small mr-1">
+                                        <i class="mdi mdi-school-outline"></i>
+                                      </span>
+                                      <span>Publication</span>
                                     </a>
                                   </div>
                                 </div>

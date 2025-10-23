@@ -154,6 +154,7 @@ const populateDatasetSpinner = async () => {
     let spinnerDatasets = [];
     const data = await apiCallsMixin.fetchDatasets({'limit': 10});
     spinnerDatasets = data.datasets;
+    console.log(spinnerDatasets);
    
     const template = document.querySelector('#dataset-card-template');
     const datasetSpinnerContainer = document.querySelector('#highlighted-datasets');
@@ -163,8 +164,22 @@ const populateDatasetSpinner = async () => {
 
     for (const dataset of spinnerDatasets) {
         const card = template.content.cloneNode(true);
-        //card.querySelector('.dataset-link').setAttribute('href', `/dataset.html?dataset_id=${dataset.dataset_id}`);
-        //card.querySelector('.dataset-link').textContent = dataset.title;
+
+        card.querySelector('p.title').textContent = dataset.title;
+        card.querySelector('p.subtitle').textContent = dataset.contact_name;
+        card.querySelector('.dataset-preview-image').setAttribute('src', dataset.preview_image_url);
+        card.querySelector('.dataset-organism').textContent = dataset.organism;
+        card.querySelector('.dataset-dtype').textContent = dataset.dtype;
+        card.querySelector('.dataset-link').setAttribute('href', `/p?s=${dataset.share_id}`);
+        card.querySelector('.comparison-tool-link').setAttribute('href', `/compare_datasets.html?dataset_id=${dataset.id}`);
+
+        // If there is a publication URL, show the publication link, otherwise remove it
+        if (dataset.pubmed_id) {
+            card.querySelector('.publication-link').setAttribute('href', `https://pubmed.ncbi.nlm.nih.gov/${dataset.pubmed_id}/`);
+        } else {
+            card.querySelector('.publication-link').remove();
+        }
+        
         datasetSpinnerContainer.appendChild(card);
         cardIdx += 1;
 
