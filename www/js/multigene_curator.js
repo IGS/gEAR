@@ -842,7 +842,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
                 curatorCommon.renderColorPicker(series);
                 for (const group in config["colors"]) {
                     const color = config["colors"][group];
-                    const colorField = document.getElementById(`${CSS.escape(group)}-color`);
+                    const colorField = document.getElementById(`${group}-color`);
                     if (colorField) {
                         colorField.value = color;
                     } else {
