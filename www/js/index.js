@@ -156,37 +156,64 @@ const populateDatasetSpinner = async () => {
     spinnerDatasets = data.datasets;
     console.log(spinnerDatasets);
    
-    const template = document.querySelector('#dataset-card-template');
     const datasetSpinnerContainer = document.querySelector('#highlighted-datasets');
     datasetSpinnerContainer.innerHTML = '';
 
     let cardIdx = 0;
 
-    for (const dataset of spinnerDatasets) {
-        const card = template.content.cloneNode(true);
-
-        card.querySelector('p.title').textContent = dataset.title;
-        card.querySelector('p.subtitle').textContent = dataset.contact_name;
-        card.querySelector('.dataset-preview-image').setAttribute('src', dataset.preview_image_url);
-        card.querySelector('.dataset-organism').textContent = dataset.organism;
-        card.querySelector('.dataset-dtype').textContent = dataset.dtype;
-        card.querySelector('.dataset-link').setAttribute('href', `/p?s=${dataset.share_id}`);
-        card.querySelector('.comparison-tool-link').setAttribute('href', `/compare_datasets.html?dataset_id=${dataset.id}`);
-
-        // If there is a publication URL, show the publication link, otherwise remove it
-        if (dataset.pubmed_id) {
-            card.querySelector('.publication-link').setAttribute('href', `https://pubmed.ncbi.nlm.nih.gov/${dataset.pubmed_id}/`);
-        } else {
-            card.querySelector('.publication-link').remove();
-        }
-        
+    for (let i = 0; i < spinnerDatasets.length && i < 3; i++) {
+        const dataset = spinnerDatasets[i];
+        const card = populateDatasetCard(dataset);
         datasetSpinnerContainer.appendChild(card);
-        cardIdx += 1;
-
-        if (cardIdx >= 3) {
-            break;
-        }
     }
+
+    document.getElementById('dataset-spinner-next').addEventListener('click', () => {
+        if (cardIdx + 3 < spinnerDatasets.length) {
+            cardIdx += 3;
+            updateDatasetSpinnerView(spinnerDatasets, cardIdx);
+            // disable next if there are no further pages
+            document.getElementById('dataset-spinner-next').disabled = (cardIdx + 3 >= spinnerDatasets.length);
+        } else {
+            document.getElementById('dataset-spinner-next').disabled = true;
+        }
+
+        document.getElementById('dataset-spinner-previous').disabled = false;
+    });
+
+    document.getElementById('dataset-spinner-previous').addEventListener('click', () => {
+        if (cardIdx - 3 >= 0) {
+            cardIdx -= 3;
+            updateDatasetSpinnerView(spinnerDatasets, cardIdx);
+            // disable previous if we are back at the first page
+            document.getElementById('dataset-spinner-previous').disabled = (cardIdx - 3 < 0);
+        } else {
+            document.getElementById('dataset-spinner-previous').disabled = true;
+        }
+
+        document.getElementById('dataset-spinner-next').disabled = false;
+    });
+}
+
+const populateDatasetCard = (dataset) => {
+    const template = document.querySelector('#dataset-card-template');
+    const card = template.content.cloneNode(true);
+
+    card.querySelector('p.title').textContent = dataset.title;
+    card.querySelector('p.subtitle').textContent = dataset.contact_name;
+    card.querySelector('.dataset-preview-image').setAttribute('src', dataset.preview_image_url);
+    card.querySelector('.dataset-organism').textContent = dataset.organism;
+    card.querySelector('.dataset-dtype').textContent = dataset.dtype;
+    card.querySelector('.dataset-link').setAttribute('href', `/p?s=${dataset.share_id}`);
+    card.querySelector('.comparison-tool-link').setAttribute('href', `/compare_datasets.html?dataset_id=${dataset.id}`);
+
+    // If there is a publication URL, show the publication link, otherwise remove it
+    if (dataset.pubmed_id) {
+        card.querySelector('.publication-link').setAttribute('href', `https://pubmed.ncbi.nlm.nih.gov/${dataset.pubmed_id}/`);
+    } else {
+        card.querySelector('.publication-link').remove();
+    }
+
+    return card;
 }
 
 const populateUserHistoryTable = async () => {
@@ -244,6 +271,23 @@ const loadOrganismList = async () => {
     } catch (error) {
         logErrorInConsole(error);
         createToast("Failed to load organism list");
+    }
+}
+
+const updateDatasetSpinnerView = (datasets, startIdx) => {
+    const datasetSpinnerContainer = document.querySelector('#highlighted-datasets');
+    datasetSpinnerContainer.innerHTML = '';
+
+    const template = document.querySelector('#dataset-card-template');
+
+    for (let i = startIdx; i < startIdx + 3; i++) {
+        if (i >= datasets.length) {
+            break;
+        }
+
+        const dataset = datasets[i];
+        const card = populateDatasetCard(dataset);
+        datasetSpinnerContainer.appendChild(card);
     }
 }
 

@@ -273,14 +273,17 @@
                               </div>
                             </template>
 
-                          <nav class="pagination is-centered mt-4" role="navigation" aria-label="pagination">
-                            <a class="pagination-previous" disabled>Previous</a>
-                            <a class="pagination-next">Next</a>
-                            <ul class="pagination-list">
-                              <li><a class="pagination-link is-current">1</a></li>
-                              <li><a class="pagination-link">2</a></li>
-                              <li><a class="pagination-link">3</a></li>
-                            </ul>
+                          <nav class="level mt-4" role="navigation" aria-label="dataset-pagination">
+                            <div class="level-left">
+                              <div class="level-item">
+                                <button id="dataset-spinner-previous" class="button" type="button" disabled>Previous</button>
+                              </div>
+                            </div>
+                            <div class="level-right">
+                              <div class="level-item">
+                                <button id="dataset-spinner-next" class="button" type="button">Next</button>
+                              </div>
+                            </div>
                           </nav>
                         </div>
                       </li>
