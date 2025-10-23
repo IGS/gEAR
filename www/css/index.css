@@ -1,3 +1,8 @@
+
+div#dataset-explorer-card div.card-content{
+    margin-top: auto;
+}
+
 div#dropdown-dc div.dropdown-menu {
     min-width: 40rem !important;
 }

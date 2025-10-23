@@ -173,6 +173,12 @@ const populateDatasetSpinner = async () => {
             updateDatasetSpinnerView(spinnerDatasets, cardIdx);
             // disable next if there are no further pages
             document.getElementById('dataset-spinner-next').disabled = (cardIdx + 3 >= spinnerDatasets.length);
+
+            // Add the dataset explorer card if we are at the end of the spinner datasets
+            if (cardIdx + 3 >= spinnerDatasets.length) {
+                const explorerCardTemplate = document.querySelector('#dataset-explorer-card-template');
+                datasetSpinnerContainer.appendChild(explorerCardTemplate.content.cloneNode(true));
+            }
         } else {
             document.getElementById('dataset-spinner-next').disabled = true;
         }
