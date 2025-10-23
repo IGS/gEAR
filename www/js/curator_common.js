@@ -1328,7 +1328,7 @@ const renderColorPicker = (seriesName) => {
 
         const colorInput = document.createElement("input");
         colorInput.classList.add("js-plot-color");
-        colorInput.id = `${CSS.escape(group)}-color`;
+        colorInput.id = `${group}-color`;
         colorInput.type = "color";
         colorInput.value = groupColor;
         colorInput.setAttribute("aria-label", "Select a color");
@@ -1404,7 +1404,7 @@ const renderOrderSortableSeries = (series) => {
     const parentList = `<ul id="${series}-order-list" class="content column is-two-thirds js-plot-order-sortable"></ul>`;
 
     const orderDiv = document.createElement("div");
-    orderDiv.id = `${CSS.escape(series)}-order`;
+    orderDiv.id = `${series}-order`;
     orderDiv.classList.add("columns", "is-multiline");
     orderDiv.innerHTML = `
         <p id="${CSS.escape(series)}-order-title" class="has-text-weight-bold column is-full">${series}</p>
@@ -1462,7 +1462,7 @@ const renderOwnerDisplayCard = async (display, defaultDisplayId) => {
     const template = document.getElementById("owner-display-card");
     const displayCard = template.content.cloneNode(true);
     const displayCardElt = displayCard.querySelector(".column");
-    displayCardElt.id = `${CSS.escape(display.id)}-display`;
+    displayCardElt.id = `${display.id}-display`;
 
     const displayCardHeader = displayCard.querySelector(".card-header-title");
     displayCardHeader.textContent = label;
@@ -1482,7 +1482,7 @@ const renderOwnerDisplayCard = async (display, defaultDisplayId) => {
 
     // Edit default properties if this is the default display
     const displayCardDefaultBtn = displayCard.querySelector(".js-display-default");
-    displayCardDefaultBtn.id = `${CSS.escape(display.id)}-default`;
+    displayCardDefaultBtn.id = `${display.id}-default`;
     if (display.id === defaultDisplayId) {
         displayCardDefaultBtn.textContent = "Default";
         displayCardDefaultBtn.disabled = true;
@@ -1518,7 +1518,7 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
     const template = document.getElementById("user-display-card");
     const displayCard = template.content.cloneNode(true);
     const displayCardElt = displayCard.querySelector(".column");
-    displayCardElt.id = `${CSS.escape(display.id)}-display`;
+    displayCardElt.id = `${display.id}-display`;
 
     const displayCardHeader = displayCard.querySelector(".card-header-title");
     displayCardHeader.textContent = label;
@@ -1538,7 +1538,7 @@ const renderUserDisplayCard = async (display, defaultDisplayId) => {
 
     // Edit default properties if this is the default display
     const displayCardDefaultBtn = displayCard.querySelector(".js-display-default");
-    displayCardDefaultBtn.id = `${CSS.escape(display.id)}-default`;
+    displayCardDefaultBtn.id = `${display.id}-default`;
     if (display.id === defaultDisplayId) {
         displayCardDefaultBtn.textContent = "Default";
         displayCardDefaultBtn.disabled = true;
