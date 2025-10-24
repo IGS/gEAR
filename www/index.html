@@ -179,10 +179,10 @@
                             <div class="column is-6">
                               <div class="field has-addons">
                                 <div class="control is-expanded">
-                                  <input class="input" type="text" placeholder="Search datasets by keyword, author, publication...">
+                                  <input id="dataset-search-input" class="input" type="text" placeholder="Search datasets by keyword, author, publication...">
                                 </div>
                                 <div class="control">
-                                  <button class="button is-primary">
+                                  <button id="submit-dataset-search" class="button is-primary">
                                     <span class="icon is-small"><i class="mdi mdi-magnify"></i></span>
                                     <span>Search</span>
                                   </button>
@@ -212,10 +212,13 @@
                                 </div>
                                 <div class="control">
                                   <div class="select">
-                                    <select>
-                                      <option>Sort by: Relevance</option>
-                                      <option>Date Added</option>
-                                      <option>Popularity</option>
+                                    <select id="dataset-search-sortby">
+                                      <option value="relevance">Sort by: Relevance</option>
+                                      <option value="title">Dataset title</option>
+                                      <option value="date_added">Date uploaded</option>
+                                      <option value="owner">Owner</option>
+                                      <!-- We don't have a way of measuring this yet -->
+                                      <!--<option>Popularity</option>-->
                                     </select>
                                   </div>
                                 </div>

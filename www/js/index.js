@@ -35,6 +35,42 @@ document.addEventListener('DOMContentLoaded', () => {
         selected_genes = new Set([...selected_genes, ...manually_entered_genes]);
     });
 
+    document.querySelector('#submit-dataset-search').addEventListener('click', (event) => {
+        const searchInput = document.querySelector('#dataset-search-input');
+        const searchString = searchInput.value.trim();
+
+        if (searchString.length === 0) {
+            createToast('Please enter a search term for datasets');
+            searchInput.classList.add('is-danger');
+            return;
+        } else {
+            searchInput.classList.remove('is-danger');
+        }
+
+        // build the URL for a GET request
+        const url = new URL('/dataset_explorer.html', window.location.origin);
+        url.searchParams.append('search_string', searchString);
+
+        const organismSelectElement = document.getElementById('organism-choices');
+        const selectedOrganismId = organismSelectElement.value;
+        if (selectedOrganismId !== "all") {
+            url.searchParams.append('organism_id', selectedOrganismId);
+        }
+
+        const dtypeSelectElement = document.getElementById('dataset-type-choices');;
+        const selectedDtype = dtypeSelectElement.value;
+        if (selectedDtype !== "all") {
+            url.searchParams.append('dataset_type', selectedDtype);
+        }
+
+        const sortSelectElement = document.querySelector('#dataset-search-sortby');
+        const selectedSortOption = sortSelectElement.value;
+        url.searchParams.append('sort_by', selectedSortOption);
+
+        // now go there
+        window.location.href = url.toString();
+    });
+
     document.querySelector('#submit-expression-search').addEventListener('click', (event) => {
         const status = validateExpressionSearchForm();
 
