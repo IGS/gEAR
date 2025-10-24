@@ -313,11 +313,16 @@ class SpatialPanel(Resource):
 
         try:
             spatial_obj = prep_sdata(dataset_id)
-            spatial_img = generate_spatial_image_df(spatial_obj)
 
-            if spatial_img is not None:
-                spatial_img_path = DATASET_DIR / "spatial_img.npy"
-                np.save(spatial_img_path, spatial_img)
+            # Generate spatial image if not already cached
+            spatial_img = None
+            spatial_img_path = DATASET_DIR / "spatial_img.npy"
+            if not spatial_img_path.is_file():
+                spatial_img = generate_spatial_image_df(spatial_obj)
+
+                if spatial_img is not None:
+                    spatial_img_path = DATASET_DIR / "spatial_img.npy"
+                    np.save(spatial_img_path, spatial_img)
 
             adata = spatial_obj.sdata.tables["table"]
 
