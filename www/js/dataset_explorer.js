@@ -6,7 +6,6 @@ let selected_dc_share_id; // from dataset-collection-selector
 
 */
 
-let firstSearch = true;
 let searchByCollection = false;
 let includePublicMembership = false;
 const resultsPerPage = 20;
@@ -2603,12 +2602,6 @@ const submitSearch = async (page=1) => {
 
     const searchTerms = document.getElementById("search-terms").value;
 
-    // If this is the first time searching with terms, set the sort by to relevance
-    if (searchTerms && firstSearch) {
-        document.getElementById("sort-by").value = 'relevance';
-        firstSearch = false;
-    }
-
     const searchCriteria = {
         'session_id': CURRENT_USER.session_id,
         'search_terms': searchTerms,
@@ -2884,6 +2877,37 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     let search_string = getUrlParameter("search_string");
     if (search_string) {
         document.getElementById("search-terms").value = search_string;
+    }
+
+    let organismIDPassed = getUrlParameter("organism_id");
+    if (organismIDPassed) {
+        // deselect All
+        document.querySelector("#controls-organism li.js-all-selector").classList.remove("js-selected");
+        const organismElt = document.querySelector(`#controls-organism li[data-dbval='${organismIDPassed}']`);
+        if (organismElt) {
+            organismElt.classList.add("js-selected");
+        }
+    }
+
+    let dtypePassed = getUrlParameter("dataset_type");
+    if (dtypePassed) {
+        // deselect All
+        document.querySelector("#controls-dataset-type li.js-all-selector").classList.remove("js-selected");
+        const dtypeElt = document.querySelector(`#controls-dataset-type li[data-dbval='${dtypePassed}']`);
+        if (dtypeElt) {
+            dtypeElt.classList.add("js-selected");
+        }
+    }
+
+    let sortByPassed = getUrlParameter("sort_by");
+    if (sortByPassed) {
+        const sortByElt = document.getElementById("sort-by");
+        for (const option of sortByElt.options) {
+            if (option.value === sortByPassed) {
+                sortByElt.value = sortByPassed;
+                break;
+            }
+        }
     }
 
     await submitSearch();
