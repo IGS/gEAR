@@ -832,7 +832,7 @@ def get_user_id_from_session_id(session_id):
     return user_id
 
 
-def get_gene_by_gene_symbol(gene_symbol, dataset_id):
+def get_gene_by_gene_symbol(gene_symbol, dataset_id) -> "Gene | None":
     qry_org_id = "SELECT organism_id from dataset where id = %s"
 
     conn = Connection()

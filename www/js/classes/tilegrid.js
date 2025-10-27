@@ -1542,11 +1542,10 @@ class DatasetTile {
         const datasetId = display.dataset_id;
         const orgId = this.dataset.organism_id;
         const plotConfig = display.plotly_config;
-        const panelAGeneSymbol = plotConfig.gene_symbol;
         const assembly = plotConfig.assembly;
         const ucscHubUrl = plotConfig.hubUrl;
         const zoom = this.isZoomed;
-        let positionArr = ["", ""]; // [leftPosition, rightPosition]
+        const positionArr = ["", ""]; // [leftPosition, rightPosition]
 
         const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned
@@ -1559,75 +1558,39 @@ class DatasetTile {
 
         let spec;
         try {
-            spec = await apiCallsMixin.fetchGoslingDisplay(datasetId, panelAGeneSymbol, assembly, zoom, otherOpts)
+            data = await apiCallsMixin.fetchGoslingDisplay(datasetId, plotConfig, zoom, otherOpts)
+            if (data?.success < 1) {
+                message = data?.message || "Failed to fetch Gosling display data.";
+                throw new Error(message);
+            }
+            spec = data.spec;
+            positionArr[0] = data.position;
+            if (zoom) {
+                positionArr[1] = data.position;
+            }
         } catch (error) {
             logErrorInConsole(error);
             createCardMessage(this.tile.tileId, "danger", "An error occurred while fetching the Gosling spec.");
             return;
         }
 
-        // Determine the initial domain for panel A, based on the current ortholog
-        // This gene is determined from the expression search results, so not triggered by an event
-
-        let panelAGeneResults = null;
-        const basePadding = 1500; // Base padding for zooming
-        try {
-            const panelAData = await apiCallsMixin.fetchGeneAnnotations(panelAGeneSymbol, true, null, null )
-
-            panelAGeneResults = panelAData[panelAGeneSymbol.toLowerCase()];
-
-            const geneData = panelAGeneResults.by_organism[orgId];
-            if (!geneData || geneData.length === 0) {
-                alert(`Gene ${gene} not found.`);
-                return;
-            }
-            // Parse the first result (assuming it's the most relevant)
-            const geneInfo = JSON.parse(geneData[0]);
-            // Get start, end, strand, chromosome (as molecule
-            const start = geneInfo.start;
-            const end = geneInfo.stop;
-            //dconst strand = geneInfo.strand || "+"; // Default to positive strand if not provided
-            // TODO: Standardize the chromosome adjustments
-            let chr = geneInfo.molecule || "unknown"; // Default to unknown chromosome if not provided
-            // if chr is a number, convert it to a string with "chr" prefix
-            if (!isNaN(Number(chr)) || chr === "X" || chr === "Y") {
-                chr = `chr${chr}`;
-            }
-            // if chr is MT, convert to "chrM"
-            if (chr === "MT") {
-                chr = "chrM";
-            }
-
-            const leftPosition = `${chr}:${start}-${end}`;
-            const postitionStr = `${assembly}.${leftPosition}`; // Update the global position variable
-            positionArr[0] = postitionStr;
-
-            // Add a domain to the left-view spec
-            spec.views[1].views[0].xDomain = {
-                "chromosome": chr, "interval": [start-basePadding, end+basePadding]
-            };
-
-            if (zoom) {
-                // Add a domain to the right-view spec
-                spec.views[1].views[1].xDomain = {
-                    "chromosome": chr, "interval": [start-basePadding, end+basePadding]
-                };
-            }
-
-        } catch (error) {
-            console.error("Error searching for gene:", error);
-        }
 
         // Themes -> https://gosling-lang.org/themes/
         const embedOpts = { "padding": 0, "theme": null };
         // NOTE: re-embedding does work but it causes some stability issues
         const goslingApi = await embed(document.getElementById(goslingContainer.id), spec, embedOpts);
 
-        // If the view is a zoomed view extra controls and events are added.
-        if (zoom) {
-            const exportButton = createExportButton(this.tile.tileId, goslingContainer.id);
-            const searchButton = createPanelBSearchBox(this.tile.tileId, exportButton.id);
+        if (!zoom) {
+            return;
+        }
 
+        // If the view is a zoomed view extra controls and events are added.
+        const searchButton = createPanelBSearchBox(this.tile.tileId, exportButton.id);
+
+        if (ucscHubUrl) {
+            const exportButton = createExportButton(this.tile.tileId, goslingContainer.id);
+
+            // Add event listener to export button to open UCSC Genome Browser with hub URL and position
             document.getElementById(exportButton.id).addEventListener('click', () => {
                 const url = "https://genome.ucsc.edu/cgi-bin/hgTracks";
                 // add DB and Hub parameters
@@ -1646,58 +1609,54 @@ class DatasetTile {
                 // open in a new tab
                 window.open(`${url}?${urlParams.toString()}`, '_blank');
             });
-
-            document.getElementById(searchButton.id).addEventListener('click', async () => {
-                const geneInput = document.getElementById(`tile-${this.tile.tileId}-panel-b-gene-input`);
-                const gene = geneInput.value.trim();
-                if (!gene) {
-                    alert("Please enter a gene name.");
-                    return;
-                }
-
-                let panelBGeneResults = null;
-                try {
-                    const panelBData = await apiCallsMixin.fetchGeneAnnotations(gene, true, null, null )
-                    panelBGeneResults = panelBData[gene.toLowerCase()];
-                } catch (error) {
-                    console.error("Error searching for gene:", error);
-                }
-
-                const geneData = panelBGeneResults.by_organism[orgId];
-                if (!geneData || geneData.length === 0) {
-                    alert(`Gene ${gene} not found.`);
-                    return;
-                }
-                // Parse the first result (assuming it's the most relevant)
-                const geneInfo = JSON.parse(geneData[0]);
-                // Get start, end, strand, chromosome (as molecule
-                const start = geneInfo.start;
-                const end = geneInfo.stop;
-                //dconst strand = geneInfo.strand || "+"; // Default to positive strand if not provided
-                let chr = geneInfo.molecule || "unknown"; // Default to unknown chromosome if not provided
-                // if chr is a number, convert it to a string with "chr" prefix
-                if (!isNaN(Number(chr)) || chr === "X" || chr === "Y") {
-                    chr = `chr${chr}`;
-                }
-                // if chr is MT, convert to "chrM"
-                if (chr === "MT") {
-                    chr = "chrM";
-                }
-
-                const rightPosition = `${chr}:${start}-${end}`;
-                const postitionStr = `${assembly}.${rightPosition}`; // Update the global position variable
-                positionArr[1] = postitionStr;
-                await goslingApi.zoomTo("right-annotation", rightPosition, basePadding); // track name, position, padding, duration (ms)
-
-            });
-
-
         }
 
+        // Add event listener to search button to zoom to gene in Panel B
+        document.getElementById(searchButton.id).addEventListener('click', async () => {
+            const geneInput = document.getElementById(`tile-${this.tile.tileId}-panel-b-gene-input`);
+            const gene = geneInput.value.trim();
+            if (!gene) {
+                alert("Please enter a gene name.");
+                return;
+            }
 
+            let panelBGeneResults = null;
+            try {
+                const panelBData = await apiCallsMixin.fetchGeneAnnotations(gene, true, null, null )
+                panelBGeneResults = panelBData[gene.toLowerCase()];
+            } catch (error) {
+                console.error("Error searching for gene:", error);
+            }
 
+            const geneData = panelBGeneResults.by_organism[orgId];
+            if (!geneData || geneData.length === 0) {
+                alert(`Gene ${gene} not found.`);
+                return;
+            }
+            // Parse the first result (assuming it's the most relevant)
+            const geneInfo = JSON.parse(geneData[0]);
+            // Get start, end, strand, chromosome (as molecule
+            const start = geneInfo.start;
+            const end = geneInfo.stop;
+            //dconst strand = geneInfo.strand || "+"; // Default to positive strand if not provided
+            let chr = geneInfo.molecule || "unknown"; // Default to unknown chromosome if not provided
+            // if chr is a number, convert it to a string with "chr" prefix
+            if (!isNaN(Number(chr)) || chr === "X" || chr === "Y") {
+                chr = `chr${chr}`;
+            }
+            // if chr is MT, convert to "chrM"
+            if (chr === "MT") {
+                chr = "chrM";
+            }
 
-        return;
+            const basePadding = 1500; // Base padding for zooming
+
+            const rightPosition = `${chr}:${start}-${end}`;
+            const postitionStr = `${assembly}.${rightPosition}`; // Update the global position variable
+            positionArr[1] = postitionStr;
+            await goslingApi.zoomTo("right-annotation", rightPosition, basePadding); // track name, position, padding, duration (ms)
+
+        });
     }
 
     /**
