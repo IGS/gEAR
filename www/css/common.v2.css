@@ -46,16 +46,16 @@ html, body {
     border-bottom: 1px solid rgb(200, 200, 200);
 }
 
-#logo-c:hover {
-    cursor: pointer;
-}
-
 #navbar-login input {
     width: 15em;
 }
 
 .navbar-dropdown {
     width: max-content;
+}
+
+#page-header-label {
+    font-weight: bold;
 }
 
 /* -------------------- */
@@ -84,6 +84,17 @@ html, body {
     transition: opacity 0.3s ease, max-height 0.3s ease;
 }
 
+#logo-c:hover {
+    cursor: pointer;
+}
+
+#logo-c hr {
+    border: none;
+    height: 1px;
+    /* Set the hr color */
+    background-color: #333;  /* Modern Browsers */
+}
+
 .menu-list a {
     border-radius: 10px;
     padding: 0.25rem 0.5rem;
@@ -97,6 +108,11 @@ html, body {
 
 p.menu-label {
     min-height: 1.5rem;
+}
+
+span.menu-label-text {
+    font-size: 120%;
+    font-weight: bold;
 }
 
 /* CSS class for the show animation */
