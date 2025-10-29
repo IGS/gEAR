@@ -231,7 +231,7 @@ const populateDatasetSpinner = async () => {
     let spinnerDatasets = [];
     const data = await apiCallsMixin.fetchDatasets({'limit': 10});
     spinnerDatasets = data.datasets;
-    console.log(spinnerDatasets);
+    //console.log(spinnerDatasets);
 
     const datasetSpinnerContainer = document.getElementById('highlighted-datasets');
     datasetSpinnerContainer.innerHTML = '';
