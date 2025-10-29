@@ -36,7 +36,7 @@ window.addEventListener("unhandledrejection", (event) => {
  * @returns {void}
  */
 const initCommonUI = async () => {
-        // load the site preferences JSON file, then call any functions which need it
+    // load the site preferences JSON file, then call any functions which need it
     getDomainPreferences().then((result) => {
         SITE_PREFS = result;
         loadPlugins();
@@ -69,9 +69,9 @@ const initCommonUI = async () => {
     for (const elt of document.querySelectorAll("#primary-nav .menu-list a.is-active")) {
 		elt.classList.remove("is-active");
 	}
-    const this_page_tool = document.getElementById("content-c").dataset.navLink;
-    const tool_search_string = `a[tool='${this_page_tool}'`;
-	document.querySelector(tool_search_string).classList.add("is-active");
+    const thisPageTool = document.getElementById("content-c").dataset.navLink;
+    const toolSearchString = `a[tool='${thisPageTool}'`;
+	document.querySelector(toolSearchString).classList.add("is-active");
 
 
 
@@ -206,7 +206,7 @@ PMID: 34172972`;
         handlePrimaryNavTooltips(false);
     }
 
-    const navbarToggler = document.querySelector('#navbar-toggler');
+    const navbarToggler = document.getElementById('navbar-toggler');
 
     navbarToggler.addEventListener('click', (event) => {
         if (SIDEBAR_COLLAPSED == false) {
@@ -230,7 +230,7 @@ PMID: 34172972`;
         SIDEBAR_COLLAPSED = false;
     }
 
-    document.querySelector('#epiviz-panel-designer-link').addEventListener('click', (event) => {
+    document.getElementById('epiviz-panel-designer-link').addEventListener('click', (event) => {
         createToast("This feature is not yet available.", "is-warning");
     });
 
@@ -496,7 +496,7 @@ const handleLoginUIUpdates = () => {
     }
 
     pageSpecificLoginUIUpdates();
-    document.querySelector("#navbar-login-controls").classList.remove("is-hidden");
+    document.getElementById("navbar-login-controls").classList.remove("is-hidden");
 }
 
 /*************************************************************************************

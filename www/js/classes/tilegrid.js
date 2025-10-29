@@ -3,7 +3,6 @@
 // This doesn't work unless we refactor everything to use ES modules
 import { apiCallsMixin, closeModal, getCurrentUser, logErrorInConsole, openModal } from "../common.v2.js?v=a4b3d6c";
 import { adjustClusterColorbars, adjustExpressionColorbar, postPlotlyConfig } from "../plot_display_config.js?v=a4b3d6c";
-import { embed } from 'https://esm.sh/gosling.js@1.0.5';
 
 /* Given a passed-in layout_id, genereate a 2-dimensional tile-based grid object.
 This uses Bulma CSS for stylings (https://bulma.io/documentation/layout/tiles/)
@@ -1547,6 +1546,18 @@ class DatasetTile {
         const zoom = this.isZoomed;
         const positionArr = ["", ""]; // [leftPosition, rightPosition]
 
+        let embedFn = null
+        try {
+            const gos = await import('https://esm.sh/gosling.js@1.0.5');
+            // prefer named export, then try default, then fallback to the module itself
+            embedFn = gos.embed ?? gos.default?.embed ?? gos.default ?? gos;
+        // use mod
+        } catch (err) {
+            console.error('Optional module failed to load, continuing without it', err);
+            createCardMessage(this.tile.tileId, "danger", "Could not load Gosling viewer (network or CDN error).");
+            return
+        }
+
         const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
@@ -1578,7 +1589,7 @@ class DatasetTile {
         // Themes -> https://gosling-lang.org/themes/
         const embedOpts = { "padding": 0, "theme": null };
         // NOTE: re-embedding does work but it causes some stability issues
-        const goslingApi = await embed(document.getElementById(goslingContainer.id), spec, embedOpts);
+        const goslingApi = await embedFn(document.getElementById(goslingContainer.id), spec, embedOpts);
 
         if (!zoom) {
             return;

@@ -36,8 +36,8 @@ document.getElementById('genes-manually-entered').addEventListener('change', (ev
 
 });
 
-document.querySelector('#submit-dataset-search').addEventListener('click', (event) => {
-    const searchInput = document.querySelector('#dataset-search-input');
+document.getElementById('submit-dataset-search').addEventListener('click', (event) => {
+    const searchInput = document.getElementById('dataset-search-input');
     const searchString = searchInput.value.trim();
 
     if (searchString.length === 0) {
@@ -64,7 +64,7 @@ document.querySelector('#submit-dataset-search').addEventListener('click', (even
         url.searchParams.append('dataset_type', selectedDtype);
     }
 
-    const sortSelectElement = document.querySelector('#dataset-search-sortby');
+    const sortSelectElement = document.getElementById('dataset-search-sortby');
     const selectedSortOption = sortSelectElement.value;
     url.searchParams.append('sort_by', selectedSortOption);
 
@@ -72,7 +72,7 @@ document.querySelector('#submit-dataset-search').addEventListener('click', (even
     window.location.href = url.toString();
 });
 
-document.querySelector('#submit-expression-search').addEventListener('click', (event) => {
+document.getElementById('submit-expression-search').addEventListener('click', (event) => {
     const status = validateExpressionSearchForm();
 
     if (!status) {
@@ -91,7 +91,7 @@ document.querySelector('#submit-expression-search').addEventListener('click', (e
     }
 
     // are we doing exact matches?
-    if (document.querySelector('#gene-search-exact-match').checked) {
+    if (document.getElementById('gene-search-exact-match').checked) {
         url.searchParams.append('gene_symbol_exact_match', '1');
     }
 
@@ -115,12 +115,12 @@ document.querySelector('#submit-expression-search').addEventListener('click', (e
 });
 
 // For this page we want the gene collection dropdown to be right-aligned
-const geneCollectionDropdown = document.querySelector('#dropdown-gene-lists');
+const geneCollectionDropdown = document.getElementById('dropdown-gene-lists');
 geneCollectionDropdown.classList.remove('is-left');
 geneCollectionDropdown.classList.add('is-right');
 
 // For this page we want the dataset collection dropdown to be left-aligned
-const datasetCollectionDropdown = document.querySelector('#dropdown-dc');
+const datasetCollectionDropdown = document.getElementById('dropdown-dc');
 datasetCollectionDropdown.classList.remove('is-right');
 datasetCollectionDropdown.classList.add('is-left');
 
@@ -144,7 +144,7 @@ document.getElementById('submit-expression-search').addEventListener('click', (e
     }
 
     // are we doing exact matches?
-    if (document.querySelector('#gene-search-exact-match').checked) {
+    if (document.getElementById('gene-search-exact-match').checked) {
         url.searchParams.append('gene_symbol_exact_match', '1');
     } else {
         url.searchParams.append('gene_symbol_exact_match', '0');
@@ -206,7 +206,7 @@ document.getElementById("onboarding-btn").addEventListener("click", (event) => {
         element: document.getElementById("dropdown-gene-lists"),
         intro: "You can also optionally select a gene list from the dropdown. <br/><br/> These genes will be added to the manually entered genes with the genes in the list.",
     }, {
-        element: document.querySelector('#gene-search-exact-match').parentElement,
+        element: document.getElementById('gene-search-exact-match').parentElement,
         intro: "You can choose to search for exact matches of the gene symbols. <br/><br/> If this is not checked, the search will match any gene with this text.",
     }, {
         element: document.querySelector('input[name="single-multi"][value="multi"]').parentElement,
@@ -231,9 +231,9 @@ const populateDatasetSpinner = async () => {
     let spinnerDatasets = [];
     const data = await apiCallsMixin.fetchDatasets({'limit': 10});
     spinnerDatasets = data.datasets;
-    console.log(spinnerDatasets);
-   
-    const datasetSpinnerContainer = document.querySelector('#highlighted-datasets');
+    //console.log(spinnerDatasets);
+
+    const datasetSpinnerContainer = document.getElementById('highlighted-datasets');
     datasetSpinnerContainer.innerHTML = '';
 
     let cardIdx = 0;
@@ -253,7 +253,7 @@ const populateDatasetSpinner = async () => {
 
             // Add the dataset explorer card if we are at the end of the spinner datasets
             if (cardIdx + 3 >= spinnerDatasets.length) {
-                const explorerCardTemplate = document.querySelector('#dataset-explorer-card-template');
+                const explorerCardTemplate = document.getElementById('dataset-explorer-card-template');
                 datasetSpinnerContainer.appendChild(explorerCardTemplate.content.cloneNode(true));
             }
         } else {
@@ -278,7 +278,7 @@ const populateDatasetSpinner = async () => {
 }
 
 const populateDatasetCard = (dataset) => {
-    const template = document.querySelector('#dataset-card-template');
+    const template = document.getElementById('dataset-card-template');
     const card = template.content.cloneNode(true);
 
     card.querySelector('p.title').textContent = dataset.title;
@@ -303,18 +303,18 @@ const populateUserHistoryTable = async () => {
     const numEntries = 5;
 
     // Load the spinner template
-    const spinnerTemplate = document.querySelector('#user-history-loading');
-    document.querySelector('#user-history-table-tbody').innerHTML = '';
-    document.querySelector('#user-history-table-tbody').appendChild(spinnerTemplate.content.cloneNode(true));
+    const spinnerTemplate = document.getElementById('user-history-loading');
+    document.getElementById('user-history-table-tbody').innerHTML = '';
+    document.getElementById('user-history-table-tbody').appendChild(spinnerTemplate.content.cloneNode(true));
 
     try {
         const data = await apiCallsMixin.fetchUserHistoryEntries(numEntries);
-        const template = document.querySelector('#user-history-row');
-        document.querySelector('#user-history-table-tbody').innerHTML = '';
+        const template = document.getElementById('user-history-row');
+        document.getElementById('user-history-table-tbody').innerHTML = '';
 
         if (data.length === 0) {
-            const noHistoryTemplate = document.querySelector('#user-history-no-entries');
-            document.querySelector('#user-history-table-tbody').appendChild(noHistoryTemplate.content.cloneNode(true));
+            const noHistoryTemplate = document.getElementById('user-history-no-entries');
+            document.getElementById('user-history-table-tbody').appendChild(noHistoryTemplate.content.cloneNode(true));
         } else {
             for (const entry of data) {
                 const row = template.content.cloneNode(true);
@@ -327,7 +327,7 @@ const populateUserHistoryTable = async () => {
                 row.querySelector('.date').textContent = entry.entry_date;
                 row.querySelector('.url').setAttribute('href', entry.url);
 
-                document.querySelector('#user-history-table-tbody').appendChild(row);
+                document.getElementById('user-history-table-tbody').appendChild(row);
             }
         }
     } catch (error) {
@@ -336,7 +336,7 @@ const populateUserHistoryTable = async () => {
 }
 
 /**
- * Loads the list of organisms from the server and populates the organism choices on the 
+ * Loads the list of organisms from the server and populates the organism choices on the
  * datasets tab
  * @function
  * @returns {void}
@@ -358,10 +358,10 @@ const loadOrganismList = async () => {
 }
 
 const updateDatasetSpinnerView = (datasets, startIdx) => {
-    const datasetSpinnerContainer = document.querySelector('#highlighted-datasets');
+    const datasetSpinnerContainer = document.getElementById('highlighted-datasets');
     datasetSpinnerContainer.innerHTML = '';
 
-    const template = document.querySelector('#dataset-card-template');
+    const template = document.getElementById('dataset-card-template');
 
     for (let i = startIdx; i < startIdx + 3; i++) {
         if (i >= datasets.length) {
