@@ -185,13 +185,19 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
                 ] # type: ignore
     )
 
-    base_track = gos.Track(
+    # These are shared amongst the genes and exons track
+    x=gos.X(field="chromStart", type="genomic") # type:ignore
+    xe=gos.X(field="chromEnd", type="genomic") # type:ignore
+    row=gos.Row(field="strand", type="nominal", domain=[1, -1], range=[0,20]) # type:ignore
+    color=gos.Color(field="strand", type="nominal", domain=[1, -1], range=["darkblue", "darkred"]) # type:ignore
+
+    gene_track = gos.Track(
         data=bed_data  # type: ignore
     ).encode(
-        x=gos.X(field="chromStart", type="genomic"), # type:ignore
-        xe=gos.X(field="chromEnd", type="genomic"), # type:ignore
-        row=gos.Row(field="strand", type="nominal", domain=[1, -1]), # type:ignore
-        color=gos.Color(field="strand", type="nominal", domain=[1, -1], range=["darkblue", "darkred"]) # type:ignore
+        x=x,
+        xe=xe,
+        row=row,
+        color=color
     ).visibility_lt(
         measure="width",
         threshold="|xe-x|",
@@ -204,12 +210,12 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     # 2) Rule track (for tooltips) - uses bed_track
     # 3) Rect track (for exons in a separate BED file)
 
-    text_track = base_track.mark_text().encode(
+    text_track = gene_track.mark_text().encode(
         text=gos.Text(field="geneName", type="nominal"),    # type: ignore
         style=gos.Style(dy=-10) # type: ignore
     )
 
-    tooltip_track = base_track.mark_rule().encode(
+    tooltip_track = gene_track.mark_rule().encode(
         tooltip=[
             gos.Tooltip(field="chromStart", type="genomic", alt="Start Position"),  # type: ignore
             gos.Tooltip(field="chromEnd", type="genomic", alt="End Position"),  # type: ignore
@@ -247,10 +253,10 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     exon_track = gos.Track(
         data=exon_data  # type: ignore
     ).mark_rect().encode(
-        color=gos.Color(field="strand", type="nominal", domain=[1, -1], range=["darkblue", "darkred"]), # type:ignore
-        row=gos.Row(field="strand", type="nominal", domain=[1, -1]), # type:ignore
-        x=gos.X(field="chromStart", type="genomic"), # type:ignore
-        xe=gos.X(field="chromEnd", type="genomic"), # type:ignore
+        color=color,
+        row=row,
+        x=x,
+        xe=xe,
         size=gos.Size(value=10) # type:ignore
     ).visibility_lt(
         measure="width",
@@ -274,7 +280,7 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
 
     return annotation_view
 
-def build_genome_wide_view(assembly, zoom=False):
+def build_genome_wide_view(assembly, zoom=False, chromosome_only: str | None = None) -> gos.View:
     """
     Build a Gosling genome-wide view track for a given genome assembly.
 
@@ -304,6 +310,10 @@ def build_genome_wide_view(assembly, zoom=False):
 
     base = gos.Track(data)  # type: ignore
 
+    title = f"Chromosome {chromosome_only}" if chromosome_only else f"{assembly} assembly"
+    if zoom and chromosome_only:
+        title = f"Panel A chromosome {chromosome_only}"
+
     # build *tracks for gos.overlay
     # The Gos documentation notes it is more idiomatic to set specific properties after initialization
     tracks = [
@@ -312,24 +322,28 @@ def build_genome_wide_view(assembly, zoom=False):
             xe=gos.X(field="chromEnd", type="genomic"), # type:ignore
             color=gos.Color(field="chrom", type="nominal", range=["#666666", "#999999"]) # type:ignore
         ).properties(
-            title=f"{assembly} chromosomes",
+            title=title,
         ),
         base.mark_brush().encode(
             x=gos.X(linkingId="zoom-to-panel-a"), # type:ignore
             color=gos.Color(value="steelblue"),
+            stroke=gos.Stroke(value="steelblue"),
+            strokeWidth=gos.StrokeWidth(value=3)  # type: ignore
         )
     ]
     if zoom:
         tracks.append(
             base.mark_brush().encode(
                 x=gos.X(linkingId="zoom-to-panel-b"), # type:ignore
-                color=gos.Color(value="yellow")
+                color=gos.Color(value="yellow"),
+                stroke=gos.Stroke(value="yellow"),
+                strokeWidth=gos.StrokeWidth(value=3)  # type: ignore
             )
         )
 
     genome_wide_view = gos.overlay(*tracks).properties(
         static=True,
-        id="genome-wide",
+        id="chromosome-wide" if chromosome_only else "genome-wide",
         width=CONDENSED_WIDTH,
         height=20,
         data=gos.Data(
@@ -339,8 +353,15 @@ def build_genome_wide_view(assembly, zoom=False):
             separator="\t",
             chromosomeField="chrom",
             genomicFields=["chromStart", "chromEnd"]
-        )
+        ),
     )
+
+    if chromosome_only:
+        # restrict xDomain to the desired interval on chromosome to make the brush span visibly.
+        # Fixes to the left-panel chromosome.
+        genome_wide_view = genome_wide_view.properties(
+            xDomain=gos.GenomicDomain(chromosome=chromosome_only)
+        )
 
     return genome_wide_view
 
@@ -402,14 +423,16 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False):
 
     parent_view_left = gos.vertical(*parent_tracks_dict["left"]).properties(
         id="left-view",
-        linkingId="zoom-to-panel-a"
+        linkingId="zoom-to-panel-a",
+        spacing=0
     )
 
     parent_view_right = None
     if zoom:
         parent_view_right = gos.vertical(*parent_tracks_dict["right"]).properties(
             id="right-view",
-            linkingId="zoom-to-panel-b"
+            linkingId="zoom-to-panel-b",
+            spacing=0
         )
 
 
@@ -550,23 +573,31 @@ def parse_tracks_from_trackdb(trackdb_txt, trackdb_url) -> list:
 
 def zoom_view_to_gene(view, gene_symbol, dataset_id, assembly):
     """
-    Zooms a genomic track to the coordinates of a specified gene, with optional padding, and returns the updated track and a UCSC Genome Browser position string.
+    Zooms a Gosling view to the genomic coordinates of a specified gene.
+
+    This function fetches the genomic coordinates for a given gene symbol from the geardb database,
+    adjusts the chromosome naming conventions as needed, and sets the x-domain of the provided Gosling
+    view to focus on the region surrounding the gene (with additional padding). It also constructs a
+    position string suitable for export to the UCSC Genome Browser.
 
     Args:
-        track: The genomic track object to be zoomed.
+        view: The Gosling view object to be modified.
         gene_symbol (str): The gene symbol to zoom to.
         dataset_id (str or int): The identifier for the dataset containing gene annotations.
-        assembly (str): The genome assembly (e.g., 'hg38', 'mm10').
+        assembly (str): The genome assembly (e.g., "hg38", "mm10").
 
     Returns:
-        tuple: A tuple containing the updated track object and a position string formatted for the UCSC Genome Browser.
-               If the gene is not found or coordinates are invalid, returns the original track and does not set the position string.
+        tuple:
+            - view: The modified Gosling view object with updated x-domain.
+            - position_str (str or None): The UCSC Genome Browser position string, or None if gene not found.
+            - chrom (str or None): The chromosome name, or None if not available.
 
     Notes:
-        - Adds a base padding of 1500 bases on each side of the gene.
-        - Handles chromosome naming conventions (e.g., adds 'chr' prefix, converts 'MT' to 'chrM').
-        - Prints warnings to stderr if the gene is not found or coordinates are invalid.
+        - If the gene symbol is not found or does not have valid coordinates, the original view is returned
+          along with None for position_str and/or chrom.
+        - Chromosome naming conventions are adjusted to match UCSC standards (e.g., "chr1", "chrX", "chrM").
     """
+
 
     BASE_PADDING = 1500  # base padding on each side of gene
 
@@ -574,7 +605,7 @@ def zoom_view_to_gene(view, gene_symbol, dataset_id, assembly):
     gene_info = geardb.get_gene_by_gene_symbol(gene_symbol, dataset_id)
     if not gene_info:
         print(f"WARNING: Gene symbol '{gene_symbol}' not found in dataset {dataset_id}; cannot zoom track.", file=sys.stderr)
-        return view
+        return (view, None, None)
 
     chrom = gene_info.molecule or "unknown"
 
@@ -590,7 +621,7 @@ def zoom_view_to_gene(view, gene_symbol, dataset_id, assembly):
 
     if not start or not end:
         print(f"WARNING: Gene symbol '{gene_symbol}' does not have valid start/end coordinates; cannot zoom track.", file=sys.stderr)
-        return view
+        return (view, None, chrom)
 
     left_position = f"{chrom}:{start}-{end}"
     position_str = f"{assembly}.{left_position}"  # This is the format if we want to export position to UCSC Genome Browser
@@ -599,7 +630,7 @@ def zoom_view_to_gene(view, gene_symbol, dataset_id, assembly):
     view = view.properties(
         xDomain=gos.GenomicDomain(chromosome=chrom, interval=[start-BASE_PADDING, end+BASE_PADDING])
     )
-    return (view, position_str)
+    return (view, position_str, chrom)
 
 class TrackSpec(ABC):
     def __init__(self, data_url,color="steelblue", group=None, zoom=False):
@@ -912,11 +943,20 @@ class GoslingSpec(Resource):
             (parent_view_left, parent_view_right) = build_gosling_tracks(gos_tracks, tracks, zoom=zoom)
 
         # Start building the Gosling spec
-        genome_wide_view = build_genome_wide_view(assembly, zoom)
         region_view = build_region_view(parent_view_left, parent_view_right)
         # At this point, let's zoom this view to the coordinates of the gene_symbol.
-        (region_view, position_str) = zoom_view_to_gene(region_view, gene_symbol, dataset_id, assembly)
-        base_track = gos.vertical(genome_wide_view, region_view)
+        (region_view, position_str, chrom) = zoom_view_to_gene(region_view, gene_symbol, dataset_id, assembly)
+
+        base_views = []
+
+        genome_wide_view = build_genome_wide_view(assembly, zoom)
+        base_views.append(genome_wide_view)
+        if chrom:
+            chromosome_view = build_genome_wide_view(assembly, zoom=zoom, chromosome_only=chrom)
+            base_views.append(chromosome_view)
+
+        base_views.append(region_view)
+        base_track = gos.vertical(*base_views)
 
         # Add assembly track to base track
         assembly_obj = build_assembly_gos_obj(assembly)

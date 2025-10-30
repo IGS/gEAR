@@ -1559,16 +1559,11 @@ class DatasetTile {
             return
         }
 
-        createCardMessage(this.tile.tileId, "info", "Loading epigenome display...");
 
         const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
-
-        const goslingContainer = document.createElement("div");
-        goslingContainer.id = `tile-${this.tile.tileId}-gosling`;
-        goslingContainer.style.marginTop = "5px";
-        plotContainer.append(goslingContainer);
+        createCardMessage(this.tile.tileId, "info", "Loading epigenome display...");
 
         let spec;
         try {
@@ -1590,6 +1585,12 @@ class DatasetTile {
         }
 
         console.log(spec);
+
+        const goslingContainer = document.createElement("div");
+        goslingContainer.id = `tile-${this.tile.tileId}-gosling`;
+        goslingContainer.style.marginTop = "5px";
+        plotContainer.replaceChildren();    // erase card message
+        plotContainer.append(goslingContainer);
 
         // Themes -> https://gosling-lang.org/themes/
         const embedOpts = { "padding": 0, "theme": null };
@@ -1671,7 +1672,8 @@ class DatasetTile {
                 chr = "chrM";
             }
 
-            const basePadding = 1500; // Base padding for zooming
+            //const basePadding = 1500; // Base padding for zooming
+            const basePadding = 0; // Base padding for zooming
 
             const rightPosition = `${chr}:${start}-${end}`;
             const positionStr = `${assembly}.${rightPosition}`; // Update the global position variable
