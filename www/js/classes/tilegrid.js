@@ -1584,10 +1584,11 @@ class DatasetTile {
             return;
         }
 
-        console.log(spec);
-
+        //console.info(spec);
         const goslingContainer = document.createElement("div");
         goslingContainer.id = `tile-${this.tile.tileId}-gosling`;
+        goslingContainer.style.width = "100%";
+        goslingContainer.style.boxSizing = "border-box";
         goslingContainer.style.marginTop = "5px";
         plotContainer.replaceChildren();    // erase card message
         plotContainer.append(goslingContainer);

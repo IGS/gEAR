@@ -638,6 +638,9 @@ class TrackSpec(ABC):
         self.color = color  # Passed as RGB string
         self.group = group
         self.zoom = zoom
+        self.width = EXPANDED_WIDTH if zoom else CONDENSED_WIDTH
+        self.height = CONDENSED_HEIGHT
+        self.title = Path(self.data_url).stem
 
         self.track = None
 
@@ -665,10 +668,10 @@ class BamSpec(TrackSpec):
 
         track = gos.Track(
             data=bamData, # pyright: ignore[reportArgumentType]
-            width=EXPANDED_WIDTH if self.zoom else CONDENSED_WIDTH,
-            height=EXPANDED_HEIGHT if self.zoom else CONDENSED_HEIGHT,
-            title=Path(url).name,  # Use the file name as the title
-            id=f"left-track-{Path(url).stem}"  # Use the file name without extension as the ID
+            width=self.width,
+            height=self.height,
+            title=self.title,  # Use the file name as the title
+            id=f"left-track-{self.title}"  # Use the file name without extension as the ID
         ).mark_bar().encode(
             x=gos.X(field="start", type="genomic"), # pyright: ignore[reportArgumentType]
             xe=gos.X(field="end", type="genomic"), # pyright: ignore[reportArgumentType]
@@ -711,10 +714,10 @@ class BedSpec(TrackSpec):
 
         track = gos.Track(
             data=bedData, # pyright: ignore[reportArgumentType]
-            width=EXPANDED_WIDTH if self.zoom else CONDENSED_WIDTH,
-            height=EXPANDED_HEIGHT if self.zoom else CONDENSED_HEIGHT,
-            title=Path(url).name,  # Use the file name as the title
-            id=f"left-track-{Path(url).stem}"  # Use the file name without extension as the ID
+            width=self.width,
+            height=self.height,
+            title=self.title,  # Use the file name as the title
+            id=f"left-track-{self.title}"  # Use the file name without extension as the ID
         ).mark_area().encode(
             x=gos.X(field="start", type="genomic", axis="none"), # pyright: ignore[reportArgumentType]
             xe=gos.X(field="end", type="genomic"), # pyright: ignore[reportArgumentType]
@@ -757,10 +760,10 @@ class BigWigSpec(TrackSpec):
 
         track = gos.Track(
             data=bigWigData, # pyright: ignore[reportArgumentType]
-            width=EXPANDED_WIDTH if self.zoom else CONDENSED_WIDTH,
-            height=EXPANDED_HEIGHT if self.zoom else CONDENSED_HEIGHT,
-            title=Path(url).name,  # Use the file name as the title
-            id=f"left-track-{Path(url).stem}"  # Use the file name without extension as the ID
+            width=self.width,
+            height=self.height,
+            title=self.title,  # Use the file name as the title
+            id=f"left-track-{self.title}"  # Use the file name without extension as the ID
         ).mark_area().encode(
             x=gos.X(field="start", type="genomic", axis="none"), # pyright: ignore[reportArgumentType]
             xe=gos.X(field="end", type="genomic"), # pyright: ignore[reportArgumentType]
@@ -794,10 +797,10 @@ class VcfSpec(TrackSpec):
 
         track = gos.Track(
             data=vcfData, # pyright: ignore[reportArgumentType]
-            width=EXPANDED_WIDTH if self.zoom else CONDENSED_WIDTH,
-            height=EXPANDED_HEIGHT if self.zoom else CONDENSED_HEIGHT,
-            title=Path(url).name,  # Use the file name as the title
-            id=f"left-track-{Path(url).stem}"  # Use the file name without extension as the ID
+            width=self.width,
+            height=self.height,
+            title=self.title,  # Use the file name as the title
+            id=f"left-track-{self.title}"  # Use the file name without extension as the ID
         ).mark_point().encode(
             x=gos.X(field="position", type="genomic", axis="none"), # pyright: ignore[reportArgumentType]
             y=gos.Y(field="value", type="quantitative", axis="right"), # pyright: ignore[reportArgumentType]
@@ -960,7 +963,9 @@ class GoslingSpec(Resource):
 
         # Add assembly track to base track
         assembly_obj = build_assembly_gos_obj(assembly)
-        base_track = base_track.properties(assembly=assembly_obj)
+        base_track = base_track.properties(
+            assembly=assembly_obj,
+        )
 
         spec = base_track.to_json(indent=2)
 
