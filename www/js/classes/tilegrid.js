@@ -1548,15 +1548,18 @@ class DatasetTile {
 
         let embedFn = null
         try {
-            const gos = await import('https://esm.sh/gosling.js@1.0.5');
+            const gos = await import('https://esm.sh/gosling.js@1.0.6');
+            //const gos = await import('https://esm.sh/gosling.js@2.0.0-alpha.8');
             // prefer named export, then try default, then fallback to the module itself
             embedFn = gos.embed ?? gos.default?.embed ?? gos.default ?? gos;
         // use mod
         } catch (err) {
-            console.error('Optional module failed to load, continuing without it', err);
+            logErrorInConsole('Gosling module failed to load, continuing without it', err);
             createCardMessage(this.tile.tileId, "danger", "Could not load Gosling viewer (network or CDN error).");
             return
         }
+
+        createCardMessage(this.tile.tileId, "info", "Loading epigenome display...");
 
         const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned
@@ -1569,12 +1572,13 @@ class DatasetTile {
 
         let spec;
         try {
-            data = await apiCallsMixin.fetchGoslingDisplay(datasetId, plotConfig, zoom, otherOpts)
+            const data = await apiCallsMixin.fetchGoslingDisplay(datasetId, plotConfig, zoom, otherOpts)
             if (data?.success < 1) {
                 message = data?.message || "Failed to fetch Gosling display data.";
                 throw new Error(message);
             }
-            spec = data.spec;
+            // spec is a JSON string which needs to be a JSON object
+            spec = (typeof data.spec === "string") ? JSON.parse(data.spec) : data.spec;
             positionArr[0] = data.position;
             if (zoom) {
                 positionArr[1] = data.position;
@@ -1585,22 +1589,29 @@ class DatasetTile {
             return;
         }
 
+        console.log(spec);
 
         // Themes -> https://gosling-lang.org/themes/
         const embedOpts = { "padding": 0, "theme": null };
         // NOTE: re-embedding does work but it causes some stability issues
-        const goslingApi = await embedFn(document.getElementById(goslingContainer.id), spec, embedOpts);
+        let goslingApi = null;
+        try {
+            goslingApi = await embedFn(document.getElementById(goslingContainer.id), spec, embedOpts);
+        } catch (error) {
+            logErrorInConsole(error);
+            createCardMessage(this.tile.tileId, "danger", "An error occurred while rendering the Gosling display.");
+            return;
+        }
 
         if (!zoom) {
             return;
         }
 
         // If the view is a zoomed view extra controls and events are added.
+        const exportButton = createExportButton(this.tile.tileId, goslingContainer.id);
         const searchButton = createPanelBSearchBox(this.tile.tileId, exportButton.id);
 
         if (ucscHubUrl) {
-            const exportButton = createExportButton(this.tile.tileId, goslingContainer.id);
-
             // Add event listener to export button to open UCSC Genome Browser with hub URL and position
             document.getElementById(exportButton.id).addEventListener('click', () => {
                 const url = "https://genome.ucsc.edu/cgi-bin/hgTracks";
@@ -1663,8 +1674,8 @@ class DatasetTile {
             const basePadding = 1500; // Base padding for zooming
 
             const rightPosition = `${chr}:${start}-${end}`;
-            const postitionStr = `${assembly}.${rightPosition}`; // Update the global position variable
-            positionArr[1] = postitionStr;
+            const positionStr = `${assembly}.${rightPosition}`; // Update the global position variable
+            positionArr[1] = positionStr;
             await goslingApi.zoomTo("right-annotation", rightPosition, basePadding); // track name, position, padding, duration (ms)
 
         });

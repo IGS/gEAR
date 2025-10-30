@@ -1180,19 +1180,18 @@ const apiCallsMixin = {
      *
      * @async
      * @param {string} datasetId - The ID of the dataset to fetch data from.
-    * @param {object} plotConfig - The configuration object for the Gosling plot.
+     * @param {object} plotConfig - The configuration object for the Gosling plot.
      * @param {boolean} [zoom=false] - Whether to enable zoom in the display.
      * @param {object} [otherOpts={}] - Additional options for the request.
      * @returns {Promise<Object>} The data returned from the Gosling display API.
      */
     async fetchGoslingDisplay(datasetId, plotConfig, zoom=false, otherOpts={}) {
         const urlParams = new URLSearchParams();
-        const {geneSymbol, assembly, hubUrl, specDirUrl} = plotConfig;
+        const {gene_symbol: geneSymbol, assembly, hubUrl} = plotConfig;
 
         urlParams.append('gene', geneSymbol);
         urlParams.append('assembly', assembly);
         urlParams.append('hub_url', hubUrl);
-        urlParams.append('spec_dir_url', specDirUrl);   // May be taken out if not needed.
         urlParams.append('zoom', zoom);
 
         // JSON is returned

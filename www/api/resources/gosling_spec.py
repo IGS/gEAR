@@ -105,37 +105,34 @@ def build_assembly_gos_obj(assembly):
     chrom_sizes = gos.ChromSizes(assembly_array)
     return gos.Assembly(chrom_sizes)
 
-def build_bed_annotation_tracks(assembly, zoom=False):
+def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     """
-    Build a set of Gosling tracks for BED-based gene annotation visualization.
+    Builds a set of Gosling tracks for visualizing gene annotations and exons from BED files for a given genome assembly.
 
-    This function generates a composite Gosling view for visualizing gene annotations and exons
-    from BED files, tailored to a specific genome assembly. It overlays multiple tracks, including
-    gene name labels, interactive tooltips, and exon rectangles, using data from remote BED and
-    BED index files. The function supports zoomed and non-zoomed views, adjusting layout and
-    properties accordingly.
+    This function generates a composite Gosling view containing:
+        1. A text track displaying gene names.
+        2. A rule track for tooltips showing gene information.
+        3. (If available) A rect track displaying exons from a separate BED file.
+
+    The tracks are color-coded by strand and arranged in rows by strand. The function supports only assemblies for which BED and exon BED files are defined.
 
     Args:
-        assembly (str): The genome assembly identifier (e.g., "mm10"). Must be present in the
-            internal mapping of supported assemblies to BED file names.
-        zoom (bool, optional): If True, generates a zoomed-in view with expanded width and
-            "Panel B" title. If False, generates a condensed view with "Panel A" title.
-            Defaults to False.
+        assembly (str): The genome assembly identifier (e.g., "mm10").
+        zoom (bool, optional): If True, uses expanded width for the view. Defaults to False.
+        title (str, optional): Position of the panel title ("left" or "right"). Defaults to "left".
 
     Returns:
-        gos.View: A Gosling overlay view containing the annotation tracks for the specified assembly.
-            If exon BED file is not available for the assembly, only gene annotation tracks are included.
+        gos.View: A Gosling overlay view containing the annotation tracks.
 
     Raises:
-        ValueError: If the specified assembly is not supported or does not have a corresponding BED file.
+        ValueError: If the specified assembly does not have a corresponding BED file.
 
     Notes:
-        - The function expects global constants EXPANDED_WIDTH, CONDENSED_WIDTH, and EXPANDED_HEIGHT
-          to be defined for layout sizing.
-        - The function prints a warning to stderr if the exon BED file is missing for the assembly,
-          but this is non-fatal.
-        - The function relies on the `gos` module for Gosling track and data specification.
+        - If the exon BED file is not available for the assembly, only the text and rule tracks are returned.
+        - The function prints a warning to stderr if the exon BED file is missing.
+        - The URLs for BED files are constructed based on a predefined root path.
     """
+
 
     # These files will be based on Ensembl's annotation naming structure, but sorted in chromosome order.
     # I am adding a 2nd column of 1's to allow us to use the files in a "genomic" track.
@@ -212,8 +209,6 @@ def build_bed_annotation_tracks(assembly, zoom=False):
         style=gos.Style(dy=-10) # type: ignore
     )
 
-    direction = "right" if zoom else "left"
-
     tooltip_track = base_track.mark_rule().encode(
         tooltip=[
             gos.Tooltip(field="chromStart", type="genomic", alt="Start Position"),  # type: ignore
@@ -223,7 +218,7 @@ def build_bed_annotation_tracks(assembly, zoom=False):
         ],
         strokeWidth=gos.StrokeWidth(value=1)
     ).properties(
-        id=f"{direction}-annotation"
+        id=f"{title}-annotation"
     ).visibility_lt(
         measure="width",
         threshold="|xe-x|",
@@ -266,10 +261,12 @@ def build_bed_annotation_tracks(assembly, zoom=False):
 
     tracks.append(exon_track)
 
-    title = "Panel B" if zoom else "Panel A"
+    panel_title = "Panel B" if title == "right" else "Panel A"
+    if not zoom:
+        panel_title = "Annotation"
 
     annotation_view = gos.overlay(*tracks).properties(
-            title=title,
+            title=panel_title,
             width=EXPANDED_WIDTH if zoom else CONDENSED_WIDTH,
             height=EXPANDED_HEIGHT,    # Always taller for annotations
             opacity=gos.Opacity(value=0.8)
@@ -319,7 +316,7 @@ def build_genome_wide_view(assembly, zoom=False):
         ),
         base.mark_brush().encode(
             x=gos.X(linkingId="zoom-to-panel-a"), # type:ignore
-            color=gos.Color(value="steelblue")
+            color=gos.Color(value="steelblue"),
         )
     ]
     if zoom:
@@ -382,12 +379,12 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False):
         track_type = track.get("type", "")
         spec_builder_class = TRACK_TYPE_2_SPEC.get(track_type, None)
         if not spec_builder_class:
-            print(f"WARNING: Unsupported track type '{track_type}' for track '{track.get('name', '')}'; skipping.", file=sys.stderr)
+            print(f"WARNING: Unsupported track type '{track_type}' for track '{track.get('shortLabel', '')}'; skipping.", file=sys.stderr)
             continue
 
         data_url = track.get("bigDataUrl", None)
         if not data_url:
-            print(f"WARNING: No bigDataUrl found for track '{track.get('name', '')}'; skipping.", file=sys.stderr)
+            print(f"WARNING: No bigDataUrl found for track '{track.get('shortLabel', '')}'; skipping.", file=sys.stderr)
             continue
 
         # Get other attributes to pass to the class
@@ -443,6 +440,14 @@ def build_region_view(parent_view_left, parent_view_right=None):
     region_view = gos.horizontal(*args)
 
     return region_view
+
+def convert_track_rgb_to_hex(rgb):
+    """
+    Convert the tracksdb.txt RGB "color" values (i.e. 31,119,180) to a Hex value
+    """
+
+    r, g, b = map(int, rgb.split(","))
+    return f"#{r:02x}{g:02x}{b:02x}"
 
 def fetch_trackdb_and_groups_info(genomes_txt, assembly) -> dict:
     """Extract 'trackDb' and 'groups' URLs for an assembly from genomes_txt.
@@ -535,14 +540,15 @@ def parse_tracks_from_trackdb(trackdb_txt, trackdb_url) -> list:
             elif line.startswith("group"):
                 current_track["group"] = line.split(" ")[1]
             elif line.startswith("color"):
-                current_track["color"] = line.split(" ")[1]
+                color = line.split(" ")[1]
+                current_track["color"] = convert_track_rgb_to_hex(color)
             elif line.startswith("type"):
                 current_track["type"] = line.split(" ")[1]
     if current_track:
         tracks.append(current_track)
     return tracks
 
-def zoom_track_to_gene(track, gene_symbol, dataset_id, assembly):
+def zoom_view_to_gene(view, gene_symbol, dataset_id, assembly):
     """
     Zooms a genomic track to the coordinates of a specified gene, with optional padding, and returns the updated track and a UCSC Genome Browser position string.
 
@@ -568,7 +574,7 @@ def zoom_track_to_gene(track, gene_symbol, dataset_id, assembly):
     gene_info = geardb.get_gene_by_gene_symbol(gene_symbol, dataset_id)
     if not gene_info:
         print(f"WARNING: Gene symbol '{gene_symbol}' not found in dataset {dataset_id}; cannot zoom track.", file=sys.stderr)
-        return track
+        return view
 
     chrom = gene_info.molecule or "unknown"
 
@@ -584,16 +590,16 @@ def zoom_track_to_gene(track, gene_symbol, dataset_id, assembly):
 
     if not start or not end:
         print(f"WARNING: Gene symbol '{gene_symbol}' does not have valid start/end coordinates; cannot zoom track.", file=sys.stderr)
-        return track
+        return view
 
     left_position = f"{chrom}:{start}-{end}"
     position_str = f"{assembly}.{left_position}"  # This is the format if we want to export position to UCSC Genome Browser
 
     # Set the x domain of the track to the gene coordinates
-    track.properties(
+    view = view.properties(
         xDomain=gos.GenomicDomain(chromosome=chrom, interval=[start-BASE_PADDING, end+BASE_PADDING])
     )
-    return (track, position_str)
+    return (view, position_str)
 
 class TrackSpec(ABC):
     def __init__(self, data_url,color="steelblue", group=None, zoom=False):
@@ -813,6 +819,18 @@ class GoslingSpec(Resource):
             "message": ""
         }
 
+        if assembly is None:
+            response["message"] = "Missing required parameter: assembly"
+            return response, 400
+
+        if gene_symbol is None:
+            response["message"] = "Missing required parameter: gene"
+            return response, 400
+
+        if hub_url == "":
+            response["message"] = "Missing required parameter: hub_url"
+            return response, 400
+
         # Sanity check to confirm dataset exists
         dataset = geardb.get_dataset_by_id(d_id=dataset_id, include_shape=False)
         if not dataset:
@@ -873,9 +891,9 @@ class GoslingSpec(Resource):
         # Add BED annotation tracks to left (and right if zoom) gos_tracks in the first index position
         # build left and right track
         # Insert into gos_tracks["left"] at index 0 (and gos_tracks["right"] if zoom)
-        gos_tracks["left"].append(build_bed_annotation_tracks(assembly, zoom))
+        gos_tracks["left"].append(build_bed_annotation_tracks(assembly, zoom, "left"))
         if zoom:
-            gos_tracks["right"].append(build_bed_annotation_tracks(assembly, zoom))
+            gos_tracks["right"].append(build_bed_annotation_tracks(assembly, zoom, "right"))
 
         # If groups are present, gather all tracks for this group,
         # and attempt to aggregate the data by mean for each position point.
@@ -884,6 +902,7 @@ class GoslingSpec(Resource):
         # Otherwise just process all tracks individually
         if groups:
             for group in groups:
+                # TODO: Aggregate by group.  May require extra packages. Can cache (maybe upon upload even).
                 # Get tracks associated with this group
                 group_tracks = [track for track in tracks if track.get("group", "") == group]
                 if not group_tracks:
@@ -892,20 +911,16 @@ class GoslingSpec(Resource):
         else:
             (parent_view_left, parent_view_right) = build_gosling_tracks(gos_tracks, tracks, zoom=zoom)
 
-        # At this point, let's zoom the left track to the coordinates of the gene_symbol.
-        (parent_view_left, position_str) = zoom_track_to_gene(parent_view_left, gene_symbol, dataset_id, assembly)
-        # If zoom is True, also zoom the right track
-        if zoom:
-            (parent_view_right, _) = zoom_track_to_gene(parent_view_right, gene_symbol, dataset_id, assembly)
-
         # Start building the Gosling spec
         genome_wide_view = build_genome_wide_view(assembly, zoom)
         region_view = build_region_view(parent_view_left, parent_view_right)
+        # At this point, let's zoom this view to the coordinates of the gene_symbol.
+        (region_view, position_str) = zoom_view_to_gene(region_view, gene_symbol, dataset_id, assembly)
         base_track = gos.vertical(genome_wide_view, region_view)
 
         # Add assembly track to base track
         assembly_obj = build_assembly_gos_obj(assembly)
-        base_track.properties(assembly=assembly_obj)
+        base_track = base_track.properties(assembly=assembly_obj)
 
         spec = base_track.to_json(indent=2)
 
@@ -913,26 +928,6 @@ class GoslingSpec(Resource):
         response["spec"] = spec
         response["position"] = position_str
         return response, 200
-
-        # Implement your logic to retrieve the Gosling spec for the given dataset_id
-        # return view.to_json(indent)
-
-        ### Monkeypatched code ###
-
-        spec_path = JSON_DIR.joinpath("Litao_bigwigs/condensed.json")
-        if zoom:
-            spec_path = JSON_DIR.joinpath("Litao_bigwigs/expanded.json")
-
-        # return the JSON
-        if spec_path.exists():
-            with open(spec_path, 'r') as file:
-                spec = json.load(file)
-            response["success"] = 1
-            response["spec"] = spec
-            return response, 200
-        else:
-            return {"message": "Spec not found"}, 404
-
 
     def post(self, dataset_id):
         # Implement your logic to create or update the Gosling spec for the given dataset_id
