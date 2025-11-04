@@ -175,13 +175,13 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
 
     ASSEMBLY_TO_EXON_FILE = {
         "danRer10": "danRer10.exon.bed.gz", # zebrafish
-        "galGal6": "galGal6_exon.bed.gz", # chicken
-        "hg19": "hg19_exon.bed.gz",
-        "hg38": "hg38_exon.bed.gz",
-        "mm10": "mm10_exon.bed.gz",
-        # "mm39": "mm39_exon.bed.gz",
-        "rn6": "rn6_exon.bed.gz", # rat
-        # "calJac3": "calJac3_exon.bed.gz", # marmoset
+        "galGal6": "galGal6.exon.bed.gz", # chicken
+        "hg19": "hg19.exon.bed.gz",
+        "hg38": "hg38.exon.bed.gz",
+        "mm10": "mm10.exon.bed.gz",
+        # "mm39": "mm39.exon.bed.gz",
+        "rn6": "rn6.exon.bed.gz", # rat
+        # "calJac3": "calJac3.exon.bed.gz", # marmoset
     }
 
     bed_file_stem = ASSEMBLY_TO_BED_FILE.get(assembly, None)
@@ -297,9 +297,8 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
 
     return annotation_view
 
-
 def build_genome_wide_view(
-    assembly, assembly_array, zoom=False, chromosome_only: str | None = None
+    assembly, assembly_array, zoom=False, position: str | None = None, gene_symbol: str | None = None
 ) -> gos.View:
     """
     Build a Gosling genome-wide view track for a given genome assembly.
@@ -311,12 +310,19 @@ def build_genome_wide_view(
     Args:
         assembly (str): The genome assembly identifier (e.g., "hg38", "mm10").
         zoom (bool, optional): If True, adds an additional brush for a secondary zoom panel. Defaults to False.
+        position (str, optional): If provided, restricts the view to the specified chromosome (e.g., "chr1").
 
     Returns:
         gos.View: A Gosling view object representing the genome-wide track.
     """
 
     assembly_json = build_assembly_json_from_array(assembly_array)
+
+    chrom = None
+    start = None
+    end = None
+    if position is not None:
+        _, chrom, start, end = parse_position_str(position)
 
     data = gos.JsonData(
         type="json",    # type: ignore
@@ -327,11 +333,15 @@ def build_genome_wide_view(
 
     base = gos.Track(data)  # type: ignore
 
-    title = (
-        f"Chromosome {chromosome_only}" if chromosome_only else f"{assembly} assembly"
-    )
-    if zoom and chromosome_only:
-        title = f"Panel A chromosome {chromosome_only}"
+    # Set track title
+    title = f"{assembly} assembly"
+    if chrom:
+        title = f"Regional view around {gene_symbol}" if gene_symbol else f"Chromosome {chrom}"
+    if zoom and chrom:
+        title = f"Regional view around {gene_symbol}" if gene_symbol else f"Panel A chromosome {chrom}"
+
+    # Genome-wide brush should be easier to see that chromosome brush
+    brushwidth = 2 if chrom else 5
 
     # build *tracks for gos.overlay
     # The Gos documentation notes it is more idiomatic to set specific properties after initialization
@@ -349,7 +359,7 @@ def build_genome_wide_view(
             x=gos.X(linkingId="zoom-to-panel-a"),  # type:ignore
             color=gos.Color(value="steelblue"),
             stroke=gos.Stroke(value="steelblue"),
-            strokeWidth=gos.StrokeWidth(value=3),  # type: ignore
+            strokeWidth=gos.StrokeWidth(value=brushwidth),  # type: ignore
         ),
     ]
     if zoom:
@@ -358,23 +368,39 @@ def build_genome_wide_view(
                 x=gos.X(linkingId="zoom-to-panel-b"),  # type:ignore
                 color=gos.Color(value="yellow"),
                 stroke=gos.Stroke(value="yellow"),
-                strokeWidth=gos.StrokeWidth(value=3),  # type: ignore
+                strokeWidth=gos.StrokeWidth(value=brushwidth),  # type: ignore
             )
         )
 
     genome_wide_view = gos.overlay(*tracks).properties(
         static=True,
-        id="chromosome-wide" if chromosome_only else "genome-wide",
+        id="chromosome-wide" if chrom else "genome-wide",
         width=CONDENSED_WIDTH,
         height=20,
     )
 
-    if chromosome_only:
+    if chrom:
         # restrict xDomain to the desired interval on chromosome to make the brush span visibly.
         # Fixes to the left-panel chromosome.
-        genome_wide_view = genome_wide_view.properties(
-            xDomain=gos.GenomicDomain(chromosome=chromosome_only)
-        )
+        padding = 5e5  # 50Kb padding on each side
+        interval = None
+        if start and end:
+            # Adjust interval based on a padding.
+            # Ending should not extend beyond the chromosome
+            start = int(max(0, start - padding))
+
+            end = end + padding
+            chrom_end = assembly_json[
+                next(i for i, v in enumerate(assembly_json) if v["chrom"] == chrom)
+            ]["chromEnd"]
+            end = int(min(chrom_end, end))
+
+            interval = [start, end]
+
+            genome_wide_view = genome_wide_view.properties(
+                xDomain=gos.GenomicDomain(chromosome=chrom, interval=interval)  # type: ignore
+            )
+
 
     """
     NOTE: There was a thought of linking the genome-wide brush to the chromosome brush.
@@ -652,13 +678,14 @@ def zoom_view_to_gene(view, gene_symbol, dataset_id, assembly):
 
     start = gene_info.start
     end = gene_info.stop
+    gene_symbol = gene_info.gene_symbol # To use correct naming later
 
     if not start or not end:
         print(
             f"WARNING: Gene symbol '{gene_symbol}' does not have valid start/end coordinates; cannot zoom track.",
             file=sys.stderr,
         )
-        return (view, None, chrom)
+        return (view, None, gene_symbol)
 
     left_position = f"{chrom}:{start}-{end}"
     position_str = f"{assembly}.{left_position}"  # This is the format if we want to export position to UCSC Genome Browser
@@ -669,8 +696,27 @@ def zoom_view_to_gene(view, gene_symbol, dataset_id, assembly):
             chromosome=chrom, interval=[start - BASE_PADDING, end + BASE_PADDING]
         )
     )
-    return (view, position_str, chrom)
+    return (view, position_str, gene_symbol)
 
+def parse_position_str(position_str: str) -> tuple:
+    """
+    Parses a position string in the format 'assembly.chromosome:start-end' and returns its components.
+
+    Args:
+        position_str (str): The position string to parse.
+
+    Returns:
+        tuple: A tuple containing (assembly, chromosome, start, end) if parsing is successful,
+               otherwise (None, None, None, None) on failure.
+    """
+    try:
+        assembly_chrom, interval = position_str.split(".")
+        chromosome, positions = interval.split(":")
+        start, end = positions.split("-")
+        return assembly_chrom, chromosome, int(start), int(end)
+    except Exception as e:
+        print(f"ERROR: Failed to parse position string '{position_str}': {e}", file=sys.stderr)
+        return None, None, None, None
 
 def replace_with_aggregated_track(group_tracks, group_name):
     """
@@ -1087,20 +1133,20 @@ class GoslingSpec(Resource):
         # Start building the Gosling spec
         region_view = build_region_view(parent_view_left, parent_view_right)
         # At this point, let's zoom this view to the coordinates of the gene_symbol.
-        (region_view, position_str, chrom) = zoom_view_to_gene(
+        (region_view, position_str, new_gene_symbol) = zoom_view_to_gene(
             region_view, gene_symbol, dataset_id, assembly
         )
+        if new_gene_symbol:
+            gene_symbol = new_gene_symbol
 
         base_views = []
 
         assembly_array = build_assembly_array(assembly)
 
-        genome_wide_view = build_genome_wide_view(assembly, assembly_array, zoom)
+        genome_wide_view = build_genome_wide_view(assembly, assembly_array, zoom=zoom, gene_symbol=gene_symbol)
         base_views.append(genome_wide_view)
-        if chrom:
-            chromosome_view = build_genome_wide_view(
-                assembly, assembly_array, zoom=zoom, chromosome_only=chrom
-            )
+        if position_str:
+            chromosome_view = build_genome_wide_view(assembly, assembly_array, zoom=zoom, position=position_str, gene_symbol=gene_symbol)
             base_views.append(chromosome_view)
 
         base_views.append(region_view)

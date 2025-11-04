@@ -66,15 +66,16 @@ import pandas as pd
 
 GENOMES_ROOT = Path(__file__).resolve().parent.parent / "www" / "tracks" / "genomes"
 
+# Comment out to skip completed or problematic assemblies
 assemblies = [
     "mm10",
-    #"mm39",
+    #"mm39",    # No chromInfo.txt file
     "danRer10",
     "galGal6",
     "hg19",
     "hg38",
     "rn6",
-    #"calJac3"
+    #"calJac3"  # No chromInfo.txt file
     ]
 
 assembly_2_biomart_dataset = {
