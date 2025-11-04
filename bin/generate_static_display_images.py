@@ -19,7 +19,7 @@ lib_path = os.path.abspath(os.path.join('..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 
-def get_all_displays(cursor, desired_dataset_id):
+def get_all_displays(cursor, desired_dataset_id=None):
     """Get all dataset displays out of the database."""
 
     query = "SELECT dataset_id, id, plot_type, plotly_config from dataset_display"

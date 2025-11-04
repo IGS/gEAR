@@ -204,10 +204,11 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     )
 
     # These are shared amongst the genes and exons track
+    # NOTE: regarding "strand", it requires +/-/. in the file but is stored as 1/-1/0 internally
     x = gos.X(field="chromStart", type="genomic")  # type:ignore
     xe = gos.X(field="chromEnd", type="genomic")  # type:ignore
-    row = gos.Row(field="strand", type="nominal", domain=["+", "-"], range=[0, 20])  # type:ignore
-    color = gos.Color(field="strand", type="nominal", domain=["+", "-"], range=["darkblue", "darkred"])  # type:ignore
+    row = gos.Row(field="strand", type="nominal", domain=[1, -1], range=[0, 20])  # type:ignore
+    color = gos.Color(field="strand", type="nominal", domain=[1, -1], range=["darkblue", "darkred"])  # type:ignore
 
     gene_track = (
         gos.Track(

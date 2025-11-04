@@ -38,9 +38,10 @@ These steps will be done by the pymart package
     1. Get chromosome ordered file from https://github.com/pkerpedjiev/negspy/blob/master/negspy/data
     2. bedtools sort -i <file.renamed.bed> -faidx <assembly>.chromInfo.txt > <file.sorted.bed.
     3. -faidx "chrom sizes" argument must define chromosome order in first column
+    4. Alternatively if a chromInfo.txt file is not available, can do: `sort -k1V -k2n -k3n example.bed`
 14. BGZIP each file
 15. Create index for each file
-    1. tabix -p bed <file.bed.gz>
+    1. tabix -s 1 -b 2 -e 3 -p bed <file.bed.gz>
     2. -p will be "gff" if doing a gff file or "vcf" if that
 
 In the end we need to have 4 files for each assembly
@@ -54,19 +55,20 @@ In the end we need to have 4 files for each assembly
 import sys
 from pathlib import Path
 import urllib.request
+import subprocess
+import shlex
 
 import apybiomart
 # pymart errored on import for 3.11.12, so switched to apybiomart
 # Also had to change the connection tester URL as the default one was dead.
 from Bio import bgzf
 import pandas as pd
-import tabix
 
 GENOMES_ROOT = Path(__file__).resolve().parent.parent / "www" / "tracks" / "genomes"
 
 assemblies = [
     "mm10",
-    "mm39",
+    #"mm39",
     "danRer10",
     "galGal6",
     "hg19",
@@ -77,7 +79,7 @@ assemblies = [
 
 assembly_2_biomart_dataset = {
     "mm10": "mmusculus_gene_ensembl",   # mouse
-    "mm39": "mmusculus_gene_ensembl",   # mouse
+    #"mm39": "mmusculus_gene_ensembl",   # mouse
     "danRer10": "drerio_gene_ensembl",  # zebrafish
     "galGal6": "ggallus_gene_ensembl",  # chicken
     "hg19": "hsapiens_gene_ensembl",    # human
@@ -89,7 +91,7 @@ assembly_2_biomart_dataset = {
 # Some of these assemblies do not exist in the current verison of biomart
 assembly_2_biomart_host = {
     "mm10": "http://nov2020.archive.ensembl.org/biomart/martservice",
-    "mm39": "http://useast.ensembl.org/biomart/martservice",
+    #"mm39": "http://useast.ensembl.org/biomart/martservice",
     "danRer10": "http://may2015.archive.ensembl.org/biomart/martservice",
     "galGal6": "http://apr2022.archive.ensembl.org/biomart/martservice",
     "hg19": "http://grch37.ensembl.org/biomart/martservice",
@@ -132,13 +134,27 @@ def chrom_to_ucsc(alias_dict, chrom: str) -> str | None:
     else:
         return None
 
-def get_chrom_sizes(assembly: str) -> list:
+def create_tabix_indexed_file(bgzipped_file, file_type="bed") -> None:
+    """
+    Tabix-indexes a genomic file.
+    bgzipped_file: Path to the bgzipped input file.
+    file_type: Type of the file (e.g., "bed", "vcf", "gff").
+    """
+
+    tabix_cmd = f"tabix -s 1 -b 2 -e 3 -p {file_type} {bgzipped_file}"
+    subprocess.run(shlex.split(tabix_cmd), check=True)
+
+def get_chrom_sizes(assembly: str, genome_dir: Path) -> list:
     """
     Get chromInfo.txt file from the negspy Github repository, and return the chromosomes (1st column) as a list.
     """
     chrom_sizes_url = f"https://raw.githubusercontent.com/pkerpedjiev/negspy/refs/heads/master/negspy/data/{assembly}/chromInfo.txt"
-    with urllib.request.urlopen(chrom_sizes_url) as response:
-        lines = response.read().decode('utf-8').strip().split('\n')
+    # Save URl to geneome_dir as {assembly}.chromInfo.txt
+    chrom_info_path = genome_dir / f"{assembly}.chromInfo.txt"
+    urllib.request.urlretrieve(chrom_sizes_url, chrom_info_path)
+
+    with open(chrom_info_path, 'r') as f_in:
+        lines = f_in.read().strip().split('\n')
 
     # Extract chromosome names from the first column
     chroms = [line.split('\t')[0] for line in lines]
@@ -146,13 +162,13 @@ def get_chrom_sizes(assembly: str) -> list:
 
 def initialize_genome_files(assembly: str):
 
-    chrom_dict = build_chrom_to_ucsc(assembly)
-
-    sorted_chroms = get_chrom_sizes(assembly)
-
     # Create genome directory if it doesn't exist
     genome_dir = GENOMES_ROOT / assembly
     genome_dir.mkdir(parents=True, exist_ok=True)
+
+    chrom_dict = build_chrom_to_ucsc(assembly)
+
+    sorted_chroms = get_chrom_sizes(assembly, genome_dir)
 
     dataset_name = assembly_2_biomart_dataset[assembly]
 
@@ -172,47 +188,26 @@ def initialize_genome_files(assembly: str):
     #server.mart = MART_NAME
 
     gene_data: pd.DataFrame = server.query()
+    # The query column namess are different from the attribute names
+    gene_data.columns = gene_attributes
 
     print(f"-- Processing gene query results for {assembly}...")
 
     # Process gene data
     gene_bed_path = genome_dir / f"{assembly}.gene.bed"
-    fixed_gene_data = pd.DataFrame(columns=['chrom', 'start', 'end', 'gene_name', 'score', 'strand'])
-    with gene_bed_path.open('w') as gene_bed_file:
-        print(f"-- Num results: {len(gene_data)}")
-        for row in gene_data.iterrows():
-            chrom, start, end, gene_name, strand = row[1]
 
-            # Use chromToUcsc to convert Ensembl-based chromosome names to UCSC-style names
-            chrom = chrom_to_ucsc(chrom_dict, chrom)
-            if chrom is None:
-                continue
+    # Process exon data (vectorized)
+    gene_data['chrom'] = gene_data['chromosome_name'].map(lambda c: chrom_to_ucsc(chrom_dict, c))
+    gene_data = gene_data.dropna(subset=['chrom'])
+    gene_data['strand'] = gene_data['strand'].map({1: '+', -1: '-', 0: '.'})
+    gene_data['score'] = 0
+    gene_data = gene_data[['chrom', 'start_position', 'end_position', 'external_gene_name', 'score', 'strand']]
+    gene_data.columns = ['chrom', 'start', 'end', 'gene_name', 'score', 'strand']
 
-            # 1 -> "+"
-            # -1 -> "-"
-            # 0 -> "."
-            if strand == 1:
-                strand = "+"
-            elif strand == -1:
-                strand = "-"
-            else:
-                strand = "."
-
-            new_row = pd.Series({
-                'chrom': chrom,
-                'start': start,
-                'end': end,
-                'gene_name': gene_name,
-                'score': 0,
-                'strand': strand
-            })
-            fixed_gene_data.loc[len(fixed_gene_data)] = new_row
-
-
-        # sort fixed_gene_data by chromosome order, then write to file
-        fixed_gene_data["chrom"] = pd.Categorical(fixed_gene_data["chrom"], categories=sorted_chroms, ordered=True)
-        fixed_gene_data = fixed_gene_data.sort_values("chrom")
-        fixed_gene_data.to_csv(gene_bed_file, sep='\t', header=False, index=False, columns=['chrom', 'start', 'end', 'gene_name', 'score', 'strand'])
+    # Sort and write
+    gene_data["chrom"] = pd.Categorical(gene_data["chrom"], categories=sorted_chroms, ordered=True)
+    gene_data = gene_data.sort_values(["chrom", "start", "end"])
+    gene_data.to_csv(gene_bed_path, sep='\t', header=False, index=False, columns=['chrom', 'start', 'end', 'gene_name', 'score', 'strand'])
 
     ### EXONS
 
@@ -230,46 +225,27 @@ def initialize_genome_files(assembly: str):
     server.host = assembly_2_biomart_host[assembly]
 
     exon_data: pd.DataFrame = server.query()
+    # The query column namess are different from the attribute names
+    exon_data.columns = exon_attributes
 
     print(f"-- Processing exon query results for {assembly}...")
 
     # Process exon data
     exon_bed_path = genome_dir / f"{assembly}.exon.bed"
-    fixed_exon_data = pd.DataFrame(columns=['chrom', 'start', 'end', 'gene_name', 'score', 'strand'])
-    with exon_bed_path.open('w') as exon_bed_file:
-        print(f"-- Num results: {len(exon_data)}")
-        for row in exon_data.iterrows():
-            chrom, start, end, gene_name, strand = row[1]
 
-            # Use chromToUcsc to convert Ensembl-based chromosome names to UCSC-style names
-            chrom = chrom_to_ucsc(chrom_dict, chrom)
-            if chrom is None:
-                continue
+    # Process exon data (vectorized)
+    exon_data['chrom'] = exon_data['chromosome_name'].map(lambda c: chrom_to_ucsc(chrom_dict, c))
+    exon_data = exon_data.dropna(subset=['chrom'])
+    exon_data['strand'] = exon_data['strand'].map({1: '+', -1: '-', 0: '.'})
+    exon_data['score'] = 0
+    exon_data = exon_data[['chrom', 'exon_chrom_start', 'exon_chrom_end', 'external_gene_name', 'score', 'strand']]
+    exon_data.columns = ['chrom', 'start', 'end', 'gene_name', 'score', 'strand']
 
-            # 1 -> "+"
-            # -1 -> "-"
-            # 0 -> "."
-            if strand == 1:
-                strand = "+"
-            elif strand == -1:
-                strand = "-"
-            else:
-                strand = "."
+    # Sort and write
+    exon_data["chrom"] = pd.Categorical(exon_data["chrom"], categories=sorted_chroms, ordered=True)
+    exon_data = exon_data.sort_values(["chrom", "start", "end"])
+    exon_data.to_csv(exon_bed_path, sep='\t', header=False, index=False, columns=['chrom', 'start', 'end', 'gene_name', 'score', 'strand'])
 
-            new_row = pd.Series({
-                'chrom': chrom,
-                'start': start,
-                'end': end,
-                'gene_name': gene_name,
-                'score': 0,
-                'strand': strand
-            })
-            fixed_exon_data.loc[len(fixed_exon_data)] = new_row
-
-        # sort by chromosome order, then write to file
-        fixed_exon_data["chrom"] = pd.Categorical(fixed_exon_data["chrom"], categories=sorted_chroms, ordered=True)
-        fixed_exon_data = fixed_exon_data.sort_values("chrom")
-        fixed_exon_data.to_csv(exon_bed_file, sep='\t', header=False, index=False, columns=['chrom', 'start', 'end', 'gene_name', 'score', 'strand'])
 
     print(f"-- Compressing and indexing files for {assembly}...")
 
@@ -277,11 +253,9 @@ def initialize_genome_files(assembly: str):
     for bed_path in [gene_bed_path, exon_bed_path]:
         gz_path = bed_path.with_suffix(bed_path.suffix + '.gz')
         with bed_path.open('rb') as f_in, bgzf.BgzfWriter(gz_path) as f_out:
-            f_out.write(f_in)
-
-        tabix_index = tabix.TabixFile(gz_path)
-        tabix_index.create_index('bed')
-        tabix_index.close()
+            # write the entirety of the input
+            f_out.write(f_in.read())
+        create_tabix_indexed_file(gz_path, file_type="bed")
 
 for assembly in assemblies:
     print(f"Processing assembly {assembly}...")
