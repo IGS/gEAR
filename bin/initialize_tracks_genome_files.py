@@ -88,6 +88,18 @@ assembly_2_biomart_dataset = {
     #"calJac3": "cjacchus_gene_ensembl"  # marmoset
 }
 
+# In the chromAlias.txt file, the UCSC col is always first, but the ensembl col varies between older and newer files
+assembly_2_ensembl_col = {
+    "mm10": 3,  # index position 3 (older format)
+    #"mm39": 1, # newer format
+    "danRer10": 1,
+    "galGal6": 1,
+    "hg19": 1,
+    "hg38": 1,
+    "rn6": 1,
+    #"calJac3": 1
+}
+
 # Some of these assemblies do not exist in the current verison of biomart
 assembly_2_biomart_host = {
     "mm10": "http://nov2020.archive.ensembl.org/biomart/martservice",
@@ -118,9 +130,12 @@ def build_chrom_to_ucsc(assembly) -> dict:
 
     # Build the mapping dictionary
     alias_dict = {}
+    ensembl_col_position = assembly_2_ensembl_col[assembly]
     for line in lines[1:]:  # Skip header
         try:
-            ucsc, _, _, ensembl = line.split('\t')
+            line_list = line.split('\t')
+            ucsc = line_list[0]
+            ensembl = line_list[ensembl_col_position]
             alias_dict[ensembl] = ucsc
         except:
             # Occasionally there is missing data, so skip the line.
