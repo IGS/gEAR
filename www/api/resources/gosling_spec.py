@@ -43,16 +43,16 @@ EXPANDED_HEIGHT = 40  # Height for expanded tracks
 ASSEMBLY_TO_CHROMSIZES_FILE = {
     "danRer10": "danRer10.chromInfo.txt",  # zebrafish
     "galGal6": "galGal6.chromInfo.txt",  # chicken
-    # "hg19": "hg19.chromInfo.txt",
+    "hg19": "hg19.chromInfo.txt",
     "hg38": "hg38.chromInfo.txt",
     "mm10": "mm10.chromInfo.txt",
     # "mm39": "mm39.chromInfo.txt",
-    "r6": "r6.chromInfo.txt",  # rat
+    "rn6": "rn6.chromInfo.txt",  # rat
     # "calJac3": "calJac3.chromInfo.txt", # marmoset
 }
 
-#GENOMES_ROOT = "https://umgear.org/tracks/genomes/"
-GENOMES_ROOT = "http://localhost:8080/tracks/genomes"
+GENOMES_ROOT = "https://umgear.org/tracks/genomes/"
+#GENOMES_ROOT = "http://localhost:8080/tracks/genomes"
 
 def build_assembly_array(assembly) -> list:
     """
@@ -162,28 +162,26 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     # These files will be based on Ensembl's annotation naming structure, but sorted in chromosome order.
     # I am adding a 2nd column of 1's to allow us to use the files in a "genomic" track.
 
-    # TODO: make the other files
     ASSEMBLY_TO_BED_FILE = {
         "danRer10": "danRer10.gene.bed.gz", # zebrafish
-        # "galGal6": "galGal6.bed", # chicken
-        # "hg19": "hg19.bed",
-        # "hg38": "hg38.bed",
+        "galGal6": "galGal6.gene.bed.gz", # chicken
+         "hg19": "hg19.gene.bed.gz",
+         "hg38": "hg38.gene.bed.gz",
         "mm10": "mm10.gene.bed.gz",
-        # "mm39": "mm39.chromInfo.txt",
-        # "r6": "r6.chromInfo.txt", # rat
-        # "calJac3": "calJac3.chromInfo.txt", # marmoset
+        # "mm39": "mm39.gene.bed.gz",
+         "rn6": "rn6.gene.bed.gz", # rat
+        # "calJac3": "calJac3.gene.bed.gz", # marmoset
     }
 
-    # TODO: make the other files
     ASSEMBLY_TO_EXON_FILE = {
         "danRer10": "danRer10.exon.bed.gz", # zebrafish
-        # "galGal6": "galGal6_exons.bed", # chicken
-        # "hg19": "hg19_exons.bed",
-        # "hg38": "hg38_exons.bed",
-        "mm10": "mm10.exon.bed.gz",
-        # "mm39": "mm39_exons.bed",
-        # "r6": "r6_exons.bed", # rat
-        # "calJac3": "calJac3_exons.bed", # marmoset
+        "galGal6": "galGal6_exon.bed.gz", # chicken
+        "hg19": "hg19_exon.bed.gz",
+        "hg38": "hg38_exon.bed.gz",
+        "mm10": "mm10_exon.bed.gz",
+        # "mm39": "mm39_exon.bed.gz",
+        "rn6": "rn6_exon.bed.gz", # rat
+        # "calJac3": "calJac3_exon.bed.gz", # marmoset
     }
 
     bed_file_stem = ASSEMBLY_TO_BED_FILE.get(assembly, None)
