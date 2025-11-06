@@ -161,7 +161,20 @@ BIGBED_EXTENSIONS = [".bb", ".bigbed"]
 
 SUPPORTED_ASSEMBLIES = ["danRer10", "galGal6", "hg19", "hg38", "mm10", "rn6"]
 
-HEX_COLORS = cc.glasbey_dark
+# The first few are from Matplotlib tab10 palette.
+# If for some reason we have more, then start adding from the glasbey_dark palette.
+HEX_COLORS = [
+                    "#1f77b4",
+                    "#ff7f0e",
+                    "#2ca02c",
+                    "#d62728",
+                    "#9467bd",
+                    "#8c564b",
+                    "#e377c2",
+                    "#7f7f7f",
+                    "#bcbd22",
+                    "#17becf"
+] + cc.glasbey_dark[:20]  # Add more colors if needed
 
 
 # Set to True for local testing (localhost:8080), False for production
@@ -273,6 +286,8 @@ def build_trackdb_file(trackdb_path: Path, tracks: list, groups: set = set()) ->
     trackdb_root = trackdb_path.parent.as_posix()
 
     groups_list = list(groups)
+    if len(groups_list) > 30:
+        print(f"Warning: More than 30 groups found ({len(groups_list)}). Color assignment may repeat.")
 
     # For simplicity, we will create a single track entry for the dataset.
     with open(trackdb_path, "w") as f_out:
@@ -318,7 +333,7 @@ def build_trackdb_file(trackdb_path: Path, tracks: list, groups: set = set()) ->
                 f_out.write(f"group {track['datasourceGroup']}\n")
                 # Assign a color based on the track index
                 try:
-                    group_index = groups_list.index(track['datasourceGroup'])
+                    group_index = groups_list.index(track['datasourceGroup']) % 30
                     if group_index:
                         hex_color = HEX_COLORS[group_index]
                         track_color = convert_hex_to_track_rgb(hex_color)
