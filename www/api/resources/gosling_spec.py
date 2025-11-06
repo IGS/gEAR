@@ -194,7 +194,6 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     bed_tbi_file_url = bed_file_url + ".tbi"
 
     # base bed track to build overlays on
-    # ! Currently running into an issue with bad gzip headers (which wasn't a problem before)
     bed_data = gos.BedData(
         url=bed_file_url,  # type: ignore
         indexUrl=bed_tbi_file_url,  # type: ignore
@@ -482,8 +481,10 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
         color = track.get("color", "orange")  # Default color if not specified
         group = track.get("group", None)
 
+        title = track.get("shortLabel", track.get("longLabel", "bigDataUrl"))
+
         spec_builder = spec_builder_class(
-            data_url=data_url, color=color, group=group, zoom=zoom
+            data_url=data_url, color=color, group=group, zoom=zoom, title=title
         )
         left_track = spec_builder.addTrack()
         parent_tracks_dict["left"].append(left_track)
@@ -795,14 +796,14 @@ def replace_with_aggregated_track(group_tracks, group_name):
 
 
 class TrackSpec(ABC):
-    def __init__(self, data_url, color="steelblue", group=None, zoom=False):
+    def __init__(self, data_url, color="steelblue", group=None, zoom=False, title=""):
         self.data_url = data_url
         self.color = color  # Passed as RGB string
         self.group = group
         self.zoom = zoom
         self.width = EXPANDED_WIDTH if zoom else CONDENSED_WIDTH
         self.height = EXPANDED_HEIGHT if zoom else CONDENSED_HEIGHT
-        self.title = Path(self.data_url).stem
+        self.title = title
 
         self.track = None
 

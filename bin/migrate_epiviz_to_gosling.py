@@ -658,6 +658,24 @@ def update_dataset_preferences(cnx, display_id, new_display_id):
     cnx.commit()
     cursor.close()
 
+def update_layout_members(cnx, old_display_id, new_display_id):
+
+    if DRY_RUN:
+        print(f"[DRY RUN] Would update layout members from display ID {old_display_id} to {new_display_id}")
+        return None
+
+    cursor = cnx.get_cursor()
+
+    # Update any layout members with this display_id to use the new display_id entry
+    update_layout_query = """
+        UPDATE layout_displays
+        SET display_id = %s
+        WHERE display_id = %s
+    """
+    cursor.execute(update_layout_query, (new_display_id, old_display_id))
+    cnx.commit()
+    cursor.close()
+
 def main():
     cnx = geardb.Connection()
     try:
@@ -705,6 +723,8 @@ def main():
             update_dataset_preferences(cnx, display.id, new_display_id)
 
             update_dataset_dtype(cnx, display.dataset_id)
+
+            update_layout_members(cnx, display.id, new_display_id)
 
             print(f"Successfully parsed Epiviz display ID {display.id} for genome {epiviz_config['genome']}.")
     except Exception as e:

@@ -1652,9 +1652,10 @@ class DatasetTile {
                 panelBGeneResults = panelBData[gene.toLowerCase()];
             } catch (error) {
                 console.error("Error searching for gene:", error);
+                createToast("An error occurred while searching for gene: " + gene);
             }
 
-            const geneData = panelBGeneResults.by_organism[orgId];
+            const geneData = panelBGeneResults?.by_organism[orgId];
             if (!geneData || geneData.length === 0) {
                 alert(`Gene ${gene} not found.`);
                 return;
