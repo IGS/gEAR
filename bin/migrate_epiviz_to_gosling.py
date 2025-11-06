@@ -652,6 +652,8 @@ def main():
 
             update_dataset_preferences(cursor, display.id, new_display_id)
 
+            update_dataset_dtype(cursor, display.dataset_id)
+
             print(f"Successfully parsed Epiviz display ID {display.id} for genome {epiviz_config['genome']}.")
     except Exception as e:
         print(f"Error retrieving displays: {e}")
