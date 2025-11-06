@@ -374,6 +374,7 @@ def build_genome_wide_view(
 
     genome_wide_view = gos.overlay(*tracks).properties(
         static=True,
+        #static=False if chrom else True,
         id="chromosome-wide" if chrom else "genome-wide",
         width=CONDENSED_WIDTH,
         height=20,
@@ -437,7 +438,7 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False):
     TRACK_TYPE_2_SPEC = {
         "bam": BamSpec,
         "bigWig": BigWigSpec,
-        "bed": BedSpec,
+        "bigBed": BedSpec,
         "vcf": VcfSpec,
     }
 
@@ -460,8 +461,14 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False):
             )
             continue
 
+        BIGBED_EXTENSIONS = [".bb", ".bigbed"]
+        # If the data_url ends with a bigBed extension, replace extension with .bed
+        # Gosling will use .bed files but the UCSC Genome Browser uses BigBed
+        if any(data_url.endswith(ext) for ext in BIGBED_EXTENSIONS):
+            data_url = data_url.rsplit(".", 1)[0] + ".bed"
+
         # Get other attributes to pass to the class
-        color = track.get("color", "steelblue")  # Default color if not specified
+        color = track.get("color", "orange")  # Default color if not specified
         group = track.get("group", None)
 
         spec_builder = spec_builder_class(
@@ -606,6 +613,7 @@ def parse_tracks_from_trackdb(trackdb_txt, trackdb_url) -> list:
         elif current_track:
             if line.startswith("bigDataUrl"):
                 current_track["bigDataUrl"] = line.split(" ")[1]
+                # Gosling needs URL paths
                 # If not a URL, make it one by replacing the "trackDb.txt" part of trackdb_url
                 if not current_track["bigDataUrl"].startswith(
                     "http://"
@@ -867,11 +875,11 @@ class BedSpec(TrackSpec):
                 title=self.title,  # Use the file name as the title
                 id=f"left-track-{self.title}",  # Use the file name without extension as the ID
             )
-            .mark_area()
+            .mark_rect()
             .encode(
                 x=gos.X(field="start", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
                 xe=gos.X(field="end", type="genomic"),  # pyright: ignore[reportArgumentType]
-                y=gos.Y(field="value", type="quantitative", axis="right"),  # pyright: ignore[reportArgumentType]
+                size=gos.Size(value=10),
                 color=gos.Color(value=color),
             )
         )
