@@ -1555,7 +1555,7 @@ class DatasetTile {
         // use mod
         } catch (err) {
             logErrorInConsole('Gosling module failed to load, continuing without it', err);
-            createCardMessage(this.tile.tileId, "danger", "Could not load Gosling viewer (network or CDN error).");
+            createCardMessage(this.tile.tileId, "danger", "Could not load Gosling viewer.");
             return
         }
 

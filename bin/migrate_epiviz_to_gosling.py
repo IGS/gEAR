@@ -290,14 +290,24 @@ def build_trackdb_file(trackdb_path: Path, tracks: list, groups: set = set()) ->
                 print(f"Unsupported file type for datasourceId: {track['datasourceId']}. Skipping this track")
                 continue
 
-            # Copy file over to trackdb_root
-            # For BigBed, we keep the BigBed path for exporting to UCSC,
-            # but in the gosling API we will search for the Bed equivalent
-            data_filename = Path(track['datasourceId']).name
-            new_data_path = Path(trackdb_root) / data_filename
-            Path(track['datasourceId']).replace(new_data_path)
-            # Update datasourceId to just the filename (relative to tracksDb.txt)
-            track['datasourceId'] = data_filename
+            # if datasourceId is a URL, we skip copying
+            # if it is a file, then we copy it over to the trackdb_root
+            if not (track['datasourceId'].startswith("http://") or track['datasourceId'].startswith("https://")):
+
+                # For BigBed, we keep the BigBed path for exporting to UCSC,
+                # but in the gosling API we will search for the Bed equivalent
+                data_filename = Path(track['datasourceId']).name
+                new_data_path = Path(trackdb_root) / data_filename
+
+                # Copy the file over
+                try:
+                    subprocess.run(["cp", track['datasourceId'], new_data_path.as_posix()], check=True)
+                except subprocess.CalledProcessError as e:
+                    print(f"Error copying file: {e}")
+                    continue
+
+                # Update datasourceId to just the filename (relative to tracksDb.txt)
+                track['datasourceId'] = data_filename
 
             f_out.write(f"track {track['id']}\n")
             f_out.write(f"bigDataUrl {track['datasourceId']}\n")
@@ -341,9 +351,9 @@ def build_hub_file(hub_path, dataset_id) -> bool:
         print(f"Dataset with ID {dataset_id} not found.")
         return False
 
-    user = geardb.get_user_by_id(dataset.user_id)
+    user = geardb.get_user_by_id(dataset.owner_id)
     if not user:
-        print(f"User with ID {dataset.user_id} not found.")
+        print(f"User with ID {dataset.owner_id} not found.")
         return False
 
     title = dataset.title if dataset.title else dataset.id
@@ -478,11 +488,12 @@ def create_ucsc_style_track_files(display, e_config) -> bool:
     return True
 
 
-def get_displays(cursor):
+def get_displays(cnx):
     """
     Populates the dataset displays attribute, a list of DatasetDisplay objects
     related to this dataset.
     """
+    cursor = cnx.get_cursor()
 
     displays = []
 
@@ -512,7 +523,6 @@ def get_displays(cursor):
         displays.append(display)
 
     cursor.close()
-
     return displays
 
 def get_domain_url():
@@ -520,7 +530,7 @@ def get_domain_url():
     json_dict = json.load(open(json_path, 'r'))
     return json_dict.get("domain_url")
 
-def insert_gosling_display(cursor, dataset_id, user_id, gosling_config) -> int | None:
+def insert_gosling_display(cnx, dataset_id, user_id, gosling_config) -> int | None:
     """
     Insert a new dataset_display entry with the gosling configuration.
     Returns the new display ID or None on failure.
@@ -530,22 +540,31 @@ def insert_gosling_display(cursor, dataset_id, user_id, gosling_config) -> int |
         print(f"[DRY RUN] Would insert Gosling display for dataset {dataset_id}, user {user_id}")
         return 999999  # Dummy ID for dry run
 
+    cursor = cnx.get_cursor()
+
     qry = """
         INSERT INTO dataset_display (dataset_id, user_id, label, plot_type, plotly_config)
         VALUES (%s, %s, %s, %s, %s)
-        RETURNING id
     """
     label = f"Gosling Migration of {dataset_id}"
     plot_type = "gosling"
     plotly_config_json = json.dumps(gosling_config)
 
+    select_qry = """SELECT MAX(id) from dataset_display"""
+
     try:
         cursor.execute(qry, (dataset_id, user_id, label, plot_type, plotly_config_json))
-        new_id = cursor.fetchone()[0]
+
+        cursor.execute(select_qry)
+        row = cursor.fetchone()
+        new_id = row[0] if row else None
+        cnx.commit()
         return new_id
     except Exception as e:
         print(f"Error inserting gosling display: {e}")
         return None
+    finally:
+        cursor.close()
 
 def parse_epiviz_plotly_config(config: str) -> dict | None:
     """
@@ -585,10 +604,31 @@ def parse_epiviz_plotly_config(config: str) -> dict | None:
 
     return None
 
-def update_dataset_dtype(cursor, dataset_id):
+def is_dataset_gosling(cnx, dataset_id):
+    """
+    Check if the dataset's dtype is already 'gosling'.
+    """
+
+    cursor = cnx.get_cursor()
+
+    qry = """
+        SELECT dtype
+        FROM dataset
+        WHERE id = %s
+    """
+    cursor.execute(qry, (dataset_id,))
+    row = cursor.fetchone()
+    cursor.close()
+    if row and row[0] == 'gosling':
+        return True
+    return False
+
+def update_dataset_dtype(cnx, dataset_id):
     if DRY_RUN:
         print(f"[DRY RUN] Would update dataset dtype to 'gosling' for dataset {dataset_id}")
         return None
+
+    cursor = cnx.get_cursor()
 
     # Update the dataset dtype from "epiviz" to "gosling"
     update_dtype_query = """
@@ -597,12 +637,16 @@ def update_dataset_dtype(cursor, dataset_id):
         WHERE id = %s
     """
     cursor.execute(update_dtype_query, (dataset_id,))
+    cnx.commit()
+    cursor.close()
 
-def update_dataset_preferences(cursor, display_id, new_display_id):
+def update_dataset_preferences(cnx, display_id, new_display_id):
 
     if DRY_RUN:
         print(f"[DRY RUN] Would update dataset_preference entries from display ID {display_id} to {new_display_id}")
         return None
+
+    cursor = cnx.get_cursor()
 
     # Update any dataset_preference entries with this display_id to use the new display_id entry
     update_preference_query = """
@@ -611,13 +655,13 @@ def update_dataset_preferences(cursor, display_id, new_display_id):
         WHERE display_id = %s
     """
     cursor.execute(update_preference_query, (new_display_id, display_id))
+    cnx.commit()
+    cursor.close()
 
 def main():
     cnx = geardb.Connection()
-    cursor = cnx.get_cursor()
-
     try:
-        displays = get_displays(cursor)
+        displays = get_displays(cnx)
         if not displays:
             print("No Epiviz displays found.")
             return
@@ -625,6 +669,11 @@ def main():
         for display in displays:
 
             print(f"--- Processing display ID {display.id}...")
+
+            # This dataset has already been converted
+            if is_dataset_gosling(cnx, display.dataset_id):
+                print(f"Skipping display ID {display.id} as dataset {display.dataset_id} is already gosling.")
+                continue
 
             epiviz_config = parse_epiviz_plotly_config(display.plotly_config)
             if not epiviz_config:
@@ -648,15 +697,20 @@ def main():
                 continue
 
             # Insert a new dataset_display with the gosling config
-            new_display_id = insert_gosling_display(cursor, display.dataset_id, display.user_id, gosling_config)
+            new_display_id = insert_gosling_display(cnx, display.dataset_id, display.user_id, gosling_config)
+            if not new_display_id:
+                print(f"Skipping display ID {display.id} due to insertion issues.")
+                continue
 
-            update_dataset_preferences(cursor, display.id, new_display_id)
+            update_dataset_preferences(cnx, display.id, new_display_id)
 
-            update_dataset_dtype(cursor, display.dataset_id)
+            update_dataset_dtype(cnx, display.dataset_id)
 
             print(f"Successfully parsed Epiviz display ID {display.id} for genome {epiviz_config['genome']}.")
     except Exception as e:
+        import traceback
         print(f"Error retrieving displays: {e}")
+        traceback.print_exc()
     finally:
         cnx.close()
 

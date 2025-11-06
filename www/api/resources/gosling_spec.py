@@ -165,11 +165,11 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     ASSEMBLY_TO_BED_FILE = {
         "danRer10": "danRer10.gene.bed.gz", # zebrafish
         "galGal6": "galGal6.gene.bed.gz", # chicken
-         "hg19": "hg19.gene.bed.gz",
-         "hg38": "hg38.gene.bed.gz",
+        "hg19": "hg19.gene.bed.gz",
+        "hg38": "hg38.gene.bed.gz",
         "mm10": "mm10.gene.bed.gz",
         # "mm39": "mm39.gene.bed.gz",
-         "rn6": "rn6.gene.bed.gz", # rat
+        "rn6": "rn6.gene.bed.gz", # rat
         # "calJac3": "calJac3.gene.bed.gz", # marmoset
     }
 
@@ -412,7 +412,7 @@ def build_genome_wide_view(
     return genome_wide_view
 
 
-def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False):
+def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""):
     """
     Builds and configures Gosling tracks based on the provided track specifications.
 
@@ -466,6 +466,17 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False):
         # Gosling will use .bed files but the UCSC Genome Browser uses BigBed
         if any(data_url.endswith(ext) for ext in BIGBED_EXTENSIONS):
             data_url = data_url.rsplit(".", 1)[0] + ".bed"
+
+            # There is the possibility that the BigBed files are at a remote URL
+            # but during uploading, the Bed files are locally hosted.
+            # So we need to adjust the URL accordingly.
+            if not tracksdb_url:
+                print(
+                    f"WARNING: Cannot resolve .bed URL for BigBed track '{track.get('shortLabel', '')}'; skipping.",
+                    file=sys.stderr,
+                )
+                continue
+            data_url = urljoin(tracksdb_url, data_url)
 
         # Get other attributes to pass to the class
         color = track.get("color", "orange")  # Default color if not specified
@@ -1131,11 +1142,11 @@ class GoslingSpec(Resource):
                     group_tracks = replace_with_aggregated_track(group_tracks, group)
 
                 (parent_view_left, parent_view_right) = build_gosling_tracks(
-                    gos_tracks, group_tracks, zoom=zoom
+                    gos_tracks, group_tracks, zoom=zoom, tracksdb_url=trackdb_url
                 )
         else:
             (parent_view_left, parent_view_right) = build_gosling_tracks(
-                gos_tracks, tracks, zoom=zoom
+                gos_tracks, tracks, zoom=zoom, tracksdb_url=trackdb_url
             )
 
         # Start building the Gosling spec
