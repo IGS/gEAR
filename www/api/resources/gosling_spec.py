@@ -659,6 +659,18 @@ def parse_tracks_from_trackdb(trackdb_txt, trackdb_url) -> list:
                     current_track["bigDataUrl"] = urljoin(
                         trackdb_url, current_track["bigDataUrl"]
                     )
+                # Gosling will not redirect the URL, so we need to follow and update the URL
+                try:
+                    response = requests.head(current_track["bigDataUrl"], allow_redirects=True)
+                    if response.status_code == 200:
+                        current_track["bigDataUrl"] = response.url
+                except Exception:
+                    # non-fatal.
+                    # ? Do we continue without the track or add track knowing it's unreachable.
+                    print(
+                        f"WARNING: Could not resolve URL for track '{current_track['name']}'.",
+                        file=sys.stderr,
+                    )
             elif line.startswith("shortLabel"):
                 current_track["shortLabel"] = " ".join(line.split(" ")[1:])
             elif line.startswith("longLabel"):
@@ -811,9 +823,10 @@ def replace_with_aggregated_track(group_tracks, group_name):
     try:
         groups_response = requests.head(groups_url, allow_redirects=True)
         groups_response.raise_for_status()
-        #print(f"INFO: Using grouped track for group {group_name} from {groups_url}", file=sys.stderr)
 
-        first_track["bigDataUrl"] = groups_url
+        if groups_response.status_code == 200:
+            first_track["bigDataUrl"] = groups_response.url
+
         first_track["shortLabel"] = group_name  # Update title to group name
         group_tracks = [first_track]
     except Exception:
