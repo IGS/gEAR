@@ -13,8 +13,6 @@ const plotlyPlots = ["bar", "line", "scatter", "tsne/umap_dynamic", "violin"];  
 const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];   // "tsne" is a legacy option
 const mgScanpyPlots = ["mg_pca_static", "mg_tsne_static", "mg_umap_static"];
 
-// Epiviz overrides the <script> d3 version when it loads so we save as a new variable to preserve it
-const new_d3 = d3;
 export class TileGrid {
 
     constructor(shareId, type="layout", selector ) {
@@ -178,12 +176,6 @@ export class TileGrid {
             // Set the grid-area property of the tile. Must be added after the tile is appended to the DOM
             const tileElement = document.getElementById(`tile-${tile.tileId}`);
             tileElement.style.gridArea = `${tile.startRow} / ${tile.startCol} / ${tile.endRow} / ${tile.endCol}`;
-
-            // If the dataset type is epiviz or spatial, then add grid-template-rows so that this tile takes up the full height
-            //if (datasetTile.dataset.dtype === "epiviz" || datasetTile.dataset.dtype === "spatial") {
-            /*if (datasetTile.dataset.dtype === "spatial") {
-                specialRows.add(tile.startRow);
-            }*/
         }
 
         // Set grid-template-rows for special rows
@@ -192,7 +184,7 @@ export class TileGrid {
             const uniqueRows = [...specialRows];
             let gridTemplateRows = "";
             const maxStartRow = Math.max(...this.tiles.map(t => t.tile.startRow));
-            // Normal datasets get "auto", epiviz and spatial datasets get "1fr"
+            // Normal datasets get "auto", gosling and spatial datasets get "1fr"
             for (let i = 1; i <= maxStartRow; i++) {
                 gridTemplateRows += uniqueRows.includes(i) ? "1fr " : "auto ";
             }
@@ -503,7 +495,7 @@ class DatasetTile {
 
         // If the dataset type is epiviz, then give warning that it hasn't been implemented yet
         if (this.dataset.dtype === "epiviz") {
-            createCardMessage(tileId, "warning", "Epiviz datasets are not yet supported.");
+            createCardMessage(tileId, "warning", "Epiviz datasets no longer supported. Contact the gEAR team to migrate it to the Gosling viewer.");
             return;
         }
 
@@ -1150,11 +1142,11 @@ class DatasetTile {
         const ownerDisplays = this.dataset.ownerDisplays.filter((d) => d.plotly_config.hasOwnProperty(filterKey));
 
         if (this.type === "single") {
-            // Add userEpivizDisplays to userDisplays...
-            const userEpivizDisplays = this.dataset.userDisplays.filter((d) => d.plot_type === "epiviz");
-            const ownerEpivizDisplays = this.dataset.ownerDisplays.filter((d) => d.plot_type === "epiviz");
-            userDisplays.push(...userEpivizDisplays);
-            ownerDisplays.push(...ownerEpivizDisplays);
+            // Add userGoslingDisplays to userDisplays...
+            const userGoslingDisplays = this.dataset.userDisplays.filter((d) => d.plot_type === "gosling");
+            const ownerGoslingDisplays = this.dataset.ownerDisplays.filter((d) => d.plot_type === "gosling");
+            userDisplays.push(...userGoslingDisplays);
+            ownerDisplays.push(...ownerGoslingDisplays);
         }
 
         return { userDisplays, ownerDisplays };
@@ -1272,8 +1264,11 @@ class DatasetTile {
                 logErrorInConsole(error);
                 // Realistically we should try to plot, but I assume most saved displays will have an image present.
                 displayUrl = "/img/dataset_previews/missing.png";
-                if (display.plot_type === "epiviz") {
-                    displayUrl = "/img/epiviz_mini_screenshot.jpg"; // TODO: Replace with real logo
+                if (display.plot_type === "gosling") {
+                    displayUrl = "/img/epiviz_mini_screenshot.jpg"; // TODO: Replace with gosling logo
+                } else if (display.plot_type === "epiviz") {
+                    // Epiviz is no longer supported.  Do not render display.
+                    continue
                 }
             }
 
@@ -1339,11 +1334,11 @@ class DatasetTile {
         }
         const layoutDisplay = layouts.find((d) => JSON.parse(d).display_id === displayId);
 
-        // Try epiviz/gosling display if no plotly display was found
+        // Try osling display if no plotly display was found
         if (this.type === "single") {
-            if (!userDisplay) userDisplay = this.dataset.userDisplays.find((d) => d.id === displayId && ["epiviz", "gosling"].includes(d.plot_type));
+            if (!userDisplay) userDisplay = this.dataset.userDisplays.find((d) => d.id === displayId && ["gosling"].includes(d.plot_type));
 
-            if (!ownerDisplay) ownerDisplay = this.dataset.ownerDisplays.find((d) => d.id === displayId && ["epiviz", "gosling"].includes(d.plot_type));
+            if (!ownerDisplay) ownerDisplay = this.dataset.ownerDisplays.find((d) => d.id === displayId && ["gosling"].includes(d.plot_type));
         }
 
         // add console warning if default display id was not found in the user or owner display lists
@@ -1476,8 +1471,6 @@ class DatasetTile {
                 }
 
                 await this.renderGoslingDisplay(display, otherOpts);
-            } else if (display.plot_type === "epiviz") {
-                await this.renderEpivizDisplay(display, otherOpts);
             } else if (this.type === "multi") {
                 if (this.dataset.dtype === "spatial") {
                     // Matplotlib-based display for spatial datasets
@@ -1514,19 +1507,6 @@ class DatasetTile {
             createCardMessage(this.tile.tileId, "danger", error.message);
         }
 
-    }
-
-    /**
-     * Renders the Epiviz display on the tile grid.
-     * @param {Object} display - The display object containing dataset_id and plotly_config.
-     * @returns {Promise<void>} - A promise that resolves when the rendering is complete.
-     */
-    async renderEpivizDisplay(display, otherOpts) {
-        const datasetId = display.dataset_id;
-        const {gene_symbol: geneSymbol} = display.plotly_config;
-
-        createCardMessage(this.tile.tileId, "warning", "Epiviz displays have not been implemented yet.");
-        return;
     }
 
     /**
@@ -2329,25 +2309,25 @@ const colorSVG = async (chartData, plotConfig, datasetId, tileId, geneSymbol, sv
             if (midColor) {
                 if (min >= 0) {
                     // All values greater than 0, do right side of three-color
-                    color = new_d3
+                    color = d3
                         .scaleLinear()
                         .domain([min, max])
                         .range([midColor, highColor]);
                 } else if (max <= 0) {
                     // All values under 0, do left side of three-color
-                    color = new_d3
+                    color = d3
                         .scaleLinear()
                         .domain([min, max])
                         .range([lowColor, midColor]);
                 } else {
                     // We have a good value range, do the three-color
-                    color = new_d3
+                    color = d3
                         .scaleLinear()
                         .domain([min, 0, max])
                         .range([lowColor, midColor, highColor]);
                 }
             } else {
-                color = new_d3
+                color = d3
                     .scaleLinear()
                     .domain([min, max])
                     .range([lowColor, highColor]);
@@ -2373,12 +2353,12 @@ const colorSVG = async (chartData, plotConfig, datasetId, tileId, geneSymbol, sv
                     let score;
                     // Apply math transformation to expression score
                     if (math == 'log2') {
-                        score = new_d3.format('.2f')(Math.log2(expression[tissue]));
+                        score = d3.format('.2f')(Math.log2(expression[tissue]));
                     } else if (math == 'log10') {
-                        score = new_d3.format('.2f')(Math.log10(expression[tissue]));
+                        score = d3.format('.2f')(Math.log10(expression[tissue]));
                     } else {
                         //math == 'raw'
-                        score = new_d3.format('.2f')(expression[tissue]);
+                        score = d3.format('.2f')(expression[tissue]);
                     }
 
                     const tooltip = document.createElement('div');
@@ -2434,17 +2414,17 @@ const colorSVG = async (chartData, plotConfig, datasetId, tileId, geneSymbol, sv
                     } = score[tissue];
 
                     if (min >= 0) {
-                        color[tissue] = new_d3
+                        color[tissue] = d3
                             .scaleLinear()
                             .domain([min, max])
                             .range([midColor, highColor]);
                     } else if (max <= 0) {
-                        color[tissue] = new_d3
+                        color[tissue] = d3
                             .scaleLinear()
                             .domain([min, max])
                             .range([lowColor, midColor]);
                     } else {
-                        color[tissue] = new_d3
+                        color[tissue] = d3
                             .scaleLinear()
                             .domain([min, 0, max])
                             .range([lowColor, midColor, highColor]);
@@ -2457,7 +2437,7 @@ const colorSVG = async (chartData, plotConfig, datasetId, tileId, geneSymbol, sv
                         max
                     } = score[tissue];
 
-                    color[tissue] = new_d3
+                    color[tissue] = d3
                         .scaleLinear()
                         .domain([min, max])
                         .range([lowColor, highColor]);
@@ -2494,12 +2474,12 @@ const colorSVG = async (chartData, plotConfig, datasetId, tileId, geneSymbol, sv
                     let expressionScore;
                     // Apply math transformation to expression score
                     if (math == 'log2') {
-                        expressionScore = new_d3.format('.2f')(Math.log2(expression[tissue]));
+                        expressionScore = d3.format('.2f')(Math.log2(expression[tissue]));
                     } else if (math == 'log10') {
-                        expressionScore = new_d3.format('.2f')(Math.log10(expression[tissue]));
+                        expressionScore = d3.format('.2f')(Math.log10(expression[tissue]));
                     } else {
                         //math == 'raw'
-                        expressionScore = new_d3.format('.2f')(expression[tissue]);
+                        expressionScore = d3.format('.2f')(expression[tissue]);
                     }
 
                     const tooltip = document.createElement('div');
@@ -2571,7 +2551,7 @@ const drawSVGLegend = (plotConfig, tileId, title, score) => {
     const width = node.getBoundingClientRect().width;
 
     // Create our legend svg
-    const legend = new_d3.select(node)  // returns document.documentElement
+    const legend = d3.select(node)  // returns document.documentElement
         .append('svg')
         .style('position', 'absolute')
         .style('width', '100%')
@@ -2658,12 +2638,12 @@ const drawSVGLegend = (plotConfig, tileId, title, score) => {
         );
 
     // Define the x-axis range
-    const xScale = new_d3
+    const xScale = d3
         .scaleLinear()
         .domain([min, max])
         .range([0, width / 2]);
 
-    const xAxis = new_d3
+    const xAxis = d3
         .axisBottom(xScale)
         .tickValues([min, range33, range66, max])
 
@@ -2702,12 +2682,12 @@ const drawSVGLegend = (plotConfig, tileId, title, score) => {
 
         // redraw axis
         // TODO: this is hacky, but it works
-        const xScale = new_d3
+        const xScale = d3
             .scaleLinear()
             .domain([min, max])
             .range([0, card.getBoundingClientRect().width / 2]);
 
-        const xAxis = new_d3
+        const xAxis = d3
             .axisBottom(xScale)
             .tickValues([min, range33, range66, max])
 

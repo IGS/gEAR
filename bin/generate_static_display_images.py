@@ -178,9 +178,9 @@ def main():
                 elif props["plot_type"].lower() in ["svg"]:
                     url += "/svg"
                     success = make_static_svg(filename, dataset_id)
-                # Epiviz (todo later)
-                elif props["plot_type"].lower() in ["epiviz"]:
-                    url += "/epiviz"
+                # Gosling (todo later)
+                elif props["plot_type"].lower() in ["gosling"]:
+                    url += "/gosling"
                     pass
                 else:
                     print("Plot type {} for display id {} is not recognizable".format(props["plot_type"], display_id))

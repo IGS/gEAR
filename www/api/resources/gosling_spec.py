@@ -32,7 +32,7 @@ TWO_LEVELS_UP = 2  # Number of parent directories to go up
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP]  # web-root dir
 JSON_DIR = abs_path_www.joinpath("tracks")  # Directory for JSON track files
 VIEW_PADDING = 10  # Padding between views
-CONDENSED_WIDTH = 1200 - VIEW_PADDING  # Width of the condensed view tracks
+CONDENSED_WIDTH = 1200 - VIEW_PADDING * 2  # Width of the condensed view tracks
 EXPANDED_WIDTH = 600 - VIEW_PADDING / 2  # Width of the left view tracks
 
 CONDENSED_HEIGHT = 20  # Height for condensed tracks

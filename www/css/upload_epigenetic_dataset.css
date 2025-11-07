@@ -6,8 +6,3 @@
 #continue_container {
     display: none;
 }
-
-.disable_epiviz {
-    pointer-events: none;
-    opacity: 0.4;
-}

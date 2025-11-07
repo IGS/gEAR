@@ -147,9 +147,6 @@ def main():
             if item == "spatial":
                 dtypes.extend(SPATIAL_DTYPES)
                 break
-            if item == "epiviz":
-                dtypes.append("gosling")
-                break
 
         ## only alphanumeric characters and the dash are allowed here
         dtypes = [re.sub("[^,A-Za-z0-9-]", "", item) for item in dtypes]

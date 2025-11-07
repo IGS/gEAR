@@ -44,7 +44,6 @@ from resources.available_display_types import (  # noqa: E402
     MGAvailableDisplayTypes,
 )
 from resources.dataset_display import DatasetDisplay  # noqa: E402
-from resources.epiviz_data import EpivizData  # noqa: E402
 from resources.gene_symbols import GeneSymbols  # noqa: E402
 from resources.gosling_spec import GoslingSpec  # noqa: E402
 from resources.h5ad import H5ad  # noqa: E402
@@ -70,7 +69,6 @@ api.add_resource(MGPlotlyData,'/plot/<dataset_id>/mg_plotly')
 api.add_resource(SvgData, '/plot/<dataset_id>/svg')
 api.add_resource(TSNEData, '/plot/<dataset_id>/tsne')
 api.add_resource(MGTSNEData, '/plot/<dataset_id>/mg_tsne')
-api.add_resource(EpivizData, '/plot/<dataset_id>/epiviz')
 api.add_resource(GoslingSpec, '/plot/<dataset_id>/gosling')
 api.add_resource(SpatialPanel, '/plot/<dataset_id>/spatialpanel')
 api.add_resource(SpatialScanpyData, '/plot/<dataset_id>/spatial_scanpy')

@@ -2316,7 +2316,7 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
             // Realistically we should try to plot, but I assume most saved displays will have an image present.
             displayUrl = "/img/dataset_previews/missing.png";
             if (["epiviz", "gosling"].includes(display.plot_type)) {
-                displayUrl = "/img/epiviz_mini_screenshot.jpg"; // TODO: Replace with real logo
+                displayUrl = "/img/epiviz_mini_screenshot.jpg"; // TODO: Replace with gosling image
             }
         }
 

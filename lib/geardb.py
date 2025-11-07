@@ -3960,7 +3960,7 @@ class LayoutDisplay:
         conn.close()
 
     def get_is_multigene(self):
-        # single_plot_types = ["bar", "line", "scatter", "tsne/umap_dynamic", "tsne_dynamic", "violin", "pca_static", "tsne_static", "tsne", "umap_static", "svg", "epiviz"]
+        # single_plot_types = ["bar", "line", "scatter", "tsne/umap_dynamic", "tsne_dynamic", "violin", "pca_static", "tsne_static", "tsne", "umap_static", "svg", "gosling"]
         multi_plot_types = [
             "dotplot",
             "heatmap",

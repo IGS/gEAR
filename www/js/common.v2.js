@@ -230,10 +230,6 @@ PMID: 34172972`;
         SIDEBAR_COLLAPSED = false;
     }
 
-    document.getElementById('epiviz-panel-designer-link').addEventListener('click', (event) => {
-        createToast("This feature is not yet available.", "is-warning");
-    });
-
     /**
      * / End controls for the left navbar visibility
      */
@@ -1085,23 +1081,6 @@ const apiCallsMixin = {
     async fetchDisplay(displayId) {
         const payload = {session_id: apiCallsMixin.sessionId, display_id: displayId};
         const {data} = await axios.post("/cgi/get_dataset_display.cgi", convertToFormData(payload));
-        return data;
-    },
-    /**
-     * Fetches the Epiviz display data for a given dataset, gene symbol, and genome.
-     * @param {string} datasetId - The ID of the dataset.
-     * @param {string} geneSymbol - The gene symbol.
-     * @param {string} genome - The genome.
-     * @param {Object} [otherOpts={}] - Additional options for the axios request.
-     * @returns {Promise<any>} - A promise that resolves to the fetched data.
-     */
-    async fetchEpivizDisplay(datasetId, geneSymbol, genome, otherOpts={}) {
-
-        const urlParams = new URLSearchParams();
-        urlParams.append('gene', geneSymbol);
-        urlParams.append('genome', genome);
-
-        const {data} = await axios.get(`/api/plot/${datasetId}/epiviz?${urlParams.toString()}`, otherOpts);
         return data;
     },
     /**
