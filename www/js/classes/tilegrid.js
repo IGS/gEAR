@@ -1529,12 +1529,11 @@ class DatasetTile {
         let embedFn = null
         try {
             const gos = await import('https://esm.sh/gosling.js@1.0.6');
-            //const gos = await import('https://esm.sh/gosling.js@2.0.0-alpha.8');
             // prefer named export, then try default, then fallback to the module itself
-            embedFn = gos.embed ?? gos.default?.embed ?? gos.default ?? gos;
+            embedFn = gos.embed ?? gos.default?.embed;
         // use mod
         } catch (err) {
-            logErrorInConsole('Gosling module failed to load, continuing without it', err);
+            logErrorInConsole(err);
             createCardMessage(this.tile.tileId, "danger", "Could not load Gosling viewer.");
             return
         }
@@ -1566,7 +1565,6 @@ class DatasetTile {
 
         //console.info(spec);
 
-        //console.info(spec);
         const goslingContainer = document.createElement("div");
         goslingContainer.id = `tile-${this.tile.tileId}-gosling`;
         goslingContainer.style.width = "100%";

@@ -5,6 +5,7 @@ from urllib.parse import urljoin, urlparse
 
 import geardb
 import gosling as gos
+import pyBigWig
 import requests
 from flask import request
 from flask_restful import Resource
@@ -35,8 +36,8 @@ VIEW_PADDING = 10  # Padding between views
 CONDENSED_WIDTH = 1200 - VIEW_PADDING * 2  # Width of the condensed view tracks
 EXPANDED_WIDTH = 600 - VIEW_PADDING / 2  # Width of the left view tracks
 
-CONDENSED_HEIGHT = 20  # Height for condensed tracks
-EXPANDED_HEIGHT = 40  # Height for expanded tracks
+CONDENSED_HEIGHT = 25  # Height for condensed tracks (25 is lowest height to still show axes)
+EXPANDED_HEIGHT = 50  # Height for expanded tracks
 
 # These files will be based on Ensembl's annotation naming structure, but sorted in chromosome order.
 # I am adding a 2nd column of 1's to allow us to use the files in a "genomic" track.
@@ -441,6 +442,30 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
         "vcf": VcfSpec,
     }
 
+    # Determine the max peak value across all bigWig tracks
+    max_bigwig_peaks = []
+    """
+    for track in tracks:
+        data_url = track.get("bigDataUrl", None)
+        if track.get("type", "") == "bigWig" and data_url:
+            print(data_url, file=sys.stderr)# Calculate max peak value for the bigwig file.
+            try:
+                with pyBigWig.open(data_url) as bw:
+                    for chrom, chrom_len in bw.chroms().items():
+                        max_value = bw.stats(chrom, 0, chrom_len, type="max")[0]
+                        if max_value is not None:
+                            max_bigwig_peaks.append(max_value)
+            except Exception:
+                # non-fatal
+                print(
+                    f"WARNING: Could not read bigWig file at {data_url} to determine max peak value.",
+                    file=sys.stderr,
+                )
+    """
+    kwargs = {}
+    #max_bigwig_peak = max(max_bigwig_peaks) if max_bigwig_peaks else None
+    #kwargs["max_bigwig_peak"] = max_bigwig_peak
+
     # Build each individual track based on its type
     for track in tracks:
         track_type = track.get("type", "")
@@ -481,21 +506,22 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
         color = track.get("color", "orange")  # Default color if not specified
         group = track.get("group", None)
 
+        # Title should be based on shortLabel, longLabel, bigDataUrl (in that order)
         title = track.get("shortLabel", track.get("longLabel", "bigDataUrl"))
 
         spec_builder = spec_builder_class(
             data_url=data_url, color=color, group=group, zoom=zoom, title=title
         )
-        left_track = spec_builder.addTrack()
+        left_track = spec_builder.addTrack(**kwargs)
         parent_tracks_dict["left"].append(left_track)
 
         if zoom:
-            right_track = spec_builder.addTrack()
+            right_track = spec_builder.addTrack(**kwargs)
             right_track.id = f"right-track-{Path(data_url).stem}"
             parent_tracks_dict["right"].append(right_track)
 
     parent_view_left = gos.vertical(*parent_tracks_dict["left"]).properties(
-        id="left-view", linkingId="zoom-to-panel-a", spacing=0
+        id="left-view", linkingId="zoom-to-panel-a", spacing=0,
     )
 
     parent_view_right = None
@@ -783,11 +809,12 @@ def replace_with_aggregated_track(group_tracks, group_name):
     groups_url = urljoin(data_url, f"{group_name}_group.{extension}")
     # test if this exists
     try:
-        groups_response = requests.head(groups_url)
+        groups_response = requests.head(groups_url, allow_redirects=True)
         groups_response.raise_for_status()
         #print(f"INFO: Using grouped track for group {group_name} from {groups_url}", file=sys.stderr)
 
         first_track["bigDataUrl"] = groups_url
+        first_track["shortLabel"] = group_name  # Update title to group name
         group_tracks = [first_track]
     except Exception:
         print(f"INFO: No grouped track found for group {group_name}; using individual tracks.", file=sys.stderr)
@@ -808,7 +835,7 @@ class TrackSpec(ABC):
         self.track = None
 
     @abstractmethod
-    def addTrack(self):
+    def addTrack(self, **kwargs):
         pass
 
     @abstractmethod
@@ -817,7 +844,7 @@ class TrackSpec(ABC):
 
 
 class BamSpec(TrackSpec):
-    def addTrack(self):
+    def addTrack(self, **kwargs):
         url = self.data_url
         color = self.color
 
@@ -867,7 +894,7 @@ class BamSpec(TrackSpec):
 
 
 class BedSpec(TrackSpec):
-    def addTrack(self):
+    def addTrack(self, **kwargs):
         url = self.data_url
         color = self.color
 
@@ -917,7 +944,7 @@ class BedSpec(TrackSpec):
 
 
 class BigWigSpec(TrackSpec):
-    def addTrack(self):
+    def addTrack(self, **kwargs):
         url = self.data_url
         color = self.color
 
@@ -928,6 +955,10 @@ class BigWigSpec(TrackSpec):
 
         # TODO: figure out appropriate binsize when zooming out: Default is 256. It looks blocky briefly
         bigWigData = gos.BigWigData(type="bigwig", url=url)  # type: ignore
+
+        y_kwargs = {}
+        if "max_bigwig_peak" in kwargs and kwargs["max_bigwig_peak"] is not None:
+            y_kwargs["domain"] = [0, kwargs["max_bigwig_peak"]]
 
         track = (
             gos.Track(
@@ -941,7 +972,7 @@ class BigWigSpec(TrackSpec):
             .encode(
                 x=gos.X(field="start", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
                 xe=gos.X(field="end", type="genomic"),  # pyright: ignore[reportArgumentType]
-                y=gos.Y(field="value", type="quantitative", axis="right"),  # pyright: ignore[reportArgumentType]
+                y=gos.Y(field="value", type="quantitative", axis="right", **y_kwargs),  # pyright: ignore[reportArgumentType]
                 color=gos.Color(value=color),
             )
         )
@@ -958,7 +989,7 @@ class BigWigSpec(TrackSpec):
 
 
 class VcfSpec(TrackSpec):
-    def addTrack(self):
+    def addTrack(self, **kwargs):
         url = self.data_url
         color = self.color
 
