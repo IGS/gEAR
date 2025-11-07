@@ -307,7 +307,6 @@ function does_page_need_login() {
         document.URL.includes("dataset_curator.html") ||
         document.URL.includes("gene_cart_manager.html") ||
         document.URL.includes("multigene_curator.html") ||
-        document.URL.includes("epiviz_panel_designer.html") ||
         document.URL.includes("dataset_explorer.html")
         );
 }
@@ -510,13 +509,11 @@ $(document).on("click", ".js-user-guide-link", (e) => {
 
     if (document.URL.includes("upload_dataset.html")) {anchor="uploading"}
     if (document.URL.includes("analyze_dataset.html")) {anchor="workbench"}
-    if (document.URL.includes("upload_epigenetic_data.html")) {anchor="epiviz"}
     if (document.URL.includes("dataset_curator.html")) {anchor="curation"}
     if (document.URL.includes("dataset_explorer.html")) {anchor="profiles"}
     //if (document.URL.includes("gene_cart_manager.html")) {}
     if (document.URL.includes("compare_datasets.html")) {anchor="compare"}
     if (document.URL.includes("multigene_curator.html")) {anchor="mg-curation"}
-    if (document.URL.includes("epiviz_panel_designer.html")) {anchor="epiviz"}
 
     if (anchor) {
         manual_url += `?doc=${anchor}`
