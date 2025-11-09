@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main  # or your default branch
-      #- devel
+      - devel
       # - feature-gosling-implementation
     paths:
       - 'www/**/*.html'
