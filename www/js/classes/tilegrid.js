@@ -345,7 +345,13 @@ class DatasetTile {
         this.orthologs = null;  // Mapping of all orthologs for all gene symbol inputs for this dataset
         this.orthologsToPlot = null;    // A flattened list of all orthologs to plot
 
-        this.currentDisplayId = this.display?.display_id || this.addDefaultDisplay().then((displayId) => this.currentDisplayId = displayId);
+        if (this.display?.display_id) {
+            this.currentDisplayId = this.display.display_id;
+        } else {
+            this.addDefaultDisplay().then((displayId) => {
+                this.currentDisplayId = displayId;
+            });
+        }
 
         this.svg = null; // The SVG element for the plot
 
@@ -1343,8 +1349,13 @@ class DatasetTile {
 
         // add console warning if default display id was not found in the user or owner display lists
         if (!userDisplay && !ownerDisplay && !layoutDisplay) {
-            // This can happen if the display ID for a layout member is owned by a different user that is not the dataset owner.
-            console.warn(`Selected display id '${this.currentDisplayId}' for dataset ${this.dataset.title} was not found. Will show first available.`);
+
+            if (this.currentDisplayId) {
+                // This can happen if the display ID for a layout member is owned by a different user that is not the dataset owner.
+                console.warn(`Selected display id '${this.currentDisplayId}' for dataset '${this.dataset.title}' was not found. Will show first available.`);
+            } else {
+                console.warn(`Default display for dataset '${this.dataset.title}' was not found. Will show first available.`);
+            }
 
             // last chance... if still no display config (i.e default display was not found), then use the first display config
             if (!userDisplay) userDisplay = this.dataset.userDisplays.find((d) => d.plotly_config.hasOwnProperty(filterKey));

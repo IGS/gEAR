@@ -442,29 +442,27 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
         "vcf": VcfSpec,
     }
 
-    # Determine the max peak value across all bigWig tracks
-    max_bigwig_peaks = []
-    """
+    kwargs = {}
+    """ # Determine the max peak value across all bigWig tracks
+    max_bigwig_peaks = {}
     for track in tracks:
         data_url = track.get("bigDataUrl", None)
         if track.get("type", "") == "bigWig" and data_url:
-            print(data_url, file=sys.stderr)# Calculate max peak value for the bigwig file.
             try:
                 with pyBigWig.open(data_url) as bw:
                     for chrom, chrom_len in bw.chroms().items():
                         max_value = bw.stats(chrom, 0, chrom_len, type="max")[0]
                         if max_value is not None:
-                            max_bigwig_peaks.append(max_value)
+                            max_bigwig_peaks[data_url] = max_value
             except Exception:
                 # non-fatal
                 print(
                     f"WARNING: Could not read bigWig file at {data_url} to determine max peak value.",
                     file=sys.stderr,
                 )
+    global_max_peak = max(max_bigwig_peaks.values(), default=None)
+    kwargs["max_bigwig_peak"] = global_max_peak
     """
-    kwargs = {}
-    #max_bigwig_peak = max(max_bigwig_peaks) if max_bigwig_peaks else None
-    #kwargs["max_bigwig_peak"] = max_bigwig_peak
 
     # Build each individual track based on its type
     for track in tracks:
@@ -484,6 +482,17 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
                 file=sys.stderr,
             )
             continue
+
+        """
+        # For bigwigs calculate scalefactor based on max peak size
+        if spec_builder_class == BigWigSpec:
+            peak = max_bigwig_peaks.get(data_url, None)
+            if peak and global_max_peak:
+                scalefactor = global_max_peak / peak
+            else:
+                scalefactor = 1.0
+            kwargs["scalefactor"] = scalefactor
+        """
 
         BIGBED_EXTENSIONS = [".bb", ".bigbed"]
         # If the data_url ends with a bigBed extension, replace extension with .bed
@@ -970,8 +979,25 @@ class BigWigSpec(TrackSpec):
         bigWigData = gos.BigWigData(type="bigwig", url=url)  # type: ignore
 
         y_kwargs = {}
+        y_field="value"
+        """
+        data_transform=[]
         if "max_bigwig_peak" in kwargs and kwargs["max_bigwig_peak"] is not None:
-            y_kwargs["domain"] = [0, kwargs["max_bigwig_peak"]]
+            import math
+            global_max_peak = kwargs["max_bigwig_peak"]
+            # Choose a target value for the transformed max (e.g., 10)
+            target_log_peak = 10
+            log_base = None
+            if global_max_peak and global_max_peak > 1:
+                # use scalefactor to determine log base
+                scalefactor = kwargs.get("scalefactor", 1.0)
+                log_base = math.exp(math.log(global_max_peak) / target_log_peak) * scalefactor
+            else:
+                log_base = 2  # fallback to log2 if peak is small or missing
+                #data_transform.append(gos.LogTransform(base=log_base, field="value", newField="logValue", type="log"))
+                y_field="logValue"
+
+        #y_kwargs["domain"] = [0, kwargs["max_bigwig_peak"]] """
 
         track = (
             gos.Track(
@@ -985,8 +1011,9 @@ class BigWigSpec(TrackSpec):
             .encode(
                 x=gos.X(field="start", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
                 xe=gos.X(field="end", type="genomic"),  # pyright: ignore[reportArgumentType]
-                y=gos.Y(field="value", type="quantitative", axis="right", **y_kwargs),  # pyright: ignore[reportArgumentType]
+                y=gos.Y(field=y_field, type="quantitative", axis="right", **y_kwargs),  # pyright: ignore[reportArgumentType]
                 color=gos.Color(value=color),
+                #dataTransform=data_transform
             )
         )
         return track
