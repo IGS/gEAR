@@ -71,8 +71,14 @@ def main():
         """
 
         #shutil.rmtree(source_pipeline_base + '.deleted')
-        shutil.rmtree(source_pipeline_base)
-        result = {'success': 1}
+
+        # Only allow deletion if the final path component is a UUID
+        base_name = os.path.basename(os.path.normpath(source_pipeline_base))
+        if re.match(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$', base_name):
+            shutil.rmtree(source_pipeline_base)
+            result = {'success': 1}
+        else:
+            result = {'success': 0, 'error': 'Refusing to delete: invalid target pattern'}
     except:
         # restore the backup
         #shutil.move(source_pipeline_base + '.deleted', source_pipeline_base)
