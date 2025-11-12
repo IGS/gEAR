@@ -692,6 +692,7 @@ def generate_plot(
                 special_func(**new_plotting_args, row=row_idx, col=col_idx)
 
                 # For each facet row title, offset the x-axis for every even-positionsed annotation
+                # TODO: Remove when #1154 is worked on
                 if facet_row:
                     title = name if not isinstance(name, tuple) else name[0]
                     fig.update_annotations(

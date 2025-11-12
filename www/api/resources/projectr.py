@@ -545,7 +545,8 @@ def projectr_callback(
     # NOTE Currently no analyses are supported yet.
     try:
         ana = get_analysis(None, dataset_id, session_id, is_spatial)
-    except Exception:
+    except Exception as e:
+        print(str(e), file=fh)
         traceback.print_exc()
         status["status"] = "failed"
         status["error"] = "Analysis for this dataset is unavailable."
