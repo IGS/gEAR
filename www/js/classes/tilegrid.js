@@ -13,8 +13,6 @@ const plotlyPlots = ["bar", "line", "scatter", "tsne/umap_dynamic", "violin"];  
 const scanpyPlots = ["pca_static", "tsne_static", "umap_static"];   // "tsne" is a legacy option
 const mgScanpyPlots = ["mg_pca_static", "mg_tsne_static", "mg_umap_static"];
 
-// Epiviz overrides the <script> d3 version when it loads so we save as a new variable to preserve it
-const new_d3 = d3;
 export class TileGrid {
 
     constructor(shareId, type="layout", selector ) {
@@ -178,12 +176,6 @@ export class TileGrid {
             // Set the grid-area property of the tile. Must be added after the tile is appended to the DOM
             const tileElement = document.getElementById(`tile-${tile.tileId}`);
             tileElement.style.gridArea = `${tile.startRow} / ${tile.startCol} / ${tile.endRow} / ${tile.endCol}`;
-
-            // If the dataset type is epiviz or spatial, then add grid-template-rows so that this tile takes up the full height
-            //if (datasetTile.dataset.dtype === "epiviz" || datasetTile.dataset.dtype === "spatial") {
-            /*if (datasetTile.dataset.dtype === "spatial") {
-                specialRows.add(tile.startRow);
-            }*/
         }
 
         // Set grid-template-rows for special rows
@@ -192,7 +184,7 @@ export class TileGrid {
             const uniqueRows = [...specialRows];
             let gridTemplateRows = "";
             const maxStartRow = Math.max(...this.tiles.map(t => t.tile.startRow));
-            // Normal datasets get "auto", epiviz and spatial datasets get "1fr"
+            // Normal datasets get "auto", gosling and spatial datasets get "1fr"
             for (let i = 1; i <= maxStartRow; i++) {
                 gridTemplateRows += uniqueRows.includes(i) ? "1fr " : "auto ";
             }
@@ -353,7 +345,13 @@ class DatasetTile {
         this.orthologs = null;  // Mapping of all orthologs for all gene symbol inputs for this dataset
         this.orthologsToPlot = null;    // A flattened list of all orthologs to plot
 
-        this.currentDisplayId = this.display?.display_id || this.addDefaultDisplay().then((displayId) => this.currentDisplayId = displayId);
+        if (this.display?.display_id) {
+            this.currentDisplayId = this.display.display_id;
+        } else {
+            this.addDefaultDisplay().then((displayId) => {
+                this.currentDisplayId = displayId;
+            });
+        }
 
         this.svg = null; // The SVG element for the plot
 
@@ -503,7 +501,7 @@ class DatasetTile {
 
         // If the dataset type is epiviz, then give warning that it hasn't been implemented yet
         if (this.dataset.dtype === "epiviz") {
-            createCardMessage(tileId, "warning", "Epiviz datasets are not yet supported.");
+            createCardMessage(tileId, "warning", "Epiviz datasets no longer supported. Contact the gEAR team to migrate it to the Gosling viewer.");
             return;
         }
 
@@ -1150,11 +1148,11 @@ class DatasetTile {
         const ownerDisplays = this.dataset.ownerDisplays.filter((d) => d.plotly_config.hasOwnProperty(filterKey));
 
         if (this.type === "single") {
-            // Add userEpivizDisplays to userDisplays...
-            const userEpivizDisplays = this.dataset.userDisplays.filter((d) => d.plot_type === "epiviz");
-            const ownerEpivizDisplays = this.dataset.ownerDisplays.filter((d) => d.plot_type === "epiviz");
-            userDisplays.push(...userEpivizDisplays);
-            ownerDisplays.push(...ownerEpivizDisplays);
+            // Add userGoslingDisplays to userDisplays...
+            const userGoslingDisplays = this.dataset.userDisplays.filter((d) => d.plot_type === "gosling");
+            const ownerGoslingDisplays = this.dataset.ownerDisplays.filter((d) => d.plot_type === "gosling");
+            userDisplays.push(...userGoslingDisplays);
+            ownerDisplays.push(...ownerGoslingDisplays);
         }
 
         return { userDisplays, ownerDisplays };
@@ -1272,8 +1270,11 @@ class DatasetTile {
                 logErrorInConsole(error);
                 // Realistically we should try to plot, but I assume most saved displays will have an image present.
                 displayUrl = "/img/dataset_previews/missing.png";
-                if (display.plot_type === "epiviz") {
-                    displayUrl = "/img/epiviz_mini_screenshot.jpg"; // TODO: Replace with real logo
+                if (display.plot_type === "gosling") {
+                    displayUrl = "/img/epiviz_mini_screenshot.jpg"; // TODO: Replace with gosling logo
+                } else if (display.plot_type === "epiviz") {
+                    // Epiviz is no longer supported.  Do not render display.
+                    continue
                 }
             }
 
@@ -1339,17 +1340,22 @@ class DatasetTile {
         }
         const layoutDisplay = layouts.find((d) => JSON.parse(d).display_id === displayId);
 
-        // Try epiviz/gosling display if no plotly display was found
+        // Try osling display if no plotly display was found
         if (this.type === "single") {
-            if (!userDisplay) userDisplay = this.dataset.userDisplays.find((d) => d.id === displayId && ["epiviz", "gosling"].includes(d.plot_type));
+            if (!userDisplay) userDisplay = this.dataset.userDisplays.find((d) => d.id === displayId && ["gosling"].includes(d.plot_type));
 
-            if (!ownerDisplay) ownerDisplay = this.dataset.ownerDisplays.find((d) => d.id === displayId && ["epiviz", "gosling"].includes(d.plot_type));
+            if (!ownerDisplay) ownerDisplay = this.dataset.ownerDisplays.find((d) => d.id === displayId && ["gosling"].includes(d.plot_type));
         }
 
         // add console warning if default display id was not found in the user or owner display lists
         if (!userDisplay && !ownerDisplay && !layoutDisplay) {
-            // This can happen if the display ID for a layout member is owned by a different user that is not the dataset owner.
-            console.warn(`Selected display id '${this.currentDisplayId}' for dataset ${this.dataset.title} was not found. Will show first available.`);
+
+            if (this.currentDisplayId) {
+                // This can happen if the display ID for a layout member is owned by a different user that is not the dataset owner.
+                console.warn(`Selected display id '${this.currentDisplayId}' for dataset '${this.dataset.title}' was not found. Will show first available.`);
+            } else {
+                console.warn(`Default display for dataset '${this.dataset.title}' was not found. Will show first available.`);
+            }
 
             // last chance... if still no display config (i.e default display was not found), then use the first display config
             if (!userDisplay) userDisplay = this.dataset.userDisplays.find((d) => d.plotly_config.hasOwnProperty(filterKey));
@@ -1476,8 +1482,6 @@ class DatasetTile {
                 }
 
                 await this.renderGoslingDisplay(display, otherOpts);
-            } else if (display.plot_type === "epiviz") {
-                await this.renderEpivizDisplay(display, otherOpts);
             } else if (this.type === "multi") {
                 if (this.dataset.dtype === "spatial") {
                     // Matplotlib-based display for spatial datasets
@@ -1517,19 +1521,6 @@ class DatasetTile {
     }
 
     /**
-     * Renders the Epiviz display on the tile grid.
-     * @param {Object} display - The display object containing dataset_id and plotly_config.
-     * @returns {Promise<void>} - A promise that resolves when the rendering is complete.
-     */
-    async renderEpivizDisplay(display, otherOpts) {
-        const datasetId = display.dataset_id;
-        const {gene_symbol: geneSymbol} = display.plotly_config;
-
-        createCardMessage(this.tile.tileId, "warning", "Epiviz displays have not been implemented yet.");
-        return;
-    }
-
-    /**
      * Renders the Gosling-based display.
      *
      * @param {Object} display - The display object.
@@ -1541,104 +1532,80 @@ class DatasetTile {
         const datasetId = display.dataset_id;
         const orgId = this.dataset.organism_id;
         const plotConfig = display.plotly_config;
-        const panelAGeneSymbol = plotConfig.gene_symbol;
         const assembly = plotConfig.assembly;
         const ucscHubUrl = plotConfig.hubUrl;
         const zoom = this.isZoomed;
-        let positionArr = ["", ""]; // [leftPosition, rightPosition]
+        const positionArr = ["", ""]; // [leftPosition, rightPosition]
 
         let embedFn = null
         try {
-            const gos = await import('https://esm.sh/gosling.js@1.0.5');
+            const gos = await import('https://esm.sh/gosling.js@1.0.6');
             // prefer named export, then try default, then fallback to the module itself
-            embedFn = gos.embed ?? gos.default?.embed ?? gos.default ?? gos;
+            embedFn = gos.embed ?? gos.default?.embed;
         // use mod
         } catch (err) {
-            console.error('Optional module failed to load, continuing without it', err);
-            createCardMessage(this.tile.tileId, "danger", "Could not load Gosling viewer (network or CDN error).");
+            logErrorInConsole(err);
+            createCardMessage(this.tile.tileId, "danger", "Could not load Gosling viewer.");
             return
         }
+
 
         const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
-
-        const goslingContainer = document.createElement("div");
-        goslingContainer.id = `tile-${this.tile.tileId}-gosling`;
-        goslingContainer.style.marginTop = "5px";
-        plotContainer.append(goslingContainer);
+        createCardMessage(this.tile.tileId, "info", "Loading epigenome display...");
 
         let spec;
         try {
-            spec = await apiCallsMixin.fetchGoslingDisplay(datasetId, panelAGeneSymbol, assembly, zoom, otherOpts)
+            const data = await apiCallsMixin.fetchGoslingDisplay(datasetId, plotConfig, zoom, otherOpts)
+            if (data?.success < 1) {
+                message = data?.message || "Failed to fetch Gosling display data.";
+                throw new Error(message);
+            }
+            // spec is a JSON string which needs to be a JSON object
+            spec = (typeof data.spec === "string") ? JSON.parse(data.spec) : data.spec;
+            positionArr[0] = data.position;
+            if (zoom) {
+                positionArr[1] = data.position;
+            }
         } catch (error) {
             logErrorInConsole(error);
             createCardMessage(this.tile.tileId, "danger", "An error occurred while fetching the Gosling spec.");
             return;
         }
 
-        // Determine the initial domain for panel A, based on the current ortholog
-        // This gene is determined from the expression search results, so not triggered by an event
+        //console.info(spec);
 
-        let panelAGeneResults = null;
-        const basePadding = 1500; // Base padding for zooming
-        try {
-            const panelAData = await apiCallsMixin.fetchGeneAnnotations(panelAGeneSymbol, true, null, null )
-
-            panelAGeneResults = panelAData[panelAGeneSymbol.toLowerCase()];
-
-            const geneData = panelAGeneResults.by_organism[orgId];
-            if (!geneData || geneData.length === 0) {
-                alert(`Gene ${gene} not found.`);
-                return;
-            }
-            // Parse the first result (assuming it's the most relevant)
-            const geneInfo = JSON.parse(geneData[0]);
-            // Get start, end, strand, chromosome (as molecule
-            const start = geneInfo.start;
-            const end = geneInfo.stop;
-            //dconst strand = geneInfo.strand || "+"; // Default to positive strand if not provided
-            // TODO: Standardize the chromosome adjustments
-            let chr = geneInfo.molecule || "unknown"; // Default to unknown chromosome if not provided
-            // if chr is a number, convert it to a string with "chr" prefix
-            if (!isNaN(Number(chr)) || chr === "X" || chr === "Y") {
-                chr = `chr${chr}`;
-            }
-            // if chr is MT, convert to "chrM"
-            if (chr === "MT") {
-                chr = "chrM";
-            }
-
-            const leftPosition = `${chr}:${start}-${end}`;
-            const postitionStr = `${assembly}.${leftPosition}`; // Update the global position variable
-            positionArr[0] = postitionStr;
-
-            // Add a domain to the left-view spec
-            spec.views[1].views[0].xDomain = {
-                "chromosome": chr, "interval": [start-basePadding, end+basePadding]
-            };
-
-            if (zoom) {
-                // Add a domain to the right-view spec
-                spec.views[1].views[1].xDomain = {
-                    "chromosome": chr, "interval": [start-basePadding, end+basePadding]
-                };
-            }
-
-        } catch (error) {
-            console.error("Error searching for gene:", error);
-        }
+        const goslingContainer = document.createElement("div");
+        goslingContainer.id = `tile-${this.tile.tileId}-gosling`;
+        goslingContainer.style.width = "100%";
+        goslingContainer.style.boxSizing = "border-box";
+        goslingContainer.style.marginTop = "5px";
+        plotContainer.replaceChildren();    // erase card message
+        plotContainer.append(goslingContainer);
 
         // Themes -> https://gosling-lang.org/themes/
         const embedOpts = { "padding": 0, "theme": null };
         // NOTE: re-embedding does work but it causes some stability issues
-        const goslingApi = await embedFn(document.getElementById(goslingContainer.id), spec, embedOpts);
+        let goslingApi = null;
+        try {
+            goslingApi = await embedFn(document.getElementById(goslingContainer.id), spec, embedOpts);
+        } catch (error) {
+            logErrorInConsole(error);
+            createCardMessage(this.tile.tileId, "danger", "An error occurred while rendering the Gosling display.");
+            return;
+        }
+
+        if (!zoom) {
+            return;
+        }
 
         // If the view is a zoomed view extra controls and events are added.
-        if (zoom) {
-            const exportButton = createExportButton(this.tile.tileId, goslingContainer.id);
-            const searchButton = createPanelBSearchBox(this.tile.tileId, exportButton.id);
+        const exportButton = createExportButton(this.tile.tileId, goslingContainer.id);
+        const searchButton = createPanelBSearchBox(this.tile.tileId, exportButton.id);
 
+        if (ucscHubUrl) {
+            // Add event listener to export button to open UCSC Genome Browser with hub URL and position
             document.getElementById(exportButton.id).addEventListener('click', () => {
                 const url = "https://genome.ucsc.edu/cgi-bin/hgTracks";
                 // add DB and Hub parameters
@@ -1657,58 +1624,56 @@ class DatasetTile {
                 // open in a new tab
                 window.open(`${url}?${urlParams.toString()}`, '_blank');
             });
-
-            document.getElementById(searchButton.id).addEventListener('click', async () => {
-                const geneInput = document.getElementById(`tile-${this.tile.tileId}-panel-b-gene-input`);
-                const gene = geneInput.value.trim();
-                if (!gene) {
-                    alert("Please enter a gene name.");
-                    return;
-                }
-
-                let panelBGeneResults = null;
-                try {
-                    const panelBData = await apiCallsMixin.fetchGeneAnnotations(gene, true, null, null )
-                    panelBGeneResults = panelBData[gene.toLowerCase()];
-                } catch (error) {
-                    console.error("Error searching for gene:", error);
-                }
-
-                const geneData = panelBGeneResults.by_organism[orgId];
-                if (!geneData || geneData.length === 0) {
-                    alert(`Gene ${gene} not found.`);
-                    return;
-                }
-                // Parse the first result (assuming it's the most relevant)
-                const geneInfo = JSON.parse(geneData[0]);
-                // Get start, end, strand, chromosome (as molecule
-                const start = geneInfo.start;
-                const end = geneInfo.stop;
-                //dconst strand = geneInfo.strand || "+"; // Default to positive strand if not provided
-                let chr = geneInfo.molecule || "unknown"; // Default to unknown chromosome if not provided
-                // if chr is a number, convert it to a string with "chr" prefix
-                if (!isNaN(Number(chr)) || chr === "X" || chr === "Y") {
-                    chr = `chr${chr}`;
-                }
-                // if chr is MT, convert to "chrM"
-                if (chr === "MT") {
-                    chr = "chrM";
-                }
-
-                const rightPosition = `${chr}:${start}-${end}`;
-                const postitionStr = `${assembly}.${rightPosition}`; // Update the global position variable
-                positionArr[1] = postitionStr;
-                await goslingApi.zoomTo("right-annotation", rightPosition, basePadding); // track name, position, padding, duration (ms)
-
-            });
-
-
         }
 
+        // Add event listener to search button to zoom to gene in Panel B
+        document.getElementById(searchButton.id).addEventListener('click', async () => {
+            const geneInput = document.getElementById(`tile-${this.tile.tileId}-panel-b-gene-input`);
+            const gene = geneInput.value.trim();
+            if (!gene) {
+                alert("Please enter a gene name.");
+                return;
+            }
 
+            let panelBGeneResults = null;
+            try {
+                const panelBData = await apiCallsMixin.fetchGeneAnnotations(gene, true, null, null )
+                panelBGeneResults = panelBData[gene.toLowerCase()];
+            } catch (error) {
+                console.error("Error searching for gene:", error);
+                createToast("An error occurred while searching for gene: " + gene);
+            }
 
+            const geneData = panelBGeneResults?.by_organism[orgId];
+            if (!geneData || geneData.length === 0) {
+                alert(`Gene ${gene} not found.`);
+                return;
+            }
+            // Parse the first result (assuming it's the most relevant)
+            const geneInfo = JSON.parse(geneData[0]);
+            // Get start, end, strand, chromosome (as molecule
+            const start = geneInfo.start;
+            const end = geneInfo.stop;
+            //dconst strand = geneInfo.strand || "+"; // Default to positive strand if not provided
+            let chr = geneInfo.molecule || "unknown"; // Default to unknown chromosome if not provided
+            // if chr is a number, convert it to a string with "chr" prefix
+            if (!isNaN(Number(chr)) || chr === "X" || chr === "Y") {
+                chr = `chr${chr}`;
+            }
+            // if chr is MT, convert to "chrM"
+            if (chr === "MT") {
+                chr = "chrM";
+            }
 
-        return;
+            //const basePadding = 1500; // Base padding for zooming
+            const basePadding = 0; // Base padding for zooming
+
+            const rightPosition = `${chr}:${start}-${end}`;
+            const positionStr = `${assembly}.${rightPosition}`; // Update the global position variable
+            positionArr[1] = positionStr;
+            await goslingApi.zoomTo("right-annotation", rightPosition, basePadding); // track name, position, padding, duration (ms)
+
+        });
     }
 
     /**
@@ -2353,25 +2318,25 @@ const colorSVG = async (chartData, plotConfig, datasetId, tileId, geneSymbol, sv
             if (midColor) {
                 if (min >= 0) {
                     // All values greater than 0, do right side of three-color
-                    color = new_d3
+                    color = d3
                         .scaleLinear()
                         .domain([min, max])
                         .range([midColor, highColor]);
                 } else if (max <= 0) {
                     // All values under 0, do left side of three-color
-                    color = new_d3
+                    color = d3
                         .scaleLinear()
                         .domain([min, max])
                         .range([lowColor, midColor]);
                 } else {
                     // We have a good value range, do the three-color
-                    color = new_d3
+                    color = d3
                         .scaleLinear()
                         .domain([min, 0, max])
                         .range([lowColor, midColor, highColor]);
                 }
             } else {
-                color = new_d3
+                color = d3
                     .scaleLinear()
                     .domain([min, max])
                     .range([lowColor, highColor]);
@@ -2397,12 +2362,12 @@ const colorSVG = async (chartData, plotConfig, datasetId, tileId, geneSymbol, sv
                     let score;
                     // Apply math transformation to expression score
                     if (math == 'log2') {
-                        score = new_d3.format('.2f')(Math.log2(expression[tissue]));
+                        score = d3.format('.2f')(Math.log2(expression[tissue]));
                     } else if (math == 'log10') {
-                        score = new_d3.format('.2f')(Math.log10(expression[tissue]));
+                        score = d3.format('.2f')(Math.log10(expression[tissue]));
                     } else {
                         //math == 'raw'
-                        score = new_d3.format('.2f')(expression[tissue]);
+                        score = d3.format('.2f')(expression[tissue]);
                     }
 
                     const tooltip = document.createElement('div');
@@ -2458,17 +2423,17 @@ const colorSVG = async (chartData, plotConfig, datasetId, tileId, geneSymbol, sv
                     } = score[tissue];
 
                     if (min >= 0) {
-                        color[tissue] = new_d3
+                        color[tissue] = d3
                             .scaleLinear()
                             .domain([min, max])
                             .range([midColor, highColor]);
                     } else if (max <= 0) {
-                        color[tissue] = new_d3
+                        color[tissue] = d3
                             .scaleLinear()
                             .domain([min, max])
                             .range([lowColor, midColor]);
                     } else {
-                        color[tissue] = new_d3
+                        color[tissue] = d3
                             .scaleLinear()
                             .domain([min, 0, max])
                             .range([lowColor, midColor, highColor]);
@@ -2481,7 +2446,7 @@ const colorSVG = async (chartData, plotConfig, datasetId, tileId, geneSymbol, sv
                         max
                     } = score[tissue];
 
-                    color[tissue] = new_d3
+                    color[tissue] = d3
                         .scaleLinear()
                         .domain([min, max])
                         .range([lowColor, highColor]);
@@ -2518,12 +2483,12 @@ const colorSVG = async (chartData, plotConfig, datasetId, tileId, geneSymbol, sv
                     let expressionScore;
                     // Apply math transformation to expression score
                     if (math == 'log2') {
-                        expressionScore = new_d3.format('.2f')(Math.log2(expression[tissue]));
+                        expressionScore = d3.format('.2f')(Math.log2(expression[tissue]));
                     } else if (math == 'log10') {
-                        expressionScore = new_d3.format('.2f')(Math.log10(expression[tissue]));
+                        expressionScore = d3.format('.2f')(Math.log10(expression[tissue]));
                     } else {
                         //math == 'raw'
-                        expressionScore = new_d3.format('.2f')(expression[tissue]);
+                        expressionScore = d3.format('.2f')(expression[tissue]);
                     }
 
                     const tooltip = document.createElement('div');
@@ -2595,7 +2560,7 @@ const drawSVGLegend = (plotConfig, tileId, title, score) => {
     const width = node.getBoundingClientRect().width;
 
     // Create our legend svg
-    const legend = new_d3.select(node)  // returns document.documentElement
+    const legend = d3.select(node)  // returns document.documentElement
         .append('svg')
         .style('position', 'absolute')
         .style('width', '100%')
@@ -2682,12 +2647,12 @@ const drawSVGLegend = (plotConfig, tileId, title, score) => {
         );
 
     // Define the x-axis range
-    const xScale = new_d3
+    const xScale = d3
         .scaleLinear()
         .domain([min, max])
         .range([0, width / 2]);
 
-    const xAxis = new_d3
+    const xAxis = d3
         .axisBottom(xScale)
         .tickValues([min, range33, range66, max])
 
@@ -2726,12 +2691,12 @@ const drawSVGLegend = (plotConfig, tileId, title, score) => {
 
         // redraw axis
         // TODO: this is hacky, but it works
-        const xScale = new_d3
+        const xScale = d3
             .scaleLinear()
             .domain([min, max])
             .range([0, card.getBoundingClientRect().width / 2]);
 
-        const xAxis = new_d3
+        const xAxis = d3
             .axisBottom(xScale)
             .tickValues([min, range33, range66, max])
 

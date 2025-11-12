@@ -162,3 +162,16 @@ ul#go-terms li {
     width: 70%; /* make wider, which makes preview images larger */
 }
 
+/* prevent Gosling from overflowing the card image - Copilot generated */
+.gosling-component {
+    box-sizing: border-box;
+    max-width: 100% !important;
+    width: 100% !important;
+    overflow: hidden;
+}
+
+/* ensure internal canvases/svgs fill the container - Copilot generated */
+.gosling-component > * {
+    max-width: 100% !important;
+    width: 100% !important;
+}

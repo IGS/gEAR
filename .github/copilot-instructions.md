@@ -1,7 +1,7 @@
 # Copilot Instructions for gEAR Portal
 
 ## Project Overview
-- **gEAR** is a LAMP-stack portal for gene expression data visualization and analysis, supporting microarray, bulk/single-cell RNA-Seq, and epigenetic data. Key technologies: Python, MySQL, H5AD, D3 (SVG/Snap), Plot.ly, and (legacy) Epiviz.
+- **gEAR** is a LAMP-stack portal for gene expression data visualization and analysis, supporting microarray, bulk/single-cell RNA-Seq, and epigenetic data. Key technologies: Python, MySQL, H5AD, D3 (SVG/Snap), Plot.ly, and Gosling.
 - Functions:
     - Dataset and gene exploration and visualization
     - Dataset management (upload, delete, etc.)
@@ -12,7 +12,6 @@
     - Single-cell RNA-Seq analysis (similar to Seurat pipeline)
     - Comparison tool for gene expression data within a dataset
     - Integration with external data sources
-- Epiviz is being sunsetted in favor of the Gosling epigenome browser.
 - Major production instances: [UMgEAR](https://umgear.org) (hearing research), [NeMO Analytics](https://nemoanalytics.org) (brain research).
 
 ## Architecture & Key Components
@@ -84,8 +83,7 @@
 5. Event listeners (bottom to avoid hoisting issues)
 
 ## Integration Points
-- **Gosling (future)**: Epigenome browser replacing Epiviz for epigenetic data visualization.
-- **Epiviz (legacy)**: Embedded for epigenetic data visualization (being sunsetted).
+- **Gosling**: Epigenome browser replacing Epiviz for epigenetic data visualization.
 - **ProjectR**: Microservice for matrix projection, deployed via Docker/Cloud Run; configure endpoint in `gear.ini`.
 - **External Data**: H5AD files for dataset storage; MySQL for metadata.
 

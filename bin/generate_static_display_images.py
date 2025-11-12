@@ -19,7 +19,7 @@ lib_path = os.path.abspath(os.path.join('..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 
-def get_all_displays(cursor, desired_dataset_id):
+def get_all_displays(cursor, desired_dataset_id=None):
     """Get all dataset displays out of the database."""
 
     query = "SELECT dataset_id, id, plot_type, plotly_config from dataset_display"
@@ -178,9 +178,9 @@ def main():
                 elif props["plot_type"].lower() in ["svg"]:
                     url += "/svg"
                     success = make_static_svg(filename, dataset_id)
-                # Epiviz (todo later)
-                elif props["plot_type"].lower() in ["epiviz"]:
-                    url += "/epiviz"
+                # Gosling (todo later)
+                elif props["plot_type"].lower() in ["gosling"]:
+                    url += "/gosling"
                     pass
                 else:
                     print("Plot type {} for display id {} is not recognizable".format(props["plot_type"], display_id))

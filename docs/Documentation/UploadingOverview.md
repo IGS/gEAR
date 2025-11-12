@@ -125,7 +125,7 @@ If you are interested in uploading spatial transcriptomic data from a platform t
 ## Epigenetic data (Gosling)
 
 > [!NOTE]
-> This is still a work in progress as Epiviz is sunsetted and Gosling will be the replacement viewer
+> This is still a work in progress as Epiviz has been sunsetted and Gosling is the replacement viewer
 
 Epigenetic data are uploaded and displayed using integration with the Gosling epigenome viewer. If your data are already in BigWig/BigBed format they can be uploaded via URL or through standard file uploads. Epigenetic uploads do not currently require a seperate metadata file (in contrast to Bulk RNAseq or Single cell data).
 

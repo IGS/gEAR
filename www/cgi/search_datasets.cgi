@@ -1,7 +1,7 @@
 #!/opt/bin/python3
 
 """
-Used by by dataset_explorer.html and index.html, this script focuses on searching 
+Used by by dataset_explorer.html and index.html, this script focuses on searching
 datasets and returns a list of matches with extended attributes.
 
 There are a few main categories of search:
@@ -38,7 +38,7 @@ def main():
     custom_list = form.getvalue('custom_list')
     search_terms = form.getvalue('search_terms').split(' ') if form.getvalue('search_terms') else []
     organism_ids = form.getvalue('organism_ids')
-    dtypes = form.getvalue('dtypes')
+    dtypes = form.getvalue('dtypes').split(',') if form.getvalue('dtypes') else []
     date_added = form.getvalue('date_added')
     ownership = form.getvalue('ownership')
     layout_share_id = form.getvalue('layout_share_id')
@@ -138,10 +138,10 @@ def main():
     SPATIAL_DTYPES = ["spatial", "spatial-h5ad"]
 
     if dtypes:
-        # Fix to catch single-cell variations
         for item in dtypes:
+            # Fix to catch single-cell variations
             if item == "single-cell-rnaseq":
-                dtypes.push("scRNA-seq")
+                dtypes.append("scRNA-seq")
                 break
             # Add all spatial dtype variations (i.e. spatial-h5ad)
             if item == "spatial":
@@ -149,7 +149,7 @@ def main():
                 break
 
         ## only alphanumeric characters and the dash are allowed here
-        dtypes = re.sub("[^,\-A-Za-z0-9]", "", dtypes).split(',')
+        dtypes = [re.sub("[^,A-Za-z0-9-]", "", item) for item in dtypes]
         dtype_str = (', '.join('"' + item + '"' for item in dtypes))
         wheres.append(f"d.dtype in ({dtype_str})")
 

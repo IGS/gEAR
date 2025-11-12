@@ -230,10 +230,6 @@ PMID: 34172972`;
         SIDEBAR_COLLAPSED = false;
     }
 
-    document.getElementById('epiviz-panel-designer-link').addEventListener('click', (event) => {
-        createToast("This feature is not yet available.", "is-warning");
-    });
-
     /**
      * / End controls for the left navbar visibility
      */
@@ -1088,23 +1084,6 @@ const apiCallsMixin = {
         return data;
     },
     /**
-     * Fetches the Epiviz display data for a given dataset, gene symbol, and genome.
-     * @param {string} datasetId - The ID of the dataset.
-     * @param {string} geneSymbol - The gene symbol.
-     * @param {string} genome - The genome.
-     * @param {Object} [otherOpts={}] - Additional options for the axios request.
-     * @returns {Promise<any>} - A promise that resolves to the fetched data.
-     */
-    async fetchEpivizDisplay(datasetId, geneSymbol, genome, otherOpts={}) {
-
-        const urlParams = new URLSearchParams();
-        urlParams.append('gene', geneSymbol);
-        urlParams.append('genome', genome);
-
-        const {data} = await axios.get(`/api/plot/${datasetId}/epiviz?${urlParams.toString()}`, otherOpts);
-        return data;
-    },
-    /**
      * Fetches annotations for the passed gene symbols
      *
      * @param {string[]} geneSymbols - The gene symbols to search for. Comma-separated.
@@ -1180,16 +1159,18 @@ const apiCallsMixin = {
      *
      * @async
      * @param {string} datasetId - The ID of the dataset to fetch data from.
-     * @param {string} geneSymbol - The gene symbol to query.
-     * @param {string} genome - The genome identifier.
+     * @param {object} plotConfig - The configuration object for the Gosling plot.
      * @param {boolean} [zoom=false] - Whether to enable zoom in the display.
      * @param {object} [otherOpts={}] - Additional options for the request.
      * @returns {Promise<Object>} The data returned from the Gosling display API.
      */
-    async fetchGoslingDisplay(datasetId, geneSymbol, genome, zoom=false, otherOpts={}) {
+    async fetchGoslingDisplay(datasetId, plotConfig, zoom=false, otherOpts={}) {
         const urlParams = new URLSearchParams();
+        const {gene_symbol: geneSymbol, assembly, hubUrl} = plotConfig;
+
         urlParams.append('gene', geneSymbol);
-        urlParams.append('genome', genome);
+        urlParams.append('assembly', assembly);
+        urlParams.append('hub_url', hubUrl);
         urlParams.append('zoom', zoom);
 
         // JSON is returned
