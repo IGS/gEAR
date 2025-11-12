@@ -1,6 +1,6 @@
 'use strict';
 
-import { convertToFormData, initCommonUI } from "./common.v2.js?v=a4b3d6c";
+import { convertToFormData, initCommonUI } from "./common.v2.js?v=cbfcd86";
 
 let verification_uuid = null;
 

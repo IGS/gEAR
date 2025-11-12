@@ -1,9 +1,9 @@
 'use strict';
 
-import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates, trigger } from "./common.v2.js?v=a4b3d6c";
-import { availablePalettes, plotly2MatplotlibNames } from "./plot_display_config.js?v=a4b3d6c";
-import { FacetWidget } from "./classes/facets.js?v=a4b3d6c";
-import { DatasetTree } from "./classes/tree.js?v=a4b3d6c";
+import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates, trigger } from "./common.v2.js?v=cbfcd86";
+import { availablePalettes, plotly2MatplotlibNames } from "./plot_display_config.js?v=cbfcd86";
+import { FacetWidget } from "./classes/facets.js?v=cbfcd86";
+import { DatasetTree } from "./classes/tree.js?v=cbfcd86";
 
 let isMultigene;
 const setIsMultigene = (val) => { isMultigene = val; }
