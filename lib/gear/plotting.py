@@ -28,7 +28,6 @@ class PlotError(Exception):
         self.message = message
         super().__init__(self.message)
 
-
 def _add_kwargs_info_to_annotations(fig: go.Figure, annotation_info: dict) -> None:
     """Add various annotation info.  Updates 'fig' inplace."""
     fig.update_annotations(patch=annotation_info)
@@ -620,12 +619,9 @@ def generate_plot(
                     # Name will be a tuple
                     name = combo
 
-                print(name, file=sys.stderr)
                 if name in combos_with_data:
-                    print("--found", file=sys.stderr)
                     group = grouped.get_group(combo)
                 else:
-                    print("----empty", file=sys.stderr)
                     # Create empty group with correct columns
                     group = df.iloc[0:0].copy()
                     # Set x and facet_row to correct category for empty trace
@@ -650,8 +646,6 @@ def generate_plot(
                     curr_color = str(curr_color)
                     new_plotting_args["name"] = curr_color
 
-                    print("Current color: {}".format(curr_color), file=sys.stderr)
-
                     # If facets are present, a legend group trace can appear multiple times.
                     # Ensure it only shows once and only for valid traces
                     if new_plotting_args["opacity"] > 0.0:
@@ -660,11 +654,11 @@ def generate_plot(
                             new_plotting_args["showlegend"] = False
                         names_in_legend[curr_color] = True
 
-                    new_plotting_args["line"] = dict(color="#000000")
-                    new_plotting_args["legendgroup"] = curr_color
-                    new_plotting_args["offsetgroup"] = (
-                        curr_color  # Cleans up some weird grouping stuff, making plots thicker
-                    )
+                        new_plotting_args["line"] = dict(color="#000000")
+                        new_plotting_args["legendgroup"] = curr_color
+                        new_plotting_args["offsetgroup"] = (
+                            curr_color  # Cleans up some weird grouping stuff, making plots thicker
+                        )
 
                     if colormap and isinstance(colormap, dict):
                         # Use black outlines with colormap fillcolor. Pertains mostly to violin plots
@@ -695,9 +689,19 @@ def generate_plot(
                     row_idx = facet_row_indexes[name] if facet_row else 1
                     col_idx = facet_col_indexes[name] if facet_col else 1
 
-                # ! There is a bug where if "x" and "facet_row" are the same, the plots are not rendered in the right spot
-
                 special_func(**new_plotting_args, row=row_idx, col=col_idx)
+
+                # For each facet row title, offset the x-axis for every even-positionsed annotation
+                if facet_row:
+                    title = name if not isinstance(name, tuple) else name[0]
+                    fig.update_annotations(
+                        selector={ "text": title},
+                        patch={
+                            "x": 0.98 if (facet_row_indexes[title] % 2 == 0) else 1.00,
+                            "font":{"size":12},
+                            },
+                    )
+
         else:
             new_plotting_args = {
                 "x": df[x],
@@ -708,6 +712,7 @@ def generate_plot(
             # Safeguard against grouping by an empty list
             # use dataframe instead
             special_func(**new_plotting_args, row=1, col=1)
+
 
         # TODO: Since graph_object plots don't need 'category_orders' decide if we can drop passing that to the px functions
         # Only tick labels from the first axis should be shown
