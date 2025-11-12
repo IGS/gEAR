@@ -1,5 +1,5 @@
 import sys
-from itertools import cycle
+from itertools import cycle, product
 
 import pandas as pd
 import plotly.express as px
@@ -432,7 +432,6 @@ def generate_plot(
     #    raise PlotError("Selected label {} is not the same as one of the 'x', 'y', 'facet', or 'color' conditions".format(plotting_args["hover_name"]))
 
     plotting_args = _adjust_colorscale(plotting_args, colormap, palette)
-    plotting_args["hover_data"] = {col: False for col in df.columns.tolist()}
 
     # If jitter is needed for scatter plot, convert to a strip plot
     if plot_type == "scatter" and jitter:
@@ -567,27 +566,43 @@ def generate_plot(
         if special_func is None:
             raise PlotError("Plot type {} is invalid!".format(plot_type))
 
-        # TODO clean this up in a function
-        new_plotting_args = {
-            "x": df[x],
-            "y": df[y],
-            "text": df[text_name] if text_name else y,
-        }
-        new_plotting_args["line"] = dict(color="#401362")
-        new_plotting_args["showlegend"] = (
-            False  # Only add legend with color group present
-        )
-
         priority_groups = _build_priority_groups(facet_row, facet_col, color_name, x)
         if priority_groups:
+            if x == facet_row:
+                raise PlotError("ERROR: 'x' and 'facet_row' cannot be the same column for violin plots. They must be different to avoid rendering issues.")
+
+            # Use .cat.categories for categorical columns, else .unique()
+            def get_categories(df, col):
+                if col and col in df.columns and _is_categorical(df[col]):
+                    return df[col].cat.categories.tolist()
+                elif col and col in df.columns:
+                    return sorted(df[col].unique().tolist())
+                return []
+
+            # Generate all possible combinations based on the priority groups
+            # Violin plots will only add traces for groups with data, which centers inside facet rows
+            # so later we need to add empty traces to ensure each x-value has a trace
+            all_combos = list(product(*[get_categories(df, grp) for grp in priority_groups]))
+
             # Groupby will not include combinations with missing data.  This can result in missing traces for a group
             grouped = df.groupby(priority_groups, observed=False)
             names_in_legend = {}
-            # Name is a tuple of groupings, as priority_groups was passed in as a
-            # Group is the 'groupby' dataframe
-            for name, group in grouped:
-                for k, v in {"x": x, "y": y, "text": text_name}.items():
-                    new_plotting_args[k] = group[v] if v else group[y]
+
+            # Track which combos have data
+            combos_with_data = set(grouped.groups.keys())
+
+            # Now loop through all combinations to ensure each gets a trace
+            for combo in all_combos:
+                new_plotting_args = {
+                    "x": df[x],
+                    "y": df[y],
+                    "text": df[text_name] if text_name else y,
+                    "opacity": 0.6
+                }
+                new_plotting_args["line"] = dict(color="#401362")
+                new_plotting_args["showlegend"] = (
+                    False  # Only add legend with color group present
+                )
 
                 # Quick plot-specific check
                 if plot_type in ["violin"]:
@@ -596,10 +611,36 @@ def generate_plot(
                             "ERROR: Tried to call continuous colorscale on violin plot."
                         )
 
+                # If only one grouping, combo is not a tuple
+                if len(priority_groups) == 1:
+                    combo = (combo[0],)
+                    # Name will be a string
+                    name = combo[0]
+                else:
+                    # Name will be a tuple
+                    name = combo
+
+                print(name, file=sys.stderr)
+                if name in combos_with_data:
+                    print("--found", file=sys.stderr)
+                    group = grouped.get_group(combo)
+                else:
+                    print("----empty", file=sys.stderr)
+                    # Create empty group with correct columns
+                    group = df.iloc[0:0].copy()
+                    # Set x and facet_row to correct category for empty trace
+                    for idx, grp in enumerate(priority_groups):
+                        group[grp] = [combo[idx]]
+                    group[y] = [0]  # Set y to 0 for empty trace (this is hacky)
+                    new_plotting_args["opacity"] = 0.0  # Make trace invisible
+                    new_plotting_args["hoverinfo"] = None
+
+                # Build plotting args as before
+                for k, v in {"x": x, "y": y, "text": text_name}.items():
+                    new_plotting_args[k] = group[v] if v else group[y]
+
                 # Each individual trace is a separate scalegroup to ensure plots are scaled correctly for violin plots
-                new_plotting_args["scalegroup"] = name
-                if isinstance(name, tuple):
-                    new_plotting_args["scalegroup"] = "_".join([str(n) for n in name])  # protect against numbers
+                new_plotting_args["scalegroup"] = "_".join([str(n) for n in name]) # protect against numbers
 
                 # If color dataseries is present, add some special configurations
                 if color_name:
@@ -609,12 +650,15 @@ def generate_plot(
                     curr_color = str(curr_color)
                     new_plotting_args["name"] = curr_color
 
+                    print("Current color: {}".format(curr_color), file=sys.stderr)
+
                     # If facets are present, a legend group trace can appear multiple times.
-                    # Ensure it only shows once.
-                    new_plotting_args["showlegend"] = True
-                    if curr_color in names_in_legend:
-                        new_plotting_args["showlegend"] = False
-                    names_in_legend[curr_color] = True
+                    # Ensure it only shows once and only for valid traces
+                    if new_plotting_args["opacity"] > 0.0:
+                        new_plotting_args["showlegend"] = True
+                        if curr_color in names_in_legend:
+                            new_plotting_args["showlegend"] = False
+                        names_in_legend[curr_color] = True
 
                     new_plotting_args["line"] = dict(color="#000000")
                     new_plotting_args["legendgroup"] = curr_color
@@ -651,9 +695,16 @@ def generate_plot(
                     row_idx = facet_row_indexes[name] if facet_row else 1
                     col_idx = facet_col_indexes[name] if facet_col else 1
 
-                special_func(**new_plotting_args, row=row_idx, col=col_idx)
+                # ! There is a bug where if "x" and "facet_row" are the same, the plots are not rendered in the right spot
 
+                special_func(**new_plotting_args, row=row_idx, col=col_idx)
         else:
+            new_plotting_args = {
+                "x": df[x],
+                "y": df[y],
+                "text": df[text_name] if text_name else y,
+                "opacity": 0.6
+            }
             # Safeguard against grouping by an empty list
             # use dataframe instead
             special_func(**new_plotting_args, row=1, col=1)
@@ -718,13 +769,14 @@ def generate_plot(
     )
 
     # More general trace updates
-    fig.update_traces(
-        dict(
-            opacity=None
-            if plot_type in ["contour"] or "color_continuous_scale" in plotting_args
-            else 0.6,
+    if plot_type not in ["violin"]:
+        fig.update_traces(
+            dict(
+                opacity=None
+                if plot_type in ["contour"] or "color_continuous_scale" in plotting_args
+                else 0.6,
+            )
         )
-    )
 
     # If 'facet_col' and 'color_name' dataseries are equal treat as if color series is not present (for plot grouping)
     # Originally included 'x' and 'color_name' but a plotly update fixed this
