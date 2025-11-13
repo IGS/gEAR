@@ -22,7 +22,7 @@ import geardb
 def get_all_displays(cursor, desired_dataset_id=None):
     """Get all dataset displays out of the database."""
 
-    query = "SELECT dataset_id, id, plot_type, plotly_config from dataset_display"
+    query = "SELECT dataset_id, id, plot_type, plotly_config from dataset_display ORDER BY id"
     query_args = []
 
     if desired_dataset_id:
@@ -42,7 +42,7 @@ def get_all_displays(cursor, desired_dataset_id=None):
         "FROM dataset d " \
         "JOIN dataset_display dd ON dd.dataset_id=d.id " \
         "JOIN dataset_preference dp ON dp.display_id=dd.id " \
-        "WHERE dp.user_id=d.owner_id"
+        "WHERE dp.user_id=d.owner_id "
 
     if desired_dataset_id:
         defaults_query += " AND d.id = %s"
@@ -162,34 +162,50 @@ def main():
             try:
                 # Plotly
                 if props["plot_type"].lower() in ['bar', 'scatter', 'violin', 'line', 'contour', 'tsne_dynamic', 'tsne/umap_dynamic']:
+                    # Some early plots did not store gene symbols in the config
+                    if "gene_symbol" not in config:
+                        config["gene_symbol"] = "Pou4f3"
                     success = make_static_plotly_graph(filename, config, url)
                 elif props["plot_type"].lower() in ["mg_violin", "dotplot", "volcano", "heatmap", "quadrant"]:
                     url += "/mg_plotly"
                     gene = "multi"
+                    if "gene_symbols" not in config:
+                        config["gene_symbols"] = ["Pou4f3", "Atoh1", "Sox2"]
                     success = make_static_plotly_graph(filename, config, url)
                 # tSNE (todo later)
                 elif props["plot_type"].lower() in ["tsne_static", "umap_static", "pca_static", "tsne"]:
                     url += "/tsne"
+                    if "gene_symbol" not in config:
+                        config["gene_symbol"] = "Pou4f3"
                     success = make_static_tsne_graph(filename, config, url)
                 elif props["plot_type"].lower() in ["mg_tsne_static", "mg_umap_static", "mg_pca_static"]:
                     url += "/mg_tsne"
+                    gene = "multi"
+                    if "gene_symbols" not in config:
+                        config["gene_symbols"] = ["Pou4f3", "Atoh1", "Sox2"]
                     success = make_static_tsne_graph(filename, config, url)
                 # SVG (todo later)
                 elif props["plot_type"].lower() in ["svg"]:
+                    if "gene_symbol" not in config:
+                        config["gene_symbol"] = "Pou4f3"
                     url += "/svg"
                     success = make_static_svg(filename, dataset_id)
                 # Gosling (todo later)
                 elif props["plot_type"].lower() in ["gosling"]:
+                    if "gene_symbol" not in config:
+                        config["gene_symbol"] = "Pou4f3"
                     url += "/gosling"
-                    pass
+                    # TODO:
+                    continue
                 else:
                     print("Plot type {} for display id {} is not recognizable".format(props["plot_type"], display_id))
+                    continue
             except Exception as e:
                 print("Error with plotting dataset {}".format(dataset_id), file=sys.stderr)
                 print(str(e), file=sys.stderr)
 
             if not success:
-                print("Could not create static image for display id {}".format(display_id))
+                print("Could not create static image for display id {} - plot type {}".format(display_id, props["plot_type"]))
                 continue
 
             # Changing to group write permissions, so that edited curator displays (by www-data or jorvis user) can be used to generate new images
