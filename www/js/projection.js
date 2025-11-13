@@ -542,7 +542,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         datasetCollectionState.selectedShareId = layoutShareId;
         selectDatasetCollection(layoutShareId);
         urlParamsPassed = true;
-    } else if (getCurrentUser().layout_share_id) {
+    } else if (getCurrentUser()?.layout_share_id) {
         selectDatasetCollection(getCurrentUser().layout_share_id);
     }
 

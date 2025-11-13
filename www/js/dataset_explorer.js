@@ -1487,7 +1487,7 @@ const createDeleteCollectionConfirmationPopover = () => {
                 const data = await apiCallsMixin.deleteDatasetCollection(datasetCollectionState.selectedShareId);
 
                 if (data['success'] === 1) {
-                    datasetCollectionState.selectedShareId = getCurrentUser().layout_share_id;
+                    datasetCollectionState.selectedShareId = getCurrentUser()?.layout_share_id;
 
                     // This will trigger
                     // a) selectDatasetCollection
@@ -1996,7 +1996,7 @@ const datasetCollectionSelectionCallback = async () => {
     // If the selected dataset collection is the current collection, make it look like the primary collection
     // ! Currently the selector will auto-make that collection the primary collection
     document.getElementById("btn-set-primary-collection").classList.add("is-outlined");
-    if (datasetCollectionState.selectedShareId === getCurrentUser().layout_share_id) {
+    if (datasetCollectionState.selectedShareId === getCurrentUser()?.layout_share_id) {
         document.getElementById("btn-set-primary-collection").classList.remove("is-outlined");
     }
 }
@@ -2031,7 +2031,7 @@ const initializeDatasetCollectionSelection = () => {
     observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
 
     // Trigger the default dataset collection to be selected at the start
-    if (getCurrentUser().layout_share_id) {
+    if (getCurrentUser()?.layout_share_id) {
         selectDatasetCollection(getCurrentUser().layout_share_id);
     }
 
@@ -2606,7 +2606,7 @@ const submitSearch = async (page=1) => {
     const searchTerms = document.getElementById("search-terms").value;
 
     const searchCriteria = {
-        'session_id': getCurrentUser().session_id,
+        'session_id': getCurrentUser()?.session_id,
         'search_terms': searchTerms,
         'sort_by': document.getElementById("sort-by").value
     };
@@ -2818,7 +2818,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 	// User settings has no "active" state for the sidebar
 	document.getElementById("page-header-label").textContent = "Dataset Explorer";
 
-    const sessionId = getCurrentUser().session_id;
+    const sessionId = getCurrentUser()?.session_id;
 	if (! sessionId ) {
         // ? Technically we can show profiles, but I would need to build in "logged out controls".
         document.getElementById("collection-management").classList.add("is-hidden");
@@ -2852,7 +2852,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     const defaultDateAddedView = Cookies.get("default_collection_date_added_view");
     const defaultDatasetTypeView = Cookies.get("default_collection_dataset_type_view");
 
-    if (defaultOwnershipView && getCurrentUser().session_id) {
+    if (defaultOwnershipView && getCurrentUser()?.session_id) {
         // deselect All
         document.querySelector("#controls-ownership li.js-all-selector").classList.remove("js-selected");
 
@@ -2860,19 +2860,19 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             document.querySelector(`#controls-ownership li[data-dbval='${ownership}']`).classList.add("js-selected");
         }
     }
-    if (defaultOrganismView && getCurrentUser().session_id) {
+    if (defaultOrganismView && getCurrentUser()?.session_id) {
         // deselect All
         document.querySelector("#controls-organism li.js-all-selector").classList.remove("js-selected");
         for (const organism of defaultOrganismView.split(",")) {
             document.querySelector(`#controls-organism li[data-dbval='${organism}']`).classList.add("js-selected");
         }
     }
-    if (defaultDateAddedView && getCurrentUser().session_id) {
+    if (defaultDateAddedView && getCurrentUser()?.session_id) {
         // deselect All and select the cookie saved view
         document.querySelector("#controls-date-added li.js-all-selector").classList.remove("js-selected");
         document.querySelector(`#controls-date-added li[data-dbval='${defaultDateAddedView}']`).classList.add("js-selected");
     }
-    if (defaultDatasetTypeView && getCurrentUser().session_id) {
+    if (defaultDatasetTypeView && getCurrentUser()?.session_id) {
         // deselect All
         document.querySelector("#controls-dataset-type li.js-all-selector").classList.remove("js-selected");
         for (const dtype of defaultDatasetTypeView.split(",")) {

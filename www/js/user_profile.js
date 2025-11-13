@@ -50,8 +50,8 @@ document.getElementById("submit-preferences").addEventListener("click", async (e
 
     const formData ={
         scope: "settings_change",
-        session_id: getCurrentUser().session_id,
-        help_id: getCurrentUser().help_id,
+        session_id: getCurrentUser()?.session_id,
+        help_id: getCurrentUser()?.help_id,
         email: document.getElementById("email").value,
         institution: document.getElementById("institution").value,
         colorblind_mode: document.getElementById("colorblind-mode").checked,
@@ -93,7 +93,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 		elt.classList.remove("is-active");
 	}
 
-    const sessionId = getCurrentUser().session_id;
+    const sessionId = getCurrentUser()?.session_id;
 
 	if (! sessionId ) {
         document.getElementById("not-logged-in-msg").classList.remove("is-hidden");
@@ -101,10 +101,10 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 
     // Get the user's settings from the server
-    document.getElementById("email").value = getCurrentUser().email;
-    document.getElementById("institution").value = getCurrentUser().institution;
-    document.getElementById("colorblind-mode").checked = getCurrentUser().colorblind_mode;
-    document.getElementById("want-updates").checked = getCurrentUser().updates_wanted;
+    document.getElementById("email").value = getCurrentUser()?.email;
+    document.getElementById("institution").value = getCurrentUser()?.institution;
+    document.getElementById("colorblind-mode").checked = getCurrentUser()?.colorblind_mode;
+    document.getElementById("want-updates").checked = getCurrentUser()?.updates_wanted;
 
     // Forcibly empty the password fields so the browser's don't autofill.
     //  Then wait and do it again.

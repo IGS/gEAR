@@ -119,7 +119,7 @@ document.getElementById('submit-expression-search').addEventListener('click', as
         }
 
         // If the user isn't logged in, set the first organism's annotation as the default
-        if (!getCurrentUser().session_id && tilegrid?.datasets.length > 0) {
+        if (!getCurrentUser()?.session_id && tilegrid?.datasets.length > 0) {
             const first_organism_id = tilegrid.datasets[0].organism_id;
             currentlySelectedOrgId = parseInt(first_organism_id);
             organismSelector.value = currentlySelectedOrgId;
@@ -161,10 +161,10 @@ organismSelector.addEventListener('change', (event) => {
 
     // If the user is logged in and doesn't have a default org ID or it's different from their current,
     //  show the control
-    if (!getCurrentUser().session_id) {
+    if (!getCurrentUser()?.session_id) {
         return;
     }
-    const shouldHide = getCurrentUser().default_org_id === currentlySelectedOrgId;
+    const shouldHide = getCurrentUser()?.default_org_id === currentlySelectedOrgId;
     setDefaultOrganism.classList.toggle('is-hidden', shouldHide);
 });
 
@@ -316,7 +316,7 @@ const fetchOrganisms = async () => {
             row.querySelector('option').value = organism.id;
 
             // if this matches the user's default organism, select it
-            if (getCurrentUser().default_org_id === organism.id) {
+            if (getCurrentUser()?.default_org_id === organism.id) {
                 row.querySelector('option').selected = true;
                 currentlySelectedOrgId = organism.id;
             }
@@ -703,7 +703,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         datasetCollectionState.selectedShareId = layoutShareId;
         selectDatasetCollection(layoutShareId);
         urlParamsPassed = true;
-    } else if (getCurrentUser().layout_share_id) {
+    } else if (getCurrentUser()?.layout_share_id) {
         selectDatasetCollection(getCurrentUser().layout_share_id);
     }
 

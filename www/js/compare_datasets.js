@@ -624,8 +624,8 @@ const plotDataToGraph = (data) => {
 
 		});
 
-		const passColor = getCurrentUser().colorblind_mode ? 'rgb(0, 34, 78)' : "#FF0000";
-		const failColor = getCurrentUser().colorblind_mode ? 'rgb(254, 232, 56)' : "#A1A1A1";
+		const passColor = getCurrentUser()?.colorblind_mode ? 'rgb(0, 34, 78)' : "#FF0000";
+		const failColor = getCurrentUser()?.colorblind_mode ? 'rgb(254, 232, 56)' : "#A1A1A1";
 
 		const statAction = document.getElementById("cutoff-filter-action").value;
 		if (statAction === "colorize") {
@@ -1104,7 +1104,7 @@ const updatePlotAnnotations = (genes) => {
 	const plotData = plotlyPreview.data;
 	const layout = plotlyPreview.layout;
 
-	const annotationColor = getCurrentUser().colorblind_mode ? "orange" : "cyan";
+	const annotationColor = getCurrentUser()?.colorblind_mode ? "orange" : "cyan";
 
 	layout.annotations = [];
 
@@ -1418,7 +1418,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 	// Update with current page info
 	document.getElementById("page-header-label").textContent = "Comparison Tool";
-    sessionId = getCurrentUser().session_id;
+    sessionId = getCurrentUser()?.session_id || null;
 
 	if (! sessionId ) {
 		// TODO: Add master override to prevent other triggers from enabling saving

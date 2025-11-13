@@ -373,7 +373,7 @@ const resetWorkbench = () => {
 const saveMarkerGeneList = async () => {
     // must have access to USER_SESSION_ID
     const gc = new GeneCart({
-        session_id: getCurrentUser().session_id,
+        session_id: getCurrentUser()?.session_id,
         label: document.querySelector(UI.markerGenesListNameElt).value,
         gctype: 'unweighted-list',
         organism_id: currentAnalysis.dataset.organism_id,
@@ -418,7 +418,7 @@ const savePcaGeneList = async () => {
         const weightLabels = data.pc_data.columns;
 
         const geneList = new WeightedGeneCart({
-                session_id: getCurrentUser().session_id,
+                session_id: getCurrentUser()?.session_id,
                 label: document.querySelector(UI.pcaGeneListNameElt).value,
                 gctype: 'weighted-list',
                 organism_id: currentAnalysis.dataset.organism_id,
@@ -558,7 +558,7 @@ const validateMarkerGeneSelection = () => {
 const handlePageSpecificLoginUIUpdates = async (event) => {
 	document.getElementById("page-header-label").textContent = "Single Cell Workbench";
 
-    const sessionId = getCurrentUser().session_id;
+    const sessionId = getCurrentUser()?.session_id;
     if (! sessionId ) {
         createToast("Not logged in so saving analyses is disabled.", "is-warning");
         document.querySelector(UI.btnSaveAnalysisElt).disabled = true;

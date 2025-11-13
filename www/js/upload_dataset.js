@@ -37,7 +37,7 @@ const addPrimaryAnalysisToDataset = async () => {
     const {data} = await axios.post('./cgi/add_primary_analysis_to_dataset_upload.cgi', convertToFormData({
         share_uid: shareUid,
         dataset_format: datasetFormat,
-        session_id: getCurrentUser().session_id,
+        session_id: getCurrentUser()?.session_id,
     }));
 
     document.getElementById('finalize-migrating-primary-analysis-li').classList.remove("is-hidden");
@@ -68,7 +68,7 @@ const addPrimaryAnalysisToDataset = async () => {
 const checkDatasetProcessingStatus = async () => {
     const {data} = await axios.post('./cgi/check_dataset_processing_status.cgi', convertToFormData({
         share_uid: shareUid,
-        session_id: getCurrentUser().session_id
+        session_id: getCurrentUser()?.session_id
     }));
 
     processingStatus = data.status;
@@ -106,7 +106,7 @@ const deleteUploadInProgress = async (shareUid, datasetId) => {
     const {data} = await axios.post('./cgi/delete_upload_in_progress.cgi', convertToFormData({
         share_uid: shareUid,
         dataset_id: datasetId,
-        session_id: getCurrentUser().session_id
+        session_id: getCurrentUser()?.session_id
     }));
 
     if (data.success) {
@@ -130,7 +130,7 @@ const finalizeUpload = async () => {
     const payload = {
         dataset_uid: datasetUid,
         share_uid: shareUid,
-        session_id: getCurrentUser().session_id,
+        session_id: getCurrentUser()?.session_id,
         dataset_format: datasetFormat,
         perform_analysis_migration: performPrimaryAnalysis ? 1 : 0,
         dataset_visibility: document.querySelector('input[name=dataset-visibility]:checked').value
@@ -362,7 +362,7 @@ const stepTo = (step) => {
  */
 const loadUploadsInProgress = async () => {
     const {data} = await axios.post('./cgi/get_uploads_in_progress.cgi', convertToFormData({
-        session_id: getCurrentUser().session_id
+        session_id: getCurrentUser()?.session_id
     }));
 
     if (data.success) {
@@ -473,7 +473,7 @@ const storeMetadata = async () => {
     const {data} = await axios.post('./cgi/store_expression_metadata.cgi', convertToFormData({
         dataset_uid: datasetUid,
         share_uid: shareUid,
-        session_id: getCurrentUser().session_id,
+        session_id: getCurrentUser()?.session_id,
         title: document.getElementsByName('metadata-title')[0].value,
         summary: document.getElementsByName('metadata-summary')[0].value,
         dataset_type: document.getElementsByName('metadata-dataset-type')[0].value,
@@ -544,7 +544,7 @@ const storeMetadata = async () => {
 const uploadDataset = () => {
     const formData = new FormData();
     formData.append('share_uid', shareUid);
-    formData.append('session_id', getCurrentUser().session_id);
+    formData.append('session_id', getCurrentUser()?.session_id);
     formData.append('dataset_format', datasetFormat);
     if (spatialFormat) {
         formData.append('spatial_format', spatialFormat);
@@ -606,7 +606,7 @@ const processDataset = async () => {
     if (spatialFormat) {
         formData.append('spatial_format', spatialFormat);
     }
-    formData.append('session_id', getCurrentUser().session_id);
+    formData.append('session_id', getCurrentUser()?.session_id);
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', './cgi/process_uploaded_expression_dataset.cgi', true);
@@ -685,7 +685,7 @@ const validateMetadataForm = () => {
  * as well as global variables `datasetUid` and `shareUid`.
  */
 const initPage = () => {
-    if (getCurrentUser().session_id) {
+    if (getCurrentUser()?.session_id) {
         document.getElementById('logged-in-c').classList.remove('is-hidden');
         loadUploadsInProgress();
     } else {

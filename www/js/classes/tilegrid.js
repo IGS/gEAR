@@ -562,7 +562,7 @@ class DatasetTile {
             this.orthologs = null;
         }
 
-        const geneOrganismId = getCurrentUser().default_org_id || null;
+        const geneOrganismId = getCurrentUser()?.default_org_id || null;
 
         try {
             const data = await apiCallsMixin.fetchOrthologs(this.dataset.id, geneSymbols, geneOrganismId);
@@ -2252,7 +2252,7 @@ class DatasetTile {
  */
 const colorSVG = async (chartData, plotConfig, datasetId, tileId, geneSymbol, svgScoringMethod="gene") => {
     // I found adding the mid color for the colorblind mode  skews the whole scheme towards the high color
-    const colorblindMode = getCurrentUser().colorblind_mode;
+    const colorblindMode = getCurrentUser()?.colorblind_mode || false;
     const lowColor = colorblindMode ? 'rgb(254, 232, 56)' : (plotConfig?.low_color || '#e7d1d5');
     const midColor = colorblindMode ? null : (plotConfig?.mid_color || null);
     const highColor = colorblindMode ? 'rgb(0, 34, 78)' : (plotConfig?.high_color || '#401362');
@@ -2549,7 +2549,7 @@ const colorSVG = async (chartData, plotConfig, datasetId, tileId, geneSymbol, sv
  * @param {Object} score - The score object containing the minimum and maximum values.
  */
 const drawSVGLegend = (plotConfig, tileId, title, score) => {
-    const colorblindMode = getCurrentUser().colorblind_mode;
+    const colorblindMode = getCurrentUser()?.colorblind_mode || false;
     const lowColor = colorblindMode ? 'rgb(254, 232, 56)' : plotConfig.low_color;
     const midColor = colorblindMode ? null : plotConfig.mid_color
     const highColor = colorblindMode ? 'rgb(0, 34, 78)' : plotConfig.high_color;

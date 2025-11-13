@@ -398,7 +398,7 @@ const validateExpressionSearchForm = () => {
 }
 
 const handlePageSpecificLoginUIUpdates = async (event) => {
-    if (getCurrentUser().session_id) {
+    if (getCurrentUser()?.session_id) {
         populateUserHistoryTable();
     }
 
@@ -413,7 +413,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     document.getElementById("submit-expression-search").classList.remove("is-loading");
 
     // Trigger the default dataset collection to be selected in the
-    if (getCurrentUser().layout_share_id) {
+    if (getCurrentUser()?.layout_share_id) {
         selectDatasetCollection(getCurrentUser().layout_share_id);
     }
 }
