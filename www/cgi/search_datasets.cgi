@@ -246,13 +246,13 @@ def main():
         elif os.path.exists("{0}/{1}.single.default.png".format(IMAGE_ROOT, dataset.id)):
             dataset.preview_image_url = "{0}/{1}.single.default.png".format(WEB_IMAGE_ROOT, dataset.id)
         else:
-            dataset.preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT, dataset.id)
+            dataset.preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT)
 
         # Multi-gene preview image
         if os.path.exists("{0}/{1}.multi.default.png".format(IMAGE_ROOT, dataset.id)):
             dataset.mg_preview_image_url = "{0}/{1}.multi.default.png".format(WEB_IMAGE_ROOT, dataset.id)
         else:
-            dataset.mg_preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT, dataset.id)
+            dataset.mg_preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT)
 
         # add if the user is the owner of the dataset
         dataset.is_owner = True if user and dataset.owner_id == user.id else False
