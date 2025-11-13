@@ -22,12 +22,14 @@ import geardb
 def get_all_displays(cursor, desired_dataset_id=None):
     """Get all dataset displays out of the database."""
 
-    query = "SELECT dataset_id, id, plot_type, plotly_config from dataset_display ORDER BY id"
+    query = "SELECT dataset_id, id, plot_type, plotly_config from dataset_display"
     query_args = []
 
     if desired_dataset_id:
         query += " where dataset_id = %s"
         query_args.append(desired_dataset_id)
+
+    query += " ORDER BY id DESC"    # syngergizes with the dataset dashboard showing the most recent datasets
 
     cursor.execute(query, query_args)
 
