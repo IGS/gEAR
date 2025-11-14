@@ -21,7 +21,6 @@ Setting up your own portal is admittedly a bit of work.  There are a lot of comp
 
 For detailed setup instructions, see:
 - [Server Setup Guide](docs/developer/setup/README.md) - Complete installation guide
-- [Legacy Setup Notes](docs/setup.new_server.notes.md) - Original setup documentation (for reference)
 
 ## Usage
 

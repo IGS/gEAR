@@ -6,19 +6,20 @@ This document lists files in this directory that have been superseded by the new
 
 The developer documentation has been reorganized into a more coherent structure at `/docs/developer/`. Please use the new documentation instead of the files listed below.
 
-## Setup Guides (Moved)
+## Setup Guides (Removed)
 
-The following setup guides have been **moved** to `/docs/developer/setup/`:
+The following old setup guides have been **removed** from the `docs/` directory. All content has been migrated to `/docs/developer/setup/`:
 
-- ~~`setup.new_server.notes.md`~~ → [`docs/developer/setup/new_server.md`](developer/setup/new_server.md)
-- ~~`setup.mysql.md`~~ → [`docs/developer/setup/mysql.md`](developer/setup/mysql.md)
-- ~~`setup.apache.md`~~ → [`docs/developer/setup/apache.md`](developer/setup/apache.md)
-- ~~`setup.python.md`~~ → [`docs/developer/setup/python.md`](developer/setup/python.md)
-- ~~`setup.r_rpy2.md`~~ → [`docs/developer/setup/r_rpy2.md`](developer/setup/r_rpy2.md)
-- ~~`setup.rabbitmq.md`~~ → [`docs/developer/setup/rabbitmq.md`](developer/setup/rabbitmq.md)
-- ~~`setup.epiviz.md`~~ → [`docs/developer/setup/epiviz.md`](developer/setup/epiviz.md) (**OBSOLETE** - Epiviz removed, replaced by Gosling)
+- ~~`setup.new_server.notes.md`~~ → See [`docs/developer/setup/new_server.md`](developer/setup/new_server.md)
+- ~~`setup.mysql.md`~~ → See [`docs/developer/setup/mysql.md`](developer/setup/mysql.md)
+- ~~`setup.apache.md`~~ → See [`docs/developer/setup/apache.md`](developer/setup/apache.md)
+- ~~`setup.python.md`~~ → See [`docs/developer/setup/python.md`](developer/setup/python.md)
+- ~~`setup.r_rpy2.md`~~ → See [`docs/developer/setup/r_rpy2.md`](developer/setup/r_rpy2.md)
+- ~~`setup.rabbitmq.md`~~ → See [`docs/developer/setup/rabbitmq.md`](developer/setup/rabbitmq.md)
 
-See the [Setup Guide Index](developer/setup/README.md) for the complete setup documentation.
+**Note**: The old files with deprecation notices have been removed. Use the [Setup Guide Index](developer/setup/README.md) for all setup documentation.
+
+**Epiviz Setup**: The `setup.epiviz.md` file was never in the old `docs/` directory. Epiviz documentation is at [`docs/developer/setup/epiviz.md`](developer/setup/epiviz.md) and is marked as **OBSOLETE** (Epiviz has been replaced by Gosling).
 
 ## Component Documentation (Moved)
 
