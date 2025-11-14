@@ -13,7 +13,7 @@ This step only needs to be performed the first time you create the MySQL contain
 To pull backup file to your host machine, do:
 `gcloud compute scp <server>:<db_dump.sql> .`
 
-Alternative ask Shaun for a SQL dump file.
+Alternative ask @adkinsrs for a SQL dump file.
 
 This file, when gunzipped will be about 1.6 Gb.  After this, we copy the file into the Docker "mysql" container.
 
