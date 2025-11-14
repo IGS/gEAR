@@ -188,10 +188,28 @@ def main() -> dict:
         if analysis_json.is_file():
             try:
                 shutil.move(analysis_json, dataset_final_dir / f"{dataset_id}.pipeline.json")
-                result['primary_analysis_migrated'] = 1
             except Exception as e:
                 result['message'] = 'Error migrating primary analysis JSON: {}'.format(str(e))
                 return result
+
+        result['primary_analysis_migrated'] = 1
+
+        # Move preliminary composition plots if they exist. This should not affect the primary analysis migration
+        violin_plot = dataset_upload_dir / "violin_prelim_violin.png"
+        n_genes_plot = dataset_upload_dir / "scatter_prelim_n_genes.png"
+        if violin_plot.is_file():
+            try:
+                shutil.move(violin_plot, dataset_final_dir / f"{dataset_id}.prelim_violin.png")
+            except Exception as e:
+                result['message'] = 'Error migrating preliminary violin plot: {}'.format(str(e))
+                return result
+        if n_genes_plot.is_file():
+            try:
+                shutil.move(n_genes_plot, dataset_final_dir / f"{dataset_id}.prelim_n_genes.png")
+            except Exception as e:
+                result['message'] = 'Error migrating preliminary n_genes plot: {}'.format(str(e))
+                return result
+
     else:
         result['primary_analysis_migrated'] = 1
 
