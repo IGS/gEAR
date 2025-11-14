@@ -57,6 +57,7 @@ docs/
 │       ├── projectr.md                 # ProjectR matrix projection service
 │       ├── spatial.md                  # Spatial transcriptomics panel (5.7 KB)
 │       └── rabbitmq_consumers.md       # Background workers (9.7 KB)
+│       └── plugins.md                  # Plugin support
 │
 ├── Documentation/                      # End-user wiki (DO NOT MODIFY)
 ├── posters/                            # Historical presentations (DO NOT MODIFY)

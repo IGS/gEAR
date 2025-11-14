@@ -31,6 +31,7 @@ gEAR is a LAMP-stack portal with the following key components:
 - **D3.js & Snap.svg**: SVG-based data visualization
 - **Plot.ly**: Interactive plots
 - **Bulma**: CSS framework (`www/css/bulma/`)
+- **Plugin Support**: in `www/plugins/`
 
 ### Services & Workers
 
@@ -59,6 +60,7 @@ We follow the [nvie.com git branching model](https://nvie.com/posts/a-successful
 ### Setting Up a Development Environment
 
 1. **Clone the Repository**
+
    ```bash
    git clone https://github.com/IGS/gEAR.git
    cd gEAR
@@ -69,6 +71,7 @@ We follow the [nvie.com git branching model](https://nvie.com/posts/a-successful
    - Recommended: 16+ cores, 100GB+ RAM for production-like environment
 
 3. **Configure gear.ini**
+
    ```bash
    cp gear.ini.template gear.ini
    # Edit gear.ini with your configuration
@@ -77,10 +80,12 @@ We follow the [nvie.com git branching model](https://nvie.com/posts/a-successful
 ### Testing
 
 - **UI Tests**: Automated tests using Mocha, Chai, and Playwright
+
   ```bash
   cd tests
   npm test
   ```
+
 - **API Tests**: Planned (not yet implemented)
 - Front-end tests mock API responses for speed and CI compatibility
 
@@ -152,6 +157,7 @@ gEAR/
 ### Running Services Locally
 
 See [setup/services.md](./setup/services.md) for details on:
+
 - Starting systemd services
 - Running ProjectR locally vs Cloud Run
 - Running spatial panel dashboard
@@ -174,6 +180,7 @@ See [setup/services.md](./setup/services.md) for details on:
 Main configuration file: `gear.ini`
 
 Key sections:
+
 - `[database]`: MySQL connection
 - `[projectr_service]`: ProjectR endpoint configuration
 - `[rabbitmq]`: Message broker settings
@@ -201,6 +208,7 @@ Key sections:
 4. Submit a pull request
 
 All contributions should include:
+
 - Clear commit messages
 - Updated documentation
 - Tests (when applicable)

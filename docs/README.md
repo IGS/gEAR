@@ -68,21 +68,6 @@ docs/
 
 Some files in the main `docs/` directory have been superseded by the new developer documentation structure. See [`DEPRECATED.md`](DEPRECATED.md) for details on which files have been moved or are obsolete.
 
-### Specialized Documentation Still in Root
-
-The following files in the `docs/` directory contain specialized knowledge not yet integrated into the new structure:
-
-- `adding_new_display_types.md` - Guide for creating new display types
-- `copying_gene_symbols.md` - Internal process documentation
-- `cron_config.md` - Cron job configuration
-- `gene_curator_notes.md` - Dataset curator notes
-- `how_analyses_panels_are_displayed.md` - Analysis panel technical docs
-- `multigene_curator.md` - Multi-gene curator documentation
-- `mysql_config.md` - MySQL configuration notes
-- `plugins.md` - Plugin system documentation
-- `release_test_plan.md` - Release testing procedures
-- `svg_formatting.md` - SVG diagram formatting guidelines
-- `uploading_spatial_dataset.md` - Spatial dataset upload process
 
 **Note**: These files are under review for integration into the new structure. Use with caution as some may be outdated.
 
@@ -152,5 +137,5 @@ When adding or updating documentation:
 
 ---
 
-**Last Updated**: October 2025  
+**Last Updated**: October 2025
 **Maintainer**: @adkinsrs maintains infrastructure documentation
