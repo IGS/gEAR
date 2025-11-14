@@ -16,6 +16,12 @@ Topics covered:
 
 **Do not modify files in `docs/Documentation/`** - These are synced to the wiki.
 
+## For Analysts
+
+**Main Analyst Guide** → [`analyst/README.md`](analyst/README.md)
+
+This is a work in progress
+
 ## For Developers
 
 **Main Developer Guide** → [`developer/README.md`](developer/README.md)
@@ -52,11 +58,15 @@ Comprehensive guide covering:
 ```
 docs/
 ├── README.md (this file)          # Documentation index
+├── analyst/                       # Analyst documentation
+│   └── README.md                  # Main analyst guide
 ├── developer/                     # Developer documentation
 │   ├── README.md                  # Main developer guide
 │   ├── setup/                     # Server setup guides
 │   ├── scripts/                   # Bin scripts documentation
 │   └── services/                  # Microservices documentation
+├── misc/                          # Miscellaneous documentation
+│   └── README.md                  # Main guide
 ├── Documentation/                 # End-user wiki (DO NOT MODIFY)
 ├── posters/                       # Historical presentations (DO NOT MODIFY)
 ├── ui-v2-design/                  # UI v2 prototypes (DO NOT MODIFY)

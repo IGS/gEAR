@@ -1,6 +1,6 @@
 # gEAR Developer Documentation
 
-Welcome to the gEAR developer documentation. This guide is intended for developers and team analysts working on the gEAR codebase.
+Welcome to the gEAR developer documentation. This guide is intended for developers working on the gEAR codebase.
 
 ## Quick Links
 
