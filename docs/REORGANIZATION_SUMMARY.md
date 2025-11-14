@@ -7,9 +7,10 @@ This document summarizes the comprehensive reorganization of gEAR developer docu
 ## Objectives Completed
 
 ✅ **Organized documentation cohesively** - Developers and analysts can now find relevant information quickly  
-✅ **Categorized and documented all 105 bin scripts** - Clear usage scenarios for each script category  
+✅ **Categorized and documented all 110 bin scripts** - Clear usage scenarios for each script category  
 ✅ **Consolidated scattered documentation** - Setup guides, service docs, and component documentation now in one place  
 ✅ **Added migration guidance** - Clear deprecation notices and migration paths for old documentation  
+✅ **Updated for Epiviz removal** - Marked Epiviz as obsolete, documented Gosling migration scripts  
 
 ## New Documentation Structure
 
@@ -38,17 +39,17 @@ docs/
 │   │   └── systemd.md                  # Systemd services
 │   │
 │   ├── scripts/                        # Bin scripts documentation
-│   │   └── README.md                   # Complete script reference (20.6 KB)
-│   │                                   # Documents all 105 scripts in 9 categories:
-│   │                                   # - Data Conversion & Format (14 scripts)
+│   │   └── README.md                   # Complete script reference (21+ KB)
+│   │                                   # Documents all 110 scripts in 9 categories:
+│   │                                   # - Data Conversion & Format (15 scripts)
 │   │                                   # - H5AD Manipulation (12 scripts)
 │   │                                   # - Database & Loading (14 scripts)
 │   │                                   # - Gene Annotations (10 scripts)
 │   │                                   # - Dataset Management (6 scripts)
 │   │                                   # - Validation & Testing (7 scripts)
-│   │                                   # - Visualization & SVG (11 scripts)
+│   │                                   # - Visualization & SVG (14 scripts)
 │   │                                   # - Profiling & Statistics (5 scripts)
-│   │                                   # - Administration & Maintenance (26 scripts)
+│   │                                   # - Administration & Maintenance (27 scripts)
 │   │
 │   └── services/                       # Microservices documentation
 │       ├── README.md                   # Services overview (5.6 KB)
@@ -81,11 +82,12 @@ docs/
 - Documented common issues and solutions
 
 ### 3. Complete Script Reference
-- **All 105 bin scripts documented** by category
+- **All 110 bin scripts documented** by category
 - Usage scenarios for each category
 - Example commands with explanations
 - Notes on potentially obsolete scripts
 - Clear guidance on when to use each script
+- **Includes new Gosling-related scripts** for epigenome visualization
 
 ### 4. Service Documentation
 - ProjectR deployment (Cloud Run vs local)
@@ -192,12 +194,13 @@ The following files contain specialized knowledge and await team review for inte
 ## Metrics
 
 - **Total documentation files created**: 17
-- **Bin scripts documented**: 105 (100% coverage)
+- **Bin scripts documented**: 110 (100% coverage)
 - **Script categories**: 9
 - **Setup guides consolidated**: 8
 - **Service documentation pages**: 4
 - **Total new documentation**: ~52 KB
 - **Files marked deprecated**: 7 setup guides + 3 component docs
+- **New scripts added (post-merge)**: 5 Gosling/spatial preprocessing scripts
 
 ## Benefits
 
@@ -235,18 +238,20 @@ The following files contain specialized knowledge and await team review for inte
 
 ## Conclusion
 
-The gEAR developer documentation has been successfully reorganized into a cohesive, navigable structure. All 105 utility scripts are now documented with usage scenarios, setup guides are consolidated, and clear migration paths are provided for existing documentation references.
+The gEAR developer documentation has been successfully reorganized into a cohesive, navigable structure. All 110 utility scripts are now documented with usage scenarios, setup guides are consolidated, and clear migration paths are provided for existing documentation references.
 
 The new structure provides:
 - **Easy navigation** via `docs/README.md` and `docs/developer/README.md`
 - **Complete coverage** of scripts, setup, and services
 - **Clear migration** from old to new documentation
 - **Preservation** of end-user and historical documentation
+- **Up-to-date information** reflecting Epiviz removal and Gosling migration
 
 Team review is requested for specialized documentation files to complete the reorganization.
 
 ---
 
 **Created**: October 2025  
+**Last Updated**: November 2025 (Added 5 new scripts, marked Epiviz as obsolete)  
 **Issue**: Update and reorganize developer documentation  
 **Status**: Complete - Pending team review of specialized docs  

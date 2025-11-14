@@ -1,6 +1,6 @@
 # gEAR Utility Scripts Documentation
 
-The `/bin` directory contains over 105 utility scripts for various tasks related to data management, conversion, validation, and administration. This guide categorizes these scripts and provides usage scenarios.
+The `/bin` directory contains 110 utility scripts for various tasks related to data management, conversion, validation, and administration. This guide categorizes these scripts and provides usage scenarios.
 
 ## Quick Reference
 
@@ -62,6 +62,15 @@ Converts H5AD back to 3-tab format for export or manual editing.
 ```bash
 ./bin/h5ad_convert_to_3tab.py -i input.h5ad -o /output/directory
 ```
+
+#### `convert_zarr_datasets_to_h5ad.py`
+Converts Zarr spatial datasets to H5AD format for analysis.
+
+**Use case**: Converting preprocessed spatial datasets to H5AD for downstream analysis
+```bash
+./bin/convert_zarr_datasets_to_h5ad.py
+```
+**Note**: Processes all Zarr datasets in `www/datasets/spatial/` directory
 
 ### Format Translation
 
@@ -547,6 +556,36 @@ Rescores coloring at different scopes.
 
 **Use case**: Optimizing color mapping for specific views
 
+### Epigenome Browser (Gosling)
+
+#### `migrate_epiviz_to_gosling.py`
+Migrates saved Epiviz curations to Gosling format.
+
+**Use case**: One-time migration from legacy Epiviz displays to Gosling
+```bash
+./bin/migrate_epiviz_to_gosling.py
+```
+**Note**: Builds hub, genomes, tracksdb, and groups files for Gosling browser
+**Status**: Used during Epiviz to Gosling transition
+
+#### `initialize_tracks_genome_files.py`
+Initializes genome annotation files for Gosling epigenome browser.
+
+**Use case**: Setting up genome annotations for Gosling visualization
+```bash
+./bin/initialize_tracks_genome_files.py --assembly <assembly_name>
+```
+**Note**: Downloads and formats genome data from Ensembl via BioMart
+
+#### `aggregate_gosling_bigwig_groups.py`
+Aggregates bigWig files for Gosling group tracks.
+
+**Use case**: Creating group-level tracks by averaging bigWig signals
+```bash
+./bin/aggregate_gosling_bigwig_groups.py --hub <hub_file>
+```
+**Note**: I/O intensive; run as background job for large genomes
+
 ---
 
 ## Profiling & Statistics
@@ -621,6 +660,15 @@ Fixes double-encoded JSON in database.
 Converts "NA" strings to NULL in database.
 
 **Use case**: Database cleanup
+
+#### `preprocess_zarr_datasets.py`
+Preprocesses spatial Zarr datasets with standard single-cell workflow.
+
+**Use case**: Automated preprocessing of spatial transcriptomics datasets
+```bash
+./bin/preprocess_zarr_datasets.py
+```
+**Note**: Runs scanpy workflow (highly variable genes, PCA, neighbors, UMAP) on all Zarr datasets in `www/datasets/spatial/`
 
 ### User & Permission Management
 

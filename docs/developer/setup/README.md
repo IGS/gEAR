@@ -21,7 +21,7 @@ This directory contains guides for setting up and configuring a gEAR server inst
 
 ### Optional Components
 
-- **[Epiviz](./epiviz.md)** - Epigenome browser setup (legacy, being sunsetted)
+- **[Epiviz](./epiviz.md)** - Epigenome browser setup (**OBSOLETE** - replaced by Gosling)
 - **[Docker](./docker.md)** - Docker-based development environment
 - **[Systemd Services](./systemd.md)** - Background worker services
 

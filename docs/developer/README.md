@@ -166,8 +166,7 @@ See [setup/services.md](./setup/services.md) for details on:
 
 ### External Data Sources
 
-- **Epiviz** (legacy): Embedded epigenome browser (being sunsetted)
-- **Gosling** (future): Replacement for Epiviz
+- **Gosling**: Epigenome browser for visualizing epigenetic data (replaced Epiviz)
 - **ProjectR**: Microservice for matrix projection (Docker/Cloud Run)
 
 ### Configuration

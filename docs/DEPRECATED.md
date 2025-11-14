@@ -16,7 +16,7 @@ The following setup guides have been **moved** to `/docs/developer/setup/`:
 - ~~`setup.python.md`~~ → [`docs/developer/setup/python.md`](developer/setup/python.md)
 - ~~`setup.r_rpy2.md`~~ → [`docs/developer/setup/r_rpy2.md`](developer/setup/r_rpy2.md)
 - ~~`setup.rabbitmq.md`~~ → [`docs/developer/setup/rabbitmq.md`](developer/setup/rabbitmq.md)
-- ~~`setup.epiviz.md`~~ → [`docs/developer/setup/epiviz.md`](developer/setup/epiviz.md)
+- ~~`setup.epiviz.md`~~ → [`docs/developer/setup/epiviz.md`](developer/setup/epiviz.md) (**OBSOLETE** - Epiviz removed, replaced by Gosling)
 
 See the [Setup Guide Index](developer/setup/README.md) for the complete setup documentation.
 
@@ -41,8 +41,9 @@ The following component-specific docs have been integrated into the new structur
 
 The following files may be outdated and are candidates for removal pending team review:
 
-### Possibly Obsolete
-- `epiviz_notes-old.md` - Old Epiviz notes (Epiviz being sunsetted in favor of Gosling)
+### Obsolete/Removed
+- `epiviz_notes-old.md` - Old Epiviz notes (**OBSOLETE** - Epiviz has been removed and replaced by Gosling)
+- `epiviz-tracks.json` - Epiviz configuration (**OBSOLETE** - Epiviz removed)
 - `projectR_scratch_notes.md` - Scratch notes (superseded by formal ProjectR docs)
 
 ### Specialized/Internal Documentation

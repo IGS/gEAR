@@ -1,4 +1,18 @@
-# Intro
+# Epiviz Setup (OBSOLETE)
+
+> **⚠️ OBSOLETE**: Epiviz has been replaced by Gosling as the epigenome browser for gEAR.  
+> This documentation is kept for historical reference only.  
+> The Epiviz codebase has been removed from the repository.  
+> For current epigenome visualization, see Gosling integration documentation.
+
+## Migration to Gosling
+
+Epiviz displays have been migrated to Gosling format using the `migrate_epiviz_to_gosling.py` script.
+See `docs/developer/scripts/README.md` for information about Gosling-related scripts.
+
+---
+
+# Historical Documentation - Epiviz Setup
 
 This document explains the process to setup Epiviz with gEAR/NEMO
 
