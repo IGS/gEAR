@@ -301,7 +301,8 @@ class Orthologs(Resource):
             else:
                 adata = get_adata_shadow(analysis_id, dataset_id, session_id)
 
-        except FileNotFoundError:
+        except FileNotFoundError as e:
+            print(str(e))
             return {
                 "success": -1,
                 'message': "No dataset file found."
