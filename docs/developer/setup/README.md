@@ -23,6 +23,7 @@ This directory contains guides for setting up and configuring a gEAR server inst
 
 - **[Epiviz](./epiviz.md)** - Epigenome browser setup (**OBSOLETE** - replaced by Gosling)
 - **[Docker](./docker.md)** - Docker-based development environment
+- **[MySQL in Docker](./docker_mysql.md)** - Docker-based MySQL installation and configuration
 - **[Systemd Services](./systemd.md)** - Background worker services
 
 ## Quick Start
@@ -39,12 +40,14 @@ For a new server installation:
 ## System Requirements
 
 ### Minimum Requirements
+
 - **OS**: Ubuntu 22.04 LTS (recommended)
 - **CPU**: 2 vCPUs (4+ recommended for production)
 - **RAM**: 16GB (48GB+ recommended for production)
 - **Storage**: 100GB+ SSD
 
 ### Recommended for Production
+
 - **CPU**: 16+ cores
 - **RAM**: 100GB+
 - **Storage**: 300GB+ SSD (more depending on dataset sizes)
@@ -82,21 +85,25 @@ chmod 777 datasets datasets/spatial analyses/* carts/ projections/ uploads/files
 ## Common Issues
 
 ### Apache won't start
+
 - Check Apache error logs: `/var/log/apache2/error.log`
 - Verify mod_wsgi is installed: `apache2ctl -M | grep wsgi`
 - Check gear.ini permissions and syntax
 
 ### Database connection errors
+
 - Verify MySQL is running: `systemctl status mysql`
 - Check database credentials in `gear.ini`
 - Ensure database user has proper permissions
 
 ### Python import errors
+
 - Activate virtual environment if using one
 - Install missing packages: `pip install -r requirements.txt`
 - Check Python path in wsgi configuration
 
 ### RabbitMQ connection issues
+
 - Verify RabbitMQ is running: `systemctl status rabbitmq-server`
 - Check credentials and virtual host in `gear.ini`
 - Review RabbitMQ logs: `/var/log/rabbitmq/`
@@ -115,11 +122,13 @@ $HOME/git/gEAR/www/analyses
 ### Database Migration
 
 1. Export database from old instance:
+
    ```bash
    mysqldump -u root -p gear_db > gear_backup.sql
    ```
 
 2. Import on new instance:
+
    ```bash
    mysql -u root -p gear_db < gear_backup.sql
    ```
@@ -127,6 +136,7 @@ $HOME/git/gEAR/www/analyses
 ## Docker Alternative
 
 For development, consider using Docker instead of a full server setup:
+
 - See [Docker Setup Guide](./docker.md)
 - Faster setup but requires more disk space
 - Good for local development and testing
@@ -134,12 +144,14 @@ For development, consider using Docker instead of a full server setup:
 ## Maintenance
 
 ### Regular Tasks
+
 - Update system packages: `sudo apt update && sudo apt upgrade`
 - Monitor disk space (datasets can grow large)
 - Review Apache/MySQL logs for errors
 - Backup database regularly
 
 ### Updating gEAR
+
 ```bash
 cd /path/to/gEAR
 git pull origin devel

@@ -4,10 +4,10 @@
 
 * From the gEAR root, `cd docker`
 * `cp gear.ini.docker.template gear.ini.docker`
-  * Alternatively ask Shaun for a gear.ini.docker file as it will be filled in. Otherwise fill in any values wrapped in brackets
+  * Alternatively ask @adkinsrs for a gear.ini.docker file as it will be filled in. Otherwise fill in any values wrapped in brackets
 * `cp docker-compose.yml.template docker-compose.yml`
-  * Alternatively ask Shaun for a docker-compose.yml file as it will be filled in. Otherwise fill in any values wrapped in brackets
-  * Shaun's file is hard-coded to his paths so be sure to change those.
+  * Alternatively ask @adkinsrs for a docker-compose.yml file as it will be filled in. Otherwise fill in any values wrapped in brackets
+  * @adkinsrs's file is hard-coded to his paths so be sure to change those.
 
 ## Building
 
@@ -82,7 +82,7 @@ You can write some script to loop through these IDs and download them to your "d
 
 ## MySQL
 
-* See mysql_setup_notes.md for more information.  Shaun has a dump file you can use.  However do note that if there is a dataset or weighted gene list entry in the db and you do not have the physical file, then you may have errors.
+* See [MySQL Setup Notes](./docker_mysql.md) for more information.  Shaun has a dump file you can use (just ask @adkinsrs).  However do note that if there is a dataset or weighted gene list entry in the db and you do not have the physical file, then you may have errors.
 
 ## Running the docker container
 

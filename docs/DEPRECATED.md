@@ -23,17 +23,24 @@ The following old setup guides have been **removed** from the `docs/` directory.
 
 ## Component Documentation (Moved)
 
-The following component-specific docs have been integrated into the new structure:
+The following component-specific docs have been moved into the new structure with the old file removed:
 
 ### Docker
+
 - Original: `docker/docker_notes.md`
 - New location: [`docs/developer/setup/docker.md`](developer/setup/docker.md)
 
+#### MySQL setup
+- Original: `docker/mysql_setup_notes.md`
+- New location: [`docs/developer/setup/docker_mysql.md`](developer/setup/docker_mysql.md)
+
 ### Systemd Services
+
 - Original: `systemd/README.md`
 - New location: [`docs/developer/setup/systemd.md`](developer/setup/systemd.md)
 
 ### Microservices
+
 - Original: `services/projectr/README.md`
 - New location: [`docs/developer/services/projectr.md`](developer/services/projectr.md)
 - See also: [`docs/developer/services/README.md`](developer/services/README.md) for all services
@@ -43,11 +50,13 @@ The following component-specific docs have been integrated into the new structur
 The following files may be outdated and are candidates for removal pending team review:
 
 ### Obsolete/Removed
+
 - `epiviz_notes-old.md` - Old Epiviz notes (**OBSOLETE** - Epiviz has been removed and replaced by Gosling)
 - `epiviz-tracks.json` - Epiviz configuration (**OBSOLETE** - Epiviz removed)
 - `projectR_scratch_notes.md` - Scratch notes (superseded by formal ProjectR docs)
 
 ### Specialized/Internal Documentation
+
 These files contain specialized knowledge and should be reviewed before removal:
 
 - `adding_new_display_types.md` - Developer guide for adding new display types
@@ -63,6 +72,7 @@ These files contain specialized knowledge and should be reviewed before removal:
 - `uploading_spatial_dataset.md` - Spatial dataset upload process
 
 **Action Required**: These specialized docs should be:
+
 1. Reviewed for current relevance
 2. Integrated into the new developer documentation where appropriate
 3. Moved to a "technical-notes" subdirectory if still relevant but not fitting the new structure
@@ -77,11 +87,13 @@ The `/www/docs/` directory contains **end-user documentation** for the gEAR wiki
 ## Recommendations
 
 ### For Developers
+
 1. Use [`docs/developer/README.md`](developer/README.md) as your starting point
 2. Refer to the new structured documentation in `docs/developer/`
 3. If you find information missing, please update the new docs or create an issue
 
-### For Maintainers (@adkinsrs)
+### For Maintainers (@adkinsrs, @jorvis)
+
 1. Review specialized documentation files listed above
 2. Determine which should be:
    - Integrated into new developer docs
@@ -90,13 +102,14 @@ The `/www/docs/` directory contains **end-user documentation** for the gEAR wiki
 3. Consider creating a `docs/technical-notes/` directory for internal process docs
 
 ### File Removal Timeline
+
 - **Phase 1** (Immediate): Add deprecation notices to moved setup files
 - **Phase 2** (After team review): Move/integrate specialized docs
 - **Phase 3** (After validation): Remove obsolete files
 
 ## Questions?
 
-If you're unsure whether a file is still needed:
+If you're unsure whether a file is still needed:z
 1. Check the new developer documentation first
 2. Ask in team channels or check with @adkinsrs
 3. Create an issue on GitHub for clarification
