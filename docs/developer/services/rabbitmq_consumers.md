@@ -68,16 +68,10 @@ More consumers can be added following the same pattern:
 Configure in `gear.ini`:
 
 ```ini
-[rabbitmq]
-host = localhost
-port = 5672
-user = guest
-password = guest
-vhost = /
-
 [projectr_service]
-use_rabbitmq = true
-run_in_apache = false
+;; 0 - disable RabbitMQ, 1 - enable. Disabling could lead to potential server crashes if many jobs are run simultaneously
+queue_enabled = 0
+queue_host = localhost
 ```
 
 ### Installing Services
