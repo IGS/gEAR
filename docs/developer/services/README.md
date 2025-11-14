@@ -40,24 +40,19 @@ gEAR API (Flask)
               └── Other job consumers
 ```
 
-## Configuration
+## Configuration for projectR
 
 All services are configured via `gear.ini`:
 
 ```ini
-[projectr_service]
-# ProjectR service endpoint
-hostname = https://projectr-service-xxxxx.run.app
-use_rabbitmq = false  # Set to true for async processing
-run_in_apache = false  # Set to true to run locally in Apache
+[projectR_service]
+hostname = https://staging---projectr-service-7822838784.us-east1.run.app
+;; 0 - disable, 1 - enable
+cloud_run_enabled = 1
+;; 0 - disable RabbitMQ, 1 - enable. Disabling could lead to potential server crashes if many jobs are run simultaneously
+queue_enabled = 0
+queue_host = localhost
 
-[rabbitmq]
-# Message broker configuration (if using async)
-host = localhost
-port = 5672
-user = guest
-password = guest
-vhost = /
 ```
 
 ## Deployment Options
@@ -66,19 +61,20 @@ vhost = /
 - Deploy ProjectR as Cloud Run service
 - No local R installation needed
 - Auto-scaling
-- Configuration: `use_rabbitmq = false`, `run_in_apache = false`
+- RabbitMQ is recommended (see Option 2 for configuration option)
+- Configuration: `cloud_run_enabled = 1`
 
 ### Option 2: Local with RabbitMQ (Development)
 - Run ProjectR consumers via systemd
 - Requires local R installation
 - Good for development/testing
-- Configuration: `use_rabbitmq = true`, `run_in_apache = false`
+- Configuration: `queue_enabled = 1`
 
 ### Option 3: In-Process (Quick Testing)
 - Run ProjectR directly in Apache process
 - Simple but blocks request thread
 - Only for testing
-- Configuration: `use_rabbitmq = false`, `run_in_apache = true`
+- Configuration: `cloud run enabled = 0; queue_enabled = 0`
 
 ## Quick Start
 
@@ -170,11 +166,7 @@ sudo systemctl start projectr-consumer.target
 ### Testing Services Locally
 
 #### ProjectR
-```bash
-cd services/projectr
-# Run locally for testing
-python app.py
-```
+- Code is imported by the projectr API call. STDERR goes to Apache STDERR.
 
 #### Spatial Panel
 ```bash
