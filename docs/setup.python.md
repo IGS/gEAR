@@ -84,6 +84,7 @@ NOTE: Some of the packages will indirectly install dask-expr, which is currently
       Pillow==10.2.0 \
       pika==1.3.1 \
       plotly==5.20.0 \
+      pybigwig==0.3.24 \
       python-dotenv==0.20.0 \
       requests==2.31.0 \
       rpy2==3.5.16 \

@@ -1,15 +1,23 @@
 import os
+import sys
 import tarfile
 import typing
 from abc import ABC, abstractmethod
 from pathlib import Path
 
 import anndata as ad
+import numpy as np
 import pandas as pd
 import spatialdata as sd
 import spatialdata_io as sdio
 import xarray
 from gear.utils import update_adata_with_ensembl_ids
+from spatialdata.transformations import (
+    Scale,
+    Sequence,
+    Translation,
+    set_transformation,
+)
 from spatialdata_io.experimental import from_legacy_anndata, to_legacy_anndata
 
 if typing.TYPE_CHECKING:
@@ -44,22 +52,21 @@ class SpatialHandler(ABC):
         img_name (str | None): The name of the associated image (abstract).
 
     Methods:
-        process_file(filepath: str) -> SpatialHandler:
-            Reads and processes a spatial data file from the given filepath (abstract).
-
-        filter_sdata_by_coords() -> SpatialHandler:
-            Filters the spatial data to include only elements within the boundaries of the high-resolution image.
-
-        _convert_sdata_to_adata(include_images: bool | None = None, table_name=None) -> SpatialHandler:
-            Converts the internal spatial data object to an AnnData object.
-
-        _write_to_zarr(filepath: str | None =None, overwrite: bool = False) -> SpatialHandler:
-
-        _write_to_h5ad(filepath: str | None = None) -> SpatialHandler:
-            Writes the current AnnData object to an H5AD file at the specified file path.
+        process_file(filepath: str) -> "SpatialHandler": Reads and processes a spatial data file (abstract).
+        merge_centroids_with_obs() -> pd.DataFrame: Converts spot data to a pandas DataFrame.
+        convert_sdata_to_adata(include_images: bool | None = None, table_name=None) -> "SpatialHandler": Converts SpatialData to AnnData.
+        extract_img() -> np.ndarray: Extracts an image as a NumPy array.
+        scale_and_translate_sdata(set_to_zero=True, apply_scale=True) -> "SpatialHandler": Scales and translates spatial data.
+        write_to_zarr(filepath: str | None =None, overwrite: bool = False) -> "SpatialHandler": Writes SpatialData to a Zarr file.
+        write_to_h5ad(filepath: str | None=None) -> "SpatialHandler": Writes AnnData to an H5AD file.
     """
 
     NORMALIZED_TABLE_NAME = "table"
+
+    def __init__(self):
+        self._adata = None
+        self._sdata = None
+        self.originalFile = None
 
     @property
     def normalized_table_name(self):
@@ -135,6 +142,34 @@ class SpatialHandler(ABC):
 
     @property
     @abstractmethod
+    def region_id(self) -> str:
+        """
+        Returns the region ID used for spot data.
+
+        This id should be found in your table, and serve as the index for the shape under "region_name".
+
+        Returns:
+            str: The region ID.
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def region_name(self) -> str:
+        """
+        Returns the name of the region used for spot data.
+
+        A couple of ways to find this when viewing the SpatialData object:
+        1. Look within the self.coordinate_system elements, and it is the name for the Shapes one. The 2nd dimension of .shape should be 2
+        2. Within sdata.tables["table"].obs, the "region" column should have only 1 unique value that should match the Shape element name.
+
+        Returns:
+            str: The name of the region.
+        """
+        pass
+
+    @property
+    @abstractmethod
     def platform(self) -> str:
         """
         Returns the name of the platform as a string.
@@ -173,44 +208,84 @@ class SpatialHandler(ABC):
         """
         pass
 
-    def filter_sdata_by_coords(self) -> "SpatialHandler":
+    def close_spatialdata(self) -> None:
         """
-        Filters the spatial data (`self.sdata`) to include only elements within the boundaries of the high-resolution image.
+        Close and clean up resources associated with the object's spatial data (self.sdata).
 
-        The method determines the spatial extent of the image specified by `self.img_name` and restricts the spatial data to this region.
-        It supports images stored as either `xarray.DataArray` or `xarray.DataTree`. If the image is not found, the method returns the object unchanged.
+        This method performs a best-effort teardown of common file-backed and on-disk
+        data structures used for spatial AnnData objects and Zarr stores. It is
+        intended to release file handles and other resources so that files can be
+        moved/removed or the process can exit cleanly.
+
+        Behavior:
+        - Iterates over any tables in self.sdata.tables (if present). For each table,
+            if it appears to be an AnnData object with .isbacked truthy, attempts to
+            close its underlying file handle via adata.file.close().
+        - Attempts to close any attributes on self.sdata named 'store', 'zarr_store',
+            'zarr_group', or 'zarr_root' by calling a .close() method if present and
+            callable.
+        - Deletes the self.sdata attribute (best-effort) and runs garbage collection
+            via gc.collect() to help free memory and release operating-system resources.
+
+        Notes and guarantees:
+        - This method swallows exceptions raised while closing individual resources.
+            It is intentionally tolerant to partial failures so that other resources may
+            still be released.
+        - It does not remove or modify on-disk data; it only attempts to close open
+            handles and drop in-memory references.
+        - The caller should drop any other references to the same AnnData / store
+            objects (e.g., local variables) to allow them to be fully freed.
+        - The operation is idempotent in intent (calling it multiple times should not
+            raise), but thread-safety is not guaranteed. Avoid concurrent calls from
+            multiple threads.
+
+        Parameters:
+        - None
 
         Returns:
-            SpatialHandler: The current instance with `self.sdata` filtered to the image boundaries.
+        - None
+
+        NOTE: Copilot-generated function
+
+        Example:
+                # Best practice: drop other references to sdata and then call:
+                handler.close_spatialdata()
+                # If needed, reopen the data later by re-reading from disk/storage.
         """
-        # Filter to only the hires image boundaries
-        if not self.img_name:
-            return self
+        import gc
 
-        # Image can be DataArray or DataTree depending on if multiple scales are present for the image
-        img = self.sdata[self.img_name]
-        if isinstance(img, xarray.DataTree):
-            coords = sd.get_pyramid_levels(img, n=0)
-        elif isinstance(img, xarray.DataArray):
-            coords = img
-        else:
-            coords = self.sdata.images[self.img_name]  # Fallback to preserve original behavior
+        # Close backed AnnData tables (matches pattern used in your code)
+        for tbl in getattr(self.sdata, "tables", {}).values():
+            try:
+                adata = tbl
+                if getattr(adata, "isbacked", False):
+                    try:
+                        adata.file.close()
+                    except Exception:
+                        pass
+            except Exception:
+                pass
 
-        # Get the coordinates of the image
-        x = len(coords.x) # type: ignore
-        y = len(coords.y) # type: ignore
-        sdata: "SpatialData" = sd.bounding_box_query(self.sdata,
-                axes=("x", "y"),
-                min_coordinate=[0, 0],
-                max_coordinate=[x, y],
-                target_coordinate_system=self.coordinate_system,
-                filter_table=True,
-                ) # type: ignore
+        # Try to close zarr/store objects if present
+        for name in ("store", "zarr_store", "zarr_group", "zarr_root"):
+            store = getattr(self.sdata, name, None)
+            if store is not None:
+                close_fn = getattr(store, "close", None)
+                if callable(close_fn):
+                    try:
+                        close_fn()
+                    except Exception:
+                        pass
 
-        self.sdata = sdata
-        return self
+        # Drop references and collect
+        try:
+            # caller should also drop their reference to sdata
+            self._sdata = None
+        except Exception:
+            pass
+        gc.collect()
 
-    def _convert_sdata_to_adata(self, include_images: bool | None = None, table_name=None) -> "SpatialHandler":
+    def convert_sdata_to_adata(self, include_images: bool | None = None, table_name=None) -> "SpatialHandler":
         """
         Converts the internal spatial data object (`sdata`) to an AnnData object and assigns it to `self.adata`.
 
@@ -223,12 +298,18 @@ class SpatialHandler(ABC):
 
         Raises:
             Exception: If `self.sdata` is None or if an error occurs during conversion.
+
+        NOTE: This is a slow process that can be slower if include_images=True. It is better to read either an h5ad directly
+        or read AnnData from SpatialData.tables["table"]
         """
         if self.sdata is None:
             raise Exception("No spatial data object present to convert to AnnData object.")
 
         if include_images is None:
             include_images = self.has_images
+
+            # TODO: If sdata.image has a transformation applied, we need to undo it, as to_legacy_anndata will apply it again.
+
 
         # Generally everything should already be converted to the normalized table name
         if table_name is None:
@@ -243,7 +324,252 @@ class SpatialHandler(ABC):
         self.adata = adata
         return self
 
-    def _write_to_zarr(self, filepath: str | None =None, overwrite: bool = False) -> "SpatialHandler":
+    def extract_img(self) -> np.ndarray:
+        """
+        Extracts an image from the spatial data object and returns it as a NumPy array in (y, x, c) format.
+
+        The method retrieves the image specified by `self.img_name` from `self.sdata.images`. If the image is a
+        `xarray.DataTree`, it extracts the base pyramid level. The image is then converted from an xarray DataArray
+        to a NumPy array and its axes are rearranged from (c, y, x) to (y, x, c).
+
+        Returns:
+            np.ndarray: The extracted image as a NumPy array in (y, x, c) format.
+
+        Raises:
+            Exception: If `self.img_name` is not specified.
+        """
+
+        if not self.img_name:
+            raise Exception("No image name specified for conversion to 2D array.")
+
+        img = self.sdata.images[self.img_name]
+        if isinstance(img, xarray.DataTree):
+            img = sd.get_pyramid_levels(img, n=0)
+
+        # Convert xarray DataArray to numpy array
+        img = img.to_numpy()
+
+        # Currently the image is in (c, y, x) format, and needs to be converted to (y, x, c) format
+        return np.moveaxis(img, 0, -1)
+
+    def merge_centroids_with_obs(self) -> "SpatialHandler":
+        """
+        Merges spatial centroid coordinates with the observation table of the spatial dataset.
+
+        This method retrieves centroid coordinates for the specified region and coordinate system,
+        renames the coordinate columns to 'spatial1' and 'spatial2', and merges them with the
+        observation DataFrame (`obs`) of the main data table. The merge is performed as an inner join
+        on the region identifier to ensure only matching observations are retained. Handles both
+        pandas and Dask DataFrames by computing them if necessary.
+
+        Raises:
+            ValueError: If centroid extraction fails.
+
+        Returns:
+            SpatialHandler: The current instance with updated observation data including centroid coordinates.
+        """
+
+        centroids_df =  sd.get_centroids(self.sdata[self.region_name], coordinate_system=self.coordinate_system)
+
+        if centroids_df is None:
+            raise ValueError("Could not extract spatial observation locations")
+
+        # Add spatial coords. Not all locations may be present in adata after filtering
+        centroids_df = centroids_df.rename(columns={"x": "spatial1", "y": "spatial2"})
+        dataframe = self.sdata.tables["table"].obs
+
+        # Compute the dataframe if it's a Dask dataframe (since we cannot merge into a Dask dataframe)
+        if hasattr(dataframe, "compute"):
+            dataframe = dataframe.compute()
+        if hasattr(centroids_df, "compute"):
+            centroids_df = centroids_df.compute()
+
+        # Add the centroid info to the AnnData table. Inner join in case location ID does not exist in observation
+        self.sdata.tables["table"].obs = dataframe.merge(centroids_df, on=self.region_id, how="inner")
+        return self
+
+    def scale_and_translate_sdata(self, set_to_zero=True, apply_scale=True) -> "SpatialHandler":
+        """
+        Filters the spatial data (`sdata`) to fit within the boundaries of the high-resolution image,
+        optionally translating the coordinates to start at zero and scaling the data so that the longest
+        dimension does not exceed 2000 pixels.
+
+        Args:
+            set_to_zero (bool, optional): If True, translates the data so that both x and y coordinates start at 0.
+                Defaults to True.
+            apply_scale (bool, optional): If True, scales the data so that the longest dimension is no more than 2000 pixels.
+                Defaults to True.
+
+        Returns:
+            SpatialHandler: The updated SpatialHandler instance with filtered spatial data.
+        """
+        # Filter to only the hires image boundaries
+        if not self.img_name:
+            return self
+
+        if self.platform == "visium":
+            # Visium data is already in image space, so no need to scale or translate
+            # SAdkins - honestly, not sure how to fix these yet as the shapes seem to translate wildly off of the image
+            return self
+
+        # Extent should be based on the image data, in case the observation data bleeds past the image
+        img_extent = sd.get_extent(self.sdata[self.img_name], coordinate_system=self.coordinate_system)
+
+        MAX_X = 2000
+        # SAFETY CHECK: If img_extent width is less than or equal to MAX_X, just return.
+        # Would rather retain extra data and manually process than lose it.
+        img_x_width = img_extent["x"][1] - img_extent["x"][0]
+        if img_x_width <= MAX_X:
+            return self
+
+        sdata: "SpatialData" = sd.bounding_box_query(self.sdata,
+                axes=("x", "y"),
+                min_coordinate=[img_extent["x"][0], img_extent["y"][0]],
+                max_coordinate=[img_extent["x"][1], img_extent["y"][1]],
+                target_coordinate_system=self.coordinate_system,
+                filter_table=True,
+                ) # type: ignore
+
+        # Get the region extent based on the filtered data
+        region_extent = sd.get_extent(sdata[self.region_name], coordinate_system=self.coordinate_system)
+
+        # NOTE: The "set_transformation" only modifies metadata about a transformation that is used in other spatialdata functions.
+        # To actually apply the transformation run "spatialdata.transform()" or a related function
+
+        # Perform a translation to the coordinate system so that both x and y start at 0
+        # While it is possible to save a "transform" (and time) by combining the two in a Sequence transformation,
+        # this is necessary to ensure the scaling is done correctly based on the updated coordinates.
+        if set_to_zero:
+            translation = Translation([-region_extent["x"][0], -region_extent["y"][0]], axes=["x", "y"])
+            set_transformation(sdata[self.region_name], translation, to_coordinate_system=self.coordinate_system)
+            sdata.transform_element_to_coordinate_system(self.region_name, target_coordinate_system=self.coordinate_system)
+
+            # Recalculate the region extent after translation, so that scaling is correct
+            region_extent = sd.get_extent(sdata[self.region_name], coordinate_system=self.coordinate_system)
+
+        # Ensure the longest dimension is no more than 2000 pixels. This is the "legacy_to_anndata" hires pixel limit.
+        if apply_scale:
+            region_x_width = region_extent["x"][1] - region_extent["x"][0]
+
+            if region_x_width > MAX_X:
+                scale_factor_x = MAX_X / region_x_width
+
+                scale = Scale([scale_factor_x, scale_factor_x], axes=("x", "y"))
+                set_transformation(sdata[self.region_name], scale, to_coordinate_system=self.coordinate_system)
+                sdata.transform_element_to_coordinate_system(self.region_name, target_coordinate_system=self.coordinate_system)
+
+            # Rasterize the image if it exceeds the max width
+            img_x_width = img_extent["x"][1] - img_extent["x"][0]
+            if img_x_width > MAX_X:
+                rasterized = sd.rasterize(
+                        sdata[self.img_name],
+                        axes=("x", "y"),
+                        min_coordinate=[img_extent[ax][0] for ax in ("x", "y")],
+                        max_coordinate=[img_extent[ax][1] for ax in ("x", "y")],
+                        target_coordinate_system=self.coordinate_system,
+                        target_unit_to_pixels=None,
+                        target_width=MAX_X,
+                        target_height=None,
+                        target_depth=None,
+                        return_regions_as_labels=True,
+                    )
+                sdata[self.img_name] = rasterized
+
+        self.sdata = sdata
+        return self
+
+    def standardize_sdata(self) -> "SpatialHandler":
+        """
+        Normalize and preprocess the spatial dataset in self.sdata.tables["table"].
+
+        This method performs an in-place spatial and single-cell style preprocessing pipeline on the
+        SpatialHandler's SpatialData (self.sdata). It executes the following high-level steps in order:
+
+        1. Subset the SpatialData
+            - Calls self.subset_sdata() to apply any configured subsetting filters to the spatial object.
+
+        2. Scale and translate coordinates
+            - Calls self.scale_and_translate_sdata() to convert/adjust coordinate systems so that spatial
+            annotations align with image space as required.
+
+        3. Merge polygon centroids into observations
+            - Calls self.merge_centroids_with_obs() to compute centroids from per-observation polygon shapes
+            and merge those coordinates into the observation table.
+
+        4. Single-cell preprocessing on the AnnData table
+            - Loads the AnnData stored at self.sdata.tables["table"] and runs a Scanpy workflow:
+                - sc.pp.normalize_total on the AnnData (inplace)
+                - sc.pp.log1p
+                - adata.var_names_make_unique()
+                - sc.pp.highly_variable_genes(adata, n_top_genes=2000)
+                - sc.pp.pca(adata)
+                - sc.pp.neighbors(adata)
+                - sc.tl.umap(adata)
+            - The processed AnnData replaces the original in self.sdata.tables["table"].
+
+        Returns:
+            SpatialHandler: Returns self to allow method chaining.
+
+        Side effects:
+            - Modifies self.sdata in-place, including self.sdata.tables["table"] (AnnData) and any spatial
+                coordinate fields produced by the called helper methods.
+            - Requires that self.sdata.tables["table"] exists and is a valid AnnData object.
+            - Requires the scanpy library to be available; an ImportError will occur if scanpy is not installed.
+
+        Notes:
+            - The number of highly variable genes is fixed to 2000 in this method. Adjustments require
+            changing the implementation.
+            - This method assumes that polygon shapes for observations are available so centroids can be
+            computed and merged into observation metadata.
+            - Intended for workflows that combine image-based spatial annotations with single-cell-style
+            expression preprocessing.
+        """
+        obs = self.sdata.tables["table"].obs
+
+        if not ("spatial1" in obs.columns and "spatial2" in obs.columns):
+            self.subset_sdata()
+            self.scale_and_translate_sdata()
+
+            # The SpatialData object table should have coordinates, but they are not translated into the image space
+            # Each observation has an associated polygon "shape" in the image space, and we can get the centroid of that shape
+            self.merge_centroids_with_obs()
+
+        # Run the single-cell workbench steps on the spatial_obj.tables["table"] (AnnData object) using default parameters
+        adata = self.sdata.tables["table"]
+
+        if "X_umap" in adata.obsm.keys():
+            return self
+
+        import scanpy as sc
+
+        sc.pp.normalize_total(adata, inplace=True)
+        sc.pp.log1p(adata)
+        adata.var_names_make_unique()
+
+        # Add qc-metrics (so we can filter on them later if desired)
+        sc.pp.calculate_qc_metrics(adata, log1p=False, percent_top=None, inplace=True)
+
+        sc.pp.highly_variable_genes(adata, n_top_genes=2000)
+        sc.pp.pca(adata)
+        sc.pp.neighbors(adata)
+        sc.tl.umap(adata)
+        self.sdata.tables["table"] = adata
+        return self
+
+    def subset_sdata(self) -> "SpatialHandler":
+        """
+        Subsets the spatial data (`sdata`) to include only specific elements and updates the instance's `sdata` attribute.
+
+        The subset includes the normalized table, region name, and image name. The method also filters tables within the data.
+
+        Returns:
+            SpatialHandler: The instance with the updated, subsetted `sdata`.
+        """
+        subset_elements = [self.NORMALIZED_TABLE_NAME, self.region_name, self.img_name]
+        self.sdata = self.sdata.subset(subset_elements, filter_tables=True)
+        return self
+
+    def write_to_zarr(self, filepath: str | None =None, overwrite: bool = False) -> "SpatialHandler":
         """
         Writes the spatial data object to a Zarr file at the specified file path.
 
@@ -286,7 +612,7 @@ class SpatialHandler(ABC):
             raise Exception("Error occurred while writing to file: " + str(err))
         return self
 
-    def _write_to_h5ad(self, filepath: str | None=None) -> "SpatialHandler":
+    def write_to_h5ad(self, filepath: str | None=None) -> "SpatialHandler":
         """
         Writes the current AnnData object (`self.adata`) to an H5AD file at the specified file path.
 
@@ -337,6 +663,16 @@ class CoxMxHandler(SpatialHandler):
         return "global"
 
     @property
+    def region_id(self) -> str:
+        """Returns the region ID used for spot data."""
+        return "instance_id"
+
+    @property
+    def region_name(self) -> str:
+        """Returns the name of the region used for spot data."""
+        return "locations"
+
+    @property
     def platform(self) -> str:
         """Returns the platform name for this handler."""
         return "coxmx"
@@ -352,25 +688,6 @@ class CoxMxHandler(SpatialHandler):
         For CoxMx, this is a stub and does not perform any operation.
         """
         return self
-
-    def convert_sdata_to_adata(self, include_images: bool | None=None) -> "SpatialHandler":
-        """
-        Converts the internal spatial data object to an AnnData object.
-        """
-        return super()._convert_sdata_to_adata(include_images)
-
-    def write_to_zarr(self, filepath: str | None=None, overwrite: bool=False) -> "SpatialHandler":
-        """
-        Writes the spatial data object to a Zarr file at the specified file path.
-        """
-        return super()._write_to_zarr(filepath, overwrite=overwrite)
-
-    def write_to_h5ad(self, filepath: str | None=None) -> "SpatialHandler":
-        """
-        Writes the current AnnData object to an H5AD file at the specified file path.
-        """
-        return super()._write_to_h5ad(filepath)
-
 
 
 class CurioHandler(SpatialHandler):
@@ -398,6 +715,16 @@ class CurioHandler(SpatialHandler):
     def coordinate_system(self) -> str:
         """Returns the coordinate system used by Curio datasets."""
         return "global"
+
+    @property
+    def region_id(self) -> str:
+        """Returns the region ID used for spot data."""
+        return "instance_id"
+
+    @property
+    def region_name(self) -> str:
+        """Returns the name of the region used for spot data."""
+        return "cells"
 
     @property
     def platform(self) -> str:
@@ -493,29 +820,12 @@ class CurioHandler(SpatialHandler):
         sdata.tables[self.NORMALIZED_TABLE_NAME].obs = sdata.tables[self.NORMALIZED_TABLE_NAME].obs.rename(columns={"cluster": "clusters"})
 
         self.sdata = sdata
+        self.standardize_sdata()
 
         # table name should already be "table" for Visium
 
         self.originalFile = filepath
         return self
-
-    def convert_sdata_to_adata(self, include_images: bool | None = None) -> "SpatialHandler":
-        """
-        Converts the internal spatial data object to an AnnData object.
-        """
-        return super()._convert_sdata_to_adata(include_images)
-
-    def write_to_zarr(self, filepath: str | None = None, overwrite: bool = False) -> "SpatialHandler":
-        """
-        Writes the spatial data object to a Zarr file at the specified file path.
-        """
-        return super()._write_to_zarr(filepath, overwrite=overwrite)
-
-    def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
-        """
-        Writes the current AnnData object to an H5AD file at the specified file path.
-        """
-        return super()._write_to_h5ad(filepath)
 
 class GeoMxHandler(SpatialHandler):
     """
@@ -546,6 +856,16 @@ class GeoMxHandler(SpatialHandler):
     def coordinate_system(self) -> str:
         """Returns the coordinate system used by GeoMx datasets."""
         return "global"
+
+    @property
+    def region_id(self) -> str:
+        """Returns the region ID used for spot data."""
+        return "instance_id"
+
+    @property
+    def region_name(self) -> str:
+        """Returns the name of the region used for spot data."""
+        return "locations"
 
     @property
     def platform(self) -> str:
@@ -660,27 +980,13 @@ class GeoMxHandler(SpatialHandler):
         # GeoMx is focused more on spatial bulk rather than spatial single-cell, so we will set the clusters to the index
         sdata.tables[self.NORMALIZED_TABLE_NAME].obs["clusters"] = sdata.tables[self.NORMALIZED_TABLE_NAME].obs.index
 
+        # Have the shapes "locations" df index match the obs index
+        sdata.shapes["locations"].index = sdata.tables[self.NORMALIZED_TABLE_NAME].obs[self.region_id]
+
         self.sdata = sdata
+        self.standardize_sdata()
         self.originalFile = filepath
         return self
-
-    def convert_sdata_to_adata(self, include_images: bool | None = None) -> "SpatialHandler":
-        """
-        Converts the internal spatial data object to an AnnData object.
-        """
-        return super()._convert_sdata_to_adata(include_images)
-
-    def write_to_zarr(self, filepath: str | None = None, overwrite: bool = False) -> "SpatialHandler":
-        """
-        Writes the spatial data object to a Zarr file at the specified file path.
-        """
-        return super()._write_to_zarr(filepath, overwrite=overwrite)
-
-    def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
-        """
-        Writes the current AnnData object to an H5AD file at the specified file path.
-        """
-        return super()._write_to_h5ad(filepath)
 
 class VisiumHandler(SpatialHandler):
     # NOTE: Uploads work but it cannot be used in a spatial panel yet because clusters have not been provided.
@@ -709,6 +1015,16 @@ class VisiumHandler(SpatialHandler):
     def coordinate_system(self) -> str:
         """Returns the coordinate system used by Visium datasets."""
         return "downscaled_hires"
+
+    @property
+    def region_id(self) -> str:
+        """Returns the region ID used for spot data."""
+        return "spot_id"
+
+    @property
+    def region_name(self) -> str:
+        """Returns the name of the region used for spot data."""
+        return "spatialdata"
 
     @property
     def platform(self) -> str:
@@ -775,26 +1091,9 @@ class VisiumHandler(SpatialHandler):
         sdata.tables[self.NORMALIZED_TABLE_NAME].var = sdata.tables[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids")
 
         self.sdata = sdata
+        self.standardize_sdata()
         self.originalFile = filepath
         return self
-
-    def convert_sdata_to_adata(self, include_images: bool | None = None) -> "SpatialHandler":
-        """
-        Converts the internal spatial data object to an AnnData object.
-        """
-        return super()._convert_sdata_to_adata(include_images)
-
-    def write_to_zarr(self, filepath: str | None = None, overwrite: bool = False) -> "SpatialHandler":
-        """
-        Writes the spatial data object to a Zarr file at the specified file path.
-        """
-        return super()._write_to_zarr(filepath, overwrite=overwrite)
-
-    def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
-        """
-        Writes the current AnnData object to an H5AD file at the specified file path.
-        """
-        return super()._write_to_h5ad(filepath)
 
 class VisiumHDHandler(SpatialHandler):
     """
@@ -829,6 +1128,16 @@ class VisiumHDHandler(SpatialHandler):
     def coordinate_system(self) -> str:
         """Returns the coordinate system used by Visium HD datasets."""
         return "downscaled_hires"
+
+    @property
+    def region_id(self) -> str:
+        """Returns the region ID used for spot data."""
+        return "location_id"
+
+    @property
+    def region_name(self) -> str:
+        """Returns the name of the region used for spot data."""
+        return "spatialdata_square_008um"
 
     @property
     def platform(self) -> str:
@@ -925,26 +1234,9 @@ class VisiumHDHandler(SpatialHandler):
         sdata.tables[self.NORMALIZED_TABLE_NAME] = sdata.tables[self.table_name]
 
         self.sdata = sdata
+        self.standardize_sdata()
         self.originalFile = filepath
         return self
-
-    def convert_sdata_to_adata(self, include_images: bool | None = None) -> "SpatialHandler":
-        """
-        Converts the internal spatial data object to an AnnData object.
-        """
-        return super()._convert_sdata_to_adata(include_images)
-
-    def write_to_zarr(self, filepath: str | None = None, overwrite: bool = False) -> "SpatialHandler":
-        """
-        Writes the spatial data object to a Zarr file at the specified file path.
-        """
-        return super()._write_to_zarr(filepath, overwrite=overwrite)
-
-    def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
-        """
-        Writes the current AnnData object to an H5AD file at the specified file path.
-        """
-        return super()._write_to_h5ad(filepath)
 
 class XeniumHandler(SpatialHandler):
     """
@@ -975,6 +1267,16 @@ class XeniumHandler(SpatialHandler):
     def coordinate_system(self) -> str:
         """Returns the coordinate system used by Xenium datasets."""
         return "global"
+
+    @property
+    def region_id(self) -> str:
+        """Returns the region ID used for spot data."""
+        return "cell_id"
+
+    @property
+    def region_name(self) -> str:
+        """Returns the name of the region used for spot data."""
+        return "cell_circles"
 
     @property
     def platform(self) -> str:
@@ -1077,26 +1379,9 @@ class XeniumHandler(SpatialHandler):
         sdata.tables[self.NORMALIZED_TABLE_NAME].var = sdata.tables[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids")
 
         self.sdata = sdata
+        self.standardize_sdata()
         self.originalFile = filepath
         return self
-
-    def convert_sdata_to_adata(self, include_images: bool | None = None) -> "SpatialHandler":
-        """
-        Converts the internal spatial data object to an AnnData object.
-        """
-        return super()._convert_sdata_to_adata(include_images)
-
-    def write_to_zarr(self, filepath: str | None = None, overwrite: bool = False) -> "SpatialHandler":
-        """
-        Writes the spatial data object to a Zarr file at the specified file path.
-        """
-        return super()._write_to_zarr(filepath, overwrite=overwrite)
-
-    def write_to_h5ad(self, filepath: str | None = None) -> "SpatialHandler":
-        """
-        Writes the current AnnData object to an H5AD file at the specified file path.
-        """
-        return super()._write_to_h5ad(filepath)
 
 
 ### Helper constants

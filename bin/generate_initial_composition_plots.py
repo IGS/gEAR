@@ -64,8 +64,8 @@ def main():
         if is_spatial:
             extension = ".zarr"
 
-        violin_image_path = dataset_path.replace(extension, '.prelim_violin.png')
-        scatter_image_path = dataset_path.replace(extension, '.prelim_n_genes.png')
+        violin_image_path = str(dataset_path).replace(extension, '.prelim_violin.png')
+        scatter_image_path = str(dataset_path).replace(extension, '.prelim_n_genes.png')
 
         # Skip if the images are already there
         if os.path.exists(violin_image_path) and os.path.exists(scatter_image_path):

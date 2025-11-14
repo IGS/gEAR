@@ -197,8 +197,6 @@ When testing the front-end, it is important to test in the same way a user would
   * Edit - Cancel
   * Delete
 
-#### Epiviz Panel Designer
-
 ## API Testing
 
 TODO

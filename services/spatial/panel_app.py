@@ -1,33 +1,25 @@
-import gc
 import logging
 import sys
+import traceback
 import warnings
 from pathlib import Path
 
-import anndata
-import colorcet as cc
 import numpy as np
 import pandas as pd
 import panel as pn
 import plotly.graph_objects as go
 import plotly.io as pio
-import scanpy as sc
-import spatialdata as sd
 from common import (
     Settings,
     SpatialFigure,
     clip_expression_values,
-    normalize_searched_gene,
-    sort_clusters,
 )
 from werkzeug.utils import secure_filename
 
 gear_root = Path(__file__).resolve().parents[2]
 www_path = gear_root.joinpath("www")
-PROJECTIONS_BASE_DIR = www_path.joinpath("projections")
-
-
-spatial_path = gear_root.joinpath("www/datasets/spatial")
+PANEL_CSV_CACHE_DIR = www_path / "cache" / "spatial_panel"
+SPATIAL_IMAGE_NAME = "spatial_img.npy"
 
 pio.templates.default = "simple_white"  # no gridlines, white background
 
@@ -62,7 +54,6 @@ class SpatialCondensedSubplot(SpatialFigure):
         spatial_img (np.ndarray | None): Optional spatial image to display as a subplot.
         color_map (dict): Mapping of cluster or expression values to colors.
         cluster_map (dict): Mapping of cluster identifiers to display names or colors.
-        gene_symbol (str): The gene symbol to visualize.
         expression_name (str): The name of the expression metric to display.
         expression_color (str, optional): Color map for expression visualization. Defaults to "YlGn".
         zoom_expression_color (str, optional): Color map for zoomed-in expression visualization. Defaults to "YlOrRd".
@@ -94,20 +85,19 @@ class SpatialCondensedSubplot(SpatialFigure):
         spatial_img: np.ndarray | None,
         color_map: dict,
         cluster_map: dict,
-        gene_symbol: str,
         expression_name: str,
         expression_color: str = "YlGn",
         zoom_expression_color: str = "YlOrRd",
         use_clusters: bool = False,
         **params,
     ):
+
         super().__init__(
             settings,
             df,
             spatial_img,
             color_map,
             cluster_map,
-            gene_symbol,
             expression_name,
             expression_color,
             **params,
@@ -115,7 +105,7 @@ class SpatialCondensedSubplot(SpatialFigure):
         # Preserve the original dataframe for filtering
         self.orig_df = df
 
-        self.final_col = 3 if spatial_img is not None else 2
+        self.final_col = 3 if self.spatial_img is not None else 2
 
         self.selections_dict: dict[str, float] = {}
         self.use_clusters = use_clusters
@@ -296,8 +286,8 @@ class SpatialCondensedSubplot(SpatialFigure):
         # The marker size will scale larger as the range of the selection gets more precise
         self.marker_size = int(1 + 2500 / (x_range + y_range))
 
-        if self.platform == "visium":
-            self.marker_size += 3
+        #if self.platform == "visium":
+        #    self.marker_size += 3
 
     def selection_callback(self, event: dict) -> dict:
         """
@@ -356,9 +346,9 @@ class SpatialCondensedSubplot(SpatialFigure):
         """
 
         linecolor = "black"
-        if self.spatial_img is None or self.platform == "xenium":
+        #if self.spatial_img is None or self.platform == "xenium":
             # If there is no spatial image, use white line color for visibility
-            linecolor = "white"
+        #    linecolor = "white"
 
         cols = list(range(1, self.final_col))
         self.fig.add_selection(
@@ -414,9 +404,8 @@ class SpatialPanel(pn.viewable.Viewer):
     """
 
     dataset_id: str
-    gene_symbol: str
+    filename: str
     min_genes: int
-    projection_id: str | None = None
     selection_x1: float | None = None
     selection_x2: float | None = None
     selection_y1: float | None = None
@@ -432,9 +421,8 @@ class SpatialPanel(pn.viewable.Viewer):
                 self.settings,
                 {
                     "dataset_id": "dataset_id",
-                    "gene_symbol": "gene_symbol",
+                    "filename": "filename",
                     "min_genes": "min_genes",
-                    "projection_id": "projection_id",
                     "selection_x1": "selection_x1",
                     "selection_x2": "selection_x2",
                     "selection_y1": "selection_y1",
@@ -445,12 +433,13 @@ class SpatialPanel(pn.viewable.Viewer):
                 },
             )
 
-        self.dataset_id = self.settings.dataset_id  # type: ignore
-        self.gene_symbol = self.settings.gene_symbol  # type: ignore
+        self.dataset_id = secure_filename(self.settings.dataset_id)  # type: ignore
+        self.filename = secure_filename(self.settings.filename)  # type: ignore
         self.min_genes = self.settings.min_genes  # type: ignore
-        self.projection_id = self.settings.projection_id  # type: ignore
 
-        self.platform = None  # Will be set in prep_sdata()
+        self.unique_clusters = None
+        self.cluster_map = None
+        self.color_map = None
 
         layout_height = 312  # 360px - tile header height
         if self.settings.display_height and self.settings.display_height > 0: # type: ignore
@@ -551,210 +540,60 @@ class SpatialPanel(pn.viewable.Viewer):
         )
 
     def init_data(self):
-        yield self.loading_indicator("Processing data file...")
-
-        def create_adata_pkg():
-            try:
-                self.prep_sdata()
-                adata = self.prep_adata()
-            except ValueError:
-                raise
-
-            adata_pkg = {"adata": adata, "img_name": self.spatial_obj.img_name}
-            return adata_pkg
-
-        adata_cache_label = f"{self.dataset_id}_adata"
-
-        # Load the Anndata object (+ image name) from cache or create it if it does not exist, with a 1-week time-to-live
         try:
-            adata_pkg = pn.state.as_cached(
-                adata_cache_label, create_adata_pkg, ttl=CACHE_EXPIRATION
+            yield self.loading_indicator("Processing data file...")
+
+            spatial_img_path = PANEL_CSV_CACHE_DIR / self.dataset_id / SPATIAL_IMAGE_NAME
+            self.spatial_img = None
+            if spatial_img_path.is_file():
+                self.spatial_img = np.load(spatial_img_path)
+
+            df_path = PANEL_CSV_CACHE_DIR / self.dataset_id / self.filename
+            if not df_path.is_file():
+                raise FileNotFoundError(f"Data file not found: {df_path}")
+
+            self.df = pd.read_csv(df_path)
+
+            if self.settings.expression_min_clip is not None:
+                self.df = clip_expression_values(self.df, min_clip=self.settings.expression_min_clip)   # type: ignore
+
+            yield self.loading_indicator(
+                "Processing data to create plots. This may take a minute..."
             )
-        except ValueError as e:
+
+            self.refresh_dataframe(self.min_genes)
+
+            yield self.refresh_figures()
+        except Exception as e:
+            logging.error(traceback.format_exc())
             yield pn.pane.Alert(f"Error: {e}", alert_type="danger")
-            raise
 
-        self.dataset_adata_orig = adata_pkg["adata"]  # Original dataset adata
-        self.dataset_adata = (
-            self.dataset_adata_orig.copy()
-        )  # Copy we manipulate (filtering, etc.)
-        self.adata = self.dataset_adata.copy()  # adata object to use for plotting
-
-        # Modify the adata object to use the projection ID if it exists
-        if self.projection_id:
-            self.adata = self.create_projection_adata()
-
-        if self.settings.expression_min_clip is not None:
-            self.adata = clip_expression_values(self.adata, min_clip=self.settings.expression_min_clip)
-
-        self.adata_orig = (
-            self.adata.copy()
-        )  # This is to restore when the min_genes slider is changed
-
-        self.spatial_img = None
-        if adata_pkg["img_name"]:
-            # In certain conditions, the image multi-array may need to be squeezed so that PIL can read it
-            self.spatial_img = self.adata.uns["spatial"][adata_pkg["img_name"]][
-                "images"
-            ]["hires"].squeeze()
-
-        yield self.loading_indicator(
-            "Processing data to create plots. This may take a minute..."
-        )
-
-        self.refresh_dataframe(self.min_genes)
-        yield self.refresh_figures()
-
-    def prep_sdata(self):
-        zarr_path = spatial_path / f"{self.dataset_id}.zarr"
-        if not zarr_path.exists():
-            raise ValueError(f"Dataset {self.dataset_id} not found")
-
-        sdata = sd.read_zarr(zarr_path)
-
-        try:
-            self.platform = sdata.tables["table"].uns["platform"]
-        except KeyError:
-            raise ValueError("No platform information found in the dataset")
-
-        lib_path = gear_root.joinpath("lib")
-        sys.path.append(str(lib_path))
-
-        from gear.spatialhandler import SPATIALTYPE2CLASS
-
-        # Ensure the spatial data type is supported
-        if self.platform not in SPATIALTYPE2CLASS.keys():
-            print("Invalid or unsupported spatial data type")
-            print("Supported types: {0}".format(SPATIALTYPE2CLASS.keys()))
-            sys.exit(1)
-
-        # Use uploader class to determine correct helper functions
-        self.spatial_obj = SPATIALTYPE2CLASS[self.platform]()
-        self.spatial_obj.sdata = sdata
-        # Dictates if this will be a 2- or 3-plot figure
-        self.has_images = self.spatial_obj.has_images
-
-        # Filter by bounding box (mostly for images)
-        self.spatial_obj.filter_sdata_by_coords()
-
-    def prep_adata(self):
-        # Create AnnData object
-        # Need to include image since the bounding box query does not filter the image data by coordinates
-        # Each Image is downscaled (or upscaled) during rendering to fit a 2000x2000 pixels image (downscaled_hires)
-        try:
-            self.spatial_obj.convert_sdata_to_adata()
-        except Exception as e:
-            print("Error converting sdata to adata:", str(e), file=sys.stderr)
-            raise ValueError(
-                "Could not convert sdata to adata. Check the spatial data type and bounding box coordinates."
-            )
-        return self.spatial_obj.adata
-
-    def create_projection_adata(self):
-        dataset_adata = self.adata
-        dataset_id = self.dataset_id
-        projection_id = self.projection_id
-        # Create AnnData object out of readable CSV file
-        if projection_id:
-            projection_id = secure_filename(projection_id)
-        dataset_id = secure_filename(dataset_id)
-
-        projection_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_dataset", dataset_id)
-        # Sanitize input to prevent path traversal
-        projection_adata_path = projection_dir.joinpath("{}.h5ad".format(projection_id))
-        projection_csv_path = projection_dir.joinpath("{}.csv".format(projection_id))
-        try:
-            # READ CSV to make X and var
-            dataframe = pd.read_csv(projection_csv_path, sep=",", index_col=0, header=0)
-            X = dataframe.to_numpy()
-            var = pd.DataFrame(index=dataframe.columns)
-            obs = dataset_adata.obs
-            obsm: np.ndarray = dataset_adata.obsm
-            uns = dataset_adata.uns
-            # Create the anndata object and write to h5ad
-            # Associate with a filename to ensure AnnData is read in "backed" mode
-            projection_adata = anndata.AnnData(
-                X=X, obs=obs, var=var, obsm=obsm, uns=uns, filemode="r"
-            )
-        except Exception as e:
-            print(str(e), file=sys.stderr)
-            raise ValueError("Could not create projection AnnData object from CSV.")
-        # Close dataset adata so that we do not have a stale opened object
-        if dataset_adata.isbacked:
-            dataset_adata.file.close()
-
-        # For some reason the gene_symbol is not taken in by the constructor
-        projection_adata.var["gene_symbol"] = projection_adata.var_names
-
-        # write to projection_adata_path. This ensures that the file is created and up to date with latest projection results
-        projection_adata.write(projection_adata_path)
-        return projection_adata
-
-    def filter_adata(self):
-        # Filter out cells that overlap with the blank space of the image.
-
-        sc.pp.filter_cells(self.dataset_adata, min_genes=self.min_genes)
-
-        # If adata is empty, raise an error
-        if self.dataset_adata.n_obs == 0:
-            raise ValueError(
-                f"No cells found with at least {self.min_genes} genes. Choose a different gene or lower the filter."
-            )
-
-        sc.pp.normalize_total(self.dataset_adata, inplace=True)
-        sc.pp.log1p(self.dataset_adata)
-
-        self.dataset_adata.var_names_make_unique()
-
-    def create_gene_df(self):
-        adata = self.adata
-        dataset_genes = set(self.adata.var["gene_symbol"].unique())
-        norm_gene_symbol = normalize_searched_gene(dataset_genes, self.gene_symbol)
-        if norm_gene_symbol is None:
-            raise ValueError(
-                f"Gene '{self.gene_symbol}' not found in the dataset. Please choose a different gene."
-            )
-        self.norm_gene_symbol = norm_gene_symbol
-        gene_filter = adata.var.gene_symbol == self.norm_gene_symbol
-        selected = adata[:, gene_filter]
-        selected.var.index = pd.Index(["raw_value"])
-        dataframe = selected.to_df()
-
-        # Add spatial coords from adata.obsm
-        X, Y = (0, 1)
-        dataframe["spatial1"] = adata.obsm["spatial"].transpose()[X].tolist() # type: ignore
-        dataframe["spatial2"] = adata.obsm["spatial"].transpose()[Y].tolist()
-
-        # Add cluster info
-        if "clusters" not in selected.obs:
-            raise ValueError("No cluster information found in adata.obs")
-
-        dataframe["clusters"] = selected.obs["clusters"].astype("category")
-        dataframe["clusters_cat_codes"] = dataframe["clusters"].cat.codes.astype(
-            "category"
-        )
-
-        self.cluster_map = {
-            code: dataframe[dataframe["clusters_cat_codes"] == code][
-                "clusters"
-            ].to_numpy()[0]
-            for code in dataframe["clusters_cat_codes"].unique()
-        }
-
-        # Drop any NA clusters
-        dataframe = dataframe.dropna(subset=["clusters"])
-        self.df = dataframe
-
-    def refresh_dataframe(self, min_genes):
+    def apply_gene_filter(self, min_genes):
         """
-        Refresh the dataframe based on the selected gene and min_genes value.
-        Updates Plotly dicts in the Panel app in-place
+        Apply a minimum-gene filter to the panel's dataframe.
 
-        Args:
-            min_genes (int): The minimum number of genes to filter observations.
+        Sets self.min_genes to the provided value and, if that value differs from
+        self.settings.min_genes, synchronizes self.settings.min_genes. Then filters
+        self.df in-place to retain only rows where the "n_genes_by_counts" column
+        is greater than or equal to the specified minimum.
 
-        Returns:
-            None
+        Parameters
+        ----------
+        min_genes : int
+            Minimum number of genes (inclusive) required for a row to be kept.
+
+        Raises
+        ------
+        AttributeError
+            If self, self.df, or self.settings is not correctly initialized.
+        KeyError
+            If the "n_genes_by_counts" column does not exist in self.df.
+
+        Notes
+        -----
+        - This method mutates self.min_genes, self.settings.min_genes (conditionally),
+          and self.df.
+        - The method does not return a value.
         """
         self.min_genes = min_genes
 
@@ -762,21 +601,80 @@ class SpatialPanel(pn.viewable.Viewer):
         if self.min_genes != self.settings.min_genes:
             self.settings.min_genes = self.min_genes
 
-        self.filter_adata()
+        self.df = self.df[self.df["n_genes_by_counts"] >= self.min_genes]
 
-        # self.adata should have the same subset as self.dataset_adata
-        self.adata = self.adata[self.dataset_adata.obs.index]
+    def refresh_dataframe(self, value: int):
+        """
+        Refresh the instance dataframe and derived cluster mappings after applying a gene filter.
 
-        self.create_gene_df()  # creating the Dataframe is generally fast
-        self.map_colors()
-        # drop indexes from self.adata not in self.df (since clustering may have removed some cells)
-        self.dataset_adata = self.dataset_adata[self.df.index]
-        self.adata = self.adata[self.df.index]
+        This method performs the following steps:
+        - Calls self.apply_gene_filter(value) to (re)populate / filter self.df based on the provided integer value.
+        - Computes and stores self.unique_clusters as the unique values from the "clusters" column of the (possibly filtered) dataframe.
+        - Builds self.cluster_map: a dict mapping each category code from "clusters_cat_codes" to the corresponding cluster name (the first "clusters" value found for that code).
+        - Builds self.color_map: a dict mapping each cluster name to the corresponding color (the first "colors" value found for that cluster).
+        - Enforces categorical dtypes for the "clusters" and "clusters_cat_codes" columns (CSV input may not preserve these dtypes).
 
-        return
+        Parameters
+        ----------
+        value : int
+            Integer parameter forwarded to self.apply_gene_filter. The semantics of this value depend on the implementation
+            of apply_gene_filter (e.g., it may select a gene index or threshold).
+
+        Side effects
+        ------------
+        - Mutates self.df (it is expected that apply_gene_filter filters or updates self.df).
+        - Sets/updates the attributes: self.unique_clusters, self.cluster_map, self.color_map.
+        - Casts self.df["clusters"] and self.df["clusters_cat_codes"] to pandas.Categorical dtype in-place.
+
+        Required dataframe columns
+        --------------------------
+        The method expects self.df to contain at least the following columns:
+        - "clusters" : cluster names/labels
+        - "clusters_cat_codes" : cluster categorical codes
+        - "colors" : color values associated with clusters
+
+        Raises
+        ------
+        AttributeError
+            If self.apply_gene_filter is not defined.
+        KeyError
+            If any required column ("clusters", "clusters_cat_codes", "colors") is missing from self.df.
+        IndexError
+            If a code or cluster has no matching rows when building cluster_map or color_map.
+
+        Performance
+        -----------
+        Linear in the number of rows of self.df for the filtering and mapping steps.
+
+        Notes
+        -----
+        - The implementation assumes there is at least one representative row per cluster / cluster code; missing rows will raise an IndexError when accessing the first element.
+        - Because CSV files often lose dtype information, this method explicitly casts cluster-related columns to categorical. Consider switching to a binary format (e.g., Parquet) to preserve dtypes across I/O.
+        """
+        self.apply_gene_filter(value)
+        self.unique_clusters = self.df["clusters"].unique()
+        self.cluster_map = {
+            code: self.df[self.df["clusters_cat_codes"] == code]["clusters"].to_numpy()[0]
+            for code in self.df["clusters_cat_codes"].unique()
+        }
+        self.color_map = {
+            cluster: self.df[self.df["clusters"] == cluster][
+                "colors"
+            ].to_numpy()[0]
+            for cluster in self.unique_clusters
+        }
+
+        # This should have been done but the CSV file does not preserve dtypes
+        # ? Should we switch to parquet files?
+        self.df["clusters"] = self.df["clusters"].astype("category")
+        self.df["clusters_cat_codes"] = self.df["clusters_cat_codes"].astype("category")
+
 
     def refresh_figures(self):
         self.condensed_fig_obj = None
+
+        if self.color_map is None or self.cluster_map is None:
+            raise ValueError("Color map or cluster map is not initialized.")
 
         self.condensed_fig_obj = SpatialCondensedSubplot(
             self.settings,
@@ -784,50 +682,17 @@ class SpatialPanel(pn.viewable.Viewer):
             self.spatial_img,
             self.color_map,
             self.cluster_map,
-            self.norm_gene_symbol,
             "Local",
             "YlGn",
             "YlOrRd",
             self.use_clusters,
             dragmode="select",
-            platform=self.platform,
+            #platform=self.platform,
         )
         self.condensed_fig = self.condensed_fig_obj.refresh_spatial_fig()
         self.condensed_pane.object = self.condensed_fig
 
-        gc.collect()  # Collect garbage to free up memory
-
         return self.plot_layout
-
-    def map_colors(self):
-        dataframe = self.df
-        # Assuming df is your DataFrame and it has a column "clusters"
-        unique_clusters = dataframe["clusters"].unique()
-        sorted_clusters = sort_clusters(unique_clusters)
-
-        self.unique_clusters = sorted_clusters
-
-        if "colors" in dataframe:
-            self.color_map = {
-                cluster: dataframe[dataframe["clusters"] == cluster][
-                    "colors"
-                ].to_numpy()[0]
-                for cluster in self.unique_clusters
-            }
-        else:
-            # Some glasbey_bw_colors may not show well on a dark background so use "light" colors if images are not present
-            # Prepending b_ to the name will return a list of RGB colors (though glasbey_light seems to already do this)
-            swatch_color = (
-                cc.b_glasbey_bw if self.spatial_img is not None else cc.glasbey_light
-            )
-
-            self.color_map = {
-                cluster: swatch_color[i % len(swatch_color)]
-                for i, cluster in enumerate(self.unique_clusters)
-            }
-            # Map the colors to the clusters
-            dataframe["colors"] = dataframe["clusters"].map(self.color_map)
-        self.df = dataframe
 
 
 ### MAIN APP ###

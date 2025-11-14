@@ -1,11 +1,11 @@
 'use strict';
 
-import { apiCallsMixin, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=a4b3d6c";
-import { FacetWidget } from "./classes/facets.js?v=a4b3d6c";
-import { Gene, WeightedGene } from "./classes/gene.js?v=a4b3d6c";
-import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=a4b3d6c";
-import { DatasetTree } from "./classes/tree.js?v=a4b3d6c";
-import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners } from "../include/gene-collection-selector/gene-collection-selector.js?v=a4b3d6c";
+import { apiCallsMixin, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=cbfcd86";
+import { FacetWidget } from "./classes/facets.js?v=cbfcd86";
+import { Gene, WeightedGene } from "./classes/gene.js?v=cbfcd86";
+import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=cbfcd86";
+import { DatasetTree } from "./classes/tree.js?v=cbfcd86";
+import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners } from "../include/gene-collection-selector/gene-collection-selector.js?v=cbfcd86";
 
 // SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 // This is meant to be a short-term solution until more people specify their data is transformed via the metadata
@@ -624,8 +624,8 @@ const plotDataToGraph = (data) => {
 
 		});
 
-		const passColor = getCurrentUser().colorblind_mode ? 'rgb(0, 34, 78)' : "#FF0000";
-		const failColor = getCurrentUser().colorblind_mode ? 'rgb(254, 232, 56)' : "#A1A1A1";
+		const passColor = getCurrentUser()?.colorblind_mode ? 'rgb(0, 34, 78)' : "#FF0000";
+		const failColor = getCurrentUser()?.colorblind_mode ? 'rgb(254, 232, 56)' : "#A1A1A1";
 
 		const statAction = document.getElementById("cutoff-filter-action").value;
 		if (statAction === "colorize") {
@@ -1104,7 +1104,7 @@ const updatePlotAnnotations = (genes) => {
 	const plotData = plotlyPreview.data;
 	const layout = plotlyPreview.layout;
 
-	const annotationColor = getCurrentUser().colorblind_mode ? "orange" : "cyan";
+	const annotationColor = getCurrentUser()?.colorblind_mode ? "orange" : "cyan";
 
 	layout.annotations = [];
 
@@ -1418,7 +1418,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 	// Update with current page info
 	document.getElementById("page-header-label").textContent = "Comparison Tool";
-    sessionId = getCurrentUser().session_id;
+    sessionId = getCurrentUser()?.session_id || null;
 
 	if (! sessionId ) {
 		// TODO: Add master override to prevent other triggers from enabling saving

@@ -1,4 +1,4 @@
-import { User } from "./classes/user.v2.js?v=a4b3d6c";
+import { User } from "./classes/user.v2.js?v=cbfcd86";
 
 let CURRENT_USER = undefined;
 let SIDEBAR_COLLAPSED = false;
@@ -36,7 +36,7 @@ window.addEventListener("unhandledrejection", (event) => {
  * @returns {void}
  */
 const initCommonUI = async () => {
-        // load the site preferences JSON file, then call any functions which need it
+    // load the site preferences JSON file, then call any functions which need it
     getDomainPreferences().then((result) => {
         SITE_PREFS = result;
         loadPlugins();
@@ -69,9 +69,9 @@ const initCommonUI = async () => {
     for (const elt of document.querySelectorAll("#primary-nav .menu-list a.is-active")) {
 		elt.classList.remove("is-active");
 	}
-    const this_page_tool = document.getElementById("content-c").dataset.navLink;
-    const tool_search_string = `a[tool='${this_page_tool}'`;
-	document.querySelector(tool_search_string).classList.add("is-active");
+    const thisPageTool = document.getElementById("content-c").dataset.navLink;
+    const toolSearchString = `a[tool='${thisPageTool}'`;
+	document.querySelector(toolSearchString).classList.add("is-active");
 
 
 
@@ -171,6 +171,7 @@ PMID: 34172972`;
         toggleClass('span.menu-label-text', 'is-hidden', true);
         toggleClass('span.icon-text-part', 'is-hidden', true);
         toggleClass('#navbar-logo-normal', 'is-hidden', true);
+        toggleClass('#logo-c-text', 'is-hidden', true);
         toggleClass('#navbar-logo-small', 'is-hidden', false);
         toggleClass('#citation-c', 'is-hidden', true);
         toggleClass("#navbar-toggler i", "mdi-arrow-collapse-left", false);
@@ -191,6 +192,7 @@ PMID: 34172972`;
         toggleClass('span.menu-label-text', 'is-hidden', false);
         toggleClass('span.icon-text-part', 'is-hidden', false);
         toggleClass('#navbar-logo-normal', 'is-hidden', false);
+        toggleClass('#logo-c-text', 'is-hidden', false);
         toggleClass('#navbar-logo-small', 'is-hidden', true);
         toggleClass('#citation-c', 'is-hidden', false);
         toggleClass("#navbar-toggler i", "mdi-arrow-collapse-left", true);
@@ -204,7 +206,7 @@ PMID: 34172972`;
         handlePrimaryNavTooltips(false);
     }
 
-    const navbarToggler = document.querySelector('#navbar-toggler');
+    const navbarToggler = document.getElementById('navbar-toggler');
 
     navbarToggler.addEventListener('click', (event) => {
         if (SIDEBAR_COLLAPSED == false) {
@@ -227,10 +229,6 @@ PMID: 34172972`;
         showNavbarElementsWithAnimation();
         SIDEBAR_COLLAPSED = false;
     }
-
-    document.querySelector('#epiviz-panel-designer-link').addEventListener('click', (event) => {
-        createToast("This feature is not yet available.", "is-warning");
-    });
 
     /**
      * / End controls for the left navbar visibility
@@ -494,7 +492,7 @@ const handleLoginUIUpdates = () => {
     }
 
     pageSpecificLoginUIUpdates();
-    document.querySelector("#navbar-login-controls").classList.remove("is-hidden");
+    document.getElementById("navbar-login-controls").classList.remove("is-hidden");
 }
 
 /*************************************************************************************
@@ -1086,23 +1084,6 @@ const apiCallsMixin = {
         return data;
     },
     /**
-     * Fetches the Epiviz display data for a given dataset, gene symbol, and genome.
-     * @param {string} datasetId - The ID of the dataset.
-     * @param {string} geneSymbol - The gene symbol.
-     * @param {string} genome - The genome.
-     * @param {Object} [otherOpts={}] - Additional options for the axios request.
-     * @returns {Promise<any>} - A promise that resolves to the fetched data.
-     */
-    async fetchEpivizDisplay(datasetId, geneSymbol, genome, otherOpts={}) {
-
-        const urlParams = new URLSearchParams();
-        urlParams.append('gene', geneSymbol);
-        urlParams.append('genome', genome);
-
-        const {data} = await axios.get(`/api/plot/${datasetId}/epiviz?${urlParams.toString()}`, otherOpts);
-        return data;
-    },
-    /**
      * Fetches annotations for the passed gene symbols
      *
      * @param {string[]} geneSymbols - The gene symbols to search for. Comma-separated.
@@ -1178,16 +1159,18 @@ const apiCallsMixin = {
      *
      * @async
      * @param {string} datasetId - The ID of the dataset to fetch data from.
-     * @param {string} geneSymbol - The gene symbol to query.
-     * @param {string} genome - The genome identifier.
+     * @param {object} plotConfig - The configuration object for the Gosling plot.
      * @param {boolean} [zoom=false] - Whether to enable zoom in the display.
      * @param {object} [otherOpts={}] - Additional options for the request.
      * @returns {Promise<Object>} The data returned from the Gosling display API.
      */
-    async fetchGoslingDisplay(datasetId, geneSymbol, genome, zoom=false, otherOpts={}) {
+    async fetchGoslingDisplay(datasetId, plotConfig, zoom=false, otherOpts={}) {
         const urlParams = new URLSearchParams();
+        const {gene_symbol: geneSymbol, assembly, hubUrl} = plotConfig;
+
         urlParams.append('gene', geneSymbol);
-        urlParams.append('genome', genome);
+        urlParams.append('assembly', assembly);
+        urlParams.append('hub_url', hubUrl);
         urlParams.append('zoom', zoom);
 
         // JSON is returned
@@ -1414,6 +1397,26 @@ const apiCallsMixin = {
     async parseMetadataFile(formData) {
         formData.append("session_id", apiCallsMixin.sessionId);
         const {data} = await axios.post("/cgi/upload_expression_metadata.cgi", formData);
+        return data;
+    },
+    /**
+     * Prepare and send a request to fetch spatial panel data for a given dataset.
+     *
+     * This function creates a shallow copy of the provided plotConfig as the request
+     * payload and posts it to the server endpoint `/api/plot/{datasetId}/spatialPanel`.
+     * Note: plotConfig is expected to already include a `gene_symbol` property.
+     *
+     * @async
+     * @param {string|number} datasetId - Identifier for the dataset used in the API path.
+     * @param {Object} plotConfig - Configuration object for the plot. Must include `gene_symbol`.
+     * @param {Object} [otherOpts={}] - Optional Axios request configuration/options forwarded to axios.post.
+     * @returns {Promise<Object>} Resolves with the response data from the API.
+     * @throws {Error} Throws/rejects with the underlying Axios error if the request fails.
+     */
+    async prepSpatialPanelData(datasetId, plotConfig, otherOpts={}) {
+        // NOTE: gene_symbol should already be already passed to plotConfig
+        const payload = { ...plotConfig };
+        const {data} = await axios.post(`/api/plot/${datasetId}/spatialpanel`, payload, otherOpts);
         return data;
     },
     /**

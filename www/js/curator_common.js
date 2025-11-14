@@ -1,9 +1,9 @@
 'use strict';
 
-import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates, trigger } from "./common.v2.js?v=a4b3d6c";
-import { availablePalettes, plotly2MatplotlibNames } from "./plot_display_config.js?v=a4b3d6c";
-import { FacetWidget } from "./classes/facets.js?v=a4b3d6c";
-import { DatasetTree } from "./classes/tree.js?v=a4b3d6c";
+import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates, trigger } from "./common.v2.js?v=cbfcd86";
+import { availablePalettes, plotly2MatplotlibNames } from "./plot_display_config.js?v=cbfcd86";
+import { FacetWidget } from "./classes/facets.js?v=cbfcd86";
+import { DatasetTree } from "./classes/tree.js?v=cbfcd86";
 
 let isMultigene;
 const setIsMultigene = (val) => { isMultigene = val; }
@@ -1394,7 +1394,7 @@ const renderOrderSortableSeries = (series) => {
     if (!catColumns.includes(series)) return;
 
     // Start with a fresh template
-    const orderElt = document.getElementById(`${CSS.escape(series)}-order`);
+    const orderElt = document.getElementById(`${series}-order`);
     if (orderElt) {
         orderElt.remove();
     }
@@ -1420,7 +1420,7 @@ const renderOrderSortableSeries = (series) => {
         const listElt = document.createElement("li");
         listElt.classList.add("has-background-grey-lighter", "has-text-dark");
         listElt.textContent = group;
-        document.getElementById(`${CSS.escape(series)}-order-list`).append(listElt);
+        document.getElementById(`${series}-order-list`).append(listElt);
     }
 
     // Create sortable for this series
@@ -1433,7 +1433,7 @@ const renderOrderSortableSeries = (series) => {
     });
 
     // Make note if user changes the order
-    const list = document.getElementById(`${CSS.escape(series)}-order-list`);
+    const list = document.getElementById(`${series}-order-list`);
     list.addEventListener('sortupdate', (event) => {
         // e.detail contains {origin, destination, item, oldIndex, newIndex}
         sortOrderChanged = true;
@@ -1747,12 +1747,12 @@ const updateOrderSortable = () => {
     for (const series of sortableSet) {
         // Series is in sortableSet but not seriesSet, remove <series>-order element
         if (!seriesSet.has(series)) {
-            const orderElt = document.getElementById(`${CSS.escape(series)}-order`);
+            const orderElt = document.getElementById(`${series}-order`);
             orderElt.remove();
         }
 
         // Remove sortupdate event listener if it exists
-        const list = document.getElementById(`${CSS.escape(series)}-order-list`);
+        const list = document.getElementById(`${series}-order-list`);
         if (list) {
             list.removeEventListener('sortupdate', (event) => {
                 // e.detail contains {origin, destination, item, oldIndex, newIndex}
@@ -1925,7 +1925,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     curatorSpecificNavbarUpdates();
 
-    const sessionId = getCurrentUser().session_id;
+    const sessionId = getCurrentUser()?.session_id || null;
     if (! sessionId ) {
         createToast("Not logged in so saving displays is disabled.", "is-warning");
         document.getElementById("save-display-btn").disabled = true;

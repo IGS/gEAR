@@ -545,7 +545,8 @@ def projectr_callback(
     # NOTE Currently no analyses are supported yet.
     try:
         ana = get_analysis(None, dataset_id, session_id, is_spatial)
-    except Exception:
+    except Exception as e:
+        print(str(e), file=fh)
         traceback.print_exc()
         status["status"] = "failed"
         status["error"] = "Analysis for this dataset is unavailable."
@@ -627,8 +628,16 @@ def projectr_callback(
 
     target_df = target_df.fillna(0)  # Fill NaN values with 0
 
-    # Close dataset adata so that we do not have a stale opened object
-    adata.file.close()
+    # Ensure adata.obs.index is str, for reindex matching later
+    adata.obs.index = adata.obs.index.astype(str)
+    obs_index_list = adata.obs.index.tolist()
+
+    # Close adata so that we do not have a stale opened object
+    if adata.isbacked:
+        adata.file.close()
+
+    if dedup_copy.exists():
+        dedup_copy.unlink()
 
     dataset_projection_csv = build_projection_csv_path(
         dataset_id, projection_id, "dataset"
@@ -773,7 +782,7 @@ def projectr_callback(
 
         gc.collect()  # trying to clear memory
 
-        if len(projection_patterns_df.index) != len(adata.obs.index):
+        if len(projection_patterns_df.index) != len(obs_index_list):
             message = "Not all chunked sample rows were returned by projectR. Saved partial results to disk. Refresh to try again."
             print(message, file=fh)
             remove_lock_file(lock_fh, lockfile)
@@ -788,14 +797,20 @@ def projectr_callback(
             write_projection_status(JOB_STATUS_FILE, status)
             return status
 
+        # Ensure dtype of projection_patterns_df and projection_pval_df match obs_index_list
+        # Observed in some spatial datasets
+        # For example, numerical indexes may be mismatched.
+        projection_patterns_df.index = projection_patterns_df.index.astype(str)
+        if not projection_pval_df.empty:
+            projection_pval_df.index = projection_pval_df.index.astype(str)
+
         # There is a good chance the samples are now out of order, which will break
         # the copying of the dataset observation metadata when this output is converted
         # to an AnnData object. So reorder back to dataset sample order.
-        projection_patterns_df = projection_patterns_df.reindex(
-            adata.obs.index.tolist()
-        )
+        projection_patterns_df = projection_patterns_df.reindex(obs_index_list)
         if not projection_pval_df.empty:
-            projection_pval_df = projection_pval_df.reindex(adata.obs.index.tolist())
+            projection_pval_df = projection_pval_df.reindex(obs_index_list)
+
 
         # Delete all the chunk output files for this projection_id
         for filepath in CHUNK_OUTPUTS_DIR.glob(f"{projection_id}_chunk*.json"):
@@ -868,13 +883,6 @@ def projectr_callback(
             return status
         finally:
             write_projection_status(JOB_STATUS_FILE, status)
-
-    # Close adata so that we do not have a stale opened object
-    if adata.isbacked:
-        adata.file.close()
-
-    if dedup_copy.exists():
-        dedup_copy.unlink()
 
     # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
     projection_patterns_df = projection_patterns_df.set_axis(

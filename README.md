@@ -4,7 +4,7 @@
 
 Other things to include:
 
-  - **Technology stack**: The gEAR software is a LAMP stack utilizing Python and MySQL, H5AD for large expression matrix storage, D3 and Plot.ly for data visualization and has embedded [Epiviz](https://epiviz.github.io/) support to display epigenetic data.
+  - **Technology stack**: The gEAR software is a LAMP stack utilizing Python and MySQL, H5AD for large expression matrix storage, D3 and Plot.ly for data visualization and has embedded [Gosling](https://gosling-lang.github.io/) support to display epigenetic data.
   - **Status**:  This project has been in production for several years, though is in constant development so bugs certainly exist.
   - **Production / Demo instances**
 	  - [UMgEAR](https://umgear.org) - Portal for hearing research
@@ -60,7 +60,7 @@ This repository was hosted private for many years and we have just recently tran
 
 ## Getting help
 
-There are a few ways to get help with a gEAR Portal.  
+There are a few ways to get help with a gEAR Portal.
 
  - Check the provided [documentation](https://umgear.org/manual.html).
  - Use the contact form at the top of any existing portal.  [Here](https://umgear.org/contact.html), for example.

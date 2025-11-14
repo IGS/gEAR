@@ -1,13 +1,13 @@
 "use strict";
 
-import { Analysis, getAnalysisLabels, setAnalysisLabels } from "./classes/analysis.js?v=a4b3d6c";
-import { UI } from "./classes/analysis-ui.js?v=a4b3d6c";
-import { Dataset } from "./classes/dataset.js?v=a4b3d6c";
-import { Gene, WeightedGene } from "./classes/gene.js?v=a4b3d6c";
-import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=a4b3d6c";
-import { DatasetTree } from "./classes/tree.js?v=a4b3d6c";
-import { resetStepperWithHrefs } from "./stepper-fxns.js?v=a4b3d6c";
-import { apiCallsMixin, convertToFormData, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=a4b3d6c";
+import { Analysis, getAnalysisLabels, setAnalysisLabels } from "./classes/analysis.js?v=cbfcd86";
+import { UI } from "./classes/analysis-ui.js?v=cbfcd86";
+import { Dataset } from "./classes/dataset.js?v=cbfcd86";
+import { Gene, WeightedGene } from "./classes/gene.js?v=cbfcd86";
+import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=cbfcd86";
+import { DatasetTree } from "./classes/tree.js?v=cbfcd86";
+import { resetStepperWithHrefs } from "./stepper-fxns.js?v=cbfcd86";
+import { apiCallsMixin, convertToFormData, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=cbfcd86";
 
 let currentAnalysis;
 let clickedMarkerGenes = new Set();
@@ -373,7 +373,7 @@ const resetWorkbench = () => {
 const saveMarkerGeneList = async () => {
     // must have access to USER_SESSION_ID
     const gc = new GeneCart({
-        session_id: getCurrentUser().session_id,
+        session_id: getCurrentUser()?.session_id,
         label: document.querySelector(UI.markerGenesListNameElt).value,
         gctype: 'unweighted-list',
         organism_id: currentAnalysis.dataset.organism_id,
@@ -418,7 +418,7 @@ const savePcaGeneList = async () => {
         const weightLabels = data.pc_data.columns;
 
         const geneList = new WeightedGeneCart({
-                session_id: getCurrentUser().session_id,
+                session_id: getCurrentUser()?.session_id,
                 label: document.querySelector(UI.pcaGeneListNameElt).value,
                 gctype: 'weighted-list',
                 organism_id: currentAnalysis.dataset.organism_id,
@@ -558,7 +558,7 @@ const validateMarkerGeneSelection = () => {
 const handlePageSpecificLoginUIUpdates = async (event) => {
 	document.getElementById("page-header-label").textContent = "Single Cell Workbench";
 
-    const sessionId = getCurrentUser().session_id;
+    const sessionId = getCurrentUser()?.session_id;
     if (! sessionId ) {
         createToast("Not logged in so saving analyses is disabled.", "is-warning");
         document.querySelector(UI.btnSaveAnalysisElt).disabled = true;

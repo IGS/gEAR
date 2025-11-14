@@ -1,7 +1,7 @@
 "use strict";
 
-import { apiCallsMixin, convertToFormData, copyToClipboard, createToast, getCurrentUser, getRootUrl, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=a4b3d6c";
-import { GeneCart } from "./classes/genecart.v2.js?v=a4b3d6c";
+import { apiCallsMixin, convertToFormData, copyToClipboard, createToast, getCurrentUser, getRootUrl, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=cbfcd86";
+import { GeneCart } from "./classes/genecart.v2.js?v=cbfcd86";
 
 let firstSearch = true;
 let isAddFormOpen = false;
@@ -1420,7 +1420,7 @@ const submitSearch = async (page) => {
     }
 
     const searchCriteria = {
-        'session_id': getCurrentUser().session_id,
+        'session_id': getCurrentUser()?.session_id,
         'search_terms': searchTerms,
         'sort_by': document.getElementById("sort-by").value
     };
@@ -1482,7 +1482,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 	// User settings has no "active" state for the sidebar
 	document.getElementById("page-header-label").textContent = "Gene List Manager";
 
-    const sessionId = getCurrentUser().session_id;
+    const sessionId = getCurrentUser()?.session_id;
 
 	if (! sessionId ) {
         document.getElementById("not-logged-in-msg").classList.remove("is-hidden");
@@ -1502,7 +1502,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     const defaultOrganismView = Cookies.get("default_gene_list_organism_view");
     const defaultDateAddedView = Cookies.get("default_gene_list_date_added_view");
 
-    if (defaultOwnershipView && getCurrentUser().session_id) {
+    if (defaultOwnershipView && getCurrentUser()?.session_id) {
         // deselect All
         document.querySelector("#controls-ownership li.js-all-selector").classList.remove("js-selected");
 
@@ -1510,7 +1510,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             document.querySelector(`#controls-ownership li[data-dbval='${ownership}']`).classList.add("js-selected");
         }
     }
-    if (defaultOrganismView && getCurrentUser().session_id) {
+    if (defaultOrganismView && getCurrentUser()?.session_id) {
         // deselect All
         document.querySelector("#controls-organism li.js-all-selector").classList.remove("js-selected");
 
@@ -1518,7 +1518,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             document.querySelector(`#controls-organism li[data-dbval='${organism}']`).classList.add("js-selected");
         }
     }
-    if (defaultDateAddedView && getCurrentUser().session_id) {
+    if (defaultDateAddedView && getCurrentUser()?.session_id) {
         document.querySelector(`#controls-date-added li[data-dbval='${defaultDateAddedView}']`).classList.add("js-selected");
     }
 
@@ -1796,7 +1796,7 @@ btnNewCartSave.addEventListener("click", (e) => {
             , 'new_cart_organism_id': newCartOrganism.value
             , 'new_cart_ldesc': document.getElementById("new-list-ldesc").value
             , 'is_public': isPublic
-            , 'session_id': getCurrentUser().session_id
+            , 'session_id': getCurrentUser()?.session_id
             , 'new_cart_upload_type': document.getElementById("new-list-upload-type").value
             , "new_cart_pasted_genes": document.getElementById("new-list-pasted-genes").value
             , "new_cart_file": document.getElementById("new-list-file").files[0]

@@ -36,10 +36,12 @@ The script is intended to be run as a CGI script during the upload process and o
 import cgi
 import json
 import os
+import shutil
 import sys
 import typing
 from pathlib import Path
 
+import numpy as np
 import scanpy as sc
 
 original_stdout = sys.stdout
@@ -54,6 +56,8 @@ import geardb
 from gear.analysis import H5adAdapter, ZarrAdapter
 
 sc.settings.verbosity = 0
+sc.settings.autosave = True
+sc.settings.figdir = '/tmp' # for the composition plots
 
 if typing.TYPE_CHECKING:
     # This allows type-checkers to resolve types without importing the actual modules at runtime.
@@ -153,6 +157,9 @@ def main() -> dict:
 
     adata = adapter.get_adata(**kwargs)
 
+    # Create some initial composition plots
+    create_composition_plots(adata, dataset_upload_dir, dataset_format == "spatial")
+
     h5ad_changes_made = False
     json_changes_made = False
     # Does the metadata file exist?  If not, we need to create it
@@ -234,6 +241,40 @@ def add_umap_analysis(adata: "AnnData") -> None:
             adata.obsm['X_umap'] = adata.obs[[pair[0], pair[1]]].values
             return
 
+def create_composition_plots(adata: "AnnData", dataset_path: str, is_spatial: bool) -> None:
+    # Create the pathnames for the images
+    extension = ".h5ad"
+    if is_spatial:
+        extension = ".zarr"
+
+    violin_image_path = str(dataset_path).replace(extension, '.prelim_violin.png')
+    scatter_image_path = str(dataset_path).replace(extension, '.prelim_n_genes.png')
+
+    # Cannot run filter_cells and filter_genes in backed mode
+    adata_mem = adata.to_memory()
+
+    # the ".A1" is only necessary, as X is sparse - it transform to a dense array after summing
+    try:
+        # add the total counts per cell as observations-annotation to adata
+        adata_mem.obs['n_counts'] = np.sum(adata_mem.to_df().values, axis=1).A1
+
+    except AttributeError:
+        # add the total counts per cell as observations-annotation to adata
+        adata_mem.obs['n_counts'] = np.sum(adata_mem.to_df().values, axis=1)
+
+    sc.pp.filter_cells(adata_mem, min_genes=3)  # this adds adata.obs.n_genes
+    sc.pp.filter_genes(adata_mem, min_cells=300)    # this adds adata.obs.n_cells though we do not use it
+
+    sc.pl.violin(adata_mem, ['n_genes', 'n_counts'],
+                    jitter=0.4, multi_panel=True, save="_prelim_violin.png")
+
+    sc.pl.scatter(adata_mem, x='n_counts', y='n_genes', save="_prelim_n_genes.png")
+
+    # move files written to tmp
+    shutil.move("/tmp/violin_prelim_violin.png", violin_image_path)
+    shutil.move("/tmp/scatter_prelim_n_genes.png", scatter_image_path)
+
+
 def detect_clustering(adata: "AnnData") -> bool:
     """
     Looks first for 'cluster', then 'cell_type'
@@ -244,11 +285,14 @@ def detect_clustering(adata: "AnnData") -> bool:
         if vname in cols:
             return True
 
+    if has_clustering(adata):
+        return True
+
     return False
 
 def detect_tsne(adata: "AnnData") -> bool:
     """
-    Looks for the combination of pairs in VALID_TSNE_PAIRS
+    Looks for the combination of pairs in VALID_TSNE_PAIRS or existing tSNE in obsm
     """
     cols = adata.obs.columns.tolist()
 
@@ -256,17 +300,25 @@ def detect_tsne(adata: "AnnData") -> bool:
         if pair[0] in cols and pair[1] in cols:
             return True
 
+    # Maybe it's already in obsm
+    if has_tsne(adata):
+        return True
+
     return False
 
 def detect_umap(adata: "AnnData") -> bool:
     """
-    Looks for the combination of pairs in VALID_UMAP_PAIRS
+    Looks for the combination of pairs in VALID_UMAP_PAIRS or existing UMAP in obsm
     """
     cols = adata.obs.columns.tolist()
 
     for pair in VALID_UMAP_PAIRS:
         if pair[0] in cols and pair[1] in cols:
             return True
+
+    # Maybe it's already in obsm (i.e. spatial uploads)
+    if has_umap(adata):
+        return True
 
     return False
 
@@ -281,7 +333,7 @@ def has_clustering(adata: "AnnData") -> bool:
 
 def has_tsne(adata: "AnnData") -> bool:
     try:
-        if type(adata.obsm['X_tsne']):
+        if "X_tsne" in adata.obsm.keys():
             return True
     except Exception:
         pass
@@ -290,7 +342,7 @@ def has_tsne(adata: "AnnData") -> bool:
 
 def has_umap(adata: "AnnData") -> bool:
     try:
-        if type(adata.obsm['X_umap']):
+        if "X_umap" in adata.obsm.keys():
             return True
     except Exception:
         pass

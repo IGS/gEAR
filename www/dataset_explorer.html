@@ -18,16 +18,16 @@
     -->
     <base href="/" />
 
-    <link rel="stylesheet" href="css/gear-theme-purple.css?v=a4b3d6c" />
+    <link rel="stylesheet" href="css/gear-theme-purple.css?v=cbfcd86" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
 
     <!-- Fancy animation effects -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css""/>
 
-    <link rel="stylesheet" href="css/common.v2.css?v=a4b3d6c" />
+    <link rel="stylesheet" href="css/common.v2.css?v=cbfcd86" />
 
     <!--Page-specific CSS here -->
-    <link rel="stylesheet" href="css/dataset_explorer.css?v=a4b3d6c" />
+    <link rel="stylesheet" href="css/dataset_explorer.css?v=cbfcd86" />
 </head>
 <body>
     <!--[if lt IE 7]>
@@ -167,11 +167,11 @@
                                 <ul class="js-expandable-target" id="dataset-type-choices">
                                     <li class="js-all-selector js-selected">All</li>
                                     <li data-dbval="bulk-rnaseq">Bulk RNASeq</li>
-                                    <li data-dbval="epiviz">Epigenetic (Epiviz)</li>
+                                    <li data-dbval="gosling">Epigenetic</li>
                                     <li data-dbval="microarray">Microarray</li>
                                     <li data-dbval="single-cell-rnaseq">Single-cell RNASeq</li>
                                     <li data-dbval="spatial">Spatial Transcriptomics</li>
-                                    <!-- list built by js -->
+                                    <!-- list built manually -->
                                 </ul>
                             </div>
                         </div>
@@ -238,7 +238,7 @@
                                         <div class="control">
                                             <div class="select is-small">
                                                 <select name="sort-by" id="sort-by">
-                                                    <option value="relevance">Relevance</option>
+                                                    <option value="relevance" selected>Relevance</option>
                                                     <option value="title">Dataset title</option>
                                                     <option value="date_added" selected>Date uploaded</option>
                                                     <option value="owner">Owner</option>
@@ -694,7 +694,7 @@
     <!-- Promise based HTTP client for the browser  -->
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
-    <script src="js/vendor/js.cookie.js?v=a4b3d6c"></script>
+    <script src="js/vendor/js.cookie.js?v=cbfcd86"></script>
 
     <!-- Draggable and resizable elements -->
     <script src="https://unpkg.com/interactjs@1.10.27/dist/interact.min.js"></script>
@@ -704,7 +704,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.5.3"></script>
 
     <!-- Page-specific JS file here -->
-    <script type="module" src="js/dataset_explorer.js?v=a4b3d6c"></script>
+    <script type="module" src="js/dataset_explorer.js?v=cbfcd86"></script>
 
     <!-- Global site tag (gtag.js) - Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>

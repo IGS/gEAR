@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>Hair Cell paper landing page</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="-1">
+        <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
+
+        <link rel="stylesheet" href="../../css/gear-theme-purple.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css" />
+
+        <!-- Ensures we always get a new version (during our current active development cycles) -->
+        <script>document.write('<link rel="stylesheet" href="../../css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
+
+        <!--Page-specific CSS here -->
+        <link rel="stylesheet" href="./index.css" />
+        
+    </head>
+    <body>
+      <div id="main-layout-c" class="columns is-fullheight">
+
+        <!--#include virtual="/include/primary_nav.html" -->
+
+        <section id="main-c" class="column pl-0 pt-0">
+
+          <!--#include virtual="/include/header_bar.html" -->
+
+          <section id="content-c" class="m-3 p-5" data-nav-link="workspace">
+            <div id="hhf-hrp-banner-c" class="columns is-vcentered">
+              <div class="column is-4">
+                <img  class="img-fluid" src="/img/by_domain/gear/hhf_logo_with_tagline_hires.png" alt="" />
+              </div>
+              <div class="column is-2"></div>
+              <div class="column is-6">
+                <img class="img-fluid" src="/img/by_domain/gear/HRP_mini_banner_hires.png" alt="" />
+              </div>
+            </div>
+
+            <hr />
+            
+            <div class="columns">
+              <div class="column is-6">
+                <h1 class="paper-title">A comparative single-cell transcriptomic atlas for vertebrate hair cells</h1>
+                <h2 class="paper-authors">
+                  Mahashweta Basu, Nesrine Benkafadar, Beatrice Milon, Amanda Ciani Berlingeri, Ivan Cruz,
+                  Emilia Luca, R. Shaun Adkins, Brian R. Herb, Joshua Orvis, Yang Song, 
+                  John Brigande, Alain Dabdoub, Albert Edge, Andrew K. Groves, Ksenia Gnedeva,
+                  Stefan Heller, Ronna P. Hertzano, Tatjana Piotrowski, David W. Raible, 
+                  Yeohash Raphael, Jennifer Stone, Litao Tao, Mark Warchol, 
+                  Seth A. Ament, Lisa V. Goodrich
+                  </h2>
+                <h3 class="paper-citation">Status: Submitted, in review</h3>
+
+                <hr />
+                
+                <p id="intro-paragraph" class="mt-5">
+                  To be able to compare hair cell development and regeneration across species, we sought to define a 
+                  common set of genes that define hair cells as distinct from supporting cells.  To do so we integrated 
+                  single-cell RNA-sequencing (scRNA-seq) datasets from zebrafish, chicken, mouse, and human inner ear 
+                  organs to create a cross-species atlas of 36 hair cell subtypes, as compared to supporting cells in 
+                  the same organs. Hierarchical clustering revealed species- and organ-specific gene expression 
+                  programs as well as sets of pan-hair cell genes. We identified 884 hair cell-enriched (HCE) genes 
+                  whose expression was elevated in most or all hair cell subtypes. These HCE genes included those 
+                  implicated in deafness and in core functions such as mechanotransduction and synaptic transmission. 
+                  We further validated novel HCE genes using in situ hybridization and demonstrated their utility in 
+                  benchmarking hair cell development, regeneration, and reprogramming. 
+                </p>
+              </div>
+              <div class="column is-6">
+                <h2>Explore data in gEAR!</h2>
+                <p>
+                  The data analyzed in this study are available here in the gEAR portal, where you can explore gene expression 
+                  across all datasets, create custom visualizations, and compare your own data to these reference datasets. 
+                  <br /><br />
+                  <a href="https://umgear.org/expression.html?gene_symbol=sox2&gene_symbol_exact_match=1&is_multigene=0&layout_id=d8a88ca9" target="_blank" class="button is-primary is-small">
+                    <span class="icon is-small">
+                      <i class="mdi mdi-chart-scatter-plot"></i>
+                    </span>
+                    <span>View data in gEAR</span>
+                  </a>
+                </p>
+                <hr />
+                <img class="img-fluid mt-3 mb-3" src="./profile_view_demo.png" alt="gEAR screenshot" style="border: 1px solid black;"/>
+              </div>
+            </div>
+
+            <hr />
+
+            <!-- row 1 -->
+            <div class="columns mt-5">
+
+              <!-- Comparison of RNA-Seq datasets for multiple hair cell types from four species ... -->
+              <div class="column is-6">
+                <h2>Comparison of RNA-Seq datasets for multiple hair cell types from four species</h2>
+                <div class="columns">
+                  <div class="column is-6">
+                    <img class="img-fluid" src="./fig1b_relabeled_as_a.png" alt="Figure 1B as A" />
+                    <br />
+                    <p><strong>A.</strong> Examples of datasets used for hair cell analysis</p>
+                    <p><strong>B.</strong> Correlation analysis of transcriptomes for the 23 most mature hair cell types</p>
+                  </div>
+                  <div class="column is-6">
+                    <img class="img-fluid" src="./fig1c_relabeled_as_b.png" alt="Figure 1B as A" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- AUC scores were used to identify hair ... -->
+              <div class="column is-6">
+                <h2>AUC scores were used to identify hair cell-enriched genes (relative to supporting cells)</h2>
+                <div class="columns">
+                   <div class="column is-4">
+                    <img class="img-fluid" src="./fig2b_right_as_fig2a.png" alt="Figure 2B right" />
+                  </div>
+                  <div class="column is-8">
+                    <img class="img-fluid" src="./fig2d_as_fig2b.png" alt="Figure 2D" />
+                  </div>
+                </div>
+                
+
+                <p>
+                  <strong>A.</strong> Example of AUC calculation for the gene Otof in outer hair cell 
+                  relative all supporting cells for P1 mouse.
+                </p> 
+                <p>
+                  <strong>B.</strong> AUC scores for Otof across all 36 datasets.
+                </p>
+
+              </div>
+
+            </div>
+
+            <hr />
+
+            <!-- row 2 -->
+            <div class="columns mt-5">
+
+              <!-- Defining a common set of 884 hair-cell enriched genes using four ... -->
+              <div class="column is-6">
+                <h2>Defining a common set of 884 hair-cell enriched genes using four different analyses</h2>
+                <div class="columns">
+                  <div class="column is-4">
+                    <img class="img-fluid" src="./fig4b_left_as_4a.png" alt="Figure 4B left" />
+                  </div>
+                  <div class="column is-8">
+                    <img class="img-fluid" src="./fig4b_right_as_4b.png" alt="Figure 4B right" />
+                  </div>
+                </div>
+                <p>
+                  <strong>A.</strong> Hair cell-enriched genes are defined as common across four analyses (Mechano ES1, 
+                  Mature ES1, Mature ES2, and Mechano ES2).
+                </p> 
+                <p>
+                  <strong>B.</strong> Top genes with highest AUC scores (enrichment in hair 
+                  cells relative to supporting cells) for all datasets.
+                </p>
+                <p>
+                  <strong>C.</strong> HCR in situ hybridization for the HCE genes Pcsk5 confirms enriched expression 
+                  in hair cells in all hair cell-bearing organs in the mouse inner ear, as well as in analogous organs 
+                  in other species, shown here for the chicken basilar papilla and utricle. 
+                </p>
+                <hr />
+                <img class="img-fluid mt-3 mb-3" src="./in_situs.png" alt="Figure 5b" style="border: 1px solid black;"/>
+                
+              </div>
+
+              <!-- Subsets of HCE genes define distinct phases of development and regeneration ... -->
+              <div class="column is-5">
+                <h2>Subsets of HCE genes define distinct phases of development and regeneration</h2>
+                <div class="columns">
+                  <div class="column is-6">
+                    <img class="img-fluid" src="./fig6a.png" alt="Figure 6A" />
+                    <br />
+                    <img class="img-fluid" src="./fig6g_relabeled_as_b.png" alt="Figure 6G as B" />
+                  </div>
+                  <div class="column is-6">
+                    <p><strong>A.</strong> Comparison of average AUC scores calculated for developmental and mechanosensitive 
+                      (mature) datasets. Each quadrant (Late, Early & Sustained, and Transient) defines subsets of hair cell-enriched
+                      genes relevant to hair cell maturation
+                    </p>
+                    <p><strong>B.</strong> Examples of genes within each subset defined in A</p>
+                    <p><strong>C.</strong> Distribution of defined subsets expressed during hair cell regeneration in chick basilar papilla</p>
+
+                    <br />
+                    <img class="img-fluid" src="./fig6f_relabeled_as_c.png" alt="Figure 6F as C" />
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </section><!-- end #content-c -->
+        </section> <!-- end #main-c -->
+      </div>
+      <footer>
+        <div>
+          <!-- content here TO BE inserted via common.js -->
+        </div>
+      </footer>
+
+      <script src="../../js/vendor/js.cookie.js"></script>
+
+      <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+      <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+      <script>document.write('<script src="../../js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script>document.write('<script src="../../js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
+      <!-- Page-specific JS file here -->
+      <script src="index.js"></script>
+    </body>
+</html>

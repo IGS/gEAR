@@ -832,7 +832,7 @@ def get_user_id_from_session_id(session_id):
     return user_id
 
 
-def get_gene_by_gene_symbol(gene_symbol, dataset_id):
+def get_gene_by_gene_symbol(gene_symbol, dataset_id) -> "Gene | None":
     qry_org_id = "SELECT organism_id from dataset where id = %s"
 
     conn = Connection()
@@ -3960,7 +3960,7 @@ class LayoutDisplay:
         conn.close()
 
     def get_is_multigene(self):
-        # single_plot_types = ["bar", "line", "scatter", "tsne/umap_dynamic", "tsne_dynamic", "violin", "pca_static", "tsne_static", "tsne", "umap_static", "svg", "epiviz"]
+        # single_plot_types = ["bar", "line", "scatter", "tsne/umap_dynamic", "tsne_dynamic", "violin", "pca_static", "tsne_static", "tsne", "umap_static", "svg", "gosling"]
         multi_plot_types = [
             "dotplot",
             "heatmap",

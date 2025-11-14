@@ -54,9 +54,9 @@ def main():
 
     output_filename = args.dataset_id
     if args.h5ad:
-        # This will also add image data into adata.uns
+        # This will NOT add image data into adata.uns
         print("Converting SpatialData to AnnData")
-        sp_class.convert_sdata_to_adata()
+        sp_class.adata = sp_class.sdata.tables["table"]
         output_filename += H5AD_OUTPUT_SUFFIX
         print("Writing to h5ad file: {0}".format(output_filename))
         sp_class.write_to_h5ad(filepath=DEST_DIRPATH / output_filename)

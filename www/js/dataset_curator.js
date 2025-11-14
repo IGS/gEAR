@@ -3,9 +3,9 @@
 
 'use strict';
 
-import { apiCallsMixin, createToast, getCurrentUser, initCommonUI, logErrorInConsole, trigger } from "./common.v2.js?v=a4b3d6c";
-import { curatorCommon } from "./curator_common.js?v=a4b3d6c";
-import { postPlotlyConfig } from "./plot_display_config.js?v=a4b3d6c";
+import { apiCallsMixin, createToast, getCurrentUser, initCommonUI, logErrorInConsole, trigger } from "./common.v2.js?v=cbfcd86";
+import { curatorCommon } from "./curator_common.js?v=cbfcd86";
+import { postPlotlyConfig } from "./plot_display_config.js?v=cbfcd86";
 
 curatorCommon.setIsMultigene(0);
 
@@ -95,7 +95,7 @@ class PlotlyHandler extends curatorCommon.PlotHandler {
                 curatorCommon.renderColorPicker(series);
                 for (const group in config["colors"]) {
                     const color = config["colors"][group];
-                    const colorField = document.getElementById(`${CSS.escape(group)}-color`);
+                    const colorField = document.getElementById(`${group}-color`);
                     if (colorField) {
                         colorField.value = color;
                     } else {
@@ -378,7 +378,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
                 curatorCommon.renderColorPicker(series);
                 for (const group in config["colors"]) {
                     const color = config["colors"][group];
-                    const colorField = document.getElementById(`${CSS.escape(group)}-color`);
+                    const colorField = document.getElementById(`${group}-color`);
                     if (colorField) {
                         colorField.value = color;
                     } else {
@@ -767,7 +767,7 @@ curatorCommon.registerChooseGenes(chooseGene);
  */
 const colorSVG = (chartData, datasetId, plotConfig) => {
     // I found adding the mid color for the colorblind mode  skews the whole scheme towards the high color
-    const colorblindMode = getCurrentUser().colorblind_mode;
+    const colorblindMode = getCurrentUser()?.colorblind_mode || false;
     const lowColor = colorblindMode ? 'rgb(254, 232, 56)' : plotConfig["low_color"];
     const midColor = colorblindMode ? null : plotConfig["mid_color"];
     const highColor = colorblindMode ? 'rgb(0, 34, 78)' : plotConfig["high_color"];

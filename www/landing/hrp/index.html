@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>HRP landing page</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="-1">
+        <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
+
+        <link rel="stylesheet" href="../../css/gear-theme-purple.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css" />
+
+        <!-- Ensures we always get a new version (during our current active development cycles) -->
+        <script>document.write('<link rel="stylesheet" href="../../css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
+
+        <!--Page-specific CSS here -->
+        <link rel="stylesheet" href="./index.css" />
+        
+    </head>
+    <body>
+      <div id="main-layout-c" class="columns is-fullheight">
+
+        <!--#include virtual="/include/primary_nav.html" -->
+
+        <section id="main-c" class="column pl-0 pt-0">
+
+          <!--#include virtual="/include/header_bar.html" -->
+
+          <section id="content-c" class="p-5" data-nav-link="workspace">
+            <div id="hhf-hrp-banner-c" class="columns is-vcentered">
+              <div class="column is-4">
+                <img  class="img-fluid" src="/img/by_domain/gear/hhf_logo_with_tagline_hires.png" alt="" />
+              </div>
+              <div class="column is-2"></div>
+              <div class="column is-6">
+                <img class="img-fluid" src="/img/by_domain/gear/HRP_mini_banner_hires.png" alt="" />
+              </div>
+            </div>
+
+            <hr />
+            
+            <h1 id="page-title" class="mt-5">About the HRP</h1>
+
+            <p id="intro-paragraph" class="mt-5">
+              The <a href="https://hearinghealthfoundation.org/hearing-restoration-project" alt="HRP link" target="_blank">Hearing Restoration Project</a> 
+              is a collaborative effort to accelerate research to promote hair cell regeneration. We comprise 
+              <a href="https://hearinghealthfoundation.org/hearing-restoration-project#working-groups" alt="HRP working groups" target="_blank">thirteen laboratories</a> 
+              in the US and Canada that work to identify roadblocks in the field, brainstorm solutions, develop resources, 
+              and share and discuss data. Current efforts are focused on defining the molecular signatures of mature hair 
+              cells and identifying the cellular signals that enable supporting cells from some species, organs, and ages 
+              to regenerate functional hair cells but prevent this response in mature mammals. Our goal is to develop 
+              approaches to drive hair cell regeneration in the human cochlea, to heal hearing loss and tinnitus. We 
+              also aim to have a broader impact on the field by training and supporting young scientists and by providing 
+              access to the data we have produced so that others may benefit. The gEAR platform was developed with support 
+              from HRP and the Hearing Health Foundation to promote data sharing and analysis.
+            </p>
+
+            <div id="organism-parade" class="columns mt-5">
+              <div class="column is-3 has-text-centered">
+                <img class="img-fluid" src="./org-chicken.png" alt="Chicken" />
+              </div>
+              <div class="column is-3 has-text-centered">
+                <img class="img-fluid" src="./org-human.png" alt="Human" />
+              </div>
+              <div class="column is-3 has-text-centered">
+                <img class="img-fluid" src="./org-zebrafish.png" alt="Zebrafish" />
+              </div>
+              <div class="column is-3 has-text-centered">
+                <img class="img-fluid" src="./org-mouse.png" alt="Mouse" />
+              </div>
+            </div>
+
+
+            <div class="columns mt-5">
+              <div class="column is-6 pr-5">
+                <h1><i class="mdi mdi-tools is-small"></i> Tools - HRP Hair Cell Gene Explorer</h1>
+                <p class="mt-5 mb-5">
+                  To facilitate exploration of the data we analyzed and to use the results to design and evaluate efforts to 
+                  promote hair cell regeneration, we developed the <a href="https://herblab.shinyapps.io/shinyapp/" target="_blank">HRP Hair Cell Gene Explorer</a>. This application can be used 
+                  to look more closely at the analyses we performed, to assess the enrichment of a gene of interest in hair 
+                  cells from other species and timepoints, and to identify potential new markers for those hair cells. We 
+                  also established a list of 884 “hair cell enriched” (HCE) genes that are enriched in developing and mature 
+                  hair cells across species, providing a common metric for assessing the nature of hair cells regenerated 
+                  experimentally. Examples of how this list can be used are provided in the application. 
+                </p>
+                <a href="https://herblab.shinyapps.io/shinyapp/" target="_blank">
+                  <img class="img-fluid" src="./shiny_screenshot.png" alt="Hair cell gene explorer" />
+                </a>
+              </div>
+              <div class="column is-6">
+                <div class="columns">
+                  <div class="column is-5">
+                    <h1><i class="mdi mdi-school is-small"></i> Publications</h1>
+                    <div id="navigation-container" class="columns is-vcentered">
+                      <div class="column is-3 has-text-left">
+                        <button id="prev-paper-btn" class="button is-small is-primary">
+                          <span class="icon is-small">
+                            <i class="mdi mdi-arrow-left"></i>
+                          </span>
+                        </button>
+                      </div>
+                      <div class="column is-6 has-text-centered">
+                        <p id="counter" class="is-size-5">
+                          <span id="current-paper-count">1</span> / <span id="total-paper-count"></span>
+                        </p>
+                      </div>
+                      <div class="column is-3 has-text-right">
+                        <button id="next-paper-btn" class="button is-small is-primary">
+                          <span class="icon is-small">
+                            <i class="mdi mdi-arrow-right"></i>
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="column is-7"></div>
+                </div>
+
+                <div id="paper-container" class="columns mt-1">
+                  <div class="column is-6 mt-0 pt-0">
+                    <p class="paper_title mt-0 pt-0" id="paper-title"></p>
+                    <p class="paper_authors" id="paper-authors"></p>
+                    <p class="paper_journal" id="paper-journal"></p>
+                    <p class="paper_doi" id="paper-doi"></p>
+
+                    <hr />
+
+                    <ul class="mt-5 mb-5 ml-5" id="paper-links">
+                      <li><i class="mdi mdi-eye-outline is-small"></i> <a id="landing-link" href="#">View summary page</a></li>
+                      <li><i class="mdi mdi-book-education-outline is-small"></i> <a id="read-paper-link" href="#">Read paper</a></li>
+                      <li><i class="mdi mdi-chart-scatter-plot is-small"></i> <a id="view-data-link" href="#">View data in gEAR</a></li>
+                      <li><i class="mdi mdi-download is-small"></i> <a id="download-data-link" href="#">Download data</a></li>
+                    </ul>
+                  </div>
+                  <div class="column is-6 mt-0 pt-0">
+                  <img id="paper-image" class="img-fluid" src="" alt="Figure" style="border: 1px solid black;"/>
+                  </div>
+                </div>
+              </div>
+            </div>
+      
+          </section><!-- end #content-c -->
+        </section> <!-- end #main-c -->
+      </div>
+      <footer>
+        <div>
+          <!-- content here TO BE inserted via common.js -->
+        </div>
+      </footer>
+
+      <script src="../../js/vendor/js.cookie.js"></script>
+
+      <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
+      <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+      <script>document.write('<script src="../../js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script>document.write('<script src="../../js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+
+      <!-- Page-specific JS file here -->
+      <script src="index.js"></script>
+    </body>
+</html>

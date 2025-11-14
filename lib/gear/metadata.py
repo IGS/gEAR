@@ -52,10 +52,12 @@ def get_value_from_df(df, index_label):
         if value == 'ATAC-Seq':
             value = 'atac-seq'
 
+    # If value is NaN, return None
     if is_na(value) is True:
         return None
     else:
         return value
+    
 
 
 class Metadata:
@@ -363,6 +365,7 @@ class Metadata:
             if len(pubmed_ids):
                 if not isinstance(ldesc, str):
                     ldesc = str(ldesc) if ldesc is not None else ''
+
                 ldesc += "<br>Additional Pubmed IDS: {0}".format(', '.join(pubmed_ids))
 
         platform_id = get_value_from_df(df, 'platform_id')
