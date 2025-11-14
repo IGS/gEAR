@@ -36,16 +36,18 @@ Check the requirement.txt file in <git_repo_root>/docker for the latest packages
 `./pip3 install -r <git_repo_root/docker/requirements.txt`
 `./pip3 uninstall dask-expr -y`
 
+If the requirements.txt will not install due to a stack depth issue, you can use the `requirements.full.txt` instead, which was made using `pip freeze > requirements.full.txt`. This file contains all versioned scripts so pip does not have to compute the best version for non-mentioned packages.
 
 ## pip install option B (manual)
 
-NOTE: Some of the packages will indirectly install dask-expr, which is currently broken for spatialdata, with no intention of fixing. So it is necessary to uninstall dask-expr to avoid issues with spatialdata (https://github.com/scverse/spatialdata/pull/570)
+NOTE: Some of the packages will indirectly install dask-expr, which is currently broken for spatialdata, with no intention of fixing. So it is necessary to uninstall dask-expr to avoid issues with spatialdata (<https://github.com/scverse/spatialdata/pull/570>)
 
+NOTE 2: Really try to keep the requirements.txt in sync with the files below.  While you can use the file to do the installation, @jorvis prefers to have them explicitly listed here.
 
+```bash
+    ./pip3 install --upgrade pip
 
-    $ ./pip3 install --upgrade pip
-
-    $ ./pip3 install \
+    ./pip3 install \
       aiohttp==3.8.3 \
       aiohttp_retry==2.9.1 \
       anndata==0.10.6 \
@@ -95,24 +97,31 @@ NOTE: Some of the packages will indirectly install dask-expr, which is currently
       tables==3.9.2 \
       watchfiles \
       xlrd==1.2.0
-    $ ./pip3 uninstall dask-expr -y
-    $ sudo mkdir /opt/bin
-    $ sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/
+    ./pip3 uninstall dask-expr -y
+    sudo mkdir /opt/bin
+    sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/
+```
 
-# Gotchas
+## Gotchas
 
 Scanpy (or dependencies like numba) assumes it can write in several directories which the web server won't be able to write to by default, so this can be fixed with:
 
-    $ cd /opt/Python-${PYTHONV}/lib/python${PYTHON_MINORV}/site-packages/scanpy
-    $ find ./ -name __pycache__ -exec chmod 777 {} \;
+```bash
+    cd /opt/Python-${PYTHONV}/lib/python${PYTHON_MINORV}/site-packages/
+    find ./ -name __pycache__ -exec chmod 777 {} \;
+```
 
 NOTE: Installing custom version of diffxpy that is based on the latest commit on the main branch (at the time). It does not have a release tag, but fixes a NumPy bug occurs with older diffxpy commits and newer numpy releases.
 
-    $ /opt/Python-${PYTHONV}/bin/python3 -m pip install git+https://github.com/theislab/diffxpy.git@7609ea935936e3739fc4c71b75c8ee8ca57f51ea
+```bash
+    /opt/Python-${PYTHONV}/bin/python3 -m pip install git+https://github.com/theislab/diffxpy.git@7609ea935936e3739fc4c71b75c8ee8ca57f51ea
+```
 
 The MulticoreTSNE module currently fails with cmake 3.22.0 or greater.  I have a pending pull request to fix this but until then:
 
-    $ /opt/Python-${PYTHONV}/bin/python3 -m pip install git+https://github.com/jorvis/Multicore-TSNE.git@68325753c4ab9758e3d242719cd4845d751a4b6c
+```bash
+    /opt/Python-${PYTHONV}/bin/python3 -m pip install git+https://github.com/jorvis/Multicore-TSNE.git@68325753c4ab9758e3d242719cd4845d751a4b6c
+```
 
 ## Note about Flask
 
