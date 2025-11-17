@@ -89,7 +89,8 @@ def main():
     try:
         adata = ana.get_adata(**kwargs)
     except Exception as e:
-        print(f"ERROR: {str(e)}. Switching to non-sparse representation.", file=sys.stderr)
+        # This is non-fatal
+        print(f"INFO: {str(e)}. Switching to non-sparse representation.", file=sys.stderr)
         adata = ana.get_adata()
 
     cluster_method = 'louvain'

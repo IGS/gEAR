@@ -244,6 +244,8 @@ class AnalysisUI {
     compareGenesViolinContainer = "#compare-genes-violin-c"
     compareGenesRankedRevContainer = "#compare-genes-ranked-rev-c"
     compareGenesViolinRevContainer = "#compare-genes-violin-rev-c"
+    compareGenesTableContainerF = "#compare-genes-table-container-f"
+    compareGenesTableContainerR = "#compare-genes-table-container-r"
     compareGenesTableFElt = "#compare-genes-table-f"
     compareGenesTableRElt = "#compare-genes-table-r"
     compareGenesInstructionsElt = `${this.compareGenesSection} .tool-instructions`

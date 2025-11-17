@@ -220,6 +220,13 @@ class Analysis:
             # change "user_session_id" to "analysis_session_id" for consistency
             if "user_session_id" in json_data:
                 json_data["analysis_session_id"] = json_data.pop("user_session_id")
+
+            # Analysis object expects a list for this
+            if "group_labels" in json_data and type(json_data["group_labels"] is dict):
+                json_data["group_labels"] = list(json_data["group_labels"].values())
+
+            # Handle cases, like in "get_stored_analysis.cgi" where we want to pass success
+            json_data["success"] = 1
             return json.dumps(json_data, indent=4)
 
     def _serialize_json(self):
@@ -599,16 +606,17 @@ class AnalysisCollection:
 
                 if json_path.exists():
                     json_obj = json.loads(open(json_path).read())
-                    analyses.append(ana_cls.from_json(json_obj))
+                    ana = ana_cls.from_json(json_obj)
+                    analyses.append(ana)
             else:
                 for json_thing in a_dir.glob("**/*.pipeline.json"):
                     json_path = json_thing
                     json_obj = json.loads(open(json_path, encoding="utf-8").read())
-                    analyses.append(ana_cls.from_json(json_obj))
+                    ana = ana_cls.from_json(json_obj)
+                    analyses.append(ana)
 
         return analyses
 
-    @property
     def _serialize_json(self):
         # Called when json modules attempts to serialize
         return self.__dict__

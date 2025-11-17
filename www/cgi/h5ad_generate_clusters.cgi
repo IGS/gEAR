@@ -118,7 +118,9 @@ def main():
 
         # Filter only the clusters we want to use
         kept_indexes = list(filter(lambda i: cluster_info[i]["keep"], range(len(cluster_info))))
-        adata = adata[adata.obs["louvain"].isin(kept_indexes), :]
+        # Use a 1-D boolean mask for indexing to satisfy type checkers and AnnData's indexing
+        mask = adata.obs["louvain"].isin(kept_indexes).to_numpy(dtype=bool)
+        adata = adata[mask]
 
         # Create mapping of original cluster IDs and new labels. Clusters will merge on duplicated labels
         idx2new_label = dict()
@@ -134,7 +136,7 @@ def main():
             num_cells = adata.obs[adata.obs["louvain"] == label]["louvain"].count()
             if not num_cells:
                 continue
-            group_labels.append({'group_label':idx, 'num_cells':num_cells, 'genes': label})
+            group_labels.append({'group_label':str(idx), 'num_cells':num_cells, 'genes': label})
             label2idx[label] = idx
 
         # Ensure orig_louvain is parallel to the group_labels, so relabeling uses the correct cluster numbers
