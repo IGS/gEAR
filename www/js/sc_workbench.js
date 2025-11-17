@@ -352,18 +352,6 @@ const resetWorkbench = () => {
     document.querySelectorAll(".js-step-collapsable button").forEach((button) => {
         button.disabled = false;
     });
-
-    /*
-    for (const elt of document.querySelectorAll('.reset-on-change')) {
-        // TODO - replace
-        elt.classList.add("is-hidden");
-    }
-
-    for (const elt of document.querySelectorAll('.empty-on-change')) {
-        // TODO - replace
-        elt.replaceChildren();
-    }
-    */
 }
 
 /**

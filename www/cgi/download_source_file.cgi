@@ -61,7 +61,6 @@ def main():
 
     # if analysis ID is passed, retrieve the h5ad file for the analysis to download
     if analysis_id:
-
         # Need session id to get "user_unsaved" analyses
         if not session_id:
           session_id = None

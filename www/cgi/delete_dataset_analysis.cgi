@@ -115,7 +115,7 @@ def main():
             result = {'success': 1}
         else:
             result = {'success': 0, 'error': 'Refusing to delete: invalid target pattern'}
-        
+
     except Exception:
         # restore the backup
         #shutil.move(source_pipeline_base + '.deleted', source_pipeline_base)
