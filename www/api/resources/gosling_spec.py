@@ -207,12 +207,18 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     xe = gos.X(field="chromEnd", type="genomic")  # type:ignore
     row = gos.Row(field="strand", type="nominal", domain=[1, -1], range=[0, 20])  # type:ignore
     color = gos.Color(field="strand", type="nominal", domain=[1, -1], range=["darkblue", "darkred"])  # type:ignore
+    tooltip=[
+                gos.Tooltip(field="chromStart", type="genomic", alt="Start Position"),  # type: ignore
+                gos.Tooltip(field="chromEnd", type="genomic", alt="End Position"),  # type: ignore
+                gos.Tooltip(field="strand", type="nominal", alt="Strand"),  # type: ignore
+                gos.Tooltip(field="name", type="nominal", alt="Name"),  # type: ignore
+            ]
 
     gene_track = (
         gos.Track(
             data=bed_data  # type: ignore
         )
-        .encode(x=x, xe=xe, row=row, color=color)
+        .encode(x=x, xe=xe, row=row, color=color, tooltip=tooltip)
         .visibility_lt(
             measure="width", threshold="|xe-x|", transitionPadding=10, target="mark"
         )
@@ -228,15 +234,9 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
         style=gos.Style(dy=-10),  # type: ignore
     )
 
-    tooltip_track = (
+    gene_rule_track = (
         gene_track.mark_rule()
         .encode(
-            tooltip=[
-                gos.Tooltip(field="chromStart", type="genomic", alt="Start Position"),  # type: ignore
-                gos.Tooltip(field="chromEnd", type="genomic", alt="End Position"),  # type: ignore
-                gos.Tooltip(field="strand", type="nominal", alt="Strand"),  # type: ignore
-                gos.Tooltip(field="name", type="nominal", alt="Name"),  # type: ignore
-            ],
             strokeWidth=gos.StrokeWidth(value=1),
         )
         .properties(id=f"{title}-annotation")
@@ -245,7 +245,7 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
         )
     )
 
-    tracks = [text_track, tooltip_track]
+    tracks = [text_track, gene_rule_track]
 
     exon_file_name = ASSEMBLY_TO_EXON_FILE.get(assembly, None)
     if not exon_file_name:
@@ -275,6 +275,7 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
             row=row,
             x=x,
             xe=xe,
+            tooltip=tooltip,
             size=gos.Size(value=10),  # type:ignore
         )
         .visibility_lt(
@@ -351,6 +352,7 @@ def build_genome_wide_view(
             x=gos.X(field="chromStart", type="genomic"),  # type:ignore
             xe=gos.X(field="chromEnd", type="genomic"),  # type:ignore
             color=gos.Color(field="chrom", type="nominal", range=["#666666", "#999999"]),  # type:ignore
+            size=gos.Size(value=20),  # type: ignore
         )
         .properties(
             title=title,
@@ -521,11 +523,11 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
         spec_builder = spec_builder_class(
             data_url=data_url, color=color, group=group, zoom=zoom, title=title
         )
-        left_track = spec_builder.addTrack(**kwargs)
+        left_track = spec_builder.add_track(**kwargs)
         parent_tracks_dict["left"].append(left_track)
 
         if zoom:
-            right_track = spec_builder.addTrack(**kwargs)
+            right_track = spec_builder.add_track(**kwargs)
             right_track.id = f"right-track-{Path(data_url).stem}"
             parent_tracks_dict["right"].append(right_track)
 
@@ -857,7 +859,7 @@ class TrackSpec(ABC):
         self.track = None
 
     @abstractmethod
-    def addTrack(self, **kwargs):
+    def add_track(self, **kwargs):
         pass
 
     @abstractmethod
@@ -866,7 +868,7 @@ class TrackSpec(ABC):
 
 
 class BamSpec(TrackSpec):
-    def addTrack(self, **kwargs):
+    def add_track(self, **kwargs):
         url = self.data_url
         color = self.color
 
@@ -916,7 +918,7 @@ class BamSpec(TrackSpec):
 
 
 class BedSpec(TrackSpec):
-    def addTrack(self, **kwargs):
+    def add_track(self, **kwargs):
         url = self.data_url
         color = self.color
 
@@ -966,7 +968,7 @@ class BedSpec(TrackSpec):
 
 
 class BigWigSpec(TrackSpec):
-    def addTrack(self, **kwargs):
+    def add_track(self, **kwargs):
         url = self.data_url
         color = self.color
 
@@ -1011,8 +1013,14 @@ class BigWigSpec(TrackSpec):
             .encode(
                 x=gos.X(field="start", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
                 xe=gos.X(field="end", type="genomic"),  # pyright: ignore[reportArgumentType]
-                y=gos.Y(field=y_field, type="quantitative", axis="right", **y_kwargs),  # pyright: ignore[reportArgumentType]
+                y=gos.Y(field=y_field, type="quantitative", axis="right", aggregate="count", **y_kwargs),  # pyright: ignore[reportArgumentType]
                 color=gos.Color(value=color),
+                # Tooltip only works when hovering over the peak
+                tooltip=[
+                    gos.Tooltip(field="position", type="genomic", alt="Position"),  # type: ignore
+                    gos.Tooltip(field="value", type="quantitative", alt="Peak value", format=".2"),  # type: ignore
+
+                ],
                 #dataTransform=data_transform
             )
         )
@@ -1027,9 +1035,8 @@ class BigWigSpec(TrackSpec):
             raise ValueError("Invalid URL: must end with .bw or .bigwig")
         return True
 
-
 class VcfSpec(TrackSpec):
-    def addTrack(self, **kwargs):
+    def add_track(self, **kwargs):
         url = self.data_url
         color = self.color
 
