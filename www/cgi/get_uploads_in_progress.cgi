@@ -1,7 +1,7 @@
 #!/opt/bin/python3
 
 """
-For a given session_id, returns information on any uploads 
+For a given session_id, returns information on any uploads
 in an incomplete state.
 
 Data structure returned:
@@ -9,7 +9,7 @@ Data structure returned:
 {
    'success': 1,
    'uploads': [
-        { 
+        {
    ]
 }
 
@@ -36,7 +36,7 @@ def main():
         result['message'] = 'No session_id provided'
         print(json.dumps(result))
         return
-    
+
     user_upload_file_base = "../uploads/files/{0}".format(session_id)
 
     # If this directory doesn't exist, there are no uploads in progress
@@ -44,14 +44,14 @@ def main():
         result['success'] = 1
         print(json.dumps(result))
         return
-    
+
     # Get the list of share_dirs in the directory
     #  Each of these should be a share ID for an upload in progress
     share_ids = os.listdir(user_upload_file_base)
     for share_id in share_ids:
         share_dir = "{0}/{1}".format(user_upload_file_base, share_id)
         metadata_file = "{0}/metadata.json".format(share_dir)
-        
+
         # get some attributes from the metadata file
         with open(metadata_file, 'r') as f:
             metadata = json.load(f)
@@ -62,7 +62,9 @@ def main():
                     'dataset_type': metadata.get('dataset_type', ''),
                     'title': metadata.get('title', ''),
                     'status': 'metadata uploaded',
-                    'load_step': 'upload-dataset'
+                    'load_step': 'upload-dataset',
+                    'perform_primary_analysis': metadata.get('perform_primary_analysis', False),
+                    'dataset_is_spatial': metadata.get('dataset_is_spatial', False),
                 }
             )
 
@@ -93,7 +95,7 @@ def main():
                 elif processing_status == 'complete':
                     result['uploads'][-1]['status'] = 'processed'
                     result['uploads'][-1]['load_step'] = 'finalize-dataset'
-    
+
     result['success'] = 1
     print(json.dumps(result))
 

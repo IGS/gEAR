@@ -66,9 +66,9 @@ export class FacetWidget {
 
             for (const item of filter.items) {
                 const escapedItemName = CSS.escape(item.name);
-                // NOTE: For some reason, CSS.escape() does not escape properly for document.getElementById()
+                // NOTE: getElementById requires the literal name and querySelector needs escaping
                 const filterItemCount = document.querySelector(`#filter-item-${escapedFilterName}-${escapedItemName} .filter-item-count`);
-                const filterItem = document.querySelector(`#filter-item-${escapedFilterName}-${escapedItemName}`);
+                const filterItem = document.getElementById(`filter-item-${filter.name}-${item.name}`);
                 // show item
                 filterItemCount.classList.remove('is-hidden');
                 filterItem.classList.remove('is-hidden');

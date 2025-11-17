@@ -1,10 +1,7 @@
 import json
-import numpy as np
-import os, sys
+
 import pandas as pd
 import requests
-
-from gear.metadatavalidator import MetadataValidator as mdv
 
 
 class FromGeo:
@@ -15,7 +12,8 @@ class FromGeo:
         3. add GEO metadata to existing user's metadata
     """
 
-    def get_geo_data(geo_id=None):
+    @classmethod
+    def get_geo_data(cls, geo_id: str | None=None) -> list:
         """
         Using geo_id (GSExxxxx or GSMxxxx), retrieves GEO metadata for that ID.
 
@@ -65,8 +63,8 @@ class FromGeo:
         content = r.content.decode().split('\r\n')
         return content
 
-
-    def process_geo_data(content=None, json_or_dataframe=None):
+    @classmethod
+    def process_geo_data(cls, content: list | None=None, json_or_dataframe: str | None=None) -> str | pd.DataFrame | None:
         """
         Use this to process the request GET content retrieved from in method get_geo_data()
 
@@ -115,15 +113,15 @@ class FromGeo:
 
             # geo_data[k] = v
             geo_data[k] = ", ".join([str(val) for val in v])
- 
+
         if json_or_dataframe.lower() == 'json':
             return json.dumps(geo_data)
 
         if json_or_dataframe.lower() == 'dataframe':
             return pd.DataFrame.from_dict(geo_data, orient='index')
 
-
-    def add_geo_data(metadata=None, geo_data=None):
+    @classmethod
+    def add_geo_data(cls, metadata: pd.DataFrame | None=None, geo_data: pd.DataFrame | None=None) -> pd.DataFrame | None:
         """
         If a value is empty (np.nan) in the user's metadata, populate it with the
         value from the same field in the GEO dataframe.
@@ -148,17 +146,17 @@ class FromGeo:
             missing_values = metadata[metadata['value'].isna() & (metadata['filled_by_geo'].notna())]
 
             # For each empty field, fill it with the value from the GEO dataframe (if it's present in the GEO dataframe)
-            for index, value in missing_values.iterrows():
+            for index, value in missing_values.itertuples():
                 if index in geo_data.index:
-                    metadata.loc[index, 'value'] = geo_data.loc[index, 0]   
+                    metadata.loc[index, 'value'] = geo_data.loc[index][0]
         else:
-            #print("DEBUG: filled_by_geo not in metadata", file=sys.stderr)            
-            for index, value in geo_data.iterrows():
+            #print("DEBUG: filled_by_geo not in metadata", file=sys.stderr)
+            for index, value in geo_data.itertuples():
                 #print("\tDEBUG: iterating a row", file=sys.stderr)
 
                 if index in metadata.index and metadata.loc[index, 'value'] == "":
                     #print("\tDEBUG: assigning metadata value for index {0}".format(index), file=sys.stderr)
-                    metadata.loc[index, 'value'] = geo_data.loc[index, 0]
+                    metadata.loc[index, 'value'] = geo_data.loc[index][0]
 
         #print("DEBUG: returning metadata object", file=sys.stderr)
         return metadata

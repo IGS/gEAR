@@ -4,7 +4,7 @@ import geardb
 from flask import request
 from flask_restful import Resource
 
-from .common import get_adata_shadow
+from .common import get_adata_shadow, get_spatial_adata
 
 
 def tsne_or_umap_present(ana):
@@ -46,15 +46,27 @@ class MGAvailableDisplayTypes(Resource):
         mg_umap_static = False
         mg_pca_static = False
 
-        ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
-        h5_path = ds.get_file_path()
+        ds = geardb.get_dataset_by_id(dataset_id)
+        if not ds:
+            return {
+                "success": -1,
+                'message': "No dataset found with that ID"
+            }
 
         try:
-            adata = get_adata_shadow(analysis_id, dataset_id, session_id, h5_path)
+          if ds.dtype == "spatial":
+              adata = get_spatial_adata(analysis_id, dataset_id, session_id)
+          else:
+              adata = get_adata_shadow(analysis_id, dataset_id, session_id)
         except FileNotFoundError:
             return {
                 "success": -1,
-                'message': "No h5 file found for this dataset"
+                'message': "No dataset file found."
+            }
+        except Exception as e:
+            return {
+                "success": -1,
+                'message': str(e)
             }
 
         columns = adata.obs.columns.tolist()
@@ -141,24 +153,38 @@ class AvailableDisplayTypes(Resource):
         tsne_umap_pca_dynamic = False
         svg_exists = False
 
-
-        ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
-        h5_path = ds.get_file_path()
-        # Determine if SVG exists for the primary dataset.
-        (base_path, _) = h5_path.split('/datasets/')
-        svg_path = f"{base_path}/datasets_uploaded/{dataset_id}.svg"
-        # santize svg_path to prevent path traversal
-        base_path = os.path.normpath(base_path)
-        full_svg_path = os.path.normpath(svg_path)
-        if full_svg_path.startswith(base_path) and os.path.exists(full_svg_path):
-          svg_exists = True
+        ds = geardb.get_dataset_by_id(dataset_id)
+        if not ds:
+            return {
+                "success": -1,
+                'message': "No dataset found with that ID"
+            }
 
         try:
-            adata = get_adata_shadow(analysis_id, dataset_id, session_id, h5_path)
+          if ds.dtype == "spatial":
+              adata = get_spatial_adata(analysis_id, dataset_id, session_id)
+          else:
+              adata = get_adata_shadow(analysis_id, dataset_id, session_id)
+
+              # Determine if SVG exists for the primary dataset.
+              h5_path = ds.get_file_path()
+              (base_path, _) = h5_path.split('/datasets/')
+              svg_path = f"{base_path}/datasets_uploaded/{dataset_id}.svg"
+              # santize svg_path to prevent path traversal
+              base_path = os.path.normpath(base_path)
+              full_svg_path = os.path.normpath(svg_path)
+              if full_svg_path.startswith(base_path) and os.path.exists(full_svg_path):
+                svg_exists = True
+
         except FileNotFoundError:
             return {
                 "success": -1,
-                'message': "No h5 file found for this dataset"
+                'message': "No dataset file found."
+            }
+        except Exception as e:
+            return {
+                "success": -1,
+                'message': str(e)
             }
 
         if analysis_id:

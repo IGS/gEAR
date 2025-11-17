@@ -4,9 +4,9 @@
     Classes representing overall analysis (pipeline) elements and their child classes.
 */
 
-import { blockAnalysisStep, openNextAnalysisStep, UI } from "./analysis-ui.js?v=9858a6e";
-import { failStepWithHref, passStepWithHref, resetStepperWithHrefs } from "../stepper-fxns.js?v=9858a6e";
-import { apiCallsMixin, commonDateTime, convertToFormData, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, logErrorInConsole } from "../common.v2.js?v=9858a6e";
+import { blockAnalysisStep, openNextAnalysisStep, UI } from "./analysis-ui.js?v=cbfcd86";
+import { failStepWithHref, passStepWithHref, resetStepperWithHrefs } from "../stepper-fxns.js?v=cbfcd86";
+import { apiCallsMixin, commonDateTime, convertToFormData, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, logErrorInConsole } from "../common.v2.js?v=cbfcd86";
 
 let analysisLabels = new Set();
 
@@ -28,7 +28,7 @@ export class Analysis {
         label = `Unlabeled ${commonDateTime()}`,
         type,
         vetting,
-        analysisSessionId = getCurrentUser().session_id,
+        analysisSessionId = getCurrentUser()?.session_id,
         genesOfInterest = [],
         groupLabels = []
     } = {}) {
@@ -141,7 +141,7 @@ export class Analysis {
 
             this.type = 'user_unsaved';
             this.id = newAnalysisId;
-            this.analysisSessionId = getCurrentUser().session_id;
+            this.analysisSessionId = getCurrentUser()?.session_id;
 
             document.querySelector(UI.analysisActionContainer).classList.remove("is-hidden");
             document.querySelector(UI.analysisStatusInfoContainer).classList.add("is-hidden");
@@ -250,7 +250,7 @@ export class Analysis {
                 const option = document.createElement("option");
                 option.dataset.analysisId = analysis.id;
                 option.dataset.analysisType = analysis.type;
-                option.dataset.analysisSessionId = analysis.session_id || getCurrentUser().session_id;
+                option.dataset.analysisSessionId = analysis.session_id || getCurrentUser()?.session_id;
                 option.dataset.datasetId = analysis.dataset_id;
                 option.textContent = analysis.label || "Unlabeled"
                 // ? Using standard HTML, cannot add icons to options, so making icons by vetting status is not possible
@@ -384,8 +384,9 @@ export class Analysis {
                 dataset_id: this.dataset.id
             }));
 
-            if (data.error) {
-                throw new Error(data.error);
+            if (data.success < 1) {
+                const error = data.error || "Unknown error. Please contact gEAR support.";
+                throw new Error(error);
             }
 
             // Load the analysis data and assign it to the current instance
@@ -430,7 +431,7 @@ export class Analysis {
             datasetIsRaw: data.dataset_is_raw,
             label: data.label,
             type: data.type,
-            analysisSessionId: data.session_id || getCurrentUser().session_id,
+            analysisSessionId: data.session_id || getCurrentUser()?.session_id,
             groupLabels: data.group_labels,
             genesOfInterest: data.genesOfInterest
         });
@@ -537,8 +538,11 @@ export class Analysis {
                 createToast("Preliminary figures not found. You can still continue the analysis though.", "is-warning");
                 return;
             }
-            document.querySelector(UI.primaryInitialViolinContainer).innerHTML = `<a target="_blank" href="./datasets/${this.dataset.id}.prelim_violin.png"><img src="./datasets/${this.dataset.id}.prelim_violin.png" class="img-fluid img-zoomed" /></a>`;
-            document.querySelector(UI.primaryInitialScatterContainer).innerHTML = `<a target="_blank" href="./datasets/${this.dataset.id}.prelim_n_genes.png"><img src="./datasets/${this.dataset.id}.prelim_n_genes.png" class="img-fluid img-zoomed" /></a>`;
+
+            const datasetPathPrefix = data.is_spatial ? "datasets/spatial" : "datasets";
+
+            document.querySelector(UI.primaryInitialViolinContainer).innerHTML = `<a target="_blank" href="./${datasetPathPrefix}/${this.dataset.id}.prelim_violin.png"><img src="./${datasetPathPrefix}/${this.dataset.id}.prelim_violin.png" class="img-fluid img-zoomed" /></a>`;
+            document.querySelector(UI.primaryInitialScatterContainer).innerHTML = `<a target="_blank" href="./${datasetPathPrefix}/${this.dataset.id}.prelim_n_genes.png"><img src="./${datasetPathPrefix}/${this.dataset.id}.prelim_n_genes.png" class="img-fluid img-zoomed" /></a>`;
             createToast("Preliminary plots displayed", "is-success");
             document.querySelector(UI.primaryInitialPlotContainer).classList.remove("is-hidden");
 
@@ -661,6 +665,19 @@ export class Analysis {
 
     }
 
+    /**
+     * Asynchronously saves the current analysis state to the server.
+     *
+     * - Clones the analysis object, omitting circular references.
+     * - Converts all keys to snake_case for backend compatibility.
+     * - Handles legacy field mappings and removes redundant data.
+     * - Sends the analysis state to the backend via an HTTP POST request.
+     * - Updates the UI and analysis list upon successful save.
+     * - Displays success or error notifications as appropriate.
+     *
+     * @async
+     * @returns {Promise<void>} Resolves when the save operation is complete.
+     */
     async save() {
 
         if (!this.analysisSessionId) {
@@ -812,7 +829,7 @@ class AnalysisStepLabeledTsne {
      * @returns {Promise<string>} - The t-SNE image data.
      */
     async getTsneImageData(geneSymbol, config) {
-        config.colorblind_mode = getCurrentUser().colorblind_mode;
+        config.colorblind_mode = getCurrentUser()?.colorblind_mode || false;
         config.gene_symbol = geneSymbol;
 
         // in order to avoid circular references (since analysis is referenced in the individual step objects),
@@ -2936,8 +2953,13 @@ class AnalysisStepCompareGenes {
 
         if (data.hasOwnProperty('table_json_f')) {
             this.tableJsonF = data.table_json_f;
-            data.table_json_f = JSON.parse(data.table_json_f);
-            this.populateComparisonTable(UI.compareGenesTableFElt, data.table_json_f.data);
+            if (this.tableJsonF) {
+                document.querySelector(UI.compareGenesTableContainerF).classList.remove("is-hidden");
+                data.table_json_f = JSON.parse(data.table_json_f);
+                this.populateComparisonTable(UI.compareGenesTableFElt, data.table_json_f.data);
+            } else {
+                document.querySelector(UI.compareGenesTableContainerF).classList.add("is-hidden");
+            }
         }
 
         if (this.referenceCluster === 'all-reference-clusters') {
@@ -2953,8 +2975,13 @@ class AnalysisStepCompareGenes {
 
         if (data.hasOwnProperty('table_json_r')) {
             this.tableJsonR = data.table_json_r;
-            data.table_json_r = JSON.parse(data.table_json_r);
-            this.populateComparisonTable(UI.compareGenesTableRElt, data.table_json_r.data);
+            if (this.tableJsonR) {
+                document.querySelector(UI.compareGenesTableContainerR).classList.remove("is-hidden");
+                data.table_json_r = JSON.parse(data.table_json_r);
+                this.populateComparisonTable(UI.compareGenesTableRElt, data.table_json_r.data);
+            } else {
+                document.querySelector(UI.compareGenesTableContainerR).classList.add("is-hidden");
+            }
         }
 
         // mark success

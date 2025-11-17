@@ -1,11 +1,11 @@
 'use strict';
 
-import { apiCallsMixin, getCurrentUser, initCommonUI, logErrorInConsole, openModal, trigger } from "./common.v2.js?v=9858a6e";
-import { curatorCommon } from "./curator_common.js?v=9858a6e";
-import { Gene, WeightedGene } from "./classes/gene.js?v=9858a6e";
-import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=9858a6e";
-import { adjustStackedViolinHeight, postPlotlyConfig, setHeatmapHeightBasedOnGenes } from "./plot_display_config.js?v=9858a6e";
-import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventSelectors } from "../include/gene-collection-selector/gene-collection-selector.js?v=9858a6e";
+import { apiCallsMixin, getCurrentUser, initCommonUI, logErrorInConsole, openModal, trigger } from "./common.v2.js?v=cbfcd86";
+import { curatorCommon } from "./curator_common.js?v=cbfcd86";
+import { Gene, WeightedGene } from "./classes/gene.js?v=cbfcd86";
+import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=cbfcd86";
+import { adjustStackedViolinHeight, postPlotlyConfig, setHeatmapHeightBasedOnGenes } from "./plot_display_config.js?v=cbfcd86";
+import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners } from "../include/gene-collection-selector/gene-collection-selector.js?v=cbfcd86";
 
 curatorCommon.setIsMultigene(1);
 
@@ -172,6 +172,14 @@ class GenesAsAxisHandler extends curatorCommon.PlotHandler {
             return;
         }
         if (this.plotType === "mg_violin") {
+            // Remove reverse palette option since violin plots use categorical palettes
+            const revPalette = document.querySelector(".js-dash-reverse-palette");
+            for (const targetElt of [revPalette]) {
+                if (targetElt) {
+                    targetElt.closest(".is-justify-content-space-between").remove();
+                }
+            }
+
             prePlotSpecificOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/pre_plot/advanced_mg_violin.html");
             postPlotSpecificOptionselt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/post_plot/advanced_mg_violin.html");
             return;
@@ -569,6 +577,9 @@ class GenesAsDataHandler extends curatorCommon.PlotHandler {
         const custonLayout = curatorCommon.getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout");
         Plotly.relayout("plotly-preview", custonLayout);
 
+        // Trigger resize to make sure it fits in the container
+        Plotly.Plots.resize(document.getElementById('plotly-preview'));
+
         // Show button to add genes to gene cart
         document.getElementById("gene-cart-btn-c").classList.remove("is-hidden");
 
@@ -774,6 +785,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
         , "js-tsne-marker-size": "marker_size"
         , "js-tsne-color-palette": "expression_palette"
         , "js-tsne-reverse-palette": "reverse_palette"
+        , "js-tsne-make-zero-gray": "make_zero_gray"
         , "js-tsne-center-around-median": "center_around_median"
     };
 
@@ -830,7 +842,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
                 curatorCommon.renderColorPicker(series);
                 for (const group in config["colors"]) {
                     const color = config["colors"][group];
-                    const colorField = document.getElementById(`${CSS.escape(group)}-color`);
+                    const colorField = document.getElementById(`${group}-color`);
                     if (colorField) {
                         colorField.value = color;
                     } else {
@@ -983,7 +995,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
      * @returns {Promise<void>} A promise that resolves when the setup is complete.
      */
     async setupPlotSpecificEvents(datasetId) {
-        await setupScanpyOptions();
+        await setupScanpyOptions(datasetId);
     }
 
 }
@@ -1168,9 +1180,10 @@ curatorCommon.registerCuratorSpecificNavbarUpdates(curatorSpecificNavbarUpdates)
 
 
 const curatorSpecificOnLoad = async () => {
-    await fetchGeneCartData();
 
-    registerGeneListEventListeners();
+    registerGeneListEventListeners(apiCallsMixin);
+
+    await fetchGeneCartData();
 
     // Should help with lining things up on index page
     document.getElementById("dropdown-gene-lists").classList.remove("is-right");

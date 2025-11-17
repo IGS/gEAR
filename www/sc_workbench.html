@@ -204,7 +204,7 @@ Information about the individual datasets can be found in the dataset explorer."
                     </div>
                 </section>
 
-                <section id="summary-s" class="box has-background-primary-light">
+                <section id="summary-s" class="box pb-3 has-background-primary-light">
                     <header class="content">
                         <div id="analysis-opts-c" class="is-pulled-right">
                             <div id="analysis-action-c" class="field is-horizontal has-addons is-hidden is-pulled-right">
@@ -303,7 +303,7 @@ Information about the individual datasets can be found in the dataset explorer."
 
                     <!-- Stepper -->
                     <div id="steps-container">
-                        <ul class="steps is-horizontal is-centered has-content-centered is-hidden" id="de-novo-steps">
+                        <ul class="steps mb-0 is-horizontal is-centered has-content-centered is-hidden" id="de-novo-steps">
                             <li class="steps-segment is-dashed">
                                 <a href="#dataset-s" class="steps-marker">
                                     <span class="icon">
@@ -416,7 +416,7 @@ Information about the individual datasets can be found in the dataset explorer."
                             </li>
 
                         </ul>
-                        <ul class="steps is-horizontal is-centered has-content-centered is-hidden" id="primary-steps">
+                        <ul class="steps mb-0 is-horizontal is-centered has-content-centered is-hidden" id="primary-steps">
                             <li class="steps-segment is-dashed">
                                 <a href="#dataset-s" class="steps-marker">
                                     <span class="icon">
@@ -1462,6 +1462,7 @@ At the completion of this step press on ‘save these genes’.
 
                                 </div>
                                 <div id="compare-genes-visualization-c" class="column is-8 is-hidden content">
+                                    <h5 class="subtitle is-5">Query vs reference</h5>
                                     <div class="columns">
                                         <div class="column is-6 js-resetable" id='compare-genes-ranked-c'></div>
                                         <div class="column is-6 js-resetable" id='compare-genes-violin-c'></div>
@@ -1472,7 +1473,7 @@ At the completion of this step press on ‘save these genes’.
                                         <button type="button" id="btn-compare-genes-download-table-f" class="button is-primary">Download table</button>
                                     </div>
 
-                                    <div class="table-container">
+                                    <div class="table-container" id="compare-genes-table-container-f">
                                         <table id="compare-genes-table-f" class="is-hidden table">
                                             <thead>
                                                 <tr>
@@ -1488,6 +1489,7 @@ At the completion of this step press on ‘save these genes’.
                                         </table>
                                     </div>
 
+                                    <h5 class="subtitle is-5">Reference vs query</h5>
                                     <div class="columns">
                                         <div class="column is-6 js-resetable" id='compare-genes-ranked-rev-c'></div>
                                         <div class="column is-6 js-resetable" id='compare-genes-violin-rev-c'></div>
@@ -1498,7 +1500,7 @@ At the completion of this step press on ‘save these genes’.
                                         <button type="button" id="btn-compare-genes-download-table-r" class="button is-primary">Download table</button>
                                     </div>
 
-                                    <div class="table-container">
+                                    <div class="table-container" id="compare-genes-table-container-r">
                                         <table id="compare-genes-table-r" class="is-hidden table">
                                             <thead>
                                                 <tr>

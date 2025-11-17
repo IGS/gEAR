@@ -1,8 +1,8 @@
 #!/opt/bin/python3
 
 """
-Used by by dataset_explorer.html, this script focuses on searching datasets and
-returns a list of matches with extended attributes.
+Used by by dataset_explorer.html and index.html, this script focuses on searching
+datasets and returns a list of matches with extended attributes.
 
 There are a few main categories of search:
 
@@ -38,14 +38,14 @@ def main():
     custom_list = form.getvalue('custom_list')
     search_terms = form.getvalue('search_terms').split(' ') if form.getvalue('search_terms') else []
     organism_ids = form.getvalue('organism_ids')
-    dtypes = form.getvalue('dtypes')
+    dtypes = form.getvalue('dtypes').split(',') if form.getvalue('dtypes') else []
     date_added = form.getvalue('date_added')
     ownership = form.getvalue('ownership')
     layout_share_id = form.getvalue('layout_share_id')
     include_public_membership = form.getvalue('include_public_collection_membership')
     page = form.getvalue('page', "1")    # page starts at 1
     limit = form.getvalue('limit', str(DEFAULT_MAX_RESULTS))
-    sort_by = re.sub("[^[a-z]]", "", form.getvalue('sort_by'))
+    sort_by = re.sub("[^[a-z]]", "", form.getvalue('sort_by', ''))
     user = geardb.get_user_from_session_id(session_id) if session_id else None
     result = {'success': 1, 'problem': '', 'datasets': []}
 
@@ -135,15 +135,21 @@ def main():
         organism_ids = re.sub("[^,0-9]", "", organism_ids)
         wheres.append("d.organism_id in ({0})".format(organism_ids))
 
+    SPATIAL_DTYPES = ["spatial", "spatial-h5ad"]
+
     if dtypes:
-        # Fix to catch single-cell variations
         for item in dtypes:
+            # Fix to catch single-cell variations
             if item == "single-cell-rnaseq":
-                dtypes.push("scRNA-seq")
+                dtypes.append("scRNA-seq")
+                break
+            # Add all spatial dtype variations (i.e. spatial-h5ad)
+            if item == "spatial":
+                dtypes.extend(SPATIAL_DTYPES)
                 break
 
         ## only alphanumeric characters and the dash are allowed here
-        dtypes = re.sub("[^,\-A-Za-z0-9]", "", dtypes).split(',')
+        dtypes = [re.sub("[^,A-Za-z0-9-]", "", item) for item in dtypes]
         dtype_str = (', '.join('"' + item + '"' for item in dtypes))
         wheres.append(f"d.dtype in ({dtype_str})")
 
@@ -240,13 +246,13 @@ def main():
         elif os.path.exists("{0}/{1}.single.default.png".format(IMAGE_ROOT, dataset.id)):
             dataset.preview_image_url = "{0}/{1}.single.default.png".format(WEB_IMAGE_ROOT, dataset.id)
         else:
-            dataset.preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT, dataset.id)
+            dataset.preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT)
 
         # Multi-gene preview image
         if os.path.exists("{0}/{1}.multi.default.png".format(IMAGE_ROOT, dataset.id)):
             dataset.mg_preview_image_url = "{0}/{1}.multi.default.png".format(WEB_IMAGE_ROOT, dataset.id)
         else:
-            dataset.mg_preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT, dataset.id)
+            dataset.mg_preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT)
 
         # add if the user is the owner of the dataset
         dataset.is_owner = True if user and dataset.owner_id == user.id else False

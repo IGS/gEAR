@@ -1,8 +1,8 @@
 'use strict';
 
-import { apiCallsMixin, createToast, getCurrentUser, initCommonUI, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=9858a6e";
-import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=9858a6e";
-import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners } from "../include/gene-collection-selector/gene-collection-selector.js?v=9858a6e";
+import { apiCallsMixin, createToast, getCurrentUser, initCommonUI, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=cbfcd86";
+import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=cbfcd86";
+import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners } from "../include/gene-collection-selector/gene-collection-selector.js?v=cbfcd86";
 
 // if URL params are present, the user probably pasted a v1 URL into the browser
 //  so we should redirect them to the new expression URL but keep the same parameters
@@ -36,6 +36,94 @@ document.getElementById('genes-manually-entered').addEventListener('change', (ev
 
 });
 
+document.getElementById('submit-dataset-search').addEventListener('click', (event) => {
+    const searchInput = document.getElementById('dataset-search-input');
+    const searchString = searchInput.value.trim();
+
+    if (searchString.length === 0) {
+        createToast('Please enter a search term for datasets');
+        searchInput.classList.add('is-danger');
+        return;
+    } else {
+        searchInput.classList.remove('is-danger');
+    }
+
+    // build the URL for a GET request
+    const url = new URL('/dataset_explorer.html', window.location.origin);
+    url.searchParams.append('search_string', searchString);
+
+    const organismSelectElement = document.getElementById('organism-choices');
+    const selectedOrganismId = organismSelectElement.value;
+    if (selectedOrganismId !== "all") {
+        url.searchParams.append('organism_id', selectedOrganismId);
+    }
+
+    const dtypeSelectElement = document.getElementById('dataset-type-choices');;
+    const selectedDtype = dtypeSelectElement.value;
+    if (selectedDtype !== "all") {
+        url.searchParams.append('dataset_type', selectedDtype);
+    }
+
+    const sortSelectElement = document.getElementById('dataset-search-sortby');
+    const selectedSortOption = sortSelectElement.value;
+    url.searchParams.append('sort_by', selectedSortOption);
+
+    // now go there
+    window.location.href = url.toString();
+});
+
+document.getElementById('submit-expression-search').addEventListener('click', (event) => {
+    const status = validateExpressionSearchForm();
+
+    if (!status) {
+        return;
+    }
+
+    // build the URL for a GET request
+    const url = new URL('/expression.html', window.location.origin);
+
+    // add the manually-entered genes
+    // TODO: need to combine selected_genes here to accommodate the case where a gene cart
+    //  chosen but the individual genes removed.
+    const manuallyEnteredGenes =  Array.from(new Set([...selected_genes, ...manually_entered_genes]));
+    if (manuallyEnteredGenes.length > 0) {
+        url.searchParams.append('gene_symbol', manuallyEnteredGenes.join(','));
+    }
+
+    // are we doing exact matches?
+    if (document.getElementById('gene-search-exact-match').checked) {
+        url.searchParams.append('gene_symbol_exact_match', '1');
+    }
+
+    // get the value of the single-multi radio box
+    const singleMulti = document.querySelector('input[name="single-multi"]:checked').value;
+    url.searchParams.append('is_multigene', singleMulti === 'single' ? '0' : '1');
+
+    // add the gene lists
+    //  TODO: This will only be for labeling purposes, since individual genes could have been
+    //    deselected within
+    if (selected_gene_lists.size > 0) {
+        const geneCartShareIds = Array.from(selected_gene_lists);
+        url.searchParams.append('gene_lists', geneCartShareIds.join(','));
+    }
+
+    // add the dataset collections
+    url.searchParams.append('layout_id', selected_dc_share_id);
+
+    // now go there
+    window.location.href = url.toString();
+});
+
+// For this page we want the gene collection dropdown to be right-aligned
+const geneCollectionDropdown = document.getElementById('dropdown-gene-lists');
+geneCollectionDropdown.classList.remove('is-left');
+geneCollectionDropdown.classList.add('is-right');
+
+// For this page we want the dataset collection dropdown to be left-aligned
+const datasetCollectionDropdown = document.getElementById('dropdown-dc');
+datasetCollectionDropdown.classList.remove('is-right');
+datasetCollectionDropdown.classList.add('is-left');
+
 document.getElementById('submit-expression-search').addEventListener('click', (event) => {
     const status = validateExpressionSearchForm();
 
@@ -56,7 +144,7 @@ document.getElementById('submit-expression-search').addEventListener('click', (e
     }
 
     // are we doing exact matches?
-    if (document.querySelector('#gene-search-exact-match').checked) {
+    if (document.getElementById('gene-search-exact-match').checked) {
         url.searchParams.append('gene_symbol_exact_match', '1');
     } else {
         url.searchParams.append('gene_symbol_exact_match', '0');
@@ -98,7 +186,6 @@ tabs.forEach((element) => {
     });
 });
 
-/*
 document.getElementById("onboarding-btn").addEventListener("click", (event) => {
     // Start the onboarding process
     // NOTE: Click out of the intro will exit the intro
@@ -119,7 +206,7 @@ document.getElementById("onboarding-btn").addEventListener("click", (event) => {
         element: document.getElementById("dropdown-gene-lists"),
         intro: "You can also optionally select a gene list from the dropdown. <br/><br/> These genes will be added to the manually entered genes with the genes in the list.",
     }, {
-        element: document.querySelector('#gene-search-exact-match').parentElement,
+        element: document.getElementById('gene-search-exact-match').parentElement,
         intro: "You can choose to search for exact matches of the gene symbols. <br/><br/> If this is not checked, the search will match any gene with this text.",
     }, {
         element: document.querySelector('input[name="single-multi"][value="multi"]').parentElement,
@@ -139,24 +226,95 @@ document.getElementById("onboarding-btn").addEventListener("click", (event) => {
     ]
     }).start();
 });
-*/
+
+const populateDatasetSpinner = async () => {
+    let spinnerDatasets = [];
+    const data = await apiCallsMixin.fetchDatasets({'limit': 10});
+    spinnerDatasets = data.datasets;
+    //console.log(spinnerDatasets);
+
+    const datasetSpinnerContainer = document.getElementById('highlighted-datasets');
+    datasetSpinnerContainer.innerHTML = '';
+
+    let cardIdx = 0;
+
+    for (let i = 0; i < spinnerDatasets.length && i < 3; i++) {
+        const dataset = spinnerDatasets[i];
+        const card = populateDatasetCard(dataset);
+        datasetSpinnerContainer.appendChild(card);
+    }
+
+    document.getElementById('dataset-spinner-next').addEventListener('click', () => {
+        if (cardIdx + 3 < spinnerDatasets.length) {
+            cardIdx += 3;
+            updateDatasetSpinnerView(spinnerDatasets, cardIdx);
+            // disable next if there are no further pages
+            document.getElementById('dataset-spinner-next').disabled = (cardIdx + 3 >= spinnerDatasets.length);
+
+            // Add the dataset explorer card if we are at the end of the spinner datasets
+            if (cardIdx + 3 >= spinnerDatasets.length) {
+                const explorerCardTemplate = document.getElementById('dataset-explorer-card-template');
+                datasetSpinnerContainer.appendChild(explorerCardTemplate.content.cloneNode(true));
+            }
+        } else {
+            document.getElementById('dataset-spinner-next').disabled = true;
+        }
+
+        document.getElementById('dataset-spinner-previous').disabled = false;
+    });
+
+    document.getElementById('dataset-spinner-previous').addEventListener('click', () => {
+        if (cardIdx - 3 >= 0) {
+            cardIdx -= 3;
+            updateDatasetSpinnerView(spinnerDatasets, cardIdx);
+            // disable previous if we are back at the first page
+            document.getElementById('dataset-spinner-previous').disabled = (cardIdx - 3 < 0);
+        } else {
+            document.getElementById('dataset-spinner-previous').disabled = true;
+        }
+
+        document.getElementById('dataset-spinner-next').disabled = false;
+    });
+}
+
+const populateDatasetCard = (dataset) => {
+    const template = document.getElementById('dataset-card-template');
+    const card = template.content.cloneNode(true);
+
+    card.querySelector('p.title').textContent = dataset.title;
+    card.querySelector('p.subtitle').textContent = dataset.contact_name;
+    card.querySelector('.dataset-preview-image').setAttribute('src', dataset.preview_image_url);
+    card.querySelector('.dataset-organism').textContent = dataset.organism;
+    card.querySelector('.dataset-dtype').textContent = dataset.dtype;
+    card.querySelector('.dataset-link').setAttribute('href', `/p?s=${dataset.share_id}`);
+    card.querySelector('.comparison-tool-link').setAttribute('href', `/compare_datasets.html?dataset_id=${dataset.id}`);
+
+    // If there is a publication URL, show the publication link, otherwise remove it
+    if (dataset.pubmed_id) {
+        card.querySelector('.publication-link').setAttribute('href', `https://pubmed.ncbi.nlm.nih.gov/${dataset.pubmed_id}/`);
+    } else {
+        card.querySelector('.publication-link').remove();
+    }
+
+    return card;
+}
 
 const populateUserHistoryTable = async () => {
     const numEntries = 5;
 
     // Load the spinner template
-    const spinnerTemplate = document.querySelector('#user-history-loading');
-    document.querySelector('#user-history-table-tbody').innerHTML = '';
-    document.querySelector('#user-history-table-tbody').appendChild(spinnerTemplate.content.cloneNode(true));
+    const spinnerTemplate = document.getElementById('user-history-loading');
+    document.getElementById('user-history-table-tbody').innerHTML = '';
+    document.getElementById('user-history-table-tbody').appendChild(spinnerTemplate.content.cloneNode(true));
 
     try {
         const data = await apiCallsMixin.fetchUserHistoryEntries(numEntries);
-        const template = document.querySelector('#user-history-row');
-        document.querySelector('#user-history-table-tbody').innerHTML = '';
+        const template = document.getElementById('user-history-row');
+        document.getElementById('user-history-table-tbody').innerHTML = '';
 
         if (data.length === 0) {
-            const noHistoryTemplate = document.querySelector('#user-history-no-entries');
-            document.querySelector('#user-history-table-tbody').appendChild(noHistoryTemplate.content.cloneNode(true));
+            const noHistoryTemplate = document.getElementById('user-history-no-entries');
+            document.getElementById('user-history-table-tbody').appendChild(noHistoryTemplate.content.cloneNode(true));
         } else {
             for (const entry of data) {
                 const row = template.content.cloneNode(true);
@@ -169,11 +327,50 @@ const populateUserHistoryTable = async () => {
                 row.querySelector('.date').textContent = entry.entry_date;
                 row.querySelector('.url').setAttribute('href', entry.url);
 
-                document.querySelector('#user-history-table-tbody').appendChild(row);
+                document.getElementById('user-history-table-tbody').appendChild(row);
             }
         }
     } catch (error) {
         console.error(error);
+    }
+}
+
+/**
+ * Loads the list of organisms from the server and populates the organism choices on the
+ * datasets tab
+ * @function
+ * @returns {void}
+ */
+const loadOrganismList = async () => {
+    try {
+        const data = await apiCallsMixin.fetchOrganismList();
+        const organismChoices = document.getElementById("organism-choices"); // <select> element
+        for (const organism of data.organisms) {
+            const option = document.createElement("option");
+            option.value = organism.id;
+            option.textContent = organism.label;
+            organismChoices.appendChild(option);
+        }
+    } catch (error) {
+        logErrorInConsole(error);
+        createToast("Failed to load organism list");
+    }
+}
+
+const updateDatasetSpinnerView = (datasets, startIdx) => {
+    const datasetSpinnerContainer = document.getElementById('highlighted-datasets');
+    datasetSpinnerContainer.innerHTML = '';
+
+    const template = document.getElementById('dataset-card-template');
+
+    for (let i = startIdx; i < startIdx + 3; i++) {
+        if (i >= datasets.length) {
+            break;
+        }
+
+        const dataset = datasets[i];
+        const card = populateDatasetCard(dataset);
+        datasetSpinnerContainer.appendChild(card);
     }
 }
 
@@ -201,9 +398,12 @@ const validateExpressionSearchForm = () => {
 }
 
 const handlePageSpecificLoginUIUpdates = async (event) => {
-    if (getCurrentUser().session_id) {
+    if (getCurrentUser()?.session_id) {
         populateUserHistoryTable();
     }
+
+    registerGeneListEventListeners(apiCallsMixin);
+    registerDatasetCollectionEventListeners(apiCallsMixin, getCurrentUser());
 
     document.getElementById("submit-expression-search").classList.add("is-loading");
     await Promise.all([
@@ -212,11 +412,8 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     ]);
     document.getElementById("submit-expression-search").classList.remove("is-loading");
 
-    registerGeneListEventListeners();
-    registerDatasetCollectionEventListeners();
-
     // Trigger the default dataset collection to be selected in the
-    if (getCurrentUser().layout_share_id) {
+    if (getCurrentUser()?.layout_share_id) {
         selectDatasetCollection(getCurrentUser().layout_share_id);
     }
 }
@@ -224,3 +421,6 @@ registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
 
 // Pre-initialize some stuff
 await initCommonUI();
+
+loadOrganismList();
+populateDatasetSpinner();

@@ -1,14 +1,14 @@
 "use strict";
 
-import { apiCallsMixin, closeModal, createToast, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=9858a6e";
-import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, setActiveDCCategory, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=9858a6e";
+import { apiCallsMixin, closeModal, copyToClipboard, createToast, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=cbfcd86";
+import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, setActiveDCCategory, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=cbfcd86";
+
 
 /* Imported variables
 let datasetCollectionState.data; // from dataset-collection-selector
 let datasetCollectionState.selectedShareId; // from dataset-collection-selector
 */
 
-let firstSearch = true;
 let searchByCollection = false;
 let includePublicMembership = false;
 const resultsPerPage = 20;
@@ -1487,7 +1487,7 @@ const createDeleteCollectionConfirmationPopover = () => {
                 const data = await apiCallsMixin.deleteDatasetCollection(datasetCollectionState.selectedShareId);
 
                 if (data['success'] === 1) {
-                    datasetCollectionState.selectedShareId = getCurrentUser().layout_share_id;
+                    datasetCollectionState.selectedShareId = getCurrentUser()?.layout_share_id;
 
                     // This will trigger
                     // a) selectDatasetCollection
@@ -1996,7 +1996,7 @@ const datasetCollectionSelectionCallback = async () => {
     // If the selected dataset collection is the current collection, make it look like the primary collection
     // ! Currently the selector will auto-make that collection the primary collection
     document.getElementById("btn-set-primary-collection").classList.add("is-outlined");
-    if (datasetCollectionState.selectedShareId === getCurrentUser().layout_share_id) {
+    if (datasetCollectionState.selectedShareId === getCurrentUser()?.layout_share_id) {
         document.getElementById("btn-set-primary-collection").classList.remove("is-outlined");
     }
 }
@@ -2031,7 +2031,7 @@ const initializeDatasetCollectionSelection = () => {
     observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
 
     // Trigger the default dataset collection to be selected at the start
-    if (getCurrentUser().layout_share_id) {
+    if (getCurrentUser()?.layout_share_id) {
         selectDatasetCollection(getCurrentUser().layout_share_id);
     }
 
@@ -2315,8 +2315,8 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
             logErrorInConsole(error);
             // Realistically we should try to plot, but I assume most saved displays will have an image present.
             displayUrl = "/img/dataset_previews/missing.png";
-            if (display.plot_type === "epiviz") {
-                displayUrl = "/img/epiviz_mini_screenshot.jpg"; // TODO: Replace with real logo
+            if (["epiviz", "gosling"].includes(display.plot_type)) {
+                displayUrl = "/img/epiviz_mini_screenshot.jpg"; // TODO: Replace with gosling image
             }
         }
 
@@ -2605,14 +2605,8 @@ const submitSearch = async (page=1) => {
 
     const searchTerms = document.getElementById("search-terms").value;
 
-    // If this is the first time searching with terms, set the sort by to relevance
-    if (searchTerms && firstSearch) {
-        document.getElementById("sort-by").value = 'relevance';
-        firstSearch = false;
-    }
-
     const searchCriteria = {
-        'session_id': getCurrentUser().session_id,
+        'session_id': getCurrentUser()?.session_id,
         'search_terms': searchTerms,
         'sort_by': document.getElementById("sort-by").value
     };
@@ -2741,7 +2735,7 @@ const updateDatasetCollectionButtons = (collection=null) => {
 const updateDatasetCollections = async () => {
 
     // Fetch the dataset collections, which will update the dataset collection selector
-    await fetchDatasetCollections()
+    await fetchDatasetCollections();
 
     // Uses dataset-collection-selector.js variable
     const datasetCollectionData = datasetCollectionState.data;
@@ -2824,7 +2818,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 	// User settings has no "active" state for the sidebar
 	document.getElementById("page-header-label").textContent = "Dataset Explorer";
 
-    const sessionId = getCurrentUser().session_id;
+    const sessionId = getCurrentUser()?.session_id;
 	if (! sessionId ) {
         // ? Technically we can show profiles, but I would need to build in "logged out controls".
         document.getElementById("collection-management").classList.add("is-hidden");
@@ -2850,7 +2844,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Prep filters
     await loadOrganismList();
 
-    registerDatasetCollectionEventListeners();
+    registerDatasetCollectionEventListeners(apiCallsMixin, getCurrentUser());
 
     // Select the user's last remembered filter options
     const defaultOwnershipView = Cookies.get("default_collection_ownership_view");
@@ -2858,7 +2852,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     const defaultDateAddedView = Cookies.get("default_collection_date_added_view");
     const defaultDatasetTypeView = Cookies.get("default_collection_dataset_type_view");
 
-    if (defaultOwnershipView && getCurrentUser().session_id) {
+    if (defaultOwnershipView && getCurrentUser()?.session_id) {
         // deselect All
         document.querySelector("#controls-ownership li.js-all-selector").classList.remove("js-selected");
 
@@ -2866,17 +2860,19 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             document.querySelector(`#controls-ownership li[data-dbval='${ownership}']`).classList.add("js-selected");
         }
     }
-    if (defaultOrganismView && getCurrentUser().session_id) {
+    if (defaultOrganismView && getCurrentUser()?.session_id) {
         // deselect All
         document.querySelector("#controls-organism li.js-all-selector").classList.remove("js-selected");
         for (const organism of defaultOrganismView.split(",")) {
             document.querySelector(`#controls-organism li[data-dbval='${organism}']`).classList.add("js-selected");
         }
     }
-    if (defaultDateAddedView && getCurrentUser().session_id) {
-        document.querySelector(`#controls-date-added li[data-dbval='${getCurrentUser().default_date_added_view}']`).classList.add("js-selected");
+    if (defaultDateAddedView && getCurrentUser()?.session_id) {
+        // deselect All and select the cookie saved view
+        document.querySelector("#controls-date-added li.js-all-selector").classList.remove("js-selected");
+        document.querySelector(`#controls-date-added li[data-dbval='${defaultDateAddedView}']`).classList.add("js-selected");
     }
-    if (defaultDatasetTypeView && getCurrentUser().session_id) {
+    if (defaultDatasetTypeView && getCurrentUser()?.session_id) {
         // deselect All
         document.querySelector("#controls-dataset-type li.js-all-selector").classList.remove("js-selected");
         for (const dtype of defaultDatasetTypeView.split(",")) {
@@ -2885,9 +2881,40 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 
     // If they passed search_string URL parameter, set that
-    let search_string = getUrlParameter("search_string");
-    if (search_string) {
-        document.getElementById("search-terms").value = search_string;
+    let searchString = getUrlParameter("search_string");
+    if (searchString) {
+        document.getElementById("search-terms").value = searchString;
+    }
+
+    let organismIDPassed = getUrlParameter("organism_id");
+    if (organismIDPassed) {
+        // deselect All
+        document.querySelector("#controls-organism li.js-all-selector").classList.remove("js-selected");
+        const organismElt = document.querySelector(`#controls-organism li[data-dbval='${organismIDPassed}']`);
+        if (organismElt) {
+            organismElt.classList.add("js-selected");
+        }
+    }
+
+    let dtypePassed = getUrlParameter("dataset_type");
+    if (dtypePassed) {
+        // deselect All
+        document.querySelector("#controls-dataset-type li.js-all-selector").classList.remove("js-selected");
+        const dtypeElt = document.querySelector(`#controls-dataset-type li[data-dbval='${dtypePassed}']`);
+        if (dtypeElt) {
+            dtypeElt.classList.add("js-selected");
+        }
+    }
+
+    let sortByPassed = getUrlParameter("sort_by");
+    if (sortByPassed) {
+        const sortByElt = document.getElementById("sort-by");
+        for (const option of sortByElt.options) {
+            if (option.value === sortByPassed) {
+                sortByElt.value = sortByPassed;
+                break;
+            }
+        }
     }
 
     await submitSearch();

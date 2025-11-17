@@ -11,49 +11,45 @@ import param
 from PIL import Image
 from plotly import graph_objects as go
 from plotly.subplots import make_subplots
-from xarray import DataArray
 
 if typing.TYPE_CHECKING:
-    from anndata import AnnData
+    from xarray import DataArray
 
 ### Functions
 
-def clip_expression_values(adata: "AnnData", min_clip: float | None=None, max_clip: float | None=None) -> "AnnData":
+def clip_expression_values(dataframe: pd.DataFrame, min_clip: float | None=None, max_clip: float | None=None) -> pd.DataFrame:
     """
-    Clips the expression values in an AnnData object to specified minimum and/or maximum values.
+    Clip values in the DataFrame's "raw_value" column.
 
     Parameters
     ----------
-    adata : AnnData
-        The AnnData object containing expression data to be clipped.
-    min_clip : float or None, optional
-        Minimum value to clip the expression data. Values below this will be set to min_clip.
-        If None, no minimum clipping is applied.
-    max_clip : float or None, optional
-        Maximum value to clip the expression data. Values above this will be set to max_clip.
-        If None, no maximum clipping is applied.
+    dataframe : pd.DataFrame
+        DataFrame containing a "raw_value" column with numeric values to be clipped.
+    min_clip : float | None, optional
+        Minimum value to clip to. If None, no lower clipping is applied.
+    dataframe["raw_value"] = dataframe["raw_value"].clip(lower=min_clip, upper=max_clip)
+    max_clip : float | None, optional
+        Maximum value to clip to. If None, no upper clipping is applied.
 
     Returns
     -------
-    AnnData
-        The AnnData object with clipped expression values.
-    """
-    X = adata.to_df()
-    X = X.clip(lower=min_clip, upper=max_clip)
-    adata.X = X.to_numpy()
-    return adata
+    pd.DataFrame
+        The same DataFrame instance passed in, with its "raw_value" column replaced by the clipped values.
 
-def normalize_searched_gene(gene_set, chosen_gene) -> str | None:
-    """Convert to case-insensitive version of gene.  Returns None if gene not found in dataset."""
-    chosen_gene_lower = chosen_gene.lower()
-    for gene in gene_set:
-        try:
-            if chosen_gene_lower == gene.lower():
-                return gene
-        except Exception:
-            print(gene, file=sys.stderr)
-            raise
-    return None
+    Notes
+    -----
+    - This function mutates the input DataFrame in place by assigning to dataframe["raw_value"].
+    - Uses pandas.Series.clip which preserves NaNs and is vectorized for performance.
+    - A KeyError will be raised if the "raw_value" column is not present in the DataFrame.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({"raw_value": [-5, 0, 2.5, 10]})
+    >>> clip_expression_values(df, min_clip=0.0, max_clip=5.0)
+    >>> df["raw_value"].tolist()
+    [0.0, 0.0, 2.5, 5.0]
+    """
+    return dataframe
 
 
 def sort_clusters(clusters) -> list:
@@ -73,7 +69,7 @@ class Settings(param.Parameterized):
     Settings class for configuring parameters related to gene display and selection ranges.
 
     Attributes:
-        gene_symbol (param.String): Gene symbol to display.
+        filename (param.String): Filename for the dataframe to retieve.
         dataset_id (param.String): Dataset ID to display.
         min_genes (param.Integer): Minimum number of genes per observation, with a default of 200 and bounds between 0 and 500.
         selection_x1 (param.Integer): Left selection range.
@@ -86,7 +82,7 @@ class Settings(param.Parameterized):
         make_default (param.Boolean): If true, make this the default display.
     """
 
-    gene_symbol = param.String(doc="Gene symbol to display")
+    filename = param.String(doc="Filename for the dataframe to retrieve")
     dataset_id = param.String(doc="Dataset ID to display")
     min_genes = param.Integer(
         doc="Minimum number of genes per observation", default=0, bounds=(0, 500)
@@ -98,7 +94,7 @@ class Settings(param.Parameterized):
     selection_y2 = param.Number(doc="lower selection range", allow_None=True)
     display_height = param.Integer(doc="Height of the display in pixels", allow_None=True)
     display_width = param.Integer(doc="Width of the display in pixels", allow_None=True)
-    expression_clip_min = param.Number(doc="Minimum expression value to clip", allow_None=True)
+    expression_min_clip = param.Number(doc="Minimum expression value to clip", allow_None=True)
 
 
 class SpatialFigure:
@@ -113,7 +109,6 @@ class SpatialFigure:
         spatial_img (np.ndarray | None): Optional background image as a NumPy array.
         color_map (dict): Mapping from cluster identifiers to colors.
         cluster_map (dict): Mapping from cluster category codes to cluster names.
-        gene_symbol (str): The gene symbol being visualized.
         expression_name (str): Name of the expression metric (e.g., "expression", "relative expression").
         expression_color (str): Color scale for expression visualization.
         dragmode (str): Plotly drag mode (e.g., "select").
@@ -151,7 +146,6 @@ class SpatialFigure:
         spatial_img: np.ndarray | None,
         color_map: dict,
         cluster_map: dict,
-        gene_symbol: str,
         expression_name: str,
         expression_color: str,
         dragmode: str = "select",
@@ -162,7 +156,6 @@ class SpatialFigure:
         self.spatial_img = spatial_img  # None or numpy array
         self.color_map = color_map
         self.cluster_map = cluster_map
-        self.gene_symbol = gene_symbol
         self.fig = go.Figure()
         self.expression_name = expression_name
         self.expression_color = expression_color
@@ -171,9 +164,6 @@ class SpatialFigure:
         self.base64_string = None
         self.PLOT_WIDTH = 200
         self.PLOT_HEIGHT = 200
-
-        # kwargs
-        self.platform = kwargs.get("platform", None)  # e.g., "xenium"
 
         # https://spatialdata.scverse.org/projects/io/en/latest/generated/spatialdata_io.experimental.to_legacy_anndata.html
         # (see section Matching of spatial coordinates and pixel coordinates)
@@ -193,7 +183,7 @@ class SpatialFigure:
         )
 
     def make_expression_scatter(
-        self, expression_agg: DataArray, cbar_loc: float, expression_color: str | None
+        self, expression_agg: "DataArray", cbar_loc: float, expression_color: str | None
     ) -> go.Scatter:
         """
         Creates a Plotly Scatter plot visualizing gene expression values in spatial coordinates.
@@ -246,7 +236,7 @@ class SpatialFigure:
         )
 
     def add_cluster_traces(
-        self, cluster_agg: DataArray, cluster_col: int, show_legend=True
+        self, cluster_agg: "DataArray", cluster_col: int, show_legend=True
     ) -> None:
         """
         Adds cluster scatter traces to the figure based on aggregated cluster data.
@@ -347,7 +337,7 @@ class SpatialFigure:
                 row=row,
             )
 
-    def create_datashader_agg(self, x: str, y: str) -> DataArray:
+    def create_datashader_agg(self, x: str, y: str) -> "DataArray":
         """
         Aggregates data points from the DataFrame using Datashader, producing a summary for visualization.
 
@@ -485,7 +475,7 @@ class SpatialFigure:
         if self.spatial_img is None:
             raise ValueError("Spatial image is not provided. Should not have been called.")
 
-        img = self.spatial_img
+        img = self.spatial_img.squeeze()
 
         # Ensure image is uint8 for consistent contrast (256-color channels)
         # Xenium images are uint16, so this is why we need to convert

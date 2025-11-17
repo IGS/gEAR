@@ -1,7 +1,5 @@
 "use strict";
 
-import { apiCallsMixin, getCurrentUser } from "../../js/common.v2.js?v=9858a6e";
-
 export const datasetCollectionState = {
     "data": null,
     "labelIndex": {},
@@ -9,11 +7,30 @@ export const datasetCollectionState = {
     "selectedLabel": null
 }
 
+let apiCallsMixin = null;
+let currentUser = null;
+
 // This many characters will be included and then three dots will be appended
 const DatasetCollectionSelectorLabelMaxLength = 35;
 
 // SAdkins - If I leave these global, then they are registered twice (once here and once in the entrypoint JS) leading to double event handling
-export const registerEventListeners = () => {
+export const registerEventListeners = (apiCallsMixinObj=null, user=null) => {
+
+    // Importing these from common.js causes them to be re-initialized and break downstream
+    if (!apiCallsMixinObj) {
+        console.error("apiCallsMixin is not set.  Cannot register event listeners.");
+        return;
+    }
+
+    apiCallsMixin = apiCallsMixinObj;
+
+    if (!user) {
+        console.error("currentUser is not set.  Cannot register event listeners.");
+        return;
+    }
+
+    currentUser = user;
+
     // Add event listener to dropdown trigger
     document.querySelector("#dropdown-dc > button.dropdown-trigger").addEventListener("click", (event) => {
         const item = event.currentTarget;
@@ -97,10 +114,14 @@ export const fetchDatasetCollections = async (shareId=null) => {
     const layoutShareId = shareId || datasetCollectionState.selectedShareId || null;
 
     try {
+        if (!apiCallsMixin) {
+            throw new Error("apiCallsMixin is not set.  Cannot fetch dataset collections.");
+        }
+
         datasetCollectionState.data = await apiCallsMixin.fetchDatasetCollections({includeMembers: false, layoutShareId});
 
-        document.querySelector('#dropdown-dc').classList.remove('is-loading');
-        document.querySelector('#dropdown-dc').classList.remove('is-disabled');
+        document.getElementById('dropdown-dc').classList.remove('is-loading');
+        document.getElementById('dropdown-dc').classList.remove('is-disabled');
 
         // build a label index for the dataset collections
         for (const category in datasetCollectionState.data) {
@@ -243,7 +264,7 @@ const createDatasetCollectionListItem = (row, entry) => {
         row_div.classList.toggle('is-selected');
         datasetCollectionState.selectedShareId = row_div.dataset.shareId;
         datasetCollectionState.selectedLabel = datasetCollectionState.labelIndex[datasetCollectionState.selectedShareId];
-        getCurrentUser().saveLayoutShareId(datasetCollectionState.selectedShareId);
+        currentUser.saveLayoutShareId(datasetCollectionState.selectedShareId);
         console.debug("Selected DC: ", datasetCollectionState.selectedShareId, datasetCollectionState.selectedLabel);
 
         updateDatasetCollectionSelectorLabel();

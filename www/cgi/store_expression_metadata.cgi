@@ -40,6 +40,10 @@ def main():
         os.makedirs(user_upload_file_base)
 
     user = geardb.get_user_from_session_id(session_id)
+    if not user:
+        print(json.dumps({'success': 0, 'error': 'Invalid session_id'}))
+        return
+
     result = {'success': 0, 'error': None}
 
     # names are changed here so the files are compatible with the legacy ones
@@ -70,6 +74,10 @@ def main():
             'default_plot_type': None,
             'schematic_image': None
     }
+
+    # Add some extra parameters that we can access in the future in the UI
+    formdata["perform_primary_analysis"] = False
+    formdata["dataset_is_spatial"] = False
 
     # Save the metadata to a file
     metadata_filename = os.path.join(user_upload_file_base, 'metadata.json')

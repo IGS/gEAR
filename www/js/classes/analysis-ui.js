@@ -1,6 +1,6 @@
 'use strict';
 
-import { blockStepWithHref, openNextStepWithHrefs } from "../stepper-fxns.js?v=9858a6e";
+import { blockStepWithHref, openNextStepWithHrefs } from "../stepper-fxns.js?v=cbfcd86";
 
 class AnalysisUI {
     // This class is a singleton that manages the UI elements of the analysis pipeline.
@@ -244,6 +244,8 @@ class AnalysisUI {
     compareGenesViolinContainer = "#compare-genes-violin-c"
     compareGenesRankedRevContainer = "#compare-genes-ranked-rev-c"
     compareGenesViolinRevContainer = "#compare-genes-violin-rev-c"
+    compareGenesTableContainerF = "#compare-genes-table-container-f"
+    compareGenesTableContainerR = "#compare-genes-table-container-r"
     compareGenesTableFElt = "#compare-genes-table-f"
     compareGenesTableRElt = "#compare-genes-table-r"
     compareGenesInstructionsElt = `${this.compareGenesSection} .tool-instructions`

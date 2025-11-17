@@ -1,11 +1,11 @@
 
-from itertools import cycle, product
+from itertools import cycle
 
+import anndata as ad
 import dash_bio as dashbio
 import diffxpy.api as de
 import numpy as np
 import pandas as pd
-import anndata as ad
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -624,7 +624,7 @@ def build_violin_x_title(groupby_filters):
         x_title += " and {}".format(groupby_filters[1])
     return x_title
 
-def create_stacked_violin_plot(df, groupby_filters, is_log10=False, colorscale=None, reverse_colorscale=False):
+def create_stacked_violin_plot(df: pd.DataFrame, groupby_filters:list, is_log10: bool=False, colorscale: str | None=None, reverse_colorscale: bool=False):
     """Create a stacked violin plot.  Returns the figure."""
 
     # Preserve sort order passed to plot, and assign colors to primary category groups
@@ -648,7 +648,8 @@ def create_stacked_violin_plot(df, groupby_filters, is_log10=False, colorscale=N
         colors = get_discrete_colors(primary_groups, colorscale, reverse_colorscale)
     except Exception as e:
         raise PlotError("Error creating colors for violin plot: {}".format(e))
-    color_cycler = cycle(colors)
+
+    color_cycler = cycle(colors) if colors is not None else cycle(["#636efa", "#EF553B", "#00cc96", "#ab63fa", "#FFA15A", "#19d3f3", "#FF6692", "#B6E880", "#FF97FF", "#FECB52"])
 
     color_map = {cat: next(color_cycler) for cat in primary_groups}
 
@@ -665,14 +666,26 @@ def create_stacked_violin_plot(df, groupby_filters, is_log10=False, colorscale=N
     groupby = ["gene_symbol"]
     groupby.extend(groupby_filters)
     # Create groupings for traces
-    grouped = df.groupby(groupby)
+    grouped = df.groupby(groupby, observed=True)
 
     # Name is a tuple of groupings, or a string if grouped by only 1 dataseries
     # Group is the 'groupby' dataframe
     for name, group in grouped:
         # name[0] is gene_sym, name[1] is primary category, name[2] is secondary category
-        row_idx = facet_row_indexes[name[1]]
-        col_idx = facet_col_indexes[name[2]] if len(name) > 2 else 1
+        # Normalize name to a tuple of strings and extract primary/secondary values; if missing, fall back to values from the group dataframe
+        if isinstance(name, tuple):
+            tuple_name = tuple(str(n) for n in name)
+            #gene_sym = tuple_name[0] if len(tuple_name) > 0 else None
+            primary_val = tuple_name[1] if len(tuple_name) > 1 else (group[groupby_filters[0]].iloc[0] if groupby_filters else None)
+            secondary_val = tuple_name[2] if len(tuple_name) > 2 else None
+        else:
+            tuple_name = (str(name),)
+            #gene_sym = tuple_name[0]
+            primary_val = group[groupby_filters[0]].iloc[0] if groupby_filters else None
+            secondary_val = group[groupby_filters[1]].iloc[0] if len(groupby_filters) > 1 else None
+
+        row_idx = facet_row_indexes[primary_val]
+        col_idx = facet_col_indexes[secondary_val] if secondary_val is not None else 1
 
         # log-transform dataset if it came in raw
         if not is_log10:
@@ -681,9 +694,9 @@ def create_stacked_violin_plot(df, groupby_filters, is_log10=False, colorscale=N
         fig.add_violin(
             x=group["gene_symbol"]
             , y=group["value"]
-            , scalegroup=",".join(name) # Name will be a tuple
+            , scalegroup=",".join(tuple_name) # Name will be a tuple
             , showlegend=False
-            , fillcolor=color_map[name[1]]
+            , fillcolor=color_map[primary_val]
             , line=dict(color="slategrey")
             , points=False
             , box=dict(
@@ -738,7 +751,7 @@ def create_violin_plot(df, groupby_filters, is_log10=False, colorscale=None, rev
         colors = get_discrete_colors(df["gene_symbol"].unique().tolist(), colorscale, reverse_colorscale)
     except Exception as e:
         raise PlotError("Error creating colors for violin plot: {}".format(e))
-    color_cycler = cycle(colors)
+    color_cycler = cycle(colors) if colors is not None else cycle(["#636efa", "#EF553B", "#00cc96", "#ab63fa", "#FFA15A", "#19d3f3", "#FF6692", "#B6E880", "#FF97FF", "#FECB52"])
 
     fig = go.Figure()
 
@@ -1074,7 +1087,7 @@ def build_obs_group_indexes(df, filters, clusterbar_fields):
     for k in clusterbar_fields:
         filter_indexes.setdefault(k, {})
         groups = df[k].unique().tolist()
-        if k in filters.keys():
+        if filters and k in filters.keys():
             groups = filters[k]
         for elem in groups:
             obs_index = df.index[df[k] == elem]
@@ -1083,7 +1096,7 @@ def build_obs_group_indexes(df, filters, clusterbar_fields):
 
 def create_dataframe_gene_mask(df, gene_symbols):
     """Create a gene mask to filter a dataframe."""
-    if not "gene_symbol" in df:
+    if "gene_symbol" not in df:
         raise PlotError('Missing gene_symbol column in adata.var')
 
     gene_filter = None
@@ -1195,7 +1208,7 @@ class PlotError(Exception):
         self.message = message
         super().__init__(self.message)
 
-def get_discrete_colors(fields, colorscale="vivid", reverse_colorscale=False, ):
+def get_discrete_colors(fields: list, colorscale: str | None="vivid", reverse_colorscale: bool=False):
     """Get a list of discrete colors equal to the number of fields.
 
     Args:

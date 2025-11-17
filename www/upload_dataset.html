@@ -227,6 +227,7 @@
                               <option value="single-cell-rnaseq">Single-cell RNA-seq</option>
                               <option value="bulk-rnaseq">Bulk RNA-seq</option>
                               <option value="microarray">Microarray</option>
+                              <option value="spatial">Spatial</option>
                             </select>
                           </div>
                         </div>
@@ -576,7 +577,9 @@
                           with tar/gzip or zip.
                         </p>
                         <p class="format-documentation-header">
-                          Learn more
+                          <span class="icon-text"><span class="icon"><i class="mdi mdi-school-outline"></i></span>
+                            <span>Learn more</span>
+                          </span>
                         </p>
                         <ul class="format-documentation-links">
                           <li>
@@ -620,7 +623,9 @@
                           very well for even medium-sized datasets.
                         </p>
                         <p class="format-documentation-header">
-                          Learn more
+                          <span class="icon-text"><span class="icon"><i class="mdi mdi-school-outline"></i></span>
+                            <span>Learn more</span>
+                          </span>
                         </p>
                         <ul class="format-documentation-links">
                           <li>
@@ -707,11 +712,54 @@
                           </li>
                         </ul>
                         <div class="control">
-                          <button data-format="h5ad" class="button is-primary is-fullwidth format-selector" disabled>
+                          <button data-format="h5ad" class="button is-primary is-fullwidth format-selector">
                             <span class="icon">
-                              <i class="mdi mdi-cancel"></i>
+                              <i class="mdi mdi-checkbox-blank-outline"></i>
                             </span>
-                            <span class="format-status">Not yet available</span>
+                            <span class="format-status">Choose</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="columns">
+                    <div class="column format-column is-3 is-flex">
+                      <!-- H5AD/Python -->
+                      <div class="box format-selection-box">
+                        <h3>Spatial (in tar format)</h3>
+                        <p class="format-description">
+                          Special considerations are needed for spatial datasets, as each
+                          platform has a different file requirement. Select a platform below to see
+                          specific instructions.
+                        </p>
+                        <br />
+                        <p class="format-description">
+                          You can also upload in one of the other formats but
+                          will not be able to take advantage of special features. This is also an option
+                          for spatial data from a platform we currently do not support.
+                        </p>
+                        <div class="control my-3">
+                          <div class="select is-fullwidth">
+                            <select name="spatial-platform" id="select-spatial-platform">
+                              <option value="">Select one</option>
+                              <option value="curio">Curio Seeker</option>
+                              <option value="geomx">GeoMx DSP</option>
+                              <option value="visium">10x Genomics Visium</option>
+                              <option value="visiumhd">10x Genomics Visium HD</option>
+                              <option value="xenium">10x Genomics Xenium</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div class="control">
+                          <button id="spatial-requirements" class="button is-small is-primary is-light is-hidden" role="button" data-target="spatial-reqs-modal">Show requirements</button>
+                        </div>
+                        <div class="control">
+                          <button id="btn-spatial-format-selector" data-format="spatial" class="button is-primary is-fullwidth format-selector" disabled>
+                            <span class="icon">
+                              <i class="mdi mdi-checkbox-blank-outline"></i>
+                            </span>
+                            <span class="format-status">Choose</span>
                           </button>
                         </div>
                       </div>
@@ -861,25 +909,30 @@
                               </span>
                               <span>Storing metadata</span>
                             </span>
-                            </li>
                           </li>
                           <li>
                             <span class="icon-text">
                               <span class="icon">
                               <i id="finalize-migrating-h5ad" class="mdi mdi-checkbox-blank-outline"></i>
                               </span>
-                              <span>Migrate H5AD file</span>
+                              <span id="finalize-migrating-h5ad-text">Migrate H5AD file</span>
                             </span>
-                            </li>
                           </li>
-                          <li></li>
+                          <li>
                             <span class="icon-text">
                               <span class="icon">
                               <i id="finalize-migrating-userdata" class="mdi mdi-checkbox-blank-outline"></i>
                               </span>
                               <span>Migrate user-uploaded source file</span>
                             </span>
-                            </li>
+                          </li>
+                          <li id="finalize-migrating-primary-analysis-li">
+                            <span class="icon-text">
+                              <span class="icon">
+                              <i id="finalize-migrating-primary-analysis" class="mdi mdi-checkbox-blank-outline"></i>
+                              </span>
+                              <span>Migrate primary analysis JSON</span>
+                            </span>
                           </li>
                           <li>
                             <span class="icon-text">
@@ -888,7 +941,6 @@
                               </span>
                               <span>Setting access rights</span>
                             </span>
-                            </li>
                           </li>
                         </ul>
                         <div class="field">
@@ -944,10 +996,123 @@
         </div>
       </footer>
 
-      <script src="js/vendor/js.cookie.js?v=9858a6e"></script>
+    <div id="spatial-reqs-modal" class="modal">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title"></p>
+                <button class="delete" aria-label="close"></button>
+            </header>
+            <section class="modal-card-body">
+            <!-- Content ... -->
+                <div class="content">
+                </div>
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button">Close</button>
+            </footer>
+        </div>
+    </div>
+
+    <template id="curio-spatial-reqs">
+      A tar.gz file containing the following files with these standarized names:
+      <ul>
+          <li>(Required) 'anndata.h5ad': Counts and metadata file.</li>
+          <li>'cluster_assignment.txt': Cluster assignment file.</li>
+          <li>'Metrics.csv': Metrics file.</li>
+          <li>'variable_features_clusters.txt': Variable features clusters file.</li>
+          <li>'variable_features_spatial_moransi.txt': Variable features Moran’s I file.</li>
+      </ul>
+      <br />
+      Gene IDs present in input must associate with an annotation from the source type indicated in the metadata upload.
+    </template>
+
+    <template id="geomx-spatial-reqs">
+      A tar.gz file containing the following files with these standarized names:
+
+      <ul>
+        <li>(Required) 'xlsx' file with information.</li>
+      </ul>
+
+      This Excel file must:
+      <ul>
+          <li>Contain a sheet named "SegmentProperties" with a column named "SegmentDisplayName" which will be used as the cell ID.</li>
+          <li>Contain a sheet named "TargetCountMatrix" or "BioProbeCountMatrix" with the counts matrix.</li>
+      </ul>
+      <br />
+      Gene IDs present in input must associate with an annotation from the source type indicated in the metadata upload.
+      <br />
+      <br />
+      IMPORTANT: We have not implemented polygon spatial shape support yet. Data points are purely from the Excel file.
+    </template>
+
+    <template id="visium-spatial-reqs">
+      A tar.gz file containing the following files with these standardized names in this directory structure:
+
+      <ul>
+          <li>(Required) 'filtered_feature_bc_matrix.h5': Counts and metadata file.</li>
+          <li>(Required) 'analysis/clustering/gene_expression_graphclust/clusters.csv': Clustering information with both "Barcode" and "Cluster" columns.</li>
+          <li>(Required) 'spatial/tissue_hires_image.png': High resolution image.</li>
+          <li>(Required) 'spatial/tissue_lowres_image.png': Low resolution image.</li>
+          <li>(Required) 'spatial/scalefactors_json.json': Scalefactors file.</li>
+          <li>(Required) 'spatial/tissue_positions_list.csv' (SpaceRanger 1) or 'spatial/tissue_positions.csv' (SpaceRanger 2): Spots positions file.</li>
+          <li>(Required) 'fullres_image_file': Large microscopy image used as input for space ranger. Not used but needed to not break upload process.</li>
+      </ul>
+      <br />
+      Recommended tar command to create tarball:
+      <br />
+      <code>tar cvf <dataset>.tar <dataset>_filtered_feature_bc_matrix.h5 spatial analysis</code>
+      <br /><br />
+      For the "clusters.csv" file, it is preferable if the"Cluster" column has actual annotation labels instead of numbers from the output. This provides more value to other users.
+    </template>
+
+    <template id="visiumhd-spatial-reqs">
+      A tar.gz file containing the following files with these standardized names in this directory structure:
+
+      <ul>
+          <li>(Required) 'binned_outputs/square_008um/filtered_feature_bc_matrix.h5': Counts and metadata file.</li>
+          <li>(Required) 'binned_outputs/square_008um/analysis/clustering/gene_expression_graphclust/clusters.csv': Clustering information with both "Barcode" and "Cluster" columns.</li>
+          <li>(Required) 'binned_outputs/feature_slice.h5': Feature slice file.</li>
+          <li>(Required) 'binned_outputs/square_008um/spatial/scalefactors_json.json': Scalefactors file.</li>
+          <li>(Required) 'binned_outputs/square_008um/spatial/tissue_hires_image.png': High resolution image.</li>
+          <li>(Required) 'binned_outputs/square_008um/spatial/tissue_lowres_image.png': Low resolution image.</li>
+      </ul>
+      <br />
+      More information on Visium HD outputs can be found here: https://www.10xgenomics.com/support/software/space-ranger/latest/analysis/outputs/output-overview#hd-outputs
+      <br /><br />
+      Recommended tar command to create tarball:
+      <br />
+      <code>tar cvf <dataset>.tar binned_outputs/feature_slice.h5 binned_outputs/square_008um</code>
+      <br /><br />
+      For the "clusters.csv" file, it is preferable if the "Cluster" column has actual annotation labels instead of numbers from the output. This provides more value to other users.
+      <br /><br />
+      Special note: We have observed that bin sizes finer than 8 microns per pixel will generally have more cells, which can lead to longer and more intense computes. For now, we use the "square_008um" binned output.
+    </template>
+
+    <template id="xenium-spatial-reqs">
+      A tar.gz file containing the following files with these standardized names in this directory structure:
+
+      <ul>
+          <li>(Required) 'experiment.xenium': File containing specifications.</li>
+          <li>(Required) 'cell_feature_matrix.h5': File containing cell feature matrix.</li>
+          <li>(Required) 'cells.parquet': File containing cell metadata.</li>
+          <li>(Required) 'morphology_focus.ome.tif': File containing morphology focus or a "morphology_focus" directory containing multiple images.</li>
+          <li>'nucleus_boundaries.parquet': Polygons of nucleus boundaries.</li>
+          <li>'cell_boundaries.parquet': Polygons of cell boundaries.</li>
+          <li>'transcripts.parquet': File containing transcripts.</li>
+          <li>'cells.zarr.zip': Zarr file containing cell and nucleus label data (NOT USING FOR NOW)</li>
+          <li>'analysis/clustering/gene_expression_graphclust/clusters.csv': Clustering information with both "Barcode" and "Cluster" columns.</li>
+      </ul>
+      <br />
+      More information on Xenium outputs can be found here: https://www.10xgenomics.com/support/software/xenium-ranger/latest/analysis/outputs/XR-output-overview
+      <br /><br />
+      For the "clusters.csv" file, it is preferable if the "Cluster" column has actual annotation labels instead of numbers from the output. This provides more value to other users.
+    </template>
+
+      <script src="js/vendor/js.cookie.js?v=cbfcd86"></script>
 
       <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
       <!-- Page-specific JS file here -->
-      <script type="module" src="js/upload_dataset.js?v=9858a6e"></script>
+      <script type="module" src="js/upload_dataset.js?v=cbfcd86"></script>
     </body>
 </html>

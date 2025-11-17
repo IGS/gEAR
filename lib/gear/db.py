@@ -1,8 +1,8 @@
 import mysql.connector
-from mysql.connector import errorcode
 
 # This resolves some "no localization support for language 'eng'" error
 import mysql.connector.locales.eng.client_error
+from mysql.connector import errorcode
 
 """
 
@@ -11,6 +11,7 @@ import mysql.connector.locales.eng.client_error
 import sys
 
 from gear.serverconfig import ServerConfig
+
 
 class MySQLDB:
     """
@@ -27,11 +28,18 @@ class MySQLDB:
         vs. creating new ones each time.
         """
         config = ServerConfig().parse()
+        port = int(config['database'].get('port', 3306))  # Default to 3306 if not set
 
         try:
-            cnx = mysql.connector.connect(user=config['database']['user'], password=config['database']['password'],
-                                          host=config['database']['host'], database=config['database']['name'],
-                                          buffered=True, use_pure=True)
+            cnx = mysql.connector.connect(
+                user=config['database']['user'],
+                password=config['database']['password'],
+                host=config['database']['host'],
+                port=port,
+                database=config['database']['name'],
+                buffered=True,
+                use_pure=True
+            )
             self.connection = cnx
             return cnx
         except mysql.connector.Error as err:

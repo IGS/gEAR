@@ -12,7 +12,7 @@ import cgi, html
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
-
+from gear.analysis import Analysis
 
 def download_file(file_path, file_name):
     print("Content-type: application/octet-stream")
@@ -65,10 +65,10 @@ def main():
         if not session_id:
           session_id = None
 
-        analysis = geardb.Analysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id)
+        analysis = Analysis(id=analysis_id, dataset_id=dataset_id, session_id=session_id)
         analysis.discover_type()
         try:
-          h5ad_path = analysis.dataset_path()
+          h5ad_path = analysis.dataset_path
         except Exception as e:
           print(str(e), file=sys.stderr)
           h5ad_path = ""

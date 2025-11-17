@@ -1,9 +1,9 @@
 'use strict';
 
-import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates, trigger } from "./common.v2.js?v=9858a6e";
-import { availablePalettes, plotly2MatplotlibNames } from "./plot_display_config.js?v=9858a6e";
-import { FacetWidget } from "./classes/facets.js?v=9858a6e";
-import { DatasetTree } from "./classes/tree.js?v=9858a6e";
+import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates, trigger } from "./common.v2.js?v=cbfcd86";
+import { availablePalettes, plotly2MatplotlibNames } from "./plot_display_config.js?v=cbfcd86";
+import { FacetWidget } from "./classes/facets.js?v=cbfcd86";
+import { DatasetTree } from "./classes/tree.js?v=cbfcd86";
 
 let isMultigene;
 const setIsMultigene = (val) => { isMultigene = val; }
@@ -557,12 +557,13 @@ const datasetTree = new DatasetTree({
  * is displayed and an error is thrown.
  *
  * @async
+ * @param {URLSearchParams} urlParams - The URLSearchParams object containing the URL parameters.
  * @param {string} paramName - The name of the URL parameter to look for.
  * @param {function} [fetchInfoFn] - Optional async function to fetch dataset info using the parameter value.
  *        Should return a Promise that resolves to an array of objects containing a `dataset_id` property.
  * @throws {Error} If the dataset cannot be accessed or found in the dataset tree.
  */
-const activateDatasetFromParam = async (paramName, fetchInfoFn) => {
+const activateDatasetFromParam = async (urlParams, paramName, fetchInfoFn) => {
     if (!urlParams.has(paramName)) {
         return;
     }
@@ -978,14 +979,18 @@ const createPlot = async (event) => {
     const plotType = getSelect2Value(plotTypeSelect);
 
     // Set loading
-	event.target.classList.add("is-loading");
+    for (const plotBtn of plotBtns) {
+        plotBtn.classList.add("is-loading");
+    }
 
     plotStyle.populatePlotConfig();
 
     await curatorSpecifcCreatePlot(plotType, datasetId, analysisObj);
 
     // Stop loader
-	event.target.classList.remove("is-loading");
+    for (const plotBtn of plotBtns) {
+        plotBtn.classList.remove("is-loading");
+    }
 
     // Hide this view
     document.getElementById("content-c").classList.add("is-hidden");
@@ -1018,6 +1023,7 @@ const disableCheckboxLabel = (checkboxElt, state) => {
  */
 const getAnalysisId = () => {
     const analysisValue = analysisSelect.selectedOptions.length ? getSelect2Value(analysisSelect) : undefined;
+    if (analysisValue === "-1") return null;  // Primary analysis
     return analysisValue || null;
 }
 
@@ -1388,7 +1394,7 @@ const renderOrderSortableSeries = (series) => {
     if (!catColumns.includes(series)) return;
 
     // Start with a fresh template
-    const orderElt = document.getElementById(`${CSS.escape(series)}-order`);
+    const orderElt = document.getElementById(`${series}-order`);
     if (orderElt) {
         orderElt.remove();
     }
@@ -1414,7 +1420,7 @@ const renderOrderSortableSeries = (series) => {
         const listElt = document.createElement("li");
         listElt.classList.add("has-background-grey-lighter", "has-text-dark");
         listElt.textContent = group;
-        document.getElementById(`${CSS.escape(series)}-order-list`).append(listElt);
+        document.getElementById(`${series}-order-list`).append(listElt);
     }
 
     // Create sortable for this series
@@ -1427,7 +1433,7 @@ const renderOrderSortableSeries = (series) => {
     });
 
     // Make note if user changes the order
-    const list = document.getElementById(`${CSS.escape(series)}-order-list`);
+    const list = document.getElementById(`${series}-order-list`);
     list.addEventListener('sortupdate', (event) => {
         // e.detail contains {origin, destination, item, oldIndex, newIndex}
         sortOrderChanged = true;
@@ -1741,12 +1747,12 @@ const updateOrderSortable = () => {
     for (const series of sortableSet) {
         // Series is in sortableSet but not seriesSet, remove <series>-order element
         if (!seriesSet.has(series)) {
-            const orderElt = document.getElementById(`${CSS.escape(series)}-order`);
+            const orderElt = document.getElementById(`${series}-order`);
             orderElt.remove();
         }
 
         // Remove sortupdate event listener if it exists
-        const list = document.getElementById(`${CSS.escape(series)}-order-list`);
+        const list = document.getElementById(`${series}-order-list`);
         if (list) {
             list.removeEventListener('sortupdate', (event) => {
                 // e.detail contains {origin, destination, item, oldIndex, newIndex}
@@ -1919,7 +1925,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
     curatorSpecificNavbarUpdates();
 
-    const sessionId = getCurrentUser().session_id;
+    const sessionId = getCurrentUser()?.session_id || null;
     if (! sessionId ) {
         createToast("Not logged in so saving displays is disabled.", "is-warning");
         document.getElementById("save-display-btn").disabled = true;
@@ -1934,13 +1940,13 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
         // Usage inside handlePageSpecificLoginUIUpdates
         if (urlParams.has("share_id")) {
-            return await activateDatasetFromParam("share_id", async (shareId) =>
+            return await activateDatasetFromParam(urlParams, "share_id", async (shareId) =>
                 await apiCallsMixin.fetchDatasetListInfo({permalink_share_id: shareId})
             );
         } else if (urlParams.has("dataset_id")) {
     		// Legacy support for dataset_id
 
-            await activateDatasetFromParam("dataset_id");
+            await activateDatasetFromParam(urlParams, "dataset_id");
         }
 	} catch (error) {
 		logErrorInConsole(error);

@@ -216,11 +216,14 @@ def main():
         elif plot_type.lower() in ["tsne_static", "umap_static", "pca_static", "tsne"]:
             url += "/tsne"
             image_success = make_static_tsne_graph(filename, config, url)
+        elif plot_type.lower() in ["mg_tsne_static", "mg_umap_static", "mg_pca_static"]:
+            url += "/mg_tsne"
+            image_success = make_static_tsne_graph(filename, config, url)
         elif plot_type.lower() in ["svg"]:
             url += "/svg"
             image_success = make_static_svg(filename, dataset_id)
-        elif plot_type.lower() in ["epiviz"]:
-            url += "/epiviz"
+        elif plot_type.lower() in ["gosling"]:
+            url += "/gosling"
             pass
         else:
             print("Plot type {} for display id {} is not recognizable".format(plot_type, display_id))

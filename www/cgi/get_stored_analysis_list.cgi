@@ -9,11 +9,14 @@ session) and 'user_unsaved'
 
 import cgi
 import json
-import os, sys
+import os
+import sys
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from gear.analysis import AnalysisCollection
+
 
 def main():
     form = cgi.FieldStorage()
@@ -26,16 +29,24 @@ def main():
     if user:
         user_id = user.id
 
-    acollection = geardb.AnalysisCollection()
-    acollection.get_all_by_dataset_id(user_id=user_id, session_id=session_id, dataset_id=dataset_id)
+    ds = geardb.get_dataset_by_id(dataset_id)
+    if not ds:
+        print('Content-Type: application/json\n\n')
+        print(json.dumps({'success': 0, 'error': 'No dataset found with that ID'}))
+        return
+    is_spatial = ds.dtype == "spatial"
+
+    acollection = AnalysisCollection()
+    acollection.get_all_by_dataset_id(user_id=user_id, session_id=session_id, dataset_id=dataset_id, is_spatial=is_spatial)
 
     result['primary'] = acollection.primary
     result['public'] = acollection.public
     result['user_saved'] = acollection.user_saved
     result['user_unsaved'] = acollection.user_unsaved
 
-    ## get the vetting for each
+
     if user_id:
+        ## get the vetting for each
         for atype in result:
             for ana in result[atype]:
                 try:
@@ -43,7 +54,10 @@ def main():
                 except Exception as e:
                     print(str(e), file=sys.stderr)
 
-
+        # Serialize all analyses
+        # Worth noting that "group_labels" will be a dict instead of list (see __repr__) but they are not used here
+        for atype in result:
+            result[atype] = [ana._serialize_json() for ana in result[atype]]
 
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))

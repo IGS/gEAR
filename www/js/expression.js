@@ -1,9 +1,9 @@
 'use strict';
 
-import { apiCallsMixin, createToast, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=9858a6e";
-import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=9858a6e";
-import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners, selectGeneLists } from "../include/gene-collection-selector/gene-collection-selector.js?v=9858a6e";
-import { TileGrid } from "./classes/tilegrid.js?v=9858a6e";
+import { apiCallsMixin, createToast, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=cbfcd86";
+import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=cbfcd86";
+import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners, selectGeneLists } from "../include/gene-collection-selector/gene-collection-selector.js?v=cbfcd86";
+import { TileGrid } from "./classes/tilegrid.js?v=cbfcd86";
 
 let urlParamsPassed = false;
 let isMultigene = false;
@@ -119,7 +119,7 @@ document.getElementById('submit-expression-search').addEventListener('click', as
         }
 
         // If the user isn't logged in, set the first organism's annotation as the default
-        if (!getCurrentUser().session_id && tilegrid?.datasets.length > 0) {
+        if (!getCurrentUser()?.session_id && tilegrid?.datasets.length > 0) {
             const first_organism_id = tilegrid.datasets[0].organism_id;
             currentlySelectedOrgId = parseInt(first_organism_id);
             organismSelector.value = currentlySelectedOrgId;
@@ -161,10 +161,10 @@ organismSelector.addEventListener('change', (event) => {
 
     // If the user is logged in and doesn't have a default org ID or it's different from their current,
     //  show the control
-    if (!getCurrentUser().session_id) {
+    if (!getCurrentUser()?.session_id) {
         return;
     }
-    const shouldHide = getCurrentUser().default_org_id === currentlySelectedOrgId;
+    const shouldHide = getCurrentUser()?.default_org_id === currentlySelectedOrgId;
     setDefaultOrganism.classList.toggle('is-hidden', shouldHide);
 });
 
@@ -316,7 +316,7 @@ const fetchOrganisms = async () => {
             row.querySelector('option').value = organism.id;
 
             // if this matches the user's default organism, select it
-            if (getCurrentUser().default_org_id === organism.id) {
+            if (getCurrentUser()?.default_org_id === organism.id) {
                 row.querySelector('option').selected = true;
                 currentlySelectedOrgId = organism.id;
             }
@@ -351,9 +351,6 @@ const updateGenesSelected = (searchTermString) => {
     }
 
     geneCollectionState.manuallyEnteredGenes = newManuallyEnteredGenes;
-
-    //console.log("Selected genes updated:", Array.from(geneCollectionState.selectedGenes));
-    //console.log("Manually entered genes updated:", Array.from(geneCollectionState.manuallyEnteredGenes));
 };
 
 /**
@@ -677,6 +674,9 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     const geneSymbolId = getUrlParameter('gene_symbol');
     shareUsed = getUrlParameter('share_used') === '1';
 
+    registerGeneListEventListeners(apiCallsMixin);
+    registerDatasetCollectionEventListeners(apiCallsMixin, getCurrentUser());
+
     // Wait until all pending API calls have completed before checking if we need to search
     document.getElementById("submit-expression-search").classList.add("is-loading");
     try {
@@ -684,7 +684,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         // but Promise.allSettled waits until all resolve/reject and lets you know which ones failed
         const [dc_result, org_result] = await Promise.all([
             parseGeneListURLParams(),
-            fetchDatasetCollections(layoutShareId),
+            fetchDatasetCollections(apiCallsMixin, layoutShareId),
             fetchOrganisms()
         ]);
     } catch (error) {
@@ -692,9 +692,6 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     } finally {
         document.getElementById("submit-expression-search").classList.remove("is-loading");
     }
-
-    registerGeneListEventListeners();
-    registerDatasetCollectionEventListeners();
 
     parseDatasetCollectionURLParams();
 
@@ -706,7 +703,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
         datasetCollectionState.selectedShareId = layoutShareId;
         selectDatasetCollection(layoutShareId);
         urlParamsPassed = true;
-    } else if (getCurrentUser().layout_share_id) {
+    } else if (getCurrentUser()?.layout_share_id) {
         selectDatasetCollection(getCurrentUser().layout_share_id);
     }
 

@@ -14,19 +14,17 @@ from time import sleep
 from typing import TextIO
 
 import aiohttp
-import anndata
 import geardb
 import pandas as pd
 import scipy.stats as stats
 from aiohttp_retry import ExponentialRetry, RetryClient
 from flask import request
 from flask_restful import Resource, reqparse
+from gear.analysis import get_analysis, SpatialAnalysis
 from gear.orthology import get_ortholog_file, map_dataframe_genes
 from gear.utils import catch_memory_error
 from more_itertools import sliced
 from werkzeug.utils import secure_filename
-
-from .common import get_adata_from_analysis, get_spatial_adata
 
 # Have all print statements flush immediately (for debugging)
 print = functools.partial(print, flush=True)
@@ -239,6 +237,9 @@ def chunk_dataframe(df: pd.DataFrame, chunk_size: int, fh: TextIO):
 
     for idx, index_slice in enumerate(index_slices):
         yield idx, df.iloc[:, list(index_slice)]
+
+def init_job_status(projection_id: str) -> dict:
+    return {"status": "pending", "result": {"projection_id":projection_id}, "error": None}
 
 def write_result_to_file(result, filename) -> None:
     # Write chunked dataframe results to a file, using the projection ID and the dataframe indexes in the filename
@@ -522,11 +523,16 @@ def projectr_callback(
             ortholog_file = get_ortholog_file(
                 str(genecart.organism_id), str(ds.organism_id), ANNOTATION_TYPE
             )
+            if ortholog_file is None:
+                raise Exception(
+                    "Could not find an orthologous mapping file between the gene list organism and the dataset organism."
+                )
             loading_df = map_dataframe_genes(loading_df, ortholog_file)
     except Exception as e:
         print(str(e), file=fh)
         traceback.print_exc()
         status["status"] = "failed"
+        status["success"] = -1
         status["error"] = str(e)
         write_projection_status(JOB_STATUS_FILE, status)
         return status
@@ -534,46 +540,42 @@ def projectr_callback(
     # Drop duplicate unique identifiers. This may happen if two unweighted gene cart genes point to the same Ensembl ID in the db
     loading_df = loading_df[~loading_df.index.duplicated(keep="first")]
 
-    is_spatial = False
-    if ds.dtype == "spatial":
-        is_spatial = True
+    is_spatial = ds.dtype == "spatial"
 
     # NOTE Currently no analyses are supported yet.
-    # TODO:- fix redundancy with "get_(spatial)_adata" functions
     try:
-        ana = geardb.get_analysis(None, dataset_id, session_id, is_spatial)
-    except Exception:
+        ana = get_analysis(None, dataset_id, session_id, is_spatial)
+    except Exception as e:
+        print(str(e), file=fh)
         traceback.print_exc()
         status["status"] = "failed"
-        status["error"] = "Could not retrieve analysis."
+        status["error"] = "Analysis for this dataset is unavailable."
         write_projection_status(JOB_STATUS_FILE, status)
         return status
 
-    if is_spatial:
-        try:
-            adata: anndata.AnnData = get_spatial_adata(
-                None, dataset_id, session_id, include_images=False
-            )
-        except Exception:
-            traceback.print_exc()
-            status["status"] = "failed"
-            status["error"] = "Could not retrieve AnnData object from spatial datastore."
-            write_projection_status(JOB_STATUS_FILE, status)
-            return status
-    else:
-        try:
-            adata = get_adata_from_analysis(None, dataset_id, session_id)
-        except Exception:
-            traceback.print_exc()
-            status["status"] = "failed"
-            status["error"] = "Could not retrieve AnnData object from datastore."
-            write_projection_status(JOB_STATUS_FILE, status)
-            return status
+    try:
+            args = {}
+            if is_spatial:
+                args['include_images'] = False
+            else:
+                args['backed'] = True
+            adata = ana.get_adata(**args)
+    except Exception:
+        traceback.print_exc()
+        status["status"] = "failed"
+        status["error"] = "Could not create dataset object using analysis."
+        write_projection_status(JOB_STATUS_FILE, status)
+        return status
 
     # If dataset genes have duplicated index names, we need to rename them to avoid errors
     # in collecting rownames in projectR (which gives invalid output)
     # This means these duplicated genes will not be in the intersection of the dataset and pattern genes
-    dedup_copy = Path(ana.dataset_path().replace(".h5ad", ".dups_removed.h5ad"))
+    if isinstance(ana, SpatialAnalysis):
+        dedup_copy = str(ana.dataset_path).replace(".zarr", ".dups_removed.h5ad")
+    else:
+        dedup_copy = str(ana.dataset_path).replace(".h5ad", ".dups_removed.h5ad")
+    dedup_copy = Path(dedup_copy)
+
     if (adata.var.index.duplicated(keep="first")).any():
         if dedup_copy.exists():
             dedup_copy.unlink()
@@ -626,8 +628,16 @@ def projectr_callback(
 
     target_df = target_df.fillna(0)  # Fill NaN values with 0
 
-    # Close dataset adata so that we do not have a stale opened object
-    adata.file.close()
+    # Ensure adata.obs.index is str, for reindex matching later
+    adata.obs.index = adata.obs.index.astype(str)
+    obs_index_list = adata.obs.index.tolist()
+
+    # Close adata so that we do not have a stale opened object
+    if adata.isbacked:
+        adata.file.close()
+
+    if dedup_copy.exists():
+        dedup_copy.unlink()
 
     dataset_projection_csv = build_projection_csv_path(
         dataset_id, projection_id, "dataset"
@@ -772,8 +782,8 @@ def projectr_callback(
 
         gc.collect()  # trying to clear memory
 
-        if len(projection_patterns_df.index) != len(adata.obs.index):
-            message = "Not all chunked sample rows were returned by projectR.  Cannot proceed."
+        if len(projection_patterns_df.index) != len(obs_index_list):
+            message = "Not all chunked sample rows were returned by projectR. Saved partial results to disk. Refresh to try again."
             print(message, file=fh)
             remove_lock_file(lock_fh, lockfile)
             status["status"] = "failed"
@@ -787,14 +797,20 @@ def projectr_callback(
             write_projection_status(JOB_STATUS_FILE, status)
             return status
 
+        # Ensure dtype of projection_patterns_df and projection_pval_df match obs_index_list
+        # Observed in some spatial datasets
+        # For example, numerical indexes may be mismatched.
+        projection_patterns_df.index = projection_patterns_df.index.astype(str)
+        if not projection_pval_df.empty:
+            projection_pval_df.index = projection_pval_df.index.astype(str)
+
         # There is a good chance the samples are now out of order, which will break
         # the copying of the dataset observation metadata when this output is converted
         # to an AnnData object. So reorder back to dataset sample order.
-        projection_patterns_df = projection_patterns_df.reindex(
-            adata.obs.index.tolist()
-        )
+        projection_patterns_df = projection_patterns_df.reindex(obs_index_list)
         if not projection_pval_df.empty:
-            projection_pval_df = projection_pval_df.reindex(adata.obs.index.tolist())
+            projection_pval_df = projection_pval_df.reindex(obs_index_list)
+
 
         # Delete all the chunk output files for this projection_id
         for filepath in CHUNK_OUTPUTS_DIR.glob(f"{projection_id}_chunk*.json"):
@@ -867,13 +883,6 @@ def projectr_callback(
             return status
         finally:
             write_projection_status(JOB_STATUS_FILE, status)
-
-    # Close adata so that we do not have a stale opened object
-    if adata.isbacked:
-        adata.file.close()
-
-    if dedup_copy.exists():
-        dedup_copy.unlink()
 
     # Have had cases where the column names are x1, x2, x3, etc. so load in the original pattern names
     projection_patterns_df = projection_patterns_df.set_axis(
@@ -1130,7 +1139,7 @@ class ProjectR(Resource):
 
         run_projectr = True
 
-        status = {"status": "pending", "result": {"projection_id":projection_id}, "error": None}
+        status = init_job_status(projection_id)
 
         # Housekeeping... create some dir paths if they do not exist
         JOB_STATUS_DIR.mkdir(parents=True, exist_ok=True)
@@ -1216,6 +1225,8 @@ class ProjectR(Resource):
                     # delete status file so we can start a rerun
                     print(f"[x] Job {projection_id} has failed. Attempting a rerun", file=sys.stderr)
                     Path(JOB_STATUS_FILE).unlink(missing_ok=True)
+                    # Ensure "error" status is not written to file for new polling session
+                    status = init_job_status(projection_id)
 
         # Write pending state
         write_projection_status(JOB_STATUS_FILE, status)

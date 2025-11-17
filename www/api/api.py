@@ -1,6 +1,7 @@
 # Include our lib directory on system path
 # so we have access to modules
 import os
+import resource
 import sys
 from pathlib import Path
 
@@ -13,6 +14,13 @@ matplotlib.use('Agg')
 from flask import Flask
 from flask_restful import Api
 
+# Set the maximum memory usage for the process
+# to 95% of the system's maximum memory usage
+soft, hard = resource.getrlimit(resource.RLIMIT_DATA)
+soft95 = int(soft * 0.95)
+resource.setrlimit(resource.RLIMIT_DATA, (soft95, hard))
+
+
 TWO_LEVELS_UP = 2
 abs_path_gear = Path(__file__).resolve().parents[TWO_LEVELS_UP]
 abs_path_lib = abs_path_gear.joinpath('lib')
@@ -20,6 +28,14 @@ abs_path_lib = abs_path_gear.joinpath('lib')
 sys.path.insert(0, str(abs_path_lib))
 
 debug = os.environ.get('DEBUG', False)
+debug = debug in ('1', 'true', 'True', 'TRUE')
+
+app = Flask(__name__)
+
+### -- Anything that relies on the app object (i.e. profilers) should go before importing api resources -- ###
+
+api = Api(app)
+# Add API endpoints to resources
 
 from resources.aggregations import Aggregations  # noqa: E402
 from resources.analyses import Analyses  # noqa: E402
@@ -28,7 +44,6 @@ from resources.available_display_types import (  # noqa: E402
     MGAvailableDisplayTypes,
 )
 from resources.dataset_display import DatasetDisplay  # noqa: E402
-from resources.epiviz_data import EpivizData  # noqa: E402
 from resources.gene_symbols import GeneSymbols  # noqa: E402
 from resources.gosling_spec import GoslingSpec  # noqa: E402
 from resources.h5ad import H5ad  # noqa: E402
@@ -37,23 +52,16 @@ from resources.orthologs import Orthologs  # noqa: E402
 
 # Import resources
 from resources.plotly_data import PlotlyData  # noqa: E402
-from resources.projectr import ProjectR, ProjectROutputFile, ProjectRStatus  # noqa: E402
+from resources.projectr import (  # noqa: E402
+    ProjectR,
+    ProjectROutputFile,
+    ProjectRStatus,
+)
 from resources.spatial_scanpy_data import SpatialScanpyData  # noqa: E402
+from resources.spatialpanel import SpatialPanel  # noqa: E402
 from resources.svg_data import SvgData  # noqa: E402
 from resources.top_pca_genes import TopPCAGenes  # noqa: E402
 from resources.tsne_data import MGTSNEData, TSNEData  # noqa: E402
-
-app = Flask(__name__)
-api = Api(app)
-# Add API endpoints to resources
-
-# Set the maximum memory usage for the process
-# to 95% of the system's maximum memory usage
-import resource
-
-soft, hard = resource.getrlimit(resource.RLIMIT_DATA)
-soft95 = int(soft * 0.95)
-resource.setrlimit(resource.RLIMIT_DATA, (soft95, hard))
 
 api.add_resource(PlotlyData, '/plot/<dataset_id>'   # Default endpoint
                  , "/plot/<dataset_id>/plotly")     # add /plotly to this endpoint for name consistency with other endpoints
@@ -61,8 +69,8 @@ api.add_resource(MGPlotlyData,'/plot/<dataset_id>/mg_plotly')
 api.add_resource(SvgData, '/plot/<dataset_id>/svg')
 api.add_resource(TSNEData, '/plot/<dataset_id>/tsne')
 api.add_resource(MGTSNEData, '/plot/<dataset_id>/mg_tsne')
-api.add_resource(EpivizData, '/plot/<dataset_id>/epiviz')
 api.add_resource(GoslingSpec, '/plot/<dataset_id>/gosling')
+api.add_resource(SpatialPanel, '/plot/<dataset_id>/spatialpanel')
 api.add_resource(SpatialScanpyData, '/plot/<dataset_id>/spatial_scanpy')
 api.add_resource(ProjectR, '/projectr/<dataset_id>')
 api.add_resource(ProjectROutputFile, '/projectr/<dataset_id>/output_file')

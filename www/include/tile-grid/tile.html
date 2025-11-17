@@ -154,29 +154,6 @@
     </a>
 </template>
 
-<template id="tmpl-epiviz-container">
-    <div class='epiviz-container'>
-        <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-sortable/0.9.13/jquery-sortable-min.js" integrity="sha512-9pm50HHbDIEyz2RV/g2tn1ZbBdiTlgV7FwcQhIhvykX6qbQitydd6rF19iLmOqmJVUYq90VL2HiIUHjUMQA5fw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-        <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/renderingQueues/renderingQueue.js"></script>
-        <script src="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/webcomponentsjs/webcomponents-lite.js"></script>
-
-        <link rel="import" href="https://cdn.jsdelivr.net/gh/epiviz/epiviz-chart/cdn/epiviz-components-gear.html">
-
-        <epiviz-data-source provider-type="epiviz.data.WebServerDataProvider"
-            provider-id="fileapi"
-        >
-        </epiviz-data-source>
-        <epiviz-navigation
-            hide-chr-input
-            hide-search
-            hide-add-chart
-            show-viewer
-        >
-        </epiviz-navigation>
-    </div>
-</template>
-
 <template id="tmpl-tile-grid-choose-display-modal">
     <div class="js-choose-display-modal modal">
         <div class="modal-background"></div>

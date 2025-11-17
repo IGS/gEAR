@@ -3,9 +3,9 @@
 
 'use strict';
 
-import { apiCallsMixin, createToast, getCurrentUser, initCommonUI, logErrorInConsole, trigger } from "./common.v2.js?v=9858a6e";
-import { curatorCommon } from "./curator_common.js?v=9858a6e";
-import { postPlotlyConfig } from "./plot_display_config.js?v=9858a6e";
+import { apiCallsMixin, createToast, getCurrentUser, initCommonUI, logErrorInConsole, trigger } from "./common.v2.js?v=cbfcd86";
+import { curatorCommon } from "./curator_common.js?v=cbfcd86";
+import { postPlotlyConfig } from "./plot_display_config.js?v=cbfcd86";
 
 curatorCommon.setIsMultigene(0);
 
@@ -95,7 +95,7 @@ class PlotlyHandler extends curatorCommon.PlotHandler {
                 curatorCommon.renderColorPicker(series);
                 for (const group in config["colors"]) {
                     const color = config["colors"][group];
-                    const colorField = document.getElementById(`${CSS.escape(group)}-color`);
+                    const colorField = document.getElementById(`${group}-color`);
                     if (colorField) {
                         colorField.value = color;
                     } else {
@@ -166,6 +166,9 @@ class PlotlyHandler extends curatorCommon.PlotHandler {
         Plotly.relayout("plotly-preview", custonLayout);
 
         addOvercrowdedSeriesWarning(plotContainer);
+
+        // Trigger resize to make sure it fits in the container
+        Plotly.Plots.resize(document.getElementById('plotly-preview'));
 
     }
 
@@ -309,6 +312,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
         , "js-tsne-marker-size": "marker_size"
         , "js-tsne-color-palette": "expression_palette"
         , "js-tsne-reverse-palette": "reverse_palette"
+        , "js-tsne-make-zero-gray": "make_zero_gray"
         , "js-tsne-two-way-palette": "two_way_palette"
         , "js-tsne-center-around-median": "center_around_median"
     };
@@ -374,7 +378,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
                 curatorCommon.renderColorPicker(series);
                 for (const group in config["colors"]) {
                     const color = config["colors"][group];
-                    const colorField = document.getElementById(`${CSS.escape(group)}-color`);
+                    const colorField = document.getElementById(`${group}-color`);
                     if (colorField) {
                         colorField.value = color;
                     } else {
@@ -420,6 +424,10 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
                 classElt.checked = false;
             }
             for (const classElt of document.getElementsByClassName("js-tsne-two-way-palette")) {
+                classElt.disabled = true;
+                classElt.checked = false;
+            }
+            for (const classElt of document.getElementsByClassName("js-tsne-make-zero-gray")) {
                 classElt.disabled = true;
                 classElt.checked = false;
             }
@@ -759,7 +767,7 @@ curatorCommon.registerChooseGenes(chooseGene);
  */
 const colorSVG = (chartData, datasetId, plotConfig) => {
     // I found adding the mid color for the colorblind mode  skews the whole scheme towards the high color
-    const colorblindMode = getCurrentUser().colorblind_mode;
+    const colorblindMode = getCurrentUser()?.colorblind_mode || false;
     const lowColor = colorblindMode ? 'rgb(254, 232, 56)' : plotConfig["low_color"];
     const midColor = colorblindMode ? null : plotConfig["mid_color"];
     const highColor = colorblindMode ? 'rgb(0, 34, 78)' : plotConfig["high_color"];
@@ -1518,8 +1526,9 @@ const setupScanpyOptions = async (datasetId) => {
             const colorPaletteElts = document.getElementsByClassName("js-tsne-color-palette");
             const reversePaletteElts = document.getElementsByClassName("js-tsne-reverse-palette");
             const twoWayPaletteElts = document.getElementsByClassName("js-tsne-two-way-palette");
+            const makeZeroGrayElts = document.getElementsByClassName("js-tsne-make-zero-gray");
 
-            for (const targetElt of [...colorPaletteElts, ...reversePaletteElts, ...twoWayPaletteElts]) {
+            for (const targetElt of [...colorPaletteElts, ...reversePaletteElts, ...twoWayPaletteElts, ...makeZeroGrayElts]) {
                 targetElt.disabled = event.target.checked ? true : false;
             }
 

@@ -1,7 +1,7 @@
 # Copilot Instructions for gEAR Portal
 
 ## Project Overview
-- **gEAR** is a LAMP-stack portal for gene expression data visualization and analysis, supporting microarray, bulk/single-cell RNA-Seq, and epigenetic data. Key technologies: Python, MySQL, H5AD, D3 (SVG/Snap), Plot.ly, and (legacy) Epiviz.
+- **gEAR** is a LAMP-stack portal for gene expression data visualization and analysis, supporting microarray, bulk/single-cell RNA-Seq, and epigenetic data. Key technologies: Python, MySQL, H5AD, D3 (SVG/Snap), Plot.ly, and Gosling.
 - Functions:
     - Dataset and gene exploration and visualization
     - Dataset management (upload, delete, etc.)
@@ -12,7 +12,6 @@
     - Single-cell RNA-Seq analysis (similar to Seurat pipeline)
     - Comparison tool for gene expression data within a dataset
     - Integration with external data sources
-- Epiviz is being sunsetted in favor of the Gosling epigenome browser.
 - Major production instances: [UMgEAR](https://umgear.org) (hearing research), [NeMO Analytics](https://nemoanalytics.org) (brain research).
 
 ## Architecture & Key Components
@@ -55,20 +54,36 @@
 - **Configuration**: Main config in `gear.ini`.
 - **Documentation**: End-user docs at [GitHub Wiki](https://github.com/IGS/gEAR/wiki); developer notes in `README.md` and `docs/`.
 
-### Code Guidelines
+## Code Guidelines
 - Follow established coding conventions (e.g., naming, file structure).
 - Write modular, reusable code with clear separation of concerns.
 - Include comments and documentation for complex logic.
 - Ensure accessibility and responsiveness in UI components.
 - Integration and end-to-end testing are important, but we may be rushed and unfortunately skip them in favor of feature development.
 - Ensure security best practices are followed (e.g., input validation, authentication).
-- Javascript code should be written in a functional style where possible, using ES6+ features.
-- For Javascript, prefer "const" over "function" for arrow functions.
-- Python is using Ruff for linting and formatting.
+
+### For Javascript
+    - Should be written in a functional style where possible, using ES6+ features.
+    - Prefer "const" over "function" for arrow functions.
+    - Prefer "for ... of" loops over traditional "foreach" loops.
+    - Prefer camelCase for variable and function names and PascalCase for class names.
+    - Try to use "getElementById" or "getElementsByClassName" over "querySelector" and "querySelectorAll" for performance, when possible.
+
+### For Python
+    - Use snake_case for variable and function names and PascalCase for class names.
+    - Use Ruff for linting and formatting if available.
+    - Type hints are encouraged but not required.
+    - Follow PEP 8 style guide.
+
+### ES Module code order
+1. Imports (must be at top syntax-wise)
+2. Constants, variables
+3. Functions and classes
+4. Initialization logic
+5. Event listeners (bottom to avoid hoisting issues)
 
 ## Integration Points
-- **Gosling (future)**: Epigenome browser replacing Epiviz for epigenetic data visualization.
-- **Epiviz (legacy)**: Embedded for epigenetic data visualization (being sunsetted).
+- **Gosling**: Epigenome browser replacing Epiviz for epigenetic data visualization.
 - **ProjectR**: Microservice for matrix projection, deployed via Docker/Cloud Run; configure endpoint in `gear.ini`.
 - **External Data**: H5AD files for dataset storage; MySQL for metadata.
 

@@ -37,181 +37,289 @@
           <!--#include virtual="/include/header_bar.html" -->
 
           <section id="content-c" class="m-3" data-nav-link="workspace">
-            <!-- New user onboarding -->
-            <!--<div id="onboarding-c">
-              <button id="onboarding-btn" class="button is-primary is-dark">
-                New to gEAR? Click here.
-              </button>
-            </div> -->
 
-            <!-- This is the section to be populated for new pages -->
-            <h3 class="mt-4 mb-4">
-              <span class="icon">
-                <i class="mdi mdi-book-outline"></i>
-              </span>
-              <span>Guides</span>
-            </h3>
-            <div id="guides_c" class="columns">
-              <div class="column">
-                <div class="guide-element pr-3">
-                  <div><!-- without the 2nd level div here the images disappears -->
-                    <div class="media">
-                      <div class="media-left">
-                        <figure class="image is-96x96">
-                          <img src="/img/guide_image_mag_dna.png" alt="Placeholder image">
-                        </figure>
-                      </div>
-                      <div class="media-content is-size-7 has-text-weight-semibold">
-                        <p>
-                          What's new in gEAR 2.0? Watch our video guide.
-                        </p>
-                        <p class="mt-2"><a class="guide-launcher" href="https://youtu.be/guI161nTv2U" target="_blank">Watch now</a></p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+
+            <div class="columns">
+              <div class="column mt-0 mb-0 pt-0 pb-0">
+                <h3 class="mt-2 mb-0">
+                  <span class="icon is-medium">
+                    <i class="mdi mdi-magnify mdi-24px"></i>
+                  </span>
+                  <span class="is-size-4">Search for:</span>
+                </h3>
               </div>
-              <div class="column">
-                <div class="guide-element pr-3">
-                  <div><!-- without the 2nd level div here the images disappears -->
-                    <div class="media">
-                      <div class="media-left">
-                        <figure class="image is-96x96">
-                          <img src="/img/guide_image_bidirectional.png" alt="Placeholder image">
-                        </figure>
-                      </div>
-                      <div class="media-content is-size-7 has-text-weight-semibold">
-                        <p>
-                          Compare two conditions within a dataset
-                        </p>
-                        <p class="mt-2"><a class="guide-launcher" href="https://youtu.be/7vsldnrjETw" target="_blank">Watch now</a></p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="column">
-                <div class="guide-element pr-3">
-                  <div><!-- without the 2nd level div here the images disappears -->
-                    <div class="media">
-                      <div class="media-left">
-                        <figure class="image is-96x96">
-                          <img src="/img/guide_image_dna_folder.png" alt="Placeholder image">
-                        </figure>
-                      </div>
-                      <div class="media-content is-size-7 has-text-weight-semibold">
-                        <p>
-                          Create and curate your own dataset collections
-                        </p>
-                        <p class="mt-2"><a class="guide-launcher" href="https://youtu.be/DItayfJsldI" target="_blank">Watch now</a></p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="column">
-                <div class="guide-element pr-3">
-                  <div><!-- without the 2nd level div here the images disappears -->
-                    <div class="media">
-                      <div class="media-left">
-                        <figure class="image is-96x96">
-                          <img src="/img/guide_image_mag_lines.png" alt="Placeholder image">
-                        </figure>
-                      </div>
-                      <div class="media-content is-size-7 has-text-weight-semibold">
-                        <p>
-                          Search faster using gene lists and dataset collections
-                        </p>
-                        <p class="mt-2"><a class="guide-launcher" href="https://youtu.be/bKTzGKAvn7w" target="_blank">Watch now</a></p>
-                      </div>
-                    </div>
-                  </div>
+              <div class="column mt-0 mb-0 pt-0 pb-0 is-narrow has-text-right">
+                <div id="onboarding-c">
+                  <button id="onboarding-btn" class="button is-primary is-dark">
+                    New to gEAR? Click here.
+                  </button>
                 </div>
               </div>
             </div>
-            <h3 class="mt-6 mb-3">
-              <span class="icon">
-                <i class="mdi mdi-magnify"></i>
-              </span>
-              <span>Search</span>
-            </h3>
-            <div class="tabs-wrapper">
+
+            <div id="search-tabs-c" class="tabs-wrapper pl-3 pr-3 pb-3">
               <div class="tabs">
-                  <ul>
+                  <ul class="tabs-content">
+                    <!-- genes larger and bolder -->
                       <li data-tab-id="gene_expression" class="is-active">
-                          <a>Gene Expression</a>
+                          <a>Genes</a>
                       </li>
                       <li data-tab-id="datasets">
-                          <a>Explore Datasets</a>
+                          <a>Datasets</a>
                       </li>
                   </ul>
               </div>
-              <div class="tabs-content">
+              <div class="tabs-content mb-5">
                   <ul>
                       <li data-tab-id="gene_expression" class="is-active">
-                        <!-- has-addons connects, is-grouped makes together inline-->
-                        <div class="field has-addons is-grouped mb-0">
-                          <div class="control has-icons-left mr-0">
-                            <input class="input" type="input" id="genes-manually-entered" placeholder="Type here to search using specific gene symbols"\>
-                            <span class="icon is-small is-left">
-                              <i class="mdi mdi-magnify"></i>
-                            </span>
-                          </div>
-                          <!-- div with the text 'OR' centered vertically. this is awkward -->
-                          <div class="columns">
-                            <div class="column is-1">
-                              <div class="is-vertical is-size-7 ml-2 mr-2">OR</div>
-                            </div>
-                          </div>
 
-                          <!--#include virtual="/include/gene-collection-selector/gene-collection-selector.html" -->
+                        <h2><span class="expression-search-step-number">1. </span>Enter gene symbols</h2>
 
-                          <div class="columns">
-                            <div class="column is-1">
-                              <div class="is-vertical is-size-7 ml-2 mr-2">IN</div>
-                            </div>
-                          </div>
+                        <div class="columns">
 
-                          <!--#include virtual="/include/dataset-collection-selector/dataset-collection-selector.html" -->
-
-                          <div class="control">
-                            <button id="submit-expression-search" class="button is-primary ml-3">
-                              <span class="icon is-small">
+                          <div class="column pr-1 pl-5">
+                            <div class="control has-icons-left mr-0">
+                              <!-- TODO make example gene customizable by domain -->
+                              <input class="input" type="input" id="genes-manually-entered" placeholder="Type here to search using specific gene symbols, such as Sox2"\>
+                              <span class="icon is-small is-left">
                                 <i class="mdi mdi-magnify"></i>
                               </span>
-                            </button>
+                            </div>
+                            <div class="control pl-3">
+                              <label class="checkbox">
+                                <input type="checkbox" id="gene-search-exact-match" checked>
+                                Exact gene symbols only
+                              </label>
+                            </div>
+                          </div>
+
+                          <!-- has-addons connects, is-grouped makes together inline-->
+                          <div class="column is-narrow field has-addons is-grouped mb-0 pl-1 pr-6">
+
+                            <!-- div with the text 'OR' centered vertically. this is awkward -->
+                            <div class="columns">
+                              <div class="column is-1">
+                                <div class="is-vertical is-size-7 ml-1 mr-2">OR</div>
+                              </div>
+                            </div>
+
+                            <!--#include virtual="/include/gene-collection-selector/gene-collection-selector.html" -->
+                          </div>  <!-- end .column is-11 -->
+
+                        </div>  <!-- end .columns for step 1 -->
+
+
+                        <div class="columns">
+                          <div class="column is-3">
+                            <h2 class="mb-3"><span class="expression-search-step-number">2. </span>Choose a dataset collection</h2>
+
+                            <div class="pl-5">
+
+                                <div class="field">
+                                   <!--#include virtual="/include/dataset-collection-selector/dataset-collection-selector.html" -->
+                                </div>
+                            </div>
+                          </div>
+                          <div class="column is-5">
+                            <h2 class="mb-1"><span class="expression-search-step-number">3. </span>Choose display type</h2>
+
+                            <div class="columns">
+                              <div class="column">
+                                <div class="card single-multi-choice-card">
+                                  <header class="card-header p-2">
+                                    <label class="radio">
+                                      <input type="radio" name="single-multi" id="single-multi-single" value="single" checked="checked">
+                                      Single-gene Display
+                                    </label>
+                                  </header>
+                                  <div class="card-image">
+
+                                  </div>
+                                </div> <!-- end .card for single-gene display -->
+                              </div>
+                              <div class="column">
+                                <div class="card single-multi-choice-card">
+                                  <header class="card-header p-2">
+                                    <label class="radio">
+                                      <input type="radio" name="single-multi" id="single-multi-multi" value="multi">
+                                      Multi-gene Display
+                                    </label>
+                                  </header>
+                                  <div class="card-image">
+
+                                  </div>
+                                </div> <!-- end .card for single-gene display -->
+                              </div>
+                            </div>
+
+                          </div>
+                          <div class="column is-4">
+                            <h2 class="mb-3"><span class="expression-search-step-number">4. </span>Go!</h2>
+
+                            <div class="pl-5">
+                                <div class="control">
+                                  <button id="submit-expression-search" class="button is-primary">
+                                    <span class="icon is-small">
+                                      <i class="mdi mdi-magnify"></i>
+                                    </span>
+                                    <span>Search</span>
+                                  </button>
+                                </div>
+                            </div>
                           </div>
                         </div>
-                        <div class="field is-grouped">
-                          <div class="control">
-                            <label class="checkbox">
-                              <input type="checkbox" id="gene-search-exact-match" checked>
-                              Exact
-                            </label>
-                          </div>
-                          <div class="control">
-                            <label class="radio">
-                              <input type="radio" name="single-multi" id="single-multi-single" value="single" checked="checked">
-                              Single-gene Display
-                            </label>
-                            <label class="radio">
-                              <input type="radio" name="single-multi" id="single-multi-multi" value="multi">
-                              Multi-gene Display
-                            </label>
-                          </div>
-                        </div>
+
                       </li>
                       <li data-tab-id="datasets">
-                          <h1>This tab feature coming soon!</h1>
+                        <div class="box">
+                          <h3><strong>Search:</strong></h3>
+                          <div class="columns is-vcentered mb-4">
+                            <div class="column is-6">
+                              <div class="field has-addons">
+                                <div class="control is-expanded">
+                                  <input id="dataset-search-input" class="input" type="text" placeholder="Search datasets by keyword, author, publication...">
+                                </div>
+                                <div class="control">
+                                  <button id="submit-dataset-search" class="button is-primary">
+                                    <span class="icon is-small"><i class="mdi mdi-magnify"></i></span>
+                                    <span>Search</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="column is-6 has-text-right">
+                              <div class="field is-grouped is-grouped-right">
+                                <div class="control">
+                                  <div class="select">
+                                    <select id="organism-choices">
+                                      <option value="all">All organisms</option>
+                                    </select>
+                                  </div>
+                                </div>
+                                <div class="control">
+                                  <div class="select">
+                                    <select id="dataset-type-choices">
+                                      <option value="all" selected>All technologies</option>
+                                      <option value="bulk-rnaseq">Bulk RNASeq</option>
+                                      <option value="gosling">Epigenetic</option>
+                                      <option value="microarray">Microarray</option>
+                                      <option value="single-cell-rnaseq">scRNA-Seq</option>
+                                      <option value="spatial">Spatial</option>
+                                    </select>
+                                  </div>
+                                </div>
+                                <div class="control">
+                                  <div class="select">
+                                    <select id="dataset-search-sortby">
+                                      <option value="relevance">Sort by: Relevance</option>
+                                      <option value="title">Dataset title</option>
+                                      <option value="date_added">Date uploaded</option>
+                                      <option value="owner">Owner</option>
+                                      <!-- We don't have a way of measuring this yet -->
+                                      <!--<option>Popularity</option>-->
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <hr />
+
+                          <div>
+                            <h3><strong>Highlighted & recently added:</strong></h3>
+                            <div id="highlighted-datasets" class="columns is-multiline"></div>
+                            <template id="dataset-card-template">
+                              <div class="column is-4 is-fullheight">
+                                <div class="card">
+                                    <div class="card-image">
+                                    <figure class="image is-4by3">
+                                      <img class="dataset-preview-image"
+                                        src=""
+                                        alt="Placeholder image"
+                                      />
+                                    </figure>
+                                  </div>
+                                  <div class="card-content">
+                                    <p class="title is-size-6 mb-1">Dataset title</p>
+                                    <br />
+                                    <p class="subtitle is-size-7 mb-2">Baek et al. 2022</p>
+                                    <div class="content is-size-7">
+                                      <span class="tag is-info mr-1 dataset-organism"></span>
+                                      <span class="tag is-light mr-1 dataset-dtype"></span>
+                                      <!--<span class="tag is-success mr-1">Featured</span>-->
+                                    </div>
+                                  </div>
+                                  <div class="card-footer">
+                                    <a href="#" class="card-footer-item dataset-link">
+                                      <span class="icon is-small mr-1">
+                                        <i class="mdi mdi-eye"></i>
+                                      </span>
+                                      <span>View</span>
+                                    </a>
+                                    <a href="#" class="card-footer-item comparison-tool-link">
+                                      <span class="icon is-small mr-1">
+                                        <i class="mdi mdi-compare-horizontal"></i>
+                                      </span>
+                                      <span>Compare</span>
+                                    </a>
+                                    <a href="#" class="card-footer-item publication-link" target="_blank">
+                                      <span class="icon is-small mr-1">
+                                        <i class="mdi mdi-school-outline"></i>
+                                      </span>
+                                      <span>Publication</span>
+                                    </a>
+                                  </div>
+                                </div>
+                              </div>
+                            </template>
+                            <template id="dataset-explorer-card-template">
+                              <div id="dataset-explorer-card" class="column is-4 is-fullheight">
+                                <div class="card has-background-light">
+                                  <div class="card-image">
+                                    <figure class="image is-4by3">
+                                      <img class="dataset-preview-image"
+                                        src="./img/dataset_explorer_card.png"
+                                        alt="Dataset explorer link"
+                                      />
+                                    </figure>
+                                  </div>
+                                  <div class="card-content has-text-centered">
+                                    <p class="title is-size-5 mb-3">Explore all datasets in gEAR</p>
+                                    <a href="/dataset_explorer.html" class="button is-primary is-medium">
+                                      <span class="icon is-small mr-1">
+                                        <i class="mdi mdi-database-search"></i>
+                                      </span>
+                                      <span>Browse Datasets</span>
+                                    </a>
+                                  </div>
+                                </div>
+                              </div>
+                            </template>
+
+                          <nav class="level mt-4" role="navigation" aria-label="dataset-pagination">
+                            <div class="level-left">
+                              <div class="level-item">
+                                <button id="dataset-spinner-previous" class="button" type="button" disabled>Previous</button>
+                              </div>
+                            </div>
+                            <div class="level-right">
+                              <div class="level-item">
+                                <button id="dataset-spinner-next" class="button" type="button">Next</button>
+                              </div>
+                            </div>
+                          </nav>
+                        </div>
                       </li>
                   </ul>
               </div>
+
           </div>
             <h3 class="mt-6 mb-4">
               <span class="icon">
-                <i class="mdi mdi-history"></i>
+                <i class="mdi mdi-history mdi-24px"></i>
               </span>
-              <span>Resume</span>
+              <span class="is-size-4">Resume your work</span>
             </h3>
             <table class="table is-striped is-hoverable is-fullwidth is-size-7">
               <thead class="has-text-weight-semibold">
@@ -270,6 +378,121 @@
                 </tr>
               </template>
             </table>
+
+            <h3 class="mt-6 mb-4">
+              <span class="icon">
+                <i class="mdi mdi-book-outline mdi-24px"></i>
+              </span>
+              <span class="is-size-4">Guides</span>
+            </h3>
+            <div id="guides_c" class="columns">
+
+              <div class="column">
+                <div class="card">
+                  <div class="card-image">
+                    <figure class="image is-5by3">
+                      <a href="https://youtu.be/guI161nTv2U" target="_blank">
+                        <img
+                          src="./img/gear_guide_preview_new_look_with_play_button.png"
+                          alt="Preview of the new look of gEAR"
+                        />
+                      </a>
+                    </figure>
+                  </div>
+                  <div class="card-content">
+                    <div class="media">
+                      <div class="media-content has-text-centered">
+                        <p class="title is-size-6">We have a new look!</p>
+                        <p class="subtitle is-size-6">Take a tour of our refreshed dashboard</p>
+                      </div>
+                    </div>
+                    <div class="content has-text-centered">
+                        <a href="https://youtu.be/guI161nTv2U" target="_blank">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="column">
+                <div class="card">
+                  <div class="card-image">
+                    <figure class="image is-5by3">
+                      <a href="https://youtu.be/bKTzGKAvn7w" target="_blank">
+                        <img
+                          src="./img/gear_guide_preview_gene_list_manager_with_play_button.png"
+                          alt="Preview of the gene list manager"
+                        />
+                      </a>
+                    </figure>
+                  </div>
+                  <div class="card-content">
+                    <div class="media">
+                      <div class="media-content has-text-centered">
+                        <p class="title is-size-6">Search Faster</p>
+                        <p class="subtitle is-size-6">With gene lists and dataset collections</p>
+                      </div>
+                    </div>
+                    <div class="content has-text-centered">
+                        <a href="https://youtu.be/bKTzGKAvn7w" target="_blank">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="column">
+                <div class="card">
+                  <div class="card-image">
+                    <figure class="image is-5by3">
+                      <a href="https://youtu.be/7vsldnrjETw" target="_blank">
+                        <img
+                          src="./img/gear_guide_preview_comparison_tool_with_play_button.png"
+                          alt="Preview of the dataset explorer"
+                        />
+                      </a>
+                    </figure>
+                  </div>
+                  <div class="card-content">
+                    <div class="media">
+                      <div class="media-content has-text-centered">
+                        <p class="title is-size-6">Compare conditions</p>
+                        <p class="subtitle is-size-6">Compare two conditions within a dataset</p>
+                      </div>
+                    </div>
+                    <div class="content has-text-centered">
+                        <a href="https://youtu.be/7vsldnrjETw" target="_blank">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="column">
+                <div class="card">
+                  <div class="card-image">
+                    <figure class="image is-5by3">
+                      <a href="https://youtu.be/DItayfJsldI" target="_blank">
+                        <img
+                          src="./img/gear_guide_preview_dataset_explorer_with_play_button.png"
+                          alt="Preview of the dataset explorer"
+                        />
+                      </a>
+                    </figure>
+                  </div>
+                  <div class="card-content">
+                    <div class="media">
+                      <div class="media-content has-text-centered">
+                        <p class="title is-size-6">Create & Curate</p>
+                        <p class="subtitle is-size-6">Build and organize datasets your way</p>
+                      </div>
+                    </div>
+                    <div class="content has-text-centered">
+                        <a href="https://youtu.be/DItayfJsldI" target="_blank">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
           </section><!-- end #content-c -->
         </section> <!-- end #main-c -->
       </div>

@@ -23,7 +23,6 @@ setattr(this, "servercfg", ServerConfig().parse())
 #  H5AD files, images, etc.
 setattr(this, "analysis_base_dir", "/tmp")
 
-
 # Overrides the json module so JSONEncoder.default() automatically checks for to_json()
 #  in any class to be directly serializable.
 #  Ref: https://stackoverflow.com/a/38764817/1368079
@@ -96,64 +95,6 @@ def get_verification_code_short_form(long_form):
     can just modify the string this function returns for your own site.
     """
     return "".join([x[0] for x in long_form.split("-")])
-
-
-def get_analysis(analysis, dataset_id, session_id, is_spatial=False):
-    """Return analysis object based on various factors."""
-    # If an analysis is posted we want to read from its h5ad
-    if analysis:
-        user = get_user_from_session_id(session_id)
-        user_id = None
-        if user:
-            user_id = user.id
-
-        if is_spatial:
-            ana = SpatialAnalysis(
-                id=analysis["id"],
-                dataset_id=dataset_id,
-                session_id=session_id,
-                user_id=user_id,
-            )
-        else:
-            ana = Analysis(
-                id=analysis["id"],
-                dataset_id=dataset_id,
-                session_id=session_id,
-                user_id=user_id,
-            )
-
-        if "type" in analysis:
-            ana.type = analysis["type"]
-        else:
-            ana.discover_type()
-
-        # Check that the h5ad file exists
-        if not os.path.exists(ana.dataset_path()):
-            raise FileNotFoundError(
-                "No h5 file found for the passed in analysis {}".format(
-                    ana.dataset_path()
-                )
-            )
-
-    else:
-        ds = Dataset(id=dataset_id, has_h5ad=1)
-        filetype = "h5"
-
-        # Ensure the zarr file is retrieved instead of the h5
-        if is_spatial:
-            ds.dtype = "spatial"
-            filetype = "zarr"
-            ds.has_h5ad = 0  # does not affect get_file_path but sanity-checking
-
-        h5_path = ds.get_file_path()
-
-        # Let's not fail if the file isn't there
-        if not os.path.exists(h5_path):
-            raise FileNotFoundError(
-                "No {} file found for this dataset {}".format(filetype, h5_path)
-            )
-        ana = Analysis(type="primary", dataset_id=dataset_id)
-    return ana
 
 
 def get_dataset_by_id(d_id=None, include_shape=None):
@@ -623,6 +564,26 @@ def get_layout_by_share_id(layout_share_id):
     conn.close()
     return layout
 
+def get_organism_id_by_taxon_id(taxon_id) -> int | None:
+    """
+    Given a taxon_id passed this returns a numeric organism.id if a corresponding one
+    is found. Otherwise, None is returned
+    """
+    conn = Connection()
+    cursor = conn.get_cursor()
+    organism_id = None
+
+    qry = "SELECT id FROM organism WHERE taxon_id = %s"
+    cursor.execute(qry, (taxon_id,))
+
+    row = cursor.fetchone()
+    if row:
+        organism_id = row[0]
+
+    cursor.close()
+    conn.close()
+
+    return organism_id
 
 def get_user_count():
     conn = Connection()
@@ -871,7 +832,7 @@ def get_user_id_from_session_id(session_id):
     return user_id
 
 
-def get_gene_by_gene_symbol(gene_symbol, dataset_id):
+def get_gene_by_gene_symbol(gene_symbol, dataset_id) -> "Gene | None":
     qry_org_id = "SELECT organism_id from dataset where id = %s"
 
     conn = Connection()
@@ -940,462 +901,6 @@ def get_gene_by_gene_symbol(gene_symbol, dataset_id):
     return gene
 
 
-class Analysis:
-    """
-    When printed directly the JSON representation of the analysis is returned.
-
-    Path conventions:
-
-    PRIMARY
-    - These are the direct h5 files created by the user when they upload a dataset.
-    -------
-    www/datasets/$dataset_id.h5ad
-
-    PUBLIC
-    - These can only be made by owner or gear curators and are publicly available for everyone
-      to see/copy.
-    ------
-    www/analyses/by_dataset/$dataset_id/$analysis_id/$dataset_id.h5ad
-
-    USER_SAVED
-    - Created by users from their datasets or any other public ones. Visible only to the user.
-    ----------
-    www/analyses/by_user/$user_id/$dataset_id/$analysis_id/$dataset_id.h5ad
-
-    USER_UNSAVED
-    - These are created automatically by the interface any time a user does an analysis step,
-      saving progress.
-    ------------
-    /tmp/$session/$dataset_id/$analysis_id/$dataset_id.h5ad
-    /tmp/e385305c-4387-433e-8b62-4bcf7c30ac52/ab859cd1-2c4c-48a1-8ba0-0c0480e08f20
-
-    If a user selects a PRIMARY or PUBLIC analysis and makes modifications, it should first
-    be copied to USER_UNSAVED, issued a new analysis_id, then changes made.
-
-    Selecting a USER_SAVED or USER_UNSAVED should allow modifications directly.
-    """
-
-    def __init__(
-        self,
-        id=None,
-        dataset_id=None,
-        user_id=None,
-        session_id=None,
-        label=None,
-        type=None,
-        vetting=None,
-    ):
-        self.id = id
-        self.dataset_id = dataset_id
-        self.label = label
-        self.session_id = session_id
-        self.user_id = user_id
-
-        if self.dataset_id is None:
-            raise Exception("ERROR: Analysis object must have a dataset_id set.")
-
-        if self.id is None:
-            self.id = self.dataset_id
-
-        # types are 'primary', 'public', 'user_saved', 'user_unsaved'
-        self.type = type if type is not None else "primary"
-
-        # vettings are None, 'owner', 'gear', or 'community'
-        self.vetting = vetting
-
-        # if user ID wasn't set but the session was, do the lookup
-        if user_id is None and session_id:
-            self.user_id = get_user_id_from_session_id(session_id)
-
-        if self.type not in ["primary", "public", "user_saved", "user_unsaved"]:
-            raise Exception(
-                "ERROR: Invalid type '{0}' for Analysis instance".format(self.type)
-            )
-
-        if self.vetting not in [None, "owner", "gear", "community"]:
-            raise Exception(
-                "ERROR: Invalid vetting '{0}' for Analysis instance".format(
-                    self.vetting
-                )
-            )
-
-    def __repr__(self):
-        pipeline_file = self.settings_path()
-        json_data = json.loads(open(pipeline_file).read())
-        # change "user_session_id" to "session_id" for consistency
-        json_data["session_id"] = json_data.pop("user_session_id")
-        return json.dumps(json_data, indent=4)
-
-    def _serialize_json(self):
-        # Called when json modules attempts to serialize
-        return self.__dict__
-
-    def base_path(self):
-        """
-        Returns the base directory path for an analysis, based on its actual type.  This allows for the support
-        of parallel types 'primary', 'public', 'user_saved', 'user_unsaved'
-        """
-        this_dir = os.path.dirname(os.path.abspath(__file__))
-
-        if self.type == "primary":
-            return "{0}/../www/datasets".format(this_dir)
-
-        else:
-            # all other types require analysis ID to be set
-            if self.id is None:
-                raise Exception(
-                    "ERROR: base_path() called on Analysis object with no id attribute set."
-                )
-
-            if self.type == "public":
-                # ./$dataset_id/$analysis_id
-                return "{0}/../www/analyses/by_dataset/{1}/{2}".format(
-                    this_dir, self.dataset_id, self.id
-                )
-
-            elif self.type == "user_saved":
-                if self.user_id is None:
-                    raise Exception(
-                        "ERROR: base_path() called on Analysis object with no user_id attribute set. Probably not logged in."
-                    )
-
-                # ./$user_id/$dataset_id/$analysis_id/$dataset_id.h5ad
-                return "{0}/../www/analyses/by_user/{1}/{2}/{3}".format(
-                    this_dir, self.user_id, self.dataset_id, self.id
-                )
-
-            elif self.type == "user_unsaved":
-                if self.session_id is None:
-                    raise Exception(
-                        "ERROR: base_path() called on Analysis object with no session_id attribute set. Probably not logged in."
-                    )
-
-                # /tmp/$session/$dataset_id/$analysis_id/$dataset_id.h5ad
-                return "/tmp/{0}/{1}/{2}".format(
-                    self.session_id, self.dataset_id, self.id
-                )
-
-    def dataset_path(self):
-        return "{0}/{1}.h5ad".format(self.base_path(), self.dataset_id)
-
-    def discover_vetting(self, current_user_id: int | None = None):
-        """
-        This describes the public attribution of the analysis.  Making it a derived value via this
-        method rather an than explicitly stored one in the database or JSON layer so that changes
-        made to the dataset ownership won't require updating of this as well.  This method will
-        just return the correct value.
-
-        Returns one of the values 'owner', 'gear' or 'community'
-
-        If the owner is also a curator it gives priority to the curator status (gear)
-        """
-
-        if self.type == "primary":
-            # ? is this right
-            self.vetting = "gear"
-
-        # Analysis.user_id must be knownor we can't do this
-        if self.user_id is None:
-            raise Exception(
-                "ERROR: Attempted to call Analysis.discover_vetting() without an owner assigned to the analysis"
-            )
-
-        current_user = get_user_by_id(current_user_id)
-
-        if current_user is None:
-            raise Exception(
-                "ERROR: Attempted to call Analysis.discover_vetting() without a current user assigned to the analysis"
-            )
-
-        # if the user who created it is a gear curator, return that
-        if current_user.is_curator:
-            self.vetting = "gear"
-        # Are the current user and dataset owner the same?
-        elif self.user_id == current_user_id:
-            self.vetting = "owner"
-        else:
-            self.vetting = "community"
-
-        return self.vetting
-
-    def discover_type(self):
-        """
-        Given an analysis ID it's technically possible to scan the directory hierarchies and
-        find the type.
-
-        Requires these attributes to be set:
-        - dataset_id
-        - user_id
-        - session_id (if type is 'user_unsaved')
-
-        Returns the discovered type AND sets it as self.type.
-
-        Logic:
-        1. If the current user is passed:
-           1.1 -
-        2. If the current user is not passed
-
-        Returns None if not found
-        """
-        this_dir = os.path.dirname(os.path.abspath(__file__))
-
-        # Default value if type is not found after all checks
-        self.type = None
-
-        # if the analysis ID and dataset ID are the same, it's a primary analysis
-        if self.id == self.dataset_id:
-            self.type = "primary"
-
-        # check user_saved
-        test_path = "{0}/../www/analyses/by_user/{1}/{2}/{3}/{2}.h5ad".format(
-            this_dir, self.user_id, self.dataset_id, self.id
-        )
-        if os.path.exists(test_path):
-            self.type = "user_saved"
-
-        # check user_unsaved
-        test_path = "/tmp/{0}/{1}/{2}/{1}.h5ad".format(
-            self.session_id, self.dataset_id, self.id
-        )
-        if os.path.exists(test_path):
-            self.type = "user_unsaved"
-
-        # Check for public first
-        test_path = "{0}/../www/analyses/by_dataset/{1}/{2}/{1}.h5ad".format(
-            this_dir, self.dataset_id, self.id
-        )
-        if os.path.exists(test_path):
-            self.type = "public"
-
-        if self.type is None:
-            raise Exception(
-                "ERROR: Unable to determine type for analysis {0} with dataset ID {1}.".format(
-                    self.id, self.dataset_id
-                )
-            )
-
-        return self.type
-
-    @classmethod
-    def from_json(cls, jsn):
-        """
-        Returns an Analyis object from a JSON object with the same attributes
-        """
-
-        # Dataset ID is now saved only in the dataset object, but some analyses may have it as a top-level attribute
-        try:
-            dataset_id = jsn["dataset"]["id"]
-        except KeyError:
-            dataset_id = jsn["dataset_id"]
-
-        try:
-            session_id = jsn["user_session_id"]
-        except KeyError:
-            session_id = jsn["analysis_session_id"]
-
-        ana = Analysis(
-            id=jsn["id"],
-            dataset_id=dataset_id,
-            label=jsn["label"],
-            session_id=session_id,
-            user_id=None,
-            type=jsn["type"],
-        )
-
-        ## get the rest of the properties
-        for k in jsn:
-            if not hasattr(ana, k):
-                # some were manually named, skip them
-                if k not in ["user_session_id", "analysis_session_id"]:
-                    setattr(ana, k, jsn[k])
-
-        return ana
-
-    def get_adata(self, backed=False, force_sparse=False):
-        """
-        Returns the anndata object for the current analysis.
-        """
-        # This goes against PEP8, but putting the import here should speed up the
-        #  common case of most of the rest of this module where scanpy isn't needed
-        import scanpy as sc
-
-        kwargs = {}
-
-        if backed:
-            kwargs["backed"] = "r"
-        if force_sparse:
-            kwargs["as_sparse"] = "raw.X"
-
-        return sc.read_h5ad(self.dataset_path(), **kwargs)
-
-    def marker_gene_json_path(self):
-        return "{0}/{1}.marker_gene_table.json".format(
-            self.base_path(), self.dataset_id
-        )
-
-    def parent_path_by_type(self, type=None):
-        """
-        Returns the base directory base path for an analysis, based on a hypothetical type.  This allows for the support
-        of parallel types 'primary', 'public', 'user_saved', 'user_unsaved'.
-
-        This is generally useful if you want to find where an analysis directory would be if it existed, such as
-        when searching for lists of analyses.
-        """
-        this_dir = os.path.dirname(os.path.abspath(__file__))
-
-        if type == "primary":
-            return "{0}/../www/datasets".format(this_dir)
-
-        else:
-            if type == "public":
-                return "{0}/../www/analyses/by_dataset/{1}".format(
-                    this_dir, self.dataset_id
-                )
-
-            elif type == "user_saved":
-                if self.user_id is None:
-                    raise Exception(
-                        "ERROR: _parent_path_by_type() called on Analysis object with no user_id attribute set."
-                    )
-
-                return "{0}/../www/analyses/by_user/{1}/{2}".format(
-                    this_dir, self.user_id, self.dataset_id
-                )
-
-            elif type == "user_unsaved":
-                if self.session_id is None:
-                    raise Exception(
-                        "ERROR: _parent_path_by_type() called on Analysis object with no session_id attribute set."
-                    )
-
-                # /tmp/$session/$dataset_id/$analysis_id/$dataset_id.h5ad
-                return "/tmp/{0}/{1}".format(self.session_id, self.dataset_id)
-
-    def settings_path(self):
-        return "{0}/{1}.pipeline.json".format(self.base_path(), self.dataset_id)
-
-
-class SpatialAnalysis(Analysis):
-    """
-    Spatial-based analysis object.  Inherits from Analysis and adds spatial-specific methods.
-    """
-
-    def __init__(
-        self,
-        id=None,
-        dataset_id=None,
-        user_id=None,
-        session_id=None,
-        label=None,
-        type=None,
-        vetting=None,
-    ):
-        super().__init__(
-            id=id,
-            dataset_id=dataset_id,
-            user_id=user_id,
-            session_id=session_id,
-            label=label,
-            type=type,
-            vetting=vetting,
-        )
-
-    def dataset_path(self):
-        return "{0}/spatial/{1}.zarr".format(self.base_path(), self.dataset_id)
-
-    def determine_platform(self, sdata):
-        try:
-            platform = sdata.tables["table"].uns["platform"]
-            return platform
-        except KeyError:
-            raise ValueError("No platform information found in the dataset")
-
-    def discover_type(self):
-        return super().discover_type()
-
-    def get_sdata(self):
-        import spatialdata as sd
-
-        if not os.path.exists(self.dataset_path()):
-            raise ValueError(f"Dataset {self.dataset_id} not found")
-        return sd.read_zarr(self.dataset_path())
-
-    def settings_path(self):
-        base_path = f"{self.base_path()}/spatial"
-        return "{0}/{1}.pipeline.json".format(base_path, self.dataset_id)
-
-
-class AnalysisCollection:
-    def __init__(self, public=None, user_saved=None, user_unsaved=None):
-        self.public = [] if public is None else public
-        self.user_saved = [] if user_saved is None else user_saved
-        self.user_unsaved = [] if user_unsaved is None else user_unsaved
-
-    def _scan_analysis_directory(self, ana, atype):
-        """
-        Searches a directory to find stored analysis files.  Assumes the dir passed is a parent directory which
-        can contain more than one analysis directory.  Looking essentially for this:
-
-        $dir/*/*.pipeline.json
-
-        Returns a list of JSON objects, one for each analysis
-        """
-        analyses = list()
-        dir = ana.parent_path_by_type(type=atype)
-
-        if os.path.exists(dir):
-            if atype == "primary":
-                ana.type = "primary"
-                json_path = ana.settings_path()
-
-                if os.path.exists(json_path):
-                    json_obj = json.loads(open(json_path).read())
-                    analyses.append(Analysis.from_json(json_obj))
-            else:
-                for thing in os.listdir(dir):
-                    dir_path = "{0}/{1}".format(dir, thing)
-
-                    if os.path.isdir(dir_path):
-                        for pipeline_file in (
-                            f
-                            for f in os.listdir(dir_path)
-                            if f.endswith(".pipeline.json")
-                        ):
-                            json_path = "{0}/{1}".format(dir_path, pipeline_file)
-                            json_obj = json.loads(
-                                open(json_path, encoding="utf-8").read()
-                            )
-                            analyses.append(Analysis.from_json(json_obj))
-
-        return analyses
-
-    def __repr__(self):
-        return json.dumps(self.__dict__)
-
-    def _serialize_json(self):
-        # Called when json modules attempts to serialize
-        return self.__dict__
-
-    def get_all_by_dataset_id(self, user_id=None, session_id=None, dataset_id=None):
-        """
-        Gets all possible analyses for a given dataset, including primary, public, user-saved and
-        user-unsaved analyses.
-        """
-        # clear any existing ones first
-        self.__init__()
-
-        ## Create hypothetical analysis to get paths
-        ana = Analysis(dataset_id=dataset_id, user_id=user_id, session_id=session_id)
-
-        ## Each of these is a list of JSON objects
-        self.primary = self._scan_analysis_directory(ana, "primary")
-        self.public = self._scan_analysis_directory(ana, "public")
-        if user_id:
-            self.user_saved = self._scan_analysis_directory(ana, "user_saved")
-        if session_id:
-            self.user_unsaved = self._scan_analysis_directory(ana, "user_unsaved")
-
-
 class Connection:
     def __init__(self):
         self.mysql_cnx = gear.db.MySQLDB().connect()
@@ -1414,7 +919,8 @@ class Connection:
             return self.mysql_cnx.cursor()
 
     def __del__(self):
-        self.close()
+        if hasattr(self, "mysql_cnx"):
+            self.close()
 
 
 class Organism:
@@ -2608,15 +2114,17 @@ class Dataset:
 
     def get_file_path(self, session_id=None):
         """
-        The file path of a dataset can depend on the dataset type as well as whether we
-        are looking at the primary file or one generated by a user session during an
-        analysis.
+        Returns the file path for the dataset based on its type, presence of an h5ad file, and optional session ID.
 
-        If a session_id is passed, it's assumed that we'll look for a session-specific copy.
-        If one isn't found, the original source file is returned.
+        If the dataset type (`self.dtype`) is "spatial" and it does not have an h5ad file (`self.has_h5ad == 0`),
+        returns the path to the corresponding .zarr file. Otherwise, returns the path to the .h5ad file.
 
-        This returns where the path SHOULD be, it doesn't check that it's actually there. This
-        allows for it to be used also for any process which wants to know where to write it.
+        Parameters:
+            session_id (str, optional): The session identifier. If provided, constructs the path within the session's
+                analysis directory. If not provided, constructs the path in the default datasets directory.
+
+        Returns:
+            str: The absolute file path to the .zarr or .h5ad file for the dataset.
         """
 
         if self.dtype == "spatial":
@@ -2647,10 +2155,14 @@ class Dataset:
         it's actually there. This allows for it to be used also for any process which wants to
         know where to write it.
         """
-
         tarball_file_path = "{0}/../www/datasets/{1}.tar.gz".format(
             os.path.dirname(os.path.abspath(__file__)), self.id
         )
+
+        if self.dtype == "spatial":
+            tarball_file_path = "{0}/../www/datasets/spatial/{1}.tar.gz".format(
+                os.path.dirname(os.path.abspath(__file__)), self.id
+            )
 
         return tarball_file_path
 
@@ -2795,9 +2307,7 @@ class Dataset:
             from shadows import AnnDataShadow
 
             adata = AnnDataShadow(h5ad_file_path)
-
             (n_obs, n_vars) = adata.shape
-
             adata.close()
 
             if tuple_only:
@@ -2807,6 +2317,19 @@ class Dataset:
             self.obs_count = n_obs  # type: ignore
 
             return "{0}x{1}".format(self.gene_count, self.obs_count)
+        elif self.dtype == "spatial":
+            zarr_file_path = self.get_file_path(session_id=session_id)
+
+            import spatialdata as sd
+
+            sdata = sd.read_zarr(zarr_file_path)
+            (n_obs, n_vars) = sdata.tables["table"].shape
+
+            if tuple_only:
+                return (n_obs, n_vars)
+
+            self.gene_count = n_vars  # type: ignore
+            self.obs_count = n_obs  # type: ignore
 
     def to_json(self):
         return str(self)
@@ -2945,20 +2468,19 @@ class DatasetCollection:
                 dataset.access = "access_level"
                 dataset.user_name = row[10]
 
-                if dataset.dtype == "spatial":
-                    # NotImplementedError("Spatial datasets don't have permanent tarball location yet")
-                    dataset.has_tarball = 0
-                    dataset.has_h5ad = 0
+                if os.path.exists(dataset.get_tarball_path()):
+                    dataset.has_tarball = 1
                 else:
-                    if os.path.exists(dataset.get_tarball_path()):
-                        dataset.has_tarball = 1
-                    else:
-                        dataset.has_tarball = 0
+                    dataset.has_tarball = 0
 
-                    if os.path.exists(dataset.get_file_path()):
-                        dataset.has_h5ad = 1
-                    else:
-                        dataset.has_h5ad = 0
+                # Check if the dataset file actually exists
+                # If path is .zarr then it obviously is not h5ad
+                # If .h5ad, check if it exists
+                ds_file_path = dataset.get_file_path()
+                if ds_file_path.endswith(".h5ad"):
+                    dataset.has_h5ad = 1 if os.path.exists(ds_file_path) else 0
+                else:
+                    dataset.has_h5ad = 0
 
                 #  TODO: These all need to be tracked through the code and removed
                 dataset.dataset_id = dataset.id
@@ -4438,7 +3960,7 @@ class LayoutDisplay:
         conn.close()
 
     def get_is_multigene(self):
-        # single_plot_types = ["bar", "line", "scatter", "tsne/umap_dynamic", "tsne_dynamic", "violin", "pca_static", "tsne_static", "tsne", "umap_static", "svg", "epiviz"]
+        # single_plot_types = ["bar", "line", "scatter", "tsne/umap_dynamic", "tsne_dynamic", "violin", "pca_static", "tsne_static", "tsne", "umap_static", "svg", "gosling"]
         multi_plot_types = [
             "dotplot",
             "heatmap",
