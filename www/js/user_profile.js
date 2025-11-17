@@ -1,6 +1,6 @@
 'use strict';
 
-import { convertToFormData, createToast, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=cbfcd86";
+import { convertToFormData, createToast, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=f0a5adc";
 
 let passwordUpdateWanted = false;
 
