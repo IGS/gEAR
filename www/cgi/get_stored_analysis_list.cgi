@@ -55,6 +55,7 @@ def main():
                     print(str(e), file=sys.stderr)
 
         # Serialize all analyses
+        # Worth noting that "group_labels" will be a dict instead of list (see __repr__) but they are not used here
         for atype in result:
             result[atype] = [ana._serialize_json() for ana in result[atype]]
 
