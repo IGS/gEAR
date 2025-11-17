@@ -14,6 +14,9 @@
 * Ensure you are in the "devel" branch of gEAR before building (`git checkout devel`)
 * To build run `docker build -t umgear:main .`
   * If you tag it under a new image, ensure it is reflected in the docker-compose.yml file
+* The build can take a while, particularly in the Bioconductor installation steps. Fortunately completed steps are cachable.
+
+In the build, the "gear.ini.docker" file will end up copied to "gear.ini" in the "/opt/gEAR" directory for the docker instance. However, if are using docker-compose and the gEAR directory is mounted into the "web" service, this can be overriden to a gear.ini from outside.  If you do not have a "gear.ini" file (only gear.ini.template), then ask @adkinsrs for one.
 
 ## Starting the stack
 

@@ -7,14 +7,13 @@ Welcome to the gEAR documentation. This index will help you find the right docum
 **gEAR User Documentation** → [GitHub Wiki](https://github.com/IGS/gEAR/wiki) or visit any gEAR portal's [manual page](https://umgear.org/manual.html)
 
 Topics covered:
+
 - Getting started with gEAR
 - Searching for genes and datasets
 - Creating and managing dataset collections
 - Using analysis tools
 - Uploading and curating data
 - Video tutorials and presentations
-
-**Do not modify files in `docs/Documentation/`** - These are synced to the wiki.
 
 ## For Analysts
 
@@ -27,6 +26,7 @@ This is a work in progress
 **Main Developer Guide** → [`developer/README.md`](developer/README.md)
 
 Comprehensive guide covering:
+
 - Architecture overview
 - Development workflow
 - Code style guidelines
@@ -41,12 +41,13 @@ Comprehensive guide covering:
   - Docker development environment
   - Systemd services
 
-- **[Utility Scripts](developer/scripts/README.md)** - Documentation for 105+ scripts in `/bin`
+- **[Utility Scripts](misc/scripts/README.md)** - Documentation for 105+ scripts in `/bin`
   - Data conversion and format scripts
   - H5AD manipulation tools
   - Database loading utilities
   - Validation and testing scripts
   - Dataset management tools
+  - TODO: Prune out obsolete scripts
 
 - **[Microservices](developer/services/README.md)** - Service documentation
   - ProjectR service (matrix projection)
@@ -63,11 +64,11 @@ docs/
 ├── developer/                     # Developer documentation
 │   ├── README.md                  # Main developer guide
 │   ├── setup/                     # Server setup guides
-│   ├── scripts/                   # Bin scripts documentation
 │   └── services/                  # Microservices documentation
 ├── misc/                          # Miscellaneous documentation
+│   ├── scripts/                   # Bin scripts documentation
 │   └── README.md                  # Main guide
-├── Documentation/                 # End-user wiki (DO NOT MODIFY)
+├── wiki/                          # End-user wiki
 ├── posters/                       # Historical presentations (DO NOT MODIFY)
 ├── ui-v2-design/                  # UI v2 prototypes (DO NOT MODIFY)
 ├── DEPRECATED.md                  # List of superseded files
@@ -77,7 +78,6 @@ docs/
 ## Legacy Documentation
 
 Some files in the main `docs/` directory have been superseded by the new developer documentation structure. See [`DEPRECATED.md`](DEPRECATED.md) for details on which files have been moved or are obsolete.
-
 
 **Note**: These files are under review for integration into the new structure. Use with caution as some may be outdated.
 
@@ -94,21 +94,27 @@ These original files are kept for reference but now include notices pointing to 
 ## Finding What You Need
 
 ### "I want to set up my own gEAR instance"
+
 → Start with [`developer/setup/README.md`](developer/setup/README.md)
 
 ### "I want to understand how gEAR works"
+
 → Read [`developer/README.md`](developer/README.md) - Architecture Overview section
 
 ### "I need to run a specific script from /bin"
-→ Check [`developer/scripts/README.md`](developer/scripts/README.md) for documentation
+
+→ Check [`misc/scripts/README.md`](misc/scripts/README.md) for documentation
 
 ### "I'm having issues with ProjectR/Spatial/RabbitMQ services"
+
 → See [`developer/services/README.md`](developer/services/README.md)
 
 ### "I want to contribute to gEAR"
+
 → Start with [`developer/README.md`](developer/README.md) - Development Workflow section
 
 ### "I'm a gEAR user looking for help"
+
 → Visit the [GitHub Wiki](https://github.com/IGS/gEAR/wiki) or [UMgEAR manual](https://umgear.org/manual.html)
 
 ## Contributing to Documentation
@@ -131,8 +137,8 @@ When adding or updating documentation:
 
 ## Additional Resources
 
-- **GitHub Repository**: https://github.com/IGS/gEAR
-- **Issue Tracker**: https://github.com/IGS/gEAR/issues
+- **GitHub Repository**: <https://github.com/IGS/gEAR>
+- **Issue Tracker**: <https://github.com/IGS/gEAR/issues>
 - **Production Instances**:
   - [UMgEAR](https://umgear.org) - Hearing research portal
   - [NeMO Analytics](https://nemoanalytics.org) - Brain research portal

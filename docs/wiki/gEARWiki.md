@@ -5,7 +5,7 @@ In addition to the text based documentation here, additional information in othe
 
 ## What is gEAR?
 
-The gene Expression Analysis Resource (gEAR) is a website for visualization and analysis of multiomic data both in public and private domains. The gEAR enables upload, visualization and analysis of bulk RNA sequencing, scRNA-seq data, and epigenetic data.
+The gene Expression Analysis Resource (gEAR) is a website for visualization and analysis of multiomic data both in public and private domains. The gEAR enables upload, visualization and analysis of bulk RNA sequencing, scRNA-seq data, and epigenome data.
 
 gEAR is under active development and we are continuously adding new features. If you need assistance with any issues or have suggestions, please contact our user helpdesk [https://umgear.org/contact.html](https://umgear.org/contact.html).
 
@@ -223,7 +223,7 @@ Currently gEAR supports the upload of:
 - Bulk RNAseq data
 - Single Cell sequencing data
 - Microarray data
-- Epigenetic data (Through integration with EpiViz)
+- Epigenome data (Through integration with Gosling)
 
 ## Curate data/ build plots
 

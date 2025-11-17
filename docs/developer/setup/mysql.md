@@ -18,6 +18,8 @@ This isn't entirely required, but I had to chase this issue down for some time. 
 
 ## Set up the initial database
 
+For reference, the MySQL schema is housed [in this file](../../../create_schema.sql)
+
 ### New portals
 
 ```bash

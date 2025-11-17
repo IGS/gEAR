@@ -5,7 +5,6 @@ Welcome to the gEAR developer documentation. This guide is intended for develope
 ## Quick Links
 
 - [Setup Guides](./setup/README.md) - Server installation and configuration
-- [Utility Scripts](./scripts/README.md) - Documentation for scripts in `/bin` directory
 - [Services](./services/README.md) - Microservices documentation (ProjectR, Spatial Panel)
 - [Architecture Overview](#architecture-overview)
 - [Development Workflow](#development-workflow)
@@ -118,10 +117,12 @@ We follow the [nvie.com git branching model](https://nvie.com/posts/a-successful
 
 ```
 gEAR/
-├── bin/                    # Utility scripts (see scripts/README.md)
+├── bin/                    # Utility scripts (see ../misc/scripts/README.md)
 ├── docs/                   # Documentation
+│   ├── analyst/            # Analyst documentation
 │   ├── developer/          # Developer documentation (you are here)
-│   ├── Documentation/      # End-user wiki content (DO NOT MODIFY)
+│   ├── misc/               # Miscellaneous documentation
+│   ├── wiki/               # End-user wiki content
 │   ├── posters/            # Historical presentations (DO NOT MODIFY)
 │   └── ui-v2-design/       # UI v2 prototypes (DO NOT MODIFY)
 ├── docker/                 # Docker configuration

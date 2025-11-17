@@ -1,6 +1,8 @@
 # MySQL Docker setup notes
 
-To be performed after performing "docker-compose up -d"
+To be performed after performing `docker-compose up -d`. The service name is called "db".
+
+For reference, the MySQL schema is housed [in this file](../../../create_schema.sql)
 
 ## Get root password
 
