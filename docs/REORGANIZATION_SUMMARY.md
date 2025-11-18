@@ -59,7 +59,7 @@ docs/
 │       └── rabbitmq_consumers.md       # Background workers (9.7 KB)
 │       └── plugins.md                  # Plugin support
 │
-├── Documentation/                      # End-user wiki (DO NOT MODIFY)
+├── wiki/                               # End-user wiki
 ├── posters/                            # Historical presentations (DO NOT MODIFY)
 ├── ui-v2-design/                       # UI v2 prototypes (DO NOT MODIFY)
 │
@@ -150,10 +150,12 @@ docs/
 
 ### Preserved (Not Modified)
 
-- `docs/Documentation/` - End-user wiki content
 - `docs/posters/` - Historical presentations
 - `docs/ui-v2-design/` - UI v2 prototypes
-- `www/docs/` - Docsify-based end-user documentation
+
+### Moved
+- `docs/wiki/` - End-user wiki content
+  - from `docs/Documentation/`
 
 ## Files Pending Review
 
