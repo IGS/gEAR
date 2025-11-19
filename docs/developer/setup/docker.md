@@ -9,7 +9,18 @@
   * Alternatively ask @adkinsrs for a docker-compose.yml file as it will be filled in. Otherwise fill in any values wrapped in brackets
   * @adkinsrs's file is hard-coded to his paths so be sure to change those.
 
-## Building
+## Acquiring the gEAR image
+
+There are two options here.  The first method is significantly quicker, but there is a chance it may not be updated based on the latest Dockerfile instructions (if @adkinsrs forgets to push the latest image up).  
+
+### Method 1: Pull image
+
+* Pull the image
+  * `docker pull us-east1-docker.pkg.dev/gear-154704/gear-image/umgear`
+* Tag the image
+  * `docker tag us-east1-docker.pkg.dev/gear-154704/gear-image/umgear umgear:main`
+
+### Method 2: Build image
 
 * Ensure you are in the "devel" branch of gEAR before building (`git checkout devel`)
 * To build run `docker build -t umgear:main .`
