@@ -42,7 +42,7 @@
         <base href="/" />
 
         <link rel="stylesheet" href="css/gear-theme-purple.css?v=f0a5adc" />
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
 
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/octoshrimpy/bulma-o-steps@master/bulma-steps.min.css">
 
@@ -172,7 +172,7 @@
                   </ul>
                 </div> <!-- end #step-c -->
                 <hr />
-                <div id="step-enter-metadata-c" class="step-c">
+                <div id="step-enter-metadata-c" class="step-c is-hidden">
                   <h1>Step - Enter metadata (via form OR upload)</h1>
                   <p>
                     The 'metadata' is the data describing your dataset, including things like title, authorship, sequencing
@@ -559,7 +559,7 @@
                   </div>
 
                 </div>
-                <div id="step-upload-dataset-c" class="step-c is-hidden">
+                <div id="step-upload-dataset-c" class="step-c">
                   <h1>Step - Upload dataset</h1>
                   <p>
                     Choose the format of your dataset and upload it here. You can also provide a URL to a supported dataset.
@@ -724,7 +724,7 @@
                   </div>
 
                   <div class="columns">
-                    <div class="column format-column is-3 is-flex">
+                    <div class="column format-column is-3 is-offset-3 is-flex">
                       <!-- H5AD/Python -->
                       <div class="box format-selection-box">
                         <h3>Spatial (in tar format)</h3>
@@ -764,13 +764,53 @@
                         </div>
                       </div>
                     </div>
+
+                    <div class="column format-column is-3 is-flex">
+                      <!-- H5AD/Python -->
+                      <div class="box format-selection-box">
+                        <h3>Epigenetic Data</h3>
+                        <p class="format-description">
+                          If a UCSC trackhub hub.txt file is linked, it as well as its associated
+                          metadata files and track files will be cloned to the server.  Currently,
+                          only BigBed and BigWig files are supported.
+                        </p>
+                        <p class="format-description">
+                          Track hub information is converted into a spec that can be read in by the
+                          <a target="_blank" href="https://gosling-lang.org/">Gosling epigenome viewer</a>.
+                        </p>
+                        <p class="format-documentation-header">
+                          <span class="icon-text"><span class="icon"><i class="mdi mdi-school-outline"></i></span>
+                            <span>Learn more</span>
+                          </span>
+                        </p>
+                        <ul class="format-documentation-links">
+                          <li>
+                            <span class="icon-text"><span class="icon"><i class="mdi mdi-open-in-new"></i></span>
+                              <span><a href="https://genome.ucsc.edu/goldenpath/help/hgTrackHubHelp.html" target="_blank">Track hub info</a></span>
+                            </span>
+                          </li>
+                          <li>
+                            <span class="icon-text"><span class="icon"><i class="mdi mdi-download"></i></span>
+                              <span><a href="https://umgear.org/tracks/Litao_bigwigs/hub.txt" target="_blank">hub.txt example</a></span>
+                            </span>
+                          </li>
+                        </ul>
+                        <div class="control">
+                          <button data-format="gosling" class="button is-primary is-fullwidth format-selector">
+                            <span class="icon">
+                              <i class="mdi mdi-checkbox-blank-outline"></i>
+                            </span>
+                            <span class="format-status">Choose</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <hr />
 
-                  <div class="columns">
+                  <div id="dataset-upload-columns" class="columns">
                     <div class="column is-6">
-                      <form>
                       <div class="field">
                         <label class="label">
                           Upload dataset file
@@ -806,8 +846,48 @@
                               <i class="mdi mdi-information"></i>
                           </span>
                         </label>
+                        <div class="control my-3">
+                          <div class="select is-fullwidth">
+                            <select name="trackhub-assembly-select" id="trackhub-assembly-select">
+                              <option value="">Select one</option>
+                              <option value="hg19">Human (hg19)</option>
+                              <option value="hg38">Human (hg38)</option>
+                              <option value="mm10">Mouse (mm10)</option>
+                              <option value="galGal6">Chicken</option>
+                              <option value="rn6">Rat</option>
+                              <option value="danRer10">Zebrafish</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div id="trackhub-upload-columns" class="columns is-hidden">
+                    <div class="column is-6">
+                      <div class="field">
+                        <label class="label">
+                          Provide UCSC track hub URL
+                          <span class="icon has-tooltip-right has-tooltip-arrow"
+                                data-tooltip="Provide a URL to the UCSC track hub hub.txt file.">
+                              <i class="mdi mdi-information"></i>
+                          </span>
+                        </label>
                         <div class="control">
-                          <input class="input" type="text" name="dataset-url" placeholder="Not yet supported" disabled>
+                          <input class="input" type="text" name="trackhub-url" id="trackhub-url-input" placeholder="Ex: https://umgear.org/tracks/Litao_bigwigs/hub.txt">
+                        </div>
+                      </div>
+                    </div>
+                    <div class="column is-6">
+                      <div class="field">
+                        <label class="label">
+                          Select the assembly to get tracks for.
+                          <span class="icon has-tooltip-right has-tooltip-arrow"
+                                data-tooltip="Select the assembly to get tracks for. Currently Gosling only supports single-organism tracks">
+                              <i class="mdi mdi-information"></i>
+                          </span>
+                        </label>
+                        <div class="control">
+                          <input class="input" type="text" name="trackhub-url" id="trackhub-url-input" placeholder="Ex: https://umgear.org/tracks/Litao_bigwigs/hub.txt">
                         </div>
                       </div>
                     </div>

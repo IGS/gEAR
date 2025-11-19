@@ -521,6 +521,34 @@ const storeMetadata = async () => {
     }
 }
 
+const uploadTrackhub = async () => {
+    let percentComplete = 0
+
+    const payload = {
+        share_uid: shareUid,
+        trackhub_url: document.getElementById('trackhub-url-input').value,
+        assembly: document.getElementById('trackhub-assembly-select').value
+    }
+    try {
+        const validateResponse = await fetch('./api/import/trackhub/validate', {
+            method: 'POST',
+            body: payload,
+        });
+        const validateData = await validateResponse.json();
+
+        percentComplete = 33;
+        document.getElementById('dataset-upload-progress').value = percentComplete;
+
+
+        document.getElementById('dataset-upload-status-message').textContent = '';
+        document.getElementById('dataset-upload-submit').classList.remove('is-loading');
+        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+    } catch (error) {
+        console.error('Error uploading trackhub:', error);
+        createToast('Error processing trackhub');
+    }
+}
+
 /**
  * Handles uploading a dataset file to the server using XMLHttpRequest.
  * Collects form data including dataset identifiers, user session, format, and file input,
@@ -608,18 +636,20 @@ const processDataset = async () => {
     }
     formData.append('session_id', getCurrentUser()?.session_id);
 
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', './cgi/process_uploaded_expression_dataset.cgi', true);
+    try {
+        const response = await fetch('./cgi/process_uploaded_expression_dataset.cgi', {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await response.json();
 
-    xhr.onload = () => {
-        const response = JSON.parse(xhr.responseText);
-
-        if (response.success) {
-            // Nothing really to do here since status checking happening elsewhere
+        if (data.success) {
+            // Nothing really to do here since status checking happens elsewhere
         }
+    } catch (error) {
+        console.error('Error processing dataset:', error);
+        createToast('Error processing dataset');
     }
-
-    xhr.send(formData);
 }
 
 /**
@@ -735,6 +765,18 @@ for (const btn of formatSelectorElts) {
         migrateH5adSpan.textContent = 'Migrating H5AD file';
         if (datasetFormat === 'spatial') {
             migrateH5adSpan.textContent = 'Migrating Zarr store';
+        }
+
+        // Gosling has special uploader
+        if (datasetFormat === "gosling") {
+            document.getElementById("dataset-upload-columns").classList.add("is-hidden")
+            document.getElementById("dataset-file-input").value = "";
+            document.getElementById("dataset-url-input").value = "";
+            document.getElementById("trackhub-upload-columns").classList.remove("is-hidden")
+        } else {
+            document.getElementById("dataset-upload-columns").classList.remove("is-hidden")
+            document.getElementById("trackhub-upload-columns").classList.add("is-hidden")
+            document.getElementById("trackhub-url-input").value = "";
         }
 
     });
@@ -854,6 +896,11 @@ document.getElementById('dataset-upload-submit').addEventListener('click', (even
     button.disabled = true;
     button.classList.add('is-loading');
     document.getElementById('dataset-upload-status').classList.add('is-hidden');
+
+    if (datasetFormat === "gosling") {
+        uploadTrackhub();
+        return
+    }
     uploadDataset();
 });
 
