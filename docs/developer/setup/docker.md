@@ -11,10 +11,12 @@
 
 ## Acquiring the gEAR image
 
-There are two options here.  The first method is significantly quicker, but there is a chance it may not be updated based on the latest Dockerfile instructions (if @adkinsrs forgets to push the latest image up).  
+There are two options here.  The first method is significantly quicker, but there is a chance it may not be updated based on the latest Dockerfile instructions (if @adkinsrs forgets to push the latest image up).  The first method may also not be possible if you are restricted by Google Cloud authentication for the gEAR project area.
 
 ### Method 1: Pull image
 
+* Authenticate into Google Cloud
+  * `gcloud auth configure-docker us-east1-docker.pkg.dev`
 * Pull the image
   * `docker pull us-east1-docker.pkg.dev/gear-154704/gear-image/umgear`
 * Tag the image
