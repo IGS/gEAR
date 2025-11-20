@@ -425,6 +425,16 @@ Scans all datasets to report which have Ensembl IDs and symbols.
 
 Scripts for managing datasets within gEAR.
 
+#### `create_test_mysql_dump.py`
+
+Create a MySQL DB dump of only datasets referenced by layout_displays for given layout ids.
+
+**Use case**: Creating a SQL environment for new developers that only have access to a limited number of datasets
+
+```bash
+./bin/create_test_mysql_dumpy.py --layout-ids 1 2 3 --dump-file /tmp/mini-gear.sql
+```
+
 ### Dataset Operations
 
 #### `add_datasets_to_group.py`

@@ -11,7 +11,7 @@ class ServerConfig:
     def __init__(self):
         self.config = None
 
-    def parse(self):
+    def parse(self) -> configparser.ConfigParser:
         ini_path = "{0}/../../gear.ini".format(os.path.dirname(__file__))
         self.config = configparser.ConfigParser()
         self.config.read(ini_path)
