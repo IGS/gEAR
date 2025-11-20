@@ -535,14 +535,35 @@ const uploadTrackhub = async () => {
             body: payload,
         });
         const validateData = await validateResponse.json();
+        // success is python True/False
+        if (!validateData.success) {
+            throw new Error(validateData.message || 'Error validating trackhub');
+        }
+        const numTracks = validateData.num_tracks || 1;
 
-        percentComplete = 33;
+        // Validation + Copy
+        // Copy will be broken down into the number of tracks to copy
+        const stages = 2;
+        const secondStagePercentIncrement = 50 / numTracks;
+
+        percentComplete = 50
         document.getElementById('dataset-upload-progress').value = percentComplete;
 
+        const copyResponse = await fetch('./api/import/trackhub/copy', {
+            method: 'POST',
+            body: payload,
+        })
+        if (!copyResponse.success) {
+            throw new Error(copyResponse.message || 'Error copying trackhub data');
+        }
 
-        document.getElementById('dataset-upload-status-message').textContent = '';
+        percentComplete += 50
+        document.getElementById('dataset-upload-progress').value = percentComplete;
+
         document.getElementById('dataset-upload-submit').classList.remove('is-loading');
+        document.getElementById('dataset-upload-status-message').textContent = 'Trackhub uploaded successfully. Processing beginning momentarily ...';
         document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+
     } catch (error) {
         console.error('Error uploading trackhub:', error);
         createToast('Error processing trackhub');
