@@ -1,8 +1,8 @@
 'use strict';
 
 // This doesn't work unless we refactor everything to use ES modules
-import { apiCallsMixin, closeModal, getCurrentUser, logErrorInConsole, openModal } from "../common.v2.js?v=670b2ed";
-import { adjustClusterColorbars, adjustExpressionColorbar, postPlotlyConfig } from "../plot_display_config.js?v=670b2ed";
+import { apiCallsMixin, closeModal, getCurrentUser, logErrorInConsole, openModal } from "../common.v2.js?v=4c8340e";
+import { adjustClusterColorbars, adjustExpressionColorbar, postPlotlyConfig } from "../plot_display_config.js?v=4c8340e";
 
 /* Given a passed-in layout_id, genereate a 2-dimensional tile-based grid object.
 This uses Bulma CSS for stylings (https://bulma.io/documentation/layout/tiles/)
