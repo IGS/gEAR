@@ -104,10 +104,46 @@ def get_fk_tables_referencing_dataset(conn: Connection) -> list:
             tables.append((r["TABLE_NAME"], r["COLUMN_NAME"]))
         else:
             tables.append((r[0], r[1]))
+        # Pop if last appended table name is "guser". This is used in dataset queries
+        if tables[-1][0] == "guser":
+            tables.pop()
     cur.close()
     # always include the dataset table itself
     if ("dataset", "id") not in tables:
         tables.insert(0, ("dataset", "id"))
+    return tables
+
+def get_fk_tables_referencing_layout(conn: Connection) -> list:
+    """
+    Return list of (table_name, column_name) that have a foreign key referencing layout(id).
+    Uses INFORMATION_SCHEMA.KEY_COLUMN_USAGE.
+    """
+
+    cur = conn.get_cursor()
+    sql = """
+        SELECT TABLE_NAME, COLUMN_NAME
+        FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+        WHERE REFERENCED_TABLE_NAME = 'layout'
+          AND REFERENCED_COLUMN_NAME = 'id'
+          AND CONSTRAINT_SCHEMA = %s
+    """
+    cur.execute(sql, ('gear_portal', ))
+    rows = cur.fetchall() or []
+    # mysql cursor default returns tuples; adapt if dictionary cursor used
+    tables = []
+    for r in rows:
+        if isinstance(r, dict):
+            tables.append((r["TABLE_NAME"], r["COLUMN_NAME"]))
+        else:
+            tables.append((r[0], r[1]))
+        # Pop if last appended table name is "guser". This is used in dataset queries
+        if tables[-1][0] == "guser":
+            tables.pop()
+    cur.close()
+
+    # always include the layout table itself
+    if ("layout", "id") not in tables:
+        tables.insert(0, ("layout", "id"))
     return tables
 
 def get_fk_tables_not_referencing_dataset(conn: Connection) -> list:
@@ -125,7 +161,7 @@ def get_fk_tables_not_referencing_dataset(conn: Connection) -> list:
           AND TABLE_NAME NOT IN (
               SELECT DISTINCT TABLE_NAME
               FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
-              WHERE REFERENCED_TABLE_NAME = 'dataset'
+              WHERE REFERENCED_TABLE_NAME in ('dataset', 'layout')
                 AND REFERENCED_COLUMN_NAME = 'id'
                 AND CONSTRAINT_SCHEMA = %s
           )
@@ -135,10 +171,19 @@ def get_fk_tables_not_referencing_dataset(conn: Connection) -> list:
     # mysql cursor default returns tuples; adapt if dictionary cursor used
     tables = []
     for r in rows:
+
         if isinstance(r, dict):
             tables.append((r["TABLE_NAME"]))
         else:
             tables.append((r[0]))
+
+        # Pop if last appended table name is "dataset" or "layout"
+        if tables[-1] in ("dataset", "layout"):
+            tables.pop()
+
+    # always exclude the "guser" table
+    tables.append("guser")
+
     cur.close()
     return tables
 
@@ -218,8 +263,6 @@ def main(argv: list | None = None):
     servercfg = ServerConfig().parse()
     conn = Connection()
 
-    TODO: Drop layouts that do not have any of the display IDs for these datasets
-
     try:
         dataset_ids = get_display_and_dataset_ids(conn, args.layout_ids)
         if not dataset_ids:
@@ -228,16 +271,24 @@ def main(argv: list | None = None):
 
         print(f"Found {len(dataset_ids)} dataset ids. List: {list(dataset_ids)[:10]}")
 
-        fk_tables = get_fk_tables_referencing_dataset(conn)
+        # Get all tables referencing dataset(id)
+        dataset_fk_tables = get_fk_tables_referencing_dataset(conn)
         # fk_tables: list of (table, column)
-        tables = [t for t, _ in fk_tables]
+        tables = [t for t, _ in dataset_fk_tables]
         # unique preserve order
         seen = set()
         tables_unique = [x for x in tables if not (x in seen or seen.add(x))]
 
+        # Now get the tables referencing layout(id)
+        layout_fk_tables = get_fk_tables_referencing_layout(conn)
+        for table, col in layout_fk_tables:
+            if table not in seen:
+                tables_unique.append(table)
+                seen.add(table)
+
         # Add all remaining tables to the dump.  We only want to restrict those tables that use datasets directly or indirectly
-        not_fk_tables = get_fk_tables_not_referencing_dataset(conn)
-        for t in not_fk_tables:
+        other_tables = get_fk_tables_not_referencing_dataset(conn)
+        for t in other_tables:
             if t not in seen:
                 tables_unique.append(t)
                 seen.add(t)
@@ -249,12 +300,17 @@ def main(argv: list | None = None):
             return
 
         # Step 2: append data per table
-        for table, col in fk_tables:
+        for table, col in dataset_fk_tables:
             # for dataset table col will be 'id'
             written = append_table_data_for_ids(servercfg, table, col, list(dataset_ids), args.dump_file)
             print(f"Appended ~{written} rows for {table}")
 
-        for table in not_fk_tables:
+        for table, col in layout_fk_tables:
+            # layout ids are known
+            written = append_table_data_for_ids(servercfg, table, col, args.layout_ids, args.dump_file)
+            print(f"Appended ~{written} rows for {table[0]}")
+
+        for table in other_tables:
             # dump all rows (col "1" in (1) always true)
             written = append_table_data_for_ids(servercfg, table, "1", [1], args.dump_file)  # where 1=1
             print(f"Appended ~{written} rows for {table}")
