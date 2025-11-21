@@ -1271,7 +1271,7 @@ class DatasetTile {
                 // Realistically we should try to plot, but I assume most saved displays will have an image present.
                 displayUrl = "/img/dataset_previews/missing.png";
                 if (display.plot_type === "gosling") {
-                    displayUrl = "/img/epiviz_mini_screenshot.jpg"; // TODO: Replace with gosling logo
+                    displayUrl = "/img/dataset_previews/gosling.png";
                 } else if (display.plot_type === "epiviz") {
                     // Epiviz is no longer supported.  Do not render display.
                     continue

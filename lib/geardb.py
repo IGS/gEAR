@@ -2022,6 +2022,10 @@ class Dataset:
     dataset_id: str | None = None
     user_id: int | None = None
     math_format: str | None = None
+    preview_image_url: str | None = None
+    mg_preview_image_url: str | None = None
+    is_owner: bool = False
+
 
     def __repr__(self):
         return json.dumps(self.__dict__)
