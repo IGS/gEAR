@@ -15,12 +15,14 @@ There are two options here.  The first method is significantly quicker, but ther
 
 ### Method 1: Pull image
 
+NOTE: If on a Linux environment, change the "mac-m1" tag in the pull and tag commands to "linux"
+
 * Authenticate into Google Cloud
   * `gcloud auth configure-docker us-east1-docker.pkg.dev`
 * Pull the image
-  * `docker pull us-east1-docker.pkg.dev/gear-154704/gear-image/umgear`
+  * `docker pull us-east1-docker.pkg.dev/gear-154704/gear-image/umgear:mac-m1`
 * Tag the image
-  * `docker tag us-east1-docker.pkg.dev/gear-154704/gear-image/umgear umgear:main`
+  * `docker tag us-east1-docker.pkg.dev/gear-154704/gear-image/umgear:mac-m1 umgear:main`
 
 ### Method 2: Build image
 
