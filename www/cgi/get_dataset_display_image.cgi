@@ -4,6 +4,10 @@
 
 import cgi, json
 import os, sys
+lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
+sys.path.append(lib_path)
+import geardb
+
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
@@ -25,6 +29,10 @@ def main():
         raise Exception("Invalid filename: {}".format(image_preview_url))
 
     #print(image_preview_url, file=sys.stderr)
+
+    display = geardb.get_display_by_id(display_id)
+    if display and display.get("plot_type", None) == "gosling":
+        image_preview_url = "{0}/gosling.png".format(WEB_IMAGE_ROOT)
 
     if not os.path.exists(image_preview_url):
         image_preview_url = "{0}/missing.png".format(WEB_IMAGE_ROOT)
