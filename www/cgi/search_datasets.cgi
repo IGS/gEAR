@@ -228,7 +228,8 @@ def main():
     # NOTE: Must keep as a list to preserve order
     matching_dataset_ids = list()
     # this index keeps track of the size and position of each dataset if a layout was passed
-    for row in cursor:
+    rows = cursor.fetchall() or []
+    for row in rows:
         matching_dataset_ids.append(row[0])
 
     result['datasets'] = datasets_collection.get_by_dataset_ids(matching_dataset_ids)
@@ -245,6 +246,9 @@ def main():
             dataset.preview_image_url = "{0}/{1}.default.png".format(WEB_IMAGE_ROOT, dataset.id)
         elif os.path.exists("{0}/{1}.single.default.png".format(IMAGE_ROOT, dataset.id)):
             dataset.preview_image_url = "{0}/{1}.single.default.png".format(WEB_IMAGE_ROOT, dataset.id)
+
+        elif dataset.dtype == "gosling":
+            dataset.preview_image_url = "{0}/gosling.png".format(WEB_IMAGE_ROOT)
         else:
             dataset.preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT)
 
@@ -273,7 +277,11 @@ def main():
 
     # compile pagination information
     result["pagination"] = {}
-    result["pagination"]['total_results'] = cursor.fetchone()[0]
+    row = cursor.fetchone()
+    if row:
+        result["pagination"]['total_results'] = row[0]
+    else:
+        result["pagination"]['total_results'] = 0
     result["pagination"]['current_page'] = int(page)
     result["pagination"]['limit'] = int(limit)
     result["pagination"]["total_pages"] = ceil(int(result["pagination"]['total_results']) / int(result["pagination"]['limit']))

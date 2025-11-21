@@ -1,7 +1,7 @@
 "use strict";
 
-import { apiCallsMixin, closeModal, copyToClipboard, createToast, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=f0a5adc";
-import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, setActiveDCCategory, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=f0a5adc";
+import { apiCallsMixin, closeModal, copyToClipboard, createToast, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=670b2ed";
+import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, setActiveDCCategory, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=670b2ed";
 
 
 /* Imported variables
@@ -65,7 +65,13 @@ class ResultItem {
         this.pubmedId = data.pubmed_id || null;
         this.geoId = data.geo_id || null;
 
-        this.previewImageUrl = data.preview_image_url || "/img/dataset_previews/missing.png";
+        if (data?.preview_image_url) {
+            this.previewImageUrl = data.preview_image_url;
+        } else if (this.datasetType == "gosling") {
+            this.previewImageUrl = "/img/dataset_previews/gosling.png";
+        } else {
+            this.previewImageUrl = "/img/dataset_previews/missing.png";
+        }
 
     }
 
@@ -2315,8 +2321,11 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
             logErrorInConsole(error);
             // Realistically we should try to plot, but I assume most saved displays will have an image present.
             displayUrl = "/img/dataset_previews/missing.png";
-            if (["epiviz", "gosling"].includes(display.plot_type)) {
-                displayUrl = "/img/epiviz_mini_screenshot.jpg"; // TODO: Replace with gosling image
+            if (display.plot_type == "epiviz") {
+                // epiviz is no longer supported.  Continue
+                continue
+            } else if (display.plot_type == "gosling") {
+                displayUrl = "/img/dataset_previews/gosling.png";
             }
         }
 

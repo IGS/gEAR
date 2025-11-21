@@ -1,8 +1,8 @@
 'use strict';
 
 // This doesn't work unless we refactor everything to use ES modules
-import { apiCallsMixin, closeModal, getCurrentUser, logErrorInConsole, openModal } from "../common.v2.js?v=f0a5adc";
-import { adjustClusterColorbars, adjustExpressionColorbar, postPlotlyConfig } from "../plot_display_config.js?v=f0a5adc";
+import { apiCallsMixin, closeModal, getCurrentUser, logErrorInConsole, openModal } from "../common.v2.js?v=670b2ed";
+import { adjustClusterColorbars, adjustExpressionColorbar, postPlotlyConfig } from "../plot_display_config.js?v=670b2ed";
 
 /* Given a passed-in layout_id, genereate a 2-dimensional tile-based grid object.
 This uses Bulma CSS for stylings (https://bulma.io/documentation/layout/tiles/)
@@ -1271,7 +1271,7 @@ class DatasetTile {
                 // Realistically we should try to plot, but I assume most saved displays will have an image present.
                 displayUrl = "/img/dataset_previews/missing.png";
                 if (display.plot_type === "gosling") {
-                    displayUrl = "/img/epiviz_mini_screenshot.jpg"; // TODO: Replace with gosling logo
+                    displayUrl = "/img/dataset_previews/gosling.png";
                 } else if (display.plot_type === "epiviz") {
                     // Epiviz is no longer supported.  Do not render display.
                     continue
