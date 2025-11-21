@@ -1,8 +1,8 @@
 from pathlib import Path
 import shlex
 import subprocess
+import sys
 
-from pyparsing import line
 import requests
 from Bio import bgzf
 from flask import request
@@ -12,8 +12,48 @@ gear_root = Path(__file__).resolve().parents[3]  # web-root dir
 ucsc_path = gear_root / "src" / "ucsc_utils"
 
 VALID_TYPES = ["bigWig", "bigBed"]
+BIGBED_EXTENSIONS = [".bb", ".bigbed"]
 
 user_upload_file_base = gear_root / 'www' / 'uploads' / 'files'
+
+def bigbed_to_bed(bigbed_path: Path, outdir_path: Path) -> bool:
+    """
+    Convert a bigBed file to a bed file using the UCSC tool bigBedToBed.
+    Next, bgzip the file and tabix the bgzipped file.
+    The bed file will be saved in the output_dir
+    """
+
+    bigbed_file = bigbed_path.as_posix()
+    bed_path = bigbed_path.with_suffix('.bed')
+    bed_path = outdir_path / bed_path.name
+    bed_file = bed_path.as_posix()
+
+    exec_file = Path(__file__).resolve().parent.parent / "src" / "ucsc_utils" / "bigBedToBed"
+
+    try:
+        subprocess.run([exec_file, bigbed_file, bed_file], check=True)
+        print(f"Converted {bigbed_file} to {bed_file}.", file=sys.stderr)
+
+        gz_path = bed_path.with_suffix(bed_path.suffix + '.gz')
+        with bed_path.open('rb') as f_in, bgzf.BgzfWriter(gz_path) as f_out:
+            # write the entirety of the input
+            f_out.write(f_in.read())
+        create_tabix_indexed_file(gz_path, file_type="bed")
+
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Error converting {bigbed_file} to bed: {e}", file=sys.stderr)
+        return False
+
+def create_tabix_indexed_file(bgzipped_path: Path, file_type : str="bed") -> None:
+    """
+    Tabix-indexes a genomic file.
+    bgzipped_file: Path to the bgzipped input file.
+    file_type: Type of the file (e.g., "bed", "vcf", "gff").
+    """
+
+    tabix_cmd = f"tabix -s 1 -b 2 -e 3 -p {file_type} {bgzipped_path.as_posix()}"
+    subprocess.run(shlex.split(tabix_cmd), check=True)
 
 
 def fetch_trackdb_and_groups_info(genomes_txt, assembly) -> dict:
@@ -144,6 +184,7 @@ class TrackHubCopy(Resource):
         session_id = request.cookies.get('gear_session_id')
         req = request.get_json()
         hub_url = req.get("trackhub_url")
+        assembly = req.get("assembly")
 
         result = {
             "success": False,
@@ -158,8 +199,11 @@ class TrackHubCopy(Resource):
             result["message"] = "Missing upload ID"
             return result, 400
 
+        if not hub_url or not hub_url.startswith("http"):
+            result["message"] = "Invalid URL"
+            return result, 400
 
-        track_upload_dir = user_upload_file_base / session_id / share_uid
+        track_upload_dir: Path = user_upload_file_base / session_id / share_uid
         track_upload_dir.mkdir(parents=True, exist_ok=True)
 
         # use the "hubClone" utility to clone the passed in hub file to our upload directory
@@ -173,9 +217,27 @@ class TrackHubCopy(Resource):
             result["message"] = f"hubCheck failed: {str(e)}"
             return result, 500
 
-        if not hub_url or not hub_url.startswith("http"):
-            result["message"] = "Invalid URL"
-            return result, 400
+        # Test if the hub.txt file was downloaded
+        hub_txt_file = track_upload_dir / "hub.txt"
+        if not hub_txt_file.is_file():
+            result["message"] = "hubClone failed to download hub.txt"
+            return result, 500
+
+        # Find the tracks and convert any BigBed to a tabixed and bgzf compressed bed file
+        assembly_dir: Path = track_upload_dir / assembly
+        if not assembly_dir.is_dir():
+            result["message"] = f"hubClone failed to download assembly directory for {assembly}"
+            return result, 500
+
+        # find all bigBed files in the assembly directory
+        bigbed_paths = []
+        for ext in BIGBED_EXTENSIONS:
+            bigbed_paths.extend(assembly_dir.rglob(f"*{ext}"))
+        for bigbed_path in bigbed_paths:
+            conversion_success = bigbed_to_bed(bigbed_path, assembly_dir)
+            if not conversion_success:
+                result["message"] = f"Failed to convert {bigbed_path.as_posix()} to bed"
+                return result, 500
 
         return result, 200
 
