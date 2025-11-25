@@ -9,7 +9,7 @@ from flask import request
 from flask_restful import Resource
 
 gear_root = Path(__file__).resolve().parents[3]  # web-root dir
-ucsc_path = gear_root / "src" / "ucsc_utils"
+src_path = gear_root / "src"
 
 VALID_TYPES = ["bigWig", "bigBed"]
 BIGBED_EXTENSIONS = [".bb", ".bigbed"]
@@ -28,7 +28,7 @@ def bigbed_to_bed(bigbed_path: Path, outdir_path: Path) -> bool:
     bed_path = outdir_path / bed_path.name
     bed_file = bed_path.as_posix()
 
-    exec_file = Path(__file__).resolve().parent.parent / "src" / "ucsc_utils" / "bigBedToBed"
+    exec_file = src_path / "bigBedToBed"
 
     try:
         subprocess.run([exec_file, bigbed_file, bed_file], check=True)
@@ -130,7 +130,7 @@ class TrackHubValidate(Resource):
             return result, 400
 
         # use the "hubCheck" utiliy to validae the passed in hub file
-        hubcheck_exe = ucsc_path / "hubCheck"
+        hubcheck_exe = src_path / "hubCheck"
         try:
             completed_process = subprocess.run(
                 shlex.split(f"{hubcheck_exe} {hub_url}"),
@@ -207,7 +207,7 @@ class TrackHubCopy(Resource):
         track_upload_dir.mkdir(parents=True, exist_ok=True)
 
         # use the "hubClone" utility to clone the passed in hub file to our upload directory
-        hubclone_exe = ucsc_path / "hubClone"
+        hubclone_exe = src_path / "hubClone"
         try:
             completed_process = subprocess.run(
                 shlex.split(f"{hubclone_exe} {hub_url} -download -udcDir={track_upload_dir}"),

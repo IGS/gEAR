@@ -127,6 +127,14 @@ RUN git clone -b ${GEAR_BRANCH} --single-branch ${GEAR_URL} \
 
 COPY ./gear.ini.docker /opt/gEAR/gear.ini
 
+# Add some executables
+WORKDIR /opt/gEAR
+RUN mkdir -p src \
+  && rsync -aP hgdownload.soe.ucsc.edu::genome/admin/exe/linux.x86_64/hubClone /opt/gEAR/src/ \
+  && rsync -aP hgdownload.soe.ucsc.edu::genome/admin/exe/linux.x86_64/hubCheck /opt/gEAR/src/ \
+  && rsync -aP hgdownload.soe.ucsc.edu::genome/admin/exe/linux.x86_64/bigBedToBed /opt/gEAR/src/ \
+
+
 # Upgrade pip and install requirements from file
 # This set of modules will be used by the main Python install and scripts that call it (like CGI ones)
 # numpy is installed before requirements.txt because of dependency requirement issues

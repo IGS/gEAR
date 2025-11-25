@@ -211,7 +211,7 @@ def bigbed_to_bed(bigbed_file, output_dir) -> bool:
     bed_path = bigbed_path.with_suffix('.bed')
     bed_path = Path(output_dir) / bed_path.name
 
-    exec_file = Path(__file__).resolve().parent.parent / "src" / "ucsc_utils" / "bigBedToBed"
+    exec_file = Path(__file__).resolve().parent.parent / "src" / "bigBedToBed"
 
     try:
         subprocess.run([exec_file, bigbed_file, bed_path.as_posix()], check=True)
