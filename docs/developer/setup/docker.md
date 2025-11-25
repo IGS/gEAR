@@ -11,18 +11,16 @@
 
 ## Acquiring the gEAR image
 
-There are two options here.  The first method is significantly quicker, but there is a chance it may not be updated based on the latest Dockerfile instructions (if @adkinsrs forgets to push the latest image up).  The first method may also not be possible if you are restricted by Google Cloud authentication for the gEAR project area.
+There are two options here.  The first method is significantly quicker, but there is a chance it may not be updated based on the latest Dockerfile instructions in Github (if @adkinsrs forgets to push the latest image up).
 
 ### Method 1: Pull image
 
 NOTE: If on a Linux environment, change the "mac-m1" tag in the pull and tag commands to "linux"
 
-* Authenticate into Google Cloud
-  * `gcloud auth configure-docker us-east1-docker.pkg.dev`
 * Pull the image
-  * `docker pull us-east1-docker.pkg.dev/gear-154704/gear-image/umgear:mac-m1`
-* Tag the image
-  * `docker tag us-east1-docker.pkg.dev/gear-154704/gear-image/umgear:mac-m1 umgear:main`
+  * `docker pull adkinsrs/umgear:mac-m1`
+* Tag the image (to align with what is in `docker-compose.yml`
+  * `docker tag adkinsrs/umgear:mac-m1 umgear:main`
 
 ### Method 2: Build image
 
