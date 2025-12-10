@@ -33,10 +33,14 @@ In the build, the "gear.ini.docker" file will end up copied to "gear.ini" in the
 
 ## Starting the stack
 
+If you used Method 1, in the `docker-compose.yml file` ensure the "build" step from the "web" service is commented out or deleted.
+
 To start:
 `docker compose up -d`
 To stop:
 `docker compose down -v`
+
+IMPORTANT: If you did Method 1, from the gEAR root `cp docker/gear.ini.docker gear.ini` to make sure a working gear.ini file is present in the codebase after mounting the code as a volume in the "web" service in the docker-compose.yml file.
 
 Adding a service name (i.e. "web", "db") to the end of a command just performs this for that service.
 
