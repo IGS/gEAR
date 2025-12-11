@@ -44,11 +44,17 @@ IMPORTANT: If you did Method 1, from the gEAR root `cp docker/gear.ini.docker ge
 
 Adding a service name (i.e. "web", "db") to the end of a command just performs this for that service.
 
+### Get feature mapping files
+
+Ask @adkinsrs for these (which will probably be in tar.gz format).  These hdf5 files should go in `<gear_root>/www/feature_mapping` so that orthology mapping will work.
+
 ## ProjectR
 
 Currently the gear.ini.docker file is configured to send projectR jobs to the cloud, but to not use RabbitMQ.  This is to save me the hassle of managing an extra service.  What this means is that apache process will manage the jobs and job logging will write to /var/log/apache2/ssl_umgear_error.log in the container.
 
 ## "panel" service
+
+If you do not plan on working on spatial panel stuff, feel free to comment out the "panel" service block from the docker-compose.yml file and skip this step.
 
 You can pre-build the "panel_app" image using the Dockerfile from `<gear_root>/services/spatial/Dockerfile`
 
