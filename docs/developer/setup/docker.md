@@ -93,6 +93,9 @@ a2dd9f06-5223-0779-8dfc-8dce7a3897e1
 f7de7db2-b4cb-ebe3-7f1f-b278f46f1a7f
 e34fa5c6-1083-cacb-eedf-23f59f2e005f
 e78db16a-3927-348c-f5aa-4256330a7dff
+f04627f7-6824-1e15-6a93-8de550c7b0a4
+1531b46d-8435-f31a-3898-20abc2fc974a
+cc90d264-ce9d-0b7b-1898-0e357c94b155
 ```
 
 You can write some script to loop through these IDs and download them to your "datasets" directory. If your docker-compose.yml file mounting is configured correctly then you can do this outside of the container
