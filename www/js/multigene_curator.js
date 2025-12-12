@@ -1,11 +1,11 @@
 'use strict';
 
-import { apiCallsMixin, getCurrentUser, initCommonUI, logErrorInConsole, openModal, trigger } from "./common.v2.js?v=670b2ed";
-import { curatorCommon } from "./curator_common.js?v=670b2ed";
-import { Gene, WeightedGene } from "./classes/gene.js?v=670b2ed";
-import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=670b2ed";
-import { adjustStackedViolinHeight, postPlotlyConfig, setHeatmapHeightBasedOnGenes } from "./plot_display_config.js?v=670b2ed";
-import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners } from "../include/gene-collection-selector/gene-collection-selector.js?v=670b2ed";
+import { apiCallsMixin, getCurrentUser, initCommonUI, logErrorInConsole, openModal, trigger } from "./common.v2.js?v=92952cc";
+import { curatorCommon } from "./curator_common.js?v=92952cc";
+import { Gene, WeightedGene } from "./classes/gene.js?v=92952cc";
+import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=92952cc";
+import { adjustStackedViolinHeight, postPlotlyConfig, setHeatmapHeightBasedOnGenes } from "./plot_display_config.js?v=92952cc";
+import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners } from "../include/gene-collection-selector/gene-collection-selector.js?v=92952cc";
 
 curatorCommon.setIsMultigene(1);
 
