@@ -1,4 +1,6 @@
+import csv
 import datetime
+import io
 import json
 import os
 import re
@@ -2370,6 +2372,19 @@ class Dataset:
         conn.commit()
         cursor.close()
         conn.close()
+
+    def get_metadata_content(self):
+        """
+        Returns a CSV representation of the dataset object.
+        """
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        for key, value in self.__dict__.items():
+            value = "" if value is None else value
+            writer.writerow([key, value])
+
+        return output.getvalue()
 
 
 @dataclass

@@ -19,3 +19,5 @@ orthomap_inputs
 **/*.bak
 **/*.sql
 www/nemoarchive_import/*.json
+gear.ini
+feature_mapping.tar.gz

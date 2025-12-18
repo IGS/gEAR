@@ -28,6 +28,13 @@ def download_file(file_path, file_name):
             sys.stdout.buffer.write(chunk)
             sys.stdout.buffer.flush()
 
+def to_file(content, prefix='', suffix=''):
+    import tempfile
+    temp = tempfile.NamedTemporaryFile(delete=False, prefix=prefix, suffix=suffix, mode='w')
+    temp.write(content)
+    temp.close()
+    return temp.name
+
 def main():
     form = cgi.FieldStorage()
     dataset_id = html.escape(form.getvalue('dataset_id', ""))
@@ -40,7 +47,7 @@ def main():
         raise ValueError("Either dataset ID or share ID must be provided")
 
     if not dtype:
-        raise ValueError("Type must be provided (tarball or h5ad)")
+        raise ValueError("Type must be provided (tarball, h5ad, or metadata)")
 
     # if share ID is passed, retrieve the dataset by share ID
     if share_id:
@@ -77,6 +84,16 @@ def main():
         download_file(tarball_path, f"{share_id}.tar.gz")
     elif dtype == 'h5ad' and os.path.isfile(h5ad_path):
         download_file(h5ad_path, f"{share_id}.h5ad")
+    elif dtype == 'metadata':
+        metadata_content = dataset.get_metadata_content()
+        if metadata_content:
+            temp_file_path = to_file(metadata_content, prefix=f"{share_id}_metadata", suffix=".csv")
+            try:
+                download_file(temp_file_path, f"{share_id}.metadata.csv")
+            finally:
+                os.remove(temp_file_path)
+        else:
+            raise FileNotFoundError("Metadata not found")
     else:
         raise FileNotFoundError("File not found")
 
