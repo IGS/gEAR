@@ -834,6 +834,21 @@ def get_user_id_from_session_id(session_id):
     return user_id
 
 
+def get_organism_label(organism_id: int | None) -> str:
+    """Return the label for the given organism ID."""
+    if organism_id is None:
+        return "N/A"
+    
+    try:
+        with Connection() as conn:
+            cursor = conn.get_cursor()
+            cursor.execute("SELECT label FROM organism WHERE id = %s", (organism_id,))
+            row = cursor.fetchone()
+            return row[0] if row and row[0] is not None else "N/A"
+    except Exception:
+        return "N/A"
+
+
 def get_gene_by_gene_symbol(gene_symbol, dataset_id) -> "Gene | None":
     qry_org_id = "SELECT organism_id from dataset where id = %s"
 
@@ -919,6 +934,13 @@ class Connection:
             return self.mysql_cnx.cursor(dictionary=True)
         else:
             return self.mysql_cnx.cursor()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
 
     def __del__(self):
         if hasattr(self, "mysql_cnx"):
@@ -2380,9 +2402,38 @@ class Dataset:
         output = io.StringIO()
         writer = csv.writer(output)
 
-        for key, value in self.__dict__.items():
-            value = "" if value is None else value
-            writer.writerow([key, value])
+        items = {
+            "title": "title",
+            "organism_id": "organism",
+            "pubmed_id": "pubmed_id",
+            "geo_id": "geo_id",
+            "ldesc": "description",
+            "dtype": "datatype",
+            "share_id": "permalink",
+            "platform_id": "platform_id",
+            "instrument_model": "instrument_model",
+            "library_selection": "library_selection",
+            "library_source": "library_source",
+            "contact_email": "contact_email",
+            "contact_name": "contact_name",
+            "annotation_source": "annotation_source",
+            "annotation_release": "annotation_release"
+        }
+
+        dict = self._serialize_json()
+        for key, value in items.items():
+            if dict.get(key) is None:
+                writer.writerow([value, "N/A"])
+            else:
+                prop = dict.get(key)
+                match value: # use value rather than key could have multiple values
+                    case "organism":  # get organism name for id
+                        prop = get_organism_label(prop)
+                    case "permalink":
+                        prop = f"{domain_url}/p?s={self.share_id}"
+
+                writer.writerow([value, prop])
+
 
         return output.getvalue()
 
