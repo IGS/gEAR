@@ -1087,7 +1087,34 @@ class VcfSpec(TrackSpec):
 
 class HiCSpec(TrackSpec):
     def add_track(self, **kwargs):
-        pass
+        url = self.data_url
+        color = self.color
+
+        #try:
+        #    self.validate_url(url)
+        #except ValueError:
+        #    raise
+
+        hicData = gos.MatrixData(type="matrix", url=url)  # type: ignore
+
+        track = (
+            gos.Track(
+                data=hicData,  # pyright: ignore[reportArgumentType]
+                width=self.width,
+                height=self.width,  # looks best as square aspect ratio
+                title=self.title,  # Use the file name as the title
+                id=f"left-track-{self.title}",  # Use the file name without extension as the ID
+            )
+            .mark_bar()
+            .encode(
+                x=gos.X(field="xs", type="genomic", axis="top"),  # pyright: ignore[reportArgumentType]
+                xe=gos.Xe(field="xe", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
+                y=gos.Y(field="ys", type="quantitative", axis="left"),  # pyright: ignore[reportArgumentType]
+                ye=gos.Ye(field="ye", type="quantitative", axis="none"),  # pyright: ignore[reportArgumentType]
+                color=gos.Color(field="value", type="quantitative", range="warm", legend=True),  # pyright: ignore[reportArgumentType]
+            )
+        )
+        return track
 
     def validate_url(self, url):
         pass
