@@ -240,7 +240,6 @@ def get_dataset_by_share_id(share_id=None, include_shape=None):
     conn.close()
     return dataset
 
-
 def get_dataset_by_title(title=None, include_shape=None):
     """
     Given a dataset title string this returns a Dataset object with all attributes
@@ -326,6 +325,83 @@ def get_dataset_by_title(title=None, include_shape=None):
         "Error: More than one dataset found with the same title: {0}".format(title)
     )
 
+def get_metadata_by_share_id(share_id=None):
+    """
+    Given a dataset share ID string this returns a Dataset object with all attributes
+    populated which come directly from the table.
+
+    Returns None if no dataset of that shareID is found.
+    """
+
+    conn = Connection()
+    cursor = conn.get_cursor()
+
+    qry = """
+         SELECT title, organism_id, pubmed_id, geo_id, ldesc, dtype, share_id, platform_id, instrument_model,
+                library_selection, library_source, library_strategy, contact_email, contact_institute, contact_name,
+                annotation_source, annotation_release
+           FROM dataset
+          WHERE share_id = %s
+    """
+
+    cursor.execute(qry, (share_id,))
+    metadata = None
+
+    row = cursor.fetchone()
+    if row:
+        (
+            title,
+            organism_id,
+            pubmed_id,
+            geo_id,
+            ldesc,
+            dtype,
+            share_id,
+            platform_id,
+            instrument_model,
+            library_selection,
+            library_source,
+            library_strategy,
+            contact_email,
+            contact_institute,
+            contact_name,
+            annotation_source,
+            annotation_release
+        ) = row
+
+        metadata = {
+            "title": title,
+            "organism": get_organism_label(organism_id),
+            "pubmed_id": pubmed_id,
+            "geo_id": geo_id,
+            "description": ldesc,
+            "datatype": dtype,
+            "permalink": f"{this.domain_url}/p?s={share_id}",
+            "platform_id": platform_id,
+            "instrument_model": instrument_model,
+            "library_selection": library_selection,
+            "library_source": library_source,
+            "library_strategy": library_strategy,
+            "contact_email": contact_email,
+            "contact_institute": contact_institute,
+            "contact_name": contact_name,
+            "annotation_source": annotation_source,
+            "annotation_release": annotation_release
+        }
+
+    cursor.close()
+    conn.close()
+
+    if not metadata:
+        return None
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    for key, value in metadata.items():
+        writer.writerow([key, "N/A" if value is None else value])
+
+    return output.getvalue()
 
 def get_dataset_collection(ids=None):
     # TODO: implement
@@ -917,7 +993,6 @@ def get_gene_by_gene_symbol(gene_symbol, dataset_id) -> "Gene | None":
 
     return gene
 
-
 class Connection:
     def __init__(self):
         self.mysql_cnx = gear.db.MySQLDB().connect()
@@ -934,13 +1009,6 @@ class Connection:
             return self.mysql_cnx.cursor(dictionary=True)
         else:
             return self.mysql_cnx.cursor()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-        return False
 
     def __del__(self):
         if hasattr(self, "mysql_cnx"):
@@ -2394,48 +2462,6 @@ class Dataset:
         conn.commit()
         cursor.close()
         conn.close()
-
-    def get_metadata_content(self):
-        """
-        Returns a CSV representation of the dataset object.
-        """
-        output = io.StringIO()
-        writer = csv.writer(output)
-
-        items = {
-            "title": "title",
-            "organism_id": "organism",
-            "pubmed_id": "pubmed_id",
-            "geo_id": "geo_id",
-            "ldesc": "description",
-            "dtype": "datatype",
-            "share_id": "permalink",
-            "platform_id": "platform_id",
-            "instrument_model": "instrument_model",
-            "library_selection": "library_selection",
-            "library_source": "library_source",
-            "contact_email": "contact_email",
-            "contact_name": "contact_name",
-            "annotation_source": "annotation_source",
-            "annotation_release": "annotation_release"
-        }
-
-        dict = self._serialize_json()
-        for key, value in items.items():
-            if dict.get(key) is None:
-                writer.writerow([value, "N/A"])
-            else:
-                prop = dict.get(key)
-                match value: # use value rather than key could have multiple values
-                    case "organism":  # get organism name for id
-                        prop = get_organism_label(prop)
-                    case "permalink":
-                        prop = f"{domain_url}/p?s={self.share_id}"
-
-                writer.writerow([value, prop])
-
-
-        return output.getvalue()
 
 
 @dataclass
