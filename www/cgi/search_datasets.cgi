@@ -105,16 +105,15 @@ def main():
                 qry_params.append(user.id)
 
         else:
+            # When no ownership filter is specified, show only public datasets and user's own datasets
+            # Shared and group datasets should only appear when explicitly requested via ownership filter
             ownership_bits.append("d.is_public = 1")
             ownership_bits.append("d.owner_id = %s")
+
             if shared_dataset_id_str:
                 ownership_bits.append(f"d.id IN ({shared_dataset_id_str})")
 
-            ownership_bits.append("d.owner_id IN \
-                                    (SELECT DISTINCT user_id FROM user_group_membership WHERE group_id IN \
-                                    (SELECT group_id FROM user_group_membership WHERE user_id = %s)) \
-                                    ")
-            qry_params.extend([user.id, user.id])
+            qry_params.append(user.id)
 
         wheres.append(f"({' OR '.join(ownership_bits)})")   # OR accomodates the "not ownership" case
 

@@ -11,16 +11,16 @@
 
 ## Acquiring the gEAR image
 
-There are two options here.  The first method is significantly quicker, but there is a chance it may not be updated based on the latest Dockerfile instructions (if @adkinsrs forgets to push the latest image up).  The first method may also not be possible if you are restricted by Google Cloud authentication for the gEAR project area.
+There are two options here.  The first method is significantly quicker, but there is a chance it may not be updated based on the latest Dockerfile instructions in Github (if @adkinsrs forgets to push the latest image up).
 
 ### Method 1: Pull image
 
-* Authenticate into Google Cloud
-  * `gcloud auth configure-docker us-east1-docker.pkg.dev`
+NOTE: If on a Linux environment, change the "mac-m1" tag in the pull and tag commands to "linux"
+
 * Pull the image
-  * `docker pull us-east1-docker.pkg.dev/gear-154704/gear-image/umgear`
-* Tag the image
-  * `docker tag us-east1-docker.pkg.dev/gear-154704/gear-image/umgear umgear:main`
+  * `docker pull adkinsrs/umgear:mac-m1`
+* Tag the image (to align with what is in `docker-compose.yml`
+  * `docker tag adkinsrs/umgear:mac-m1 umgear:main`
 
 ### Method 2: Build image
 
@@ -33,18 +33,28 @@ In the build, the "gear.ini.docker" file will end up copied to "gear.ini" in the
 
 ## Starting the stack
 
+If you used Method 1, in the `docker-compose.yml file` ensure the "build" step from the "web" service is commented out or deleted.
+
 To start:
 `docker compose up -d`
 To stop:
 `docker compose down -v`
 
+IMPORTANT: If you did Method 1, from the gEAR root `cp docker/gear.ini.docker gear.ini` to make sure a working gear.ini file is present in the codebase after mounting the code as a volume in the "web" service in the docker-compose.yml file.
+
 Adding a service name (i.e. "web", "db") to the end of a command just performs this for that service.
+
+### Get feature mapping files
+
+Ask @adkinsrs for these (which will probably be in tar.gz format).  These hdf5 files should go in `<gear_root>/www/feature_mapping` so that orthology mapping will work.
 
 ## ProjectR
 
 Currently the gear.ini.docker file is configured to send projectR jobs to the cloud, but to not use RabbitMQ.  This is to save me the hassle of managing an extra service.  What this means is that apache process will manage the jobs and job logging will write to /var/log/apache2/ssl_umgear_error.log in the container.
 
 ## "panel" service
+
+If you do not plan on working on spatial panel stuff, feel free to comment out the "panel" service block from the docker-compose.yml file and skip this step.
 
 You can pre-build the "panel_app" image using the Dockerfile from `<gear_root>/services/spatial/Dockerfile`
 
@@ -89,6 +99,9 @@ a2dd9f06-5223-0779-8dfc-8dce7a3897e1
 f7de7db2-b4cb-ebe3-7f1f-b278f46f1a7f
 e34fa5c6-1083-cacb-eedf-23f59f2e005f
 e78db16a-3927-348c-f5aa-4256330a7dff
+f04627f7-6824-1e15-6a93-8de550c7b0a4
+1531b46d-8435-f31a-3898-20abc2fc974a
+cc90d264-ce9d-0b7b-1898-0e357c94b155
 ```
 
 You can write some script to loop through these IDs and download them to your "datasets" directory. If your docker-compose.yml file mounting is configured correctly then you can do this outside of the container
