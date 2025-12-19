@@ -44,6 +44,7 @@ RUN apt-get -qq update \
   libwebp-dev \
   cmake \
   curl \
+  rsync \
   wget \
   git \
   vim \
@@ -132,7 +133,7 @@ WORKDIR /opt/gEAR
 RUN mkdir -p src \
   && rsync -aP hgdownload.soe.ucsc.edu::genome/admin/exe/linux.x86_64/hubClone /opt/gEAR/src/ \
   && rsync -aP hgdownload.soe.ucsc.edu::genome/admin/exe/linux.x86_64/hubCheck /opt/gEAR/src/ \
-  && rsync -aP hgdownload.soe.ucsc.edu::genome/admin/exe/linux.x86_64/bigBedToBed /opt/gEAR/src/ \
+  && rsync -aP hgdownload.soe.ucsc.edu::genome/admin/exe/linux.x86_64/bigBedToBed /opt/gEAR/src/
 
 
 # Upgrade pip and install requirements from file
@@ -144,7 +145,6 @@ COPY ./requirements.full.txt /opt/gEAR/docker/requirements.full.txt
 RUN ./pip3 install --upgrade pip \
   # wheel is needed for the installation of biopython
   && ./pip3 install wheel \
-
   # Ran into "error: resolution-too-deep" so used `pip freeze` from a production env to create requirements.full.txt
   # Source: https://medium.com/@ebenyemiriam17/error-resolution-too-deep-how-i-fixed-my-pip-dependency-resolution-error-9cb3471344f9
   && ./pip3 install -r /opt/gEAR/docker/requirements.full.txt \

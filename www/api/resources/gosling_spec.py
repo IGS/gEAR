@@ -442,6 +442,7 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
         "bigWig": BigWigSpec,
         "bigBed": BedSpec,
         "vcf": VcfSpec,
+        "hic": HiCSpec,
     }
 
     kwargs = {}
@@ -968,6 +969,7 @@ class BedSpec(TrackSpec):
 
 
 class BigWigSpec(TrackSpec):
+
     def add_track(self, **kwargs):
         url = self.data_url
         color = self.color
@@ -1009,7 +1011,7 @@ class BigWigSpec(TrackSpec):
                 title=self.title,  # Use the file name as the title
                 id=f"left-track-{self.title}",  # Use the file name without extension as the ID
             )
-            .mark_area()
+            .mark_bar()
             .encode(
                 x=gos.X(field="start", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
                 xe=gos.X(field="end", type="genomic"),  # pyright: ignore[reportArgumentType]
@@ -1083,6 +1085,12 @@ class VcfSpec(TrackSpec):
             raise ValueError("Invalid URL: must end with .vcf.gz")
         return True
 
+class HiCSpec(TrackSpec):
+    def add_track(self, **kwargs):
+        pass
+
+    def validate_url(self, url):
+        pass
 
 # Assembly track class
 class AssemblySpec:

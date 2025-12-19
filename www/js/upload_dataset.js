@@ -919,7 +919,7 @@ document.getElementById('dataset-upload-submit').addEventListener('click', (even
     document.getElementById('dataset-upload-status').classList.add('is-hidden');
 
     if (datasetFormat === "gosling") {
-        uploadTrackhub();
+        //uploadTrackhub();
         return
     }
     uploadDataset();
