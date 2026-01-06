@@ -1090,6 +1090,18 @@ class HiCSpec(TrackSpec):
         url = self.data_url
         #color = self.color  # colorscale instead of single color
 
+        """Accepted HiGlass color ranges (others will not work)
+            viridis: interpolateViridis,
+            grey: interpolateGreys,
+            warm: interpolateWarm,
+            spectral: interpolateSpectral,
+            cividis: interpolateCividis,
+            bupu: interpolateBuPu,
+            rdbu: interpolateRdBu,
+            hot: interpolateYlOrBr,
+            pink: interpolateRdPu
+        """
+
         #try:
         #    self.validate_url(url)
         #except ValueError:
@@ -1107,11 +1119,12 @@ class HiCSpec(TrackSpec):
             )
             .mark_bar()
             .encode(
-                x=gos.X(field="xs", type="genomic", axis="top"),  # pyright: ignore[reportArgumentType]
+                x=gos.X(field="xs", type="genomic", axis="bottom"),  # pyright: ignore[reportArgumentType]
                 xe=gos.Xe(field="xe", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
-                y=gos.Y(field="ys", type="genomic", axis="left"),  # pyright: ignore[reportArgumentType]
+                y=gos.Y(field="ys", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
                 ye=gos.Ye(field="ye", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
-                color=gos.Color(field="value", type="quantitative", range="warm", legend=True),  # pyright: ignore[reportArgumentType]
+                color=gos.Color(field="value", type="quantitative", range="bupu", legend=True),  # pyright: ignore[reportArgumentType]
+                style=gos.Style(matrixExtent="full"),
             )
         )
         return track
