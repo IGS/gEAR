@@ -1088,7 +1088,7 @@ class VcfSpec(TrackSpec):
 class HiCSpec(TrackSpec):
     def add_track(self, **kwargs):
         url = self.data_url
-        color = self.color
+        #color = self.color  # colorscale instead of single color
 
         #try:
         #    self.validate_url(url)
@@ -1109,8 +1109,8 @@ class HiCSpec(TrackSpec):
             .encode(
                 x=gos.X(field="xs", type="genomic", axis="top"),  # pyright: ignore[reportArgumentType]
                 xe=gos.Xe(field="xe", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
-                y=gos.Y(field="ys", type="quantitative", axis="left"),  # pyright: ignore[reportArgumentType]
-                ye=gos.Ye(field="ye", type="quantitative", axis="none"),  # pyright: ignore[reportArgumentType]
+                y=gos.Y(field="ys", type="genomic", axis="left"),  # pyright: ignore[reportArgumentType]
+                ye=gos.Ye(field="ye", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
                 color=gos.Color(field="value", type="quantitative", range="warm", legend=True),  # pyright: ignore[reportArgumentType]
             )
         )
