@@ -914,15 +914,20 @@ def get_organism_label(organism_id: int | None) -> str:
     """Return the label for the given organism ID."""
     if organism_id is None:
         return "N/A"
-    
+
+    conn = Connection()
+    cursor = conn.get_cursor()
+
     try:
-        with Connection() as conn:
-            cursor = conn.get_cursor()
-            cursor.execute("SELECT label FROM organism WHERE id = %s", (organism_id,))
-            row = cursor.fetchone()
-            return row[0] if row and row[0] is not None else "N/A"
-    except Exception:
-        return "N/A"
+        cursor.execute("SELECT label FROM organism WHERE id = %s", (organism_id,))
+        row = cursor.fetchone()
+        return row[0] if row and row[0] is not None else "N/A"
+    except Exception as e:
+        print(e, file=sys.stderr)
+        return "ERR"
+    finally:
+        cursor.close()
+        conn.close()
 
 
 def get_gene_by_gene_symbol(gene_symbol, dataset_id) -> "Gene | None":
