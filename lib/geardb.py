@@ -924,7 +924,7 @@ def get_organism_label(organism_id: int | None) -> str:
         return row[0] if row and row[0] is not None else "N/A"
     except Exception as e:
         print(e, file=sys.stderr)
-        return "ERR"
+        return "N/A"
     finally:
         cursor.close()
         conn.close()
