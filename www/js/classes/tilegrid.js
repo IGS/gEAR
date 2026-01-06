@@ -977,6 +977,16 @@ class DatasetTile {
                     // Handle if we know this is a projection run
                     item.classList.add("is-hidden");
                     break;
+                case "download-metadata":
+                    // Download metadata file
+                    try {
+                        const url = `./cgi/download_source_file.cgi?type=metadata&share_id=${shareId}`;
+                        item.href = url;
+                    } catch (error) {
+                        logErrorInConsole(error);
+                        createToast("An error occurred while trying to download the metadata file.");
+                    }
+                    break;
                 default:
                     console.warn(`Unknown dropdown item ${item.dataset.tool} for dataset ${shareId}.`);
                     break;
