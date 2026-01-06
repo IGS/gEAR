@@ -236,7 +236,6 @@ export class TileGrid {
         if (isZoomed) {
             await zoomedDatasetTile.renderDisplay(zoomedDatasetTile.geneInput, zoomedDatasetTile.currentDisplayId, zoomedDatasetTile.svgScoringMethod);
         }
-
     }
 
     /**
@@ -311,9 +310,15 @@ export class TileGrid {
             const tileElement = document.getElementById(`tile-${this.zoomId}`);
             tileElement.querySelector('.js-expand-display').click();
         }
-
-
     }
+
+    warnGeneAnnotationNotFound() {
+        const warningMessage = "Searched gene(s) not found in our annotation database. Please search for another gene.";
+        for (const tile of this.tiles) {
+            createCardMessage(tile.tile.tileId, "warning", warningMessage);
+        }
+    }
+
 };
 
 class DatasetTile {
