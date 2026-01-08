@@ -414,7 +414,7 @@ def build_genome_wide_view(
     return genome_wide_view
 
 
-def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""):
+def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url="", position_str="NA"):
     """
     Builds and configures Gosling tracks based on the provided track specifications.
 
@@ -466,6 +466,8 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
     global_max_peak = max(max_bigwig_peaks.values(), default=None)
     kwargs["max_bigwig_peak"] = global_max_peak
     """
+
+    hic_found = False
 
     # Build each individual track based on its type
     for track in tracks:
@@ -522,10 +524,13 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
         title = track.get("shortLabel", track.get("longLabel", "bigDataUrl"))
 
         spec_builder = spec_builder_class(
-            data_url=data_url, color=color, group=group, zoom=zoom, title=title
+            data_url=data_url, color=color, group=group, zoom=zoom, title=title, position_str=position_str
         )
         left_track = spec_builder.add_track(**kwargs)
         parent_tracks_dict["left"].append(left_track)
+
+        if spec_builder_class == HiCSpec:
+            hic_found = True
 
         if zoom:
             right_track = spec_builder.add_track(**kwargs)
@@ -542,7 +547,7 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
             id="right-view", linkingId="zoom-to-panel-b", spacing=0
         )
 
-    return parent_view_left, parent_view_right
+    return parent_view_left, parent_view_right, hic_found
 
 
 def build_region_view(parent_view_left, parent_view_right=None):
@@ -610,6 +615,51 @@ def fetch_trackdb_and_groups_info(genomes_txt, assembly) -> dict:
                     break
     return urls
 
+
+def get_gene_info(gene_symbol, dataset_id, assembly):
+    """
+    Fetches gene coordinate information for a given gene symbol from the geardb database.
+
+    Args:
+        gene_symbol (str): The gene symbol to look up.
+        dataset_id (str or int): The identifier for the dataset to query.
+        assembly (str): The genome assembly name (e.g., 'hg38', 'mm10').
+
+    Returns:
+        tuple:
+            - position_str (str): The genomic position in the format '{assembly}.chr:start-end', suitable for UCSC Genome Browser.
+            - gene_symbol (str): The canonical gene symbol as stored in the database.
+
+    Notes:
+        - If the gene symbol is not found in the dataset, returns ("NA", "NA").
+        - Chromosome names are normalized to UCSC-style (e.g., 'chr1', 'chrX', 'chrM').
+    """
+    # Fetch gene coordinates from geardb
+    gene_info = geardb.get_gene_by_gene_symbol(gene_symbol, dataset_id)
+    if not gene_info:
+        print(
+            f"WARNING: Gene symbol '{gene_symbol}' not found in dataset {dataset_id}; cannot zoom track.",
+            file=sys.stderr,
+        )
+        return ("NA", "NA")
+
+    chrom = gene_info.molecule or "unknown"
+
+    # if chrom is a number, convert it to a string with "chr" prefix
+    if chrom.isdigit() or chrom in ["X", "Y"]:
+        chrom = f"chr{chrom}"
+    # if chrom is MT, convert to "chrM"
+    if chrom == "MT":
+        chrom = "chrM"
+
+    start = gene_info.start
+    end = gene_info.stop
+    gene_symbol = gene_info.gene_symbol # To use correct naming later
+
+    left_position = f"{chrom}:{start}-{end}"
+    position_str = f"{assembly}.{left_position}"  # This is the format if we want to export position to UCSC Genome Browser
+
+    return position_str, gene_symbol
 
 def parse_groups_from_groupsdb(groupsdb_txt) -> dict:
     """Parse groups info from a UCSC groups.txt content.
@@ -699,74 +749,33 @@ def parse_tracks_from_trackdb(trackdb_txt, trackdb_url) -> list:
     return tracks
 
 
-def zoom_view_to_gene(view, gene_symbol, dataset_id, assembly):
+def zoom_view_to_domain(view, position_str, hic_found=False):
     """
-    Zooms a Gosling view to the genomic coordinates of a specified gene.
-
-    This function fetches the genomic coordinates for a given gene symbol from the geardb database,
-    adjusts the chromosome naming conventions as needed, and sets the x-domain of the provided Gosling
-    view to focus on the region surrounding the gene (with additional padding). It also constructs a
-    position string suitable for export to the UCSC Genome Browser.
+    Zooms a Gosling view to a specified genomic domain with padding.
 
     Args:
-        view: The Gosling view object to be modified.
-        gene_symbol (str): The gene symbol to zoom to.
-        dataset_id (str or int): The identifier for the dataset containing gene annotations.
-        assembly (str): The genome assembly (e.g., "hg38", "mm10").
+        view: A Gosling view object to be updated.
+        position_str (str): A string representing the genomic position in the format expected by `parse_position_str`.
 
     Returns:
-        tuple:
-            - view: The modified Gosling view object with updated x-domain.
-            - position_str (str or None): The UCSC Genome Browser position string, or None if gene not found.
-            - chrom (str or None): The chromosome name, or None if not available.
+        The updated Gosling view object with its xDomain set to the specified genomic coordinates plus padding.
 
     Notes:
-        - If the gene symbol is not found or does not have valid coordinates, the original view is returned
-          along with None for position_str and/or chrom.
-        - Chromosome naming conventions are adjusted to match UCSC standards (e.g., "chr1", "chrX", "chrM").
+        Adds a base padding of 1500 base pairs to both sides of the specified genomic interval.
     """
 
     BASE_PADDING = 1500  # base padding on each side of gene
+    padding = BASE_PADDING * 1000 if hic_found else BASE_PADDING
 
-    # Fetch gene coordinates from geardb
-    gene_info = geardb.get_gene_by_gene_symbol(gene_symbol, dataset_id)
-    if not gene_info:
-        print(
-            f"WARNING: Gene symbol '{gene_symbol}' not found in dataset {dataset_id}; cannot zoom track.",
-            file=sys.stderr,
-        )
-        return (view, None, None)
-
-    chrom = gene_info.molecule or "unknown"
-
-    # if chrom is a number, convert it to a string with "chr" prefix
-    if chrom.isdigit() or chrom in ["X", "Y"]:
-        chrom = f"chr{chrom}"
-    # if chrom is MT, convert to "chrM"
-    if chrom == "MT":
-        chrom = "chrM"
-
-    start = gene_info.start
-    end = gene_info.stop
-    gene_symbol = gene_info.gene_symbol # To use correct naming later
-
-    if not start or not end:
-        print(
-            f"WARNING: Gene symbol '{gene_symbol}' does not have valid start/end coordinates; cannot zoom track.",
-            file=sys.stderr,
-        )
-        return (view, None, gene_symbol)
-
-    left_position = f"{chrom}:{start}-{end}"
-    position_str = f"{assembly}.{left_position}"  # This is the format if we want to export position to UCSC Genome Browser
+    _, chrom, start, end = parse_position_str(position_str)
 
     # Set the x domain of the track to the gene coordinates
     view = view.properties(
         xDomain=gos.GenomicDomain(
-            chromosome=chrom, interval=[start - BASE_PADDING, end + BASE_PADDING]
+            chromosome=chrom, interval=[start - padding, end + padding]
         )
     )
-    return (view, position_str, gene_symbol)
+    return view
 
 def parse_position_str(position_str: str) -> tuple:
     """
@@ -848,7 +857,7 @@ def replace_with_aggregated_track(group_tracks, group_name):
 
 
 class TrackSpec(ABC):
-    def __init__(self, data_url, color="steelblue", group=None, zoom=False, title=""):
+    def __init__(self, data_url, color="steelblue", group=None, zoom=False, title="", position_str="NA"):
         self.data_url = data_url
         self.color = color  # Passed as RGB string
         self.group = group
@@ -856,6 +865,7 @@ class TrackSpec(ABC):
         self.width = EXPANDED_WIDTH if zoom else CONDENSED_WIDTH
         self.height = EXPANDED_HEIGHT if zoom else CONDENSED_HEIGHT
         self.title = title
+        self.position_str = position_str
 
         self.track = None
 
@@ -929,11 +939,11 @@ class BedSpec(TrackSpec):
         except ValueError:
             raise
 
-        bedData = gos.BedData(type="bed", url=url, indexUrl=f"{url}.tbi")  # type: ignore
+        bed_data = gos.BedData(type="bed", url=url, indexUrl=f"{url}.tbi")  # type: ignore
 
         track = (
             gos.Track(
-                data=bedData,  # pyright: ignore[reportArgumentType]
+                data=bed_data,  # pyright: ignore[reportArgumentType]
                 width=self.width,
                 height=self.height,
                 title=self.title,  # Use the file name as the title
@@ -980,7 +990,7 @@ class BigWigSpec(TrackSpec):
             raise
 
         # TODO: figure out appropriate binsize when zooming out: Default is 256. It looks blocky briefly
-        bigWigData = gos.BigWigData(type="bigwig", url=url)  # type: ignore
+        bigwig_data = gos.BigWigData(type="bigwig", url=url)  # type: ignore
 
         y_kwargs = {}
         y_field="value"
@@ -1005,7 +1015,7 @@ class BigWigSpec(TrackSpec):
 
         track = (
             gos.Track(
-                data=bigWigData,  # pyright: ignore[reportArgumentType]
+                data=bigwig_data,  # pyright: ignore[reportArgumentType]
                 width=self.width,
                 height=self.height,
                 title=self.title,  # Use the file name as the title
@@ -1048,11 +1058,11 @@ class VcfSpec(TrackSpec):
         except ValueError:
             raise
 
-        vcfData = gos.VcfData(type="vcf", url=url, indexUrl=f"{url}.tbi")  # type: ignore
+        vcf_data = gos.VcfData(type="vcf", url=url, indexUrl=f"{url}.tbi")  # type: ignore
 
         track = (
             gos.Track(
-                data=vcfData,  # pyright: ignore[reportArgumentType]
+                data=vcf_data,  # pyright: ignore[reportArgumentType]
                 width=self.width,
                 height=self.height,
                 title=self.title,  # Use the file name as the title
@@ -1089,6 +1099,7 @@ class HiCSpec(TrackSpec):
     def add_track(self, **kwargs):
         url = self.data_url
         #color = self.color  # colorscale instead of single color
+        position_str = self.position_str
 
         """Accepted HiGlass color ranges (others will not work)
             viridis: interpolateViridis,
@@ -1107,11 +1118,11 @@ class HiCSpec(TrackSpec):
         #except ValueError:
         #    raise
 
-        hicData = gos.MatrixData(type="matrix", url=url)  # type: ignore
+        hic_data = gos.MatrixData(type="matrix", url=url)  # type: ignore
 
-        track = (
+        hic_track = (
             gos.Track(
-                data=hicData,  # pyright: ignore[reportArgumentType]
+                data=hic_data,  # pyright: ignore[reportArgumentType]
                 width=self.width,
                 height=self.width,  # looks best as square aspect ratio
                 title=self.title,  # Use the file name as the title
@@ -1127,10 +1138,55 @@ class HiCSpec(TrackSpec):
                 style=gos.Style(matrixExtent="full"),
             )
         )
-        return track
+        if position_str == "NA":
+            return hic_track
+
+        annotation_track = self.add_annotation_track(position_str)
+
+        view = gos.overlay(hic_track, annotation_track, width=self.width, height=self.width)
+        return view
+
 
     def validate_url(self, url):
         pass
+
+    def add_annotation_track(self, position_str):
+
+        _, chrom, start, end = parse_position_str(position_str)
+
+        json_data = gos.JsonData(
+            type="json",
+            values=[
+                {
+                    "c": chrom,
+                    "x": start,
+                    "xe": end,
+                    "y": start,
+                    "ye": end,
+                }
+            ],
+            chromosomeField="c",
+            genomicFields=["x", "xe", "y", "ye"],
+            )
+
+        track = (
+            gos.Track(
+                data=json_data,
+            )
+            .mark_bar()
+            .encode(
+                x=gos.X(field="x", type="genomic"),
+                xe=gos.Xe(field="xe", type="genomic"),
+                y=gos.Y(field="y", type="genomic"),
+                ye=gos.Ye(field="ye", type="genomic"),
+                color=gos.Color(value="yellow"),
+                opacity=gos.Opacity(value=0.2),
+                stroke=gos.Stroke(value="yellow"),
+                strokeWidth=gos.StrokeWidth(value=4),
+            )
+        )
+
+        return track
 
 # Assembly track class
 class AssemblySpec:
@@ -1241,6 +1297,13 @@ class GoslingSpec(Resource):
         else:
             print("INFO: No groups URL provided; continuing without it.", file=sys.stderr)
 
+        # Let's get the coordinates of the gene_symbol.
+        (position_str, new_gene_symbol) = get_gene_info(gene_symbol, dataset_id, assembly)
+
+        if new_gene_symbol != "NA":
+            gene_symbol = new_gene_symbol
+
+
         gos_tracks = {"left": [], "right": []}
         # Add BED annotation tracks to left (and right if zoom) gos_tracks in the first index position
         # build left and right track
@@ -1268,22 +1331,16 @@ class GoslingSpec(Resource):
                 if not zoom:
                     group_tracks = replace_with_aggregated_track(group_tracks, group)
 
-                (parent_view_left, parent_view_right) = build_gosling_tracks(
-                    gos_tracks, group_tracks, zoom=zoom, tracksdb_url=trackdb_url
+                (parent_view_left, parent_view_right, hic_found) = build_gosling_tracks(
+                    gos_tracks, group_tracks, zoom=zoom, tracksdb_url=trackdb_url, position_str=position_str
                 )
         else:
-            (parent_view_left, parent_view_right) = build_gosling_tracks(
-                gos_tracks, tracks, zoom=zoom, tracksdb_url=trackdb_url
+            (parent_view_left, parent_view_right, hic_found) = build_gosling_tracks(
+                gos_tracks, tracks, zoom=zoom, tracksdb_url=trackdb_url, position_str=position_str
             )
 
         # Start building the Gosling spec
         region_view = build_region_view(parent_view_left, parent_view_right)
-        # At this point, let's zoom this view to the coordinates of the gene_symbol.
-        (region_view, position_str, new_gene_symbol) = zoom_view_to_gene(
-            region_view, gene_symbol, dataset_id, assembly
-        )
-        if new_gene_symbol:
-            gene_symbol = new_gene_symbol
 
         base_views = []
 
@@ -1291,9 +1348,14 @@ class GoslingSpec(Resource):
 
         genome_wide_view = build_genome_wide_view(assembly, assembly_array, zoom=zoom, gene_symbol=gene_symbol)
         base_views.append(genome_wide_view)
-        if position_str:
+
+        # Let's do some things that depend on whether we found a valid position_str
+        if position_str != "NA":
             chromosome_view = build_genome_wide_view(assembly, assembly_array, zoom=zoom, position=position_str, gene_symbol=gene_symbol)
             base_views.append(chromosome_view)
+
+            region_view = zoom_view_to_domain(region_view, position_str, hic_found)
+
 
         base_views.append(region_view)
         base_track = gos.vertical(*base_views)
