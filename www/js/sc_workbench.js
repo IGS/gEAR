@@ -1,13 +1,13 @@
 "use strict";
 
-import { Analysis, getAnalysisLabels, setAnalysisLabels } from "./classes/analysis.js?v=92952cc";
-import { UI } from "./classes/analysis-ui.js?v=92952cc";
-import { Dataset } from "./classes/dataset.js?v=92952cc";
-import { Gene, WeightedGene } from "./classes/gene.js?v=92952cc";
-import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=92952cc";
-import { DatasetTree } from "./classes/tree.js?v=92952cc";
-import { resetStepperWithHrefs } from "./stepper-fxns.js?v=92952cc";
-import { apiCallsMixin, convertToFormData, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=92952cc";
+import { Analysis, getAnalysisLabels, setAnalysisLabels } from "./classes/analysis.js?v=207be9a";
+import { UI } from "./classes/analysis-ui.js?v=207be9a";
+import { Dataset } from "./classes/dataset.js?v=207be9a";
+import { Gene, WeightedGene } from "./classes/gene.js?v=207be9a";
+import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=207be9a";
+import { DatasetTree } from "./classes/tree.js?v=207be9a";
+import { resetStepperWithHrefs } from "./stepper-fxns.js?v=207be9a";
+import { apiCallsMixin, convertToFormData, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=207be9a";
 
 let currentAnalysis;
 let clickedMarkerGenes = new Set();
@@ -140,12 +140,13 @@ const datasetTree = new DatasetTree({
  * is displayed and an error is thrown.
  *
  * @async
+ * @param {URLSearchParams} urlParams - The URLSearchParams object containing the URL parameters.
  * @param {string} paramName - The name of the URL parameter to look for.
  * @param {function} [fetchInfoFn] - Optional async function to fetch dataset info using the parameter value.
  *        Should return a Promise that resolves to an array of objects containing a `dataset_id` property.
  * @throws {Error} If the dataset cannot be accessed or found in the dataset tree.
  */
-const activateDatasetFromParam = async (paramName, fetchInfoFn) => {
+const activateDatasetFromParam = async (urlParams, paramName, fetchInfoFn) => {
     if (!urlParams.has(paramName)) {
         return;
     }
@@ -563,13 +564,13 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
         // Usage inside handlePageSpecificLoginUIUpdates
         if (urlParams.has("share_id")) {
-            return await activateDatasetFromParam("share_id", async (shareId) =>
+            return await activateDatasetFromParam(urlParams, "share_id", async (shareId) =>
                 await apiCallsMixin.fetchDatasetListInfo({permalink_share_id: shareId})
             );
         } else if (urlParams.has("dataset_id")) {
     		// Legacy support for dataset_id
 
-            await activateDatasetFromParam("dataset_id");
+            await activateDatasetFromParam(urlParams, "dataset_id");
         }
 
         // ? This could be used to pre-select an analysis

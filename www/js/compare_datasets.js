@@ -1,11 +1,11 @@
 'use strict';
 
-import { apiCallsMixin, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=92952cc";
-import { FacetWidget } from "./classes/facets.js?v=92952cc";
-import { Gene, WeightedGene } from "./classes/gene.js?v=92952cc";
-import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=92952cc";
-import { DatasetTree } from "./classes/tree.js?v=92952cc";
-import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners } from "../include/gene-collection-selector/gene-collection-selector.js?v=92952cc";
+import { apiCallsMixin, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=207be9a";
+import { FacetWidget } from "./classes/facets.js?v=207be9a";
+import { Gene, WeightedGene } from "./classes/gene.js?v=207be9a";
+import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=207be9a";
+import { DatasetTree } from "./classes/tree.js?v=207be9a";
+import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners } from "../include/gene-collection-selector/gene-collection-selector.js?v=207be9a";
 
 // SAdkins - 2/15/21 - This is a list of datasets already log10-transformed where if selected will use log10 as the default dropdown option
 // This is meant to be a short-term solution until more people specify their data is transformed via the metadata
@@ -141,12 +141,13 @@ const datasetTree = new DatasetTree({
  * is displayed and an error is thrown.
  *
  * @async
+ * @param {URLSearchParams} urlParams - The URLSearchParams object containing the URL parameters.
  * @param {string} paramName - The name of the URL parameter to look for.
  * @param {function} [fetchInfoFn] - Optional async function to fetch dataset info using the parameter value.
  *        Should return a Promise that resolves to an array of objects containing a `dataset_id` property.
  * @throws {Error} If the dataset cannot be accessed or found in the dataset tree.
  */
-const activateDatasetFromParam = async (paramName, fetchInfoFn) => {
+const activateDatasetFromParam = async (urlParams, paramName, fetchInfoFn) => {
     if (!urlParams.has(paramName)) {
         return;
     }
@@ -1441,13 +1442,13 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
         // Usage inside handlePageSpecificLoginUIUpdates
         if (urlParams.has("share_id")) {
-            return await activateDatasetFromParam("share_id", async (shareId) =>
+            return await activateDatasetFromParam(urlParams, "share_id", async (shareId) =>
                 await apiCallsMixin.fetchDatasetListInfo({permalink_share_id: shareId})
             );
         } else if (urlParams.has("dataset_id")) {
     		// Legacy support for dataset_id
 
-            await activateDatasetFromParam("dataset_id");
+            await activateDatasetFromParam(urlParams, "dataset_id");
         }
 	} catch (error) {
 		logErrorInConsole(error);

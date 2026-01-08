@@ -1,4 +1,6 @@
+import csv
 import datetime
+import io
 import json
 import os
 import re
@@ -238,7 +240,6 @@ def get_dataset_by_share_id(share_id=None, include_shape=None):
     conn.close()
     return dataset
 
-
 def get_dataset_by_title(title=None, include_shape=None):
     """
     Given a dataset title string this returns a Dataset object with all attributes
@@ -324,6 +325,83 @@ def get_dataset_by_title(title=None, include_shape=None):
         "Error: More than one dataset found with the same title: {0}".format(title)
     )
 
+def get_metadata_by_share_id(share_id=None):
+    """
+    Given a dataset share ID string this returns a Dataset object with all attributes
+    populated which come directly from the table.
+
+    Returns None if no dataset of that shareID is found.
+    """
+
+    conn = Connection()
+    cursor = conn.get_cursor()
+
+    qry = """
+         SELECT title, organism_id, pubmed_id, geo_id, ldesc, dtype, share_id, platform_id, instrument_model,
+                library_selection, library_source, library_strategy, contact_email, contact_institute, contact_name,
+                annotation_source, annotation_release
+           FROM dataset
+          WHERE share_id = %s
+    """
+
+    cursor.execute(qry, (share_id,))
+    metadata = None
+
+    row = cursor.fetchone()
+    if row:
+        (
+            title,
+            organism_id,
+            pubmed_id,
+            geo_id,
+            ldesc,
+            dtype,
+            share_id,
+            platform_id,
+            instrument_model,
+            library_selection,
+            library_source,
+            library_strategy,
+            contact_email,
+            contact_institute,
+            contact_name,
+            annotation_source,
+            annotation_release
+        ) = row
+
+        metadata = {
+            "title": title,
+            "organism": get_organism_label(organism_id),
+            "pubmed_id": pubmed_id,
+            "geo_id": geo_id,
+            "description": ldesc,
+            "datatype": dtype,
+            "permalink": f"{this.domain_url}/p?s={share_id}",
+            "platform_id": platform_id,
+            "instrument_model": instrument_model,
+            "library_selection": library_selection,
+            "library_source": library_source,
+            "library_strategy": library_strategy,
+            "contact_email": contact_email,
+            "contact_institute": contact_institute,
+            "contact_name": contact_name,
+            "annotation_source": annotation_source,
+            "annotation_release": annotation_release
+        }
+
+    cursor.close()
+    conn.close()
+
+    if not metadata:
+        return None
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    for key, value in metadata.items():
+        writer.writerow([key, "N/A" if value is None else value])
+
+    return output.getvalue()
 
 def get_dataset_collection(ids=None):
     # TODO: implement
@@ -832,6 +910,26 @@ def get_user_id_from_session_id(session_id):
     return user_id
 
 
+def get_organism_label(organism_id: int | None) -> str:
+    """Return the label for the given organism ID."""
+    if organism_id is None:
+        return "N/A"
+
+    conn = Connection()
+    cursor = conn.get_cursor()
+
+    try:
+        cursor.execute("SELECT label FROM organism WHERE id = %s", (organism_id,))
+        row = cursor.fetchone()
+        return row[0] if row and row[0] is not None else "N/A"
+    except Exception as e:
+        print(e, file=sys.stderr)
+        return "N/A"
+    finally:
+        cursor.close()
+        conn.close()
+
+
 def get_gene_by_gene_symbol(gene_symbol, dataset_id) -> "Gene | None":
     qry_org_id = "SELECT organism_id from dataset where id = %s"
 
@@ -899,7 +997,6 @@ def get_gene_by_gene_symbol(gene_symbol, dataset_id) -> "Gene | None":
     conn.close()
 
     return gene
-
 
 class Connection:
     def __init__(self):
