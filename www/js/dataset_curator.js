@@ -3,9 +3,9 @@
 
 'use strict';
 
-import { apiCallsMixin, createToast, getCurrentUser, initCommonUI, logErrorInConsole, trigger } from "./common.v2.js?v=207be9a";
-import { curatorCommon } from "./curator_common.js?v=207be9a";
-import { postPlotlyConfig } from "./plot_display_config.js?v=207be9a";
+import { apiCallsMixin, createToast, getCurrentUser, initCommonUI, logErrorInConsole, trigger } from "./common.v2.js?v=c9333af";
+import { curatorCommon } from "./curator_common.js?v=c9333af";
+import { postPlotlyConfig } from "./plot_display_config.js?v=c9333af";
 
 curatorCommon.setIsMultigene(0);
 

@@ -1,6 +1,6 @@
 'use strict';
 
-import { blockStepWithHref, openNextStepWithHrefs } from "../stepper-fxns.js?v=207be9a";
+import { blockStepWithHref, openNextStepWithHrefs } from "../stepper-fxns.js?v=c9333af";
 
 class AnalysisUI {
     // This class is a singleton that manages the UI elements of the analysis pipeline.
