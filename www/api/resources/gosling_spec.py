@@ -748,35 +748,6 @@ def parse_tracks_from_trackdb(trackdb_txt, trackdb_url) -> list:
         tracks.append(current_track)
     return tracks
 
-
-def zoom_view_to_domain(view, position_str, hic_found=False):
-    """
-    Zooms a Gosling view to a specified genomic domain with padding.
-
-    Args:
-        view: A Gosling view object to be updated.
-        position_str (str): A string representing the genomic position in the format expected by `parse_position_str`.
-
-    Returns:
-        The updated Gosling view object with its xDomain set to the specified genomic coordinates plus padding.
-
-    Notes:
-        Adds a base padding of 1500 base pairs to both sides of the specified genomic interval.
-    """
-
-    BASE_PADDING = 1500  # base padding on each side of gene
-    padding = BASE_PADDING * 1000 if hic_found else BASE_PADDING
-
-    _, chrom, start, end = parse_position_str(position_str)
-
-    # Set the x domain of the track to the gene coordinates
-    view = view.properties(
-        xDomain=gos.GenomicDomain(
-            chromosome=chrom, interval=[start - padding, end + padding]
-        )
-    )
-    return view
-
 def parse_position_str(position_str: str) -> tuple:
     """
     Parses a position string in the format 'assembly.chromosome:start-end' and returns its components.
@@ -855,6 +826,33 @@ def replace_with_aggregated_track(group_tracks, group_name):
     finally:
         return group_tracks
 
+def zoom_view_to_domain(view, position_str, hic_found=False):
+    """
+    Zooms a Gosling view to a specified genomic domain with padding.
+
+    Args:
+        view: A Gosling view object to be updated.
+        position_str (str): A string representing the genomic position in the format expected by `parse_position_str`.
+
+    Returns:
+        The updated Gosling view object with its xDomain set to the specified genomic coordinates plus padding.
+
+    Notes:
+        Adds a base padding of 1500 base pairs to both sides of the specified genomic interval.
+    """
+
+    BASE_PADDING = 1500  # base padding on each side of gene
+    padding = BASE_PADDING * 500 if hic_found else BASE_PADDING
+
+    _, chrom, start, end = parse_position_str(position_str)
+
+    # Set the x domain of the track to the gene coordinates
+    view = view.properties(
+        xDomain=gos.GenomicDomain(
+            chromosome=chrom, interval=[start - padding, end + padding]
+        )
+    )
+    return view
 
 class TrackSpec(ABC):
     def __init__(self, data_url, color="steelblue", group=None, zoom=False, title="", position_str="NA"):
@@ -1126,7 +1124,6 @@ class HiCSpec(TrackSpec):
                 width=self.width,
                 height=self.width,  # looks best as square aspect ratio
                 title=self.title,  # Use the file name as the title
-                id=f"left-track-{self.title}",  # Use the file name without extension as the ID
             )
             .mark_bar()
             .encode(
@@ -1143,7 +1140,8 @@ class HiCSpec(TrackSpec):
 
         annotation_track = self.add_annotation_track(position_str)
 
-        view = gos.overlay(hic_track, annotation_track, width=self.width, height=self.width)
+        view = gos.overlay(hic_track, annotation_track, width=self.width, height=self.width, id=f"left-track-{self.title}",  # Use the file name without extension as the ID
+)
         return view
 
 
@@ -1175,10 +1173,10 @@ class HiCSpec(TrackSpec):
             )
             .mark_bar()
             .encode(
-                x=gos.X(field="x", type="genomic"),
-                xe=gos.Xe(field="xe", type="genomic"),
-                y=gos.Y(field="y", type="genomic"),
-                ye=gos.Ye(field="ye", type="genomic"),
+                x=gos.X(field="x", type="genomic", axis="none"),
+                xe=gos.Xe(field="xe", type="genomic", axis="none"),
+                y=gos.Y(field="y", type="genomic", axis="none"),
+                ye=gos.Ye(field="ye", type="genomic", axis="none"),
                 color=gos.Color(value="yellow"),
                 opacity=gos.Opacity(value=0.2),
                 stroke=gos.Stroke(value="yellow"),
@@ -1215,6 +1213,7 @@ class GoslingSpec(Resource):
             "spec": {},
             "position": "",  # will be filled with chr:start-end
             "message": "",
+            "hic_found": False  # If the spec has a HiC file, we need to adjust zooming behavior
         }
 
         if assembly is None:
@@ -1371,6 +1370,7 @@ class GoslingSpec(Resource):
         response["success"] = 1
         response["spec"] = spec
         response["position"] = position_str
+        response["hic_found"] = hic_found
         return response, 200
 
     def post(self, dataset_id):

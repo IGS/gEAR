@@ -1551,6 +1551,7 @@ class DatasetTile {
         const ucscHubUrl = plotConfig.hubUrl;
         const zoom = this.isZoomed;
         const positionArr = ["", ""]; // [leftPosition, rightPosition]
+        let hiCFound = false;
 
         let embedFn = null
         try {
@@ -1583,6 +1584,9 @@ class DatasetTile {
             if (zoom) {
                 positionArr[1] = data.position;
             }
+
+            hiCFound = data?.hic_found || false;
+
         } catch (error) {
             logErrorInConsole(error);
             createCardMessage(this.tile.tileId, "danger", "An error occurred while fetching the Gosling spec.");
@@ -1680,13 +1684,17 @@ class DatasetTile {
                 chr = "chrM";
             }
 
-            //const basePadding = 1500; // Base padding for zooming
-            const basePadding = 0; // Base padding for zooming
+            const basePadding = 1500; // Base padding for zooming
+            //const basePadding = 0; // Base padding for zooming
+
+            const paddingToUse = hiCFound ? basePadding * 500 : basePadding;
 
             const rightPosition = `${chr}:${start}-${end}`;
             const positionStr = `${assembly}.${rightPosition}`; // Update the global position variable
             positionArr[1] = positionStr;
-            await goslingApi.zoomTo("right-annotation", rightPosition, basePadding); // track name, position, padding, duration (ms)
+            await goslingApi.zoomTo("right-annotation", rightPosition, paddingToUse); // track name, position, padding, duration (ms)
+
+            // TODO:  if Hi-C data is found, add an annotation to the gene position
 
         });
     }
