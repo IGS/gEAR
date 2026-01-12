@@ -207,12 +207,14 @@ def bigbed_to_bed(bigbed_file, output_dir) -> bool:
         print(f"File {bigbed_file} is not a bigBed file.")
         return False
 
-    bedbed_path = Path(bigbed_file)
-    bed_path = bedbed_path.with_suffix('.bed')
+    bigbed_path = Path(bigbed_file)
+    bed_path = bigbed_path.with_suffix('.bed')
     bed_path = Path(output_dir) / bed_path.name
 
+    exec_file = Path(__file__).resolve().parent.parent / "src" / "bigBedToBed"
+
     try:
-        subprocess.run(["bigBedToBed", bigbed_file, bed_path.as_posix()], check=True)
+        subprocess.run([exec_file, bigbed_file, bed_path.as_posix()], check=True)
         print(f"Converted {bigbed_file} to {bed_path.as_posix()}.")
 
         gz_path = bed_path.with_suffix(bed_path.suffix + '.gz')

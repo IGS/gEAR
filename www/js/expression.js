@@ -93,6 +93,11 @@ document.getElementById('submit-expression-search').addEventListener('click', as
         const [annotRes, tilegridRes] = await Promise.allSettled([fetchGeneAnnotations(), setupTileGridFn]);
         tilegrid = tilegridRes.value;
 
+        if (!annotRes.value) {
+            tilegrid.warnGeneAnnotationNotFound();
+            return;
+        }
+
         // auto-select the first gene in the list
         const firstGene = document.querySelector('.gene-result-list-item');
         if (!isMultigene && firstGene) {
@@ -262,6 +267,7 @@ const fetchGeneAnnotations = async (callback) => {
 
             const noHistoryTemplate = document.getElementById('tmpl-gene-result-none-found');
             document.getElementById('gene-result-list').appendChild(noHistoryTemplate.content.cloneNode(true));
+            return false
         } else {
             const template = document.getElementById('tmpl-gene-result-item');
             document.getElementById('gene-result-list').innerHTML = '';
@@ -294,9 +300,11 @@ const fetchGeneAnnotations = async (callback) => {
                     selectGeneResult(geneSymbol);
                 });
             }
+            return true;
         }
     } catch (error) {
         console.error(error);
+        return false
     }
 };
 
