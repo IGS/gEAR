@@ -5484,6 +5484,23 @@ a.has-text-gear-bg-secondary:hover, a.has-text-gear-bg-secondary:focus {
     display: inline-flex !important; } }
 .is-hidden {
   display: none !important; }
+.is-analysis-tool-disabled {
+  pointer-events: none !important;
+  opacity: 0.5 !important; }
+.is-analysis-tool-loading button:before {
+  animation: spinAround 1s infinite linear;
+  border: 2px solid #dbdbdb;
+  border-radius: 290486px;
+  border-right-color: transparent;
+  border-top-color: transparent;
+  content: "";
+  display: inline-block;
+  right: 0.5em;
+  vertical-align: top;
+  height: 1.5em;
+  position: relative;
+  width: 1.5em;
+  margin: auto; }
 
 .is-sr-only {
   border: none !important;
