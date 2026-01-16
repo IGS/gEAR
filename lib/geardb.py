@@ -330,6 +330,9 @@ def get_dtype_by_share_id(share_id=None):
     Given a dataset share ID string this returns the datatype string for that dataset.
     """
 
+    if not share_id:
+        return None
+
     conn = Connection()
     cursor = conn.get_cursor()
 
@@ -341,6 +344,7 @@ def get_dtype_by_share_id(share_id=None):
 
     cursor.execute(qry, (share_id,))
 
+    dtype = None
     row = cursor.fetchone()
     if row:
         (

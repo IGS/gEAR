@@ -218,11 +218,11 @@ class ResultItem {
 
         { // analysis links section
             const analysisDropdown = listItemView.querySelector(`.js-analysis-dropdown`);
-            analysisDropdown.classList.add("is-analysis-tool-disabled", "is-analysis-tool-loading");
+            analysisDropdown.classList.add("is-disabled", "is-loading");
 
             const tools = [ "dataset-curator", "multigene-viewer", "compare-tool", "sc-workbench" ];
             for (const tool of tools) {
-                listItemView.querySelector(`.js-${tool}`).classList.add("is-analysis-tool-disabled");
+                listItemView.querySelector(`.js-${tool}`).classList.add("is-disabled");
             }
 
             const updateAvailableTools = (availableTools) => {
@@ -236,16 +236,16 @@ class ResultItem {
                     if (availableTools[tool]) {
                         const toolElement = domElement.querySelector(`.js-${tool}`);
                         if (toolElement) {
-                            toolElement.classList.remove("is-analysis-tool-disabled");
+                            toolElement.classList.remove("is-disabled");
                             any = true;
                         }
                     }
                 }
 
                 const domAnalysisDropdown = domElement.querySelector(`.js-analysis-dropdown`);
-                domAnalysisDropdown.classList.remove("is-analysis-tool-loading");
+                domAnalysisDropdown.classList.remove("is-loading");
                 if (any) {
-                    domAnalysisDropdown.classList.remove("is-analysis-tool-disabled");
+                    domAnalysisDropdown.classList.remove("is-disabled");
                 } else {
                     domAnalysisDropdown.setAttribute("data-tooltip-content", "No analysis tools available");
                     applyTooltip(domAnalysisDropdown, createActionTooltips(domAnalysisDropdown));

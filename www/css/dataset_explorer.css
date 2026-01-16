@@ -96,3 +96,20 @@ article[role="tooltip"] {
 .js-modal-tooltip {
     z-index: 1000; /* make sure it's on top of the modal */
 }
+
+/* Analysis tool button states */
+.js-analysis-dropdown.is-loading button::before {
+    animation: spinAround 1s infinite linear;
+    border: 2px solid #dbdbdb;
+    border-radius: 290486px;
+    border-right-color: transparent;
+    border-top-color: transparent;
+    content: "";
+    display: inline-block;
+    right: 0.5em;
+    vertical-align: top;
+    height: 1.5em;
+    position: relative;
+    width: 1.5em;
+    margin: auto;
+}
