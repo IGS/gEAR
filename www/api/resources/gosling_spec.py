@@ -134,95 +134,123 @@ def build_assembly_json_from_array(assembly_array) -> list:
 
 def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     """
-    Builds a set of Gosling tracks for visualizing gene annotations and exons from BED files for a given genome assembly.
+    Builds a Gosling view for gene and exon annotation tracks based on BED files for a given genome assembly.
 
-    This function generates a composite Gosling view containing:
-        1. A text track displaying gene names.
-        2. A rule track for tooltips showing gene information.
-        3. (If available) A rect track displaying exons from a separate BED file.
+    Parameters
+    ----------
+    assembly : str
+        The genome assembly identifier (e.g., "hg38", "mm10").
+    zoom : bool, optional
+        If True, returns zoomed annotation tracks using `build_bed_zoomed_annotation_tracks`. Default is False.
+    title : str, optional
+        The title or identifier for the annotation view. Default is "left".
 
-    The tracks are color-coded by strand and arranged in rows by strand. The function supports only assemblies for which BED and exon BED files are defined.
+    Returns
+    -------
+    gosling.View
+        A Gosling overlay view containing gene and exon annotation tracks for the specified assembly.
 
-    Args:
-        assembly (str): The genome assembly identifier (e.g., "mm10").
-        zoom (bool, optional): If True, uses expanded width for the view. Defaults to False.
-        title (str, optional): Position of the panel title ("left" or "right"). Defaults to "left".
+    Raises
+    ------
+    ValueError
+        If the specified assembly is not supported or does not have a corresponding BED file.
 
-    Returns:
-        gos.View: A Gosling overlay view containing the annotation tracks.
-
-    Raises:
-        ValueError: If the specified assembly does not have a corresponding BED file.
-
-    Notes:
-        - If the exon BED file is not available for the assembly, only the text and rule tracks are returned.
-        - The function prints a warning to stderr if the exon BED file is missing.
-        - The URLs for BED files are constructed based on a predefined root path.
+    Notes
+    -----
+    - Uses Ensembl-style BED files for genes and exons, sorted in chromosome order.
+    - If exon BED file is missing for the assembly, only gene tracks are returned and a warning is printed.
+    - The view includes text, rule, and rect tracks for gene names, gene regions, and exon regions, respectively.
     """
 
     # These files will be based on Ensembl's annotation naming structure, but sorted in chromosome order.
     # I am adding a 2nd column of 1's to allow us to use the files in a "genomic" track.
 
-    ASSEMBLY_TO_BED_FILE = {
-        "danRer10": "danRer10.gene.bed.gz", # zebrafish
-        "galGal6": "galGal6.gene.bed.gz", # chicken
-        "hg19": "hg19.gene.bed.gz",
-        "hg38": "hg38.gene.bed.gz",
-        "mm10": "mm10.gene.bed.gz",
-        # "mm39": "mm39.gene.bed.gz",
-        "rn6": "rn6.gene.bed.gz", # rat
-        # "calJac3": "calJac3.gene.bed.gz", # marmoset
+    ANNOTATION_BEDDB_UID = {
+        "danRer10": "YwOpmCgUSqKdJSGtGXWeJw", # zebrafish
+        #"galGal6": "galGal6.annotation.beddb", # chicken - could not get to load
+        "hg19": "XXcPeaTRSiy8_yxNwjtzEQ",
+        "hg38": "GhiCXRRHTH2u-24jRq0HRQ",
+        "mm10": "VNbLgNO3T8uAcp_5vRFqdQ",
+        # "mm39": "mm39.annotation.beddb",
+        "rn6": "C6Tw-g54Rl602PqE62qTHw", # rat
+        # "calJac3": "calJac3.annotation.beddb", # marmoset
     }
 
-    ASSEMBLY_TO_EXON_FILE = {
-        "danRer10": "danRer10.exon.bed.gz", # zebrafish
-        "galGal6": "galGal6.exon.bed.gz", # chicken
-        "hg19": "hg19.exon.bed.gz",
-        "hg38": "hg38.exon.bed.gz",
-        "mm10": "mm10.exon.bed.gz",
-        # "mm39": "mm39.exon.bed.gz",
-        "rn6": "rn6.exon.bed.gz", # rat
-        # "calJac3": "calJac3.exon.bed.gz", # marmoset
-    }
+    ANNOTATION_CONDENSED_HEIGHT = EXPANDED_HEIGHT # Always taller for annotations
+    #ANNOTATION_EXPANDED_HEIGHT = ANNOTATION_CONDENSED_HEIGHT * 2
+    ANNOTATION_EXPANDED_HEIGHT = ANNOTATION_CONDENSED_HEIGHT
 
-    bed_file_stem = ASSEMBLY_TO_BED_FILE.get(assembly, None)
-    if not bed_file_stem:
+    beddb_uid = ANNOTATION_BEDDB_UID.get(assembly, None)
+    if not beddb_uid:
         raise ValueError(
-            f"Assembly {assembly} is not supported or does not have a BED file."
+            f"Assembly {assembly} is not supported or does not have a BEDdb UID."
         )
 
-    bed_file_url = GENOMES_ROOT + "/" + assembly + "/" + bed_file_stem
-    bed_tbi_file_url = bed_file_url + ".tbi"
+    beddb_url = f"https://higlass.umgear.org/api/v1/tileset_info/?d={beddb_uid}"
 
-    # base bed track to build overlays on
-    bed_data = gos.BedData(
-        url=bed_file_url,  # type: ignore
-        indexUrl=bed_tbi_file_url,  # type: ignore
-        type="bed"  # type: ignore
+    # chrom, start, end, name, score, strand, exon_start, exon_end
+    beddb_data = gos.beddb(
+        url=beddb_url,
+        genomicFields=[
+            {"index": 1, "name": "start"},
+            {"index": 2, "name": "end"}
+        ],
+        valueFields=[
+            {"index": 5, "name": "strand", "type": "nominal"},
+            {"index": 3, "name": "name", "type": "nominal"}
+        ],
+        exonIntervalFields=[
+            {"index": 6, "name": "exon_start"},
+            {"index": 7, "name": "exon_end"}
+        ]
     )
 
+    #MINUS_ROW_POSITION = 50 if zoom else 35
+    MINUS_ROW_POSITION = 25
+
     # These are shared amongst the genes and exons track
-    # NOTE: regarding "strand", it requires +/-/. in the file but is stored as 1/-1/0 internally
-    x = gos.X(field="chromStart", type="genomic")  # type:ignore
-    xe = gos.X(field="chromEnd", type="genomic")  # type:ignore
-    row = gos.Row(field="strand", type="nominal", domain=[1, -1], range=[0, 20])  # type:ignore
-    color = gos.Color(field="strand", type="nominal", domain=[1, -1], range=["darkblue", "darkred"])  # type:ignore
+    condensed_row = gos.Row(field="strand", type="nominal", domain=["+", "-"], range=[0, MINUS_ROW_POSITION])  # type:ignore
+    expanded_row = gos.Row(field="displace_row", type="nominal")    # type: ignore
+    #row = expanded_row if zoom else condensed_row
+    row=condensed_row
+
+    color = gos.Color(field="strand", type="nominal", domain=["+", "-"], range=["darkblue", "darkred"])  # type:ignore
     tooltip=[
-                gos.Tooltip(field="chromStart", type="genomic", alt="Start Position"),  # type: ignore
-                gos.Tooltip(field="chromEnd", type="genomic", alt="End Position"),  # type: ignore
+                gos.Tooltip(field="start", type="genomic", alt="Start Position"),  # type: ignore
+                gos.Tooltip(field="end", type="genomic", alt="End Position"),  # type: ignore
                 gos.Tooltip(field="strand", type="nominal", alt="Strand"),  # type: ignore
                 gos.Tooltip(field="name", type="nominal", alt="Name"),  # type: ignore
             ]
 
-    gene_track = (
-        gos.Track(
-            data=bed_data  # type: ignore
-        )
-        .encode(x=x, xe=xe, row=row, color=color, tooltip=tooltip)
-        .visibility_lt(
-            measure="width", threshold="|xe-x|", transitionPadding=10, target="mark"
-        )
+
+    base_track =  (
+        gos.Track(data=beddb_data) # type: ignore
+            .encode(
+                x=gos.X(field="start", type="genomic"),  # type:ignore
+                xe=gos.X(field="end", type="genomic"),  # type:ignore
+                row=row,
+                color=color,
+                tooltip=tooltip,
+            )
+            .visibility_lt(
+                measure="width", threshold="|xe-x|", transitionPadding=10, target="mark"
+            )
     )
+
+    gene_track = base_track.transform_filter(field="type", oneOf=["gene"])
+
+    """
+    if zoom:
+        gene_track = (
+            gene_track
+                .transform_displace(
+                    method="pile",
+                    boundingBox={"startField": "start", "endField": "end"},
+                    newField="displace_row",
+                    maxRows=4,
+                )
+            )
+    """
 
     # Three tracks
     # 1) Text track - uses bed_track
@@ -237,63 +265,44 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     gene_rule_track = (
         gene_track.mark_rule()
         .encode(
-            strokeWidth=gos.StrokeWidth(value=1),
+            strokeWidth=gos.StrokeWidth(value=5),
         )
-        .properties(id=f"{title}-annotation")
-        .visibility_lt(
-            measure="width", threshold="|xe-x|", transitionPadding=10, target="mark"
-        )
-    )
-
-    tracks = [text_track, gene_rule_track]
-
-    exon_file_name = ASSEMBLY_TO_EXON_FILE.get(assembly, None)
-    if not exon_file_name:
-        # non-fatal
-        print(
-            f"WARNING: Assembly {assembly} does not have an exon BED file.",
-            file=sys.stderr,
-        )
-        return tracks
-
-    exon_file_url = GENOMES_ROOT + "/" + assembly + "/" + exon_file_name
-    exon_tbi_file_url = exon_file_url + ".tbi"
-
-    exon_data = gos.BedData(
-        url=exon_file_url,  # type: ignore
-        indexUrl=exon_tbi_file_url,  # type: ignore
-        type="bed"  # type: ignore
+        .properties(id=f"{title}-annotation")   # used for zooming to specific region
     )
 
     exon_track = (
-        gos.Track(
-            data=exon_data  # type: ignore
+        base_track.mark_rect()
+            .encode(
+                x=gos.X(field="exon_start", type="genomic"),  # type:ignore
+                xe=gos.X(field="exon_end", type="genomic"),  # type:ignore
+                size=gos.Size(value=10)
+                )
+            .transform_filter(field="type", oneOf=["exon"])
         )
-        .mark_rect()
-        .encode(
-            color=color,
-            row=row,
-            x=x,
-            xe=xe,
-            tooltip=tooltip,
-            size=gos.Size(value=10),  # type:ignore
-        )
-        .visibility_lt(
-            measure="width", threshold="|xe-x|", transitionPadding=10, target="mark"
-        )
-    )
 
-    tracks.append(exon_track)
+    """
+    if zoom:
+        exon_track = exon_track.transform_displace(
+                method="pile",
+                boundingBox={"startField": "exon_start", "endField": "exon_end"},
+                newField="displace_row",
+                maxRows=4,
+            )
+    """
 
-    panel_title = "Panel B" if title == "right" else "Panel A"
-    if not zoom:
-        panel_title = "Annotation"
+
+    tracks = [text_track, gene_rule_track, exon_track]
+
+    panel_title = "Annotation"
+    if zoom:
+        panel_title = "Panel B" if title == "right" else "Panel A"
 
     annotation_view = gos.overlay(*tracks).properties(
         title=panel_title,
         width=EXPANDED_WIDTH if zoom else CONDENSED_WIDTH,
-        height=EXPANDED_HEIGHT,  # Always taller for annotations
+        height=ANNOTATION_EXPANDED_HEIGHT if zoom else ANNOTATION_CONDENSED_HEIGHT,
         opacity=gos.Opacity(value=0.8),
+        id=f"{title}-annotation-view",
     )
 
     return annotation_view
@@ -325,11 +334,10 @@ def build_genome_wide_view(
     if position is not None:
         _, chrom, start, end = parse_position_str(position)
 
-    data = gos.JsonData(
-        type="json",    # type: ignore
-        chromosomeField="chrom",  # type: ignore
-        genomicFields=["chromStart", "chromEnd"],  # type: ignore
-        values=assembly_json,  # type: ignore
+    data = gos.json(
+        chromosomeField="chrom",
+        genomicFields=["chromStart", "chromEnd"],
+        values=assembly_json,
     )
 
     base = gos.Track(data)  # type: ignore
@@ -446,27 +454,6 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
     }
 
     kwargs = {}
-    """ # Determine the max peak value across all bigWig tracks
-    max_bigwig_peaks = {}
-    for track in tracks:
-        data_url = track.get("bigDataUrl", None)
-        if track.get("type", "") == "bigWig" and data_url:
-            try:
-                with pyBigWig.open(data_url) as bw:
-                    for chrom, chrom_len in bw.chroms().items():
-                        max_value = bw.stats(chrom, 0, chrom_len, type="max")[0]
-                        if max_value is not None:
-                            max_bigwig_peaks[data_url] = max_value
-            except Exception:
-                # non-fatal
-                print(
-                    f"WARNING: Could not read bigWig file at {data_url} to determine max peak value.",
-                    file=sys.stderr,
-                )
-    global_max_peak = max(max_bigwig_peaks.values(), default=None)
-    kwargs["max_bigwig_peak"] = global_max_peak
-    """
-
     hic_found = False
 
     # Build each individual track based on its type
@@ -487,17 +474,6 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
                 file=sys.stderr,
             )
             continue
-
-        """
-        # For bigwigs calculate scalefactor based on max peak size
-        if spec_builder_class == BigWigSpec:
-            peak = max_bigwig_peaks.get(data_url, None)
-            if peak and global_max_peak:
-                scalefactor = global_max_peak / peak
-            else:
-                scalefactor = 1.0
-            kwargs["scalefactor"] = scalefactor
-        """
 
         BIGBED_EXTENSIONS = [".bb", ".bigbed"]
         # If the data_url ends with a bigBed extension, replace extension with .bed
@@ -537,13 +513,13 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
             right_track.id = f"right-track-{Path(data_url).stem}"
             parent_tracks_dict["right"].append(right_track)
 
-    parent_view_left = gos.vertical(*parent_tracks_dict["left"]).properties(
+    parent_view_left = gos.stack(*parent_tracks_dict["left"]).properties(
         id="left-view", linkingId="zoom-to-panel-a", spacing=0,
     )
 
     parent_view_right = None
     if zoom:
-        parent_view_right = gos.vertical(*parent_tracks_dict["right"]).properties(
+        parent_view_right = gos.stack(*parent_tracks_dict["right"]).properties(
             id="right-view", linkingId="zoom-to-panel-b", spacing=0
         )
 
@@ -887,7 +863,7 @@ class BamSpec(TrackSpec):
         except ValueError:
             raise
 
-        bamData = gos.BamData(type="bam", url=url, indexUrl=f"{url}.bai")  # type: ignore
+        bamData = gos.bam(url=url, indexUrl=f"{url}.bai")
 
         track = (
             gos.Track(
@@ -937,7 +913,7 @@ class BedSpec(TrackSpec):
         except ValueError:
             raise
 
-        bed_data = gos.BedData(type="bed", url=url, indexUrl=f"{url}.tbi")  # type: ignore
+        bed_data = gos.bed(url=url, indexUrl=f"{url}.tbi")
 
         track = (
             gos.Track(
@@ -988,28 +964,10 @@ class BigWigSpec(TrackSpec):
             raise
 
         # TODO: figure out appropriate binsize when zooming out: Default is 256. It looks blocky briefly
-        bigwig_data = gos.BigWigData(type="bigwig", url=url)  # type: ignore
+        bigwig_data = gos.bigwig(url=url)
 
         y_kwargs = {}
         y_field="value"
-        """
-        data_transform=[]
-        if "max_bigwig_peak" in kwargs and kwargs["max_bigwig_peak"] is not None:
-            import math
-            global_max_peak = kwargs["max_bigwig_peak"]
-            # Choose a target value for the transformed max (e.g., 10)
-            target_log_peak = 10
-            log_base = None
-            if global_max_peak and global_max_peak > 1:
-                # use scalefactor to determine log base
-                scalefactor = kwargs.get("scalefactor", 1.0)
-                log_base = math.exp(math.log(global_max_peak) / target_log_peak) * scalefactor
-            else:
-                log_base = 2  # fallback to log2 if peak is small or missing
-                #data_transform.append(gos.LogTransform(base=log_base, field="value", newField="logValue", type="log"))
-                y_field="logValue"
-
-        #y_kwargs["domain"] = [0, kwargs["max_bigwig_peak"]] """
 
         track = (
             gos.Track(
@@ -1031,7 +989,6 @@ class BigWigSpec(TrackSpec):
                     gos.Tooltip(field="value", type="quantitative", alt="Peak value", format=".2"),  # type: ignore
 
                 ],
-                #dataTransform=data_transform
             )
         )
         return track
@@ -1116,7 +1073,7 @@ class HiCSpec(TrackSpec):
         #except ValueError:
         #    raise
 
-        hic_data = gos.MatrixData(type="matrix", url=url)  # type: ignore
+        hic_data = gos.matrix(url=url)
 
         hic_track = (
             gos.Track(
@@ -1152,8 +1109,7 @@ class HiCSpec(TrackSpec):
 
         _, chrom, start, end = parse_position_str(position_str)
 
-        json_data = gos.JsonData(
-            type="json",
+        json_data = gos.json(
             values=[
                 {
                     "c": chrom,
@@ -1169,7 +1125,7 @@ class HiCSpec(TrackSpec):
 
         track = (
             gos.Track(
-                data=json_data,
+                data=json_data, # type: ignore
             )
             .mark_bar()
             .encode(
