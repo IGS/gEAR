@@ -177,7 +177,8 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     }
 
     ANNOTATION_CONDENSED_HEIGHT = EXPANDED_HEIGHT # Always taller for annotations
-    ANNOTATION_EXPANDED_HEIGHT = ANNOTATION_CONDENSED_HEIGHT * 2
+    #ANNOTATION_EXPANDED_HEIGHT = ANNOTATION_CONDENSED_HEIGHT * 2
+    ANNOTATION_EXPANDED_HEIGHT = ANNOTATION_CONDENSED_HEIGHT
 
     beddb_uid = ANNOTATION_BEDDB_UID.get(assembly, None)
     if not beddb_uid:
@@ -199,35 +200,57 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
             {"index": 3, "name": "name", "type": "nominal"}
         ],
         exonIntervalFields=[
-            {"index": 6, "name": "start"},
-            {"index": 7, "name": "end"}
+            {"index": 6, "name": "exon_start"},
+            {"index": 7, "name": "exon_end"}
         ]
     )
 
-    MINUS_ROW_POSITION = 50 if zoom else 35
+    #MINUS_ROW_POSITION = 50 if zoom else 35
+    MINUS_ROW_POSITION = 25
 
     # These are shared amongst the genes and exons track
-    x = gos.X(field="start", type="genomic")  # type:ignore
-    xe = gos.X(field="end", type="genomic")  # type:ignore
-    row = gos.Row(field="strand", type="nominal", domain=["+", "-"], range=[0, MINUS_ROW_POSITION])  # type:ignore
+    condensed_row = gos.Row(field="strand", type="nominal", domain=["+", "-"], range=[0, MINUS_ROW_POSITION])  # type:ignore
+    expanded_row = gos.Row(field="displace_row", type="nominal")    # type: ignore
+    #row = expanded_row if zoom else condensed_row
+    row=condensed_row
+
     color = gos.Color(field="strand", type="nominal", domain=["+", "-"], range=["darkblue", "darkred"])  # type:ignore
     tooltip=[
                 gos.Tooltip(field="start", type="genomic", alt="Start Position"),  # type: ignore
                 gos.Tooltip(field="end", type="genomic", alt="End Position"),  # type: ignore
                 gos.Tooltip(field="strand", type="nominal", alt="Strand"),  # type: ignore
-                gos.Tooltip(field="type", type="nominal", alt="Type"),  # type: ignore
                 gos.Tooltip(field="name", type="nominal", alt="Name"),  # type: ignore
             ]
 
 
-    gene_track = (
+    base_track =  (
         gos.Track(data=beddb_data) # type: ignore
-            .encode(x=x, xe=xe, row=row, color=color, tooltip=tooltip)
+            .encode(
+                x=gos.X(field="start", type="genomic"),  # type:ignore
+                xe=gos.X(field="end", type="genomic"),  # type:ignore
+                row=row,
+                color=color,
+                tooltip=tooltip,
+            )
             .visibility_lt(
                 measure="width", threshold="|xe-x|", transitionPadding=10, target="mark"
             )
-            .transform_filter(field="type", oneOf=["gene"])
     )
+
+    gene_track = base_track.transform_filter(field="type", oneOf=["gene"])
+
+    """
+    if zoom:
+        gene_track = (
+            gene_track
+                .transform_displace(
+                    method="pile",
+                    boundingBox={"startField": "start", "endField": "end"},
+                    newField="displace_row",
+                    maxRows=4,
+                )
+            )
+    """
 
     # Three tracks
     # 1) Text track - uses bed_track
@@ -242,31 +265,33 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     gene_rule_track = (
         gene_track.mark_rule()
         .encode(
-            strokeWidth=gos.StrokeWidth(value=3),
+            strokeWidth=gos.StrokeWidth(value=5),
         )
         .properties(id=f"{title}-annotation")   # used for zooming to specific region
     )
 
-    tracks = [text_track, gene_rule_track]
-
     exon_track = (
-        gos.Track(data=beddb_data)  # type: ignore
-            .mark_rect()
+        base_track.mark_rect()
             .encode(
-                color=color,
-                row=row,
-                x=x,
-                xe=xe,
-                tooltip=tooltip,
-                size=gos.Size(value=10),  # type:ignore
-            )
-            .visibility_lt(
-                measure="width", threshold="|xe-x|", transitionPadding=10, target="mark"
-            )
+                x=gos.X(field="exon_start", type="genomic"),  # type:ignore
+                xe=gos.X(field="exon_end", type="genomic"),  # type:ignore
+                size=gos.Size(value=10)
+                )
             .transform_filter(field="type", oneOf=["exon"])
-    )
+        )
 
-    tracks.append(exon_track)
+    """
+    if zoom:
+        exon_track = exon_track.transform_displace(
+                method="pile",
+                boundingBox={"startField": "exon_start", "endField": "exon_end"},
+                newField="displace_row",
+                maxRows=4,
+            )
+    """
+
+
+    tracks = [text_track, gene_rule_track, exon_track]
 
     panel_title = "Annotation"
     if zoom:
@@ -488,13 +513,13 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
             right_track.id = f"right-track-{Path(data_url).stem}"
             parent_tracks_dict["right"].append(right_track)
 
-    parent_view_left = gos.vertical(*parent_tracks_dict["left"]).properties(
+    parent_view_left = gos.stack(*parent_tracks_dict["left"]).properties(
         id="left-view", linkingId="zoom-to-panel-a", spacing=0,
     )
 
     parent_view_right = None
     if zoom:
-        parent_view_right = gos.vertical(*parent_tracks_dict["right"]).properties(
+        parent_view_right = gos.stack(*parent_tracks_dict["right"]).properties(
             id="right-view", linkingId="zoom-to-panel-b", spacing=0
         )
 
