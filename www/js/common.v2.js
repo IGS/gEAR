@@ -917,6 +917,15 @@ const apiCallsMixin = {
         return data;
     },
     /**
+     * Fetches the analysis tools available for a given dataset.
+     * @param {string} datasetId - The ID of the dataset.
+     * @returns {Promise<any>} - A promise that resolves to the fetched data.
+     */
+    async fetchAvailableAnalysisTools(shareId) {
+        const {data} = await axios.get(`./api/h5ad/${shareId}/availableAnalysisTools`);
+        return data;
+    },
+    /**
      * Fetches the available plot types for a given dataset and analysis.
      * @param {string} datasetId - The ID of the dataset.
      * @param {string} analysisId - The ID of the analysis.

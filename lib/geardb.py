@@ -325,6 +325,37 @@ def get_dataset_by_title(title=None, include_shape=None):
         "Error: More than one dataset found with the same title: {0}".format(title)
     )
 
+def get_dtype_by_share_id(share_id=None):
+    """
+    Given a dataset share ID string this returns the datatype string for that dataset.
+    """
+
+    if not share_id:
+        return None
+
+    conn = Connection()
+    cursor = conn.get_cursor()
+
+    qry = """
+         SELECT dtype
+           FROM dataset
+          WHERE share_id = %s
+    """
+
+    cursor.execute(qry, (share_id,))
+
+    dtype = None
+    row = cursor.fetchone()
+    if row:
+        (
+            dtype,
+        ) = row
+
+    cursor.close()
+    conn.close()
+
+    return dtype
+
 def get_metadata_by_share_id(share_id=None):
     """
     Given a dataset share ID string this returns a Dataset object with all attributes

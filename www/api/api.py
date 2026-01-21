@@ -39,6 +39,7 @@ api = Api(app)
 
 from resources.aggregations import Aggregations  # noqa: E402, I001
 from resources.analyses import Analyses  # noqa: E402
+from resources.available_analysis_tools import AvailableAnalysisTools # noqa: E402
 from resources.available_display_types import (  # noqa: E402
     AvailableDisplayTypes,
     MGAvailableDisplayTypes,
@@ -82,6 +83,7 @@ api.add_resource(ProjectRStatus, '/projectr/<projection_id>/status')
 
 # routes centered on getting h5ad info
 api.add_resource(H5ad, '/h5ad/<dataset_id>')
+api.add_resource(AvailableAnalysisTools, '/h5ad/<share_uid>/availableAnalysisTools')
 api.add_resource(AvailableDisplayTypes, '/h5ad/<dataset_id>/availableDisplayTypes')
 api.add_resource(MGAvailableDisplayTypes, '/h5ad/<dataset_id>/mg_availableDisplayTypes')
 api.add_resource(Aggregations, '/h5ad/<dataset_id>/aggregations')
@@ -137,4 +139,3 @@ if __name__ == '__main__':
     # api.add_resource(H5ad, '/api/h5ad/<dataset_id>')
     # app.wsgi_app = PrefixMiddleware(app.wsgi_app, prefix='/api')
     app.run(debug=debug, threaded=True)
-
