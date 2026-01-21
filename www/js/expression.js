@@ -624,11 +624,6 @@ const updateAnnotationDisplay = () => {
  */
 const validateExpressionSearchForm = () => {
 
-    // User passed in a single dataset share ID.
-    if (datasetShareId) {
-        return true;
-    }
-
     // User must have either selected a gene list or entered genes manually. Either of these
     // will populate the geneCollectionState.selectedGenes array
     if (geneCollectionState.selectedGenes.size + geneCollectionState.manuallyEnteredGenes.size === 0) {
@@ -636,8 +631,8 @@ const validateExpressionSearchForm = () => {
         return false;
     }
 
-    // Check if the user has selected any dataset collections
-    if (!datasetCollectionState.selectedShareId) {
+    // Check if the user has selected any dataset collections or individual datasets
+    if (!(datasetShareId || datasetCollectionState.selectedShareId)) {
         createToast('Please select at least one dataset to proceed');
         return false;
     }

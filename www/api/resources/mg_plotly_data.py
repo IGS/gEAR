@@ -494,7 +494,7 @@ class MGPlotlyData(Resource):
             df = grouped.agg({
                 'value': ['mean', 'count', percent]
             }).fillna(0).reset_index()
-            # Rename the columns for clarity
+            # Rename the columns for clarity (reduces multi-column index to single level)
             df.columns = ['_'.join(filter(None, col)).strip('_') for col in df.columns.to_numpy()]
             df = df.rename(columns={'value_mean': 'mean', 'value_count': 'count', 'value_percent': 'percent'})
 

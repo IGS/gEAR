@@ -572,6 +572,11 @@ class DatasetTile {
         try {
             const data = await apiCallsMixin.fetchOrthologs(this.dataset.id, geneSymbols, geneOrganismId);
 
+            if (!(data?.success === 1)) {
+                createCardMessage(this.tile.tileId, "danger", `Error computing orthologs: ${data.message}`);
+                throw new Error(data?.message || "Unknown error fetching orthologs.");
+            }
+
             this.orthologs = data.mapping;
 
             // If no genes were found, then raise an error
@@ -584,11 +589,6 @@ class DatasetTile {
 
 
         } catch (error) {
-            const data = error?.response?.data;
-            if (data?.success < 1) {
-                createCardMessage(this.tile.tileId, "danger", `Error computing orthologs: ${data.message}`);
-            }
-
             logErrorInConsole(error);
             throw error;
         }
