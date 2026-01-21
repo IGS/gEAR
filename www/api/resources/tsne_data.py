@@ -49,7 +49,7 @@ PLOT_TYPE_TO_BASIS = {
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
 NUM_LEGENDS_PER_COL = (
-    12  # Max number of legend items per column allowed in vertical legend
+    20  # Max number of legend items per column allowed in vertical legend
 )
 
 parser = reqparse.RequestParser(bundle_errors=True)
@@ -1084,6 +1084,7 @@ def generate_tsne_figure(
                 frameon=False,
                 handles=handles,
                 labels=labels,
+                fontsize="small",
             )
             if horizontal_legend:
                 last_ax.get_legend().remove()  # Remove legend added by scanpy
@@ -1094,6 +1095,7 @@ def generate_tsne_figure(
                     ncol=num_horizontal_cols,
                     handles=handles,
                     labels=labels,
+                    fontsize="small",
                 )
     else:
         rename_axes_labels(ax, x_axis, y_axis)
