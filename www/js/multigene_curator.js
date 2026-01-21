@@ -787,6 +787,8 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
         , "js-tsne-reverse-palette": "reverse_palette"
         , "js-tsne-make-zero-gray": "make_zero_gray"
         , "js-tsne-center-around-median": "center_around_median"
+        , "js-tsne-vmax": "vmax"
+        , "js-tsne-vmin": "vmin"
     };
 
     configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));

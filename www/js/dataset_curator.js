@@ -315,6 +315,8 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
         , "js-tsne-make-zero-gray": "make_zero_gray"
         , "js-tsne-two-way-palette": "two_way_palette"
         , "js-tsne-center-around-median": "center_around_median"
+        , "js-tsne-vmax": "vmax"
+        , "js-tsne-vmin": "vmin"
     };
 
     configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
@@ -430,6 +432,12 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
             for (const classElt of document.getElementsByClassName("js-tsne-make-zero-gray")) {
                 classElt.disabled = true;
                 classElt.checked = false;
+            }
+            for(const classElt of document.getElementsByClassName("js-tsne-vmax")) {
+                classElt.disabled = true;
+            }
+            for(const classElt of document.getElementsByClassName("js-tsne-vmin")) {
+                classElt.disabled = true;
             }
         }
     }

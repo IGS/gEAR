@@ -75,6 +75,8 @@ parser.add_argument("flip_y", type=bool, default=False)
 parser.add_argument("horizontal_legend", type=bool, default=False)
 parser.add_argument("marker_size", type=int, default=None)
 parser.add_argument("center_around_median", type=bool, default=False)
+parser.add_argument('vmax', type=float, default=None)
+parser.add_argument('vmin', type=float, default=None)
 parser.add_argument("make_zero_gray", type=bool, default=True)  # Keep with old plot styles
 parser.add_argument("obs_filters", type=dict, default={})  # dict of lists
 parser.add_argument(
@@ -128,6 +130,11 @@ def calculate_figure_width(num_plots: int, span: int = 1) -> int:
     Returns:
         int: The total calculated width needed to display all plots with spacing.
     """
+
+    # If only one plot, return fixed width
+    if num_plots == 1:
+        return 4
+
     # The + (num_plots - 1) is to account for the space between plots
     return ((num_plots * 2) * span) + (num_plots - 1)
 
@@ -744,6 +751,8 @@ def generate_tsne_figure(
     colors: dict = {},
     colorblind_mode: bool = False,
     center_around_median: bool = False,
+    vmax: float | None = None,
+    vmin: float | None = None,
     expression_palette: str = "viridis",
     reverse_palette: bool = False,
     high_dpi: bool = False,
@@ -796,6 +805,10 @@ def generate_tsne_figure(
         Whether to use a colorblind-friendly palette.
     center_around_median : bool
         Whether to center the color scale around the median expression.
+    vmax: bool or None
+        Maximum expression value for color scaling.
+    vmin: bool or None
+        Minimum expression value for color scaling.
     expression_palette : str
         Name of the color palette for gene expression.
     reverse_palette : bool
@@ -898,6 +911,29 @@ def generate_tsne_figure(
     if max_columns:
         max_columns = int(max_columns)
 
+    # These work with a string but want to safeguard
+    if vmax:
+        vmax = float(vmax)
+        if plot_vcenter and vmax <= plot_vcenter:
+            return {
+                "success": -1,
+                "message": "Median expression value is equal to maximum cap value. Please disable centering or adjust maximum cap.",
+            }
+
+    if vmin:
+        vmin = float(vmin)
+        if plot_vcenter and vmin >= plot_vcenter:
+            return {
+                "success": -1,
+                "message": "Median expression value is equal to minimum cap value. Please disable centering or adjust minimum cap.",
+            }
+
+    if vmax and vmin and vmax <= vmin:
+        return {
+            "success": -1,
+            "message": "Maximum cap value must be greater than minimum cap value.",
+        }
+
     # Colorize logic (shared, but with some differences for single/multi)
     if colorize_by:
         num_plots += 1
@@ -969,10 +1005,12 @@ def generate_tsne_figure(
                 columns.append(group_name)
                 titles.append(name)
             kwargs_ncols = max_cols
-            kwargs_vmax = max_expression
+
+            # Set vmax if not provided
+            if vmax is None:
+                vmax = max_expression
         else:
             kwargs_ncols = max_columns or num_plots
-            kwargs_vmax = None
 
         # Only add gene plot if not skipped (single-gene)
         if skip_gene_plot is None or not skip_gene_plot:
@@ -984,7 +1022,6 @@ def generate_tsne_figure(
         columns.extend(gene_symbols)
         titles.extend(gene_symbols)
         kwargs_ncols = max_columns or num_plots
-        kwargs_vmax = None
 
     # --- Plotting ---
     kwargs = {
@@ -997,11 +1034,11 @@ def generate_tsne_figure(
         "size": marker_size,
         "sort_order": plot_sort_order,
         "vcenter": plot_vcenter,
+        "vmax": vmax,
+        "vmin": vmin,
         "return_fig": True,
         "ncols": kwargs_ncols,
     }
-    if kwargs_vmax is not None:
-        kwargs["vmax"] = kwargs_vmax
 
     io_fig: "Figure" = sc.pl.embedding(selected, **kwargs)  # type: ignore
     ax = io_fig.get_axes()
@@ -1118,6 +1155,8 @@ class MGTSNEData(Resource):
             args.get("colors", {}),
             args.get("colorblind_mode", False),
             args.get("center_around_median", False),
+            args.get("vmax", None),
+            args.get("vmin", None),
             args.get("expression_palette", "YlOrRd"),
             args.get("reverse_palette", False),
             args.get("high_dpi", False),
@@ -1159,6 +1198,8 @@ class TSNEData(Resource):
             args.get("colors", {}),
             args.get("colorblind_mode", False),
             args.get("center_around_median", False),
+            args.get("vmax", None),
+            args.get("vmin", None),
             args.get("expression_palette", "YlOrRd"),
             args.get("reverse_palette", False),
             args.get("high_dpi", False),
