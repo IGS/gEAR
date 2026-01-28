@@ -159,12 +159,13 @@ This method is simple and interpretable, but may not capture complex relationshi
                 <section id="result-panel" class="p-3">
                   <div id="result-panel-options">
                     <div id="scoring-method-div">
-                      <span class="option-label pr-1">Scoring method: </span>
+                      <span class="option-label pr-1">SVG expression scoring method: </span>
                       <div class="control select is-small">
                         <select id="svg-scoring-method">
-                          <option value="gene" selected>Pattern scope</option>
+                          <option value="gene">Gene scope</option>
                           <option value="tissue">Tissue scope</option>
                           <option value="dataset">Sample scope</option>
+                          <option value="user_defined" selected>Owner-defined scope</option>
                         </select>
                       </div>
                     </div>
@@ -199,7 +200,6 @@ This method is simple and interpretable, but may not capture complex relationshi
       <script src="js/vendor/js.cookie.js?v=207be9a"></script>
 
       <script src="js/vendor/snap.svg-min.js?v=207be9a"></script>
-      <script src="https://d3js.org/d3.v5.min.js"></script>
       <script src="https://cdn.plot.ly/plotly-3.3.1.min.js" charset="utf-8"></script>
 
 

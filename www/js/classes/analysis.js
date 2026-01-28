@@ -5,7 +5,7 @@
 */
 
 import { blockAnalysisStep, openNextAnalysisStep, UI } from "./analysis-ui.js?v=207be9a";
-import { failStepWithHref, passStepWithHref, resetStepperWithHrefs } from "../stepper-fxns.js?v=207be9a";
+import { failStepWithHref, passStepWithHref, resetStepperWithHrefs } from "../helpers/stepper-fxns.js?v=207be9a";
 import { apiCallsMixin, commonDateTime, convertToFormData, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, logErrorInConsole } from "../common.v2.js?v=207be9a";
 
 let analysisLabels = new Set();

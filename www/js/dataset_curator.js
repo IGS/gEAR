@@ -3,9 +3,11 @@
 
 'use strict';
 
-import { apiCallsMixin, createToast, getCurrentUser, initCommonUI, logErrorInConsole, trigger } from "./common.v2.js?v=207be9a";
+import { apiCallsMixin, createToast, initCommonUI, logErrorInConsole, trigger } from "./common.v2.js?v=207be9a";
 import { curatorCommon } from "./curator_common.js?v=207be9a";
-import { postPlotlyConfig } from "./plot_display_config.js?v=207be9a";
+import { postPlotlyConfig } from "./helpers/plot-display-config.js?v=207be9a";
+import { colorSVG } from "./helpers/dataset-svg-fxns.js?v=207be9a";
+
 
 curatorCommon.setIsMultigene(0);
 
@@ -158,7 +160,7 @@ class PlotlyHandler extends curatorCommon.PlotHandler {
             createToast("Could not retrieve plot information. Cannot make plot.");
             return;
         }
-        // Update plot with custom plot config stuff stored in plot_display_config.js
+        // Update plot with custom plot config stuff stored in plot-display-config.js
         const curatorDisplayConf = postPlotlyConfig.curator;
         const custonConfig = curatorCommon.getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
         Plotly.newPlot("plotly-preview", plotJson.data, plotJson.layout, custonConfig);
@@ -592,6 +594,8 @@ class SvgHandler extends curatorCommon.PlotHandler {
         "js-svg-low-color": "low_color"
         , "js-svg-mid-color": "mid_color"
         , "js-svg-high-color": "high_color"
+        , "js-svg-vmin": "vmin"
+        , "js-svg-vmax": "vmax"
     };
 
     configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
@@ -603,14 +607,25 @@ class SvgHandler extends curatorCommon.PlotHandler {
      * @param {Object} config - The configuration object.
      */
     cloneDisplay(config) {
-        // Props are in a "colors" dict
-        for (const prop in config) {
+        // Props are in various dicts
+        for (const prop in config.colors) {
             curatorCommon.setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config.colors[prop]);
+        }
+        const colorscaleVals = config?.colorscale ?? {};
+        for (const prop of Object.keys(colorscaleVals)) {
+            curatorCommon.setPlotEltValueFromConfig(this.configProp2ClassElt[prop], colors[prop]);
         }
 
         // If a mid-level color was provided, ensure checkbox to enable it is checked (for aesthetics)
-        if (config.colors["mid_color"]) {
+        if (config.colors?.mid_color) {
             for (const elt of document.getElementsByClassName("js-svg-enable-mid")) {
+                elt.checked = true;
+            }
+        }
+
+        // If the vmax or vmin was provided, ensure checkbox to enable custom scale is checked (for aesthetics)
+        if (config?.colorscale?.vmax || config?.colorscale?.vmin) {
+            for (const elt of document.getElementsByClassName("js-svg-enable-custom-scale")) {
                 elt.checked = true;
             }
         }
@@ -632,7 +647,14 @@ class SvgHandler extends curatorCommon.PlotHandler {
         const plotContainer = document.getElementById("plot-container");
         plotContainer.replaceChildren();    // erase plot
 
-        colorSVG(data, datasetId, this.plotConfig["colors"]);
+        const containerInfo = {
+            containerId: "plot-container",  // just name
+            imageContainer: "#plot-container",   // Use selector
+            outerContainer: "#plot-container",  // Use selector
+        }
+
+        const svgScoringMethod = document.getElementById("enable-custom-scale").checked ? "user_defined" : "gene";
+        colorSVG(data, datasetId, this.plotConfig, containerInfo, svgScoringMethod);
     }
 
     /**
@@ -658,14 +680,30 @@ class SvgHandler extends curatorCommon.PlotHandler {
      */
     populatePlotConfig() {
         this.plotConfig["colors"] = {};   // Reset plot config
+        this.plotConfig["colorscale"] = {};   // Reset colorscale config
 
-        this.plotConfig["colors"]["low_color"] = document.getElementById("low-color").value;
-        this.plotConfig["colors"]["mid_color"] = document.getElementById("mid-color").value;
-        this.plotConfig["colors"]["high_color"] = document.getElementById("high-color").value;
+        this.plotConfig["colors"]["low_color"] = document.getElementById("low-color")?.value;
+        this.plotConfig["colors"]["mid_color"] = document.getElementById("mid-color")?.value;
+        this.plotConfig["colors"]["high_color"] = document.getElementById("high-color")?.value;
 
         // If user did not choose a mid-color, set it as null instead of to black
         if (!(document.getElementById("enable-mid-color").checked)) {
             this.plotConfig["colors"]["mid_color"] = null;
+        }
+
+        // Get colorscale vmin/vmax if they are set
+        this.plotConfig["colorscale"]["vmin"] = null;
+        this.plotConfig["colorscale"]["vmax"] = null;
+        if (document.getElementById("enable-custom-scale").checked) {
+            if (document.getElementById("vmin")?.value) {
+                this.plotConfig["colorscale"]["vmin"] = parseFloat(document.getElementById("vmin").value);
+            } else {
+                this.plotConfig["colorscale"]["vmin"] = 0;
+            }
+            // Don't know max gene expression yet for a "default".  Let API decide.
+            if (document.getElementById("vmax")?.value) {
+                this.plotConfig["colorscale"]["vmax"] = parseFloat(document.getElementById("vmax").value);
+            }
         }
 
     }
@@ -676,6 +714,7 @@ class SvgHandler extends curatorCommon.PlotHandler {
      */
     async setupParamValueCopyEvent() {
         curatorCommon.setupParamValueCopyEvent("js-svg-enable-mid");
+        curatorCommon.setupParamValueCopyEvent("js-svg-enable-custom-scale");
     }
 
     /**
@@ -766,90 +805,6 @@ const chooseGene = (gene) => {
     document.getElementById("plot-options-s").click();
 };
 curatorCommon.registerChooseGenes(chooseGene);
-
-/**
- * Applies color to an SVG chart based on the provided data and plot configuration.
- * @param {Object} chartData - The data used to color the chart.
- * @param {string} datasetId - The ID of the dataset being visualized.
- * @param {Object} plotConfig - The configuration settings for the chart.
- */
-const colorSVG = (chartData, datasetId, plotConfig) => {
-    // I found adding the mid color for the colorblind mode  skews the whole scheme towards the high color
-    const colorblindMode = getCurrentUser()?.colorblind_mode || false;
-    const lowColor = colorblindMode ? 'rgb(254, 232, 56)' : plotConfig["low_color"];
-    const midColor = colorblindMode ? null : plotConfig["mid_color"];
-    const highColor = colorblindMode ? 'rgb(0, 34, 78)' : plotConfig["high_color"];
-
-    // for those fields which have no reading, a specific value is sometimes put in instead
-    // These are colored a neutral color
-    const NA_FIELD_PLACEHOLDER = -0.012345679104328156;
-    const NA_FIELD_COLOR = '#808080';
-
-    //const scoreMethod = document.getElementById("scoring_method").value;
-    const score = chartData.scores["gene"];
-    const { min, max } = score;
-    let color = null;
-    // are we doing a three- or two-color gradient?
-    if (midColor) {
-        if (min >= 0) {
-            // All values greater than 0, do right side of three-color
-            color = d3
-                .scaleLinear()
-                .domain([min, max])
-                .range([midColor, highColor]);
-        } else if (max <= 0) {
-            // All values under 0, do left side of three-color
-            color = d3
-                .scaleLinear()
-                .domain([min, max])
-                .range([lowColor, midColor]);
-        } else {
-            // We have a good value range, do the three-color
-            color = d3
-                .scaleLinear()
-                .domain([min, 0, max])
-                .range([lowColor, midColor, highColor]);
-        }
-    } else {
-        color = d3
-            .scaleLinear()
-            .domain([min, max])
-            .range([lowColor, highColor]);
-    }
-
-
-    // Load SVG file and set up the window
-    const svg = document.getElementById("plot-container");
-    const snap = Snap(svg);
-    const svg_path = `datasets_uploaded/${datasetId}.svg`;
-    Snap.load(svg_path, async (path) => {
-        await snap.append(path);
-
-        snap.select("svg").attr({
-            width: "100%",
-        });
-
-        // Fill in tissue classes with the expression colors
-        const { data: expression } = chartData;
-        const tissues = Object.keys(chartData.data);   // dataframe
-        const paths = Snap.selectAll("path, circle");
-
-        // NOTE: This must use the SnapSVG API Set.forEach function to iterate
-        paths.forEach(path => {
-            const tissue = path.node.className.baseVal;
-            if (tissues.includes(tissue)) {
-                if (expression[tissue] == NA_FIELD_PLACEHOLDER) {
-                    path.attr('fill', NA_FIELD_COLOR);
-                } else {
-                    path.attr('fill', color(expression[tissue]));
-                }
-            }
-        });
-
-        // TODO: Potentially replicate some of the features in display.js like log-transforms and tooltips
-    });
-
-};
 
 /**
  * Creates an autocomplete instance.
@@ -1064,7 +1019,9 @@ const fetchPlotlyData = async (datasetId, analysis, plotType, plotConfig) => {
 const fetchSvgData = async (datasetId, plotConfig) => {
     try {
         const { gene_symbol: geneSymbol } = plotConfig;
-        const data = await apiCallsMixin.fetchSvgData(datasetId, geneSymbol);
+        const vmax = plotConfig?.colorscale?.vmax;
+        const vmin = plotConfig?.colorscale?.vmin;
+        const data = await apiCallsMixin.fetchSvgData(datasetId, geneSymbol, vmax, vmin);
         if (data?.success < 1) {
             throw new Error(data?.message ? data.message : "Unknown error.");
         }
@@ -1570,6 +1527,26 @@ const setupSVGOptions = () => {
         });
     }
 
+    const enableCustomColorscaleElts = document.getElementsByClassName("js-svg-enable-custom-scale");
+    const vminElts = document.getElementsByClassName("js-svg-vmin");
+    const vmaxElts = document.getElementsByClassName("js-svg-vmax");
+    const colorscaleFields = document.getElementsByClassName("js-custom-scale-field");
+    for (const elt of enableCustomColorscaleElts) {
+        elt.addEventListener("change", (event) => {
+            for (const field of colorscaleFields) {
+                field.classList.add("is-hidden");
+                if (event.target.checked) {
+                    field.classList.remove("is-hidden");
+                }
+            }
+            for (const vmin of vminElts) {
+                vmin.disabled = !(event.target.checked);
+            }
+            for (const vmax of vmaxElts) {
+                vmax.disabled = !(event.target.checked);
+            }
+        });
+    }
 
     // Trigger event to enable plot button (in case we switched between plot types, since the HTML vals are saved)
     if (document.getElementById("low-color").value) {

@@ -1,5 +1,5 @@
 /*
-plot_display_config.js - This script can be passed to various scripts that generate plots
+plot-display-config.js - This script can be passed to various scripts that generate plots
     (emphasis on Plotly) to pass in as post-plotting options.
     Examples include trying to adjust layout parameters so that a plot looks better on a particular page.
 */

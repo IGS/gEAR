@@ -1292,12 +1292,14 @@ const apiCallsMixin = {
      * Fetches SVG data for a given dataset, gene symbol, and projection ID.
      * @param {string} datasetId - The ID of the dataset.
      * @param {string} geneSymbol - The gene symbol.
+     * @param {number} vmax - The maximum value for the color scale.
+     * @param {number} vmin - The minimum value for the color scale.
      * @param {string} [projectionId=null] - The ID of the projection (optional).
      * @param {number|null} [expressionMinClip=null] - Minimum expression clipping value (optional).
      * @param {Object} [otherOpts={}] - Additional options for the GET request.
      * @returns {Promise<any>} - A promise that resolves to the fetched data.
      */
-    async fetchSvgData(datasetId, geneSymbol, projectionId=null, expressionMinClip=null, otherOpts={}) {
+    async fetchSvgData(datasetId, geneSymbol, vmax=null, vmin=null, projectionId=null, expressionMinClip=null, otherOpts={}) {
 
         // create URL Params for the GET request
         const urlParams = new URLSearchParams();
@@ -1307,6 +1309,12 @@ const apiCallsMixin = {
         }
         if (expressionMinClip !== null) {
             urlParams.append('expression_min_clip', expressionMinClip);
+        }
+        if (vmax !== null) {
+            urlParams.append('vmax', vmax);
+        }
+        if (vmin !== null) {
+            urlParams.append('vmin', vmin);
         }
 
         // fetch the data

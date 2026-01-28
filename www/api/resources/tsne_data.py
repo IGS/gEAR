@@ -49,7 +49,7 @@ PLOT_TYPE_TO_BASIS = {
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
 NUM_LEGENDS_PER_COL = (
-    20  # Max number of legend items per column allowed in vertical legend
+    16  # Max number of legend items per column allowed in vertical legend
 )
 
 parser = reqparse.RequestParser(bundle_errors=True)
@@ -940,10 +940,12 @@ def generate_tsne_figure(
         color_category = is_categorical(selected.obs[colorize_by])
         if color_category:
             color_idx_name = f"{colorize_by}_colors"
+            # colors provided by user through UI
             if colors is not None and len(colors) > 2:
                 selected.uns[color_idx_name] = [
                     colors[idx] for idx in selected.obs[colorize_by].cat.categories
                 ]
+            # color column provided by user in adata.obs
             elif color_idx_name in selected.obs:
                 grouped = selected.obs.groupby(
                     [colorize_by, color_idx_name], observed=False

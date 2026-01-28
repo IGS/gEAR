@@ -2,7 +2,8 @@
 
 // This doesn't work unless we refactor everything to use ES modules
 import { apiCallsMixin, closeModal, getCurrentUser, logErrorInConsole, openModal } from "../common.v2.js?v=207be9a";
-import { adjustClusterColorbars, adjustExpressionColorbar, postPlotlyConfig } from "../plot_display_config.js?v=207be9a";
+import { adjustClusterColorbars, adjustExpressionColorbar, postPlotlyConfig } from "../helpers/plot-display-config.js?v=207be9a";
+import { colorSVG } from "../helpers/dataset-svg-fxns.js?v=207be9a";
 
 /* Given a passed-in layout_id, genereate a 2-dimensional tile-based grid object.
 This uses Bulma CSS for stylings (https://bulma.io/documentation/layout/tiles/)
@@ -273,7 +274,7 @@ export class TileGrid {
      *
      * @param {string|string[]} geneSymbols - The gene symbol or an array of gene symbols to render displays for.
      * @param {boolean} [isMultigene=false] - Indicates whether the gene symbols represent multiple genes.
-     * @param {string} [svgScoringMethod="gene"] - The SVG scoring method to use for rendering the displays.
+     * @param {string} [svgScoringMethod="user_defined"] - The SVG scoring method to use for rendering the displays.
      * @param {number|null} [minclip=null] - The minimum clip value for rendering the displays.
      * @param {object} [projectionOpts={}] - The options for performing projection.
      * @param {string} [projectionOpts.patternSource] - The pattern source for projection.
@@ -283,7 +284,7 @@ export class TileGrid {
      * @returns {Promise<void>} - A promise that resolves when all displays have been rendered.
      * @throws {Error} - If geneSymbols is not provided or if an error occurs during rendering.
      */
-    async renderDisplays(geneSymbols, isMultigene=false, svgScoringMethod="gene", minclip=null, projectionOpts={}) {
+    async renderDisplays(geneSymbols, isMultigene=false, svgScoringMethod="user_defined", minclip=null, projectionOpts={}) {
         if (!geneSymbols) {
             throw new Error("Gene symbol or symbols are required to render displays.");
         }
@@ -458,11 +459,11 @@ class DatasetTile {
      * Processes a tile for rendering display.
      * @param {Object} projectionOpts - The projection options.
      * @param {string} geneSymbolInput - The gene symbol input.
-     * @param {string} [svgScoringMethod="gene"] - The SVG scoring method.
+     * @param {string} [svgScoringMethod="user_defined"] - The SVG scoring method.
      * @param {number|null} [minclip=null] - The mininum expression value to clip to, if applicable
      * @returns {Promise<void>} - A promise that resolves when the rendering is complete.
      */
-    async processTileForRenderingDisplay(projectionOpts, geneSymbolInput, svgScoringMethod="gene", minclip=null) {
+    async processTileForRenderingDisplay(projectionOpts, geneSymbolInput, svgScoringMethod="user_defined", minclip=null) {
         const tileId = this.tile.tileId;
         const tileElement = document.getElementById(`tile-${tileId}`);
 
@@ -1308,12 +1309,12 @@ class DatasetTile {
      * Renders the display for a given gene symbol.
      * @param {string} geneSymbolInput - The gene symbol(s) to render the display for.
      * @param {string|null} displayId - The ID of the display to render. If null, the default display ID will be used.
-     * @param {string} [svgScoringMethod="gene"] - The SVG scoring method to use.
+     * @param {string} [svgScoringMethod="user_defined"] - The SVG scoring method to use.
      * @param {number|null} [minclip=null] - The minimum expression value to clip, if applicable.
      * @throws {Error} If geneSymbol is not provided.
      * @returns {Promise<void>} A promise that resolves when the display is rendered.
      */
-    async renderDisplay(geneSymbolInput, displayId=null, svgScoringMethod="gene", minclip=null) {
+    async renderDisplay(geneSymbolInput, displayId=null, svgScoringMethod="user_defined", minclip=null) {
         if (!geneSymbolInput) {
             throw new Error("Gene symbol or symbols are required to render this display.");
         }
@@ -1756,7 +1757,7 @@ class DatasetTile {
             adjustClusterColorbars(plotJson.data);
         }
 
-        // Update plot with custom plot config stuff stored in plot_display_config.js
+        // Update plot with custom plot config stuff stored in plot-display-config.js
         const expressionDisplayConf = postPlotlyConfig.expression;
         const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "config");
         Plotly.newPlot(plotlyPreview.id , plotJson.data, plotJson.layout, customConfig);
@@ -1805,7 +1806,7 @@ class DatasetTile {
             console.warn(`Could not retrieve plot information for dataset display ${display.id}. Cannot make plot.`);
             return;
         }
-        // Update plot with custom plot config stuff stored in plot_display_config.js
+        // Update plot with custom plot config stuff stored in plot-display-config.js
         const expressionDisplayConf = postPlotlyConfig.expression;
         const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "config");
         Plotly.newPlot(plotlyPreview.id, plotJson.data, plotJson.layout, customConfig);
@@ -1932,26 +1933,31 @@ class DatasetTile {
      * Renders an SVG for the display.
      *
      * @param {Object} display - The display object.
-     * @param {string} [svgScoringMethod="gene"] - The SVG scoring method.
+     * @param {string} [svgScoringMethod="user_defined"] - The SVG scoring method.
      * @param {Object} otherOpts - Other options.
      * @returns {Promise<void>} - A promise that resolves when the SVG is rendered.
      * @throws {Error} - If there is an error rendering the SVG.
      */
-    async renderSVG(display, svgScoringMethod="gene", otherOpts) {
+    async renderSVG(display, svgScoringMethod="user_defined", otherOpts) {
         const datasetId = display.dataset_id;
         const plotConfig = display.plotly_config;
-        const {gene_symbol: geneSymbol, projection_id: projectionId, expression_min_clip: expressionMinClip} = plotConfig;
+        const {gene_symbol: geneSymbol, projection_id: projectionId, expression_min_clip: expressionMinClip, colorscale} = plotConfig;
 
-        const data = await apiCallsMixin.fetchSvgData(datasetId, geneSymbol, projectionId, expressionMinClip, otherOpts)
+        const vmin = colorscale?.vmin || null;
+        const vmax = colorscale?.vmax || null;
+
+        const data = await apiCallsMixin.fetchSvgData(datasetId, geneSymbol, vmax, vmin, projectionId, expressionMinClip, otherOpts)
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
 
         this.svg = {
             data,
-            colors: plotConfig.colors,
+            plot_config: plotConfig,
             gene_symbol: geneSymbol,
         }
+
+        console.log(svgScoringMethod);
 
         this.updateSVGDisplay(svgScoringMethod);
     }
@@ -1965,15 +1971,23 @@ class DatasetTile {
      * @returns {void} This function does not return a value.
      */
     updateSVGDisplay(svgScoringMethod) {
-        const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
+        const containerId = `tile-${this.tile.tileId}`;
+        const selector = `#${containerId} .card-image`;
+        const plotContainer = document.querySelector(selector);
         if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
 
         const data = this.svg.data;
-        const colors = this.svg.colors;
-        const geneSymbol = this.svg.gene_symbol;
+        const config = this.svg.plot_config;
 
-        colorSVG(data, colors, this.dataset.id, this.tile.tileId, geneSymbol, svgScoringMethod);
+        const containerInfo = {
+            containerId,    // just name
+            imageContainer: selector,   // just name
+            outerContainer: `#${containerId}.card`, // Use selector
+
+        }
+
+        colorSVG(data, this.dataset.id, config, containerInfo, svgScoringMethod);
     }
 
     /**
@@ -2263,486 +2277,9 @@ class DatasetTile {
     }
 }
 
-/**
- * Color the SVG based on the chart data and plot configuration.
- * @param {Object} chartData - The data for the chart.
- * @param {Object} plotConfig - The configuration for the plot.
- * @param {string} datasetId - The ID of the dataset.
- * @param {string} tileId - The ID of the tile.
- * @param {string} geneSymbol - The gene symbol for the plot.
- * @param {string} [svgScoringMethod="gene"] - The scoring method for coloring the SVG.
- * @returns {Promise<void>} - A promise that resolves when the SVG is colored.
- */
-const colorSVG = async (chartData, plotConfig, datasetId, tileId, geneSymbol, svgScoringMethod="gene") => {
-    // I found adding the mid color for the colorblind mode  skews the whole scheme towards the high color
-    const colorblindMode = getCurrentUser()?.colorblind_mode || false;
-    const lowColor = colorblindMode ? 'rgb(254, 232, 56)' : (plotConfig?.low_color || '#e7d1d5');
-    const midColor = colorblindMode ? null : (plotConfig?.mid_color || null);
-    const highColor = colorblindMode ? 'rgb(0, 34, 78)' : (plotConfig?.high_color || '#401362');
-
-    // Fill in tissue classes with the expression colors
-    const {data: expression} = chartData;
-    const tissues = Object.keys(expression);   // dataframe
-
-    const score = chartData.scores[svgScoringMethod];
-
-    // for those fields which have no reading, a specific value is sometimes put in instead
-    // These are colored a neutral color
-    const NA_FIELD_PLACEHOLDER = -0.012345679104328156;
-    const NA_FIELD_COLOR = '#808080';
-
-    // Load SVG file and set up the window
-    const cardImage = document.querySelector(`#tile-${tileId} .card-image`);
-
-    // create a legend div
-    const legendDiv = document.createElement('div');
-    legendDiv.classList.add('legend');
-    legendDiv.style.zIndex = 1;
-    legendDiv.style.height = "40px";    // match the viewbox height of child
-    cardImage.append(legendDiv);
-
-    // create a svg div (CSS for margin-top will now work nicely)
-    const svgDiv = document.createElement('div');
-    svgDiv.classList.add('svg');
-    // higher z-index so we can mouseover the svg
-    svgDiv.style.zIndex = 2;
-    svgDiv.style.height = "calc(100% - 40px)";
-    cardImage.append(svgDiv);
-
-    const snap = Snap(svgDiv);
-    const svg_path = `datasets_uploaded/${datasetId}.svg`;
-
-    let title = "";
-
-    await Snap.load(svg_path, async (path) => {
-        await snap.append(path);
-        const svg = snap.select(`#tile-${tileId} .card-image svg`);
-
-        svg.attr({
-            width: "100%"
-        });
-
-        // TODO: Set viewbar just like the legend.
-        // TODO: Set at bottom of card-image
-
-        // Get all paths, circles, rects, and ellipses
-        const paths = svg.selectAll(`path,circle,rect,ellipse`);
-
-        // Rename path IDs to include the tileId
-        paths.forEach(path => {
-            path.attr('id', `tile-${tileId}-${path.attr('id')}`);
-        });
-
-        if (svgScoringMethod === 'gene' || svgScoringMethod === 'dataset') {
-            const { min, max } = score;
-            let color = null;
-
-            // are we doing a three- or two-color gradient?
-            if (midColor) {
-                if (min >= 0) {
-                    // All values greater than 0, do right side of three-color
-                    color = d3
-                        .scaleLinear()
-                        .domain([min, max])
-                        .range([midColor, highColor]);
-                } else if (max <= 0) {
-                    // All values under 0, do left side of three-color
-                    color = d3
-                        .scaleLinear()
-                        .domain([min, max])
-                        .range([lowColor, midColor]);
-                } else {
-                    // We have a good value range, do the three-color
-                    color = d3
-                        .scaleLinear()
-                        .domain([min, 0, max])
-                        .range([lowColor, midColor, highColor]);
-                }
-            } else {
-                color = d3
-                    .scaleLinear()
-                    .domain([min, max])
-                    .range([lowColor, highColor]);
-            }
-
-
-            // NOTE: This must use the SnapSVG API Set.forEach function to iterate
-            paths.forEach(path => {
-                const tissue_classes = path.node.className.baseVal.split(' ');
-                tissue_classes.forEach(tissue => {
-                    if (!tissues.includes(tissue)) {
-                        return;
-                    }
-
-                    if (expression[tissue] == NA_FIELD_PLACEHOLDER) {
-                        path.attr('fill', NA_FIELD_COLOR);
-                    } else {
-                        path.attr('fill', color(expression[tissue]));
-                    }
-
-                    // log-transfom the expression score
-                    const math = "raw";
-                    let score;
-                    // Apply math transformation to expression score
-                    if (math == 'log2') {
-                        score = d3.format('.2f')(Math.log2(expression[tissue]));
-                    } else if (math == 'log10') {
-                        score = d3.format('.2f')(Math.log10(expression[tissue]));
-                    } else {
-                        //math == 'raw'
-                        score = d3.format('.2f')(expression[tissue]);
-                    }
-
-                    const tooltip = document.createElement('div');
-                    tooltip.classList.add('tooltip');
-                    tooltip.style.position = 'absolute';
-                    tooltip.style.fontSize = "12px";
-                    tooltip.style.bottom = `${0}px`;
-                    tooltip.style.left = `${0}px`;
-                    tooltip.style.backgroundColor = 'white';
-                    tooltip.style.opacity = 0.8;
-                    tooltip.style.color = 'black';
-                    tooltip.style.padding = '5px';
-                    tooltip.style.border = '1px solid gray';
-                    tooltip.style.zIndex = 3;
-
-                    // Place tissue in score in a nice compact tooltip
-                    const tooltipText = `<strong>${tissue}</strong>: ${score}`;
-                    tooltip.innerHTML = tooltipText;
-
-                    // Add mouseover and mouseout events to create and destroy the tooltip
-                    path.mouseover(() => {
-                        // Add tooltip to the bottom-left of the SVG
-                        svgDiv.appendChild(tooltip);
-
-                    });
-                    path.mouseout(() => {
-                        svgDiv.querySelector('.tooltip').remove();
-                    });
-
-                });
-            });
-
-            title = "Dataset-level expression";
-
-            if (svgScoringMethod === 'gene') {
-                title = `${geneSymbol}-level expression`;
-            }
-
-            // Draw the legend
-            drawSVGLegend(plotConfig, tileId, title, score);
-
-        } else if (svgScoringMethod === 'tissue') {
-            // tissues scoring
-            const tissues = Object.keys(score);
-
-            const color = {};
-
-            if (midColor) {
-                tissues.forEach(tissue => {
-                    let {
-                        min,
-                        max
-                    } = score[tissue];
-
-                    if (min >= 0) {
-                        color[tissue] = d3
-                            .scaleLinear()
-                            .domain([min, max])
-                            .range([midColor, highColor]);
-                    } else if (max <= 0) {
-                        color[tissue] = d3
-                            .scaleLinear()
-                            .domain([min, max])
-                            .range([lowColor, midColor]);
-                    } else {
-                        color[tissue] = d3
-                            .scaleLinear()
-                            .domain([min, 0, max])
-                            .range([lowColor, midColor, highColor]);
-                    }
-                });
-            } else {
-                tissues.forEach(tissue => {
-                    let {
-                        min,
-                        max
-                    } = score[tissue];
-
-                    color[tissue] = d3
-                        .scaleLinear()
-                        .domain([min, max])
-                        .range([lowColor, highColor]);
-                });
-            }
-
-            paths.forEach(path => {
-                // Add instructions to hover over a tissue class to see the legend
-                const instructions = document.createElement('div');
-                instructions.textContent = `Hover over a tissue to see ${geneSymbol} expression compared to all genes only for this tissue`;
-                instructions.style.position = 'absolute';
-                instructions.style.top = `${0}px`;
-                instructions.style.left = `${0}px`;
-                instructions.style.backgroundColor = 'white';
-                instructions.style.color = 'black';
-                instructions.style.fontWeight = 'bold';
-                instructions.style.padding = '5px';
-                instructions.style.zIndex = 3;
-                instructions.style.alignContent = 'center';
-
-                const legendDiv = document.querySelector(`#tile-${tileId} .legend`);
-                legendDiv.appendChild(instructions);
-
-                const tissue_classes = path.node.className.baseVal.split(' ');
-                tissue_classes.forEach(tissue => {
-                    if (!(tissue && color[tissue])) {
-                        return;
-                    }
-                    const color_scale = color[tissue];
-                    path.attr('fill', color_scale(expression[tissue]));
-
-                    // log-transfom the expression score
-                    const math = "raw";
-                    let expressionScore;
-                    // Apply math transformation to expression score
-                    if (math == 'log2') {
-                        expressionScore = d3.format('.2f')(Math.log2(expression[tissue]));
-                    } else if (math == 'log10') {
-                        expressionScore = d3.format('.2f')(Math.log10(expression[tissue]));
-                    } else {
-                        //math == 'raw'
-                        expressionScore = d3.format('.2f')(expression[tissue]);
-                    }
-
-                    const tooltip = document.createElement('div');
-                    tooltip.classList.add('tooltip');
-                    tooltip.style.position = 'absolute';
-                    tooltip.style.fontSize = "12px";
-                    tooltip.style.bottom = `${0}px`;
-                    tooltip.style.left = `${0}px`;
-                    tooltip.style.backgroundColor = 'white';
-                    tooltip.style.opacity = 0.8;
-                    tooltip.style.color = 'black';
-                    tooltip.style.padding = '5px';
-                    tooltip.style.border = '1px solid gray';
-                    tooltip.style.zIndex = 3;
-
-                    // Place tissue in score in a nice compact tooltip
-                    const tooltipText = `<strong>${tissue}</strong>: ${expressionScore}`;
-                    tooltip.innerHTML = tooltipText;
-
-                    // Add mouseover and mouseout events to create and destroy the tooltip
-                    path.mouseover(() => {
-                        // clear legend
-                        legendDiv.replaceChildren();
-
-                        // Add tooltip to the bottom-left of the SVG
-                        svgDiv.appendChild(tooltip);
-
-                        const tissueScore = {min: score[tissue].min, max: score[tissue].max};
-
-                        title = "Tissue-level expression";
-                        // draw legend for this tissue class
-                        drawSVGLegend(plotConfig, tileId, title, tissueScore);
-                    });
-                    path.mouseout(() => {
-                        svgDiv.querySelector('.tooltip').remove();
-                        // clear legend
-                        legendDiv.replaceChildren();
-
-                        legendDiv.appendChild(instructions);
-                    });
-
-                });
-            });
-
-        } else {
-            throw new Error(`Invalid svgScoringMethod ${svgScoringMethod}.`);
-        }
-
-    });
-}
 
 /**
- * Draws a legend for a SVG image
- *
- * @param {Object} plotConfig - The configuration for the plot.
- * @param {string} tileId - The ID of the tile.
- * @param {string} title - The title for the legend.
- * @param {Object} score - The score object containing the minimum and maximum values.
- */
-const drawSVGLegend = (plotConfig, tileId, title, score) => {
-    const colorblindMode = getCurrentUser()?.colorblind_mode || false;
-    const lowColor = colorblindMode ? 'rgb(254, 232, 56)' : plotConfig.low_color;
-    const midColor = colorblindMode ? null : plotConfig.mid_color
-    const highColor = colorblindMode ? 'rgb(0, 34, 78)' : plotConfig.high_color;
-
-    const card = document.querySelector(`#tile-${tileId}.card`);
-    const node = document.querySelector(`#tile-${tileId} .legend`);
-
-    const width = node.getBoundingClientRect().width;
-
-    // Create our legend svg
-    const legend = d3.select(node)  // returns document.documentElement
-        .append('svg')
-        .style('position', 'absolute')
-        .style('width', '100%')
-        .style("height", "40px")    // Without a fixed height, the box is too tall and prevents mouseover of the svg image
-        .attr('viewbox', `0 0 ${width} 40`)
-        .attr('class', 'svg-gradient-container');
-    const defs = legend.append('defs');
-    // Define our gradient shape
-    const linearGradient = defs
-        .append('linearGradient')
-        .attr('id', `tile-${tileId}-linear-gradient`)
-        .attr('x1', '0%')
-        .attr('y1', '0%')
-        .attr('x2', '100%')
-        .attr('y2', '0%');
-
-    const { min, max } = score;
-    const range33 = ((max - min) / 3) + min;
-    const range66 = (2 * (max - min) / 3) + min;
-
-    // Create the gradient points for either three- or two-color gradients
-    if (midColor) {
-        // Even if a midpoint is called for, it doesn't make sense if the values are
-        //  all less than or all greater than 0
-        if (min >= 0) {
-            linearGradient
-                .append('stop')
-                .attr('offset', '0%')
-                .attr('stop-color', midColor);
-                linearGradient
-                .append('stop')
-                .attr('offset', '100%')
-                .attr('stop-color', highColor);
-        } else if (max <= 0) {
-            linearGradient
-                .append('stop')
-                .attr('offset', '0%')
-                .attr('stop-color', lowColor);
-            linearGradient
-                .append('stop')
-                .attr('offset', '100%')
-                .attr('stop-color', midColor);
-        } else {
-            // This means we've got a good distribution of min under 0 and max above
-            //  it, so we can do a proper three-color range
-            // midpoint offset calculation, so the mid color is at 0
-            //var mid_offset = (1 - (min / max - min))*100;
-            const midOffset = (Math.abs(min) / (max + Math.abs(min))) * 100;
-
-            linearGradient
-                .append('stop')
-                .attr('offset', '0%')
-                .attr('stop-color', lowColor);
-            linearGradient
-                .append('stop')
-                .attr('offset', `${midOffset}%`)
-                .attr('stop-color', midColor);
-            linearGradient
-                .append('stop')
-                .attr('offset', '100%')
-                .attr('stop-color', highColor);
-        }
-    } else {
-        linearGradient
-            .append('stop')
-            .attr('offset', '0%')
-            .attr('stop-color', lowColor);
-        linearGradient
-            .append('stop')
-            .attr('offset', '100%')
-            .attr('stop-color', highColor);
-    }
-
-    // Draw the rectangle using the linear gradient
-    legend
-        .append('rect')
-        .attr('width', "50%")
-        .attr('y', 15)
-        .attr('x', "25%")
-        .attr('height', 10) // quarter of viewport height
-        .style(
-            'fill',
-            `url(#tile-${tileId}-linear-gradient)`
-        );
-
-    // Define the x-axis range
-    const xScale = d3
-        .scaleLinear()
-        .domain([min, max])
-        .range([0, width / 2]);
-
-    const xAxis = d3
-        .axisBottom(xScale)
-        .tickValues([min, range33, range66, max])
-
-    // Add the x-axis to the legend
-    legend
-        .append('g')
-        .attr('class', 'axis')
-        .attr('transform', `translate(${width / 4}, 22)`)   // start quarter from left, and 10 px below rectangle
-        .attr("stroke", "black")
-        .call(xAxis);
-
-    // Make tick marks black
-    legend.selectAll('.tick line')
-        .attr('stroke', 'black');
-
-    // Hide upper tick bar
-    legend.selectAll(".domain ")
-        .attr("opacity", 0);
-
-    // Add title
-    legend
-        .append('text')
-        .attr('x', "50%")
-        .attr('y', 12)
-        .attr('text-anchor', 'middle')
-        .attr('font-size', '10px')
-        .attr('font-weight', 'bold')
-        .text(title);
-
-    // Ensure axis is responsive
-    window.addEventListener('resize', () => {
-        legend.attr('viewbox', `0 0 ${card.getBoundingClientRect().width} 40`);
-
-        // purge old axis
-        legend.select('.axis').remove();
-
-        // redraw axis
-        // TODO: this is hacky, but it works
-        const xScale = d3
-            .scaleLinear()
-            .domain([min, max])
-            .range([0, card.getBoundingClientRect().width / 2]);
-
-        const xAxis = d3
-            .axisBottom(xScale)
-            .tickValues([min, range33, range66, max])
-
-        // Add the x-axis to the legend
-        legend
-            .append('g')
-            .attr('class', 'axis')
-            .attr('transform', `translate(${card.getBoundingClientRect().width / 4}, 22)`)   // start quarter from left, and 22 px below rectangle
-            .attr("stroke", "black")
-            .call(xAxis);
-
-        // Make tick marks black
-        legend.selectAll('.tick line')
-            .attr('stroke', 'black');
-
-        // Hide upper tick bar
-        legend.selectAll(".domain ")
-            .attr("opacity", 0);
-
-    });
-}
-/**
- * Retrieves updates and additions to the plot from the plot_display_config JS object.
+ * Retrieves updates and additions to the plot from the plot-display-config JS object.
  *
  * @param {Object[]} plotConfObj - The plot configuration object.
  * @param {string} plotType - The type of plot.

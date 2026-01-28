@@ -5,7 +5,7 @@ from urllib.parse import urljoin, urlparse
 
 import geardb
 import gosling as gos
-import pyBigWig
+#import pyBigWig
 import requests
 from flask import request
 from flask_restful import Resource
