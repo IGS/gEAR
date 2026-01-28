@@ -261,12 +261,13 @@
                 <section id="result-panel" class="p-3">
                   <div id="result-panel-options">
                     <div id="scoring-method-div">
-                      <span class="option-label pr-1">Scoring method: </span>
+                      <span class="option-label pr-1">SVG expression scoring method: </span>
                       <div class="control select is-small">
                         <select id="svg-scoring-method">
-                          <option value="gene" selected>Gene scope</option>
+                          <option value="gene">Gene scope</option>
                           <option value="tissue">Tissue scope</option>
                           <option value="dataset">Sample scope</option>
+                          <option value="user_defined" selected>Owner-defined scope</option>
                         </select>
                       </div>
                     </div>
@@ -300,7 +301,6 @@
       <script src="js/vendor/jsrender.20181003.min.js?v=207be9a"></script>  <!-- ? SAdkins - are we still using this? -->
 
       <script src="js/vendor/snap.svg-min.js?v=207be9a"></script>
-      <script src="https://d3js.org/d3.v5.min.js"></script>
       <script src="https://cdn.plot.ly/plotly-3.3.1.min.js" charset="utf-8"></script>
 
       <script src="https://unpkg.com/axios/dist/axios.min.js"></script>

@@ -8,7 +8,7 @@ import { TileGrid } from "./classes/tilegrid.js?v=207be9a";
 let urlParamsPassed = false;
 let isMultigene = false;
 let tilegrid = null;
-let svgScoringMethod = 'gene';
+let svgScoringMethod = 'user_defined';
 
 let datasetShareId = null;
 let layoutShareId = null;

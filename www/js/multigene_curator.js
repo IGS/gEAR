@@ -4,7 +4,7 @@ import { apiCallsMixin, getCurrentUser, initCommonUI, logErrorInConsole, openMod
 import { curatorCommon } from "./curator_common.js?v=207be9a";
 import { Gene, WeightedGene } from "./classes/gene.js?v=207be9a";
 import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=207be9a";
-import { adjustStackedViolinHeight, postPlotlyConfig, setHeatmapHeightBasedOnGenes } from "./plot_display_config.js?v=207be9a";
+import { adjustStackedViolinHeight, postPlotlyConfig, setHeatmapHeightBasedOnGenes } from "./helpers/plot-display-config.js?v=207be9a";
 import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners } from "../include/gene-collection-selector/gene-collection-selector.js?v=207be9a";
 
 curatorCommon.setIsMultigene(1);
@@ -133,7 +133,7 @@ class GenesAsAxisHandler extends curatorCommon.PlotHandler {
             adjustStackedViolinHeight(this.plotJson.layout);
         }
 
-        // Update plot with custom plot config stuff stored in plot_display_config.js
+        // Update plot with custom plot config stuff stored in plot-display-config.js
         const curatorDisplayConf = postPlotlyConfig.curator;
         const custonConfig = curatorCommon.getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
         Plotly.newPlot("plotly-preview", this.plotJson.data, this.plotJson.layout, custonConfig);   // HIGH MEM/CPU with heatmap no matrixplot
@@ -570,7 +570,7 @@ class GenesAsDataHandler extends curatorCommon.PlotHandler {
             createToast("Could not retrieve plot information. Cannot make plot.");
             return;
         }
-        // Update plot with custom plot config stuff stored in plot_display_config.js
+        // Update plot with custom plot config stuff stored in plot-display-config.js
         const curatorDisplayConf = postPlotlyConfig.curator;
         const custonConfig = curatorCommon.getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
         Plotly.newPlot("plotly-preview", this.plotJson.data, this.plotJson.layout, custonConfig);

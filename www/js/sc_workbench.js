@@ -6,7 +6,7 @@ import { Dataset } from "./classes/dataset.js?v=207be9a";
 import { Gene, WeightedGene } from "./classes/gene.js?v=207be9a";
 import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=207be9a";
 import { DatasetTree } from "./classes/tree.js?v=207be9a";
-import { resetStepperWithHrefs } from "./stepper-fxns.js?v=207be9a";
+import { resetStepperWithHrefs } from "./helpers/stepper-fxns.js?v=207be9a";
 import { apiCallsMixin, convertToFormData, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=207be9a";
 
 let currentAnalysis;
