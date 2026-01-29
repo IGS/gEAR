@@ -1,7 +1,7 @@
 "use strict";
 
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
-import { getCurrentUser } from "../common.v2.js?v=db95802";
+import { getCurrentUser } from "../common.v2.js?v=a28d16b";
 
 // for those fields which have no reading, a specific value is sometimes put in instead
 // These are colored a neutral color
