@@ -1,9 +1,9 @@
 'use strict';
 
-import { apiCallsMixin, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, rebindUrlParam, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=c9333af";
-import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=c9333af";
-import { fetchPatternsData, getFlatPatternCartData, getSelectedPattern, populatePatternWeights, registerEventListeners as registerPatternEventListeners, selectPatternWeights, setSelectedPattern } from "../include/pattern-collection-selector/pattern-collection-selector.js?v=c9333af";
-import { TileGrid } from "./classes/tilegrid.js?v=c9333af";
+import { apiCallsMixin, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, rebindUrlParam, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=db95802";
+import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=db95802";
+import { fetchPatternsData, getFlatPatternCartData, getSelectedPattern, populatePatternWeights, registerEventListeners as registerPatternEventListeners, selectPatternWeights, setSelectedPattern } from "../include/pattern-collection-selector/pattern-collection-selector.js?v=db95802";
+import { TileGrid } from "./classes/tilegrid.js?v=db95802";
 
 let selectedPattern;
 let urlParamsPassed = false;
