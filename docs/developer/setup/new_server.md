@@ -63,6 +63,17 @@ cd /var
 sudo rm -rf www && sudo ln -s ~jorvis/git/gEAR/www
 ```
 
+### Executables
+
+There are some third-party executables that gEAR will need for some functionality
+
+```bash
+cd ~jorvis/git/gEAR; mkdir -p src;
+rsync -aP hgdownload.soe.ucsc.edu::genome/admin/exe/linux.x86_64/hubClone /opt/gEAR/src/ \
+  && rsync -aP hgdownload.soe.ucsc.edu::genome/admin/exe/linux.x86_64/hubCheck /opt/gEAR/src/ \
+  && rsync -aP hgdownload.soe.ucsc.edu::genome/admin/exe/linux.x86_64/bigBedToBed /opt/gEAR/src/ \
+```
+
 ### Systemd Services
 
 More information about these services can be found at `gEAR/systemd/README.md`

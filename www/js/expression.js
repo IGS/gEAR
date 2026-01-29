@@ -8,7 +8,7 @@ import { TileGrid } from "./classes/tilegrid.js?v=c9333af";
 let urlParamsPassed = false;
 let isMultigene = false;
 let tilegrid = null;
-let svgScoringMethod = 'gene';
+let svgScoringMethod = 'user_defined';
 
 let datasetShareId = null;
 let layoutShareId = null;
@@ -92,6 +92,11 @@ document.getElementById('submit-expression-search').addEventListener('click', as
 
         const [annotRes, tilegridRes] = await Promise.allSettled([fetchGeneAnnotations(), setupTileGridFn]);
         tilegrid = tilegridRes.value;
+
+        if (!annotRes.value) {
+            tilegrid.warnGeneAnnotationNotFound();
+            return;
+        }
 
         // auto-select the first gene in the list
         const firstGene = document.querySelector('.gene-result-list-item');
@@ -262,6 +267,7 @@ const fetchGeneAnnotations = async (callback) => {
 
             const noHistoryTemplate = document.getElementById('tmpl-gene-result-none-found');
             document.getElementById('gene-result-list').appendChild(noHistoryTemplate.content.cloneNode(true));
+            return false
         } else {
             const template = document.getElementById('tmpl-gene-result-item');
             document.getElementById('gene-result-list').innerHTML = '';
@@ -294,9 +300,11 @@ const fetchGeneAnnotations = async (callback) => {
                     selectGeneResult(geneSymbol);
                 });
             }
+            return true;
         }
     } catch (error) {
         console.error(error);
+        return false
     }
 };
 
@@ -616,11 +624,6 @@ const updateAnnotationDisplay = () => {
  */
 const validateExpressionSearchForm = () => {
 
-    // User passed in a single dataset share ID.
-    if (datasetShareId) {
-        return true;
-    }
-
     // User must have either selected a gene list or entered genes manually. Either of these
     // will populate the geneCollectionState.selectedGenes array
     if (geneCollectionState.selectedGenes.size + geneCollectionState.manuallyEnteredGenes.size === 0) {
@@ -628,8 +631,8 @@ const validateExpressionSearchForm = () => {
         return false;
     }
 
-    // Check if the user has selected any dataset collections
-    if (!datasetCollectionState.selectedShareId) {
+    // Check if the user has selected any dataset collections or individual datasets
+    if (!(datasetShareId || datasetCollectionState.selectedShareId)) {
         createToast('Please select at least one dataset to proceed');
         return false;
     }

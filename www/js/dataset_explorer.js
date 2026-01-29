@@ -32,6 +32,58 @@ const arrow = window.FloatingUIDOM.arrow;
 let singleArrangement;
 let multiArrangement;
 
+const getAnalysisTools = dtype => {
+    const dict =  {
+        "dataset-curator": [
+            "single-cell-rnaseq",
+            "bulk-rnaseq",
+            "bargraph-standard",
+            "microarray",
+            "svg-expression",
+            "atac-seq",
+            "violin-standard",
+            "spatial",
+            "sc-rna-seq",
+            "linegraph-standard"
+        ],
+        "multigene-viewer": [
+            "single-cell-rnaseq",
+            "bulk-rnaseq",
+            "bargraph-standard",
+            "microarray",
+            "atac-seq",
+            "violin-standard",
+            "spatial",
+            "sc-rna-seq",
+            "linegraph-standard"
+        ],
+        "compare-tool": [
+            "single-cell-rnaseq",
+            "bulk-rnaseq",
+            "bargraph-standard",
+            "microarray",
+            "atac-seq",
+            "violin-standard",
+            "spatial",
+            "sc-rna-seq",
+            "linegraph-standard"
+        ],
+        "sc-workbench": [
+            "single-cell-rnaseq",
+            "atac-seq",
+            "spatial",
+            "sc-rna-seq"
+        ]
+    };
+
+    const tools = { };
+    for (const [tool, dtypes] of Object.entries(dict)) {
+        tools[tool] = dtypes.includes(dtype);
+    }
+
+    return tools;
+};
+
 class ResultItem {
     constructor(data) {
         this.layouts = data.layouts;
@@ -89,7 +141,7 @@ class ResultItem {
         const datasetId = this.datasetId;
 
         // Clone the template
-        const listItemView = this.listTemplate.content.cloneNode(true)
+        const listItemView = this.listTemplate.content.cloneNode(true);
 
         // Adding dataset attrubute to be able to key in doing a querySelector action
         setElementProperties(listItemView, ".js-dataset-list-element", { dataset: { datasetId } });
@@ -164,6 +216,53 @@ class ResultItem {
         setElementProperties(listItemView, ".js-edit-dataset-save", { value: datasetId });
         setElementProperties(listItemView, ".js-edit-dataset-cancel", { value: datasetId });
 
+        { // analysis links section
+            const analysisDropdown = listItemView.querySelector(`.js-analysis-dropdown`);
+            analysisDropdown.classList.add("is-disabled", "is-loading");
+
+            const tools = [ "dataset-curator", "multigene-viewer", "compare-tool", "sc-workbench" ];
+            for (const tool of tools) {
+                listItemView.querySelector(`.js-${tool}`).classList.add("is-disabled");
+            }
+
+            const updateAvailableTools = (availableTools) => {
+                const domElement = document.querySelector(`.js-dataset-list-element[data-dataset-id="${this.datasetId}"]`);
+                if (!domElement) {
+                    return;
+                }
+
+                let any = false;
+                for (const tool of tools) {
+                    if (availableTools[tool]) {
+                        const toolElement = domElement.querySelector(`.js-${tool}`);
+                        if (toolElement) {
+                            toolElement.classList.remove("is-disabled");
+                            any = true;
+                        }
+                    }
+                }
+
+                const domAnalysisDropdown = domElement.querySelector(`.js-analysis-dropdown`);
+                domAnalysisDropdown.classList.remove("is-loading");
+                if (any) {
+                    domAnalysisDropdown.classList.remove("is-disabled");
+                } else {
+                    domAnalysisDropdown.setAttribute("data-tooltip-content", "No analysis tools available");
+                    applyTooltip(domAnalysisDropdown, createActionTooltips(domAnalysisDropdown));
+                }
+            };
+
+            if ("datasetType" in this) {
+                const availableTools = getAnalysisTools(this.datasetType);
+                updateAvailableTools(availableTools);
+            } else {
+                apiCallsMixin.fetchAvailableAnalysisTools(this.shareId).then((data) => {
+                    const availableTools = data.available_analysis_tools;
+                    updateAvailableTools(availableTools);
+                });
+            }
+        }
+
         setElementProperties(listItemView, ".js-dataset-curator", { href: `./dataset_curator.html?share_id=${this.shareId}`});
         setElementProperties(listItemView, ".js-multigene-viewer", { href: `./multigene_curator.html?share_id=${this.shareId}`});
         setElementProperties(listItemView, ".js-compare-tool", { href: `./compare_datasets.html?share_id=${this.shareId}`});
@@ -176,8 +275,7 @@ class ResultItem {
         // long description section
         setElementProperties(listItemView, ".js-editable-ldesc textarea", { value: this.longDesc });
 
-        return listItemView
-
+        return listItemView;
     }
 
     createListViewItem() {
@@ -1323,10 +1421,8 @@ const applyTooltip = (referenceElement, tooltip, position="top") => {
         ['focus', showTooltip],
         ['blur', hideTooltip],
     ].forEach(([event, listener]) => {
-
         referenceElement.addEventListener(event, listener);
     });
-
 }
 
 /**
@@ -3248,4 +3344,3 @@ document.getElementById("btn-share-collection").addEventListener("click", (e) =>
     const shareUrl = currentPage.toString();
     copyPermalink(shareUrl);
 });
-

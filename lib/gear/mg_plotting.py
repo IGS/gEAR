@@ -96,9 +96,9 @@ def create_dot_plot(df, groupby_filters, is_log10=False, plot_title=None, colors
     multicategory = create_multicategory_axis_labels(groupby_filters, df)
 
     # log-transform dataset if it came in raw
-    mean = np.log2(df['value', 'mean'] + LOG_COUNT_ADJUSTER)
+    mean = np.log2(df['mean'] + LOG_COUNT_ADJUSTER)
     if is_log10:
-        mean = df['value', 'mean']
+        mean = df['mean']
 
     if not colorscale:
         colorscale="Bluered"
@@ -106,7 +106,7 @@ def create_dot_plot(df, groupby_filters, is_log10=False, plot_title=None, colors
     fig.add_scatter(
         x=multicategory
         , y=df["gene_symbol"]
-        , text = df["value", "count"]
+        , text = df["count"]
         , hovertemplate="N: %{text}<br>" +
             "Percent: %{marker.size:.2f}<br>" +
             "Mean: %{marker.color:.2f}"
@@ -115,7 +115,7 @@ def create_dot_plot(df, groupby_filters, is_log10=False, plot_title=None, colors
             color=mean
             , colorscale=colorscale
             , reversescale=reverse_colorscale
-            , size=df["value", "percent"]
+            , size=df["percent"]
             , sizemode="area"
             , colorbar=dict(
                 title="Log10 Mean Expression" if is_log10 else "Log2 Mean Expression"

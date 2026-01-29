@@ -604,8 +604,24 @@ class SpatialFigure:
             is 10 characters or fewer, otherwise returns 10.
         """
         # Get longest cluster name for legend
-        longest_cluster = max(self.df["clusters"].astype(str).apply(len))
         font_size = 12
+
+        # If the dataframe has no 'clusters' column or the column is empty, use the default font size.
+        if "clusters" not in self.df.columns:
+            return font_size
+
+        col = self.df["clusters"]
+
+        # If the series is empty, return the default font size.
+        if col.empty:
+            return font_size
+
+        # Drop NA values and compute string lengths safely.
+        non_null = col.dropna().astype(str)
+        if non_null.empty:
+            return font_size
+
+        longest_cluster = int(non_null.str.len().max())
         if longest_cluster > 10:
             font_size = 10
         return font_size

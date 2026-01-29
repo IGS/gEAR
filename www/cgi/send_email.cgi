@@ -45,7 +45,7 @@ def main():
 
     #print("Got e-mail: {0}".format(email))
     #print("Got scope: {0}".format(scope))
-    
+
     destination_page = form.getvalue('destination_page')
 
     # https://docs.python.org/3/library/email-examples.html

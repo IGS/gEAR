@@ -201,6 +201,24 @@ class AvailableDisplayTypes(Resource):
         columns = adata.obs.columns.tolist()
 
         if len(columns) == 0:
+          # If dtype is SVG then we can still show the SVG display type
+          if ds.dtype == "svg-expression":
+            available_display_types = {
+              "scatter": scatter,
+              "tsne_static": tsne_static,
+              "umap_static": umap_static,
+              "pca_static": pca_static,
+              "tsne/umap_dynamic": tsne_umap_pca_dynamic,
+              # Some single cell datasets might have no columns
+              "bar": True if len(columns) else False,
+              "violin": True if len(columns) else False,
+              "line": True if line or "time_point" in columns else False,
+              #"contour":True if len(columns) else False,
+              "svg": svg_exists
+            }
+            if svg_exists:
+              return available_display_types, 200
+
           return {
             "success": -1,
             'message': "No metadata columns found in this dataset, so plots cannot be drawn. Please choose another dataset."

@@ -1,9 +1,9 @@
 'use strict';
 
-import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates, trigger } from "./common.v2.js?v=c9333af";
-import { availablePalettes, plotly2MatplotlibNames } from "./plot_display_config.js?v=c9333af";
-import { FacetWidget } from "./classes/facets.js?v=c9333af";
-import { DatasetTree } from "./classes/tree.js?v=c9333af";
+import { apiCallsMixin, createToast, getCurrentUser, logErrorInConsole, registerPageSpecificLoginUIUpdates, trigger } from "./common.v2.js";
+import { availablePalettes, plotly2MatplotlibNames } from "./helpers/plot-display-config.js";
+import { FacetWidget } from "./classes/facets.js";
+import { DatasetTree } from "./classes/tree.js";
 
 let isMultigene;
 const setIsMultigene = (val) => { isMultigene = val; }
@@ -1028,7 +1028,7 @@ const getAnalysisId = () => {
 }
 
 /**
- * Retrieves updates and additions to the plot from the plot_display_config JS object.
+ * Retrieves updates and additions to the plot from the plot-display-config JS object.
  *
  * @param {Object[]} plotConfObj - The plot configuration object.
  * @param {string} plotType - The type of plot.

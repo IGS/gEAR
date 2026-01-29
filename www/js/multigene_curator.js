@@ -1,11 +1,11 @@
 'use strict';
 
-import { apiCallsMixin, getCurrentUser, initCommonUI, logErrorInConsole, openModal, trigger } from "./common.v2.js?v=c9333af";
-import { curatorCommon } from "./curator_common.js?v=c9333af";
-import { Gene, WeightedGene } from "./classes/gene.js?v=c9333af";
-import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=c9333af";
-import { adjustStackedViolinHeight, postPlotlyConfig, setHeatmapHeightBasedOnGenes } from "./plot_display_config.js?v=c9333af";
-import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners } from "../include/gene-collection-selector/gene-collection-selector.js?v=c9333af";
+import { apiCallsMixin, getCurrentUser, initCommonUI, logErrorInConsole, openModal, trigger } from "./common.v2.js";
+import { curatorCommon } from "./curator_common.js";
+import { Gene, WeightedGene } from "./classes/gene.js";
+import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js";
+import { adjustStackedViolinHeight, postPlotlyConfig, setHeatmapHeightBasedOnGenes } from "./helpers/plot-display-config.js";
+import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners } from "../include/gene-collection-selector/gene-collection-selector.js";
 
 curatorCommon.setIsMultigene(1);
 
@@ -133,7 +133,7 @@ class GenesAsAxisHandler extends curatorCommon.PlotHandler {
             adjustStackedViolinHeight(this.plotJson.layout);
         }
 
-        // Update plot with custom plot config stuff stored in plot_display_config.js
+        // Update plot with custom plot config stuff stored in plot-display-config.js
         const curatorDisplayConf = postPlotlyConfig.curator;
         const custonConfig = curatorCommon.getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
         Plotly.newPlot("plotly-preview", this.plotJson.data, this.plotJson.layout, custonConfig);   // HIGH MEM/CPU with heatmap no matrixplot
@@ -570,7 +570,7 @@ class GenesAsDataHandler extends curatorCommon.PlotHandler {
             createToast("Could not retrieve plot information. Cannot make plot.");
             return;
         }
-        // Update plot with custom plot config stuff stored in plot_display_config.js
+        // Update plot with custom plot config stuff stored in plot-display-config.js
         const curatorDisplayConf = postPlotlyConfig.curator;
         const custonConfig = curatorCommon.getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
         Plotly.newPlot("plotly-preview", this.plotJson.data, this.plotJson.layout, custonConfig);
@@ -787,6 +787,8 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
         , "js-tsne-reverse-palette": "reverse_palette"
         , "js-tsne-make-zero-gray": "make_zero_gray"
         , "js-tsne-center-around-median": "center_around_median"
+        , "js-tsne-vmax": "vmax"
+        , "js-tsne-vmin": "vmin"
     };
 
     configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));

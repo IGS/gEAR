@@ -9,7 +9,7 @@ let selectedPattern;
 let urlParamsPassed = false;
 let isMulti = false;
 let tilegrid = null;
-let svgScoringMethod = 'gene';
+let svgScoringMethod = 'user_defined';
 let projectionOpts = { patternSource: null, algorithm: null, gctype: null };
 let weightedGeneData = null;
 let datasetShareId = null;

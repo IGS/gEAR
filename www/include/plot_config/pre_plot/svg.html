@@ -56,5 +56,46 @@
                 </div>
             </div>
         </div>
+        <div class="field is-horizontal columns">
+            <div class="column">
+                <label class="label">Enable colorscale boundaries</label>
+            </div>
+            <div class="field-body column">
+                <div class="field">
+                    <div class="control">
+                        <label class="checkbox">
+                            <input class="js-svg-enable-custom-scale" id="enable-custom-scale" type="checkbox">
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="field is-horizontal columns js-custom-scale-field is-hidden">
+            <div class="column">
+                <label class="label">Minimum </label>
+            </div>
+            <div class="field-body column">
+                <div class="field">
+                    <div class="control">
+                        <div class="is-fullwidth">
+                            <input class="js-plot-req js-svg-vmin" id="vmin" value="0" type="number" aria-label="Select a minimum colorscale value" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="column">
+                <label class="label">Maximum </label>
+            </div>
+            <div class="field-body column">
+                <div class="field">
+                    <div class="control">
+                        <div class="is-fullwidth">
+                            <input class="js-plot-req js-svg-vmax" id="vmax" value="0" type="number" aria-label="Select a maximum colorscale value" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <p class="help">If saved, can be accessed by the "user-custom" scope on the gene expression display page.</p>
+        </div>
     </section>
 </section>

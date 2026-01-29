@@ -25,6 +25,12 @@ class SvgData(Resource):
         gene_symbol = request.args.get('gene', None)
         projection_id = request.args.get('projection_id', None)    # projection id of csv output
         expression_min_clip = request.args.get('expression_min_clip', None)  # minimum expression value to clip to, if applicable
+        vmin = request.args.get('vmin', None)
+        vmax = request.args.get('vmax', None)
+
+        add_user_defined = False
+        if vmax is not None or vmin is not None:
+            add_user_defined = True
 
         if expression_min_clip is not None:
             try:
@@ -121,7 +127,7 @@ class SvgData(Resource):
 
         try:
             selected = adata[:, gene_filter].to_memory()
-        except:
+        except Exception:
             # The "try" may fail for projections as it is already in memory
             print(f"Could not convert to memory for dataset {dataset_id}.  Using file-backed.", file=sys.stderr)
             selected = adata[:, gene_filter]
@@ -139,6 +145,18 @@ class SvgData(Resource):
                 "gene": gene_symbol,
                 "min": float(np.nanmin(selected.to_df().values)),
                 "max": float(np.nanmax(selected.to_df().values))
+            }
+
+        if add_user_defined:
+            # If either vmin or vmax is None, set to the min/max of the data
+            # Also check if vmax is 0.0, which is the default value sent from the client
+            if vmin is None or vmin == "0":
+                vmin = 0.0
+            if vmax is None or vmax == "0":
+                vmax = scores["gene"]["max"]
+            scores["user_defined"] = {
+                "min": float(vmin),
+                "max": float(vmax)
             }
 
 

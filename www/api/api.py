@@ -37,8 +37,9 @@ app = Flask(__name__)
 api = Api(app)
 # Add API endpoints to resources
 
-from resources.aggregations import Aggregations  # noqa: E402
+from resources.aggregations import Aggregations  # noqa: E402, I001
 from resources.analyses import Analyses  # noqa: E402
+from resources.available_analysis_tools import AvailableAnalysisTools # noqa: E402
 from resources.available_display_types import (  # noqa: E402
     AvailableDisplayTypes,
     MGAvailableDisplayTypes,
@@ -62,7 +63,9 @@ from resources.spatialpanel import SpatialPanel  # noqa: E402
 from resources.svg_data import SvgData  # noqa: E402
 from resources.top_pca_genes import TopPCAGenes  # noqa: E402
 from resources.tsne_data import MGTSNEData, TSNEData  # noqa: E402
+from resources.track_hub import TrackHubValidate, TrackHubCopy, TrackHubStatus # noqa: E402
 
+# plot routs
 api.add_resource(PlotlyData, '/plot/<dataset_id>'   # Default endpoint
                  , "/plot/<dataset_id>/plotly")     # add /plotly to this endpoint for name consistency with other endpoints
 api.add_resource(MGPlotlyData,'/plot/<dataset_id>/mg_plotly')
@@ -72,16 +75,28 @@ api.add_resource(MGTSNEData, '/plot/<dataset_id>/mg_tsne')
 api.add_resource(GoslingSpec, '/plot/<dataset_id>/gosling')
 api.add_resource(SpatialPanel, '/plot/<dataset_id>/spatialpanel')
 api.add_resource(SpatialScanpyData, '/plot/<dataset_id>/spatial_scanpy')
+
+# projectR routes
 api.add_resource(ProjectR, '/projectr/<dataset_id>')
 api.add_resource(ProjectROutputFile, '/projectr/<dataset_id>/output_file')
 api.add_resource(ProjectRStatus, '/projectr/<projection_id>/status')
+
+# routes centered on getting h5ad info
 api.add_resource(H5ad, '/h5ad/<dataset_id>')
+api.add_resource(AvailableAnalysisTools, '/h5ad/<share_uid>/availableAnalysisTools')
 api.add_resource(AvailableDisplayTypes, '/h5ad/<dataset_id>/availableDisplayTypes')
 api.add_resource(MGAvailableDisplayTypes, '/h5ad/<dataset_id>/mg_availableDisplayTypes')
 api.add_resource(Aggregations, '/h5ad/<dataset_id>/aggregations')
 api.add_resource(Analyses, '/h5ad/<dataset_id>/analyses')
 api.add_resource(Orthologs, '/h5ad/<dataset_id>/orthologs')
 api.add_resource(GeneSymbols, '/h5ad/<dataset_id>/genes')
+
+# import routes (TODO: migrate dataset import to API calls)
+api.add_resource(TrackHubValidate, '/import/trackhub/<share_uid>validate')
+api.add_resource(TrackHubCopy, '/import/trackhub/<share_uid>/copy')
+api.add_resource(TrackHubStatus, '/import/trackhub/<share_uid>/status')
+
+# other routes
 api.add_resource(TopPCAGenes, '/analysis/plotTopGenesPCA')
 api.add_resource(DatasetDisplay, '/displays/<display_id>')
 
@@ -124,4 +139,3 @@ if __name__ == '__main__':
     # api.add_resource(H5ad, '/api/h5ad/<dataset_id>')
     # app.wsgi_app = PrefixMiddleware(app.wsgi_app, prefix='/api')
     app.run(debug=debug, threaded=True)
-

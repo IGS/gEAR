@@ -207,12 +207,14 @@ def bigbed_to_bed(bigbed_file, output_dir) -> bool:
         print(f"File {bigbed_file} is not a bigBed file.")
         return False
 
-    bedbed_path = Path(bigbed_file)
-    bed_path = bedbed_path.with_suffix('.bed')
+    bigbed_path = Path(bigbed_file)
+    bed_path = bigbed_path.with_suffix('.bed')
     bed_path = Path(output_dir) / bed_path.name
 
+    exec_file = Path(__file__).resolve().parent.parent / "src" / "bigBedToBed"
+
     try:
-        subprocess.run(["bigBedToBed", bigbed_file, bed_path.as_posix()], check=True)
+        subprocess.run([exec_file, bigbed_file, bed_path.as_posix()], check=True)
         print(f"Converted {bigbed_file} to {bed_path.as_posix()}.")
 
         gz_path = bed_path.with_suffix(bed_path.suffix + '.gz')
@@ -289,6 +291,8 @@ def build_trackdb_file(trackdb_path: Path, tracks: list, groups: set = set()) ->
     if len(groups_list) > 30:
         print(f"Warning: More than 30 groups found ({len(groups_list)}). Color assignment may repeat.")
 
+    success = True
+
     # For simplicity, we will create a single track entry for the dataset.
     with open(trackdb_path, "w") as f_out:
         for track in tracks:
@@ -313,12 +317,12 @@ def build_trackdb_file(trackdb_path: Path, tracks: list, groups: set = set()) ->
                 # but in the gosling API we will search for the Bed equivalent
                 data_filename = Path(track['datasourceId']).name
                 new_data_path = Path(trackdb_root) / data_filename
-
                 # Copy the file over
                 try:
                     subprocess.run(["cp", track['datasourceId'], new_data_path.as_posix()], check=True)
                 except subprocess.CalledProcessError as e:
                     print(f"Error copying file: {e}")
+                    success = False     # Should only succeed if everything copied (so we can safely update database later)
                     continue
 
                 # Update datasourceId to just the filename (relative to tracksDb.txt)
@@ -346,7 +350,7 @@ def build_trackdb_file(trackdb_path: Path, tracks: list, groups: set = set()) ->
             f_out.write("visibility dense\n")
             f_out.write(f"type {track['type']}\n")
             f_out.write("\n")
-    return True
+    return success
 
 def build_hub_file(hub_path, dataset_id) -> bool:
     """ Example

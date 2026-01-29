@@ -14,3 +14,15 @@
     <span class="has-text-weight-medium">High-expression color</span>
     <input class="js-plot-req js-svg-high-color" id="high-color-post" value="#401362" type="color" aria-label="Select a color" />
 </p>
+<label class="content is-flex is-justify-content-space-between pr-3 checkbox">
+    <span class="has-text-weight-medium">Enable colorscale boundaries</span>
+    <input class="js-svg-enable-custom-scale" id="enable-custom-scale-post" type="checkbox">
+</label>
+<p class="is-flex is-justify-content-space-between pr-3 js-custom-scale-field is-hidden">
+    <span class="has-text-weight-medium">Colorscale minimum</span>
+    <input class="js-plot-req js-svg-vmin" id="vmin-post" value="0" type="number" aria-label="Select a minimum value" />
+</p>
+<p class="is-flex is-justify-content-space-between pr-3 js-custom-scale-field is-hidden">
+    <span class="has-text-weight-medium">Colorscale maximum</span>
+    <input class="js-plot-req js-svg-vmax" id="vmax-post" value="0" type="number" aria-label="Select a maximum value" />
+</p>

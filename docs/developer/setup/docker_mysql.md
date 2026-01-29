@@ -21,7 +21,7 @@ This file, when gunzipped will be about 1.6 Gb.  After this, we copy the file in
 
 1. Uncompress the file with `gunzip` if you need to.
 2. Figure out the container ID with `docker ps`.  It should be the first field in the result row where the "IMAGE" is "mysql:8.0"
-3. Run `docker cp ./<db_dump.sql> <container_id>:/tmp/<db_dump.sql>`
+3. Run `docker cp ./<db_dump.sql> <container_id>:/tmp/<db_dump.sql>`. If you do not have a dump file, just use the `<gear_root>/create_schema.sql` file and Method 2 below.
 
 NOTE: Change the SQL filename to whatever database dump you are using.
 
@@ -30,7 +30,13 @@ NOTE: Change the SQL filename to whatever database dump you are using.
 ### Dump file
 
 1. Do `docker-compose exec db /bin/bash` to get into the docker instance.  Next do `mysql -uroot -p<ROOT_PASSWORD>` to log into mysql as root.  Note that the "GENERATED_ROOT_PASSWORD" was obtained from the "Get root password" section, and that there is no space between the "-p" and the password.
-1. In the mysql client, run `source <db_dump.sql>` to load the SQL dump backup file.
+2. Run the following (in the mysql client) to setup the initial MySQL tables.
+    1. `create database gear_portal;`
+    2. `use gear_portal;`
+    3. `source /tmp<db_dump.sql>` to load the SQL dump backup file.  This will overwrite the database currently being used.
+3. After that finishes run the following to ensure the gEAR user can do database operations in gEAR
+    1. `GRANT USAGE ON *.* TO 'gear'@'%';`
+    2. `GRANT SELECT, INSERT, UPDATE, DELETE ON gear_portal.* TO 'gear'@'%';`
 
 ### No dump file (fresh container only)
 
@@ -38,7 +44,7 @@ NOTE: Change the SQL filename to whatever database dump you are using.
 2. Run the following (in the mysql client) to setup the initial MySQL tables.
     1. `create database gear_portal;`
     2. `use gear_portal;`
-    3. `source <gear_root>/create_schema.sql`
+    3. `source /tmp/create_schema.sql`
 3. After that finishes run the following to ensure the gEAR user can do database operations in gEAR
     1. `GRANT USAGE ON *.* TO 'gear'@'%';`
     2. `GRANT SELECT, INSERT, UPDATE, DELETE ON gear_portal.* TO 'gear'@'%';`
