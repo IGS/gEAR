@@ -1,4 +1,4 @@
-import { User } from "./classes/user.v2.js?v=207be9a";
+import { User } from "./classes/user.v2.js?v=c9333af";
 
 let CURRENT_USER = undefined;
 let SIDEBAR_COLLAPSED = false;

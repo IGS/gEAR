@@ -1,9 +1,9 @@
 'use strict';
 
-import { apiCallsMixin, createToast, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=207be9a";
-import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=207be9a";
-import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners, selectGeneLists } from "../include/gene-collection-selector/gene-collection-selector.js?v=207be9a";
-import { TileGrid } from "./classes/tilegrid.js?v=207be9a";
+import { apiCallsMixin, createToast, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=c9333af";
+import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js?v=c9333af";
+import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners, selectGeneLists } from "../include/gene-collection-selector/gene-collection-selector.js?v=c9333af";
+import { TileGrid } from "./classes/tilegrid.js?v=c9333af";
 
 let urlParamsPassed = false;
 let isMultigene = false;
