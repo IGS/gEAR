@@ -2,7 +2,10 @@
     "domain_label": "gear",
     "domain_short_display_label": "gEAR",
     "domain_url":"https://umgear.org",
-    "enabled_plugins": {"deafness_gene_annotation": ["expression.html"]},
+    "enabled_plugins": {
+        "deafness_gene_annotation": ["expression.html"],
+        "hrp_landing_tab": ["index.html"]
+    },
     "google_analytics_4_measurement_id": "G-N5JDQKT94F",
     "links_out": {
         "DVD": true,
