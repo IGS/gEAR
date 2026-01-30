@@ -1108,6 +1108,7 @@ class VisiumHDHandler(SpatialHandler):
     /binned_outputs/square_008um/spatial/scalefactors_json.json
     /binned_outputs/square_008um/spatial/tissue_hires_image.png
     /binned_outputs/square_008um/spatial/tissue_lowres_image.png
+    /binned_outputs/square_008um/spatial/tissue_positions.parquet
 
     Recommended tar command to create tarball:
     `tar cvf <dataset>.tar binned_outputs/feature_slice.h5 binned_outputs/square_008um`
