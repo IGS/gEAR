@@ -3,10 +3,10 @@
 
 'use strict';
 
-import { apiCallsMixin, createToast, initCommonUI, logErrorInConsole, trigger } from "./common.v2.js?v=a28d16b";
-import { curatorCommon } from "./curator_common.js?v=a28d16b";
-import { postPlotlyConfig } from "./helpers/plot-display-config.js?v=a28d16b";
-import { colorSVG } from "./helpers/dataset-svg-fxns.js?v=a28d16b";
+import { apiCallsMixin, createToast, initCommonUI, logErrorInConsole, trigger } from "./common.v2.js?v=e1e7c4e";
+import { curatorCommon } from "./curator_common.js?v=e1e7c4e";
+import { postPlotlyConfig } from "./helpers/plot-display-config.js?v=e1e7c4e";
+import { colorSVG } from "./helpers/dataset-svg-fxns.js?v=e1e7c4e";
 
 
 curatorCommon.setIsMultigene(0);
