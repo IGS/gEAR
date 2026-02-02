@@ -477,6 +477,11 @@ class SpatialFigure:
 
         img = self.spatial_img.squeeze()
 
+        # If the image has a "c" dimension (e.g., shape (c, y, x)), select the first channel
+        # This came about because some Xenium uploads have multiple c channels (different staining methods?)
+        if img.ndim == 3 and img.shape[2] > 1:  # Check if "c" exists and has multiple entries
+            img = img[:, :, 0]  # Use only the first "c" entry
+
         # Ensure image is uint8 for consistent contrast (256-color channels)
         # Xenium images are uint16, so this is why we need to convert
         if img.dtype != np.uint8:
