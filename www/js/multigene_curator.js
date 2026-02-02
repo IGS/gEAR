@@ -1394,7 +1394,7 @@ const saveGeneCart = () => {
         gc.addGene(gene);
     }
 
-    gc.save(() => { }, updateUIAfterGeneCartSaveFailure);
+    gc.save(updateUIAfterGeneCartSaveSuccess, updateUIAfterGeneCartSaveFailure);
 };
 
 const saveWeightedGeneCart = () => {
@@ -1453,7 +1453,7 @@ const saveWeightedGeneCart = () => {
         }
     };
 
-    gc.save(() => { }, updateUIAfterGeneCartSaveFailure);
+    gc.save(updateUIAfterGeneCartSaveSuccess, updateUIAfterGeneCartSaveFailure);
 };
 
 /**
@@ -1766,6 +1766,10 @@ const updateGroupOptions = (classSelector, groupsArray) => {
         }
     }
 
+};
+
+const updateUIAfterGeneCartSaveSuccess = (gc) => {
+    createToast(`Gene cart saved successfully. <a href='/gene_list_manager.html?sort_by=date_created'>Open Gene List Manager</a>`, "is-success", true, { isHTML: true });
 };
 
 const updateUIAfterGeneCartSaveFailure = (gc, message) => {

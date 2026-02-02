@@ -487,7 +487,7 @@ const updateManualMarkerGeneEntries = (geneString) => {
  * @param {Object} geneCart - The saved marker gene list object.
  */
 const updateUiAfterMarkerGeneListSaveSuccess = (geneCart) => {
-    createToast("Saved marker gene list", "is-success");
+    createToast(`Gene cart saved successfully. <a href='/gene_list_manager.html?sort_by=date_created'>Open Gene List Manager</a>`, "is-success", true, { isHTML: true });
 }
 
 /**

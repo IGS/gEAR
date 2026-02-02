@@ -1193,12 +1193,12 @@ const updateSeriesOptions = (classSelector, seriesArray) => {
 }
 
 const updateUIAfterGeneCartSaveSuccess = (gc) => {
-	createToast("Gene cart saved successfully", "is-success");
-}
+	createToast(`Gene cart saved successfully. <a href='/gene_list_manager.html?sort_by=date_created'>Open Gene List Manager</a>`, "is-success", true, { isHTML: true });
+};
 
 const updateUIAfterGeneCartSaveFailure = (gc, message) => {
     createToast(message);
-}
+};
 
 const validateCompareGroups = (event) => {
 
