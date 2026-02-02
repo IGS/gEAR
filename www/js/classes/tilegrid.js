@@ -2150,7 +2150,10 @@ class DatasetTile {
             iframe.src = url;
             iframe.loading="lazy";
             iframe.referrerPolicy="origin"; // honestly doesn't matter if provided
-            iframe.sandbox="allow-scripts allow-same-origin";
+            // allow-scripts - allow running scripts
+            // allow-same-origin - allow cookies to be sent (i.e. session cookie)
+            // allow-downloads - allow downloads from the iframe (i.e. saving displays)
+            iframe.sandbox="allow-scripts allow-same-origin allow-downloads";
             cardImage.append(iframe);
 
             const iframeSearch = iframe.contentWindow.location.search;
