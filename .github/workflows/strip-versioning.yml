@@ -1,0 +1,45 @@
+name: Strip any version tags off of HTML and JS
+
+on:
+  push:
+    branches:
+      # - main  # or your default branch
+      - devel
+    paths:
+      - 'www/**/*.html'
+      - 'www/**/*.js'
+      - '.github/workflows/strip-versioning.yml'  # force retrigger if action is modified
+      #- 'www/**/*.css'
+
+jobs:
+  version-js:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Strip version to JS and CSS references in HTML
+        run: |
+          find www/ -type f -name "*.html" | while read file; do
+
+            # Clear all existing version tags (in case they are present for files we don't want it on)
+            sed -i -E 's|(\.js)\?v=[^"]*|\1|g' "$file"
+            sed -i -E 's|(\.css)\?v=[^"]*|\1|g' "$file"
+          done
+
+      - name: Strip version to JS imports in JS files
+        run: |
+          find www/js www/include -type f -name "*.js" | while read file; do
+            # Clear all existing version tags (in case they are present for files we don't want it on)
+            sed -i -E "s|(\.js)\?v=[^'\"]*|\1|g" "$file"
+          done
+
+      # Optional: Commit and push changes back to the repo
+      # adding [skip ci] to the commit is important, so that this commit does not trigger the action again.
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add www/*.html www/**/*.html www/js/*.js www/js/**/*.js www/include/**/*.js
+          git commit -m "ci: strip version hash from JS references [skip ci]" || echo "No changes to commit"
+          git push
