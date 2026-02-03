@@ -1,6 +1,6 @@
 'use strict';
 
-import { apiCallsMixin, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=c9333af";
+import { apiCallsMixin, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
 import { FacetWidget } from "./classes/facets.js?v=c9333af";
 import { Gene, WeightedGene } from "./classes/gene.js?v=c9333af";
 import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=c9333af";
@@ -51,7 +51,6 @@ const LOG10_TRANSFORMED_DATASETS = [
 , "80eadbe6-49ac-8eaf-f2fb-e07706cf117b"
 ];
 
-let sessionId;
 let facetWidget;	// stores aggregation data
 let datasetId;
 let organismId;	// Used for saving as gene cart
@@ -901,7 +900,7 @@ const sanitizeCondition = (condition) => {
 const saveGeneCart = () => {
     // must have access to USER_SESSION_ID
     const gc = new GeneCart({
-        session_id: sessionId
+        session_id: getCurrentUser()?.session_id
         , label: document.getElementById("new-genecart-label").value
         , gctype: "unweighted-list"
         , organism_id:  organismId
@@ -921,14 +920,13 @@ const saveGeneCart = () => {
 
 const saveWeightedGeneCart = () => {
 
-	// must have access to USER_SESSION_ID
-
 
 	// Saving raw FC by default so it is easy to transform weight as needed
 	const weightLabels = ["FC"];
 
+	// must have access to USER_SESSION_ID
 	const gc = new WeightedGeneCart({
-		session_id: sessionId
+		session_id: getCurrentUser()?.session_id
 		, label:  document.getElementById("new-genecart-label").value
 		, gctype: 'weighted-list'
 		, organism_id: organismId
@@ -1193,7 +1191,7 @@ const updateSeriesOptions = (classSelector, seriesArray) => {
 }
 
 const updateUIAfterGeneCartSaveSuccess = (gc) => {
-	createToast(`Gene cart saved successfully. <a href='/gene_list_manager.html?sort_by=date_created'>Open Gene List Manager</a>`, "is-success", true, { isHTML: true });
+	createToast(`Gene cart saved successfully. <a target='_blank' href='/gene_list_manager.html?sort_by=date_created'>Open Gene List Manager</a>`, "is-success", true, { isHTML: true });
 };
 
 const updateUIAfterGeneCartSaveFailure = (gc, message) => {
@@ -1419,7 +1417,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 
 	// Update with current page info
 	document.getElementById("page-header-label").textContent = "Comparison Tool";
-    sessionId = getCurrentUser()?.session_id || null;
+    const sessionId = getCurrentUser()?.session_id || null;
 
 	if (! sessionId ) {
 		// TODO: Add master override to prevent other triggers from enabling saving
