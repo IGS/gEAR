@@ -64,8 +64,6 @@
                 });
             });
         }
-
-        console.log('HRP landing tab plugin initialized successfully');
     };
 
     // Initialize when DOM is ready
