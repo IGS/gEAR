@@ -480,8 +480,7 @@ def projectr_callback(
             else create_weighted_loading_df(genecart_id)
         )
     except Exception as e:
-        print(str(e), file=fh)
-        traceback.print_exc()
+        traceback.print_exc(file=fh)
         status["status"] = "failed"
         status["error"] = str(e)
         write_projection_status(JOB_STATUS_FILE, status)
@@ -529,8 +528,7 @@ def projectr_callback(
                 )
             loading_df = map_dataframe_genes(loading_df, ortholog_file)
     except Exception as e:
-        print(str(e), file=fh)
-        traceback.print_exc()
+        traceback.print_exc(file=fh)
         status["status"] = "failed"
         status["success"] = -1
         status["error"] = str(e)
@@ -546,8 +544,7 @@ def projectr_callback(
     try:
         ana = get_analysis(None, dataset_id, session_id, is_spatial)
     except Exception as e:
-        print(str(e), file=fh)
-        traceback.print_exc()
+        traceback.print_exc(file=fh)
         status["status"] = "failed"
         status["error"] = "Analysis for this dataset is unavailable."
         write_projection_status(JOB_STATUS_FILE, status)
@@ -555,13 +552,11 @@ def projectr_callback(
 
     try:
             args = {}
-            if is_spatial:
-                args['include_images'] = False
-            else:
+            if not is_spatial:
                 args['backed'] = True
             adata = ana.get_adata(**args)
     except Exception:
-        traceback.print_exc()
+        traceback.print_exc(file=fh)
         status["status"] = "failed"
         status["error"] = "Could not create dataset object using analysis."
         write_projection_status(JOB_STATUS_FILE, status)
