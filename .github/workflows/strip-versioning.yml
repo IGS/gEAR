@@ -2,15 +2,17 @@ name: Strip any version tags off of HTML and JS
 
 on:
   push:
-    branches:
-      # - main  # or your default branch
-      - devel
+    branches: [ 'devel' ]
     paths:
       - 'www/**/*.html'
       - 'www/**/*.js'
       - '.github/workflows/strip-versioning.yml'  # force retrigger if action is modified
-      #- 'www/**/*.css'
-
+  pull_request:
+    branches: [ 'devel' ]
+    paths:
+      - 'www/**/*.html'
+      - 'www/**/*.js'
+      - '.github/workflows/strip-versioning.yml'  # force retrigger if action is modified
 jobs:
   version-js:
     runs-on: ubuntu-latest

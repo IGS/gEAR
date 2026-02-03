@@ -1,17 +1,12 @@
 name: Version JS with Commit Hash
 
 on:
-  push:
-    branches:
-      - main  # or your default branch
-      # - devel
-      # - feature-gosling-implementation
+  pull_request:
+    branches: [ 'main' ]
     paths:
       - 'www/**/*.html'
       - 'www/**/*.js'
       - '.github/workflows/version-js.yml'  # force retrigger if action is modified
-      #- 'www/**/*.css'
-
 jobs:
   version-js:
     runs-on: ubuntu-latest
