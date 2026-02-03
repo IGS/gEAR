@@ -3,6 +3,7 @@
     "domain_short_display_label": "gEAR",
     "domain_url":"https://umgear.org",
     "enabled_plugins": {
+        "aro_2026_tab": ["index.html"],
         "deafness_gene_annotation": ["expression.html"],
         "hrp_landing_tab": ["index.html"]
     },
