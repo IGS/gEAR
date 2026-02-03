@@ -1,6 +1,6 @@
 "use strict";
 
-import { apiCallsMixin, convertToFormData, copyToClipboard, createToast, getCurrentUser, getRootUrl, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js?v=c9333af";
+import { apiCallsMixin, convertToFormData, copyToClipboard, createToast, getCurrentUser, getRootUrl, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
 import { GeneCart } from "./classes/genecart.v2.js?v=c9333af";
 
 let firstSearch = true;
@@ -75,7 +75,7 @@ class ResultItem {
         const geneListId = this.geneListId;
 
         // Clone the template
-        const listItemView = this.listTemplate.content.cloneNode(true)
+        const listItemView = this.listTemplate.content.cloneNode(true);
 
         // Set properties for multiple elements
         setElementProperties(listItemView, ".js-gc-list-element", { dataset: { geneListId } });
@@ -1431,6 +1431,17 @@ const submitSearch = async (page) => {
     searchCriteria.ownership = buildFilterString('controls-ownership');
     searchCriteria.limit = resultsPerPage;
     searchCriteria.page = page || 1;
+
+    const searchParams = Object.fromEntries(new URLSearchParams(window.location.search));
+    if (searchParams['sort_by']) {
+        searchCriteria.sort_by = searchParams['sort_by'];
+
+        // remove sort_by from URL to keep it in sync with the form
+        delete searchParams['sort_by'];
+        const newSearchParams = new URLSearchParams(searchParams).toString();
+        const newUrl = `${window.location.pathname}${newSearchParams ? `?${newSearchParams}` : ''}`;
+        window.history.replaceState({}, '', newUrl);
+    }
 
     try {
         const data = await apiCallsMixin.fetchGeneLists(searchCriteria)

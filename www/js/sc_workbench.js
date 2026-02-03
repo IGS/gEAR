@@ -487,7 +487,7 @@ const updateManualMarkerGeneEntries = (geneString) => {
  * @param {Object} geneCart - The saved marker gene list object.
  */
 const updateUiAfterMarkerGeneListSaveSuccess = (geneCart) => {
-    createToast("Saved marker gene list", "is-success");
+    createToast(`Gene cart saved successfully. <a target='_blank' href='/gene_list_manager.html?sort_by=date_created'>Open Gene List Manager</a>`, "is-success", true, { isHTML: true });
 }
 
 /**
@@ -508,7 +508,8 @@ const updateUiAfterMarkerGeneListSaveFailure = (geneCart, message) => {
  * @param {Object} geneCart - The saved gene list object.
  */
 const updateUiAfterPcaGeneListSaveSuccess = (geneCart) => {
-    createToast("Saved weighted gene list", "is-success");
+    createToast(`Gene cart saved successfully. <a target='_blank' href='/gene_list_manager.html?sort_by=date_created'>Open Gene List Manager</a>`, "is-success", true, { isHTML: true });
+
 }
 
 /**

@@ -1,6 +1,6 @@
 "use strict";
 
-import { convertToFormData } from "../common.v2.js?v=c9333af";
+import { convertToFormData } from "../common.v2.js";
 
 export class GeneCart {
     constructor ({id, session_id, label, organism_id, share_id, is_public, is_domain,
