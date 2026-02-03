@@ -2,7 +2,7 @@
 
 import { apiCallsMixin, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
 import { FacetWidget } from "./classes/facets.js?v=c9333af";
-import { Gene, WeightedGene } from "./classes/gene.js?v=c9333af";
+import { Gene, WeightedGene } from "./classes/gene.js";
 import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js?v=c9333af";
 import { DatasetTree } from "./classes/tree.js?v=c9333af";
 import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners } from "../include/gene-collection-selector/gene-collection-selector.js?v=c9333af";
