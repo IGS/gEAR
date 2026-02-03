@@ -1,6 +1,7 @@
 panel==1.6.3
 plotly==5.20.0
 pandas==2.2.1
+pyarrow==18.0.1 # v19 breaks reading spatial parquet files
 werkzeug==2.0.2
 watchfiles
 datashader==0.18.0

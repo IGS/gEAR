@@ -407,7 +407,7 @@ class SpatialHandler(ABC):
         if not self.img_name:
             return self
 
-        if self.platform == "visium" or self.platform == "visium_hd":
+        if self.platform in ["visium", "visium_hd", "xenium"]:
             # Visium data is already in image space, so no need to scale or translate
             # SAdkins - honestly, not sure how to fix these yet as the shapes seem to translate wildly off of the image
             return self
@@ -1108,6 +1108,7 @@ class VisiumHDHandler(SpatialHandler):
     /binned_outputs/square_008um/spatial/scalefactors_json.json
     /binned_outputs/square_008um/spatial/tissue_hires_image.png
     /binned_outputs/square_008um/spatial/tissue_lowres_image.png
+    /binned_outputs/square_008um/spatial/tissue_positions.parquet
 
     Recommended tar command to create tarball:
     `tar cvf <dataset>.tar binned_outputs/feature_slice.h5 binned_outputs/square_008um`

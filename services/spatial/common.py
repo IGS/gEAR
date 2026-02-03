@@ -477,6 +477,15 @@ class SpatialFigure:
 
         img = self.spatial_img.squeeze()
 
+        # If the image has a "c" dimension (e.g., shape (c, y, x)), select the first channel
+        # This came about because some Xenium uploads have multiple c channels (different staining methods?)
+        # 3 channels is RGB
+        # 4 channels is RGBA
+        # See https://pillow.readthedocs.io/en/stable/handbook/concepts.html#modes
+        if img.ndim == 3:
+            if img.shape[2] == 2 or img.shape[2] > 4:  # Check if "c" exists and does not appear to be a valid RGB format
+                img = img[:, :, 0]  # Use only the first "c" entry
+
         # Ensure image is uint8 for consistent contrast (256-color channels)
         # Xenium images are uint16, so this is why we need to convert
         if img.dtype != np.uint8:

@@ -41,15 +41,15 @@
           -->
         <base href="/" />
 
-        <link rel="stylesheet" href="css/gear-theme-purple.css?v=c9333af" />
+        <link rel="stylesheet" href="css/gear-theme-purple.css" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
 
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/octoshrimpy/bulma-o-steps@master/bulma-steps.min.css">
 
-        <link rel="stylesheet" href="css/common.v2.css?v=c9333af" />
+        <link rel="stylesheet" href="css/common.v2.css" />
 
         <!--Page-specific CSS here -->
-        <link rel="stylesheet" href="css/upload_dataset.css?v=c9333af" />
+        <link rel="stylesheet" href="css/upload_dataset.css" />
     </head>
     <body>
       <div id="main-layout-c" class="columns">
@@ -145,7 +145,7 @@
                       <span class="steps-marker"><span class="icon"><i class="mdi"></i></span></span>
                       <div class="steps-content">
                         <p class="step-label is-size-5">Upload dataset</p>
-                        <p class="is-size-7">Choose your dataset format and upload directly or provide a supported URL.</p>
+                        <p class="is-size-7">Choose your dataset format and upload directly or provide a supported URL (soon).</p>
                       </div>
                     </li>
                     <li id='step-process-dataset' class="steps-segment">
@@ -562,7 +562,7 @@
                 <div id="step-upload-dataset-c" class="step-c is-hidden">
                   <h1>Step - Upload dataset</h1>
                   <p>
-                    Choose the format of your dataset and upload it here. You can also provide a URL to a supported dataset.
+                    Choose the format of your dataset and upload it here. You can also provide a URL to a supported dataset (soon).
                   </p>
 
                   <hr />
@@ -837,7 +837,7 @@
                         </div>
                       </div>
                     </div>
-                    <div class="column is-6">
+                    <div class="column is-6 is-hidden">
                       <div class="field">
                         <label class="label">
                           Or provide a URL
@@ -1154,6 +1154,7 @@
           <li>(Required) 'binned_outputs/square_008um/analysis/clustering/gene_expression_graphclust/clusters.csv': Clustering information with both "Barcode" and "Cluster" columns.</li>
           <li>(Required) 'binned_outputs/feature_slice.h5': Feature slice file.</li>
           <li>(Required) 'binned_outputs/square_008um/spatial/scalefactors_json.json': Scalefactors file.</li>
+          <li>(Required) 'binned_outputs/square_008um/spatial/tissue_positions.parquet': Spots positions file.</li>
           <li>(Required) 'binned_outputs/square_008um/spatial/tissue_hires_image.png': High resolution image.</li>
           <li>(Required) 'binned_outputs/square_008um/spatial/tissue_lowres_image.png': Low resolution image.</li>
       </ul>
@@ -1189,10 +1190,10 @@
       For the "clusters.csv" file, it is preferable if the "Cluster" column has actual annotation labels instead of numbers from the output. This provides more value to other users.
     </template>
 
-      <script src="js/vendor/js.cookie.js?v=c9333af"></script>
+      <script src="js/vendor/js.cookie.js"></script>
 
       <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
       <!-- Page-specific JS file here -->
-      <script type="module" src="js/upload_dataset.js?v=c9333af"></script>
+      <script type="module" src="js/upload_dataset.js"></script>
     </body>
 </html>

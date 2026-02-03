@@ -511,8 +511,10 @@ def process_spatial(upload_dir: Path, spatial_format: str) -> None:
     filepath = upload_dir / f"{share_uid}.tar.gz"
 
     try:
-        spatial_obj.process_file(filepath, extract_dir=upload_dir, organism_id=organism_id)
+        spatial_obj.process_file(filepath.as_posix(), extract_dir=upload_dir, organism_id=organism_id)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         write_status(upload_dir, 'error', f"Error in uploading spatial file: {e}")
         return
 

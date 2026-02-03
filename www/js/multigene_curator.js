@@ -1,6 +1,6 @@
 'use strict';
 
-import { apiCallsMixin, getCurrentUser, initCommonUI, logErrorInConsole, openModal, trigger } from "./common.v2.js";
+import { apiCallsMixin, getCurrentUser, createToast, initCommonUI, logErrorInConsole, openModal, trigger } from "./common.v2.js";
 import { curatorCommon } from "./curator_common.js";
 import { Gene, WeightedGene } from "./classes/gene.js";
 import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js";
@@ -1379,10 +1379,10 @@ const populateGeneTable = (data, plotType) => {
 const saveGeneCart = () => {
     // must have access to USER_SESSION_ID
     const gc = new GeneCart({
-        session_id: sessionId
+        session_id: getCurrentUser()?.session_id
         , label: document.getElementById("new-genecart-label").value
         , gctype: "unweighted-list"
-        , organism_id: getOrganismId()
+        , organism_id: curatorCommon.getOrganismId()
         , is_public: 0
     });
 
@@ -1394,7 +1394,7 @@ const saveGeneCart = () => {
         gc.addGene(gene);
     }
 
-    gc.save(() => { }, updateUIAfterGeneCartSaveFailure);
+    gc.save(updateUIAfterGeneCartSaveSuccess, updateUIAfterGeneCartSaveFailure);
 };
 
 const saveWeightedGeneCart = () => {
@@ -1424,10 +1424,10 @@ const saveWeightedGeneCart = () => {
     }
 
     const gc = new WeightedGeneCart({
-        session_id: sessionId
+        session_id: getCurrentUser()?.session_id
         , label: document.getElementById("new-genecart-label").value
         , gctype: 'weighted-list'
-        , organism_id: getOrganismId()
+        , organism_id: curatorCommon.getOrganismId()
         , is_public: 0
     }, weightLabels);
 
@@ -1453,7 +1453,7 @@ const saveWeightedGeneCart = () => {
         }
     };
 
-    gc.save(() => { }, updateUIAfterGeneCartSaveFailure);
+    gc.save(updateUIAfterGeneCartSaveSuccess, updateUIAfterGeneCartSaveFailure);
 };
 
 /**
@@ -1766,6 +1766,10 @@ const updateGroupOptions = (classSelector, groupsArray) => {
         }
     }
 
+};
+
+const updateUIAfterGeneCartSaveSuccess = (gc) => {
+    createToast(`Gene cart saved successfully. <a target='_blank' href='/gene_list_manager.html?sort_by=date_created'>Open Gene List Manager</a>`, "is-success", true, { isHTML: true });
 };
 
 const updateUIAfterGeneCartSaveFailure = (gc, message) => {

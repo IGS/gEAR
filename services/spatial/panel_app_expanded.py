@@ -459,10 +459,7 @@ class SpatialZoomSubplot(SpatialFigure):
 
         # Calculate the marker size based on the range of the selection
         # The marker size will scale larger as the range of the selection gets more precise
-        self.marker_size = int(1 + 2500 / (x_range + y_range))
-
-        #if self.platform == "visium":
-        #    self.marker_size += 3
+        self.marker_size = int(1 + 2500 / (x_range + y_range)) + 3
 
     def refresh_spatial_fig(self) -> dict:
         """

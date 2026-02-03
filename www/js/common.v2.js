@@ -1,4 +1,4 @@
-import { User } from "./classes/user.v2.js?v=c9333af";
+import { User } from "./classes/user.v2.js";
 
 let CURRENT_USER = undefined;
 let SIDEBAR_COLLAPSED = false;
@@ -586,18 +586,23 @@ const convertToFormData = (object) => {
  * @param {string} msg - The message to display in the toast.
  * @param {string} [levelClass="is-danger"] - The CSS class for the toast level. Defaults to "is-danger".
  * @param {boolean} [closeManually=false] - Indicates whether the toast can be closed manually or after a timeout. Defaults to false.
+ * @param {Object} [opts={ isHTML: false }] - Additional options for the toast.
  */
-const createToast = (msg, levelClass="is-danger", closeManually=false) => {
+const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { isHTML: false }) => {
     const toast = document.createElement("div");
     toast.classList.add("notification", "js-toast", levelClass, "animate__animated", "animate__fadeInUp");
     const toastButton = document.createElement("button");
     toastButton.classList.add("delete");
     toastButton.addEventListener("click", (event) => {
         const notification = event.currentTarget.closest(".js-toast.notification");
-        notification.remove(notification);
+        notification.remove();
     });
     toast.appendChild(toastButton);
-    toast.appendChild(document.createTextNode(msg));
+    toast.appendChild(opts?.isHTML ? (() => {
+        const span = document.createElement("span");
+        span.innerHTML = msg;
+        return span;
+    })() : document.createTextNode(msg));
 
     const numToasts = document.querySelectorAll(".js-toast.notification").length;
     const numToastsThisLevel = document.querySelectorAll(`.js-toast.notification.${levelClass}`).length;
