@@ -553,15 +553,6 @@ def build_region_view(parent_view_left, parent_view_right=None):
     return region_view
 
 
-def convert_track_rgb_to_hex(rgb):
-    """
-    Convert the tracksdb.txt RGB "color" values (i.e. 31,119,180) to a Hex value
-    """
-
-    r, g, b = map(int, rgb.split(","))
-    return f"#{r:02x}{g:02x}{b:02x}"
-
-
 def fetch_trackdb_and_groups_info(genomes_txt, assembly) -> dict:
     """Extract 'trackDb' and 'groups' URLs for an assembly from genomes_txt.
 
@@ -717,7 +708,7 @@ def parse_tracks_from_trackdb(trackdb_txt, trackdb_url) -> list:
                 current_track["group"] = line.split(" ")[1]
             elif line.startswith("color"):
                 color = line.split(" ")[1]
-                current_track["color"] = convert_track_rgb_to_hex(color)
+                current_track["color"] = f"rgb({color})"    # rendered by CSS engine, so this will work
             elif line.startswith("type"):
                 current_track["type"] = line.split(" ")[1]
     if current_track:
