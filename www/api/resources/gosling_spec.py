@@ -494,15 +494,23 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
 
         # Get other attributes to pass to the class
         color = track.get("color", "orange")  # Default color if not specified
-        group = track.get("group", None)
+        #group = track.get("group", "linked")
 
         # Title should be based on shortLabel, longLabel, bigDataUrl (in that order)
         title = track.get("shortLabel", track.get("longLabel", "bigDataUrl"))
 
+        #autoscale = track.get("autoscale", "on")
+
         spec_builder = spec_builder_class(
-            data_url=data_url, color=color, group=group, zoom=zoom, title=title, position_str=position_str
+            data_url=data_url, color=color, zoom=zoom, title=title, position_str=position_str
         )
         left_track = spec_builder.add_track(**kwargs)
+
+        # Let these tracks scale their y-axes together if specified in the UCSC trackDb
+        # ! Doesn't work... does not scale axes and zooming on bigwig tracks de-links from view
+        #if autoscale == "group":
+        #    left_track.y.linkingId = f"y-left-{group}"  # type: ignore
+
         parent_tracks_dict["left"].append(left_track)
 
         if spec_builder_class == HiCSpec:
@@ -512,6 +520,9 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
             right_track = spec_builder.add_track(**kwargs)
             right_track.id = f"right-track-{Path(data_url).stem}"
             parent_tracks_dict["right"].append(right_track)
+            #if autoscale == "group":
+            #    right_track.y.linkingId = f"y-right-{group}"  # type: ignore
+
 
     parent_view_left = gos.stack(*parent_tracks_dict["left"]).properties(
         id="left-view", linkingId="zoom-to-panel-a", spacing=0,
@@ -709,6 +720,8 @@ def parse_tracks_from_trackdb(trackdb_txt, trackdb_url) -> list:
             elif line.startswith("color"):
                 color = line.split(" ")[1]
                 current_track["color"] = f"rgb({color})"    # rendered by CSS engine, so this will work
+            elif line.startswith("autoscale") and "group" in line:
+                current_track["autoscale"] = "group"
             elif line.startswith("type"):
                 current_track["type"] = line.split(" ")[1]
     if current_track:
@@ -822,10 +835,9 @@ def zoom_view_to_domain(view, position_str, hic_found=False):
     return view
 
 class TrackSpec(ABC):
-    def __init__(self, data_url, color="steelblue", group=None, zoom=False, title="", position_str="NA"):
+    def __init__(self, data_url, color="steelblue", zoom=False, title="", position_str="NA"):
         self.data_url = data_url
         self.color = color  # Passed as RGB string
-        self.group = group
         self.zoom = zoom
         self.width = EXPANDED_WIDTH if zoom else CONDENSED_WIDTH
         self.height = EXPANDED_HEIGHT if zoom else CONDENSED_HEIGHT
