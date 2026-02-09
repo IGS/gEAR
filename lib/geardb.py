@@ -4099,9 +4099,9 @@ class LayoutDisplay:
             "mg_violin",
             "quadrant",
             "volcano",
-            "mg_tsne",
-            "mg_umap",
-            "mg_pca",
+            "mg_tsne_static",
+            "mg_umap_static",
+            "mg_pca_static",
         ]
 
         qry = """
