@@ -180,7 +180,7 @@ psygnal==0.14.1
 ptyprocess==0.7.0
 pure_eval==0.2.3
 py-cpuinfo==9.0.0
-pyarrow==18.0.1 # v19 breaks reading spatial parquet files
+pyarrow==18.1.0 # v19 breaks reading spatial parquet files
 pybigwig==0.3.24
 pybbi==0.4.1
 pycparser==2.22

@@ -83,7 +83,7 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
       Pillow==10.2.0 \
       pika==1.3.1 \
       plotly==5.20.0 \
-      pyarrow==18.0.1 \ # v19 breaks reading spatial parquet files
+      pyarrow==18.1.0 \ # v19 breaks reading spatial parquet files
       pybigwig==0.3.24 \
       python-dotenv==0.20.0 \
       requests==2.31.0 \
