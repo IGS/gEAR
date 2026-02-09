@@ -2431,7 +2431,7 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
         // Add tag indicating plot type
         const displayType = displayElement.querySelector('.js-modal-display-type');
 
-        const multiGeneDisplay = ["heatmap", "dotplot", "mg_violin", "volcano", "quadrant"];
+        const multiGeneDisplay = ["heatmap", "dotplot", "mg_violin", "volcano", "quadrant", "mg_tsne_static", "mg_umap_static", "mg_pca_static"];
 
         // Add color tags to displayType depending on plot type
         if (multiGeneDisplay.includes(display.plot_type)) {
