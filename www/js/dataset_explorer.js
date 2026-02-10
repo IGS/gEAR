@@ -686,7 +686,7 @@ class ResultItem {
 
         // Redirect to gene expression search
         parentElt.querySelector(".js-view-dataset").addEventListener("click", (e) => {
-            window.open(`./p?s=${this.shareId}`, '_blank');
+            window.open(`./p?s=${this.shareId}&gsem=1`, '_blank');
         });
 
         // Redirect to gene expression search
