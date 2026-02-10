@@ -266,6 +266,26 @@ const getDomainPreferences = async () => {
     return response.json();
 }
 
+/**
+ * Appends the cache version to an asset URL to bust browser cache.
+ * 
+ * @param {string} assetPath - The path to the CSS/JS file (e.g., 'css/common.v2.css')
+ * @returns {string} - The asset path with version query parameter
+ * 
+ * @example
+ * const cssUrl = versionedAsset('css/common.v2.css');
+ * // Returns: 'css/common.v2.css?v=2026.02.10.123456'
+ */
+const versionedAsset = (assetPath) => {
+    if (!SITE_PREFS || !SITE_PREFS.cache_version) {
+        console.warn('Cache version not loaded yet, returning unversioned asset path');
+        return assetPath;
+    }
+    const separator = assetPath.includes('?') ? '&' : '?';
+    return `${assetPath}${separator}v=${SITE_PREFS.cache_version}`;
+}
+
+
 
 /**
  * Retrieves the value of a specified URL parameter.
@@ -1603,6 +1623,7 @@ export {
     apiCallsMixin,
     createToast,
     getCurrentUser,
+    getDomainPreferences,
     getRootUrl,
     logErrorInConsole,
     registerPageSpecificLoginUIUpdates,
@@ -1618,4 +1639,5 @@ export {
     trigger,
     openModal,
     closeModal,
+    versionedAsset,
 };
