@@ -72,6 +72,19 @@ document.getElementById('submit-dataset-search').addEventListener('click', (even
     window.location.href = url.toString();
 });
 
+// Add a listener so if the user hits the enter key when manually entering genes
+//  it will trigger the search
+document.getElementById('genes-manually-entered').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        
+        // Trigger the change event on this element first so that the manually entered genes are updated in the state before the search is triggered
+        event.target.dispatchEvent(new Event('change'));
+
+        document.getElementById('submit-expression-search').click();
+    }
+});
+
 document.getElementById('submit-expression-search').addEventListener('click', (event) => {
     const status = validateExpressionSearchForm();
 
