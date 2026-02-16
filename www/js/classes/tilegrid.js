@@ -1,7 +1,7 @@
 'use strict';
 
 // This doesn't work unless we refactor everything to use ES modules
-import { apiCallsMixin, closeModal, getCurrentUser, logErrorInConsole, openModal } from "../common.v2.js";
+import { apiCallsMixin, closeModal, createToast, getCurrentUser, logErrorInConsole, openModal } from "../common.v2.js";
 import { adjustClusterColorbars, adjustExpressionColorbar, postPlotlyConfig } from "../helpers/plot-display-config.js";
 import { colorSVG } from "../helpers/dataset-svg-fxns.js";
 
@@ -1464,6 +1464,18 @@ class DatasetTile {
         try {
             if (plotlyPlots.includes(display.plot_type)) {
                 await this.renderPlotlyDisplay(display, otherOpts);
+
+                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
+                if (downloadPNG) {
+
+                    const newDownloadPNG = downloadPNG.cloneNode(true);
+                    downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
+
+                    newDownloadPNG.classList.remove("is-hidden");
+                    newDownloadPNG.addEventListener("click", async (event) => {
+                        await this.downloadPlotlyPNG(display);});
+                }
+
             } else if (scanpyPlots.includes(display.plot_type)) {
                 await this.renderScanpyDisplay(display, false, otherOpts);
 
@@ -1483,7 +1495,6 @@ class DatasetTile {
                         // get the download URL
                         await this.getScanpyPNG(display, false);
                     });
-
                 }
 
             } else if (display.plot_type === "svg") {
@@ -1497,31 +1508,7 @@ class DatasetTile {
 
                     newDownloadSVG.classList.remove("is-hidden");
                     newDownloadSVG.addEventListener("click", async (event) => {
-                        // get the svg element and serialize it for download
-                        const svgDiv = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
-                        const serializer = new XMLSerializer();
-                        let svgSource = serializer.serializeToString(svgDiv);
-                        if (!svgSource.match(/^<svg[^>]+xmlns="http:\/\/www.w3.org\/2000\/svg"/)) {
-                        svgSource = svgSource.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"');
-                        }
-                        const blob = new Blob([svgSource], { type: "image/svg+xml;charset=utf-8" });
-                        // create a hidden element that will be clicked to download the PNG
-                        const hiddenLink = document.createElement("a");
-                        const download = URL.createObjectURL(blob);
-                        // download URL
-                        const shareId = this.dataset.share_id;
-                        const geneSymbol = display.plotly_config.gene_symbol;
-                        hiddenLink.download = `${shareId}_${geneSymbol}_${this.svgScoringMethod}_scoring.svg`;
-                        hiddenLink.href = download;
-
-                        hiddenLink.setAttribute('target', '_blank');
-
-                        // click the hidden link to download the PNG
-                        hiddenLink.click();
-
-                        // save memory (but breaks download)
-                        URL.revokeObjectURL(download);
-                        hiddenLink.remove();
+                        await this.downloadSVG(display);
                     });
                 }
 
@@ -1561,6 +1548,17 @@ class DatasetTile {
 
                 } else {
                     await this.renderMultiGeneDisplay(display, otherOpts);
+                    const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
+                    if (downloadPNG) {
+
+                        const newDownloadPNG = downloadPNG.cloneNode(true);
+                        downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
+
+                        newDownloadPNG.classList.remove("is-hidden");
+                        newDownloadPNG.addEventListener("click", async (event) => {
+                            await this.downloadPlotlyPNG(display, true);
+                        });
+                    }
                 }
             } else {
                 throw new Error(`Display config for dataset ${this.dataset.id} has an invalid plot type ${display.plot_type}.`);
@@ -1699,7 +1697,7 @@ class DatasetTile {
                 panelBGeneResults = panelBData[gene.toLowerCase()];
             } catch (error) {
                 console.error("Error searching for gene:", error);
-                createToast("An error occurred while searching for gene: " + gene);
+                createToast(`An error occurred while searching for gene: ${gene}`);
             }
 
             const geneData = panelBGeneResults?.by_organism[orgId];
@@ -1804,6 +1802,7 @@ class DatasetTile {
         const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout");
         Plotly.relayout(plotlyPreview.id , customLayout);
 
+        this.plotlyDiv = plotlyPreview.id;
     }
 
     /**
@@ -1850,6 +1849,19 @@ class DatasetTile {
         Plotly.newPlot(plotlyPreview.id, plotJson.data, plotJson.layout, customConfig);
         const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout");
         Plotly.relayout(plotlyPreview.id, customLayout);
+
+        this.plotlyDiv = plotlyPreview.id;
+    }
+
+    async downloadPlotlyPNG(display, isMultigene=false) {
+        if (!this.plotlyDiv) {
+            createToast("Plot is not available for download.");
+            return;
+        }
+
+        const geneSymbol = isMultigene ? "multigene" : display.plotly_config.gene_symbol;
+        const shareId = this.dataset.share_id;
+        Plotly.downloadImage(this.plotlyDiv, { format: 'png', width: 1920, height: 1080, filename: `${shareId}_${geneSymbol}_${display.plot_type}` });
     }
 
     /**
@@ -1996,6 +2008,36 @@ class DatasetTile {
         }
 
         this.updateSVGDisplay(svgScoringMethod);
+    }
+
+    async downloadSVG(display) {
+        const shareId = this.dataset.share_id;
+        const geneSymbol = display.plotly_config.gene_symbol;
+
+        // get the svg element and serialize it for download
+        const svgDiv = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
+        const serializer = new XMLSerializer();
+        let svgSource = serializer.serializeToString(svgDiv);
+        if (!svgSource.match(/^<svg[^>]+xmlns="http:\/\/www.w3.org\/2000\/svg"/)) {
+        svgSource = svgSource.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"');
+        }
+        const blob = new Blob([svgSource], { type: "image/svg+xml;charset=utf-8" });
+        // create a hidden element that will be clicked to download the PNG
+        const hiddenLink = document.createElement("a");
+        const download = URL.createObjectURL(blob);
+        // download URL
+
+        hiddenLink.download = `${shareId}_${geneSymbol}_${this.svgScoringMethod}_scoring.svg`;
+        hiddenLink.href = download;
+
+        hiddenLink.setAttribute('target', '_blank');
+
+        // click the hidden link to download the PNG
+        hiddenLink.click();
+
+        // save memory (but breaks download)
+        URL.revokeObjectURL(download);
+        hiddenLink.remove();
     }
 
     /**
