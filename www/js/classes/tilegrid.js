@@ -975,7 +975,7 @@ class DatasetTile {
                         item.classList.add("is-hidden");
                     }
                     break;
-                case "download-png":
+                case "download-image":
                     // Handled when plot type is known
                     item.classList.add("is-hidden");
                     break;
@@ -1460,6 +1460,7 @@ class DatasetTile {
             }
         }
 
+        // Render based on plot type + add event listeners after rendering
         try {
             if (plotlyPlots.includes(display.plot_type)) {
                 await this.renderPlotlyDisplay(display, otherOpts);
@@ -1467,7 +1468,7 @@ class DatasetTile {
                 await this.renderScanpyDisplay(display, false, otherOpts);
 
                 // Determine how "download_png" is handled for scanpy plots
-                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-png"]`);
+                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
                 if (downloadPNG) {
 
                     // If I use the existing "download Image" button after switching displays, all previous tsne-static displays will
@@ -1487,6 +1488,43 @@ class DatasetTile {
 
             } else if (display.plot_type === "svg") {
                 await this.renderSVG(display, this.svgScoringMethod, otherOpts);
+
+                const downloadSVG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
+                if (downloadSVG) {
+
+                    const newDownloadSVG = downloadSVG.cloneNode(true);
+                    downloadSVG.parentNode.replaceChild(newDownloadSVG, downloadSVG);
+
+                    newDownloadSVG.classList.remove("is-hidden");
+                    newDownloadSVG.addEventListener("click", async (event) => {
+                        // get the svg element and serialize it for download
+                        const svgDiv = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
+                        const serializer = new XMLSerializer();
+                        let svgSource = serializer.serializeToString(svgDiv);
+                        if (!svgSource.match(/^<svg[^>]+xmlns="http:\/\/www.w3.org\/2000\/svg"/)) {
+                        svgSource = svgSource.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"');
+                        }
+                        const blob = new Blob([svgSource], { type: "image/svg+xml;charset=utf-8" });
+                        // create a hidden element that will be clicked to download the PNG
+                        const hiddenLink = document.createElement("a");
+                        const download = URL.createObjectURL(blob);
+                        // download URL
+                        const shareId = this.dataset.share_id;
+                        const geneSymbol = display.plotly_config.gene_symbol;
+                        hiddenLink.download = `${shareId}_${geneSymbol}_${this.svgScoringMethod}_scoring.svg`;
+                        hiddenLink.href = download;
+
+                        hiddenLink.setAttribute('target', '_blank');
+
+                        // click the hidden link to download the PNG
+                        hiddenLink.click();
+
+                        // save memory (but breaks download)
+                        URL.revokeObjectURL(download);
+                        hiddenLink.remove();
+                    });
+                }
+
             } else if (display.plot_type === "spatial_panel") {
                 await this.renderSpatialPanelDisplay(display, otherOpts);
             } else if (display.plot_type === "gosling") {
@@ -1507,7 +1545,7 @@ class DatasetTile {
                     await this.renderScanpyDisplay(display, true, otherOpts);
 
                     // Determine how "download_png" is handled for scanpy plots
-                    const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-png"]`);
+                    const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
                     if (downloadPNG) {
                         // See note for single-gene TSNE static display
                         const newDownloadPNG = downloadPNG.cloneNode(true);
@@ -1956,8 +1994,6 @@ class DatasetTile {
             plot_config: plotConfig,
             gene_symbol: geneSymbol,
         }
-
-        console.log(svgScoringMethod);
 
         this.updateSVGDisplay(svgScoringMethod);
     }
