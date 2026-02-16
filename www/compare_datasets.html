@@ -385,9 +385,10 @@
                 <table class="table is-fullwidth is-hidden" id="tbl-selected-genes">
                   <thead>
                     <tr>
-                      <th class="is-clickable js-tbl-gene-header" id="tbl-gene-names" onclick="sortGeneTable(0);">Gene <span class="icon"><i class="mdi mdi-sort-alphabetical-ascending" aria-hidden="true"></i></span></th>
-                      <th class="is-clickable js-tbl-gene-header" id="tbl-gene-pvalues" onclick="sortGeneTable(1);">P-value <span class="icon"><i class="mdi mdi-sort-numeric-ascending" aria-hidden="true"></i></span></th>
-                      <th class="is-clickable js-tbl-gene-header" id="tbl-gene-foldchanges" onclick="sortGeneTable(2);">Fold Change</th>
+                      <th class="is-clickable js-tbl-gene-header" id="tbl-gene-names">Gene <span class="icon"><i class="mdi mdi-sort-alphabetical-ascending" aria-hidden="true"></i></span></th>
+                      <th class="is-clickable js-tbl-gene-header" id="tbl-gene-ensembl-ids">Ensembl ID <span class="icon"><i class="mdi mdi-sort-alphabetical-ascending" aria-hidden="true"></i></span></th>
+                      <th class="is-clickable js-tbl-gene-header" id="tbl-gene-pvalues">P-value <span class="icon"><i class="mdi mdi-sort-numeric-ascending" aria-hidden="true"></i></span></th>
+                      <th class="is-clickable js-tbl-gene-header" id="tbl-gene-foldchanges">Fold Change </th><!-- sort icon added in adjustGeneTableLabels function -->
                     </tr>
                   </thead>
                   <tbody id="gene-table-body">
