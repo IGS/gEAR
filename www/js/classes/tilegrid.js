@@ -1473,7 +1473,8 @@ class DatasetTile {
 
                     newDownloadPNG.classList.remove("is-hidden");
                     newDownloadPNG.addEventListener("click", async (event) => {
-                        await this.downloadPlotlyPNG(display);});
+                        await this.downloadPlotlyPNG(display);
+                    });
                 }
 
             } else if (scanpyPlots.includes(display.plot_type)) {
@@ -1853,6 +1854,13 @@ class DatasetTile {
         this.plotlyDiv = plotlyPreview.id;
     }
 
+    /**
+     * Downloads the current Plotly plot as a PNG image.
+     *
+     * @param {Object} display - The display configuration object containing plot details.
+     * @param {boolean} [isMultigene=false] - Indicates whether the plot is for multiple genes.
+     * @returns {Promise<void>} Resolves when the download is initiated, or shows a toast if the plot is unavailable.
+     */
     async downloadPlotlyPNG(display, isMultigene=false) {
         if (!this.plotlyDiv) {
             createToast("Plot is not available for download.");
@@ -2010,6 +2018,12 @@ class DatasetTile {
         this.updateSVGDisplay(svgScoringMethod);
     }
 
+    /**
+     * Downloads the current SVG plot as an SVG file.
+     *
+     * @param {Object} display - The display configuration object containing plot details.
+     * @returns {Promise<void>} Resolves when the download is initiated, or shows a toast if the SVG is unavailable.
+     */
     async downloadSVG(display) {
         const shareId = this.dataset.share_id;
         const geneSymbol = display.plotly_config.gene_symbol;

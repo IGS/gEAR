@@ -180,10 +180,20 @@ const activateDatasetFromParam = async (urlParams, paramName, fetchInfoFn) => {
     }
 }
 
+
 /**
- * Updates the label of the gene fold change column in the gene table based on the selected log transformation.
+ * Adjusts the labels in the gene fold change table based on the selected log base.
+ * Clears the existing content of the table header and updates it with a new label
+ * and an icon indicating numeric sorting. If the log base is "raw", the label is
+ * set to "Fold Change". Otherwise, it includes the log base in the label.
  *
- * @returns {Promise<void>}
+ * Dependencies:
+ * - Assumes the presence of an element with ID "tbl-gene-foldchanges" for the table header.
+ * - Assumes the presence of an element with ID "log-base" whose value determines the log base.
+ *
+ * Example:
+ * If the log base is "2", the label will be "Log2 Fold Change".
+ * If the log base is "raw", the label will be "Fold Change".
  */
 const adjustGeneTableLabels = () => {
     const geneFoldchanges = document.getElementById("tbl-gene-foldchanges");
@@ -822,6 +832,27 @@ const plotDataToGraph = (data) => {
 }
 
 
+/**
+ * Populates the gene table with data points and sorts them based on fold change or p-value.
+ *
+ * @param {Object} data - The data object containing points to populate the table.
+ * @param {Array} data.points - An array of data points, where each point contains information about genes.
+ * @param {Object} data.points[].data - The data associated with each point.
+ * @param {Array} data.points[].data.id - An array of gene symbols corresponding to the point numbers.
+ * @param {Array} data.points[].data.ensembl_id - An array of Ensembl IDs corresponding to the point numbers.
+ * @param {Array} data.points[].data.pvals - An array of p-values corresponding to the point numbers.
+ * @param {Array} data.points[].data.foldchange - An array of fold change values corresponding to the point numbers.
+ * @param {Array} data.points[].data.x - An array of x-coordinates corresponding to the point numbers.
+ * @param {Array} data.points[].data.y - An array of y-coordinates corresponding to the point numbers.
+ *
+ * @description
+ * This function processes the provided data points, extracts relevant gene information,
+ * and populates an HTML table with the processed data. The table is sorted by fold change
+ * in descending order, and optionally by p-value if a statistical test is selected.
+ *
+ * The function also dynamically hides or shows the p-value column based on the presence
+ * of a statistical test.
+ */
 const populateGeneTable = (data) => {
 	const statisticalTest = document.getElementById("statistical-test").value;
 
@@ -896,17 +927,6 @@ const populatePostCompareBox = (scope, series, groups) => {
 	}
 }
 
-const sanitizeCondition = (condition) => {
-	const sanitized_condition = {}
-	for (const property in condition) {
-		// If no groups for an observation are selected, delete filter
-		if (condition[property].length) {
-		sanitized_condition[property] = condition[property];
-		}
-	}
-	return sanitized_condition;
-}
-
 const saveGeneCart = () => {
     // must have access to USER_SESSION_ID
     const gc = new GeneCart({
@@ -929,8 +949,6 @@ const saveGeneCart = () => {
 }
 
 const saveWeightedGeneCart = () => {
-
-
 	// Saving raw FC by default so it is easy to transform weight as needed
 	const weightLabels = ["FC"];
 
