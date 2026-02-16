@@ -1524,6 +1524,21 @@ class DatasetTile {
                 }
 
                 await this.renderGoslingDisplay(display, otherOpts);
+
+                // Determine how "download_png" is handled for gosling plots
+                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
+                if (downloadPNG) {
+
+                    const newDownloadPNG = downloadPNG.cloneNode(true);
+                    downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
+
+                    newDownloadPNG.classList.remove("is-hidden");
+                    newDownloadPNG.addEventListener("click", async (event) => {
+                        // get the download URL
+                        await this.downloadGoslingPNG(display);
+                    });
+                }
+
             } else if (this.type === "multi") {
                 if (this.dataset.dtype === "spatial") {
                     // Matplotlib-based display for spatial datasets
@@ -1647,6 +1662,7 @@ class DatasetTile {
         let goslingApi = null;
         try {
             goslingApi = await embedFn(document.getElementById(goslingContainer.id), spec, embedOpts);
+            this.goslingApi = goslingApi; // Store the gosling API for future use (i.e. zooming to gene from search)
         } catch (error) {
             logErrorInConsole(error);
             createCardMessage(this.tile.tileId, "danger", "An error occurred while rendering the Gosling display.");
@@ -1735,6 +1751,33 @@ class DatasetTile {
             // TODO:  if Hi-C data is found, add an annotation to the gene position
 
         });
+    }
+
+    /**
+     * Downloads the current Gosling plot as a PNG file.
+     *
+     * This method checks if the Gosling API is available and then exports the plot
+     * as a PNG image. The downloaded file is named using the dataset's share ID
+     * and the gene symbol from the display configuration. If the Gosling API is
+     * not available or an error occurs during the export, a toast notification
+     * is displayed to inform the user.
+     *
+     * @param {Object} display - The display object containing the plot configuration.
+     * @param {Object} display.plotly_config - The Plotly configuration object.
+     * @param {string} display.plotly_config.gene_symbol - The gene symbol used in the plot.
+     *
+     * @throws Will log an error to the console and display a toast notification if the export fails.
+     */
+    async downloadGoslingPNG(display) {
+        if (!this.goslingApi) {
+            createToast("Gosling plot is not available for download.");
+            return;
+        }
+
+        const shareId = this.dataset.share_id;
+        const geneSymbol = display.plotly_config.gene_symbol;
+
+        this.goslingApi.exportPng();    // exports as "gosling_visualization.png"
     }
 
     /**
