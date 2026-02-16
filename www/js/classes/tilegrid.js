@@ -1446,7 +1446,7 @@ class DatasetTile {
         }
 
         // if projection ran, add the projection info to the plotly config
-        if (this.projectR.modeEnabled && this.projectR.projectionId) {
+        if (this.projectR.modeEnabled && this.projectR.projectionId && this.dataset.is_downloadable) {
             display.plotly_config.projection_id = this.projectR.projectionId;
 
             const downloadProjection = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-projection"]`);
