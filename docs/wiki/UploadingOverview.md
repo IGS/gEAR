@@ -11,6 +11,15 @@ To assist users with uploading their data, we maintain documentation for
 uploading data from several different starting formats including programmatically generated files or through Excel. To find the documentation
 best suited for your upload needs, please see the links below. If you have any questions, or would like assistance with uploading please contact the curator team [(Contact us)](https://umgear.org/contact.html).
 
+# Data Requirements
+All data uploaded to the gEAR platform must be de-identified and contain no personally identifiable information (PII), protected health information (PHI), or other data subject to regulatory obligations. 
+
+By uploading data to gEAR, you represent that:
+
+- The data being uploaded was collected, processed, stored, and shared in accordance with all applicable laws and regulations
+- There is no PII or PHI present in the data upload
+- You have obtained all necessary consents, permissions, and authorizations needed for use of the data
+
 ## Bulk RNAseq data
 
 Bulk RNAseq data can be uploaded to gEAR through three paths (from Recount3 data, through Excel or via tab-deliminated files). In addition to the data files, every submission requires a standard metatdata template to be filled out with basic information about your dataset. A blank template form can be found on the upload page or linked [here](https://umgear.org/user_templates/metadata_template.xlsx).
