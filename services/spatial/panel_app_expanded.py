@@ -790,6 +790,8 @@ class SpatialPanel(pn.viewable.Viewer):
             selection_callback, self.normal_pane.param.selected_data, watch=True
         )
 
+        # These "save" callbacks do not actually save the display but change the button state to "is-loading"
+        # and set self.settings.save to True, which can be observed by the parent app to trigger a save in the backend
         def save_settings_callback(event):
             self.settings.save = True
             self.settings.display_name = self.display_name.value

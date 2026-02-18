@@ -1404,6 +1404,19 @@ class DatasetTile {
                 }
 
                 await this.renderSpatialPanelDisplay(display, otherOpts);
+
+                // Determine how "download_png" is handled for scanpy plots
+                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
+                if (downloadPNG) {
+                    const newDownloadPNG = downloadPNG.cloneNode(true);
+                    downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
+
+                    newDownloadPNG.classList.remove("is-hidden");
+                    newDownloadPNG.addEventListener("click", async (event) => {
+                        // get the download URL
+                        await this.downloadSpatialPNG(display);
+                    });
+                }
                 return;
             }
 
@@ -1494,7 +1507,7 @@ class DatasetTile {
                     newDownloadPNG.classList.remove("is-hidden");
                     newDownloadPNG.addEventListener("click", async (event) => {
                         // get the download URL
-                        await this.getScanpyPNG(display, false);
+                        await this.downloadScanpyPNG(display, false);
                     });
                 }
 
@@ -1515,6 +1528,18 @@ class DatasetTile {
 
             } else if (display.plot_type === "spatial_panel") {
                 await this.renderSpatialPanelDisplay(display, otherOpts);
+                // Determine how "download_png" is handled for scanpy plots
+                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
+                if (downloadPNG) {
+                    const newDownloadPNG = downloadPNG.cloneNode(true);
+                    downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
+
+                    newDownloadPNG.classList.remove("is-hidden");
+                    newDownloadPNG.addEventListener("click", async (event) => {
+                        // get the download URL
+                        await this.downloadSpatialPNG(display);
+                    });
+                }
             } else if (display.plot_type === "gosling") {
 
                 // Unset the autoGridRows of the parent selector
@@ -1557,7 +1582,7 @@ class DatasetTile {
                         newDownloadPNG.classList.remove("is-hidden");
                         newDownloadPNG.addEventListener("click", async (event) => {
                             // get the download URL
-                            await this.getScanpyPNG(display, true);
+                            await this.downloadScanpyPNG(display, true);
                         });
 
                     }
@@ -1977,7 +2002,7 @@ class DatasetTile {
      * @returns {Promise<void>} - A promise that resolves when the PNG image is downloaded.
      * @throws {Error} - If the image retrieval is unsuccessful or encounters an unknown error.
      */
-    async getScanpyPNG(display, isMultigene=false) {
+    async downloadScanpyPNG(display, isMultigene=false) {
         const datasetId = display.dataset_id;
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
         const analysisObj = display.analysis_id ? {id: display.analysis_id} : display.analysis || null;
@@ -2264,6 +2289,8 @@ class DatasetTile {
             urlParams.append("nosave", true);
         }
 
+        this.spatialUrlParams = urlParams;   // store the URL params for future use (i.e. when gene is switched)
+
         const endpoint = this.isZoomed ? "panel_app_expanded" : "panel_app"
         const url = `/panel/ws/${endpoint}?${urlParams.toString()}`;
 
@@ -2290,6 +2317,8 @@ class DatasetTile {
             // allow-downloads - allow downloads from the iframe (i.e. saving displays)
             iframe.sandbox="allow-scripts allow-same-origin allow-downloads";
             cardImage.append(iframe);
+
+            this.spatialIframe = iframe;   // store reference to the iframe for future use (i.e. when gene is switched)
 
             const iframeSearch = iframe.contentWindow.location.search;
             let urlParams = new URLSearchParams(iframeSearch);  // initially empty
@@ -2318,6 +2347,7 @@ class DatasetTile {
                 this.spatial.selection_y2 = parseFloat(urlParams.get("selection_y2")) || null;
 
                 // Only applies for endpoint "panel_app_expanded"
+                // The "save" parameter is added to the URL when the user clicks the "Save Display" button in the spatial panel app, which should trigger saving the display with the current spatial parameters
                 if (urlParams.get("save")) {
                     urlParams.delete("save");
 
@@ -2350,6 +2380,57 @@ class DatasetTile {
         } finally {
             return;
         }
+    }
+
+    async downloadSpatialPNG(display) {
+        //TODO:
+        createToast("Not yet implemented: contact gEAR team if interested in this feature.", "is-info");
+        return;
+        if (!this.spatialUrlParams) {
+            createToast("Cannot download PNG because spatial display parameters are not available.", "is-warning");
+            return;
+        }
+
+        const urlParams = this.spatialUrlParams;
+        // Only downloading, not saving
+        urlParams.append("nosave", true);
+
+        const endpoint = "panel_app_expanded"
+        const url = `/panel/ws/${endpoint}/download?${urlParams.toString()}`;
+        // Call download endpoint which will download a PNG
+        try {
+            const response = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Session-ID": apiCallsMixin.sessionId || "",
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Error downloading PNG: ${response.statusText}`);
+            }
+
+            // The response will be a blob representing the PNG file
+            const blob = await response.blob();
+            const downloadUrl = URL.createObjectURL(blob);
+
+            // Create a hidden link to trigger the download
+            const hiddenLink = document.createElement("a");
+            hiddenLink.href = downloadUrl;
+            hiddenLink.download = `${this.dataset.share_id}_${display.plotly_config.gene_symbol}_spatial.png`;
+            document.body.appendChild(hiddenLink);
+            hiddenLink.click();
+
+            // Clean up
+            URL.revokeObjectURL(downloadUrl);
+            hiddenLink.remove();
+
+        } catch (error) {
+            console.error(error);
+            createToast(`Error downloading PNG: ${error.message}`, "is-danger");
+        }
+
     }
 
     async saveSpatialParameters(displayName, makeDefault, geneSymbol) {
