@@ -1,6 +1,6 @@
 'use strict';
 
-import { apiCallsMixin, createToast, disableAndHideElement, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
+import { apiCallsMixin, createToast, getCurrentUser, initCommonUI, logErrorInConsole, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
 import { FacetWidget } from "./classes/facets.js";
 import { Gene, WeightedGene } from "./classes/gene.js";
 import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js";
@@ -180,6 +180,21 @@ const activateDatasetFromParam = async (urlParams, paramName, fetchInfoFn) => {
     }
 }
 
+
+/**
+ * Adjusts the labels in the gene fold change table based on the selected log base.
+ * Clears the existing content of the table header and updates it with a new label
+ * and an icon indicating numeric sorting. If the log base is "raw", the label is
+ * set to "Fold Change". Otherwise, it includes the log base in the label.
+ *
+ * Dependencies:
+ * - Assumes the presence of an element with ID "tbl-gene-foldchanges" for the table header.
+ * - Assumes the presence of an element with ID "log-base" whose value determines the log base.
+ *
+ * Example:
+ * If the log base is "2", the label will be "Log2 Fold Change".
+ * If the log base is "raw", the label will be "Fold Change".
+ */
 const adjustGeneTableLabels = () => {
     const geneFoldchanges = document.getElementById("tbl-gene-foldchanges");
 	geneFoldchanges.replaceChildren();
@@ -388,10 +403,10 @@ const downloadSelectedGenes = (event) => {
 
 	let fileContents =
 		logBase === "raw"
-		? "gene_symbol\tp-value\traw fold change\t"
+		? "gene_symbol\tEnsembl ID\tp-value\traw fold change\t"
 		+ xLabel + "\t"
 		+ yLabel + "\n"
-		: "gene_symbol\tp-value\traw fold change\t"
+		: "gene_symbol\tEnsembl ID\tp-value\traw fold change\t"
 		+ xLabel + " (log" + logBase +")\t"
 		+ yLabel + " (log" + logBase +")\n";
 
@@ -400,6 +415,7 @@ const downloadSelectedGenes = (event) => {
 		// Some warnings on using toFixed() here: https://stackoverflow.com/a/12698296/1368079
 		fileContents +=
 			`${gene.gene_symbol}\t`
+			+ `${gene.ensembl_id}\t`
 			+ `${gene.pval}\t`
 			+ `${gene.foldchange}\t`
 			+ `${gene.x}\t`
@@ -411,7 +427,7 @@ const downloadSelectedGenes = (event) => {
 		"href",
 		`data:text/tab-separated-values;charset=utf-8,${encodeURIComponent(fileContents)}`
 	);
-	element.setAttribute("download", "geneCollectionState.selectedGenes.tsv");
+	element.setAttribute("download", "selectedGenes.tsv");
 	element.style.display = "none";
 	document.body.appendChild(element);
 	element.click();
@@ -598,13 +614,10 @@ const plotDataToGraph = (data) => {
 	if (performRanking) {
 		const pValCutoff = document.getElementById("pval-cutoff").value;
 		const pvalCutoff = parseFloat(pValCutoff);
-		const passing = { x: [], y: [], labels: [], id: [], pvals: [], foldchange: []};
-		const failing = { x: [], y: [], labels: [], id: [], pvals: [], foldchange: []};
+		const passing = { x: [], y: [], labels: [], id: [], ensembl_id: [], pvals: [], foldchange: []};
+		const failing = { x: [], y: [], labels: [], id: [], ensembl_id: [], pvals: [], foldchange: []};
 
 		data.x.forEach((trace, i) => {
-			// pvals_adj array consist of 1-element arrays, so let's flatten to prevent potential issues
-			// Caused by rank_genes_groups output (1 inner array per query comparison group)
-			data.pvals_adj = data.pvals_adj.flat();
 
 			const thisPval = parseFloat(data.pvals_adj[i]);
 
@@ -620,6 +633,7 @@ const plotDataToGraph = (data) => {
 				thisPval.toPrecision(6)
 			);
 			arrayToPushInto.id.push(data.symbols[i]);
+			arrayToPushInto.ensembl_id.push(data.gene_ids[i]);
 			arrayToPushInto.pvals.push(data.pvals_adj[i]);
 
 		});
@@ -631,6 +645,7 @@ const plotDataToGraph = (data) => {
 		if (statAction === "colorize") {
 			const passingObj = {
 					id: passing.id,
+					ensembl_id: passing.ensembl_id,
 					pvals: passing.pvals,
 					x: passing.x,
 					y: passing.y,
@@ -649,6 +664,7 @@ const plotDataToGraph = (data) => {
 
 			const failingObj = {
 					id: failing.id,
+					ensembl_id: failing.ensembl_id,
 					pvals: failing.pvals,
 					x: failing.x,
 					y: failing.y,
@@ -671,6 +687,7 @@ const plotDataToGraph = (data) => {
 
 			const passingObj = {
 				id: passing.id,
+				ensembl_id: passing.ensembl_id,
 				pvals: passing.pvals,
 				x: passing.x,
 				y: passing.y,
@@ -696,6 +713,7 @@ const plotDataToGraph = (data) => {
 
 		const dataObj = {
 			id: data.symbols,
+			ensembl_id: data.gene_ids,
 			pvals: data.pvals_adj,
 			x: data.x,
 			y: data.y,
@@ -814,6 +832,27 @@ const plotDataToGraph = (data) => {
 }
 
 
+/**
+ * Populates the gene table with data points and sorts them based on fold change or p-value.
+ *
+ * @param {Object} data - The data object containing points to populate the table.
+ * @param {Array} data.points - An array of data points, where each point contains information about genes.
+ * @param {Object} data.points[].data - The data associated with each point.
+ * @param {Array} data.points[].data.id - An array of gene symbols corresponding to the point numbers.
+ * @param {Array} data.points[].data.ensembl_id - An array of Ensembl IDs corresponding to the point numbers.
+ * @param {Array} data.points[].data.pvals - An array of p-values corresponding to the point numbers.
+ * @param {Array} data.points[].data.foldchange - An array of fold change values corresponding to the point numbers.
+ * @param {Array} data.points[].data.x - An array of x-coordinates corresponding to the point numbers.
+ * @param {Array} data.points[].data.y - An array of y-coordinates corresponding to the point numbers.
+ *
+ * @description
+ * This function processes the provided data points, extracts relevant gene information,
+ * and populates an HTML table with the processed data. The table is sorted by fold change
+ * in descending order, and optionally by p-value if a statistical test is selected.
+ *
+ * The function also dynamically hides or shows the p-value column based on the presence
+ * of a statistical test.
+ */
 const populateGeneTable = (data) => {
 	const statisticalTest = document.getElementById("statistical-test").value;
 
@@ -824,6 +863,7 @@ const populateGeneTable = (data) => {
 		// Each trace has its own "pointNumber" ids so gene symbols and pvalues needed to be passed in for each plotdata trace
 		selectedGeneData.push({
 			gene_symbol: pt.data.id[pt.pointNumber],
+			ensembl_id: pt.data.ensembl_id[pt.pointNumber], // Assuming Ensembl ID is stored in the same "id" property as gene symbol for simplicity; adjust if needed
 			pval: statisticalTest ? pt.data.pvals[pt.pointNumber].toExponential(2) : "NA",
 			foldchange: pt.data.foldchange[pt.pointNumber].toFixed(1),
 			x: pt.data.x[pt.pointNumber].toFixed(1),
@@ -842,19 +882,20 @@ const populateGeneTable = (data) => {
 
     for (const gene of selectedGeneData) {
         const row = document.createElement("tr");
-        row.innerHTML = `<td>${gene.gene_symbol}</td><td>${gene.pval}</td><td>${gene.foldchange}</td>`;
+        row.innerHTML = `<td>${gene.gene_symbol}</td><td>${gene.ensembl_id}</td><td>${gene.pval}</td><td>${gene.foldchange}</td>`;
         geneTableBody.appendChild(row);
     }
 
 	// If not statistical test, hide p-value column (deleting can cause issues with subsequent calls to this function)
+	const pvalColumnNum = 3
 	const pvalColumn = document.getElementById("tbl-gene-pvalues");
 	pvalColumn.classList.remove("is-hidden");
-	for (const pvalCell of document.querySelectorAll("#tbl-selected-genes tbody tr td:nth-child(2)")) {
+	for (const pvalCell of document.querySelectorAll(`#tbl-selected-genes tbody tr td:nth-child(${pvalColumnNum})`)) {
 		pvalCell.classList.remove("is-hidden");
 	}
 	if (!statisticalTest) {
 		pvalColumn.classList.add("is-hidden");
-		for (const pvalCell of document.querySelectorAll("#tbl-selected-genes tbody tr td:nth-child(2)")) {
+		for (const pvalCell of document.querySelectorAll(`#tbl-selected-genes tbody tr td:nth-child(${pvalColumnNum})`)) {
 			pvalCell.classList.add("is-hidden");
 		}
 	}
@@ -886,17 +927,6 @@ const populatePostCompareBox = (scope, series, groups) => {
 	}
 }
 
-const sanitizeCondition = (condition) => {
-	const sanitized_condition = {}
-	for (const property in condition) {
-		// If no groups for an observation are selected, delete filter
-		if (condition[property].length) {
-		sanitized_condition[property] = condition[property];
-		}
-	}
-	return sanitized_condition;
-}
-
 const saveGeneCart = () => {
     // must have access to USER_SESSION_ID
     const gc = new GeneCart({
@@ -919,8 +949,6 @@ const saveGeneCart = () => {
 }
 
 const saveWeightedGeneCart = () => {
-
-
 	// Saving raw FC by default so it is easy to transform weight as needed
 	const weightLabels = ["FC"];
 
@@ -959,6 +987,8 @@ const sortGeneTable = (mode) => {
 	let switchcount = 0;
 	table = document.getElementById("tbl-selected-genes");
 
+	const alphabetSort = mode < 2;
+
 	switching = true;
 	// Set the sorting direction to ascending:
 	dir = "asc";
@@ -981,7 +1011,7 @@ const sortGeneTable = (mode) => {
                 based on the direction, asc or desc: */
             if (dir == "asc") {
                 // First column is gene_symbol... rest are numbers
-                if (mode === 0 && x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                if (alphabetSort && x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
                     // If so, mark as a switch and break the loop:
                     shouldSwitch = true;
                     break;
@@ -991,7 +1021,7 @@ const sortGeneTable = (mode) => {
                     break;
                 }
             } else if (dir == "desc") {
-                if (mode === 0 && x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+                if (alphabetSort && x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
                     // If so, mark as a switch and break the loop:
                     shouldSwitch = true;
                     break;
@@ -1024,7 +1054,7 @@ const sortGeneTable = (mode) => {
     const otherTblHeaders = document.querySelectorAll(`.js-tbl-gene-header:not(:nth-child(${mode + 1}))`);
     for (const tblHeader of otherTblHeaders) {
         const currIcon = tblHeader.querySelector("i");
-        if (mode == 0) {
+        if (currIcon.classList.contains("mdi-sort-alphabetical-descending")) {
             currIcon.classList.remove("mdi-sort-alphabetical-descending");
             currIcon.classList.add("mdi-sort-alphabetical-ascending");
         } else {
@@ -1038,7 +1068,7 @@ const sortGeneTable = (mode) => {
     const selectedTblHeader = document.querySelector(`.js-tbl-gene-header:nth-child(${mode + 1})`);
     const currIcon = selectedTblHeader.querySelector("i");
     if (dir == "asc") {
-        if (mode == 0) {
+        if (alphabetSort) {
             currIcon.classList.remove("mdi-sort-alphabetical-descending");
             currIcon.classList.add("mdi-sort-alphabetical-ascending");
         } else {
@@ -1046,7 +1076,7 @@ const sortGeneTable = (mode) => {
             currIcon.classList.add("mdi-sort-numeric-ascending");
         }
     } else {
-        if (mode == 0) {
+        if (alphabetSort) {
             currIcon.classList.remove("mdi-sort-alphabetical-ascending");
             currIcon.classList.add("mdi-sort-alphabetical-descending");
         } else {
@@ -1055,6 +1085,12 @@ const sortGeneTable = (mode) => {
         }
     }
 }
+
+// Event listeners related to the sorting of the gene table when clicking on the headers
+document.getElementById("tbl-gene-names").addEventListener("click", () => sortGeneTable(0));
+document.getElementById("tbl-gene-ensembl-ids").addEventListener("click", () => sortGeneTable(1));
+document.getElementById("tbl-gene-pvalues").addEventListener("click", () => sortGeneTable(2));
+document.getElementById("tbl-gene-foldchanges").addEventListener("click", () => sortGeneTable(3));
 
 // For a given categorical series (e.g. "celltype"), add checkboxes for each category
 const updateGroupOptions = (selectorId, groupsArray, series) => {
@@ -1422,7 +1458,7 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
 	if (! sessionId ) {
 		// TODO: Add master override to prevent other triggers from enabling saving
         createToast("Not logged in so saving gene carts is disabled.", "is-warning");
-        disableAndHideElement(document.getElementById("save-genecart-btn"));
+        document.getElementById("save-genecart-btn").disabled = true;
     }
 
 
