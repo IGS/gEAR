@@ -14,6 +14,7 @@ from common import (
     SpatialFigure,
     clip_expression_values,
 )
+from panel.reactive import debounce
 from werkzeug.utils import secure_filename
 
 gear_root = Path(__file__).resolve().parents[2]
@@ -394,6 +395,13 @@ class SpatialCondensedSubplot(SpatialFigure):
             col=self.final_col,
         )
 
+    def set_use_clusters(self, use: bool) -> None:
+        if self.use_clusters == use:
+            return
+        self.use_clusters = use
+        # update only the traces/colourbars that depend on the flag
+        # (Plotly.update/relayout is much cheaper than new figure)
+        self.fig = self.make_fig()
 
 class SpatialPanel(pn.viewable.Viewer):
     """
@@ -511,9 +519,15 @@ class SpatialPanel(pn.viewable.Viewer):
             height=layout_height,
         )
 
+        @debounce(200)
         def refresh_figures_callback(value) -> None:
+            # don't recreate the object, just tell it what to display
             self.use_clusters = value
-            self.refresh_figures()
+            if self.condensed_fig_obj is not None:
+                self.condensed_fig_obj.set_use_clusters(value)
+                self.condensed_pane.object = self.condensed_fig_obj.fig.to_dict()
+            else:
+                self.refresh_figures()
 
         pn.bind(refresh_figures_callback, self.use_clusters_switch, watch=True)
 

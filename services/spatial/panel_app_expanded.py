@@ -15,6 +15,7 @@ from common import (
     clip_expression_values,
     sort_clusters,
 )
+from panel.reactive import debounce
 from plotly.subplots import make_subplots
 from werkzeug.utils import secure_filename
 
@@ -752,6 +753,7 @@ class SpatialPanel(pn.viewable.Viewer):
         )
 
         # SAdkins - Have not quite figured out when to use "watch" but I think it mostly applies when a callback does not return a value
+        @debounce(200)
         def refresh_dataframe_callback(value):
 
             if self.df_orig is None:
