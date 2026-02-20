@@ -14,7 +14,6 @@ from common import (
     SpatialFigure,
     clip_expression_values,
 )
-from panel.reactive import debounce
 from werkzeug.utils import secure_filename
 
 gear_root = Path(__file__).resolve().parents[2]
@@ -519,7 +518,6 @@ class SpatialPanel(pn.viewable.Viewer):
             height=layout_height,
         )
 
-        @debounce(200)
         def refresh_figures_callback(value) -> None:
             # don't recreate the object, just tell it what to display
             self.use_clusters = value
