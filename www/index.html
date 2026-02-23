@@ -18,6 +18,37 @@
           -->
         <base href="/" />
 
+        <script>
+          // Load cache version and update asset URLs
+          (async function() {
+            const response = await fetch('/site_domain_prefs.json');
+            const prefs = await response.json();
+            const version = prefs.cache_version;
+            
+            // Update all local stylesheet hrefs
+            document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
+              const href = link.getAttribute('href');
+
+              console.log('Processing stylesheet:', href);
+
+              if (href && !href.startsWith('http') && !href.includes('?v=')) {
+                link.href = `${href}?v=${version}`;
+              }
+            });
+            
+            // Update all local script sources
+            document.querySelectorAll('script[src]').forEach(script => {
+              const src = script.getAttribute('src');
+
+              console.log('Processing script:', src);
+
+              if (src && !src.startsWith('http') && !src.includes('?v=')) {
+                script.src = `${src}?v=${version}`;
+              }
+            });
+          })();
+        </script>
+
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
         <link rel="stylesheet" href="https://unpkg.com/intro.js/introjs.css" />

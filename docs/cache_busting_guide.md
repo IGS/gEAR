@@ -166,3 +166,4 @@ Add to your `.htaccess` or Apache config:
 **Hook not running?**
 - Ensure you're committing changes: `git add . && git commit`
 - Check hook has execute permissions: `chmod +x .git/hooks/pre-commit`
+# Test commit to trigger version bump
