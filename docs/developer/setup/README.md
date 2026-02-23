@@ -155,9 +155,15 @@ For development, consider using Docker instead of a full server setup:
 ```bash
 cd /path/to/gEAR
 git pull origin devel
-# Restart Apache if needed
+# Restart services (if needed)
 sudo systemctl restart apache2
+sudo systemctl restart projectr-consumer.target
+sudo systemctl restart spatial-panel.service
 ```
+
+Apache2 - If API code was updated
+ProjectR consumers - If projectR code in `/services/projectr` was updated
+Spatial Panel daemon - If code in `/services/spatial` was updated
 
 ## Getting Help
 
