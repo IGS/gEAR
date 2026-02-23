@@ -97,6 +97,7 @@ class ResultItem {
         setElementProperties(listItemView, ".js-editable-date-added input", { value: this.dateAdded });
         // action buttons section
         setElementProperties(listItemView, ".js-view-gc", { value: this.shareId });
+        setElementProperties(listItemView, ".js-view-projection-gc", { value: this.shareId });
         setElementProperties(listItemView, ".js-delete-gc", { value: geneListId });
         setElementProperties(listItemView, ".js-edit-gc", { value: geneListId });
         setElementProperties(listItemView, ".js-edit-gc-save", { value: geneListId });
@@ -312,6 +313,7 @@ class ResultItem {
             // if genecart is weighted, can only link to projection.html
             if (this.gctypeLabel === "Weighted") {
                 params.set('p', 'p');
+                createToast("Weighted gene lists can only be viewed in the projection tool, linking to projection view", "is-info");
             }
             currentPage.search = params.toString();
             const shareUrl = currentPage.toString();
@@ -436,14 +438,17 @@ class ResultItem {
 
         // Redirect to gene expression search
         parentElt.querySelector(".js-view-gc").addEventListener("click", (e) => {
-            let currentPage = `${getRootUrl()}/p?`;
-
             // if genecart is weighted, can only link to projection.html
             if (this.gctypeLabel === "Weighted") {
-                currentPage += "p=p&";
+                createToast("Weighted gene lists can only be viewed in the projection tool", "is-warning");
+                return;
             }
+            window.open(`./p?c=${this.shareId}`, '_blank');
+        });
 
-            window.open(`${currentPage}c=${this.shareId}`, '_blank');
+        // Redirect to gene expression search
+        parentElt.querySelector(".js-view-projection-gc").addEventListener("click", (e) => {
+            window.open(`./p?p=p&c=${this.shareId}`, '_blank');
         });
     }
 

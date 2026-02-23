@@ -18,9 +18,9 @@ My laptop:
 [Wed Aug 21 23:04:50.670717 2019] [cgid:error] [pid 4028] [client ::1:43880] End of script output before headers: get_h5ad_data
 set_list.cgi, referer: http://localhost/compare_datasets.html
 Traceback (most recent call last):
-  File "/var/www/html/cgi/get_h5ad_dataset_list.cgi", line 66, in <module>
+  File "/var/www/cgi/get_h5ad_dataset_list.cgi", line 66, in <module>
     main()
-  File "/var/www/html/cgi/get_h5ad_dataset_list.cgi", line 46, in main
+  File "/var/www/cgi/get_h5ad_dataset_list.cgi", line 46, in main
     shared_with_user_collection.get_shared_with_user(has_h5ad=1, user=user, types=['microarray', 'bulk-rnaseq', 'singlecell-h5ad', 'single-cell-rnaseq', 'svg-expression', 'violin-standard'])
 UnboundLocalError: local variable 'user' referenced before assignment
 
@@ -47,26 +47,26 @@ def main():
     args = parser.parse_args()
 
     log_files = get_error_log_paths(args.input_dir)
-    
+
 
     for file in log_files:
         print("Processing: {0}".format(file))
-        
-        
+
+
 
 def get_error_log_paths(base):
     """
-    Returns an array of files sorted by modified date, filtered for any which 
+    Returns an array of files sorted by modified date, filtered for any which
     have 'error' in the file name.
     """
     paths = list()
-    
+
     for filename in os.listdir(base):
         if 'error' in filename:
             paths.append("{0}/{1}".format(base, filename))
 
     paths.sort(key=lambda x: os.path.getmtime(x))
-            
+
     return paths
 
 if __name__ == '__main__':

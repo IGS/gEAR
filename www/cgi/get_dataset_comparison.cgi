@@ -137,6 +137,8 @@ def main():
 
     if perform_ranking:
         df_x['pvals_adj'] = adata.uns['rank_genes_groups']['pvals_adj']
+        # Currently this series is 1D tuples.  Change each to a string
+        df_x['pvals_adj'] = df_x['pvals_adj'].apply(lambda x: float(x[0]) if isinstance(x, tuple) else float(x))
 
     result = {
                'fold_change_std_dev': None,

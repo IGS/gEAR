@@ -6,7 +6,7 @@ generate_static_display_images.py - Generate a static plot based on the dataset'
 Shaun Adkins - sadkins@som.umaryland.edu
 """
 
-DATASET_PREVIEWS_DIR = "/var/www/html/img/dataset_previews"
+DATASET_PREVIEWS_DIR = "/var/www/img/dataset_previews"
 
 import os, json, requests, sys
 import base64

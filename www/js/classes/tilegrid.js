@@ -1,7 +1,7 @@
 'use strict';
 
 // This doesn't work unless we refactor everything to use ES modules
-import { apiCallsMixin, closeModal, getCurrentUser, logErrorInConsole, openModal } from "../common.v2.js";
+import { apiCallsMixin, closeModal, createToast, getCurrentUser, logErrorInConsole, openModal } from "../common.v2.js";
 import { adjustClusterColorbars, adjustExpressionColorbar, postPlotlyConfig } from "../helpers/plot-display-config.js";
 import { colorSVG } from "../helpers/dataset-svg-fxns.js";
 
@@ -975,7 +975,7 @@ class DatasetTile {
                         item.classList.add("is-hidden");
                     }
                     break;
-                case "download-png":
+                case "download-image":
                     // Handled when plot type is known
                     item.classList.add("is-hidden");
                     break;
@@ -1404,6 +1404,19 @@ class DatasetTile {
                 }
 
                 await this.renderSpatialPanelDisplay(display, otherOpts);
+
+                // Determine how "download_png" is handled for scanpy plots
+                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
+                if (downloadPNG) {
+                    const newDownloadPNG = downloadPNG.cloneNode(true);
+                    downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
+
+                    newDownloadPNG.classList.remove("is-hidden");
+                    newDownloadPNG.addEventListener("click", async (event) => {
+                        // get the download URL
+                        await this.downloadSpatialPNG(display);
+                    });
+                }
                 return;
             }
 
@@ -1446,7 +1459,7 @@ class DatasetTile {
         }
 
         // if projection ran, add the projection info to the plotly config
-        if (this.projectR.modeEnabled && this.projectR.projectionId) {
+        if (this.projectR.modeEnabled && this.projectR.projectionId && this.dataset.is_downloadable) {
             display.plotly_config.projection_id = this.projectR.projectionId;
 
             const downloadProjection = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-projection"]`);
@@ -1460,14 +1473,28 @@ class DatasetTile {
             }
         }
 
+        // Render based on plot type + add event listeners after rendering
         try {
             if (plotlyPlots.includes(display.plot_type)) {
                 await this.renderPlotlyDisplay(display, otherOpts);
+
+                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
+                if (downloadPNG) {
+
+                    const newDownloadPNG = downloadPNG.cloneNode(true);
+                    downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
+
+                    newDownloadPNG.classList.remove("is-hidden");
+                    newDownloadPNG.addEventListener("click", async (event) => {
+                        await this.downloadPlotlyPNG(display);
+                    });
+                }
+
             } else if (scanpyPlots.includes(display.plot_type)) {
                 await this.renderScanpyDisplay(display, false, otherOpts);
 
                 // Determine how "download_png" is handled for scanpy plots
-                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-png"]`);
+                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
                 if (downloadPNG) {
 
                     // If I use the existing "download Image" button after switching displays, all previous tsne-static displays will
@@ -1480,15 +1507,39 @@ class DatasetTile {
                     newDownloadPNG.classList.remove("is-hidden");
                     newDownloadPNG.addEventListener("click", async (event) => {
                         // get the download URL
-                        await this.getScanpyPNG(display, false);
+                        await this.downloadScanpyPNG(display, false);
                     });
-
                 }
 
             } else if (display.plot_type === "svg") {
                 await this.renderSVG(display, this.svgScoringMethod, otherOpts);
+
+                const downloadSVG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
+                if (downloadSVG) {
+
+                    const newDownloadSVG = downloadSVG.cloneNode(true);
+                    downloadSVG.parentNode.replaceChild(newDownloadSVG, downloadSVG);
+
+                    newDownloadSVG.classList.remove("is-hidden");
+                    newDownloadSVG.addEventListener("click", async (event) => {
+                        await this.downloadSVG(display);
+                    });
+                }
+
             } else if (display.plot_type === "spatial_panel") {
                 await this.renderSpatialPanelDisplay(display, otherOpts);
+                // Determine how "download_png" is handled for scanpy plots
+                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
+                if (downloadPNG) {
+                    const newDownloadPNG = downloadPNG.cloneNode(true);
+                    downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
+
+                    newDownloadPNG.classList.remove("is-hidden");
+                    newDownloadPNG.addEventListener("click", async (event) => {
+                        // get the download URL
+                        await this.downloadSpatialPNG(display);
+                    });
+                }
             } else if (display.plot_type === "gosling") {
 
                 // Unset the autoGridRows of the parent selector
@@ -1498,6 +1549,21 @@ class DatasetTile {
                 }
 
                 await this.renderGoslingDisplay(display, otherOpts);
+
+                // Determine how "download_png" is handled for gosling plots
+                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
+                if (downloadPNG) {
+
+                    const newDownloadPNG = downloadPNG.cloneNode(true);
+                    downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
+
+                    newDownloadPNG.classList.remove("is-hidden");
+                    newDownloadPNG.addEventListener("click", async (event) => {
+                        // get the download URL
+                        await this.downloadGoslingPNG(display);
+                    });
+                }
+
             } else if (this.type === "multi") {
                 if (this.dataset.dtype === "spatial") {
                     // Matplotlib-based display for spatial datasets
@@ -1507,7 +1573,7 @@ class DatasetTile {
                     await this.renderScanpyDisplay(display, true, otherOpts);
 
                     // Determine how "download_png" is handled for scanpy plots
-                    const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-png"]`);
+                    const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
                     if (downloadPNG) {
                         // See note for single-gene TSNE static display
                         const newDownloadPNG = downloadPNG.cloneNode(true);
@@ -1516,13 +1582,24 @@ class DatasetTile {
                         newDownloadPNG.classList.remove("is-hidden");
                         newDownloadPNG.addEventListener("click", async (event) => {
                             // get the download URL
-                            await this.getScanpyPNG(display, true);
+                            await this.downloadScanpyPNG(display, true);
                         });
 
                     }
 
                 } else {
                     await this.renderMultiGeneDisplay(display, otherOpts);
+                    const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
+                    if (downloadPNG) {
+
+                        const newDownloadPNG = downloadPNG.cloneNode(true);
+                        downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
+
+                        newDownloadPNG.classList.remove("is-hidden");
+                        newDownloadPNG.addEventListener("click", async (event) => {
+                            await this.downloadPlotlyPNG(display, true);
+                        });
+                    }
                 }
             } else {
                 throw new Error(`Display config for dataset ${this.dataset.id} has an invalid plot type ${display.plot_type}.`);
@@ -1610,6 +1687,7 @@ class DatasetTile {
         let goslingApi = null;
         try {
             goslingApi = await embedFn(document.getElementById(goslingContainer.id), spec, embedOpts);
+            this.goslingApi = goslingApi; // Store the gosling API for future use (i.e. zooming to gene from search)
         } catch (error) {
             logErrorInConsole(error);
             createCardMessage(this.tile.tileId, "danger", "An error occurred while rendering the Gosling display.");
@@ -1661,7 +1739,7 @@ class DatasetTile {
                 panelBGeneResults = panelBData[gene.toLowerCase()];
             } catch (error) {
                 console.error("Error searching for gene:", error);
-                createToast("An error occurred while searching for gene: " + gene);
+                createToast(`An error occurred while searching for gene: ${gene}`);
             }
 
             const geneData = panelBGeneResults?.by_organism[orgId];
@@ -1698,6 +1776,33 @@ class DatasetTile {
             // TODO:  if Hi-C data is found, add an annotation to the gene position
 
         });
+    }
+
+    /**
+     * Downloads the current Gosling plot as a PNG file.
+     *
+     * This method checks if the Gosling API is available and then exports the plot
+     * as a PNG image. The downloaded file is named using the dataset's share ID
+     * and the gene symbol from the display configuration. If the Gosling API is
+     * not available or an error occurs during the export, a toast notification
+     * is displayed to inform the user.
+     *
+     * @param {Object} display - The display object containing the plot configuration.
+     * @param {Object} display.plotly_config - The Plotly configuration object.
+     * @param {string} display.plotly_config.gene_symbol - The gene symbol used in the plot.
+     *
+     * @throws Will log an error to the console and display a toast notification if the export fails.
+     */
+    async downloadGoslingPNG(display) {
+        if (!this.goslingApi) {
+            createToast("Gosling plot is not available for download.");
+            return;
+        }
+
+        const shareId = this.dataset.share_id;
+        const geneSymbol = display.plotly_config.gene_symbol;
+
+        this.goslingApi.exportPng();    // exports as "gosling_visualization.png"
     }
 
     /**
@@ -1766,6 +1871,7 @@ class DatasetTile {
         const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout");
         Plotly.relayout(plotlyPreview.id , customLayout);
 
+        this.plotlyDiv = plotlyPreview.id;
     }
 
     /**
@@ -1812,6 +1918,26 @@ class DatasetTile {
         Plotly.newPlot(plotlyPreview.id, plotJson.data, plotJson.layout, customConfig);
         const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout");
         Plotly.relayout(plotlyPreview.id, customLayout);
+
+        this.plotlyDiv = plotlyPreview.id;
+    }
+
+    /**
+     * Downloads the current Plotly plot as a PNG image.
+     *
+     * @param {Object} display - The display configuration object containing plot details.
+     * @param {boolean} [isMultigene=false] - Indicates whether the plot is for multiple genes.
+     * @returns {Promise<void>} Resolves when the download is initiated, or shows a toast if the plot is unavailable.
+     */
+    async downloadPlotlyPNG(display, isMultigene=false) {
+        if (!this.plotlyDiv) {
+            createToast("Plot is not available for download.");
+            return;
+        }
+
+        const geneSymbol = isMultigene ? "multigene" : display.plotly_config.gene_symbol;
+        const shareId = this.dataset.share_id;
+        Plotly.downloadImage(this.plotlyDiv, { format: 'png', width: 1920, height: 1080, filename: `${shareId}_${geneSymbol}_${display.plot_type}` });
     }
 
     /**
@@ -1876,7 +2002,7 @@ class DatasetTile {
      * @returns {Promise<void>} - A promise that resolves when the PNG image is downloaded.
      * @throws {Error} - If the image retrieval is unsuccessful or encounters an unknown error.
      */
-    async getScanpyPNG(display, isMultigene=false) {
+    async downloadScanpyPNG(display, isMultigene=false) {
         const datasetId = display.dataset_id;
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
         const analysisObj = display.analysis_id ? {id: display.analysis_id} : display.analysis || null;
@@ -1957,9 +2083,43 @@ class DatasetTile {
             gene_symbol: geneSymbol,
         }
 
-        console.log(svgScoringMethod);
-
         this.updateSVGDisplay(svgScoringMethod);
+    }
+
+    /**
+     * Downloads the current SVG plot as an SVG file.
+     *
+     * @param {Object} display - The display configuration object containing plot details.
+     * @returns {Promise<void>} Resolves when the download is initiated, or shows a toast if the SVG is unavailable.
+     */
+    async downloadSVG(display) {
+        const shareId = this.dataset.share_id;
+        const geneSymbol = display.plotly_config.gene_symbol;
+
+        // get the svg element and serialize it for download
+        const svgDiv = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
+        const serializer = new XMLSerializer();
+        let svgSource = serializer.serializeToString(svgDiv);
+        if (!svgSource.match(/^<svg[^>]+xmlns="http:\/\/www.w3.org\/2000\/svg"/)) {
+        svgSource = svgSource.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"');
+        }
+        const blob = new Blob([svgSource], { type: "image/svg+xml;charset=utf-8" });
+        // create a hidden element that will be clicked to download the PNG
+        const hiddenLink = document.createElement("a");
+        const download = URL.createObjectURL(blob);
+        // download URL
+
+        hiddenLink.download = `${shareId}_${geneSymbol}_${this.svgScoringMethod}_scoring.svg`;
+        hiddenLink.href = download;
+
+        hiddenLink.setAttribute('target', '_blank');
+
+        // click the hidden link to download the PNG
+        hiddenLink.click();
+
+        // save memory (but breaks download)
+        URL.revokeObjectURL(download);
+        hiddenLink.remove();
     }
 
     /**
@@ -2129,6 +2289,8 @@ class DatasetTile {
             urlParams.append("nosave", true);
         }
 
+        this.spatialUrlParams = urlParams;   // store the URL params for future use (i.e. when gene is switched)
+
         const endpoint = this.isZoomed ? "panel_app_expanded" : "panel_app"
         const url = `/panel/ws/${endpoint}?${urlParams.toString()}`;
 
@@ -2155,6 +2317,8 @@ class DatasetTile {
             // allow-downloads - allow downloads from the iframe (i.e. saving displays)
             iframe.sandbox="allow-scripts allow-same-origin allow-downloads";
             cardImage.append(iframe);
+
+            this.spatialIframe = iframe;   // store reference to the iframe for future use (i.e. when gene is switched)
 
             const iframeSearch = iframe.contentWindow.location.search;
             let urlParams = new URLSearchParams(iframeSearch);  // initially empty
@@ -2183,6 +2347,7 @@ class DatasetTile {
                 this.spatial.selection_y2 = parseFloat(urlParams.get("selection_y2")) || null;
 
                 // Only applies for endpoint "panel_app_expanded"
+                // The "save" parameter is added to the URL when the user clicks the "Save Display" button in the spatial panel app, which should trigger saving the display with the current spatial parameters
                 if (urlParams.get("save")) {
                     urlParams.delete("save");
 
@@ -2215,6 +2380,57 @@ class DatasetTile {
         } finally {
             return;
         }
+    }
+
+    async downloadSpatialPNG(display) {
+        //TODO:
+        createToast("Not yet implemented: contact gEAR team if interested in this feature.", "is-info");
+        return;
+        if (!this.spatialUrlParams) {
+            createToast("Cannot download PNG because spatial display parameters are not available.", "is-warning");
+            return;
+        }
+
+        const urlParams = this.spatialUrlParams;
+        // Only downloading, not saving
+        urlParams.append("nosave", true);
+
+        const endpoint = "panel_app_expanded"
+        const url = `/panel/ws/${endpoint}/download?${urlParams.toString()}`;
+        // Call download endpoint which will download a PNG
+        try {
+            const response = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Session-ID": apiCallsMixin.sessionId || "",
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Error downloading PNG: ${response.statusText}`);
+            }
+
+            // The response will be a blob representing the PNG file
+            const blob = await response.blob();
+            const downloadUrl = URL.createObjectURL(blob);
+
+            // Create a hidden link to trigger the download
+            const hiddenLink = document.createElement("a");
+            hiddenLink.href = downloadUrl;
+            hiddenLink.download = `${this.dataset.share_id}_${display.plotly_config.gene_symbol}_spatial.png`;
+            document.body.appendChild(hiddenLink);
+            hiddenLink.click();
+
+            // Clean up
+            URL.revokeObjectURL(downloadUrl);
+            hiddenLink.remove();
+
+        } catch (error) {
+            console.error(error);
+            createToast(`Error downloading PNG: ${error.message}`, "is-danger");
+        }
+
     }
 
     async saveSpatialParameters(displayName, makeDefault, geneSymbol) {
