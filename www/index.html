@@ -18,45 +18,9 @@
           -->
         <base href="/" />
 
-        <script>
-          // Load cache version and update asset URLs
-          (async function() {
-            const response = await fetch('/site_domain_prefs.json');
-            const prefs = await response.json();
-            const version = prefs.cache_version;
-            
-            // Update all local stylesheet hrefs
-            document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
-              const href = link.getAttribute('href');
-
-              console.log('Processing stylesheet:', href);
-
-              if (href && !href.startsWith('http') && !href.includes('?v=')) {
-                link.href = `${href}?v=${version}`;
-              }
-            });
-            
-            // Update all local script sources
-            document.querySelectorAll('script[src]').forEach(script => {
-              const src = script.getAttribute('src');
-
-              console.log('Processing script:', src);
-
-              if (src && !src.startsWith('http') && !src.includes('?v=')) {
-                script.src = `${src}?v=${version}`;
-              }
-            });
-          })();
-        </script>
-
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
         <link rel="stylesheet" href="https://unpkg.com/intro.js/introjs.css" />
-
-        <link rel="stylesheet" href="css/common.v2.css" />
-
-        <!--Page-specific CSS here -->
-        <link rel="stylesheet" href="css/index.css" />
     </head>
     <body>
       <div id="main-layout-c" class="columns is-fullheight">
@@ -541,7 +505,28 @@
       <!-- Onboarding new users -->
       <script src="https://unpkg.com/intro.js/intro.js"></script>
 
-      <!-- Page-specific JS file here -->
-      <script type="module" src="js/index.js"></script>
+      <!-- Page-specific CSS/JS loading here -->
+      <script type="module">
+        import { getDomainPreferences } from './js/common.v2.js';
+        const prefs = await getDomainPreferences();
+
+        // Load any local JS with cache-busting version parameter
+        const script = document.createElement('script');
+        script.type = 'module';
+        script.src = `js/index.js?v=${prefs.cache_version}`;
+        document.body.appendChild(script);
+
+        // Now load page-specific CSS
+        let link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = `css/common.v2.css?v=${prefs.cache_version}`;
+        document.head.appendChild(link);
+
+        link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = `css/index.css?v=${prefs.cache_version}`;
+        document.head.appendChild(link);
+      </script>
+      
     </body>
 </html>
