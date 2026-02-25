@@ -50,7 +50,7 @@ def main():
     form = cgi.FieldStorage()
     gene_cart = form.getvalue('c')
     gene_symbol = form.getvalue('g')
-    gene_symbol_exact_match = form.getvalue('gsem')
+    gene_symbol_exact_match = form.getvalue('gsem', 1)
     multi = form.getvalue("multi")
     patterns = form.getvalue("ptrns")
     algo = form.getvalue("algo")
