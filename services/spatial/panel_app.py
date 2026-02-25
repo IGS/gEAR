@@ -306,7 +306,8 @@ class SpatialCondensedSubplot(SpatialFigure):
             x = "x" if "x" in event["range"] else "x2"
             y = "y" if "y" in event["range"] else "y2"
         else:
-            x = y = "x"
+            x = "x"
+            y = "y"
 
         x0, x1 = event["range"][x]
         y0, y1 = event["range"][y]
