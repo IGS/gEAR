@@ -134,7 +134,6 @@ class SpatialFigure:
         update_axes(): Configures axes ranges, titles, and appearance.
         add_image_trace(): Adds the background image to all subplot columns.
         get_legend_font_size(): Determines legend font size based on cluster name lengths.
-        update_selection_ranges(todict): Updates selection ranges or dictionary based on current settings.
     """
 
     # TODO: Change "expression" to "relative expression" for projections
@@ -635,28 +634,19 @@ class SpatialFigure:
             font_size = 10
         return font_size
 
-    def update_selection_ranges(self) -> bool:
+    def has_selection(self) -> bool:
         """
-        Updates the selection ranges based on the current selection coordinates.
+        Return ``True`` when the bounds stored in ``self.settings`` describe a
+        non‑degenerate rectangle.
 
-        Checks if the selection coordinates for x and y axes have changed. If they have,
-        updates the `selections_dict` attribute with the new selection boundaries and returns True.
-        If the selection coordinates have not changed, returns False.
-
-        Returns:
-            bool: True if the selection ranges were updated, False otherwise.
+        The legacy convention used by the panel app was that *all four*
+        selection values would be equal when no box was supplied (either
+        via the UI or the URL).  The boolean return value allows callers to
+        apply zoom/mirroring only when there really is something to zoom to.
         """
 
-        if (
-            self.settings.selection_x1 != self.settings.selection_x2
-            or self.settings.selection_y1 != self.settings.selection_y2
-        ):
-            self.selections_dict = dict(
-                x0=self.settings.selection_x1,
-                x1=self.settings.selection_x2,
-                y0=self.settings.selection_y1,
-                y1=self.settings.selection_y2,
-            )
-
-            return True
-        return False
+        return not (
+            self.settings.selection_x1 == self.settings.selection_x2
+            == self.settings.selection_y1
+            == self.settings.selection_y2
+        )
