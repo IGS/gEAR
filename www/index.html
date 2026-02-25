@@ -507,25 +507,15 @@
 
       <!-- Page-specific CSS/JS loading here -->
       <script type="module">
-        import { getDomainPreferences } from './js/common.v2.js';
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
         const prefs = await getDomainPreferences();
 
         // Load any local JS with cache-busting version parameter
-        const script = document.createElement('script');
-        script.type = 'module';
-        script.src = `js/index.js?v=${prefs.cache_version}`;
-        document.body.appendChild(script);
+        insertVersionedJS('js/index.js', prefs.cache_version);
 
         // Now load page-specific CSS
-        let link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = `css/common.v2.css?v=${prefs.cache_version}`;
-        document.head.appendChild(link);
-
-        link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = `css/index.css?v=${prefs.cache_version}`;
-        document.head.appendChild(link);
+        insertVersionedCSS('css/common.v2.css', prefs.cache_version);
+        insertVersionedCSS('css/index.css', prefs.cache_version);
       </script>
       
     </body>

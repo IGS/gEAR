@@ -285,7 +285,29 @@ const versionedAsset = (assetPath) => {
     return `${assetPath}${separator}v=${SITE_PREFS.cache_version}`;
 }
 
+/**
+ * Inserts a versioned CSS file into the document head.
+ * @param {string} href - The href path to the CSS file.
+ * @param {string} cacheVersion - The cache version to append as a query parameter.
+ */
+const insertVersionedCSS = (href, cacheVersion) => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = `${href}?v=${cacheVersion}`;
+    document.head.appendChild(link);
+}
 
+/**
+ * Inserts a versioned JS file into the document head.
+ * @param {string} href - The href path to the JS file.
+ * @param {string} cacheVersion - The cache version to append as a query parameter.
+ */
+const insertVersionedJS = (href, cacheVersion) => {
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.src = `${href}?v=${cacheVersion}`;
+    document.body.appendChild(script);
+}
 
 /**
  * Retrieves the value of a specified URL parameter.
