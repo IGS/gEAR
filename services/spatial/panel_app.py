@@ -1,5 +1,4 @@
 import logging
-import sys
 import traceback
 import warnings
 from pathlib import Path
@@ -34,7 +33,6 @@ pn.extension("plotly", loading_indicator=True, defer_load=True, nthreads=4)  # t
 # Keep only box select
 buttonsToRemove = ["zoom", "pan", "zoomIn", "zoomOut", "autoScale", "lasso2d"]
 zoomButtonsToRemove = buttonsToRemove + ["select2d"]
-
 
 class SpatialCondensedSubplot(SpatialFigure):
     """
@@ -71,7 +69,6 @@ class SpatialCondensedSubplot(SpatialFigure):
 
     Methods:
         make_fig(): Creates and configures the Plotly figure with appropriate subplots and traces.
-        refresh_spatial_fig(): Regenerates the figure and applies current selections.
         calculate_zoom_marker_size(): Adjusts marker size based on zoom selection.
         selection_callback(event): Handles selection events and updates the figure accordingly.
         mirror_selection(): Applies the current selection to all relevant subplots.
@@ -111,8 +108,18 @@ class SpatialCondensedSubplot(SpatialFigure):
         self.use_clusters = use_clusters
         self.zoom_expression_color = zoom_expression_color
 
-        # if all four selection range values are the same, they were not set in the query params, so use the default values
-        self.update_selection_ranges()
+        if self.has_selection():
+            self.selections_dict = dict(
+                x0=self.settings.selection_x1,
+                x1=self.settings.selection_x2,
+                y0=self.settings.selection_y1,
+                y1=self.settings.selection_y2,
+            ) # type: ignore
+
+        self._fig_cache: dict[bool, go.Figure] = {}
+        # build the initial state synchronously
+        self.fig = self.make_fig()
+        self._fig_cache[use_clusters] = self.fig
 
     def make_fig(self) -> go.Figure:
         """
@@ -132,6 +139,9 @@ class SpatialCondensedSubplot(SpatialFigure):
         Returns:
             plotly.graph_objs._figure.Figure: The configured Plotly figure object.
         """
+
+        # Reset marker size to default for non-zoomed plots when regenerating the figure
+        self.marker_size = 2
 
         # domain is adjusted whether there are images or not
         if self.spatial_img is not None:
@@ -202,7 +212,7 @@ class SpatialCondensedSubplot(SpatialFigure):
             )
 
         # if all four selection range values are the same, they were not set in the query params, so use the default values
-        if self.update_selection_ranges():
+        if self.has_selection():
             self.mirror_selection()
             self.setup_zoom_fig_params()
 
@@ -259,19 +269,6 @@ class SpatialCondensedSubplot(SpatialFigure):
 
         return self.fig
 
-    def refresh_spatial_fig(self) -> dict:
-        """
-        Refreshes the spatial figure by regenerating it and applying current selections.
-
-        Returns:
-            dict: The updated figure represented as a dictionary.
-        """
-        # Reset some things
-        self.marker_size = 2
-
-        self.fig = self.make_fig()
-        return self.fig.to_dict()
-
     def calculate_zoom_marker_size(self) -> None:
         """
         Calculates and sets the marker size for the zoomed-in plot.
@@ -288,59 +285,109 @@ class SpatialCondensedSubplot(SpatialFigure):
 
     def selection_callback(self, event: dict) -> dict:
         """
-        Handles selection events from a plot and updates selection ranges.
+        Handle selection/zoom events on the plot.
 
-        This method processes the selection event dictionary, determines which subplot
-        the selection applies to (based on the presence of a spatial image), extracts
-        the selected x and y ranges, and updates both an internal selections dictionary
-        and the settings object with these values. Finally, it refreshes the spatial
-        figure to reflect the new selection.
+        Processes range selection events from the plot and zooms to the selected area.
+        If no valid range is provided, returns the current figure as-is.
 
         Args:
-            event (dict): A dictionary containing selection event data, expected to have
-                a "range" key with x and y range information.
+            event (dict): Event dictionary containing range information. Expected to have
+                         a "range" key with x/y (or x2/y2 for secondary axes) coordinates.
 
         Returns:
-            dict: The updated spatial figure data after applying the selection.
+            dict: Dictionary representation of the figure, either the current figure if no
+                  valid range is provided, or the zoomed figure from zoom_to().
         """
 
-        if event and "range" in event:
-            # determine if first or second plot
-            if self.spatial_img is not None:
-                # If there is a spatial image, we have three subplots
-                x = "x" if "x" in event["range"] else "x2"
-                y = "y" if "y" in event["range"] else "y2"
-            else:
-                x = "x"
-                y = "y"
+        if not event or "range" not in event:
+            return self.fig.to_dict()
 
-            range_x1 = event["range"][x][0]
-            range_x2 = event["range"][x][1]
-            range_y1 = event["range"][y][0]
-            range_y2 = event["range"][y][1]
+        if self.spatial_img is not None:
+            x = "x" if "x" in event["range"] else "x2"
+            y = "y" if "y" in event["range"] else "y2"
+        else:
+            x = y = "x"
 
-            self.selections_dict = dict(
-                x0=range_x1, x1=range_x2, y0=range_y1, y1=range_y2
-            )
+        x0, x1 = event["range"][x]
+        y0, y1 = event["range"][y]
 
-            # update the Settings selection values
-            self.settings.selection_x1 = range_x1
-            self.settings.selection_x2 = range_x2
-            self.settings.selection_y1 = range_y1
-            self.settings.selection_y2 = range_y2
+        return self.zoom_to(x0, x1, y0, y1)
 
-        # Selection will be mirrored across plots in make_fig()
-        return self.refresh_spatial_fig()
-
-    def mirror_selection(self):
+    def zoom_to(self, x0, x1, y0, y1):
         """
-        Sets up the selection for the figure by specifying the columns to include and adding the selection to the figure.
+        Update the plot view to zoom into the specified coordinate range.
 
-        This method creates a list of column indices from 1 up to (but not including) `self.final_col`, and applies the selections defined in `self.selections_dict` to all rows and the specified columns of `self.fig`.
+        Synchronizes the zoom state across the visualization, updates axis ranges,
+        and mirrors the selection rectangle to other columns in multi-column layouts.
+
+        Args:
+            x0 (float): Minimum x-axis coordinate.
+            x1 (float): Maximum x-axis coordinate.
+            y0 (float): Minimum y-axis coordinate.
+            y1 (float): Maximum y-axis coordinate.
+
+        Returns:
+            dict: The figure object as a dictionary representation suitable for rendering.
+        """
+        # update the settings so url etc. stay in sync
+        self.settings.selection_x1 = x0
+        self.settings.selection_x2 = x1
+        self.settings.selection_y1 = y0
+        self.settings.selection_y2 = y1
+
+        self.calculate_zoom_marker_size()
+
+        # compbine the axis updates into one call to prevent redraws between x and y updates, which causes a flicker
+        axis = "" if self.final_col == 1 else str(self.final_col)
+        self.fig.update_layout({
+            f'xaxis{axis}.range':[x0, x1],
+            f'yaxis{axis}.range':[y1, y0],
+        })
+
+        # mirror selection rectangle on the other columns
+        self.selections_dict = dict(x0=x0, x1=x1, y0=y0, y1=y1)
+        self.mirror_selection()
+
+        # Patch the other toggled view so the zoom coords are preserved when switching between clusters and expression
+        other_mode = not self.use_clusters
+        if other_mode in self._fig_cache:
+            other_fig = self._fig_cache[other_mode]
+            other_fig.update_layout({
+                f'xaxis{axis}.range':[x0, x1],
+                f'yaxis{axis}.range':[y1, y0],
+            })
+            # copy the selection rectangle(s) over
+            # (we can just call mirror_selection with the other figure)
+            self.mirror_selection(fig=other_fig)
+
+        return self.fig.to_dict()
+
+    def mirror_selection(self, fig: go.Figure | None = None):
+        """
+        Mirror the current selection across multiple subplot columns in the figure.
+
+        This method applies the stored selections to all specified columns in the figure,
+        clearing any existing selections first. The selection is displayed with a solid
+        black line border.
+
+        Args:
+            fig (go.Figure | None, optional): The plotly figure object to apply selections to.
+                If None, uses the instance's figure (self.fig). Defaults to None.
 
         Returns:
             None
+
+        Note:
+            - Clears all existing selections before applying new ones
+            - Applies selections to all rows and columns from 1 to self.final_col
+            - Uses a black line with width 3 and solid dash style for selection visibility
         """
+
+        if fig is None:
+            fig = self.fig
+
+        # Clear existing selections before applying the new one
+        fig.layout.selections = []
 
         linecolor = "black"
         #if self.spatial_img is None or self.platform == "xenium":
@@ -348,7 +395,7 @@ class SpatialCondensedSubplot(SpatialFigure):
         #    linecolor = "white"
 
         cols = list(range(1, self.final_col))
-        self.fig.add_selection(
+        fig.add_selection(
             self.selections_dict,
             line=dict(
                 color=linecolor,
@@ -372,13 +419,10 @@ class SpatialCondensedSubplot(SpatialFigure):
         Assumes that `self.fig`, `self.settings`, and `self.final_col` are properly initialized.
         """
 
-        if not self.fig:
+        if self.fig is None:
             raise ValueError("Figure is not initialized. Cannot set zoom parameters.")
 
-        if not self.settings.selection_x1 or not self.settings.selection_x2: # type: ignore
-            raise ValueError("Selection coordinates are not set. Cannot set zoom parameters.")
-
-        if not self.final_col:
+        if self.final_col is None:
             raise ValueError("Final column is not set. Cannot set zoom parameters.")
 
         # Viewing a selection, so increase the marker size
@@ -398,9 +442,15 @@ class SpatialCondensedSubplot(SpatialFigure):
         if self.use_clusters == use:
             return
         self.use_clusters = use
-        # update only the traces/colourbars that depend on the flag
-        # (Plotly.update/relayout is much cheaper than new figure)
-        self.fig = self.make_fig()
+        if use in self._fig_cache:
+            # already built
+            self.fig = self._fig_cache[use]
+        else:
+            # build the requested state now so the pane can be updated
+            fig = self.make_fig()
+            self._fig_cache[use] = fig
+            self.fig = fig
+
 
 class SpatialPanel(pn.viewable.Viewer):
     """
@@ -464,7 +514,7 @@ class SpatialPanel(pn.viewable.Viewer):
 
         self.use_clusters = False
         self.use_clusters_switch = pn.widgets.Switch(
-            name="Feature", value=self.use_clusters, sizing_mode="fixed", margin=(10, 10)
+            value=self.use_clusters, sizing_mode="fixed", margin=(10, 10)
         )
 
         markdown_width = 400    # Manually measured.
@@ -698,7 +748,7 @@ class SpatialPanel(pn.viewable.Viewer):
             dragmode="select",
             #platform=self.platform,
         )
-        self.condensed_fig = self.condensed_fig_obj.refresh_spatial_fig()
+        self.condensed_fig = self.condensed_fig_obj.fig.to_dict()
         self.condensed_pane.object = self.condensed_fig
 
         return self.plot_layout
