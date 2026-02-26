@@ -2383,49 +2383,72 @@ class DatasetTile {
     }
 
     async downloadSpatialPNG(display) {
-        //TODO:
-        createToast("Not yet implemented: contact gEAR team if interested in this feature.", "is-info");
-        return;
         if (!this.spatialUrlParams) {
             createToast("Cannot download PNG because spatial display parameters are not available.", "is-warning");
             return;
         }
 
         const urlParams = this.spatialUrlParams;
-        // Only downloading, not saving
-        urlParams.append("nosave", true);
+        urlParams.append("_", Date.now());   // add timestamp to prevent caching issues
 
-        const endpoint = "panel_app_expanded"
-        const url = `/panel/ws/${endpoint}/download?${urlParams.toString()}`;
+        // Must hit regular URL and not websocket (ws) version
+        // because the HTTP version is unidirectional and will return response data
+        const url = `/panel/spatial_download?${urlParams.toString()}`;
         // Call download endpoint which will download a PNG
         try {
             const response = await fetch(url, {
                 method: "GET",
                 headers: {
-                    "Content-Type": "application/json",
+                    "Content-Type": "text/html",
                     "X-Session-ID": apiCallsMixin.sessionId || "",
                 },
             });
 
             if (!response.ok) {
-                throw new Error(`Error downloading PNG: ${response.statusText}`);
+                throw new Error(`Error downloading HTML: ${response.statusText}`);
             }
 
-            // The response will be a blob representing the PNG file
+            // SAdkins - I used copilot to guide me through this since saving as PNG inside the panel app was a pain
+            // I think this is still a rough solution but I'd rather download as a PDF than as HTML
+
+            // The response will be a blob representing the HTML file
             const blob = await response.blob();
+            const text = await blob.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(text, "text/html");
+
+            // put the HTML into a hidden element so it gets rendered
+            const tmp = document.createElement("div");
+            tmp.style.position = "fixed"; tmp.style.left = "-10000px";
+            // append the contents of the downloaded page’s <body>
+            tmp.append(...doc.body.childNodes);
+            console.log(doc.body);
+            document.body.append(tmp);
+            console.log(tmp);
+
+            // html2pdf will snapshot the element and generate a PDF
+            html2pdf(tmp, {
+                margin: 10,
+                filename: `${this.dataset.share_id}_${display.plotly_config.gene_symbol}_spatial.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            }).then(() => tmp.remove());
+
+            /*
             const downloadUrl = URL.createObjectURL(blob);
 
             // Create a hidden link to trigger the download
             const hiddenLink = document.createElement("a");
             hiddenLink.href = downloadUrl;
-            hiddenLink.download = `${this.dataset.share_id}_${display.plotly_config.gene_symbol}_spatial.png`;
+            hiddenLink.download = `${this.dataset.share_id}_${display.plotly_config.gene_symbol}_spatial.html`;
             document.body.appendChild(hiddenLink);
             hiddenLink.click();
 
             // Clean up
             URL.revokeObjectURL(downloadUrl);
             hiddenLink.remove();
-
+            */
         } catch (error) {
             console.error(error);
             createToast(`Error downloading PNG: ${error.message}`, "is-danger");
