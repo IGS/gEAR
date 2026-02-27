@@ -73,7 +73,7 @@ class DownloadHandler(RequestHandler):
             )
 
         buf = BytesIO()
-        pn.io.save.save(layout, buf, resources="cdn", embed=True)   # Will eventually convert to PDF in the browser so do not need standalone HTML
+        pn.io.save.save(layout, buf, resources="cdn", embed=True)
         buf.seek(0)
         self.set_header("Content-Type", "text/html")
         self.write(buf.read())
