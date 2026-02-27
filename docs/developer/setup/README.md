@@ -21,7 +21,6 @@ This directory contains guides for setting up and configuring a gEAR server inst
 
 ### Optional Components
 
-- **[Epiviz](./epiviz.md)** - Epigenome browser setup (**OBSOLETE** - replaced by Gosling)
 - **[Docker](./docker.md)** - Docker-based development environment
 - **[MySQL in Docker](./docker_mysql.md)** - Docker-based MySQL installation and configuration
 - **[Systemd Services](./systemd.md)** - Background worker services
@@ -71,15 +70,6 @@ www/
 ├── projections/        # ProjectR results
 ├── uploads/files/      # Upload staging area
 └── img/dataset_previews/  # Dataset preview images
-```
-
-### Permissions
-
-The Apache user (usually `www-data`) needs write access:
-
-```bash
-cd /var/www  # or your gEAR www directory
-chmod 777 datasets datasets/spatial analyses/* carts/ projections/ uploads/files/ img/dataset_previews/
 ```
 
 ## Common Issues
