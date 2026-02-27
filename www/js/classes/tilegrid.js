@@ -2383,42 +2383,42 @@ class DatasetTile {
     }
 
     async downloadSpatialPNG(display) {
-        //TODO:
-        createToast("Not yet implemented: contact gEAR team if interested in this feature.", "is-info");
-        return;
         if (!this.spatialUrlParams) {
             createToast("Cannot download PNG because spatial display parameters are not available.", "is-warning");
             return;
         }
 
         const urlParams = this.spatialUrlParams;
-        // Only downloading, not saving
-        urlParams.append("nosave", true);
+        urlParams.append("_", Date.now());   // add timestamp to prevent caching issues
 
-        const endpoint = "panel_app_expanded"
-        const url = `/panel/ws/${endpoint}/download?${urlParams.toString()}`;
+        // Must hit regular URL and not websocket (ws) version
+        // because the HTTP version is unidirectional and will return response data
+        const url = `/panel/spatial_download?${urlParams.toString()}`;
         // Call download endpoint which will download a PNG
         try {
             const response = await fetch(url, {
                 method: "GET",
                 headers: {
-                    "Content-Type": "application/json",
+                    "Content-Type": "text/html",
                     "X-Session-ID": apiCallsMixin.sessionId || "",
                 },
             });
 
             if (!response.ok) {
-                throw new Error(`Error downloading PNG: ${response.statusText}`);
+                throw new Error(`Error downloading HTML: ${response.statusText}`);
             }
 
-            // The response will be a blob representing the PNG file
+            // Wanted to convert to PDF but the plots are in JS, which is not executed inside the returned HTML
+            // when added to the DOM. So HTML will have to do.
+
+            // The response will be a blob representing the HTML file
             const blob = await response.blob();
             const downloadUrl = URL.createObjectURL(blob);
 
             // Create a hidden link to trigger the download
             const hiddenLink = document.createElement("a");
             hiddenLink.href = downloadUrl;
-            hiddenLink.download = `${this.dataset.share_id}_${display.plotly_config.gene_symbol}_spatial.png`;
+            hiddenLink.download = `${this.dataset.share_id}_${display.plotly_config.gene_symbol}_spatial.html`;
             document.body.appendChild(hiddenLink);
             hiddenLink.click();
 
