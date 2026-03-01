@@ -1,7 +1,13 @@
 from io import BytesIO
 
 import panel as pn
-from panel_app_expanded import ExpandedSettings, SpatialPanel
+from common import (
+    has_selection,
+    normalize_expression_name,
+    retrieve_dataframe,
+    retrieve_image_array,
+)
+from panel_app_expanded import ExpandedSettings, ExpandedSpatialViewer
 from tornado.web import HTTPError, RequestHandler
 
 pn.extension("plotly", loading_indicator=True, defer_load=True, nthreads=4)
@@ -56,9 +62,27 @@ class DownloadHandler(RequestHandler):
         # this request; note that session_args is *not* used here.
         settings = ExpandedSettings(**query_args)
 
+        df = retrieve_dataframe(settings.dataset_id, settings.filename)
+        image_array = retrieve_image_array(settings.dataset_id)
+        current_gene = normalize_expression_name(settings.filename)
+
+        # If selection_x1/x2/y1/y2 are present save as a tuple in the form of (left, right, bottom, top)
+        saved_bounds = None
+        if has_selection(settings):
+            saved_bounds = (
+                settings.selection_x1,
+                settings.selection_x2,
+                settings.selection_y1,
+                settings.selection_y2,
+            )
+
+        # Instantiate the component
+        import sys
+        sys.exit()
+
         # construct a transient SpatialPanel and force it to load its data
         try:
-            panel = SpatialPanel(settings)
+            panel = ExpandedSpatialViewer(dataframe=df, image_array=image_array, current_gene=current_gene, saved_bounds=saved_bounds)
             # run the init_data generator to completion so df, maps, etc. exist
             for _ in panel.init_data():
                 pass

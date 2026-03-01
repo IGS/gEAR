@@ -1,5 +1,5 @@
+hvplot==0.12.2
 panel==1.8.7
-plotly==5.20.0
 pandas==2.2.1
 pyarrow==18.1.0 # v19 breaks reading spatial parquet files
 werkzeug==2.0.2
