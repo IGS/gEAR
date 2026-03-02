@@ -49,6 +49,14 @@
                                     <span>Dataset publication</span>
                                 </span>
                             </a>
+                            <a class="dropdown-item" data-tool="cite" target="_blank">
+                                <span class="icon-text">
+                                    <span class="icon">
+                                        <i class="mdi mdi-24px mdi-book-open-variant-outline"></i>
+                                    </span>
+                                    <span>Citation</span>
+                                </span>
+                            </a>
                             <a class="dropdown-item" data-tool="geo" target="_blank">
                                 <span class="icon-text">
                                     <span class="icon">
@@ -115,7 +123,7 @@
                                     <span>Download H5AD</span>
                                 </span>
                             </a>
-                            <a class="dropdown-item" data-tool="download-image">
+                            <a class="dropdown-item" data-tool="download-png">
                                 <span class="icon-text">
                                     <span class="icon">
                                         <i class="mdi mdi-24px mdi-file-png-box"></i>
@@ -233,6 +241,44 @@
                 <figure class="image">
                     <img class="js-infobox-schematic" src="" alt="Infograph" />
                 </figure>
+            </section>
+        </div>
+    </div>
+</template>
+
+<template id="tmpl-tile-grid-citation-modal">
+    <div class="modal js-citation">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Citation</p>
+                <button class="delete" aria-label="close"></button>
+            </header>
+            <section class="modal-card-body">
+                <div class="js-citation-content content">
+                </div>
+            </section>
+            <section class="modal-card-foot is-justify-content-space-between">
+                <div class="buttons has-addons js-citation-format-btns">
+                    <button class="button is-small is-primary js-citation-format-btn" data-format="mla">
+                        <span>MLA</span>
+                    </button>
+                    <button class="button is-small js-citation-format-btn" data-format="ama">
+                        <span>AMA</span>
+                    </button>
+                    <button class="button is-small js-citation-format-btn" data-format="apa">
+                        <span>APA</span>
+                    </button>
+                    <button class="button is-small js-citation-format-btn" data-format="nlm">
+                        <span>NLM</span>
+                    </button>
+                </div>
+                <button class="button is-link js-citation-copy">
+                    <span class="icon">
+                        <i class="mdi mdi-24px mdi-content-copy"></i>
+                    </span>
+                    <span>Copy to clipboard</span>
+                </button>
             </section>
         </div>
     </div>

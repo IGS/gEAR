@@ -1,4 +1,4 @@
-import { User } from "./classes/user.v2.js";
+import { User } from "./classes/user.v2.js?v=92952cc";
 
 let CURRENT_USER = undefined;
 let SIDEBAR_COLLAPSED = false;
@@ -586,23 +586,18 @@ const convertToFormData = (object) => {
  * @param {string} msg - The message to display in the toast.
  * @param {string} [levelClass="is-danger"] - The CSS class for the toast level. Defaults to "is-danger".
  * @param {boolean} [closeManually=false] - Indicates whether the toast can be closed manually or after a timeout. Defaults to false.
- * @param {Object} [opts={ isHTML: false }] - Additional options for the toast.
  */
-const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { isHTML: false }) => {
+const createToast = (msg, levelClass="is-danger", closeManually=false) => {
     const toast = document.createElement("div");
     toast.classList.add("notification", "js-toast", levelClass, "animate__animated", "animate__fadeInUp");
     const toastButton = document.createElement("button");
     toastButton.classList.add("delete");
     toastButton.addEventListener("click", (event) => {
         const notification = event.currentTarget.closest(".js-toast.notification");
-        notification.remove();
+        notification.remove(notification);
     });
     toast.appendChild(toastButton);
-    toast.appendChild(opts?.isHTML ? (() => {
-        const span = document.createElement("span");
-        span.innerHTML = msg;
-        return span;
-    })() : document.createTextNode(msg));
+    toast.appendChild(document.createTextNode(msg));
 
     const numToasts = document.querySelectorAll(".js-toast.notification").length;
     const numToastsThisLevel = document.querySelectorAll(`.js-toast.notification.${levelClass}`).length;
@@ -922,15 +917,6 @@ const apiCallsMixin = {
         return data;
     },
     /**
-     * Fetches the analysis tools available for a given dataset.
-     * @param {string} datasetId - The ID of the dataset.
-     * @returns {Promise<any>} - A promise that resolves to the fetched data.
-     */
-    async fetchAvailableAnalysisTools(shareId) {
-        const {data} = await axios.get(`./api/h5ad/${shareId}/availableAnalysisTools`);
-        return data;
-    },
-    /**
      * Fetches the available plot types for a given dataset and analysis.
      * @param {string} datasetId - The ID of the dataset.
      * @param {string} analysisId - The ID of the analysis.
@@ -956,6 +942,15 @@ const apiCallsMixin = {
         // NOTE: gene_symbol should already be already passed to plotConfig
         const payload = { ...plotConfig, plot_type: plotType, analysis, colorblind_mode: apiCallsMixin.colorblindMode };
         const {data} = await axios.post(`/api/plot/${datasetId}/mg_plotly`, payload, otherOpts);
+        return data;
+    },
+    /**
+     * Fetches citation information for a given PubMed ID.
+     * @param {string} pubmedId - The PubMed ID for which to fetch citation information.
+     * @returns {Promise<object>} - A promise that resolves to the fetched citation data.
+     */
+    async fetchCitationFromPubmedId(pubmedId) {
+        const {data} = await axios.post("cgi/get_citation_from_pubmed_id.cgi", convertToFormData({pubmed_id: pubmedId}));
         return data;
     },
     /**
@@ -1297,14 +1292,12 @@ const apiCallsMixin = {
      * Fetches SVG data for a given dataset, gene symbol, and projection ID.
      * @param {string} datasetId - The ID of the dataset.
      * @param {string} geneSymbol - The gene symbol.
-     * @param {number} vmax - The maximum value for the color scale.
-     * @param {number} vmin - The minimum value for the color scale.
      * @param {string} [projectionId=null] - The ID of the projection (optional).
      * @param {number|null} [expressionMinClip=null] - Minimum expression clipping value (optional).
      * @param {Object} [otherOpts={}] - Additional options for the GET request.
      * @returns {Promise<any>} - A promise that resolves to the fetched data.
      */
-    async fetchSvgData(datasetId, geneSymbol, vmax=null, vmin=null, projectionId=null, expressionMinClip=null, otherOpts={}) {
+    async fetchSvgData(datasetId, geneSymbol, projectionId=null, expressionMinClip=null, otherOpts={}) {
 
         // create URL Params for the GET request
         const urlParams = new URLSearchParams();
@@ -1314,12 +1307,6 @@ const apiCallsMixin = {
         }
         if (expressionMinClip !== null) {
             urlParams.append('expression_min_clip', expressionMinClip);
-        }
-        if (vmax !== null) {
-            urlParams.append('vmax', vmax);
-        }
-        if (vmin !== null) {
-            urlParams.append('vmin', vmin);
         }
 
         // fetch the data
