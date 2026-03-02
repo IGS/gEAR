@@ -1,3 +1,4 @@
+from io import BytesIO
 import logging
 import traceback
 import warnings
@@ -68,8 +69,6 @@ class SpatialNormalSubplot(SpatialFigure):
         **params: Additional keyword arguments for customization.
 
     Methods:
-        refresh_spatial_fig():
-            Regenerates the figure and applies current selections, returning the figure as a dictionary.
         setup_cluster_plot(...):
             Sets up a cluster plot on the given Plotly figure using the provided DataFrame and plot type.
         make_umap_plots():
@@ -103,21 +102,17 @@ class SpatialNormalSubplot(SpatialFigure):
         )
 
         self.selections_dict: dict[str, float] = {}
-
-    def refresh_spatial_fig(self) -> dict:
-        """
-        Refreshes the spatial figure by regenerating it and applying current selections.
-
-        Returns:
-            dict: The updated figure represented as a dictionary.
-        """
-
         self.fig = self.make_fig()
-        return self.fig.to_dict()
 
     def make_fig(self) -> go.Figure:
         self._setup_fig()
-        if self.update_selection_ranges():
+        if self.has_selection():
+            self.selections_dict = dict(
+                x0=self.settings.selection_x1,
+                x1=self.settings.selection_x2,
+                y0=self.settings.selection_y1,
+                y1=self.settings.selection_y2,
+            ) # type: ignore
             self.mirror_selection()
         return self._add_traces_to_fig()
 
@@ -361,7 +356,8 @@ class SpatialNormalSubplot(SpatialFigure):
                 x0=range_x1, x1=range_x2, y0=range_y1, y1=range_y2
             )
 
-        return self.refresh_spatial_fig()
+            self.mirror_selection()
+            return self.fig.to_dict()
 
     def mirror_selection(self):
         """
@@ -373,6 +369,9 @@ class SpatialNormalSubplot(SpatialFigure):
         Returns:
             None
         """
+
+        # Clear existing selections before applying the new one
+        self.fig.layout.selections = []
 
         linecolor = "black"
         #if self.spatial_img is None or self.platform == "xenium":
@@ -404,8 +403,6 @@ class SpatialZoomSubplot(SpatialFigure):
     Methods:
         calculate_marker_size():
             Calculates and sets the marker size for the zoomed-in plot.
-        refresh_spatial_fig():
-            Regenerates the zoomed-in figure and applies current selections, returning the figure as a dictionary.
         make_zoom_fig_callback(event):
             Handles zoom/selection events, filters data accordingly, and refreshes the figure.
     """
@@ -446,6 +443,9 @@ class SpatialZoomSubplot(SpatialFigure):
             self.range_y1 = self.settings.selection_y1
             self.range_y2 = self.settings.selection_y2
 
+        self.fig = self.make_fig()
+
+
     def calculate_marker_size(self) -> None:
         """
         Calculates and sets the marker size for the zoomed-in plot.
@@ -461,20 +461,15 @@ class SpatialZoomSubplot(SpatialFigure):
         # The marker size will scale larger as the range of the selection gets more precise
         self.marker_size = int(1 + 2500 / (x_range + y_range)) + 3
 
-    def refresh_spatial_fig(self) -> dict:
-        """
-        Refreshes the zoomed-in spatial figure by regenerating it and applying current selections.
-
-        Returns:
-            dict: The updated figure represented as a dictionary.
-        """
-
-        self.fig = self.make_fig()
-        return self.fig.to_dict()
-
     def make_fig(self) -> go.Figure:
         self._setup_fig()
-        if self.update_selection_ranges():
+        if self.has_selection():
+            self.selections_dict = dict(
+                x0=self.settings.selection_x1,
+                x1=self.settings.selection_x2,
+                y0=self.settings.selection_y1,
+                y1=self.settings.selection_y2,
+            ) # type: ignore
             # Ensure the axes are set to the selection ranges
             self.setup_zoom_fig_params()
         return self._add_traces_to_fig()
@@ -517,7 +512,8 @@ class SpatialZoomSubplot(SpatialFigure):
             self.settings.selection_y1 = self.range_y1
             self.settings.selection_y2 = self.range_y2
 
-        return self.refresh_spatial_fig()
+        self.fig = self.make_fig()
+        return self.fig.to_dict()
 
     def setup_zoom_fig_params(self):
         """
@@ -531,11 +527,11 @@ class SpatialZoomSubplot(SpatialFigure):
 
         """
 
-        if not self.fig:
+        if self.fig is None:
             raise ValueError("Figure is not initialized. Cannot set zoom parameters.")
 
-        if not self.settings.selection_x1 or not self.settings.selection_x2: # type: ignore
-            raise ValueError("Selection coordinates are not set. Cannot set zoom parameters.")
+        if not self.has_selection():
+            return
 
         # Preserve the original dataframe for filtering
         dataframe = self.orig_df
@@ -1017,10 +1013,10 @@ class SpatialPanel(pn.viewable.Viewer):
             #platform=self.platform
         )
 
-        self.normal_fig = self.normal_fig_obj.refresh_spatial_fig()
+        self.normal_fig = self.normal_fig_obj.fig.to_dict()
 
         # The pn.bind function for the zoom callback will not trigger when the normal_fig is refreshed.
-        self.zoom_fig = self.zoom_fig_obj.refresh_spatial_fig()
+        self.zoom_fig = self.zoom_fig_obj.fig.to_dict()
 
         self.umap_fig = self.add_umap()
         self.violin_fig = self.normal_fig_obj.make_violin_plot()

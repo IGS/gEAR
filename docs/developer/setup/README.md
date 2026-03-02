@@ -21,7 +21,6 @@ This directory contains guides for setting up and configuring a gEAR server inst
 
 ### Optional Components
 
-- **[Epiviz](./epiviz.md)** - Epigenome browser setup (**OBSOLETE** - replaced by Gosling)
 - **[Docker](./docker.md)** - Docker-based development environment
 - **[MySQL in Docker](./docker_mysql.md)** - Docker-based MySQL installation and configuration
 - **[Systemd Services](./systemd.md)** - Background worker services
@@ -71,15 +70,6 @@ www/
 ├── projections/        # ProjectR results
 ├── uploads/files/      # Upload staging area
 └── img/dataset_previews/  # Dataset preview images
-```
-
-### Permissions
-
-The Apache user (usually `www-data`) needs write access:
-
-```bash
-cd /var/www  # or your gEAR www directory
-chmod 777 datasets datasets/spatial analyses/* carts/ projections/ uploads/files/ img/dataset_previews/
 ```
 
 ## Common Issues
@@ -155,9 +145,15 @@ For development, consider using Docker instead of a full server setup:
 ```bash
 cd /path/to/gEAR
 git pull origin devel
-# Restart Apache if needed
+# Restart services (if needed)
 sudo systemctl restart apache2
+sudo systemctl restart projectr-consumer.target
+sudo systemctl restart spatial-panel.service
 ```
+
+Apache2 - If API code was updated
+ProjectR consumers - If projectR code in `/services/projectr` was updated
+Spatial Panel daemon - If code in `/services/spatial` was updated
 
 ## Getting Help
 

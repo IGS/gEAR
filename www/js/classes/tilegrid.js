@@ -2,7 +2,7 @@
 
 // This doesn't work unless we refactor everything to use ES modules
 import { apiCallsMixin, closeModal, createToast, getCurrentUser, logErrorInConsole, openModal } from "../common.v2.js?v=92952cc";
-import { adjustClusterColorbars, adjustExpressionColorbar, postPlotlyConfig } from "../plot_display_config.js?v=92952cc";
+import { adjustClusterColorbars, adjustExpressionColorbar, postPlotlyConfig } from "../helpers/plot_display_config.js?v=92952cc";
 
 /* Given a passed-in layout_id, genereate a 2-dimensional tile-based grid object.
 This uses Bulma CSS for stylings (https://bulma.io/documentation/layout/tiles/)
@@ -2304,6 +2304,57 @@ class DatasetTile {
         } finally {
             return;
         }
+    }
+
+    async downloadSpatialPNG(display) {
+        if (!this.spatialUrlParams) {
+            createToast("Cannot download PNG because spatial display parameters are not available.", "is-warning");
+            return;
+        }
+
+        const urlParams = this.spatialUrlParams;
+        urlParams.append("_", Date.now());   // add timestamp to prevent caching issues
+
+        // Must hit regular URL and not websocket (ws) version
+        // because the HTTP version is unidirectional and will return response data
+        const url = `/panel/spatial_download?${urlParams.toString()}`;
+        // Call download endpoint which will download a PNG
+        try {
+            const response = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "text/html",
+                    "X-Session-ID": apiCallsMixin.sessionId || "",
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Error downloading HTML: ${response.statusText}`);
+            }
+
+            // Wanted to convert to PDF but the plots are in JS, which is not executed inside the returned HTML
+            // when added to the DOM. So HTML will have to do.
+
+            // The response will be a blob representing the HTML file
+            const blob = await response.blob();
+            const downloadUrl = URL.createObjectURL(blob);
+
+            // Create a hidden link to trigger the download
+            const hiddenLink = document.createElement("a");
+            hiddenLink.href = downloadUrl;
+            hiddenLink.download = `${this.dataset.share_id}_${display.plotly_config.gene_symbol}_spatial.html`;
+            document.body.appendChild(hiddenLink);
+            hiddenLink.click();
+
+            // Clean up
+            URL.revokeObjectURL(downloadUrl);
+            hiddenLink.remove();
+
+        } catch (error) {
+            console.error(error);
+            createToast(`Error downloading PNG: ${error.message}`, "is-danger");
+        }
+
     }
 
     async saveSpatialParameters(displayName, makeDefault, geneSymbol) {

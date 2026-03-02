@@ -105,7 +105,7 @@ $HOME/git/gEAR/www/analyses
 
 ### Permissions
 
-Permissions need to be writeable for your apache user.
+Permissions need to be writeable for the apache user (www-data).
 
 ```bash
 cd /var/www
