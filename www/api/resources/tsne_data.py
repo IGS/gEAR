@@ -1051,8 +1051,14 @@ def generate_tsne_figure(
     col_span = ceil((grid_spec_list[3] - grid_spec_list[1]) / 3)
     num_plots_wide = kwargs_ncols
     num_plots_high = ceil(len(columns) / num_plots_wide)
-    io_fig.set_figwidth(calculate_figure_width(num_plots_wide, col_span))
-    io_fig.set_figheight(calculate_figure_height(num_plots_high, row_span))
+    # Adjust figure height for horizontal legend
+    legend_height = 1.25 if horizontal_legend else 0  # Add extra height for horizontal legend
+    plot_height = calculate_figure_height(num_plots_high, row_span)
+    plot_width = calculate_figure_width(num_plots_wide, col_span)
+
+    # Set figure dimensions
+    io_fig.set_figwidth(plot_width) # TODO: Apply legend width only if last ax is in last column
+    io_fig.set_figheight(plot_height + legend_height)  # Add legend height to total figure height
 
     # Axes/legend logic (shared)
     if isinstance(ax, list):
@@ -1075,7 +1081,7 @@ def generate_tsne_figure(
             So, if x=0, y=0, and loc = "lower_left", the lower left corner of the legend will be anchored to the lower left corner of the plot
             """
 
-            num_horizontal_cols = 2 * num_cols  # Number of columns in horizontal legend
+            num_horizontal_cols = min(len(selected.obs[colorize_by].unique()), 12)  # Number of columns in horizontal legend
 
             (handles, labels) = sort_legend(
                 last_ax, colorize_by_order, num_horizontal_cols, horizontal_legend
@@ -1090,9 +1096,9 @@ def generate_tsne_figure(
             )
             if horizontal_legend:
                 last_ax.get_legend().remove()  # Remove legend added by scanpy
-                last_ax.legend(
-                    loc="upper right",
-                    bbox_to_anchor=[1, -0.05, 0, 0],
+                io_fig.legend(
+                    loc="lower center",
+                    bbox_to_anchor=(0.5, -0.03), # Place legend below the figure
                     frameon=False,
                     ncol=num_horizontal_cols,
                     handles=handles,

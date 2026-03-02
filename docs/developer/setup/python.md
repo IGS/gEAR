@@ -79,7 +79,7 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
       opencv-python==4.5.5.64 \
       openpyxl==3.1.5 \
       pandas==2.2.1 \
-      panel==1.6.3 \
+      panel==1.8.7 \
       Pillow==10.2.0 \
       pika==1.3.1 \
       plotly==5.20.0 \
