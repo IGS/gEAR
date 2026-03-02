@@ -1,7 +1,9 @@
 from pathlib import Path
 import sys
 
+from bokeh.models import HoverTool
 import datashader as ds
+from holoviews.operation.datashader import spread
 import numpy as np
 import pandas as pd
 import param
@@ -16,13 +18,31 @@ SPATIAL_IMAGE_NAME = "spatial_img.npy"
 
 def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='raw_value', cmap='YlOrRd', width=300, height=200):
     """Generates a Datashaded spatial plot colored by expression of the specified gene."""
-    return df.hvplot.points(
+
+    plot = df.hvplot.points(
         x=x_col, y=y_col, c=color_col,
-        rasterize=True, aggregator=agg, dynspread=True,
+        rasterize=True, aggregator=agg,
         cmap=cmap, frame_width=width, frame_height=height,
-        xaxis=None, yaxis=None, hover=True,
-        #tools=['box_select', 'wheel_zoom', 'pan'], active_tools=['box_select', 'pan']
+        xaxis=None, yaxis=None,
     )
+
+    tools = ['box_select', 'pan', 'wheel_zoom']
+    if color_col == "raw_value":
+        label_name = "Expression"
+        # @image is a special variable that datashader uses to store the aggregated value for the hovered pixel
+        custom_hover = HoverTool(tooltips=[
+                (label_name, "@image")
+            ])
+        tools.append(custom_hover)  # type: ignore
+    else:
+        tools.append("hover")
+
+    plot = plot.opts(
+            tools=tools,
+            active_tools=['box_select', 'wheel_zoom']
+        )
+
+    return spread(plot, px=5)
 
 def create_umap_plot(df, color_col, cmap, is_categorical=False, width=400, height=300):
     """Generates a Datashaded UMAP."""
@@ -33,7 +53,6 @@ def create_umap_plot(df, color_col, cmap, is_categorical=False, width=400, heigh
         rasterize=True, aggregator=agg, dynspread=True,
         cmap=cmap, frame_width=width, frame_height=height,
         xaxis=None, yaxis=None, title=f"UMAP: {color_col}",
-        #tools=['box_select', 'lasso_select', 'wheel_zoom', 'pan']
     )
 
 def create_violin_plot(df, y_col, group_col='cluster', cmap='Category10', width=900, height=300):

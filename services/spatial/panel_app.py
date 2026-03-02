@@ -14,10 +14,4 @@ if pn.state.location is None or not pn.state.location.query_params:
 else:
     # Instantiate the component
     spatial_dashboard = CondensedSpatialViewer()
-
-    # Drop it directly into the page template
-    template = pn.template.GoldenTemplate(
-        title='gEAR Spatial View',
-        main=[spatial_dashboard] # Treats the class instance exactly like a pn.Row!
-    )
-    template.servable()
+    spatial_dashboard.servable()
