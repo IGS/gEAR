@@ -431,7 +431,7 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
         tracks (list): A list of dictionaries, each representing a track specification. Each track dict should contain at least:
             - "type" (str): The type of the track (e.g., "bam", "bigWig", "bed", "vcf").
             - "bigDataUrl" (str): The URL to the data file for the track.
-            - Optional: "color" (str), "group" (any), and other track-specific attributes.
+            - Optional: "color" (str), and other track-specific attributes.
         zoom (bool, optional): If True, builds both left and right tracks for zoomed-in views. Defaults to False.
 
     Returns:
@@ -494,22 +494,14 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
 
         # Get other attributes to pass to the class
         color = track.get("color", "orange")  # Default color if not specified
-        #group = track.get("group", "linked")
 
         # Title should be based on shortLabel, longLabel, bigDataUrl (in that order)
         title = track.get("shortLabel", track.get("longLabel", "bigDataUrl"))
-
-        #autoscale = track.get("autoscale", "on")
 
         spec_builder = spec_builder_class(
             data_url=data_url, color=color, zoom=zoom, title=title, position_str=position_str
         )
         left_track = spec_builder.add_track(**kwargs)
-
-        # Let these tracks scale their y-axes together if specified in the UCSC trackDb
-        # ! Doesn't work... does not scale axes and zooming on bigwig tracks de-links from view
-        #if autoscale == "group":
-        #    left_track.y.linkingId = f"y-left-{group}"  # type: ignore
 
         parent_tracks_dict["left"].append(left_track)
 
@@ -520,8 +512,6 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
             right_track = spec_builder.add_track(**kwargs)
             right_track.id = f"right-track-{Path(data_url).stem}"
             parent_tracks_dict["right"].append(right_track)
-            #if autoscale == "group":
-            #    right_track.y.linkingId = f"y-right-{group}"  # type: ignore
 
 
     parent_view_left = gos.stack(*parent_tracks_dict["left"]).properties(
@@ -564,17 +554,24 @@ def build_region_view(parent_view_left, parent_view_right=None):
     return region_view
 
 
-def fetch_trackdb_and_groups_info(genomes_txt, assembly) -> dict:
-    """Extract 'trackDb' and 'groups' URLs for an assembly from genomes_txt.
-
-    Looks for a "genome <assembly>" line, then reads the immediate following
-    "trackDb" and optional "groups" lines. Returns a dict with keys
-    "trackDb" and "groups" (empty string if not found).
-
-    NOTE: These can be relative paths to the genomes.txt location; caller
-    must resolve them if needed.
+def fetch_trackdb_url(genomes_txt, assembly) -> str:
     """
-    urls = {"trackDb": "", "groups": ""}
+    Extract the trackDb URL for a specified genome assembly from UCSC genomes.txt format.
+
+    Args:
+        genomes_txt (str): The contents of a UCSC genomes.txt file as a string.
+        assembly (str): The genome assembly identifier to search for (e.g., 'hg38', 'mm10').
+
+    Returns:
+        dict: A dictionary containing the trackDb URL for the specified assembly.
+
+    Raises:
+        UnboundLocalError: If the assembly is not found in genomes_txt or trackDb entry is missing.
+
+    Note:
+        Expects genomes_txt to follow UCSC format with 'genome <assembly>'
+        followed by a line starting with 'trackDb' containing the URL.
+    """
 
     for line in genomes_txt.splitlines():
         if line.startswith(f"genome {assembly}"):
@@ -583,15 +580,9 @@ def fetch_trackdb_and_groups_info(genomes_txt, assembly) -> dict:
             if next_line_index < len(genomes_txt.splitlines()):
                 next_line = genomes_txt.splitlines()[next_line_index]
                 if next_line.startswith("trackDb"):
-                    urls["trackDb"] = next_line.split(" ")[1]
-                    # Now look for groups line (next line)
-                    next_next_line_index = next_line_index + 1
-                    if next_next_line_index < len(genomes_txt.splitlines()):
-                        next_next_line = genomes_txt.splitlines()[next_next_line_index]
-                        if next_next_line.startswith("groups"):
-                            urls["groups"] = next_next_line.split(" ")[1]
-                    break
-    return urls
+                    return next_line.split(" ")[1]
+
+    raise UnboundLocalError(f"Assembly {assembly} not found in genomes.txt or trackDb entry is missing.")
 
 
 def get_gene_info(gene_symbol, dataset_id, assembly):
@@ -639,30 +630,6 @@ def get_gene_info(gene_symbol, dataset_id, assembly):
 
     return position_str, gene_symbol
 
-def parse_groups_from_groupsdb(groupsdb_txt) -> dict:
-    """Parse groups info from a UCSC groups.txt content.
-
-    Returns a dict with group names as keys and their descriptions as values.
-
-    Example group:
-
-    name ATAC
-    label ATAC-seq
-    defaultIsClosed 0
-    """
-    groups = {}
-    current_group = None
-    for line in groupsdb_txt.splitlines():
-        if line.startswith("name"):
-            current_group = line.split(" ")[1]
-            groups[current_group] = {}
-        elif current_group:
-            if line.startswith("label"):
-                groups[current_group]["label"] = line.split(" ")[1]
-            elif line.startswith("defaultIsClosed"):
-                groups[current_group]["defaultIsClosed"] = line.split(" ")[1]
-    return groups
-
 
 def parse_tracks_from_trackdb(trackdb_txt, trackdb_url) -> list:
     """Parse track names from a UCSC trackDb.txt content.
@@ -674,7 +641,6 @@ def parse_tracks_from_trackdb(trackdb_txt, trackdb_url) -> list:
     bigDataUrl P1HC_ATAC_1.bigwig
     shortLabel ATAC-seq 1st replicate
     longLabel ATAC-seq 1st replicate
-    group ATAC
     color 31,119,180
     autoscale on
     visibility dense
@@ -715,13 +681,11 @@ def parse_tracks_from_trackdb(trackdb_txt, trackdb_url) -> list:
                 current_track["shortLabel"] = " ".join(line.split(" ")[1:])
             elif line.startswith("longLabel"):
                 current_track["longLabel"] = " ".join(line.split(" ")[1:])
-            elif line.startswith("group"):
-                current_track["group"] = line.split(" ")[1]
             elif line.startswith("color"):
                 color = line.split(" ")[1]
                 current_track["color"] = f"rgb({color})"    # rendered by CSS engine, so this will work
-            elif line.startswith("autoscale") and "group" in line:
-                current_track["autoscale"] = "group"
+            elif line.startswith("autoscale") and "gos_group" in line:
+                current_track["autoscale"] = "gos_group"
             elif line.startswith("type"):
                 current_track["type"] = line.split(" ")[1]
     if current_track:
@@ -747,64 +711,6 @@ def parse_position_str(position_str: str) -> tuple:
     except Exception as e:
         print(f"ERROR: Failed to parse position string '{position_str}': {e}", file=sys.stderr)
         return None, None, None, None
-
-def replace_with_aggregated_track(group_tracks, group_name):
-    """
-    Replaces a list of track dictionaries with a single aggregated track if an aggregated data file exists for the given group.
-
-    Args:
-        group_tracks (list): A list of track dictionaries, each representing a data track.
-        group_name (str): The name of the group for which to check for an aggregated track.
-
-    Returns:
-        list: A list containing either the original group_tracks or a single track dictionary pointing to the aggregated data file, if available.
-
-    Notes:
-        - Only supports aggregation for certain data types (e.g., "bigWig", "bam").
-        - Checks for the existence of the aggregated file by sending a HEAD request.
-        - If the aggregated file is found, updates the first track's URL and returns it as a single-item list.
-        - If not found or unsupported type, returns the original group_tracks.
-    """
-
-    TYPE_BY_EXTENSION = {
-        "bigWig": "bw",
-        #"bam": "bam",
-    }
-
-    first_track = group_tracks[0]
-    data_url = first_track.get("bigDataUrl", None)
-    data_type = first_track.get("type", None)
-
-    if not data_url:
-        return group_tracks
-
-    # Not all data types support aggregated (y) values
-    if data_type not in TYPE_BY_EXTENSION:
-        return group_tracks
-
-    # ensure all tracks in group are of this type
-    for track in group_tracks:
-        if track.get("type", None) != data_type:
-            print(f"INFO: Not all tracks in group {group_name} are of type {data_type}; cannot use aggregated track.", file=sys.stderr)
-            return group_tracks
-
-    extension = TYPE_BY_EXTENSION[data_type]
-
-    groups_url = urljoin(data_url, f"{group_name}_group.{extension}")
-    # test if this exists
-    try:
-        groups_response = requests.head(groups_url, allow_redirects=True)
-        groups_response.raise_for_status()
-
-        if groups_response.status_code == 200:
-            first_track["bigDataUrl"] = groups_response.url
-
-        first_track["shortLabel"] = group_name  # Update title to group name
-        group_tracks = [first_track]
-    except Exception:
-        print(f"INFO: No grouped track found for group {group_name}; using individual tracks.", file=sys.stderr)
-    finally:
-        return group_tracks
 
 def zoom_view_to_domain(view, position_str, hic_found=False):
     """
@@ -1208,27 +1114,16 @@ class GoslingSpec(Resource):
             )
             return response, 400
 
-        urls = fetch_trackdb_and_groups_info(genomes_response.text, assembly)
-        if not urls:
+        trackdb_url = fetch_trackdb_url(genomes_response.text, assembly)
+        if not trackdb_url:
             response["message"] = (
                 f"trackDb URL not found for assembly {assembly} in genomes.txt"
             )
             return response, 400
 
-        # If trackDb and groups URLs are relative to genomes.txt, resolve them
-        trackdb_url = urls["trackDb"]
-        groups_url = urls["groups"]
 
-        if not trackdb_url.startswith("http://") and not trackdb_url.startswith(
-            "https://"
-        ):
+        if not trackdb_url.startswith("http://") and not trackdb_url.startswith("https://"):
             trackdb_url = f"{base_url}/{trackdb_url}"
-        if (
-            groups_url
-            and not groups_url.startswith("http://")
-            and not groups_url.startswith("https://")
-        ):
-            groups_url = f"{base_url}/{groups_url}"
 
         # Fetch tracks
         try:
@@ -1241,19 +1136,6 @@ class GoslingSpec(Resource):
             return response, 400
         tracks = parse_tracks_from_trackdb(trackdb_response.text, trackdb_url)
 
-        # Attempt to fetch groups info (non-fatal)
-        groups = {}
-        if groups_url:
-            try:
-                groups_response = requests.get(groups_url)
-                groups_response.raise_for_status()
-                # Parse groups info as needed; here we just store the raw text
-                groups = parse_groups_from_groupsdb(groups_response.text)
-            except requests.RequestException:
-                print("INFO: Could not retrieve groups info; continuing without it.", file=sys.stderr)
-                pass  # Ignore errors in fetching groups
-        else:
-            print("INFO: No groups URL provided; continuing without it.", file=sys.stderr)
 
         # Let's get the coordinates of the gene_symbol.
         (position_str, new_gene_symbol) = get_gene_info(gene_symbol, dataset_id, assembly)
@@ -1272,30 +1154,9 @@ class GoslingSpec(Resource):
                 build_bed_annotation_tracks(assembly, zoom, "right")
             )
 
-        # If groups are present, gather all tracks for this group,
-        # and attempt to aggregate the data by mean for each position point.
-        # This is an effort to cut down on the number of tracks to render.
-        #
-        # Otherwise just process all tracks individually
-        if groups:
-            for group in groups:
-                # Get tracks associated with this group
-                group_tracks = [
-                    track for track in tracks if track.get("group", "") == group
-                ]
-                if not group_tracks:
-                    continue
-
-                if not zoom:
-                    group_tracks = replace_with_aggregated_track(group_tracks, group)
-
-                (parent_view_left, parent_view_right, hic_found) = build_gosling_tracks(
-                    gos_tracks, group_tracks, zoom=zoom, tracksdb_url=trackdb_url, position_str=position_str
-                )
-        else:
-            (parent_view_left, parent_view_right, hic_found) = build_gosling_tracks(
-                gos_tracks, tracks, zoom=zoom, tracksdb_url=trackdb_url, position_str=position_str
-            )
+        (parent_view_left, parent_view_right, hic_found) = build_gosling_tracks(
+            gos_tracks, tracks, zoom=zoom, tracksdb_url=trackdb_url, position_str=position_str
+        )
 
         # Start building the Gosling spec
         region_view = build_region_view(parent_view_left, parent_view_right)

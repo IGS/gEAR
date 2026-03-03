@@ -56,35 +56,35 @@ def create_tabix_indexed_file(bgzipped_path: Path, file_type : str="bed") -> Non
     subprocess.run(shlex.split(tabix_cmd), check=True)
 
 
-def fetch_trackdb_and_groups_info(genomes_txt, assembly) -> dict:
-    """Extract 'trackDb' and 'groups' URLs for an assembly from genomes_txt.
-
-    Looks for a "genome <assembly>" line, then reads the immediate following
-    "trackDb" and optional "groups" lines. Returns a dict with keys
-    "trackDb" and "groups" (empty string if not found).
-
-    NOTE: These can be relative paths to the genomes.txt location; caller
-    must resolve them if needed.
+def fetch_trackdb_url(genomes_txt, assembly) -> str:
     """
-    urls = {"trackDb": "", "groups": ""}
+    Extract the trackDb URL for a specified assembly from a genomes.txt file.
 
-    for genome_line in genomes_txt.splitlines():
+    Args:
+        genomes_txt (str): The contents of a genomes.txt file as a string.
+        assembly (str): The name of the assembly/genome to search for.
+
+    Returns:
+        str: The trackDb URL corresponding to the specified assembly.
+
+    Raises:
+        ValueError: If the specified assembly is not found in the genomes.txt content.
+
+    Example:
+        >>> genomes_txt = "genome hg38\\ntrackDb http://example.com/hg38/trackDb\\ngenome mm10\\ntrackDb http://example.com/mm10/trackDb"
+        >>> fetch_trackdb_url(genomes_txt, "hg38")
+        'http://example.com/hg38/trackDb'
+    """
+
+    lines = genomes_txt.splitlines()
+    for i, genome_line in enumerate(lines):
         if genome_line.startswith(f"genome {assembly}"):
             # The next line should contain the trackDb URL
-            next_line_index = genomes_txt.splitlines().index(genome_line) + 1
-            if next_line_index < len(genomes_txt.splitlines()):
-                next_line = genomes_txt.splitlines()[next_line_index]
+            if i + 1 < len(lines):
+                next_line = lines[i + 1]
                 if next_line.startswith("trackDb"):
-                    urls["trackDb"] = next_line.split(" ")[1]
-                    # Now look for groups line (next line)
-                    next_next_line_index = next_line_index + 1
-                    if next_next_line_index < len(genomes_txt.splitlines()):
-                        next_next_line = genomes_txt.splitlines()[next_next_line_index]
-                        if next_next_line.startswith("groups"):
-                            urls["groups"] = next_next_line.split(" ")[1]
-                    break
-        raise ValueError(f"Assembly {assembly} not found in genomes.txt")
-    return urls
+                    return next_line.split(" ")[1]
+    raise ValueError(f"Assembly {assembly} not found in genomes.txt")
 
 def validate_track_types_from_db(trackdb_txt, trackdb_url) -> list:
     """Parse track names from a UCSC trackDb.txt content.
@@ -96,7 +96,6 @@ def validate_track_types_from_db(trackdb_txt, trackdb_url) -> list:
     bigDataUrl P1HC_ATAC_1.bigwig
     shortLabel ATAC-seq 1st replicate
     longLabel ATAC-seq 1st replicate
-    group ATAC
     color 31,119,180
     autoscale on
     visibility dense
@@ -116,6 +115,8 @@ class TrackHubValidate(Resource):
     def post(self, share_uid):
         session_id = request.cookies.get('gear_session_id')
         req = request.get_json()
+        if req is None:
+            return {"success": False, "message": "Invalid JSON body"}, 400
         hub_url = req.get("trackhub_url")
         assembly = req.get("assembly")
 
@@ -153,11 +154,10 @@ class TrackHubValidate(Resource):
             result["message"] = f"Error fetching genomes.txt: {str(e)}"
             return result, 500
 
-        urls = fetch_trackdb_and_groups_info(genomes_response.text, assembly)
-        if not urls:
+        trackdb_url = fetch_trackdb_url(genomes_response.text, assembly)
+        if not trackdb_url:
             result["message"] = f"No trackDb found for assembly {assembly}"
             return result, 400
-        trackdb_url = urls["trackDb"]
         if not trackdb_url.startswith("http://") and not trackdb_url.startswith("https://"):
             trackdb_url = f"{base_url}/{trackdb_url}"
 
