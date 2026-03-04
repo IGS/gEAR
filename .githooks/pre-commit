@@ -5,6 +5,13 @@
 
 PREFS_FILE="www/site_domain_prefs.json"
 
+# If the prefs file has unstaged edits, skip bumping to avoid index/worktree divergence
+# when pre-commit stashes and restores working tree changes.
+if [ -f "$PREFS_FILE" ] && ! git diff --quiet -- "$PREFS_FILE"; then
+    echo "ℹ Skipping cache_version bump (unstaged changes in $PREFS_FILE)"
+    exit 0
+fi
+
 # Get list of staged files (excluding site_domain_prefs.json)
 STAGED_FILES=$(git diff --cached --name-only | grep -v "^$PREFS_FILE$")
 
