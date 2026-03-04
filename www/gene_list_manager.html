@@ -23,11 +23,6 @@
 
     <!-- Fancy animation effects -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css""/>
-
-    <link rel="stylesheet" href="css/common.v2.css" />
-
-    <!--Page-specific CSS here -->
-    <link rel="stylesheet" href="css/gene_list_manager.css" />
 </head>
 <body>
     <!--[if lt IE 7]>
@@ -697,17 +692,18 @@
     <script src="https://cdn.jsdelivr.net/npm/@floating-ui/core@1.5.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.5.3"></script>
 
+    <!-- Page-specific CSS/JS loading here -->
+      <script type="module">
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+        const prefs = await getDomainPreferences();
 
-    <!-- Page-specific JS file here -->
-    <script type="module" src="js/gene_list_manager.js"></script>
+        // Load any local JS with cache-busting version parameter
+        insertVersionedJS('js/gene_list_manager.js', prefs.cache_version);
 
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'UA-59916932-1');
-    </script>
+        // Now load page-specific CSS
+        insertVersionedCSS('css/common.v2.css', prefs.cache_version);
+        insertVersionedCSS('css/gene_list_manager.css', prefs.cache_version);
+      </script>
+
 </body>
 </html>
