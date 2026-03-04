@@ -796,7 +796,7 @@
                           </li>
                         </ul>
                         <div class="control">
-                          <button data-format="gosling" class="button is-primary is-fullwidth format-selector" disabled>
+                          <button data-format="gosling" class="button is-primary is-fullwidth format-selector">
                             <span class="icon">
                               <i class="mdi mdi-checkbox-blank-outline"></i>
                             </span>
@@ -846,19 +846,6 @@
                               <i class="mdi mdi-information"></i>
                           </span>
                         </label>
-                        <div class="control my-3">
-                          <div class="select is-fullwidth">
-                            <select name="trackhub-assembly-select" id="trackhub-assembly-select">
-                              <option value="">Select one</option>
-                              <option value="hg19">Human (hg19)</option>
-                              <option value="hg38">Human (hg38)</option>
-                              <option value="mm10">Mouse (mm10)</option>
-                              <option value="galGal6">Chicken</option>
-                              <option value="rn6">Rat</option>
-                              <option value="danRer10">Zebrafish</option>
-                            </select>
-                          </div>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -887,7 +874,17 @@
                           </span>
                         </label>
                         <div class="control">
-                          <input class="input" type="text" name="trackhub-url" id="trackhub-url-input" placeholder="Ex: https://umgear.org/tracks/Litao_bigwigs/hub.txt">
+                          <div class="select is-fullwidth">
+                            <select name="trackhub-assembly-select" id="trackhub-assembly-select">
+                              <option value="">Select one</option>
+                              <option value="hg19">Human (hg19)</option>
+                              <option value="hg38">Human (hg38)</option>
+                              <option value="mm10">Mouse (mm10)</option>
+                              <option value="galGal6" disabled>Chicken (COMING SOON)</option>
+                              <option value="rn6">Rat</option>
+                              <option value="danRer10">Zebrafish</option>
+                            </select>
+                          </div>
                         </div>
                       </div>
                     </div>

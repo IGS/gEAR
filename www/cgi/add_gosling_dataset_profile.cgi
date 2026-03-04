@@ -23,7 +23,7 @@ sys.path.append('../..')
 def main():
     print('Content-Type: application/json\n\n', flush=True)
 
-    result = {'success':0}
+    result = {'success':0, 'message':''}
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
     dataset_uid = html.escape(form.getvalue('dataset_uid'))
@@ -54,7 +54,7 @@ def main():
 
         # Insert dataset info to database
         cursor.execute(dataset_sql, (dataset_uid, user.id, dataset_name, 1, None,
-                                         None, dataset_access, dataset_description, "gosling", "img/schematic_epiviz-chipseq.png",
+                                         None, dataset_access, dataset_description, "gosling", "img/dataset_previews/gosling.png",
                                          share_uid, "raw", "completed", 0, None,
                                          None, None, None, None, None,
                                          None, None, None, None, None,))
