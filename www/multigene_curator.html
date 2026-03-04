@@ -30,14 +30,6 @@
         <!-- Tree view/grid -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.0/font/bootstrap-icons.css">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mar10/wunderbaum@v0.10.0/dist/wunderbaum.css">
-
-        <link rel="stylesheet" href="css/common.v2.css" />
-
-        <!-- Common functions for curator pages -->
-        <link rel="stylesheet" href="css/curator_common.css" />
-
-        <!--Page-specific CSS here -->
-        <link rel="stylesheet" href="css/multigene_curator.css" />
     </head>
 
 <body>
@@ -543,16 +535,18 @@
   <script src="https://d3js.org/d3.v5.min.js"></script>
   <script src="https://cdn.plot.ly/plotly-3.3.1.min.js" charset="utf-8"></script>
 
-  <!-- Page-specific JS file here -->
-  <script type="module" src="js/multigene_curator.js"></script>
+  <!-- Page-specific CSS/JS loading here -->
+  <script type="module">
+    import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+    const prefs = await getDomainPreferences();
 
-  <!-- Global site tag (gtag.js) - Google Analytics -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'UA-59916932-1');
+    // Load any local JS with cache-busting version parameter
+    insertVersionedJS('js/multigene_curator.js', prefs.cache_version);
+
+    // Now load page-specific CSS
+    insertVersionedCSS('css/common.v2.css', prefs.cache_version);
+    insertVersionedCSS('css/curator_common.css', prefs.cache_version);
+    insertVersionedCSS('css/multigene_curator.css', prefs.cache_version);
   </script>
 
 </body>

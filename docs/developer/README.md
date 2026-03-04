@@ -76,6 +76,27 @@ We follow the [nvie.com git branching model](https://nvie.com/posts/a-successful
    # Edit gear.ini with your configuration
    ```
 
+4. **Install Git Hooks (Pre-commit)**
+
+   This project uses [pre-commit](https://pre-commit.com/) to manage git hooks. These hooks automatically:
+   - Bump the cache version in `www/site_domain_prefs.json` on commits with code changes
+   - Check code formatting and linting with Ruff
+   - Fix common issues like trailing whitespace and file endings
+
+   **Setup:**
+   ```bash
+   # Install pre-commit framework
+   pip install pre-commit
+
+   # Install the git hooks defined in .pre-commit-config.yaml
+   pre-commit install
+
+   # (Optional) Run the hooks on all files to verify setup
+   pre-commit run --all-files
+   ```
+
+   After this, the hooks will run automatically on every `git commit`. See the [cache busting guide](./cache_busting_guide.md) for details on how the cache version bump works.
+
 ### Testing
 
 - **UI Tests**: Automated tests using Mocha, Chai, and Playwright

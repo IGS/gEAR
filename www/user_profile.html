@@ -23,11 +23,6 @@
 
     <!-- Fancy animation effects -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css""/>
-
-    <link rel="stylesheet" href="css/common.v2.css" />
-
-    <!--Page-specific CSS here -->
-    <link rel="stylesheet" href="css/user_profile.css" />
 </head>
 <body>
     <!--[if lt IE 7]>
@@ -195,19 +190,20 @@
 
     <!-- Promise based HTTP client for the browser  -->
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-
     <script src="js/vendor/js.cookie.js"></script>
 
-    <!-- Page-specific JS file here -->
-    <script type="module" src="js/user_profile.js</script>
+    <!-- Page-specific CSS/JS loading here -->
+    <script type="module">
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+        const prefs = await getDomainPreferences();
 
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'UA-59916932-1');
+        // Load any local JS with cache-busting version parameter
+        insertVersionedJS('js/user_profile.js', prefs.cache_version);
+
+        // Now load page-specific CSS
+        insertVersionedCSS('css/common.v2.css', prefs.cache_version);
+        insertVersionedCSS('css/user_profile.css', prefs.cache_version);
     </script>
+
 </body>
 </html>

@@ -23,11 +23,6 @@
 
     <!-- Fancy animation effects -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css""/>
-
-    <link rel="stylesheet" href="css/common.v2.css" />
-
-    <!--Page-specific CSS here -->
-    <link rel="stylesheet" href="css/dataset_explorer.css" />
 </head>
 <body>
     <!--[if lt IE 7]>
@@ -703,16 +698,17 @@
     <script src="https://cdn.jsdelivr.net/npm/@floating-ui/core@1.5.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.5.3"></script>
 
-    <!-- Page-specific JS file here -->
-    <script type="module" src="js/dataset_explorer.js"></script>
+    <!-- Page-specific CSS/JS loading here -->
+      <script type="module">
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+        const prefs = await getDomainPreferences();
 
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'UA-59916932-1');
-    </script>
+        // Load any local JS with cache-busting version parameter
+        insertVersionedJS('js/dataset_explorer.js', prefs.cache_version);
+
+        // Now load page-specific CSS
+        insertVersionedCSS('css/common.v2.css', prefs.cache_version);
+        insertVersionedCSS('css/dataset_explorer.css', prefs.cache_version);
+      </script>
 </body>
 </html>

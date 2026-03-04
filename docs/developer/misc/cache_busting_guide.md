@@ -67,7 +67,7 @@ Add this script early in your HTML `<head>`:
     const response = await fetch('/site_domain_prefs.json');
     const prefs = await response.json();
     const version = prefs.cache_version;
-    
+
     // Update all local stylesheet hrefs
     document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
       const href = link.getAttribute('href');
@@ -75,7 +75,7 @@ Add this script early in your HTML `<head>`:
         link.href = `${href}?v=${version}`;
       }
     });
-    
+
     // Update all local script sources
     document.querySelectorAll('script[src]').forEach(script => {
       const src = script.getAttribute('src');
