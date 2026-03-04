@@ -1,0 +1,53 @@
+#!/bin/bash
+# Git pre-commit hook to auto-bump cache version in site_domain_prefs.json
+# This ensures users always get the latest CSS/JS files
+# Skip updating if cache_version is the only staged change (prevents infinite loops)
+
+PREFS_FILE="www/site_domain_prefs.json"
+
+# If the prefs file has unstaged edits, skip bumping to avoid index/worktree divergence
+# when pre-commit stashes and restores working tree changes.
+if [ -f "$PREFS_FILE" ] && ! git diff --quiet -- "$PREFS_FILE"; then
+    echo "ℹ Skipping cache_version bump (unstaged changes in $PREFS_FILE)"
+    exit 0
+fi
+
+# Get list of staged files (excluding site_domain_prefs.json)
+STAGED_FILES=$(git diff --cached --name-only | grep -v "^$PREFS_FILE$")
+
+# If there are other staged files besides site_domain_prefs.json, proceed with version bump
+if [ -n "$STAGED_FILES" ]; then
+    if [ -f "$PREFS_FILE" ]; then
+        # Get current version
+        CURRENT_VERSION=$(grep -Po '"cache_version":\s*"\K[^"]*' "$PREFS_FILE")
+
+        if [ -z "$CURRENT_VERSION" ]; then
+            echo "Warning: cache_version not found in site_domain_prefs.json"
+            exit 0
+        fi
+
+        # Generate new version using timestamp
+        NEW_VERSION=$(date +"%Y.%m.%d.%H%M%S")
+
+        # Update the version in the file
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS
+            sed -i '' "s/\"cache_version\": \"$CURRENT_VERSION\"/\"cache_version\": \"$NEW_VERSION\"/" "$PREFS_FILE"
+        else
+            # Linux
+            sed -i "s/\"cache_version\": \"$CURRENT_VERSION\"/\"cache_version\": \"$NEW_VERSION\"/" "$PREFS_FILE"
+        fi
+
+        # Stage the updated file
+        git add "$PREFS_FILE"
+
+        echo "✓ Bumped cache_version: $CURRENT_VERSION → $NEW_VERSION"
+    fi
+else
+    # Only site_domain_prefs.json is staged, skip the update to prevent infinite loops
+    if git diff --cached "$PREFS_FILE" | grep -q "cache_version"; then
+        echo "ℹ Skipping cache_version bump (only cache_version changed)"
+    fi
+fi
+
+exit 0

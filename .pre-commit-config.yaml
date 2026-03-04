@@ -1,4 +1,11 @@
-	repos:
+repos:
+  - repo: local
+    hooks:
+      - id: cache-version-bump
+        name: Bump cache_version
+        entry: .githooks/pre-commit
+        language: script
+        stages: [commit]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
