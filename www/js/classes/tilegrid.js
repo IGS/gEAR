@@ -1459,17 +1459,19 @@ class DatasetTile {
         }
 
         // if projection ran, add the projection info to the plotly config
-        if (this.projectR.modeEnabled && this.projectR.projectionId && this.dataset.is_downloadable) {
+        if (this.projectR.modeEnabled && this.projectR.projectionId) {
             display.plotly_config.projection_id = this.projectR.projectionId;
 
-            const downloadProjection = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-projection"]`);
-            downloadProjection.classList.remove("is-hidden");
-            try {
-                const url = `./cgi/download_projection.cgi?projection_id=${this.projectR.projectionId}&share_id=${this.dataset.share_id}`;
-                downloadProjection.href = url;
-            } catch (error) {
-                logErrorInConsole(error);
-                createToast("An error occurred while trying to download the projection output.");
+            if (this.dataset.is_downloadable) {
+                const downloadProjection = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-projection"]`);
+                downloadProjection.classList.remove("is-hidden");
+                try {
+                    const url = `./cgi/download_projection.cgi?projection_id=${this.projectR.projectionId}&share_id=${this.dataset.share_id}`;
+                    downloadProjection.href = url;
+                } catch (error) {
+                    logErrorInConsole(error);
+                    createToast("An error occurred while trying to download the projection output.");
+                }
             }
         }
 
