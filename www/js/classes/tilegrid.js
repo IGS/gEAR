@@ -4,6 +4,7 @@
 import { apiCallsMixin, closeModal, createToast, getCurrentUser, logErrorInConsole, openModal } from "../common.v2.js";
 import { adjustClusterColorbars, adjustExpressionColorbar, postPlotlyConfig } from "../helpers/plot-display-config.js";
 import { colorSVG } from "../helpers/dataset-svg-fxns.js";
+import { Citation } from "./citation.js";
 
 /* Given a passed-in layout_id, genereate a 2-dimensional tile-based grid object.
 This uses Bulma CSS for stylings (https://bulma.io/documentation/layout/tiles/)
@@ -892,6 +893,32 @@ class DatasetTile {
                         item.classList.add("is-hidden");
                     }
                     break;
+                case "cite":
+                    item.addEventListener("click", async (event) => {
+                        let modalHTML;
+                        if (pubmedId) {
+                            modalHTML = this.createModalCitation(apiCallsMixin.fetchCitationFromPubmedId(pubmedId));
+                        } else {
+                            const citation = {
+                                gEAR: Citation.gEAR(
+                                    [ dataset.user_name ],
+                                    new Date(dataset.date_added).getFullYear(),
+                                    dataset.title,
+                                    dataset.share_id,
+                                    new Date(),
+                                    dataset.license ?? "AGPL-3" // default to AGPL-3 for now
+                                )
+                            };
+
+                            modalHTML = this.createModalCitation(new Promise((res) => res(citation)));
+                        }
+
+                        // Add modal to DOM
+                        document.body.append(modalHTML);
+                        const modalElt = document.getElementById(`citation-modal-${this.tile.tileId}`);
+                        openModal(modalElt);
+                    });
+                    break;
                 case "geo":
                     // Link to GEO entry if it exists
                     if (geoId) {
@@ -1151,6 +1178,81 @@ class DatasetTile {
         });
 
         return infoboxHTML;
+    }
+
+    /*
+     * Creates a modal for displaying citation information for the dataset. The citation information is loaded asynchronously from a promise, and the modal includes functionality to switch between different citation formats (e.g., MLA, gEAR) and to copy the citation to the clipboard.
+     */
+    createModalCitation(citationPromise) {
+        const modalTemplate = document.getElementById("tmpl-tile-grid-citation-modal");
+        const modalHTML = modalTemplate.content.cloneNode(true);
+
+        const modalDiv = modalHTML.querySelector('.modal');
+        modalDiv.id = `citation-modal-${this.tile.tileId}`;
+
+        modalHTML.querySelector(".modal-card-body .js-citation-content").textContent = "Loading citation information...";
+
+        // Store current format for copy functionality
+        let currentFormat = 'mla';
+        citationPromise.then((citation) => {
+            const modal = document.getElementById(`citation-modal-${this.tile.tileId}`);
+
+            modal.querySelector(".modal-card-body .js-citation-content").innerHTML = (citation.gEAR ?? citation.mla).format;
+
+            // Add event listeners to format buttons
+            const formatButtons = modal.querySelectorAll('.js-citation-format-btn');
+            if ("gEAR" in citation) { // if "gEAR" format is available, no buttons should be shown since we can assert no other formats are available.
+                currentFormat = "gEAR";
+                formatButtons.forEach(el => el.classList.add("is-hidden"));
+            } else {
+                for (const button of formatButtons) {
+                    button.addEventListener("click", (event) => {
+                        const format = button.dataset.format;
+                        currentFormat = format;
+
+                        // Update the displayed citation
+                        const citationContent = modal.querySelector('.modal-card-body .js-citation-content');
+                        citationContent.innerHTML = citation[format].format;
+
+                        // Update button styling
+                        for (const btn of formatButtons) {
+                            btn.classList.remove("is-primary");
+                        }
+                        button.classList.add("is-primary");
+                    });
+                }
+            }
+
+            // Copy button
+            modal.querySelector(".modal-card-foot .js-citation-copy").addEventListener("click", (event) => {
+                const selectedCitation = citation[currentFormat];
+                const item = new ClipboardItem({
+                    "text/plain": new Blob([selectedCitation.orig], { type: "text/plain" }),
+                    "text/html": new Blob([selectedCitation.format], { type: "text/html" })
+                });
+                navigator.clipboard.write([item]).then(() => {
+                    if (currentFormat === "gEAR") {
+                        createToast(`Citation copied to clipboard!`, "is-success");
+                    } else {
+                        createToast(`${currentFormat.toUpperCase()} citation copied to clipboard!`, "is-success");
+                    }
+                }).catch((error) => {
+                    logErrorInConsole(error);
+                    createToast("Failed to copy citation to clipboard.", "is-danger");
+                });
+            });
+        });
+
+        // Close button event listener
+        const closeButton = modalDiv.querySelector(".delete");
+        closeButton.addEventListener("click", (event) => {
+            closeModal(modalDiv);
+        });
+        const modalBackground = modalDiv.querySelector(".modal-background");
+        modalBackground.addEventListener("click", (event) => {
+            closeModal(modalDiv);
+        });
+        return modalHTML;
     }
 
     /**
