@@ -384,6 +384,7 @@ def generate_plot(
     vlines: list = [],
     x_title: str | None = None,
     y_title: str | None = None,
+    add_trendline: bool | None = None,
     is_projection: bool = False,
     **kwargs: dict,
 ) -> go.Figure:
@@ -449,6 +450,10 @@ def generate_plot(
     # Scatter plots are the only types that let you set marker size by group
     # TODO: SAdkins - this is ugly... come up with better way to handle 'integer size' vs 'size by group'
     if plot_type == "scatter":
+        if add_trendline:
+            plotting_args["trendline"] = "lowess"
+            #plotting_args["trendline_options"] = dict(frac=0.3)  # default is 0.66, but this is too smooth for our data
+
         if not isinstance(kwargs["traces"]["marker"]["size"], int):
             group_size = kwargs["traces"]["marker"]["size"]
             size_increase = (

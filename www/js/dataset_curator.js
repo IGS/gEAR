@@ -52,6 +52,7 @@ class PlotlyHandler extends curatorCommon.PlotHandler {
         , "js-plotly-marker-size": "marker_size"
         , "js-plotly-color-palette": "color_palette"
         , "js-plotly-reverse-palette": "reverse_palette"
+        , "js-plotly-add-trendline": "add_trendline"
     };
 
     configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
@@ -1125,6 +1126,7 @@ const setupPlotlyOptions = async (datasetId) => {
     }
 
     const xAxisSeriesElts = document.getElementsByClassName("js-plotly-x-axis");
+    const yAxisSeriesElts = document.getElementsByClassName("js-plotly-y-axis");
     // If x-axis is categorical, enable jitter plots
     if (["violin", "scatter", "tsne_dyna"].includes(plotType)) {
         for (const elt of xAxisSeriesElts) {
@@ -1170,6 +1172,36 @@ const setupPlotlyOptions = async (datasetId) => {
                 }
                 vLinesContainer.classList.remove("is-hidden");
 
+            });
+        }
+
+        // If x- and y-axis are both continuous enable, the "add-trendline" checkbox, otherwise disable and uncheck
+        const toggleTrendlineCheckbox = (thisVal, otherVal) => {
+            if ((catColumns.includes(thisVal)) || (catColumns.includes(otherVal))) {
+                for (const trendlineElt of trendlineElts) {
+                    trendlineElt.disabled = true;
+                    trendlineElt.checked = false;
+                    curatorCommon.disableCheckboxLabel(trendlineElt, true);
+                }
+                return;
+            }
+            for (const trendlineElt of trendlineElts) {
+                trendlineElt.disabled = false;
+                curatorCommon.disableCheckboxLabel(trendlineElt, false);
+            }
+        }
+
+        const trendlineElts = document.getElementsByClassName("js-plotly-add-trendline");
+        for (const elt of xAxisSeriesElts) {
+            elt.addEventListener("change", (event) => {
+                const yAxisSeries = document.querySelector(".js-plotly-y-axis").value;
+                    toggleTrendlineCheckbox(event.target.value, yAxisSeries);
+
+            });
+        }        for (const elt of yAxisSeriesElts) {
+            elt.addEventListener("change", (event) => {
+                const xAxisSeries = document.querySelector(".js-plotly-x-axis").value;
+                    toggleTrendlineCheckbox(event.target.value, xAxisSeries);
             });
         }
 

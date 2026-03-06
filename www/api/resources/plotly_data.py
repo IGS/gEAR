@@ -41,6 +41,12 @@ class PlotlyData(Resource):
     def post(self, dataset_id):
         session_id = request.cookies.get('gear_session_id')
         req = request.get_json()
+        if req is None:
+            return {
+                "success": -1,
+                'message': "Request body is not valid JSON."
+            }
+
         gene_symbol = req.get('gene_symbol', None)
         plot_type = req.get('plot_type')
 
@@ -74,6 +80,7 @@ class PlotlyData(Resource):
         y_title = req.get('y_title')    # Will set later if not provided
         vlines = req.get('vlines', [])    # Array of vertical line dict properties
         filters = req.get('obs_filters', {})   # Dict of lists
+        add_trendline = req.get('add_trendline', False)   # Whether to add a trendline to scatter plot
         projection_id = req.get('projection_id', None)    # projection id of csv output
         expression_min_clip = req.get('expression_min_clip', None)    # Minimum clip value for expression data
         colorblind_mode = req.get('colorblind_mode', False)
@@ -112,6 +119,7 @@ class PlotlyData(Resource):
             "plot_palette": palette,
             "reverse_palette":reverse_palette,
             "obs_filters": filters,
+            "add_trendline": add_trendline,
             "plot_order": None,
         }
 
@@ -478,6 +486,7 @@ class PlotlyData(Resource):
                 x_title=x_title,
                 y_title=y_title,
                 vlines=vlines,
+                add_trendline=add_trendline,
                 is_projection=projection_id is not None,
                 **kwargs
             )
@@ -530,5 +539,6 @@ class PlotlyData(Resource):
             "plot_palette": chosen_palette,
             "reverse_palette":reverse_palette,
             "obs_filters": filters,
+            "add_trendline": add_trendline,
             "plot_order": order_res,
         }
