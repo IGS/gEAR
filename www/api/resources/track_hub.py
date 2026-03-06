@@ -1,7 +1,10 @@
+import configparser
 from pathlib import Path
+import re
 import shlex
 import subprocess
 import sys
+from uuid import uuid4
 
 import requests
 from Bio import bgzf
@@ -11,10 +14,48 @@ from flask_restful import Resource
 gear_root = Path(__file__).resolve().parents[3]  # web-root dir
 src_path = gear_root / "src"
 
-VALID_TYPES = ["bigWig", "bigBed"]
+VALID_TYPES = ["bigWig", "bigBed", "hic", "vcfTabix"]
+VALID_CONTAINER_TYPES = ["multiWig"]
 BIGBED_EXTENSIONS = [".bb", ".bigbed"]
 
 user_upload_file_base = gear_root / 'www' / 'uploads' / 'files'
+
+def append_higlass_url_to_trackdb(trackdb_file: Path, hic_track_name: str, higlass_url: str) -> Path:
+    """
+    Append a Higlass URL to a TrackDB file by injecting a gos_higlass_url property.
+
+    This function reads a TrackDB file, finds lines where the "bigDataUrl" property
+    ends with the specified HiC track name, and inserts a new "gos_higlass_url" property
+    with the provided Higlass URL. The modified content is written to a temporary file,
+    which then replaces the original file.
+
+    Args:
+        trackdb_file (Path): Path to the TrackDB file to be modified.
+        hic_track_name (str): The name of the HiC track to match at the end of bigDataUrl lines.
+        higlass_url (str): The Higlass URL to be added as the gos_higlass_url property value.
+
+    Returns:
+        Path: The path to the modified TrackDB file (same as input trackdb_file).
+
+    Raises:
+        FileNotFoundError: If the trackdb_file does not exist.
+        IOError: If the file cannot be read or written.
+    """
+
+    with open(new_trackdb_file := trackdb_file.with_suffix('.modified.trackDb.txt'), 'w') as out_f:
+
+        for line in str(trackdb_file).splitlines():
+            line = line.strip()
+            # if the "bigDataUrl" property ends with the hic track name, add to the higlass URL property to the line under it
+            if line.startswith("bigDataUrl") and line.endswith(hic_track_name):
+                # add the gos_higlass_url property after the type property
+                out_f.write(f"gos_higlass_url {higlass_url}\n")
+            else:
+                out_f.write(line + "\n")
+    # Move new file to replace old file
+    new_trackdb_file.rename(trackdb_file)
+
+    return trackdb_file
 
 def bigbed_to_bed(bigbed_path: Path, outdir_path: Path) -> bool:
     """
@@ -44,6 +85,79 @@ def bigbed_to_bed(bigbed_path: Path, outdir_path: Path) -> bool:
     except subprocess.CalledProcessError as e:
         print(f"Error converting {bigbed_file} to bed: {e}", file=sys.stderr)
         return False
+
+def hic_to_mcool(hic_path: Path, outdir_path: Path) -> bool:
+    """
+    Convert a .hic file to a .mcool file using the hic2cool tool.
+    The mcool file will be saved in the output_dir
+    """
+
+    hic_file = hic_path.as_posix()
+    mcool_path = hic_path.with_suffix('.mcool')
+    mcool_path = outdir_path / mcool_path.name
+    mcool_file = mcool_path.as_posix()
+
+    exec_file = src_path / "hic2cool"
+
+    try:
+        subprocess.run([exec_file, hic_file, mcool_file], check=True)
+        print(f"Converted {hic_file} to {mcool_file}.", file=sys.stderr)
+
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Error converting {hic_file} to mcool: {e}", file=sys.stderr)
+        return False
+
+def ingest_mcool_into_higlass(mcool_path: Path) -> str:
+    """
+    Ingest a .mcool file into HiGlass using the higlass API. Return the URL of the ingested dataset in HiGlass.
+    """
+
+    mcool_file = mcool_path.as_posix()
+
+    config = configparser.ConfigParser()
+    config.read('../../../gear.ini')
+
+    user = config["higlass"]["admin_user"]
+    pw = config["higlass"]["admin_pass"]
+    hostname = config["higlass"]["hostname"]    # includes https://
+
+    file_uuid = uuid4()
+
+    """ example POST for chromatin data
+    curl --user user:pass -F 'datafile=@/path/to/file.mcool' \
+        -F 'filetype=cooler' -F 'datatype=matrix' -F 'coordSystem=""' \
+        hostname/api/v1/tilesets/
+    """
+
+    url = f"{hostname}/api/v1/tilesets/"
+    auth = (user, pw)
+    files = {'datafile': (mcool_path.name, mcool_path.open('rb'))}
+    data = {
+        'filetype': 'cooler',
+        'datatype': 'matrix',
+        'coordSystem': '',
+        'uid': str(file_uuid)
+    }
+
+        # response should be 201 status and JSON should include uid property
+    try:
+        response = requests.post(url, auth=auth, files=files, data=data)
+        response.raise_for_status()  # Raise an HTTPError for bad responses (4xx or 5xx)
+        print(f"Ingested {mcool_file} into HiGlass at {hostname}", file=sys.stderr)
+
+        # Assuming the response contains the dataset URL or UID
+        uid = response.json().get('uid', None)
+        if not uid:
+            raise ValueError("Failed to retrieve UID from HiGlass response")
+
+        resp_url = f"{hostname}/api/v1/tileset_info/?d={uid}"
+        return resp_url
+
+    except requests.RequestException as e:
+        print(f"Error ingesting {mcool_file} into HiGlass: {e}", file=sys.stderr)
+        raise
+
 
 def create_tabix_indexed_file(bgzipped_path: Path, file_type : str="bed") -> None:
     """
@@ -168,7 +282,9 @@ class TrackHubValidate(Resource):
         except requests.RequestException as e:
             result["message"] = f"Error fetching trackDb: {str(e)}"
             return result, 500
-        result["num_tracks"] = trackdb_response.text.count("track ")
+
+        # Does not count sub-tracks
+        result["num_tracks"] = len(re.findall(r"^track ", trackdb_response.text, re.MULTILINE))
         invalid_tracks = validate_track_types_from_db(trackdb_response.text, trackdb_url)
         if len(invalid_tracks):
             result["message"] = f"Invalid track types found. Currently accepted types are [{', '.join(VALID_TYPES)}]."
@@ -183,6 +299,9 @@ class TrackHubCopy(Resource):
     def post(self, share_uid):
         session_id = request.cookies.get('gear_session_id')
         req = request.get_json()
+        if req is None:
+            return {"success": False, "message": "Invalid JSON body"}, 400
+
         hub_url = req.get("trackhub_url")
         assembly = req.get("assembly")
 
@@ -229,6 +348,8 @@ class TrackHubCopy(Resource):
             result["message"] = f"hubClone failed to download assembly directory for {assembly}"
             return result, 500
 
+        trackdb_file: Path = assembly_dir / "trackDb.txt"
+
         # find all bigBed files in the assembly directory
         bigbed_paths = []
         for ext in BIGBED_EXTENSIONS:
@@ -239,12 +360,37 @@ class TrackHubCopy(Resource):
                 result["message"] = f"Failed to convert {bigbed_path.as_posix()} to bed"
                 return result, 500
 
+        # convert and ingest .hic files
+        hic_paths = list(assembly_dir.rglob("*.hic"))
+        for hic_path in hic_paths:
+            conversion_success = hic_to_mcool(hic_path, assembly_dir)
+            if not conversion_success:
+                result["message"] = f"Failed to convert {hic_path.as_posix()} to mcool"
+                return result, 500
+
+            mcool_path = assembly_dir / hic_path.with_suffix('.mcool').name
+            try:
+                higlass_url = ingest_mcool_into_higlass(mcool_path)
+                # TODO: add higlass_url as the "gos_higlass_url" property for this trackdb entry.
+                print(f"Ingested {mcool_path.as_posix()} into HiGlass at {higlass_url}", file=sys.stderr)
+                # find "hic" track and add the "gos_higlass_url" property with the higlass_url value
+                trackdb_file = append_higlass_url_to_trackdb(trackdb_file, hic_path.name, higlass_url)
+
+            except Exception as e:
+                result["message"] = f"Failed to ingest {mcool_path.as_posix()} into HiGlass: {str(e)}"
+                return result, 500
+
         return result, 200
 
 class TrackHubStatus(Resource):
     def post(self, share_uid):
         session_id = request.cookies.get('gear_session_id')
         req = request.get_json()
+        if req is None:
+            return {"success": False, "message": "Invalid JSON body"}, 400
         url = req.get("url")
+
+        raise(NotImplementedError("Track hub status checking is not yet implemented. This will require tracking the status of the track hub copying and conversion processes, and returning that status here."))
+
         # ...status logic...
         return {"success": True, "message": "Status update"}

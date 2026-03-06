@@ -60,3 +60,12 @@ credentials_json=[path_to_credentials_json]
 ;; 0 - disable RabbitMQ, 1 - enable. Disabling could lead to potential server crashes if many jobs are run simultaneously
 queue_enabled = 1
 queue_host = localhost
+
+[uploader_service]
+queue_enabled = 1
+queue_host = localhost
+
+[higlass]
+admin_user = [user]
+admin_pass = [pass]
+hostname = [host]

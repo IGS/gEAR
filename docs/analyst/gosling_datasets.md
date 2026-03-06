@@ -73,10 +73,11 @@ Gosling uses the UCSC Track Hub (https://genome.ucsc.edu/goldenpath/help/hgTrack
 * visibility
 * type
 * container multiwig
+* parent (if using a container to aggregate tracks. Must indent sub-track information)
 
 The trackDb.txt file also allows for custom metadata tags, which will be subject to future additon.
 
-* gos_higlass_url
+* gos_higlass_url (filled in during upload if type is hic)
 
 ### Special considerations for certain file types
 
