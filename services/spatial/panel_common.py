@@ -5,6 +5,7 @@ import hvplot
 import hvplot.pandas  # noqa
 import numpy as np
 import panel as pn
+import param
 from common import (
     create_spatial_plot, create_umap_plot, create_violin_plot,
     retrieve_dataframe, retrieve_image_array, normalize_expression_name, has_selection, ExpandedSettings
@@ -20,6 +21,8 @@ class BaseSpatialViewer(pn.viewable.Viewer):
     """
 
     settings = ExpandedSettings()
+
+    use_clusters = param.Boolean(default=False, doc="Whether to show clusters or gene expression in the main plots")
 
     def __init__(self, **params):
         super().__init__(**params)
@@ -113,6 +116,8 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         if self.settings.display_width and self.settings.display_width > 0: # type: ignore
             self.layout_width: int = self.settings.display_width # type: ignore
 
+        self._init_widgets()
+
         self.layout = pn.Column(pn.bind(self._build_layout), width=self.layout_width)
 
     def _sync_stream_to_params(self, event):
@@ -137,6 +142,13 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             value=True, name=label, align="center", color="info"
         )
 
+    def _init_widgets(self):
+        """
+        This is where you would initialize any Panel widgets (sliders, dropdowns, etc.) that you want to use in your app.
+        You can then reference these widgets in your _build_layout method to include them in the layout and set up callbacks.
+        """
+        raise NotImplementedError("Subclasses must implement _init_widgets")
+
     def _build_layout(self):
         """
         This is where the main Panel layout is built.
@@ -156,6 +168,7 @@ class CondensedSpatialViewer(BaseSpatialViewer):
     The specific component for your panel_app.py
     """
 
+    @param.depends('use_clusters')
     def _build_layout(self):
         """Builds the 3-panel condensed row."""
 
@@ -171,41 +184,43 @@ class CondensedSpatialViewer(BaseSpatialViewer):
 
             # 1. Generate base plots
             image_panel = self.bg_image if hasattr(self, 'bg_image') else None
-            plot_expr = create_spatial_plot(self.df, self.expression_agg, y_col='y_plot', color_col='raw_value', cmap=self.expression_cmap) # type: ignore
-            plot_clust = create_spatial_plot(self.df, self.clusters_agg, y_col='y_plot', color_col='clusters', cmap=self.cluster_cmap) # type: ignore
+            if self.use_clusters:
+                points = create_spatial_plot(self.df, self.clusters_agg, y_col='y_plot', color_col='clusters', cmap=self.cluster_cmap) # type: ignore
+            else:
+                points = create_spatial_plot(self.df, self.expression_agg, y_col='y_plot', color_col='raw_value', cmap=self.expression_cmap) # type: ignore
+
+            composite = points
             if image_panel:
-                plot_expr = image_panel * plot_expr # type: ignore
-                plot_clust = image_panel * plot_clust # type: ignore
+                composite = image_panel * points # type: ignore
 
             # If user has a saved box, draw it on the main plots so they see it
             if self.saved_bounds:
                 saved_box = hv.Bounds(self.saved_bounds).opts(color='black', line_width=2)
                 if image_panel is not None:
                     image_panel = image_panel * saved_box   # type: ignore
-                plot_expr = plot_expr * saved_box   # type: ignore
-                plot_clust = plot_clust * saved_box   # type: ignore
+                composite = composite * saved_box   # type: ignore
 
             # 2. Attach the stream to capture drawn boxes
-            self.bounds_stream.source = plot_expr
+            self.bounds_stream.source = composite
 
             # 3. Apply the linker for cross-filtering
-            linked_expr = self.linker(plot_expr)
-            linked_clust = self.linker(plot_clust)
+            linked_composite = self.linker(composite)
 
             # 4. Lay out the non-zoom panels side-by-side using HoloView
-            main_row = (image_panel + linked_expr).opts(shared_axes=True)
+            main_row = (image_panel + linked_composite).opts(shared_axes=True)
 
             # 5. Define the dynamic Zoom Panel
             def zoomed_panel(bounds):
                 zoom_expression_cmap = "YlGn"
 
-                zoom_base = (create_spatial_plot(self.df, self.expression_agg, color_col='raw_value', cmap=zoom_expression_cmap)
-                            .opts(title="Draw box in one of the other plots to zoom this one.")
-                )
+                if self.param.use_clusters:
+                    zoom_points = create_spatial_plot(self.df, self.clusters_agg, y_col='y_plot', color_col='clusters', cmap=self.cluster_cmap) # type: ignore
+                else:
+                    zoom_points = create_spatial_plot(self.df, self.expression_agg, y_col='y_plot', color_col='raw_value', cmap=zoom_expression_cmap) # type: ignore
                 if bounds is None:
-                    return zoom_base.opts(title="Draw box to zoom")
+                    return zoom_points.opts(title="Draw box in one of the other plots to zoom this one.")
                 l, b, r, t = bounds
-                return zoom_base.opts(xlim=(l, r), ylim=(b, t), title="Zoomed View")
+                return zoom_points.opts(xlim=(l, r), ylim=(b, t), title="Zoomed View")
 
             # 6. Wrap zoom panel in a DynamicMap to auto-update on box draw
             #plot_zoom = hv.DynamicMap(zoomed_panel, streams=[self.bounds_stream])
@@ -217,26 +232,12 @@ class CondensedSpatialViewer(BaseSpatialViewer):
                 "### Click the Expand icon in the top right corner to see all plots", width=markdown_width
             )
 
-            self.use_clusters = False
-            self.use_clusters_switch = pn.widgets.Switch(
-                value=self.use_clusters, sizing_mode="fixed", margin=(10, 10)
-            )
-
-            # Using HTML to center the labels (https://github.com/holoviz/panel/issues/1313#issuecomment-1582731241)
-            switch_content_width = 250
-            self.switch_layout = pn.Row(
-                pn.pane.HTML("""<label><strong>Gene Expression</strong></label>""", sizing_mode="fixed", margin=(10, 10)),
-                self.use_clusters_switch,
-                pn.pane.HTML("""<label><strong>Clusters</strong></label>""", sizing_mode="fixed", margin=(10, 10)),
-                width=switch_content_width
-            )
-
             # When width is too short, things break down.
             if self.layout_width < 1100:
                 self.layout_width = 1100
                 self.layout_height = 312
 
-            spacer_width = self.layout_width - markdown_width - markdown_padding - switch_content_width
+            spacer_width = self.layout_width - markdown_width - markdown_padding - self.switch_content_width
             if spacer_width < 0:
                 spacer_width = 100
 
@@ -252,6 +253,18 @@ class CondensedSpatialViewer(BaseSpatialViewer):
         except Exception as e:
             traceback.format_exc()
             yield pn.pane.Alert(f"Error: {e}", alert_type="danger")
+
+    def _init_widgets(self):
+        self.use_clusters_switch = pn.widgets.Switch.from_param(self.param.use_clusters, sizing_mode="fixed", margin=(10, 10))
+
+        # Using HTML to center the labels (https://github.com/holoviz/panel/issues/1313#issuecomment-1582731241)
+        self.switch_content_width = 250
+        self.switch_layout = pn.Row(
+            pn.pane.HTML("""<label><strong>Gene Expression</strong></label>""", sizing_mode="fixed", margin=(10, 10)),
+            self.use_clusters_switch,
+            pn.pane.HTML("""<label><strong>Clusters</strong></label>""", sizing_mode="fixed", margin=(10, 10)),
+            width=self.switch_content_width
+        )
 
 class ExpandedSpatialViewer(BaseSpatialViewer):
     """
