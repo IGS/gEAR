@@ -1,15 +1,17 @@
 import configparser
-from pathlib import Path
 import re
 import shlex
 import subprocess
 import sys
+from pathlib import Path
 from uuid import uuid4
 
+import pyBigWig
 import requests
 from Bio import bgzf
 from flask import request
 from flask_restful import Resource
+from hic2cool import hic2cool_convert
 
 gear_root = Path(__file__).resolve().parents[3]  # web-root dir
 src_path = gear_root / "src"
@@ -59,22 +61,58 @@ def append_higlass_url_to_trackdb(trackdb_file: Path, hic_track_name: str, higla
 
 def bigbed_to_bed(bigbed_path: Path, outdir_path: Path) -> bool:
     """
-    Convert a bigBed file to a bed file using the UCSC tool bigBedToBed.
-    Next, bgzip the file and tabix the bgzipped file.
-    The bed file will be saved in the output_dir
-    """
+    Converts a BigBed file to a BED file and compresses it using BGZF.
 
+    This function reads a BigBed file, extracts its intervals, and writes them to a BED file.
+    The resulting BED file is then compressed using BGZF, and a Tabix index is created for it.
+
+    Args:
+        bigbed_path (Path): The path to the input BigBed file.
+        outdir_path (Path): The directory where the output BED file and compressed files will be saved.
+
+    Returns:
+        bool: True if the conversion, compression, and indexing are successful; False otherwise.
+
+    Side Effects:
+        - Writes the converted BED file to the specified output directory.
+        - Compresses the BED file using BGZF and creates a Tabix index.
+        - Prints status messages and errors to stderr.
+
+    Raises:
+        Exception: If an error occurs during file conversion, compression, or indexing.
+    """
     bigbed_file = bigbed_path.as_posix()
     bed_path = bigbed_path.with_suffix('.bed')
     bed_path = outdir_path / bed_path.name
     bed_file = bed_path.as_posix()
 
-    exec_file = src_path / "bigBedToBed"
+    # Open the bigBed file for reading
+    bb = pyBigWig.open(bigbed_file)
+
+    if not bb.isBigBed():
+        print(f"{bigbed_file} is not a bigBed file.")
+        bb.close()
+        return False
 
     try:
-        subprocess.run([exec_file, bigbed_file, bed_file], check=True)
-        print(f"Converted {bigbed_file} to {bed_file}.", file=sys.stderr)
+        # Open the output BED file for writing
+        with open(bed_file, 'w') as bed_out:
+            # Iterate over all intervals in the bigBed file
+            # get_intervals returns a list of tuples (chrom, start, end, rest_of_line)
+            for chrom, start, end, rest in bb.intervals():
+                # The 'rest' part may contain additional BED columns as a tab-separated string
+                bed_line = f"{chrom}\t{start}\t{end}\t{rest}\n"
+                bed_out.write(bed_line)
 
+        # Close the bigBed file
+        bb.close()
+
+        print(f"Converted {bigbed_file} to {bed_file}.", file=sys.stderr)
+    except Exception as e:
+        print(f"Error converting {bigbed_file} to bed.: {e}", file=sys.stderr)
+        return False
+
+    try:
         gz_path = bed_path.with_suffix(bed_path.suffix + '.gz')
         with bed_path.open('rb') as f_in, bgzf.BgzfWriter(gz_path) as f_out:
             # write the entirety of the input
@@ -82,9 +120,10 @@ def bigbed_to_bed(bigbed_path: Path, outdir_path: Path) -> bool:
         create_tabix_indexed_file(gz_path, file_type="bed")
 
         return True
-    except subprocess.CalledProcessError as e:
-        print(f"Error converting {bigbed_file} to bed: {e}", file=sys.stderr)
+    except Exception as e:
+        print(f"Error compressing and indexing {bed_file}: {e}", file=sys.stderr)
         return False
+
 
 def hic_to_mcool(hic_path: Path, outdir_path: Path) -> bool:
     """
@@ -97,14 +136,14 @@ def hic_to_mcool(hic_path: Path, outdir_path: Path) -> bool:
     mcool_path = outdir_path / mcool_path.name
     mcool_file = mcool_path.as_posix()
 
-    exec_file = src_path / "hic2cool"
+    # command to convert .hic to .mcool is: hic2cool_convert(input.hic, output.mcool, 0)
+    # The '0' argument is to use all resolutions when building the output
 
     try:
-        subprocess.run([exec_file, hic_file, mcool_file], check=True)
+        hic2cool_convert(hic_file, mcool_file, 0)
         print(f"Converted {hic_file} to {mcool_file}.", file=sys.stderr)
-
         return True
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         print(f"Error converting {hic_file} to mcool: {e}", file=sys.stderr)
         return False
 

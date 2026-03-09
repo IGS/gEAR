@@ -49,6 +49,8 @@
     <body>
       <div id="main-layout-c" class="columns">
 
+        <input type="hidden" id="testing" value="true" />
+
         <!--#include virtual="/include/primary_nav.html" -->
 
         <section id="main-c" class="column pl-0 pt-0">
@@ -765,8 +767,8 @@
                       <div class="box format-selection-box">
                         <h3>Epigenetic Data</h3>
                         <p class="format-description">
-                          If a UCSC trackhub hub.txt file is linked, it as well as its associated
-                          metadata files and track files will be cloned to the server.  Currently,
+                          If a UCSC track hub 'hub.txt' file is linked, it and its associated
+                          metadata and track files will be cloned to the server.  Currently,
                           only BigBed and BigWig files are supported.
                         </p>
                         <p class="format-description">
@@ -807,13 +809,13 @@
                   <div id="dataset-upload-columns" class="columns">
                     <div class="column is-6">
                       <div class="field">
-                        <label class="label">
+                        <h3 class="label">
                           Upload dataset file
                           <span class="icon has-tooltip-right has-tooltip-arrow"
                                 data-tooltip="Choose the file to upload.">
                               <i class="mdi mdi-information"></i>
                           </span>
-                        </label>
+                        </h3>
                         <div class="file has-name is-fullwidth">
                           <label class="file-label is-fullwidth">
                             <input class="file-input is-fullwidth" type="file" id="dataset-file-input" name="dataset-file-input">
@@ -834,40 +836,44 @@
                     </div>
                     <div class="column is-6 is-hidden">
                       <div class="field">
-                        <label class="label">
+                        <h3 class="label">
                           Or provide a URL
                           <span class="icon has-tooltip-right has-tooltip-arrow"
                                 data-tooltip="Provide a URL to a supported dataset.">
                               <i class="mdi mdi-information"></i>
                           </span>
-                        </label>
+                        </h3>
+                        <div class="control">
+                          <input class="input" type="text" name="dataset-url" id="dataset-url-input" placeholder="Provide a URL to a supported dataset (COMING SOON)">
+                        </div>
                       </div>
                     </div>
                   </div>
                   <div id="trackhub-upload-columns" class="columns is-hidden">
                     <div class="column is-6">
                       <div class="field">
-                        <label class="label">
+                        <h3 class="label">
                           Provide UCSC track hub URL
-                          <span class="icon has-tooltip-right has-tooltip-arrow"
-                                data-tooltip="Provide a URL to the UCSC track hub hub.txt file.">
+                          <span class="icon has-tooltip-arrow"
+                                data-tooltip="Provide a URL to the UCSC track hub 'hub.txt' file.">
                               <i class="mdi mdi-information"></i>
                           </span>
-                        </label>
+                        </h3>
                         <div class="control">
                           <input class="input" type="text" name="trackhub-url" id="trackhub-url-input" placeholder="Ex: https://umgear.org/tracks/Litao_bigwigs/hub.txt">
                         </div>
                       </div>
                     </div>
-                    <div class="column is-6">
+                    <div class="column is-3">
                       <div class="field">
-                        <label class="label">
-                          Select the assembly to get tracks for.
-                          <span class="icon has-tooltip-right has-tooltip-arrow"
-                                data-tooltip="Select the assembly to get tracks for. Currently Gosling only supports single-organism tracks">
+                        <h3 class="label">
+                          Select the assembly to associate tracks with.
+                          <span class="icon has-tooltip-arrow"
+                                data-tooltip="Select the assembly to get tracks for.
+Currently Gosling only supports single-organism tracks">
                               <i class="mdi mdi-information"></i>
                           </span>
-                        </label>
+                        </h3>
                         <div class="control">
                           <div class="select is-fullwidth">
                             <select name="trackhub-assembly-select" id="trackhub-assembly-select">

@@ -178,7 +178,7 @@ const finalizeUpload = async () => {
         document.getElementById('dataset-finalize-next-step').disabled = false;
         return;
     }
-    msg = data.message || 'Error finalizing dataset upload';
+    const msg = data.message || 'Error finalizing dataset upload';
 
     console.error(`ERROR: ${msg}`);
     document.getElementById('dataset-finalize-status-message').innerText = msg;
@@ -521,6 +521,38 @@ const storeMetadata = async () => {
     }
 }
 
+/**
+ * Handles the upload of a trackhub dataset to the server.
+ *
+ * This function performs the following steps:
+ * 1. Validates the trackhub URL and assembly by sending a POST request to the validation endpoint.
+ * 2. If validation succeeds, proceeds to copy the trackhub data to the server.
+ * 3. Updates the progress bar during each stage of the process.
+ * 4. Displays success or error messages based on the outcome of the operations.
+ *
+ * Dependencies:
+ * - Assumes the existence of global variables: `shareUid`.
+ * - Requires DOM elements with the following IDs:
+ *   - 'trackhub-url-input': Input field for the trackhub URL.
+ *   - 'trackhub-assembly-select': Dropdown for selecting the assembly.
+ *   - 'dataset-upload-progress': Progress bar element.
+ *   - 'dataset-upload-submit': Submit button for the upload.
+ *   - 'dataset-upload-status-message': Element to display status messages.
+ *   - 'dataset-upload-status': Container for the status message.
+ *
+ * Side Effects:
+ * - Updates the progress bar value during the upload process.
+ * - Displays success or error messages in the UI.
+ * - Enables or disables the submit button.
+ *
+ * Error Handling:
+ * - Logs errors to the console.
+ * - Displays a toast notification for errors.
+ *
+ * @async
+ * @function uploadTrackhub
+ * @returns {Promise<void>} Resolves when the upload process is complete.
+ */
 const uploadTrackhub = async () => {
     let percentComplete = 0
 
@@ -791,9 +823,9 @@ for (const btn of formatSelectorElts) {
         // Gosling has special uploader
         if (datasetFormat === "gosling") {
             document.getElementById("dataset-upload-columns").classList.add("is-hidden")
+            document.getElementById("trackhub-upload-columns").classList.remove("is-hidden")
             document.getElementById("dataset-file-input").value = "";
             document.getElementById("dataset-url-input").value = "";
-            document.getElementById("trackhub-upload-columns").classList.remove("is-hidden")
         } else {
             document.getElementById("dataset-upload-columns").classList.remove("is-hidden")
             document.getElementById("trackhub-upload-columns").classList.add("is-hidden")
@@ -862,6 +894,54 @@ document.getElementById('dataset-file-input').addEventListener('change', (event)
     document.getElementById('dataset-file-name').textContent = 'No file selected';
 });
 
+// Enable 'Upload dataset' button if a URL is entered and an assembly is selected.
+document.getElementById("trackhub-url-input").addEventListener('input', (event) => {
+    const urlInput = event.currentTarget;
+    const submitButton = document.getElementById('dataset-upload-submit');
+    const assemblySelect = document.getElementById('trackhub-assembly-select');
+    const statusMessage = document.getElementById('dataset-upload-status-message');
+    const statusContainer = document.getElementById('dataset-upload-status');
+
+    // Disable the submit button by default
+    submitButton.disabled = true;
+
+    // Check if both URL and assembly are provided
+    if (urlInput.value && assemblySelect.value) {
+        if (urlInput.value.startsWith("https://")) {
+            // Valid URL, enable the submit button and hide the status message
+            submitButton.disabled = false;
+            statusContainer.classList.add('is-hidden');
+        } else {
+            // Invalid URL, show an error message
+            statusMessage.textContent = 'Please enter a valid HTTPS URL.';
+            statusContainer.classList.remove('is-hidden');
+        }
+    }
+})
+document.getElementById('trackhub-assembly-select').addEventListener('change', (event) => {
+    const assemblySelect = event.currentTarget;
+    const submitButton = document.getElementById('dataset-upload-submit');
+    const urlInput = document.getElementById('trackhub-url-input');
+    const statusMessage = document.getElementById('dataset-upload-status-message');
+    const statusContainer = document.getElementById('dataset-upload-status');
+
+    // Disable the submit button by default
+    submitButton.disabled = true;
+
+    // Check if both URL and assembly are provided
+    if (urlInput.value && assemblySelect.value) {
+        if (urlInput.value.startsWith("https://")) {
+            // Valid URL, enable the submit button and hide the status message
+            submitButton.disabled = false;
+            statusContainer.classList.add('is-hidden');
+        } else {
+            // Invalid URL, show an error message
+            statusMessage.textContent = 'Please enter a valid HTTPS URL.';
+            statusContainer.classList.remove('is-hidden');
+        }
+    }
+})
+
 document.getElementById('dataset-finalize-submit').addEventListener('click', (event) => {
     event.preventDefault();
     event.currentTargetdisabled = true;
@@ -893,7 +973,7 @@ document.getElementById('metadata-file-input').addEventListener('change', (event
 
 document.getElementById('dataset-upload-submit').addEventListener('click', (event) => {
     event.preventDefault();
-    // make sure they chose a format
+    // make sure they chose a format (sanity check)
     if (!datasetFormat) {
         document.getElementById('dataset-upload-status-message').textContent = 'Please choose a format above first.';
         document.getElementById('dataset-upload-status').classList.remove('is-hidden');
@@ -919,7 +999,7 @@ document.getElementById('dataset-upload-submit').addEventListener('click', (even
     document.getElementById('dataset-upload-status').classList.add('is-hidden');
 
     if (datasetFormat === "gosling") {
-        //uploadTrackhub();
+        uploadTrackhub();
         return
     }
     uploadDataset();
@@ -986,3 +1066,8 @@ window.addEventListener("scroll", (event) => {
     }
 });
 */
+
+const testing = document.getElementById("testing");
+if (testing && testing.value === "true") {
+    stepTo('upload-dataset');
+}
