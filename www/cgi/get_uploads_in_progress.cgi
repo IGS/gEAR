@@ -64,7 +64,7 @@ def main():
                     'status': 'metadata uploaded',
                     'load_step': 'upload-dataset',
                     'perform_primary_analysis': metadata.get('perform_primary_analysis', False),
-                    'dataset_is_spatial': metadata.get('dataset_is_spatial', False),
+                    'dataset_format': metadata.get('dataset_format', ""),
                 }
             )
 

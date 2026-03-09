@@ -377,8 +377,8 @@ const loadUploadsInProgress = async () => {
                 clone.querySelector('tr').dataset.shareId = upload.share_id;
                 clone.querySelector('tr').dataset.datasetId = upload.dataset_id;
                 clone.querySelector('tr').dataset.loadStep = upload.load_step;
-                clone.querySelector('tr').dataset.performPrimaryAnalysis = upload.perform_primary_analysis; // true/false
-                clone.querySelector('tr').dataset.datasetIsSpatial = upload.dataset_is_spatial; // true/false
+                clone.querySelector('tr').dataset.performPrimaryAnalysis = upload.perform_primary_analysis; // true/false assigned as string
+                clone.querySelector('tr').dataset.datasetFormat = upload.dataset_format;
 
                 clone.querySelector('.submission-share-id').textContent = upload.share_id;
                 clone.querySelector('.submission-status').textContent = upload.status;
@@ -405,9 +405,7 @@ const loadUploadsInProgress = async () => {
                         document.getElementById('finalize-migrating-primary-analysis-li').classList.add("is-hidden");
                     }
 
-                    if (row.dataset.datasetIsSpatial) {
-                        datasetFormat = 'spatial';
-                    }
+                    datasetFormat = row.dataset.datasetFormat;
 
                     // Do we want to dynamically load the next step or page refresh for it?
                     //  If dynamic we have to reset all the forms.
