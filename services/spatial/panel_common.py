@@ -8,7 +8,7 @@ import panel as pn
 import param
 from common import (
     create_spatial_plot, create_umap_plot, create_violin_plot,
-    retrieve_dataframe, retrieve_image_array, normalize_expression_name, has_selection, ExpandedSettings
+    retrieve_dataframe, retrieve_image_array, normalize_expression_name, has_selection, Settings
 )
 
 # CRITICAL: Initialize the Bokeh backend for interactivity
@@ -20,7 +20,7 @@ class BaseSpatialViewer(pn.viewable.Viewer):
     Base Viewer component. Handles state and linking.
     """
 
-    settings = ExpandedSettings()
+    settings = Settings()
 
     use_clusters = param.Boolean(default=False, doc="Whether to show clusters or gene expression in the main plots")
 
@@ -52,6 +52,8 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             )
 
         self.orig_df = retrieve_dataframe(self.settings.dataset_id, self.settings.filename)
+        self.orig_df['clusters'] = self.orig_df['clusters'].astype('category')
+
         # If min_genes is set, filter the dataframe to only include observations with at least that many genes
         # TODO: bind to a slider, which will again filter the original dataframe for updating the plots.
         if self.settings.min_genes and self.settings.min_genes > 0:
@@ -77,11 +79,16 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         self.saved_bounds = saved_bounds
 
         # Initialize linking and streams
-        self.linker = hv.link_selections.instance(unselected_alpha=1)
-        self.bounds_stream = hv.streams.BoundsXY(bounds=self.saved_bounds)  # type: ignore
+        self.linker = hv.link_selections.instance(unselected_alpha=0.5)
+        self.bounds_stream_image = hv.streams.BoundsXY(bounds=self.saved_bounds)  # type: ignore
+        self.bounds_stream_composite = hv.streams.BoundsXY(bounds=self.saved_bounds)  # type: ignore
 
         # Set up a callback to update the URL params whenever the user draws or clears a box
-        self.bounds_stream.param.watch(self._sync_stream_to_params, 'bounds')
+        #self.bounds_stream_image.param.watch(self._update_bounds_callback, 'bounds')
+        #self.bounds_stream_composite.param.watch(self._update_bounds_callback, 'bounds')
+        self.bounds_stream_image.add_subscriber(self._update_bounds_callback)
+        self.bounds_stream_composite.add_subscriber(self._update_bounds_callback)
+
 
         # Add some attributes that will be used in various places
         # This includes precomputing the datashader aggregations since they can be shared across multiple plots
@@ -105,7 +112,8 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             self.img_width = self.image_array.shape[1]
 
             self.bg_image = hv.RGB(self.image_array, bounds=img_bounds).opts(
-                        xaxis=None, yaxis=None, frame_width=300, frame_height=200
+                        xaxis=None, yaxis=None, frame_width=300, frame_height=200,
+                        tools=["box_select"], default_tools=[]
                     )
 
         self.layout_height = 312  # 360px - tile header height
@@ -118,9 +126,7 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
         self._init_widgets()
 
-        self.layout = pn.Column(pn.bind(self._build_layout), width=self.layout_width)
-
-    def _sync_stream_to_params(self, event):
+    def _update_bounds_callback(self, event):
         """
         This callback fires automatically when the user draws or clears a box.
         It breaks the tuple into individual params, which location.sync pushes to the URL.
@@ -137,10 +143,26 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             # User drew a box
             self.settings.selection_x1, self.settings.selection_y1, self.settings.selection_x2, self.settings.selection_y2 = new_bounds
 
-    def _loading_indicator(self, label):
-        return pn.indicators.LoadingSpinner(
-            value=True, name=label, align="center", color="info"
-        )
+        # Instantly updates zoom panel with new bounds
+        self._update_zoom_panel(new_bounds)
+
+    def _create_ghost_legend(self):
+            """Creates a fake, invisible plot just to force Bokeh to draw a legend."""
+            ghost_points = []
+
+            # self.cluster_cmap should be a dict like {'Cluster 1': '#FF0000', ...}
+            for cluster_name, hex_color in self.cluster_cmap.items():
+                # Create a single point at (NaN, NaN) so it doesn't draw on the screen
+                # But give it a label and a color so the legend picks it up
+                pt = hv.Points(
+                    [(np.nan, np.nan)],
+                    label=str(cluster_name)
+                ).opts(color=hex_color, size=10, tools=[], default_tools=[])
+
+                ghost_points.append(pt)
+
+            # Combine all the ghost points into a single overlay
+            return hv.Overlay(ghost_points)
 
     def _init_widgets(self):
         """
@@ -156,75 +178,50 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         """
         raise NotImplementedError("Subclasses must implement _build_layout")
 
+    def _update_zoom_panel(self, bounds):
+        """
+        This is where you would implement the logic to update the zoomed-in plot based on the provided bounds.
+        The bounds parameter will be a tuple in the form of (left, right, bottom, top) representing the coordinates of the box drawn by the user.
+        You can use these bounds to set the xlim and ylim of the zoomed-in plot accordingly.
+        """
+        raise NotImplementedError("Subclasses must implement _update_zoom_panel")
+
     def __panel__(self):
         """
         Panel automatically looks for this method.
         It MUST return a Panel viewable object (Row, Column, Pane, etc.)
         """
-        return self.layout
+        return self._build_layout()
 
 class CondensedSpatialViewer(BaseSpatialViewer):
     """
     The specific component for your panel_app.py
     """
 
-    @param.depends('use_clusters')
     def _build_layout(self):
         """Builds the 3-panel condensed row."""
-
         try:
-            yield self._loading_indicator("Creating plots. Please wait...")
 
             # One unfortunately annoyance is that datashader's default behavior is to flip the y-axis,
             # which is not what we want for spatial data. To fix this,
             # we can reverse the y-axis limits by setting ylim to (max, min) instead of (min, max).
-            self.df.loc[:, "y_plot"] = self.df["spatial2"]
+            self.df["y_plot"] = self.df["spatial2"]
             if self.img_height is not None:
-                self.df.loc[:, "y_plot"] = self.img_height - self.df["spatial2"]
+                self.df["y_plot"] = self.img_height - self.df["spatial2"]
 
-            # 1. Generate base plots
-            image_panel = self.bg_image if hasattr(self, 'bg_image') else None
-            if self.use_clusters:
-                points = create_spatial_plot(self.df, self.clusters_agg, y_col='y_plot', color_col='clusters', cmap=self.cluster_cmap) # type: ignore
-            else:
-                points = create_spatial_plot(self.df, self.expression_agg, y_col='y_plot', color_col='raw_value', cmap=self.expression_cmap) # type: ignore
+            # Generate base plots
+            image_panel = None
+            if hasattr(self, 'bg_image'):
+                image_panel = self.bg_image
+                # Attach the stream to capture drawn boxes
+                self.bounds_stream_image.source = image_panel
 
-            composite = points
-            if image_panel:
-                composite = image_panel * points # type: ignore
+            linked_composite = self._add_center_plot
+            self.zoom_pane = pn.pane.HoloViews(None)
 
-            # If user has a saved box, draw it on the main plots so they see it
-            if self.saved_bounds:
-                saved_box = hv.Bounds(self.saved_bounds).opts(color='black', line_width=2)
-                if image_panel is not None:
-                    image_panel = image_panel * saved_box   # type: ignore
-                composite = composite * saved_box   # type: ignore
+            main_row = pn.Row(image_panel, linked_composite, self.zoom_pane)
 
-            # 2. Attach the stream to capture drawn boxes
-            self.bounds_stream.source = composite
-
-            # 3. Apply the linker for cross-filtering
-            linked_composite = self.linker(composite)
-
-            # 4. Lay out the non-zoom panels side-by-side using HoloView
-            main_row = (image_panel + linked_composite).opts(shared_axes=True)
-
-            # 5. Define the dynamic Zoom Panel
-            def zoomed_panel(bounds):
-                zoom_expression_cmap = "YlGn"
-
-                if self.param.use_clusters:
-                    zoom_points = create_spatial_plot(self.df, self.clusters_agg, y_col='y_plot', color_col='clusters', cmap=self.cluster_cmap) # type: ignore
-                else:
-                    zoom_points = create_spatial_plot(self.df, self.expression_agg, y_col='y_plot', color_col='raw_value', cmap=zoom_expression_cmap) # type: ignore
-                if bounds is None:
-                    return zoom_points.opts(title="Draw box in one of the other plots to zoom this one.")
-                l, b, r, t = bounds
-                return zoom_points.opts(xlim=(l, r), ylim=(b, t), title="Zoomed View")
-
-            # 6. Wrap zoom panel in a DynamicMap to auto-update on box draw
-            #plot_zoom = hv.DynamicMap(zoomed_panel, streams=[self.bounds_stream])
-            plot_zoom = None
+            # Lay out the non-zoom panels side-by-side using HoloView
 
             markdown_width = 400    # Manually measured.
             markdown_padding = 20  # Total left/right padding for the markdown pane
@@ -249,22 +246,106 @@ class CondensedSpatialViewer(BaseSpatialViewer):
             )
 
             # Return final Panel layout
-            yield pn.Column(self.pre_layout, pn.pane.HoloViews(main_row), pn.pane.HoloViews(plot_zoom))
+            return pn.Column(self.pre_layout, main_row)
         except Exception as e:
             traceback.format_exc()
-            yield pn.pane.Alert(f"Error: {e}", alert_type="danger")
+            return pn.pane.Alert(f"Error: {e}", alert_type="danger")
+
+    @param.depends("use_clusters")
+    def _add_center_plot(self):
+        if self.use_clusters:
+            plot =  create_spatial_plot(self.df, self.clusters_agg, y_col='y_plot', color_col='clusters', cmap=self.cluster_cmap, is_categorical=True) # type: ignore
+        else:
+            plot =  create_spatial_plot(self.df, self.expression_agg, y_col='y_plot', color_col='raw_value', cmap=self.expression_cmap) # type: ignore
+
+        main_base = plot
+        zoom_base = plot
+
+        # Apply the background image
+        image_panel = None
+        if hasattr(self, 'bg_image') and self.bg_image is not None:
+            image_panel = self.bg_image
+            main_base = image_panel * plot # type: ignore
+            zoom_base = image_panel * plot # type: ignore
+
+        # Add a ghost legend overlay to properly display a cluster legend
+        if self.use_clusters:
+            ghost_legend = self._create_ghost_legend()
+            # Overlay (multiply) the ghost legend on top, and explicitly tell it to show the legend
+            main_base = (main_base * ghost_legend).opts(show_legend=True, legend_position='right')
+            zoom_base = (zoom_base * ghost_legend).opts(show_legend=True, legend_position='right')
+
+        # Overlay the background image over the other plots
+        if hasattr(self, 'bg_image') and self.bg_image is not None:
+            # The image slides safely underneath the interactive linked points
+            main_composite = self.bg_image * main_base
+            zoom_composite = self.bg_image * zoom_base
+        else:
+            main_composite = main_base
+            zoom_composite = zoom_base
+
+        # Attach the stream to capture drawn boxes
+        self.bounds_stream_composite.source = main_composite
+
+        # Update the zoom pane with the new composite plot (with or without background)
+        if hasattr(self, 'zoom_pane'):
+            self.zoom_pane.object = zoom_composite
+
+        return main_composite
 
     def _init_widgets(self):
-        self.use_clusters_switch = pn.widgets.Switch.from_param(self.param.use_clusters, sizing_mode="fixed", margin=(10, 10))
+        """
+        Initializes the widgets for the panel layout.
+
+        This method sets up the following components:
+        - A switch widget (`clusters_switch`) to toggle the visibility of clusters.
+          It is created using the `pn.widgets.Switch.from_param` method and is styled
+          with a margin.
+        - A layout (`switch_layout`) that organizes the switch widget in a row.
+          The layout has a fixed width (`switch_content_width`) and is intended to
+          provide a structured arrangement for the widget.
+
+        Note:
+        - The layout includes commented-out HTML labels for potential future use
+          to center labels using HTML, as referenced in a GitHub issue discussion.
+        """
+        self.clusters_switch = pn.widgets.Switch.from_param(self.param.use_clusters, name="Show Clusters", margin=(10, 10))
 
         # Using HTML to center the labels (https://github.com/holoviz/panel/issues/1313#issuecomment-1582731241)
         self.switch_content_width = 250
         self.switch_layout = pn.Row(
-            pn.pane.HTML("""<label><strong>Gene Expression</strong></label>""", sizing_mode="fixed", margin=(10, 10)),
-            self.use_clusters_switch,
-            pn.pane.HTML("""<label><strong>Clusters</strong></label>""", sizing_mode="fixed", margin=(10, 10)),
+            self.clusters_switch,
             width=self.switch_content_width
         )
+
+    def _update_zoom_panel(self, bounds):
+        """
+        Updates the zoom panel based on the provided bounds.
+
+        This method is called when the user draws a box on one of the plots to zoom in on that area.
+        It updates the `zoom_pane` dynamic map with the new bounds, which triggers a re-render of the zoomed-in view.
+
+        Parameters:
+        - bounds: A tuple containing the new bounds in the format (left, bottom, right, top).
+                  If bounds is None, it indicates that the user has cleared the selection.
+        """
+        if not hasattr(self, 'zoom_pane') or self.zoom_pane.object is None:
+            return
+
+        if bounds is not None:
+            l, b, r, t = bounds
+
+            # 1. Protect against inverted Y-axes ignoring the zoom
+            xlim = (min(l, r), max(l, r))
+            ylim = (min(b, t), max(b, t))
+
+            # 2. clone=True forces Panel to realize this is a new object to push to the frontend
+            new_zoomed_obj = self.zoom_pane.object.opts(xlim=xlim, ylim=ylim, clone=True)
+            self.zoom_pane.object = new_zoomed_obj
+        else:
+            # Clear the limits
+            new_zoomed_obj = self.zoom_pane.object.opts(xlim=(None, None), ylim=(None, None), clone=True)
+            self.zoom_pane.object = new_zoomed_obj
 
 class ExpandedSpatialViewer(BaseSpatialViewer):
     """
@@ -275,14 +356,13 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
         # Build your spatial rows, UMAPs, and Violins here...
 
         try:
-            yield self._loading_indicator("Creating plots. Please wait...")
 
             main_plots = None
             zoom_plots = None
             umap_row = None
             violin_row = None
 
-            yield pn.Column(main_plots, zoom_plots, umap_row, violin_row)
+            return pn.Column(main_plots, zoom_plots, umap_row, violin_row)
         except Exception as e:
             traceback.format_exc()
-            yield pn.pane.Alert(f"Error: {e}", alert_type="danger")
+            return pn.pane.Alert(f"Error: {e}", alert_type="danger")

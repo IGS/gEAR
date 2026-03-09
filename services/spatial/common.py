@@ -16,7 +16,7 @@ SPATIAL_IMAGE_NAME = "spatial_img.npy"
 
 ### Functions
 
-def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='raw_value', cmap='YlOrRd', width=300, height=200):
+def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='raw_value', cmap='YlOrRd', is_categorical=False, width=300, height=200):
     """Generates a Datashaded spatial plot colored by expression of the specified gene."""
 
     plot = df.hvplot.points(
@@ -24,22 +24,34 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
         rasterize=True, aggregator=agg,
         cmap=cmap, frame_width=width, frame_height=height,
         xaxis=None, yaxis=None,
+
+        # 1. Kill the colorbar if it's categorical
+        colorbar=not is_categorical,
+
+        # 2. Force the legend on
+       # legend='right' if is_categorical else False
     )
 
-    tools = ['box_select', 'pan', 'wheel_zoom']
+    tools = ['box_select']
     if color_col == "raw_value":
         label_name = "Expression"
         # @image is a special variable that datashader uses to store the aggregated value for the hovered pixel
         custom_hover = HoverTool(tooltips=[
                 (label_name, "@image")
             ])
-        tools.append(custom_hover)  # type: ignore
     else:
-        tools.append("hover")
+        label_name = color_col.title()
+        # @image is a special variable that datashader uses to store the aggregated value for the hovered pixel
+        custom_hover = HoverTool(tooltips=[
+                (label_name, "@field")
+            ], limit=3)
+
+    tools.append(custom_hover)  # type: ignore
 
     plot = plot.opts(
             tools=tools,
-            active_tools=['box_select', 'wheel_zoom']
+            active_tools=['box_select'],
+            default_tools=[]
         )
 
     return spread(plot, px=5)
@@ -204,19 +216,6 @@ def sort_clusters(clusters) -> list:
 class Settings(param.Parameterized):
     """
     Settings class for configuring parameters related to gene display and selection ranges.
-
-    Attributes:
-        filename (param.String): Filename for the dataframe to retieve.
-        dataset_id (param.String): Dataset ID to display.
-        min_genes (param.Integer): Minimum number of genes per observation, with a default of 200 and bounds between 0 and 500.
-        selection_x1 (param.Integer): Left selection range.
-        selection_x2 (param.Integer): Right selection range.
-        selection_y1 (param.Integer): Upper selection range.
-        selection_y2 (param.Integer): Lower selection range.
-        projection_id (param.String): Projection ID to display.
-        save (param.Boolean): If true, save this configuration as a new display.
-        display_name (param.String): Display name for the saved configuration.
-        make_default (param.Boolean): If true, make this the default display.
     """
 
     filename = param.String(doc="Filename for the dataframe to retrieve")
@@ -233,7 +232,6 @@ class Settings(param.Parameterized):
     display_width = param.Integer(doc="Width of the display in pixels", allow_None=True)
     expression_min_clip = param.Number(doc="Minimum expression value to clip", allow_None=True)
 
-class ExpandedSettings(Settings):
     save = param.Boolean(
         doc="If true, save this configuration as a new display.", default=False
     )
