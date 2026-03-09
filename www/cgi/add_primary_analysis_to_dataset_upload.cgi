@@ -253,17 +253,12 @@ def create_composition_plots(adata: "AnnData", dataset_path: str, is_spatial: bo
     # Cannot run filter_cells and filter_genes in backed mode
     adata_mem = adata.to_memory()
 
-    # the ".A1" is only necessary, as X is sparse - it transform to a dense array after summing
-    try:
-        # add the total counts per cell as observations-annotation to adata
-        adata_mem.obs['n_counts'] = np.sum(adata_mem.to_df().values, axis=1).A1
-
-    except AttributeError:
-        # add the total counts per cell as observations-annotation to adata
-        adata_mem.obs['n_counts'] = np.sum(adata_mem.to_df().values, axis=1)
-
     sc.pp.filter_cells(adata_mem, min_genes=3)  # this adds adata.obs.n_genes
     sc.pp.filter_genes(adata_mem, min_cells=300)    # this adds adata.obs.n_cells though we do not use it
+    sc.pp.calculate_qc_metrics(adata_mem, inplace=True) # This will get total_counts
+
+    # rename total_counts to n_counts for consistency with the rest of the codebase
+    adata_mem.obs['n_counts'] = adata_mem.obs['total_counts']
 
     sc.pl.violin(adata_mem, ['n_genes', 'n_counts'],
                     jitter=0.4, multi_panel=True, save="_prelim_violin.png")
