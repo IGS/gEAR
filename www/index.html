@@ -21,11 +21,6 @@
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
         <link rel="stylesheet" href="https://unpkg.com/intro.js/introjs.css" />
-
-        <link rel="stylesheet" href="css/common.v2.css" />
-
-        <!--Page-specific CSS here -->
-        <link rel="stylesheet" href="css/index.css" />
     </head>
     <body>
       <div id="main-layout-c" class="columns is-fullheight">
@@ -510,7 +505,18 @@
       <!-- Onboarding new users -->
       <script src="https://unpkg.com/intro.js/intro.js"></script>
 
-      <!-- Page-specific JS file here -->
-      <script type="module" src="js/index.js"></script>
+      <!-- Page-specific CSS/JS loading here -->
+      <script type="module">
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+        const prefs = await getDomainPreferences();
+
+        // Load any local JS with cache-busting version parameter
+        insertVersionedJS('js/index.js', prefs.cache_version);
+
+        // Now load page-specific CSS
+        insertVersionedCSS('css/common.v2.css', prefs.cache_version);
+        insertVersionedCSS('css/index.css', prefs.cache_version);
+      </script>
+      
     </body>
 </html>

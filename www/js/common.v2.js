@@ -267,25 +267,28 @@ const getDomainPreferences = async () => {
 }
 
 /**
- * Appends the cache version to an asset URL to bust browser cache.
- * 
- * @param {string} assetPath - The path to the CSS/JS file (e.g., 'css/common.v2.css')
- * @returns {string} - The asset path with version query parameter
- * 
- * @example
- * const cssUrl = versionedAsset('css/common.v2.css');
- * // Returns: 'css/common.v2.css?v=2026.02.10.123456'
+ * Inserts a versioned CSS file into the document head.
+ * @param {string} href - The href path to the CSS file.
+ * @param {string} cacheVersion - The cache version to append as a query parameter.
  */
-const versionedAsset = (assetPath) => {
-    if (!SITE_PREFS || !SITE_PREFS.cache_version) {
-        console.warn('Cache version not loaded yet, returning unversioned asset path');
-        return assetPath;
-    }
-    const separator = assetPath.includes('?') ? '&' : '?';
-    return `${assetPath}${separator}v=${SITE_PREFS.cache_version}`;
+const insertVersionedCSS = (href, cacheVersion) => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = `${href}?v=${cacheVersion}`;
+    document.head.appendChild(link);
 }
 
-
+/**
+ * Inserts a versioned JS file into the document head.
+ * @param {string} href - The href path to the JS file.
+ * @param {string} cacheVersion - The cache version to append as a query parameter.
+ */
+const insertVersionedJS = (href, cacheVersion) => {
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.src = `${href}?v=${cacheVersion}`;
+    document.body.appendChild(script);
+}
 
 /**
  * Retrieves the value of a specified URL parameter.
@@ -1639,5 +1642,6 @@ export {
     trigger,
     openModal,
     closeModal,
-    versionedAsset,
+    insertVersionedCSS,
+    insertVersionedJS,
 };

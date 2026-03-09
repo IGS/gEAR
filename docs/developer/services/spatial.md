@@ -46,7 +46,7 @@ cd services/spatial
 docker build -t panel_app .
 ```
 
-### Systemd Service
+### Systemd Service (on servers)
 
 The spatial panel service is managed via systemd:
 
@@ -114,11 +114,13 @@ See also: `docs/uploading_spatial_dataset.md`
 ## Monitoring
 
 ### Service Status
+
 ```bash
 sudo systemctl status spatial-panel.service
 ```
 
 ### Logs
+
 ```bash
 # Follow live logs
 sudo journalctl -u spatial-panel.service -f
@@ -128,6 +130,7 @@ sudo journalctl -u spatial-panel.service -n 100
 ```
 
 ### Docker Logs (if using docker-compose)
+
 ```bash
 docker compose logs panel -f
 ```
@@ -142,6 +145,7 @@ sudo systemctl status spatial-panel.service
 ```
 
 **Common issues:**
+
 - Port 5006 already in use
 - Missing Python dependencies
 - Incorrect data path
@@ -150,6 +154,7 @@ sudo systemctl status spatial-panel.service
 ### Port Conflicts
 
 If port 5006 is in use:
+
 ```bash
 # Find process using port
 sudo lsof -i :5006
@@ -163,6 +168,7 @@ Or change port in configuration.
 ### Data Access Issues
 
 Verify permissions:
+
 ```bash
 ls -la /var/www/datasets/spatial/
 # Should be readable by service user
@@ -171,6 +177,7 @@ ls -la /var/www/datasets/spatial/
 ### Memory Issues
 
 Spatial datasets can be large. Increase available memory:
+
 - Docker: Adjust in docker-compose.yml
 - Systemd: Add memory limits in service file
 
@@ -190,6 +197,7 @@ The `--dev` flag enables auto-reload on code changes.
 ### Testing
 
 Test with a sample spatial dataset:
+
 ```bash
 # Upload test dataset
 ./bin/upload_spatial_dataset.py -i test_data/ -o test_dataset
@@ -203,6 +211,7 @@ http://localhost:5006?dataset=test_dataset
 ### Input Format
 
 Spatial datasets should include:
+
 - Expression matrix
 - Spatial coordinates
 - Cell/spot metadata
@@ -271,12 +280,26 @@ For production with many users:
 
 ### Updating Panel Version
 
+#### Docker
+
+```bash
+cd services/spatial
+
+# Add packages and versions to requirements.txt file
+
+# Rebuild Docker image (if in docker)
+docker build --no-cache -t panel_app .
+
+# If using docker-compose
+cd <root>/git/gEAR/docker
+docker compose restart panel
+```
+
+#### Server
+
 ```bash
 # Update requirements
 pip install --upgrade panel
-
-# Rebuild Docker image
-docker build -t panel_app .
 
 # Restart service
 sudo systemctl restart spatial-panel.service
@@ -288,10 +311,10 @@ sudo systemctl restart spatial-panel.service
 # Pull latest code
 git pull origin devel
 
-# Rebuild image
+# Rebuild image (if in docker image)
 docker build -t panel_app .
 
-# Restart service
+# Restart service (if on server)
 sudo systemctl restart spatial-panel.service
 ```
 
