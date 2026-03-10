@@ -29,8 +29,8 @@ if typing.TYPE_CHECKING:
     from gear.spatialhandler import SpatialHandler
 
 # These datasets were requested to be colorblind-friendly.
-# Doing it here instead of modifying the datasets directly.
-WARM_DATASETS = [
+# Doing it here instead of modifying the datasets directly.s
+COOL_DATASETS = [
     "3a12451c-4a82-4d60-bd07-b07bab8b2ff7",
     "9300a079-d843-4261-9256-511c905d7703",
     "acb1e3b0-a1dd-4f7d-964b-3b36e47dae93",
@@ -238,7 +238,7 @@ def create_gene_df(adata: "AnnData", gene_symbol: str) -> pd.DataFrame:
     dataframe = dataframe.dropna(subset=["clusters"])
     return dataframe
 
-def map_colors(dataframe: pd.DataFrame, spatial_img: np.ndarray | None, is_warm_dataset: bool) -> pd.DataFrame:
+def map_colors(dataframe: pd.DataFrame, spatial_img: np.ndarray | None, is_cool_dataset: bool) -> pd.DataFrame:
     # Assuming df is your DataFrame and it has a column "clusters"
     unique_clusters = dataframe["clusters"].unique()
     sorted_clusters = sort_clusters(unique_clusters)
@@ -259,8 +259,8 @@ def map_colors(dataframe: pd.DataFrame, spatial_img: np.ndarray | None, is_warm_
             cc.b_glasbey_bw if spatial_img is not None else cc.glasbey_light
         )
 
-        if is_warm_dataset:
-            swatch_color = cc.glasbey_warm
+        if is_cool_dataset:
+            swatch_color = cc.glasbey_cool
 
         color_map = {
             cluster: swatch_color[i % len(swatch_color)]
@@ -347,7 +347,7 @@ class SpatialPanel(Resource):
                 adata = create_projection_adata(adata, dataset_id, projection_id)
 
             gene_df = create_gene_df(adata, gene_symbol)
-            gene_df = map_colors(gene_df, spatial_img, dataset_id in WARM_DATASETS)
+            gene_df = map_colors(gene_df, spatial_img, dataset_id in COOL_DATASETS)
 
             gene_df.to_csv(csv_path, index=False)
 
