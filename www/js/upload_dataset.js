@@ -573,8 +573,8 @@ const uploadTrackhub = async () => {
 
         // Validation + Copy
         // Copy will be broken down into the number of tracks to copy
-        const stages = 2;
-        const secondStagePercentIncrement = 50 / numTracks;
+        //const stages = 2;
+        //const secondStagePercentIncrement = 50 / numTracks;
 
         percentComplete = 50
         document.getElementById('dataset-upload-progress').value = percentComplete;
