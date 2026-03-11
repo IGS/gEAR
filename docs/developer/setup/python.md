@@ -84,7 +84,7 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
       pika==1.3.1 \
       plotly==5.20.0 \
       pyarrow==18.1.0 \ # v19 breaks reading spatial parquet files
-      pybigwig==0.3.24 \
+      pybigwig==0.3.25 \
       python-dotenv==0.20.0 \
       requests==2.31.0 \
       rpy2==3.5.16 \
@@ -93,6 +93,7 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
       scikit-learn==1.0.2 \
       scipy==1.11.04 \
       seaborn==0.13.2 \
+      setuptools<82 \ # need pkg_resources methods for some packages
       shadows==0.1a2 \
       spatialdata==0.4.0\
       spatialdata_io==0.1.6 \

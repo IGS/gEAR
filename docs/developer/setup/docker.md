@@ -18,9 +18,7 @@ There are two options here.  The first method is significantly quicker, but ther
 NOTE: If on a Linux environment, change the "mac-m1" tag in the pull and tag commands to "linux"
 
 * Pull the image
-  * `docker pull adkinsrs/umgear:mac-m1`
-* Tag the image (to align with what is in `docker-compose.yml`
-  * `docker tag adkinsrs/umgear:mac-m1 umgear:main`
+  * `docker pull adkinsrs/umgear:latest`. This should automatically detect the Mac M1 architecture
 
 ### Method 2: Build image
 
