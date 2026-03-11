@@ -77,7 +77,7 @@ def main():
 
     # Add some extra parameters that we can access in the future in the UI
     formdata["perform_primary_analysis"] = False
-    formdata["dataset_is_spatial"] = False
+    formdata["dataset_format"] = ""
 
     # Save the metadata to a file
     metadata_filename = os.path.join(user_upload_file_base, 'metadata.json')

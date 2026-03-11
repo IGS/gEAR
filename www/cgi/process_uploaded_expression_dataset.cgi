@@ -99,6 +99,18 @@ def main():
             write_status(dataset_upload_dir, 'error', result['message'])
             return result
 
+    metadata_file = dataset_upload_dir / 'metadata.json'
+    if not metadata_file.is_file():
+        write_status(dataset_upload_dir, 'error', "No metadata JSON file found.")
+        return
+    with open(metadata_file, 'r') as f:
+        metadata = json.load(f)
+
+    # Update metadata for downstream uses
+    metadata["dataset_format"] = dataset_format
+    with open(metadata_file, 'w') as f:
+        json.dump(metadata, f, indent=4)
+
     # Since this process can take a while, we want to fork off of apache and continue
     #  processing in the background.
 
@@ -500,11 +512,6 @@ def process_spatial(upload_dir: Path, spatial_format: str) -> None:
     # get organism_id by converting sample_taxid(needed for some but not all spatial handlers)
     with open(metadata_file, 'r') as f:
         metadata = json.load(f)
-
-    # Update metadata for downstream uses
-    metadata["dataset_is_spatial"] = True  # ensure this is set
-    with open(metadata_file, 'w') as f:
-        json.dump(metadata, f, indent=4)
 
     sample_taxid = metadata.get("sample_taxid", None)
     organism_id=geardb.get_organism_id_by_taxon_id(sample_taxid)
