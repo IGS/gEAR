@@ -5,6 +5,8 @@
 FROM ubuntu:jammy
 # ubuntu 22.04
 
+ARG TARGETARCH
+
 LABEL maintainer="Shaun Adkins <sadkins@som.umaryland.edu>"
 
 ARG CMAKE_VERSION=3.19.8
@@ -161,7 +163,10 @@ ENV LD_LIBRARY_PATH="/usr/local/lib/R/lib:$LD_LIBRARY_PATH"
 WORKDIR /opt/gEAR
 COPY ./apache2.conf /etc/apache2/apache2.conf
 COPY ./wsgi.conf /etc/apache2/mods-available/wsgi.conf
-COPY ./wsgi.load /etc/apache2/mods-available/wsgi.load
+
+# The wsgi.load .so file name is different for different architectures,
+# so we have separate ones for each architecture.
+COPY ./wsgi.${TARGETARCH}.load /etc/apache2/mods-available/wsgi.load
 COPY ./000-default.conf /etc/apache2/sites-available/000-default.conf
 COPY ./umgear.conf /etc/apache2/sites-available/umgear.conf
 COPY ./php.ini /etc/php/8.1/apache2/php.ini
