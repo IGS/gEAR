@@ -1193,7 +1193,7 @@ class DatasetTile {
         modalHTML.querySelector(".modal-card-body .js-citation-content").textContent = "Loading citation information...";
 
         // Store current format for copy functionality
-        let currentFormat = 'mla';
+        let currentFormat = 'apa';
         citationPromise.then((citation) => {
             const modal = document.getElementById(`citation-modal-${this.tile.tileId}`);
 

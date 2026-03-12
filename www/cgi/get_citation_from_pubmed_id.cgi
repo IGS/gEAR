@@ -8,7 +8,6 @@ and safer requests call with timeout.
 """
 
 import cgi
-import cgitb
 from datetime import datetime, timezone
 import time
 import json
