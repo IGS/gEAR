@@ -623,7 +623,7 @@ const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { 
     toast.appendChild(toastButton);
     toast.appendChild(opts?.isHTML ? (() => {
         const span = document.createElement("span");
-        span.innerHTML = msg;
+        span.innerHTML = msg.replace(/\n/g, "<br>");
         return span;
     })() : document.createTextNode(msg));
 
