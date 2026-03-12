@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UCSC Track Hub Form</title>
+    <link rel="stylesheet" href="/css/bulma.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        .track-item {
+            cursor: grab;
+        }
+        .track-item.dragging {
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <section class="section">
+        <div class="container">
+            <h1 class="title">UCSC Track Hub Form</h1>
+            <form id="trackhub-form">
+                <!-- Tracks Section -->
+                <div class="box">
+                    <h2 class="subtitle">Tracks</h2>
+                    <div id="tracks-container">
+                        <!-- Track items will be dynamically added here -->
+                    </div>
+                    <button type="button" class="button is-primary" id="add-track-btn">
+                        <span class="icon">
+                            <i class="material-icons">add</i>
+                        </span>
+                        <span>Add Track</span>
+                    </button>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="field">
+                    <div class="control">
+                        <button type="submit" class="button is-success">Submit</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <script>
+        // JavaScript for dynamic track management
+        document.addEventListener('DOMContentLoaded', () => {
+            const tracksContainer = document.getElementById('tracks-container');
+            const addTrackBtn = document.getElementById('add-track-btn');
+
+            let trackCount = 0;
+
+            // Function to create a new track item
+            const createTrackItem = () => {
+                trackCount++;
+                const trackItem = document.createElement('div');
+                trackItem.classList.add('box', 'track-item');
+                trackItem.setAttribute('draggable', 'true');
+                trackItem.dataset.trackId = trackCount;
+
+                trackItem.innerHTML = `
+                    <div class="field">
+                        <label class="label">Identifier</label>
+                        <div class="control">
+                            <input class="input" type="text" name="track-identifier-${trackCount}" placeholder="Track Identifier" required>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Short Label</label>
+                        <div class="control">
+                            <input class="input" type="text" name="track-short-label-${trackCount}" placeholder="Short Label" required>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Long Label</label>
+                        <div class="control">
+                            <input class="input" type="text" name="track-long-label-${trackCount}" placeholder="Long Label">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Type</label>
+                        <div class="control">
+                            <input class="input" type="text" name="track-type-${trackCount}" placeholder="Track Type (e.g., bigWig)" required>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">URL</label>
+                        <div class="control">
+                            <input class="input" type="url" name="track-url-${trackCount}" placeholder="Track Data URL" required>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Visibility</label>
+                        <div class="control">
+                            <input class="input" type="text" name="track-visibility-${trackCount}" placeholder="Visibility (e.g., dense)">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Color</label>
+                        <div class="control">
+                            <input class="input" type="text" name="track-color-${trackCount}" placeholder="Color (e.g., 255,0,0)">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Parent</label>
+                        <div class="control">
+                            <input class="input" type="text" name="track-parent-${trackCount}" placeholder="Parent Track Identifier">
+                        </div>
+                    </div>
+                    <button type="button" class="button is-danger remove-track-btn">
+                        <span class="icon">
+                            <i class="material-icons">remove</i>
+                        </span>
+                        <span>Remove Track</span>
+                    </button>
+                `;
+
+                // Add event listener for removing the track
+                trackItem.querySelector('.remove-track-btn').addEventListener('click', () => {
+                    trackItem.remove();
+                });
+
+                // Add drag-and-drop functionality
+                trackItem.addEventListener('dragstart', () => {
+                    trackItem.classList.add('dragging');
+                });
+
+                trackItem.addEventListener('dragend', () => {
+                    trackItem.classList.remove('dragging');
+                });
+
+                tracksContainer.appendChild(trackItem);
+            };
+
+            // Add new track on button click
+            addTrackBtn.addEventListener('click', createTrackItem);
+
+            // Drag-and-drop reordering
+            tracksContainer.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                const draggingItem = document.querySelector('.dragging');
+                const afterElement = getDragAfterElement(tracksContainer, e.clientY);
+                if (afterElement == null) {
+                    tracksContainer.appendChild(draggingItem);
+                } else {
+                    tracksContainer.insertBefore(draggingItem, afterElement);
+                }
+            });
+
+            const getDragAfterElement = (container, y) => {
+                const draggableElements = [...container.querySelectorAll('.track-item:not(.dragging)')];
+                return draggableElements.reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = y - box.top - box.height / 2;
+                    if (offset < 0 && offset > closest.offset) {
+                        return { offset: offset, element: child };
+                    } else {
+                        return closest;
+                    }
+                }, { offset: Number.NEGATIVE_INFINITY }).element;
+            };
+        });
+    </script>
+</body>
+</html>

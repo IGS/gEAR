@@ -145,6 +145,13 @@
                         <p class="is-size-7">Choose your dataset format and upload directly or provide a supported URL (soon).</p>
                       </div>
                     </li>
+                    <li id='step-build-trackhub' class="steps-segment is-hidden">
+                      <span class="steps-marker"><span class="icon"><i class="mdi"></i></span></span>
+                      <div class="steps-content">
+                        <p class="step-label is-size-5">Build track hub</p>
+                        <p class="is-size-7">Setup basic track configuration for Gosling.</p>
+                      </div>
+                    </li>
                     <li id='step-process-dataset' class="steps-segment">
                       <span class="steps-marker"><span class="icon"><i class="mdi"></i></span></span>
                       <div class="steps-content">
@@ -806,90 +813,106 @@
 
                   <hr />
 
-                  <div id="dataset-upload-columns" class="columns">
-                    <div class="column is-6">
-                      <div class="field">
-                        <h3 class="label">
-                          Upload dataset file
-                          <span class="icon has-tooltip-right has-tooltip-arrow"
-                                data-tooltip="Choose the file to upload.">
-                              <i class="mdi mdi-information"></i>
-                          </span>
-                        </h3>
-                        <div class="file has-name is-fullwidth">
-                          <label class="file-label is-fullwidth">
-                            <input class="file-input is-fullwidth" type="file" id="dataset-file-input" name="dataset-file-input">
-                            <span class="file-cta">
-                              <span class="file-icon">
-                                <i class="mdi mdi-upload"></i>
-                              </span>
-                              <span class="file-label is-fullwidth">
-                                Choose
-                              </span>
+                  <div id="dataset-upload-c" class="pb-3">
+                    <div id="dataset-upload-columns" class="columns">
+                      <div class="column is-6">
+                        <div class="field">
+                          <h3 class="label">
+                            Upload dataset file
+                            <span class="icon has-tooltip-right has-tooltip-arrow"
+                                  data-tooltip="Choose the file to upload.">
+                                <i class="mdi mdi-information"></i>
                             </span>
-                            <span class="file-name" id="dataset-file-name">
-                              No file chosen
+                          </h3>
+                          <div class="file has-name is-fullwidth">
+                            <label class="file-label is-fullwidth">
+                              <input class="file-input is-fullwidth" type="file" id="dataset-file-input" name="dataset-file-input">
+                              <span class="file-cta">
+                                <span class="file-icon">
+                                  <i class="mdi mdi-upload"></i>
+                                </span>
+                                <span class="file-label is-fullwidth">
+                                  Choose
+                                </span>
+                              </span>
+                              <span class="file-name" id="dataset-file-name">
+                                No file chosen
+                              </span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="column is-6 is-hidden">
+                        <div class="field">
+                          <h3 class="label">
+                            Or provide a URL
+                            <span class="icon has-tooltip-right has-tooltip-arrow"
+                                  data-tooltip="Provide a URL to a supported dataset.">
+                                <i class="mdi mdi-information"></i>
                             </span>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="column is-6 is-hidden">
-                      <div class="field">
-                        <h3 class="label">
-                          Or provide a URL
-                          <span class="icon has-tooltip-right has-tooltip-arrow"
-                                data-tooltip="Provide a URL to a supported dataset.">
-                              <i class="mdi mdi-information"></i>
-                          </span>
-                        </h3>
-                        <div class="control">
-                          <input class="input" type="text" name="dataset-url" id="dataset-url-input" placeholder="Provide a URL to a supported dataset (COMING SOON)">
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div id="trackhub-upload-columns" class="columns is-hidden">
-                    <div class="column is-6">
-                      <div class="field">
-                        <h3 class="label">
-                          Provide UCSC track hub URL
-                          <span class="icon has-tooltip-arrow"
-                                data-tooltip="Provide a URL to the UCSC track hub 'hub.txt' file.">
-                              <i class="mdi mdi-information"></i>
-                          </span>
-                        </h3>
-                        <div class="control">
-                          <input class="input" type="text" name="trackhub-url" id="trackhub-url-input" placeholder="Ex: https://umgear.org/tracks/Litao_bigwigs/hub.txt">
-                        </div>
-                      </div>
-                    </div>
-                    <div class="column is-4">
-                      <div class="field">
-                        <h3 class="label">
-                          Select the assembly to associate tracks with.
-                          <span class="icon has-tooltip-arrow"
-                                data-tooltip="Select the assembly to get tracks for.
-Currently Gosling only supports single-organism tracks">
-                              <i class="mdi mdi-information"></i>
-                          </span>
-                        </h3>
-                        <div class="control">
-                          <div class="select">
-                            <select name="trackhub-assembly-select" id="trackhub-assembly-select">
-                              <option value="">Select one</option>
-                              <option value="hg19">Human (hg19)</option>
-                              <option value="hg38">Human (hg38)</option>
-                              <option value="mm10">Mouse (mm10)</option>
-                              <option value="galGal6" disabled>Chicken (COMING SOON)</option>
-                              <option value="rn6">Rat</option>
-                              <option value="danRer10">Zebrafish</option>
-                            </select>
+                          </h3>
+                          <div class="control">
+                            <input class="input" type="text" name="dataset-url" id="dataset-url-input" placeholder="Provide a URL to a supported dataset (COMING SOON)">
                           </div>
                         </div>
                       </div>
                     </div>
+                    <div class="field">
+                      <div class="control">
+                        <button class="button is-primary" id="dataset-upload-submit" disabled>Upload dataset</button>
+                      </div>
+                    </div>
                   </div>
+
+                  <div id="trackhub-upload-c" class="pb-3 is-hidden">
+                    <div id="trackhub-upload-columns" class="columns">
+                      <div class="column is-6">
+                        <div class="field">
+                          <h3 class="label">
+                            (Optional) Provide UCSC track hub URL to preload tracks
+                            <span class="icon has-tooltip-arrow"
+                                  data-tooltip="Provide a URL to the UCSC track hub 'hub.txt' file.">
+                                <i class="mdi mdi-information"></i>
+                            </span>
+                          </h3>
+                          <div class="control">
+                            <input class="input" type="text" name="trackhub-url" id="trackhub-url-input" placeholder="Ex: https://umgear.org/tracks/Litao_bigwigs/hub.txt">
+                          </div>
+                        </div>
+                      </div>
+                      <div class="column is-4">
+                        <div class="field">
+                          <h3 class="label">
+                            Select the assembly to associate tracks with.
+                            <span class="icon has-tooltip-arrow"
+                                  data-tooltip="Select the assembly to get tracks for.
+  Currently Gosling only supports single-organism tracks">
+                                <i class="mdi mdi-information"></i>
+                            </span>
+                          </h3>
+                          <div class="control">
+                            <div class="select">
+                              <select name="trackhub-assembly-select" id="trackhub-assembly-select">
+                                <option value="">Select one</option>
+                                <option value="hg19">Human (hg19)</option>
+                                <option value="hg38">Human (hg38)</option>
+                                <option value="mm10">Mouse (mm10)</option>
+                                <option value="galGal6" disabled>Chicken (COMING SOON)</option>
+                                <option value="rn6">Rat</option>
+                                <option value="danRer10">Zebrafish</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="field">
+                      <div class="control">
+                        <button class="button is-primary" id="build-trackhub-submit" disabled>Build Trackhub</button>
+                      </div>
+                    </div>
+                  </div>
+
                   <div id="dataset-upload-status" class="is-hidden">
                     <p class="mt-2 mb-0 pt-2 pb-0">
                       <span class="icon">
@@ -901,11 +924,7 @@ Currently Gosling only supports single-organism tracks">
                   <div class="field">
                     <progress id="dataset-upload-progress" class="progress is-medium" value="0" max="100"></progress>
                   </div>
-                  <div class="field">
-                    <div class="control">
-                      <button class="button is-primary" id="dataset-upload-submit" disabled>Upload dataset</button>
-                    </div>
-                  </div>
+
                 </div>
                 <div id="step-process-dataset-c" class="step-c is-hidden">
                   <h1>Step - Process dataset</h1>

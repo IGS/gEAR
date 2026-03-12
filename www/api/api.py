@@ -92,8 +92,6 @@ api.add_resource(Orthologs, '/h5ad/<dataset_id>/orthologs')
 api.add_resource(GeneSymbols, '/h5ad/<dataset_id>/genes')
 
 # import routes (TODO: migrate dataset import to API calls)
-api.add_resource(TrackHubValidate, '/import/trackhub/<share_uid>validate')
-api.add_resource(TrackHubCopy, '/import/trackhub/<share_uid>/copy')
 api.add_resource(TrackHubStatus, '/import/trackhub/<share_uid>/status')
 
 # other routes

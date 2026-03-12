@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UCSC Track Hub Form</title>
+    <link rel="stylesheet" href="/css/bulma.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        .track-item {
+            cursor: grab;
+        }
+        .track-item.dragging {
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <section class="section">
+        <div class="container">
+            <h1 class="title">UCSC Track Hub Form</h1>
+            <form id="trackhub-form">
+                <!-- Hub Section -->
+                <div class="box">
+                    <h2 class="subtitle">Hub Information</h2>
+                    <div class="field">
+                        <label class="label">Identifier</label>
+                        <div class="control">
+                            <input class="input" type="text" id="hub-identifier" placeholder="Hub Identifier" required>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Short Label</label>
+                        <div class="control">
+                            <input class="input" type="text" id="hub-short-label" placeholder="Short Label" required>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Long Label</label>
+                        <div class="control">
+                            <input class="input" type="text" id="hub-long-label" placeholder="Long Label" required>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Email</label>
+                        <div class="control">
+                            <input class="input" type="email" id="hub-email" placeholder="Contact Email" required>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Genome</label>
+                        <div class="control">
+                            <input class="input" type="text" id="hub-genome" placeholder="Genome (e.g., hg38)" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="field">
+                    <div class="control">
+                        <button type="submit" class="button is-success">Submit</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+</body>
+</html>

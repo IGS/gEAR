@@ -15,16 +15,20 @@ There are two options here.  The first method is significantly quicker, but ther
 
 ### Method 1: Pull image
 
-NOTE: If on a Linux environment, change the "mac-m1" tag in the pull and tag commands to "linux"
+Recently, docker images have switched to a multi-platform build where Docker will internally determine which image to pull based on your current platform. This requires you to ensure that the containerd store option is enabled on your copy of Docker Desktop.
 
-* Pull the image
-  * `docker pull adkinsrs/umgear:latest`. This should automatically detect the Mac M1 architecture
+Info on how to enable the containerd store
+* https://docs.docker.com/engine/storage/containerd/
+
+How to pull the image
+* `docker pull adkinsrs/umgear:latest`.
 
 ### Method 2: Build image
 
 * Ensure you are in the "devel" branch of gEAR before building (`git checkout devel`)
-* To build run `docker build -t umgear:main .`
+* To build run `docker buildx build --platform linux/amd64 -t umgear:latest .`
   * If you tag it under a new image, ensure it is reflected in the docker-compose.yml file
+  * The "linux/amd64" platform is used to ensure some UCSC TrackHub executables work correctly.
 * The build can take a while, particularly in the Bioconductor installation steps. Fortunately completed steps are cachable.
 
 In the build, the "gear.ini.docker" file will end up copied to "gear.ini" in the "/opt/gEAR" directory for the docker instance. However, if are using docker-compose and the gEAR directory is mounted into the "web" service, this can be overriden to a gear.ini from outside.  If you do not have a "gear.ini" file (only gear.ini.template), then ask @adkinsrs for one.

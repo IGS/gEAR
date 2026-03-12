@@ -271,7 +271,7 @@ def build_trackdb_file(trackdb_path: Path, tracks: list, groups: set = set()) ->
     longLabel Histone protein H3 (Lysine 4) monomethylation 2nd replicate
     group H3K4m1
     color 44,160,44
-    autoscale on
+    autoScale on
     visibility dense
     type bigWig
     """
@@ -346,7 +346,7 @@ def build_trackdb_file(trackdb_path: Path, tracks: list, groups: set = set()) ->
                     pass
 
             #f_out.write(f"color {track['color']}\n")
-            f_out.write("autoscale on\n")
+            f_out.write("autoScale on\n")
             f_out.write("visibility dense\n")
             f_out.write(f"type {track['type']}\n")
             f_out.write("\n")

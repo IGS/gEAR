@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import pyBigWig
 import requests
+import trackhub
 from Bio import bgzf
 from flask import request
 from flask_restful import Resource
@@ -250,7 +251,7 @@ def validate_track_types_from_db(trackdb_txt, trackdb_url) -> list:
     shortLabel ATAC-seq 1st replicate
     longLabel ATAC-seq 1st replicate
     color 31,119,180
-    autoscale on
+    autoScale on
     visibility dense
     type bigWig
     """
@@ -263,76 +264,6 @@ def validate_track_types_from_db(trackdb_txt, trackdb_url) -> list:
             if tracktype not in VALID_TYPES:
                 invalid_tracks.append({"type": tracktype, "trackdb_url": trackdb_url})
     return invalid_tracks
-
-class TrackHubValidate(Resource):
-    def post(self, share_uid):
-        session_id = request.cookies.get('gear_session_id')
-        req = request.get_json()
-        if req is None:
-            return {"success": False, "message": "Invalid JSON body"}, 400
-        hub_url = req.get("trackhub_url")
-        assembly = req.get("assembly")
-
-        result = {
-            "success": False,
-            "message": "",
-            "num_tracks": 0,
-        }
-
-        if not hub_url or not hub_url.startswith("http"):
-            result["message"] = "Invalid URL"
-            return result, 400
-
-        # use the "hubCheck" utiliy to validae the passed in hub file
-        hubcheck_exe = src_path / "hubCheck"
-        try:
-            completed_process = subprocess.run(
-                shlex.split(f"{hubcheck_exe} {hub_url}"),
-                check=True
-            )
-        except subprocess.CalledProcessError as e:
-            result["message"] = f"hubCheck failed: {str(e)}"
-            return result, 500
-
-        # Cut off name of hub_url (hub.txt). This will be used to build more paths
-        base_url = hub_url.rsplit("/", 1)[0]  # Get base URL of hub.txt
-
-        # Look for a genomes.txt file to matching the assembly to get the "trackDb" file
-        # This file is the same as the one required by the UCSC Genome Browser
-        genomes_url = f"{base_url}/genomes.txt"
-        try:
-            genomes_response = requests.get(genomes_url)
-            genomes_response.raise_for_status()
-        except requests.RequestException as e:
-            result["message"] = f"Error fetching genomes.txt: {str(e)}"
-            return result, 500
-
-        trackdb_url = fetch_trackdb_url(genomes_response.text, assembly)
-        if not trackdb_url:
-            result["message"] = f"No trackDb found for assembly {assembly}"
-            return result, 400
-        if not trackdb_url.startswith("http://") and not trackdb_url.startswith("https://"):
-            trackdb_url = f"{base_url}/{trackdb_url}"
-
-        # Fetch tracks
-        try:
-            trackdb_response = requests.get(trackdb_url)
-            trackdb_response.raise_for_status()
-        except requests.RequestException as e:
-            result["message"] = f"Error fetching trackDb: {str(e)}"
-            return result, 500
-
-        # Does not count sub-tracks
-        result["num_tracks"] = len(re.findall(r"^track ", trackdb_response.text, re.MULTILINE))
-        invalid_tracks = validate_track_types_from_db(trackdb_response.text, trackdb_url)
-        if len(invalid_tracks):
-            result["message"] = f"Invalid track types found. Currently accepted types are [{', '.join(VALID_TYPES)}]."
-            return result, 400
-
-        # All good
-        result["success"] = True
-        result["message"] = "Track hub is valid"
-        return result, 200
 
 class TrackHubCopy(Resource):
     def post(self, share_uid):
@@ -369,10 +300,13 @@ class TrackHubCopy(Resource):
         try:
             completed_process = subprocess.run(
                 shlex.split(f"{hubclone_exe} {hub_url} -download -udcDir={track_upload_dir}"),
-                check=True
+                check=True,
+                stdout=subprocess.PIPE,  # Capture standard output
+                stderr=subprocess.PIPE   # Capture standard error
             )
         except subprocess.CalledProcessError as e:
-            result["message"] = f"hubCheck failed: {str(e)}"
+            error_message = e.stderr.decode('utf-8') if e.stderr else str(e)
+            result["message"] = f"hubCheck failed: {error_message}"
             return result, 500
 
         # Test if the hub.txt file was downloaded

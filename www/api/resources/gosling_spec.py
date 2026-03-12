@@ -642,7 +642,7 @@ def parse_tracks_from_trackdb(trackdb_txt, trackdb_url) -> list:
     shortLabel ATAC-seq 1st replicate
     longLabel ATAC-seq 1st replicate
     color 31,119,180
-    autoscale on
+    autoScale on
     visibility dense
     type bigWig
     """
@@ -684,8 +684,8 @@ def parse_tracks_from_trackdb(trackdb_txt, trackdb_url) -> list:
             elif line.startswith("color"):
                 color = line.split(" ")[1]
                 current_track["color"] = f"rgb({color})"    # rendered by CSS engine, so this will work
-            elif line.startswith("autoscale") and "gos_group" in line:
-                current_track["autoscale"] = "gos_group"
+            elif line.startswith("autoScale") and "gos_group" in line:
+                current_track["autoScale"] = "gos_group"
             elif line.startswith("type"):
                 current_track["type"] = line.split(" ")[1]
     if current_track:
