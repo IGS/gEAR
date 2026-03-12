@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>Neurodeneration landing page</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="-1">
+        <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
+
+        <link rel="stylesheet" href="../../css/gear-theme-purple.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
+
+        <link rel="stylesheet" href="../../css/common.v2.css" />
+
+        <!--Page-specific CSS here -->
+        <link rel="stylesheet" href="./index.css" />
+
+    </head>
+    <body>
+      <div id="main-layout-c" class="columns is-fullheight">
+
+        <!--#include virtual="/include/primary_nav.html" -->
+
+        <section id="main-c" class="column pl-0 pt-0">
+
+          <!--#include virtual="/include/header_bar.html" -->
+
+          <section id="content-c" class="m-3" data-nav-link="workspace">
+            <h1>Exploring data collections and gene signatures with projection analysis</h1>
+
+            <p>
+              The central notion behind our approach is to:
+            </p>
+            <ol>
+              <li>
+                Create a compendium of transcriptomic datasets focused on neuroinflammation and neurodegeneration:
+                "<a href="#approach1">Transcriptomic data collections</a>" below. And:
+              </li>
+              <li>
+                Collect functionally relevant gene lists to explore across many datasets. This can be from lab or
+                published experiments, or matrix decomposition approaches (<a href="https://www.biorxiv.org/content/10.1101/2022.11.07.515489v2">SJD</a>)
+                to define robust transcriptomic dynamics that are shared across selected datasets: "<a href="#approach2">Gene signatures</a>" below. Followed by:
+              </li>
+              <li>
+                Molecular dissection of the broad transcriptomic data collections (1) by projection into gene
+                signatures (2): Table of ”<a href="#approach3">Projection links</a>“ below.
+              </li>
+            </ol>
+
+            <hr />
+
+            <h2><a name="approach1"></a>1. Transcriptomics data collections in NeMO Analytics</h2>
+            <p>The central notion behind our approach is to:</p>
+            <br />
+            <p>
+              <strong>Neuroinflammation:</strong>
+              A collection of bulk and single-cell studies of human tissue and rodent models in diverse neuroinflammatory
+              contexts, along with RNA-seq of sorted cell types for perspective.
+            </p>
+            <p>
+              <strong>Alzheimer's disease - Brain Tissue:</strong>
+              Bulk and scRNA-seq in human brain tissue from AD and control samples.
+            </p>
+            <p>
+              <strong>Alzheimer's disease - Brain Vasculature:</strong>
+              RNA-seq studies focusing on cell types of the vasculature.
+            </p>
+            <p>
+              <strong>Alzheimer's disease - Mouse models:</strong>
+              Bulk and scRNA-seq in mouse models of AD.
+            </p>
+            <p>
+              <strong>Peripheral Immune:</strong>
+              Diverse RNA-seq studies of peripheral immune cells.
+            </p>
+
+            <hr />
+
+            <h2><a name="approach2"></a>2. Gene signatures to dissect data collections</h2>
+            <p>
+              <strong>NPTX2 expression correlations:</strong>
+              Genes correlating with NPTX2 message and protein in the medial temporal gyrus of
+              control and AD brain tissue from <a href="https://www.biorxiv.org/content/10.1101/2025.10.17.683150v2">Lao et al 2025</a>.
+            </p>
+            <p>
+              <strong>AD DEGs and age correlations:</strong>
+              Genes differentially expressed in the medial temporal gyrus between AD and
+              non-demented controls from <a href="https://doi.org/10.1101/2025.10.19.683343">Piras et al 2025</a>.
+            </p>
+            <p>
+              <strong>UP in Disease Associated Microglial (DAM):</strong>
+              50 gene over-expressed in DAMs from <a href="https://pubmed.ncbi.nlm.nih.gov/28602351/">Keren-Shaulet et al 2017</a>.
+            </p>
+            <p>
+              <strong>DOWN in Disease Associated Microglial (DAM):</strong>
+              29 gene down-regulated in DAMs from <a href="https://pubmed.ncbi.nlm.nih.gov/28602351/">Keren-Shaulet et al 2017</a>.
+            </p>
+            <p>
+              <strong>Transcriptomic factors in microglia across neurodegenerative disease:</strong>
+              26 factors derived from microglia from 161 donors across diseases including,
+              AD, ALS/FTD, PD, HD, MS, and epilepsy from <a href="https://www.biorxiv.org/content/10.1101/2025.03.27.641500v1">Marshe et al 2025</a>.
+            </p>
+
+            <hr />
+
+            <h2><a name="approach3"></a>3. Projection links to explore gene signatures across the NeMO Analytics data collections</h2>
+            <div id="projection-links-c">
+              <p>
+                Each cell in the table links to the projection of 1 of the NeMO analytics data collections described
+                above into 1 of the gene signatures described above, allowing the exploration of each of the gene
+                signatures as it change across the millions of samples in the NeMO Analytics data collections (the
+                first column of links can be used to view the expression of individual genes across the data
+                collections).
+              </p>
+              <table>
+                <thead>
+                  <tr>
+                    <th class="filled">&nbsp;</th>
+                    <th class="filled filled-with-text vertical">Gene signatures</th>
+                    <th class="vertical filled-with-text-light">Individual gene links</th>
+                    <th class="vertical filled-with-text-light">NPTX2 expression correlations</th>
+                    <th class="vertical filled-with-text-light">AD DEGs and age correlations</th>
+                    <th class="vertical filled-with-text-light">Genes UP in DAMs</th>
+                    <th class="vertical filled-with-text-light">Genes DOWN in DAMs</th>
+                    <th class="vertical filled-with-text-light">Microglia factors in neurodegen.</th>
+                  </tr>
+                  <tr>
+                    <th class="filled filled-with-text">Transcriptomic data collections</th>
+                    <th class="filled">&nbsp;</th>
+                    <th class="filled">&nbsp;</th>
+                    <th class="filled">&nbsp;</th>
+                    <th class="filled">&nbsp;</th>
+                    <th class="filled">&nbsp;</th>
+                    <th class="filled">&nbsp;</th>
+                    <th class="filled">&nbsp;</th>
+                  </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                    <td>Neuroinflammation</td>
+                    <td class="filled">&nbsp;</td>
+                    <td><a href="https://nemoanalytics.org/p?l=NroInflam&g=LCN2" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NroInflam&c=f536ebf0&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NroInflam&c=e1f73198&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NroInflam&c=f6721c81&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NroInflam&c=38860a7c&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=NroInflam&c=85870b0a&algo=pca" target="_blank">LINK</a></td>
+                    </tr>
+                    <tr>
+                    <td>Alzheimer's disease - Brain Tissue</td>
+                    <td class="filled">&nbsp;</td>
+                    <td><a href="https://nemoanalytics.org/p?l=AlzNrl&g=GFAP" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=AlzNrl&c=f536ebf0&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=AlzNrl&c=e1f73198&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=AlzNrl&c=f6721c81&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=AlzNrl&c=38860a7c&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=AlzNrl&c=85870b0a&algo=pca" target="_blank">LINK</a></td>
+                    </tr>
+                    <tr>
+                    <td>Alzheimer's disease - Brain Vasculature</td>
+                    <td class="filled">&nbsp;</td>
+                    <td><a href="https://nemoanalytics.org/p?l=AlzVasc&g=APOE" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=AlzVasc&c=f536ebf0&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=AlzVasc&c=e1f73198&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=AlzVasc&c=f6721c81&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=AlzVasc&c=38860a7c&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=AlzVasc&c=85870b0a&algo=pca" target="_blank">LINK</a></td>
+                    </tr>
+                    <tr>
+                    <td>Alzheimer's disease - Mouse Models</td>
+                    <td class="filled">&nbsp;</td>
+                    <td><a href="https://nemoanalytics.org/p?l=AlzMod&g=APOE" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=AlzMod&c=f536ebf0&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=AlzMod&c=e1f73198&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=AlzMod&c=f6721c81&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=AlzMod&c=38860a7c&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=AlzMod&c=85870b0a&algo=pca" target="_blank">LINK</a></td>
+                    </tr>
+                    <tr>
+                    <td>Peripheral Immune</td>
+                    <td class="filled">&nbsp;</td>
+                    <td><a href="https://nemoanalytics.org/p?l=immune&g=SPP1" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=immune&c=f536ebf0&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=immune&c=e1f73198&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=immune&c=f6721c81&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=immune&c=38860a7c&algo=pca" target="_blank">LINK</a></td>
+                    <td><a href="https://nemoanalytics.org/p?p=p&l=immune&c=85870b0a&algo=pca" target="_blank">LINK</a></td>
+                    </tr>
+
+
+                </tbody>
+              </table>
+              <p>
+                We invite researchers to add their own datasets and gene signatures to this environment to
+                explore their own data, ideas & hypotheses and to expand the discovery potential of this
+                shared community research resource:
+              </p>
+              <ul id="utility-links">
+                <li><a href="/upload_dataset.html">Data uploading</a></li>
+                <li><a href="/gene_list_manager.html">Gene cart uploading</a></li>
+                <li><a href="https://www.carlocolantuoni.org/articles/neurodegeneration-%26-neuroinflammation">Colantuoni Collaborative - Neuroinflammation & Neurodegeneration</a></li>
+              </ul>
+            </div>
+
+          </section><!-- end #content-c -->
+        </section> <!-- end #main-c -->
+      </div>
+      <footer>
+        <div>
+          <!-- content here TO BE inserted via common.js -->
+        </div>
+      </footer>
+
+      <script src="../../js/vendor/js.cookie.js"></script>
+
+      <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+      <script type="module">
+        import { initCommonUI } from '../../js/common.v2.js';
+        initCommonUI();
+      </script>
+
+      <!-- Page-specific JS file here -->
+      <script src="index.js"></script>
+    </body>
+</html>
