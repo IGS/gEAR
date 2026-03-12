@@ -900,7 +900,7 @@ class DatasetTile {
                             modalHTML = this.createModalCitation(apiCallsMixin.fetchCitationFromPubmedId(pubmedId));
                         } else {
                             const citation = {
-                                gEAR: Citation.gEAR(
+                                gEAR: Citation.APA(
                                     [ dataset.user_name ],
                                     new Date(dataset.date_added).getFullYear(),
                                     dataset.title,
