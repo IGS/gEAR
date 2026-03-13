@@ -47,7 +47,7 @@ On the server to upload data, do the following:
 
 ## Building the Track Hub
 
-Gosling uses the UCSC Track Hub (https://genome.ucsc.edu/goldenpath/help/hgTrackHubHelp.html) syntax to map Track Hub properties to those definition mappings within the Gosling interface. Typically files will be stored locally on the server, but some cases (i.e. HiC) data will need to be stored on the HiGlass server and loaded as URLs in the tracksDb.txt file.
+Gosling uses the UCSC Track Hub (https://genome.ucsc.edu/goldenpath/help/hubQuickStart.html) syntax to map Track Hub properties to those definition mappings within the Gosling interface. Typically files will be stored locally on the server, but some cases (i.e. HiC) data will need to be stored on the HiGlass server and loaded as URLs in the tracksDb.txt file.
 
 ### Dataset organization
 

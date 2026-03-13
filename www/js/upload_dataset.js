@@ -289,7 +289,7 @@ const getGeoData = async () => {
 const stepTo = (step) => {
     // TODO: switch to using the stepper-fxns.js functions (and unify the two stepper implementations)
 
-    const stepLabels = ['enter-metadata', 'upload-dataset', 'process-dataset',
+    const stepLabels = ['enter-metadata', 'upload-dataset', 'build-trackhub', 'process-dataset',
         'finalize-dataset', 'curate-dataset'
     ];
     let stepReached = false;
@@ -520,6 +520,9 @@ const storeMetadata = async () => {
 }
 
 const buildTrackhub = async () => {
+    // TODO: Populate from provide trackhub if there
+    // TODO: If longLabel is not provided, grab description from the metadata
+    stepTo("build-trackhub");
 }
 
 /**

@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UCSC Track Hub Form</title>
-    <link rel="stylesheet" href="/css/bulma.min.css">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="/css/gear-theme-purple.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
     <style>
         .track-item {
             cursor: grab;
@@ -23,34 +23,64 @@
                 <!-- Hub Section -->
                 <div class="box">
                     <h2 class="subtitle">Hub Information</h2>
-                    <div class="field">
-                        <label class="label">Identifier</label>
-                        <div class="control">
-                            <input class="input" type="text" id="hub-identifier" placeholder="Hub Identifier" required>
+                    <div class="field is-horizontal">
+                        <div class="field-label">
+                            <label class="label">Identifier</label>
+                        </div>
+                        <div class="field-body">
+                            <div class="field is-narrow">
+                                <div class="control">
+                                    <input class="input" type="text" id="hub-identifier" placeholder="Hub Identifier" required>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="field">
-                        <label class="label">Short Label</label>
-                        <div class="control">
-                            <input class="input" type="text" id="hub-short-label" placeholder="Short Label" required>
+                    <div class="field is-horizontal">
+                        <div class="field-label">
+                            <label class="label">Genome Assembly</label>
+                        </div>
+                        <div class="field-body">
+                            <div class="field is-narrow">
+                                <div class="control">
+                                    <input class="input" type="text" id="hub-genome-assembly" placeholder="Genome Assembly (e.g., hg38)" readonly required>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="field">
-                        <label class="label">Long Label</label>
-                        <div class="control">
-                            <input class="input" type="text" id="hub-long-label" placeholder="Long Label" required>
+                    <div class="field is-horizontal">
+                        <div class="field-label">
+                            <label class="label">Short Description</label>
+                        </div>
+                        <div class="field-body">
+                            <div class="field is-narrow">
+                                <div class="control">
+                                    <input class="input" type="text" id="hub-short-label" placeholder="Short Label" required>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="field">
-                        <label class="label">Email</label>
-                        <div class="control">
-                            <input class="input" type="email" id="hub-email" placeholder="Contact Email" required>
+                    <div class="field is-horizontal">
+                        <div class="field-label">
+                            <label class="label">Long Description</label>
+                        </div>
+                        <div class="field-body">
+                            <div class="field">
+                                <div class="control">
+                                    <textarea class="textarea" id="hub-long-label" placeholder="Long Label" required></textarea>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="field">
-                        <label class="label">Genome</label>
-                        <div class="control">
-                            <input class="input" type="text" id="hub-genome" placeholder="Genome (e.g., hg38)" required>
+                    <div class="field is-horizontal">
+                        <div class="field-label">
+                            <label class="label">Email</label>
+                        </div>
+                        <div class="field-body">
+                            <div class="field is-narrow">
+                                <div class="control">
+                                    <input class="input" type="email" id="hub-email" placeholder="Contact Email" required>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -58,7 +88,7 @@
                 <!-- Submit Button -->
                 <div class="field">
                     <div class="control">
-                        <button type="submit" class="button is-success">Submit</button>
+                        <button type="submit" class="button is-primary">Submit</button>
                     </div>
                 </div>
             </form>
