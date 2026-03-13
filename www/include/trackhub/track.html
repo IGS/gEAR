@@ -80,7 +80,7 @@
                 const collapsibleHeader = document.createElement('div');
                 collapsibleHeader.classList.add('collapsible-header');
                 collapsibleHeader.innerHTML = `
-                    <span class="track-title">Track ${trackCount}</span>
+                    <span data-orig-name="Track ${trackCount}" class="track-title">Track ${trackCount}</span>
                     <span class="icon">
                         <i class="mdi mdi-chevron-down"></i>
                     </span>
@@ -238,7 +238,8 @@
                 // Update the header title when the identifier changes
                 collapsibleContent.querySelector('.track-identifier').addEventListener('input', (e) => {
                     const value = e.target.value.trim();
-                    collapsibleHeader.querySelector('.track-title').textContent = value || `Track ${trackCount}`;
+                    const labelElt = collapsibleHeader.querySelector('.track-title');
+                    labelElt.textContent = value || labelElt.dataset.origName;
                 });
 
                 trackItem.appendChild(collapsibleHeader);
