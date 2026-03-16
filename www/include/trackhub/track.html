@@ -1,297 +1,152 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UCSC Track Hub Form</title>
-    <link rel="stylesheet" href="/css/gear-theme-purple.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
-    <style>
-        .track-item {
-            cursor: grab;
-        }
-        .track-item.dragging {
-            opacity: 0.5;
-        }
-        .collapsible-content {
-            display: none;
-            overflow: hidden;
-        }
-        .collapsible-header {
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: #f5f5f5;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        .collapsible-header:hover {
-            background-color: #e8e8e8;
-        }
-    </style>
-</head>
-<body>
-    <section class="section">
-        <div class="container">
-            <h1 class="title">UCSC Track Hub Form</h1>
-            <form id="trackhub-form">
-                <!-- Tracks Section -->
-                <div class="box">
-                    <h2 class="subtitle">Tracks</h2>
-                    <div id="tracks-container" >
-                        <!-- Track items will be dynamically added here -->
+<div class="container">
+    <form id="trackhub-form">
+        <!-- Tracks Section -->
+        <div class="box">
+            <h2 class="subtitle">Tracks</h2>
+            <p class="help">Here you can add and manage tracks. You can also drag to reorder tracks in the final display.</p>
+            <div id="tracks-container" >
+                <!-- Track items will be dynamically added here -->
+            </div>
+            <button type="button" class="mt-3 button is-small is-primary" id="add-track-btn">
+                <span class="icon">
+                    <i class="mdi mdi-plus"></i>
+                </span>
+                <span>Add Track</span>
+            </button>
+        </div>
+    </form>
+</div>
+
+<template id="tmpl-trackhub-track">
+    <div class="field is-horizontal js-track-item">
+        <div class="field-label">
+            <label class="label">Identifier</label>
+        </div>
+        <div class="field-body">
+            <div class="field is-narrow">
+                <div class="control">
+                    <input class="input js-track-identifier" type="text" placeholder="Track Identifier" required>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="field is-horizontal">
+        <div class="field-label">
+            <label class="label">Short Description</label>
+        </div>
+        <div class="field-body">
+            <div class="field is-narrow">
+                <div class="control">
+                    <input class="input js-track-short-label" type="text" placeholder="Short Label" required>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="field is-horizontal">
+        <div class="field-label">
+            <label class="label">Long Description</label>
+        </div>
+        <div class="field-body">
+            <div class="field">
+                <div class="control">
+                    <textarea class="textarea js-track-long-label" placeholder="Long Label"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="field is-horizontal">
+        <div class="field-label">
+            <label class="label">Track Type</label>
+        </div>
+        <div class="field-body">
+            <div class="field">
+                <div class="control">
+                    <div class="select">
+                        <select class="js-track-type">
+                            <option value="bigbed">BigBed</option>
+                            <option value="bigwig" selected>BigWig</option>
+                            <option value="hic">Hi-C</option>
+                            <option value="vcf">VCF</option>
+                        </select>
                     </div>
-                    <button type="button" class="mt-3 button is-primary" id="add-track-btn">
+                    <p class="help">Some track types will undergo convertion to support both Gosling and UCSC Genome Browser visualization.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="field is-horizontal">
+        <div class="field-label">
+            <label class="label">URL to file</label>
+        </div>
+        <div class="field-body">
+            <div class="field">
+                <div class="control">
+                    <input class="input js-track-url" type="text" placeholder="Track Data URL" required>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="field is-horizontal">
+        <div class="field-label">
+            <label class="label">Visibility</label>
+        </div>
+        <div class="field-body">
+            <div class="field">
+                <div class="control">
+                    <div class="select">
+                        <select class="js-track-visibility">
+                            <option value="dense" selected>Dense</option>
+                            <option value="full">Full</option>
+                            <option value="hide">Hide</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="field is-horizontal">
+        <div class="field-label">
+            <label class="label">Color</label>
+        </div>
+        <div class="field-body">
+            <div class="field">
+                <div class="control">
+                    <input class="js-track-color" type="color" value="#544A8E">
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="field is-horizontal">
+        <div class="field-label">
+            <label class="label">Parent (Optional)</label>
+        </div>
+        <div class="field-body">
+            <div class="field is-narrow">
+                <div class="control">
+                    <input class="input js-track-parent" type="text" placeholder="Parent Track Identifier">
+                </div>
+                <p class="help">
+                    For aggregating BigWig tracks only.
+                    Creates an overlay instead of stacking them.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="field is-horizontal">
+        <div class="field-label">
+            <!-- Left empty for spacing -->
+        </div>
+        <div class="field-body">
+            <div class="field">
+                <div class="control">
+                    <button type="button" class="button is-small is-danger remove-track-btn">
                         <span class="icon">
-                            <i class="mdi mdi-plus"></i>
+                            <i class="mdi mdi-minus"></i>
                         </span>
+                        <span>Remove Track</span>
                     </button>
                 </div>
-
-                <!-- Submit Button -->
-                <div class="field">
-                    <div class="control">
-                        <button type="submit" class="button is-primary">Submit</button>
-                    </div>
-                </div>
-            </form>
+            </div>
         </div>
-    </section>
-
-    <script>
-        // JavaScript for dynamic track management
-        document.addEventListener('DOMContentLoaded', () => {
-            const tracksContainer = document.getElementById('tracks-container');
-            const addTrackBtn = document.getElementById('add-track-btn');
-
-            let trackCount = 0;
-
-            // Function to create a new track item
-            const createTrackItem = () => {
-                trackCount++;
-                const trackItem = document.createElement('div');
-                trackItem.classList.add('box', 'track-item');
-                trackItem.setAttribute('draggable', 'true');
-                trackItem.dataset.trackId = trackCount;
-
-                // Collapsible header
-                const collapsibleHeader = document.createElement('div');
-                collapsibleHeader.classList.add('collapsible-header');
-                collapsibleHeader.innerHTML = `
-                    <span data-orig-name="Track ${trackCount}" class="track-title">Track ${trackCount}</span>
-                    <span class="icon">
-                        <i class="mdi mdi-chevron-down"></i>
-                    </span>
-                `;
-
-                // Collapsible content
-                const collapsibleContent = document.createElement('div');
-                collapsibleContent.classList.add('collapsible-content');
-                collapsibleContent.innerHTML = `
-                    <div class="field is-horizontal">
-                        <div class="field-label">
-                            <label class="label">Identifier</label>
-                        </div>
-                        <div class="field-body">
-                            <div class="field is-narrow">
-                                <div class="control">
-                                    <input class="input track-identifier" type="text" name=track-identifier-${trackCount}" placeholder="Track Identifier" required>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="field is-horizontal">
-                        <div class="field-label">
-                            <label class="label">Short Description</label>
-                        </div>
-                        <div class="field-body">
-                            <div class="field is-narrow">
-                                <div class="control">
-                                    <input class="input" type="text" name=track-short-label-${trackCount}" placeholder="Short Label" required>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="field is-horizontal">
-                        <div class="field-label">
-                            <label class="label">Long Description</label>
-                        </div>
-                        <div class="field-body">
-                            <div class="field">
-                                <div class="control">
-                                    <textarea class="textarea" name=track-long-label-${trackCount}" placeholder="Long Label" required></textarea>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="field is-horizontal">
-                        <div class="field-label">
-                            <label class="label">Track Type</label>
-                        </div>
-                        <div class="field-body">
-                            <div class="field">
-                                <div class="control">
-                                    <div class="select">
-                                        <select name="track-type-${trackCount}">
-                                            <option value="bigbed">BigBed</option>
-                                            <option value="bigwig" selected>BigWig</option>
-                                            <option value="hic">Hi-C</option>
-                                            <option value="vcf">VCF</option>
-                                        </select>
-                                    </div>
-                                    <p class="help">Some track types will undergo convertion to support both Gosling and UCSC Genome Browser visualization.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="field is-horizontal">
-                        <div class="field-label">
-                            <label class="label">URL to file</label>
-                        </div>
-                        <div class="field-body">
-                            <div class="field">
-                                <div class="control">
-                                    <input class="input" type="text" name=track-short-url-${trackCount}" placeholder="Track Data URL" required>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="field is-horizontal">
-                        <div class="field-label">
-                            <label class="label">Visibility</label>
-                        </div>
-                        <div class="field-body">
-                            <div class="field">
-                                <div class="control">
-                                    <div class="select">
-                                        <select name="track-visibility-${trackCount}">
-                                            <option value="dense" selected>Dense</option>
-                                            <option value="full">Full</option>
-                                            <option value="hide">Hide</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="field is-horizontal">
-                        <div class="field-label">
-                            <label class="label">Color</label>
-                        </div>
-                        <div class="field-body">
-                            <div class="field is-narrow">
-                                <div class="control">
-                                    <input class="input" type="text" name=track-color-${trackCount}" placeholder="Color (e.g., 255,0,0)" >
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="field is-horizontal">
-                        <div class="field-label">
-                            <label class="label">Parent (Optional)</label>
-                        </div>
-                        <div class="field-body">
-                            <div class="field is-narrow">
-                                <div class="control">
-                                    <input class="input" type="text" name=track-parent-${trackCount}" placeholder="Parent Track Identifier">
-                                </div>
-                                <p class="help">
-                                    For aggregating BigWig tracks only.
-                                    Creates an overlay instead of stacking them.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="field is-horizontal">
-                        <div class="field-label">
-                            <!-- Left empty for spacing -->
-                        </div>
-                        <div class="field-body">
-                            <div class="field">
-                                <div class="control">
-                                    <button type="button" class="button is-danger remove-track-btn">
-                                        <span class="icon">
-                                            <i class="mdi mdi-minus"></i>
-                                        </span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-
-                // Add event listener for removing the track
-                collapsibleContent.querySelector('.remove-track-btn').addEventListener('click', () => {
-                    trackItem.remove();
-                });
-
-                // Add toggle functionality for collapsible content
-                collapsibleHeader.addEventListener('click', () => {
-                    const isOpen = collapsibleContent.style.display === 'block';
-                    collapsibleContent.style.display = isOpen ? 'none' : 'block';
-                    collapsibleHeader.querySelector('.mdi').classList.toggle('mdi-chevron-down', isOpen);
-                    collapsibleHeader.querySelector('.mdi').classList.toggle('mdi-chevron-up', !isOpen);
-                });
-
-                // Update the header title when the identifier changes
-                collapsibleContent.querySelector('.track-identifier').addEventListener('input', (e) => {
-                    const value = e.target.value.trim();
-                    const labelElt = collapsibleHeader.querySelector('.track-title');
-                    labelElt.textContent = value || labelElt.dataset.origName;
-                });
-
-                trackItem.appendChild(collapsibleHeader);
-                trackItem.appendChild(collapsibleContent);
-                tracksContainer.appendChild(trackItem);
-
-                // Start with the content expanded for new tracks
-                collapsibleContent.style.display = 'block';
-                collapsibleHeader.querySelector('.mdi').classList.remove('mdi-chevron-down');
-                collapsibleHeader.querySelector('.mdi').classList.add('mdi-chevron-up');
-            };
-
-            // Add new track on button click
-            addTrackBtn.addEventListener('click', createTrackItem);
-
-            // Drag-and-drop reordering
-            tracksContainer.addEventListener('dragstart', (e) => {
-                if (e.target.classList.contains('track-item')) {
-                    e.target.classList.add('dragging');
-                }
-            });
-
-            tracksContainer.addEventListener('dragend', (e) => {
-                if (e.target.classList.contains('track-item')) {
-                    e.target.classList.remove('dragging');
-                }
-            });
-
-            tracksContainer.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                const draggingItem = document.querySelector('.dragging');
-                const afterElement = getDragAfterElement(tracksContainer, e.clientY);
-                if (afterElement == null) {
-                    tracksContainer.appendChild(draggingItem);
-                } else {
-                    tracksContainer.insertBefore(draggingItem, afterElement);
-                }
-            });
-
-            const getDragAfterElement = (container, y) => {
-                const draggableElements = [...container.querySelectorAll('.track-item:not(.dragging)')];
-                return draggableElements.reduce((closest, child) => {
-                    const box = child.getBoundingClientRect();
-                    const offset = y - box.top - box.height / 2;
-                    if (offset < 0 && offset > closest.offset) {
-                        return { offset: offset, element: child };
-                    } else {
-                        return closest;
-                    }
-                }, { offset: Number.NEGATIVE_INFINITY }).element;
-            };
-        });
-    </script>
-</body>
-</html>
+    </div>
+</template>

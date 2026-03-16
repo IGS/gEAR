@@ -1,6 +1,7 @@
 'use strict';
 
 import { apiCallsMixin, convertToFormData, createToast, getCurrentUser, guid, initCommonUI, openModal } from "./common.v2.js";
+import { Hub, HubContainer, Track, TrackContainer } from "./classes/trackhub.js";
 
 /* --- constants and variables --- */
 
@@ -279,6 +280,17 @@ const getGeoData = async () => {
 }
 
 /**
+ * Fetches the content of an HTML file from the specified URL.
+ *
+ * @param {string} url - The URL of the HTML file to fetch.
+ * @returns {Promise<string>} - A promise that resolves with the content of the HTML file as a string.
+ */
+const includeHtml = async (url) => {
+    const preResponse = await fetch(url, {cache: "reload"});
+    return await preResponse.text();
+}
+
+/**
  * Navigates to a specific step in the dataset upload process, updating the UI to reflect the current step.
  * Handles step marker icons and classes for visual feedback, manages step content visibility,
  * and triggers dataset processing status checks when appropriate.
@@ -523,6 +535,16 @@ const buildTrackhub = async () => {
     // TODO: Populate from provide trackhub if there
     // TODO: If longLabel is not provided, grab description from the metadata
     stepTo("build-trackhub");
+
+    const hubSection = document.getElementById("hub-section")
+    hubSection.innerHTML = await includeHtml("../include/trackhub/hub.html");
+    const trackSection = document.getElementById("track-section")
+    trackSection.innerHTML = await includeHtml("../include/trackhub/track.html");
+
+    // Manipulates the contents in the section inner HTML and also creates new Hub and Track objects.
+    const hubContainer = new HubContainer();
+    const trackContainer = new TrackContainer();
+
 }
 
 /**
@@ -819,59 +841,73 @@ document.getElementById('dataset-file-input').addEventListener('change', (event)
     document.getElementById('dataset-file-name').textContent = 'No file selected';
 });
 
+/**
+ * Updates the state of the "Build Trackhub" submit button based on the validity of the
+ * provided URL input and assembly selection. Ensures that the button is only enabled
+ * when both inputs are valid and displays appropriate error messages when validation fails.
+ *
+ * @function updateBuildTrackSubmitButtonState
+ * @param {HTMLInputElement} urlInput - The input field where the user enters the trackhub URL.
+ * @param {HTMLSelectElement} assemblySelect - The dropdown menu where the user selects the genome assembly.
+ *
+ * @description
+ * - If the URL input is empty, the submit button is enabled, and error messages are hidden.
+ * - If no assembly is selected, the submit button is disabled, and an error message is displayed.
+ * - If the URL does not start with "https://" or contains spaces, the submit button is disabled,
+ *   and an error message is displayed.
+ * - If both the URL and assembly are valid, the submit button is enabled, and error messages are hidden.
+ * @returns {void}
+ */
+const updateBuildTrackSubmitButtonState = (urlInput, assemblySelect) => {
+    const submitButton = document.getElementById('build-trackhub-submit');
+    const statusMessage = document.getElementById('dataset-upload-status-message');
+    const statusContainer = document.getElementById('dataset-upload-status');
+
+    if (!urlInput.value) {
+        // If URL is empty, we are not pre-populating, so we are OK.
+        submitButton.disabled = false;
+        statusContainer.classList.add('is-hidden');
+        return
+    }
+
+    // Disable the submit button by default
+    submitButton.disabled = true;
+
+    if (!assemblySelect.value) {
+        // If no assembly is selected, show an error message
+        statusMessage.textContent = 'Please select an assembly.';
+        statusContainer.classList.remove('is-hidden');
+        return;
+    }
+
+    // url should start with https and have no spaces (basic validation)
+    if (urlInput.value.startsWith("https://") && !urlInput.value.includes(' ')) {
+        // Valid URL, enable the submit button and hide the status message
+        submitButton.disabled = false;
+        statusContainer.classList.add('is-hidden');
+    } else {
+        // Invalid URL, show an error message
+        statusMessage.textContent = 'Please enter a valid HTTPS URL.';
+        statusContainer.classList.remove('is-hidden');
+    }
+}
+
 // Enable 'Upload dataset' button if a URL is entered and an assembly is selected.
 document.getElementById("trackhub-url-input").addEventListener('input', (event) => {
     const urlInput = event.currentTarget;
-    const submitButton = document.getElementById('build-trackhub-submit');
     const assemblySelect = document.getElementById('trackhub-assembly-select');
-    const statusMessage = document.getElementById('dataset-upload-status-message');
-    const statusContainer = document.getElementById('dataset-upload-status');
-
-    // Disable the submit button by default
-    submitButton.disabled = true;
-
-    // Check if both URL and assembly are provided
-    if (urlInput.value && assemblySelect.value) {
-        // url should start with https and have no spaces (basic validation)
-        if (urlInput.value.startsWith("https://") && !urlInput.value.includes(' ')) {
-            // Valid URL, enable the submit button and hide the status message
-            submitButton.disabled = false;
-            statusContainer.classList.add('is-hidden');
-        } else {
-            // Invalid URL, show an error message
-            statusMessage.textContent = 'Please enter a valid HTTPS URL.';
-            statusContainer.classList.remove('is-hidden');
-        }
-    }
+    updateBuildTrackSubmitButtonState(urlInput, assemblySelect);
 })
+
 document.getElementById('trackhub-assembly-select').addEventListener('change', (event) => {
     const assemblySelect = event.currentTarget;
-    const submitButton = document.getElementById('build-trackhub-submit');
     const urlInput = document.getElementById('trackhub-url-input');
-    const statusMessage = document.getElementById('dataset-upload-status-message');
-    const statusContainer = document.getElementById('dataset-upload-status');
-
-    // Disable the submit button by default
-    submitButton.disabled = true;
-
-    // Check if both URL and assembly are provided
-    if (urlInput.value && assemblySelect.value) {
-        // url should start with https and have no spaces (basic validation)
-        if (urlInput.value.startsWith("https://") && !urlInput.value.includes(' ')) {
-            // Valid URL, enable the submit button and hide the status message
-            submitButton.disabled = false;
-            statusContainer.classList.add('is-hidden');
-        } else {
-            // Invalid URL, show an error message
-            statusMessage.textContent = 'Please enter a valid HTTPS URL.';
-            statusContainer.classList.remove('is-hidden');
-        }
-    }
+    updateBuildTrackSubmitButtonState(urlInput, assemblySelect);
 })
 
 document.getElementById('dataset-finalize-submit').addEventListener('click', (event) => {
     event.preventDefault();
-    event.currentTargetdisabled = true;
+    event.currentTarget.disabled = true;
     document.getElementById('finalize-dataset-status-c').classList.remove('is-hidden');
 
     finalizeUpload();
@@ -926,10 +962,29 @@ document.getElementById('dataset-upload-submit').addEventListener('click', (even
     document.getElementById('dataset-upload-status').classList.add('is-hidden');
 
     if (datasetFormat === "gosling") {
-        buildTrackhub();
-        return
+        throw new Error("Gosling should be handled separately and should not reach this point. Please contact a gEAR developer.");
     }
     uploadDataset();
+});
+
+document.getElementById('build-trackhub-submit').addEventListener('click', (event) => {
+    event.preventDefault();
+    // make sure they chose a format (sanity check)
+    if (datasetFormat !== "gosling") {
+        document.getElementById('dataset-upload-status-message').textContent = 'Please choose the Gosling format above first.';
+        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+        return;
+    }
+
+    spatialFormat = null;   // safeguard since gosling doesn't use spatial formats
+
+    // change submit button to spinner
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.classList.add('is-loading');
+    document.getElementById('dataset-upload-status').classList.add('is-hidden');
+
+    buildTrackhub();
 });
 
 document.getElementById('metadata-upload-submit').addEventListener('click', (event) => {

@@ -1,98 +1,78 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UCSC Track Hub Form</title>
-    <link rel="stylesheet" href="/css/gear-theme-purple.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
-    <style>
-        .track-item {
-            cursor: grab;
-        }
-        .track-item.dragging {
-            opacity: 0.5;
-        }
-    </style>
-</head>
-<body>
-    <section class="section">
-        <div class="container">
-            <h1 class="title">UCSC Track Hub Form</h1>
-            <form id="trackhub-form">
-                <!-- Hub Section -->
-                <div class="box">
-                    <h2 class="subtitle">Hub Information</h2>
-                    <div class="field is-horizontal">
-                        <div class="field-label">
-                            <label class="label">Identifier</label>
-                        </div>
-                        <div class="field-body">
-                            <div class="field is-narrow">
-                                <div class="control">
-                                    <input class="input" type="text" id="hub-identifier" placeholder="Hub Identifier" required>
-                                </div>
-                            </div>
+<div class="container">
+    <form id="trackhub-form">
+        <!-- Hub Section -->
+        <div class="box">
+            <h2 class="subtitle">Hub Information</h2>
+            <div class="field is-horizontal">
+                <div class="field-label">
+                    <label class="label">Identifier</label>
+                </div>
+                <div class="field-body">
+                    <div class="field is-narrow">
+                        <div class="control">
+                            <input class="input" type="text" id="hub-identifier" placeholder="Hub Identifier" required>
                         </div>
                     </div>
-                    <div class="field is-horizontal">
-                        <div class="field-label">
-                            <label class="label">Genome Assembly</label>
-                        </div>
-                        <div class="field-body">
-                            <div class="field is-narrow">
-                                <div class="control">
-                                    <input class="input" type="text" id="hub-genome-assembly" placeholder="Genome Assembly (e.g., hg38)" readonly required>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="field is-horizontal">
-                        <div class="field-label">
-                            <label class="label">Short Description</label>
-                        </div>
-                        <div class="field-body">
-                            <div class="field is-narrow">
-                                <div class="control">
-                                    <input class="input" type="text" id="hub-short-label" placeholder="Short Label" required>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="field is-horizontal">
-                        <div class="field-label">
-                            <label class="label">Long Description</label>
-                        </div>
-                        <div class="field-body">
-                            <div class="field">
-                                <div class="control">
-                                    <textarea class="textarea" id="hub-long-label" placeholder="Long Label" required></textarea>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="field is-horizontal">
-                        <div class="field-label">
-                            <label class="label">Email</label>
-                        </div>
-                        <div class="field-body">
-                            <div class="field is-narrow">
-                                <div class="control">
-                                    <input class="input" type="email" id="hub-email" placeholder="Contact Email" required>
-                                </div>
+                </div>
+            </div>
+            <div class="field is-horizontal">
+                <div class="field-label">
+                    <label class="label">Genome Assembly</label>
+                </div>
+                <div class="field-body">
+                    <div class="field is-narrow">
+                        <div class="control">
+                            <div class="select">
+                                <select id="hub-genome-select">
+                                    <option value="">Select one</option>
+                                    <option value="hg19">Human (hg19)</option>
+                                    <option value="hg38">Human (hg38)</option>
+                                    <option value="mm10">Mouse (mm10)</option>
+                                    <option value="galGal6" disabled>Chicken (COMING SOON)</option>
+                                    <option value="rn6">Rat</option>
+                                    <option value="danRer10">Zebrafish</option>
+                                </select>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- Submit Button -->
-                <div class="field">
-                    <div class="control">
-                        <button type="submit" class="button is-primary">Submit</button>
+            </div>
+            <div class="field is-horizontal">
+                <div class="field-label">
+                    <label class="label">Short Description</label>
+                </div>
+                <div class="field-body">
+                    <div class="field is-narrow">
+                        <div class="control">
+                            <input class="input" type="text" id="hub-short-label" placeholder="Short Label" required>
+                        </div>
                     </div>
                 </div>
-            </form>
+            </div>
+            <div class="field is-horizontal">
+                <div class="field-label">
+                    <label class="label">Long Description</label>
+                </div>
+                <div class="field-body">
+                    <div class="field">
+                        <div class="control">
+                            <textarea class="textarea" id="hub-long-label" placeholder="Long Label" required></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="field is-horizontal">
+                <div class="field-label">
+                    <label class="label">Email</label>
+                </div>
+                <div class="field-body">
+                    <div class="field is-narrow">
+                        <div class="control">
+                            <input class="input" type="email" id="hub-email" placeholder="Contact Email" required>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-    </section>
-</body>
-</html>
+    </form>
+</div>
