@@ -900,7 +900,7 @@ class DatasetTile {
                             modalHTML = this.createModalCitation(apiCallsMixin.fetchCitationFromPubmedId(pubmedId));
                         } else {
                             const citation = {
-                                gEAR: Citation.APA(
+                                apa: Citation.APA(
                                     [ dataset.user_name ],
                                     new Date(dataset.date_added).getFullYear(),
                                     dataset.title,
@@ -1192,50 +1192,19 @@ class DatasetTile {
 
         modalHTML.querySelector(".modal-card-body .js-citation-content").textContent = "Loading citation information...";
 
-        // Store current format for copy functionality
-        let currentFormat = 'mla';
         citationPromise.then((citation) => {
             const modal = document.getElementById(`citation-modal-${this.tile.tileId}`);
 
-            modal.querySelector(".modal-card-body .js-citation-content").innerHTML = (citation.gEAR ?? citation.mla).format;
-
-            // Add event listeners to format buttons
-            const formatButtons = modal.querySelectorAll('.js-citation-format-btn');
-            if ("gEAR" in citation) { // if "gEAR" format is available, no buttons should be shown since we can assert no other formats are available.
-                currentFormat = "gEAR";
-                formatButtons.forEach(el => el.classList.add("is-hidden"));
-            } else {
-                for (const button of formatButtons) {
-                    button.addEventListener("click", (event) => {
-                        const format = button.dataset.format;
-                        currentFormat = format;
-
-                        // Update the displayed citation
-                        const citationContent = modal.querySelector('.modal-card-body .js-citation-content');
-                        citationContent.innerHTML = citation[format].format;
-
-                        // Update button styling
-                        for (const btn of formatButtons) {
-                            btn.classList.remove("is-primary");
-                        }
-                        button.classList.add("is-primary");
-                    });
-                }
-            }
+            modal.querySelector(".modal-card-body .js-citation-content").innerHTML = (citation.apa ?? citation.apa).format;
 
             // Copy button
             modal.querySelector(".modal-card-foot .js-citation-copy").addEventListener("click", (event) => {
-                const selectedCitation = citation[currentFormat];
                 const item = new ClipboardItem({
-                    "text/plain": new Blob([selectedCitation.orig], { type: "text/plain" }),
-                    "text/html": new Blob([selectedCitation.format], { type: "text/html" })
+                    "text/plain": new Blob([citation.apa.orig], { type: "text/plain" }),
+                    "text/html": new Blob([citation.apa.format], { type: "text/html" })
                 });
                 navigator.clipboard.write([item]).then(() => {
-                    if (currentFormat === "gEAR") {
-                        createToast(`Citation copied to clipboard!`, "is-success");
-                    } else {
-                        createToast(`${currentFormat.toUpperCase()} citation copied to clipboard!`, "is-success");
-                    }
+                    createToast(`Citation copied to clipboard!`, "is-success");
                 }).catch((error) => {
                     logErrorInConsole(error);
                     createToast("Failed to copy citation to clipboard.", "is-danger");

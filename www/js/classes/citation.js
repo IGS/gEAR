@@ -30,8 +30,10 @@ export class Citation {
 
     static APA(authors, year, title, shareId, accessDate, license) {
         authors = authors.map(author => {
-            const [lastName, firstName] = author.split(',').map(s => s.trim());
-            const initials = firstName.split(' ').map(n => n[0].toUpperCase() + '.').join(' ');
+            const names = author.split(' ').map(s => s.trim());
+            const lastName = names.pop();
+
+            const initials = names.map(n => n[0].toUpperCase() + '.').join(' ');
             return `${lastName}, ${initials}`;
         });
         if (authors.length === 1) {
