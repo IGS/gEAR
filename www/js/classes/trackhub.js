@@ -13,6 +13,7 @@ export class Hub {
         this.longLabel = longLabel;
         this.email = email;
         this.genome = genome;
+        this.trackDbUrl = null; // URL to the trackDb.txt file for this hub (to be populated after parsing the hub URL)
     }
 
     /**
@@ -28,6 +29,7 @@ longLabel ${this.longLabel}
 genomesFile genomes.txt
 email ${this.email}`;
     }
+
 }
 
 export class HubContainer {
@@ -57,6 +59,118 @@ export class HubContainer {
         document.getElementById("hub-genome-select").addEventListener('change', (e) => {
             this.hub.genome = e.target.value.trim();
         });
+    }
+
+    /**
+     * Parses the provided UCSC Track Hub URL and assembly to extract hub metadata and trackDb information.
+     * Validates the hub URL, fetches its content, and constructs the trackDb URL based on the provided assembly.
+     * Populates the hub data and updates the associated form fields.
+     *
+     * @async
+     * @function parseHubUrl
+     * @param {string} hubUrl - The URL of the UCSC Track Hub (e.g., "http://example.com/hub.txt").
+     * @param {string} assembly - The genome assembly to use (e.g., "hg38").
+     * @throws {Error} If the hub URL or assembly is missing, or if the hub URL is unreachable.
+     * @returns {Promise<void>} Resolves when the hub data is successfully parsed and populated.
+     */
+    async parseHubUrl(hubUrl, assembly) {
+        if (!hubUrl) {
+            throw new Error("Hub URL is required to parse trackDb information.");
+        }
+        if (!assembly) {
+            throw new Error("Assembly is required to parse trackDb information.");
+        }
+
+        // Test if URL is reachable
+        let hubContent
+        try {
+            const hubResp = await fetch(hubUrl);
+            if (!hubResp.ok) {
+                throw new Error(`Hub URL returned status ${hubResp.status}`);
+            }
+            hubContent = await hubResp.text();
+        } catch (error) {
+            throw new Error("Provided hub URL is not reachable.");
+        }
+
+        const hubJson = {
+            hub: null,
+            shortLabel: null,
+            longLabel: null,
+            email: null,
+            genome: assembly,
+            trackDbUrl: null
+        }
+
+        for (const line of hubContent.split('\n')) {
+            const [key, ...rest] = line.split(' ');
+            const value = rest.join(' ').trim();
+            switch (key) {
+                case 'hub':
+                    hubJson.hub = value;
+                    break;
+                case 'shortLabel':
+                    hubJson.shortLabel = value;
+                    break;
+                case 'longLabel':
+                    hubJson.longLabel = value;
+                    break;
+                case 'email':
+                    hubJson.email = value;
+                    break;
+                default:
+                    // Ignore other keys for now
+                    break;
+            }
+        }
+
+        const url = new URL(hubUrl);
+        const hubUrlPathname = url.pathname.replace(/\/?$/, '/'); // Ensure pathname ends with a slash
+        const hubUrlParent = hubUrlPathname.split('/').slice(0, -2).join('/'); // Get parent directory of the hub URL
+        const trackDbUrl = `${url.origin}${hubUrlParent}/${assembly}/trackDb.txt`;
+        try {
+            const trackDbResp = await fetch(trackDbUrl);
+            if (!trackDbResp.ok) {
+                throw new Error(`TrackDb URL returned status ${trackDbResp.status}`);
+            }
+            hubJson.trackDbUrl = trackDbUrl;
+        } catch (error) {
+            throw new Error("Constructed trackDb URL is not reachable. Please check the hub URL and assembly.");
+        }
+
+
+        this.populateHubData(hubJson);
+    }
+
+    /**
+     * Populates the Hub object and associated form fields with data from a JSON object.
+     * This method parses the provided `hubJson` object and updates both the Hub instance
+     * and the corresponding HTML form fields with the extracted values.
+     *
+     * @param {Object} hubJson - JSON object containing hub data.
+     *
+     * @returns {void}
+     */
+    populateHubData(hubJson) {
+        // Parse hub.txt json data and populate the hub object and form fields
+        if (!hubJson) {
+            console.warn("No hub data found to populate.");
+            return;
+        }
+
+        this.hub.identifier = hubJson.hub || "";
+        this.hub.shortLabel = hubJson.shortLabel || "";
+        this.hub.longLabel = hubJson.longLabel || "";
+        this.hub.email = hubJson.email || "";
+        this.hub.genome = hubJson.genome || "";
+        this.hub.trackDbUrl = hubJson.trackDbUrl || null;
+
+        // Update form fields with hub data
+        document.getElementById("hub-identifier").value = this.hub.identifier;
+        document.getElementById("hub-short-label").value = this.hub.shortLabel;
+        document.getElementById("hub-long-label").value = this.hub.longLabel;
+        document.getElementById("hub-email").value = this.hub.email;
+        document.getElementById("hub-genome-select").value = this.hub.genome;
     }
 }
 
@@ -272,4 +386,68 @@ export class TrackContainer {
         collapsibleHeader.querySelector('.mdi').classList.remove('mdi-chevron-down');
         collapsibleHeader.querySelector('.mdi').classList.add('mdi-chevron-up');
     };
+
+    createNewTracksFromData(trackData) {
+        // Create new track objects and form fields based on parsed trackDb.txt data
+        const trackEntries = trackData.split('\ntrack ').slice(1); // Split into individual track entries
+        trackEntries.forEach((entry, index) => {
+            const trackId = String(Track.trackCount + index);
+            this.createTrackItem(); // This will create a new track item and increment the track count
+            this.populateTrackData(trackId, entry); // Populate the new track item with data
+        });
+    }
+
+    parseTrackDbUrl(trackDbUrl) {
+        if (!trackDbUrl) {
+            throw new Error("TrackDb URL is required to parse track data.");
+        }
+    }
+
+    populateTrackData(trackId, trackEntry) {
+        // Parse trackDb.txt entry text data and populate the track object and form fields
+        const lines = trackEntry.split('\n');
+        const track = this.tracks[trackId];
+        lines.forEach(line => {
+            const [key, ...rest] = line.split(' ');
+            const value = rest.join(' ').trim();
+            switch (key) {
+                case 'track':
+                    track.identifier = value;
+                    document.querySelector(`#track-${trackId} .js-track-identifier`).value = value;
+                    break;
+                case 'shortLabel':
+                    track.shortLabel = value;
+                    document.querySelector(`#track-${trackId} .js-track-short-label`).value = value;
+                    break;
+                case 'longLabel':
+                    track.longLabel = value;
+                    document.querySelector(`#track-${trackId} .js-track-long-label`).value = value;
+                    break;
+                case 'type':
+                    track.tracktype = value;
+                    document.querySelector(`#track-${trackId} .js-track-type`).value = value;
+                    break;
+                case 'bigDataUrl':
+                    track.url = value;
+                    document.querySelector(`#track-${trackId} .js-track-url`).value = value;
+                    break;
+                case 'visibility':
+                    track.visibility = value;
+                    document.querySelector(`#track-${trackId} .js-track-visibility`).value = value;
+                    break;
+                case 'color':
+                    track.color = value;
+                    // Convert RGB back to hex for the color input field
+                    const [r, g, b] = value.split(',').map(Number);
+                    const hexColor = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+                    document.querySelector(`#track-${trackId} .js-track-color`).value = hexColor;
+                    break;
+                //case 'parent':
+                //    track.parent = value
+                //    break;
+                default:
+                    console.warn(`Unknown key in trackDb.txt: ${key}`);
+            }
+        });
+    }
 }

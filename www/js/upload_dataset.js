@@ -244,6 +244,44 @@ const populateMetadataFormFromFile = async () => {
     button.classList.remove('is-loading');
 }
 
+const populateHubAndTracks = async (hubContainer, trackContainer) => {
+    // If an assembly genome was selected in the previous step, set it as the default for the hub
+    const assemblySelect = document.getElementById('trackhub-assembly-select');
+    if (!assemblySelect) {
+        // If assembly wasn't provided, then hub URL wasn't provided either.
+        return;
+    }
+
+    // If a hub.txt file was previously provided
+    // 1) populate the Hub object with its contents
+    // 2) Ensure the selected assembly exists in the hub, otherwise add a warning and leave tracks empty
+    // 3) If trackDb files exist, parse them for the parameters we need and create Track objects for each track found.
+
+    const hubUrl = document.getElementById("trackhub-url-input").value
+    const assembly = assemblySelect.value;
+
+    try {
+        await hubContainer.parseHubUrl(hubUrl, assembly);
+    } catch (error) {
+        console.warn(error);
+        createToast(`Error parsing track hub URL... initializing empty form.`, 'is-warning');
+        return;
+    }
+
+    if (!hubContainer.hub.trackdb_url) {
+        return;
+    }
+
+    try {
+        await trackContainer.parseTrackDbUrl(hubContainer.hub.trackdb_url);
+    } catch (error) {
+        console.warn(error);
+        createToast(`Error parsing trackDb.txt from hub URL... cannot populate tracks.`, 'is-warning');
+        return;
+    }
+
+}
+
 /**
  * Asynchronously fetches GEO metadata based on the user-provided GEO ID and populates
  * corresponding form fields with the retrieved data. If no data is found, displays a status message.
@@ -532,9 +570,6 @@ const storeMetadata = async () => {
 }
 
 const buildTrackhub = async () => {
-    // TODO: Populate from provide trackhub if there
-    // TODO: If longLabel is not provided, grab description from the metadata
-    stepTo("build-trackhub");
 
     const hubSection = document.getElementById("hub-section")
     hubSection.innerHTML = await includeHtml("../include/trackhub/hub.html");
@@ -545,7 +580,12 @@ const buildTrackhub = async () => {
     const hubContainer = new HubContainer();
     const trackContainer = new TrackContainer();
 
+    await populateHubAndTracks(hubContainer, trackContainer);
+    stepTo("build-trackhub");
+
 }
+
+
 
 /**
  * Handles uploading a dataset file to the server using XMLHttpRequest.

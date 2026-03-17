@@ -63,7 +63,7 @@ from resources.spatialpanel import SpatialPanel  # noqa: E402
 from resources.svg_data import SvgData  # noqa: E402
 from resources.top_pca_genes import TopPCAGenes  # noqa: E402
 from resources.tsne_data import MGTSNEData, TSNEData  # noqa: E402
-from resources.track_hub import TrackHubValidate, TrackHubCopy, TrackHubStatus # noqa: E402
+from resources.track_hub import TrackHubCopy, TrackHubStatus # noqa: E402
 
 # plot routs
 api.add_resource(PlotlyData, '/plot/<dataset_id>'   # Default endpoint
@@ -92,6 +92,7 @@ api.add_resource(Orthologs, '/h5ad/<dataset_id>/orthologs')
 api.add_resource(GeneSymbols, '/h5ad/<dataset_id>/genes')
 
 # import routes (TODO: migrate dataset import to API calls)
+api.add_resource(TrackHubCopy, '/import/trackhub/<share_uid>/copy')
 api.add_resource(TrackHubStatus, '/import/trackhub/<share_uid>/status')
 
 # other routes
