@@ -268,12 +268,8 @@ const populateHubAndTracks = async (hubContainer, trackContainer) => {
         return;
     }
 
-    if (!hubContainer.hub.trackdb_url) {
-        return;
-    }
-
     try {
-        await trackContainer.parseTrackDbUrl(hubContainer.hub.trackdb_url);
+        await trackContainer.parseTrackDbUrl(hubContainer.hub.trackDbUrl);
     } catch (error) {
         console.warn(error);
         createToast(`Error parsing trackDb.txt from hub URL... cannot populate tracks.`, 'is-warning');

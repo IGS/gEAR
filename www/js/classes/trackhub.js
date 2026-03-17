@@ -82,7 +82,7 @@ export class HubContainer {
         }
 
         // Test if URL is reachable
-        let hubContent
+        let hubContent;
         try {
             const hubResp = await fetch(hubUrl);
             if (!hubResp.ok) {
@@ -92,6 +92,7 @@ export class HubContainer {
         } catch (error) {
             throw new Error("Provided hub URL is not reachable.");
         }
+
 
         const hubJson = {
             hub: null,
@@ -128,16 +129,8 @@ export class HubContainer {
         const hubUrlPathname = url.pathname.replace(/\/?$/, '/'); // Ensure pathname ends with a slash
         const hubUrlParent = hubUrlPathname.split('/').slice(0, -2).join('/'); // Get parent directory of the hub URL
         const trackDbUrl = `${url.origin}${hubUrlParent}/${assembly}/trackDb.txt`;
-        try {
-            const trackDbResp = await fetch(trackDbUrl);
-            if (!trackDbResp.ok) {
-                throw new Error(`TrackDb URL returned status ${trackDbResp.status}`);
-            }
-            hubJson.trackDbUrl = trackDbUrl;
-        } catch (error) {
-            throw new Error("Constructed trackDb URL is not reachable. Please check the hub URL and assembly.");
-        }
-
+        // Making this assumption this is valid and will validate in the "track reading" step.
+        hubJson.trackDbUrl = trackDbUrl;
 
         this.populateHubData(hubJson);
     }
@@ -177,7 +170,7 @@ export class HubContainer {
 // Track class to represent a UCSC Track
 export class Track {
 
-    static trackCount = 1; // Global track count for unique identifiers
+    static trackCount = 0; // Global track count for unique identifiers. Immediately increments when new track added.
 
     /**
      * @param {string} identifier - Unique identifier for the track.
@@ -295,12 +288,12 @@ export class TrackContainer {
 
     // Function to create a new track item with event listeners
     createTrackItem() {
+        Track.trackCount++;
         const trackItem = document.createElement('div');
         trackItem.classList.add('track-item');
         trackItem.setAttribute('draggable', 'true');
         const trackId = String(Track.trackCount);
         this.tracks[trackId] = new Track();
-        Track.trackCount++;
 
         // Collapsible header
         const collapsibleHeader = document.createElement('div');
@@ -315,12 +308,12 @@ export class TrackContainer {
         // Collapsible content
         const collapsibleContent = document.createElement('div');
         collapsibleContent.classList.add('collapsible-content');
+        collapsibleContent.id = `track-${trackId}`;
 
         // Clone the track template and append to collapsible content
         const template = document.getElementById('tmpl-trackhub-track');
         const templateHTML = template.content.cloneNode(true);
         const templateElement = templateHTML.querySelector('.js-track-item');
-        templateElement.id = `track-${trackId}`;
 
         collapsibleContent.appendChild(templateHTML);
 
@@ -389,27 +382,54 @@ export class TrackContainer {
 
     createNewTracksFromData(trackData) {
         // Create new track objects and form fields based on parsed trackDb.txt data
-        const trackEntries = trackData.split('\ntrack ').slice(1); // Split into individual track entries
-        trackEntries.forEach((entry, index) => {
-            const trackId = String(Track.trackCount + index);
+        const trackEntries = trackData.split('track ')
+        trackEntries.forEach((stanza, index) => {
+            // skip empty entries
+            if (!stanza.trim()) {
+                return;
+            }
+            // add "track " back into the stanza since we split it out (it's a field name)
+            stanza = `track ${stanza}`;
             this.createTrackItem(); // This will create a new track item and increment the track count
-            this.populateTrackData(trackId, entry); // Populate the new track item with data
+            const trackId = String(Track.trackCount); // Get the current track ID after incrementing
+            this.populateTrackData(trackId, stanza); // Populate the new track item with data
         });
     }
 
-    parseTrackDbUrl(trackDbUrl) {
+    async parseTrackDbUrl(trackDbUrl) {
         if (!trackDbUrl) {
             throw new Error("TrackDb URL is required to parse track data.");
         }
+
+        let trackDbContent;
+        try {
+            const trackDbResp = await fetch(trackDbUrl);
+            if (!trackDbResp.ok) {
+                throw new Error(`TrackDb URL returned status ${trackDbResp.status}`);
+            }
+            trackDbContent = await trackDbResp.text();
+        } catch (error) {
+            throw new Error("Constructed trackDb URL is not reachable. Please check the hub URL and assembly.");
+        }
+
+        this.createNewTracksFromData(trackDbContent);
+
     }
 
-    populateTrackData(trackId, trackEntry) {
+    populateTrackData(trackId, stanza) {
         // Parse trackDb.txt entry text data and populate the track object and form fields
-        const lines = trackEntry.split('\n');
+        const lines = stanza.split('\n');
         const track = this.tracks[trackId];
+
         lines.forEach(line => {
+            // if only whitespace or a comment, skip
+            if (!line.trim() || line.trim().startsWith('#')) {
+                return;
+            }
+
+            // Split to "key value"
             const [key, ...rest] = line.split(' ');
-            const value = rest.join(' ').trim();
+            const value = rest.join(" ").trim();
             switch (key) {
                 case 'track':
                     track.identifier = value;
@@ -446,7 +466,7 @@ export class TrackContainer {
                 //    track.parent = value
                 //    break;
                 default:
-                    console.warn(`Unknown key in trackDb.txt: ${key}`);
+                    break;
             }
         });
     }
