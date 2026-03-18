@@ -1414,7 +1414,7 @@ class DatasetTile {
                     newDownloadPNG.classList.remove("is-hidden");
                     newDownloadPNG.addEventListener("click", async (event) => {
                         // get the download URL
-                        await this.downloadSpatialPNG(display);
+                        await this.downloadSpatialHTML(display);
                     });
                 }
                 return;
@@ -1539,7 +1539,7 @@ class DatasetTile {
                     newDownloadPNG.classList.remove("is-hidden");
                     newDownloadPNG.addEventListener("click", async (event) => {
                         // get the download URL
-                        await this.downloadSpatialPNG(display);
+                        await this.downloadSpatialHTML(display);
                     });
                 }
             } else if (display.plot_type === "gosling") {
@@ -2384,9 +2384,9 @@ class DatasetTile {
         }
     }
 
-    async downloadSpatialPNG(display) {
+    async downloadSpatialHTML(display) {
         if (!this.spatialUrlParams) {
-            createToast("Cannot download PNG because spatial display parameters are not available.", "is-warning");
+            createToast("Cannot download HTML because spatial display parameters are not available.", "is-warning");
             return;
         }
 
