@@ -10,7 +10,7 @@
                 <div class="field-body">
                     <div class="field is-narrow">
                         <div class="control">
-                            <input class="input" type="text" id="hub-identifier" placeholder="Hub Identifier" required>
+                            <input class="input" type="text" id="hub-identifier" placeholder="Hub Identifier (no spaces)" required>
                         </div>
                     </div>
                 </div>
@@ -44,7 +44,7 @@
                 <div class="field-body">
                     <div class="field is-narrow">
                         <div class="control">
-                            <input class="input" type="text" id="hub-short-label" placeholder="Short Label" required>
+                            <input class="input" type="text" id="hub-short-label" maxlength="20" placeholder="Short Label (<20 chars)" required>
                         </div>
                     </div>
                 </div>
@@ -56,7 +56,7 @@
                 <div class="field-body">
                     <div class="field">
                         <div class="control">
-                            <textarea class="textarea" id="hub-long-label" placeholder="Long Label" required></textarea>
+                            <input class="input" id="hub-long-label" maxlength="70" placeholder="Long Label (<70 chars)" required>
                         </div>
                     </div>
                 </div>

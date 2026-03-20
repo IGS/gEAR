@@ -99,7 +99,6 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
       spatialdata_io==0.1.6 \
       statsmodels==0.13.2 \
       tables==3.9.2 \
-      trackhub==1.0 \
       watchfiles \
       xlrd==1.2.0
     ./pip3 uninstall dask-expr -y

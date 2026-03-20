@@ -11,6 +11,10 @@ let datasetFormat = null;   // set when user chooses a dataset type
 let spatialFormat = null;   // set when user chooses a spatial platform (if applicable)
 let performPrimaryAnalysis = true
 
+// TrackHub stuff
+let hubContainer;
+let trackContainer;
+
 let processingStatus = null;
 const processingStatusCheckInterval = 10; // seconds
 
@@ -244,6 +248,37 @@ const populateMetadataFormFromFile = async () => {
     button.classList.remove('is-loading');
 }
 
+/**
+ * Asynchronously populates hub and track containers from a track hub URL.
+ *
+ * Retrieves hub configuration and track definitions from a provided UCSC-format track hub URL,
+ * validates that the selected assembly exists in the hub, and populates Track objects for each
+ * discovered track. Handles both single-file hub mode (tracks defined in hub.txt) and multi-file
+ * mode (tracks defined in separate trackDb.txt file referenced from genomes.txt).
+ *
+ * @async
+ * @function populateHubAndTracks
+ * @param {HubContainer} hubContainer - Container object for managing hub metadata and configuration.
+ * @param {TrackContainer} trackContainer - Container object for managing track definitions.
+ * @returns {Promise<void>} Resolves when hub and track data have been populated or early-returned
+ *                          on validation/initialization failure. Errors are logged as warnings and
+ *                          displayed as warning toasts (non-fatal).
+ *
+ * @description
+ * Execution flow:
+ * 1. Validates that an assembly was previously selected via DOM element 'trackhub-assembly-select'.
+ * 2. Retrieves hub URL and assembly value from DOM inputs.
+ * 3. Returns early if no hub URL is provided.
+ * 4. Parses hub.txt using `hubContainer.parseHubUrl()` to populate hub metadata.
+ * 5. Checks hub mode: if oneFile mode, parses tracks directly from hub.txt;
+ *    otherwise retrieves trackDb.txt path from genomes.txt and parses it.
+ * 6. Displays warning toasts for any parsing errors encountered.
+ *
+ * @see {@link HubContainer#parseHubUrl}
+ * @see {@link HubContainer#retrieveTrackDbPath}
+ * @see {@link TrackContainer#parseHubTracks}
+ * @see {@link TrackContainer#parseTrackDbUrl}
+ */
 const populateHubAndTracks = async (hubContainer, trackContainer) => {
     // If an assembly genome was selected in the previous step, set it as the default for the hub
     const assemblySelect = document.getElementById('trackhub-assembly-select');
@@ -260,6 +295,11 @@ const populateHubAndTracks = async (hubContainer, trackContainer) => {
     const hubUrl = document.getElementById("trackhub-url-input").value
     const assembly = assemblySelect.value;
 
+    // Don't bother if no URL provided.
+    if (!hubUrl) {
+        return;
+    }
+
     try {
         await hubContainer.parseHubUrl(hubUrl, assembly);
     } catch (error) {
@@ -267,13 +307,31 @@ const populateHubAndTracks = async (hubContainer, trackContainer) => {
         createToast(`Error parsing track hub URL... initializing empty form.`, 'is-warning');
         return;
     }
+    if (hubContainer.oneFileMode) {
+        // The tracks are in the hub.txt file
+        try {
+            await trackContainer.parseHubTracks(hubUrl);
+        } catch (error) {
+            console.warn(error);
+            createToast(`Error parsing hub "oneFile" tracks... cannot populate tracks.`, 'is-warning');
+        }
+    } else {
+        // Find the trackDb file in the genomes.txt file and parse it to populate the tracks.
+        try {
+            await hubContainer.retrieveTrackDbPath(hubUrl);
+        } catch (error) {
+            console.warn(error);
+            createToast(`Error retrieving trackDb.txt path from genomes.txt in hub URL... cannot populate tracks.`, 'is-warning');
+            return;
+        }
 
-    try {
-        await trackContainer.parseTrackDbUrl(hubContainer.hub.trackDbUrl);
-    } catch (error) {
-        console.warn(error);
-        createToast(`Error parsing trackDb.txt from hub URL... cannot populate tracks.`, 'is-warning');
-        return;
+        try {
+            await trackContainer.parseTrackDbUrl(hubContainer.getTrackDbUrl());
+        } catch (error) {
+            console.warn(error);
+            createToast(`Error parsing trackDb.txt... cannot populate tracks.`, 'is-warning');
+            return;
+        }
     }
 
 }
@@ -312,6 +370,59 @@ const getGeoData = async () => {
     button.disabled = false;
     button.classList.remove('is-loading');
 }
+
+/**
+ * Updates the state of the "Build Trackhub" submit button based on the validity of the
+ * provided URL input and assembly selection. Ensures that the button is only enabled
+ * when both inputs are valid and displays appropriate error messages when validation fails.
+ *
+ * @function updateBuildTrackHubButtonState
+ * @param {HTMLInputElement} urlInput - The input field where the user enters the trackhub URL.
+ * @param {HTMLSelectElement} assemblySelect - The dropdown menu where the user selects the genome assembly.
+ *
+ * @description
+ * - If the URL input is empty, the submit button is enabled, and error messages are hidden.
+ * - If no assembly is selected, the submit button is disabled, and an error message is displayed.
+ * - If the URL does not start with "https://" or contains spaces, the submit button is disabled,
+ *   and an error message is displayed.
+ * - If both the URL and assembly are valid, the submit button is enabled, and error messages are hidden.
+ * @returns {void}
+ */
+const updateBuildTrackHubButtonState = (urlInput, assemblySelect) => {
+    const submitButton = document.getElementById('build-trackhub-submit');
+    const statusMessage = document.getElementById('dataset-upload-status-message');
+    const statusContainer = document.getElementById('dataset-upload-status');
+
+    if (!urlInput.value) {
+        // If URL is empty, we are not pre-populating, so we are OK.
+        submitButton.disabled = false;
+        statusContainer.classList.add('is-hidden');
+        return
+    }
+
+    // Disable the submit button by default
+    submitButton.disabled = true;
+
+    if (!assemblySelect.value) {
+        // If no assembly is selected, show an error message
+        statusMessage.textContent = 'Please select an assembly.';
+        statusContainer.classList.remove('is-hidden');
+        return;
+    }
+
+    // url should be in HTTP or HTTPS format and have no spaces (basic validation)
+    const isUrl = urlInput.value.startsWith("http://") || urlInput.value.startsWith("https://");
+    if (isUrl && !urlInput.value.includes(' ')) {
+        // Valid URL, enable the submit button and hide the status message
+        submitButton.disabled = false;
+        statusContainer.classList.add('is-hidden');
+    } else {
+        // Invalid URL, show an error message
+        statusMessage.textContent = 'Please enter a valid HTTP or HTTPS URL.';
+        statusContainer.classList.remove('is-hidden');
+    }
+}
+
 
 /**
  * Fetches the content of an HTML file from the specified URL.
@@ -495,7 +606,7 @@ const loadUploadsInProgress = async () => {
  * @param {string} field - The field name to prettify.
  * @returns {string} The prettified field name.
  */
-const prettifyFieldName = (field) => {
+const prettifyMetadataFieldName = (field) => {
     field = field.replace('metadata-', '');
     field = field.replaceAll('-', ' ');
     return field.charAt(0).toUpperCase() + field.slice(1);
@@ -538,21 +649,6 @@ const storeMetadata = async () => {
     }));
 
     if (data.success) {
-        // UI for next step:
-        /*
-        // For the current step:
-        <span class="steps-marker">
-            <span class="icon">
-            <i class="mdi mdi-check-bold"></i>
-            </span>
-        </span>
-        // For the next step:
-        <span class="steps-marker is-light">
-            <span class="icon">
-            <i class="mdi mdi-wrench"></i>
-            </span>
-        </span>
-        */
 
         stepTo('upload-dataset');
 
@@ -565,23 +661,44 @@ const storeMetadata = async () => {
     }
 }
 
+/**
+ * Asynchronously builds and populates the trackhub interface for Gosling dataset uploads.
+ *
+ * Fetches HTML templates for hub and track sections, initializes Hub and Track container objects,
+ * populates them with data from a provided trackhub URL, and navigates the UI to the build-trackhub step.
+ *
+ * The function performs the following operations:
+ * 1. Loads HTML template for the hub section and injects it into the DOM
+ * 2. Loads HTML template for the track section and injects it into the DOM
+ * 3. Creates new HubContainer and TrackContainer instances to manage hub and track data
+ * 4. Parses hub configuration and track definitions from the provided trackhub URL
+ * 5. Advances the UI stepper to the build-trackhub step
+ *
+ * @async
+ * @function buildTrackhub
+ * @returns {Promise<void>} Resolves when the trackhub interface has been fully populated and the UI step has been updated.
+ *
+ * @description
+ * This function is called when a user selects the Gosling format and provides a trackhub URL.
+ * It assumes the presence of DOM elements with IDs 'hub-section' and 'track-section'.
+ * Error handling is performed by `populateHubAndTracks()`, which displays warning toasts if parsing fails.
+ *
+ * @see {@link populateHubAndTracks} for details on hub/track population and error handling
+ * @see {@link stepTo} for navigation logic
+ */
 const buildTrackhub = async () => {
-
     const hubSection = document.getElementById("hub-section")
     hubSection.innerHTML = await includeHtml("../include/trackhub/hub.html");
     const trackSection = document.getElementById("track-section")
     trackSection.innerHTML = await includeHtml("../include/trackhub/track.html");
 
     // Manipulates the contents in the section inner HTML and also creates new Hub and Track objects.
-    const hubContainer = new HubContainer();
-    const trackContainer = new TrackContainer();
+    hubContainer = new HubContainer();
+    trackContainer = new TrackContainer();
 
     await populateHubAndTracks(hubContainer, trackContainer);
     stepTo("build-trackhub");
-
 }
-
-
 
 /**
  * Handles uploading a dataset file to the server using XMLHttpRequest.
@@ -684,6 +801,63 @@ const processDataset = async () => {
         console.error('Error processing dataset:', error);
         createToast('Error processing dataset');
     }
+}
+
+const stageTrackHub = async(hubContainer, trackContainer) => {
+    const hubErrors = hubContainer.validateHub();
+    const trackErrors = trackContainer.validateTracks();
+
+    if (hubErrors.length > 0) {
+        createToast("Validation issues with hub metadata. Please resolve and submit again");
+        return;
+    }
+
+    if (trackErrors.length > 0) {
+        createToast("Validation issues with one or more tracks. Please resolve.");
+        return;
+    }
+
+    const hubJson = hubContainer.generateHubJson();
+    const trackStanzas = trackContainer.generateTrackDbEntries();
+
+    if (!hubJson || trackStanzas.length === 0) {
+        document.getElementById('dataset-upload-status-message').textContent = 'Error: Failed to parse the trackhub information. Please check your URL and try again.';
+        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+        return;
+    }
+
+    const assembly = hubContainer.getAssembly();
+
+    const dryRun = true;    // While developing
+
+    const payload = {
+        hub_json: hubJson,
+        tracks: trackStanzas,
+        assembly,
+        dry_run: dryRun
+    }
+
+    try {
+        const {data} = await axios.post(
+            `./api/import/trackhub/${shareUid}/copy`,
+            payload,
+            { timeout: 600000}
+        )
+        if (!data?.success) {
+            throw new Error(data?.message || 'Unknown error copying trackhub data');
+        }
+        createToast('Trackhub data staged successfully.', 'is-success');
+
+    } catch (error) {
+        createToast(`Error staging trackhub data: ${error.message}`);
+    }
+
+    return;
+    // Wait a few seconds, then move to the next step. The process script
+    // (called above) will run for a long time and be monitored separately
+    setTimeout(() => {
+        stepTo('process-dataset');
+    }, 3000);
 }
 
 /**
@@ -854,7 +1028,7 @@ document.getElementById('metadata-form-submit').addEventListener('click', (event
 
     // iterate over the errored fields and display them
     for (const field in erroredFields) {
-        const fieldLabel = prettifyFieldName(field);
+        const fieldLabel = prettifyMetadataFieldName(field);
         const fieldMsg = erroredFields[field];
 
         const li = document.createElement('li');
@@ -877,68 +1051,17 @@ document.getElementById('dataset-file-input').addEventListener('change', (event)
     document.getElementById('dataset-file-name').textContent = 'No file selected';
 });
 
-/**
- * Updates the state of the "Build Trackhub" submit button based on the validity of the
- * provided URL input and assembly selection. Ensures that the button is only enabled
- * when both inputs are valid and displays appropriate error messages when validation fails.
- *
- * @function updateBuildTrackSubmitButtonState
- * @param {HTMLInputElement} urlInput - The input field where the user enters the trackhub URL.
- * @param {HTMLSelectElement} assemblySelect - The dropdown menu where the user selects the genome assembly.
- *
- * @description
- * - If the URL input is empty, the submit button is enabled, and error messages are hidden.
- * - If no assembly is selected, the submit button is disabled, and an error message is displayed.
- * - If the URL does not start with "https://" or contains spaces, the submit button is disabled,
- *   and an error message is displayed.
- * - If both the URL and assembly are valid, the submit button is enabled, and error messages are hidden.
- * @returns {void}
- */
-const updateBuildTrackSubmitButtonState = (urlInput, assemblySelect) => {
-    const submitButton = document.getElementById('build-trackhub-submit');
-    const statusMessage = document.getElementById('dataset-upload-status-message');
-    const statusContainer = document.getElementById('dataset-upload-status');
-
-    if (!urlInput.value) {
-        // If URL is empty, we are not pre-populating, so we are OK.
-        submitButton.disabled = false;
-        statusContainer.classList.add('is-hidden');
-        return
-    }
-
-    // Disable the submit button by default
-    submitButton.disabled = true;
-
-    if (!assemblySelect.value) {
-        // If no assembly is selected, show an error message
-        statusMessage.textContent = 'Please select an assembly.';
-        statusContainer.classList.remove('is-hidden');
-        return;
-    }
-
-    // url should start with https and have no spaces (basic validation)
-    if (urlInput.value.startsWith("https://") && !urlInput.value.includes(' ')) {
-        // Valid URL, enable the submit button and hide the status message
-        submitButton.disabled = false;
-        statusContainer.classList.add('is-hidden');
-    } else {
-        // Invalid URL, show an error message
-        statusMessage.textContent = 'Please enter a valid HTTPS URL.';
-        statusContainer.classList.remove('is-hidden');
-    }
-}
-
 // Enable 'Upload dataset' button if a URL is entered and an assembly is selected.
 document.getElementById("trackhub-url-input").addEventListener('input', (event) => {
     const urlInput = event.currentTarget;
     const assemblySelect = document.getElementById('trackhub-assembly-select');
-    updateBuildTrackSubmitButtonState(urlInput, assemblySelect);
+    updateBuildTrackHubButtonState(urlInput, assemblySelect);
 })
 
 document.getElementById('trackhub-assembly-select').addEventListener('change', (event) => {
     const assemblySelect = event.currentTarget;
     const urlInput = document.getElementById('trackhub-url-input');
-    updateBuildTrackSubmitButtonState(urlInput, assemblySelect);
+    updateBuildTrackHubButtonState(urlInput, assemblySelect);
 })
 
 document.getElementById('dataset-finalize-submit').addEventListener('click', (event) => {
@@ -1022,6 +1145,18 @@ document.getElementById('build-trackhub-submit').addEventListener('click', (even
 
     buildTrackhub();
 });
+
+document.getElementById("proceed-trackhub-submit").addEventListener("click", (event) => {
+    event.preventDefault();
+
+    if (!hubContainer || !trackContainer) {
+        document.getElementById('dataset-upload-status-message').textContent = 'Error: Hub and track information not found. Please try again.';
+        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+        return;
+    }
+
+    stageTrackHub(hubContainer, trackContainer);
+})
 
 document.getElementById('metadata-upload-submit').addEventListener('click', (event) => {
     // change submit button to spinner

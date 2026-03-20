@@ -27,7 +27,7 @@
         <div class="field-body">
             <div class="field is-narrow">
                 <div class="control">
-                    <input class="input js-track-identifier" type="text" placeholder="Track Identifier" required>
+                    <input class="input js-track-identifier" type="text" placeholder="Track Identifier (no spaces)" required>
                 </div>
             </div>
         </div>
@@ -39,7 +39,7 @@
         <div class="field-body">
             <div class="field is-narrow">
                 <div class="control">
-                    <input class="input js-track-short-label" type="text" placeholder="Short Label" required>
+                    <input class="input js-track-short-label" type="text" maxlength="17" placeholder="Short Label (<27 chars)" required>
                 </div>
             </div>
         </div>
@@ -51,7 +51,7 @@
         <div class="field-body">
             <div class="field">
                 <div class="control">
-                    <textarea class="textarea js-track-long-label" placeholder="Long Label"></textarea>
+                    <input class="input js-track-long-label" maxlength="76" placeholder="Long Label (<76 chars)" required>
                 </div>
             </div>
         </div>
@@ -65,10 +65,10 @@
                 <div class="control">
                     <div class="select">
                         <select class="js-track-type">
-                            <option value="bigbed">BigBed</option>
-                            <option value="bigwig" selected>BigWig</option>
+                            <option value="bigBed">BigBed</option>
+                            <option value="bigWig" selected>BigWig</option>
                             <option value="hic">Hi-C</option>
-                            <option value="vcf">VCF</option>
+                            <option value="vcfTabix">VCF</option>
                         </select>
                     </div>
                     <p class="help">Some track types will undergo convertion to support both Gosling and UCSC Genome Browser visualization.</p>
@@ -78,13 +78,14 @@
     </div>
     <div class="field is-horizontal">
         <div class="field-label">
-            <label class="label">URL to file</label>
+            <label class="label">URL for data file</label>
         </div>
         <div class="field-body">
             <div class="field">
                 <div class="control">
                     <input class="input js-track-url" type="text" placeholder="Track Data URL" required>
                 </div>
+                <p class="help">Must be a URL as file will be copied to the server.</p>
             </div>
         </div>
     </div>

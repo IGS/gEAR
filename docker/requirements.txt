@@ -50,6 +50,5 @@ seaborn==0.13.2
 shadows==0.1a2
 statsmodels==0.13.2 # Needed as the one installed by diffxpy cannot compile in Cython
 tables==3.9.2 # Read hdf5 files into pandas
-trackhub==1.0
 watchfiles
 xlrd==1.2.0

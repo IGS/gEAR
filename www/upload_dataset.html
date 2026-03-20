@@ -887,7 +887,7 @@
                             Select the assembly to associate tracks with.
                             <span class="icon has-tooltip-arrow"
                                   data-tooltip="Select the assembly to get tracks for.
-  Currently Gosling only supports single-organism tracks">
+Currently Gosling only supports single-organism tracks">
                                 <i class="mdi mdi-information"></i>
                             </span>
                           </h3>
@@ -902,6 +902,7 @@
                                 <option value="rn6">Rat</option>
                                 <option value="danRer10">Zebrafish</option>
                               </select>
+                              <p class="help">Required if providing a track hub URL</p>
                             </div>
                           </div>
                         </div>
@@ -936,9 +937,14 @@
 
                   <!-- Submit Button -->
                   <div class="field">
-                      <div class="control">
-                          <button type="submit" class="button is-primary">Submit</button>
+                    <div class="control">
+                      <div class="notification is-info is-light">
+                        Please double-check that the hub and track information is correct before proceeding.
+                        <br>
+                        The hub and track files will be cloned to the server and any errors may cause issues with visualization of tracks.
                       </div>
+                        <button id="proceed-trackhub-submit" type="submit" class="button is-primary">Proceed</button>
+                    </div>
                   </div>
                 </div>
                 <div id="step-process-dataset-c" class="step-c is-hidden">

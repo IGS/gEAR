@@ -1,3 +1,5 @@
+import { createToast } from "../common.v2.js";
+
 // Hub class to represent a UCSC Track Hub
 export class Hub {
     /**
@@ -12,66 +14,103 @@ export class Hub {
         this.shortLabel = shortLabel;
         this.longLabel = longLabel;
         this.email = email;
+        this.genomesFile = null; // URL to the genomes.txt file for this hub
         this.genome = genome;
-        this.trackDbUrl = null; // URL to the trackDb.txt file for this hub (to be populated after parsing the hub URL)
+        this.trackDbUrl = null; // URL to the trackDb.txt file for this hub
     }
 
     /**
-     * Generates the hub.txt content for the UCSC Track Hub.
-     * @returns {string} The hub.txt content.
+     * Generates the hub.txt content as a JSON object based on the current properties of the Hub instance.
+     * @returns {Object} The hub.txt content as a JSON object.
      */
-    generateHubTxt() {
-        new Error("generateHubTxt() is not implemented yet.");
-        return;
-        return `hub ${this.identifier}
-shortLabel ${this.shortLabel}
-longLabel ${this.longLabel}
-genomesFile genomes.txt
-email ${this.email}`;
-    }
+    generateHubJson(useOneFile=false) {
+        // Neither "genome" nor "genomesFile" are used in the API but it is a sanity check.
+        let genomeBit;
+        if (useOneFile) {
+            genomeBit = {
+                useOneFile: "on",
+                genome: this.genome
+            }
+        } else {
+            genomeBit = {
+                useOneFile: "off",
+                genomesFile: "genomes.txt"
+            }
+        }
 
+        return {
+            hub: this.identifier,
+            shortLabel: this.shortLabel,
+            longLabel: this.longLabel,
+            email: this.email,
+            ...genomeBit
+        };
+    }
 }
 
 export class HubContainer {
 
     constructor() {
         this.hub = new Hub();
+        this.oneFileMode = false;
         this.addHubContainerEvents()
     }
 
     addHubContainerEvents() {
         document.getElementById("hub-identifier").addEventListener('input', (e) => {
+            document.getElementById("hub-identifier").classList.remove("is-danger");
             this.hub.identifier = e.target.value.trim();
         });
 
         document.getElementById("hub-short-label").addEventListener('input', (e) => {
+            document.getElementById("hub-short-label").classList.remove("is-danger");
             this.hub.shortLabel = e.target.value.trim();
         });
 
         document.getElementById("hub-long-label").addEventListener('input', (e) => {
+            document.getElementById("hub-long-label").classList.remove("is-danger");
             this.hub.longLabel = e.target.value.trim();
         });
 
         document.getElementById("hub-email").addEventListener('input', (e) => {
+            document.getElementById("hub-email").classList.remove("is-danger");
             this.hub.email = e.target.value.trim();
         });
 
         document.getElementById("hub-genome-select").addEventListener('change', (e) => {
+            document.getElementById("hub-genome-select").classList.remove("is-danger");
             this.hub.genome = e.target.value.trim();
         });
     }
 
     /**
-     * Parses the provided UCSC Track Hub URL and assembly to extract hub metadata and trackDb information.
-     * Validates the hub URL, fetches its content, and constructs the trackDb URL based on the provided assembly.
-     * Populates the hub data and updates the associated form fields.
+     * Asynchronously parses a UCSC Track Hub URL and extracts hub metadata.
+     *
+     * Fetches and validates the hub.txt file from the provided URL, then parses
+     * key-value pairs to populate hub properties such as identifier, labels, email,
+     * genomes file reference, and genome assembly. The parsed data is used to populate
+     * the HubContainer's internal Hub object and associated form fields.
      *
      * @async
-     * @function parseHubUrl
-     * @param {string} hubUrl - The URL of the UCSC Track Hub (e.g., "http://example.com/hub.txt").
-     * @param {string} assembly - The genome assembly to use (e.g., "hg38").
-     * @throws {Error} If the hub URL or assembly is missing, or if the hub URL is unreachable.
-     * @returns {Promise<void>} Resolves when the hub data is successfully parsed and populated.
+     * @param {string} hubUrl - The URL of the hub.txt file to parse (e.g., "https://example.com/hubs/hub1/hub.txt").
+     * @param {string} assembly - The genome assembly to associate with the hub (e.g., "hg38", "mm10").
+     * @returns {Promise<void>} Resolves when the hub data has been parsed and populated.
+     * @throws {Error} If hubUrl or assembly is not provided.
+     * @throws {Error} If the hub URL is not reachable or returns a non-OK HTTP status.
+     *
+     * @description
+     * This method performs the following steps:
+     * 1. Validates that both hubUrl and assembly parameters are provided.
+     * 2. Fetches the hub.txt file from the provided URL with error handling.
+     * 3. Parses the hub.txt content line-by-line, extracting key-value pairs.
+     * 4. Populates a hubJson object with extracted properties (hub, shortLabel, longLabel, email, genomesFile, genome, trackDbUrl).
+     * 5. Calls populateHubData() to update the Hub object and form fields with parsed data.
+     *
+     * Recognized keys in hub.txt: hub, shortLabel, longLabel, email, genomesFile.
+     * Other keys are ignored.
+     *
+     * @see {@link populateHubData} for details on how parsed data updates the form
+     * @see {@link retrieveTrackDbPath} for retrieving the trackDb.txt path after hub parsing
      */
     async parseHubUrl(hubUrl, assembly) {
         if (!hubUrl) {
@@ -90,6 +129,7 @@ export class HubContainer {
             }
             hubContent = await hubResp.text();
         } catch (error) {
+            console.debug(error);
             throw new Error("Provided hub URL is not reachable.");
         }
 
@@ -99,11 +139,16 @@ export class HubContainer {
             shortLabel: null,
             longLabel: null,
             email: null,
+            genomesFile: null,
             genome: assembly,
             trackDbUrl: null
         }
 
-        for (const line of hubContent.split('\n')) {
+        // TODO: Instead of passing "assembly" from previous page, read genomes.txt or the genome entry to determine what genomes are selectable.
+
+        let genomeInHubTxt = "";
+
+        lineLoop: for (const line of hubContent.split('\n')) {
             const [key, ...rest] = line.split(' ');
             const value = rest.join(' ').trim();
             switch (key) {
@@ -116,21 +161,35 @@ export class HubContainer {
                 case 'longLabel':
                     hubJson.longLabel = value;
                     break;
+                case 'genomesFile':
+                    hubJson.genomesFile = value;
+                    break;
                 case 'email':
                     hubJson.email = value;
                     break;
+                case "useOneFile":
+                    if (value === "on")
+                        this.oneFileMode = true;
+                    break;
+                case "genome":
+                    // break out of the loop, so that existing track properties do not overwrite the hub ones with the same name
+                    genomeInHubTxt = value;
+                    break lineLoop;
                 default:
                     // Ignore other keys for now
                     break;
             }
         }
 
-        const url = new URL(hubUrl);
-        const hubUrlPathname = url.pathname.replace(/\/?$/, '/'); // Ensure pathname ends with a slash
-        const hubUrlParent = hubUrlPathname.split('/').slice(0, -2).join('/'); // Get parent directory of the hub URL
-        const trackDbUrl = `${url.origin}${hubUrlParent}/${assembly}/trackDb.txt`;
-        // Making this assumption this is valid and will validate in the "track reading" step.
-        hubJson.trackDbUrl = trackDbUrl;
+        if (this.oneFileMode) {
+            if (! genomeInHubTxt) {
+                throw new Error("Hub is in one-file mode but no genome entry found in hub.txt.");
+            }
+            if (genomeInHubTxt !== assembly) {
+                createToast(`Hub is in one-file mode but genome entry in hub.txt (${genomeInHubTxt}) does not match the specified assembly (${assembly}). Switching to genome found in hub.txt.`, 'is-warning');
+                hubJson.genome = genomeInHubTxt;
+            }
+        }
 
         this.populateHubData(hubJson);
     }
@@ -155,6 +214,7 @@ export class HubContainer {
         this.hub.shortLabel = hubJson.shortLabel || "";
         this.hub.longLabel = hubJson.longLabel || "";
         this.hub.email = hubJson.email || "";
+        this.hub.genomesFile = hubJson.genomesFile || null;
         this.hub.genome = hubJson.genome || "";
         this.hub.trackDbUrl = hubJson.trackDbUrl || null;
 
@@ -164,6 +224,134 @@ export class HubContainer {
         document.getElementById("hub-long-label").value = this.hub.longLabel;
         document.getElementById("hub-email").value = this.hub.email;
         document.getElementById("hub-genome-select").value = this.hub.genome;
+        // Make genome read-only
+        document.getElementById("hub-genome-select").setAttribute("disabled", "disabled");
+    }
+
+    /**
+     * Asynchronously retrieves the trackDb.txt file path from a UCSC Track Hub's genomes.txt file.
+     *
+     * Constructs the URL to the genomes.txt file, fetches and parses it to locate the entry
+     * matching the specified genome assembly, then extracts the trackDb URL for that assembly.
+     * The retrieved trackDb URL is stored in the hub's trackDbUrl property.
+     *
+     * @async
+     * @param {string} hubUrl - The URL of the hub.txt file (e.g., "https://example.com/hubs/hub1/hub.txt").
+     * @returns {Promise<void>} Resolves when the trackDb URL has been successfully retrieved and stored.
+     * @throws {Error} If the genomes.txt file cannot be fetched or parsed.
+     * @throws {Error} If the specified assembly is not found in genomes.txt or has no trackDb entry.
+     *
+     * @description
+     * This method performs the following steps:
+     * 1. Parses the hubUrl to extract the origin and parent directory path.
+     * 2. Constructs the full genomes.txt URL using the origin, parent path, and genomesFile property.
+     * 3. Fetches the genomes.txt file from the constructed URL.
+     * 4. Parses the genomes.txt content line-by-line to find the entry matching this.hub.genome.
+     * 5. Scans the lines following the matching genome entry for a "trackDb" key.
+     * 6. Constructs the absolute trackDb URL and stores it in this.hub.trackDbUrl.
+     * 7. Stops scanning at the next "genome" entry or end of file.
+     *
+     * Expected genomes.txt format:
+     * ```
+     * genome hg38
+     * trackDb genome_hg38/trackDb.txt
+     *
+     * genome mm10
+     * trackDb genome_mm10/trackDb.txt
+     * ```
+     *
+     * @see {@link parseHubUrl} for populating the genomesFile property before calling this method
+     * @see {@link Hub.trackDbUrl} for the property where the retrieved URL is stored
+     */
+    async retrieveTrackDbPath(hubUrl) {
+        const url = new URL(hubUrl);
+        const hubUrlPathname = url.pathname.replace(/\/?$/, '/'); // Ensure pathname ends with a slash
+        const hubUrlParent = hubUrlPathname.split('/').slice(0, -2).join('/'); // Get parent directory of the hub URL
+        const assembly = this.hub.genome
+
+        // Fetch and parse the genomes.txt file to validate the assembly and get trackDb URL
+        const genomesTxtUrl = `${url.origin}/${hubUrlParent}/${this.hub.genomesFile}`;
+        try {
+            const resp = await fetch(genomesTxtUrl);
+            if (!resp.ok) {
+                throw new Error(`genomes.txt URL returned status ${resp.status}`);
+            }
+            const genomesTxtContent = await resp.text();
+            const lines = genomesTxtContent.split('\n');
+            for (const line of lines) {
+                const [key, value] = line.split(' ').map(s => s.trim());
+                if (key === 'genome' && value === assembly) {
+                    // look for a trackDb "key" line in the following lines until the next "genome" line or end of file
+                    for (const subLine of lines.slice(lines.indexOf(line) + 1)) {
+                        const [subKey, subValue] = subLine.split(' ').map(s => s.trim());
+                        if (subKey === 'genome') {
+                            break; // stop searching if we reach the next genome entry
+                        }
+                        if (subKey === 'trackDb') {
+                            const trackDbUrl = `${url.origin}${hubUrlParent}/${subValue}`;
+                            this.hub.trackDbUrl = trackDbUrl;
+                            return;
+                        }
+                    }
+                }
+            }
+            throw new Error(`Assembly ${assembly} not found in genomes.txt or trackDb entry missing for assembly.`);
+        } catch (error) {
+            console.debug(error);
+            throw new Error("Could not fetch or parse genomes.txt. Please check the hub URL and assembly.");
+        }
+    }
+
+    validateHub() {
+        // Validate that required hub fields are present and correctly formatted.
+        // Return a list of errors or an empty list if valid.
+        // In addition, higlight the form fields with errors for the user to fix
+        const errors = [];
+
+        if (!this.hub.identifier) {
+            document.getElementById("hub-identifier").classList.add("is-danger");
+            errors.push("Hub identifier is required.");
+        } else {
+            // Hub identifier must be a single word with no spaces
+            if (/\s/.test(this.hub.identifier)) {
+                document.getElementById("hub-identifier").classList.add("is-danger");
+                errors.push("Hub identifier must be a single word with no spaces.");
+            }
+        }
+
+        if (!this.hub.shortLabel) {
+            document.getElementById("hub-short-label").classList.add("is-danger");
+            errors.push("Hub short label is required.");
+        }
+
+        if (!this.hub.longLabel) {
+            document.getElementById("hub-long-label").classList.add("is-danger");
+            errors.push("Hub long label is required.");
+        }
+
+        if (!this.hub.email) {
+            document.getElementById("hub-email").classList.add("is-danger");
+            errors.push("Hub email is required.");
+        }
+
+        if (!this.hub.genome) {
+            document.getElementById("hub-genome-select").classList.add("is-danger");
+            errors.push("Hub genome assembly is required.");
+        }
+
+        return errors;
+    }
+
+    generateHubJson() {
+        return this.hub.generateHubJson(this.oneFileMode);
+    }
+
+    getAssembly() {
+        return this.hub.genome;
+    }
+
+    getTrackDbUrl() {
+        return this.hub.trackDbUrl;
     }
 }
 
@@ -194,25 +382,20 @@ export class Track {
     }
 
     /**
-     * Generates the trackDb.txt entry for this track.
-     * @returns {string} The trackDb.txt entry.
+     * Generates the trackDb.txt entry for this track as a JSON object based on the current properties of the Track instance.
+     * @returns {Object} The trackDb.txt entry as a JSON object.
      */
     generateTrackDbEntry() {
-        new Error("generateTrackDbEntry() is not implemented yet.");
-        return;
-        let entry = `track ${this.identifier}
-shortLabel ${this.shortLabel}
-longLabel ${this.longLabel}
-type ${this.tracktype}
-bigDataUrl ${this.url}
-visibility ${this.visibility}
-color ${this.color}`;
-
-        if (this.parent) {
-            entry += `\nparent ${this.parent}`;
-        }
-
-        return entry;
+        return {
+            track: this.identifier,
+            shortLabel: this.shortLabel,
+            longLabel: this.longLabel,
+            type: this.tracktype,
+            bigDataUrl: this.url,
+            visibility: this.visibility,
+            color: this.color,
+            parent: this.parent
+        };
     }
 
     // Convert passed in color value to UCSC-style RGB requirement ("")
@@ -223,9 +406,8 @@ color ${this.color}`;
             const g = parseInt(color.slice(3, 5), 16);
             const b = parseInt(color.slice(5, 7), 16);
             return `${r},${g},${b}`;
-        } else {
-            throw new Error("Invalid color format. Use hex (e.g., #ff0000) or RGB (e.g., 255,0,0).");
         }
+        throw new Error("Invalid color format. Expected hex (e.g., #ff0000)");
     }
 
 }
@@ -238,6 +420,8 @@ export class TrackContainer {
 
         this.tracksContainer = document.getElementById(this.containerId);
         this.addTrackBtn = document.getElementById(this.addBtnId);
+
+        this.trackDbUrl = null;
         this.tracks = {}; // Store track data with track ID as key
 
         this.createTrackItem = this.createTrackItem.bind(this); // Bind the method
@@ -293,6 +477,8 @@ export class TrackContainer {
         trackItem.classList.add('track-item');
         trackItem.setAttribute('draggable', 'true');
         const trackId = String(Track.trackCount);
+        trackItem.id = `track-${trackId}`;
+
         this.tracks[trackId] = new Track();
 
         // Collapsible header
@@ -308,12 +494,10 @@ export class TrackContainer {
         // Collapsible content
         const collapsibleContent = document.createElement('div');
         collapsibleContent.classList.add('collapsible-content');
-        collapsibleContent.id = `track-${trackId}`;
 
         // Clone the track template and append to collapsible content
         const template = document.getElementById('tmpl-trackhub-track');
         const templateHTML = template.content.cloneNode(true);
-        const templateElement = templateHTML.querySelector('.js-track-item');
 
         collapsibleContent.appendChild(templateHTML);
 
@@ -325,7 +509,7 @@ export class TrackContainer {
         });
 
         // Add toggle functionality for collapsible content
-        collapsibleHeader.addEventListener('click', () => {
+        collapsibleHeader.addEventListener('click', (event) => {
             const isOpen = collapsibleContent.style.display === 'block';
             collapsibleContent.style.display = isOpen ? 'none' : 'block';
             collapsibleHeader.querySelector('.mdi').classList.toggle('mdi-chevron-down', isOpen);
@@ -338,23 +522,29 @@ export class TrackContainer {
             const labelElt = collapsibleHeader.querySelector('.track-title');
             labelElt.textContent = value || labelElt.dataset.origName;
 
+            document.querySelector(`#track-${trackId} .js-track-identifier`).classList.remove("is-danger");
             // update the track object
             this.tracks[trackId].identifier = value;
         });
 
         collapsibleContent.querySelector('.js-track-short-label').addEventListener('input', (e) => {
+            document.querySelector(`#track-${trackId} .js-track-short-label`).classList.remove("is-danger");
+
             this.tracks[trackId].shortLabel = e.target.value.trim();
         });
 
         collapsibleContent.querySelector('.js-track-long-label').addEventListener('input', (e) => {
+            document.querySelector(`#track-${trackId} .js-track-long-label`).classList.remove("is-danger");
             this.tracks[trackId].longLabel = e.target.value.trim();
         });
 
         collapsibleContent.querySelector('.js-track-type').addEventListener('input', (e) => {
+            document.querySelector(`#track-${trackId} .js-track-type`).classList.remove("is-danger");
             this.tracks[trackId].tracktype = e.target.value.trim();
         });
 
         collapsibleContent.querySelector('.js-track-url').addEventListener('input', (e) => {
+            document.querySelector(`#track-${trackId} .js-track-url`).classList.remove("is-danger");
             this.tracks[trackId].url = e.target.value.trim();
         });
 
@@ -366,7 +556,7 @@ export class TrackContainer {
             try {
                 this.tracks[trackId].color = this.tracks[trackId].convertColorToRGB(e.target.value.trim());
             } catch (error) {
-                console.error("Error converting color... will ignore:", error);
+                console.warn("Error converting color... will ignore:", error);
             }
         });
 
@@ -396,10 +586,38 @@ export class TrackContainer {
         });
     }
 
+    async parseHubTracks(hubUrl) {
+        // In this situation, the tracks are in the current hub.txt file.
+        // File is a concatenation of the following order: hub.txt, genomes.txt, trackDb.txt
+        let hubContent;
+        try {
+            const hubResp = await fetch(hubUrl);
+            if (!hubResp.ok) {
+                throw new Error(`Hub URL returned status ${hubResp.status}`);
+            }
+            hubContent = await hubResp.text();
+        } catch (error) {
+            console.debug(error);
+            throw new Error("Provided hub URL is not reachable.");
+        }
+
+        this.trackDbUrl = hubUrl; // Nneeded for filepath resolution of bigDataUrl
+
+        // Extract the trackDb.txt portion of the file by finding the "track " keyword that starts the track entries
+        const trackDbIndex = hubContent.indexOf('track ');
+        if (trackDbIndex === -1) {
+            throw new Error("No track entries found in the hub.txt file.");
+        }
+        const trackDbContent = hubContent.slice(trackDbIndex);
+        this.createNewTracksFromData(trackDbContent);
+    }
+
     async parseTrackDbUrl(trackDbUrl) {
         if (!trackDbUrl) {
             throw new Error("TrackDb URL is required to parse track data.");
         }
+
+        this.trackDbUrl = trackDbUrl;
 
         let trackDbContent;
         try {
@@ -409,6 +627,7 @@ export class TrackContainer {
             }
             trackDbContent = await trackDbResp.text();
         } catch (error) {
+            console.debug(error);
             throw new Error("Constructed trackDb URL is not reachable. Please check the hub URL and assembly.");
         }
 
@@ -434,6 +653,8 @@ export class TrackContainer {
                 case 'track':
                     track.identifier = value;
                     document.querySelector(`#track-${trackId} .js-track-identifier`).value = value;
+                    const labelElt = document.querySelector(`#track-${trackId} .track-title`);
+                    labelElt.textContent = track.identifier;
                     break;
                 case 'shortLabel':
                     track.shortLabel = value;
@@ -448,8 +669,16 @@ export class TrackContainer {
                     document.querySelector(`#track-${trackId} .js-track-type`).value = value;
                     break;
                 case 'bigDataUrl':
-                    track.url = value;
-                    document.querySelector(`#track-${trackId} .js-track-url`).value = value;
+                    // If URL is relative, convert to absolute based on trackDb URL
+                    if (value.startsWith('http://') || value.startsWith('https://')) {
+                        track.url = value;
+                    } else {
+                        const trackDbUrlObj = new URL(this.trackDbUrl);
+                        const trackDbBasePath = trackDbUrlObj.pathname.split('/').slice(0, -1).join('/');
+                        const absoluteUrl = `${trackDbUrlObj.origin}${trackDbBasePath}/${value}`;
+                        track.url = absoluteUrl;
+                    }
+                    document.querySelector(`#track-${trackId} .js-track-url`).value = track.url;
                     break;
                 case 'visibility':
                     track.visibility = value;
@@ -469,5 +698,50 @@ export class TrackContainer {
                     break;
             }
         });
+
+        // Collapse the track item after populating data for better UX, especially for large trackhubs
+        const collapsibleHeader = document.querySelector(`#track-${trackId} .collapsible-header`);
+        collapsibleHeader.click(); // Simulate a click to collapse the item
+    }
+
+    validateTracks() {
+        // For each track item in the container, validate that required fields are present and correctly formatted.
+        // Return a list of errors or an empty list if all tracks are valid.
+        // In addition, highlight the form fields with errors for the user to fix
+        const errors = [];
+        for (const trackId in this.tracks) {
+            const track = this.tracks[trackId];
+            if (!track.identifier) {
+                document.querySelector(`#track-${trackId} .js-track-identifier`).classList.add("is-danger");
+                errors.push(`Track ${trackId}: Identifier is required.`);
+            }
+            if (!track.shortLabel) {
+                document.querySelector(`#track-${trackId} .js-track-short-label`).classList.add("is-danger");
+                errors.push(`Track ${trackId}: Short label is required.`);
+            }
+            if (!track.longLabel) {
+                document.querySelector(`#track-${trackId} .js-track-long-label`).classList.add("is-danger");
+                errors.push(`Track ${trackId}: Long label is required.`);
+            }
+            if (!track.tracktype) {
+                document.querySelector(`#track-${trackId} .js-track-type`).classList.add("is-danger");
+                errors.push(`Track ${trackId}: Track type is required.`);
+            }
+            if (!track.url) {
+                document.querySelector(`#track-${trackId} .js-track-url`).classList.add("is-danger");
+                errors.push(`Track ${trackId}: URL is required.`);
+            }
+        }
+        return errors;
+    }
+
+    generateTrackDbEntries() {
+        // Generate each trackDb.txt stanza as a JSON object and return as a list
+        const entries = [];
+        for (const trackId in this.tracks) {
+            const track = this.tracks[trackId];
+            entries.push(track.generateTrackDbEntry());
+        }
+        return entries;
     }
 }

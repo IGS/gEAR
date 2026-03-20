@@ -1,6 +1,7 @@
 import configparser
-import re
+import json
 import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -8,7 +9,6 @@ from uuid import uuid4
 
 import pyBigWig
 import requests
-import trackhub
 from Bio import bgzf
 from flask import request
 from flask_restful import Resource
@@ -19,7 +19,6 @@ src_path = gear_root / "src"
 
 VALID_TYPES = ["bigWig", "bigBed", "hic", "vcfTabix"]
 VALID_CONTAINER_TYPES = ["multiWig"]
-BIGBED_EXTENSIONS = [".bb", ".bigbed"]
 
 user_upload_file_base = gear_root / 'www' / 'uploads' / 'files'
 
@@ -125,6 +124,21 @@ def bigbed_to_bed(bigbed_path: Path, outdir_path: Path) -> bool:
         print(f"Error compressing and indexing {bed_file}: {e}", file=sys.stderr)
         return False
 
+def download_large_file(url, destination):
+    """
+    Downloads a large file from a URL using streaming to save memory.
+    """
+    try:
+        # Set stream=True to download content in chunks
+        with requests.get(url, stream=True) as response:
+            response.raise_for_status() # Check if the download was successful
+            with open(destination, 'wb') as file:
+                # Iterate over the response in chunks and write to the file
+                shutil.copyfileobj(response.raw, file)
+        print(f"File downloaded successfully to {destination}!")
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred: {e}")
+
 
 def hic_to_mcool(hic_path: Path, outdir_path: Path) -> bool:
     """
@@ -209,150 +223,139 @@ def create_tabix_indexed_file(bgzipped_path: Path, file_type : str="bed") -> Non
     tabix_cmd = f"tabix -s 1 -b 2 -e 3 -p {file_type} {bgzipped_path.as_posix()}"
     subprocess.run(shlex.split(tabix_cmd), check=True)
 
-
-def fetch_trackdb_url(genomes_txt, assembly) -> str:
+def validate_hub_contents(hub_json: dict, track_stanzas: list) -> bool:
     """
-    Extract the trackDb URL for a specified assembly from a genomes.txt file.
+    Validates the contents of a track hub by checking the hub.txt content and the track stanzas.
+
+    This function performs basic validation to ensure that the hub.txt content contains required fields
+    and that each track stanza includes necessary properties. It checks for the presence of essential
+    properties such as "hub", "shortLabel", "longLabel", "email", and "genomesFile" in the hub.txt content,
+    as well as "track", "type", and "bigDataUrl" in each track stanza.
 
     Args:
-        genomes_txt (str): The contents of a genomes.txt file as a string.
-        assembly (str): The name of the assembly/genome to search for.
+        hub_json (str): The content of the hub.txt file as a string.
+        track_stanzas (list): A list of dictionaries representing the track stanzas.
 
     Returns:
-        str: The trackDb URL corresponding to the specified assembly.
-
-    Raises:
-        ValueError: If the specified assembly is not found in the genomes.txt content.
-
-    Example:
-        >>> genomes_txt = "genome hg38\\ntrackDb http://example.com/hg38/trackDb\\ngenome mm10\\ntrackDb http://example.com/mm10/trackDb"
-        >>> fetch_trackdb_url(genomes_txt, "hg38")
-        'http://example.com/hg38/trackDb'
+        bool: True if the hub contents are valid, False otherwise.
     """
 
-    lines = genomes_txt.splitlines()
-    for i, genome_line in enumerate(lines):
-        if genome_line.startswith(f"genome {assembly}"):
-            # The next line should contain the trackDb URL
-            if i + 1 < len(lines):
-                next_line = lines[i + 1]
-                if next_line.startswith("trackDb"):
-                    return next_line.split(" ")[1]
-    raise ValueError(f"Assembly {assembly} not found in genomes.txt")
+    # Basic validation for hub.txt content. Pre-validated in the client code
+    required_hub_fields = ["hub", "shortLabel", "longLabel", "email", "useOneFile", "genome"]
+    for field in required_hub_fields:
+        if field not in hub_json:
+            print(f"Missing required field '{field}' in hub.txt content.", file=sys.stderr)
+            return False
 
-def validate_track_types_from_db(trackdb_txt, trackdb_url) -> list:
-    """Parse track names from a UCSC trackDb.txt content.
+    # Basic validation for each track stanza. Pre-validated in the client code
+    for track in track_stanzas:
+        required_track_fields = ["track", "type", "bigDataUrl", "shortLabel", "longLabel", "visibility"]
+        for field in required_track_fields:
+            if field not in track:
+                print(f"Missing required field '{field}' in track stanza: {track}", file=sys.stderr)
+                return False
+            if track["type"] not in VALID_TYPES + VALID_CONTAINER_TYPES:
+                print(f"Invalid track type '{track['type']}' in track stanza: {track}", file=sys.stderr)
+                return False
 
-    Returns a list of dicts with track information.
-
-    Example track:
-    track P1HC_ATAC_1
-    bigDataUrl P1HC_ATAC_1.bigwig
-    shortLabel ATAC-seq 1st replicate
-    longLabel ATAC-seq 1st replicate
-    color 31,119,180
-    autoScale on
-    visibility dense
-    type bigWig
-    """
-
-    invalid_tracks = []
-
-    for track_line in trackdb_txt.splitlines():
-        if track_line.startswith("type"):
-            tracktype = track_line.split(" ")[1]
-            if tracktype not in VALID_TYPES:
-                invalid_tracks.append({"type": tracktype, "trackdb_url": trackdb_url})
-    return invalid_tracks
+    return True
 
 class TrackHubCopy(Resource):
     def post(self, share_uid):
-        session_id = request.cookies.get('gear_session_id')
         req = request.get_json()
         if req is None:
             return {"success": False, "message": "Invalid JSON body"}, 400
 
-        hub_url = req.get("trackhub_url")
-        assembly = req.get("assembly")
+        hub_json = req.get("hub_json", None)
+        assembly = req.get("assembly", None)
+        track_stanzas = req.get("tracks", None)
+        dry_run = req.get("dry_run", False)
 
         result = {
             "success": False,
             "message": ""
         }
 
-        if not session_id:
-            result["message"] = "Missing session_id"
+        if not hub_json:
+            result["message"] = "Missing hub info in request body"
+            return result, 400
+        if not assembly:
+            result["message"] = "Missing assembly in request body"
+            return result, 400
+        if not track_stanzas:
+            result["message"] = "Missing list of tracks in request body"
             return result, 400
 
-        if not share_uid:
-            result["message"] = "Missing upload ID"
+        # Our destination hub.txt will write everything in one file.
+        if not hub_json.get("useOneFile", "off") == "on":
+            hub_json["useOneFile"] = "on"
+            hub_json["genome"] = assembly
+            hub_json.pop("genomesFile", None)  # Remove genomesFile if it exists
+
+        is_valid = validate_hub_contents(hub_json, track_stanzas)
+        if not is_valid:
+            result["message"] = "Hub contents failed validation. Please check the hub_json and track stanzas for required fields."
             return result, 400
 
-        if not hub_url or not hub_url.startswith("http"):
-            result["message"] = "Invalid URL"
-            return result, 400
+        staging_area = user_upload_file_base / share_uid
 
-        track_upload_dir: Path = user_upload_file_base / session_id / share_uid
-        track_upload_dir.mkdir(parents=True, exist_ok=True)
+        dest_hub = staging_area / "hub.txt"
+        if not dry_run:
+            staging_area.mkdir(parents=True, exist_ok=True)
+            with open(dest_hub, 'w') as f:
+                json.dump(hub_json, f, indent=4)
+        else:
+            print(f'Dry run - hub.txt content written to staging area {dest_hub}', file=sys.stderr)
 
-        # use the "hubClone" utility to clone the passed in hub file to our upload directory
-        hubclone_exe = src_path / "hubClone"
-        try:
-            completed_process = subprocess.run(
-                shlex.split(f"{hubclone_exe} {hub_url} -download -udcDir={track_upload_dir}"),
-                check=True,
-                stdout=subprocess.PIPE,  # Capture standard output
-                stderr=subprocess.PIPE   # Capture standard error
-            )
-        except subprocess.CalledProcessError as e:
-            error_message = e.stderr.decode('utf-8') if e.stderr else str(e)
-            result["message"] = f"hubCheck failed: {error_message}"
-            return result, 500
+        # For each track, we will need to validate that the bigDataUrl is reachable and attempt to copy to our staging area
+        for track in track_stanzas:
+            big_data_url = track.get("bigDataUrl", None)
+            if not big_data_url:
+                result["message"] = f"Track {track.get('name', 'unknown')} is missing bigDataUrl"
+                return result, 400
 
-        # Test if the hub.txt file was downloaded
-        hub_txt_file = track_upload_dir / "hub.txt"
-        if not hub_txt_file.is_file():
-            result["message"] = "hubClone failed to download hub.txt"
-            return result, 500
-
-        # Find the tracks and convert any BigBed to a tabixed and bgzf compressed bed file
-        assembly_dir: Path = track_upload_dir / assembly
-        if not assembly_dir.is_dir():
-            result["message"] = f"hubClone failed to download assembly directory for {assembly}"
-            return result, 500
-
-        trackdb_file: Path = assembly_dir / "trackDb.txt"
-
-        # find all bigBed files in the assembly directory
-        bigbed_paths = []
-        for ext in BIGBED_EXTENSIONS:
-            bigbed_paths.extend(assembly_dir.rglob(f"*{ext}"))
-        for bigbed_path in bigbed_paths:
-            conversion_success = bigbed_to_bed(bigbed_path, assembly_dir)
-            if not conversion_success:
-                result["message"] = f"Failed to convert {bigbed_path.as_posix()} to bed"
-                return result, 500
-
-        # convert and ingest .hic files
-        hic_paths = list(assembly_dir.rglob("*.hic"))
-        for hic_path in hic_paths:
-            conversion_success = hic_to_mcool(hic_path, assembly_dir)
-            if not conversion_success:
-                result["message"] = f"Failed to convert {hic_path.as_posix()} to mcool"
-                return result, 500
-
-            mcool_path = assembly_dir / hic_path.with_suffix('.mcool').name
+            # Validate that the bigDataUrl is reachable
             try:
-                higlass_url = ingest_mcool_into_higlass(mcool_path)
-                # TODO: add higlass_url as the "gos_higlass_url" property for this trackdb entry.
-                print(f"Ingested {mcool_path.as_posix()} into HiGlass at {higlass_url}", file=sys.stderr)
-                # find "hic" track and add the "gos_higlass_url" property with the higlass_url value
-                trackdb_file = append_higlass_url_to_trackdb(trackdb_file, hic_path.name, higlass_url)
+                response = requests.head(big_data_url)
+                response.raise_for_status()
+            except requests.RequestException as e:
+                result["message"] = f"Error reaching bigDataUrl {big_data_url}: {e}"
+                return result, 400
 
-            except Exception as e:
-                result["message"] = f"Failed to ingest {mcool_path.as_posix()} into HiGlass: {str(e)}"
-                return result, 500
+            # Download to staging area
+            dest_path = staging_area / Path(big_data_url).name
+            if not dry_run:
+                download_large_file(big_data_url, dest_path)
+            else:
+                print(f'Dry run - File {big_data_url} downloaded to staging area {dest_path}', file=sys.stderr)
 
+            track["bigDataUrl"] = Path(big_data_url).name
+
+            if track["type"] == "bigBed":
+                # Convert bigBed to bed, bgzip, and tabix index
+                if not dry_run:
+                    conversion_success = bigbed_to_bed(dest_path, staging_area)
+                    if not conversion_success:
+                        result["message"] = f"Error converting bigBed file {dest_path} to bed format."
+                        return result, 500
+                else:
+                    print(f'Dry run - Converted bigBed file {dest_path} to bed format in staging area', file=sys.stderr)
+            elif track["type"] == "hic":
+                # Convert .hic to .mcool and ingest into HiGlass
+                if not dry_run:
+                    mcool_success = hic_to_mcool(dest_path, staging_area)
+                    if not mcool_success:
+                        result["message"] = f"Error converting .hic file {dest_path} to .mcool format."
+                        return result, 500
+
+                    mcool_path = staging_area / dest_path.with_suffix('.mcool').name
+                    higlass_url = ingest_mcool_into_higlass(mcool_path)
+                    track["bigDataUrl"] = higlass_url
+                else:
+                    print(f'Dry run - Converted .hic file {dest_path} to .mcool format and ingested into HiGlass', file=sys.stderr)
+
+        result["success"] = True
+        result["message"] = "Track hub copied and processed successfully."
         return result, 200
 
 class TrackHubStatus(Resource):

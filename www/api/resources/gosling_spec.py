@@ -449,7 +449,7 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
         "bam": BamSpec,
         "bigWig": BigWigSpec,
         "bigBed": BedSpec,
-        "vcf": VcfSpec,
+        "vcfTabix": VcfSpec,
         "hic": HiCSpec,
     }
 

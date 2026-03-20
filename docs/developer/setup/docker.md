@@ -2,9 +2,8 @@
 
 ## Before building
 
-* From the gEAR root, `cd docker`
-* `cp gear.ini.docker.template gear.ini.docker`
-  * Alternatively ask @adkinsrs for a gear.ini.docker file as it will be filled in. Otherwise fill in any values wrapped in brackets
+* From the gEAR root, `cd docker`. All commands assume you are in this directory
+
 * `cp docker-compose.yml.template docker-compose.yml`
   * Alternatively ask @adkinsrs for a docker-compose.yml file as it will be filled in. Otherwise fill in any values wrapped in brackets
   * @adkinsrs's file is hard-coded to his paths so be sure to change those.
@@ -18,17 +17,20 @@ There are two options here.  The first method is significantly quicker, but ther
 Recently, docker images have switched to a multi-platform build where Docker will internally determine which image to pull based on your current platform. This requires you to ensure that the containerd store option is enabled on your copy of Docker Desktop.
 
 Info on how to enable the containerd store
+
 * https://docs.docker.com/engine/storage/containerd/
 
 How to pull the image
+
 * `docker pull adkinsrs/umgear:latest`.
 
 ### Method 2: Build image
 
 * Ensure you are in the "devel" branch of gEAR before building (`git checkout devel`)
-* To build run `docker buildx build --platform linux/amd64 -t umgear:latest .`
+* `cp gear.ini.docker.template gear.ini.docker`
+  * Alternatively ask @adkinsrs for a gear.ini.docker file as it will be filled in. Otherwise fill in any values wrapped in brackets
+* To build run `docker buildx build -t umgear:latest .`
   * If you tag it under a new image, ensure it is reflected in the docker-compose.yml file
-  * The "linux/amd64" platform is used to ensure some UCSC TrackHub executables work correctly.
 * The build can take a while, particularly in the Bioconductor installation steps. Fortunately completed steps are cachable.
 
 In the build, the "gear.ini.docker" file will end up copied to "gear.ini" in the "/opt/gEAR" directory for the docker instance. However, if are using docker-compose and the gEAR directory is mounted into the "web" service, this can be overriden to a gear.ini from outside.  If you do not have a "gear.ini" file (only gear.ini.template), then ask @adkinsrs for one.
@@ -133,5 +135,9 @@ This will enable the spatial panel dashboard to be used in the docker-compose.ym
 ## Issues and potential solutions
 
 * I cannot log in
-  * Clear your browser's cache
+  * Clear your browser's cache. This can be quickly done with Ctrl-Shift-R (or Cmd-Shift-R on Mac)
   * Use the email address in the 'username' place.  I'm an idiot and always forget that.
+
+* Running commands with executables give various errors related to library packages
+  * If are you on a newer Mac OS system, and the default built image does not work, you may need to explicitly add `--platform=linux/amd64` to your build command options, to ensure the right libraries are being used.
+  * If you change this, make sure the "web" service in the docker-compose.yml file has the `platform: linux/amd64` option added as well.
