@@ -982,6 +982,15 @@ const apiCallsMixin = {
         return data;
     },
     /**
+     * Fetches citation information for a given PubMed ID.
+     * @param {string} pubmedId - The PubMed ID for which to fetch citation information.
+     * @returns {Promise<object>} - A promise that resolves to the fetched citation data.
+     */
+    async fetchCitationFromPubmedId(pubmedId) {
+        const {data} = await axios.post("cgi/get_citation_from_pubmed_id.cgi", convertToFormData({pubmed_id: pubmedId}));
+        return data;
+    },
+    /**
      * Fetches all datasets asynchronously.
      * @returns {Promise<any>} The fetched data.
      */
