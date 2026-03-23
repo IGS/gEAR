@@ -717,7 +717,7 @@ def projectr_callback(
 
     projection_pval_df = pd.DataFrame()
 
-    if this.servercfg["projectR_service"]["cloud_run_enabled"].startswith("1"):
+    if this.servercfg.getboolean("projectR_service", "cloud_run_enabled", fallback=False):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
@@ -1117,8 +1117,8 @@ class ProjectR(Resource):
         # Use default based on gear.ini settings
         # This should be default to True coming from the UI but this would be a nice fallback.
         if full_output is None:
-            if "full_output" in this.servercfg["projectR_service"]:
-                full_output = this.servercfg["projectR_service"]["full_output"].startswith("1")
+            if this.servercfg.getboolean("projectR_service", "full_output", fallback=False):
+                full_output = True
 
         # Currently only NMF runs through the actual projectR code and can give full output
         if algorithm not in ["nmf", "fixednmf"]:
@@ -1228,7 +1228,7 @@ class ProjectR(Resource):
 
         # Create a messaging queue if necessary. Make it persistent across the lifetime of the Flask server.
         # Channels will be spawned during each task.
-        if this.servercfg["projectR_service"]["queue_enabled"].startswith("1"):
+        if this.servercfg.getboolean("projectR_service", "queue_enabled", fallback=False):
 
             import gearqueue
             host = this.servercfg["projectR_service"]["queue_host"]
