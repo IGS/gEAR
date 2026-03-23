@@ -13,11 +13,8 @@ from pathlib import Path
 lib_path = str(Path(__file__).resolve().parents[1] / 'lib')
 sys.path.insert(0, lib_path)
 
-# https://stackoverflow.com/a/35904211/1368079
-this = sys.modules[__name__]
-from gear.serverconfig import ServerConfig  # noqa: E402
-
-this.servercfg = ServerConfig().parse()  # type: ignore
+from gear.serverconfig import ServerConfig
+servercfg = ServerConfig().parse()
 
 queue_name = "trackhub_copy_jobs"
 os.makedirs("/var/log/gEAR_queue", exist_ok=True)
@@ -66,11 +63,11 @@ def _on_request(channel, method_frame, properties, body):
 
             # Get HiGlass config
             higlass_config = None
-            if this.servercfg.get("higlass"):
+            if "higlass" in servercfg and servercfg["higlass"]:
                 higlass_config = {
-                    "higlass_hostname": this.servercfg["higlass"].get("hostname", ""),
-                    "higlass_admin_user": this.servercfg["higlass"].get("admin_user", ""),
-                    "higlass_admin_pass": this.servercfg["higlass"].get("admin_pass", ""),
+                    "higlass_hostname": servercfg["higlass"].get("hostname", ""),
+                    "higlass_admin_user": servercfg["higlass"].get("admin_user", ""),
+                    "higlass_admin_pass": servercfg["higlass"].get("admin_pass", ""),
                 }
 
             # Process the job
@@ -155,7 +152,7 @@ class Consumer:
 
 def main() -> None:
     """Start the trackhub processing consumer."""
-    host = this.servercfg["rabbitmq"]["host"]
+    host = servercfg["rabbitmq"]["host"]
     consumer = Consumer(host=host)
     consumer.run()
 
