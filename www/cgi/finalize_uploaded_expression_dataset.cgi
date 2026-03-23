@@ -109,6 +109,25 @@ def main() -> dict:
         return result
 
     global dataset_final_dir
+    if dataset_format == "gosling":
+        dataset_final_dir = Path(__file__).resolve().parents[1] / 'tracks'
+        # This whole upload_dir with the hub.txt and tracks should be moved inside "tracks"
+        shutil.move(dataset_upload_dir, dataset_final_dir / dataset_id)
+
+        # These need to be populated so that the frontend can move on, but they don't really apply to track hubs
+        result["h5ad_migrated"] = 1
+        result["userdata_migrated"] = 1
+        result['primary_analysis_migrated'] = 1
+        # if we made it this far, all is well, so return success
+        result['success'] = 1
+        result['message'] = 'All steps completed successfully.'
+
+        # now delete the entire upload directory
+        shutil.rmtree(dataset_upload_dir)
+
+        return result
+
+
     # migrate the H5AD file or Zarr store (spatial)
     if dataset_format == "spatial":
         # spatial files go in a subdirectory

@@ -803,7 +803,7 @@ const processDataset = async () => {
     }
 }
 
-const stageTrackHub = async(hubContainer, trackContainer) => {
+const stageTrackHub = async (hubContainer, trackContainer) => {
     const hubErrors = hubContainer.validateHub();
     const trackErrors = trackContainer.validateTracks();
 
@@ -821,44 +821,108 @@ const stageTrackHub = async(hubContainer, trackContainer) => {
     const trackStanzas = trackContainer.generateTrackDbEntries();
 
     if (!hubJson || trackStanzas.length === 0) {
-        document.getElementById('dataset-upload-status-message').textContent = 'Error: Failed to parse the trackhub information. Please check your URL and try again.';
+        document.getElementById('dataset-upload-status-message').textContent = 'Error: Failed to parse trackhub information.';
         document.getElementById('dataset-upload-status').classList.remove('is-hidden');
         return;
     }
 
     const assembly = hubContainer.getAssembly();
 
-    const dryRun = true;    // While developing
-
-    const payload = {
-        hub_json: hubJson,
-        tracks: trackStanzas,
-        assembly,
-        dry_run: dryRun
-    }
-
     try {
         const {data} = await axios.post(
             `./api/import/trackhub/${shareUid}/copy`,
-            payload,
-            { timeout: 600000}
-        )
+            {
+                hub_json: hubJson,
+                tracks: trackStanzas,
+                assembly,
+                dry_run: false
+            }
+        );
+
         if (!data?.success) {
-            throw new Error(data?.message || 'Unknown error copying trackhub data');
+            throw new Error(data?.message || 'Unknown error');
         }
-        createToast('Trackhub data staged successfully.', 'is-success');
+
+        const jobId = data.job_id;
+        document.getElementById('dataset-upload-status-message').textContent = 'Track hub processing started...';
+        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+
+        // Wait a few seconds, then move to the page with the progress bar
+        setTimeout(() => {
+            stepTo('process-dataset');
+        }, 2000);
+
+        // Poll for status
+        await pollTrackhubStatus(jobId);
 
     } catch (error) {
         createToast(`Error staging trackhub data: ${error.message}`);
     }
+};
 
-    return;
-    // Wait a few seconds, then move to the next step. The process script
-    // (called above) will run for a long time and be monitored separately
-    setTimeout(() => {
-        stepTo('process-dataset');
-    }, 3000);
-}
+/**
+ * Poll trackhub processing status and display progress.
+ * @async
+ * @param {string} jobId - The job ID to poll for
+ */
+const pollTrackhubStatus = async (jobId) => {
+    const pollInterval = 2000; // 2 seconds
+    const maxAttempts = 1800; // 1 hour max
+    let attempts = 0;
+
+    const poll = async () => {
+        try {
+            const {data} = await axios.post(
+                `./api/import/trackhub/${shareUid}/status`,
+                {job_id: jobId}
+            );
+
+            if (!data) {
+                throw new Error('No status data received');
+            }
+
+            const {status, progress, completed_tracks, total_tracks, message, track_statuses} = data;
+
+            // Update progress bar
+            document.getElementById('dataset-upload-progress').value = progress;
+
+            // Update message
+            const trackInfo = Object.entries(track_statuses || {})
+                .map(([name, st]) => `${name}: ${st}`)
+                .join(' | ');
+
+            const fullMessage = trackInfo
+                ? `${message} (${completed_tracks}/${total_tracks})\n${trackInfo}`
+                : `${message} (${completed_tracks}/${total_tracks})`;
+
+            document.getElementById('dataset-upload-status-message').textContent = fullMessage;
+
+            if (status === 'completed') {
+                createToast('Track hub processed successfully!', 'is-success');
+                return;
+            } else if (status === 'failed') {
+                createToast(`Processing failed: ${message}`, 'is-danger');
+                return;
+            }
+
+            // Continue polling
+            if (status === 'processing' || status === 'queued') {
+                attempts++;
+                if (attempts < maxAttempts) {
+                    setTimeout(poll, pollInterval);
+                } else {
+                    createToast('Track hub processing timeout', 'is-warning');
+                }
+            }
+
+        } catch (error) {
+            createToast(`Status check failed: ${error.message}`, 'is-danger');
+        }
+    };
+
+    poll();
+};
+
 
 /**
  * Validates the metadata form by checking required fields for values and enforcing SQL character length limits.

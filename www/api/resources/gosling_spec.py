@@ -1099,6 +1099,8 @@ class GoslingSpec(Resource):
             response["message"] = f"Dataset with ID {dataset_id} not found."
             return response, 404
 
+        # TODO: Add useOneFile mode to read tracks from.
+
         # Cut off name of hub_url (hub.txt). This will be used to build more paths
         base_url = hub_url.rsplit("/", 1)[0]  # Get base URL of hub.txt
 
