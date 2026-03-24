@@ -693,6 +693,15 @@ const validateMetadataForm = () => {
         }
     }
 
+    // Check that the personal data affirmation checkbox is checked
+    const piiAffirmed = document.getElementsByName('metadata-no-pii')[0].checked;
+    if (!piiAffirmed) {
+        document.getElementsByName('metadata-no-pii')[0].classList.add('is-danger');
+        erroredFields['metadata-no-pii'] = 'You must affirm that the dataset contains no personally identifiable information';
+    } else {
+        document.getElementsByName('metadata-no-pii')[0].classList.remove('is-danger');
+    }
+
     // Check SQL length limitations
     const fieldCharacterLimits = {
         'metadata-title': 255,
