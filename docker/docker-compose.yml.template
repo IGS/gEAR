@@ -39,6 +39,9 @@ services:
     restart: always
 
   panel:
+    build:
+      context: ..
+      dockerfile: services/spatial/Dockerfile
     image: adkinsrs/spatial_panel_app:latest
     networks:
       - gear
@@ -50,12 +53,39 @@ services:
       - <spatial_code_path>:/gEAR/services/spatial
 
 
-  # consumer:
-  #   image: busybox
-  #   tty: true
-  #   volumes:
-  #     - python_vol:/opt/Python-3.10.4
-  #     - ..:/opt/gEAR
+  # ProjectR RabbitMQ Consumer
+  projectr_consumer:
+    build:
+      context: ..
+      dockerfile: listeners/Dockerfile.projectr
+    depends_on:
+      - queue
+    environment:
+      GEAR_CONFIG: /gEAR/gear.ini
+    image: adkinsrs/gear_projectr_consumer:latest
+    networks:
+      - gear
+    restart: on-failure
+    volumes:
+      - ..:/gEAR/
+      - /var/log/gEAR_queue:/var/log/gEAR_queue
+
+  # TrackHub (Gosling Upload) RabbitMQ Consumer
+  gosling_upload_consumer:
+    build:
+      context: ..
+      dockerfile: listeners/Dockerfile.gosling_upload
+    depends_on:
+      - queue
+    environment:
+      GEAR_CONFIG: /gEAR/gear.ini
+    image: adkinsrs/gear_gosling_upload_consumer:latest
+    networks:
+      - gear
+    restart: on-failure
+    volumes:
+      - ..:/gEAR/
+      - /var/log/gEAR_queue:/var/log/gEAR_queue
 
 volumes:
   db:
