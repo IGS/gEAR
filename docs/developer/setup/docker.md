@@ -24,13 +24,15 @@ How to pull the image
 
 * `docker pull adkinsrs/umgear:latest`.
 
+IMPORTANT: From the gEAR root `cp docker/gear.ini.docker gear.ini` to make sure a working gear.ini file is present in the codebase after mounting the code as a volume in the "web" service in the docker-compose.yml file.
+
 ### Method 2: Build image
 
 * Ensure you are in the "devel" branch of gEAR before building (`git checkout devel`)
 * `cp gear.ini.docker.template gear.ini.docker`
   * Alternatively ask @adkinsrs for a gear.ini.docker file as it will be filled in. Otherwise fill in any values wrapped in brackets
 * To build run `docker buildx build -t umgear:latest .`
-  * If you tag it under a new image, ensure it is reflected in the docker-compose.yml file
+  * Ensure the image name here (`umgear:latest`) is reflected in the docker-compose.yml file instead of `adkinsrs/umgear:latest`
 * The build can take a while, particularly in the Bioconductor installation steps. Fortunately completed steps are cachable.
 
 In the build, the "gear.ini.docker" file will end up copied to "gear.ini" in the "/opt/gEAR" directory for the docker instance. However, if are using docker-compose and the gEAR directory is mounted into the "web" service, this can be overriden to a gear.ini from outside.  If you do not have a "gear.ini" file (only gear.ini.template), then ask @adkinsrs for one.
@@ -44,7 +46,6 @@ To start:
 To stop:
 `docker compose down -v`
 
-IMPORTANT: If you did Method 1, from the gEAR root `cp docker/gear.ini.docker gear.ini` to make sure a working gear.ini file is present in the codebase after mounting the code as a volume in the "web" service in the docker-compose.yml file.
 
 Adding a service name (i.e. "web", "db") to the end of a command just performs this for that service.
 

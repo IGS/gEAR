@@ -24,7 +24,6 @@ services:
     image: adkinsrs/umgear:latest
     networks:
       - gear
-    platform: linux/amd64   # Needed for running some UCSC web tools to ensure right libraries are detected.
     ports:
       - "8080:80"
     restart: on-failure
