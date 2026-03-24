@@ -5,6 +5,7 @@ Shared between API and RabbitMQ consumers.
 
 import json
 import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -13,11 +14,33 @@ from uuid import uuid4
 
 import pyBigWig
 import requests
-import shutil
 from Bio import bgzf
 
 VALID_TYPES = ["bigWig", "bigBed", "hic", "vcfTabix"]
 VALID_CONTAINER_TYPES = ["multiWig"]
+
+def write_status(
+    status_file: Path,
+    job_id: str,
+    status: str,
+    progress: int,
+    completed_tracks: int,
+    total_tracks: int,
+    message: str = "",
+    track_statuses: Optional[dict] = None,
+) -> None:
+    """Update status.json file with progress. Overwrites existing file."""
+    status_data = {
+        "job_id": job_id,
+        "status": status,
+        "progress": progress,
+        "completed_tracks": completed_tracks,
+        "total_tracks": total_tracks,
+        "message": message,
+        "track_statuses": track_statuses or {},
+    }
+    with open(status_file, 'w') as f:
+        json.dump(status_data, f, indent=4)
 
 def process_trackhub_synchronously(
     job_id: str,
@@ -50,10 +73,44 @@ def process_trackhub_synchronously(
 def download_large_file(url: str, destination: Path) -> None:
     """Download a large file from a URL using streaming to save memory."""
     try:
+        # Get expected file size from server
+        head_response = requests.head(url, timeout=10)
+        head_response.raise_for_status()
+        expected_size = int(head_response.headers.get('content-length', 0))
+
+        # Check if file already exists and is complete
+        if destination.is_file():
+            actual_size = destination.stat().st_size
+            if expected_size > 0 and actual_size == expected_size:
+                print(
+                    f"{destination} already exists and is complete ({actual_size} bytes). "
+                    "Skipping download.",
+                    file=sys.stderr,
+                )
+                return
+            elif actual_size > 0 and actual_size < expected_size:
+                print(
+                    f"{destination} is incomplete ({actual_size}/{expected_size} bytes). "
+                    "Redownloading...",
+                    file=sys.stderr,
+                )
+                # Delete file to force redownload
+                destination.unlink()
+
+        # Download file
         with requests.get(url, stream=True) as response:
             response.raise_for_status()
             with open(destination, 'wb') as file:
                 shutil.copyfileobj(response.raw, file)
+
+        # Verify downloaded file size matches expected
+        actual_size = destination.stat().st_size
+        if expected_size > 0 and actual_size != expected_size:
+            destination.unlink()
+            raise Exception(
+                f"Downloaded file size mismatch: expected {expected_size} bytes, "
+                f"got {actual_size} bytes"
+            )
     except requests.exceptions.RequestException as e:
         raise Exception(f"Error downloading from {url}: {e}") from e
 
@@ -61,6 +118,9 @@ def download_large_file(url: str, destination: Path) -> None:
 def bigbed_to_bed(bigbed_path: Path, outdir_path: Path) -> bool:
     """Convert a BigBed file to a BED file and compress it using BGZF."""
     bed_path = outdir_path / bigbed_path.with_suffix('.bed').name
+    if bed_path.is_file():
+        print(f"{bed_path} already exists. Skipping conversion.", file=sys.stderr)
+        return True
 
     try:
         bb = pyBigWig.open(bigbed_path.as_posix())
@@ -96,6 +156,9 @@ def bigbed_to_bed(bigbed_path: Path, outdir_path: Path) -> bool:
 def hic_to_mcool(hic_path: Path, outdir_path: Path) -> bool:
     """Convert a .hic file to a .mcool file using the hic2cool tool."""
     mcool_path = outdir_path / hic_path.with_suffix('.mcool').name
+    if mcool_path.is_file():
+        print(f"{mcool_path} already exists. Skipping conversion.", file=sys.stderr)
+        return True
 
     try:
         from hic2cool import hic2cool_convert
@@ -106,24 +169,33 @@ def hic_to_mcool(hic_path: Path, outdir_path: Path) -> bool:
         print(f"Error converting {hic_path} to mcool: {e}", file=sys.stderr)
         return False
 
-
-def ingest_mcool_into_higlass(mcool_path: Path, config: dict) -> str:
+def ingest_mcool_into_higlass(mcool_path: Path, config: dict, assembly: str) -> str:
     """Ingest a .mcool file into HiGlass and return the URL."""
     file_uuid = uuid4()
 
     url = f"{config['higlass_hostname']}/api/v1/tilesets/"
     auth = (config['higlass_admin_user'], config['higlass_admin_pass'])
-    files = {'datafile': (mcool_path.name, open(mcool_path, 'rb'))}
-    data = {
-        'filetype': 'cooler',
-        'datatype': 'matrix',
-        'coordSystem': '',
-        'uid': str(file_uuid)
-    }
 
     try:
-        response = requests.post(url, auth=auth, files=files, data=data)
-        response.raise_for_status()
+
+        # Ensure file stays open during the duration of the request.
+        with open(mcool_path, 'rb') as f:
+            # All parameters must be in 'files' dict for multipart/form-data
+            # Non-file fields are sent as tuples (None, value)
+            files = {
+                'datafile': (mcool_path.name, f),
+                'filetype': (None, 'cooler'),
+                'datatype': (None, 'matrix'),
+                'coordSystem': (None, assembly),
+                'uid': (None, str(file_uuid)),
+            }
+
+            # print an example curl-equivalent command for testing
+            #print(f"Example curl command:\ncurl -X POST {url} -u {auth[0]}:{auth[1]} -F 'datafile=@{mcool_path}' -F 'filetype=cooler' -F 'datatype=matrix' -F 'coordSystem=""' -F 'uid={file_uuid}'")
+
+            response = requests.post(url, auth=auth, files=files)
+            response.raise_for_status()
+
         print(f"Ingested {mcool_path} into HiGlass", file=sys.stderr)
 
         uid = response.json().get('uid')
@@ -136,7 +208,6 @@ def ingest_mcool_into_higlass(mcool_path: Path, config: dict) -> str:
     except requests.RequestException as e:
         print(f"Error ingesting {mcool_path} into HiGlass: {e}", file=sys.stderr)
         raise
-
 
 def _create_tabix_indexed_file(bgzipped_path: Path, file_type: str = "bed") -> None:
     """Tabix-index a genomic file."""
@@ -206,18 +277,16 @@ class TrackHubProcessor:
         message: str = "",
         track_statuses: Optional[dict] = None,
     ) -> None:
-        """Update status.json file with progress."""
-        status_data = {
-            "job_id": self.job_id,
-            "status": status,
-            "progress": progress,
-            "completed_tracks": completed_tracks,
-            "total_tracks": total_tracks,
-            "message": message,
-            "track_statuses": track_statuses or {},
-        }
-        with open(self.status_file, 'w') as f:
-            json.dump(status_data, f)
+        write_status(
+            self.status_file,
+            self.job_id,
+            status,
+            progress,
+            completed_tracks,
+            total_tracks,
+            message,
+            track_statuses,
+        )
 
     def process(
         self,
@@ -254,11 +323,17 @@ class TrackHubProcessor:
             if not validate_hub_contents(hub_json, track_stanzas):
                 raise ValueError("Hub contents failed validation")
 
-            # Write hub.txt
+            # Write hub.txt as a standard hub file (without trackDb.txt) for processing.
+            # Add an extra newline before and after the "genome" tag.
             dest_hub = self.staging_area / "hub.txt"
             if not dry_run:
                 with open(dest_hub, 'w') as f:
-                    json.dump(hub_json, f, indent=4)
+                    for key, value in hub_json.items():
+                        if key == "genome":
+                            f.write("\n")
+                        f.write(f"{key} {value}\n")
+                        if key == "genome":
+                            f.write("\n")
 
             # Process each track
             completed = 0
@@ -307,7 +382,7 @@ class TrackHubProcessor:
                     )
                     if not dry_run:
                         if not bigbed_to_bed(dest_path, self.staging_area):
-                            raise Exception(f"Failed to convert {track_name}")
+                            raise Exception(f"Failed to convert {track_name} from bigBed to BED")
 
                 elif track["type"] == "hic":
                     track_statuses[track_name] = "converting"
@@ -321,7 +396,7 @@ class TrackHubProcessor:
                     )
                     if not dry_run:
                         if not hic_to_mcool(dest_path, self.staging_area):
-                            raise Exception(f"Failed to convert {track_name}")
+                            raise Exception(f"Failed to convert {track_name} from HIC to MCool")
 
                         track_statuses[track_name] = "ingesting"
                         self.update_status(
@@ -333,24 +408,23 @@ class TrackHubProcessor:
                             track_statuses,
                         )
 
+                        print(f"Ingesting {track_name} into HiGlass...", file=sys.stderr)
                         mcool_path = self.staging_area / dest_path.with_suffix('.mcool').name
                         higlass_url = ingest_mcool_into_higlass(
-                            mcool_path, self.higlass_config
+                            mcool_path, self.higlass_config, assembly
                         )
                         _append_higlass_url_to_track(dest_hub, dest_path.name, higlass_url)
 
                 track_statuses[track_name] = "completed"
                 completed += 1
 
-            # Write trackDb.txt
+            # append track info to hub.txt (useOneFile on)
             if not dry_run:
-                with open(self.staging_area / "trackDb.txt", 'w') as f:
+                with open(dest_hub, 'a') as f:
                     for track in track_stanzas:
-                        f.write(f"track {track['track']}\n")
-                        for key, value in track.items():
-                            if key != 'track':
-                                f.write(f"{key} {value}\n")
                         f.write("\n")
+                        for key, value in track.items():
+                            f.write(f"{key} {value}\n")
 
             self.update_status(
                 "completed",
@@ -364,7 +438,7 @@ class TrackHubProcessor:
             return {"success": True, "message": "Track hub processed successfully"}
 
         except Exception as e:
-            print(f"Error processing track hub {self.job_id}: {e}", file=sys.stderr)
+            print(f"Error processing track hub ID {self.job_id}: {e}", file=sys.stderr)
             self.update_status(
                 "failed",
                 0,

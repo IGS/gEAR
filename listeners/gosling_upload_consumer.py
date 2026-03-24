@@ -8,12 +8,13 @@ import gc
 import json
 import os
 import sys
+import traceback
 from pathlib import Path
 
 lib_path = str(Path(__file__).resolve().parents[1] / 'lib')
 sys.path.insert(0, lib_path)
 
-from gear.serverconfig import ServerConfig
+from gear.serverconfig import ServerConfig  # noqa: I001
 servercfg = ServerConfig().parse()
 
 queue_name = "trackhub_copy_jobs"
@@ -84,6 +85,7 @@ def _on_request(channel, method_frame, properties, body):
             channel.basic_ack(delivery_tag=delivery_tag)
 
         except Exception as e:
+            traceback.print_exc()
             print(f"{pid} - Caught error '{str(e)}'", flush=True, file=fh)
             channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
         finally:

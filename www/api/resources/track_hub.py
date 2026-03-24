@@ -1,48 +1,71 @@
+import configparser
 import json
 import sys
+import traceback
 from pathlib import Path
 from uuid import uuid4
 
-import pika
 from flask import request
 from flask_restful import Resource
 
 gear_root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(gear_root / 'lib'))
 
+_config = configparser.ConfigParser()
+_config.read(gear_root / 'gear.ini')
+
 import geardb
-from gear.trackhub import process_trackhub_synchronously, validate_hub_contents
+from gear.trackhub import process_trackhub_synchronously, write_status
 
 user_upload_file_base = gear_root / 'www' / 'uploads' / 'files'
 
+class QueueDisabledError(Exception):
+    """Custom exception to indicate that the queue is disabled in configuration."""
+    pass
 
-def queue_trackhub_job(job_id: str, share_uid: str, hub_json: dict, assembly: str, track_stanzas: list, dry_run: bool = False) -> bool:
+def _create_initial_status_file(
+    status_file: Path,
+    job_id: str,
+    total_tracks: int,
+    message: str = "Job queued for processing",
+) -> None:
+    """Create initial status.json file."""
+    initial_status = {
+        "job_id": job_id,
+        "status": "queued",
+        "progress": 0,
+        "completed_tracks": 0,
+        "total_tracks": total_tracks,
+        "message": message,
+        "track_statuses": {},
+    }
+    with open(status_file, 'w') as f:
+        json.dump(initial_status, f, indent=4)
+
+def queue_trackhub_job(job_id: str, share_uid: str, hub_json: dict, assembly: str, track_stanzas: list, dry_run: bool = False) -> None:
     """Queue trackhub processing job to RabbitMQ."""
+
+    # If queue is not enabled, return False
+    if not _config.getboolean('dataset_uploader', 'queue_enabled', fallback=False):
+        print("Queue is disabled in configuration. Cannot queue trackhub job. Falling back to synchronous processing.", file=sys.stderr)
+        raise QueueDisabledError()
+
+    import gearqueue
+    host = _config["dataset_uploader"]["queue_host"]
+
     try:
-        import configparser
-        config = configparser.ConfigParser()
-        config.read(gear_root / 'gear.ini')
+        # Connect as a blocking RabbitMQ publisher
+        connection = gearqueue.Connection(
+            host=host, publisher_or_consumer="publisher"
+        )
+    except Exception as e:
+        print(f"Error connecting to RabbitMQ: {e}", file=sys.stderr)
+        raise Exception(f"Error connecting to RabbitMQ: {e}")
 
-        # If queue is not enabled, return False
-        if not config.getboolean('dataset_uploader', 'queue_enabled', fallback=False):
-            print("Queue is disabled in configuration. Cannot queue trackhub job.", file=sys.stderr)
-            return False
+    with connection:
+        connection.open_channel()
 
-        rabbitmq_host = config.get('rabbitmq', 'host', fallback='localhost')
-        rabbitmq_user = config.get('rabbitmq', 'user', fallback='guest')
-        rabbitmq_password = config.get('rabbitmq', 'password', fallback='guest')
-
-        credentials = pika.PlainCredentials(rabbitmq_user, rabbitmq_password)
-        connection = pika.BlockingConnection(pika.ConnectionParameters(
-            host=rabbitmq_host,
-            credentials=credentials
-        ))
-        channel = connection.channel()
-
-        queue_name = 'trackhub_copy_jobs'
-        channel.queue_declare(queue=queue_name, durable=True)
-
-        message = {
+        payload = {
             'job_id': job_id,
             'share_uid': share_uid,
             'hub_json': hub_json,
@@ -51,18 +74,16 @@ def queue_trackhub_job(job_id: str, share_uid: str, hub_json: dict, assembly: st
             'dry_run': dry_run
         }
 
-        channel.basic_publish(
-            exchange='',
-            routing_key=queue_name,
-            body=json.dumps(message),
-            properties=pika.BasicProperties(delivery_mode=2)
-        )
+        try:
+            connection.publish(
+                queue_name="trackhub_copy_jobs",
+                message=payload,  # method dumps JSON
+            )
+        except Exception as e:
+            print(f"Error publishing message to RabbitMQ: {e}", file=sys.stderr)
+            raise
+    return
 
-        connection.close()
-        return True
-    except Exception as e:
-        print(f"Error queuing trackhub job: {e}", file=sys.stderr)
-        return False
 
 
 class TrackHubCopy(Resource):
@@ -88,11 +109,6 @@ class TrackHubCopy(Resource):
             result["message"] = "Missing required parameters"
             return result, 400
 
-        # Quick validation
-        if not validate_hub_contents(hub_json, track_stanzas):
-            result["message"] = "Hub contents failed validation"
-            return result, 400
-
         # Generate job ID and create status file
         job_id = str(uuid4())
         staging_area = user_upload_file_base / session_id / share_uid
@@ -100,38 +116,23 @@ class TrackHubCopy(Resource):
 
         # Create initial status
         staging_area.mkdir(parents=True, exist_ok=True)
-        initial_status = {
-            "job_id": job_id,
-            "status": "queued",
-            "progress": 0,
-            "completed_tracks": 0,
-            "total_tracks": len(track_stanzas),
-            "message": "Job queued for processing",
-            "track_statuses": {}
-        }
-        with open(status_file, 'w') as f:
-            json.dump(initial_status, f)
+        _create_initial_status_file(status_file, job_id, len(track_stanzas))
 
         # Queue the job
-        if queue_trackhub_job(job_id, share_uid, hub_json, assembly, track_stanzas, dry_run):
+        try:
+            queue_trackhub_job(job_id, share_uid, hub_json, assembly, track_stanzas, dry_run)
             result["success"] = True
             result["job_id"] = job_id
             result["message"] = "Track hub processing job queued"
             return result, 202  # Accepted
-        else:
-            # Fall back to synchronous processing if queue is disabled
-            import configparser
-            config = configparser.ConfigParser()
-            config.read(gear_root / 'gear.ini')
-
+        except QueueDisabledError:
             higlass_config = None
-            if config.has_section('higlass'):
+            if _config.has_section('higlass'):
                 higlass_config = {
-                    'higlass_hostname': config.get('higlass', 'hostname', fallback=''),
-                    'higlass_admin_user': config.get('higlass', 'admin_user', fallback=''),
-                    'higlass_admin_pass': config.get('higlass', 'admin_pass', fallback=''),
+                    'higlass_hostname': _config.get('higlass', 'hostname', fallback=''),
+                    'higlass_admin_user': _config.get('higlass', 'admin_user', fallback=''),
+                    'higlass_admin_pass': _config.get('higlass', 'admin_pass', fallback=''),
                 }
-
             result_sync = process_trackhub_synchronously(
                 job_id=job_id,
                 share_uid=share_uid,
@@ -144,9 +145,23 @@ class TrackHubCopy(Resource):
                 higlass_config=higlass_config,
             )
 
+
             result["success"] = result_sync["success"]
             result["job_id"] = job_id
             result["message"] = result_sync["message"]
+        except Exception as e:
+            result["message"] = f"Error processing track hub: {str(e)}"
+            write_status(
+                status_file,
+                job_id,
+                "failed",
+                0,
+                0,
+                len(track_stanzas),
+                result["message"],
+                {}
+            )
+            return result, 500
 
 
 class TrackHubStatus(Resource):

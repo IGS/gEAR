@@ -1210,7 +1210,7 @@ document.getElementById('build-trackhub-submit').addEventListener('click', (even
     buildTrackhub();
 });
 
-document.getElementById("proceed-trackhub-submit").addEventListener("click", (event) => {
+document.getElementById("proceed-trackhub-submit").addEventListener("click", async (event) => {
     event.preventDefault();
 
     if (!hubContainer || !trackContainer) {
@@ -1219,7 +1219,10 @@ document.getElementById("proceed-trackhub-submit").addEventListener("click", (ev
         return;
     }
 
-    stageTrackHub(hubContainer, trackContainer);
+    event.currentTarget.classList.add('is-loading');
+    await stageTrackHub(hubContainer, trackContainer);
+    event.currentTarget.classList.add('is-loading');
+
 })
 
 document.getElementById('metadata-upload-submit').addEventListener('click', (event) => {
