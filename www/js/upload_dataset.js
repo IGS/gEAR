@@ -488,7 +488,8 @@ const storeMetadata = async () => {
         library_selection: document.getElementsByName('metadata-library-selection')[0].value,
         library_source: document.getElementsByName('metadata-library-source')[0].value,
         library_strategy: document.getElementsByName('metadata-library-strategy')[0].value,
-        pubmed_id: document.getElementsByName('metadata-pubmed-id')[0].value
+        pubmed_id: document.getElementsByName('metadata-pubmed-id')[0].value,
+        user_pii_affirmed: document.getElementsByName('metadata-no-pii')[0].checked ? 1 : 0
     }));
 
     if (data.success) {

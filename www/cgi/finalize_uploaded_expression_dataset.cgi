@@ -98,6 +98,18 @@ def main() -> dict:
         result['message'] = 'Metadata file not found.'
         return result
 
+    # Defensive normalization for legacy staged metadata created before user_pii_affirmed existed
+    try:
+        with open(metadata_file, 'r') as f:
+            staged_metadata = json.load(f)
+        if 'user_pii_affirmed' not in staged_metadata or staged_metadata.get('user_pii_affirmed') in [None, '']:
+            staged_metadata['user_pii_affirmed'] = 0
+            with open(metadata_file, 'w') as f:
+                json.dump(staged_metadata, f)
+    except Exception as e:
+        result['message'] = 'Error normalizing metadata file: {}'.format(str(e))
+        return result
+
     # Load the metadata into the database
     metadata = Metadata(file_path=str(metadata_file))
     try:

@@ -57,7 +57,7 @@ def get_value_from_df(df, index_label):
         return None
     else:
         return value
-    
+
 
 
 class Metadata:
@@ -379,10 +379,14 @@ class Metadata:
         annotation_source = get_value_from_df(df, 'annotation_source')
         annotation_release = get_value_from_df(df, 'annotation_release_number')
         default_plot_type = get_value_from_df(df, 'default_plot_type')
+        user_pii_affirmed = get_value_from_df(df, 'user_pii_affirmed')
+
+        if user_pii_affirmed is None:
+            user_pii_affirmed = 0
 
         add_dataset_sql = """
-        REPLACE INTO dataset (id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, ldesc, date_added, dtype, schematic_image, share_id, math_default, load_status, has_h5ad, platform_id, instrument_model, library_selection, library_source, library_strategy, contact_email, contact_institute, contact_name, annotation_source, annotation_release, plot_default)
-        VALUES              (%s, %s,       %s,    %s,          %s,        %s,     %s,        %s,    NOW(),      %s,    %s,              %s,       %s,           %s,          %s,       %s,          %s,               %s,                %s,             %s,               %s,            %s,                %s,           %s,                %s,                 %s)
+        REPLACE INTO dataset (id, owner_id, title, organism_id, pubmed_id, geo_id, is_public, ldesc, date_added, dtype, schematic_image, share_id, math_default, load_status, has_h5ad, platform_id, instrument_model, library_selection, library_source, library_strategy, contact_email, contact_institute, contact_name, annotation_source, annotation_release, plot_default, user_pii_affirmed)
+        VALUES              (%s, %s,       %s,    %s,          %s,        %s,     %s,        %s,    NOW(),      %s,    %s,              %s,       %s,           %s,          %s,       %s,          %s,               %s,                %s,             %s,               %s,            %s,                %s,           %s,                %s,                 %s,           %s)
         """
 
         # Insert dataset info to database
@@ -391,7 +395,8 @@ class Metadata:
                                              geo_id, is_public, ldesc, dtype, schematic_image,
                                              share_uid, default_data_format, status, has_h5ad, platform_id,
                                              instrument_model, library_selection, library_source, library_strategy, contact_email,
-                                             contact_institute, contact_name, annotation_source, annotation_release, default_plot_type,))
+                                             contact_institute, contact_name, annotation_source, annotation_release, default_plot_type,
+                                             user_pii_affirmed,))
             cnx.commit()
         except mysql.connector.Error as err:
             raise Exception("Failed to insert metadata: {0}".format(err))
