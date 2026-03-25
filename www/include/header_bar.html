@@ -18,24 +18,24 @@
               <div class="navbar-end">
                 <div id="navbar-login-controls" class="navbar-item is-hidden">
                   <div class="navbar-item has-dropdown is-hoverable logged-in">
-                    <a id="current-user-name" class="navbar-link"></a>
+                    <a id="current-user-name" class="navbar-link" aria-label="User account menu"></a>
                     <div class="navbar-dropdown is-right">
                       <a class="navbar-item" href="./user_profile.html">
                         <span class="icon-text">
-                          <span class="icon"><i class="mdi mdi-account"></i></span>
+                          <span class="icon" aria-hidden="true"><i class="mdi mdi-account"></i></span>
                           <span>User profile</span>
                         </span>
                       </a>
                       <a id="submit-logout" class="navbar-item">
                         <span class="icon-text">
-                          <span class="icon"><i class="mdi mdi-logout-variant"></i></span>
+                          <span class="icon" aria-hidden="true"><i class="mdi mdi-logout-variant"></i></span>
                           <span>Sign out</span>
                         </span>
                       </a>
                       <hr class="navbar-divider">
                       <a class="navbar-item" href="./contact.html">
                         <span class="icon-text">
-                          <span class="icon"><i class="mdi mdi-bug"></i></span>
+                          <span class="icon" aria-hidden="true"><i class="mdi mdi-bug"></i></span>
                           <span>Report an issue</span>
                         </span>
                       </a>
@@ -59,14 +59,14 @@
                         <!-- Add your login and password form here -->
                         <form id="login-form">
                           <div class="field">
-                            <label class="label">E-mail address</label>
+                            <label class="label" for="user-email">E-mail address</label>
                             <div class="control">
-                              <input id="user-email" name="user-email" class="input is-small" type="text" placeholder="Your e-mail">
+                              <input id="user-email" name="user-email" class="input is-small" type="email" placeholder="Your e-mail">
                             </div>
                             <p id="user-email-help" class="help has-text-danger-dark is-hidden">E-mail not found</p>
                           </div>
                           <div class="field">
-                            <label class="label">Password</label>
+                            <label class="label" for="user-password">Password</label>
                             <div class="control">
                               <input id="user-password" name="user-password" class="input is-small" type="password" placeholder="Your password">
                             </div>
