@@ -2429,6 +2429,7 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
 
         const displayImage = displayElement.querySelector('figure > img');
         displayImage.src = displayUrl;
+        displayImage.alt = `Preview of ${display.label || display.plot_type} display`;
 
         // Add tag indicating plot type
         const displayType = displayElement.querySelector('.js-modal-display-type');
