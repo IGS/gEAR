@@ -91,7 +91,7 @@ This method is simple and interpretable, but may not capture complex relationshi
                   </label>
                   <div class="control">
                     <div class="select is-small">
-                      <select id="algorithm">
+                      <select id="algorithm" aria-label="Projection algorithm">
                         <option value="pca" selected>Principal Component Analysis (PCA)</option>
                         <option value="nmf">Least-squares optimization for NMF</option>
                         <option value="fixednmf">Fixed gene weights in NMF re-run</option>
@@ -161,7 +161,7 @@ This method is simple and interpretable, but may not capture complex relationshi
                     <div id="scoring-method-div">
                       <span class="option-label pr-1">SVG expression scoring method: </span>
                       <div class="control select is-small">
-                        <select id="svg-scoring-method">
+                        <select id="svg-scoring-method" aria-label="SVG expression scoring method">
                           <option value="gene">Gene scope</option>
                           <option value="tissue">Tissue scope</option>
                           <option value="dataset">Sample scope</option>

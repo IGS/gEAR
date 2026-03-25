@@ -113,7 +113,8 @@
               <span>Collapse dataset selection tool</span>
             </button>
             <div id="dataset-selection-c">
-                <input class="input" id="dataset-query" type="text" placeholder="Enter a dataset" autofocus="" />
+                <label for="dataset-query" class="is-sr-only">Search for a dataset</label>
+                <input class="input" id="dataset-query" type="search" placeholder="Enter a dataset" autofocus="" aria-label="Search for a dataset" />
                 <div id="dataset-tree" class="wb-skeleton wb-initializing js-tree"></div>
             </div>
           </div>
@@ -189,7 +190,7 @@
                   <span class="has-text-success-dark is-pulled-right has-text-weight-bold">Required</span>
                 </div>
                 <div class="select is-fullwidth">
-                  <select id="plot-type-select" disabled>
+                  <select id="plot-type-select" disabled aria-label="Select plot type">
                     <option value="nope">Select plot type</option>
                     <optgroup label="Interactive">
                       <option value="bar" id="bar-opt">Bar</option>
@@ -217,7 +218,7 @@
                   </span>
                 </div>
                 <div class="select is-fullwidth">
-                  <select id="analysis-select" disabled>
+                  <select id="analysis-select" disabled aria-label="Select analysis (optional)">
                     <option value="-1" selected>Primary analysis (default)</option>
                     <optgroup id="private-analyses" label="Your Saved Analyses">
 
@@ -257,7 +258,8 @@
           <div class="js-step-collapsable mt-3" id="gene-collapsable">
             <div class="columns">
               <div id="gene-select-c" class="column is-5">
-                <input class="input js-autocomplete" id="gene-autocomplete" type="text" placeholder="Enter a gene" autofocus="" />
+                <label for="gene-autocomplete" class="is-sr-only">Enter a gene symbol</label>
+                <input class="input js-autocomplete" id="gene-autocomplete" type="search" placeholder="Enter a gene" autofocus="" aria-label="Enter a gene symbol" />
                 <span class="has-text-success-dark has-text-weight-bold">Required</span>
               </div>
             </div>
@@ -316,9 +318,9 @@
                 </h5>
                 <div id="post-plot-configuration-c" class="is-hidden js-collapsable-content">
                   <div class="field">
-                    <label class="label has-text-weight-medium">Change gene</label>
+                    <label class="label has-text-weight-medium" for="gene-autocomplete-post">Change gene</label>
                     <div class="control">
-                      <input class="input js-autocomplete" id="gene-autocomplete-post" type="text" placeholder="Enter a gene" autofocus="" />
+                      <input class="input js-autocomplete" id="gene-autocomplete-post" type="search" placeholder="Enter a gene" autofocus="" aria-label="Enter a gene symbol to change" />
                     </div>
                   </div>
                   <section id="post-plot-adjustments" class="content"></section>
@@ -363,7 +365,8 @@
             <div id="save-display-container" class="column is-full">
               <div class="field">
                 <div class="control">
-                  <input id="new-display-label" class="input" type="text" placeholder="Enter name of display" />
+                  <label for="new-display-label" class="is-sr-only">Enter name of display</label>
+                  <input id="new-display-label" class="input" type="text" placeholder="Enter name of display" aria-label="Enter name of display" />
                 </div>
               </div>
               <div class="field">

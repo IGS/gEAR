@@ -111,7 +111,8 @@
               <span>Collapse dataset selection tool</span>
             </button>
             <div id="dataset-selection-c">
-                <input class="input" id="dataset-query" type="text" placeholder="Enter a dataset" autofocus="" />
+                <label for="dataset-query" class="is-sr-only">Search for a dataset</label>
+                <input class="input" id="dataset-query" type="search" placeholder="Enter a dataset" autofocus="" aria-label="Search for a dataset" />
                 <div id="dataset-tree" class="wb-skeleton wb-initializing js-tree"></div>
             </div>
           </div>
@@ -187,7 +188,7 @@
                   <span class="has-text-success-dark is-pulled-right has-text-weight-bold">Required</span>
                 </div>
                 <div class="select is-fullwidth">
-                  <select id="plot-type-select" disabled>
+                  <select id="plot-type-select" disabled aria-label="Select plot type">
                     <option value="nope">Select plot type</option>
                     <optgroup label="Genes as axis labels">
                       <option value="dotplot" id="dotplot-opt">Dotplot</option>
@@ -216,7 +217,7 @@
                   </span>
                 </div>
                 <div class="select is-fullwidth">
-                  <select id="analysis-select" disabled>
+                  <select id="analysis-select" disabled aria-label="Select analysis (optional)">
                     <option value="-1" selected>Primary analysis (default)</option>
                     <optgroup id="private-analyses" label="Your Saved Analyses">
 
@@ -259,8 +260,8 @@
             <div id="search-bar-c" class="mt-4 ml-3 mb-4">
               <div class="field has-addons is-grouped mb-0">
                 <div class="control has-icons-left has-icons-right mr-0">
-                  <input class="input" type="input" id="genes-manually-entered" placeholder="Type here to search using specific gene symbols">
-                  <span class="icon is-small is-left">
+                  <input class="input" type="search" id="genes-manually-entered" placeholder="Type here to search using specific gene symbols" aria-label="Search gene symbols">
+                  <span class="icon is-small is-left" aria-hidden="true">
                     <i class="mdi mdi-magnify"></i>
                   </span>
                 </div>
@@ -350,12 +351,12 @@
                   <section id="post-plot-global-adjustments" class="content">
                     <p class="is-flex is-justify-content-space-between pr-3">
                       <span class="has-text-weight-medium">Plot title</span>
-                      <input class="js-dash-plot-title" id="plot-title-post" class="input" type="text" placeholder="Enter title of plot">
+                      <input class="js-dash-plot-title" id="plot-title-post" class="input" type="text" placeholder="Enter title of plot" aria-label="Plot title">
                     </p>
                     <p class="help">If left blank, plot will have a default title or no title.</p>
                     <p class="is-flex is-justify-content-space-between pr-3" id="legend-title-container">
                       <span class="has-text-weight-medium">Legend title</span>
-                      <input class="js-dash-legend-title" id="legend-title-post" class="input" type="text" placeholder="Enter title of legend">
+                      <input class="js-dash-legend-title" id="legend-title-post" class="input" type="text" placeholder="Enter title of legend" aria-label="Legend title">
                     </p>
                     <p class="help">If left blank, legend will have a default title.</p>
                   </section>
@@ -401,7 +402,8 @@
             <div id="save-display-container" class="column is-full">
               <div class="field">
                 <div class="control">
-                  <input id="new-display-label" class="input" type="text" placeholder="Enter name of display" />
+                  <label for="new-display-label" class="is-sr-only">Enter name of display</label>
+                  <input id="new-display-label" class="input" type="text" placeholder="Enter name of display" aria-label="Enter name of display" />
                 </div>
               </div>
               <div class="field">
@@ -481,7 +483,8 @@
       <footer class="modal-card-foot is-block">
         <div class="field">
           <div class="control">
-            <input id="new-genecart-label" class="input" type="text" placeholder="Enter name of collection" />
+            <label for="new-genecart-label" class="is-sr-only">Enter name of collection</label>
+            <input id="new-genecart-label" class="input" type="text" placeholder="Enter name of collection" aria-label="Enter name of collection" />
           </div>
         </div>
 
