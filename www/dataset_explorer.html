@@ -2,7 +2,7 @@
 <!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
@@ -98,11 +98,11 @@
 
                         <!-- search field -->
                         <div class="js-trigger-dataset-search field">
-                            <label class="label">Search by keyword</label>
+                            <label class="label" for="search-terms">Search by keyword</label>
                             <div class="control has-icons-right">
-                                <input id="search-terms" class="input" type="text" placeholder="Keyword search">
-                                <span class="icon is-hidden is-right is-clickable" id="search-clear">
-                                    <i class="mdi mdi-close-circle"></i>
+                                <input id="search-terms" class="input" type="search" placeholder="Keyword search" aria-label="Search datasets by keyword">
+                                <span class="icon is-hidden is-right is-clickable" id="search-clear" aria-label="Clear search">
+                                    <i class="mdi mdi-close-circle" aria-hidden="true"></i>
                                 </span>
                             </div>
                         </div>
@@ -228,11 +228,11 @@
                                     </div>
                                 </div>
                                 <div class="js-trigger-dataset-search level-item">
-                                    <label class="label mr-3">Sort by:</label>  <!-- .field.is-horizontal + .field-label scrunches the label up -->
+                                    <label class="label mr-3" for="sort-by">Sort by:</label>  <!-- .field.is-horizontal + .field-label scrunches the label up -->
                                     <div class="field">
                                         <div class="control">
                                             <div class="select is-small">
-                                                <select name="sort-by" id="sort-by">
+                                                <select name="sort-by" id="sort-by" aria-label="Sort datasets by">
                                                     <option value="relevance" selected>Relevance</option>
                                                     <option value="title">Dataset title</option>
                                                     <option value="date_added" selected>Date uploaded</option>
@@ -315,14 +315,14 @@
                                             <div class="column is-2">
                                                 <!-- Preview image -->
                                                 <figure class="image is-square">
-                                                    <img>
+                                                    <img alt="Dataset preview">
                                                 </figure>
                                                 <div class="js-display-version js-display-visibility"></div>
                                                 <div class="js-editable-version js-editable-visibility is-hidden">
                                                     <div class="field">
                                                         <p class="label">Access</p>
                                                         <!-- toggle switch --->
-                                                        <input type="checkbox" class="switch is-primary"/>
+                                                        <input type="checkbox" class="switch is-primary" aria-label="Toggle dataset access"/>
                                                         <label></label>
                                                     </div>
                                                 </div>
@@ -331,7 +331,7 @@
                                                     <div class="field">
                                                         <p class="label">Is downloadable</p>
                                                         <!-- toggle switch --->
-                                                        <input type="checkbox" class="switch is-primary"/>
+                                                        <input type="checkbox" class="switch is-primary" aria-label="Toggle dataset downloadable"/>
                                                         <label></label>
                                                     </div>
                                                 </div>
@@ -346,7 +346,7 @@
                                                         <div class="js-editable-version js-editable-title is-hidden">
                                                             <div class="field">
                                                                 <span class="has-text-weight-semibold">Title</span>
-                                                                <input type="text" class="input"/>
+                                                                <input type="text" class="input" aria-label="Dataset title"/>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -367,7 +367,7 @@
                                                             <div class="field">
                                                                 <label class="label">Organism</label>
                                                                 <div class="control">
-                                                                    <input class="input is-static" readonly>
+                                                                    <input class="input is-static" readonly aria-label="Organism">
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -381,7 +381,7 @@
                                                             <div class="field">
                                                                 <label class="label">Owner</label>
                                                                 <div class="control">
-                                                                    <input class="input is-static" readonly>
+                                                                    <input class="input is-static" readonly aria-label="Owner">
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -394,7 +394,7 @@
                                                             <div class="field">
                                                                 <label class="label">Type</label>
                                                                 <div class="control">
-                                                                    <input class="input is-static" readonly>
+                                                                    <input class="input is-static" readonly aria-label="Dataset type">
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -407,7 +407,7 @@
                                                             <div class="field">
                                                                 <label class="label">Added</label>
                                                                 <div class="control">
-                                                                    <input class="input is-static" readonly>
+                                                                    <input class="input is-static" readonly aria-label="Date added">
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -423,7 +423,7 @@
                                                             <div class="field">
                                                                 <label class="label">Annotation source</label>
                                                                 <div class="control">
-                                                                    <input class="input is-static" readonly>
+                                                                    <input class="input is-static" readonly aria-label="Annotation source">
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -437,7 +437,7 @@
                                                             <div class="field">
                                                                 <label class="label">Source version</label>
                                                                 <div class="control">
-                                                                    <input class="input is-static" readonly>
+                                                                    <input class="input is-static" readonly aria-label="Annotation source version">
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -450,7 +450,7 @@
                                                             <div class="field">
                                                                 <label class="label">Pubmed ID</label>
                                                                 <div class="control">
-                                                                    <input class="input">
+                                                                    <input class="input" aria-label="PubMed ID">
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -463,7 +463,7 @@
                                                             <div class="field">
                                                                 <label class="label">GEO ID</label>
                                                                 <div class="control">
-                                                                    <input class="input">
+                                                                    <input class="input" aria-label="GEO ID">
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -634,7 +634,7 @@
                             <template id="dataset-arrangement-tile-template">
                                 <!-- support width and height expansion -->
                                 <figure class="image js-sortable-tile m-2">
-                                    <img class="js-sortable-tile-img" />
+                                    <img class="js-sortable-tile-img" alt="Dataset display tile" />
                                     <figcaption class="js-sortable-tile-title has-background-primary-light"></figcaption>
                                 </figure>
                             </template>
@@ -654,10 +654,10 @@
                 <div class="box has-background-white-ter">
                     <h5 class="title is-5"></h5>
                     <div class="js-modal-user-displays columns is-multiline">
-                        <img>
+                        <img alt="">
                     </div>
                     <div class="js-modal-owner-displays columns is-multiline">
-                        <img>
+                        <img alt="">
                     </div>
                 </div>
             </div>

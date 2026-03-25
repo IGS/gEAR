@@ -3,7 +3,7 @@
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
 <!--[if gt IE 8]><!-->
-<html class="no-js"> <!--<![endif]-->
+<html class="no-js" lang="en"> <!--<![endif]-->
 
 <head>
     <meta charset="utf-8">
@@ -129,7 +129,8 @@ Information about the individual datasets can be found in the dataset explorer."
                                 <span>Collapse dataset selection tool</span>
                             </button>
                             <div id="dataset-selection-c">
-                                <input class="input" id="dataset-query" type="text" placeholder="Enter a dataset" autofocus="" />
+                                <label for="dataset-query" class="is-sr-only">Search for a dataset</label>
+                                <input class="input" id="dataset-query" type="search" placeholder="Enter a dataset" autofocus="" aria-label="Search for a dataset" />
                                 <div id="dataset-tree" class="wb-skeleton wb-initializing js-tree"></div>
                             </div>
                         </div>
@@ -162,7 +163,7 @@ Information about the individual datasets can be found in the dataset explorer."
                     <div class="mt-3 columns" id="analysis-c">
                         <div class="column is-half">
                             <div class="select is-fullwidth">
-                                <select id="analysis-select" disabled>
+                                <select id="analysis-select" disabled aria-label="Select an analysis">
                                     <option data-analysis-id="-1" value="" disabled selected>Select an analysis</option>
                                     <option data-analysis-id="0" value="0">New</option>
                                     <optgroup id="analyses-primary" label="Imported analysis"></optgroup>
@@ -610,7 +611,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                                     Exclude cells with &lt;
                                                 </label>
                                                 <input type="number" class="input input-length-6"
-                                                  id="filter-cells-lt-n-genes" size="4" value="300" min="1" /> genes
+                                                  id="filter-cells-lt-n-genes" size="4" value="300" min="1" aria-label="Minimum number of genes per cell" /> genes
                                             </div>
                                         </div>
                                         <div class="field">
@@ -620,7 +621,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                                     Exclude cells with &gt;
                                                 </label>
                                                 <input type="number" class="input input-length-6"
-                                                  id="filter-cells-gt-n-genes" size="4" min="1" /> genes
+                                                  id="filter-cells-gt-n-genes" size="4" min="1" aria-label="Maximum number of genes per cell" /> genes
                                             </div>
                                         </div>
                                         <div class="field">
@@ -630,7 +631,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                                     Exclude genes in &lt;
                                                 </label>
                                                 <input type="number" class="input input-length-6"
-                                                  id="filter-genes-lt-n-cells" size="4" value="3" min="1" /> cells
+                                                  id="filter-genes-lt-n-cells" size="4" value="3" min="1" aria-label="Minimum number of cells per gene" /> cells
                                             </div>
                                         </div>
                                         <div class="field">
@@ -640,7 +641,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                                     Exclude genes in &gt;
                                                 </label>
                                                 <input type="number" class="input input-length-6"
-                                                  id="filter-genes-gt-n-cells" size="4" min="1" /> cells
+                                                  id="filter-genes-gt-n-cells" size="4" min="1" aria-label="Maximum number of cells per gene" /> cells
                                             </div>
                                         </div>
                                         <div class="field">

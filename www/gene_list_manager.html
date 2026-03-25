@@ -2,7 +2,7 @@
 <!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
@@ -56,11 +56,11 @@
 
                         <!-- search field -->
                         <div class="field">
-                            <label class="label">Find gene lists</label>
+                            <label class="label" for="search-terms">Find gene lists</label>
                             <div class="control has-icons-right">
-                                <input id="search-terms" class="input" type="text" placeholder="Keyword search">
-                                <span class="icon is-hidden is-right is-clickable" id="search-clear">
-                                    <i class="mdi mdi-close-circle"></i>
+                                <input id="search-terms" class="input" type="search" placeholder="Keyword search" aria-label="Search gene lists by keyword">
+                                <span class="icon is-hidden is-right is-clickable" id="search-clear" aria-label="Clear search">
+                                    <i class="mdi mdi-close-circle" aria-hidden="true"></i>
                                 </span>
                             </div>
                         </div>
@@ -294,11 +294,11 @@
                                     </div>
                                 </div>
                                 <div class="level-item">
-                                    <label class="label mr-3">Sort by:</label>  <!-- .field.is-horizontal + .field-label scrunches the label up -->
+                                    <label class="label mr-3" for="sort-by">Sort by:</label>  <!-- .field.is-horizontal + .field-label scrunches the label up -->
                                     <div class="field">
                                         <div class="control">
                                             <div class="select is-small">
-                                                <select name="sort-by" id="sort-by">
+                                                <select name="sort-by" id="sort-by" aria-label="Sort gene lists by">
                                                     <option value="relevance">Relevance</option>
                                                     <option value="title">Gene cart title</option>
                                                     <option value="date_added" selected>Date created</option>
@@ -375,7 +375,7 @@
                                                 <div id="editable-title-c" class="js-editable-version js-editable-title is-hidden">
                                                     <div class="field">
                                                         <span class="has-text-weight-semibold">Title</span>
-                                                        <input type="text" class="input"/>
+                                                        <input type="text" class="input" aria-label="Gene list title"/>
                                                     </div>
                                                 </div>
                                             </div>
@@ -393,7 +393,7 @@
                                                     <div class="field">
                                                         <p class="label">Visibility</p>
                                                         <!-- toggle switch --->
-                                                        <input type="checkbox" class="switch is-primary"/>
+                                                        <input type="checkbox" class="switch is-primary" aria-label="Toggle gene list visibility"/>
                                                         <label></label>
                                                     </div>
                                                 </div>
@@ -409,7 +409,7 @@
                                                         <label class="label">Organism</label>
                                                         <div class="control">
                                                             <div class="select">
-                                                                <select></select>
+                                                                <select aria-label="Organism"></select>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -424,7 +424,7 @@
                                                     <div class="field">
                                                         <label class="label">Owner</label>
                                                         <div class="control">
-                                                            <input class="input is-static" readonly>
+                                                            <input class="input is-static" readonly aria-label="Owner">
                                                         </div>
                                                     </div>
                                                 </div>
@@ -437,7 +437,7 @@
                                                     <div class="field">
                                                         <label class="label">Added</label>
                                                         <div class="control">
-                                                            <input class="input is-static" readonly>
+                                                            <input class="input is-static" readonly aria-label="Date added">
                                                         </div>
                                                     </div>
                                                 </div>
@@ -514,7 +514,7 @@
                                                             <div class="field">
                                                                 <label class="label">Type</label>
                                                                 <div class="control">
-                                                                    <input class="input is-static" readonly>
+                                                                    <input class="input is-static" readonly aria-label="Gene list type">
                                                                 </div>
                                                             </div>
                                                         </div>

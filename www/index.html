@@ -2,7 +2,7 @@
 <!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
@@ -75,8 +75,9 @@
                           <div class="column pr-1 pl-5">
                             <div class="control has-icons-left mr-0">
                               <!-- TODO make example gene customizable by domain -->
-                              <input class="input" type="input" id="genes-manually-entered" placeholder="Type here to search using specific gene symbols, such as Sox2"\>
-                              <span class="icon is-small is-left">
+                              <label for="genes-manually-entered" class="is-sr-only">Search gene symbols</label>
+                              <input class="input" type="search" id="genes-manually-entered" placeholder="Type here to search using specific gene symbols, such as Sox2" aria-label="Search gene symbols"\>
+                              <span class="icon is-small is-left" aria-hidden="true">
                                 <i class="mdi mdi-magnify"></i>
                               </span>
                             </div>
@@ -172,7 +173,7 @@
                             <div class="column is-6">
                               <div class="field has-addons">
                                 <div class="control is-expanded">
-                                  <input id="dataset-search-input" class="input" type="text" placeholder="Search datasets by keyword, author, publication...">
+                                  <input id="dataset-search-input" class="input" type="search" placeholder="Search datasets by keyword, author, publication..." aria-label="Search datasets by keyword, author, or publication">
                                 </div>
                                 <div class="control">
                                   <button id="submit-dataset-search" class="button is-primary">
@@ -186,14 +187,14 @@
                               <div class="field is-grouped is-grouped-right">
                                 <div class="control">
                                   <div class="select">
-                                    <select id="organism-choices">
+                                    <select id="organism-choices" aria-label="Filter by organism">
                                       <option value="all">All organisms</option>
                                     </select>
                                   </div>
                                 </div>
                                 <div class="control">
                                   <div class="select">
-                                    <select id="dataset-type-choices">
+                                    <select id="dataset-type-choices" aria-label="Filter by dataset type">
                                       <option value="all" selected>All technologies</option>
                                       <option value="bulk-rnaseq">Bulk RNASeq</option>
                                       <option value="gosling">Epigenetic</option>
@@ -205,7 +206,7 @@
                                 </div>
                                 <div class="control">
                                   <div class="select">
-                                    <select id="dataset-search-sortby">
+                                    <select id="dataset-search-sortby" aria-label="Sort datasets by">
                                       <option value="relevance">Sort by: Relevance</option>
                                       <option value="title">Dataset title</option>
                                       <option value="date_added">Date uploaded</option>
