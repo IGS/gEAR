@@ -130,6 +130,10 @@ export const drawSVGLegend = (colors, containerInfo, title, score) => {
 
     const width = node.getBoundingClientRect().width;
 
+    const { min, max } = score;
+    const range33 = ((max - min) / 3) + min;
+    const range66 = (2 * (max - min) / 3) + min;
+
     // Create our legend svg
     const legend = d3.select(node)  // returns document.documentElement
         .append('svg')
@@ -137,7 +141,9 @@ export const drawSVGLegend = (colors, containerInfo, title, score) => {
         .style('width', '100%')
         .style("height", "40px")    // Without a fixed height, the box is too tall and prevents mouseover of the svg image
         .attr('viewBox', `0 0 ${width} 40`)
-        .attr('class', 'svg-gradient-container');
+        .attr('class', 'svg-gradient-container')
+        .attr('role', 'img')
+        .attr('aria-label', `${title} legend with values from ${min} to ${max}`);
     const defs = legend.append('defs');
     // Define our gradient shape
     const linearGradient = defs
@@ -147,10 +153,6 @@ export const drawSVGLegend = (colors, containerInfo, title, score) => {
         .attr('y1', '0%')
         .attr('x2', '100%')
         .attr('y2', '0%');
-
-    const { min, max } = score;
-    const range33 = ((max - min) / 3) + min;
-    const range66 = (2 * (max - min) / 3) + min;
 
     // Create the gradient points for either three- or two-color gradients
     if (midColor) {
@@ -343,25 +345,26 @@ const createSingleScaleColorMapping = (paths, svgDiv, expression, score, lowColo
                 return;
             }
 
+            let score = "NA"
+
             if (expression[tissue] == NA_FIELD_PLACEHOLDER) {
                 path.attr('fill', NA_FIELD_COLOR);
+                path.attr('aria-label', `${tissue}: No data`);
             } else {
                 path.attr('fill', color(expression[tissue]));
+                // log-transfom the expression score
+                const math = "raw";
+                // Apply math transformation to expression score
+                if (math == 'log2') {
+                    score = d3.format('.2f')(Math.log2(expression[tissue]));
+                } else if (math == 'log10') {
+                    score = d3.format('.2f')(Math.log10(expression[tissue]));
+                } else {
+                    //math == 'raw'
+                    score = d3.format('.2f')(expression[tissue]);
+                }
+                path.attr('aria-label', `${tissue}: score ${score}`);
             }
-
-            // log-transfom the expression score
-            const math = "raw";
-            let score;
-            // Apply math transformation to expression score
-            if (math == 'log2') {
-                score = d3.format('.2f')(Math.log2(expression[tissue]));
-            } else if (math == 'log10') {
-                score = d3.format('.2f')(Math.log10(expression[tissue]));
-            } else {
-                //math == 'raw'
-                score = d3.format('.2f')(expression[tissue]);
-            }
-
             const tooltip = document.createElement('div');
             tooltip.classList.add('tooltip');
             tooltip.style.position = 'relative';
@@ -468,24 +471,27 @@ const createTissueColorMapping = (paths, svgDiv, expression, score, lowColor, mi
             if (!(tissue && color[tissue])) {
                 return;
             }
+
+            let expressionScore = "NA";
+
             const color_scale = color[tissue];
             if (expression[tissue] == NA_FIELD_PLACEHOLDER) {
                 path.attr('fill', NA_FIELD_COLOR);
+                path.attr('aria-label', `${tissue}: No data`);
             } else {
                 path.attr('fill', color_scale(expression[tissue]));
-            }
-
-            // log-transfom the expression score
-            const math = "raw";
-            let expressionScore;
-            // Apply math transformation to expression score
-            if (math == 'log2') {
-                expressionScore = d3.format('.2f')(Math.log2(expression[tissue]));
-            } else if (math == 'log10') {
-                expressionScore = d3.format('.2f')(Math.log10(expression[tissue]));
-            } else {
-                //math == 'raw'
-                expressionScore = d3.format('.2f')(expression[tissue]);
+                // log-transfom the expression score
+                const math = "raw";
+                // Apply math transformation to expression score
+                if (math == 'log2') {
+                    expressionScore = d3.format('.2f')(Math.log2(expression[tissue]));
+                } else if (math == 'log10') {
+                    expressionScore = d3.format('.2f')(Math.log10(expression[tissue]));
+                } else {
+                    //math == 'raw'
+                    expressionScore = d3.format('.2f')(expression[tissue]);
+                }
+                path.attr('aria-label', `${tissue}: score ${expressionScore}`);
             }
 
             const tooltip = document.createElement('div');

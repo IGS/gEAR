@@ -2062,6 +2062,36 @@ class DatasetTile {
 
         // decode base64 image and set as src
         tsnePreview.src = URL.createObjectURL(blob);
+
+       // Generate alt text based on gene symbol(s) and a few key plotly_config parameters
+        let altText = "";
+
+        const plotLabel = plotType.replace("_static", "");
+        altText += `${plotLabel} plot in dataset '${this.dataset.title}' `;
+
+        if (display.plotly_config.projection_id) {
+            altText += "projected into "
+            if (isMultigene) {
+                altText += "multiple patterns";
+            } else {
+                altText += `pattern ${display.plotly_config.gene_symbol}`;
+            }
+        } else {
+            if (isMultigene) {
+                const numGenes = display.plotly_config.gene_symbols.length;
+                altText += `using (${numGenes}) genes`;
+            } else {
+                altText += `using gene ${display.plotly_config.gene_symbol}`;
+            }
+        }
+
+        // Add legend color information if it exists
+        if (display.plotly_config.colorize_legend_by) {
+            altText += ` with legend colored by ${display.plotly_config.colorize_legend_by}`;
+        }
+
+        tsnePreview.alt = altText
+
         return;
     }
 
