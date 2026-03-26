@@ -212,7 +212,8 @@
                                         <div class="field">
                                             <p class="label">Visibility</p>
                                             <!-- toggle switch --->
-                                            <input type="checkbox" class="switch is-primary" name="new-list-visibility" id="new-list-visibility"/>
+                                            <label for="new-list-visibility" class="is-sr-only">Toggle visibility of new list</label>
+                                            <input type="checkbox" class="switch is-primary" name="new-list-visibility" id="new-list-visibility" />
                                             <label for="new-list-visibility"></label>
                                         </div>
                                     </div>
@@ -225,8 +226,7 @@
                                 </div>
                                 <div class="field" id="new-list-upload-c">
                                     <label class="label">Upload gene list
-                                        <a id="list-upload-reqs" tabindex="0" class="button is-small is-text has-text-gear-bg-secondary" role="button" data-target="list-upload-reqs-modal">Click for requirements</a>
-
+                                        <div id="list-upload-reqs" tabindex="0" class="button is-clickable is-small is-text has-text-gear-bg-secondary" role="button" data-target="list-upload-reqs-modal">Click for requirements</div>
                                     </label>
                                     <div class="field">
                                         <div class="control">
@@ -330,13 +330,13 @@
                             <table id="results-table" class="table is-narrow is-striped is-fullwidth">
                                 <thead>
                                     <tr>
-                                        <th></th>
-                                        <th>Title</th>
-                                        <th>Visibility</th>
-                                        <th>Organism</th>
-                                        <th>Owner</th>
-                                        <th>Type</th>
-                                        <th>Num Genes</th>
+                                        <th scope="col"></th>
+                                        <th scope="col">Title</th>
+                                        <th scope="col">Visibility</th>
+                                        <th scope="col">Organism</th>
+                                        <th scope="col">Owner</th>
+                                        <th scope="col">Type</th>
+                                        <th scope="col">Num Genes</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -372,7 +372,7 @@
                                                 <div class="js-display-version js-display-title">
                                                     <p class="has-text-weight-bold"></p>
                                                 </div>
-                                                <div id="editable-title-c" class="js-editable-version js-editable-title is-hidden">
+                                                <div class="js-editable-version js-editable-title is-hidden">
                                                     <div class="field">
                                                         <span class="has-text-weight-semibold">Title</span>
                                                         <input type="text" class="input" aria-label="Gene list title"/>
@@ -537,9 +537,10 @@
                                             </div>
                                             <div class="column is-9 py-0 js-editable-version js-editable-ldesc is-hidden">
                                                 <div class="field">
-                                                    <label class="label">Long description</label>
                                                     <div class="control">
-                                                        <textarea class="textarea" rows="4"></textarea>
+                                                        <label class="label">Long description
+                                                            <textarea class="textarea" rows="4"></textarea>
+                                                        </label>
                                                     </div>
                                                 </div>
                                             </div>
