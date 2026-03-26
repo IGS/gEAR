@@ -2,9 +2,9 @@
           <section id="header-bar">
             <nav class="navbar" role="navigation" aria-label="main navigation">
             <div class="navbar-brand">
-              <a id="page-header-label" class="navbar-item">
+              <h1 id="page-header-label" class="navbar-item">
                 My Workspace
-              </a>
+              </h1>
               <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarBasicExample">
                 <span aria-hidden="true"></span>
                 <span aria-hidden="true"></span>
@@ -18,7 +18,7 @@
               <div class="navbar-end">
                 <div id="navbar-login-controls" class="navbar-item is-hidden">
                   <div class="navbar-item has-dropdown is-hoverable logged-in">
-                    <a id="current-user-name" class="navbar-link" aria-label="User account menu"></a>
+                    <div id="current-user-name" class="navbar-link" aria-label="User account menu"></div>
                     <div class="navbar-dropdown is-right">
                       <a class="navbar-item" href="./user_profile.html">
                         <span class="icon-text">
@@ -26,12 +26,12 @@
                           <span>User profile</span>
                         </span>
                       </a>
-                      <a id="submit-logout" class="navbar-item">
+                      <div id="submit-logout" class="navbar-item is-clickable">
                         <span class="icon-text">
                           <span class="icon" aria-hidden="true"><i class="mdi mdi-logout-variant"></i></span>
                           <span>Sign out</span>
                         </span>
-                      </a>
+                      </div>
                       <hr class="navbar-divider">
                       <a class="navbar-item" href="./contact.html">
                         <span class="icon-text">
@@ -61,14 +61,14 @@
                           <div class="field">
                             <label class="label" for="user-email">E-mail address</label>
                             <div class="control">
-                              <input id="user-email" name="user-email" class="input is-small" type="email" placeholder="Your e-mail">
+                              <input id="user-email" name="user-email" class="input is-small" type="email" placeholder="Your e-mail" autocomplete="email" aria-label="account email">
                             </div>
                             <p id="user-email-help" class="help has-text-danger-dark is-hidden">E-mail not found</p>
                           </div>
                           <div class="field">
                             <label class="label" for="user-password">Password</label>
                             <div class="control">
-                              <input id="user-password" name="user-password" class="input is-small" type="password" placeholder="Your password">
+                              <input id="user-password" name="user-password" class="input is-small" type="password" placeholder="Your password" autocomplete="current-password" aria-label="account password">
                             </div>
                             <p id="user-password-help" class="help has-text-danger-dark is-hidden">Incorrect password</p>
                           </div>

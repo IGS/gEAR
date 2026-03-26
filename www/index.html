@@ -31,17 +31,17 @@
 
           <!--#include virtual="/include/header_bar.html" -->
 
-          <section id="content-c" class="m-3" data-nav-link="workspace">
+          <section id="content-c" role="main" class="m-3" data-nav-link="workspace">
 
 
             <div class="columns">
               <div class="column mt-0 mb-0 pt-0 pb-0">
-                <h3 class="mt-2 mb-0">
+                <h1 class="mt-2 mb-0">
                   <span class="icon is-medium">
                     <i class="mdi mdi-magnify mdi-24px"></i>
                   </span>
                   <span class="is-size-4">Search for:</span>
-                </h3>
+                </h1>
               </div>
               <div class="column mt-0 mb-0 pt-0 pb-0 is-narrow has-text-right">
                 <div id="onboarding-c">
@@ -119,7 +119,7 @@
                           <div class="column is-5">
                             <h2 class="mb-1"><span class="expression-search-step-number">3. </span>Choose display type</h2>
 
-                            <div class="columns">
+                            <div class="columns"> <!-- TODO: Get fieldset and legends tags working according to WCAG standards -->
                               <div class="column">
                                 <div class="card single-multi-choice-card">
                                   <header class="card-header p-2">
@@ -320,10 +320,10 @@
             <table class="table is-striped is-hoverable is-fullwidth is-size-7">
               <thead class="has-text-weight-semibold">
                 <tr>
-                  <td>&nbsp;</td>
-                  <td>Category</td>
-                  <td>Action</td>
-                  <td>Date</td>
+                  <th scope="col">&nbsp;</th>
+                  <th scope="col">Category</th>
+                  <th scope="col">Action</th>
+                  <th scope="col">Date</th>
                 </tr>
               </thead>
               <tbody id="user-history-table-tbody">
@@ -387,7 +387,7 @@
                 <div class="card">
                   <div class="card-image">
                     <figure class="image is-5by3">
-                      <a href="https://youtu.be/guI161nTv2U" target="_blank">
+                      <a href="https://youtu.be/guI161nTv2U" target="_blank" aria-label="Video of the new look of gEAR">
                         <img
                           src="./img/gear_guide_preview_new_look_with_play_button.png"
                           alt="Preview of the new look of gEAR"
@@ -403,7 +403,7 @@
                       </div>
                     </div>
                     <div class="content has-text-centered">
-                        <a href="https://youtu.be/guI161nTv2U" target="_blank">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
+                        <a href="https://youtu.be/guI161nTv2U" target="_blank" aria-label="Video of the new look of gEAR">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
                     </div>
                   </div>
                 </div>
@@ -413,7 +413,7 @@
                 <div class="card">
                   <div class="card-image">
                     <figure class="image is-5by3">
-                      <a href="https://youtu.be/bKTzGKAvn7w" target="_blank">
+                      <a href="https://youtu.be/bKTzGKAvn7w" target="_blank" aria-label="Video of the gene list manager in gEAR">
                         <img
                           src="./img/gear_guide_preview_gene_list_manager_with_play_button.png"
                           alt="Preview of the gene list manager"
@@ -429,7 +429,7 @@
                       </div>
                     </div>
                     <div class="content has-text-centered">
-                        <a href="https://youtu.be/bKTzGKAvn7w" target="_blank">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
+                        <a href="https://youtu.be/bKTzGKAvn7w" target="_blank" aria-label="Video of the gene list manager in gEAR">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
                     </div>
                   </div>
                 </div>
@@ -439,7 +439,7 @@
                 <div class="card">
                   <div class="card-image">
                     <figure class="image is-5by3">
-                      <a href="https://youtu.be/7vsldnrjETw" target="_blank">
+                      <a href="https://youtu.be/7vsldnrjETw" target="_blank" aria-label="Video of the comparison tool in gEAR">
                         <img
                           src="./img/gear_guide_preview_comparison_tool_with_play_button.png"
                           alt="Preview of the dataset explorer"
@@ -455,7 +455,7 @@
                       </div>
                     </div>
                     <div class="content has-text-centered">
-                        <a href="https://youtu.be/7vsldnrjETw" target="_blank">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
+                        <a href="https://youtu.be/7vsldnrjETw" target="_blank" aria-label="Video of the comparison tool in gEAR">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
                     </div>
                   </div>
                 </div>
@@ -465,7 +465,7 @@
                 <div class="card">
                   <div class="card-image">
                     <figure class="image is-5by3">
-                      <a href="https://youtu.be/DItayfJsldI" target="_blank">
+                      <a href="https://youtu.be/DItayfJsldI" target="_blank" aria-label="Video of the curation tools in gEAR">
                         <img
                           src="./img/gear_guide_preview_dataset_explorer_with_play_button.png"
                           alt="Preview of the dataset explorer"
@@ -481,7 +481,7 @@
                       </div>
                     </div>
                     <div class="content has-text-centered">
-                        <a href="https://youtu.be/DItayfJsldI" target="_blank">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
+                        <a href="https://youtu.be/DItayfJsldI" target="_blank" aria-label="Video of the curation tools in gEAR">View Guide <span class="icon"><i class="mdi mdi-open-in-new"></i></span></a>
                     </div>
                   </div>
                 </div>
@@ -518,6 +518,6 @@
         insertVersionedCSS('css/common.v2.css', prefs.cache_version);
         insertVersionedCSS('css/index.css', prefs.cache_version);
       </script>
-      
+
     </body>
 </html>
