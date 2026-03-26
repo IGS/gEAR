@@ -1995,22 +1995,23 @@ class DatasetTile {
         this.plotlyDiv = plotlyPreview.id;
         // Add some WCAG accessibility features to the plotly div
         const plotlyDiv = document.getElementById(this.plotlyDiv);
-        if (plotlyDiv) {
-            plotlyDiv.setAttribute("role", "img");
-            const plotLabel = plotType.replace("_dynamic", "");
-            let altText = `${plotLabel} plot in dataset '${this.dataset.title}'`;
-            if (display.plotly_config.projection_id) {
-                altText += "projected into "
-                altText += isMultigene ? "multiple patterns" : `pattern ${display.plotly_config.gene_symbol}`;
-            } else if (isMultigene) {
-                const numGenes = display.plotly_config.gene_symbols.length;
-                altText += `using (${numGenes}) genes`;
-            } else {
-                altText += `using gene ${display.plotly_config.gene_symbol}`;
-            }
-            // TODO add extra condition information
-            plotlyDiv.setAttribute("alt", altText);
+        if (!plotlyDiv) {
+            return;
         }
+        plotlyDiv.setAttribute("role", "img");
+        const plotLabel = plotType.replace("_dynamic", "");
+        let altText = `${plotLabel} plot in dataset '${this.dataset.title}'`;
+        if (display.plotly_config.projection_id) {
+            altText += "projected into "
+            altText += isMultigene ? "multiple patterns" : `pattern ${display.plotly_config.gene_symbol}`;
+        } else if (isMultigene) {
+            const numGenes = display.plotly_config.gene_symbols.length;
+            altText += `using (${numGenes}) genes`;
+        } else {
+            altText += `using gene ${display.plotly_config.gene_symbol}`;
+        }
+        // TODO add extra condition information
+        plotlyDiv.setAttribute("alt", altText);
 
     }
 
