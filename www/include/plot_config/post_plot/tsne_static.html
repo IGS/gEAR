@@ -1,7 +1,7 @@
 <p class="is-flex is-justify-content-space-between pr-3">
     <span class="has-text-weight-medium">X-axis</span>
     <span class="select is-small">
-        <select class="js-plot-req js-plot-order js-tsne-x-axis" id="x-axis-series-post"></select>
+        <select class="js-plot-req js-plot-order js-tsne-x-axis" id="x-axis-series-post" aria-label="X-axis series"></select>
     </span>
 </p>
 <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
@@ -12,7 +12,7 @@
 <p class="is-flex is-justify-content-space-between pr-3">
     <span class="has-text-weight-medium">Y-axis</span>
     <span class="select is-small">
-        <select class="js-plot-req js-plot-order js-tsne-y-axis" id="y-axis-series-post"></select>
+        <select class="js-plot-req js-plot-order js-tsne-y-axis" id="y-axis-series-post" aria-label="Y-axis series"></select>
     </span>
 </p>
 <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
@@ -23,21 +23,21 @@
 <p class="is-flex is-justify-content-space-between pr-3">
     <span class="has-text-weight-medium">Colorize samples by</span>
     <span class="select is-small">
-        <select class="js-tsne-colorize-legend-by" id="colorize-legend-by-post"></select>
+        <select class="js-tsne-colorize-legend-by" id="colorize-legend-by-post" aria-label="Colorize samples by"></select>
     </span>
 </p>
 
 <p class="is-flex is-justify-content-space-between pr-3 mb-1">
     <span class="has-text-weight-medium">Plot per category group</span>
     <span class="select is-small">
-        <select class="js-tsne-plot-by-series" id="plot-by-group-series-post" disabled></select>
+        <select class="js-tsne-plot-by-series" id="plot-by-group-series-post" disabled aria-label="Plot per category group"></select>
     </span>
 </p>
 <p class="help">Split samples into category groups, then create plots per group.</p>
 
 <p class="is-flex is-justify-content-space-between pr-3 mb-1">
     <span class="has-text-weight-medium">Number of subplot columns</span>
-    <input class="js-tsne-max-columns" id="max-columns-post" type="number" min="0" max="9" value="3" disabled/>
+    <input class="js-tsne-max-columns" id="max-columns-post" type="number" min="0" max="9" value="3" disabled aria-label="Number of subplot columns"/>
 </p>
 <p class="help">Select maximum number of plots per row.</p>
 
@@ -58,13 +58,13 @@
 <p class="help">If unchecked, marker size will scale based on the number of samples present.</p>
 <p class="is-flex is-justify-content-space-between pr-3">
     <span class="has-text-weight-medium">Choose marker size</span>
-    <input class="js-tsne-marker-size" id="marker-size-post" type="range" min="1" max="100" value="25" disabled/>
+    <input class="js-tsne-marker-size" id="marker-size-post" type="range" min="1" max="100" value="25" disabled aria-label="Marker size"/>
 </p>
 
 <p class="is-flex is-justify-content-space-between pr-3">
     <span class="has-text-weight-medium">Expression color palette</span>
     <span class="select is-small">
-        <select class="js-tsne-color-palette" id="color-palette-post"></select>
+        <select class="js-tsne-color-palette" id="color-palette-post" aria-label="Expression color palette"></select>
     </span>
 </p>
 <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
@@ -88,9 +88,9 @@
 
 <label class="content is-flex is-justify-content-space-between pr-3 mb-1">
     <span class="has-text-weight-medium">Colorscale minimum expression value</span>
-    <input class="js-tsne-vmin" id="vmin-post" type="number">
+    <input class="js-tsne-vmin" id="vmin-post" type="number" aria-label="Colorscale minimum expression value">
 </label>
 <label class="content is-flex is-justify-content-space-between pr-3 mb-1">
     <span class="has-text-weight-medium">Colorscale maximum expression value</span>
-    <input class="js-tsne-vmax" id="vmax-post" type="number">
+    <input class="js-tsne-vmax" id="vmax-post" type="number" aria-label="Colorscale maximum expression value">
 </label>

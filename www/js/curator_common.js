@@ -1331,7 +1331,7 @@ const renderColorPicker = (seriesName) => {
         colorInput.id = `${group}-color`;
         colorInput.type = "color";
         colorInput.value = groupColor;
-        colorInput.setAttribute("aria-label", "Select a color");
+        colorInput.setAttribute("aria-label", `Select color for ${group}`);
 
         groupElt.append(groupText, colorInput);
         colorsContainer.append(groupElt);

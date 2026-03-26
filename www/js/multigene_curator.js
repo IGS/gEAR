@@ -1022,6 +1022,7 @@ const appendGeneTagButton = (geneTagElt) => {
     // Add delete button
     const deleteBtnElt = document.createElement("button");
     deleteBtnElt.classList.add("delete", "is-small");
+    deleteBtnElt.setAttribute("aria-label", "Remove gene");
     geneTagElt.appendChild(deleteBtnElt);
     deleteBtnElt.addEventListener("click", (event) => {
         // Remove gene from selectedGenes

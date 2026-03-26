@@ -2,7 +2,7 @@
 <!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
@@ -33,7 +33,7 @@
         <!--#include virtual="/include/primary_nav.html" -->
         <section id="main-c" class="column pl-0 pt-0">
             <!--#include virtual="/include/header_bar.html" -->
-            <section id="content-c" class="m-3 container section" data-nav-link="workspace">
+            <section id="content-c" role="main" class="m-3 container section" data-nav-link="workspace">
                 <article id="not-logged-in-msg" class="message is-danger is-hidden">
                     <div class="message-body">
                         You must be logged in as a user to change your user settings.
@@ -45,10 +45,10 @@
                 <div class="columns">
                     <div class="column is-half">
                         <div class="field">
-                            <label class="label">Email</label>
+                            <label class="label" for="email">Email</label>
                             <div class="control has-icons-left">
-                                <input id="email" class="input" type="email" placeholder="Email input" value="">
-                                <span class="icon is-small is-left">
+                                <input id="email" class="input" type="email" placeholder="Email input" value="" autocomplete="email">
+                                <span class="icon is-small is-left" aria-hidden="true">
                                     <i class="mdi mdi-email"></i>
                                 </span>
                             </div>
@@ -56,10 +56,10 @@
                         </div>
 
                         <div class="field">
-                            <label class="label">Institution</label>
+                            <label class="label" for="institution">Institution</label>
                             <div class="control has-icons-left">
                                 <input id="institution" class="input" type="text" placeholder="School, organization, etc.">
-                                <span class="icon is-small is-left">
+                                <span class="icon is-small is-left" aria-hidden="true">
                                     <i class="mdi mdi-bank"></i>
                                 </span>
                             </div>
@@ -71,10 +71,10 @@
 
                         <div id="password-update-section" class="is-hidden">
                             <div class="field">
-                                <label class="label">New password</label>
+                                <label class="label" for="new-password">New password</label>
                                 <div class="control has-icons-left">
                                     <input id="new-password" class="input js-password" type="password" autocomplete="bad-google-dont-do-it" placeholder="Enter new password">
-                                    <span class="icon is-small is-left">
+                                    <span class="icon is-small is-left" aria-hidden="true">
                                         <i class="mdi mdi-lock"></i>
                                     </span>
                                 </div>
@@ -88,10 +88,10 @@
                             </div>
 
                             <div class="field">
-                                <label class="label">Re-enter new password</label>
+                                <label class="label" for="repeat-password">Re-enter new password</label>
                                 <div class="control has-icons-left">
                                     <input id="repeat-password" class="input js-password" type="text" autocomplete="false" placeholder="Re-enter password">
-                                    <span class="icon is-small is-left">
+                                    <span class="icon is-small is-left" aria-hidden="true">
                                         <i class="mdi mdi-lock"></i>
                                     </span>
                                 </div>

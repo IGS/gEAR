@@ -77,7 +77,7 @@ document.getElementById('submit-dataset-search').addEventListener('click', (even
 document.getElementById('genes-manually-entered').addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
         event.preventDefault();
-        
+
         // Trigger the change event on this element first so that the manually entered genes are updated in the state before the search is triggered
         event.target.dispatchEvent(new Event('change'));
 
@@ -339,6 +339,10 @@ const populateUserHistoryTable = async () => {
                 row.querySelector('.action-label').textContent = entry.label;
                 row.querySelector('.date').textContent = entry.entry_date;
                 row.querySelector('.url').setAttribute('href', entry.url);
+                // For the URL create a descriptive alt text based on the other information
+                row.querySelector('.url').setAttribute('aria-label', `View details for ${formatted_category} action: ${entry.label} performed on ${entry.entry_date}`);
+
+
 
                 document.getElementById('user-history-table-tbody').appendChild(row);
             }

@@ -2,7 +2,7 @@
 <!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
@@ -30,7 +30,7 @@
 
           <!--#include virtual="/include/header_bar.html" -->
 
-          <section id="content-c" class="m-3" data-nav-link="workspace">
+          <section id="content-c" role="main" class="m-3" data-nav-link="workspace">
 
             <div id="email-verification-c" class="columns is-hidden">
               <div class="column is-1"></div>
@@ -45,7 +45,7 @@
                 <br />
                 <form id="email-verification">
                   <div class="field">
-                    <label class="label">Verification code</label>
+                    <label class="label" for="verification-code">Verification code</label>
                     <div class="control has-icons-left has-icons-right">
                       <input class="input" id="verification-code" name="verification-code" type="text" placeholder="Verification code" value="">
                       <span class="icon is-small is-left">
@@ -103,9 +103,9 @@
 
                 <form id="account-creation">
                   <div class="field">
-                    <label class="label">Name</label>
+                    <label class="label" for="first-last">Name</label>
                     <div class="control has-icons-left has-icons-right">
-                      <input class="input is-danger" id="first-last" name="first-last" type="text" placeholder="First Last" value="">
+                      <input class="input is-danger" id="first-last" name="first-last" type="text" placeholder="First Last" value="" autocomplete="name">
                       <span class="icon is-small is-left">
                         <i class="mdi mdi-account"></i>
                       </span>
@@ -117,9 +117,9 @@
                   </div>
 
                   <div class="field">
-                    <label class="label">Institution</label>
+                    <label class="label" for="institution">Institution</label>
                     <div class="control has-icons-left">
-                      <input class="input" id="institution" name="institution" type="text" placeholder="Institution">
+                      <input class="input" id="institution" name="institution" type="text" placeholder="Institution" autocomplete="organization">
                       <span class="icon is-small is-left">
                         <i class="mdi mdi-town-hall"></i>
                       </span>
@@ -127,9 +127,9 @@
                   </div>
 
                   <div class="field">
-                    <label class="label">Email</label>
+                    <label class="label" for="email">Email</label>
                     <div class="control has-icons-left has-icons-right">
-                      <input class="input" id="email" name="email" type="email" placeholder="Email input" value="">
+                      <input class="input" id="email" name="email" type="email" placeholder="Email input" value="" autocomplete="email">
                       <span class="icon is-small is-left">
                         <i class="mdi mdi-email"></i>
                       </span>
@@ -141,9 +141,9 @@
                   </div>
 
                   <div class="field">
-                    <label class="label">Password</label>
+                    <label class="label" for="password1">Password</label>
                     <div class="control has-icons-left has-icons-right">
-                      <input class="input" id="password1" name="password1" type="password" placeholder="Enter your password" value="">
+                      <input class="input" id="password1" name="password1" type="password" placeholder="Enter your password" value="" autocomplete="new-password">
                       <span class="icon is-small is-left">
                         <i class="mdi mdi-form-textbox-password"></i>
                       </span>
@@ -155,9 +155,9 @@
                   </div>
 
                   <div class="field">
-                    <label class="label">Retype password</label>
+                    <label class="label" for="password2">Retype password</label>
                     <div class="control has-icons-left has-icons-right">
-                      <input class="input" id="password2" type="password" placeholder="Retype your password" value="">
+                      <input class="input" id="password2" name="password2" type="password" placeholder="Retype your password" value="" autocomplete="new-password">
                       <span class="icon is-small is-left">
                         <i class="mdi mdi-form-textbox-password"></i>
                       </span>
@@ -203,7 +203,7 @@
 
                   <div class="field">
                     <div class="control">
-                      <button id="btn-account-creation-submit" class="button is-primary">Create Account</button>
+                      <button id="btn-account-creation-submit" type="submit" class="button is-primary">Create Account</button>
                     </div>
                   </div>
                 </form>
