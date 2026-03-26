@@ -144,6 +144,7 @@ span.menu-label-text {
 .select select[disabled], [disabled].input {
     border-color: grey;
     background-color: lightgrey;
+    color: #333333;
 }
 
 .select.is-success select, .input.is-success, .textarea.is-success{
