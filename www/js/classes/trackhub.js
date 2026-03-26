@@ -1,5 +1,14 @@
 import { createToast } from "../common.v2.js";
 
+const TRACK_STATUS_COLORS = {
+    downloading: { color: 'is-info', label: 'Downloading' },
+    converting: { color: 'is-warning', label: 'Converting' },
+    ingesting: { color: 'is-loading', label: 'Ingesting' },
+    downloaded: { color: 'is-info', label: 'Downloaded' },
+    completed: { color: 'is-success', label: 'Completed' },
+    failed: { color: 'is-danger', label: 'Failed' },
+};
+
 // Hub class to represent a UCSC Track Hub
 export class Hub {
     /**
@@ -54,6 +63,7 @@ export class HubContainer {
         this.hub = new Hub();
         this.oneFileMode = false;
         this.addHubContainerEvents()
+        this.trackContainerObj;
     }
 
     addHubContainerEvents() {
@@ -80,6 +90,14 @@ export class HubContainer {
         document.getElementById("hub-genome-select").addEventListener('change', (e) => {
             document.getElementById("hub-genome-select").classList.remove("is-danger");
             this.hub.genome = e.target.value.trim();
+            document.querySelector(".js-human-assembly-warning").style.display = "none";
+            if (["hg19", "hg38"].includes(this.hub.genome)) {
+                document.querySelector(".js-human-assembly-warning").style.display = "block";
+            }
+            // Restrict track types based on assembly selection
+            if (this.trackContainerObj) {
+                this.trackContainerObj.restrictPrivacyAwareTrackTypes(this.hub.genome);
+            }
         });
     }
 
@@ -224,8 +242,16 @@ export class HubContainer {
         document.getElementById("hub-long-label").value = this.hub.longLabel;
         document.getElementById("hub-email").value = this.hub.email;
         document.getElementById("hub-genome-select").value = this.hub.genome;
-        // Make genome read-only
+        // Make genome read-only, and check for human assembly.
         document.getElementById("hub-genome-select").setAttribute("disabled", "disabled");
+        document.querySelector(".js-human-assembly-warning").style.display = "none";
+        if (["hg19", "hg38"].includes(this.hub.genome)) {
+            document.querySelector(".js-human-assembly-warning").style.display = "block";
+        }
+        // Restrict track types based on assembly selection
+        if (this.trackContainerObj) {
+            this.trackContainerObj.restrictPrivacyAwareTrackTypes(this.hub.genome);
+        }
     }
 
     /**
@@ -353,6 +379,11 @@ export class HubContainer {
     getTrackDbUrl() {
         return this.hub.trackDbUrl;
     }
+
+    setTrackContainer(trackContainer) {
+        this.trackContainerObj = trackContainer;
+    }
+
 }
 
 // Track class to represent a UCSC Track
@@ -424,6 +455,8 @@ export class TrackContainer {
         this.trackDbUrl = null;
         this.tracks = {}; // Store track data with track ID as key
 
+        this.hubContainerObj;
+
         this.createTrackItem = this.createTrackItem.bind(this); // Bind the method
         this.addTrackContainerEvents()
     }
@@ -486,9 +519,12 @@ export class TrackContainer {
         collapsibleHeader.classList.add('collapsible-header', 'my-3');
         collapsibleHeader.innerHTML = `
             <span data-orig-name="Track ${trackId}" class="track-title">Track ${trackId}</span>
-            <span class="icon">
-                <i class="mdi mdi-chevron-down"></i>
-            </span>
+            <div class="track-status-container" style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="track-status-badge tag is-light js-track-status" style="display: none;"></span>
+                <span class="icon">
+                    <i class="mdi mdi-chevron-down"></i>
+                </span>
+            </div>
         `;
 
         // Collapsible content
@@ -564,6 +600,11 @@ export class TrackContainer {
         trackItem.appendChild(collapsibleContent);
         this.tracksContainer.appendChild(trackItem);
 
+        // Restrict track types for the newly added track
+        if (this.hubContainerObj) {
+            this.restrictPrivacyAwareTrackTypes(this.hubContainerObj.getAssembly());
+        }
+
         // Start with the content expanded for new tracks
         collapsibleContent.style.display = 'block';
         collapsibleHeader.querySelector('.mdi').classList.remove('mdi-chevron-down');
@@ -632,7 +673,6 @@ export class TrackContainer {
         }
 
         this.createNewTracksFromData(trackDbContent);
-
     }
 
     populateTrackData(trackId, stanza) {
@@ -704,6 +744,31 @@ export class TrackContainer {
         collapsibleHeader.click(); // Simulate a click to collapse the item
     }
 
+    updateTrackStatus(trackId, status) {
+        const trackStatusBadge = document.querySelector(`#track-${trackId} .js-track-status`);
+        if (!trackStatusBadge) return;
+
+        const statusInfo = TRACK_STATUS_COLORS[status];
+        if (!statusInfo) return;
+
+        // Update badge classes
+        trackStatusBadge.className = `track-status-badge tag js-track-status ${statusInfo.color}`;
+        trackStatusBadge.textContent = statusInfo.label;
+        trackStatusBadge.style.display = 'inline-block';
+    }
+
+    // Add this method to show all track statuses (call this when polling status)
+    updateAllTrackStatuses(trackStatuses) {
+        for (const trackId in this.tracks) {
+            const track = this.tracks[trackId];
+            const trackName = track.shortLabel;
+            const status = trackStatuses[trackName];
+            if (status) {
+                this.updateTrackStatus(trackId, status);
+            }
+        }
+    }
+
     validateTracks() {
         // For each track item in the container, validate that required fields are present and correctly formatted.
         // Return a list of errors or an empty list if all tracks are valid.
@@ -743,5 +808,23 @@ export class TrackContainer {
             entries.push(track.generateTrackDbEntry());
         }
         return entries;
+    }
+
+    restrictPrivacyAwareTrackTypes(assembly) {
+        // If the assembly is a "human" one, disable VCF and Hic types in the select.
+        // This is because of federal standards towards personally-identifiable data
+        const trackTypeSelectElts = document.getElementsByClassName('js-track-type');
+        for (const trackTypeSelect of trackTypeSelectElts) {
+            trackTypeSelect.querySelector('option[value="vcf"]').disabled = false;
+            trackTypeSelect.querySelector('option[value="hic"]').disabled = false;
+            if (["hg19", "hg38"].includes(assembly)) {
+                trackTypeSelect.querySelector('option[value="vcf"]').disabled = true;
+                trackTypeSelect.querySelector('option[value="hic"]').disabled = true;
+            }
+        }
+    }
+
+    setHubContainer(hubContainer) {
+        this.hubContainerObj = hubContainer;
     }
 }

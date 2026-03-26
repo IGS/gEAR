@@ -695,6 +695,8 @@ const buildTrackhub = async () => {
     // Manipulates the contents in the section inner HTML and also creates new Hub and Track objects.
     hubContainer = new HubContainer();
     trackContainer = new TrackContainer();
+    hubContainer.setTrackContainer(trackContainer);
+    trackContainer.setHubContainer(hubContainer);
 
     await populateHubAndTracks(hubContainer, trackContainer);
     stepTo("build-trackhub");
@@ -821,8 +823,8 @@ const stageTrackHub = async (hubContainer, trackContainer) => {
     const trackStanzas = trackContainer.generateTrackDbEntries();
 
     if (!hubJson || trackStanzas.length === 0) {
-        document.getElementById('dataset-upload-status-message').textContent = 'Error: Failed to parse trackhub information.';
-        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+        //document.getElementById('dataset-upload-status-message').textContent = 'Error: Failed to parse trackhub information.';
+        //document.getElementById('dataset-upload-status').classList.remove('is-hidden');
         return;
     }
 
@@ -844,12 +846,12 @@ const stageTrackHub = async (hubContainer, trackContainer) => {
         }
 
         const jobId = data.job_id;
-        document.getElementById('dataset-upload-status-message').textContent = 'Track hub processing started...';
-        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+        //document.getElementById('dataset-upload-status-message').textContent = 'Track hub processing started...';
+        //document.getElementById('dataset-upload-status').classList.remove('is-hidden');
 
         // Wait a few seconds, then move to the page with the progress bar
         setTimeout(() => {
-            stepTo('process-dataset');
+            //stepTo('process-dataset');
         }, 2000);
 
         // Poll for status
@@ -884,18 +886,23 @@ const pollTrackhubStatus = async (jobId) => {
             const {status, progress, completed_tracks, total_tracks, message, track_statuses} = data;
 
             // Update progress bar
-            document.getElementById('dataset-upload-progress').value = progress;
+            //document.getElementById('dataset-upload-progress').value = progress;
+
+            // Update track status badges
+            if (trackContainer) {
+                trackContainer.updateAllTrackStatuses(track_statuses || {});
+            }
 
             // Update message
-            const trackInfo = Object.entries(track_statuses || {})
-                .map(([name, st]) => `${name}: ${st}`)
-                .join(' | ');
+            //const trackInfo = Object.entries(track_statuses || {})
+            //    .map(([name, st]) => `${name}: ${st}`)
+            //    .join(' | ');
 
-            const fullMessage = trackInfo
-                ? `${message} (${completed_tracks}/${total_tracks})\n${trackInfo}`
-                : `${message} (${completed_tracks}/${total_tracks})`;
+            //const fullMessage = trackInfo
+            //    ? `${message} (${completed_tracks}/${total_tracks})\n${trackInfo}`
+            //    : `${message} (${completed_tracks}/${total_tracks})`;
 
-            document.getElementById('dataset-upload-status-message').textContent = fullMessage;
+            //document.getElementById('dataset-upload-status-message').textContent = fullMessage;
 
             if (status === 'completed') {
                 createToast('Track hub processed successfully!', 'is-success');
@@ -1219,9 +1226,17 @@ document.getElementById("proceed-trackhub-submit").addEventListener("click", asy
         return;
     }
 
-    event.currentTarget.classList.add('is-loading');
-    await stageTrackHub(hubContainer, trackContainer);
-    event.currentTarget.classList.add('is-loading');
+    const button = event.currentTarget;  // ← Store reference BEFORE async call
+    button.classList.add('is-loading');
+
+    try {
+        await stageTrackHub(hubContainer, trackContainer);
+    } finally {
+        // Now safely remove the loading class
+        if (button?.parentElement) {  // ← Verify button still exists in DOM
+            button.classList.remove('is-loading');
+        }
+    }
 
 })
 

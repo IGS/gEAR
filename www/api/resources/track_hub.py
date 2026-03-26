@@ -1,7 +1,6 @@
 import configparser
 import json
 import sys
-import traceback
 from pathlib import Path
 from uuid import uuid4
 
@@ -15,7 +14,7 @@ _config = configparser.ConfigParser()
 _config.read(gear_root / 'gear.ini')
 
 import geardb
-from gear.trackhub import process_trackhub_synchronously, write_status
+from gear.trackhub import process_trackhub_synchronously
 
 user_upload_file_base = gear_root / 'www' / 'uploads' / 'files'
 
@@ -118,11 +117,11 @@ class TrackHubCopy(Resource):
         staging_area.mkdir(parents=True, exist_ok=True)
         _create_initial_status_file(status_file, job_id, len(track_stanzas))
 
+        result["job_id"] = job_id
         # Queue the job
         try:
             queue_trackhub_job(job_id, share_uid, hub_json, assembly, track_stanzas, dry_run)
             result["success"] = True
-            result["job_id"] = job_id
             result["message"] = "Track hub processing job queued"
             return result, 202  # Accepted
         except QueueDisabledError:
@@ -133,6 +132,7 @@ class TrackHubCopy(Resource):
                     'higlass_admin_user': _config.get('higlass', 'admin_user', fallback=''),
                     'higlass_admin_pass': _config.get('higlass', 'admin_pass', fallback=''),
                 }
+
             result_sync = process_trackhub_synchronously(
                 job_id=job_id,
                 share_uid=share_uid,
@@ -144,23 +144,15 @@ class TrackHubCopy(Resource):
                 dry_run=dry_run,
                 higlass_config=higlass_config,
             )
-
+            #
 
             result["success"] = result_sync["success"]
-            result["job_id"] = job_id
             result["message"] = result_sync["message"]
+            return result, 200 if result["success"] else 500
+
         except Exception as e:
             result["message"] = f"Error processing track hub: {str(e)}"
-            write_status(
-                status_file,
-                job_id,
-                "failed",
-                0,
-                0,
-                len(track_stanzas),
-                result["message"],
-                {}
-            )
+            print(f"TrackHubCopy error: {str(e)}", file=sys.stderr)
             return result, 500
 
 

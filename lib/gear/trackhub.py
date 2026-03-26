@@ -8,6 +8,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import traceback
 from pathlib import Path
 from typing import Optional
 from uuid import uuid4
@@ -177,7 +178,6 @@ def ingest_mcool_into_higlass(mcool_path: Path, config: dict, assembly: str) -> 
     auth = (config['higlass_admin_user'], config['higlass_admin_pass'])
 
     try:
-
         # Ensure file stays open during the duration of the request.
         with open(mcool_path, 'rb') as f:
             # All parameters must be in 'files' dict for multipart/form-data
@@ -189,11 +189,12 @@ def ingest_mcool_into_higlass(mcool_path: Path, config: dict, assembly: str) -> 
                 'coordSystem': (None, assembly),
                 'uid': (None, str(file_uuid)),
             }
-
             # print an example curl-equivalent command for testing
-            #print(f"Example curl command:\ncurl -X POST {url} -u {auth[0]}:{auth[1]} -F 'datafile=@{mcool_path}' -F 'filetype=cooler' -F 'datatype=matrix' -F 'coordSystem=""' -F 'uid={file_uuid}'")
+            #print(f"Example curl command:\ncurl -X POST {url} -u {auth[0]}:{auth[1]} -F 'datafile=@{mcool_path}' -F 'filetype=cooler' -F 'datatype=matrix' -F 'coordSystem={assembly}' -F 'uid={file_uuid}'")
 
-            response = requests.post(url, auth=auth, files=files)
+            response = requests.post(url, auth=auth, files=files, timeout=600)
+            print(f"HiGlass response status: {response.status_code}", file=sys.stderr)
+            print(f"HiGlass response content: {response.text}", file=sys.stderr)
             response.raise_for_status()
 
         print(f"Ingested {mcool_path} into HiGlass", file=sys.stderr)
@@ -205,9 +206,49 @@ def ingest_mcool_into_higlass(mcool_path: Path, config: dict, assembly: str) -> 
         resp_url = f"{config['higlass_hostname']}/api/v1/tileset_info/?d={uid}"
         return resp_url
 
+    except requests.Timeout:
+        print(f"Timeout ingesting {mcool_path} into HiGlass. Checking if file is available...", file=sys.stderr)
+        return check_higlass_url(config, file_uuid)
     except requests.RequestException as e:
         print(f"Error ingesting {mcool_path} into HiGlass: {e}", file=sys.stderr)
         raise
+
+def check_higlass_url(config, file_uuid) -> str:
+    try:
+        auth = (config['higlass_admin_user'], config['higlass_admin_pass'])
+        check_url = f"{config['higlass_hostname']}/api/v1/tileset_info/?d={file_uuid}"
+        check_response = requests.get(check_url, auth=auth, timeout=10)
+        if check_response.status_code == 200:
+            print(
+                f"File was successfully ingested despite timeout. UID: {file_uuid}",
+                file=sys.stderr,
+            )
+            return check_url
+    except Exception as check_error:
+        print(f"Failed to verify ingestion: {check_error}", file=sys.stderr)
+    raise Exception(f"File ingestion likely failed and timed out. UID: {file_uuid}")
+
+
+
+def delete_higlass_tileset(tileset_uid: str, config: dict) -> bool:
+    """Attempt to delete a tileset from HiGlass."""
+    try:
+        url = f"{config['higlass_hostname']}/api/v1/tilesets/{tileset_uid}/"
+        auth = (config['higlass_admin_user'], config['higlass_admin_pass'])
+        response = requests.delete(url, auth=auth, timeout=30)
+
+        if response.status_code in [204, 200]:
+            print(f"Deleted HiGlass tileset {tileset_uid}", file=sys.stderr)
+            return True
+        else:
+            print(
+                f"Failed to delete HiGlass tileset {tileset_uid}: {response.status_code}",
+                file=sys.stderr,
+            )
+            return False
+    except Exception as e:
+        print(f"Error deleting HiGlass tileset {tileset_uid}: {e}", file=sys.stderr)
+        return False
 
 def _create_tabix_indexed_file(bgzipped_path: Path, file_type: str = "bed") -> None:
     """Tabix-index a genomic file."""
@@ -245,6 +286,11 @@ def validate_hub_contents(hub_json: dict, track_stanzas: list) -> bool:
                 return False
         if track["type"] not in VALID_TYPES + VALID_CONTAINER_TYPES:
             print(f"Invalid track type '{track['type']}'.", file=sys.stderr)
+            return False
+
+        # if human assembly, disallow VCF and HIC types for privacy reasons
+        if hub_json.get("genome", "").lower() in ["hg19", "hg38"] and track["type"] in ["vcfTabix", "hic"]:
+            print(f"Track type '{track['type']}' is not allowed for human assemblies due to privacy concerns.", file=sys.stderr)
             return False
 
     return True
@@ -299,9 +345,12 @@ class TrackHubProcessor:
         Process trackhub: download files, convert formats, ingest into HiGlass.
         Returns result dict with success status and message.
         """
+
+        total_tracks = len(track_stanzas)
+        track_statuses = {}
+        ingested_tilesets = []  # Track successfully ingested tilesets for cleanup
+
         try:
-            total_tracks = len(track_stanzas)
-            track_statuses = {}
 
             # Initialize status
             self.update_status(
@@ -410,10 +459,20 @@ class TrackHubProcessor:
 
                         print(f"Ingesting {track_name} into HiGlass...", file=sys.stderr)
                         mcool_path = self.staging_area / dest_path.with_suffix('.mcool').name
-                        higlass_url = ingest_mcool_into_higlass(
-                            mcool_path, self.higlass_config, assembly
-                        )
-                        _append_higlass_url_to_track(dest_hub, dest_path.name, higlass_url)
+                        try:
+                            higlass_url = ingest_mcool_into_higlass(
+                                mcool_path, self.higlass_config, assembly
+                            )
+                            tileset_uid = higlass_url.split("d=")[-1]
+                            ingested_tilesets.append(tileset_uid)
+                            _append_higlass_url_to_track(dest_hub, dest_path.name, higlass_url)
+                        except Exception:
+                            traceback.print_exc()
+                            print(
+                                f"Ingestion failed for {track_name}. Cleaning up...",
+                                file=sys.stderr,
+                            )
+                            raise
 
                 track_statuses[track_name] = "completed"
                 completed += 1
@@ -439,6 +498,16 @@ class TrackHubProcessor:
 
         except Exception as e:
             print(f"Error processing track hub ID {self.job_id}: {e}", file=sys.stderr)
+
+            # Clean up ingested tilesets on failure
+            if ingested_tilesets and self.higlass_config:
+                print(
+                    f"Cleaning up {len(ingested_tilesets)} ingested tileset(s)...",
+                    file=sys.stderr,
+                )
+                for tileset_uid in ingested_tilesets:
+                    delete_higlass_tileset(tileset_uid, self.higlass_config)
+
             self.update_status(
                 "failed",
                 0,
