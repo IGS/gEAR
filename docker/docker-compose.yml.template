@@ -54,21 +54,19 @@ services:
 
 
   # ProjectR RabbitMQ Consumer
-  projectr_consumer:
-    build:
-      context: ..
-      dockerfile: listeners/Dockerfile.projectr
-    depends_on:
-      - queue
-    environment:
-      GEAR_CONFIG: /gEAR/gear.ini
-    image: adkinsrs/gear_projectr_consumer:latest
-    networks:
-      - gear
-    restart: on-failure
-    volumes:
-      - ..:/gEAR/
-      - /var/log/gEAR_queue:/var/log/gEAR_queue
+  #projectr_consumer:
+  #  build:
+  #    context: ..
+  #   dockerfile: listeners/Dockerfile.projectr
+  #  depends_on:
+  #    - queue
+  #  image: adkinsrs/gear_projectr_consumer:latest
+  #  networks:
+  #    - gear
+  #  restart: on-failure
+  #  volumes:
+  #    - ..:/gEAR/
+  #    - /var/log/gEAR_queue:/var/log/gEAR_queue
 
   # TrackHub (Gosling Upload) RabbitMQ Consumer
   gosling_upload_consumer:
@@ -77,8 +75,6 @@ services:
       dockerfile: listeners/Dockerfile.gosling_upload
     depends_on:
       - queue
-    environment:
-      GEAR_CONFIG: /gEAR/gear.ini
     image: adkinsrs/gear_gosling_upload_consumer:latest
     networks:
       - gear

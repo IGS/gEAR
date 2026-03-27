@@ -10,8 +10,10 @@ import os
 import sys
 from pathlib import Path
 
-from gear.serverconfig import ServerConfig
+lib_path = str(Path(__file__).resolve().parents[1].joinpath("lib"))
+sys.path.append(lib_path)
 
+from gear.serverconfig import ServerConfig
 servercfg = ServerConfig().parse()
 
 queue_name = "projectr"
@@ -26,7 +28,7 @@ pid = os.getpid()
 def _on_request(channel, method_frame, properties, body):
     """Callback to handle new message. Also replies to original publisher queue."""
 
-    # TODO: move code to "lib"
+    # TODO: Move code into "lib" and import. Figure out how to cleanly import geardb.
     www_path = str(Path(__file__).resolve().parents[1].joinpath("www"))
     sys.path.append(www_path)
 
