@@ -383,7 +383,7 @@ const getGeoData = async () => {
  * provided URL input and assembly selection. Ensures that the button is only enabled
  * when both inputs are valid and displays appropriate error messages when validation fails.
  *
- * @function updateBuildTrackHubButtonState
+ * @function updateConfigureTrackHubButtonState
  * @param {HTMLInputElement} urlInput - The input field where the user enters the trackhub URL.
  * @param {HTMLSelectElement} assemblySelect - The dropdown menu where the user selects the genome assembly.
  *
@@ -395,8 +395,8 @@ const getGeoData = async () => {
  * - If both the URL and assembly are valid, the submit button is enabled, and error messages are hidden.
  * @returns {void}
  */
-const updateBuildTrackHubButtonState = (urlInput, assemblySelect) => {
-    const submitButton = document.getElementById('build-trackhub-submit');
+const updateConfigureTrackHubButtonState = (urlInput, assemblySelect) => {
+    const submitButton = document.getElementById('configure-trackhub-submit');
     const statusMessage = document.getElementById('dataset-upload-status-message');
     const statusContainer = document.getElementById('dataset-upload-status');
 
@@ -831,12 +831,19 @@ const stageTrackHub = async (hubContainer, trackContainer) => {
     const trackStanzas = trackContainer.generateTrackDbEntries();
 
     if (!hubJson || trackStanzas.length === 0) {
-        //document.getElementById('dataset-upload-status-message').textContent = 'Error: Failed to parse trackhub information.';
-        //document.getElementById('dataset-upload-status').classList.remove('is-hidden');
         return;
     }
 
     const assembly = hubContainer.getAssembly();
+
+    // When processing starts
+    const buildButton = document.getElementById('build-trackhub-submit');
+    buildButton.classList.add('is-hidden');
+    const statusDiv = document.getElementById('build-trackhub-status');
+    const continueButton = document.getElementById('continue-trackhub-submit');
+    statusDiv.classList.remove('is-hidden');
+    continueButton.classList.remove('is-hidden');
+    document.getElementById('build-trackhub-status-message').textContent = "";
 
     try {
         const {data} = await axios.post(
@@ -850,17 +857,14 @@ const stageTrackHub = async (hubContainer, trackContainer) => {
         );
 
         if (!data?.success) {
+            buildButton.classList.remove("is-hidden");
+            continueButton.classList.add("is-hidden");
+            continueButton.disabled = true;
+
             throw new Error(data?.message || 'Unknown error');
         }
 
         const jobId = data.job_id;
-        //document.getElementById('dataset-upload-status-message').textContent = 'Track hub processing started...';
-        //document.getElementById('dataset-upload-status').classList.remove('is-hidden');
-
-        // Wait a few seconds, then move to the page with the progress bar
-        setTimeout(() => {
-            //stepTo('process-dataset');
-        }, 2000);
 
         // Poll for status
         await pollTrackhubStatus(jobId);
@@ -910,9 +914,19 @@ const pollTrackhubStatus = async (jobId) => {
 
             if (status === 'completed') {
                 createToast('Track hub processed successfully!', 'is-success');
+
+                // When processing completes
+                const continueButton = document.getElementById('continue-trackhub-submit');
+                continueButton.disabled = false;
+
                 return;
             } else if (status === 'failed') {
                 createToast(`Processing failed: ${message}`, 'is-danger');
+                const buildButton = document.getElementById('build-trackhub-submit');
+                const continueButton = document.getElementById('continue-trackhub-submit');
+                buildButton.classList.remove("is-hidden");
+                continueButton.classList.add("is-hidden");
+                continueButton.disabled = true;
                 return;
             }
 
@@ -1139,13 +1153,13 @@ document.getElementById('dataset-file-input').addEventListener('change', (event)
 document.getElementById("trackhub-url-input").addEventListener('input', (event) => {
     const urlInput = event.currentTarget;
     const assemblySelect = document.getElementById('trackhub-assembly-select');
-    updateBuildTrackHubButtonState(urlInput, assemblySelect);
+    updateConfigureTrackHubButtonState(urlInput, assemblySelect);
 })
 
 document.getElementById('trackhub-assembly-select').addEventListener('change', (event) => {
     const assemblySelect = event.currentTarget;
     const urlInput = document.getElementById('trackhub-url-input');
-    updateBuildTrackHubButtonState(urlInput, assemblySelect);
+    updateConfigureTrackHubButtonState(urlInput, assemblySelect);
 })
 
 document.getElementById('dataset-finalize-submit').addEventListener('click', (event) => {
@@ -1210,7 +1224,7 @@ document.getElementById('dataset-upload-submit').addEventListener('click', (even
     uploadDataset();
 });
 
-document.getElementById('build-trackhub-submit').addEventListener('click', (event) => {
+document.getElementById('configure-trackhub-submit').addEventListener('click', (event) => {
     event.preventDefault();
     // make sure they chose a format (sanity check)
     if (datasetFormat !== "gosling") {
@@ -1230,7 +1244,7 @@ document.getElementById('build-trackhub-submit').addEventListener('click', (even
     buildTrackhub();
 });
 
-document.getElementById("proceed-trackhub-submit").addEventListener("click", async (event) => {
+document.getElementById("build-trackhub-submit").addEventListener("click", async (event) => {
     event.preventDefault();
 
     if (!hubContainer || !trackContainer) {

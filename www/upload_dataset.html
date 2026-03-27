@@ -922,7 +922,7 @@ Currently Gosling only supports single-organism tracks">
                     </div>
                     <div class="field mt-3">
                       <div class="control">
-                        <button class="button is-primary" id="build-trackhub-submit">Build Trackhub</button>
+                        <button class="button is-primary" id="configure-trackhub-submit">Configure Trackhub</button>
                       </div>
                     </div>
                   </div>
@@ -951,12 +951,16 @@ Currently Gosling only supports single-organism tracks">
                   <div class="field">
                     <div class="control">
                       <div class="notification is-info is-light">
-                        Please double-check that the hub and track information is correct before proceeding.
-                        <br>
-                        The hub and track files will be copied to the server and any errors may cause issues with visualization of tracks.
+                        <p class="icon-text">
+                          <span class="icon">
+                            <i class="mdi mdi-alert-circle-outline"></i>
+                          </span>
+                          <span>Please double-check that the hub and track information is correct before proceeding. The hub and track files will be copied to the server and any errors may cause issues with visualization of tracks.</span>
+                        </p>
                       </div>
-                      <button id="proceed-trackhub-submit" type="submit" class="button is-primary">Proceed</button>
-                      <div id="build-trackhub-status" class="is-hidden mt-3">
+                      <button id="build-trackhub-submit" type="submit" class="button is-primary">Build track hub</button>
+                      <hr>
+                      <div id="build-trackhub-status" class="is-hidden is-primary is-light mt-3">
                         <p class="icon-text">
                           <span class="icon">
                             <i class="mdi mdi-18px mdi-information"></i>
@@ -964,6 +968,12 @@ Currently Gosling only supports single-organism tracks">
                           <span id="build-trackhub-status-message"></span>
                         </p>
                     </div>
+                    <button id="continue-trackhub-submit" class="button is-primary mt-3 is-hidden" disabled>
+                      <span class="icon">
+                        <i class="mdi mdi-chevron-right"></i>
+                      </span>
+                      <span>Continue to next step</span>
+                    </button>
                   </div>
                 </div>
                 <div id="step-process-dataset-c" class="step-c is-hidden">
