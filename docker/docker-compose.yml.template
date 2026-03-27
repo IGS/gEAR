@@ -65,8 +65,8 @@ services:
   #    - gear
   #  restart: on-failure
   #  volumes:
-  #    - ..:/gEAR/
-  #    - /var/log/gEAR_queue:/var/log/gEAR_queue
+  #    - ../listeners:/gEAR/listeners
+  #    - ../lib:/gEAR/lib
 
   # TrackHub (Gosling Upload) RabbitMQ Consumer
   gosling_upload_consumer:
@@ -80,8 +80,9 @@ services:
       - gear
     restart: on-failure
     volumes:
-      - ..:/gEAR/
-      - /var/log/gEAR_queue:/var/log/gEAR_queue
+      - ../listeners:/gEAR/listeners
+      - ../lib:/gEAR/lib
+      - ../www/uploads/files:/gEAR/www/uploads/files
 
 volumes:
   db:

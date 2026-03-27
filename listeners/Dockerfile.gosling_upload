@@ -19,9 +19,13 @@ COPY lib/setup.py ./lib/
 RUN pip install -e ./lib/
 
 # Copy consumer script
-COPY listeners/gosling_upload_consumer.py .
+RUN mkdir -p listeners
+COPY listeners/gosling_upload_consumer.py ./listeners/
 
 # Ensure log directory exists
 RUN mkdir -p /var/log/gEAR_queue
 
-CMD ["python", "gosling_upload_consumer.py"]
+# Copy gear.ini
+COPY gear.ini ./gear.ini
+
+CMD ["python3", "listeners/gosling_upload_consumer.py"]

@@ -45,6 +45,11 @@ def _on_request(channel, method_frame, properties, body):
             file=fh,
         )
 
+        if not user_upload_base.is_dir():
+            print(f"{pid} - ERROR: User upload base directory {user_upload_base} does not exist", flush=True, file=fh)
+            channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
+            return
+
         try:
             # Infer session_id from share_uid directory structure
             staging_area = None
@@ -151,7 +156,7 @@ class Consumer:
 
 def main() -> None:
     """Start the trackhub processing consumer."""
-    host = servercfg["rabbitmq"]["host"]
+    host = servercfg["dataset_uploader"]["queue_host"]
     consumer = Consumer(host=host)
     consumer.run()
 

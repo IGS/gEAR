@@ -19,9 +19,13 @@ COPY lib/setup.py ./lib/
 RUN pip install -e ./lib/
 
 # Copy consumer script
-COPY listeners/projectr_consumer.py .
+RUN mkdir -p listeners
+COPY listeners/projectr_consumer.py ./listeners/
 
 # Ensure log directory exists
 RUN mkdir -p /var/log/gEAR_queue
 
-CMD ["python", "projectr_consumer.py"]
+# Copy gear.ini
+COPY gear.ini ./gear.ini
+
+CMD ["python", "listeners/projectr_consumer.py"]
