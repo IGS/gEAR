@@ -7,14 +7,11 @@ gosling_upload_consumer.py - RabbitMQ consumer for track hub processing jobs.
 import gc
 import json
 import os
-import sys
 import traceback
 from pathlib import Path
 
-lib_path = str(Path(__file__).resolve().parents[1] / 'lib')
-sys.path.insert(0, lib_path)
-
 from gear.serverconfig import ServerConfig  # noqa: I001
+
 servercfg = ServerConfig().parse()
 
 queue_name = "trackhub_copy_jobs"
