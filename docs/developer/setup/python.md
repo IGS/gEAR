@@ -55,7 +55,6 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
       biopython==1.79 \
       cairosvg==2.7.1 \
       colorcet==3.1.0 \
-      cooler==0.10.4 \
       dash-bio==1.0.2 \
       datashader==0.18.0 \
       Flask==3.0.0 \

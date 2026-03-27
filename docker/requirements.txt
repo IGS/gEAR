@@ -5,7 +5,6 @@ biocode==0.10.0
 biopython==1.79
 cairosvg==2.7.1
 colorcet==3.1.0
-cooler==0.10.4
 dash-bio==1.0.2
 datashader==0.18.0
 diffxpy @ git+https://github.com/theislab/diffxpy.git@7609ea935936e3739fc4c71b75c8ee8ca57f51ea
