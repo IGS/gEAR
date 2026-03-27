@@ -465,7 +465,9 @@ class ResultItem {
     addDescriptionInfo(parentElt) {
         // Add ldesc if it exists
         const ldescText = parentElt.querySelector(".js-display-ldesc-text");
-        ldescText.innerHTML = this.longDesc || "No description entered";
+        const span = document.createElement("span");
+        span.innerHTML = this.longDesc || "No description entered";
+        ldescText.replaceChildren(span);
     }
 
     addListItemEventListeners(parentElt) {
@@ -622,7 +624,9 @@ class ResultItem {
 
                 selector.querySelector(`.js-display-title p`).textContent = newTitle;
 
-                selector.querySelector(`.js-display-ldesc-text`).innerHTML = newLdesc || "No description entered";
+                const ldescSpan = document.createElement("span");
+                ldescSpan.innerHTML = newLdesc || "No description entered";
+                selector.querySelector(`.js-display-ldesc-text`).replaceChildren(ldescSpan);
 
                 // pubmed and geo display are links if they exist
                 selector.querySelector(`.js-editable-pubmed-id input`).value = newPubmedId;
