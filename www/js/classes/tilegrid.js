@@ -1999,6 +1999,8 @@ class DatasetTile {
             return;
         }
         plotlyDiv.setAttribute("role", "img");
+        const isMultigene = plotConfig.hasOwnProperty("gene_symbols");
+
         const plotLabel = plotType.replace("_dynamic", "");
         let altText = `${plotLabel} plot in dataset '${this.dataset.title}'`;
         if (display.plotly_config.projection_id) {
