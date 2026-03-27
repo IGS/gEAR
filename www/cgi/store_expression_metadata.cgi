@@ -68,6 +68,7 @@ def main():
             'library_source': form.getvalue('library_source'),
             'library_strategy': form.getvalue('library_strategy'),
             'pubmed_id': form.getvalue('pubmed_id'),
+            'user_pii_affirmed': form.getvalue('user_pii_affirmed'),
             # These needed to be added/supported for real
             'expression_unit': 'normalized log count',
             'tags': None,

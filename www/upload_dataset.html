@@ -2,7 +2,7 @@
 <!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
 
 <!--
   Uploading process:
@@ -57,7 +57,7 @@
 
           <!--#include virtual="/include/header_bar.html" -->
 
-          <section id="content-c" class="m-3" data-nav-link="upload_dataset">
+          <section id="content-c" role="main" class="m-3" data-nav-link="upload_dataset">
             <div id="not-logged-in-c" class="is-hidden">
               <h1>Not logged in</h1>
               <p>
@@ -191,7 +191,7 @@
                     <div id="metadata-form-c" class="column is-8 mt-3">
                       <!-- title -->
                       <div class="field">
-                        <label class="label">
+                        <label class="label" for="metadata-title">
                           Title
                           <span class="icon has-tooltip-right has-tooltip-arrow"
                                 data-tooltip="The title will show above each dataset and should be a single sentence, perhaps even a shortened version of the paper title. Character limit: 255">
@@ -199,12 +199,12 @@
                           </span>
                         </label>
                         <div class="control">
-                          <input class="input" type="text" name="metadata-title" placeholder="Title of your dataset">
+                          <input class="input" type="text" id="metadata-title" name="metadata-title" placeholder="Title of your dataset">
                         </div>
                       </div>
                       <!-- long description / summary -->
                       <div class="field">
-                        <label class="label">
+                        <label class="label" for="metadata-summary">
                           Longer description
                           <span class="icon has-tooltip-right has-tooltip-arrow"
                                 data-tooltip="The title will show above each dataset and should be a single sentence, perhaps even a shortened version of the paper title. Character limit: 255">
@@ -212,12 +212,12 @@
                           </span>
                         </label>
                         <div class="control">
-                          <textarea class="textarea" name="metadata-summary" placeholder="A concise description of the experiments performed. Describing how the data were produced."></textarea>
+                          <textarea class="textarea" id="metadata-summary" name="metadata-summary" placeholder="A concise description of the experiments performed. Describing how the data were produced."></textarea>
                         </div>
                       </div>
                       <!-- dataset type -->
                       <div class="field">
-                        <label class="label">
+                        <label class="label" for="metadata-dataset-type">
                           Dataset type
                           <span class="icon has-tooltip-right has-tooltip-arrow"
                                 data-tooltip="At a high-level, what type of expression data is being uploaded?">
@@ -226,7 +226,7 @@
                         </label>
                         <div class="control">
                           <div class="select">
-                            <select name="metadata-dataset-type">
+                            <select id="metadata-dataset-type" name="metadata-dataset-type">
                               <option value="">Select one</option>
                               <option value="single-cell-rnaseq">Single-cell RNA-seq</option>
                               <option value="bulk-rnaseq">Bulk RNA-seq</option>
@@ -243,7 +243,7 @@
                         <div class="column is-6">
                           <!-- annotation source -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-annotation-source">
                               Annotation source
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="Which source of identifiers was used to annotate the data? These should correspond to the row identifiers in your data matrix">
@@ -252,7 +252,7 @@
                             </label>
                             <div class="control is-expanded">
                               <div class="select is-fullwidth">
-                                <select name="metadata-annotation-source">
+                                <select id="metadata-annotation-source" name="metadata-annotation-source">
                                   <option value="">Select one</option>
                                   <option value="Ensembl">Ensembl</option>
                                   <option value="ncbi">NCBI</option>
@@ -265,7 +265,7 @@
                         <div class="column is-6">
                           <!-- annotation version -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-annotation-version">
                               Annotation release name/number
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="Annotation release version name/number. For Ensembl, like '101'. For NCBI, maybe 'hg38'">
@@ -273,7 +273,7 @@
                               </span>
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-annotation-version" placeholder="" />
+                              <input class="input" type="text" id="metadata-annotation-version" name="metadata-annotation-version" placeholder="" />
                             </div>
                           </div>
                         </div>
@@ -284,7 +284,7 @@
                         <div class="column is-6">
                           <!-- GEO ID -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-geo-id">
                               GEO series or sample ID (optional)
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="If available, autofills the rest of this section">
@@ -292,7 +292,7 @@
                               </span>
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-geo-id" placeholder="Like GSEnnnnn or GSMnnnnnnn">
+                              <input class="input" type="text" id="metadata-geo-id" name="metadata-geo-id" placeholder="Like GSEnnnnn or GSMnnnnnnn">
                             </div>
                             <div class="control pt-1">
                               <button id="metadata-geo-lookup" class="button is-primary is-small">Lookup</button>
@@ -313,7 +313,7 @@
                         <div class="column is-6">
                           <!-- contact name -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-contact-name">
                               Contact name
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="Who should be contacted with questions about this dataset?">
@@ -321,14 +321,14 @@
                               </span>
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-contact-name" placeholder="Dataset contact person">
+                              <input class="input" type="text" id="metadata-contact-name" name="metadata-contact-name" placeholder="Dataset contact person">
                             </div>
                           </div>
                         </div>
                         <div class="column is-6">
                           <!-- contact email -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-contact-email">
                               Contact e-mail
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="E-mail address for this contact person">
@@ -336,14 +336,14 @@
                               </span>
                             </label>
                             <div class="control">
-                              <input class="input" type="email" name="metadata-contact-email" placeholder="Dataset contact email">
+                              <input class="input" type="email" id="metadata-contact-email" name="metadata-contact-email" placeholder="Dataset contact email">
                             </div>
                           </div>
                         </div>
                       </div>
                       <!-- contact institute -->
                       <div class="field">
-                        <label class="label">
+                        <label class="label" for="metadata-contact-institute">
                           Contact institute
                           <span class="icon has-tooltip-right has-tooltip-arrow"
                                 data-tooltip="Institute/company associated with this contact person">
@@ -351,14 +351,14 @@
                           </span>
                         </label>
                         <div class="control">
-                          <input class="input" type="email" name="metadata-contact-institute" placeholder="Dataset contact institute">
+                          <input class="input" type="email" id="metadata-contact-institute" name="metadata-contact-institute" placeholder="Dataset contact institute">
                         </div>
                       </div>
                       <div class="columns">
                         <div class="column is-6">
                           <!-- sample taxon ID -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-taxon-id">
                               Sample taxonomy ID
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="NCBI taxonomy ID. Use lookup link provided">
@@ -371,14 +371,14 @@
 
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-taxon-id" placeholder="NCBI tax ID">
+                              <input class="input" type="text" id="metadata-taxon-id" name="metadata-taxon-id" placeholder="NCBI tax ID">
                             </div>
                           </div>
                         </div>
                         <div class="column is-6">
                           <!-- sample organism -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-organism">
                               Sample organism
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="Genus/species/strain from which the data originated">
@@ -387,7 +387,7 @@
 
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-organism" placeholder="Genus species">
+                              <input class="input" type="text" id="metadata-organism" name="metadata-organism" placeholder="Genus species">
                             </div>
                           </div>
                         </div>
@@ -396,7 +396,7 @@
                         <div class="column is-6">
                           <!-- Platform ID -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-platform-id">
                               NCBI platform ID
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="GEO platform ID. Format: 'GPLxxxx'">
@@ -409,14 +409,14 @@
 
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-platform-id" placeholder="Ex: GPLnnnn">
+                              <input class="input" type="text" id="metadata-platform-id" name="metadata-platform-id" placeholder="Ex: GPLnnnn">
                             </div>
                           </div>
                         </div>
                         <div class="column is-6">
                           <!-- Instrument model -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-instrument">
                               Instrument model
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="Type of technology used to produce data. Ex: Illumina HiSeq 2000">
@@ -425,7 +425,7 @@
 
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-instrument" placeholder="Ex: Illumina HiSeq 2000">
+                              <input class="input" type="text" id="metadata-instrument" name="metadata-instrument" placeholder="Ex: Illumina HiSeq 2000">
                             </div>
                           </div>
                         </div>
@@ -434,7 +434,7 @@
                         <div class="column is-4">
                           <!-- Library selection -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-library-selection">
                               Library selection
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="Name of technology used to produce data. Ex: cDNA">
@@ -442,14 +442,14 @@
                               </span>
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-library-selection" placeholder="Ex: cDNA">
+                              <input class="input" type="text" id="metadata-library-selection" name="metadata-library-selection" placeholder="Ex: cDNA">
                             </div>
                           </div>
                         </div>
                         <div class="column is-4">
                           <!-- Library source -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-library-source">
                               Library source
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="Ex: transcriptomic">
@@ -457,14 +457,14 @@
                               </span>
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-library-source" placeholder="Ex: transcriptomic">
+                              <input class="input" type="text" id="metadata-library-source" name="metadata-library-source" placeholder="Ex: transcriptomic">
                             </div>
                           </div>
                         </div>
                         <div class="column is-4">
                           <!-- Library strategy -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-library-strategy">
                               Library strategy
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="Ex: RNA-seq">
@@ -472,7 +472,7 @@
                               </span>
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-library-strategy" placeholder="Ex: RNA-seq">
+                              <input class="input" type="text" id="metadata-library-strategy" name="metadata-library-strategy" placeholder="Ex: RNA-seq">
                             </div>
                           </div>
                         </div>
@@ -481,7 +481,7 @@
                         <div class="column is-6">
                           <!-- Pubmed ID -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-pubmed-id">
                               PubMed ID
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="If this is part of a published paper, add PubMed ID here">
@@ -489,9 +489,20 @@
                               </span>
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-pubmed-id" placeholder="Ex: 34172972">
+                              <input class="input" type="text" id="metadata-pubmed-id" name="metadata-pubmed-id" placeholder="Ex: 34172972">
                             </div>
                           </div>
+                          <hr />
+                          <h3>Personal Identifiable Information</h3>
+                            <div class="field">
+                              <label class="checkbox">
+                                <input type="checkbox" id="metadata-no-pii" name="metadata-no-pii">
+                                The uploaded data meets submission requirements and does not contain any personally
+                                identifiable information or protected health information
+                                (<a href="https://github.com/IGS/gEAR/blob/main/docs/wiki/UploadingOverview.md#data-requirements" target="_blank">more information</a>)
+                              </label>
+                            </div>
+                            <hr />
                           <div class="field">
                             <div class="control">
                               <button id="metadata-form-submit" class="button is-primary">Submit metadata</button>
@@ -745,6 +756,7 @@
                           for spatial data from a platform we currently do not support.
                         </p>
                         <div class="control my-3">
+                          <label for="select-spatial-platform" class="is-sr-only">Select a spatial platform</label>
                           <div class="select is-fullwidth">
                             <select name="spatial-platform" id="select-spatial-platform">
                               <option value="">Select one</option>
@@ -982,7 +994,7 @@ Currently Gosling only supports single-organism tracks">
                     <div class="column">
                       <!-- set whether dataset is public or private -->
                       <div class="field">
-                        <label class="label">
+                        <label class="label" for="dataset-visibility-public">
                           Dataset visibility
                           <span class="icon has-tooltip-right has-tooltip-arrow"
                                 data-tooltip="Choose whether this dataset is public or private. Public datasets are visible to all users.">
@@ -991,7 +1003,7 @@ Currently Gosling only supports single-organism tracks">
                         </label>
                         <div class="control">
                           <label class="radio">
-                            <input type="radio" name="dataset-visibility" value="public">
+                            <input type="radio" id="dataset-visibility-public" name="dataset-visibility" value="public">
                             Public
                           </label>
                           <label class="radio">

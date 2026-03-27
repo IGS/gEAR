@@ -645,7 +645,8 @@ const storeMetadata = async () => {
         library_selection: document.getElementsByName('metadata-library-selection')[0].value,
         library_source: document.getElementsByName('metadata-library-source')[0].value,
         library_strategy: document.getElementsByName('metadata-library-strategy')[0].value,
-        pubmed_id: document.getElementsByName('metadata-pubmed-id')[0].value
+        pubmed_id: document.getElementsByName('metadata-pubmed-id')[0].value,
+        user_pii_affirmed: document.getElementsByName('metadata-no-pii')[0].checked ? 1 : 0
     }));
 
     if (data.success) {
@@ -950,6 +951,15 @@ const validateMetadataForm = () => {
             element.classList.add('is-danger');
             erroredFields[field] = 'Requires a value';
         }
+    }
+
+    // Check that the personal data affirmation checkbox is checked
+    const piiAffirmed = document.getElementsByName('metadata-no-pii')[0].checked;
+    if (!piiAffirmed) {
+        document.getElementsByName('metadata-no-pii')[0].classList.add('is-danger');
+        erroredFields['metadata-no-pii'] = 'You must affirm that the dataset contains no personally identifiable information';
+    } else {
+        document.getElementsByName('metadata-no-pii')[0].classList.remove('is-danger');
     }
 
     // Check SQL length limitations

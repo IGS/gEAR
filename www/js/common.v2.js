@@ -616,6 +616,7 @@ const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { 
     toast.classList.add("notification", "js-toast", levelClass, "animate__animated", "animate__fadeInUp");
     const toastButton = document.createElement("button");
     toastButton.classList.add("delete");
+    toastButton.setAttribute("aria-label", "Dismiss notification");
     toastButton.addEventListener("click", (event) => {
         const notification = event.currentTarget.closest(".js-toast.notification");
         notification.remove();

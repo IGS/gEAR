@@ -2,7 +2,7 @@
 <!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
@@ -35,7 +35,7 @@
 
           <!--#include virtual="/include/header_bar.html" -->
 
-          <section id="content-c" class="m-3" data-nav-link="projection">
+          <section id="content-c" role="main" class="m-3" data-nav-link="projection">
             <!-- This needs to be abstracted out as an include, since both this page and the dashboard use it -->
             <div id="search-bar-c" class="mt-4 mb-4 columns">
               <div class="column is-half">
@@ -50,6 +50,7 @@
                   <!--#include virtual="/include/dataset-collection-selector/dataset-collection-selector.html" -->
 
                   <div class="control">
+                    <label for="submit-projection-search" class="is-sr-only">Perform Projection</label>
                     <button id="submit-projection-search" class="button is-primary ml-3">
                       <span class="icon is-small">
                         <i class="mdi mdi-magnify"></i>
@@ -91,7 +92,7 @@ This method is simple and interpretable, but may not capture complex relationshi
                   </label>
                   <div class="control">
                     <div class="select is-small">
-                      <select id="algorithm">
+                      <select id="algorithm" aria-label="Projection algorithm">
                         <option value="pca" selected>Principal Component Analysis (PCA)</option>
                         <option value="nmf">Least-squares optimization for NMF</option>
                         <option value="fixednmf">Fixed gene weights in NMF re-run</option>
@@ -161,7 +162,7 @@ This method is simple and interpretable, but may not capture complex relationshi
                     <div id="scoring-method-div">
                       <span class="option-label pr-1">SVG expression scoring method: </span>
                       <div class="control select is-small">
-                        <select id="svg-scoring-method">
+                        <select id="svg-scoring-method" aria-label="SVG expression scoring method">
                           <option value="gene">Gene scope</option>
                           <option value="tissue">Tissue scope</option>
                           <option value="dataset">Sample scope</option>

@@ -1,4 +1,8 @@
 exclude = ["bin"]
 extend-include = ["*.cgi"]
 select = ["E401", "E7", "E9", "F", "I", "PD"]
-ignore = ["PD901"]  # using 'df' as variable name
+
+## What we want to skip and why:
+#  - PD901 Avoid using the generic variable name `df` for DataFrames
+#    - Use of df is very common
+ignore = ["PD901"]
