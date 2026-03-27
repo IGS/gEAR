@@ -247,10 +247,7 @@ export class HubContainer {
         document.querySelector(".js-human-assembly-warning").style.display = "none";
         if (["hg19", "hg38"].includes(this.hub.genome)) {
             document.querySelector(".js-human-assembly-warning").style.display = "block";
-        }
-        // Restrict track types based on assembly selection
-        if (this.trackContainerObj) {
-            this.trackContainerObj.restrictPrivacyAwareTrackTypes(this.hub.genome);
+            // Will restrict when creating tracks, since track types are in the track form, not the hub form.
         }
     }
 
@@ -602,7 +599,7 @@ export class TrackContainer {
 
         // Restrict track types for the newly added track
         if (this.hubContainerObj) {
-            this.restrictPrivacyAwareTrackTypes(this.hubContainerObj.getAssembly());
+            this.restrictPrivacyAwareTrackTypes(this.hubContainerObj.getAssembly(), collapsibleContent);
         }
 
         // Start with the content expanded for new tracks
@@ -810,15 +807,15 @@ export class TrackContainer {
         return entries;
     }
 
-    restrictPrivacyAwareTrackTypes(assembly) {
+    restrictPrivacyAwareTrackTypes(assembly, parent=document) {
         // If the assembly is a "human" one, disable VCF and Hic types in the select.
         // This is because of federal standards towards personally-identifiable data
-        const trackTypeSelectElts = document.getElementsByClassName('js-track-type');
+        const trackTypeSelectElts = parent.getElementsByClassName('js-track-type');
         for (const trackTypeSelect of trackTypeSelectElts) {
-            trackTypeSelect.querySelector('option[value="vcf"]').disabled = false;
+            trackTypeSelect.querySelector('option[value="vcfTabix"]').disabled = false;
             trackTypeSelect.querySelector('option[value="hic"]').disabled = false;
             if (["hg19", "hg38"].includes(assembly)) {
-                trackTypeSelect.querySelector('option[value="vcf"]').disabled = true;
+                trackTypeSelect.querySelector('option[value="vcfTabix"]').disabled = true;
                 trackTypeSelect.querySelector('option[value="hic"]').disabled = true;
             }
         }

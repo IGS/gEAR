@@ -953,9 +953,16 @@ Currently Gosling only supports single-organism tracks">
                       <div class="notification is-info is-light">
                         Please double-check that the hub and track information is correct before proceeding.
                         <br>
-                        The hub and track files will be cloned to the server and any errors may cause issues with visualization of tracks.
+                        The hub and track files will be copied to the server and any errors may cause issues with visualization of tracks.
                       </div>
-                        <button id="proceed-trackhub-submit" type="submit" class="button is-primary">Proceed</button>
+                      <button id="proceed-trackhub-submit" type="submit" class="button is-primary">Proceed</button>
+                      <div id="build-trackhub-status" class="is-hidden mt-3">
+                        <p class="icon-text">
+                          <span class="icon">
+                            <i class="mdi mdi-18px mdi-information"></i>
+                          </span>
+                          <span id="build-trackhub-status-message"></span>
+                        </p>
                     </div>
                   </div>
                 </div>

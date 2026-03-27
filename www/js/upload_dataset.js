@@ -29,6 +29,13 @@ const optionalMetadataFields = ['metadata-contact-institute', 'metadata-platform
     'metadata-geo-id', 'metadata-library-strategy', 'metadata-pubmed-id'
 ];
 
+const BUILD_TRACKHUB_STATUS_COLORS = {
+    queued: { color: 'is-info', label: 'Queued' },
+    processing: { color: 'is-info', label: 'Processing' },
+    completed: { color: 'is-success', label: 'Completed' },
+    failed: { color: 'is-danger', label: 'Failed' },
+};
+
 /* --- Functions and Classes --- */
 /**
  * Sends a POST request to add a primary analysis to the current dataset upload.
@@ -886,24 +893,20 @@ const pollTrackhubStatus = async (jobId) => {
 
             const {status, progress, completed_tracks, total_tracks, message, track_statuses} = data;
 
-            // Update progress bar
-            //document.getElementById('dataset-upload-progress').value = progress;
+            // Update status of entire hub
+            let statusMessage = `Status: ${BUILD_TRACKHUB_STATUS_COLORS[status]?.label || status}. `;
+            if (completed_tracks !== undefined && total_tracks !== undefined) {
+                statusMessage += ` (${completed_tracks}/${total_tracks} tracks completed)`;
+            }
+
+            document.getElementById('build-trackhub-status-message').textContent = statusMessage;
+            const statusColorClass = BUILD_TRACKHUB_STATUS_COLORS[status]?.color || 'is-primary';
+            document.getElementById('build-trackhub-status').classList = `mt-3 notification is-light ${statusColorClass}`;
 
             // Update track status badges
             if (trackContainer) {
                 trackContainer.updateAllTrackStatuses(track_statuses || {});
             }
-
-            // Update message
-            //const trackInfo = Object.entries(track_statuses || {})
-            //    .map(([name, st]) => `${name}: ${st}`)
-            //    .join(' | ');
-
-            //const fullMessage = trackInfo
-            //    ? `${message} (${completed_tracks}/${total_tracks})\n${trackInfo}`
-            //    : `${message} (${completed_tracks}/${total_tracks})`;
-
-            //document.getElementById('dataset-upload-status-message').textContent = fullMessage;
 
             if (status === 'completed') {
                 createToast('Track hub processed successfully!', 'is-success');

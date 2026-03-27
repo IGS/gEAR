@@ -381,8 +381,7 @@ class TrackHubProcessor:
                         if key == "genome":
                             f.write("\n")
                         f.write(f"{key} {value}\n")
-                        if key == "genome":
-                            f.write("\n")
+                        # tracks will fill out the extra newline
 
             # Process each track
             completed = 0
