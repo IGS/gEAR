@@ -71,9 +71,14 @@ const addPrimaryAnalysisToDataset = async () => {
  * @returns {Promise<void>} Resolves when the status check and UI updates are complete.
  */
 const checkDatasetProcessingStatus = async () => {
+
+    const payload = {
+        "dataset_format": datasetFormat
+    }
+
     const {data} = await axios.post(
         `./api/import/dataset/${shareUid}/status`,
-        {}  // Empty JSON so that it doesn't think it's FormData
+        payload  // Empty JSON so that it doesn't think it's FormData
     );
 
     processingStatus = data.status;
@@ -103,9 +108,13 @@ const checkDatasetProcessingStatus = async () => {
  * @returns {Promise<string>} Resolves to the current status of the track hub processing.
  */
 const checkTrackhubStatus = async() => {
+    const payload = {
+        "dataset_format": datasetFormat
+    }
+
     const {data} = await axios.post(
         `./api/import/dataset/${shareUid}/status`,
-        {}  // Empty JSON so that it doesn't think it's FormData
+        payload  // Empty JSON so that it doesn't think it's FormData
     );
 
     const {status, progress, completed_tracks, total_tracks, message, track_statuses} = data;
