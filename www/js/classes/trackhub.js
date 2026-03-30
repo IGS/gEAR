@@ -1,6 +1,6 @@
 import { createToast } from "../common.v2.js";
 
-const TRACK_STATUS_COLORS = {
+export const TRACK_STATUS_COLORS = {
     downloading: { color: 'is-info', label: 'Downloading' },
     converting: { color: 'is-warning', label: 'Converting' },
     ingesting: { color: 'is-loading', label: 'Ingesting' },
@@ -516,12 +516,6 @@ export class TrackContainer {
         collapsibleHeader.classList.add('collapsible-header', 'my-3');
         collapsibleHeader.innerHTML = `
             <span data-orig-name="Track ${trackId}" class="track-title">Track ${trackId}</span>
-            <div class="track-status-container" style="display: flex; align-items: center; gap: 0.5rem;">
-                <span class="track-status-badge tag is-light js-track-status" style="display: none;"></span>
-                <span class="icon">
-                    <i class="mdi mdi-chevron-down"></i>
-                </span>
-            </div>
         `;
 
         // Collapsible content
@@ -739,31 +733,6 @@ export class TrackContainer {
         // Collapse the track item after populating data for better UX, especially for large trackhubs
         const collapsibleHeader = document.querySelector(`#track-${trackId} .collapsible-header`);
         collapsibleHeader.click(); // Simulate a click to collapse the item
-    }
-
-    updateTrackStatus(trackId, status) {
-        const trackStatusBadge = document.querySelector(`#track-${trackId} .js-track-status`);
-        if (!trackStatusBadge) return;
-
-        const statusInfo = TRACK_STATUS_COLORS[status];
-        if (!statusInfo) return;
-
-        // Update badge classes
-        trackStatusBadge.className = `track-status-badge tag js-track-status ${statusInfo.color}`;
-        trackStatusBadge.textContent = statusInfo.label;
-        trackStatusBadge.style.display = 'inline-block';
-    }
-
-    // Add this method to show all track statuses (call this when polling status)
-    updateAllTrackStatuses(trackStatuses) {
-        for (const trackId in this.tracks) {
-            const track = this.tracks[trackId];
-            const trackName = track.shortLabel;
-            const status = trackStatuses[trackName];
-            if (status) {
-                this.updateTrackStatus(trackId, status);
-            }
-        }
     }
 
     validateTracks() {

@@ -111,7 +111,7 @@ class TrackHubCopy(Resource):
         # Generate job ID and create status file
         job_id = str(uuid4())
         staging_area = user_upload_file_base / session_id / share_uid
-        status_file = staging_area / "trackhub_status.json"
+        status_file = staging_area / "status.json"
 
         # Create initial status
         staging_area.mkdir(parents=True, exist_ok=True)
@@ -154,28 +154,3 @@ class TrackHubCopy(Resource):
             result["message"] = f"Error processing track hub: {str(e)}"
             print(f"TrackHubCopy error: {str(e)}", file=sys.stderr)
             return result, 500
-
-
-class TrackHubStatus(Resource):
-    def post(self, share_uid):
-        session_id = request.cookies.get('gear_session_id', "")
-        req = request.get_json()
-        if req is None:
-            return {"success": False, "message": "Invalid JSON body"}, 400
-
-        job_id = req.get("job_id")
-        if not job_id:
-            return {"success": False, "message": "Missing job_id"}, 400
-
-        staging_area = user_upload_file_base / session_id / share_uid
-        status_file = staging_area / "trackhub_status.json"
-
-        if not status_file.is_file():
-            return {"success": False, "message": "Job status not found"}, 404
-
-        try:
-            with open(status_file, 'r') as f:
-                status_data = json.load(f)
-            return status_data, 200
-        except Exception as e:
-            return {"success": False, "message": str(e)}, 500

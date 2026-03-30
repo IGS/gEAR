@@ -49,7 +49,7 @@
     <body>
       <div id="main-layout-c" class="columns">
 
-        <input type="hidden" id="testing" value="true" />
+        <input type="hidden" id="testing" value="false" />
 
         <!--#include virtual="/include/primary_nav.html" -->
 
@@ -75,11 +75,11 @@
                 <table class="table is-fullwidth">
                   <thead class="has-text-weight-semibold">
                     <tr>
-                      <th>Share ID</th>
-                      <th>Status</th>
-                      <th>Dataset type</th>
-                      <th>Title</th>
-                      <th>Actions</th>
+                      <th scope="col">Share ID</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Dataset type</th>
+                      <th scope="col">Title</th>
+                      <th scope="col">Actions</th>
                     </tr>
                   </thead>
                   <tbody id="submissions-in-progress-table-tbody"></tbody>
@@ -959,21 +959,7 @@ Currently Gosling only supports single-organism tracks">
                         </p>
                       </div>
                       <button id="build-trackhub-submit" type="submit" class="button is-primary">Build track hub</button>
-                      <hr>
-                      <div id="build-trackhub-status" class="is-hidden is-primary is-light mt-3">
-                        <p class="icon-text">
-                          <span class="icon">
-                            <i class="mdi mdi-18px mdi-information"></i>
-                          </span>
-                          <span id="build-trackhub-status-message"></span>
-                        </p>
                     </div>
-                    <button id="continue-trackhub-submit" class="button is-primary mt-3 is-hidden" disabled>
-                      <span class="icon">
-                        <i class="mdi mdi-chevron-right"></i>
-                      </span>
-                      <span>Continue to next step</span>
-                    </button>
                   </div>
                 </div>
                 <div id="step-process-dataset-c" class="step-c is-hidden">
@@ -994,6 +980,11 @@ Currently Gosling only supports single-organism tracks">
                   </div>
                   <div class="field">
                     <progress id="dataset-processing-progress" class="progress is-medium" value="" max="100"></progress>
+                    <!-- Track status list for Gosling uploads -->
+                    <div id="track-status-container" class="is-hidden mt-3">
+                      <h4 class="subtitle">Track Processing Status</h4>
+                      <ul id="track-status-list" class="ml-4"></ul>
+                    </div>
                   </div>
                   <div class="field">
                     <div class="control">

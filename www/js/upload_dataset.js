@@ -1,7 +1,7 @@
 'use strict';
 
 import { apiCallsMixin, convertToFormData, createToast, getCurrentUser, guid, initCommonUI, openModal } from "./common.v2.js";
-import { Hub, HubContainer, Track, TrackContainer } from "./classes/trackhub.js";
+import { HubContainer, TrackContainer, TRACK_STATUS_COLORS } from "./classes/trackhub.js";
 
 /* --- constants and variables --- */
 
@@ -28,13 +28,6 @@ const optionalMetadataFields = ['metadata-contact-institute', 'metadata-platform
     'metadata-instrument', 'metadata-library-selection', 'metadata-library-source',
     'metadata-geo-id', 'metadata-library-strategy', 'metadata-pubmed-id'
 ];
-
-const BUILD_TRACKHUB_STATUS_COLORS = {
-    queued: { color: 'is-info', label: 'Queued' },
-    processing: { color: 'is-info', label: 'Processing' },
-    completed: { color: 'is-success', label: 'Completed' },
-    failed: { color: 'is-danger', label: 'Failed' },
-};
 
 /* --- Functions and Classes --- */
 /**
@@ -78,10 +71,10 @@ const addPrimaryAnalysisToDataset = async () => {
  * @returns {Promise<void>} Resolves when the status check and UI updates are complete.
  */
 const checkDatasetProcessingStatus = async () => {
-    const {data} = await axios.post('./cgi/check_dataset_processing_status.cgi', convertToFormData({
-        share_uid: shareUid,
-        session_id: getCurrentUser()?.session_id
-    }));
+    const {data} = await axios.post(
+        `./api/import/dataset/${shareUid}/status`,
+        {}  // Empty JSON so that it doesn't think it's FormData
+    );
 
     processingStatus = data.status;
     document.getElementById('step-process-dataset-status').textContent = processingStatus.charAt(0).toUpperCase() + processingStatus.slice(1);
@@ -101,6 +94,50 @@ const checkDatasetProcessingStatus = async () => {
         }
     }
 }
+
+/**
+ * Checks the status of the track hub processing.
+ *
+ * @async
+ * @function checkTrackhubStatus
+ * @returns {Promise<string>} Resolves to the current status of the track hub processing.
+ */
+const checkTrackhubStatus = async() => {
+    const {data} = await axios.post(
+        `./api/import/dataset/${shareUid}/status`,
+        {}  // Empty JSON so that it doesn't think it's FormData
+    );
+
+    const {status, progress, completed_tracks, total_tracks, message, track_statuses} = data;
+
+
+    processingStatus = status
+    document.getElementById('step-process-dataset-status').textContent = status.charAt(0).toUpperCase() + status.slice(1);
+
+    // Update status of entire hub
+    let statusMessage = `Status: ${status || 'Unknown'}. `;
+    if (completed_tracks !== undefined && total_tracks !== undefined) {
+        statusMessage += ` (${completed_tracks}/${total_tracks} tracks completed)`;
+    }
+
+    document.getElementById('step-process-dataset-status-message').textContent = statusMessage;
+    document.getElementById('dataset-processing-progress').value = progress;
+
+    // Update track status badges
+    if (trackContainer) {
+        updateAllTrackStatusesInProcessStep(trackContainer, track_statuses || {});
+    }
+
+    if (status === 'complete') {
+        createToast('Track hub processed successfully!', 'is-success');
+        document.getElementById('dataset-processing-submit').disabled = false
+    } else if (status === 'error') {
+        createToast(`Processing failed: ${message}`, 'is-danger');
+    }
+
+    return status;
+}
+
 
 /**
  * Deletes an upload in progress for a given share and dataset.
@@ -488,14 +525,19 @@ const stepTo = (step) => {
         }
     }
 
-    // if the step is process-dataset, we need to check on the status
+    // Some steps require polling for status, so set that up if we're on one of those steps
+    let pollingFn = null;
     if (step === 'process-dataset') {
-        // Check the status immediately, then set an interval to keep doing it.
-        checkDatasetProcessingStatus();
+        pollingFn = datasetFormat === 'gosling' ? checkTrackhubStatus : checkDatasetProcessingStatus;
+    }
+
+    if (pollingFn) {
+        // Check the status immediately (to establish the initial UI state), then set an interval to keep doing it.
+        pollingFn();
 
         setInterval(() => {
             if (processingStatus !== 'complete' && processingStatus !== 'error') {
-                checkDatasetProcessingStatus();
+                pollingFn();
             }
         }, processingStatusCheckInterval * 1000);
     }
@@ -570,6 +612,7 @@ const loadUploadsInProgress = async () => {
                     }
 
                     datasetFormat = row.dataset.datasetFormat;
+                    // processingStatus will be updated in initial polling again
 
                     // Do we want to dynamically load the next step or page refresh for it?
                     //  If dynamic we have to reset all the forms.
@@ -835,16 +878,6 @@ const stageTrackHub = async (hubContainer, trackContainer) => {
     }
 
     const assembly = hubContainer.getAssembly();
-
-    // When processing starts
-    const buildButton = document.getElementById('build-trackhub-submit');
-    buildButton.classList.add('is-hidden');
-    const statusDiv = document.getElementById('build-trackhub-status');
-    const continueButton = document.getElementById('continue-trackhub-submit');
-    statusDiv.classList.remove('is-hidden');
-    continueButton.classList.remove('is-hidden');
-    document.getElementById('build-trackhub-status-message').textContent = "";
-
     try {
         const {data} = await axios.post(
             `./api/import/trackhub/${shareUid}/copy`,
@@ -857,17 +890,17 @@ const stageTrackHub = async (hubContainer, trackContainer) => {
         );
 
         if (!data?.success) {
-            buildButton.classList.remove("is-hidden");
-            continueButton.classList.add("is-hidden");
-            continueButton.disabled = true;
-
             throw new Error(data?.message || 'Unknown error');
         }
 
-        const jobId = data.job_id;
+        // Render track status list before moving to process-dataset step
+        renderTrackStatusList(trackContainer);
 
-        // Poll for status
-        await pollTrackhubStatus(jobId);
+        // Wait a few seconds, then move to the next step. The process script
+        // (called above) will run for a long time and be monitored separately
+        setTimeout(() => {
+            stepTo('process-dataset');
+        }, 3000);
 
     } catch (error) {
         createToast(`Error staging trackhub data: ${error.message}`);
@@ -875,79 +908,103 @@ const stageTrackHub = async (hubContainer, trackContainer) => {
 };
 
 /**
- * Poll trackhub processing status and display progress.
- * @async
- * @param {string} jobId - The job ID to poll for
+ * Renders a list of track statuses in the Process Dataset step.
+ * Called when transitioning from Build Track Hub to Process Dataset for Gosling uploads.
+ *
+ * @param {TrackContainer} trackContainer - The container with track information.
+ * @returns {void}
  */
-const pollTrackhubStatus = async (jobId) => {
-    const pollInterval = 2000; // 2 seconds
-    const maxAttempts = 1800; // 1 hour max
-    let attempts = 0;
+const renderTrackStatusList = (trackContainer) => {
+    const trackStatusContainer = document.getElementById('track-status-container');
+    const trackStatusList = document.getElementById('track-status-list');
 
-    const poll = async () => {
-        try {
-            const {data} = await axios.post(
-                `./api/import/trackhub/${shareUid}/status`,
-                {job_id: jobId}
-            );
+    if (!trackContainer || Object.keys(trackContainer.tracks).length === 0) {
+        trackStatusContainer.classList.add('is-hidden');
+        return;
+    }
 
-            if (!data) {
-                throw new Error('No status data received');
-            }
+    // Clear the list
+    trackStatusList.innerHTML = '';
 
-            const {status, progress, completed_tracks, total_tracks, message, track_statuses} = data;
+    // Create list item for each track
+    for (const trackId in trackContainer.tracks) {
+        const track = trackContainer.tracks[trackId];
+        const trackName = track.identifier || `Track ${trackId}`;
 
-            // Update status of entire hub
-            let statusMessage = `Status: ${BUILD_TRACKHUB_STATUS_COLORS[status]?.label || status}. `;
-            if (completed_tracks !== undefined && total_tracks !== undefined) {
-                statusMessage += ` (${completed_tracks}/${total_tracks} tracks completed)`;
-            }
+        const listItem = document.createElement('li');
+        listItem.className = 'mb-2';
+        listItem.id = `track-status-item-${trackId}`;
+        listItem.innerHTML = `
+            <span class="icon-text">
+                <span class="icon">
+                    <i class="mdi mdi-checkbox-blank-outline js-track-status-icon"></i>
+                </span>
+                <span class="js-track-status-name">${trackName}</span>
+                <span class="tag is-light js-track-status-badge" style="display: none; margin-left: 0.5rem;"></span>
+            </span>
+        `;
 
-            document.getElementById('build-trackhub-status-message').textContent = statusMessage;
-            const statusColorClass = BUILD_TRACKHUB_STATUS_COLORS[status]?.color || 'is-primary';
-            document.getElementById('build-trackhub-status').classList = `mt-3 notification is-light ${statusColorClass}`;
+        trackStatusList.appendChild(listItem);
+    }
 
-            // Update track status badges
-            if (trackContainer) {
-                trackContainer.updateAllTrackStatuses(track_statuses || {});
-            }
-
-            if (status === 'completed') {
-                createToast('Track hub processed successfully!', 'is-success');
-
-                // When processing completes
-                const continueButton = document.getElementById('continue-trackhub-submit');
-                continueButton.disabled = false;
-
-                return;
-            } else if (status === 'failed') {
-                createToast(`Processing failed: ${message}`, 'is-danger');
-                const buildButton = document.getElementById('build-trackhub-submit');
-                const continueButton = document.getElementById('continue-trackhub-submit');
-                buildButton.classList.remove("is-hidden");
-                continueButton.classList.add("is-hidden");
-                continueButton.disabled = true;
-                return;
-            }
-
-            // Continue polling
-            if (status === 'processing' || status === 'queued') {
-                attempts++;
-                if (attempts < maxAttempts) {
-                    setTimeout(poll, pollInterval);
-                } else {
-                    createToast('Track hub processing timeout', 'is-warning');
-                }
-            }
-
-        } catch (error) {
-            createToast(`Status check failed: ${error.message}`, 'is-danger');
-        }
-    };
-
-    poll();
+    trackStatusContainer.classList.remove('is-hidden');
 };
 
+/**
+ * Updates the track status in the Process Dataset step.
+ * Called during polling to update individual track statuses.
+ *
+ * @param {number} trackId - The ID of the track to update.
+ * @param {string} status - The current status of the track (e.g., 'downloading', 'completed').
+ * @returns {void}
+ */
+const updateTrackStatusInProcessStep = (trackId, status) => {
+    const trackStatusItem = document.getElementById(`track-status-item-${trackId}`);
+    if (!trackStatusItem) return;
+
+    const statusInfo = TRACK_STATUS_COLORS[status];
+    if (!statusInfo) return;
+
+    const statusBadge = trackStatusItem.querySelector('.js-track-status-badge');
+    const statusIcon = trackStatusItem.querySelector('.js-track-status-icon');
+
+    // Update badge
+    statusBadge.className = `tag is-light js-track-status-badge ${statusInfo.color}`;
+    statusBadge.textContent = statusInfo.label;
+    statusBadge.style.display = 'inline-block';
+
+    // Update icon based on status
+    statusIcon.className = 'mdi mdi-checkbox-blank-outline js-track-status-icon';
+    if (status === 'completed') {
+        statusIcon.classList.remove('mdi-checkbox-blank-outline');
+        statusIcon.classList.add('mdi-check-circle');
+    } else if (status === 'failed') {
+        statusIcon.classList.remove('mdi-checkbox-blank-outline');
+        statusIcon.classList.add('mdi-alert-circle');
+    }
+};
+
+/**
+ * Updates all track statuses in the Process Dataset step based on the provided status object.
+ * Called during polling to reflect the current state of all tracks.
+ *
+ * @param {TrackContainer} trackContainer - The container with track information.
+ * @param {Object} trackStatuses - Object mapping track names to their current status.
+ * @returns {void}
+ */
+const updateAllTrackStatusesInProcessStep = (trackContainer, trackStatuses) => {
+    if (!trackContainer) return;
+
+    for (const trackId in trackContainer.tracks) {
+        const track = trackContainer.tracks[trackId];
+        const trackName = track.shortLabel;
+        const status = trackStatuses[trackName];
+
+        if (status) {
+            updateTrackStatusInProcessStep(trackId, status);
+        }
+    }
+};
 
 /**
  * Validates the metadata form by checking required fields for values and enforcing SQL character length limits.
@@ -1066,11 +1123,13 @@ for (const btn of formatSelectorElts) {
         btn.querySelector('span.format-status').textContent = 'Selected';
         datasetFormat = btn.dataset.format;
 
-        // If the format is spatial, change text to say "Zarr store"
+        // If the format is "special", update the text in the finalize step.
         const migrateH5adSpan = document.getElementById("finalize-migrating-h5ad-text");
         migrateH5adSpan.textContent = 'Migrating H5AD file';
         if (datasetFormat === 'spatial') {
             migrateH5adSpan.textContent = 'Migrating Zarr store';
+        } else if (datasetFormat == 'gosling') {
+            migrateH5adSpan.textContent = 'Migrating track hub and files';
         }
 
         // Gosling has special uploader

@@ -62,7 +62,7 @@ def _on_request(channel, method_frame, properties, body):
             if not staging_area:
                 raise FileNotFoundError(f"Could not find staging area for {share_uid}")
 
-            status_file = staging_area / "trackhub_status.json"
+            status_file = staging_area / "status.json"
 
             # Get HiGlass config
             higlass_config = None

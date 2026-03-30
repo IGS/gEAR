@@ -485,7 +485,7 @@ class TrackHubProcessor:
                             f.write(f"{key} {value}\n")
 
             self.update_status(
-                "completed",
+                "complete",
                 100,
                 completed,
                 total_tracks,
@@ -508,7 +508,7 @@ class TrackHubProcessor:
                     delete_higlass_tileset(tileset_uid, self.higlass_config)
 
             self.update_status(
-                "failed",
+                "error",
                 0,
                 0,
                 total_tracks,
