@@ -88,6 +88,7 @@ const checkDatasetProcessingStatus = async () => {
 
     // TODO: Handle the different statuses here
     if (processingStatus === 'complete') {
+        document.getElementById('step-process-dataset-status-message').textContent = "Now adding primary analysis to dataset...";
         await addPrimaryAnalysisToDataset();
 
         // If still complete after the primary analysis step, enable the next step button
@@ -443,8 +444,8 @@ const getGeoData = async () => {
  */
 const updateConfigureTrackHubButtonState = (urlInput, assemblySelect) => {
     const submitButton = document.getElementById('configure-trackhub-submit');
-    const statusMessage = document.getElementById('dataset-upload-status-message');
-    const statusContainer = document.getElementById('dataset-upload-status');
+    const statusMessage = document.getElementById('trackhub-upload-status-message');
+    const statusContainer = document.getElementById('trackhub-upload-status');
 
     if (!urlInput.value) {
         // If URL is empty, we are not pre-populating, so we are OK.
@@ -598,7 +599,7 @@ const loadUploadsInProgress = async () => {
                 clone.querySelector('.submission-share-id').textContent = upload.share_id;
                 clone.querySelector('.submission-status').textContent = upload.status;
                 clone.querySelector('.submission-title').textContent = upload.title;
-                clone.querySelector('.submission-dataset-type').textContent = upload.dataset_type;
+                clone.querySelector('.submission-dataset-type').textContent = upload.dataset_type == "gosling" ? "epigenome" : upload.dataset_type;
                 tableBody.appendChild(clone);
             };
 
@@ -904,12 +905,7 @@ const stageTrackHub = async (hubContainer, trackContainer) => {
 
         // Render track status list before moving to process-dataset step
         renderTrackStatusList(trackContainer);
-
-        // Wait a few seconds, then move to the next step. The process script
-        // (called above) will run for a long time and be monitored separately
-        setTimeout(() => {
-            stepTo('process-dataset');
-        }, 3000);
+        stepTo('process-dataset');
 
     } catch (error) {
         createToast(`Error staging trackhub data: ${error.message}`);
@@ -1143,14 +1139,16 @@ for (const btn of formatSelectorElts) {
 
         // Gosling has special uploader
         if (datasetFormat === "gosling") {
+            document.getElementById("dataset-upload-c").classList.add("is-hidden");
+            document.getElementById("dataset-upload-status").classList.add("is-hidden");
             document.getElementById("step-build-trackhub").classList.remove("is-hidden");
-            document.getElementById("dataset-upload-c").classList.add("is-hidden")
-            document.getElementById("trackhub-upload-c").classList.remove("is-hidden")
+            document.getElementById("trackhub-upload-c").classList.remove("is-hidden");
             document.getElementById("dataset-file-input").value = "";
             document.getElementById("dataset-url-input").value = "";
         } else {
+            document.getElementById("dataset-upload-c").classList.remove("is-hidden");
+            document.getElementById("dataset-upload-status").classList.remove("is-hidden");
             document.getElementById("step-build-trackhub").classList.add("is-hidden");
-            document.getElementById("dataset-upload-c").classList.remove("is-hidden")
             document.getElementById("trackhub-upload-c").classList.add("is-hidden")
             document.getElementById("trackhub-url-input").value = "";
         }

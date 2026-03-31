@@ -516,6 +516,11 @@ export class TrackContainer {
         collapsibleHeader.classList.add('collapsible-header', 'my-3');
         collapsibleHeader.innerHTML = `
             <span data-orig-name="Track ${trackId}" class="track-title">Track ${trackId}</span>
+            <div class="track-status-container" style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="icon">
+                    <i class="mdi mdi-chevron-down"></i>
+                </span>
+            </div>
         `;
 
         // Collapsible content

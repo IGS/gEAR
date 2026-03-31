@@ -66,7 +66,8 @@ def main():
                 }
             )
 
-        if result["dataset_type"] == "gosling":
+        if result['uploads'][-1]['dataset_type'] == "gosling":
+
             processing_status_json_file = os.path.join(share_dir, 'status.json')
 
             if os.path.isfile(processing_status_json_file):

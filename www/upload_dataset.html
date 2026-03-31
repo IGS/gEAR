@@ -876,6 +876,17 @@
                       </div>
                     </div>
                   </div>
+                  <div id="dataset-upload-status" class="is-hidden">
+                    <p class="mt-2 mb-0 pt-2 pb-0">
+                      <span class="icon">
+                        <i class="mdi mdi-information"></i>
+                      </span>
+                      <span id="dataset-upload-status-message"></span>
+                    </p>
+                    <div class="field">
+                      <progress id="dataset-upload-progress" class="progress is-medium" value="0" max="100"></progress>
+                    </div>
+                  </div>
 
                   <div id="trackhub-upload-c" class="pb-3 is-hidden">
                     <div id="trackhub-upload-columns" class="columns">
@@ -920,25 +931,20 @@ Currently Gosling only supports single-organism tracks">
                         </div>
                       </div>
                     </div>
+                  <div id="trackhub-upload-status" class="is-hidden">
+                    <p class="mt-2 mb-0 pt-2 pb-0">
+                      <span class="icon">
+                        <i class="mdi mdi-information"></i>
+                      </span>
+                      <span id="trackhub-upload-status-message"></span>
+                    </p>
+                  </div>
                     <div class="field mt-3">
                       <div class="control">
                         <button class="button is-primary" id="configure-trackhub-submit">Configure Trackhub</button>
                       </div>
                     </div>
                   </div>
-
-                  <div id="dataset-upload-status" class="is-hidden">
-                    <p class="mt-2 mb-0 pt-2 pb-0">
-                      <span class="icon">
-                        <i class="mdi mdi-information"></i>
-                      </span>
-                      <span id="dataset-upload-status-message"></span>
-                    </p>
-                  </div>
-                  <div class="field">
-                    <progress id="dataset-upload-progress" class="progress is-medium" value="0" max="100"></progress>
-                  </div>
-
                 </div>
 
                 <div id="step-build-trackhub-c" class="step-c is-hidden">
@@ -955,7 +961,7 @@ Currently Gosling only supports single-organism tracks">
                           <span class="icon">
                             <i class="mdi mdi-alert-circle-outline"></i>
                           </span>
-                          <span>Please double-check that the hub and track information is correct before proceeding. The hub and track files will be copied to the server and any errors may cause issues with visualization of tracks.</span>
+                          <span>Please double-check that the hub and track information is correct before proceeding. Contents will be copied over to the server.</span>
                         </p>
                       </div>
                       <button id="build-trackhub-submit" type="submit" class="button is-primary">Build track hub</button>

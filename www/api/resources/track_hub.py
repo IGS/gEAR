@@ -14,7 +14,7 @@ _config = configparser.ConfigParser()
 _config.read(gear_root / 'gear.ini')
 
 import geardb
-from gear.trackhub import process_trackhub_synchronously
+from gear.trackhub import process_trackhub_synchronously, write_status
 
 user_upload_file_base = gear_root / 'www' / 'uploads' / 'files'
 
@@ -29,17 +29,16 @@ def _create_initial_status_file(
     message: str = "Job queued for processing",
 ) -> None:
     """Create initial status.json file."""
-    initial_status = {
-        "job_id": job_id,
-        "status": "queued",
-        "progress": 0,
-        "completed_tracks": 0,
-        "total_tracks": total_tracks,
-        "message": message,
-        "track_statuses": {},
-    }
-    with open(status_file, 'w') as f:
-        json.dump(initial_status, f, indent=4)
+    write_status(
+        status_file,
+        job_id=job_id,
+        status="queued",
+        message=message,
+        progress=0,
+        completed_tracks=0,
+        total_tracks=total_tracks,
+        track_statuses={},
+    )
 
 def queue_trackhub_job(job_id: str, share_uid: str, hub_json: dict, assembly: str, track_stanzas: list, dry_run: bool = False) -> None:
     """Queue trackhub processing job to RabbitMQ."""
@@ -116,6 +115,28 @@ class TrackHubCopy(Resource):
         # Create initial status
         staging_area.mkdir(parents=True, exist_ok=True)
         _create_initial_status_file(status_file, job_id, len(track_stanzas))
+
+        # Also update metadata file to have the dataset format added
+        metadata_file = staging_area / 'metadata.json'
+        if not metadata_file.is_file():
+            write_status(
+                status_file,
+                job_id=job_id,
+                status="error",
+                message="Metadata file not found. Impossible to save as dataset.",
+                progress=0,
+                completed_tracks=0,
+                total_tracks=len(track_stanzas),
+                track_statuses={},
+            )
+            return
+        with open(metadata_file, 'r') as f:
+            metadata = json.load(f)
+
+        # Update metadata for downstream uses
+        metadata["dataset_format"] = "gosling"
+        with open(metadata_file, 'w') as f:
+            json.dump(metadata, f, indent=4)
 
         result["job_id"] = job_id
         # Queue the job
