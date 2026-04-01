@@ -131,7 +131,7 @@ def main() -> dict:
         # read hub.txt and get the assembly.
         hub_file = dataset_upload_dir / 'hub.txt'
         if not hub_file.is_file():
-            result['message'] = 'hub.txt file not found for gosling track hub.'
+            result['message'] = 'hub.txt file not found for gosling upload.'
             return result
 
         with open(hub_file, 'r') as f:
