@@ -41,7 +41,7 @@ from pathlib import Path
 lib_path = Path(__file__).resolve().parents[2] / 'lib'
 sys.path.append(str(lib_path))
 import geardb
-from gear.metadata import Metadata
+from gear.metadata import Metadata, get_value_from_df
 
 user_upload_file_path = Path(__file__).resolve().parents[1] / 'uploads' / 'files'
 dataset_final_dir = Path(__file__).resolve().parents[1] / 'datasets'
@@ -122,6 +122,39 @@ def main() -> dict:
 
     global dataset_final_dir
     if dataset_format == "gosling":
+        # For our new dataset ID, we need to add the dataset display curation
+
+        # {"hubUrl":"http://umgear.org/tracks/celia_aro/hub.txt", "assembly":"mm10", "gene_symbol":"Pou4f3"}
+        #config = {}
+        #geardb.add_gosling_display_curation(dataset_id, user, config)
+
+        # read hub.txt and get the assembly.
+        hub_file = dataset_upload_dir / 'hub.txt'
+        if not hub_file.is_file():
+            result['message'] = 'hub.txt file not found for gosling track hub.'
+            return result
+
+        with open(hub_file, 'r') as f:
+            lines = f.readlines()
+            assembly = None
+            for line in lines:
+                if line.startswith('genome'):
+                    assembly = line.split()[1].strip()
+                    break
+        if assembly is None:
+            result['message'] = 'Assembly not found in hub.txt file.'
+            return result
+
+        # Get domain URL of this server, so we can ensure this is about to be read locally and for the UCSC exporting
+        domain_url = geardb._read_domain_url()
+        hub_url = f"{domain_url}/tracks/{dataset_id}/hub.txt"
+        config = {
+            "hubUrl": hub_url,
+            "assembly": assembly,
+            "gene_symbol": "Pou4f3" # Just need a filler, really
+        }
+        geardb.add_gosling_display_curation(dataset_id, user, config)
+
         try:
             dataset_final_dir = Path(__file__).resolve().parents[1] / 'tracks'
             # This whole upload_dir with the hub.txt and tracks should be moved inside "tracks"

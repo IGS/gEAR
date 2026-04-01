@@ -1141,15 +1141,23 @@ for (const btn of formatSelectorElts) {
         if (datasetFormat === "gosling") {
             document.getElementById("dataset-upload-c").classList.add("is-hidden");
             document.getElementById("dataset-upload-status").classList.add("is-hidden");
+            document.getElementById("dataset-curate-div").classList.add("is-hidden");
+
             document.getElementById("step-build-trackhub").classList.remove("is-hidden");
             document.getElementById("trackhub-upload-c").classList.remove("is-hidden");
+            document.getElementById("dataset-no-curate-div").classList.remove("is-hidden");
+
             document.getElementById("dataset-file-input").value = "";
             document.getElementById("dataset-url-input").value = "";
         } else {
             document.getElementById("dataset-upload-c").classList.remove("is-hidden");
             document.getElementById("dataset-upload-status").classList.remove("is-hidden");
+            document.getElementById("dataset-curate-div").classList.remove("is-hidden");
+
             document.getElementById("step-build-trackhub").classList.add("is-hidden");
-            document.getElementById("trackhub-upload-c").classList.add("is-hidden")
+            document.getElementById("trackhub-upload-c").classList.add("is-hidden");
+            document.getElementById("dataset-no-curate-div").classList.add("is-hidden");
+
             document.getElementById("trackhub-url-input").value = "";
         }
 
@@ -1173,8 +1181,14 @@ document.getElementById('dataset-curate-submit').addEventListener('click', (even
     event.preventDefault();
 
     const url = `/dataset_curator.html?dataset_id=${datasetUid}`;
-    window.location.href = url;
+    window.open(url, '_blank');
 });
+
+document.getElementById('dataset-explorer-redirect').addEventListener('click', (event) => {
+    event.preventDefault();
+    window.open(`./p?s=${shareUid}&gsem=1`, '_blank');
+});
+
 
 document.getElementById('metadata-form-submit').addEventListener('click', (event) => {
     event.preventDefault();

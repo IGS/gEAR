@@ -35,7 +35,6 @@ Documentation at https://gosling-lang.github.io/gos/index.html (the search funct
 # CONSTANTS
 TWO_LEVELS_UP = 2  # Number of parent directories to go up
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP]  # web-root dir
-JSON_DIR = abs_path_www.joinpath("tracks")  # Directory for JSON track files
 VIEW_PADDING = 10  # Padding between views
 CONDENSED_WIDTH = 1200 - VIEW_PADDING * 2  # Width of the condensed view tracks
 EXPANDED_WIDTH = 600 - VIEW_PADDING / 2  # Width of the left view tracks
@@ -994,16 +993,16 @@ class GoslingSpec(Resource):
             response["message"] = f"Dataset with ID {dataset_id} not found."
             return response, 404
 
-        # TODO: Add useOneFile mode to read tracks from.
         try:
             hub_response = requests.get(hub_url)
             hub_response.raise_for_status()
         except requests.RequestException as e:
             response["message"] = f"Failed to retrieve hub.txt from {hub_url}: {str(e)}"
             return response, 400
+        hub_txt = hub_response.text
 
         # Track Hubs are uploaded using useOneFile = "on", but we support both modes.
-        hub_json, tracks = parse_hub_from_file(hub_response.text)
+        hub_json, tracks = parse_hub_from_file(hub_txt)
 
         if not hub_json.get("useOneFile", "") == "on":
             base_url = hub_url.rsplit("/", 1)[0]  # Get base URL of hub.txt

@@ -1107,7 +1107,7 @@ Currently Gosling only supports single-organism tracks">
                     Your dataset has been submitted and is now available in the Dataset Explorer.
                   </p>
                   <hr />
-                  <div class="columns">
+                  <div class="columns" id="dataset-curate-div">
                     <div class="column">
                       <h3>What is curation?</h3>
                       <p>
@@ -1125,6 +1125,23 @@ Currently Gosling only supports single-organism tracks">
                     <div class="column">
                       <img class="img-fluid" src="/img/gear_plot_type_examples.png" alt="Dataset curation examples" />
                     </div>
+                  </div>
+                  <div class="columns is-hidden" id="dataset-no-curate-div">
+                    <div class="column">
+                      <h3>Dataset is ready to view</h3>
+                      <p>
+                        Click the button to redirect to the gene expression page, where you can view a display after searching a gene.
+                      </p>
+                      <div class="field mt-6">
+                        <div class="control">
+                          <button class="button is-primary" id="dataset-explorer-redirect" disabled>
+                            View dataset
+                            <span class="icon pl-3">
+                              <i class="mdi mdi-chevron-right"></i>
+                            </span>
+                          </button>
+                        </div>
+
                   </div>
                 </div>
               </div>
