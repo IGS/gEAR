@@ -122,9 +122,14 @@ def main() -> dict:
 
     global dataset_final_dir
     if dataset_format == "gosling":
-        dataset_final_dir = Path(__file__).resolve().parents[1] / 'tracks'
-        # This whole upload_dir with the hub.txt and tracks should be moved inside "tracks"
-        shutil.move(dataset_upload_dir, dataset_final_dir / dataset_id)
+        try:
+            dataset_final_dir = Path(__file__).resolve().parents[1] / 'tracks'
+            # This whole upload_dir with the hub.txt and tracks should be moved inside "tracks"
+            shutil.move(dataset_upload_dir, dataset_final_dir / dataset_id)
+
+        except Exception as e:
+            result['message'] = 'Error migrating track hub files: {}'.format(str(e))
+            return result
 
         # These need to be populated so that the frontend can move on, but they don't really apply to track hubs
         result["h5ad_migrated"] = 1
@@ -133,10 +138,6 @@ def main() -> dict:
         # if we made it this far, all is well, so return success
         result['success'] = 1
         result['message'] = 'All steps completed successfully.'
-
-        # now delete the entire upload directory
-        shutil.rmtree(dataset_upload_dir)
-
         return result
 
 

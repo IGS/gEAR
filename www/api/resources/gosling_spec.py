@@ -5,10 +5,14 @@ from urllib.parse import urljoin, urlparse
 
 import geardb
 import gosling as gos
-#import pyBigWig
 import requests
 from flask import request
 from flask_restful import Resource
+from gear.trackhub import (
+    fetch_trackdb_path,
+    parse_tracks_from_trackdb,
+    parse_hub_from_file,
+)
 
 """
 NOTE: The documentation kind of sucks, and requires some trial and error to figure out where things go.
@@ -498,8 +502,10 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
         # Title should be based on shortLabel, longLabel, bigDataUrl (in that order)
         title = track.get("shortLabel", track.get("longLabel", "bigDataUrl"))
 
+        visibility = track.get("visibility", "full")  # Dense, full, hide
+
         spec_builder = spec_builder_class(
-            data_url=data_url, color=color, zoom=zoom, title=title, position_str=position_str
+            data_url=data_url, color=color, zoom=zoom, title=title, position_str=position_str, visibility=visibility
         )
         left_track = spec_builder.add_track(**kwargs)
 
@@ -553,38 +559,6 @@ def build_region_view(parent_view_left, parent_view_right=None):
 
     return region_view
 
-
-def fetch_trackdb_url(genomes_txt, assembly) -> str:
-    """
-    Extract the trackDb URL for a specified genome assembly from UCSC genomes.txt format.
-
-    Args:
-        genomes_txt (str): The contents of a UCSC genomes.txt file as a string.
-        assembly (str): The genome assembly identifier to search for (e.g., 'hg38', 'mm10').
-
-    Returns:
-        dict: A dictionary containing the trackDb URL for the specified assembly.
-
-    Raises:
-        UnboundLocalError: If the assembly is not found in genomes_txt or trackDb entry is missing.
-
-    Note:
-        Expects genomes_txt to follow UCSC format with 'genome <assembly>'
-        followed by a line starting with 'trackDb' containing the URL.
-    """
-
-    for line in genomes_txt.splitlines():
-        if line.startswith(f"genome {assembly}"):
-            # The next line should contain the trackDb URL
-            next_line_index = genomes_txt.splitlines().index(line) + 1
-            if next_line_index < len(genomes_txt.splitlines()):
-                next_line = genomes_txt.splitlines()[next_line_index]
-                if next_line.startswith("trackDb"):
-                    return next_line.split(" ")[1]
-
-    raise UnboundLocalError(f"Assembly {assembly} not found in genomes.txt or trackDb entry is missing.")
-
-
 def get_gene_info(gene_symbol, dataset_id, assembly):
     """
     Fetches gene coordinate information for a given gene symbol from the geardb database.
@@ -630,68 +604,6 @@ def get_gene_info(gene_symbol, dataset_id, assembly):
 
     return position_str, gene_symbol
 
-
-def parse_tracks_from_trackdb(trackdb_txt, trackdb_url) -> list:
-    """Parse track names from a UCSC trackDb.txt content.
-
-    Returns a list of dicts with track information.
-
-    Example track:
-    track P1HC_ATAC_1
-    bigDataUrl P1HC_ATAC_1.bigwig
-    shortLabel ATAC-seq 1st replicate
-    longLabel ATAC-seq 1st replicate
-    color 31,119,180
-    autoScale on
-    visibility dense
-    type bigWig
-    """
-
-    tracks = []  # List of dicts
-    current_track = {}
-    for line in trackdb_txt.splitlines():
-        if line.startswith("track"):
-            if current_track:
-                tracks.append(current_track)
-            current_track = {"name": line.split(" ")[1]}
-        elif current_track:
-            if line.startswith("bigDataUrl"):
-                current_track["bigDataUrl"] = line.split(" ")[1]
-                # Gosling needs URL paths
-                # If not a URL, make it one by replacing the "trackDb.txt" part of trackdb_url
-                if not current_track["bigDataUrl"].startswith(
-                    "http://"
-                ) and not current_track["bigDataUrl"].startswith("https://"):
-                    current_track["bigDataUrl"] = urljoin(
-                        trackdb_url, current_track["bigDataUrl"]
-                    )
-                # Gosling will not redirect the URL, so we need to follow and update the URL
-                try:
-                    response = requests.head(current_track["bigDataUrl"], allow_redirects=True)
-                    if response.status_code == 200:
-                        current_track["bigDataUrl"] = response.url
-                except Exception:
-                    # non-fatal.
-                    # ? Do we continue without the track or add track knowing it's unreachable.
-                    print(
-                        f"WARNING: Could not resolve URL for track '{current_track['name']}'.",
-                        file=sys.stderr,
-                    )
-            elif line.startswith("shortLabel"):
-                current_track["shortLabel"] = " ".join(line.split(" ")[1:])
-            elif line.startswith("longLabel"):
-                current_track["longLabel"] = " ".join(line.split(" ")[1:])
-            elif line.startswith("color"):
-                color = line.split(" ")[1]
-                current_track["color"] = f"rgb({color})"    # rendered by CSS engine, so this will work
-            elif line.startswith("autoScale") and "gos_group" in line:
-                current_track["autoScale"] = "gos_group"
-            elif line.startswith("type"):
-                current_track["type"] = line.split(" ")[1]
-    if current_track:
-        tracks.append(current_track)
-    return tracks
-
 def parse_position_str(position_str: str) -> tuple:
     """
     Parses a position string in the format 'assembly.chromosome:start-end' and returns its components.
@@ -701,7 +613,7 @@ def parse_position_str(position_str: str) -> tuple:
 
     Returns:
         tuple: A tuple containing (assembly, chromosome, start, end) if parsing is successful,
-               otherwise (None, None, None, None) on failure.
+            otherwise (None, None, None, None) on failure.
     """
     try:
         assembly_chrom, interval = position_str.split(".")
@@ -741,7 +653,7 @@ def zoom_view_to_domain(view, position_str, hic_found=False):
     return view
 
 class TrackSpec(ABC):
-    def __init__(self, data_url, color="steelblue", zoom=False, title="", position_str="NA"):
+    def __init__(self, data_url, color="steelblue", zoom=False, title="", position_str="NA", visibility="full"):
         self.data_url = data_url
         self.color = color  # Passed as RGB string
         self.zoom = zoom
@@ -749,16 +661,64 @@ class TrackSpec(ABC):
         self.height = EXPANDED_HEIGHT if zoom else CONDENSED_HEIGHT
         self.title = title
         self.position_str = position_str
-
+        self.visibility = visibility
         self.track = None
+
+        if self.visibility == "hide":
+            self.height = 0 # effectively hide it
+        elif self.visibility == "full":
+            self.height *= 1.5
 
     @abstractmethod
     def add_track(self, **kwargs):
         pass
 
-    @abstractmethod
-    def validate_url(self, url):
-        pass
+    def validate_track_url(self, url: str, expected_extensions: list[str], check_accessible: bool = True) -> None:
+        """
+        Validate track URL with scheme, extension, and accessibility checks.
+
+        Performs checks in order of cost (cheapest first) to fail fast:
+        1. Scheme validation (no network)
+        2. Extension validation (no network)
+        3. [optional] Accessibility check (network call)
+
+        Args:
+            url (str): URL to validate.
+            expected_extensions (list[str]): List of valid extensions (e.g., ['.bam', '.bw']).
+            check_accessible (bool): Whether to check accessibility (default: True).
+
+        Raises:
+            ValueError: If any validation fails.
+        """
+        # Cheap checks first
+        self._validate_url_scheme(url)
+        self._validate_url_extension(url, expected_extensions)
+        # Expensive check last
+        if check_accessible:
+            self._validate_url_accessible(url)
+
+    @staticmethod
+    def _validate_url_scheme(url: str) -> None:
+        """Common URL scheme validation."""
+        if not (url.startswith("http://") or url.startswith("https://")):
+            raise ValueError("Invalid URL: must start with http:// or https://")
+
+    @staticmethod
+    def _validate_url_extension(url: str, valid_extensions: list[str]) -> None:
+        """Validate URL ends with one of the valid extensions."""
+        if not any(url.endswith(ext) for ext in valid_extensions):
+            extensions_str = ", ".join(valid_extensions)
+            raise ValueError(f"Invalid URL: must end with {extensions_str}")
+
+    # perform a HEAD request to ensure the URL is accessible and returns a 200 status code
+    @staticmethod
+    def _validate_url_accessible(url: str) -> None:
+        try:
+            response = requests.head(url, allow_redirects=True, timeout=5)
+            if response.status_code != 200:
+                raise ValueError(f"URL is not accessible: {url} (status code: {response.status_code})")
+        except requests.RequestException as e:
+            raise ValueError(f"URL is not accessible: {url} (error: {e})") from e
 
 
 class BamSpec(TrackSpec):
@@ -767,8 +727,8 @@ class BamSpec(TrackSpec):
         color = self.color
 
         try:
-            self.validate_url(url)
-            self.validate_index_url(f"{url}.bai")
+            self.validate_track_url(url, [".bam"])
+            self.validate_track_url(f"{url}.bai", [".bam.bai"])
         except ValueError:
             raise
 
@@ -792,24 +752,6 @@ class BamSpec(TrackSpec):
         )
         return track
 
-    def validate_index_url(self, url):
-        # Basic URL validation
-        if not url.startswith("http://") and not url.startswith("https://"):
-            raise ValueError("Invalid URL: must start with http:// or https://")
-        # URL must end with .bai
-        if not url.endswith(".bai"):
-            raise ValueError("Invalid URL: must end with .bai")
-        return True
-
-    def validate_url(self, url):
-        # Basic URL validation
-        if not url.startswith("http://") and not url.startswith("https://"):
-            raise ValueError("Invalid URL: must start with http:// or https://")
-        # URL must end with .bam
-        if not url.endswith(".bam"):
-            raise ValueError("Invalid URL: must end with .bam")
-        return True
-
 
 class BedSpec(TrackSpec):
     def add_track(self, **kwargs):
@@ -817,8 +759,8 @@ class BedSpec(TrackSpec):
         color = self.color
 
         try:
-            self.validate_url(url)
-            self.validate_index_url(f"{url}.tbi")
+            self.validate_track_url(url, [".bed.gz"])
+            self.validate_track_url(f"{url}.tbi", [".bed.gz.tbi"])
         except ValueError:
             raise
 
@@ -842,24 +784,6 @@ class BedSpec(TrackSpec):
         )
         return track
 
-    def validate_index_url(self, url):
-        # Basic URL validation
-        if not url.startswith("http://") and not url.startswith("https://"):
-            raise ValueError("Invalid URL: must start with http:// or https://")
-        # URL must end with .tbi
-        if not url.endswith(".bed.gz.tbi"):
-            raise ValueError("Invalid URL: must end with .bed.gz.tbi")
-        return True
-
-    def validate_url(self, url):
-        # Basic URL validation
-        if not url.startswith("http://") and not url.startswith("https://"):
-            raise ValueError("Invalid URL: must start with http:// or https://")
-        # URL must end with .bed.gz
-        if not url.endswith(".bed.gz"):
-            raise ValueError("Invalid URL: must end with .bed.gz")
-        return True
-
 
 class BigWigSpec(TrackSpec):
 
@@ -868,7 +792,7 @@ class BigWigSpec(TrackSpec):
         color = self.color
 
         try:
-            self.validate_url(url)
+            self.validate_track_url(url, [".bw", ".bigwig"])
         except ValueError:
             raise
 
@@ -902,23 +826,14 @@ class BigWigSpec(TrackSpec):
         )
         return track
 
-    def validate_url(self, url):
-        # Basic URL validation
-        if not url.startswith("http://") and not url.startswith("https://"):
-            raise ValueError("Invalid URL: must start with http:// or https://")
-        # URL must end with .bw or .bigwig
-        if not (url.endswith(".bw") or url.endswith(".bigwig")):
-            raise ValueError("Invalid URL: must end with .bw or .bigwig")
-        return True
-
 class VcfSpec(TrackSpec):
     def add_track(self, **kwargs):
         url = self.data_url
         color = self.color
 
         try:
-            self.validate_url(url)
-            self.validate_index_url(f"{url}.tbi")
+            self.validate_track_url(url, [".vcf.gz"])
+            self.validate_track_url(f"{url}.tbi", [".vcf.gz.tbi"])
         except ValueError:
             raise
 
@@ -941,24 +856,6 @@ class VcfSpec(TrackSpec):
         )
         return track
 
-    def validate_index_url(self, url):
-        # Basic URL validation
-        if not url.startswith("http://") and not url.startswith("https://"):
-            raise ValueError("Invalid URL: must start with http:// or https://")
-        # URL must end with .tbi
-        if not url.endswith(".vcf.gz.tbi"):
-            raise ValueError("Invalid URL: must end with .vcf.gz.tbi")
-        return True
-
-    def validate_url(self, url):
-        # Basic URL validation
-        if not url.startswith("http://") and not url.startswith("https://"):
-            raise ValueError("Invalid URL: must start with http:// or https://")
-        # URL must end with .vcf.gz
-        if not url.endswith(".vcf.gz"):
-            raise ValueError("Invalid URL: must end with .vcf.gz")
-        return True
-
 class HiCSpec(TrackSpec):
     def add_track(self, **kwargs):
         url = self.data_url
@@ -978,7 +875,8 @@ class HiCSpec(TrackSpec):
         """
 
         #try:
-        #    self.validate_url(url)
+        # TODO: This requires the HiGlass mcool path
+        #    self.validate_track_url(url)
         #except ValueError:
         #    raise
 
@@ -998,7 +896,7 @@ class HiCSpec(TrackSpec):
                 y=gos.Y(field="ys", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
                 ye=gos.Ye(field="ye", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
                 color=gos.Color(field="value", type="quantitative", range="bupu", legend=True),  # pyright: ignore[reportArgumentType]
-                style=gos.Style(matrixExtent="full"),
+                style=gos.Style(matrixExtent="full"), # pyright: ignore[reportArgumentType]
             )
         )
         if position_str == "NA":
@@ -1010,9 +908,6 @@ class HiCSpec(TrackSpec):
 )
         return view
 
-
-    def validate_url(self, url):
-        pass
 
     def add_annotation_track(self, position_str):
 
@@ -1038,10 +933,10 @@ class HiCSpec(TrackSpec):
             )
             .mark_bar()
             .encode(
-                x=gos.X(field="x", type="genomic", axis="none"),
-                xe=gos.Xe(field="xe", type="genomic", axis="none"),
-                y=gos.Y(field="y", type="genomic", axis="none"),
-                ye=gos.Ye(field="ye", type="genomic", axis="none"),
+                x=gos.X(field="x", type="genomic", axis="none"), # pyright: ignore[reportArgumentType]
+                xe=gos.Xe(field="xe", type="genomic", axis="none"), # pyright: ignore[reportArgumentType]
+                y=gos.Y(field="y", type="genomic", axis="none"), # pyright: ignore[reportArgumentType]
+                ye=gos.Ye(field="ye", type="genomic", axis="none"), # pyright: ignore[reportArgumentType]
                 color=gos.Color(value="yellow"),
                 opacity=gos.Opacity(value=0.2),
                 stroke=gos.Stroke(value="yellow"),
@@ -1100,44 +995,44 @@ class GoslingSpec(Resource):
             return response, 404
 
         # TODO: Add useOneFile mode to read tracks from.
-
-        # Cut off name of hub_url (hub.txt). This will be used to build more paths
-        base_url = hub_url.rsplit("/", 1)[0]  # Get base URL of hub.txt
-
-        # Look for a genomes.txt file to matching the assembly to get the "trackDb" file
-        # This file is the same as the one required by the UCSC Genome Browser
-        genomes_url = f"{base_url}/genomes.txt"
         try:
-            genomes_response = requests.get(genomes_url)
-            genomes_response.raise_for_status()
+            hub_response = requests.get(hub_url)
+            hub_response.raise_for_status()
         except requests.RequestException as e:
-            response["message"] = (
-                f"Failed to retrieve genomes.txt from {genomes_url}: {str(e)}"
-            )
+            response["message"] = f"Failed to retrieve hub.txt from {hub_url}: {str(e)}"
             return response, 400
 
-        trackdb_url = fetch_trackdb_url(genomes_response.text, assembly)
-        if not trackdb_url:
-            response["message"] = (
-                f"trackDb URL not found for assembly {assembly} in genomes.txt"
-            )
-            return response, 400
+        # Track Hubs are uploaded using useOneFile = "on", but we support both modes.
+        hub_json, tracks = parse_hub_from_file(hub_response.text)
 
+        if not hub_json.get("useOneFile", "") == "on":
+            base_url = hub_url.rsplit("/", 1)[0]  # Get base URL of hub.txt
 
-        if not trackdb_url.startswith("http://") and not trackdb_url.startswith("https://"):
-            trackdb_url = f"{base_url}/{trackdb_url}"
+            genomes_file_name = hub_json.get("genomesFile", "genomes.txt")
+            genomes_url = f"{base_url}/{genomes_file_name}"
+            try:
+                genomes_response = requests.get(genomes_url)
+                genomes_response.raise_for_status()
+            except requests.RequestException as e:
+                response["message"] = (
+                    f"Failed to retrieve genomes.txt from {genomes_url}: {str(e)}"
+                )
+                return response, 400
 
-        # Fetch tracks
-        try:
-            trackdb_response = requests.get(trackdb_url)
-            trackdb_response.raise_for_status()
-        except requests.RequestException as e:
-            response["message"] = (
-                f"Failed to retrieve trackDb from {trackdb_url}: {str(e)}"
-            )
-            return response, 400
-        tracks = parse_tracks_from_trackdb(trackdb_response.text, trackdb_url)
-
+            # We need to get the tracks by parsing the trackDb file,
+            # which is located by parsing the genomes.txt file to match the assembly
+            trackdb_path = fetch_trackdb_path(genomes_response.text, assembly)
+            trackdb_url = f"{base_url}/{trackdb_path}"
+            # Fetch tracks
+            try:
+                trackdb_response = requests.get(trackdb_url)
+                trackdb_response.raise_for_status()
+            except requests.RequestException as e:
+                response["message"] = (
+                    f"Failed to retrieve trackDb from {trackdb_url}: {str(e)}"
+                )
+                return response, 400
+            tracks = parse_tracks_from_trackdb(trackdb_response.text, trackdb_url)
 
         # Let's get the coordinates of the gene_symbol.
         (position_str, new_gene_symbol) = get_gene_info(gene_symbol, dataset_id, assembly)
