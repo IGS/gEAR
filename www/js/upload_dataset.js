@@ -539,6 +539,12 @@ const stepTo = (step) => {
     let pollingFn = null;
     if (step === 'process-dataset') {
         pollingFn = datasetFormat === 'gosling' ? checkTrackhubStatus : checkDatasetProcessingStatus;
+
+        // For Gosling, render track status list once on entry (works for both new and resumed uploads)
+        if (datasetFormat === 'gosling' && trackContainer) {
+            renderTrackStatusList(trackContainer);
+        }
+
     }
 
     if (pollingFn) {
@@ -623,6 +629,8 @@ const loadUploadsInProgress = async () => {
 
                     datasetFormat = row.dataset.datasetFormat;
                     // processingStatus will be updated in initial polling again
+
+                    adjustUIForGosling()
 
                     // Do we want to dynamically load the next step or page refresh for it?
                     //  If dynamic we have to reset all the forms.
@@ -903,8 +911,6 @@ const stageTrackHub = async (hubContainer, trackContainer) => {
             throw new Error(data?.message || 'Unknown error');
         }
 
-        // Render track status list before moving to process-dataset step
-        renderTrackStatusList(trackContainer);
         stepTo('process-dataset');
 
     } catch (error) {
@@ -1073,6 +1079,37 @@ const validateMetadataForm = () => {
 }
 
 /**
+ * Adjusts the UI elements on the upload dataset page based on the selected dataset format, specifically for Gosling uploads.
+ * Hides or shows relevant sections and inputs to guide the user through the appropriate upload process for Gosling track hubs.
+ */
+
+const adjustUIForGosling = () => {
+    // Gosling has special uploader
+    if (datasetFormat === "gosling") {
+        document.getElementById("dataset-upload-c").classList.add("is-hidden");
+        document.getElementById("dataset-upload-status").classList.add("is-hidden");
+        document.getElementById("dataset-curate-div").classList.add("is-hidden");
+
+        document.getElementById("step-build-trackhub").classList.remove("is-hidden");
+        document.getElementById("trackhub-upload-c").classList.remove("is-hidden");
+        document.getElementById("dataset-no-curate-div").classList.remove("is-hidden");
+
+        document.getElementById("dataset-file-input").value = "";
+        document.getElementById("dataset-url-input").value = "";
+        return;
+    }
+    document.getElementById("dataset-upload-c").classList.remove("is-hidden");
+    document.getElementById("dataset-upload-status").classList.remove("is-hidden");
+    document.getElementById("dataset-curate-div").classList.remove("is-hidden");
+
+    document.getElementById("step-build-trackhub").classList.add("is-hidden");
+    document.getElementById("trackhub-upload-c").classList.add("is-hidden");
+    document.getElementById("dataset-no-curate-div").classList.add("is-hidden");
+
+    document.getElementById("trackhub-url-input").value = "";
+}
+
+/**
  * Initializes the upload dataset page by:
  * - Checking if the user is logged in and displaying the appropriate UI elements.
  * - Loading uploads in progress for logged-in users.
@@ -1137,29 +1174,7 @@ for (const btn of formatSelectorElts) {
             migrateH5adSpan.textContent = 'Migrating track hub and files';
         }
 
-        // Gosling has special uploader
-        if (datasetFormat === "gosling") {
-            document.getElementById("dataset-upload-c").classList.add("is-hidden");
-            document.getElementById("dataset-upload-status").classList.add("is-hidden");
-            document.getElementById("dataset-curate-div").classList.add("is-hidden");
-
-            document.getElementById("step-build-trackhub").classList.remove("is-hidden");
-            document.getElementById("trackhub-upload-c").classList.remove("is-hidden");
-            document.getElementById("dataset-no-curate-div").classList.remove("is-hidden");
-
-            document.getElementById("dataset-file-input").value = "";
-            document.getElementById("dataset-url-input").value = "";
-        } else {
-            document.getElementById("dataset-upload-c").classList.remove("is-hidden");
-            document.getElementById("dataset-upload-status").classList.remove("is-hidden");
-            document.getElementById("dataset-curate-div").classList.remove("is-hidden");
-
-            document.getElementById("step-build-trackhub").classList.add("is-hidden");
-            document.getElementById("trackhub-upload-c").classList.add("is-hidden");
-            document.getElementById("dataset-no-curate-div").classList.add("is-hidden");
-
-            document.getElementById("trackhub-url-input").value = "";
-        }
+        adjustUIForGosling();
 
     });
 };

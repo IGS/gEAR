@@ -409,7 +409,7 @@ def convert_epiviz_to_gosling(display, e_config) -> dict | None:
     tracks_path = Path(__file__).resolve().parent.parent / 'www' / 'tracks' / track_location
 
     if TEST:
-        url_root = f"http://localhost:8080/tracks/{track_location}"
+        url_root = f"http://localhost/tracks/{track_location}"
     else:
         url_root = get_domain_url() + f"/tracks/{track_location}"
 

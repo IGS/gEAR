@@ -40,7 +40,7 @@ def _create_initial_status_file(
         track_statuses={},
     )
 
-def queue_trackhub_job(job_id: str, share_uid: str, hub_json: dict, assembly: str, track_stanzas: list, dry_run: bool = False) -> None:
+def queue_trackhub_job(job_id: str, share_uid: str, hub_json: dict, assembly: str, track_stanzas: list, hub_url: str = "", dry_run: bool = False) -> None:
     """Queue trackhub processing job to RabbitMQ."""
 
     # If queue is not enabled, return False
@@ -69,6 +69,7 @@ def queue_trackhub_job(job_id: str, share_uid: str, hub_json: dict, assembly: st
             'hub_json': hub_json,
             'assembly': assembly,
             'track_stanzas': track_stanzas,
+            'hub_url': hub_url,
             'dry_run': dry_run
         }
 
@@ -133,15 +134,36 @@ class TrackHubCopy(Resource):
         with open(metadata_file, 'r') as f:
             metadata = json.load(f)
 
+        dataset_id = metadata.get("dataset_uid", "")
+        if not dataset_id:
+            write_status(
+                status_file,
+                job_id=job_id,
+                status="error",
+                message="Dataset ID not found in metadata. Impossible to save as dataset.",
+                progress=0,
+                completed_tracks=0,
+                total_tracks=len(track_stanzas),
+                track_statuses={},
+            )
+            return
+
         # Update metadata for downstream uses
         metadata["dataset_format"] = "gosling"
         with open(metadata_file, 'w') as f:
             json.dump(metadata, f, indent=4)
 
+        domain_url = geardb._read_domain_url()
+        if not domain_url:
+            result["message"] = "Domain URL not configured. Cannot process track hub."
+            return result, 500
+
+        hub_url = f"{domain_url}/tracks/{dataset_id}"
+
         result["job_id"] = job_id
         # Queue the job
         try:
-            queue_trackhub_job(job_id, share_uid, hub_json, assembly, track_stanzas, dry_run)
+            queue_trackhub_job(job_id, share_uid, hub_json, assembly, track_stanzas, hub_url, dry_run)
             result["success"] = True
             result["message"] = "Track hub processing job queued"
             return result, 202  # Accepted
@@ -162,10 +184,11 @@ class TrackHubCopy(Resource):
                 hub_json=hub_json,
                 assembly=assembly,
                 track_stanzas=track_stanzas,
-                dry_run=dry_run,
+                hub_url=hub_url,
                 higlass_config=higlass_config,
+                dry_run=dry_run,
+
             )
-            #
 
             result["success"] = result_sync["success"]
             result["message"] = result_sync["message"]

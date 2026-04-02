@@ -24,7 +24,6 @@ VALID_CONTAINER_TYPES = ["multiWig"]
 HUB_FIELDS = ["hub", "shortLabel", "longLabel", "email", "useOneFile", "genome", "genomesFile"]
 TRACK_FIELDS = ["type", "bigDataUrl", "shortLabel", "longLabel", "visibility", "color", "autoScale"]
 
-
 def write_status(
     status_file: Path,
     job_id: str,
@@ -56,8 +55,9 @@ def process_trackhub_synchronously(
     hub_json: dict,
     assembly: str,
     track_stanzas: list,
-    dry_run: bool = False,
+    hub_url: str,
     higlass_config: Optional[dict] = None,
+    dry_run: bool = False,
 ) -> dict:
     """
     Process trackhub synchronously (blocking call).
@@ -72,6 +72,7 @@ def process_trackhub_synchronously(
         staging_area=staging_area,
         status_file=status_file,
         higlass_config=higlass_config or {},
+        hub_url=hub_url
     )
 
     return processor.process(hub_json, assembly, track_stanzas, dry_run)
@@ -313,19 +314,19 @@ def download_large_file(url: str, destination: Path) -> None:
         raise Exception(f"Error downloading from {url}: {e}") from e
 
 
-def bigbed_to_bed(bigbed_path: Path, outdir_path: Path) -> bool:
+def bigbed_to_bed(bigbed_path: Path, outdir_path: Path) -> str:
     """Convert a BigBed file to a BED file and compress it using BGZF."""
-    bed_path = outdir_path / bigbed_path.with_suffix('.bed').name
+    bed_path = outdir_path / bigbed_path.with_suffix('.bed.gz').name
     if bed_path.is_file():
         print(f"{bed_path} already exists. Skipping conversion.", file=sys.stderr)
-        return True
+        return bed_path.as_posix()
 
     try:
         bb = pyBigWig.open(bigbed_path.as_posix())
         if not bb.isBigBed():
             print(f"{bigbed_path} is not a bigBed file.", file=sys.stderr)
             bb.close()
-            return False
+            raise
 
         with open(bed_path, 'w') as bed_out:
             for chrom, start, end, rest in bb.intervals():
@@ -336,7 +337,7 @@ def bigbed_to_bed(bigbed_path: Path, outdir_path: Path) -> bool:
         print(f"Converted {bigbed_path} to {bed_path}.", file=sys.stderr)
     except Exception as e:
         print(f"Error converting {bigbed_path} to bed: {e}", file=sys.stderr)
-        return False
+        raise
 
     try:
         gz_path = bed_path.with_suffix(bed_path.suffix + '.gz')
@@ -345,10 +346,10 @@ def bigbed_to_bed(bigbed_path: Path, outdir_path: Path) -> bool:
 
         _create_tabix_indexed_file(gz_path, file_type="bed")
         bed_path.unlink()  # Clean up uncompressed version
-        return True
+        return gz_path.as_posix()
     except Exception as e:
         print(f"Error compressing and indexing {bed_path}: {e}", file=sys.stderr)
-        return False
+        raise
 
 
 def hic_to_mcool(hic_path: Path, outdir_path: Path) -> bool:
@@ -451,15 +452,15 @@ def _create_tabix_indexed_file(bgzipped_path: Path, file_type: str = "bed") -> N
     subprocess.run(shlex.split(tabix_cmd), check=True)
 
 
-def _append_higlass_url_to_track(hub_file: Path, hic_track_name: str, higlass_url: str) -> None:
-    """Inject a gos_higlass_url property into a TrackDB file."""
+def append_gos_url_to_track(hub_file: Path, orig_track_name: str, gosling_url: str) -> None:
+    """Inject a gos_url property into a TrackDB file."""
     modified_hub_file = hub_file.with_stem(hub_file.stem + '.modified')
 
     with open(modified_hub_file, 'w') as out_f:
         for line in hub_file.read_text().splitlines():
             line = line.strip()
-            if line.startswith("bigDataUrl") and line.endswith(hic_track_name):
-                out_f.write(f"gos_higlass_url {higlass_url}\n")
+            if line.startswith("bigDataUrl") and line.endswith(orig_track_name):
+                out_f.write(f"gos_url {gosling_url}\n")
             out_f.write(line + "\n")
 
     modified_hub_file.replace(hub_file)
@@ -501,12 +502,17 @@ class TrackHubProcessor:
         staging_area: Path,
         status_file: Path,
         higlass_config: Optional[dict] = None,
+        hub_url: str = ""
     ):
         self.job_id = job_id
         self.share_uid = share_uid
         self.staging_area = staging_area
         self.status_file = status_file
         self.higlass_config = higlass_config or {}
+        self.hub_url = hub_url
+        if not self.hub_url:
+            raise ValueError("Hub URL base must be provided for TrackHubProcessor")
+
         self.staging_area.mkdir(parents=True, exist_ok=True)
 
     def update_status(
@@ -609,7 +615,8 @@ class TrackHubProcessor:
                 if not dry_run:
                     download_large_file(big_data_url, dest_path)
 
-                track["bigDataUrl"] = Path(big_data_url).name
+                # Update bigDataUrl to point to a remote reference.
+                track["bigDataUrl"] = f"{self.hub_url}/{dest_path}.name"
                 track_statuses[track_name] = "downloaded"
 
                 # Convert based on type
@@ -624,8 +631,11 @@ class TrackHubProcessor:
                         track_statuses,
                     )
                     if not dry_run:
-                        if not bigbed_to_bed(dest_path, self.staging_area):
-                            raise Exception(f"Failed to convert {track_name} from bigBed to BED")
+                        try:
+                            bed_path = bigbed_to_bed(dest_path, self.staging_area)
+                            append_gos_url_to_track(dest_hub, dest_path.name, bed_path)
+                        except Exception as e:
+                            raise Exception(f"Failed to convert {track_name} from bigBed to BED: {e}")
 
                 elif track["type"] == "hic":
                     track_statuses[track_name] = "converting"
@@ -659,7 +669,7 @@ class TrackHubProcessor:
                             )
                             tileset_uid = higlass_url.split("d=")[-1]
                             ingested_tilesets.append(tileset_uid)
-                            _append_higlass_url_to_track(dest_hub, dest_path.name, higlass_url)
+                            append_gos_url_to_track(dest_hub, dest_path.name, higlass_url)
                         except Exception:
                             traceback.print_exc()
                             print(

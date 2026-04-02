@@ -36,6 +36,7 @@ def _on_request(channel, method_frame, properties, body):
     hub_json = deserialized_body["hub_json"]
     assembly = deserialized_body["assembly"]
     track_stanzas = deserialized_body["track_stanzas"]
+    hub_url = deserialized_body.get("hub_url", "")
     dry_run = deserialized_body.get("dry_run", False)
 
     with open(logfile, "a") as fh:
@@ -47,6 +48,11 @@ def _on_request(channel, method_frame, properties, body):
 
         if not user_upload_base.is_dir():
             print(f"{pid} - ERROR: User upload base directory {user_upload_base} does not exist", flush=True, file=fh)
+            channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
+            return
+
+        if not hub_url:
+            print(f"{pid} - ERROR: Hub URL base not configured. Cannot process track hub.", flush=True, file=fh)
             channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
             return
 
@@ -80,6 +86,7 @@ def _on_request(channel, method_frame, properties, body):
                 staging_area=staging_area,
                 status_file=status_file,
                 higlass_config=higlass_config,
+                hub_url=hub_url
             )
 
             result = processor.process(hub_json, assembly, track_stanzas, dry_run)

@@ -160,6 +160,9 @@ def main() -> dict:
             # This whole upload_dir with the hub.txt and tracks should be moved inside "tracks"
             shutil.move(dataset_upload_dir, dataset_final_dir / dataset_id)
 
+            (dataset_final_dir / dataset_id / 'status.json').unlink(missing_ok=True)
+            (dataset_final_dir / dataset_id / 'metadata.json').rename(dataset_final_dir / dataset_id / f'{dataset_id}.json')
+
         except Exception as e:
             result['message'] = 'Error migrating track hub files: {}'.format(str(e))
             return result

@@ -15,7 +15,7 @@ from gear.trackhub import (
 )
 
 """
-NOTE: The documentation kind of sucks, and requires some trial and error to figure out where things go.
+NOTE: The "gos" documentation kind of sucks, and requires some trial and error to figure out where things go.
 Generally you can make a data class type (i.e. BedData) and add that as a property to a gos.Track
 There are some shorthand arrangement functions (i.e. gos.overlay) to combine tracks into a gos.View
 The spec is validated against the JSON schema and will error if validation fails.  Building in JS only gives warnings.
@@ -57,6 +57,82 @@ ASSEMBLY_TO_CHROMSIZES_FILE = {
 
 GENOMES_ROOT = "https://umgear.org/tracks/genomes/"
 #GENOMES_ROOT = "http://localhost:8080/tracks/genomes"
+
+def _resolve_track_url(track: dict, use_gosling: bool = True) -> str | None:
+    """
+    Resolve the appropriate URL for a track based on context and available fields.
+
+    For Gosling visualization, prefers gos_url if available (supports different file types).
+    For UCSC export, uses bigDataUrl directly.
+
+    Args:
+        track (dict): Track specification dictionary.
+        use_gosling (bool): If True, prefer gos_url for Gosling compatibility. If False, use bigDataUrl.
+
+    Returns:
+        str or None: The resolved URL, or None if URL cannot be determined.
+    """
+    # Gosling context: prefer gos_url if available
+    if use_gosling and track.get("gos_url"):
+        return track["gos_url"]
+
+    # Fall back to bigDataUrl
+    return track.get("bigDataUrl")
+
+def _fetch_tracks_from_hub(hub_url: str, assembly: str) -> list[dict]:
+    """
+    Fetch and parse tracks from a track hub, handling both useOneFile and traditional modes.
+
+    Args:
+        hub_url (str): URL to the hub.txt file.
+        assembly (str): Genome assembly identifier (e.g., 'hg38', 'mm10').
+
+    Returns:
+        list[dict]: List of track dictionaries.
+
+    Raises:
+        requests.RequestException: If hub files cannot be retrieved.
+        ValueError: If assembly not found or parsing fails.
+    """
+    try:
+        hub_response = requests.get(hub_url)
+        hub_response.raise_for_status()
+    except requests.RequestException as e:
+        raise ValueError(f"Failed to retrieve hub.txt from {hub_url}: {str(e)}") from e
+
+    hub_txt = hub_response.text
+    hub_json, tracks = parse_hub_from_file(hub_txt)
+
+    # Traditional mode: parse genomes.txt and trackDb.txt
+    if not hub_json.get("useOneFile", "") == "on":
+        base_url = hub_url.rsplit("/", 1)[0]
+
+        genomes_file_name = hub_json.get("genomesFile", "genomes.txt")
+        genomes_url = f"{base_url}/{genomes_file_name}"
+
+        try:
+            genomes_response = requests.get(genomes_url)
+            genomes_response.raise_for_status()
+        except requests.RequestException as e:
+            raise ValueError(
+                f"Failed to retrieve genomes.txt from {genomes_url}: {str(e)}"
+            ) from e
+
+        trackdb_path = fetch_trackdb_path(genomes_response.text, assembly)
+        trackdb_url = f"{base_url}/{trackdb_path}"
+
+        try:
+            trackdb_response = requests.get(trackdb_url)
+            trackdb_response.raise_for_status()
+        except requests.RequestException as e:
+            raise ValueError(
+                f"Failed to retrieve trackDb from {trackdb_url}: {str(e)}"
+            ) from e
+
+        tracks = parse_tracks_from_trackdb(trackdb_response.text, trackdb_url)
+
+    return tracks
+
 
 def build_assembly_array(assembly) -> list:
     """
@@ -425,7 +501,7 @@ def build_genome_wide_view(
     return genome_wide_view
 
 
-def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url="", position_str="NA"):
+def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, position_str="NA"):
     """
     Builds and configures Gosling tracks based on the provided track specifications.
 
@@ -470,30 +546,14 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
             )
             continue
 
-        data_url = track.get("bigDataUrl", None)
+        # Resolve URL for Gosling context
+        data_url = _resolve_track_url(track, use_gosling=True)
         if not data_url:
             print(
-                f"WARNING: No bigDataUrl found for track '{track.get('shortLabel', '')}'; skipping.",
+                f"WARNING: Could not resolve URL for track '{track.get('shortLabel', '')}'; skipping.",
                 file=sys.stderr,
             )
             continue
-
-        BIGBED_EXTENSIONS = [".bb", ".bigbed"]
-        # If the data_url ends with a bigBed extension, replace extension with .bed
-        # Gosling will use .bed files but the UCSC Genome Browser uses BigBed
-        if any(data_url.endswith(ext) for ext in BIGBED_EXTENSIONS):
-            data_url = data_url.rsplit(".", 1)[0] + ".bed"
-
-            # There is the possibility that the BigBed files are at a remote URL
-            # but during uploading, the Bed files are locally hosted.
-            # So we need to adjust the URL accordingly.
-            if not tracksdb_url:
-                print(
-                    f"WARNING: Cannot resolve .bed URL for BigBed track '{track.get('shortLabel', '')}'; skipping.",
-                    file=sys.stderr,
-                )
-                continue
-            data_url = urljoin(tracksdb_url, data_url)
 
         # Get other attributes to pass to the class
         color = track.get("color", "orange")  # Default color if not specified
@@ -501,23 +561,31 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
         # Title should be based on shortLabel, longLabel, bigDataUrl (in that order)
         title = track.get("shortLabel", track.get("longLabel", "bigDataUrl"))
 
-        visibility = track.get("visibility", "full")  # Dense, full, hide
+        visibility = track.get("visibility", "dense")  # Dense, full, hide
 
-        spec_builder = spec_builder_class(
-            data_url=data_url, color=color, zoom=zoom, title=title, position_str=position_str, visibility=visibility
-        )
-        left_track = spec_builder.add_track(**kwargs)
+        try:
+            spec_builder = spec_builder_class(
+                data_url=data_url, color=color, zoom=zoom, title=title, position_str=position_str, visibility=visibility
+            )
+            left_track = spec_builder.add_track(**kwargs)
 
-        parent_tracks_dict["left"].append(left_track)
+            # Skip if track validation failed (add_track returns None)
+            if left_track is None:
+                continue
 
-        if spec_builder_class == HiCSpec:
-            hic_found = True
+            parent_tracks_dict["left"].append(left_track)
 
-        if zoom:
-            right_track = spec_builder.add_track(**kwargs)
-            right_track.id = f"right-track-{Path(data_url).stem}"
-            parent_tracks_dict["right"].append(right_track)
+            if spec_builder_class == HiCSpec:
+                hic_found = True
 
+            if zoom:
+                right_track = spec_builder.add_track(**kwargs)
+                if right_track is not None:
+                    right_track.id = f"right-track-{Path(data_url).stem}"
+                    parent_tracks_dict["right"].append(right_track)
+        except Exception as e:
+            print(f"ERROR building track '{title}': {e}", file=sys.stderr)
+            continue
 
     parent_view_left = gos.stack(*parent_tracks_dict["left"]).properties(
         id="left-view", linkingId="zoom-to-panel-a", spacing=0,
@@ -672,19 +740,17 @@ class TrackSpec(ABC):
     def add_track(self, **kwargs):
         pass
 
-    def validate_track_url(self, url: str, expected_extensions: list[str], check_accessible: bool = True) -> None:
+    def validate_track_url(self, url: str, expected_extensions: list[str]) -> None:
         """
         Validate track URL with scheme, extension, and accessibility checks.
 
         Performs checks in order of cost (cheapest first) to fail fast:
         1. Scheme validation (no network)
         2. Extension validation (no network)
-        3. [optional] Accessibility check (network call)
 
         Args:
             url (str): URL to validate.
             expected_extensions (list[str]): List of valid extensions (e.g., ['.bam', '.bw']).
-            check_accessible (bool): Whether to check accessibility (default: True).
 
         Raises:
             ValueError: If any validation fails.
@@ -692,9 +758,6 @@ class TrackSpec(ABC):
         # Cheap checks first
         self._validate_url_scheme(url)
         self._validate_url_extension(url, expected_extensions)
-        # Expensive check last
-        if check_accessible:
-            self._validate_url_accessible(url)
 
     @staticmethod
     def _validate_url_scheme(url: str) -> None:
@@ -709,17 +772,6 @@ class TrackSpec(ABC):
             extensions_str = ", ".join(valid_extensions)
             raise ValueError(f"Invalid URL: must end with {extensions_str}")
 
-    # perform a HEAD request to ensure the URL is accessible and returns a 200 status code
-    @staticmethod
-    def _validate_url_accessible(url: str) -> None:
-        try:
-            response = requests.head(url, allow_redirects=True, timeout=5)
-            if response.status_code != 200:
-                raise ValueError(f"URL is not accessible: {url} (status code: {response.status_code})")
-        except requests.RequestException as e:
-            raise ValueError(f"URL is not accessible: {url} (error: {e})") from e
-
-
 class BamSpec(TrackSpec):
     def add_track(self, **kwargs):
         url = self.data_url
@@ -728,8 +780,9 @@ class BamSpec(TrackSpec):
         try:
             self.validate_track_url(url, [".bam"])
             self.validate_track_url(f"{url}.bai", [".bam.bai"])
-        except ValueError:
-            raise
+        except ValueError as e:
+            print(f"WARNING: Skipping BAM track '{self.title}': {e}", file=sys.stderr)
+            return None
 
         bamData = gos.bam(url=url, indexUrl=f"{url}.bai")
 
@@ -760,8 +813,9 @@ class BedSpec(TrackSpec):
         try:
             self.validate_track_url(url, [".bed.gz"])
             self.validate_track_url(f"{url}.tbi", [".bed.gz.tbi"])
-        except ValueError:
-            raise
+        except ValueError as e:
+            print(f"WARNING: Skipping BED track '{self.title}': {e}", file=sys.stderr)
+            return None
 
         bed_data = gos.bed(url=url, indexUrl=f"{url}.tbi")
 
@@ -792,8 +846,9 @@ class BigWigSpec(TrackSpec):
 
         try:
             self.validate_track_url(url, [".bw", ".bigwig"])
-        except ValueError:
-            raise
+        except ValueError as e:
+            print(f"WARNING: Skipping BigWig track '{self.title}': {e}", file=sys.stderr)
+            return None
 
         # TODO: figure out appropriate binsize when zooming out: Default is 256. It looks blocky briefly
         bigwig_data = gos.bigwig(url=url)
@@ -833,8 +888,9 @@ class VcfSpec(TrackSpec):
         try:
             self.validate_track_url(url, [".vcf.gz"])
             self.validate_track_url(f"{url}.tbi", [".vcf.gz.tbi"])
-        except ValueError:
-            raise
+        except ValueError as e:
+            print(f"WARNING: Skipping VCF track '{self.title}': {e}", file=sys.stderr)
+            return None
 
         vcf_data = gos.VcfData(type="vcf", url=url, indexUrl=f"{url}.tbi")  # type: ignore
 
@@ -994,51 +1050,18 @@ class GoslingSpec(Resource):
             return response, 404
 
         try:
-            hub_response = requests.get(hub_url)
-            hub_response.raise_for_status()
-        except requests.RequestException as e:
-            response["message"] = f"Failed to retrieve hub.txt from {hub_url}: {str(e)}"
+            # Fetch and parse hub files
+            tracks = _fetch_tracks_from_hub(hub_url, assembly)
+
+        except (ValueError, requests.RequestException) as e:
+            response["message"] = str(e)
             return response, 400
-        hub_txt = hub_response.text
-
-        # Track Hubs are uploaded using useOneFile = "on", but we support both modes.
-        hub_json, tracks = parse_hub_from_file(hub_txt)
-
-        if not hub_json.get("useOneFile", "") == "on":
-            base_url = hub_url.rsplit("/", 1)[0]  # Get base URL of hub.txt
-
-            genomes_file_name = hub_json.get("genomesFile", "genomes.txt")
-            genomes_url = f"{base_url}/{genomes_file_name}"
-            try:
-                genomes_response = requests.get(genomes_url)
-                genomes_response.raise_for_status()
-            except requests.RequestException as e:
-                response["message"] = (
-                    f"Failed to retrieve genomes.txt from {genomes_url}: {str(e)}"
-                )
-                return response, 400
-
-            # We need to get the tracks by parsing the trackDb file,
-            # which is located by parsing the genomes.txt file to match the assembly
-            trackdb_path = fetch_trackdb_path(genomes_response.text, assembly)
-            trackdb_url = f"{base_url}/{trackdb_path}"
-            # Fetch tracks
-            try:
-                trackdb_response = requests.get(trackdb_url)
-                trackdb_response.raise_for_status()
-            except requests.RequestException as e:
-                response["message"] = (
-                    f"Failed to retrieve trackDb from {trackdb_url}: {str(e)}"
-                )
-                return response, 400
-            tracks = parse_tracks_from_trackdb(trackdb_response.text, trackdb_url)
 
         # Let's get the coordinates of the gene_symbol.
         (position_str, new_gene_symbol) = get_gene_info(gene_symbol, dataset_id, assembly)
 
         if new_gene_symbol != "NA":
             gene_symbol = new_gene_symbol
-
 
         gos_tracks = {"left": [], "right": []}
         # Add BED annotation tracks to left (and right if zoom) gos_tracks in the first index position
@@ -1051,7 +1074,7 @@ class GoslingSpec(Resource):
             )
 
         (parent_view_left, parent_view_right, hic_found) = build_gosling_tracks(
-            gos_tracks, tracks, zoom=zoom, tracksdb_url=trackdb_url, position_str=position_str
+            gos_tracks, tracks, zoom=zoom, position_str=position_str
         )
 
         # Start building the Gosling spec

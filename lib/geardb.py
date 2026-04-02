@@ -1054,7 +1054,7 @@ def add_gosling_display_curation(dataset_id: str, user: "User", config: dict) ->
     """
 
     # Insert dataset_gosling info to database
-    cursor.execute(dataset_display_sql, (dataset_id, user.id, "Gosling curation", "gosling", config,))
+    cursor.execute(dataset_display_sql, (dataset_id, user.id, "Gosling curation", "gosling", json.dumps(config),))
 
     cnx.commit()
 
