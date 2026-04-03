@@ -77,7 +77,7 @@ Gosling uses the UCSC Track Hub (https://genome.ucsc.edu/goldenpath/help/hubQuic
 
 The trackDb.txt file also allows for custom metadata tags, which will be subject to future additon.
 
-* gos_higlass_url (filled in during upload if type is hic)
+* gos_url (filled in during upload if type is hic)
 
 ### Special considerations for certain file types
 

@@ -59,8 +59,6 @@ style F fill:gray,stroke:black,stroke-width:2px,color:blue
 style D color:blue
 style E color:blue
 style B color:blue
-
-
 ```
 
 - [Preparing bulk RNAseq data using code (overview slides)](https://docs.google.com/presentation/d/1lYbgACVi-931EHTGNIw1bSZWIIUBcg3o/edit?usp=sharing&ouid=102015920709954238045&rtpof=true&sd=true)
@@ -95,7 +93,7 @@ D-->F
 F-->H["Upload to gEAR (Link)"]
 B-->H
 I-->F
-J-->F
+J-->H
 
 
 click B "https://docs.google.com/presentation/d/1ptk78OJAQJnyRKe3Gkejqa43Vh-cP21h/edit?usp=sharing&ouid=102015920709954238045&rtpof=true&sd=true" "Excel upload instructions"

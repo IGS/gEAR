@@ -94,6 +94,10 @@ def _fetch_tracks_from_hub(hub_url: str, assembly: str) -> list[dict]:
         requests.RequestException: If hub files cannot be retrieved.
         ValueError: If assembly not found or parsing fails.
     """
+
+    # Fix for Docker
+    hub_url = hub_url.replace("http://localhost:8080", "http://web")
+
     try:
         hub_response = requests.get(hub_url)
         hub_response.raise_for_status()
