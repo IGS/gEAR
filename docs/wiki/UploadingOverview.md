@@ -43,9 +43,11 @@ A["How do you wish to format your data?"]
 A-->B["In Excel (Link)"]
 A-->D["From count matrix (Link)"]
 A-->E["From Recount 3 (Link to instructions)"]
+A-->G["From H5AD"]
 E-->F["Upload to gEAR (Link)"]
 B-->F
 D-->F
+G-->F
 
 
 click B "https://docs.google.com/presentation/d/1lU7wqWmeW907GBGfK0oBi06hcrvra-PY/edit#slide=id.p1" "Excel upload instructions"
@@ -90,7 +92,7 @@ D-->F
 F-->H["Upload to gEAR (Link)"]
 B-->H
 I-->F
-J-->F
+J-->H
 
 
 click B "https://docs.google.com/presentation/d/1ptk78OJAQJnyRKe3Gkejqa43Vh-cP21h/edit?usp=sharing&ouid=102015920709954238045&rtpof=true&sd=true" "Excel upload instructions"
