@@ -66,7 +66,6 @@ def _on_request(channel, method_frame, properties, body):
                 algorithm,
                 zscore,
                 full_output,
-                fh,
             )
             channel.basic_ack(delivery_tag=delivery_tag)
         except Exception as e:
