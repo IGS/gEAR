@@ -17,6 +17,7 @@ from uuid import uuid4
 import pyBigWig
 import requests
 from Bio import bgzf
+from sqlalchemy import false
 
 VALID_TYPES = ["bigWig", "bigBed", "hic", "vcfTabix"]
 VALID_CONTAINER_TYPES = ["multiWig"]
@@ -359,6 +360,8 @@ def hic_to_mcool(hic_path: Path, outdir_path: Path) -> bool:
         print(f"{mcool_path} already exists. Skipping conversion.", file=sys.stderr)
         return True
 
+    # NOTE: hic2cool writes to STDOUT, which will show in RabbitMQ message logs if using that.
+    # `sudo journalctl -u gosling-upload-consumer.service -f`
     try:
         from hic2cool import hic2cool_convert
         hic2cool_convert(hic_path.as_posix(), mcool_path.as_posix(), 0)
@@ -381,34 +384,47 @@ def ingest_mcool_into_higlass(mcool_path: Path, config: dict, assembly: str) -> 
             # All parameters must be in 'files' dict for multipart/form-data
             # Non-file fields are sent as tuples (None, value)
             files = {
-                'datafile': (mcool_path.name, f),
+                'datafile': (mcool_path.as_posix(), f),
                 'filetype': (None, 'cooler'),
                 'datatype': (None, 'matrix'),
                 'coordSystem': (None, assembly),
                 'uid': (None, str(file_uuid)),
             }
-            # print an example curl-equivalent command for testing
-            #print(f"Example curl command:\ncurl -X POST {url} -u {auth[0]}:{auth[1]} -F 'datafile=@{mcool_path}' -F 'filetype=cooler' -F 'datatype=matrix' -F 'coordSystem={assembly}' -F 'uid={file_uuid}'")
 
-            response = requests.post(url, auth=auth, files=files, timeout=600)
-            print(f"HiGlass response status: {response.status_code}", file=sys.stderr)
-            print(f"HiGlass response content: {response.text}", file=sys.stderr)
+            response = requests.post(url, auth=auth, files=files, timeout=660)  # timeout is slightly longer than server settings
+
+            # Check for 504 Gateway Timeout specifically
+            if response.status_code == 504:
+                print(
+                    f"HiGlass returned 504 Gateway Timeout. File may still be processing. "
+                    f"Checking if file was ingested (UID: {file_uuid})...",
+                    file=sys.stderr,
+                )
+                return check_higlass_url(config, file_uuid)
+
             response.raise_for_status()
 
-        print(f"Ingested {mcool_path} into HiGlass", file=sys.stderr)
+        # Example response keys (JSON):
+        # "uuid", "datafile", "filetype", "datatype", "name", "coordSystem", "coordSystem2",
+        # "created", "project", "project_name", "description", "private"
 
-        uid = response.json().get('uid')
+        uid = response.json().get('uuid', None)
         if not uid:
             raise ValueError("Failed to retrieve UID from HiGlass response")
 
+        print(f"Ingested {mcool_path} into HiGlass", file=sys.stderr)
+
         resp_url = f"{config['higlass_hostname']}/api/v1/tileset_info/?d={uid}"
         return resp_url
-
-    except requests.Timeout:
-        print(f"Timeout ingesting {mcool_path} into HiGlass. Checking if file is available...", file=sys.stderr)
-        return check_higlass_url(config, file_uuid)
+    except requests.HTTPError as e:
+        # Catch other HTTP errors (400, 401, 403, 500, etc.)
+        print(f"HTTP error ingesting {mcool_path} into HiGlass: {e}", file=sys.stderr)
+        raise
     except requests.RequestException as e:
         print(f"Error ingesting {mcool_path} into HiGlass: {e}", file=sys.stderr)
+        raise
+    except Exception as e:
+        print(f"Unexpected error ingesting {mcool_path} into HiGlass: {e}", file=sys.stderr)
         raise
 
 def check_higlass_url(config, file_uuid) -> str:

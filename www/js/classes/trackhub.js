@@ -2,8 +2,8 @@ import { createToast } from "../common.v2.js";
 
 export const TRACK_STATUS_COLORS = {
     downloading: { color: 'is-info', label: 'Downloading' },
-    converting: { color: 'is-warning', label: 'Converting' },
-    ingesting: { color: 'is-loading', label: 'Ingesting' },
+    converting: { color: 'is-info', label: 'Converting' },
+    ingesting: { color: 'is-info', label: 'Ingesting' },
     downloaded: { color: 'is-info', label: 'Downloaded' },
     completed: { color: 'is-success', label: 'Completed' },
     failed: { color: 'is-danger', label: 'Failed' },
@@ -615,6 +615,12 @@ export class TrackContainer {
             if (!stanza.trim()) {
                 return;
             }
+
+            // if assembly is human, skip creation of privacy-aware tracks.
+            if (this.isPrivacyAware(this.hubContainerObj.getAssembly()) && this.isPrivacyAwareTrack(stanza)) {
+                return;
+            }
+
             // add "track " back into the stanza since we split it out (it's a field name)
             stanza = `track ${stanza}`;
             this.createTrackItem(); // This will create a new track item and increment the track count
@@ -781,6 +787,16 @@ export class TrackContainer {
         return entries;
     }
 
+    isPrivacyAware(assembly) {
+        return ["hg19", "hg38"].includes(assembly);
+    }
+
+    isPrivacyAwareTrack(trackType) {
+        // Define which track types are considered privacy-aware. This is not an exhaustive list, just examples.
+        const privacyAwareTypes = ["vcfTabix", "hic"];
+        return privacyAwareTypes.includes(trackType);
+    }
+
     restrictPrivacyAwareTrackTypes(assembly, parent=document) {
         // If the assembly is a "human" one, disable VCF and Hic types in the select.
         // This is because of federal standards towards personally-identifiable data
@@ -788,7 +804,7 @@ export class TrackContainer {
         for (const trackTypeSelect of trackTypeSelectElts) {
             trackTypeSelect.querySelector('option[value="vcfTabix"]').disabled = false;
             trackTypeSelect.querySelector('option[value="hic"]').disabled = false;
-            if (["hg19", "hg38"].includes(assembly)) {
+            if (this.isPrivacyAware(assembly)) {
                 trackTypeSelect.querySelector('option[value="vcfTabix"]').disabled = true;
                 trackTypeSelect.querySelector('option[value="hic"]').disabled = true;
             }
