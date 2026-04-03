@@ -85,7 +85,7 @@ class Connection:
         self.channel.queue_declare(queue=queue_name)
 
         # Enabled delivery confirmations. This is REQUIRED.
-        self.channel.confirm_delivery()
+        self.channel.confirm_delivery() # type: ignore[call-arg]
 
         # Send message (dataset ids) to job queue
         try:
@@ -98,10 +98,12 @@ class Connection:
                                     , **kwargs
                                 ))
         except UnroutableError:
-            print('Message was returned')
+            print('Message was returned as unroutable', file=sys.stderr)
             raise
 
-        self.connection.process_data_events(time_limit=0)  # Process events to ensure the message is sent
+        # Process events only for BlockingConnection
+        if isinstance(self.connection, pika.BlockingConnection):
+            self.connection.process_data_events(time_limit=0)  # Ensure message is sent
 
     def consume(self, queue_name=None, on_message_callback=None, num_messages=1, auto_ack=False, skip_queue_declare=False):
         '''
