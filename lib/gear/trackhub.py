@@ -471,7 +471,7 @@ def append_gos_url_to_track(hub_file: Path, orig_track_name: str, gosling_url: s
     """Inject a gos_url property into a TrackDB file."""
     modified_hub_file = hub_file.with_stem(hub_file.stem + '.modified')
 
-    with open(modified_hub_file, 'w') as out_f:
+    with open(modified_hub_file, 'w', buffering=1) as out_f:
         for line in hub_file.read_text().splitlines():
             line = line.strip()
             if line.startswith("bigDataUrl") and line.endswith(orig_track_name):
@@ -592,7 +592,7 @@ class TrackHubProcessor:
             # Add an extra newline before and after the "genome" tag.
             dest_hub = self.staging_area / "hub.txt"
             if not dry_run:
-                with open(dest_hub, 'w') as f:
+                with open(dest_hub, 'w', buffering=1) as f:
                     for key, value in hub_json.items():
                         if key == "genome":
                             f.write("\n")
@@ -631,7 +631,7 @@ class TrackHubProcessor:
                     download_large_file(big_data_url, dest_path)
 
                 # Update bigDataUrl to point to a remote reference.
-                track["bigDataUrl"] = f"{self.hub_url}/{dest_path}.name"
+                track["bigDataUrl"] = f"{self.hub_url}/{dest_path.name}"
                 track_statuses[track_name] = "downloaded"
 
                 # Convert based on type
