@@ -17,7 +17,6 @@ from uuid import uuid4
 import pyBigWig
 import requests
 from Bio import bgzf
-from sqlalchemy import false
 
 VALID_TYPES = ["bigWig", "bigBed", "hic", "vcfTabix"]
 VALID_CONTAINER_TYPES = ["multiWig"]
