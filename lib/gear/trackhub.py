@@ -355,6 +355,7 @@ def bigbed_to_bed(bigbed_path: Path, outdir_path: Path) -> str:
 def hic_to_mcool(hic_path: Path, outdir_path: Path) -> bool:
     """Convert a .hic file to a .mcool file using the hic2cool tool."""
     mcool_path = outdir_path / hic_path.with_suffix('.mcool').name
+    # TODO: verify this conversion is complete.
     if mcool_path.is_file():
         print(f"{mcool_path} already exists. Skipping conversion.", file=sys.stderr)
         return True
@@ -372,6 +373,7 @@ def hic_to_mcool(hic_path: Path, outdir_path: Path) -> bool:
 
 def ingest_mcool_into_higlass(mcool_path: Path, config: dict, assembly: str) -> str:
     """Ingest a .mcool file into HiGlass and return the URL."""
+    #TODO: Figure out a way to check this as a previously uploaded ingest
     file_uuid = uuid4()
 
     url = f"{config['higlass_hostname']}/api/v1/tilesets/"
@@ -465,20 +467,6 @@ def _create_tabix_indexed_file(bgzipped_path: Path, file_type: str = "bed") -> N
     """Tabix-index a genomic file."""
     tabix_cmd = f"tabix -s 1 -b 2 -e 3 -p {file_type} {bgzipped_path.as_posix()}"
     subprocess.run(shlex.split(tabix_cmd), check=True)
-
-
-def append_gos_url_to_track(hub_file: Path, orig_track_name: str, gosling_url: str) -> None:
-    """Inject a gos_url property into a TrackDB file."""
-    modified_hub_file = hub_file.with_stem(hub_file.stem + '.modified')
-
-    with open(modified_hub_file, 'w', buffering=1) as out_f:
-        for line in hub_file.read_text().splitlines():
-            line = line.strip()
-            if line.startswith("bigDataUrl") and line.endswith(orig_track_name):
-                out_f.write(f"gos_url {gosling_url}\n")
-            out_f.write(line + "\n")
-
-    modified_hub_file.replace(hub_file)
 
 
 def validate_hub_contents(hub_json: dict, track_stanzas: list) -> bool:
@@ -648,7 +636,7 @@ class TrackHubProcessor:
                     if not dry_run:
                         try:
                             bed_path = bigbed_to_bed(dest_path, self.staging_area)
-                            append_gos_url_to_track(dest_hub, dest_path.name, bed_path)
+                            track["gos_url"] = bed_path
                         except Exception as e:
                             raise Exception(f"Failed to convert {track_name} from bigBed to BED: {e}")
 
@@ -684,7 +672,8 @@ class TrackHubProcessor:
                             )
                             tileset_uid = higlass_url.split("d=")[-1]
                             ingested_tilesets.append(tileset_uid)
-                            append_gos_url_to_track(dest_hub, dest_path.name, higlass_url)
+                            track['gos_url'] = higlass_url
+
                         except Exception:
                             traceback.print_exc()
                             print(
@@ -698,7 +687,7 @@ class TrackHubProcessor:
 
             # append track info to hub.txt (useOneFile on)
             if not dry_run:
-                with open(dest_hub, 'a') as f:
+                with open(dest_hub, 'a', buffering=1) as f:
                     for track in track_stanzas:
                         f.write("\n")
                         for key, value in track.items():

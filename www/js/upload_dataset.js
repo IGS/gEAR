@@ -541,6 +541,7 @@ const stepTo = (step) => {
         pollingFn = datasetFormat === 'gosling' ? checkTrackhubStatus : checkDatasetProcessingStatus;
 
         // For Gosling, render track status list once on entry (works for both new and resumed uploads)
+        // TODO: this will never execute when resuming.  Need to revise.
         if (datasetFormat === 'gosling' && trackContainer) {
             renderTrackStatusList(trackContainer);
         }
