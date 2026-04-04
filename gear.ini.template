@@ -64,3 +64,8 @@ queue_host = localhost
 [uploader_service]
 queue_enabled = 1
 queue_host = localhost
+
+[higlass]
+admin_user = [user]
+admin_pass = [pass]
+hostname = [host]

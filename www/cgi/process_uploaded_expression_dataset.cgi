@@ -39,6 +39,7 @@ lib_path = Path(__file__).resolve().parents[2] / 'lib'
 sys.path.append(str(lib_path))
 import geardb
 from gear.spatialhandler import SPATIALTYPE2CLASS
+from gear.utils import update_adata_with_ensembl_ids
 
 share_uid = None
 session_id = None
@@ -186,6 +187,23 @@ def process_h5ad(upload_dir: Path) -> None:
 
     categorize_observation_columns(obs)
     adata.obs = sanitize_obs_for_h5ad(obs)
+
+    if "gene_symbol" not in adata.var.columns:
+        # get organism_id by converting sample_taxid
+        metadata_file = upload_dir / 'metadata.json'
+        if not metadata_file.is_file():
+            write_status(upload_dir, 'error', "No metadata JSON file found.")
+            return
+
+        with open(metadata_file, 'r') as f:
+            metadata = json.load(f)
+        sample_taxid = metadata.get("sample_taxid", None)
+        organism_id=geardb.get_organism_id_by_taxon_id(sample_taxid)
+        if not organism_id:
+            write_status(upload_dir, 'error', "Could not determine organism ID from sample taxonomic ID.")
+            return
+
+        adata = update_adata_with_ensembl_ids(adata, organism_id, "UNMAPPED_")
 
     h5ad_path = upload_dir / f"{share_uid}.new.h5ad"
     adata.write(h5ad_path)

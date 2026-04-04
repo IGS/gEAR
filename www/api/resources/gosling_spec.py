@@ -5,13 +5,17 @@ from urllib.parse import urljoin, urlparse
 
 import geardb
 import gosling as gos
-#import pyBigWig
 import requests
 from flask import request
 from flask_restful import Resource
+from gear.trackhub import (
+    fetch_trackdb_path,
+    parse_tracks_from_trackdb,
+    parse_hub_from_file,
+)
 
 """
-NOTE: The documentation kind of sucks, and requires some trial and error to figure out where things go.
+NOTE: The "gos" documentation kind of sucks, and requires some trial and error to figure out where things go.
 Generally you can make a data class type (i.e. BedData) and add that as a property to a gos.Track
 There are some shorthand arrangement functions (i.e. gos.overlay) to combine tracks into a gos.View
 The spec is validated against the JSON schema and will error if validation fails.  Building in JS only gives warnings.
@@ -31,7 +35,6 @@ Documentation at https://gosling-lang.github.io/gos/index.html (the search funct
 # CONSTANTS
 TWO_LEVELS_UP = 2  # Number of parent directories to go up
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP]  # web-root dir
-JSON_DIR = abs_path_www.joinpath("tracks")  # Directory for JSON track files
 VIEW_PADDING = 10  # Padding between views
 CONDENSED_WIDTH = 1200 - VIEW_PADDING * 2  # Width of the condensed view tracks
 EXPANDED_WIDTH = 600 - VIEW_PADDING / 2  # Width of the left view tracks
@@ -54,6 +57,86 @@ ASSEMBLY_TO_CHROMSIZES_FILE = {
 
 GENOMES_ROOT = "https://umgear.org/tracks/genomes/"
 #GENOMES_ROOT = "http://localhost:8080/tracks/genomes"
+
+def _resolve_track_url(track: dict, use_gosling: bool = True) -> str | None:
+    """
+    Resolve the appropriate URL for a track based on context and available fields.
+
+    For Gosling visualization, prefers gos_url if available (supports different file types).
+    For UCSC export, uses bigDataUrl directly.
+
+    Args:
+        track (dict): Track specification dictionary.
+        use_gosling (bool): If True, prefer gos_url for Gosling compatibility. If False, use bigDataUrl.
+
+    Returns:
+        str or None: The resolved URL, or None if URL cannot be determined.
+    """
+    # Gosling context: prefer gos_url if available
+    if use_gosling and track.get("gos_url"):
+        return track["gos_url"]
+
+    # Fall back to bigDataUrl
+    return track.get("bigDataUrl")
+
+def _fetch_tracks_from_hub(hub_url: str, assembly: str) -> list[dict]:
+    """
+    Fetch and parse tracks from a track hub, handling both useOneFile and traditional modes.
+
+    Args:
+        hub_url (str): URL to the hub.txt file.
+        assembly (str): Genome assembly identifier (e.g., 'hg38', 'mm10').
+
+    Returns:
+        list[dict]: List of track dictionaries.
+
+    Raises:
+        requests.RequestException: If hub files cannot be retrieved.
+        ValueError: If assembly not found or parsing fails.
+    """
+
+    # Fix for Docker
+    hub_url = hub_url.replace("http://localhost:8080", "http://web")
+
+    try:
+        hub_response = requests.get(hub_url)
+        hub_response.raise_for_status()
+    except requests.RequestException as e:
+        raise ValueError(f"Failed to retrieve hub.txt from {hub_url}: {str(e)}") from e
+
+    hub_txt = hub_response.text
+    hub_json, tracks = parse_hub_from_file(hub_txt)
+
+    # Traditional mode: parse genomes.txt and trackDb.txt
+    if not hub_json.get("useOneFile", "") == "on":
+        base_url = hub_url.rsplit("/", 1)[0]
+
+        genomes_file_name = hub_json.get("genomesFile", "genomes.txt")
+        genomes_url = f"{base_url}/{genomes_file_name}"
+
+        try:
+            genomes_response = requests.get(genomes_url)
+            genomes_response.raise_for_status()
+        except requests.RequestException as e:
+            raise ValueError(
+                f"Failed to retrieve genomes.txt from {genomes_url}: {str(e)}"
+            ) from e
+
+        trackdb_path = fetch_trackdb_path(genomes_response.text, assembly)
+        trackdb_url = f"{base_url}/{trackdb_path}"
+
+        try:
+            trackdb_response = requests.get(trackdb_url)
+            trackdb_response.raise_for_status()
+        except requests.RequestException as e:
+            raise ValueError(
+                f"Failed to retrieve trackDb from {trackdb_url}: {str(e)}"
+            ) from e
+
+        tracks = parse_tracks_from_trackdb(trackdb_response.text, trackdb_url)
+
+    return tracks
+
 
 def build_assembly_array(assembly) -> list:
     """
@@ -422,7 +505,7 @@ def build_genome_wide_view(
     return genome_wide_view
 
 
-def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url="", position_str="NA"):
+def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, position_str="NA"):
     """
     Builds and configures Gosling tracks based on the provided track specifications.
 
@@ -431,7 +514,7 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
         tracks (list): A list of dictionaries, each representing a track specification. Each track dict should contain at least:
             - "type" (str): The type of the track (e.g., "bam", "bigWig", "bed", "vcf").
             - "bigDataUrl" (str): The URL to the data file for the track.
-            - Optional: "color" (str), "group" (any), and other track-specific attributes.
+            - Optional: "color" (str), and other track-specific attributes.
         zoom (bool, optional): If True, builds both left and right tracks for zoomed-in views. Defaults to False.
 
     Returns:
@@ -449,7 +532,7 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
         "bam": BamSpec,
         "bigWig": BigWigSpec,
         "bigBed": BedSpec,
-        "vcf": VcfSpec,
+        "vcfTabix": VcfSpec,
         "hic": HiCSpec,
     }
 
@@ -467,62 +550,46 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, tracksdb_url=""
             )
             continue
 
-        data_url = track.get("bigDataUrl", None)
+        # Resolve URL for Gosling context
+        data_url = _resolve_track_url(track, use_gosling=True)
         if not data_url:
             print(
-                f"WARNING: No bigDataUrl found for track '{track.get('shortLabel', '')}'; skipping.",
+                f"WARNING: Could not resolve URL for track '{track.get('shortLabel', '')}'; skipping.",
                 file=sys.stderr,
             )
             continue
 
-        BIGBED_EXTENSIONS = [".bb", ".bigbed"]
-        # If the data_url ends with a bigBed extension, replace extension with .bed
-        # Gosling will use .bed files but the UCSC Genome Browser uses BigBed
-        if any(data_url.endswith(ext) for ext in BIGBED_EXTENSIONS):
-            data_url = data_url.rsplit(".", 1)[0] + ".bed"
-
-            # There is the possibility that the BigBed files are at a remote URL
-            # but during uploading, the Bed files are locally hosted.
-            # So we need to adjust the URL accordingly.
-            if not tracksdb_url:
-                print(
-                    f"WARNING: Cannot resolve .bed URL for BigBed track '{track.get('shortLabel', '')}'; skipping.",
-                    file=sys.stderr,
-                )
-                continue
-            data_url = urljoin(tracksdb_url, data_url)
-
         # Get other attributes to pass to the class
         color = track.get("color", "orange")  # Default color if not specified
-        #group = track.get("group", "linked")
 
         # Title should be based on shortLabel, longLabel, bigDataUrl (in that order)
         title = track.get("shortLabel", track.get("longLabel", "bigDataUrl"))
 
-        #autoscale = track.get("autoscale", "on")
+        visibility = track.get("visibility", "dense")  # Dense, full, hide
 
-        spec_builder = spec_builder_class(
-            data_url=data_url, color=color, zoom=zoom, title=title, position_str=position_str
-        )
-        left_track = spec_builder.add_track(**kwargs)
+        try:
+            spec_builder = spec_builder_class(
+                data_url=data_url, color=color, zoom=zoom, title=title, position_str=position_str, visibility=visibility
+            )
+            left_track = spec_builder.add_track(**kwargs)
 
-        # Let these tracks scale their y-axes together if specified in the UCSC trackDb
-        # ! Doesn't work... does not scale axes and zooming on bigwig tracks de-links from view
-        #if autoscale == "group":
-        #    left_track.y.linkingId = f"y-left-{group}"  # type: ignore
+            # Skip if track validation failed (add_track returns None)
+            if left_track is None:
+                continue
 
-        parent_tracks_dict["left"].append(left_track)
+            parent_tracks_dict["left"].append(left_track)
 
-        if spec_builder_class == HiCSpec:
-            hic_found = True
+            if spec_builder_class == HiCSpec:
+                hic_found = True
 
-        if zoom:
-            right_track = spec_builder.add_track(**kwargs)
-            right_track.id = f"right-track-{Path(data_url).stem}"
-            parent_tracks_dict["right"].append(right_track)
-            #if autoscale == "group":
-            #    right_track.y.linkingId = f"y-right-{group}"  # type: ignore
-
+            if zoom:
+                right_track = spec_builder.add_track(**kwargs)
+                if right_track is not None:
+                    right_track.id = f"right-track-{Path(data_url).stem}"
+                    parent_tracks_dict["right"].append(right_track)
+        except Exception as e:
+            print(f"ERROR building track '{title}': {e}", file=sys.stderr)
+            continue
 
     parent_view_left = gos.stack(*parent_tracks_dict["left"]).properties(
         id="left-view", linkingId="zoom-to-panel-a", spacing=0,
@@ -562,37 +629,6 @@ def build_region_view(parent_view_left, parent_view_right=None):
     region_view = gos.horizontal(*args)
 
     return region_view
-
-
-def fetch_trackdb_and_groups_info(genomes_txt, assembly) -> dict:
-    """Extract 'trackDb' and 'groups' URLs for an assembly from genomes_txt.
-
-    Looks for a "genome <assembly>" line, then reads the immediate following
-    "trackDb" and optional "groups" lines. Returns a dict with keys
-    "trackDb" and "groups" (empty string if not found).
-
-    NOTE: These can be relative paths to the genomes.txt location; caller
-    must resolve them if needed.
-    """
-    urls = {"trackDb": "", "groups": ""}
-
-    for line in genomes_txt.splitlines():
-        if line.startswith(f"genome {assembly}"):
-            # The next line should contain the trackDb URL
-            next_line_index = genomes_txt.splitlines().index(line) + 1
-            if next_line_index < len(genomes_txt.splitlines()):
-                next_line = genomes_txt.splitlines()[next_line_index]
-                if next_line.startswith("trackDb"):
-                    urls["trackDb"] = next_line.split(" ")[1]
-                    # Now look for groups line (next line)
-                    next_next_line_index = next_line_index + 1
-                    if next_next_line_index < len(genomes_txt.splitlines()):
-                        next_next_line = genomes_txt.splitlines()[next_next_line_index]
-                        if next_next_line.startswith("groups"):
-                            urls["groups"] = next_next_line.split(" ")[1]
-                    break
-    return urls
-
 
 def get_gene_info(gene_symbol, dataset_id, assembly):
     """
@@ -639,95 +675,6 @@ def get_gene_info(gene_symbol, dataset_id, assembly):
 
     return position_str, gene_symbol
 
-def parse_groups_from_groupsdb(groupsdb_txt) -> dict:
-    """Parse groups info from a UCSC groups.txt content.
-
-    Returns a dict with group names as keys and their descriptions as values.
-
-    Example group:
-
-    name ATAC
-    label ATAC-seq
-    defaultIsClosed 0
-    """
-    groups = {}
-    current_group = None
-    for line in groupsdb_txt.splitlines():
-        if line.startswith("name"):
-            current_group = line.split(" ")[1]
-            groups[current_group] = {}
-        elif current_group:
-            if line.startswith("label"):
-                groups[current_group]["label"] = line.split(" ")[1]
-            elif line.startswith("defaultIsClosed"):
-                groups[current_group]["defaultIsClosed"] = line.split(" ")[1]
-    return groups
-
-
-def parse_tracks_from_trackdb(trackdb_txt, trackdb_url) -> list:
-    """Parse track names from a UCSC trackDb.txt content.
-
-    Returns a list of dicts with track information.
-
-    Example track:
-    track P1HC_ATAC_1
-    bigDataUrl P1HC_ATAC_1.bigwig
-    shortLabel ATAC-seq 1st replicate
-    longLabel ATAC-seq 1st replicate
-    group ATAC
-    color 31,119,180
-    autoscale on
-    visibility dense
-    type bigWig
-    """
-
-    tracks = []  # List of dicts
-    current_track = {}
-    for line in trackdb_txt.splitlines():
-        if line.startswith("track"):
-            if current_track:
-                tracks.append(current_track)
-            current_track = {"name": line.split(" ")[1]}
-        elif current_track:
-            if line.startswith("bigDataUrl"):
-                current_track["bigDataUrl"] = line.split(" ")[1]
-                # Gosling needs URL paths
-                # If not a URL, make it one by replacing the "trackDb.txt" part of trackdb_url
-                if not current_track["bigDataUrl"].startswith(
-                    "http://"
-                ) and not current_track["bigDataUrl"].startswith("https://"):
-                    current_track["bigDataUrl"] = urljoin(
-                        trackdb_url, current_track["bigDataUrl"]
-                    )
-                # Gosling will not redirect the URL, so we need to follow and update the URL
-                try:
-                    response = requests.head(current_track["bigDataUrl"], allow_redirects=True)
-                    if response.status_code == 200:
-                        current_track["bigDataUrl"] = response.url
-                except Exception:
-                    # non-fatal.
-                    # ? Do we continue without the track or add track knowing it's unreachable.
-                    print(
-                        f"WARNING: Could not resolve URL for track '{current_track['name']}'.",
-                        file=sys.stderr,
-                    )
-            elif line.startswith("shortLabel"):
-                current_track["shortLabel"] = " ".join(line.split(" ")[1:])
-            elif line.startswith("longLabel"):
-                current_track["longLabel"] = " ".join(line.split(" ")[1:])
-            elif line.startswith("group"):
-                current_track["group"] = line.split(" ")[1]
-            elif line.startswith("color"):
-                color = line.split(" ")[1]
-                current_track["color"] = f"rgb({color})"    # rendered by CSS engine, so this will work
-            elif line.startswith("autoscale") and "group" in line:
-                current_track["autoscale"] = "group"
-            elif line.startswith("type"):
-                current_track["type"] = line.split(" ")[1]
-    if current_track:
-        tracks.append(current_track)
-    return tracks
-
 def parse_position_str(position_str: str) -> tuple:
     """
     Parses a position string in the format 'assembly.chromosome:start-end' and returns its components.
@@ -737,7 +684,7 @@ def parse_position_str(position_str: str) -> tuple:
 
     Returns:
         tuple: A tuple containing (assembly, chromosome, start, end) if parsing is successful,
-               otherwise (None, None, None, None) on failure.
+            otherwise (None, None, None, None) on failure.
     """
     try:
         assembly_chrom, interval = position_str.split(".")
@@ -747,64 +694,6 @@ def parse_position_str(position_str: str) -> tuple:
     except Exception as e:
         print(f"ERROR: Failed to parse position string '{position_str}': {e}", file=sys.stderr)
         return None, None, None, None
-
-def replace_with_aggregated_track(group_tracks, group_name):
-    """
-    Replaces a list of track dictionaries with a single aggregated track if an aggregated data file exists for the given group.
-
-    Args:
-        group_tracks (list): A list of track dictionaries, each representing a data track.
-        group_name (str): The name of the group for which to check for an aggregated track.
-
-    Returns:
-        list: A list containing either the original group_tracks or a single track dictionary pointing to the aggregated data file, if available.
-
-    Notes:
-        - Only supports aggregation for certain data types (e.g., "bigWig", "bam").
-        - Checks for the existence of the aggregated file by sending a HEAD request.
-        - If the aggregated file is found, updates the first track's URL and returns it as a single-item list.
-        - If not found or unsupported type, returns the original group_tracks.
-    """
-
-    TYPE_BY_EXTENSION = {
-        "bigWig": "bw",
-        #"bam": "bam",
-    }
-
-    first_track = group_tracks[0]
-    data_url = first_track.get("bigDataUrl", None)
-    data_type = first_track.get("type", None)
-
-    if not data_url:
-        return group_tracks
-
-    # Not all data types support aggregated (y) values
-    if data_type not in TYPE_BY_EXTENSION:
-        return group_tracks
-
-    # ensure all tracks in group are of this type
-    for track in group_tracks:
-        if track.get("type", None) != data_type:
-            print(f"INFO: Not all tracks in group {group_name} are of type {data_type}; cannot use aggregated track.", file=sys.stderr)
-            return group_tracks
-
-    extension = TYPE_BY_EXTENSION[data_type]
-
-    groups_url = urljoin(data_url, f"{group_name}_group.{extension}")
-    # test if this exists
-    try:
-        groups_response = requests.head(groups_url, allow_redirects=True)
-        groups_response.raise_for_status()
-
-        if groups_response.status_code == 200:
-            first_track["bigDataUrl"] = groups_response.url
-
-        first_track["shortLabel"] = group_name  # Update title to group name
-        group_tracks = [first_track]
-    except Exception:
-        print(f"INFO: No grouped track found for group {group_name}; using individual tracks.", file=sys.stderr)
-    finally:
-        return group_tracks
 
 def zoom_view_to_domain(view, position_str, hic_found=False):
     """
@@ -835,7 +724,7 @@ def zoom_view_to_domain(view, position_str, hic_found=False):
     return view
 
 class TrackSpec(ABC):
-    def __init__(self, data_url, color="steelblue", zoom=False, title="", position_str="NA"):
+    def __init__(self, data_url, color="steelblue", zoom=False, title="", position_str="NA", visibility="full"):
         self.data_url = data_url
         self.color = color  # Passed as RGB string
         self.zoom = zoom
@@ -843,17 +732,49 @@ class TrackSpec(ABC):
         self.height = EXPANDED_HEIGHT if zoom else CONDENSED_HEIGHT
         self.title = title
         self.position_str = position_str
-
+        self.visibility = visibility
         self.track = None
+
+        if self.visibility == "hide":
+            self.height = 0 # effectively hide it
+        elif self.visibility == "full":
+            self.height *= 1.5
 
     @abstractmethod
     def add_track(self, **kwargs):
         pass
 
-    @abstractmethod
-    def validate_url(self, url):
-        pass
+    def validate_track_url(self, url: str, expected_extensions: list[str]) -> None:
+        """
+        Validate track URL with scheme, extension, and accessibility checks.
 
+        Performs checks in order of cost (cheapest first) to fail fast:
+        1. Scheme validation (no network)
+        2. Extension validation (no network)
+
+        Args:
+            url (str): URL to validate.
+            expected_extensions (list[str]): List of valid extensions (e.g., ['.bam', '.bw']).
+
+        Raises:
+            ValueError: If any validation fails.
+        """
+        # Cheap checks first
+        self._validate_url_scheme(url)
+        self._validate_url_extension(url, expected_extensions)
+
+    @staticmethod
+    def _validate_url_scheme(url: str) -> None:
+        """Common URL scheme validation."""
+        if not (url.startswith("http://") or url.startswith("https://")):
+            raise ValueError("Invalid URL: must start with http:// or https://")
+
+    @staticmethod
+    def _validate_url_extension(url: str, valid_extensions: list[str]) -> None:
+        """Validate URL ends with one of the valid extensions."""
+        if not any(url.endswith(ext) for ext in valid_extensions):
+            extensions_str = ", ".join(valid_extensions)
+            raise ValueError(f"Invalid URL: must end with {extensions_str}")
 
 class BamSpec(TrackSpec):
     def add_track(self, **kwargs):
@@ -861,10 +782,11 @@ class BamSpec(TrackSpec):
         color = self.color
 
         try:
-            self.validate_url(url)
-            self.validate_index_url(f"{url}.bai")
-        except ValueError:
-            raise
+            self.validate_track_url(url, [".bam"])
+            self.validate_track_url(f"{url}.bai", [".bam.bai"])
+        except ValueError as e:
+            print(f"WARNING: Skipping BAM track '{self.title}': {e}", file=sys.stderr)
+            return None
 
         bamData = gos.bam(url=url, indexUrl=f"{url}.bai")
 
@@ -886,24 +808,6 @@ class BamSpec(TrackSpec):
         )
         return track
 
-    def validate_index_url(self, url):
-        # Basic URL validation
-        if not url.startswith("http://") and not url.startswith("https://"):
-            raise ValueError("Invalid URL: must start with http:// or https://")
-        # URL must end with .bai
-        if not url.endswith(".bai"):
-            raise ValueError("Invalid URL: must end with .bai")
-        return True
-
-    def validate_url(self, url):
-        # Basic URL validation
-        if not url.startswith("http://") and not url.startswith("https://"):
-            raise ValueError("Invalid URL: must start with http:// or https://")
-        # URL must end with .bam
-        if not url.endswith(".bam"):
-            raise ValueError("Invalid URL: must end with .bam")
-        return True
-
 
 class BedSpec(TrackSpec):
     def add_track(self, **kwargs):
@@ -911,10 +815,11 @@ class BedSpec(TrackSpec):
         color = self.color
 
         try:
-            self.validate_url(url)
-            self.validate_index_url(f"{url}.tbi")
-        except ValueError:
-            raise
+            self.validate_track_url(url, [".bed.gz"])
+            self.validate_track_url(f"{url}.tbi", [".bed.gz.tbi"])
+        except ValueError as e:
+            print(f"WARNING: Skipping BED track '{self.title}': {e}", file=sys.stderr)
+            return None
 
         bed_data = gos.bed(url=url, indexUrl=f"{url}.tbi")
 
@@ -936,24 +841,6 @@ class BedSpec(TrackSpec):
         )
         return track
 
-    def validate_index_url(self, url):
-        # Basic URL validation
-        if not url.startswith("http://") and not url.startswith("https://"):
-            raise ValueError("Invalid URL: must start with http:// or https://")
-        # URL must end with .tbi
-        if not url.endswith(".bed.gz.tbi"):
-            raise ValueError("Invalid URL: must end with .bed.gz.tbi")
-        return True
-
-    def validate_url(self, url):
-        # Basic URL validation
-        if not url.startswith("http://") and not url.startswith("https://"):
-            raise ValueError("Invalid URL: must start with http:// or https://")
-        # URL must end with .bed.gz
-        if not url.endswith(".bed.gz"):
-            raise ValueError("Invalid URL: must end with .bed.gz")
-        return True
-
 
 class BigWigSpec(TrackSpec):
 
@@ -962,9 +849,10 @@ class BigWigSpec(TrackSpec):
         color = self.color
 
         try:
-            self.validate_url(url)
-        except ValueError:
-            raise
+            self.validate_track_url(url, [".bw", ".bigwig"])
+        except ValueError as e:
+            print(f"WARNING: Skipping BigWig track '{self.title}': {e}", file=sys.stderr)
+            return None
 
         # TODO: figure out appropriate binsize when zooming out: Default is 256. It looks blocky briefly
         bigwig_data = gos.bigwig(url=url)
@@ -996,25 +884,17 @@ class BigWigSpec(TrackSpec):
         )
         return track
 
-    def validate_url(self, url):
-        # Basic URL validation
-        if not url.startswith("http://") and not url.startswith("https://"):
-            raise ValueError("Invalid URL: must start with http:// or https://")
-        # URL must end with .bw or .bigwig
-        if not (url.endswith(".bw") or url.endswith(".bigwig")):
-            raise ValueError("Invalid URL: must end with .bw or .bigwig")
-        return True
-
 class VcfSpec(TrackSpec):
     def add_track(self, **kwargs):
         url = self.data_url
         color = self.color
 
         try:
-            self.validate_url(url)
-            self.validate_index_url(f"{url}.tbi")
-        except ValueError:
-            raise
+            self.validate_track_url(url, [".vcf.gz"])
+            self.validate_track_url(f"{url}.tbi", [".vcf.gz.tbi"])
+        except ValueError as e:
+            print(f"WARNING: Skipping VCF track '{self.title}': {e}", file=sys.stderr)
+            return None
 
         vcf_data = gos.VcfData(type="vcf", url=url, indexUrl=f"{url}.tbi")  # type: ignore
 
@@ -1035,24 +915,6 @@ class VcfSpec(TrackSpec):
         )
         return track
 
-    def validate_index_url(self, url):
-        # Basic URL validation
-        if not url.startswith("http://") and not url.startswith("https://"):
-            raise ValueError("Invalid URL: must start with http:// or https://")
-        # URL must end with .tbi
-        if not url.endswith(".vcf.gz.tbi"):
-            raise ValueError("Invalid URL: must end with .vcf.gz.tbi")
-        return True
-
-    def validate_url(self, url):
-        # Basic URL validation
-        if not url.startswith("http://") and not url.startswith("https://"):
-            raise ValueError("Invalid URL: must start with http:// or https://")
-        # URL must end with .vcf.gz
-        if not url.endswith(".vcf.gz"):
-            raise ValueError("Invalid URL: must end with .vcf.gz")
-        return True
-
 class HiCSpec(TrackSpec):
     def add_track(self, **kwargs):
         url = self.data_url
@@ -1072,7 +934,8 @@ class HiCSpec(TrackSpec):
         """
 
         #try:
-        #    self.validate_url(url)
+        # TODO: This requires the HiGlass mcool path
+        #    self.validate_track_url(url)
         #except ValueError:
         #    raise
 
@@ -1092,7 +955,7 @@ class HiCSpec(TrackSpec):
                 y=gos.Y(field="ys", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
                 ye=gos.Ye(field="ye", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
                 color=gos.Color(field="value", type="quantitative", range="bupu", legend=True),  # pyright: ignore[reportArgumentType]
-                style=gos.Style(matrixExtent="full"),
+                style=gos.Style(matrixExtent="full"), # pyright: ignore[reportArgumentType]
             )
         )
         if position_str == "NA":
@@ -1104,9 +967,6 @@ class HiCSpec(TrackSpec):
 )
         return view
 
-
-    def validate_url(self, url):
-        pass
 
     def add_annotation_track(self, position_str):
 
@@ -1132,10 +992,10 @@ class HiCSpec(TrackSpec):
             )
             .mark_bar()
             .encode(
-                x=gos.X(field="x", type="genomic", axis="none"),
-                xe=gos.Xe(field="xe", type="genomic", axis="none"),
-                y=gos.Y(field="y", type="genomic", axis="none"),
-                ye=gos.Ye(field="ye", type="genomic", axis="none"),
+                x=gos.X(field="x", type="genomic", axis="none"), # pyright: ignore[reportArgumentType]
+                xe=gos.Xe(field="xe", type="genomic", axis="none"), # pyright: ignore[reportArgumentType]
+                y=gos.Y(field="y", type="genomic", axis="none"), # pyright: ignore[reportArgumentType]
+                ye=gos.Ye(field="ye", type="genomic", axis="none"), # pyright: ignore[reportArgumentType]
                 color=gos.Color(value="yellow"),
                 opacity=gos.Opacity(value=0.2),
                 stroke=gos.Stroke(value="yellow"),
@@ -1193,74 +1053,19 @@ class GoslingSpec(Resource):
             response["message"] = f"Dataset with ID {dataset_id} not found."
             return response, 404
 
-        # Cut off name of hub_url (hub.txt). This will be used to build more paths
-        base_url = hub_url.rsplit("/", 1)[0]  # Get base URL of hub.txt
-
-        # Look for a genomes.txt file to matching the assembly to get the "trackDb" file
-        # This file is the same as the one required by the UCSC Genome Browser
-        genomes_url = f"{base_url}/genomes.txt"
         try:
-            genomes_response = requests.get(genomes_url)
-            genomes_response.raise_for_status()
-        except requests.RequestException as e:
-            response["message"] = (
-                f"Failed to retrieve genomes.txt from {genomes_url}: {str(e)}"
-            )
+            # Fetch and parse hub files
+            tracks = _fetch_tracks_from_hub(hub_url, assembly)
+
+        except (ValueError, requests.RequestException) as e:
+            response["message"] = str(e)
             return response, 400
-
-        urls = fetch_trackdb_and_groups_info(genomes_response.text, assembly)
-        if not urls:
-            response["message"] = (
-                f"trackDb URL not found for assembly {assembly} in genomes.txt"
-            )
-            return response, 400
-
-        # If trackDb and groups URLs are relative to genomes.txt, resolve them
-        trackdb_url = urls["trackDb"]
-        groups_url = urls["groups"]
-
-        if not trackdb_url.startswith("http://") and not trackdb_url.startswith(
-            "https://"
-        ):
-            trackdb_url = f"{base_url}/{trackdb_url}"
-        if (
-            groups_url
-            and not groups_url.startswith("http://")
-            and not groups_url.startswith("https://")
-        ):
-            groups_url = f"{base_url}/{groups_url}"
-
-        # Fetch tracks
-        try:
-            trackdb_response = requests.get(trackdb_url)
-            trackdb_response.raise_for_status()
-        except requests.RequestException as e:
-            response["message"] = (
-                f"Failed to retrieve trackDb from {trackdb_url}: {str(e)}"
-            )
-            return response, 400
-        tracks = parse_tracks_from_trackdb(trackdb_response.text, trackdb_url)
-
-        # Attempt to fetch groups info (non-fatal)
-        groups = {}
-        if groups_url:
-            try:
-                groups_response = requests.get(groups_url)
-                groups_response.raise_for_status()
-                # Parse groups info as needed; here we just store the raw text
-                groups = parse_groups_from_groupsdb(groups_response.text)
-            except requests.RequestException:
-                print("INFO: Could not retrieve groups info; continuing without it.", file=sys.stderr)
-                pass  # Ignore errors in fetching groups
-        else:
-            print("INFO: No groups URL provided; continuing without it.", file=sys.stderr)
 
         # Let's get the coordinates of the gene_symbol.
         (position_str, new_gene_symbol) = get_gene_info(gene_symbol, dataset_id, assembly)
 
         if new_gene_symbol != "NA":
             gene_symbol = new_gene_symbol
-
 
         gos_tracks = {"left": [], "right": []}
         # Add BED annotation tracks to left (and right if zoom) gos_tracks in the first index position
@@ -1272,30 +1077,9 @@ class GoslingSpec(Resource):
                 build_bed_annotation_tracks(assembly, zoom, "right")
             )
 
-        # If groups are present, gather all tracks for this group,
-        # and attempt to aggregate the data by mean for each position point.
-        # This is an effort to cut down on the number of tracks to render.
-        #
-        # Otherwise just process all tracks individually
-        if groups:
-            for group in groups:
-                # Get tracks associated with this group
-                group_tracks = [
-                    track for track in tracks if track.get("group", "") == group
-                ]
-                if not group_tracks:
-                    continue
-
-                if not zoom:
-                    group_tracks = replace_with_aggregated_track(group_tracks, group)
-
-                (parent_view_left, parent_view_right, hic_found) = build_gosling_tracks(
-                    gos_tracks, group_tracks, zoom=zoom, tracksdb_url=trackdb_url, position_str=position_str
-                )
-        else:
-            (parent_view_left, parent_view_right, hic_found) = build_gosling_tracks(
-                gos_tracks, tracks, zoom=zoom, tracksdb_url=trackdb_url, position_str=position_str
-            )
+        (parent_view_left, parent_view_right, hic_found) = build_gosling_tracks(
+            gos_tracks, tracks, zoom=zoom, position_str=position_str
+        )
 
         # Start building the Gosling spec
         region_view = build_region_view(parent_view_left, parent_view_right)

@@ -8,7 +8,7 @@ services:
       MYSQL_USER: [user]
       MYSQL_PASSWORD: [pw]
       MYSQL_ROOT_PASSWORD: [pw]
-    image: mysql:8.0.20-oracle  # for arm64v8 architecture
+    image: mysql:8.0-oracle  # for arm64v8 architecture
     networks:
       - gear
     ports:
@@ -21,7 +21,7 @@ services:
     # build: .  # uncomment out if umgear:main does not exist
     depends_on:
       - db
-    image: umgear:main
+    image: adkinsrs/umgear:latest
     networks:
       - gear
     ports:
@@ -31,7 +31,7 @@ services:
       - ..:/opt/gEAR/
 
   queue:
-    image: rabbitmq:3.11.4
+    image: rabbitmq:4.1
     networks:
       - gear
     ports:
@@ -39,7 +39,10 @@ services:
     restart: always
 
   panel:
-    image: panel_app
+    build:
+      context: ..
+      dockerfile: services/spatial/Dockerfile
+    image: adkinsrs/spatial_panel_app:latest
     networks:
       - gear
     ports:
@@ -50,12 +53,36 @@ services:
       - <spatial_code_path>:/gEAR/services/spatial
 
 
-  # consumer:
-  #   image: busybox
-  #   tty: true
-  #   volumes:
-  #     - python_vol:/opt/Python-3.10.4
-  #     - ..:/opt/gEAR
+  # ProjectR RabbitMQ Consumer
+  #projectr_consumer:
+  #  build:
+  #    context: ..
+  #   dockerfile: listeners/Dockerfile.projectr
+  #  depends_on:
+  #    - queue
+  #  image: adkinsrs/gear_projectr_consumer:latest
+  #  networks:
+  #    - gear
+  #  restart: on-failure
+  #  volumes:
+  #    - ../listeners:/gEAR/listeners
+  #    - ../lib:/gEAR/lib
+
+  # TrackHub (Gosling Upload) RabbitMQ Consumer
+  gosling_upload_consumer:
+    build:
+      context: ..
+      dockerfile: listeners/Dockerfile.gosling_upload
+    depends_on:
+      - queue
+    image: adkinsrs/gear_gosling_upload_consumer:latest
+    networks:
+      - gear
+    restart: on-failure
+    volumes:
+      - ../listeners:/gEAR/listeners
+      - ../lib:/gEAR/lib
+      - ../www/uploads/files:/gEAR/www/uploads/files
 
 volumes:
   db:

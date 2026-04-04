@@ -28,6 +28,7 @@
     - Spatial data: backend dashboard service uses Panel (Holoviz suite); spatial data stored in Zarr file stores
         - Zarr stores are read in as `spatialdata.SpatialData` objects, and convert to `AnnData` for downstream analysis.
 - **Frontend**:
+    - Must be WCAG 2.1 AA compliant. We support tablet and desktop, but not mobile.
 	- JavaScript in `www/js/`
         - ES modules
         - any file with `.v2` listed are newer UI code replacing legacy "classic" JS modules

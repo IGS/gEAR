@@ -35,10 +35,12 @@ Check the requirement.txt file in <git_repo_root>/docker for the latest packages
 
 `./pip3 install -r <git_repo_root/docker/requirements.txt`
 `./pip3 uninstall dask-expr -y`
+`./pip3 install -e <git_repo_root>/lib/`
 
 If the requirements.txt will not install due to a stack depth issue, you can use the `requirements.full.txt` instead, which was made using `pip freeze > requirements.full.txt`. This file contains all versioned scripts so pip does not have to compute the best version for non-mentioned packages.
 
 ## pip install option B (manual)
+
 
 NOTE: Some of the packages will indirectly install dask-expr, which is currently broken for spatialdata, with no intention of fixing. So it is necessary to uninstall dask-expr to avoid issues with spatialdata (<https://github.com/scverse/spatialdata/pull/570>)
 
@@ -55,7 +57,6 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
       biopython==1.79 \
       cairosvg==2.7.1 \
       colorcet==3.1.0 \
-      cooler==0.10.4 \
       dash-bio==1.0.2 \
       datashader==0.18.0 \
       Flask==3.0.0 \
@@ -84,7 +85,7 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
       pika==1.3.1 \
       plotly==5.20.0 \
       pyarrow==18.1.0 \ # v19 breaks reading spatial parquet files
-      pybigwig==0.3.24 \
+      pybigwig==0.3.25 \
       python-dotenv==0.20.0 \
       requests==2.31.0 \
       rpy2==3.5.16 \
@@ -93,6 +94,7 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
       scikit-learn==1.0.2 \
       scipy==1.11.04 \
       seaborn==0.13.2 \
+      setuptools<82 \ # need pkg_resources methods for some packages
       shadows==0.1a2 \
       spatialdata==0.4.0\
       spatialdata_io==0.1.6 \
@@ -100,10 +102,15 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
       tables==3.9.2 \
       watchfiles \
       xlrd==1.2.0
+    ./pip3 install -e ~jorvis/git/gEAR/lib/
     ./pip3 uninstall dask-expr -y
     sudo mkdir /opt/bin
     sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/
 ```
+
+### Note about editable pip installs
+
+The previous pip installation methods also includes an extra line to install the gEAR "lib" area as an editable install. Updates to the modules in this directory will be hot-loaded without a re-install.  The "setup.py" script is designed to find the "lib" directory itself as a package. This will allow you to run `import gear` without having to append "lib" into the PYTHONPATH.  However, you will still need to append "lib" to the PYTHONPATH if you want to `import geardb` or something on the same level as "setup.py"
 
 ## Gotchas
 

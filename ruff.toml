@@ -1,6 +1,6 @@
 exclude = ["bin"]
 extend-include = ["*.cgi"]
-select = ["E4", "E7", "E9", "F", "I", "PD"]
+select = ["E401", "E7", "E9", "F", "I", "PD"]
 
 ## What we want to skip and why:
 #  - PD901 Avoid using the generic variable name `df` for DataFrames

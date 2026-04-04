@@ -85,7 +85,7 @@ class Connection:
         self.channel.queue_declare(queue=queue_name)
 
         # Enabled delivery confirmations. This is REQUIRED.
-        self.channel.confirm_delivery()
+        self.channel.confirm_delivery() # type: ignore[call-arg]
 
         # Send message (dataset ids) to job queue
         try:
@@ -98,10 +98,12 @@ class Connection:
                                     , **kwargs
                                 ))
         except UnroutableError:
-            print('Message was returned')
+            print('Message was returned as unroutable', file=sys.stderr)
             raise
 
-        self.connection.process_data_events(time_limit=0)  # Process events to ensure the message is sent
+        # Process events only for BlockingConnection
+        if isinstance(self.connection, pika.BlockingConnection):
+            self.connection.process_data_events(time_limit=0)  # Ensure message is sent
 
     def consume(self, queue_name=None, on_message_callback=None, num_messages=1, auto_ack=False, skip_queue_declare=False):
         '''
@@ -415,13 +417,13 @@ class AsyncConnection(Connection):
         self._consuming = False
         print("{} - RabbitMQ acknowledged the cancellation of the consumer: {}".format(self.pid, userdata), flush=True, file=self.log_fh)
         print("{} - Closing channel".format(self.pid), flush=True, file=self.log_fh)
-        self._channel.close()
+        self.channel.close()
 
     def run(self):
         """Run the example consumer by connecting to RabbitMQ and then
         starting the IOLoop to block and allow the SelectConnection to operate.
         """
-        #self._connection = self.connect()
+        #self.connection = self.connect()
         # Information on why this is necessary at https://pika.readthedocs.io/en/stable/examples/connecting_async.html
         # Basically, this line allows the consumer to block consuming data to trigger callback actions
         self.connection.ioloop.start()
@@ -441,7 +443,7 @@ class AsyncConnection(Connection):
             print("{} - Stopping".format(self.pid), flush=True, file=self.log_fh)
             if self._consuming:
                 self.stop_consuming()
-                self._connection.ioloop.start()
+                self.connection.ioloop.start()
             else:
-                self._connection.ioloop.stop()
+                self.connection.ioloop.stop()
             print("{} - Stopped".format(self.pid), flush=True, file=self.log_fh)

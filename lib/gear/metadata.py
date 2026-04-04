@@ -293,7 +293,7 @@ class Metadata:
 
         return self
 
-    def save_to_mysql(self, status=None, is_public=0):
+    def save_to_mysql(self, status=None, is_public=0) -> None:
         """
         Saves metadata to gEAR MySQL table 'dataset'. If present, also saves tags.
 

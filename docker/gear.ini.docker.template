@@ -49,7 +49,7 @@ hostname = [cloud_run_service_url]
 cloud_run_enabled = 1
 ;; 0 - disable RabbitMQ, 1 - enable. Disabling could lead to potential server crashes if many jobs are run simultaneously
 queue_enabled = 0
-queue_host = localhost
+queue_host = queue
 ;; If 1, will output pvalue output in addition to the coefficient weights
 full_output = 1
 
@@ -58,5 +58,14 @@ importer_id = [importer_id]
 gcp_project_id=[gcp_project_id]
 credentials_json=[path_to_credentials_json]
 ;; 0 - disable RabbitMQ, 1 - enable. Disabling could lead to potential server crashes if many jobs are run simultaneously
-queue_enabled = 1
-queue_host = localhost
+queue_enabled = 0
+queue_host = queue
+
+[uploader_service]
+queue_enabled = 0
+queue_host = queue
+
+[higlass]
+admin_user = [user]
+admin_pass = [pass]
+hostname = [host]
