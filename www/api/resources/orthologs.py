@@ -112,6 +112,29 @@ def get_mapped_gene_symbols(gene_symbols, gene_organism_id, dataset_organism_id,
 
     return {gene: [] for gene in gene_symbols}
 
+def normalize_mapped_genes(mapped_gene_symbols: list, gene_set: set, normalize_gene) -> list:
+    """
+    Filter and normalize mapped gene symbols to those present in the dataset.
+
+    Args:
+        mapped_gene_symbols (list): List of gene symbols that were mapped via orthology.
+        gene_set (set): Set of lowercase gene symbols present in the dataset.
+        normalize_gene (callable): Function to normalize a gene symbol using gene_set.
+
+    Returns:
+        list: Normalized gene symbols that exist in the dataset.
+    """
+    normalized_genes = []
+
+    for mapped_gene_symbol in mapped_gene_symbols:
+        if not check_gene_in_dataset(gene_set, mapped_gene_symbol):
+            continue
+
+        normalized_gene = normalize_gene(mapped_gene_symbol)
+        if normalized_gene is not None:
+            normalized_genes.append(normalized_gene)
+
+    return normalized_genes
 
 def check_gene_in_dataset(gene_map: set, gene_symbol: str) -> bool:
     """
@@ -185,7 +208,6 @@ class Orthologs(Resource):
         if gene_organism_id:
             gene_organism_id = int(gene_organism_id)
 
-
         # Get the dataset and organism ID
         dataset = geardb.get_dataset_by_id(dataset_id)
         if not dataset:
@@ -199,6 +221,9 @@ class Orthologs(Resource):
         import scanpy as sc
         adata = sc.read_h5ad(h5_path, backed='r')
 
+        if not hasattr(adata, 'var') or 'gene_symbol' not in adata.var:
+            return {"error": "The dataset does not contain the required 'gene_symbol' field."}, 400
+
         dataset_genes = set(adata.var['gene_symbol'].unique())
 
         if adata.isbacked:
@@ -206,6 +231,7 @@ class Orthologs(Resource):
 
         # Build once per request
         gene_map = {str(g).lower(): g for g in dataset_genes}
+        gene_map_set = set(gene_map.keys())
         def normalize_gene(gene):
             return gene_map.get(str(gene).lower())
 
@@ -229,12 +255,12 @@ class Orthologs(Resource):
                 return {"error": str(e)}, 400
 
         # Filter out genes that are not in the dataset
-        normalized_mapped_genes = [g for mapped_gene_symbol in mapped_gene_symbols if check_gene_in_dataset(gene_map, mapped_gene_symbol) if (g := normalize_gene(mapped_gene_symbol)) is not None]
+        normalized_mapped_genes = normalize_mapped_genes(mapped_gene_symbols, gene_map_set, normalize_gene)
         mapped_gene_symbols_dict[gene_symbol] = normalized_mapped_genes
 
         # last chance to map.  Check if nonmapping genes are actually in the dataset (since gene_organism_id may not have been provided)
         if not normalized_mapped_genes:
-            if check_gene_in_dataset(gene_map, gene_symbol):
+            if check_gene_in_dataset(gene_map_set, gene_symbol):
                 normalized_gene = normalize_gene(gene_symbol)
                 mapped_gene_symbols_dict[gene_symbol] = [normalized_gene]
             else:
@@ -269,6 +295,8 @@ class Orthologs(Resource):
         """
         session_id = request.cookies.get('gear_session_id')
         req = request.get_json()
+        if not req:
+            return {"error": "Invalid JSON body."}, 400
         gene_symbols = req.get('gene_symbols')
         analysis = req.get('analysis')
         gene_organism_id = req.get('gene_organism_id')
@@ -313,6 +341,9 @@ class Orthologs(Resource):
                 'message': str(e)
             }
 
+        if not hasattr(adata, 'var') or 'gene_symbol' not in adata.var:
+            return {"error": "The dataset does not contain the required 'gene_symbol' field."}, 400
+
         dataset_genes = set(adata.var['gene_symbol'].unique())
 
         # Both shadows and backed files can close the file handle
@@ -326,6 +357,7 @@ class Orthologs(Resource):
 
         # Build once per request
         gene_map = {str(g).lower(): g for g in dataset_genes}
+        gene_map_set = set(gene_map.keys())
         def normalize_gene(gene):
             return gene_map.get(str(gene).lower())
 
@@ -352,7 +384,11 @@ class Orthologs(Resource):
 
         # for each mapped gene symbol, verify the mapped genes are in the dataset and normalize to those genes
         for gene_symbol in gene_symbols:
-            normalized_mapped_genes = [g for mapped_gene_symbol in mapped_gene_symbols_dict[gene_symbol] if check_gene_in_dataset(gene_map, mapped_gene_symbol) if (g := normalize_gene(mapped_gene_symbol)) is not None]
+            normalized_mapped_genes = normalize_mapped_genes(
+                mapped_gene_symbols_dict[gene_symbol],
+                gene_map_set,
+                normalize_gene
+            )
 
             if not normalized_mapped_genes:
                 genes_not_mapped.append(gene_symbol)
@@ -362,7 +398,7 @@ class Orthologs(Resource):
 
         # last chance to map.  Check if nonmapping genes are actually in the dataset (since gene_organism_id may not have been provided)
         for gene_symbol in genes_not_mapped:
-            if check_gene_in_dataset(gene_map, gene_symbol):
+            if check_gene_in_dataset(gene_map_set, gene_symbol):
                 normalized_gene = normalize_gene(gene_symbol)
                 mapped_gene_symbols_dict[gene_symbol] = [normalized_gene]
             else:

@@ -192,16 +192,15 @@ def map_single_gene(gene_symbol: str, orthomap_file: Path) -> list:
 
     # Create lowercase gs1 and gs2 columns
     orthology_df["lc_gs1"] = orthology_df["gs1"].str.lower()
-    orthology_df["lc_gs2"] = orthology_df["gs2"].str.lower()
+    #orthology_df["lc_gs2"] = orthology_df["gs2"].str.lower()
 
-    # Check if case-insensitive gene symbol is in dictionary
+    # Find all matches for this gene symbol (case-insensitive)
     lc_gene_symbol = gene_symbol.lower()
+    matching_rows = orthology_df[orthology_df["lc_gs1"] == lc_gene_symbol]["gs2"].tolist()
 
-    # Return the list of all orthologous gene symbols
-    # gs2 values may be comma-separated (e.g. "CALM1,CALM3,CALM2") when one source gene
-    # maps to multiple target genes. Split these into individual gene symbols.
-    orthologous_genes = orthology_df[orthology_df["lc_gs1"] == lc_gene_symbol]["gs2"].tolist()
-    orthologous_genes = [x for g in orthologous_genes if isinstance(g, str) for x in g.split(",")]
+    # Split comma-separated gene symbols into individual entries
+    orthologous_genes = split_comma_separated_genes(matching_rows)
+
     return orthologous_genes
 
 def map_multiple_genes(gene_symbols: list, orthomap_file: Path) -> dict:
@@ -220,14 +219,30 @@ def map_multiple_genes(gene_symbols: list, orthomap_file: Path) -> dict:
 
     # Create lowercase gs1 and gs2 columns
     orthology_df["lc_gs1"] = orthology_df["gs1"].str.lower()
-    orthology_df["lc_gs2"] = orthology_df["gs2"].str.lower()
+    #orthology_df["lc_gs2"] = orthology_df["gs2"].str.lower()
 
-    # Create a dictionary of gene symbol to orthologous gene symbols.
-    # gs2 values may be comma-separated (e.g. "CALM1,CALM3,CALM2") — split into individual symbols.
-    # This checks if case-insensitive gene symbols are in orthology df.
-    gene_symbol_dict = {
-        gene_symbol: [x for g in orthology_df[orthology_df["lc_gs1"] == gene_symbol.lower()]["gs2"].tolist() if isinstance(g, str) for x in g.split(",")]
-        for gene_symbol in gene_symbols
-    }
+
+    # Map each gene symbol to its orthologous genes
+    gene_symbol_dict = {}
+    for gene_symbol in gene_symbols:
+        lc_gene_symbol = gene_symbol.lower()
+        matching_rows = orthology_df[orthology_df["lc_gs1"] == lc_gene_symbol]["gs2"].tolist()
+        gene_symbol_dict[gene_symbol] = split_comma_separated_genes(matching_rows)
 
     return gene_symbol_dict
+
+def split_comma_separated_genes(gene_symbols: list[str]) -> list[str]:
+    """
+    Split comma-separated gene symbols into individual symbols.
+
+    Args:
+        gene_symbols (list[str]): List of gene symbols that may contain comma-separated values.
+
+    Returns:
+        list[str]: Flattened list of individual gene symbols.
+    """
+    split_genes = []
+    for gene_symbol in gene_symbols:
+        if isinstance(gene_symbol, str):
+            split_genes.extend(gene_symbol.split(","))
+    return split_genes
