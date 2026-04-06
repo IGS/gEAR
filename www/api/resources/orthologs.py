@@ -229,7 +229,7 @@ class Orthologs(Resource):
                 return {"error": str(e)}, 400
 
         # Filter out genes that are not in the dataset
-        normalized_mapped_genes = [normalize_gene(mapped_gene_symbol) for mapped_gene_symbol in mapped_gene_symbols if check_gene_in_dataset(gene_map, mapped_gene_symbol)]
+        normalized_mapped_genes = [g for mapped_gene_symbol in mapped_gene_symbols if check_gene_in_dataset(gene_map, mapped_gene_symbol) if (g := normalize_gene(mapped_gene_symbol)) is not None]
         mapped_gene_symbols_dict[gene_symbol] = normalized_mapped_genes
 
         # last chance to map.  Check if nonmapping genes are actually in the dataset (since gene_organism_id may not have been provided)
@@ -352,7 +352,7 @@ class Orthologs(Resource):
 
         # for each mapped gene symbol, verify the mapped genes are in the dataset and normalize to those genes
         for gene_symbol in gene_symbols:
-            normalized_mapped_genes = [normalize_gene(mapped_gene_symbol) for mapped_gene_symbol in mapped_gene_symbols_dict[gene_symbol] if check_gene_in_dataset(gene_map, mapped_gene_symbol)]
+            normalized_mapped_genes = [g for mapped_gene_symbol in mapped_gene_symbols_dict[gene_symbol] if check_gene_in_dataset(gene_map, mapped_gene_symbol) if (g := normalize_gene(mapped_gene_symbol)) is not None]
 
             if not normalized_mapped_genes:
                 genes_not_mapped.append(gene_symbol)
