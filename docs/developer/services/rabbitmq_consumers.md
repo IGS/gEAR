@@ -25,6 +25,15 @@ Result Storage (Database, File System)
 
 ## Available Consumers
 
+### Gosling Upload Consume
+
+Facilitates uploading of track files for the epigenome uploader.
+
+- **Listener**: `listeners/gosling_upload_consumer.py`
+- **Queue**: `trackhub_copy_jobs`
+- **Service Template**: `systemd/gosling-upload-consumer@.service`
+- **Service Group**: `systemd/gosling-upload-consumer.target`
+
 ### ProjectR Consumer
 
 Processes matrix projection jobs for dimensionality reduction.
@@ -37,6 +46,7 @@ Processes matrix projection jobs for dimensionality reduction.
 ### Additional Consumers
 
 More consumers can be added following the same pattern:
+
 - Analysis pipeline consumer
 - Dataset processing consumer
 - Export generation consumer
@@ -46,21 +56,23 @@ More consumers can be added following the same pattern:
 ### Prerequisites
 
 1. **RabbitMQ Server**
+
    ```bash
    sudo apt install rabbitmq-server
    sudo systemctl enable rabbitmq-server
    sudo systemctl start rabbitmq-server
    ```
-   
+
    See also: `docs/developer/setup/rabbitmq.md`
 
 2. **Python Dependencies**
+
    ```bash
    pip install pika  # RabbitMQ Python client
    ```
 
 3. **R and Packages** (for ProjectR)
-   
+
    See: `docs/developer/setup/r_rpy2.md`
 
 ### Configuration
@@ -68,7 +80,7 @@ More consumers can be added following the same pattern:
 Configure in `gear.ini`:
 
 ```ini
-[projectr_service]
+[<service]
 ;; 0 - disable RabbitMQ, 1 - enable. Disabling could lead to potential server crashes if many jobs are run simultaneously
 queue_enabled = 0
 queue_host = localhost
@@ -81,12 +93,14 @@ queue_host = localhost
 cd systemd
 sudo cp projectr-consumer@.service /etc/systemd/system/
 sudo cp projectr-consumer.target /etc/systemd/system/
+sudo cp gosling-upload@.service /etc/systemd/system
+sudo cp gosling-upload.target /etc/systemd/system
 
 # Reload systemd
 sudo systemctl daemon-reload
 
 # Enable services to start on boot
-sudo systemctl enable projectr-consumer.target
+sudo systemctl enable projectr-consumer.target gosling-upload.target
 ```
 
 ## Starting Services
@@ -97,15 +111,17 @@ Start all consumers in the group:
 
 ```bash
 # Start all ProjectR consumers
-sudo systemctl start projectr-consumer.target
+sudo systemctl start projectr-consumer.target gosling-upload.target
 
 # Check status
-sudo systemctl status projectr-consumer.target
+sudo systemctl status projectr-consumer.target gosling-upload.target
 ```
 
 ### Individual Workers
 
 Start specific numbered workers:
+
+Using projectr-consumer as an example.
 
 ```bash
 # Start worker 1
@@ -134,6 +150,8 @@ sudo systemctl start projectr-consumer.target
 ```
 
 ## Monitoring
+
+These use projectr-consumer as an example
 
 ### Service Status
 
@@ -171,6 +189,7 @@ http://localhost:15672
 ```
 
 Enable management plugin:
+
 ```bash
 sudo rabbitmq-plugins enable rabbitmq_management
 ```
@@ -199,6 +218,7 @@ WantedBy=projectr-consumer.target
 ```
 
 **Usage:**
+
 - `%i` is replaced with instance number
 - `projectr-consumer@1.service` → Worker 1
 - `projectr-consumer@2.service` → Worker 2
@@ -219,6 +239,7 @@ WantedBy=multi-user.target
 ```
 
 **Benefits:**
+
 - Start/stop all workers with one command
 - Manage workers as a group
 - Ensure dependencies are met
@@ -236,13 +257,13 @@ import sys
 def callback(ch, method, properties, body):
     """Process incoming job"""
     job_data = json.loads(body)
-    
+
     # Process job
     result = process_job(job_data)
-    
+
     # Acknowledge message
     ch.basic_ack(delivery_tag=method.delivery_tag)
-    
+
     return result
 
 def process_job(data):
@@ -257,22 +278,22 @@ def main():
         host='localhost',
         credentials=credentials
     )
-    
+
     connection = pika.BlockingConnection(parameters)
     channel = connection.channel()
-    
+
     # Declare queue
     channel.queue_declare(queue='my_jobs', durable=True)
-    
+
     # Set QoS (prefetch count)
     channel.basic_qos(prefetch_count=1)
-    
+
     # Start consuming
     channel.basic_consume(
         queue='my_jobs',
         on_message_callback=callback
     )
-    
+
     print('Waiting for messages...')
     channel.start_consuming()
 
@@ -296,6 +317,7 @@ if __name__ == '__main__':
 ### Consumer Not Processing Jobs
 
 **Check RabbitMQ connection:**
+
 ```bash
 # Verify RabbitMQ is running
 sudo systemctl status rabbitmq-server
@@ -305,28 +327,33 @@ sudo rabbitmqctl list_queues
 ```
 
 **Check consumer logs:**
+
 ```bash
 sudo journalctl -u projectr-consumer@1.service -n 50
 ```
 
 **Verify gear.ini configuration:**
+
 - Check RabbitMQ credentials
 - Verify `use_rabbitmq = true`
 
 ### Consumer Crashes
 
 **Check for errors in logs:**
+
 ```bash
 sudo journalctl -u projectr-consumer@1.service -p err
 ```
 
 **Common issues:**
+
 - Python import errors (missing dependencies)
 - R package errors (ProjectR consumer)
 - Database connection issues
 - File permission errors
 
 **Restart consumer:**
+
 ```bash
 sudo systemctl restart projectr-consumer@1.service
 ```
@@ -334,23 +361,28 @@ sudo systemctl restart projectr-consumer@1.service
 ### Jobs Stuck in Queue
 
 **Verify consumers are running:**
+
 ```bash
 systemctl status 'projectr-consumer@*'
 ```
 
 **Check message acknowledgment:**
+
 - Ensure `basic_ack()` is called after processing
 - Check for exceptions in processing code
 
 **Purge queue (if needed):**
+
 ```bash
 sudo rabbitmqctl purge_queue projectr_jobs
 ```
+
 **Warning:** This deletes all messages!
 
 ### Connection Errors
 
 **RabbitMQ not accessible:**
+
 ```bash
 # Check if RabbitMQ is listening
 sudo netstat -tlnp | grep 5672
@@ -360,8 +392,10 @@ sudo ufw status
 ```
 
 **Authentication errors:**
+
 - Verify credentials in `gear.ini`
 - Check RabbitMQ user permissions:
+
   ```bash
   sudo rabbitmqctl list_users
   sudo rabbitmqctl set_permissions -p / guest ".*" ".*" ".*"
@@ -372,11 +406,13 @@ sudo ufw status
 ### Worker Count
 
 Number of workers depends on:
+
 - Available CPU cores
 - Memory per job
 - Job duration
 
 **Example:**
+
 - ProjectR jobs: 1-4 workers (memory intensive)
 - Light jobs: Up to core count
 
@@ -401,6 +437,7 @@ channel.queue_declare(queue='my_jobs', durable=True)
 ```
 
 Send persistent messages:
+
 ```python
 channel.basic_publish(
     exchange='',
@@ -445,6 +482,7 @@ http://localhost:15672/#/queues
 ### Clearing Old Messages
 
 If messages are stuck or invalid:
+
 ```bash
 # Purge specific queue
 sudo rabbitmqctl purge_queue projectr_jobs

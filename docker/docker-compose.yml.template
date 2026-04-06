@@ -40,8 +40,8 @@ services:
 
   panel:
     build:
-      context: ..
-      dockerfile: services/spatial/Dockerfile
+      context: ../services/spatial
+      dockerfile: Dockerfile
     image: adkinsrs/spatial_panel_app:latest
     networks:
       - gear

@@ -83,11 +83,13 @@ cd ~jorvis/git/gEAR/systemd
 sudo cp *target /etc/systemd/system/
 sudo cp *service /etc/systemd/system/
 
+echo "**IMPORTANT**: For the *service files, correct the <gEAR_path> to point to the gEAR root on this server"
+
 # Start the services
 cd /etc/systemd/system
 
-sudo systemctl enable projectr-consumer.target
-sudo systemctl start projectr-consumer.target
+sudo systemctl enable projectr-consumer.target gosling-upload-consumer.target
+sudo systemctl start projectr-consumer.target gosling-upload-consumer.target
 
 sudo systemctl enable spatial-panel.service
 sudo systemctl start spatial-panel.service
