@@ -13,6 +13,7 @@ from gear.utils import catch_memory_error
 
 from .common import get_adata_shadow, get_spatial_adata
 
+
 def get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id, exclusive_org=False):
     """
     Retrieves the mapped gene symbol for a given gene symbol, gene organism ID, and dataset organism ID.
@@ -173,100 +174,6 @@ def check_gene_in_dataset(gene_map: set, gene_symbol: str) -> bool:
     return str(gene_symbol).lower() in gene_map
 
 class Orthologs(Resource):
-
-    def get(self, dataset_id):
-        """
-        Retrieve gene symbol mappings for a given dataset. This is meant to search a single gene symbol
-
-        Args:
-            dataset_id (str): The ID of the dataset to query.
-
-        Returns:
-            tuple: A tuple containing a dictionary with the result and an HTTP status code.
-            - If successful, returns a dictionary with the key "success" set to 1 and the key "mapping" containing the mapped gene symbols.
-            - If an error occurs, returns a dictionary with the key "error" or "message" and an appropriate HTTP status code.
-
-        Raises:
-            Exception: If an error occurs during orthology mapping and exclusive_org is True.
-
-        Notes:
-            - The function expects the following query parameters:
-            - gene_symbol (str): The gene symbol to search for.
-            - gene_organism_id (int, optional): The organism ID of the gene symbol.
-            - exclusive_org (str, optional): If "true", return an error if mapping is not found. Defaults to "false".
-        """
-        gene_symbol = request.args.get('gene_symbol')
-        gene_organism_id = request.args.get('gene_organism_id' )
-        exclusive_org = request.args.get('exclusive_org', "false").lower() == "true" # If true, only check this organism. If false, loop through other organisms
-
-        if not gene_symbol:
-            return {"error": "No gene symbol provided."}, 400
-
-        if not dataset_id:
-            return {"error": "No dataset ID provided."}, 400
-
-        if gene_organism_id:
-            gene_organism_id = int(gene_organism_id)
-
-        # Get the dataset and organism ID
-        dataset = geardb.get_dataset_by_id(dataset_id)
-        if not dataset:
-            return {"error": "The dataset was not found."}, 400
-        dataset_organism_id = dataset.organism_id
-
-        h5_path = dataset.get_file_path()
-        if not os.path.exists(h5_path):
-            return {"error": "The h5ad file was not found."}, 400
-
-        import scanpy as sc
-        adata = sc.read_h5ad(h5_path, backed='r')
-
-        if not hasattr(adata, 'var') or 'gene_symbol' not in adata.var:
-            return {"error": "The dataset does not contain the required 'gene_symbol' field."}, 400
-
-        dataset_genes = set(adata.var['gene_symbol'].unique())
-
-        if adata.isbacked:
-            adata.file.close()
-
-        # Build once per request
-        gene_map = {str(g).lower(): g for g in dataset_genes}
-        gene_map_set = set(gene_map.keys())
-        def normalize_gene(gene):
-            return gene_map.get(str(gene).lower())
-
-        mapped_gene_symbols_dict = {gene_symbol: []}
-
-        if gene_organism_id and gene_organism_id == dataset_organism_id:
-            normalized_gene = normalize_gene(gene_symbol)
-            if normalized_gene:
-                mapped_gene_symbols_dict[gene_symbol] = [normalized_gene]
-                return {"success": 1, "mapping": mapped_gene_symbols_dict}, 200
-            else:
-                return {"success": -1, "message": f"The searched gene symbol {gene_symbol} could not be found in the dataset."}
-
-        # Perform orthology mapping.
-        try:
-            mapped_gene_symbols = get_mapped_gene_symbol(gene_symbol, gene_organism_id, dataset_organism_id, exclusive_org)
-        except Exception as e:
-            if exclusive_org:
-                return {"success": -1, "message": str(e)}
-            else:
-                return {"error": str(e)}, 400
-
-        # Filter out genes that are not in the dataset
-        normalized_mapped_genes = normalize_mapped_genes(mapped_gene_symbols, gene_map_set, normalize_gene)
-        mapped_gene_symbols_dict[gene_symbol] = normalized_mapped_genes
-
-        # last chance to map.  Check if nonmapping genes are actually in the dataset (since gene_organism_id may not have been provided)
-        if not normalized_mapped_genes:
-            if check_gene_in_dataset(gene_map_set, gene_symbol):
-                normalized_gene = normalize_gene(gene_symbol)
-                mapped_gene_symbols_dict[gene_symbol] = [normalized_gene]
-            else:
-                return {"success": -1, "message": f"The searched gene symbol {gene_symbol} could not be found in the dataset."}
-
-        return {"success": 1, "mapping": mapped_gene_symbols_dict}, 200
 
     @catch_memory_error()
     def post(self, dataset_id):
