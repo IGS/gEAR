@@ -1544,17 +1544,21 @@ At the completion of this step press on ‘save these genes’.
     <script src="https://cdn.jsdelivr.net/npm/@floating-ui/core@1.5.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.5.3"></script>
 
-    <!-- Page-specific JS file here -->
-    <script type="module" src="js/sc_workbench.js"></script>
+    <!-- Page-specific CSS/JS loading here -->
+    <script type="module">
+    import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+    const prefs = await getDomainPreferences();
 
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag() { dataLayer.push(arguments); }
-        gtag('js', new Date());
-        gtag('config', 'UA-59916932-1');
+    // Load any local JS with cache-busting version parameter
+    insertVersionedJS('js/sc_workbench.js', prefs.cache_version);
+
+    // Now load page-specific CSS
+    insertVersionedCSS('css/common.v2.css', prefs.cache_version);
+    insertVersionedCSS('css/sc_workbench.css', prefs.cache_version);
     </script>
+
+    <!-- WCAG accessibility widget -->
+    <script src="https://unpkg.com/accessibility-widgets@latest/widget.js"></script>
 
 </body>
 

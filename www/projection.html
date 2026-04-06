@@ -21,10 +21,6 @@
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
 
-        <link rel="stylesheet" href="css/common.v2.css" />
-
-        <!--Page-specific CSS here -->
-        <link rel="stylesheet" href="css/projection.css" />
     </head>
     <body>
       <div id="main-layout-c" class="columns is-fullheight">
@@ -203,8 +199,21 @@ This method is simple and interpretable, but may not capture complex relationshi
       <script src="js/vendor/snap.svg-min.js"></script>
       <script src="https://cdn.plot.ly/plotly-3.3.1.min.js" charset="utf-8"></script>
 
-      <!-- Page-specific JS file here -->
-      <script type="module" src="js/projection.js"></script>
+
+      <script type="module">
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+        const prefs = await getDomainPreferences();
+
+        // Load any local JS with cache-busting version parameter
+        insertVersionedJS('js/projection.js', prefs.cache_version);
+
+        // Now load page-specific CSS
+        insertVersionedCSS('css/common.v2.css', prefs.cache_version);
+        insertVersionedCSS('css/projection.css', prefs.cache_version);
+      </script>
+
+      <!-- WCAG accessibility widget -->
+      <script src="https://unpkg.com/accessibility-widgets@latest/widget.js"></script>
 
     </body>
 </html>

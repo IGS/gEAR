@@ -706,7 +706,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.5.3"></script>
 
     <!-- Page-specific CSS/JS loading here -->
-      <script type="module">
+    <script type="module">
         import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
         const prefs = await getDomainPreferences();
 
@@ -716,6 +716,9 @@
         // Now load page-specific CSS
         insertVersionedCSS('css/common.v2.css', prefs.cache_version);
         insertVersionedCSS('css/dataset_explorer.css', prefs.cache_version);
-      </script>
+    </script>
+
+  <!-- WCAG accessibility widget -->
+  <script src="https://unpkg.com/accessibility-widgets@latest/widget.js"></script>
 </body>
 </html>
