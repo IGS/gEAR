@@ -8,8 +8,8 @@ import sys
 import typing
 
 if typing.TYPE_CHECKING:
+    import pandas as pd
     from anndata import AnnData
-
 
 def catch_memory_error() -> typing.Callable:
     """
@@ -153,6 +153,11 @@ def update_adata_with_ensembl_ids(
             best_release = release
             best_df = merged_df
 
+    if best_df is None:
+        raise ValueError(
+            "No matches found for any of the Ensembl releases. Please check your input data and organism ID."
+        )
+
     if verbose:
         print(f"\nBest release: {best_release}")
         print(f"Matches for release: {best_count}")
@@ -257,3 +262,112 @@ def update_adata_with_ensembl_ids(
         # print(adata.X)
 
     return adata
+
+def update_var_with_ensembl_ids(
+    var_df: "pd.DataFrame", organism: int, id_prefix: str, verbose: bool = False
+) -> "pd.DataFrame":
+    """
+    Updates gene identifiers in a var dataframe to Ensembl IDs.
+
+    Designed to work with backed-mode AnnData objects where only metadata
+    needs to be updated without loading the full expression matrix.
+
+    Parameters
+    ----------
+    var_df : pd.DataFrame
+        The var dataframe from an AnnData object (gene-level metadata).
+    organism : int
+        Organism primary key ID in geardb database.
+    id_prefix : str
+        Prefix for unmapped genes.
+    verbose : bool, optional (default: False)
+        Print progress information.
+
+    Returns
+    -------
+    pd.DataFrame
+        Updated var dataframe with Ensembl IDs as index.
+    """
+    import geardb
+    import pandas as pd
+
+    ensembl_releases = [84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94]
+
+    cnx = geardb.Connection()
+    cursor = cnx.get_cursor()
+
+    query = """
+        SELECT ensembl_id, gene_symbol
+          FROM gene
+         WHERE organism_id = %s
+           AND ensembl_release = %s
+    """
+
+    # Drop duplicates
+    var_df = var_df[~var_df.index.duplicated(keep='first')]
+    orig_gene_column = "index"
+
+    best_release = None
+    best_count = 0
+    best_df = None
+
+    for release in ensembl_releases:
+        if verbose:
+            print(f"Comparing with Ensembl release {release} ... ", end="")
+
+        cursor.execute(query, (organism, release))
+        df = pd.DataFrame(cursor.fetchall(), columns=cursor.column_names)
+        df = df.drop_duplicates(subset=["gene_symbol"])
+        df = df.set_index("gene_symbol")
+
+        merged_df = var_df.join(df, how="inner")
+        row_count = len(merged_df)
+
+        if verbose:
+            print(f"found {row_count} matches")
+
+        if row_count > best_count:
+            best_count = row_count
+            best_release = release
+            best_df = merged_df
+
+    if best_df is None:
+        raise ValueError("No Ensembl matches found for organism.")
+
+    if verbose:
+        print(f"Best release: {best_release}, Matches: {best_count}")
+
+    # Mapped genes
+    genes_present_filter = var_df.index.isin(best_df.index)
+    var_present = var_df[genes_present_filter]
+    var_not_present = var_df[~genes_present_filter]
+
+    # Rename existing gene_symbol column if present
+    if "gene_symbol" in best_df.columns:
+        best_df = best_df.rename(columns={"gene_symbol": "gene_symbol_original"})
+
+    # Update mapped genes
+    ensembl_id_var = (
+        best_df.reset_index()
+        .rename(columns={"index": "gene_symbol"})
+        .set_index("ensembl_id")
+    )
+    ensembl_id_var.index.name = "ensembl_id"
+
+    # Update unmapped genes
+    if "gene_symbol" in var_not_present.columns:
+        var_not_present = var_not_present.rename(
+            columns={"gene_symbol": "gene_symbol_original"}
+        )
+
+    unmapped_var = (
+        var_not_present.reset_index(names=orig_gene_column)
+        .rename(columns={orig_gene_column: "gene_symbol"})
+        .set_index(id_prefix + var_not_present.index.astype(str))
+    )
+    unmapped_var.index.name = "ensembl_id"
+
+    # Combine
+    result = pd.concat([ensembl_id_var, unmapped_var], axis=0)
+
+    return result
