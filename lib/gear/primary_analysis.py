@@ -1,6 +1,12 @@
+"""
+Module centered around adding a primary analysis to a dataset.  This includes:
+- Detecting whether tSNE, UMAP, or clustering analyses have already been performed based
+    on the presence of certain columns in the AnnData object
+- Applies to single-cell-rnaseq datasets and spatial datasets.
+"""
+
 import json
 import shutil
-import sys
 import typing
 from pathlib import Path
 
