@@ -86,18 +86,11 @@ const checkDatasetProcessingStatus = async () => {
     document.getElementById('step-process-dataset-status-message').textContent = data.message;
     document.getElementById('dataset-processing-progress').value = data.progress;
 
-    // TODO: Handle the different statuses here
+    // Only enable next button when both dataset processing AND primary analysis are complete
     if (processingStatus === 'complete') {
-        document.getElementById('step-process-dataset-status-message').textContent = "Now adding primary analysis to dataset...";
-        await addPrimaryAnalysisToDataset();
-
-        // If still complete after the primary analysis step, enable the next step button
-        if (processingStatus === "complete") {
-            document.getElementById('dataset-processing-submit').disabled = false;
-        } else {
-            document.getElementById('step-process-dataset-status').textContent = processingStatus.charAt(0).toUpperCase() + processingStatus.slice(1);
-            document.getElementById('step-process-dataset-status-message').textContent = "Error adding primary analysis to dataset";
-        }
+        document.getElementById('dataset-processing-submit').disabled = false;
+    } else if (processingStatus === 'error') {
+        document.getElementById('step-process-dataset-status-message').textContent = "Error during processing";
     }
 }
 

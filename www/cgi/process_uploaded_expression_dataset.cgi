@@ -38,6 +38,7 @@ sys.stdout = open(os.devnull, 'w')
 lib_path = Path(__file__).resolve().parents[2] / 'lib'
 sys.path.append(str(lib_path))
 import geardb
+from gear.primary_analysis import add_primary_analysis_to_dataset
 from gear.spatialhandler import SPATIALTYPE2CLASS
 from gear.utils import update_adata_with_ensembl_ids
 
@@ -106,9 +107,14 @@ def main():
         return
     with open(metadata_file, 'r') as f:
         metadata = json.load(f)
+        dataset_uid = metadata.get('dataset_uid', '')
+        dataset_type = metadata.get('dataset_type', '')
+
 
     # Update metadata for downstream uses
     metadata["dataset_format"] = dataset_format
+    metadata["perform_primary_analysis"] = True if dataset_type in ['single-cell-rnaseq', 'spatial'] else False
+
     with open(metadata_file, 'w') as f:
         json.dump(metadata, f, indent=4)
 
@@ -156,6 +162,9 @@ def main():
         result["success"] = 0
         result["message"] = f"Unsupported dataset format: {dataset_format}"
         return result
+
+    if metadata["perform_primary_analysis"]:
+        add_primary_analysis_to_dataset(dataset_uid, share_uid, dataset_upload_dir)
 
     result["success"] = 1
     result["message"] = "Dataset processed successfully."
