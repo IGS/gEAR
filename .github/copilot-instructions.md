@@ -75,6 +75,7 @@
     - Use Ruff for linting and formatting if available.
     - Type hints are encouraged but not required.
     - Follow PEP 8 style guide.
+    - Various types of comprehensions (i.e. list, generator) are acceptable, but try to avoid nested comprehensions for readability.
 
 ### ES Module code order
 1. Imports (must be at top syntax-wise)

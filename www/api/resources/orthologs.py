@@ -91,15 +91,11 @@ def normalize_mapped_genes(mapped_gene_symbols: list, gene_set: set, normalize_g
         list: Normalized gene symbols that exist in the dataset.
     """
     normalized_genes = []
-
     for mapped_gene_symbol in mapped_gene_symbols:
-        if not check_gene_in_dataset(gene_set, mapped_gene_symbol):
-            continue
-
-        normalized_gene = normalize_gene(mapped_gene_symbol)
-        if normalized_gene is not None:
-            normalized_genes.append(normalized_gene)
-
+        if check_gene_in_dataset(gene_set, mapped_gene_symbol):
+            normalized_gene = normalize_gene(mapped_gene_symbol)
+            if normalized_gene is not None:
+                normalized_genes.append(normalized_gene)
     return normalized_genes
 
 def check_gene_in_dataset(gene_map: set, gene_symbol: str) -> bool:
