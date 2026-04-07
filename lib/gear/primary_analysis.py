@@ -1,9 +1,12 @@
 import json
+import shutil
+import sys
 import typing
 from pathlib import Path
 
 import scanpy as sc
-from analysis import H5adAdapter, ZarrAdapter
+
+from .analysis import H5adAdapter, ZarrAdapter
 
 if typing.TYPE_CHECKING:
     # This allows type-checkers to resolve types without importing the actual modules at runtime.
@@ -23,7 +26,11 @@ sc.settings.verbosity = 0
 sc.settings.autosave = True
 sc.settings.figdir = '/tmp' # for the composition plots
 
-def add_primary_analysis_to_dataset(dataset_id, share_id, staging_dir):
+class PrimaryAnalysisProcessingError(Exception):
+    """Custom exception for errors during primary analysis processing."""
+    pass
+
+def add_primary_analysis_to_dataset(dataset_id, share_id, staging_dir, dataset_format):
 
     # Load the analysis JSON or create from template
     analysis_json_path = staging_dir / "analysis_pipeline.json"
@@ -46,16 +53,12 @@ def add_primary_analysis_to_dataset(dataset_id, share_id, staging_dir):
     if dataset_format == "spatial":
         upload_file = staging_dir / f"{share_id}.zarr"
         if not upload_file.is_dir():
-            result['message'] = f"Spatial dataset file not found for share ID: {share_id}"
-            print(result['message'], file=sys.stderr)
-            return result
+            raise PrimaryAnalysisProcessingError(f"Spatial dataset file not found for share ID: {share_id}")
         adapter = ZarrAdapter(upload_file)
     else:
         upload_file = staging_dir / f"{share_id}.h5ad"
         if not upload_file.is_file():
-            result['message'] = f"Dataset file not found for share ID: {share_id}"
-            print(result['message'], file=sys.stderr)
-            return result
+            raise PrimaryAnalysisProcessingError(f"Dataset file not found for share ID: {share_id}")
         adapter = H5adAdapter(upload_file)
         kwargs["backed"] = True
 
@@ -66,9 +69,6 @@ def add_primary_analysis_to_dataset(dataset_id, share_id, staging_dir):
 
     h5ad_changes_made = False
     json_changes_made = False
-    # Does the metadata file exist?  If not, we need to create it
-    if not metadata_file.is_file():
-        json_changes_made = True
 
     tsne_detected = detect_tsne(adata)
     if tsne_detected:
@@ -116,9 +116,7 @@ def add_primary_analysis_to_dataset(dataset_id, share_id, staging_dir):
         print("\tWriting new JSON")
         with open(analysis_json_path, 'w') as outfile:
             json.dump(analysis_json, outfile, indent=3)
-
-    result['success'] = 1
-    return result
+    return True
 
 def add_clustering_analysis(adata: "AnnData") -> None:
     cols = adata.obs.columns.tolist()
