@@ -93,14 +93,14 @@ queue_host = localhost
 cd systemd
 sudo cp projectr-consumer@.service /etc/systemd/system/
 sudo cp projectr-consumer.target /etc/systemd/system/
-sudo cp gosling-upload@.service /etc/systemd/system
-sudo cp gosling-upload.target /etc/systemd/system
+sudo cp gosling-upload-consumer@.service /etc/systemd/system
+sudo cp gosling-upload-consumer.target /etc/systemd/system
 
 # Reload systemd
 sudo systemctl daemon-reload
 
 # Enable services to start on boot
-sudo systemctl enable projectr-consumer.target gosling-upload.target
+sudo systemctl enable projectr-consumer.target gosling-upload-consumer.target
 ```
 
 ## Starting Services
@@ -111,10 +111,10 @@ Start all consumers in the group:
 
 ```bash
 # Start all ProjectR consumers
-sudo systemctl start projectr-consumer.target gosling-upload.target
+sudo systemctl start projectr-consumer.target gosling-upload-consumer.target
 
 # Check status
-sudo systemctl status projectr-consumer.target gosling-upload.target
+sudo systemctl status projectr-consumer.target gosling-upload-consumer.target
 ```
 
 ### Individual Workers
