@@ -10,6 +10,8 @@ This document is intended to capture all the customizations to the apache2 confi
     $ sudo apt install libapache2-mod-wsgi-py3 apache2-dev
     $ sudo a2enmod wsgi
     $ sudo a2enmod proxy
+    $ sudo a2enmod proxy_http
+    $ sudo a2enmod proxy_wstunnel
     $ sudo a2dismod mpm_event && sudo a2enmod mpm_prefork
 
 ## /etc/apache2/apache2.conf
