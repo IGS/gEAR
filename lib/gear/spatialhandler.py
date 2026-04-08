@@ -86,6 +86,8 @@ class SpatialHandler(ABC):
         Returns:
             AnnData: The underlying AnnData object.
         """
+        if self._adata is None:
+            raise Exception("No AnnData object present for this instance.")
         return self._adata
 
     @adata.setter
@@ -106,6 +108,8 @@ class SpatialHandler(ABC):
         Returns:
             SpatialData: The spatial data instance associated with this handler.
         """
+        if self._sdata is None:
+            raise Exception("No spatial data object present for this instance.")
         return self._sdata
 
     @sdata.setter
@@ -302,9 +306,6 @@ class SpatialHandler(ABC):
         NOTE: This is a slow process that can be slower if include_images=True. It is better to read either an h5ad directly
         or read AnnData from SpatialData.tables["table"]
         """
-        if self.sdata is None:
-            raise Exception("No spatial data object present to convert to AnnData object.")
-
         if include_images is None:
             include_images = self.has_images
 
@@ -440,7 +441,7 @@ class SpatialHandler(ABC):
         # While it is possible to save a "transform" (and time) by combining the two in a Sequence transformation,
         # this is necessary to ensure the scaling is done correctly based on the updated coordinates.
         if set_to_zero:
-            translation = Translation([-region_extent["x"][0], -region_extent["y"][0]], axes=["x", "y"])
+            translation = Translation([-region_extent["x"][0], -region_extent["y"][0]], axes=("x", "y"))
             set_transformation(sdata[self.region_name], translation, to_coordinate_system=self.coordinate_system)
             sdata.transform_element_to_coordinate_system(self.region_name, target_coordinate_system=self.coordinate_system)
 
@@ -591,8 +592,6 @@ class SpatialHandler(ABC):
         Raises:
             Exception: If no spatial data object is present, no file path is provided, or an error occurs during writing.
         """
-        if self.sdata is None:
-            raise Exception("No spatial data object present to write to file.")
         if filepath is None:
             raise Exception("No destination file path given. Provide one to write file.")
         try:
@@ -627,8 +626,6 @@ class SpatialHandler(ABC):
             Exception: If no AnnData object is present, if no file path is provided, or if an error occurs during writing.
                 In case of a write error, any partially written file at the destination path is removed.
         """
-        if self.adata is None:
-            raise Exception("No AnnData object present to write to file.")
         if filepath is None:
             raise Exception("No destination file path given. Provide one to write file.")
         try:
@@ -995,7 +992,7 @@ class VisiumHandler(SpatialHandler):
 
     Standardized names for different files:
     * (<dataset_id>_)`'filtered_feature_bc_matrix.h5'`: Counts and metadata file.
-    * 'analysis/clustering/gene_expression_graphclust/clusters.csv': Clustering information. Preferable if "Cluster" column has actual labels instead of numbers.
+    * 'clusters.csv': Clustering information. Preferable if "Cluster" column has actual labels instead of numbers.
     * 'spatial/tissue_hires_image.png': High resolution image.
     * 'spatial/tissue_lowres_image.png': Low resolution image.
     * 'spatial/scalefactors_json.json': Scalefactors file.
@@ -1062,7 +1059,7 @@ class VisiumHandler(SpatialHandler):
                 tf.extract(entry, path=extract_dir)
 
 
-        clustering_csv_path = "{}/analysis/clustering/gene_expression_graphclust/clusters.csv".format(extract_dir)
+        clustering_csv_path = "{}/clusters.csv".format(extract_dir)
         # If clustering file does not exist, raise an exception
         if not os.path.exists(clustering_csv_path):
             raise Exception("clusters.csv file not found in tarball.")
@@ -1102,13 +1099,13 @@ class VisiumHDHandler(SpatialHandler):
     Explanation of Space Ranger v3 output here -> https://www.10xgenomics.com/support/software/space-ranger/latest/analysis/outputs/output-overview#hd-outputs
 
     Required files that will break the upload if not present:
-    /binned_outputs/square_008um/filtered_feature_bc_matrix.h5
-    /binned_outputs/square_008um/analysis/clustering/gene_expression_graphclust/clusters.csv
-    /binned_outputs/feature_slice.h5
-    /binned_outputs/square_008um/spatial/scalefactors_json.json
-    /binned_outputs/square_008um/spatial/tissue_hires_image.png
-    /binned_outputs/square_008um/spatial/tissue_lowres_image.png
-    /binned_outputs/square_008um/spatial/tissue_positions.parquet
+    * /binned_outputs/square_008um/filtered_feature_bc_matrix.h5
+    * clusters.csv
+    * /binned_outputs/feature_slice.h5
+    * /binned_outputs/square_008um/spatial/scalefactors_json.json
+    * /binned_outputs/square_008um/spatial/tissue_hires_image.png
+    * /binned_outputs/square_008um/spatial/tissue_lowres_image.png
+    * /binned_outputs/square_008um/spatial/tissue_positions.parquet
 
     Recommended tar command to create tarball:
     `tar cvf <dataset>.tar binned_outputs/feature_slice.h5 binned_outputs/square_008um`
@@ -1154,12 +1151,6 @@ class VisiumHDHandler(SpatialHandler):
         extract_dir = kwargs.get("extract_dir", '/tmp/')
         extract_dir = os.path.join(extract_dir, 'files')
 
-        binned_outputs_dir = "{}/binned_outputs".format(extract_dir)
-        bin_008_dataset_path = "{}/{}/".format(binned_outputs_dir, self.table_name)
-        clustering_csv_path = "{}/analysis/clustering/gene_expression_graphclust/clusters.csv".format(bin_008_dataset_path)
-
-        absolute_path = os.path.abspath(binned_outputs_dir)
-
         if filepath.endswith(".tar.gz"):
             mode = "r:gz"  # Read as gzipped tar file
         elif filepath.endswith(".tar"):
@@ -1185,10 +1176,15 @@ class VisiumHDHandler(SpatialHandler):
                 filepath = "{0}/{1}".format(extract_dir, entry.name)
                 tf.extract(entry, path=extract_dir)
 
+
+        binned_outputs_dir = "{}/binned_outputs".format(extract_dir)
+        absolute_path = os.path.abspath(binned_outputs_dir)
+
         if not os.path.exists("{}/feature_slice.h5".format(binned_outputs_dir)):
             raise Exception("feature_slice.h5 file not found in /binned_outputs directory in tarball.")
 
         # If clustering file does not exist, raise an exception
+        clustering_csv_path = "{}/clusters.csv".format(extract_dir)
         if not os.path.exists(clustering_csv_path):
             raise Exception("clusters.csv file not found in tarball.")
 
@@ -1220,6 +1216,8 @@ class VisiumHDHandler(SpatialHandler):
         # make barcode as index
         clustering = clustering.set_index('Barcode')
         sdata.tables[self.table_name].obs['clusters'] = clustering['Cluster'].astype('category')
+        if sdata.tables[self.NORMALIZED_TABLE_NAME].obs['clusters'].isna().all():
+            raise Exception("All cluster values are missing in clusters.csv file in tarball.")
 
         # To get the adata equivalent, look at sdata.tables["table"]
         # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
@@ -1252,7 +1250,7 @@ class XeniumHandler(SpatialHandler):
     * 'cell_boundaries.parquet': Polygons of cell boundaries.
     * 'transcripts.parquet': File containing transcripts.
     * 'cells.zarr.zip': Zarr file containing cell and nucleus label data (NOT USING FOR NOW)
-    * 'analysis/clustering/gene_expression_graphclust/clusters.csv': Clustering information. Preferable if "Cluster" column has actual labels instead of numbers.
+    * 'clusters.csv': Clustering information. Preferable if "Cluster" column has actual labels instead of numbers.
 
     Currently we are not using the cells.zarr.zip file because of memory issues when converting the resulting cell labels as part of the AnnData conversion process.
 
@@ -1333,7 +1331,7 @@ class XeniumHandler(SpatialHandler):
                     transcripts_present = True
 
         # If clustering file does not exist, raise an exception
-        clustering_csv_path = "{}/analysis/clustering/gene_expression_graphclust/clusters.csv".format(extract_dir)
+        clustering_csv_path = "{}/clusters.csv".format(extract_dir)
         if not os.path.exists(clustering_csv_path):
             raise Exception("clusters.csv file not found in tarball.")
 
@@ -1369,6 +1367,9 @@ class XeniumHandler(SpatialHandler):
         # make barcode as index
         clustering = clustering.set_index('Barcode')
         sdata.tables[self.NORMALIZED_TABLE_NAME].obs['clusters'] = clustering['Cluster'].astype('category')
+        # If all clusters are missing, raise an exception
+        if sdata.tables[self.NORMALIZED_TABLE_NAME].obs['clusters'].isna().all():
+            raise Exception("All cluster values are missing in clusters.csv file in tarball.")
 
         # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
         sdata.tables[self.NORMALIZED_TABLE_NAME].var_names_make_unique()
