@@ -642,11 +642,11 @@ class CoxMxHandler(SpatialHandler):
     Factory class for CoxMx dataset uploads and conversions.
 
     Standardized names for different files:
-    * <dataset_id>_`'anndata.h5ad'`: Counts and metadata file.
-    * <dataset_id>_`'cluster_assignment.txt'`: Cluster assignment file.
-    * <dataset_id>_`'Metrics.csv'`: Metrics file.
-    * <dataset_id>_`'variable_features_clusters.txt'`: Variable features clusters file.
-    * <dataset_id>_`'variable_features_spatial_moransi.txt'`: Variable features Moran’s I file.
+    * 'spatialdata_anndata.h5ad': Counts and metadata file.
+    * 'spatialdata_cluster_assignment.txt': Cluster assignment file.
+    * 'spatialdata_Metrics.csv': Metrics file.
+    * 'spatialdata_variable_features_clusters.txt': Variable features clusters file.
+    * 'spatialdata_variable_features_spatial_moransi.txt': Variable features Moran’s I file.
     """
 
     @property
@@ -692,11 +692,11 @@ class CurioHandler(SpatialHandler):
     Factory class for Curio Seeker dataset uploads and conversions.
 
     Standardized names for different files:
-    * <dataset_id>_`'anndata.h5ad'`: Counts and metadata file.
-    * <dataset_id>_`'cluster_assignment.txt'`: Cluster assignment file.
-    * <dataset_id>_`'Metrics.csv'`: Metrics file.
-    * <dataset_id>_`'variable_features_clusters.txt'`: Variable features clusters file.
-    * <dataset_id>_`'variable_features_spatial_moransi.txt'`: Variable features Moran’s I file.
+    * 'spatialdata_anndata.h5ad': Counts and metadata file.
+    * 'spatialdata_cluster_assignment.txt': Cluster assignment file.
+    * 'spatialdata_Metrics.csv': Metrics file.
+    * 'spatialdata_variable_features_clusters.txt': Variable features clusters file.
+    * 'spatialdata_variable_features_spatial_moransi.txt': Variable features Moran’s I file.
 
     It seems Curio Seeker only provides gene IDs (as indexes to an empty dataframe),
     so you need to modify the included h5ad file to include ensembl IDs in adata.var.
@@ -991,7 +991,7 @@ class VisiumHandler(SpatialHandler):
     Factory class for Visium dataset uploads and conversions.
 
     Standardized names for different files:
-    * (<dataset_id>_)`'filtered_feature_bc_matrix.h5'`: Counts and metadata file.
+    * 'spatialdata_filtered_feature_bc_matrix.h5': Counts and metadata file.
     * 'clusters.csv': Clustering information. Preferable if "Cluster" column has actual labels instead of numbers.
     * 'spatial/tissue_hires_image.png': High resolution image.
     * 'spatial/tissue_lowres_image.png': Low resolution image.
@@ -1000,7 +1000,7 @@ class VisiumHandler(SpatialHandler):
     * fullres_image_file: (NOT USED) large microscopy image used as input for space ranger.
 
     Recommended tar command to create tarball:
-    `tar cvf <dataset>.tar <dataset>_filtered_feature_bc_matrix.h5 spatial analysis`
+    `tar cvf <dataset>.tar <dataset>_filtered_feature_bc_matrix.h5 clusters.csv spatial`
     """
 
     @property
@@ -1108,7 +1108,7 @@ class VisiumHDHandler(SpatialHandler):
     * /binned_outputs/square_008um/spatial/tissue_positions.parquet
 
     Recommended tar command to create tarball:
-    `tar cvf <dataset>.tar binned_outputs/feature_slice.h5 binned_outputs/square_008um`
+    `tar cvf <dataset>.tar binned_outputs/feature_slice.h5 clusters.csv binned_outputs/square_008um`
 
     Special note: We have observed that bin sizes finer than 8 microns per pixel will generally have more cells, which can lead to longer analysis times.
     For now, we will attempt to use the "square_008um" binned output.

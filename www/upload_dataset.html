@@ -1222,7 +1222,9 @@ Currently Gosling only supports single-organism tracks">
       <br />
       Recommended tar command to create tarball:
       <br />
-      <code>tar cvf <dataset>.tar <dataset>_filtered_feature_bc_matrix.h5 spatial analysis</code>
+      <code>tar cvf spatialdata.tar spatialdata_filtered_feature_bc_matrix.h5 clusters.csv spatial</code>
+      <br /><br />
+      For the "filtered_feature_bc_matrix.h5" file, it needs to be prepended with a prefix and underscore.  The prefix "spatialdata_" is used in the example tar command.
       <br /><br />
       For the "clusters.csv" file, it is preferable if the"Cluster" column has actual annotation labels instead of numbers from the output. This provides more value to other users.
     </template>
@@ -1244,7 +1246,7 @@ Currently Gosling only supports single-organism tracks">
       <br /><br />
       Recommended tar command to create tarball:
       <br />
-      <code>tar cvf <dataset>.tar binned_outputs/feature_slice.h5 binned_outputs/square_008um</code>
+      <code>tar cvf spatialdata.tar binned_outputs/feature_slice.h5 clusters.csv binned_outputs/square_008um</code>
       <br /><br />
       For the "clusters.csv" file, it is preferable if the "Cluster" column has actual annotation labels instead of numbers from the output. This provides more value to other users.
       <br /><br />
