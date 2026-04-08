@@ -54,7 +54,7 @@ Then the Directory commands can look like this. Would be nice to find why combin
 causes errors.
 
     <Directory /var/www>
-        Options Indexes FollowSymLinks
+        Options -Indexes +FollowSymLinks
         AllowOverride None
         Require all granted
     </Directory>
