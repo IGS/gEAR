@@ -210,6 +210,11 @@ def create_gene_df(adata: "AnnData", gene_symbol: str) -> pd.DataFrame:
     selected.var.index = pd.Index(["raw_value"])
     dataframe = selected.to_df()
 
+    if dataframe.empty:
+        raise ValueError(
+            f"No expression values found for gene '{norm_gene_symbol}' after filtering. Please check the dataset and gene symbol."
+        )
+
     # Add spatial coords
     dataframe["spatial1"] = selected.obs["spatial1"]
     dataframe["spatial2"] = selected.obs["spatial2"]
@@ -236,6 +241,12 @@ def create_gene_df(adata: "AnnData", gene_symbol: str) -> pd.DataFrame:
 
     # Drop any NA clusters
     dataframe = dataframe.dropna(subset=["clusters"])
+
+    if dataframe.empty:
+        raise ValueError(
+            f"No observations with valid cluster information found for gene '{norm_gene_symbol}' after filtering. Please check the dataset and gene symbol."
+        )
+
     return dataframe
 
 def map_colors(dataframe: pd.DataFrame, spatial_img: np.ndarray | None, is_cool_dataset: bool) -> pd.DataFrame:
@@ -302,6 +313,12 @@ class SpatialPanel(Resource):
     def post(self, dataset_id):
 
         req = request.get_json()
+        if req is None:
+            return {
+                "filename": None,
+                "success": 0,
+                "message": "No JSON body provided in the request.",
+            }
         gene_symbol = req.get('gene_symbol', None)  # gene symbol or projection pattern
         projection_id = req.get('projection_id', None)
 
