@@ -1,0 +1,20 @@
+services:
+  jupyterhub:
+    image: jupyterhub/jupyterhub:5.4.4
+    container_name: gear-jupyterhub
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./jupyterhub_config.py:/srv/jupyterhub/jupyterhub_config.py:ro
+      - ./gear_auth.py:/srv/jupyterhub/gear_auth.py:ro
+      - ./state/hub-data:/data
+      - ./userhomes:/srv/jupyterhub/userhomes
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      JUPYTERHUB_CRYPT_KEY: "${JUPYTERHUB_CRYPT_KEY}"
+      GEAR_LAUNCH_SECRET: "${GEAR_LAUNCH_SECRET}"
+      HUB_PUBLIC_BASE_URL: "${HUB_PUBLIC_BASE_URL}"
+    command: >
+      bash -lc "pip install dockerspawner jupyterhub-idle-culler itsdangerous &&
+      jupyterhub -f /srv/jupyterhub/jupyterhub_config.py"
