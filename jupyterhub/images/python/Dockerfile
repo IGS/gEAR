@@ -2,7 +2,7 @@ FROM jupyter/minimal-notebook:python-3.11
 
 USER root
 
-RUN mkdir -p /home/nbuser/gear_starters
+RUN mkdir -p /home/jovyan/gear_starters
 
 COPY notebooks/python_notebook_template.ipynb /home/jovyan/gear_starters/python_notebook_template.ipynb
 

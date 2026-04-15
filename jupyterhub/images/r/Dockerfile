@@ -17,10 +17,11 @@ RUN R -e "install.packages(c('BiocManager'), repos='https://cloud.r-project.org/
 RUN R -e "BiocManager::install(c('zellkonverter', 'SingleCellExperiment', 'scater', 'scran'), ask=FALSE, update=FALSE)"
 RUN R -e "install.packages(c('Seurat'), repos='https://cloud.r-project.org/')"
 
-RUN mkdir -p /home/nbuser/gear_starters
-
-COPY notebooks/r_starter.ipynb /home/nbuser/gear_starters/r_starter.ipynb
-
 USER root
-RUN chown -R ${NB_UID}:${NB_GID} /home/nbuser/gear_starters
+
+RUN mkdir -p /home/jovyan/gear_starters
+
+COPY notebooks/r_notebook_template.ipynb /home/jovyan/gear_starters/r_notebook_template.ipynb
+
+RUN chown -R ${NB_UID}:${NB_GID} /home/jovyan/gear_starters
 USER ${NB_UID}
