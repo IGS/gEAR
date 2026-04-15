@@ -1,5 +1,17 @@
+## if you change this:
+#   docker compose down
+#   docker compose up -d
+## Can check logs with:
+#   docker logs -f gear-jupyterhu
+
 import os
+import sys
+sys.path.insert(0, "/srv/jupyterhub")
+
 from dockerspawner import DockerSpawner
+
+HOST_JUPYTERHUB_ROOT = os.environ["HOST_JUPYTERHUB_ROOT"]
+HOST_USERHOMES_ROOT = os.path.join(HOST_JUPYTERHUB_ROOT, "userhomes")
 
 c = get_config()
 
@@ -16,6 +28,9 @@ c.JupyterHub.db_url = "sqlite:////data/jupyterhub.sqlite"
 # Required for encrypted auth_state storage
 c.Authenticator.enable_auth_state = True
 
+# gEAR decides who is allowed and the launch token proves that
+c.Authenticator.allow_all = True
+
 # Use the custom launch-token authenticator
 c.JupyterHub.authenticator_class = "gear_auth.GearLaunchTokenAuthenticator"
 
@@ -24,9 +39,10 @@ c.JupyterHub.authenticator_class = "gear_auth.GearLaunchTokenAuthenticator"
 # -----------------------------------------------------------------------------
 
 c.JupyterHub.spawner_class = DockerSpawner
+c.DockerSpawner.cmd = ["start-singleuser.py"]
 
 # Remove containers when they stop
-c.DockerSpawner.remove = True
+c.DockerSpawner.remove = False
 
 # Use local Docker default bridge network unless you later define another one
 c.DockerSpawner.network_name = "bridge"

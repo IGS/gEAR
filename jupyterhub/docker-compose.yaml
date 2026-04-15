@@ -11,10 +11,12 @@ services:
       - ./state/hub-data:/data
       - ./userhomes:/srv/jupyterhub/userhomes
       - /var/run/docker.sock:/var/run/docker.sock
+      - /var/www/datasets:/var/www/datasets:ro
     environment:
       JUPYTERHUB_CRYPT_KEY: "${JUPYTERHUB_CRYPT_KEY}"
       GEAR_LAUNCH_SECRET: "${GEAR_LAUNCH_SECRET}"
       HUB_PUBLIC_BASE_URL: "${HUB_PUBLIC_BASE_URL}"
+      HOST_JUPYTERHUB_ROOT: "${HOST_JUPYTERHUB_ROOT}"
     command: >
       bash -lc "pip install dockerspawner jupyterhub-idle-culler itsdangerous &&
       jupyterhub -f /srv/jupyterhub/jupyterhub_config.py"
