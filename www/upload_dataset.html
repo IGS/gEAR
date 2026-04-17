@@ -889,11 +889,12 @@
                   </div>
 
                   <div id="trackhub-upload-c" class="pb-3 is-hidden">
+                    <h2 class="subtitle">[Optional] Prepopulate track hub fields</h2>
                     <div id="trackhub-upload-columns" class="columns">
                       <div class="column is-6">
                         <div class="field">
                           <h3 class="label">
-                            (Optional) Provide UCSC track hub URL to preload tracks
+                            Provide UCSC track hub URL to preload tracks
                             <span class="icon has-tooltip-arrow"
                                   data-tooltip="Provide a URL to the UCSC track hub 'hub.txt' file.">
                                 <i class="mdi mdi-information"></i>
@@ -904,6 +905,31 @@
                           </div>
                         </div>
                       </div>
+                      <div class="column is-6">
+                          <div class="field">
+                              <h3 class="label">
+                                  Or upload a hub.txt file
+                                  <span class="icon has-tooltip-arrow"
+                                        data-tooltip="Upload a local hub.txt file instead of providing a URL.">
+                                      <i class="mdi mdi-information"></i>
+                                  </span>
+                              </h3>
+                              <div class="file has-name">
+                                  <label class="file-label">
+                                      <input class="file-input" type="file" id="trackhub-file-input" accept=".txt">
+                                      <span class="file-cta">
+                                          <span class="file-icon">
+                                              <i class="mdi mdi-upload-box"></i>
+                                          </span>
+                                          <span class="file-label" id="trackhub-file-label">Upload hub.txt</span>
+                                      </span>
+                                      <span class="file-name" id="trackhub-file-name"></span>
+                                  </label>
+                              </div>
+                          </div>
+                      </div>
+                    </div>
+                    <div class="columns">
                       <div class="column is-4">
                         <div class="field">
                           <h3 class="label">
@@ -931,14 +957,32 @@ Currently Gosling only supports single-organism tracks">
                         </div>
                       </div>
                     </div>
-                  <div id="trackhub-upload-status" class="is-hidden">
-                    <p class="mt-2 mb-0 pt-2 pb-0 icon-text">
-                      <span class="icon">
-                        <i class="mdi mdi-information"></i>
-                      </span>
-                      <span id="trackhub-upload-status-message"></span>
-                    </p>
-                  </div>
+                    <div id="trackhub-validation-warnings" class="notification is-warning is-hidden">
+                      <p class="icon-text mb-3">
+                          <span class="icon">
+                              <i class="mdi mdi-alert-outline"></i>
+                          </span>
+                          <span><strong>Hub file contains relative file references</strong></span>
+                      </p>
+                      <p class="mb-3">
+                          Your hub.txt file contains relative or local file paths that will not be automatically prepopulated.
+                          You will need to upload or link these files manually in the track configuration step.
+                      </p>
+                      <p class="is-size-7">
+                          <span class="icon">
+                              <i class="mdi mdi-information"></i>
+                          </span>
+                          After proceeding, you can upload files for each track or provide direct URLs.
+                      </p>
+                    </div>
+                    <div id="trackhub-upload-status" class="is-hidden">
+                      <p class="mt-2 mb-0 pt-2 pb-0 icon-text">
+                        <span class="icon">
+                          <i class="mdi mdi-information"></i>
+                        </span>
+                        <span id="trackhub-upload-status-message"></span>
+                      </p>
+                    </div>
                     <div class="field mt-3">
                       <div class="control">
                         <button class="button is-primary" id="configure-trackhub-submit">Configure Trackhub</button>

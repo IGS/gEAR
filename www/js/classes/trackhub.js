@@ -102,56 +102,31 @@ export class HubContainer {
     }
 
     /**
-     * Asynchronously parses a UCSC Track Hub URL and extracts hub metadata.
+     * Parses raw hub.txt content and populates the Hub object with extracted metadata.
      *
-     * Fetches and validates the hub.txt file from the provided URL, then parses
-     * key-value pairs to populate hub properties such as identifier, labels, email,
-     * genomes file reference, and genome assembly. The parsed data is used to populate
-     * the HubContainer's internal Hub object and associated form fields.
+     * Handles hub.txt key-value pairs, detects oneFileMode, validates genome entries, and updates form fields.
+     * If oneFileMode is enabled and genome mismatches the selected assembly, switches to genome found in hub.txt.
      *
-     * @async
-     * @param {string} hubUrl - The URL of the hub.txt file to parse (e.g., "https://example.com/hubs/hub1/hub.txt").
-     * @param {string} assembly - The genome assembly to associate with the hub (e.g., "hg38", "mm10").
-     * @returns {Promise<void>} Resolves when the hub data has been parsed and populated.
-     * @throws {Error} If hubUrl or assembly is not provided.
-     * @throws {Error} If the hub URL is not reachable or returns a non-OK HTTP status.
+     * @param {string} hubContent - Raw text content of hub.txt file.
+     * @param {string} assembly - Selected genome assembly (validated against hub.txt in oneFileMode).
+     * @returns {void}
+     * @throws {Error} If oneFileMode is enabled but no genome entry found in hub.txt.
      *
      * @description
-     * This method performs the following steps:
-     * 1. Validates that both hubUrl and assembly parameters are provided.
-     * 2. Fetches the hub.txt file from the provided URL with error handling.
-     * 3. Parses the hub.txt content line-by-line, extracting key-value pairs.
-     * 4. Populates a hubJson object with extracted properties (hub, shortLabel, longLabel, email, genomesFile, genome, trackDbUrl).
-     * 5. Calls populateHubData() to update the Hub object and form fields with parsed data.
+     * Expected hub.txt format:
+     * ```
+     * hub myHub
+     * shortLabel My Hub
+     * longLabel My Hub Long Label
+     * email user@example.com
+     * genomesFile genomes.txt
+     * ```
      *
-     * Recognized keys in hub.txt: hub, shortLabel, longLabel, email, genomesFile.
-     * Other keys are ignored.
-     *
-     * @see {@link populateHubData} for details on how parsed data updates the form
-     * @see {@link retrieveTrackDbPath} for retrieving the trackDb.txt path after hub parsing
+     * @see {@link parseHubFile} for file-based parsing
+     * @see {@link parseHubUrl} for URL-based parsing
+     * @see {@link populateHubData} for updating form fields
      */
-    async parseHubUrl(hubUrl, assembly) {
-        if (!hubUrl) {
-            throw new Error("Hub URL is required to parse trackDb information.");
-        }
-        if (!assembly) {
-            throw new Error("Assembly is required to parse trackDb information.");
-        }
-
-        // Test if URL is reachable
-        let hubContent;
-        try {
-            const hubResp = await fetch(hubUrl);
-            if (!hubResp.ok) {
-                throw new Error(`Hub URL returned status ${hubResp.status}`);
-            }
-            hubContent = await hubResp.text();
-        } catch (error) {
-            console.debug(error);
-            throw new Error("Provided hub URL is not reachable.");
-        }
-
-
+    parseHubContent(hubContent, assembly) {
         const hubJson = {
             hub: null,
             shortLabel: null,
@@ -210,6 +185,72 @@ export class HubContainer {
         }
 
         this.populateHubData(hubJson);
+    }
+
+    /**
+     * Parses hub.txt file content and populates the Hub object.
+     *
+     * @async
+     * @param {File} file - File object from HTML file input.
+     * @param {string} assembly - Genome assembly (e.g., "hg38", "mm10").
+     * @returns {Promise<void>}
+     * @throws {Error} If file or assembly is missing.
+     *
+     * @example
+     * await hubContainer.parseHubFile(fileInput.files[0], 'hg38');
+     *
+     * @see {@link parseHubContent} for parsing logic
+     * @see {@link parseHubUrl} for URL-based parsing
+     */
+    async parseHubFile(file, assembly) {
+        if (!file) {
+            throw new Error("No file provided for parsing.");
+        }
+        if (!assembly) {
+            throw new Error("Assembly is required to parse trackDb information.");
+        }
+        const fileContent = await file.text();
+        this.parseHubContent(fileContent, assembly);
+    }
+
+    /**
+     * Fetches and parses hub.txt file from a remote URL.
+     *
+     * @async
+     * @param {string} hubUrl - Complete URL to hub.txt (e.g., "https://example.com/hub.txt").
+     * @param {string} assembly - Genome assembly (e.g., "hg38", "mm10").
+     * @returns {Promise<void>}
+     * @throws {Error} If hubUrl/assembly is missing or URL is unreachable.
+     *
+     * @example
+     * await hubContainer.parseHubUrl('https://example.com/hub.txt', 'hg38');
+     *
+     * @see {@link parseHubContent} for parsing logic
+     * @see {@link parseHubFile} for file upload parsing
+     * @see {@link retrieveTrackDbPath} for fetching trackDb.txt URL from genomes.txt
+     */
+    async parseHubUrl(hubUrl, assembly) {
+        if (!hubUrl) {
+            throw new Error("Hub URL is required to parse trackDb information.");
+        }
+        if (!assembly) {
+            throw new Error("Assembly is required to parse trackDb information.");
+        }
+
+        // Test if URL is reachable
+        let hubContent;
+        try {
+            const hubResp = await fetch(hubUrl);
+            if (!hubResp.ok) {
+                throw new Error(`Hub URL returned status ${hubResp.status}`);
+            }
+            hubContent = await hubResp.text();
+        } catch (error) {
+            console.debug(error);
+            throw new Error("Provided hub URL is not reachable.");
+        }
+
+        this.parseHubContent(hubContent, assembly);
     }
 
     /**
@@ -330,16 +371,17 @@ export class HubContainer {
         // Return a list of errors or an empty list if valid.
         // In addition, higlight the form fields with errors for the user to fix
         const errors = [];
+        let hasLocalFileReferences = false;
 
-        if (!this.hub.identifier) {
-            document.getElementById("hub-identifier").classList.add("is-danger");
-            errors.push("Hub identifier is required.");
-        } else {
+        if (this.hub.identifier) {
             // Hub identifier must be a single word with no spaces
             if (/\s/.test(this.hub.identifier)) {
                 document.getElementById("hub-identifier").classList.add("is-danger");
                 errors.push("Hub identifier must be a single word with no spaces.");
             }
+        } else {
+            document.getElementById("hub-identifier").classList.add("is-danger");
+            errors.push("Hub identifier is required.");
         }
 
         if (!this.hub.shortLabel) {
@@ -362,7 +404,24 @@ export class HubContainer {
             errors.push("Hub genome assembly is required.");
         }
 
-        return errors;
+        // Check for local file references in track stanzas
+        if (this.trackContainerObj) {
+            for (const trackId in this.trackContainerObj.tracks) {
+                const track = this.trackContainerObj.tracks[trackId];
+                const bigDataUrl = track.url || "";
+
+                // Check if URL is relative or local (not http/https and doesn't start with /)
+                if (bigDataUrl && !bigDataUrl.startsWith("http://") && !bigDataUrl.startsWith("https://") && !bigDataUrl.startsWith("/")) {
+                    hasLocalFileReferences = true;
+                    break;
+                }
+            }
+        }
+
+        return {
+            errors,
+            hasLocalFileReferences
+        };
     }
 
     generateHubJson() {
@@ -379,6 +438,37 @@ export class HubContainer {
 
     setTrackContainer(trackContainer) {
         this.trackContainerObj = trackContainer;
+    }
+
+    /**
+     * Static method to validate hub.txt file content for local file references.
+     * Does not require a HubContainer instance.
+     *
+     * @static
+     * @param {string} hubContent - The raw text content of the hub.txt file.
+     * @returns {boolean} True if the hub contains local file references, false otherwise.
+     */
+    static hasLocalFileReferences(hubContent) {
+        const lines = hubContent.split('\n');
+        for (const line of lines) {
+            const [key, ...rest] = line.split(' ');
+            const value = rest.join(' ').trim();
+
+            // If there is a reference to a genomesFile, then we can assume there are local file references,
+            // since the genomes.txt file must be local to the hub.txt file and we do not support external URLs for genomes.txt.
+            if (key === 'genomesFile') {
+                return true
+            }
+
+            // The oneFileMode property is probably "on". Look for bigDataUrl entries (track property)
+            if (key === 'bigDataUrl') {
+                // Check if URL is relative or local (not http/https and doesn't start with /)
+                if (value && !value.startsWith('http://') && !value.startsWith('https://') && !value.startsWith('/')) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
 }
@@ -451,6 +541,7 @@ export class TrackContainer {
 
         this.trackDbUrl = null;
         this.tracks = {}; // Store track data with track ID as key
+        this.trackFilesMap = new Map()
 
         this.hubContainerObj;
 
@@ -580,14 +671,25 @@ export class TrackContainer {
             this.tracks[trackId].url = e.target.value.trim();
         });
 
+        // Capture file selections without uploading
+        collapsibleContent.querySelector('.js-track-file').addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                this.trackFilesMap.set(trackId, e.target.files[0]);
+            } else {
+                this.trackFilesMap.delete(trackId);
+            }
+        });
+
         collapsibleContent.querySelector('.js-track-visibility').addEventListener('input', (e) => {
             this.tracks[trackId].visibility = e.target.value.trim();
         });
 
         collapsibleContent.querySelector('.js-track-color').addEventListener('input', (e) => {
             try {
-                this.tracks[trackId].color = this.tracks[trackId].convertColorToRGB(e.target.value.trim());
+                this.tracks[trackId].color = Track.convertColorToRGB(e.currentTarget.value.trim());
+                e.currentTarget.classList.remove("is-danger");
             } catch (error) {
+                e.currentTarget.classList.add("is-danger");
                 console.warn("Error converting color... will ignore:", error);
             }
         });
@@ -610,14 +712,18 @@ export class TrackContainer {
     createNewTracksFromData(trackData) {
         // Create new track objects and form fields based on parsed trackDb.txt data
         const trackEntries = trackData.split('track ')
-        trackEntries.forEach((stanza, index) => {
+        for (const stanza of trackEntries) {
             // skip empty entries
             if (!stanza.trim()) {
                 return;
             }
 
+            // Extract track type from stanza to check privacy awareness
+            const trackTypeMatch = stanza.match(/type\s+(\S+)/);
+            const trackType = trackTypeMatch ? trackTypeMatch[1] : '';
+
             // if assembly is human, skip creation of privacy-aware tracks.
-            if (this.isPrivacyAware(this.hubContainerObj.getAssembly()) && this.isPrivacyAwareTrack(stanza)) {
+            if (this.isAssemblyPrivacyAware(this.hubContainerObj.getAssembly()) && this.checkPrivacyTrackType(trackType)) {
                 return;
             }
 
@@ -626,7 +732,7 @@ export class TrackContainer {
             this.createTrackItem(); // This will create a new track item and increment the track count
             const trackId = String(Track.trackCount); // Get the current track ID after incrementing
             this.populateTrackData(trackId, stanza); // Populate the new track item with data
-        });
+        };
     }
 
     async parseHubTracks(hubUrl) {
@@ -682,7 +788,7 @@ export class TrackContainer {
         const lines = stanza.split('\n');
         const track = this.tracks[trackId];
 
-        lines.forEach(line => {
+        for (const line of lines) {
             // if only whitespace or a comment, skip
             if (!line.trim() || line.trim().startsWith('#')) {
                 return;
@@ -739,7 +845,7 @@ export class TrackContainer {
                 default:
                     break;
             }
-        });
+        };
 
         // Collapse the track item after populating data for better UX, especially for large trackhubs
         const collapsibleHeader = document.querySelector(`#track-${trackId} .collapsible-header`);
@@ -751,6 +857,8 @@ export class TrackContainer {
         // Return a list of errors or an empty list if all tracks are valid.
         // In addition, highlight the form fields with errors for the user to fix
         const errors = [];
+        const missingFileOrUrl = {}; // Map trackId → true if both URL and file are missing
+
         for (const trackId in this.tracks) {
             const track = this.tracks[trackId];
             if (!track.identifier) {
@@ -769,16 +877,29 @@ export class TrackContainer {
                 document.querySelector(`#track-${trackId} .js-track-type`).classList.add("is-danger");
                 errors.push(`Track ${trackId}: Track type is required.`);
             }
-            if (!track.url) {
+            // Check for either URL or uploaded file
+            const hasUrl = track.url?.trim();
+            const hasFile = this.trackFilesMap.has(String(trackId));
+
+            if (!hasUrl && !hasFile) {
                 document.querySelector(`#track-${trackId} .js-track-url`).classList.add("is-danger");
-                errors.push(`Track ${trackId}: URL is required.`);
+                errors.push(`Track ${trackId}: Must provide either a URL or upload a file.`);
+                missingFileOrUrl[trackId] = true;
             }
         }
-        return errors;
+
+        return {
+            errors,
+            missingFileOrUrl
+        };
     }
 
+    /**
+     * Generates a list of trackDb.txt entries as JSON objects based on the current track data in the container.
+     * Each entry corresponds to a track and includes properties such as identifier, labels, type, URL, visibility, and color.
+     * @returns {Object[]} List of trackDb.txt entries as JSON objects.
+     */
     generateTrackDbEntries() {
-        // Generate each trackDb.txt stanza as a JSON object and return as a list
         const entries = [];
         for (const trackId in this.tracks) {
             const track = this.tracks[trackId];
@@ -787,24 +908,46 @@ export class TrackContainer {
         return entries;
     }
 
-    isPrivacyAware(assembly) {
+    /**
+     * Builds FormData containing track file uploads keyed by track ID.
+     * @returns {FormData} FormData with entries like `tracks[trackId][file]`
+     */
+    buildTrackFilesFormData() {
+        const formData = new FormData();
+
+        for (const [trackId, file] of this.trackFilesMap.entries()) {
+            formData.append(`tracks[${trackId}][file]`, file);
+        }
+
+        return formData;
+    }
+
+    isAssemblyPrivacyAware(assembly) {
         return ["hg19", "hg38"].includes(assembly);
     }
 
-    isPrivacyAwareTrack(trackType) {
-        // Define which track types are considered privacy-aware. This is not an exhaustive list, just examples.
+    /**
+     * Determines if a given track type is considered privacy-aware and should be restricted for human assemblies.
+     * @returns {boolean} True if the track type is privacy-aware, false otherwise.
+     */
+    checkPrivacyTrackType(trackType) {
         const privacyAwareTypes = ["vcfTabix", "hic"];
         return privacyAwareTypes.includes(trackType);
     }
 
+    /**
+     * Disables selection of privacy-aware track types (e.g., VCF, Hi-C) in the track type dropdowns if the assembly is human.
+     * This is to comply with federal standards regarding personally-identifiable data.
+     * @param {string} assembly - The genome assembly to check for privacy awareness (e.g., "hg38", "mm10").
+     * @param {HTMLElement} parent - Optional. The parent element to search within for track type select elements. Defaults to the entire document.
+     * @returns {void}
+     */
     restrictPrivacyAwareTrackTypes(assembly, parent=document) {
-        // If the assembly is a "human" one, disable VCF and Hic types in the select.
-        // This is because of federal standards towards personally-identifiable data
         const trackTypeSelectElts = parent.getElementsByClassName('js-track-type');
         for (const trackTypeSelect of trackTypeSelectElts) {
             trackTypeSelect.querySelector('option[value="vcfTabix"]').disabled = false;
             trackTypeSelect.querySelector('option[value="hic"]').disabled = false;
-            if (this.isPrivacyAware(assembly)) {
+            if (this.isAssemblyPrivacyAware(assembly)) {
                 trackTypeSelect.querySelector('option[value="vcfTabix"]').disabled = true;
                 trackTypeSelect.querySelector('option[value="hic"]').disabled = true;
             }
@@ -813,5 +956,30 @@ export class TrackContainer {
 
     setHubContainer(hubContainer) {
         this.hubContainerObj = hubContainer;
+    }
+
+    /**
+     * Static method to validate trackDb.txt file content for local file references.
+     * Does not require a TrackContainer instance.
+     *
+     * @static
+     * @param {string} trackDbContent - The raw text content of the trackDb.txt file.
+     * @returns {boolean} True if trackDb contains local file references, false otherwise.
+     */
+    static hasLocalFileReferences(trackDbContent) {
+        const lines = trackDbContent.split('\n');
+        for (const line of lines) {
+            const [key, ...rest] = line.split(' ');
+            const value = rest.join(' ').trim();
+
+            // Look for bigDataUrl entries
+            if (key === 'bigDataUrl') {
+                // Check if URL is relative or local
+                if (value && !value.startsWith('http://') && !value.startsWith('https://') && !value.startsWith('/')) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

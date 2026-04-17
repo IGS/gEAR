@@ -418,33 +418,24 @@ const getGeoData = async () => {
     button.classList.remove('is-loading');
 }
 
-/**
- * Updates the state of the "Build Trackhub" submit button based on the validity of the
- * provided URL input and assembly selection. Ensures that the button is only enabled
- * when both inputs are valid and displays appropriate error messages when validation fails.
- *
- * @function updateConfigureTrackHubButtonState
- * @param {HTMLInputElement} urlInput - The input field where the user enters the trackhub URL.
- * @param {HTMLSelectElement} assemblySelect - The dropdown menu where the user selects the genome assembly.
- *
- * @description
- * - If the URL input is empty, the submit button is enabled, and error messages are hidden.
- * - If no assembly is selected, the submit button is disabled, and an error message is displayed.
- * - If the URL does not start with "https://" or contains spaces, the submit button is disabled,
- *   and an error message is displayed.
- * - If both the URL and assembly are valid, the submit button is enabled, and error messages are hidden.
- * @returns {void}
- */
-const updateConfigureTrackHubButtonState = (urlInput, assemblySelect) => {
+const updateConfigureTrackHubButtonState = (urlInput, fileInput, assemblySelect) => {
     const submitButton = document.getElementById('configure-trackhub-submit');
     const statusMessage = document.getElementById('trackhub-upload-status-message');
     const statusContainer = document.getElementById('trackhub-upload-status');
 
-    if (!urlInput.value) {
-        // If URL is empty, we are not pre-populating, so we are OK.
+    // If neither URL nor file is provided, enable the submit button and hide the status message
+    if (!urlInput.value && !fileInput.value) {
         submitButton.disabled = false;
         statusContainer.classList.add('is-hidden');
         return
+    }
+
+    // If both URL and file are provided, show an error message
+    if (urlInput.value && fileInput.value) {
+        statusMessage.textContent = 'Please provide either a URL or a file, not both.';
+        statusContainer.classList.remove('is-hidden');
+        submitButton.disabled = true;
+        return;
     }
 
     // Disable the submit button by default
@@ -458,18 +449,23 @@ const updateConfigureTrackHubButtonState = (urlInput, assemblySelect) => {
     }
 
     // url should be in HTTP or HTTPS format and have no spaces (basic validation)
-    const isUrl = urlInput.value.startsWith("http://") || urlInput.value.startsWith("https://");
-    if (isUrl && !urlInput.value.includes(' ')) {
-        // Valid URL, enable the submit button and hide the status message
+    if (urlInput.value) {
+        const isUrl = urlInput.value.startsWith("http://") || urlInput.value.startsWith("https://");
+        if (isUrl && !urlInput.value.includes(' ')) {
+            // Valid URL, enable the submit button and hide the status message
+            submitButton.disabled = false;
+            statusContainer.classList.add('is-hidden');
+        } else {
+            // Invalid URL, show an error message
+            statusMessage.textContent = 'Please enter a valid HTTP or HTTPS URL.';
+            statusContainer.classList.remove('is-hidden');
+        }
+    } else {
+        // If a file is provided, enable the submit button and hide the status message
         submitButton.disabled = false;
         statusContainer.classList.add('is-hidden');
-    } else {
-        // Invalid URL, show an error message
-        statusMessage.textContent = 'Please enter a valid HTTP or HTTPS URL.';
-        statusContainer.classList.remove('is-hidden');
     }
 }
-
 
 /**
  * Fetches the content of an HTML file from the specified URL.
@@ -869,16 +865,16 @@ const processDataset = async () => {
 }
 
 const stageTrackHub = async (hubContainer, trackContainer) => {
-    const hubErrors = hubContainer.validateHub();
-    const trackErrors = trackContainer.validateTracks();
+    const hubValidation = hubContainer.validateHub();
+    const trackValidation = trackContainer.validateTracks();
 
-    if (hubErrors.length > 0) {
-        createToast("Validation issues with hub metadata. Please resolve and submit again");
+    if (hubValidation.errors.length > 0) {
+        createToast("Validation issues with hub metadata. Please correct and submit again");
         return;
     }
 
-    if (trackErrors.length > 0) {
-        createToast("Validation issues with one or more tracks. Please resolve.");
+    if (trackValidation.errors.length > 0) {
+        createToast("Validation issues with one or more tracks. Please correct.");
         return;
     }
 
@@ -889,16 +885,23 @@ const stageTrackHub = async (hubContainer, trackContainer) => {
         return;
     }
 
-    const assembly = hubContainer.getAssembly();
+    // Build main FormData
+    const formData = new FormData();
+    formData.append('hub_json', JSON.stringify(hubJson));
+    formData.append('tracks', JSON.stringify(trackStanzas));
+    formData.append('assembly', hubContainer.getAssembly());
+    formData.append('dry_run', false);
+
+    // Append files separately
+    const trackFilesFormData = trackContainer.buildTrackFilesFormData();
+    for (const [key, value] of trackFilesFormData.entries()) {
+        formData.append(key, value);
+    }
+
     try {
         const {data} = await axios.post(
             `./api/import/trackhub/${shareUid}/copy`,
-            {
-                hub_json: hubJson,
-                tracks: trackStanzas,
-                assembly,
-                dry_run: false
-            }
+            formData
         );
 
         if (!data?.success) {
@@ -1100,6 +1103,8 @@ const adjustUIForGosling = () => {
     document.getElementById("trackhub-upload-c").classList.add("is-hidden");
     document.getElementById("dataset-no-curate-div").classList.add("is-hidden");
 
+    document.getElementById("trackhub-file-input").value = "";
+    document.getElementById("trackhub-file-name").textContent = "";
     document.getElementById("trackhub-url-input").value = "";
 }
 
@@ -1239,16 +1244,37 @@ document.getElementById('dataset-file-input').addEventListener('change', (event)
 });
 
 // Enable 'Upload dataset' button if a URL is entered and an assembly is selected.
-document.getElementById("trackhub-url-input").addEventListener('input', (event) => {
-    const urlInput = event.currentTarget;
-    const assemblySelect = document.getElementById('trackhub-assembly-select');
-    updateConfigureTrackHubButtonState(urlInput, assemblySelect);
+const hubUrlInput = document.getElementById('trackhub-url-input');
+const hubFileInput = document.getElementById('trackhub-file-input');
+const hubAssemblySelect = document.getElementById('trackhub-assembly-select');
+hubUrlInput.addEventListener('input', (event) => {
+    document.getElementById('trackhub-validation-warnings').classList.add('is-hidden');
+    updateConfigureTrackHubButtonState(hubUrlInput, hubFileInput, hubAssemblySelect);
 })
+hubFileInput.addEventListener('change', async (event) => {
+    updateConfigureTrackHubButtonState(hubUrlInput, hubFileInput, hubAssemblySelect);
 
-document.getElementById('trackhub-assembly-select').addEventListener('change', (event) => {
-    const assemblySelect = event.currentTarget;
-    const urlInput = document.getElementById('trackhub-url-input');
-    updateConfigureTrackHubButtonState(urlInput, assemblySelect);
+    document.getElementById('trackhub-validation-warnings').classList.add('is-hidden');
+    // Validate hub file for local references
+    if (event.target.files.length > 0) {
+        try {
+            const file = event.target.files[0];
+            const fileContent = await file.text();
+
+            document.getElementById("trackhub-file-name").textContent = file.name;
+
+            if (HubContainer.hasLocalFileReferences(fileContent)) {
+                document.getElementById('trackhub-validation-warnings').classList.remove('is-hidden');
+            }
+        } catch (error) {
+            console.warn('Error reading hub file:', error);
+            createToast('Error reading hub file for validation. Please ensure the file is a valid text file.', 'is-warning');
+        }
+    }
+
+})
+hubAssemblySelect.addEventListener('change', (event) => {
+    updateConfigureTrackHubButtonState(hubUrlInput, hubFileInput, hubAssemblySelect);
 })
 
 document.getElementById('dataset-finalize-submit').addEventListener('click', (event) => {
