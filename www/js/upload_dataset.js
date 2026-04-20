@@ -296,12 +296,15 @@ const populateMetadataFormFromFile = async () => {
 }
 
 /**
- * Asynchronously populates hub and track containers from a track hub URL.
+ * Asynchronously populates hub and track containers from a track hub URL or file.
  *
- * Retrieves hub configuration and track definitions from a provided UCSC-format track hub URL,
+ * Retrieves hub configuration and track definitions from a provided UCSC-format track hub URL or file,
  * validates that the selected assembly exists in the hub, and populates Track objects for each
  * discovered track. Handles both single-file hub mode (tracks defined in hub.txt) and multi-file
  * mode (tracks defined in separate trackDb.txt file referenced from genomes.txt).
+ *
+ * For file-based hubs, tracks are only prepopulated if useOneFile="on" and track bigDataUrl values are URLs.
+ * Local file references in file-based hubs require manual user configuration.
  *
  * @async
  * @function populateHubAndTracks
@@ -314,13 +317,14 @@ const populateMetadataFormFromFile = async () => {
  * @description
  * Execution flow:
  * 1. Validates that an assembly was previously selected via DOM element 'trackhub-assembly-select'.
- * 2. Retrieves hub URL and assembly value from DOM inputs.
- * 3. Returns early if no hub URL is provided.
- * 4. Parses hub.txt using `hubContainer.parseHubUrl()` to populate hub metadata.
- * 5. Checks hub mode: if oneFile mode, parses tracks directly from hub.txt;
- *    otherwise retrieves trackDb.txt path from genomes.txt and parses it.
- * 6. Displays warning toasts for any parsing errors encountered.
+ * 2. Retrieves hub URL/file and assembly value from DOM inputs.
+ * 3. Returns early if neither hub URL nor file is provided.
+ * 4. Parses hub source (file or URL) to populate hub metadata.
+ * 5. For URL-based hubs: Checks hub mode and parses tracks accordingly (oneFile or trackDb.txt).
+ * 6. For file-based hubs: Only parses tracks if oneFile mode AND tracks have URL-based bigDataUrl values.
+ * 7. Displays warning toasts for any parsing errors encountered.
  *
+ * @see {@link HubContainer#parseHubFile}
  * @see {@link HubContainer#parseHubUrl}
  * @see {@link HubContainer#retrieveTrackDbPath}
  * @see {@link TrackContainer#parseHubTracks}
@@ -340,48 +344,90 @@ const populateHubAndTracks = async (hubContainer, trackContainer) => {
     // 3) If trackDb files exist, parse them for the parameters we need and create Track objects for each track found.
 
     const hubUrl = document.getElementById("trackhub-url-input").value
+    const fileInput = document.getElementById("trackhub-file-input");
     const assembly = assemblySelect.value;
 
-    // Don't bother if no URL provided.
-    if (!hubUrl) {
+    // Don't bother if no URL or file provided.
+    if (!hubUrl && !fileInput.files.length) {
         return;
     }
 
     try {
-        await hubContainer.parseHubUrl(hubUrl, assembly);
+
+        const isFileSource = fileInput.files.length > 0;
+        const file = isFileSource ? fileInput.files[0] : null;
+
+        // Parse hub from file or URL
+        if (isFileSource) {
+            await hubContainer.parseHubFile(file, assembly);
+        } else {
+            await hubContainer.parseHubUrl(hubUrl, assembly);
+        }
+
+        // Attempt to populate tracks based on hub mode and source
+        await populateTracks(hubContainer, trackContainer, isFileSource, hubUrl);
+
     } catch (error) {
         console.warn(error);
         createToast(`Error parsing track hub URL... initializing empty form.`, 'is-warning');
         return;
     }
+}
+
+/**
+ * Helper function to populate tracks based on hub configuration and source type.
+ * For URL sources: fetches tracks from hub.txt (oneFile) or trackDb.txt.
+ * For file sources: only populates tracks if oneFile mode is enabled and bigDataUrl values are URLs; otherwise, shows warnings about local file references and manual configuration.
+ *
+ * @async
+ * @private
+ * @param {HubContainer} hubContainer - The hub container with parsed hub metadata.
+ * @param {TrackContainer} trackContainer - The track container to populate.
+ * @param {boolean} isFileSource - Whether the hub came from a file upload.
+ * @returns {Promise<void>}
+ */
+const populateTracks = async (hubContainer, trackContainer, isFileSource, hubUrl=null) => {
+    const hubContent = hubContainer.hubContent
+
+    // If oneFile mode, tracks should be defined in the hub.txt file, so attempt to parse them directly from the hub content (regardless of source)
     if (hubContainer.oneFileMode) {
-        // The tracks are in the hub.txt file
         try {
-            await trackContainer.parseHubTracks(hubUrl);
+            await trackContainer.parseHubTracksFromContent(hubContent);
         } catch (error) {
             console.warn(error);
             createToast(`Error parsing hub "oneFile" tracks... cannot populate tracks.`, 'is-warning');
         }
-    } else {
-        // Find the trackDb file in the genomes.txt file and parse it to populate the tracks.
-        try {
-            await hubContainer.retrieveTrackDbPath(hubUrl);
-        } catch (error) {
-            console.warn(error);
-            createToast(`Error retrieving trackDb.txt path from genomes.txt in hub URL... cannot populate tracks.`, 'is-warning');
-            return;
-        }
-
-        try {
-            await trackContainer.parseTrackDbUrl(hubContainer.getTrackDbUrl());
-        } catch (error) {
-            console.warn(error);
-            createToast(`Error parsing trackDb.txt... cannot populate tracks.`, 'is-warning');
-            return;
-        }
+        return;
     }
 
-}
+    // If not oneFile mode, then we need to retrieve and parse the trackDb.txt file to get track information.
+    // For file-based hubs, this is not possible because we cannot resolve local file references, so we return early with a warning.
+    if (isFileSource) {
+        createToast(`Hub is in file-based multi-file mode, which cannot be prepopulated. Please configure tracks manually, or try again using useOneFile mode in the hub.txt file.`, 'is-warning');
+        return;
+    }
+
+    if (!hubUrl) {
+        createToast(`Hub URL is required to retrieve trackDb.txt information for non-oneFile hubs.`, 'is-warning');
+        return;
+    }
+
+    // Find the trackDb file in genomes.txt and parse it
+    try {
+        await hubContainer.retrieveTrackDbPath(hubUrl);
+    } catch (error) {
+        console.warn(error);
+        createToast(`Error retrieving trackDb.txt path from genomes.txt in hub URL... cannot populate tracks.`, 'is-warning');
+        return;
+    }
+
+    try {
+        await trackContainer.parseTrackDbUrl(hubContainer.getTrackDbUrl());
+    } catch (error) {
+        console.warn(error);
+        createToast(`Error parsing trackDb.txt... cannot populate tracks.`, 'is-warning');
+    }
+};
 
 /**
  * Asynchronously fetches GEO metadata based on the user-provided GEO ID and populates
@@ -758,6 +804,13 @@ const buildTrackhub = async () => {
     trackContainer.setHubContainer(hubContainer);
 
     await populateHubAndTracks(hubContainer, trackContainer);
+
+    // Register a listener to enable "Build track hub" button if there is at least 1 track with a data file provided
+    trackContainer.registerTrackDataFileListener(() => {
+        const submitButton = document.getElementById('build-trackhub-submit');
+        submitButton.disabled = trackContainer.hasAtLeastOneTrackWithDataFile() ? false : true;
+    });
+
     stepTo("build-trackhub");
 }
 
@@ -1249,12 +1302,14 @@ const hubFileInput = document.getElementById('trackhub-file-input');
 const hubAssemblySelect = document.getElementById('trackhub-assembly-select');
 hubUrlInput.addEventListener('input', (event) => {
     document.getElementById('trackhub-validation-warnings').classList.add('is-hidden');
+    document.getElementById("use-one-file-warning").classList.add('is-hidden');
     updateConfigureTrackHubButtonState(hubUrlInput, hubFileInput, hubAssemblySelect);
 })
 hubFileInput.addEventListener('change', async (event) => {
+    document.getElementById('trackhub-validation-warnings').classList.add('is-hidden');
+    document.getElementById("use-one-file-warning").classList.add('is-hidden');
     updateConfigureTrackHubButtonState(hubUrlInput, hubFileInput, hubAssemblySelect);
 
-    document.getElementById('trackhub-validation-warnings').classList.add('is-hidden');
     // Validate hub file for local references
     if (event.target.files.length > 0) {
         try {
@@ -1263,8 +1318,12 @@ hubFileInput.addEventListener('change', async (event) => {
 
             document.getElementById("trackhub-file-name").textContent = file.name;
 
+            // Check for local file references and show warnings if found
             if (HubContainer.hasLocalFileReferences(fileContent)) {
                 document.getElementById('trackhub-validation-warnings').classList.remove('is-hidden');
+                if (!HubContainer.hasUseOneFileMode(fileContent)) {
+                    document.getElementById("use-one-file-warning").classList.remove('is-hidden');
+                }
             }
         } catch (error) {
             console.warn('Error reading hub file:', error);

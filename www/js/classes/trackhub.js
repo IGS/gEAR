@@ -26,6 +26,7 @@ export class Hub {
         this.genomesFile = null; // URL to the genomes.txt file for this hub
         this.genome = genome;
         this.trackDbUrl = null; // URL to the trackDb.txt file for this hub
+        this.extraKeys = {}; // Store any extra key-value pairs from hub.txt that are not part of the standard uploader form. Can be passed to UCSC Genome Browser.
     }
 
     /**
@@ -52,6 +53,7 @@ export class Hub {
             shortLabel: this.shortLabel,
             longLabel: this.longLabel,
             email: this.email,
+            extraKeys: this.extraKeys,
             ...genomeBit
         };
     }
@@ -64,6 +66,7 @@ export class HubContainer {
         this.oneFileMode = false;
         this.addHubContainerEvents()
         this.trackContainerObj;
+        this.hubContent = null;
     }
 
     addHubContainerEvents() {
@@ -107,7 +110,6 @@ export class HubContainer {
      * Handles hub.txt key-value pairs, detects oneFileMode, validates genome entries, and updates form fields.
      * If oneFileMode is enabled and genome mismatches the selected assembly, switches to genome found in hub.txt.
      *
-     * @param {string} hubContent - Raw text content of hub.txt file.
      * @param {string} assembly - Selected genome assembly (validated against hub.txt in oneFileMode).
      * @returns {void}
      * @throws {Error} If oneFileMode is enabled but no genome entry found in hub.txt.
@@ -126,7 +128,7 @@ export class HubContainer {
      * @see {@link parseHubUrl} for URL-based parsing
      * @see {@link populateHubData} for updating form fields
      */
-    parseHubContent(hubContent, assembly) {
+    parseHubContent(assembly) {
         const hubJson = {
             hub: null,
             shortLabel: null,
@@ -134,14 +136,15 @@ export class HubContainer {
             email: null,
             genomesFile: null,
             genome: assembly,
-            trackDbUrl: null
+            trackDbUrl: null,
+            extraKeys: {}
         }
 
         // TODO: Instead of passing "assembly" from previous page, read genomes.txt or the genome entry to determine what genomes are selectable.
 
         let genomeInHubTxt = "";
 
-        lineLoop: for (const line of hubContent.split('\n')) {
+        lineLoop: for (const line of this.hubContent.split('\n')) {
             const [key, ...rest] = line.split(' ');
             const value = rest.join(' ').trim();
             switch (key) {
@@ -169,7 +172,10 @@ export class HubContainer {
                     genomeInHubTxt = value;
                     break lineLoop;
                 default:
-                    // Ignore other keys for now
+                    // Store other keys
+                    if (key) {
+                        hubJson.extraKeys[key] = value;
+                    }
                     break;
             }
         }
@@ -210,7 +216,8 @@ export class HubContainer {
             throw new Error("Assembly is required to parse trackDb information.");
         }
         const fileContent = await file.text();
-        this.parseHubContent(fileContent, assembly);
+        this.hubContent = fileContent;
+        this.parseHubContent(assembly);
     }
 
     /**
@@ -250,7 +257,8 @@ export class HubContainer {
             throw new Error("Provided hub URL is not reachable.");
         }
 
-        this.parseHubContent(hubContent, assembly);
+        this.hubContent = hubContent;
+        this.parseHubContent(assembly);
     }
 
     /**
@@ -276,6 +284,7 @@ export class HubContainer {
         this.hub.genomesFile = hubJson.genomesFile || null;
         this.hub.genome = hubJson.genome || "";
         this.hub.trackDbUrl = hubJson.trackDbUrl || null;
+        this.hub.extraKeys = hubJson.extraKeys || {};
 
         // Update form fields with hub data
         document.getElementById("hub-identifier").value = this.hub.identifier;
@@ -471,6 +480,21 @@ export class HubContainer {
         return false;
     }
 
+    /**
+     * Static method to check if hub.txt content indicates useOneFile mode.
+     * Does not require a HubContainer instance.
+     */
+    static hasUseOneFileMode(hubContent) {
+        const lines = hubContent.split('\n');
+        for (const line of lines) {
+            const [key, value] = line.split(' ');
+            if (key === 'useOneFile' && value === 'on') {
+                return true;
+            }
+        }
+        return false;
+    }
+
 }
 
 // Track class to represent a UCSC Track
@@ -497,6 +521,7 @@ export class Track {
         this.visibility = visibility || "dense";
         this.color = color || "0,0,0";
         this.parent = parent;
+        this.extraKeys = {}; // Store any extra key-value pairs from trackDb.txt that are not part of the standard uploader form. Can be passed to UCSC Genome Browser.
     }
 
     /**
@@ -512,7 +537,8 @@ export class Track {
             bigDataUrl: this.url,
             visibility: this.visibility,
             color: this.color,
-            parent: this.parent
+            parent: this.parent,
+            extraKeys: this.extraKeys
         };
     }
 
@@ -608,35 +634,45 @@ export class TrackContainer {
         collapsibleHeader.innerHTML = `
             <span data-orig-name="Track ${trackId}" class="track-title">Track ${trackId}</span>
             <div class="track-status-container" style="display: flex; align-items: center; gap: 0.5rem;">
-                <span class="icon">
+                <span class="track-status-danger has-text-danger-dark icon is-hidden">
+                    <i class="mdi mdi-alert"></i>
+                </span>
+                <span class="track-status-arrow icon">
                     <i class="mdi mdi-chevron-down"></i>
                 </span>
             </div>
         `;
 
         // Collapsible content
-        const collapsibleContent = document.createElement('div');
-        collapsibleContent.classList.add('collapsible-content');
+        const replaceTemplatePlaceholders = (documentFragment, trackId) => {
+            const tempDiv = document.createElement('div');
+            tempDiv.classList.add('collapsible-content');
+            tempDiv.appendChild(documentFragment);
+            const html = tempDiv.innerHTML.replace(/{trackId}/g, trackId);
+            tempDiv.innerHTML = html;
+            return tempDiv;
+        };
 
         // Clone the track template and append to collapsible content
         const template = document.getElementById('tmpl-trackhub-track');
-        const templateHTML = template.content.cloneNode(true);
+        const templateClone = template.content.cloneNode(true);
 
-        collapsibleContent.appendChild(templateHTML);
+        const collapsibleContent = replaceTemplatePlaceholders(templateClone, trackId);
 
         // Add event listener for removing the track
         collapsibleContent.querySelector('.remove-track-btn').addEventListener('click', () => {
             trackItem.remove();
             // remove from tracks object
             delete this.tracks[trackId];
+            this.trackFilesMap.delete(trackId);
         });
 
         // Add toggle functionality for collapsible content
         collapsibleHeader.addEventListener('click', (event) => {
             const isOpen = collapsibleContent.style.display === 'block';
             collapsibleContent.style.display = isOpen ? 'none' : 'block';
-            collapsibleHeader.querySelector('.mdi').classList.toggle('mdi-chevron-down', isOpen);
-            collapsibleHeader.querySelector('.mdi').classList.toggle('mdi-chevron-up', !isOpen);
+            collapsibleHeader.querySelector('.track-status-arrow .mdi').classList.toggle('mdi-chevron-down', isOpen);
+            collapsibleHeader.querySelector('.track-status-arrow .mdi').classList.toggle('mdi-chevron-up', !isOpen);
         });
 
         // Update the header title when the identifier changes
@@ -669,12 +705,31 @@ export class TrackContainer {
         collapsibleContent.querySelector('.js-track-url').addEventListener('input', (e) => {
             document.querySelector(`#track-${trackId} .js-track-url`).classList.remove("is-danger");
             this.tracks[trackId].url = e.target.value.trim();
+            if (this.tracks[trackId].url) {
+                // If there is a URL, remove any file that was selected for this track
+                this.trackFilesMap.delete(trackId);
+                collapsibleContent.querySelector('.js-track-file').value = ""; // Clear the file input
+
+                // remove warning from header
+                const dangerElt = document.querySelector(`#track-${trackId} .track-status-danger`);
+                dangerElt.classList.add("is-hidden");
+            }
         });
 
         // Capture file selections without uploading
         collapsibleContent.querySelector('.js-track-file').addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
                 this.trackFilesMap.set(trackId, e.target.files[0]);
+                document.querySelector(`#track-${trackId} .file-name`).textContent = e.target.files[0].name;
+
+                // If a file is selected, clear the URL field for this track
+                this.tracks[trackId].url = "";
+                collapsibleContent.querySelector('.js-track-url').value = ""; // Clear the URL input
+
+                // remove warning from header
+                const dangerElt = document.querySelector(`#track-${trackId} .track-status-danger`);
+                dangerElt.classList.add("is-hidden");
+
             } else {
                 this.trackFilesMap.delete(trackId);
             }
@@ -705,34 +760,46 @@ export class TrackContainer {
 
         // Start with the content expanded for new tracks
         collapsibleContent.style.display = 'block';
-        collapsibleHeader.querySelector('.mdi').classList.remove('mdi-chevron-down');
-        collapsibleHeader.querySelector('.mdi').classList.add('mdi-chevron-up');
+        collapsibleHeader.querySelector('.track-status-arrow .mdi').classList.remove('mdi-chevron-down');
+        collapsibleHeader.querySelector('.track-status-arrow .mdi').classList.add('mdi-chevron-up');
     };
 
     createNewTracksFromData(trackData) {
         // Create new track objects and form fields based on parsed trackDb.txt data
         const trackEntries = trackData.split('track ')
-        for (const stanza of trackEntries) {
+        for (const trackEntry of trackEntries) {
             // skip empty entries
-            if (!stanza.trim()) {
-                return;
+            if (!trackEntry.trim()) {
+                continue;
             }
 
             // Extract track type from stanza to check privacy awareness
-            const trackTypeMatch = stanza.match(/type\s+(\S+)/);
+            const trackTypeMatch = trackEntry.match(/type\s+(\S+)/);
             const trackType = trackTypeMatch ? trackTypeMatch[1] : '';
 
             // if assembly is human, skip creation of privacy-aware tracks.
             if (this.isAssemblyPrivacyAware(this.hubContainerObj.getAssembly()) && this.checkPrivacyTrackType(trackType)) {
-                return;
+                continue;
             }
 
             // add "track " back into the stanza since we split it out (it's a field name)
-            stanza = `track ${stanza}`;
+            const stanza = `track ${trackEntry}`;
             this.createTrackItem(); // This will create a new track item and increment the track count
             const trackId = String(Track.trackCount); // Get the current track ID after incrementing
             this.populateTrackData(trackId, stanza); // Populate the new track item with data
         };
+    }
+
+    parseHubTracksFromContent(hubContent) {
+        // In this situation, the tracks are in the current hub.txt file.
+        // File is a concatenation of the following order: hub.txt, genomes.txt, trackDb.txt
+        // Extract the trackDb.txt portion of the file by finding the "track " keyword that starts the track entries
+        const trackDbIndex = hubContent.indexOf('track ');
+        if (trackDbIndex === -1) {
+            throw new Error("No track entries found in the hub.txt file.");
+        }
+        const trackDbContent = hubContent.slice(trackDbIndex);
+        this.createNewTracksFromData(trackDbContent);
     }
 
     async parseHubTracks(hubUrl) {
@@ -751,14 +818,7 @@ export class TrackContainer {
         }
 
         this.trackDbUrl = hubUrl; // Nneeded for filepath resolution of bigDataUrl
-
-        // Extract the trackDb.txt portion of the file by finding the "track " keyword that starts the track entries
-        const trackDbIndex = hubContent.indexOf('track ');
-        if (trackDbIndex === -1) {
-            throw new Error("No track entries found in the hub.txt file.");
-        }
-        const trackDbContent = hubContent.slice(trackDbIndex);
-        this.createNewTracksFromData(trackDbContent);
+        this.parseHubTracksFromContent(hubContent);
     }
 
     async parseTrackDbUrl(trackDbUrl) {
@@ -817,14 +877,21 @@ export class TrackContainer {
                     document.querySelector(`#track-${trackId} .js-track-type`).value = value;
                     break;
                 case 'bigDataUrl':
-                    // If URL is relative, convert to absolute based on trackDb URL
                     if (value.startsWith('http://') || value.startsWith('https://')) {
+                        // If URL is absolute, use as is
                         track.url = value;
-                    } else {
+                    } else if (this.trackDbUrl) {
+                        // If URL is relative, convert to absolute based on trackDb URL
                         const trackDbUrlObj = new URL(this.trackDbUrl);
                         const trackDbBasePath = trackDbUrlObj.pathname.split('/').slice(0, -1).join('/');
                         const absoluteUrl = `${trackDbUrlObj.origin}${trackDbBasePath}/${value}`;
                         track.url = absoluteUrl;
+                    } else {
+                        // If there is no trackDbUrl, this must be a relative URL from a hub.txt file with local file references.
+                        // Add some warning indicator to the track header so that the user looks.
+                        track.url = "";
+                        const dangerElt = document.querySelector(`#track-${trackId} .track-status-danger`);
+                        dangerElt.classList.remove("is-hidden");
                     }
                     document.querySelector(`#track-${trackId} .js-track-url`).value = track.url;
                     break;
@@ -843,6 +910,10 @@ export class TrackContainer {
                 //    track.parent = value
                 //    break;
                 default:
+                    // populate extra keys
+                    if (key) {
+                        track.extraKeys[key] = value;
+                    }
                     break;
             }
         };
@@ -956,6 +1027,45 @@ export class TrackContainer {
 
     setHubContainer(hubContainer) {
         this.hubContainerObj = hubContainer;
+    }
+
+    registerTrackDataFileListener(callback) {
+        // Call immediately to capture initial state
+        callback();
+
+        // Listen for file input changes
+        this.tracksContainer.addEventListener('change', (e) => {
+            if (e.target.classList.contains('js-track-file')) {
+                callback();
+            }
+        });
+
+        // Listen for URL input changes
+        this.tracksContainer.addEventListener('input', (e) => {
+            if (e.target.classList.contains('js-track-url')) {
+                callback();
+            }
+        });
+
+        // If a track is removed, we should also check if there are still any tracks with file references
+        this.tracksContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('remove-track-btn')) {
+                callback();
+            }
+        });
+
+    }
+
+    hasAtLeastOneTrackWithDataFile() {
+        for (const trackId in this.tracks) {
+            const track = this.tracks[trackId];
+            const hasUrl = track.url?.trim();
+            const hasFile = this.trackFilesMap.has(String(trackId));
+            if (hasUrl || hasFile) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
