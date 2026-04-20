@@ -1,4 +1,5 @@
 import ipaddress
+import os
 import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -57,7 +58,6 @@ ASSEMBLY_TO_CHROMSIZES_FILE = {
 }
 
 GENOMES_ROOT = "https://umgear.org/tracks/genomes/"
-#GENOMES_ROOT = "http://localhost:8080/tracks/genomes"
 
 
 def _resolve_track_url(track: dict, use_gosling: bool = True) -> str | None:
@@ -96,10 +96,13 @@ def _validate_hub_url(hub_url: str) -> None:
         if not domain_url:
             raise ValueError("Domain URL not configured. Cannot process track hub.")
 
-        ALLOWED_HUB_DOMAINS = [
-            domain_url,
-            "localhost",
-        ]
+        # Build allowed domains list from configuration
+        allowed_domains = [domain_url]
+
+
+        # Allow internal Docker service name in development only
+        if os.getenv("ENVIRONMENT", "production").lower() == "development":
+            allowed_domains.extend(["web", "localhost", "127.0.0.1"])
 
         parsed = urlparse(hub_url)
 
@@ -123,7 +126,7 @@ def _validate_hub_url(hub_url: str) -> None:
                 raise
 
             # Check against whitelist (case-insensitive)
-            if not any(hostname.lower().endswith(domain.lower()) for domain in ALLOWED_HUB_DOMAINS):
+            if not any(hostname.lower().endswith(domain.lower()) for domain in allowed_domains):
                 raise ValueError(f"Hub domain '{hostname}' is not in the allowed list.")
 
     except ValueError:
@@ -154,7 +157,8 @@ def _fetch_tracks_from_hub(hub_url: str, assembly: str) -> list[dict]:
         raise
 
     # Fix for Docker
-    hub_url = hub_url.replace("http://localhost:8080", "http://web")
+    if os.environ.get("ENVIRONMENT", "production").lower() == "development" and hub_url.startswith("http://localhost:8080"):
+        hub_url = hub_url.replace("http://localhost:8080", "http://web")
 
     try:
         hub_response = requests.get(hub_url)
