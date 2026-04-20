@@ -500,10 +500,11 @@ export class HubContainer {
 // Track class to represent a UCSC Track
 export class Track {
 
-    static trackCount = 0; // Global track count for unique identifiers. Immediately increments when new track added.
+    static trackCount = 1; // Global track count for unique identifiers. Immediately increments when new track added.
 
     /**
-     * @param {string} identifier - Unique identifier for the track.
+     * @param {string} id - Unique internal identifier for the track instance (automatically assigned based on global track count).
+     * @param {string} identifier - Unique identifier for the track (user-controlled).
      * @param {string} shortLabel - Short label for the track.
      * @param {string} longLabel - Optional. Long label for the track.
      * @param {string} tracktype - Type of the track (e.g., bigWig, bigBed).
@@ -513,6 +514,7 @@ export class Track {
      * @param {string|null} parent - Identifier of the parent track (if applicable).
      */
     constructor(identifier, shortLabel, longLabel, tracktype, url, visibility, color, parent = null) {
+        this.id = Track.trackCount++; // Assign a unique ID to each track instance based on the global track count
         this.identifier = identifier;
         this.shortLabel = shortLabel;
         this.longLabel = longLabel || "";
@@ -530,6 +532,7 @@ export class Track {
      */
     generateTrackDbEntry() {
         return {
+            id: String(this.id), // Include the internal ID for reference for mapping to uploaded files
             track: this.identifier,
             shortLabel: this.shortLabel,
             longLabel: this.longLabel,
@@ -619,14 +622,15 @@ export class TrackContainer {
 
     // Function to create a new track item with event listeners
     createTrackItem() {
-        Track.trackCount++;
+
+        const track = new Track();
+        const trackId = String(track.id);
         const trackItem = document.createElement('div');
         trackItem.classList.add('track-item');
         trackItem.setAttribute('draggable', 'true');
-        const trackId = String(Track.trackCount);
         trackItem.id = `track-${trackId}`;
 
-        this.tracks[trackId] = new Track();
+        this.tracks[trackId] = track;
 
         // Collapsible header
         const collapsibleHeader = document.createElement('div');
@@ -665,6 +669,11 @@ export class TrackContainer {
             // remove from tracks object
             delete this.tracks[trackId];
             this.trackFilesMap.delete(trackId);
+
+            // Notify listeners that tracks have changed
+            if (this.onTrackDataChanged) {
+                this.onTrackDataChanged();
+            }
         });
 
         // Add toggle functionality for collapsible content
@@ -697,7 +706,7 @@ export class TrackContainer {
             this.tracks[trackId].longLabel = e.target.value.trim();
         });
 
-        collapsibleContent.querySelector('.js-track-type').addEventListener('input', (e) => {
+        collapsibleContent.querySelector('.js-track-type select').addEventListener('change', (e) => {
             document.querySelector(`#track-${trackId} .js-track-type`).classList.remove("is-danger");
             this.tracks[trackId].tracktype = e.target.value.trim();
         });
@@ -713,6 +722,10 @@ export class TrackContainer {
                 // remove warning from header
                 const dangerElt = document.querySelector(`#track-${trackId} .track-status-danger`);
                 dangerElt.classList.add("is-hidden");
+            }
+
+            if (this.onTrackDataChanged) {
+                this.onTrackDataChanged();
             }
         });
 
@@ -733,6 +746,11 @@ export class TrackContainer {
             } else {
                 this.trackFilesMap.delete(trackId);
             }
+
+            if (this.onTrackDataChanged) {
+                this.onTrackDataChanged();
+            }
+
         });
 
         collapsibleContent.querySelector('.js-track-visibility').addEventListener('input', (e) => {
@@ -762,6 +780,9 @@ export class TrackContainer {
         collapsibleContent.style.display = 'block';
         collapsibleHeader.querySelector('.track-status-arrow .mdi').classList.remove('mdi-chevron-down');
         collapsibleHeader.querySelector('.track-status-arrow .mdi').classList.add('mdi-chevron-up');
+
+        // Return the track ID for reference (if needed)
+        return trackId;
     };
 
     createNewTracksFromData(trackData) {
@@ -784,8 +805,7 @@ export class TrackContainer {
 
             // add "track " back into the stanza since we split it out (it's a field name)
             const stanza = `track ${trackEntry}`;
-            this.createTrackItem(); // This will create a new track item and increment the track count
-            const trackId = String(Track.trackCount); // Get the current track ID after incrementing
+            const trackId = this.createTrackItem(); // This will create a new track item and increment the track count
             this.populateTrackData(trackId, stanza); // Populate the new track item with data
         };
     }
@@ -874,7 +894,7 @@ export class TrackContainer {
                     break;
                 case 'type':
                     track.tracktype = value;
-                    document.querySelector(`#track-${trackId} .js-track-type`).value = value;
+                    document.querySelector(`#track-${trackId} .js-track-type select`).value = value;
                     break;
                 case 'bigDataUrl':
                     if (value.startsWith('http://') || value.startsWith('https://')) {
@@ -1014,7 +1034,7 @@ export class TrackContainer {
      * @returns {void}
      */
     restrictPrivacyAwareTrackTypes(assembly, parent=document) {
-        const trackTypeSelectElts = parent.getElementsByClassName('js-track-type');
+        const trackTypeSelectElts = parent.querySelectorAll('.js-track-type select');
         for (const trackTypeSelect of trackTypeSelectElts) {
             trackTypeSelect.querySelector('option[value="vcfTabix"]').disabled = false;
             trackTypeSelect.querySelector('option[value="hic"]').disabled = false;
@@ -1033,26 +1053,8 @@ export class TrackContainer {
         // Call immediately to capture initial state
         callback();
 
-        // Listen for file input changes
-        this.tracksContainer.addEventListener('change', (e) => {
-            if (e.target.classList.contains('js-track-file')) {
-                callback();
-            }
-        });
-
-        // Listen for URL input changes
-        this.tracksContainer.addEventListener('input', (e) => {
-            if (e.target.classList.contains('js-track-url')) {
-                callback();
-            }
-        });
-
-        // If a track is removed, we should also check if there are still any tracks with file references
-        this.tracksContainer.addEventListener('click', (e) => {
-            if (e.target.classList.contains('remove-track-btn')) {
-                callback();
-            }
-        });
+        // Store the callback so createTrackItem can call it when track stuff is updated
+        this.onTrackDataChanged = callback;
 
     }
 

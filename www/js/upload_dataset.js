@@ -923,11 +923,15 @@ const stageTrackHub = async (hubContainer, trackContainer) => {
 
     if (hubValidation.errors.length > 0) {
         createToast("Validation issues with hub metadata. Please correct and submit again");
+        // log errors
+        console.warn("Hub validation errors:", hubValidation.errors);
         return;
     }
 
     if (trackValidation.errors.length > 0) {
         createToast("Validation issues with one or more tracks. Please correct.");
+        // log errors
+        console.warn("Track validation errors:", trackValidation.errors);
         return;
     }
 

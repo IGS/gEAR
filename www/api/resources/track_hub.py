@@ -153,7 +153,10 @@ class TrackHubCopy(Resource):
 
         # Initialize all tracks with None, then populate from map
         for track_stanza in track_stanzas:
-            track_id = track_stanza.get("track")
+            track_id = track_stanza.get("id")
+            if not track_id:
+                print(f"Warning: Track stanza missing 'id' field. Stanza: {track_stanza}", file=sys.stderr)
+                continue
             track_stanza["uploadedFileName"] = uploaded_files_map.get(track_id, None)
 
         # Also update metadata file to have the dataset format added

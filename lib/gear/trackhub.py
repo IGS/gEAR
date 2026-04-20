@@ -604,6 +604,7 @@ class TrackHubProcessor:
 
                 big_data_url = track.get("bigDataUrl", "").strip()
                 uploaded_file_name = track.get("uploadedFileName")
+                print(f"Processing track '{track_name}' with bigDataUrl: '{big_data_url}' and uploadedFileName: '{uploaded_file_name}'", file=sys.stderr)
                 if big_data_url:
                     # Validate URL is reachable
                     try:
