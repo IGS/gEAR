@@ -285,8 +285,18 @@ def process_3tab(upload_dir: Path, perform_primary_analysis: bool) -> None:
     adata = sc.AnnData(obs=var, var=obs)
     reader = pd.read_csv(expression_matrix_path, sep='\t', index_col=0, chunksize=chunk_size)
 
-    # This can be an order of magnitude faster than the using python alone
-    total_rows = int(subprocess.check_output(f"/usr/bin/wc -l {expression_matrix_path}", shell=True).split()[0])
+    # Count rows safely without shell execution (https://github.com/IGS/gEAR/security/code-scanning/229)
+    try:
+        result = subprocess.run(
+            ['/usr/bin/wc', '-l', str(expression_matrix_path)],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        total_rows = int(result.stdout.split()[0])
+    except (subprocess.CalledProcessError, ValueError, FileNotFoundError):
+        # Fallback to Python if wc fails
+        total_rows = sum(1 for _ in open(expression_matrix_path)) - 1
 
     if perform_primary_analysis:
         total_rows += 1  # account for the additional primary analysis step that will be performed after this

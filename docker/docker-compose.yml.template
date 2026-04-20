@@ -21,6 +21,8 @@ services:
     # build: .  # uncomment out if umgear:main does not exist
     depends_on:
       - db
+    environment:
+      - ENVIRONMENT=development # Set environment variable for development
     image: adkinsrs/umgear:latest
     networks:
       - gear

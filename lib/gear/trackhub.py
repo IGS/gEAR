@@ -602,21 +602,34 @@ class TrackHubProcessor:
                     track_statuses,
                 )
 
-                big_data_url = track.get("bigDataUrl")
-                if not big_data_url:
-                    raise ValueError(f"Track {track_name} missing bigDataUrl")
+                big_data_url = track.get("bigDataUrl", "").strip()
+                uploaded_file_name = track.get("uploadedFileName")
+                print(f"Processing track '{track_name}' with bigDataUrl: '{big_data_url}' and uploadedFileName: '{uploaded_file_name}'", file=sys.stderr)
+                if big_data_url:
+                    # Validate URL is reachable
+                    try:
+                        response = requests.head(big_data_url, timeout=10)
+                        response.raise_for_status()
+                    except requests.RequestException as e:
+                        raise Exception(f"Cannot reach {big_data_url}: {e}")
 
-                # Validate URL is reachable
-                try:
-                    response = requests.head(big_data_url, timeout=10)
-                    response.raise_for_status()
-                except requests.RequestException as e:
-                    raise Exception(f"Cannot reach {big_data_url}: {e}")
+                    # Download
+                    dest_path = self.staging_area / Path(big_data_url).name
+                    if not dry_run:
+                        download_large_file(big_data_url, dest_path)
+                elif uploaded_file_name:
+                    # File was already saved to staging area during request handling
+                    dest_path = self.staging_area / uploaded_file_name
+                    if not dest_path.is_file() and not dry_run:
+                        raise ValueError(
+                            f"Uploaded file for track '{track_name}' not found in staging area: {dest_path}"
+                        )
+                    # File is already in place, no need to save again
+                else:
+                    raise ValueError(
+                        f"No bigDataUrl or uploadedFileName specified for track '{track_name}'"
+                    )
 
-                # Download
-                dest_path = self.staging_area / Path(big_data_url).name
-                if not dry_run:
-                    download_large_file(big_data_url, dest_path)
 
                 # Update bigDataUrl to point to a remote reference.
                 track["bigDataUrl"] = f"{self.hub_url}/{dest_path.name}"

@@ -296,12 +296,15 @@ const populateMetadataFormFromFile = async () => {
 }
 
 /**
- * Asynchronously populates hub and track containers from a track hub URL.
+ * Asynchronously populates hub and track containers from a track hub URL or file.
  *
- * Retrieves hub configuration and track definitions from a provided UCSC-format track hub URL,
+ * Retrieves hub configuration and track definitions from a provided UCSC-format track hub URL or file,
  * validates that the selected assembly exists in the hub, and populates Track objects for each
  * discovered track. Handles both single-file hub mode (tracks defined in hub.txt) and multi-file
  * mode (tracks defined in separate trackDb.txt file referenced from genomes.txt).
+ *
+ * For file-based hubs, tracks are only prepopulated if useOneFile="on" and track bigDataUrl values are URLs.
+ * Local file references in file-based hubs require manual user configuration.
  *
  * @async
  * @function populateHubAndTracks
@@ -314,13 +317,14 @@ const populateMetadataFormFromFile = async () => {
  * @description
  * Execution flow:
  * 1. Validates that an assembly was previously selected via DOM element 'trackhub-assembly-select'.
- * 2. Retrieves hub URL and assembly value from DOM inputs.
- * 3. Returns early if no hub URL is provided.
- * 4. Parses hub.txt using `hubContainer.parseHubUrl()` to populate hub metadata.
- * 5. Checks hub mode: if oneFile mode, parses tracks directly from hub.txt;
- *    otherwise retrieves trackDb.txt path from genomes.txt and parses it.
- * 6. Displays warning toasts for any parsing errors encountered.
+ * 2. Retrieves hub URL/file and assembly value from DOM inputs.
+ * 3. Returns early if neither hub URL nor file is provided.
+ * 4. Parses hub source (file or URL) to populate hub metadata.
+ * 5. For URL-based hubs: Checks hub mode and parses tracks accordingly (oneFile or trackDb.txt).
+ * 6. For file-based hubs: Only parses tracks if oneFile mode AND tracks have URL-based bigDataUrl values.
+ * 7. Displays warning toasts for any parsing errors encountered.
  *
+ * @see {@link HubContainer#parseHubFile}
  * @see {@link HubContainer#parseHubUrl}
  * @see {@link HubContainer#retrieveTrackDbPath}
  * @see {@link TrackContainer#parseHubTracks}
@@ -340,48 +344,90 @@ const populateHubAndTracks = async (hubContainer, trackContainer) => {
     // 3) If trackDb files exist, parse them for the parameters we need and create Track objects for each track found.
 
     const hubUrl = document.getElementById("trackhub-url-input").value
+    const fileInput = document.getElementById("trackhub-file-input");
     const assembly = assemblySelect.value;
 
-    // Don't bother if no URL provided.
-    if (!hubUrl) {
+    // Don't bother if no URL or file provided.
+    if (!hubUrl && !fileInput.files.length) {
         return;
     }
 
     try {
-        await hubContainer.parseHubUrl(hubUrl, assembly);
+
+        const isFileSource = fileInput.files.length > 0;
+        const file = isFileSource ? fileInput.files[0] : null;
+
+        // Parse hub from file or URL
+        if (isFileSource) {
+            await hubContainer.parseHubFile(file, assembly);
+        } else {
+            await hubContainer.parseHubUrl(hubUrl, assembly);
+        }
+
+        // Attempt to populate tracks based on hub mode and source
+        await populateTracks(hubContainer, trackContainer, isFileSource, hubUrl);
+
     } catch (error) {
         console.warn(error);
         createToast(`Error parsing track hub URL... initializing empty form.`, 'is-warning');
         return;
     }
+}
+
+/**
+ * Helper function to populate tracks based on hub configuration and source type.
+ * For URL sources: fetches tracks from hub.txt (oneFile) or trackDb.txt.
+ * For file sources: only populates tracks if oneFile mode is enabled and bigDataUrl values are URLs; otherwise, shows warnings about local file references and manual configuration.
+ *
+ * @async
+ * @private
+ * @param {HubContainer} hubContainer - The hub container with parsed hub metadata.
+ * @param {TrackContainer} trackContainer - The track container to populate.
+ * @param {boolean} isFileSource - Whether the hub came from a file upload.
+ * @returns {Promise<void>}
+ */
+const populateTracks = async (hubContainer, trackContainer, isFileSource, hubUrl=null) => {
+    const hubContent = hubContainer.hubContent
+
+    // If oneFile mode, tracks should be defined in the hub.txt file, so attempt to parse them directly from the hub content (regardless of source)
     if (hubContainer.oneFileMode) {
-        // The tracks are in the hub.txt file
         try {
-            await trackContainer.parseHubTracks(hubUrl);
+            await trackContainer.parseHubTracksFromContent(hubContent);
         } catch (error) {
             console.warn(error);
             createToast(`Error parsing hub "oneFile" tracks... cannot populate tracks.`, 'is-warning');
         }
-    } else {
-        // Find the trackDb file in the genomes.txt file and parse it to populate the tracks.
-        try {
-            await hubContainer.retrieveTrackDbPath(hubUrl);
-        } catch (error) {
-            console.warn(error);
-            createToast(`Error retrieving trackDb.txt path from genomes.txt in hub URL... cannot populate tracks.`, 'is-warning');
-            return;
-        }
-
-        try {
-            await trackContainer.parseTrackDbUrl(hubContainer.getTrackDbUrl());
-        } catch (error) {
-            console.warn(error);
-            createToast(`Error parsing trackDb.txt... cannot populate tracks.`, 'is-warning');
-            return;
-        }
+        return;
     }
 
-}
+    // If not oneFile mode, then we need to retrieve and parse the trackDb.txt file to get track information.
+    // For file-based hubs, this is not possible because we cannot resolve local file references, so we return early with a warning.
+    if (isFileSource) {
+        createToast(`Hub is in file-based multi-file mode, which cannot be prepopulated. Please configure tracks manually, or try again using useOneFile mode in the hub.txt file.`, 'is-warning');
+        return;
+    }
+
+    if (!hubUrl) {
+        createToast(`Hub URL is required to retrieve trackDb.txt information for non-oneFile hubs.`, 'is-warning');
+        return;
+    }
+
+    // Find the trackDb file in genomes.txt and parse it
+    try {
+        await hubContainer.retrieveTrackDbPath(hubUrl);
+    } catch (error) {
+        console.warn(error);
+        createToast(`Error retrieving trackDb.txt path from genomes.txt in hub URL... cannot populate tracks.`, 'is-warning');
+        return;
+    }
+
+    try {
+        await trackContainer.parseTrackDbUrl(hubContainer.getTrackDbUrl());
+    } catch (error) {
+        console.warn(error);
+        createToast(`Error parsing trackDb.txt... cannot populate tracks.`, 'is-warning');
+    }
+};
 
 /**
  * Asynchronously fetches GEO metadata based on the user-provided GEO ID and populates
@@ -418,33 +464,24 @@ const getGeoData = async () => {
     button.classList.remove('is-loading');
 }
 
-/**
- * Updates the state of the "Build Trackhub" submit button based on the validity of the
- * provided URL input and assembly selection. Ensures that the button is only enabled
- * when both inputs are valid and displays appropriate error messages when validation fails.
- *
- * @function updateConfigureTrackHubButtonState
- * @param {HTMLInputElement} urlInput - The input field where the user enters the trackhub URL.
- * @param {HTMLSelectElement} assemblySelect - The dropdown menu where the user selects the genome assembly.
- *
- * @description
- * - If the URL input is empty, the submit button is enabled, and error messages are hidden.
- * - If no assembly is selected, the submit button is disabled, and an error message is displayed.
- * - If the URL does not start with "https://" or contains spaces, the submit button is disabled,
- *   and an error message is displayed.
- * - If both the URL and assembly are valid, the submit button is enabled, and error messages are hidden.
- * @returns {void}
- */
-const updateConfigureTrackHubButtonState = (urlInput, assemblySelect) => {
+const updateConfigureTrackHubButtonState = (urlInput, fileInput, assemblySelect) => {
     const submitButton = document.getElementById('configure-trackhub-submit');
     const statusMessage = document.getElementById('trackhub-upload-status-message');
     const statusContainer = document.getElementById('trackhub-upload-status');
 
-    if (!urlInput.value) {
-        // If URL is empty, we are not pre-populating, so we are OK.
+    // If neither URL nor file is provided, enable the submit button and hide the status message
+    if (!urlInput.value && !fileInput.value) {
         submitButton.disabled = false;
         statusContainer.classList.add('is-hidden');
         return
+    }
+
+    // If both URL and file are provided, show an error message
+    if (urlInput.value && fileInput.value) {
+        statusMessage.textContent = 'Please provide either a URL or a file, not both.';
+        statusContainer.classList.remove('is-hidden');
+        submitButton.disabled = true;
+        return;
     }
 
     // Disable the submit button by default
@@ -458,18 +495,23 @@ const updateConfigureTrackHubButtonState = (urlInput, assemblySelect) => {
     }
 
     // url should be in HTTP or HTTPS format and have no spaces (basic validation)
-    const isUrl = urlInput.value.startsWith("http://") || urlInput.value.startsWith("https://");
-    if (isUrl && !urlInput.value.includes(' ')) {
-        // Valid URL, enable the submit button and hide the status message
+    if (urlInput.value) {
+        const isUrl = urlInput.value.startsWith("http://") || urlInput.value.startsWith("https://");
+        if (isUrl && !urlInput.value.includes(' ')) {
+            // Valid URL, enable the submit button and hide the status message
+            submitButton.disabled = false;
+            statusContainer.classList.add('is-hidden');
+        } else {
+            // Invalid URL, show an error message
+            statusMessage.textContent = 'Please enter a valid HTTP or HTTPS URL.';
+            statusContainer.classList.remove('is-hidden');
+        }
+    } else {
+        // If a file is provided, enable the submit button and hide the status message
         submitButton.disabled = false;
         statusContainer.classList.add('is-hidden');
-    } else {
-        // Invalid URL, show an error message
-        statusMessage.textContent = 'Please enter a valid HTTP or HTTPS URL.';
-        statusContainer.classList.remove('is-hidden');
     }
 }
-
 
 /**
  * Fetches the content of an HTML file from the specified URL.
@@ -762,6 +804,13 @@ const buildTrackhub = async () => {
     trackContainer.setHubContainer(hubContainer);
 
     await populateHubAndTracks(hubContainer, trackContainer);
+
+    // Register a listener to enable "Build track hub" button if there is at least 1 track with a data file provided
+    trackContainer.registerTrackDataFileListener(() => {
+        const submitButton = document.getElementById('build-trackhub-submit');
+        submitButton.disabled = trackContainer.hasAtLeastOneTrackWithDataFile() ? false : true;
+    });
+
     stepTo("build-trackhub");
 }
 
@@ -869,16 +918,20 @@ const processDataset = async () => {
 }
 
 const stageTrackHub = async (hubContainer, trackContainer) => {
-    const hubErrors = hubContainer.validateHub();
-    const trackErrors = trackContainer.validateTracks();
+    const hubValidation = hubContainer.validateHub();
+    const trackValidation = trackContainer.validateTracks();
 
-    if (hubErrors.length > 0) {
-        createToast("Validation issues with hub metadata. Please resolve and submit again");
+    if (hubValidation.errors.length > 0) {
+        createToast("Validation issues with hub metadata. Please correct and submit again");
+        // log errors
+        console.warn("Hub validation errors:", hubValidation.errors);
         return;
     }
 
-    if (trackErrors.length > 0) {
-        createToast("Validation issues with one or more tracks. Please resolve.");
+    if (trackValidation.errors.length > 0) {
+        createToast("Validation issues with one or more tracks. Please correct.");
+        // log errors
+        console.warn("Track validation errors:", trackValidation.errors);
         return;
     }
 
@@ -889,16 +942,23 @@ const stageTrackHub = async (hubContainer, trackContainer) => {
         return;
     }
 
-    const assembly = hubContainer.getAssembly();
+    // Build main FormData
+    const formData = new FormData();
+    formData.append('hub_json', JSON.stringify(hubJson));
+    formData.append('tracks', JSON.stringify(trackStanzas));
+    formData.append('assembly', hubContainer.getAssembly());
+    formData.append('dry_run', false);
+
+    // Append files separately
+    const trackFilesFormData = trackContainer.buildTrackFilesFormData();
+    for (const [key, value] of trackFilesFormData.entries()) {
+        formData.append(key, value);
+    }
+
     try {
         const {data} = await axios.post(
             `./api/import/trackhub/${shareUid}/copy`,
-            {
-                hub_json: hubJson,
-                tracks: trackStanzas,
-                assembly,
-                dry_run: false
-            }
+            formData
         );
 
         if (!data?.success) {
@@ -1100,6 +1160,8 @@ const adjustUIForGosling = () => {
     document.getElementById("trackhub-upload-c").classList.add("is-hidden");
     document.getElementById("dataset-no-curate-div").classList.add("is-hidden");
 
+    document.getElementById("trackhub-file-input").value = "";
+    document.getElementById("trackhub-file-name").textContent = "";
     document.getElementById("trackhub-url-input").value = "";
 }
 
@@ -1239,16 +1301,43 @@ document.getElementById('dataset-file-input').addEventListener('change', (event)
 });
 
 // Enable 'Upload dataset' button if a URL is entered and an assembly is selected.
-document.getElementById("trackhub-url-input").addEventListener('input', (event) => {
-    const urlInput = event.currentTarget;
-    const assemblySelect = document.getElementById('trackhub-assembly-select');
-    updateConfigureTrackHubButtonState(urlInput, assemblySelect);
+const hubUrlInput = document.getElementById('trackhub-url-input');
+const hubFileInput = document.getElementById('trackhub-file-input');
+const hubAssemblySelect = document.getElementById('trackhub-assembly-select');
+hubUrlInput.addEventListener('input', (event) => {
+    document.getElementById('trackhub-validation-warnings').classList.add('is-hidden');
+    document.getElementById("use-one-file-warning").classList.add('is-hidden');
+    updateConfigureTrackHubButtonState(hubUrlInput, hubFileInput, hubAssemblySelect);
 })
+hubFileInput.addEventListener('change', async (event) => {
+    document.getElementById('trackhub-validation-warnings').classList.add('is-hidden');
+    document.getElementById("use-one-file-warning").classList.add('is-hidden');
+    updateConfigureTrackHubButtonState(hubUrlInput, hubFileInput, hubAssemblySelect);
 
-document.getElementById('trackhub-assembly-select').addEventListener('change', (event) => {
-    const assemblySelect = event.currentTarget;
-    const urlInput = document.getElementById('trackhub-url-input');
-    updateConfigureTrackHubButtonState(urlInput, assemblySelect);
+    // Validate hub file for local references
+    if (event.target.files.length > 0) {
+        try {
+            const file = event.target.files[0];
+            const fileContent = await file.text();
+
+            document.getElementById("trackhub-file-name").textContent = file.name;
+
+            // Check for local file references and show warnings if found
+            if (HubContainer.hasLocalFileReferences(fileContent)) {
+                document.getElementById('trackhub-validation-warnings').classList.remove('is-hidden');
+                if (!HubContainer.hasUseOneFileMode(fileContent)) {
+                    document.getElementById("use-one-file-warning").classList.remove('is-hidden');
+                }
+            }
+        } catch (error) {
+            console.warn('Error reading hub file:', error);
+            createToast('Error reading hub file for validation. Please ensure the file is a valid text file.', 'is-warning');
+        }
+    }
+
+})
+hubAssemblySelect.addEventListener('change', (event) => {
+    updateConfigureTrackHubButtonState(hubUrlInput, hubFileInput, hubAssemblySelect);
 })
 
 document.getElementById('dataset-finalize-submit').addEventListener('click', (event) => {

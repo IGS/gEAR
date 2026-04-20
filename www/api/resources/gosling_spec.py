@@ -1,7 +1,9 @@
+import ipaddress
+import os
 import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 
 import geardb
 import gosling as gos
@@ -10,8 +12,8 @@ from flask import request
 from flask_restful import Resource
 from gear.trackhub import (
     fetch_trackdb_path,
-    parse_tracks_from_trackdb,
     parse_hub_from_file,
+    parse_tracks_from_trackdb,
 )
 
 """
@@ -56,7 +58,7 @@ ASSEMBLY_TO_CHROMSIZES_FILE = {
 }
 
 GENOMES_ROOT = "https://umgear.org/tracks/genomes/"
-#GENOMES_ROOT = "http://localhost:8080/tracks/genomes"
+
 
 def _resolve_track_url(track: dict, use_gosling: bool = True) -> str | None:
     """
@@ -79,6 +81,58 @@ def _resolve_track_url(track: dict, use_gosling: bool = True) -> str | None:
     # Fall back to bigDataUrl
     return track.get("bigDataUrl")
 
+def _validate_hub_url(hub_url: str) -> None:
+    """
+    Validate hub URL to prevent SSRF attacks.
+
+    Args:
+        hub_url (str): The hub URL to validate.
+
+    Raises:
+        ValueError: If URL is invalid or points to a disallowed host.
+    """
+    try:
+        domain_url = geardb._read_domain_url()
+        if not domain_url:
+            raise ValueError("Domain URL not configured. Cannot process track hub.")
+
+        # Build allowed domains list from configuration
+        allowed_domains = [domain_url]
+
+
+        # Allow internal Docker service name in development only
+        if os.getenv("ENVIRONMENT", "production").lower() == "development":
+            allowed_domains.extend(["web", "localhost", "127.0.0.1"])
+
+        parsed = urlparse(hub_url)
+
+        # Ensure scheme is http or https
+        if parsed.scheme not in ["http", "https"]:
+            raise ValueError("Invalid URL scheme. Only http and https are allowed.")
+
+        hostname = parsed.hostname
+        if not hostname:
+            raise ValueError("Invalid URL: missing hostname.")
+
+        # Reject private/internal IP addresses
+        try:
+            ip = ipaddress.ip_address(hostname)
+            if ip.is_private or ip.is_loopback or ip.is_link_local:
+                raise ValueError(f"Access to private/internal IP address {hostname} is not allowed.")
+        except ValueError as e:
+            # Not an IP address, check domain whitelist
+            error_msg = str(e)
+            if "does not appear to be" not in error_msg and "is not a valid" not in error_msg:
+                raise
+
+            # Check against whitelist (case-insensitive)
+            if not any(hostname.lower().endswith(domain.lower()) for domain in allowed_domains):
+                raise ValueError(f"Hub domain '{hostname}' is not in the allowed list.")
+
+    except ValueError:
+        raise
+
+
 def _fetch_tracks_from_hub(hub_url: str, assembly: str) -> list[dict]:
     """
     Fetch and parse tracks from a track hub, handling both useOneFile and traditional modes.
@@ -95,8 +149,16 @@ def _fetch_tracks_from_hub(hub_url: str, assembly: str) -> list[dict]:
         ValueError: If assembly not found or parsing fails.
     """
 
+    # Validate hub URL before making any requests
+    # Addresses https://github.com/IGS/gEAR/security/code-scanning/344
+    try:
+        _validate_hub_url(hub_url)
+    except ValueError as e:
+        raise
+
     # Fix for Docker
-    hub_url = hub_url.replace("http://localhost:8080", "http://web")
+    if os.environ.get("ENVIRONMENT", "production").lower() == "development" and hub_url.startswith("http://localhost:8080"):
+        hub_url = hub_url.replace("http://localhost:8080", "http://web")
 
     try:
         hub_response = requests.get(hub_url)
