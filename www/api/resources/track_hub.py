@@ -139,7 +139,7 @@ class TrackHubCopy(Resource):
             track_statuses={},
         )
         uploaded_files_map = {}  # Map track_id → File object
-        for track_key in request.form:
+        for track_key in request.files:
             if '[file]' in track_key:
                 file = request.files.get(track_key)
                 if file and file.filename:
