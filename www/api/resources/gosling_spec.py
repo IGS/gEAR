@@ -220,11 +220,8 @@ def build_assembly_array(assembly) -> list:
             f"Assembly {assembly} is not supported or does not have a chromosome sizes file."
         )
 
-    # Strip out the port so we can use requests.get on it. Only applies to localhost reads
+    # Strip out the port so we can use requests.get on it.
     genomes_base_url = GENOMES_ROOT
-    if GENOMES_ROOT.startswith("http://localhost:"):
-        parsed_url = urlparse(GENOMES_ROOT)
-        genomes_base_url = f"{parsed_url.scheme}://{parsed_url.hostname}/{parsed_url.path.lstrip('/')}"
 
     chromosome_sizes_url = genomes_base_url + "/" + assembly + "/" + chromosome_sizes_name
     if not chromosome_sizes_url:
