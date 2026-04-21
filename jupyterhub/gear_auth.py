@@ -74,6 +74,7 @@ class GearLaunchTokenAuthenticator(Authenticator):
 
         username = payload.get("username")
         datasets = payload.get("datasets", [])
+        notebook_env = payload.get("notebook_env", "python")
         selected_dataset = payload.get("selected_dataset")
 
         if not isinstance(username, str) or not username:
@@ -100,6 +101,7 @@ class GearLaunchTokenAuthenticator(Authenticator):
                 "gear_datasets": datasets,
                 "gear_selected_dataset": selected_dataset,
                 "gear_payload": payload,
+                "gear_notebook_env": notebook_env,
             },
         }
 

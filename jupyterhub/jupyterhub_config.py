@@ -113,6 +113,12 @@ async def gear_pre_spawn_hook(spawner: DockerSpawner):
 
     datasets = auth_state.get("gear_datasets", [])
     selected_dataset = auth_state.get("gear_selected_dataset")
+    notebook_env = auth_state.get("gear_notebook_env", "python")
+
+    if notebook_env == "r":
+        spawner.image = "gear-notebook:r"
+    else:
+        spawner.image = "gear-notebook:py"
 
     username = spawner.user.name
     user_home_host = os.path.join(HOST_USERHOMES_ROOT, username)
