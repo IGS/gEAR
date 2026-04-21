@@ -362,7 +362,6 @@ def main():
 
         payload = {
             "ok": True,
-            "propertyId": GA4_PROPERTY_ID,
             "range": {
                 "days": params["days"],
                 "startDate": f"{params['days']}daysAgo",
