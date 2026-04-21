@@ -12,6 +12,7 @@ from dockerspawner import DockerSpawner
 
 HOST_JUPYTERHUB_ROOT = os.environ["HOST_JUPYTERHUB_ROOT"]
 HOST_USERHOMES_ROOT = os.path.join(HOST_JUPYTERHUB_ROOT, "userhomes")
+HOST_DATASETS_ROOT = os.environ["HOST_DATASETS_ROOT"]
 
 c = get_config()
 
@@ -45,20 +46,19 @@ c.DockerSpawner.cmd = ["start-singleuser.py"]
 c.DockerSpawner.remove = False
 
 # Use local Docker default bridge network unless you later define another one
-c.DockerSpawner.network_name = "bridge"
+c.DockerSpawner.network_name = "jupyterhub_default"
+c.DockerSpawner.use_internal_ip = True
 
 # Directory inside spawned notebook containers
 c.DockerSpawner.notebook_dir = "/home/jovyan"
 
 # Default image
-c.DockerSpawner.image = "gear-notebook:py"
+c.DockerSpawner.image = "gear-notebook:r"
 
 # Persistent home directories on host
 # Host path is relative to where the Hub container sees it:
 # ./userhomes is mounted into the Hub container at /srv/jupyterhub/userhomes
-c.DockerSpawner.volumes = {
-    "/srv/jupyterhub/userhomes/{username}": "/home/jovyan"
-}
+c.DockerSpawner.volumes = {}
 
 # Run notebooks as a non-root user where possible
 c.DockerSpawner.environment = {
@@ -114,9 +114,14 @@ async def gear_pre_spawn_hook(spawner: DockerSpawner):
     datasets = auth_state.get("gear_datasets", [])
     selected_dataset = auth_state.get("gear_selected_dataset")
 
-    # Start from the base home-directory mount
+    username = spawner.user.name
+    user_home_host = os.path.join(HOST_USERHOMES_ROOT, username)
+
+    os.makedirs(user_home_host, exist_ok=True)
+    os.chown(user_home_host, 1000, 100)
+
     volumes = {
-        "/srv/jupyterhub/userhomes/{username}".format(username=spawner.user.name): {
+        user_home_host: {
             "bind": "/home/jovyan",
             "mode": "rw",
         }
@@ -128,7 +133,8 @@ async def gear_pre_spawn_hook(spawner: DockerSpawner):
     mounted_filenames = []
 
     for host_path in datasets:
-        if not host_path.startswith("/var/www/datasets/"):
+        allowed_prefix = os.path.join(HOST_DATASETS_ROOT, "")
+        if not host_path.startswith(allowed_prefix):
             raise RuntimeError(f"Invalid dataset path: {host_path}")
 
         if not os.path.isfile(host_path):
