@@ -74,38 +74,6 @@ c.Spawner.cpu_limit = 2
 c.Spawner.mem_limit = "16G"
 
 # -----------------------------------------------------------------------------
-# User-selectable profiles
-# -----------------------------------------------------------------------------
-
-c.Spawner.profile_list = [
-    {
-        "display_name": "Python (Scanpy)",
-        "default": True,
-        "spawner_override": {
-            "image": "gear-notebook:py",
-            "cpu_limit": 2,
-            "mem_limit": "16G",
-        },
-    },
-    {
-        "display_name": "R (SingleCellExperiment / Seurat)",
-        "spawner_override": {
-            "image": "gear-notebook:r",
-            "cpu_limit": 2,
-            "mem_limit": "16G",
-        },
-    },
-    {
-        "display_name": "Big Memory (Python)",
-        "spawner_override": {
-            "image": "gear-notebook:py",
-            "cpu_limit": 4,
-            "mem_limit": "32G",
-        },
-    },
-]
-
-# -----------------------------------------------------------------------------
 # Spawn hook: mount only authorized datasets
 # -----------------------------------------------------------------------------
 
@@ -122,9 +90,6 @@ async def gear_pre_spawn_hook(spawner: DockerSpawner):
         spawner.image = "gear-notebook:r"
     else:
         spawner.image = "gear-notebook:py"
-
-    spawner.log.warning("gear_notebook_env=%r", notebook_env)
-    spawner.log.warning("spawner.image=%r", spawner.image)
 
     username = spawner.user.name
 
