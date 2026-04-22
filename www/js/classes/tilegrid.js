@@ -839,6 +839,75 @@ class DatasetTile {
     }
 
     /**
+     * Opens a menu for the user to choose between Python or R for Jupyter Notebook.
+     *
+     * @param {string} shareId - The share ID of the dataset.
+     */
+    openJupyterLanguageMenu(shareId) {
+        // Clone the template
+        const menuTemplate = document.getElementById('tmpl-tile-grid-jupyter-notebook-modal');
+        const menuHTML = menuTemplate.content.cloneNode(true);
+
+        // Set unique ID for this modal
+        const modalDiv = menuHTML.querySelector('.modal');
+        modalDiv.id = `jupyter-language-modal-${this.tile.tileId}`;
+
+        // Get references to buttons
+        const pythonButton = menuHTML.querySelector('.js-python-button');
+        const rButton = menuHTML.querySelector('.js-r-button');
+        const modalBackground = menuHTML.querySelector('.modal-background');
+        const deleteButton = menuHTML.querySelector('.delete');
+
+        // Add event listeners
+        pythonButton.addEventListener("click", () => {
+            this.launchJupyterNotebook(shareId, "python");
+            modalDiv.remove();
+        });
+
+        rButton.addEventListener("click", () => {
+            this.launchJupyterNotebook(shareId, "r");
+            modalDiv.remove();
+        });
+
+        modalBackground.addEventListener("click", () => {
+            modalDiv.remove();
+        });
+
+        deleteButton.addEventListener("click", () => {
+            modalDiv.remove();
+        });
+
+        // Add modal to DOM and make it active
+        document.body.append(menuHTML);
+        modalDiv.classList.add("is-active");
+
+        // Close modal on escape key
+        const closeOnEscape = (event) => {
+            if (event.key === "Escape" && modalDiv.classList.contains("is-active")) {
+                document.removeEventListener("keydown", closeOnEscape);
+                modalDiv.remove();
+            }
+        };
+        document.addEventListener("keydown", closeOnEscape);
+    }
+
+    /**
+     * Launches a Jupyter Notebook with the specified language for the dataset.
+     *
+     * @param {string} shareId - The share ID of the dataset.
+     * @param {string} language - The language for the Jupyter Notebook ('python' or 'r').
+     */
+    launchJupyterNotebook(shareId, language) {
+        // Build the URL to launch the Jupyter Notebook
+        // This assumes JupyterHub is available at a specific endpoint
+        // and requires parameters for the dataset and language
+        const jupyterHubUrl = `./jupyter/hub/user-redirect/lab/tree/workspace?dataset_share_id=${shareId}&language=${language}`;
+
+        // Open in new tab
+        window.open(jupyterHubUrl, "_blank");
+    }
+
+    /**
      * Adds dropdown information to a tile element.
      *
      * @param {HTMLElement} tileElement - The tile element to add dropdown information to.
@@ -969,6 +1038,17 @@ class DatasetTile {
                     if (hasH5ad) {
                         const url = `./multigene_curator.html?share_id=${shareId}`;
                         item.href = url;
+                    } else {
+                        item.classList.add("is-hidden");
+                    }
+                    break;
+                case "jupyter-notebook":
+                    // Open menu to choose language for Jupyter Notebook
+                    if (hasH5ad) {
+                        item.addEventListener("click", (event) => {
+                            event.preventDefault();
+                            this.openJupyterLanguageMenu(shareId);
+                        });
                     } else {
                         item.classList.add("is-hidden");
                     }

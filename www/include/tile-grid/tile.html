@@ -106,6 +106,14 @@
                                     <span>Multi-gene Displays</span>
                                 </span>
                             </a>
+                            <a class="dropdown-item" data-tool="jupyter-notebook">
+                                <span class="icon-text">
+                                    <span class="icon">
+                                        <i class="mdi mdi-24px mdi-notebook"></i>
+                                    </span>
+                                    <span>Jupyter Notebook</span>
+                                </span>
+                            </a>
                             <hr class="dropdown-divider">
                             <a class="dropdown-item" data-tool="download-bundle">
                                 <span class="icon-text">
@@ -264,6 +272,35 @@
                     </span>
                     <span>Copy to clipboard</span>
                 </button>
+            </section>
+        </div>
+    </div>
+</template>
+
+<template id="tmpl-tile-grid-jupyter-notebook-modal">
+    <div class="modal js-jupyter-notebook-modal">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Choose Notebook Language</p>
+                <button class="delete" aria-label="close"></button>
+            </header>
+            <section class="modal-card-body">
+                <p class="mb-4">Select a language for your Jupyter Notebook analysis:</p>
+                <div class="js-language-buttons buttons is-grouped">
+                    <button class="button is-info is-light js-python-button">
+                        <span class="icon">
+                            <i class="mdi mdi-language-python"></i>
+                        </span>
+                        <span>Python</span>
+                    </button>
+                    <button class="button is-success is-light js-r-button">
+                        <span class="icon">
+                            <i class="mdi mdi-language-r"></i>
+                        </span>
+                        <span>R</span>
+                    </button>
+                </div>
             </section>
         </div>
     </div>
