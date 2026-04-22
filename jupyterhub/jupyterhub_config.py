@@ -6,6 +6,7 @@
 
 import os
 import sys
+import shutil
 sys.path.insert(0, "/srv/jupyterhub")
 
 from dockerspawner import DockerSpawner
@@ -13,6 +14,8 @@ from dockerspawner import DockerSpawner
 HOST_JUPYTERHUB_ROOT = os.environ["HOST_JUPYTERHUB_ROOT"]
 HOST_USERHOMES_ROOT = os.path.join(HOST_JUPYTERHUB_ROOT, "userhomes")
 HOST_DATASETS_ROOT = os.environ["HOST_DATASETS_ROOT"]
+HUB_USERHOMES_ROOT = "/srv/jupyterhub/userhomes"
+HUB_NOTEBOOKS_ROOT = "/srv/jupyterhub/notebooks"
 
 c = get_config()
 
@@ -113,18 +116,26 @@ async def gear_pre_spawn_hook(spawner: DockerSpawner):
 
     datasets = auth_state.get("gear_datasets", [])
     selected_dataset = auth_state.get("gear_selected_dataset")
-    notebook_env = auth_state.get("gear_notebook_env", "python")
+    notebook_env = str(auth_state.get("gear_notebook_env", "python")).strip().lower()
 
     if notebook_env == "r":
         spawner.image = "gear-notebook:r"
     else:
         spawner.image = "gear-notebook:py"
 
+    spawner.log.warning("gear_notebook_env=%r", notebook_env)
+    spawner.log.warning("spawner.image=%r", spawner.image)
+
     username = spawner.user.name
+
+    # Host path: used by Docker bind mounts
     user_home_host = os.path.join(HOST_USERHOMES_ROOT, username)
 
-    os.makedirs(user_home_host, exist_ok=True)
-    os.chown(user_home_host, 1000, 100)
+    # Hub-container path: used by os.makedirs / copy / chown
+    user_home_hub = os.path.join(HUB_USERHOMES_ROOT, username)
+
+    os.makedirs(user_home_hub, exist_ok=True)
+    os.chown(user_home_hub, 1000, 100)
 
     volumes = {
         user_home_host: {
@@ -132,6 +143,26 @@ async def gear_pre_spawn_hook(spawner: DockerSpawner):
             "mode": "rw",
         }
     }
+
+    starter_dir = os.path.join(user_home_hub, "gear_starters")
+    os.makedirs(starter_dir, exist_ok=True)
+    os.chown(starter_dir, 1000, 100)
+
+    starter_filename = (
+        "r_notebook_template.ipynb"
+        if notebook_env == "r"
+        else "python_notebook_template.ipynb"
+    )
+
+    src_template = os.path.join(HUB_NOTEBOOKS_ROOT, starter_filename)
+    dst_template = os.path.join(starter_dir, starter_filename)
+
+    if not os.path.exists(src_template):
+        raise RuntimeError(f"Starter notebook not found: {src_template}")
+
+    if not os.path.exists(dst_template):
+        shutil.copy2(src_template, dst_template)
+        os.chown(dst_template, 1000, 100)
 
     if len(datasets) > 25:
         raise RuntimeError("Too many datasets requested for one session")

@@ -12,6 +12,7 @@ services:
       - ./userhomes:/srv/jupyterhub/userhomes
       - /var/run/docker.sock:/var/run/docker.sock
       - ${HOST_DATASETS_ROOT}:${HOST_DATASETS_ROOT}:ro
+      - ./notebooks:/srv/jupyterhub/notebooks:ro
     environment:
       JUPYTERHUB_CRYPT_KEY: "${JUPYTERHUB_CRYPT_KEY}"
       GEAR_LAUNCH_SECRET: "${GEAR_LAUNCH_SECRET}"
