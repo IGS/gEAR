@@ -3,15 +3,17 @@ Track Hub utilities for copying and processing track data.
 Shared between API and RabbitMQ consumers.
 """
 
+import ipaddress
 import json
 import shlex
 import shutil
+import socket
 import subprocess
 import sys
 import traceback
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 from uuid import uuid4
 
 import pyBigWig
@@ -103,6 +105,34 @@ def fetch_trackdb_path(genomes_txt: str, assembly: str) -> str:
 
     raise ValueError(f"Assembly {assembly} not found in genomes.txt or trackDb entry is missing.")
 
+def _is_safe_public_http_url(url: str) -> bool:
+    """Return True if URL is HTTP(S) and resolves only to public IP addresses."""
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            return False
+
+        host = parsed.hostname
+        addrinfo = socket.getaddrinfo(host, None)
+
+        for info in addrinfo:
+            ip_str = info[4][0]
+            ip_obj = ipaddress.ip_address(ip_str)
+            if (
+                ip_obj.is_private
+                or ip_obj.is_loopback
+                or ip_obj.is_link_local
+                or ip_obj.is_multicast
+                or ip_obj.is_reserved
+                or ip_obj.is_unspecified
+            ):
+                return False
+
+        return True
+    except Exception:
+        return False
+
+
 def _normalize_track_dict(track: dict, resolve_urls: bool = False, trackdb_url: str = "") -> dict:
     """
     Normalize a track dictionary to consistent field names and formats.
@@ -135,11 +165,17 @@ def _normalize_track_dict(track: dict, resolve_urls: bool = False, trackdb_url: 
             # Resolve relative URLs
             if not url.startswith("http://") and not url.startswith("https://"):
                 url = urljoin(trackdb_url, url)
-            # Follow redirects
+            # Follow redirects only for safe public HTTP(S) URLs
             try:
-                response = requests.head(url, allow_redirects=True, timeout=10)
-                if response.status_code == 200:
-                    url = response.url
+                if _is_safe_public_http_url(url):
+                    response = requests.head(url, allow_redirects=True, timeout=10)
+                    if response.status_code == 200 and _is_safe_public_http_url(response.url):
+                        url = response.url
+                else:
+                    print(
+                        f"WARNING: Skipping unsafe URL resolution for track '{normalized.get('track')}': {url}",
+                        file=sys.stderr,
+                    )
             except Exception as e:
                 print(f"WARNING: Could not resolve URL for track '{normalized.get('track')}': {e}", file=sys.stderr)
         normalized["bigDataUrl"] = url
