@@ -65,6 +65,7 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
       gunicorn \
       h5py==3.10.0 \
       hic2cool==0.8.3 \
+      itsdangerous==2.2.0 \
       jupyterlab==4.0.5 \
       jupyter==1.0.0 \
       kaleido==0.2.1 \
