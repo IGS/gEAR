@@ -625,6 +625,12 @@ const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { 
     toast.appendChild(opts?.isHTML ? (() => {
         const span = document.createElement("span");
         const lines = String(msg).split("\n");
+        for (let i = 0; i < lines.length; i++) {
+            span.appendChild(document.createTextNode(lines[i]));
+            if (i < lines.length - 1) {
+                span.appendChild(document.createElement("br"));
+            }
+        }
         lines.forEach((line, index) => {
             if (index > 0) {
                 span.appendChild(document.createElement("br"));
