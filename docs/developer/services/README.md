@@ -42,14 +42,13 @@ gEAR API (Flask)
     ├──> ProjectR Service (Cloud Run or local)
     |    └── Matrix projection computations
     |
-    ├──> Spatial Panel Service (Docker)
+    ├──> Spatial Panel Service
     |    └── Spatial data visualization
     |
     └──> RabbitMQ
          └──> Consumer Workers (systemd)
               ├── ProjectR consumer
-              ├── Analysis consumer
-              └── Other job consumers
+              └── Gosling upload consumer
 ```
 
 ## Configuration for projectR
@@ -107,7 +106,7 @@ queue_host = localhost
 3. Start consumer services:
 
    ```bash
-   sudo systemctl start projectr-consumer.target
+   sudo systemctl start projectr-consumer.target gosling-upload-consumer.target
    ```
 
 ### Setting Up Spatial Panel
@@ -127,7 +126,7 @@ queue_host = localhost
 - Check logs via Cloud Logging
 - Monitor request counts and latency
 
-### Systemd Services
+### Monitoring Systemd Services
 
 ```bash
 # Check service status
@@ -191,38 +190,7 @@ sudo systemctl start projectr-consumer.target
 
 ## Development
 
-### Testing Services Locally
-
-#### ProjectR
-
-- Code is imported by the projectr API call. STDERR goes to Apache STDERR.
-
-#### Spatial Panel
-
-```bash
-cd services/spatial
-# Run panel serve
-panel serve app.py --port 5006
-```
-
-### Building Docker Images
-
-#### ProjectR
-
-```bash
-cd services/projectr
-# On M1 Mac
-docker build --platform linux/amd64 --no-cache -t projectr_service .
-# On Linux
-docker build -t projectr_service .
-```
-
-#### Spatial Panel
-
-```bash
-cd services/spatial
-docker build -t panel_app .
-```
+For local development, a Docker Compose stack is used and recommended.  See [the Docker setup documentation](./docker.md) for more information.
 
 ## Service-Specific Documentation
 

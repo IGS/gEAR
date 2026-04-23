@@ -5,10 +5,12 @@ import json
 import os
 import re
 import sys
+import typing
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
 from json import JSONEncoder
+from typing import overload
 
 gear_lib_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(gear_lib_path)
@@ -24,6 +26,9 @@ setattr(this, "servercfg", ServerConfig().parse())
 # This is where things specific to dynamic analyses will be stored, such as intermediate
 #  H5AD files, images, etc.
 setattr(this, "analysis_base_dir", "/tmp")
+
+if typing.TYPE_CHECKING:
+    from mysql.connector.cursor import MySQLCursor, MySQLCursorDict
 
 # Overrides the json module so JSONEncoder.default() automatically checks for to_json()
 #  in any class to be directly serializable.
@@ -99,7 +104,7 @@ def get_verification_code_short_form(long_form):
     return "".join([x[0] for x in long_form.split("-")])
 
 
-def get_dataset_by_id(d_id=None, include_shape=None):
+def get_dataset_by_id(d_id=None, include_shape=None) -> "Dataset | None":
     """
     Given a dataset ID string this returns a Dataset object with all attributes
     populated which come directly from the table.  Secondary things, such as tags,
@@ -170,7 +175,7 @@ def get_dataset_by_id(d_id=None, include_shape=None):
     return dataset
 
 
-def get_dataset_by_share_id(share_id=None, include_shape=None):
+def get_dataset_by_share_id(share_id=None, include_shape=None) -> "Dataset | None":
     """
     Given a dataset share ID string this returns a Dataset object with all attributes
     populated which come directly from the table.  Secondary things, such as tags,
@@ -240,7 +245,8 @@ def get_dataset_by_share_id(share_id=None, include_shape=None):
     conn.close()
     return dataset
 
-def get_dataset_by_title(title=None, include_shape=None):
+
+def get_dataset_by_title(title=None, include_shape=None) -> "Dataset | None":
     """
     Given a dataset title string this returns a Dataset object with all attributes
     populated which come directly from the table.  Secondary things, such as tags,
@@ -1029,6 +1035,43 @@ def get_gene_by_gene_symbol(gene_symbol, dataset_id) -> "Gene | None":
 
     return gene
 
+def add_gosling_display_curation(dataset_id: str, user: "User", config: dict) -> None:
+    """
+    Adds a gosling display curation for the specified dataset and user.
+    """
+
+    if not user or not user.id:
+        raise ValueError("Valid user with an ID must be provided to add a gosling display curation.")
+
+    # add file to both dataset and dataset_epiviz
+    cnx = Connection()
+    cursor = cnx.get_cursor()
+
+    #  insert into dataset_display
+    dataset_display_sql = """
+        INSERT INTO dataset_display (dataset_id, user_id, label, plot_type, plotly_config)
+        VALUES (%s, %s, %s, %s, %s)
+    """
+
+    # Insert dataset_gosling info to database
+    cursor.execute(dataset_display_sql, (dataset_id, user.id, "Gosling curation", "gosling", json.dumps(config),))
+
+    cnx.commit()
+
+    #  set preference
+    dataset_preference_sql = """
+        INSERT INTO dataset_preference (user_id, dataset_id, display_id)
+        VALUES (%s, %s, %s)
+    """
+
+    # Insert dataset_epiviz info to database
+    cursor.execute(dataset_preference_sql, (user.id, dataset_id, cursor.lastrowid,))
+    cnx.commit()
+
+    # close connection
+    cursor.close()
+    cnx.close()
+
 class Connection:
     def __init__(self):
         self.mysql_cnx = gear.db.MySQLDB().connect()
@@ -1040,9 +1083,15 @@ class Connection:
         if self.mysql_cnx.is_connected():
             self.mysql_cnx.close()
 
+    @overload
+    def get_cursor(self, use_dict: bool = False) -> "MySQLCursor": ...
+
+    @overload
+    def get_cursor(self, use_dict: bool = True) -> "MySQLCursorDict": ...
+
     def get_cursor(self, use_dict=False):
         if use_dict:
-            return self.mysql_cnx.cursor(dictionary=True)
+            return self.mysql_cnx.cursor(dictionary=True)   # type: ignore[call-arg]
         else:
             return self.mysql_cnx.cursor()
 

@@ -4,6 +4,7 @@
 import { apiCallsMixin, closeModal, createToast, getCurrentUser, logErrorInConsole, openModal } from "../common.v2.js";
 import { adjustClusterColorbars, adjustExpressionColorbar, postPlotlyConfig } from "../helpers/plot-display-config.js";
 import { colorSVG } from "../helpers/dataset-svg-fxns.js";
+import { Citation } from "./citation.js";
 
 /* Given a passed-in layout_id, genereate a 2-dimensional tile-based grid object.
 This uses Bulma CSS for stylings (https://bulma.io/documentation/layout/tiles/)
@@ -892,6 +893,32 @@ class DatasetTile {
                         item.classList.add("is-hidden");
                     }
                     break;
+                case "cite":
+                    item.addEventListener("click", async (event) => {
+                        let modalHTML;
+                        if (pubmedId) {
+                            modalHTML = this.createModalCitation(apiCallsMixin.fetchCitationFromPubmedId(pubmedId));
+                        } else {
+                            const citation = {
+                                apa: Citation.APA(
+                                    [ dataset.user_name ],
+                                    new Date(dataset.date_added).getFullYear(),
+                                    dataset.title,
+                                    dataset.share_id,
+                                    new Date(),
+                                    dataset.license ?? "AGPL-3" // default to AGPL-3 for now
+                                )
+                            };
+
+                            modalHTML = this.createModalCitation(new Promise((res) => res(citation)));
+                        }
+
+                        // Add modal to DOM
+                        document.body.append(modalHTML);
+                        const modalElt = document.getElementById(`citation-modal-${this.tile.tileId}`);
+                        openModal(modalElt);
+                    });
+                    break;
                 case "geo":
                     // Link to GEO entry if it exists
                     if (geoId) {
@@ -1151,6 +1178,50 @@ class DatasetTile {
         });
 
         return infoboxHTML;
+    }
+
+    /*
+     * Creates a modal for displaying citation information for the dataset. The citation information is loaded asynchronously from a promise, and the modal includes functionality to switch between different citation formats (e.g., MLA, gEAR) and to copy the citation to the clipboard.
+     */
+    createModalCitation(citationPromise) {
+        const modalTemplate = document.getElementById("tmpl-tile-grid-citation-modal");
+        const modalHTML = modalTemplate.content.cloneNode(true);
+
+        const modalDiv = modalHTML.querySelector('.modal');
+        modalDiv.id = `citation-modal-${this.tile.tileId}`;
+
+        modalHTML.querySelector(".modal-card-body .js-citation-content").textContent = "Loading citation information...";
+
+        citationPromise.then((citation) => {
+            const modal = document.getElementById(`citation-modal-${this.tile.tileId}`);
+
+            modal.querySelector(".modal-card-body .js-citation-content").innerHTML = (citation.apa ?? citation.apa).format;
+
+            // Copy button
+            modal.querySelector(".modal-card-foot .js-citation-copy").addEventListener("click", (event) => {
+                const item = new ClipboardItem({
+                    "text/plain": new Blob([citation.apa.orig], { type: "text/plain" }),
+                    "text/html": new Blob([citation.apa.format], { type: "text/html" })
+                });
+                navigator.clipboard.write([item]).then(() => {
+                    createToast(`Citation copied to clipboard!`, "is-success");
+                }).catch((error) => {
+                    logErrorInConsole(error);
+                    createToast("Failed to copy citation to clipboard.", "is-danger");
+                });
+            });
+        });
+
+        // Close button event listener
+        const closeButton = modalDiv.querySelector(".delete");
+        closeButton.addEventListener("click", (event) => {
+            closeModal(modalDiv);
+        });
+        const modalBackground = modalDiv.querySelector(".modal-background");
+        modalBackground.addEventListener("click", (event) => {
+            closeModal(modalDiv);
+        });
+        return modalHTML;
     }
 
     /**
@@ -1414,7 +1485,7 @@ class DatasetTile {
                     newDownloadPNG.classList.remove("is-hidden");
                     newDownloadPNG.addEventListener("click", async (event) => {
                         // get the download URL
-                        await this.downloadSpatialPNG(display);
+                        await this.downloadSpatialHTML(display);
                     });
                 }
                 return;
@@ -1539,7 +1610,7 @@ class DatasetTile {
                     newDownloadPNG.classList.remove("is-hidden");
                     newDownloadPNG.addEventListener("click", async (event) => {
                         // get the download URL
-                        await this.downloadSpatialPNG(display);
+                        await this.downloadSpatialHTML(display);
                     });
                 }
             } else if (display.plot_type === "gosling") {
@@ -1922,6 +1993,28 @@ class DatasetTile {
         Plotly.relayout(plotlyPreview.id, customLayout);
 
         this.plotlyDiv = plotlyPreview.id;
+        // Add some WCAG accessibility features to the plotly div
+        const plotlyDiv = document.getElementById(this.plotlyDiv);
+        if (!plotlyDiv) {
+            return;
+        }
+        plotlyDiv.setAttribute("role", "img");
+        const isMultigene = plotConfig.hasOwnProperty("gene_symbols");
+
+        const plotLabel = plotType.replace("_dynamic", "");
+        let altText = `${plotLabel} plot in dataset '${this.dataset.title}'`;
+        if (display.plotly_config.projection_id) {
+            altText += "projected into "
+            altText += isMultigene ? "multiple patterns" : `pattern ${display.plotly_config.gene_symbol}`;
+        } else if (isMultigene) {
+            const numGenes = display.plotly_config.gene_symbols.length;
+            altText += `using (${numGenes}) genes`;
+        } else {
+            altText += `using gene ${display.plotly_config.gene_symbol}`;
+        }
+        // TODO add extra condition information
+        plotlyDiv.setAttribute("alt", altText);
+
     }
 
     /**
@@ -1991,6 +2084,30 @@ class DatasetTile {
 
         // decode base64 image and set as src
         tsnePreview.src = URL.createObjectURL(blob);
+
+       // Generate alt text based on gene symbol(s) and a few key plotly_config parameters
+        let altText = "";
+
+        const plotLabel = plotType.replace("_static", "");
+        altText += `${plotLabel} plot in dataset '${this.dataset.title}' `;
+
+        if (display.plotly_config.projection_id) {
+            altText += "projected into "
+            altText += isMultigene ? "multiple patterns" : `pattern ${display.plotly_config.gene_symbol}`;
+        } else if (isMultigene) {
+            const numGenes = display.plotly_config.gene_symbols.length;
+            altText += `using (${numGenes}) genes`;
+        } else {
+            altText += `using gene ${display.plotly_config.gene_symbol}`;
+        }
+
+        // Add legend color information if it exists
+        if (display.plotly_config.colorize_legend_by) {
+            altText += ` with legend colored by ${display.plotly_config.colorize_legend_by}`;
+        }
+
+        tsnePreview.alt = altText
+
         return;
     }
 
@@ -2384,9 +2501,9 @@ class DatasetTile {
         }
     }
 
-    async downloadSpatialPNG(display) {
+    async downloadSpatialHTML(display) {
         if (!this.spatialUrlParams) {
-            createToast("Cannot download PNG because spatial display parameters are not available.", "is-warning");
+            createToast("Cannot download HTML because spatial display parameters are not available.", "is-warning");
             return;
         }
 

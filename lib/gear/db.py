@@ -50,3 +50,14 @@ class MySQLDB:
             else:
                 print(err, file=sys.stderr)
             raise
+
+    # Not needed, but required if we ever want to use context manager (with...) syntax
+    def __enter__(self):
+        """Context manager entry."""
+        return self.connect()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit."""
+        if self.connection and self.connection.is_connected():
+            self.connection.close()
+        return False

@@ -967,9 +967,11 @@ const createPaginationButton = (page, icon = null, clickHandler) => {
     const button = document.createElement("button");
     button.className = "button is-small is-outlined is-dark pagination-link";
     if (icon) {
-        button.innerHTML = `<i class="mdi mdi-chevron-${icon}"></i>`;
+        button.innerHTML = `<i class="mdi mdi-chevron-${icon}" aria-hidden="true"></i>`;
+        button.setAttribute("aria-label", icon === "left" ? "Previous page" : "Next page");
     } else {
         button.textContent = page;
+        button.setAttribute("aria-label", `Page ${page}`);
     }
     button.addEventListener("click", clickHandler);
     li.appendChild(button);

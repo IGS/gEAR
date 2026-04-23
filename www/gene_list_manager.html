@@ -2,7 +2,7 @@
 <!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
@@ -33,7 +33,7 @@
         <!--#include virtual="/include/primary_nav.html" -->
         <section id="main-c" class="column pl-0 pt-0">
             <!--#include virtual="/include/header_bar.html" -->
-            <section id="content-c" class="m-3 container" data-nav-link="manage_genes">
+            <section id="content-c" role="main" class="m-3 container" data-nav-link="manage_genes">
                 <article id="not-logged-in-msg" class="message is-danger is-hidden">
                     <div class="message-body">
                         You must be logged in as a user to create new gene lists.
@@ -56,11 +56,11 @@
 
                         <!-- search field -->
                         <div class="field">
-                            <label class="label">Find gene lists</label>
+                            <label class="label" for="search-terms">Find gene lists</label>
                             <div class="control has-icons-right">
-                                <input id="search-terms" class="input" type="text" placeholder="Keyword search">
-                                <span class="icon is-hidden is-right is-clickable" id="search-clear">
-                                    <i class="mdi mdi-close-circle"></i>
+                                <input id="search-terms" class="input" type="search" placeholder="Keyword search" aria-label="Search gene lists by keyword">
+                                <span class="icon is-hidden is-right is-clickable" id="search-clear" aria-label="Clear search">
+                                    <i class="mdi mdi-close-circle" aria-hidden="true"></i>
                                 </span>
                             </div>
                         </div>
@@ -212,7 +212,8 @@
                                         <div class="field">
                                             <p class="label">Visibility</p>
                                             <!-- toggle switch --->
-                                            <input type="checkbox" class="switch is-primary" name="new-list-visibility" id="new-list-visibility"/>
+                                            <label for="new-list-visibility" class="is-sr-only">Toggle visibility of new list</label>
+                                            <input type="checkbox" class="switch is-primary" name="new-list-visibility" id="new-list-visibility" />
                                             <label for="new-list-visibility"></label>
                                         </div>
                                     </div>
@@ -225,8 +226,7 @@
                                 </div>
                                 <div class="field" id="new-list-upload-c">
                                     <label class="label">Upload gene list
-                                        <a id="list-upload-reqs" tabindex="0" class="button is-small is-text has-text-gear-bg-secondary" role="button" data-target="list-upload-reqs-modal">Click for requirements</a>
-
+                                        <div id="list-upload-reqs" tabindex="0" class="button is-clickable is-small is-text has-text-gear-bg-secondary" role="button" data-target="list-upload-reqs-modal">Click for requirements</div>
                                     </label>
                                     <div class="field">
                                         <div class="control">
@@ -294,11 +294,11 @@
                                     </div>
                                 </div>
                                 <div class="level-item">
-                                    <label class="label mr-3">Sort by:</label>  <!-- .field.is-horizontal + .field-label scrunches the label up -->
+                                    <label class="label mr-3" for="sort-by">Sort by:</label>  <!-- .field.is-horizontal + .field-label scrunches the label up -->
                                     <div class="field">
                                         <div class="control">
                                             <div class="select is-small">
-                                                <select name="sort-by" id="sort-by">
+                                                <select name="sort-by" id="sort-by" aria-label="Sort gene lists by">
                                                     <option value="relevance">Relevance</option>
                                                     <option value="title">Gene cart title</option>
                                                     <option value="date_added" selected>Date created</option>
@@ -330,13 +330,13 @@
                             <table id="results-table" class="table is-narrow is-striped is-fullwidth">
                                 <thead>
                                     <tr>
-                                        <th></th>
-                                        <th>Title</th>
-                                        <th>Visibility</th>
-                                        <th>Organism</th>
-                                        <th>Owner</th>
-                                        <th>Type</th>
-                                        <th>Num Genes</th>
+                                        <th scope="col"></th>
+                                        <th scope="col">Title</th>
+                                        <th scope="col">Visibility</th>
+                                        <th scope="col">Organism</th>
+                                        <th scope="col">Owner</th>
+                                        <th scope="col">Type</th>
+                                        <th scope="col">Num Genes</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -344,8 +344,8 @@
                                         <tr>
                                             <tr class="js-table-row">
                                                 <td class="js-td-expand">
-                                                    <button class="button is-small js-expand-row" data-tooltip-content="Expand entry for more info and actions">
-                                                        <span class="icon"><i class="mdi mdi-24px mdi-chevron-down"></i></span>
+                                                    <button class="button is-small js-expand-row" data-tooltip-content="Expand entry for more info and actions" aria-label="Expand entry for more info and actions">
+                                                        <span class="icon" aria-hidden="true"><i class="mdi mdi-24px mdi-chevron-down"></i></span>
                                                     </button>
                                                 </td>
                                             <td class="js-display-title"></td>
@@ -372,16 +372,16 @@
                                                 <div class="js-display-version js-display-title">
                                                     <p class="has-text-weight-bold"></p>
                                                 </div>
-                                                <div id="editable-title-c" class="js-editable-version js-editable-title is-hidden">
+                                                <div class="js-editable-version js-editable-title is-hidden">
                                                     <div class="field">
                                                         <span class="has-text-weight-semibold">Title</span>
-                                                        <input type="text" class="input"/>
+                                                        <input type="text" class="input" aria-label="Gene list title"/>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <div class="column is-1 py-0">
-                                                <span class="is-clickable is-pulled-right js-expand-box icon"><i class="mdi mdi-arrow-expand"></i></span>
+                                                <span class="is-clickable is-pulled-right js-expand-box icon" aria-label="Expand/collapse entry"><i class="mdi mdi-arrow-expand" aria-hidden="true"></i></span>
                                             </div>
                                         </div>
 
@@ -393,7 +393,7 @@
                                                     <div class="field">
                                                         <p class="label">Visibility</p>
                                                         <!-- toggle switch --->
-                                                        <input type="checkbox" class="switch is-primary"/>
+                                                        <input type="checkbox" class="switch is-primary" aria-label="Toggle gene list visibility"/>
                                                         <label></label>
                                                     </div>
                                                 </div>
@@ -409,7 +409,7 @@
                                                         <label class="label">Organism</label>
                                                         <div class="control">
                                                             <div class="select">
-                                                                <select></select>
+                                                                <select aria-label="Organism"></select>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -424,7 +424,7 @@
                                                     <div class="field">
                                                         <label class="label">Owner</label>
                                                         <div class="control">
-                                                            <input class="input is-static" readonly>
+                                                            <input class="input is-static" readonly aria-label="Owner">
                                                         </div>
                                                     </div>
                                                 </div>
@@ -437,7 +437,7 @@
                                                     <div class="field">
                                                         <label class="label">Added</label>
                                                         <div class="control">
-                                                            <input class="input is-static" readonly>
+                                                            <input class="input is-static" readonly aria-label="Date added">
                                                         </div>
                                                     </div>
                                                 </div>
@@ -447,8 +447,8 @@
                                         <div class="columns is-size-7 my-0">
                                             <div class="column is-3 py-0">
                                                 <div class="js-preview-genes-button-container">
-                                                    <button class="button is-small is-outlined is-dark" title="Show gene list">
-                                                        <span class="icon is-small"><i class="mdi mdi-format-list-bulleted"></i></span>
+                                                    <button class="button is-small is-outlined is-dark" title="Show gene list" aria-label="Show gene list">
+                                                        <span class="icon is-small" aria-hidden="true"><i class="mdi mdi-format-list-bulleted"></i></span>
                                                         <span class="js-gc-button-label"></span>
                                                     </button>
                                                 </div>
@@ -456,40 +456,40 @@
                                             <div class="column is-9 py-0">
                                                 <div class="columns my-0">
                                                     <div class="column is-two-thirds py-0">
-                                                        <div class="field has-addons js-action-links my-0" role="group">
+                                                        <div class="field has-addons js-action-links my-0" role="group" aria-label="Gene list actions">
                                                             <p class="control">
-                                                                <button class="button is-small is-outlined is-dark js-view-gc" data-tooltip-content="View in expression viewer">
-                                                                    <span class="icon"><i class="mdi mdi-18px mdi-test-tube"></i></span>
+                                                                <button class="button is-small is-outlined is-dark js-view-gc" data-tooltip-content="View in expression viewer" aria-label="View in expression viewer">
+                                                                    <span class="icon" aria-hidden="true"><i class="mdi mdi-18px mdi-test-tube"></i></span>
                                                                 </button>
                                                             </p>
                                                             <p class="control">
-                                                                <button class="button is-small is-outlined is-dark js-view-projection-gc" data-tooltip-content="View in projection tool">
-                                                                    <span class="icon"><i class="mdi mdi-18px mdi-hexagon-multiple"></i></span>
+                                                                <button class="button is-small is-outlined is-dark js-view-projection-gc" data-tooltip-content="View in projection tool" aria-label="View in projection tool">
+                                                                    <span class="icon" aria-hidden="true"><i class="mdi mdi-18px mdi-hexagon-multiple"></i></span>
                                                                 </button>
                                                             </p>
                                                             <p class="control">
-                                                                <button class="button is-small is-danger js-delete-gc" data-tooltip-content="Delete list">
-                                                                    <span class="icon"><i class="mdi mdi-18px mdi-delete"></i></span>
+                                                                <button class="button is-small is-danger js-delete-gc" data-tooltip-content="Delete list" aria-label="Delete gene list">
+                                                                    <span class="icon" aria-hidden="true"><i class="mdi mdi-18px mdi-delete"></i></span>
                                                                 </button>
                                                             </p>
                                                             <p class="control">
-                                                                <button class="button is-small is-outlined is-dark js-download-gc" data-tooltip-content="Download list as tsv">
-                                                                    <span class="icon"><i class="mdi mdi-18px mdi-download"></i></span>
+                                                                <button class="button is-small is-outlined is-dark js-download-gc" data-tooltip-content="Download list as tsv" aria-label="Download list as TSV">
+                                                                    <span class="icon" aria-hidden="true"><i class="mdi mdi-18px mdi-download"></i></span>
                                                                 </button>
                                                             </p>
                                                             <p class="control">
-                                                                <button class="button is-small is-outlined is-dark js-share-gc" data-tooltip-content="Get shareable link">
-                                                                    <span class="icon"><i class="mdi mdi-18px mdi-share-variant"></i></span>
+                                                                <button class="button is-small is-outlined is-dark js-share-gc" data-tooltip-content="Get shareable link" aria-label="Get shareable link">
+                                                                    <span class="icon" aria-hidden="true"><i class="mdi mdi-18px mdi-share-variant"></i></span>
                                                                 </button>
                                                             </p>
                                                             <p class="control">
-                                                                <button class="button is-small is-outlined is-dark js-edit-gc-permalink" data-tooltip-content="Edit permalink">
-                                                                    <span class="icon"><i class="mdi mdi-18px mdi-link-edit"></i></span>
+                                                                <button class="button is-small is-outlined is-dark js-edit-gc-permalink" data-tooltip-content="Edit permalink" aria-label="Edit permalink">
+                                                                    <span class="icon" aria-hidden="true"><i class="mdi mdi-18px mdi-link-edit"></i></span>
                                                                 </button>
                                                             </p>
                                                             <p class="control">
-                                                                <button class="button is-small is-outlined is-dark js-edit-gc js-display-version" data-tooltip-content="Edit list metadata">
-                                                                    <span class="icon"><i class="mdi mdi-18px mdi-pencil"></i></span>
+                                                                <button class="button is-small is-outlined is-dark js-edit-gc js-display-version" data-tooltip-content="Edit list metadata" aria-label="Edit list metadata">
+                                                                    <span class="icon" aria-hidden="true"><i class="mdi mdi-18px mdi-pencil"></i></span>
                                                                 </button>
                                                             </p>
                                                         </div>
@@ -514,7 +514,7 @@
                                                             <div class="field">
                                                                 <label class="label">Type</label>
                                                                 <div class="control">
-                                                                    <input class="input is-static" readonly>
+                                                                    <input class="input is-static" readonly aria-label="Gene list type">
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -537,9 +537,10 @@
                                             </div>
                                             <div class="column is-9 py-0 js-editable-version js-editable-ldesc is-hidden">
                                                 <div class="field">
-                                                    <label class="label">Long description</label>
                                                     <div class="control">
-                                                        <textarea class="textarea" rows="4"></textarea>
+                                                        <label class="label">Long description
+                                                            <textarea class="textarea" rows="4"></textarea>
+                                                        </label>
                                                     </div>
                                                 </div>
                                             </div>
@@ -709,6 +710,19 @@
         insertVersionedCSS('css/common.v2.css', prefs.cache_version);
         insertVersionedCSS('css/gene_list_manager.css', prefs.cache_version);
       </script>
+
+    <!-- WCAG accessibility widget -->
+    <script>
+    window.ACCESSIBILITY_WIDGET_CONFIG = {
+        // Position on left side
+        widgetPosition: {
+        side: 'left',
+        left: '20px',
+        bottom: '20px'
+        }
+    };
+    </script>
+    <script src="https://unpkg.com/accessibility-widgets@latest/widget.js"></script>
 
 </body>
 </html>

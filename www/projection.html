@@ -2,7 +2,7 @@
 <!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
@@ -21,10 +21,6 @@
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
 
-        <link rel="stylesheet" href="css/common.v2.css" />
-
-        <!--Page-specific CSS here -->
-        <link rel="stylesheet" href="css/projection.css" />
     </head>
     <body>
       <div id="main-layout-c" class="columns is-fullheight">
@@ -35,7 +31,7 @@
 
           <!--#include virtual="/include/header_bar.html" -->
 
-          <section id="content-c" class="m-3" data-nav-link="projection">
+          <section id="content-c" role="main" class="m-3" data-nav-link="projection">
             <!-- This needs to be abstracted out as an include, since both this page and the dashboard use it -->
             <div id="search-bar-c" class="mt-4 mb-4 columns">
               <div class="column is-half">
@@ -50,6 +46,7 @@
                   <!--#include virtual="/include/dataset-collection-selector/dataset-collection-selector.html" -->
 
                   <div class="control">
+                    <label for="submit-projection-search" class="is-sr-only">Perform Projection</label>
                     <button id="submit-projection-search" class="button is-primary ml-3">
                       <span class="icon is-small">
                         <i class="mdi mdi-magnify"></i>
@@ -91,7 +88,7 @@ This method is simple and interpretable, but may not capture complex relationshi
                   </label>
                   <div class="control">
                     <div class="select is-small">
-                      <select id="algorithm">
+                      <select id="algorithm" aria-label="Projection algorithm">
                         <option value="pca" selected>Principal Component Analysis (PCA)</option>
                         <option value="nmf">Least-squares optimization for NMF</option>
                         <option value="fixednmf">Fixed gene weights in NMF re-run</option>
@@ -161,7 +158,7 @@ This method is simple and interpretable, but may not capture complex relationshi
                     <div id="scoring-method-div">
                       <span class="option-label pr-1">SVG expression scoring method: </span>
                       <div class="control select is-small">
-                        <select id="svg-scoring-method">
+                        <select id="svg-scoring-method" aria-label="SVG expression scoring method">
                           <option value="gene">Gene scope</option>
                           <option value="tissue">Tissue scope</option>
                           <option value="dataset">Sample scope</option>
@@ -202,8 +199,31 @@ This method is simple and interpretable, but may not capture complex relationshi
       <script src="js/vendor/snap.svg-min.js"></script>
       <script src="https://cdn.plot.ly/plotly-3.3.1.min.js" charset="utf-8"></script>
 
-      <!-- Page-specific JS file here -->
-      <script type="module" src="js/projection.js"></script>
+
+      <script type="module">
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+        const prefs = await getDomainPreferences();
+
+        // Load any local JS with cache-busting version parameter
+        insertVersionedJS('js/projection.js', prefs.cache_version);
+
+        // Now load page-specific CSS
+        insertVersionedCSS('css/common.v2.css', prefs.cache_version);
+        insertVersionedCSS('css/projection.css', prefs.cache_version);
+      </script>
+
+      <!-- WCAG accessibility widget -->
+      <script>
+      window.ACCESSIBILITY_WIDGET_CONFIG = {
+        // Position on left side
+        widgetPosition: {
+          side: 'left',
+          left: '20px',
+          bottom: '20px'
+        }
+      };
+      </script>
+      <script src="https://unpkg.com/accessibility-widgets@latest/widget.js"></script>
 
     </body>
 </html>

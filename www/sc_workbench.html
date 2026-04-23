@@ -3,7 +3,7 @@
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
 <!--[if gt IE 8]><!-->
-<html class="no-js"> <!--<![endif]-->
+<html class="no-js" lang="en"> <!--<![endif]-->
 
 <head>
     <meta charset="utf-8">
@@ -48,7 +48,7 @@
         <!--#include virtual="/include/primary_nav.html" -->
         <section id="main-c" class="column pl-0 pt-0">
             <!--#include virtual="/include/header_bar.html" -->
-            <section id="content-c" class="m-3" data-nav-link="sc_workbench">
+            <section id="content-c" role="main" class="m-3" data-nav-link="sc_workbench">
                 <!-- This is the section to be populated for new pages -->
                 <header class="columns section">
                     <div id="tool-desc-c" class="column is-5 content">
@@ -129,7 +129,8 @@ Information about the individual datasets can be found in the dataset explorer."
                                 <span>Collapse dataset selection tool</span>
                             </button>
                             <div id="dataset-selection-c">
-                                <input class="input" id="dataset-query" type="text" placeholder="Enter a dataset" autofocus="" />
+                                <label for="dataset-query" class="is-sr-only">Search for a dataset</label>
+                                <input class="input" id="dataset-query" type="search" placeholder="Enter a dataset" autofocus="" />
                                 <div id="dataset-tree" class="wb-skeleton wb-initializing js-tree"></div>
                             </div>
                         </div>
@@ -162,7 +163,7 @@ Information about the individual datasets can be found in the dataset explorer."
                     <div class="mt-3 columns" id="analysis-c">
                         <div class="column is-half">
                             <div class="select is-fullwidth">
-                                <select id="analysis-select" disabled>
+                                <select id="analysis-select" disabled aria-label="Select an analysis">
                                     <option data-analysis-id="-1" value="" disabled selected>Select an analysis</option>
                                     <option data-analysis-id="0" value="0">New</option>
                                     <optgroup id="analyses-primary" label="Imported analysis"></optgroup>
@@ -305,7 +306,7 @@ Information about the individual datasets can be found in the dataset explorer."
                     <div id="steps-container">
                         <ul class="steps mb-0 is-horizontal is-centered has-content-centered is-hidden" id="de-novo-steps">
                             <li class="steps-segment is-dashed">
-                                <a href="#dataset-s" class="steps-marker">
+                                <a href="#dataset-s" class="steps-marker" aria-label="Dataset selection step">
                                     <span class="icon">
                                         <i class="mdi mdi-check"></i>
                                     </span>
@@ -315,7 +316,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                 </div>
                             </li>
                             <li class="steps-segment is-dashed">
-                                <a href="#analysis-s" class="steps-marker">
+                                <a href="#analysis-s" class="steps-marker" aria-label="Analysis selection step">
                                     <span class="icon">
                                         <i class="mdi mdi-check"></i>
                                     </span>
@@ -325,7 +326,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                 </div>
                             </li>
                             <li class="steps-segment is-active">
-                                <a href="#primary-filter-s" class="steps-marker is-light">
+                                <a href="#primary-filter-s" class="steps-marker is-light" aria-label="Primary filter step">
                                     <span class="icon">
                                         <i class="mdi mdi-pencil"></i>
                                     </span>
@@ -335,7 +336,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                 </div>
                             </li>
                             <li class="steps-segment">
-                                <a href="#qc-by-mito-s" class="steps-marker">
+                                <a href="#qc-by-mito-s" class="steps-marker" aria-label="QC: filter out mitochondrial content step">
                                     <span class="icon">
                                         <i class="mdi"></i>
                                     </span>
@@ -345,7 +346,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                 </div>
                             </li>
                             <li class="steps-segment">
-                                <a href="#select-variable-genes-s" class="steps-marker">
+                                <a href="#select-variable-genes-s" class="steps-marker" aria-label="Identify highly-variable genes step">
                                     <span class="icon">
                                         <i class="mdi"></i>
                                     </span>
@@ -355,7 +356,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                 </div>
                             </li>
                             <li class="steps-segment">
-                                <a href="#pca-s" class="steps-marker">
+                                <a href="#pca-s" class="steps-marker" aria-label="Perform Principal Component Analysis step">
                                     <span class="icon">
                                         <i class="mdi"></i>
                                     </span>
@@ -365,7 +366,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                 </div>
                             </li>
                             <li class="steps-segment">
-                                <a href="#tsne-s" class="steps-marker">
+                                <a href="#tsne-s" class="steps-marker" aria-label="Perform t-SNE or UMAP analysis step">
                                     <span class="icon">
                                         <i class="mdi"></i>
                                     </span>
@@ -375,7 +376,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                 </div>
                             </li>
                             <li class="steps-segment">
-                                <a href="#clustering-s" class="steps-marker">
+                                <a href="#clustering-s" class="steps-marker" aria-label="Perform clustering step">
                                     <span class="icon">
                                         <i class="mdi"></i>
                                     </span>
@@ -385,7 +386,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                 </div>
                             </li>
                             <li class="steps-segment">
-                                <a href="#marker-genes-s" class="steps-marker">
+                                <a href="#marker-genes-s" class="steps-marker" aria-label="Find marker genes step">
                                     <span class="icon">
                                         <i class="mdi"></i>
                                     </span>
@@ -395,7 +396,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                 </div>
                             </li>
                             <li class="steps-segment">
-                                <a href="#clustering-edit-s" class="steps-marker">
+                                <a href="#clustering-edit-s" class="steps-marker" aria-label="Edit clustering step">
                                     <span class="icon">
                                         <i class="mdi"></i>
                                     </span>
@@ -405,7 +406,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                 </div>
                             </li>
                             <li class="steps-segment">
-                                <a href="#compare-genes-s" class="steps-marker">
+                                <a href="#compare-genes-s" class="steps-marker" aria-label="Compare genes step">
                                     <span class="icon">
                                         <i class="mdi"></i>
                                     </span>
@@ -418,7 +419,7 @@ Information about the individual datasets can be found in the dataset explorer."
                         </ul>
                         <ul class="steps mb-0 is-horizontal is-centered has-content-centered is-hidden" id="primary-steps">
                             <li class="steps-segment is-dashed">
-                                <a href="#dataset-s" class="steps-marker">
+                                <a href="#dataset-s" class="steps-marker" aria-label="Dataset selection step">
                                     <span class="icon">
                                         <i class="mdi mdi-check"></i>
                                     </span>
@@ -428,7 +429,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                 </div>
                             </li>
                             <li class="steps-segment is-dashed">
-                                <a href="#analysis-s" class="steps-marker">
+                                <a href="#analysis-s" class="steps-marker" aria-label="Analysis selection step">
                                     <span class="icon">
                                         <i class="mdi mdi-check"></i>
                                     </span>
@@ -438,7 +439,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                 </div>
                             </li>
                             <li class="steps-segment is-dashed">
-                                <a href="#labeled-tsne-s" class="steps-marker">
+                                <a href="#labeled-tsne-s" class="steps-marker" aria-label="Labeled t-SNE step">
                                     <span class="icon">
                                         <i class="mdi mdi-pencil"></i>
                                     </span>
@@ -448,7 +449,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                 </div>
                             </li>
                             <li class="steps-segment is-active">
-                                <a href="#marker-genes-s" class="steps-marker is-light">
+                                <a href="#marker-genes-s" class="steps-marker is-light" aria-label="Marker genes step">
                                     <span class="icon">
                                         <i class="mdi mdi-edit"></i>
                                     </span>
@@ -458,7 +459,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                 </div>
                             </li>
                             <li class="steps-segment">
-                                <a href="#compare-genes-s" class="steps-marker">
+                                <a href="#compare-genes-s" class="steps-marker" aria-label="Compare genes step">
                                     <span class="icon">
                                         <i class="mdi"></i>
                                     </span>
@@ -609,8 +610,9 @@ Information about the individual datasets can be found in the dataset explorer."
                                                     <input id='filter-cells-lt-n-genes-selected' type="checkbox">
                                                     Exclude cells with &lt;
                                                 </label>
+                                                <label for="filter-cells-lt-n-genes" class="is-sr-only">Minimum number of genes per cell</label>
                                                 <input type="number" class="input input-length-6"
-                                                  id="filter-cells-lt-n-genes" size="4" value="300" min="1" /> genes
+                                                  id="filter-cells-lt-n-genes" size="4" value="300" min="1" aria-label="Minimum number of genes per cell" autocomplete="off"/> genes
                                             </div>
                                         </div>
                                         <div class="field">
@@ -619,8 +621,9 @@ Information about the individual datasets can be found in the dataset explorer."
                                                     <input id='filter-cells-gt-n-genes-selected' type="checkbox">
                                                     Exclude cells with &gt;
                                                 </label>
+                                                <label for="filter-cells-gt-n-genes" class="is-sr-only">Maximum number of genes per cell</label>
                                                 <input type="number" class="input input-length-6"
-                                                  id="filter-cells-gt-n-genes" size="4" min="1" /> genes
+                                                  id="filter-cells-gt-n-genes" size="4" min="1" aria-label="Maximum number of genes per cell" autocomplete="off"/> genes
                                             </div>
                                         </div>
                                         <div class="field">
@@ -629,8 +632,9 @@ Information about the individual datasets can be found in the dataset explorer."
                                                     <input id='filter-genes-lt-n-cells-selected' type="checkbox">
                                                     Exclude genes in &lt;
                                                 </label>
+                                                <label for="filter-genes-lt-n-cells" class="is-sr-only">Minimum number of cells per gene</label>
                                                 <input type="number" class="input input-length-6"
-                                                  id="filter-genes-lt-n-cells" size="4" value="3" min="1" /> cells
+                                                  id="filter-genes-lt-n-cells" size="4" value="3" min="1" aria-label="Minimum number of cells per gene" autocomplete="off" /> cells
                                             </div>
                                         </div>
                                         <div class="field">
@@ -639,8 +643,9 @@ Information about the individual datasets can be found in the dataset explorer."
                                                     <input id='filter-genes-gt-n-cells-selected' type="checkbox">
                                                     Exclude genes in &gt;
                                                 </label>
+                                                <label for="filter-genes-gt-n-cells" class="is-sr-only">Maximum number of cells per gene</label>
                                                 <input type="number" class="input input-length-6"
-                                                  id="filter-genes-gt-n-cells" size="4" min="1" /> cells
+                                                  id="filter-genes-gt-n-cells" size="4" min="1" aria-label="Maximum number of cells per gene" autocomplete="off"/> cells
                                             </div>
                                         </div>
                                         <div class="field">
@@ -824,7 +829,7 @@ Information about the individual datasets can be found in the dataset explorer."
                                         <div class="field">
                                             <label for="asvg-norm-counts-per-cell" class="label">Normalized counts per cell</label>
                                             <div class="control">
-                                                <input type="number" class="input input-length-6" id="asvg-norm-counts-per-cell" size="6" value="1e4"/>
+                                                <input type="number" class="input input-length-6" id="asvg-norm-counts-per-cell" size="6" value="1e4" autocomplete="off"/>
                                             </div>
                                         </div>
 
@@ -1330,7 +1335,7 @@ At the completion of this step press on ‘save these genes’.
                                                 <td class="group-num-cells"></td>
                                                 <td class="group-marker"></td>
                                                 <td class="group-user-label">
-                                                    <input class="input" type="text" />
+                                                    <input class="input" type="text" aria-label="Cluster label" />
                                                 </td>
                                                 <td class="group-keep-chk">
                                                     <input type="checkbox" checked />
@@ -1477,10 +1482,10 @@ At the completion of this step press on ‘save these genes’.
                                         <table id="compare-genes-table-f" class="is-hidden table">
                                             <thead>
                                                 <tr>
-                                                    <th>Name</th>
-                                                    <th>log2FC</th>
-                                                    <th>P-value</th>
-                                                    <th>FDR</th>
+                                                    <th scope="col">Name</th>
+                                                    <th scope="col">log2FC</th>
+                                                    <th scope="col">P-value</th>
+                                                    <th scope="col">FDR</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1504,10 +1509,10 @@ At the completion of this step press on ‘save these genes’.
                                         <table id="compare-genes-table-r" class="is-hidden table">
                                             <thead>
                                                 <tr>
-                                                    <th>Name</th>
-                                                    <th>log2FC</th>
-                                                    <th>P-value</th>
-                                                    <th>FDR</th>
+                                                    <th scope="col">Name</th>
+                                                    <th scope="col">log2FC</th>
+                                                    <th scope="col">P-value</th>
+                                                    <th scope="col">FDR</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1539,17 +1544,31 @@ At the completion of this step press on ‘save these genes’.
     <script src="https://cdn.jsdelivr.net/npm/@floating-ui/core@1.5.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.5.3"></script>
 
-    <!-- Page-specific JS file here -->
-    <script type="module" src="js/sc_workbench.js"></script>
+    <!-- Page-specific CSS/JS loading here -->
+    <script type="module">
+    import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+    const prefs = await getDomainPreferences();
 
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag() { dataLayer.push(arguments); }
-        gtag('js', new Date());
-        gtag('config', 'UA-59916932-1');
+    // Load any local JS with cache-busting version parameter
+    insertVersionedJS('js/sc_workbench.js', prefs.cache_version);
+
+    // Now load page-specific CSS
+    insertVersionedCSS('css/common.v2.css', prefs.cache_version);
+    insertVersionedCSS('css/sc_workbench.css', prefs.cache_version);
     </script>
+
+    <!-- WCAG accessibility widget -->
+    <script>
+    window.ACCESSIBILITY_WIDGET_CONFIG = {
+        // Position on left side
+        widgetPosition: {
+        side: 'left',
+        left: '20px',
+        bottom: '20px'
+        }
+    };
+    </script>
+    <script src="https://unpkg.com/accessibility-widgets@latest/widget.js"></script>
 
 </body>
 

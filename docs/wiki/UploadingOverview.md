@@ -11,9 +11,11 @@ To assist users with uploading their data, we maintain documentation for
 uploading data from several different starting formats including programmatically generated files or through Excel. To find the documentation
 best suited for your upload needs, please see the links below. If you have any questions, or would like assistance with uploading please contact the curator team [(Contact us)](https://umgear.org/contact.html).
 
-> [!IMPORTANT] 
-> # Data Requirements
-> All data uploaded to the gEAR platform must be de-identified and contain no personally identifiable information (PII), protected health information (PHI), or other data subject to regulatory obligations. 
+> [!IMPORTANT]
+>
+> ## Data Requirements
+
+> All data uploaded to the gEAR platform must be de-identified and contain no personally identifiable information (PII), protected health information (PHI), or other data subject to regulatory obligations.
 >
 > By uploading data to gEAR, you represent that:
 >
@@ -24,7 +26,6 @@ best suited for your upload needs, please see the links below. If you have any q
 ### Direct H5AD Uploads
 
 gEAR now supports uploads of H5AD datasets (those created using the Anndata structure).  If you plan to upload one of these, it is strongly recommended that the `Anndata.var` has unique identifiers as the DataFrame index, and gene symbol names in a "gene_symbol" column.  If gene symbols are in the index, we can infer Ensembl IDs based on what annotations are stored in our database. However, there is a chance Ensembl IDs may not be found for some gene symbols and they will be flagged with a generic identifier.
-
 
 ## Bulk RNAseq data
 
@@ -117,6 +118,8 @@ style I color:blue
   - [Processed scRNA files](https://drive.google.com/drive/folders/1LHhhCIV5LmYspjfHccYr-gD1kW-bswut?usp=sharing)
   - [Raw scRNA matrix](https://drive.google.com/drive/folders/1c6pjqj-oruNeSsYDoZtJbZv-nEmF0bcT?usp=sharing)
 
+
+
 ## Microarray data
 
 - [Prepare GEO microarray data for upload](https://github.com/songeric1107/Host_data_on_gEAR/blob/225e61631db4f0a60acb3abdb90ba55ace814e87/script/GEO_microarray_data_to_gEAR.R)
@@ -188,5 +191,4 @@ The gEAR team plans to add the ability to have multiWig containers as well, in t
 - rn6
 
 If you want to upload epigenome data from one of the human references, because of concerns with personally-identifiable information, Hi-C and VCF file types will not be processed.
-
 

@@ -465,7 +465,9 @@ class ResultItem {
     addDescriptionInfo(parentElt) {
         // Add ldesc if it exists
         const ldescText = parentElt.querySelector(".js-display-ldesc-text");
-        ldescText.textContent = this.longDesc || "No description entered";
+        const span = document.createElement("span");
+        span.innerHTML = this.longDesc || "No description entered";
+        ldescText.replaceChildren(span);
     }
 
     addListItemEventListeners(parentElt) {
@@ -622,7 +624,9 @@ class ResultItem {
 
                 selector.querySelector(`.js-display-title p`).textContent = newTitle;
 
-                selector.querySelector(`.js-display-ldesc-text`).textContent = newLdesc || "No description entered";
+                const ldescSpan = document.createElement("span");
+                ldescSpan.innerHTML = newLdesc || "No description entered";
+                selector.querySelector(`.js-display-ldesc-text`).replaceChildren(ldescSpan);
 
                 // pubmed and geo display are links if they exist
                 selector.querySelector(`.js-editable-pubmed-id input`).value = newPubmedId;
@@ -2026,9 +2030,11 @@ const createPaginationButton = (page, icon = null, clickHandler) => {
     const button = document.createElement("button");
     button.className = "button is-small is-outlined is-dark pagination-link";
     if (icon) {
-        button.innerHTML = `<i class="mdi mdi-chevron-${icon}"></i>`;
+        button.innerHTML = `<i class="mdi mdi-chevron-${icon}" aria-hidden="true"></i>`;
+        button.setAttribute("aria-label", icon === "left" ? "Previous page" : "Next page");
     } else {
         button.textContent = page;
+        button.setAttribute("aria-label", `Page ${page}`);
     }
     button.addEventListener("click", clickHandler);
     li.appendChild(button);
@@ -2427,6 +2433,7 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
 
         const displayImage = displayElement.querySelector('figure > img');
         displayImage.src = displayUrl;
+        displayImage.alt = `Preview of ${display.label || display.plot_type} display`;
 
         // Add tag indicating plot type
         const displayType = displayElement.querySelector('.js-modal-display-type');

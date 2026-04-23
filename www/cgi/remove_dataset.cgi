@@ -15,8 +15,10 @@ Requires:
 
 """
 
-import cgi, json
-import sys, os
+import cgi
+import json
+import os
+import sys
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
@@ -36,7 +38,7 @@ def main():
     # Does user own the dataset...
     owns_dataset = check_dataset_ownership(cursor, current_user_id, dataset_id)
 
-    if owns_dataset == True:
+    if owns_dataset:
         result = { 'success': 1, 'dataset':[] }
 
     else:

@@ -66,10 +66,12 @@ function deafness_plugin_gene_change(selected_gene) {
             const a = link_template.content.cloneNode(true);
             a.querySelector('a').innerHTML = link['label'];
             a.querySelector('a').href = link['url'];
+            a.querySelector('a').setAttribute('aria-label', `Link to ${link['label']} for mouse deafness gene`);
             document.getElementById('dm-deafness-gene-mouse-links').appendChild(a);
         }
 
         document.getElementById("img-deafness-gene-mouse").src = "./img/icons/org-1-dark-64.svg";
+        document.getElementById("img-deafness-gene-mouse").alt = "Mouse Deafness Gene";
         document.getElementById("btn-deafness-gene-mouse").disabled = false;
     }
 
@@ -84,10 +86,13 @@ function deafness_plugin_gene_change(selected_gene) {
             const a = link_template.content.cloneNode(true);
             a.querySelector('a').innerHTML = link['label'];
             a.querySelector('a').href = link['url'];
+            a.querySelector('a').setAttribute('aria-label', `Link to ${link['label']} for human deafness gene`);
+
             document.getElementById('dm-deafness-gene-human-links').appendChild(a);
         }
 
         document.getElementById("img-deafness-gene-human").src = "./img/icons/org-2-dark-64.svg";
+        document.getElementById("img-deafness-gene-human").alt = "Human Deafness Gene";
         document.getElementById("btn-deafness-gene-human").disabled = false;
     }
 
@@ -101,10 +106,12 @@ function deafness_plugin_gene_change(selected_gene) {
             const a = link_template.content.cloneNode(true);
             a.querySelector('a').innerHTML = link['label'];
             a.querySelector('a').href = link['url'];
+            a.querySelector('a').setAttribute('aria-label', `Link to ${link['label']} for putative human deafness gene`);
             document.getElementById('dm-deafness-gene-human-putative-links').appendChild(a);
         }
 
         document.getElementById("img-deafness-gene-human-putative").src = "./img/icons/org-2-dark-64.svg";
+        document.getElementById("img-deafness-gene-human-putative").alt = "Putative Human Deafness Gene";
         document.getElementById("btn-deafness-gene-human-putative").disabled = false;
     }
 }

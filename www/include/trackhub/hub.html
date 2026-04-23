@@ -1,0 +1,88 @@
+<div class="container">
+    <form id="trackhub-form">
+        <!-- Hub Section -->
+        <div class="box">
+            <h2 class="subtitle">Hub Information</h2>
+            <div class="field is-horizontal">
+                <div class="field-label">
+                    <label class="label">Identifier</label>
+                </div>
+                <div class="field-body">
+                    <div class="field is-narrow">
+                        <div class="control">
+                            <input class="input" type="text" id="hub-identifier" placeholder="Hub Identifier (no spaces)" required>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="field is-horizontal">
+                <div class="field-label">
+                    <label class="label">Genome Assembly</label>
+                </div>
+                <div class="field-body">
+                    <div class="field is-narrow">
+                        <div class="control">
+                            <div class="select">
+                                <select id="hub-genome-select">
+                                    <option value="">Select one</option>
+                                    <option value="hg19">Human (hg19)</option>
+                                    <option value="hg38">Human (hg38)</option>
+                                    <option value="mm10">Mouse (mm10)</option>
+                                    <option value="galGal6" disabled>Chicken (COMING SOON)</option>
+                                    <option value="rn6">Rat</option>
+                                    <option value="danRer10">Zebrafish</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="notification is-warning is-light js-human-assembly-warning" style="display: none;" role="alert">
+                <p class="icon-text">
+                    <span class="icon">
+                        <i class="mdi mdi-shield-alert-outline"></i>
+                    </span>
+                    <span>If you select a human assembly, VCF and Hi-C track types will be disabled for privacy reasons.</span>
+                </p>
+            </div>
+
+            <div class="field is-horizontal">
+                <div class="field-label">
+                    <label class="label">Short Description</label>
+                </div>
+                <div class="field-body">
+                    <div class="field is-narrow">
+                        <div class="control">
+                            <input class="input" type="text" id="hub-short-label" maxlength="20" placeholder="Short Label (<20 chars)" required>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="field is-horizontal">
+                <div class="field-label">
+                    <label class="label">Long Description</label>
+                </div>
+                <div class="field-body">
+                    <div class="field">
+                        <div class="control">
+                            <input class="input" id="hub-long-label" maxlength="70" placeholder="Long Label (<70 chars)" required>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="field is-horizontal">
+                <div class="field-label">
+                    <label class="label">Email</label>
+                </div>
+                <div class="field-body">
+                    <div class="field is-narrow">
+                        <div class="control">
+                            <input class="input" type="email" id="hub-email" placeholder="Contact Email" required>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>

@@ -7,17 +7,17 @@
             <div class="card-header-icon">
 
                 <div class="dropdown is-right is-align-self-flex-start">
-                    <a class="button js-expand-display">
+                    <div class="button js-expand-display is-clickable">
                         <span class="icon">
                             <i class="mdi mdi-24px mdi-arrow-expand-all"></i>
                         </span>
-                    </a>
-                    <a class="button js-shrink-display">
+                    </div>
+                    <div class="button js-shrink-display is-clickable">
                         <span class="icon">
                             <i class="mdi mdi-24px mdi-arrow-collapse-all"></i>
                         </span>
-                    </a>
-                    <button class="button dropdown-trigger" aria-haspopup="true" aria-controls="dropdown-menu">
+                    </div>
+                    <button class="button dropdown-trigger js-menu-dropdown" aria-label="Toggle dropdown menu of options" aria-haspopup="true" aria-controls="dropdown-menu">
                         <span class="icon">
                             <i class="mdi mdi-24px mdi-18px mdi-dots-vertical"></i>
                         </span>
@@ -47,6 +47,14 @@
                                         <i class="mdi mdi-24px mdi-school-outline"></i>
                                     </span>
                                     <span>Dataset publication</span>
+                                </span>
+                            </a>
+                            <a class="dropdown-item" data-tool="cite" target="_blank">
+                                <span class="icon-text">
+                                    <span class="icon">
+                                        <i class="mdi mdi-24px mdi-book-open-variant-outline"></i>
+                                    </span>
+                                    <span>Citation</span>
                                 </span>
                             </a>
                             <a class="dropdown-item" data-tool="geo" target="_blank">
@@ -233,6 +241,29 @@
                 <figure class="image">
                     <img class="js-infobox-schematic" src="" alt="Infograph" />
                 </figure>
+            </section>
+        </div>
+    </div>
+</template>
+<template id="tmpl-tile-grid-citation-modal">
+    <div class="modal js-citation">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Citation</p>
+                <button class="delete" aria-label="close"></button>
+            </header>
+            <section class="modal-card-body">
+                <div class="js-citation-content content">
+                </div>
+            </section>
+            <section class="modal-card-foot is-justify-content-space-between">
+                <button class="button is-link js-citation-copy">
+                    <span class="icon">
+                        <i class="mdi mdi-24px mdi-content-copy"></i>
+                    </span>
+                    <span>Copy to clipboard</span>
+                </button>
             </section>
         </div>
     </div>

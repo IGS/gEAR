@@ -63,17 +63,6 @@ cd /var
 sudo rm -rf www && sudo ln -s ~jorvis/git/gEAR/www
 ```
 
-### Executables
-
-There are some third-party executables that gEAR will need for some functionality
-
-```bash
-cd ~jorvis/git/gEAR; mkdir -p src;
-rsync -aP hgdownload.soe.ucsc.edu::genome/admin/exe/linux.x86_64/hubClone /opt/gEAR/src/ \
-  && rsync -aP hgdownload.soe.ucsc.edu::genome/admin/exe/linux.x86_64/hubCheck /opt/gEAR/src/ \
-  && rsync -aP hgdownload.soe.ucsc.edu::genome/admin/exe/linux.x86_64/bigBedToBed /opt/gEAR/src/ \
-```
-
 ### Systemd Services
 
 More information about these services can be found at `gEAR/systemd/README.md`
@@ -83,11 +72,13 @@ cd ~jorvis/git/gEAR/systemd
 sudo cp *target /etc/systemd/system/
 sudo cp *service /etc/systemd/system/
 
+echo "**IMPORTANT**: For the *service files, correct the <gEAR_path> to point to the gEAR root on this server"
+
 # Start the services
 cd /etc/systemd/system
 
-sudo systemctl enable projectr-consumer.target
-sudo systemctl start projectr-consumer.target
+sudo systemctl enable projectr-consumer.target gosling-upload-consumer.target
+sudo systemctl start projectr-consumer.target gosling-upload-consumer.target
 
 sudo systemctl enable spatial-panel.service
 sudo systemctl start spatial-panel.service

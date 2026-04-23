@@ -1,0 +1,183 @@
+<div class="container">
+    <form id="trackhub-form">
+        <!-- Tracks Section -->
+        <div class="box">
+            <h2 class="subtitle">Tracks</h2>
+            <div class="notification is-info is-light" aria-label="Tracks management instructions">
+                <p class="icon-text">
+                    <span class="icon">
+                        <i class="mdi mdi-information-outline"></i>
+                    </span>
+                    <span>Add and manage tracks for the final display. Drag to reorder tracks in the display.</span>
+                </p>
+            </div>
+            <div id="tracks-container" >
+                <!-- Track items will be dynamically added here -->
+            </div>
+            <button type="button" class="mt-3 button is-primary" id="add-track-btn">
+                <span class="icon">
+                    <i class="mdi mdi-plus mdi-24px"></i>
+                </span>
+                <span>Add Track</span>
+            </button>
+        </div>
+    </form>
+</div>
+
+<template id="tmpl-trackhub-track">
+    <div class="field is-horizontal">
+        <div class="field-label">
+            <label class="label" for="track-identifier-{trackId}">Identifier</label>
+        </div>
+        <div class="field-body">
+            <div class="field is-narrow">
+                <div class="control">
+                    <input id="track-identifier-{trackId}" class="input js-track-identifier" type="text" placeholder="Track Identifier (no spaces)" required>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="field is-horizontal">
+        <div class="field-label">
+            <label class="label" for="track-short-label-{trackId}">Short Description</label>
+        </div>
+        <div class="field-body">
+            <div class="field is-narrow">
+                <div class="control">
+                    <input id="track-short-label-{trackId}" class="input js-track-short-label" type="text" maxlength="17" placeholder="Short Label (<27 chars)" required>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="field is-horizontal">
+        <div class="field-label">
+            <label class="label" for="track-long-label-{trackId}">Long Description</label>
+        </div>
+        <div class="field-body">
+            <div class="field">
+                <div class="control">
+                    <input id="track-long-label-{trackId}" class="input js-track-long-label" maxlength="76" placeholder="Long Label (<76 chars)" required>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="field is-horizontal">
+        <div class="field-label">
+            <label class="label" for="track-type-{trackId}">Track Type</label>
+        </div>
+        <div class="field-body">
+            <div class="field">
+                <div class="control">
+                    <div class="select js-track-type">
+                        <select id="track-type-{trackId}">
+                            <option value="bigBed">BigBed</option>
+                            <option value="bigWig" selected>BigWig</option>
+                            <option value="hic">Hi-C</option>
+                            <option value="vcfTabix">VCF</option>
+                        </select>
+                    </div>
+                    <p class="help">Some track types will undergo convertion to support both Gosling and UCSC Genome Browser visualization.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="field is-horizontal">
+        <div class="field-label">
+            <label class="label" for="track-data-source-{trackId}">Track Data Source</label>
+        </div>
+        <div class="field-body">
+            <div class="field">
+                <div id="track-data-source-{trackId}" class="columns">
+                    <div class="column is-7 pt-0">
+                        <div class="field">
+                            <div class="control has-icons-left">
+                                <input id="track-url-{trackId}" class="input js-track-url" type="url" placeholder="Track Data URL">
+                                <span class="icon is-left has-text-dark">
+                                    <i class="mdi mdi-web"></i>
+                                </span>
+                            </div>
+                        </div>
+                        <p class="help is-size-7">Provide a URL to track data <strong>or</strong> upload a file below. The file will be copied to server.</p>
+                    </div>
+                    <div class="column is-5 pt-0">
+                        <div class="file has-name">
+                        <label class="file-label" for="track-file-{trackId}">
+                            <input id="track-file-{trackId}" class="file-input js-track-file" type="file" accept=".bw,.bigwig,.bb,.bigbed,.vcf,.hic" />
+                            <span class="file-cta">
+                                <span class="file-icon">
+                                    <i class="mdi mdi-upload-box" aria-hidden="true"></i>
+                                </span>
+                                <span class="file-label">Upload track file </span>
+                            </span>
+                            <span class="file-name"></span>
+                        </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="field is-horizontal">
+        <div class="field-label">
+            <label class="label" for="track-visibility-{trackId}">Visibility</label>
+        </div>
+        <div class="field-body">
+            <div class="field">
+                <div class="control">
+                    <div class="select">
+                        <select id="track-visibility-{trackId}" class="js-track-visibility">
+                            <option value="dense" selected>Dense</option>
+                            <option value="full">Full</option>
+                            <option value="hide">Hide</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="field is-horizontal">
+        <div class="field-label">
+            <label class="label" for="track-color-{trackId}">Color</label>
+        </div>
+        <div class="field-body">
+            <div class="field">
+                <div class="control">
+                    <input id="track-color-{trackId}" class="js-track-color" type="color" value="#544A8E">
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="field is-horizontal is-hidden">
+        <div class="field-label">
+            <label class="label" for="track-parent-{trackId}">Parent Track</label>
+        </div>
+        <div class="field-body">
+            <div class="field is-narrow">
+                <div class="control">
+                    <input id="track-parent-{trackId}" class="input js-track-parent" type="text" placeholder="(Optional - COMING SOON) Parent Track Identifier" disabled>
+                </div>
+                <p class="help">
+                    For aggregating BigWig tracks only.
+                    Creates an overlay instead of stacking them.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="field is-horizontal">
+        <div class="field-label">
+            <!-- Left empty for spacing -->
+        </div>
+        <div class="field-body">
+            <div class="field">
+                <div class="control">
+                    <button type="button" class="button is-danger remove-track-btn">
+                        <span class="icon">
+                            <i class="mdi mdi-minus mdi-24px"></i>
+                        </span>
+                        <span>Remove Track</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>

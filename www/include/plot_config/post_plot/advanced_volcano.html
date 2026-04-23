@@ -1,21 +1,21 @@
 <p class="is-flex is-justify-content-space-between pr-3">
     <span class="has-text-weight-medium">Series to compare</span>
     <span class="select is-small">
-        <select class="js-plot-req js-dash-compare" id="compare-series-post"></select>
+        <select class="js-plot-req js-dash-compare" id="compare-series-post" aria-label="Series to compare"></select>
     </span>
 </p>
 
 <p class="is-flex is-justify-content-space-between pr-3">
     <span class="has-text-weight-medium">Query</span>
     <span class="select is-small">
-        <select class="js-plot-req js-compare-groups js-dash-query" id="query-group-post"></select>
+        <select class="js-plot-req js-compare-groups js-dash-query" id="query-group-post" aria-label="Query group"></select>
     </span>
 </p>
 
 <p class="is-flex is-justify-content-space-between pr-3">
     <span class="has-text-weight-medium">Reference</span>
     <span class="select is-small">
-        <select class="js-plot-req js-compare-groups js-dash-reference" id="reference-group-post"></select>
+        <select class="js-plot-req js-compare-groups js-dash-reference" id="reference-group-post" aria-label="Reference group"></select>
     </span>
 </p>
 
@@ -26,7 +26,7 @@
 
 <p class="is-flex is-justify-content-space-between pr-3 mb-1">
     <span class="has-text-weight-medium">Adjust p-value threshold</span>
-    <input class="js-dash-pvalue-threshold" id="pvalue-threshold-post" type="number" value="0.05" min="0" step="0.01" />
+    <input class="js-dash-pvalue-threshold" id="pvalue-threshold-post" type="number" value="0.05" min="0" step="0.01" aria-label="Adjust p-value threshold" />
 </p>
 <p class="help">Choose a p-value where all data points above the line are considered significant. This value will be -log10-transformed in the plot.</p>
 
@@ -37,10 +37,10 @@
 
 <p class="is-flex is-justify-content-space-between pr-3">
     <span class="has-text-weight-medium">Log2FC lower bounds</span>
-    <input class="js-dash-lower-logfc-threshold" id="lower-logfc-threshold-post" type="number" value="-1" max="0" />
+    <input class="js-dash-lower-logfc-threshold" id="lower-logfc-threshold-post" type="number" value="-1" max="0" aria-label="Log2FC lower bounds" />
 </p>
 <p class="is-flex is-justify-content-space-between pr-3 mb-1">
     <span class="has-text-weight-medium">Log2FC upper bounds</span>
-    <input class="js-dash-upper-logfc-threshold" id="upper-logfc-threshold-post" type="number" value="1" max="0" />
+    <input class="js-dash-upper-logfc-threshold" id="upper-logfc-threshold-post" type="number" value="1" max="0" aria-label="Log2FC upper bounds" />
 </p>
 <p class="help">Choose bounds of log2 fold-change threshold. All data points outside of this range will be colored as up- or down-regulated.</p>

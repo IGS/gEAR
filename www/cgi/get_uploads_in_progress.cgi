@@ -20,8 +20,6 @@ import os, sys
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
-import geardb
-
 
 
 def main():
@@ -68,33 +66,60 @@ def main():
                 }
             )
 
-        tarball_data_file = "{0}/{1}.tar.gz".format(share_dir, share_id)
+        if result['uploads'][-1]['dataset_type'] == "gosling":
 
-        if os.path.exists(tarball_data_file):
-            result['uploads'][-1]['status'] = 'datafile uploaded'
+            processing_status_json_file = os.path.join(share_dir, 'status.json')
+
+            if os.path.isfile(processing_status_json_file):
+                with open(processing_status_json_file, 'r') as f:
+                    status_json = json.load(f)
+                    processing_status = status_json.get('status', '')
+
+                    if processing_status in ['queued', 'processing']:
+                        result['uploads'][-1]['status'] = processing_status
+                        result['uploads'][-1]['load_step'] = 'process-dataset'
+                    elif processing_status == 'complete':
+                        result['uploads'][-1]['status'] = 'complete'
+                        result['uploads'][-1]['load_step'] = 'finalize-dataset'
+                        # Quick verifcation that hub.txt is there
+                        hub_file = "{0}/hub.txt".format(share_dir)
+                        if not os.path.isfile(hub_file):
+                            result['uploads'][-1]['status'] = 'error'
+                            result['uploads'][-1]['load_step'] = 'build-trackhub'
+                    elif processing_status == 'error':
+                        result['uploads'][-1]['status'] = 'error'
+                        result['uploads'][-1]['load_step'] = 'process-dataset'
+
+        else:
+            tarball_data_file = "{0}/{1}.tar.gz".format(share_dir, share_id)
+
+            if os.path.isfile(tarball_data_file):
+                result['uploads'][-1]['status'] = 'datafile uploaded'
             result['uploads'][-1]['load_step'] = 'process-dataset'
 
-        processing_status_json_file = os.path.join(share_dir, 'status.json')
+            # Determine status based on the JSON file
+            processing_status_json_file = os.path.join(share_dir, 'status.json')
 
-        if os.path.exists(processing_status_json_file):
-            with open(processing_status_json_file, 'r') as f:
-                status_json = json.load(f)
-                processing_status = status_json.get('status', '')
+            if os.path.isfile(processing_status_json_file):
+                with open(processing_status_json_file, 'r') as f:
+                    status_json = json.load(f)
+                    processing_status = status_json.get('status', '')
 
-                if processing_status == 'processing':
-                    result['uploads'][-1]['status'] = 'processing'
-                    result['uploads'][-1]['load_step'] = 'process-dataset'
+                    if processing_status == 'processing':
+                        result['uploads'][-1]['status'] = 'processing'
+                        result['uploads'][-1]['load_step'] = 'process-dataset'
 
-                    # Check if the process is still running
-                    process_id = status_json.get('process_id', -1)
-                    if process_id > 0:
-                        # TODO: check that the process is the correct name too
-                        if os.system(f'ps -p {process_id} > /dev/null') != 0:
-                            result['uploads'][-1]['status'] = 'error'
+                        # Check if the process is still running
+                        process_id = status_json.get('process_id', -1)
 
-                elif processing_status == 'complete':
-                    result['uploads'][-1]['status'] = 'processed'
-                    result['uploads'][-1]['load_step'] = 'finalize-dataset'
+                        if process_id > 0:
+                            # TODO: check that the process is the correct name too
+                            if os.system(f'ps -p {process_id} > /dev/null') != 0:
+                                result['uploads'][-1]['status'] = 'error'
+
+                    elif processing_status == 'complete':
+                        result['uploads'][-1]['status'] = 'processed'
+                        result['uploads'][-1]['load_step'] = 'finalize-dataset'
 
     result['success'] = 1
     print(json.dumps(result))

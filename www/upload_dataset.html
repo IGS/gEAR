@@ -2,7 +2,7 @@
 <!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
 
 <!--
   Uploading process:
@@ -49,13 +49,15 @@
     <body>
       <div id="main-layout-c" class="columns">
 
+        <input type="hidden" id="testing" value="false" />
+
         <!--#include virtual="/include/primary_nav.html" -->
 
         <section id="main-c" class="column pl-0 pt-0">
 
           <!--#include virtual="/include/header_bar.html" -->
 
-          <section id="content-c" class="m-3" data-nav-link="upload_dataset">
+          <section id="content-c" role="main" class="m-3" data-nav-link="upload_dataset">
             <div id="not-logged-in-c" class="is-hidden">
               <h1>Not logged in</h1>
               <p>
@@ -73,11 +75,11 @@
                 <table class="table is-fullwidth">
                   <thead class="has-text-weight-semibold">
                     <tr>
-                      <th>Share ID</th>
-                      <th>Status</th>
-                      <th>Dataset type</th>
-                      <th>Title</th>
-                      <th>Actions</th>
+                      <th scope="col">Share ID</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Dataset type</th>
+                      <th scope="col">Title</th>
+                      <th scope="col">Actions</th>
                     </tr>
                   </thead>
                   <tbody id="submissions-in-progress-table-tbody"></tbody>
@@ -143,6 +145,13 @@
                         <p class="is-size-7">Choose your dataset format and upload directly or provide a supported URL (soon).</p>
                       </div>
                     </li>
+                    <li id='step-build-trackhub' class="steps-segment is-hidden">
+                      <span class="steps-marker"><span class="icon"><i class="mdi"></i></span></span>
+                      <div class="steps-content">
+                        <p class="step-label is-size-5">Build track hub</p>
+                        <p class="is-size-7">Setup basic track configuration for Gosling.</p>
+                      </div>
+                    </li>
                     <li id='step-process-dataset' class="steps-segment">
                       <span class="steps-marker"><span class="icon"><i class="mdi"></i></span></span>
                       <div class="steps-content">
@@ -182,7 +191,7 @@
                     <div id="metadata-form-c" class="column is-8 mt-3">
                       <!-- title -->
                       <div class="field">
-                        <label class="label">
+                        <label class="label" for="metadata-title">
                           Title
                           <span class="icon has-tooltip-right has-tooltip-arrow"
                                 data-tooltip="The title will show above each dataset and should be a single sentence, perhaps even a shortened version of the paper title. Character limit: 255">
@@ -190,12 +199,12 @@
                           </span>
                         </label>
                         <div class="control">
-                          <input class="input" type="text" name="metadata-title" placeholder="Title of your dataset">
+                          <input class="input" type="text" id="metadata-title" name="metadata-title" placeholder="Title of your dataset">
                         </div>
                       </div>
                       <!-- long description / summary -->
                       <div class="field">
-                        <label class="label">
+                        <label class="label" for="metadata-summary">
                           Longer description
                           <span class="icon has-tooltip-right has-tooltip-arrow"
                                 data-tooltip="The title will show above each dataset and should be a single sentence, perhaps even a shortened version of the paper title. Character limit: 255">
@@ -203,12 +212,12 @@
                           </span>
                         </label>
                         <div class="control">
-                          <textarea class="textarea" name="metadata-summary" placeholder="A concise description of the experiments performed. Describing how the data were produced."></textarea>
+                          <textarea class="textarea" id="metadata-summary" name="metadata-summary" placeholder="A concise description of the experiments performed. Describing how the data were produced."></textarea>
                         </div>
                       </div>
                       <!-- dataset type -->
                       <div class="field">
-                        <label class="label">
+                        <label class="label" for="metadata-dataset-type">
                           Dataset type
                           <span class="icon has-tooltip-right has-tooltip-arrow"
                                 data-tooltip="At a high-level, what type of expression data is being uploaded?">
@@ -217,12 +226,13 @@
                         </label>
                         <div class="control">
                           <div class="select">
-                            <select name="metadata-dataset-type">
+                            <select id="metadata-dataset-type" name="metadata-dataset-type">
                               <option value="">Select one</option>
                               <option value="single-cell-rnaseq">Single-cell RNA-seq</option>
                               <option value="bulk-rnaseq">Bulk RNA-seq</option>
                               <option value="microarray">Microarray</option>
                               <option value="spatial">Spatial</option>
+                              <option value="gosling">Epigenome</option>
                             </select>
                           </div>
                         </div>
@@ -233,7 +243,7 @@
                         <div class="column is-6">
                           <!-- annotation source -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-annotation-source">
                               Annotation source
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="Which source of identifiers was used to annotate the data? These should correspond to the row identifiers in your data matrix">
@@ -242,7 +252,7 @@
                             </label>
                             <div class="control is-expanded">
                               <div class="select is-fullwidth">
-                                <select name="metadata-annotation-source">
+                                <select id="metadata-annotation-source" name="metadata-annotation-source">
                                   <option value="">Select one</option>
                                   <option value="Ensembl">Ensembl</option>
                                   <option value="ncbi">NCBI</option>
@@ -255,7 +265,7 @@
                         <div class="column is-6">
                           <!-- annotation version -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-annotation-version">
                               Annotation release name/number
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="Annotation release version name/number. For Ensembl, like '101'. For NCBI, maybe 'hg38'">
@@ -263,7 +273,7 @@
                               </span>
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-annotation-version" placeholder="" />
+                              <input class="input" type="text" id="metadata-annotation-version" name="metadata-annotation-version" placeholder="" />
                             </div>
                           </div>
                         </div>
@@ -274,7 +284,7 @@
                         <div class="column is-6">
                           <!-- GEO ID -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-geo-id">
                               GEO series or sample ID (optional)
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="If available, autofills the rest of this section">
@@ -282,7 +292,7 @@
                               </span>
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-geo-id" placeholder="Like GSEnnnnn or GSMnnnnnnn">
+                              <input class="input" type="text" id="metadata-geo-id" name="metadata-geo-id" placeholder="Like GSEnnnnn or GSMnnnnnnn">
                             </div>
                             <div class="control pt-1">
                               <button id="metadata-geo-lookup" class="button is-primary is-small">Lookup</button>
@@ -303,7 +313,7 @@
                         <div class="column is-6">
                           <!-- contact name -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-contact-name">
                               Contact name
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="Who should be contacted with questions about this dataset?">
@@ -311,14 +321,14 @@
                               </span>
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-contact-name" placeholder="Dataset contact person">
+                              <input class="input" type="text" id="metadata-contact-name" name="metadata-contact-name" placeholder="Dataset contact person">
                             </div>
                           </div>
                         </div>
                         <div class="column is-6">
                           <!-- contact email -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-contact-email">
                               Contact e-mail
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="E-mail address for this contact person">
@@ -326,14 +336,14 @@
                               </span>
                             </label>
                             <div class="control">
-                              <input class="input" type="email" name="metadata-contact-email" placeholder="Dataset contact email">
+                              <input class="input" type="email" id="metadata-contact-email" name="metadata-contact-email" placeholder="Dataset contact email">
                             </div>
                           </div>
                         </div>
                       </div>
                       <!-- contact institute -->
                       <div class="field">
-                        <label class="label">
+                        <label class="label" for="metadata-contact-institute">
                           Contact institute
                           <span class="icon has-tooltip-right has-tooltip-arrow"
                                 data-tooltip="Institute/company associated with this contact person">
@@ -341,14 +351,14 @@
                           </span>
                         </label>
                         <div class="control">
-                          <input class="input" type="email" name="metadata-contact-institute" placeholder="Dataset contact institute">
+                          <input class="input" type="email" id="metadata-contact-institute" name="metadata-contact-institute" placeholder="Dataset contact institute">
                         </div>
                       </div>
                       <div class="columns">
                         <div class="column is-6">
                           <!-- sample taxon ID -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-taxon-id">
                               Sample taxonomy ID
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="NCBI taxonomy ID. Use lookup link provided">
@@ -361,14 +371,14 @@
 
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-taxon-id" placeholder="NCBI tax ID">
+                              <input class="input" type="text" id="metadata-taxon-id" name="metadata-taxon-id" placeholder="NCBI tax ID">
                             </div>
                           </div>
                         </div>
                         <div class="column is-6">
                           <!-- sample organism -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-organism">
                               Sample organism
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="Genus/species/strain from which the data originated">
@@ -377,7 +387,7 @@
 
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-organism" placeholder="Genus species">
+                              <input class="input" type="text" id="metadata-organism" name="metadata-organism" placeholder="Genus species">
                             </div>
                           </div>
                         </div>
@@ -386,7 +396,7 @@
                         <div class="column is-6">
                           <!-- Platform ID -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-platform-id">
                               NCBI platform ID
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="GEO platform ID. Format: 'GPLxxxx'">
@@ -399,14 +409,14 @@
 
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-platform-id" placeholder="Ex: GPLnnnn">
+                              <input class="input" type="text" id="metadata-platform-id" name="metadata-platform-id" placeholder="Ex: GPLnnnn">
                             </div>
                           </div>
                         </div>
                         <div class="column is-6">
                           <!-- Instrument model -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-instrument">
                               Instrument model
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="Type of technology used to produce data. Ex: Illumina HiSeq 2000">
@@ -415,7 +425,7 @@
 
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-instrument" placeholder="Ex: Illumina HiSeq 2000">
+                              <input class="input" type="text" id="metadata-instrument" name="metadata-instrument" placeholder="Ex: Illumina HiSeq 2000">
                             </div>
                           </div>
                         </div>
@@ -424,7 +434,7 @@
                         <div class="column is-4">
                           <!-- Library selection -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-library-selection">
                               Library selection
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="Name of technology used to produce data. Ex: cDNA">
@@ -432,14 +442,14 @@
                               </span>
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-library-selection" placeholder="Ex: cDNA">
+                              <input class="input" type="text" id="metadata-library-selection" name="metadata-library-selection" placeholder="Ex: cDNA">
                             </div>
                           </div>
                         </div>
                         <div class="column is-4">
                           <!-- Library source -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-library-source">
                               Library source
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="Ex: transcriptomic">
@@ -447,14 +457,14 @@
                               </span>
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-library-source" placeholder="Ex: transcriptomic">
+                              <input class="input" type="text" id="metadata-library-source" name="metadata-library-source" placeholder="Ex: transcriptomic">
                             </div>
                           </div>
                         </div>
                         <div class="column is-4">
                           <!-- Library strategy -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-library-strategy">
                               Library strategy
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="Ex: RNA-seq">
@@ -462,7 +472,7 @@
                               </span>
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-library-strategy" placeholder="Ex: RNA-seq">
+                              <input class="input" type="text" id="metadata-library-strategy" name="metadata-library-strategy" placeholder="Ex: RNA-seq">
                             </div>
                           </div>
                         </div>
@@ -471,7 +481,7 @@
                         <div class="column is-6">
                           <!-- Pubmed ID -->
                           <div class="field">
-                            <label class="label">
+                            <label class="label" for="metadata-pubmed-id">
                               PubMed ID
                               <span class="icon has-tooltip-right has-tooltip-arrow"
                                     data-tooltip="If this is part of a published paper, add PubMed ID here">
@@ -479,9 +489,20 @@
                               </span>
                             </label>
                             <div class="control">
-                              <input class="input" type="text" name="metadata-pubmed-id" placeholder="Ex: 34172972">
+                              <input class="input" type="text" id="metadata-pubmed-id" name="metadata-pubmed-id" placeholder="Ex: 34172972">
                             </div>
                           </div>
+                          <hr />
+                          <h3>Personal Identifiable Information</h3>
+                            <div class="field">
+                              <label class="checkbox">
+                                <input type="checkbox" id="metadata-no-pii" name="metadata-no-pii">
+                                The uploaded data meets submission requirements and does not contain any personally
+                                identifiable information or protected health information
+                                (<a href="https://github.com/IGS/gEAR/blob/main/docs/wiki/UploadingOverview.md#data-requirements" target="_blank">more information</a>)
+                              </label>
+                            </div>
+                            <hr />
                           <div class="field">
                             <div class="control">
                               <button id="metadata-form-submit" class="button is-primary">Submit metadata</button>
@@ -735,6 +756,7 @@
                           for spatial data from a platform we currently do not support.
                         </p>
                         <div class="control my-3">
+                          <label for="select-spatial-platform" class="is-sr-only">Select a spatial platform</label>
                           <div class="select is-fullwidth">
                             <select name="spatial-platform" id="select-spatial-platform">
                               <option value="">Select one</option>
@@ -765,8 +787,8 @@
                       <div class="box format-selection-box">
                         <h3>Epigenetic Data</h3>
                         <p class="format-description">
-                          If a UCSC trackhub hub.txt file is linked, it as well as its associated
-                          metadata files and track files will be cloned to the server.  Currently,
+                          If a UCSC track hub 'hub.txt' file is linked, it and its associated
+                          metadata and track files will be cloned to the server.  Currently,
                           only BigBed and BigWig files are supported.
                         </p>
                         <p class="format-description">
@@ -791,7 +813,7 @@
                           </li>
                         </ul>
                         <div class="control">
-                          <button data-format="gosling" class="button is-primary is-fullwidth format-selector" disabled>
+                          <button data-format="gosling" class="button is-primary is-fullwidth format-selector">
                             <span class="icon">
                               <i class="mdi mdi-checkbox-blank-outline"></i>
                             </span>
@@ -804,103 +826,188 @@
 
                   <hr />
 
-                  <div id="dataset-upload-columns" class="columns">
-                    <div class="column is-6">
-                      <div class="field">
-                        <label class="label">
-                          Upload dataset file
-                          <span class="icon has-tooltip-right has-tooltip-arrow"
-                                data-tooltip="Choose the file to upload.">
-                              <i class="mdi mdi-information"></i>
-                          </span>
-                        </label>
-                        <div class="file has-name is-fullwidth">
-                          <label class="file-label is-fullwidth">
-                            <input class="file-input is-fullwidth" type="file" id="dataset-file-input" name="dataset-file-input">
-                            <span class="file-cta">
-                              <span class="file-icon">
-                                <i class="mdi mdi-upload"></i>
-                              </span>
-                              <span class="file-label is-fullwidth">
-                                Choose
-                              </span>
+                  <div id="dataset-upload-c" class="pb-3">
+                    <div id="dataset-upload-columns" class="columns">
+                      <div class="column is-6">
+                        <div class="field">
+                          <h3 class="label">
+                            Upload dataset file
+                            <span class="icon has-tooltip-right has-tooltip-arrow"
+                                  data-tooltip="Choose the file to upload.">
+                                <i class="mdi mdi-information"></i>
                             </span>
-                            <span class="file-name" id="dataset-file-name">
-                              No file chosen
-                            </span>
-                          </label>
+                          </h3>
+                          <div class="file has-name is-fullwidth">
+                            <label class="file-label is-fullwidth">
+                              <input class="file-input is-fullwidth" type="file" id="dataset-file-input" name="dataset-file-input">
+                              <span class="file-cta">
+                                <span class="file-icon">
+                                  <i class="mdi mdi-upload"></i>
+                                </span>
+                                <span class="file-label is-fullwidth">
+                                  Choose
+                                </span>
+                              </span>
+                              <span class="file-name" id="dataset-file-name">
+                                No file chosen
+                              </span>
+                            </label>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div class="column is-6 is-hidden">
-                      <div class="field">
-                        <label class="label">
-                          Or provide a URL
-                          <span class="icon has-tooltip-right has-tooltip-arrow"
-                                data-tooltip="Provide a URL to a supported dataset.">
-                              <i class="mdi mdi-information"></i>
-                          </span>
-                        </label>
-                        <div class="control my-3">
-                          <div class="select is-fullwidth">
-                            <select name="trackhub-assembly-select" id="trackhub-assembly-select">
-                              <option value="">Select one</option>
-                              <option value="hg19">Human (hg19)</option>
-                              <option value="hg38">Human (hg38)</option>
-                              <option value="mm10">Mouse (mm10)</option>
-                              <option value="galGal6">Chicken</option>
-                              <option value="rn6">Rat</option>
-                              <option value="danRer10">Zebrafish</option>
-                            </select>
+                      <div class="column is-6 is-hidden">
+                        <div class="field">
+                          <h3 class="label">
+                            Or provide a URL
+                            <span class="icon has-tooltip-right has-tooltip-arrow"
+                                  data-tooltip="Provide a URL to a supported dataset.">
+                                <i class="mdi mdi-information"></i>
+                            </span>
+                          </h3>
+                          <div class="control">
+                            <input class="input" type="text" name="dataset-url" id="dataset-url-input" placeholder="Provide a URL to a supported dataset (COMING SOON)">
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                  <div id="trackhub-upload-columns" class="columns is-hidden">
-                    <div class="column is-6">
-                      <div class="field">
-                        <label class="label">
-                          Provide UCSC track hub URL
-                          <span class="icon has-tooltip-right has-tooltip-arrow"
-                                data-tooltip="Provide a URL to the UCSC track hub hub.txt file.">
-                              <i class="mdi mdi-information"></i>
-                          </span>
-                        </label>
-                        <div class="control">
-                          <input class="input" type="text" name="trackhub-url" id="trackhub-url-input" placeholder="Ex: https://umgear.org/tracks/Litao_bigwigs/hub.txt">
-                        </div>
-                      </div>
-                    </div>
-                    <div class="column is-6">
-                      <div class="field">
-                        <label class="label">
-                          Select the assembly to get tracks for.
-                          <span class="icon has-tooltip-right has-tooltip-arrow"
-                                data-tooltip="Select the assembly to get tracks for. Currently Gosling only supports single-organism tracks">
-                              <i class="mdi mdi-information"></i>
-                          </span>
-                        </label>
-                        <div class="control">
-                          <input class="input" type="text" name="trackhub-url" id="trackhub-url-input" placeholder="Ex: https://umgear.org/tracks/Litao_bigwigs/hub.txt">
-                        </div>
+                    <div class="field">
+                      <div class="control">
+                        <button class="button is-primary" id="dataset-upload-submit" disabled>Upload dataset</button>
                       </div>
                     </div>
                   </div>
                   <div id="dataset-upload-status" class="is-hidden">
-                    <p class="mt-2 mb-0 pt-2 pb-0">
+                    <p class="mt-2 mb-0 pt-2 pb-0 icon-text">
                       <span class="icon">
                         <i class="mdi mdi-information"></i>
                       </span>
                       <span id="dataset-upload-status-message"></span>
                     </p>
+                    <div class="field">
+                      <progress id="dataset-upload-progress" class="progress is-medium" value="0" max="100"></progress>
+                    </div>
                   </div>
-                  <div class="field">
-                    <progress id="dataset-upload-progress" class="progress is-medium" value="0" max="100"></progress>
+
+                  <div id="trackhub-upload-c" class="pb-3 is-hidden">
+                    <h2 class="subtitle">[Optional] Prepopulate track hub fields</h2>
+                    <div id="trackhub-upload-columns" class="columns">
+                      <div class="column is-6">
+                        <div class="field">
+                          <h3 class="label">
+                            Provide UCSC track hub URL to preload tracks
+                            <span class="icon has-tooltip-arrow"
+                                  data-tooltip="Provide a URL to the UCSC track hub 'hub.txt' file.">
+                                <i class="mdi mdi-information"></i>
+                            </span>
+                          </h3>
+                          <div class="control">
+                            <input class="input" type="text" id="trackhub-url-input" placeholder="Ex: https://umgear.org/tracks/Litao_bigwigs/hub.txt">
+                          </div>
+                        </div>
+                      </div>
+                      <div class="column is-6">
+                          <div class="field">
+                              <h3 class="label">
+                                  Or upload a hub.txt file
+                                  <span class="icon has-tooltip-arrow"
+                                        data-tooltip="Upload a local hub.txt file instead of providing a URL.">
+                                      <i class="mdi mdi-information"></i>
+                                  </span>
+                              </h3>
+                              <div class="file has-name">
+                                  <label class="file-label">
+                                      <input class="file-input" type="file" id="trackhub-file-input" accept=".txt">
+                                      <span class="file-cta">
+                                          <span class="file-icon">
+                                              <i class="mdi mdi-upload-box" aria-hidden="true"></i>
+                                          </span>
+                                          <span class="file-label" id="trackhub-file-label">Upload hub.txt</span>
+                                      </span>
+                                      <span class="file-name" id="trackhub-file-name"></span>
+                                  </label>
+                              </div>
+                          </div>
+                      </div>
+                    </div>
+                    <div class="columns">
+                      <div class="column is-4">
+                        <div class="field">
+                          <h3 class="label">
+                            Select the assembly to associate tracks with.
+                            <span class="icon has-tooltip-arrow"
+                                  data-tooltip="Select the assembly to get tracks for.
+Currently Gosling only supports single-organism tracks">
+                                <i class="mdi mdi-information" aria-hidden="true"></i>
+                            </span>
+                          </h3>
+                          <div class="control">
+                            <div class="select">
+                              <select id="trackhub-assembly-select">
+                                <option value="">Select one</option>
+                                <option value="hg19">Human (hg19)</option>
+                                <option value="hg38">Human (hg38)</option>
+                                <option value="mm10">Mouse (mm10)</option>
+                                <option value="galGal6" disabled>Chicken (COMING SOON)</option>
+                                <option value="rn6">Rat</option>
+                                <option value="danRer10">Zebrafish</option>
+                              </select>
+                              <p class="help">Required if providing a track hub URL</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div id="trackhub-validation-warnings" class="notification is-warning is-hidden">
+                      <p class="icon-text mb-3">
+                          <span class="icon">
+                              <i class="mdi mdi-alert-outline"></i>
+                          </span>
+                          <span><strong>Hub file contains relative file references</strong></span>
+                      </p>
+                      <p class="mb-3">
+                          Your hub.txt file contains relative or local file paths that will not be automatically prepopulated.
+                      </p>
+                      <p class="mb-3">
+                          You will need to upload or link these files manually in the track configuration step after clicking "Configure Trackhub".
+                      </p>
+                      <p class="mb-3 is-hidden" id="use-one-file-warning">
+                          Before proceeding, you may want to consider updating your hub.txt file to <a href="https://genome.ucsc.edu/goldenPath/help/hgTracksHelp.html#UseOneFile" target="_blank" aria-label="Link to UCSC Track Hub documentation">use "one file" mode</a> so that the track information can be populated if you plan to upload track files.
+                      </p>
+                    </div>
+                    <div id="trackhub-upload-status" class="is-hidden">
+                      <p class="mt-2 mb-0 pt-2 pb-0 icon-text">
+                        <span class="icon">
+                          <i class="mdi mdi-information" aria-hidden="true"></i>
+                        </span>
+                        <span id="trackhub-upload-status-message"></span>
+                      </p>
+                    </div>
+                    <div class="field mt-3">
+                      <div class="control">
+                        <button class="button is-primary" id="configure-trackhub-submit">Configure Trackhub</button>
+                      </div>
+                    </div>
                   </div>
+                </div>
+
+                <div id="step-build-trackhub-c" class="step-c is-hidden">
+                  <h1>Step - Build track hub</h1>
+
+                    <section id="hub-section"></section>
+                    <section id="track-section"></section>
+
+                  <!-- Submit Button -->
                   <div class="field">
                     <div class="control">
-                      <button class="button is-primary" id="dataset-upload-submit" disabled>Upload dataset</button>
+                      <div class="notification is-info is-light">
+                        <p class="icon-text">
+                          <span class="icon">
+                            <i class="mdi mdi-alert-circle-outline"></i>
+                          </span>
+                          <span>Please double-check that the hub and track information is correct before proceeding. Contents will be copied over to the server.</span>
+                        </p>
+                      </div>
+                      <button id="build-trackhub-submit" type="submit" class="button is-primary" disabled>Build track hub</button>
                     </div>
                   </div>
                 </div>
@@ -922,6 +1029,11 @@
                   </div>
                   <div class="field">
                     <progress id="dataset-processing-progress" class="progress is-medium" value="" max="100"></progress>
+                    <!-- Track status list for Gosling uploads -->
+                    <div id="track-status-container" class="is-hidden mt-3">
+                      <h4 class="subtitle">Track Processing Status</h4>
+                      <ul id="track-status-list" class="ml-4"></ul>
+                    </div>
                   </div>
                   <div class="field">
                     <div class="control">
@@ -939,7 +1051,7 @@
                     <div class="column">
                       <!-- set whether dataset is public or private -->
                       <div class="field">
-                        <label class="label">
+                        <label class="label" for="dataset-visibility-public">
                           Dataset visibility
                           <span class="icon has-tooltip-right has-tooltip-arrow"
                                 data-tooltip="Choose whether this dataset is public or private. Public datasets are visible to all users.">
@@ -948,7 +1060,7 @@
                         </label>
                         <div class="control">
                           <label class="radio">
-                            <input type="radio" name="dataset-visibility" value="public">
+                            <input type="radio" id="dataset-visibility-public" name="dataset-visibility" value="public">
                             Public
                           </label>
                           <label class="radio">
@@ -1038,7 +1150,7 @@
                     Your dataset has been submitted and is now available in the Dataset Explorer.
                   </p>
                   <hr />
-                  <div class="columns">
+                  <div class="columns" id="dataset-curate-div">
                     <div class="column">
                       <h3>What is curation?</h3>
                       <p>
@@ -1056,6 +1168,23 @@
                     <div class="column">
                       <img class="img-fluid" src="/img/gear_plot_type_examples.png" alt="Dataset curation examples" />
                     </div>
+                  </div>
+                  <div class="columns is-hidden" id="dataset-no-curate-div">
+                    <div class="column">
+                      <h3>Dataset is ready to view</h3>
+                      <p>
+                        Click the button to redirect to the gene expression page, where you can view a display after searching a gene.
+                      </p>
+                      <div class="field mt-6">
+                        <div class="control">
+                          <button class="button is-primary" id="dataset-explorer-redirect">
+                            View dataset
+                            <span class="icon pl-3">
+                              <i class="mdi mdi-chevron-right"></i>
+                            </span>
+                          </button>
+                        </div>
+
                   </div>
                 </div>
               </div>
@@ -1126,7 +1255,7 @@
 
       <ul>
           <li>(Required) 'filtered_feature_bc_matrix.h5': Counts and metadata file.</li>
-          <li>(Required) 'analysis/clustering/gene_expression_graphclust/clusters.csv': Clustering information with both "Barcode" and "Cluster" columns.</li>
+          <li>(Required) 'clusters.csv': Clustering information with both "Barcode" and "Cluster" columns.</li>
           <li>(Required) 'spatial/tissue_hires_image.png': High resolution image.</li>
           <li>(Required) 'spatial/tissue_lowres_image.png': Low resolution image.</li>
           <li>(Required) 'spatial/scalefactors_json.json': Scalefactors file.</li>
@@ -1136,7 +1265,9 @@
       <br />
       Recommended tar command to create tarball:
       <br />
-      <code>tar cvf <dataset>.tar <dataset>_filtered_feature_bc_matrix.h5 spatial analysis</code>
+      <code>tar cvf spatialdata.tar spatialdata_filtered_feature_bc_matrix.h5 clusters.csv spatial</code>
+      <br /><br />
+      For the "filtered_feature_bc_matrix.h5" file, it needs to be prepended with a prefix and underscore.  The prefix "spatialdata_" is used in the example tar command.
       <br /><br />
       For the "clusters.csv" file, it is preferable if the"Cluster" column has actual annotation labels instead of numbers from the output. This provides more value to other users.
     </template>
@@ -1146,7 +1277,7 @@
 
       <ul>
           <li>(Required) 'binned_outputs/square_008um/filtered_feature_bc_matrix.h5': Counts and metadata file.</li>
-          <li>(Required) 'binned_outputs/square_008um/analysis/clustering/gene_expression_graphclust/clusters.csv': Clustering information with both "Barcode" and "Cluster" columns.</li>
+          <li>(Required) 'clusters.csv': Clustering information with both "Barcode" and "Cluster" columns.</li>
           <li>(Required) 'binned_outputs/feature_slice.h5': Feature slice file.</li>
           <li>(Required) 'binned_outputs/square_008um/spatial/scalefactors_json.json': Scalefactors file.</li>
           <li>(Required) 'binned_outputs/square_008um/spatial/tissue_positions.parquet': Spots positions file.</li>
@@ -1158,7 +1289,7 @@
       <br /><br />
       Recommended tar command to create tarball:
       <br />
-      <code>tar cvf <dataset>.tar binned_outputs/feature_slice.h5 binned_outputs/square_008um</code>
+      <code>tar cvf spatialdata.tar binned_outputs/feature_slice.h5 clusters.csv binned_outputs/square_008um</code>
       <br /><br />
       For the "clusters.csv" file, it is preferable if the "Cluster" column has actual annotation labels instead of numbers from the output. This provides more value to other users.
       <br /><br />
@@ -1177,7 +1308,7 @@
           <li>'cell_boundaries.parquet': Polygons of cell boundaries.</li>
           <li>'transcripts.parquet': File containing transcripts.</li>
           <li>'cells.zarr.zip': Zarr file containing cell and nucleus label data (NOT USING FOR NOW)</li>
-          <li>'analysis/clustering/gene_expression_graphclust/clusters.csv': Clustering information with both "Barcode" and "Cluster" columns.</li>
+          <li>'clusters.csv': Clustering information with both "Barcode" and "Cluster" columns.</li>
       </ul>
       <br />
       More information on Xenium outputs can be found here: https://www.10xgenomics.com/support/software/xenium-ranger/latest/analysis/outputs/XR-output-overview
@@ -1200,6 +1331,19 @@
         insertVersionedCSS('css/common.v2.css', prefs.cache_version);
         insertVersionedCSS('css/upload_dataset.css', prefs.cache_version);
       </script>
+
+      <!-- WCAG accessibility widget -->
+    <script>
+    window.ACCESSIBILITY_WIDGET_CONFIG = {
+      // Position on left side
+      widgetPosition: {
+        side: 'left',
+        left: '20px',
+        bottom: '20px'
+      }
+    };
+    </script>
+      <script src="https://unpkg.com/accessibility-widgets@latest/widget.js"></script>
 
     </body>
 </html>

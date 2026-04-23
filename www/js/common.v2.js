@@ -616,6 +616,7 @@ const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { 
     toast.classList.add("notification", "js-toast", levelClass, "animate__animated", "animate__fadeInUp");
     const toastButton = document.createElement("button");
     toastButton.classList.add("delete");
+    toastButton.setAttribute("aria-label", "Dismiss notification");
     toastButton.addEventListener("click", (event) => {
         const notification = event.currentTarget.closest(".js-toast.notification");
         notification.remove();
@@ -623,7 +624,19 @@ const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { 
     toast.appendChild(toastButton);
     toast.appendChild(opts?.isHTML ? (() => {
         const span = document.createElement("span");
-        span.innerHTML = msg;
+        const lines = String(msg).split("\n");
+        for (let i = 0; i < lines.length; i++) {
+            span.appendChild(document.createTextNode(lines[i]));
+            if (i < lines.length - 1) {
+                span.appendChild(document.createElement("br"));
+            }
+        }
+        lines.forEach((line, index) => {
+            if (index > 0) {
+                span.appendChild(document.createElement("br"));
+            }
+            span.appendChild(document.createTextNode(line));
+        });
         return span;
     })() : document.createTextNode(msg));
 
@@ -979,6 +992,15 @@ const apiCallsMixin = {
         // NOTE: gene_symbol should already be already passed to plotConfig
         const payload = { ...plotConfig, plot_type: plotType, analysis, colorblind_mode: apiCallsMixin.colorblindMode };
         const {data} = await axios.post(`/api/plot/${datasetId}/mg_plotly`, payload, otherOpts);
+        return data;
+    },
+    /**
+     * Fetches citation information for a given PubMed ID.
+     * @param {string} pubmedId - The PubMed ID for which to fetch citation information.
+     * @returns {Promise<object>} - A promise that resolves to the fetched citation data.
+     */
+    async fetchCitationFromPubmedId(pubmedId) {
+        const {data} = await axios.post("cgi/get_citation_from_pubmed_id.cgi", convertToFormData({pubmed_id: pubmedId}));
         return data;
     },
     /**

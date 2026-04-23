@@ -13,11 +13,8 @@ from pathlib import Path
 lib_path = str(Path(__file__).resolve().parents[1].joinpath("lib"))
 sys.path.append(lib_path)
 
-# https://stackoverflow.com/a/35904211/1368079
-this = sys.modules[__name__]
-from gear.serverconfig import ServerConfig  # noqa: E402
-
-this.servercfg = ServerConfig().parse() # type: ignore
+from gear.serverconfig import ServerConfig
+servercfg = ServerConfig().parse()
 
 queue_name = "projectr"
 os.makedirs("/var/log/gEAR_queue", exist_ok=True)
@@ -31,6 +28,7 @@ pid = os.getpid()
 def _on_request(channel, method_frame, properties, body):
     """Callback to handle new message. Also replies to original publisher queue."""
 
+    # TODO: Move code into "lib" and import. Figure out how to cleanly import geardb.
     www_path = str(Path(__file__).resolve().parents[1].joinpath("www"))
     sys.path.append(www_path)
 
@@ -68,7 +66,6 @@ def _on_request(channel, method_frame, properties, body):
                 algorithm,
                 zscore,
                 full_output,
-                fh,
             )
             channel.basic_ack(delivery_tag=delivery_tag)
         except Exception as e:
@@ -147,7 +144,7 @@ class Consumer:
 
 def main() -> None:
     # TODO: potentially add multiprocessing to start workers via script rather than running multiple times on command line
-    host = this.servercfg["projectR_service"]["queue_host"]
+    host = servercfg["projectR_service"]["queue_host"]
     consumer = Consumer(host=host)
     consumer.run()
 
