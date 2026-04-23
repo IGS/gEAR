@@ -624,7 +624,13 @@ const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { 
     toast.appendChild(toastButton);
     toast.appendChild(opts?.isHTML ? (() => {
         const span = document.createElement("span");
-        span.innerHTML = msg.replace(/\n/g, "<br>");
+        const lines = String(msg).split("\n");
+        lines.forEach((line, index) => {
+            if (index > 0) {
+                span.appendChild(document.createElement("br"));
+            }
+            span.appendChild(document.createTextNode(line));
+        });
         return span;
     })() : document.createTextNode(msg));
 
