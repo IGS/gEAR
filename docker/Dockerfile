@@ -2,27 +2,91 @@
 # Dockerfile to build gEAR web application
 ############################################################
 
-FROM ubuntu:jammy
-# ubuntu 22.04
+# Stage 1: Build Python with --enable-shared
+FROM ubuntu:jammy AS python-builder
 
-ARG TARGETARCH
-
-LABEL maintainer="Shaun Adkins <sadkins@som.umaryland.edu>"
-
-ARG CMAKE_VERSION=3.19.8
-ARG CMAKE_URL=https://github.com/Kitware/CMake/archive/refs/tags/v${CMAKE_VERSION}.tar.gz
-
-ARG PYTHON_VERSION=3.10.4
+ARG PYTHON_VERSION=3.14.4
 ARG PYTHON_URL=https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tar.xz
 
+# Install build dependencies
+RUN apt-get -qq update \
+  && DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
+  ca-certificates \
+  libffi-dev \
+  libsqlite3-dev \
+  libreadline-dev \
+  libncursesw5-dev \
+  libssl-dev \
+  tk-dev \
+  libgdbm-dev \
+  libc6-dev \
+  libbz2-dev \
+  zlib1g-dev \
+  wget \
+  build-essential \
+  && apt -qq clean autoclean \
+  && apt -qq autoremove -y \
+  && rm -rf /var/lib/apt/lists/*
+
+# Build Python with shared library support
+# --enable-shared is needed due to the Apache mod_wsgi module needing to link against the Python shared library.
+WORKDIR /tmp
+RUN wget $PYTHON_URL \
+  && tar -xf Python-${PYTHON_VERSION}.tar.xz \
+  && cd Python-${PYTHON_VERSION} \
+  && ./configure --prefix=/opt/Python-${PYTHON_VERSION} --enable-optimizations --enable-shared \
+  && make install \
+  && cd /tmp \
+  && rm -rf Python-${PYTHON_VERSION}*
+
+# Stage 2: Install R packages (using Bioconductor base image)
+FROM bioconductor/bioconductor_docker:3.21-r-4.5.2 AS r-builder
+
+# Install additional runtime dependencies if needed
+RUN apt-get -qq update \
+  && DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
+  ca-certificates \
+  curl \
+  # to build rpy2
+  python3-pip \
+  build-essential \
+  && apt -qq clean autoclean \
+  && apt -qq autoremove -y \
+  && rm -rf /var/lib/apt/lists/*
+
+# Copy install scripts
+COPY ./install_packages.R /tmp/
+
+# Install R packages
+RUN /usr/local/bin/Rscript --vanilla /tmp/install_packages.R || exit 1
+
+# Pre-build rpy2 wheel
+RUN pip3 wheel --no-cache-dir --no-deps --wheel-dir /tmp/wheels rpy2==3.6.7
+
+# Stage 3: Final runtime image
+FROM ubuntu:jammy
+
+ARG TARGETARCH
+# Some package building issues when attempting to use 3.14
+ARG PYTHON_MAJOR_VERSION=3.14
+ARG PYTHON_FULL_VERSION=${PYTHON_MAJOR_VERSION}.4
+ARG CMAKE_VERSION=3.19.8
+ARG CMAKE_URL=https://github.com/Kitware/CMake/archive/refs/tags/v${CMAKE_VERSION}.tar.gz
 ARG GEAR_URL=https://www.github.com/IGS/gEAR.git
 ARG GEAR_BRANCH=devel
 
-# Install packages to Ubuntu
+# For pybigwig dependency
+ENV PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
+
+LABEL maintainer="Shaun Adkins <sadkins@som.umaryland.edu>"
+
+# Install runtime packages
 RUN apt-get -qq update \
   && DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
+  gcc \
+  g++ \
+  make \
   libffi-dev \
-  libsqlite-dev \
   libsqlite3-dev \
   libhdf5-dev \
   libreadline-dev \
@@ -32,11 +96,8 @@ RUN apt-get -qq update \
   libgdbm-dev \
   libc6-dev \
   libbz2-dev \
-  lzma \
-  liblzma-dev \
   hdf5-helpers \
   hdf5-tools \
-  libhdf5-dev \
   zlib1g-dev \
   libblas-dev \
   liblapack-dev \
@@ -44,25 +105,14 @@ RUN apt-get -qq update \
   libxml2-dev \
   libhdf5-serial-dev \
   libwebp-dev \
-  cmake \
+  ca-certificates \
   curl \
   rsync \
   wget \
   git \
   vim \
   unzip \
-  software-properties-common \
-  build-essential \
-  gcc \
-  python3-dev \
-  python3-tk \
-  openssh-server \
   llvm \
-  # Required for R
-	gfortran \
-  # Required for rpy2
-  r-cran-rjava \
-  # Required for R-package devtools (which is required for SJD)
   libharfbuzz-dev \
   libfribidi-dev \
   libfreetype6-dev \
@@ -70,57 +120,36 @@ RUN apt-get -qq update \
   libpng-dev \
   libtiff5-dev \
   libjpeg-dev \
-  # Required for Panel (though we use Panel in a separate image)
   libblosc-dev \
-  # Apache2 and PHP
-  libapache2-mod-wsgi-py3 \
   apache2-dev \
   apache2 \
   php \
   libapache2-mod-php \
   php-gd \
-  # Cleanup
   && apt -qq clean autoclean \
   && apt -qq autoremove -y \
   && rm -rf /var/lib/apt/lists/*
 
-ENV LLVM_CONFIG=/usr/bin/llvm-config-9
+ENV LLVM_CONFIG=/usr/bin/llvm-config-14
 
-# Install CMake
-# Ubuntu Bionic package is 3.10 which is too outdated for louvain-igraph install
-# The Kitware PPA repo for apt does not go earlier than 3.20, and anything later than 3.20 also breaks
-# So need to build from source instead
+# Copy compiled Python from builder stage
+COPY --from=python-builder /opt/Python-${PYTHON_FULL_VERSION} /opt/Python-${PYTHON_FULL_VERSION}
 
-WORKDIR /tmp
-RUN wget $CMAKE_URL \
-  && tar -xzf v${CMAKE_VERSION}.tar.gz \
-  && cd CMake-${CMAKE_VERSION} \
-  && ./bootstrap \
-  && make install \
-  && rm -rf CMake-${CMAKE_VERSION} v${CMAKE_VERSION}.tar.gz
+# Copy compiled R from r-builder stage
+COPY --from=r-builder /usr/local/lib/R /usr/local/lib/R
 
-# ProjectR install.  Must be done before rpy2 is installed
-# NOTE: Speed this up... so slow for Linux install.  Maybe build on actual linux hardware, or do a multi-stage docker build
-COPY ./install_bioc.sh /tmp/
-COPY ./install_bioc.R /tmp/
-COPY ./install_packages.R /tmp/
-WORKDIR /tmp
-RUN /tmp/install_bioc.sh
-RUN Rscript --vanilla install_packages.R || exit 1
+# Copy pre-built rpy2 wheel
+COPY --from=r-builder /tmp/wheels /tmp/wheels
 
-# Install Python (with configuration options needed for gEAR)
-# TODO: test using a apt install instead, now that virtualenv is not needed
-WORKDIR /tmp
-RUN wget $PYTHON_URL \
-  && tar -xf Python-${PYTHON_VERSION}.tar.xz \
-  && cd Python-${PYTHON_VERSION} \
-  && ./configure --prefix=/opt/Python-${PYTHON_VERSION} --enable-optimizations --enable-shared \
-  && make install \
-  && cd /tmp \
-  && rm -rf  Python-${PYTHON_VERSION}* \
-  && mkdir -p /opt/bin \
-  && ln -s /opt/Python-${PYTHON_VERSION}/bin/python3 /opt/bin/python3 \
-  && ln -s /opt/Python-${PYTHON_VERSION}/lib/libpython3.10.so.1.0 /usr/lib/
+
+# Link Python and shared library
+RUN mkdir -p /opt/bin \
+  && ln -s /opt/Python-${PYTHON_FULL_VERSION}/bin/python3 /opt/bin/python3 \
+  && ln -s /opt/Python-${PYTHON_FULL_VERSION}/lib/libpython3.14.so.1.0 /usr/lib/
+
+# LD_LIBRARY_PATH needs R library path for rpy2 compatibility
+ENV LD_LIBRARY_PATH="/usr/local/lib/R/lib"
+ENV R_HOME="/usr/local/lib/R"
 
 # Get gEAR code.  Currently cannot do a git clone by normal means due to the repo being "private"
 WORKDIR /opt
@@ -134,22 +163,17 @@ COPY ./gear.ini.docker /opt/gEAR/gear.ini
 # This set of modules will be used by the main Python install and scripts that call it (like CGI ones)
 # numpy is installed before requirements.txt because of dependency requirement issues
 # NOTE: Installing custom version of diffxpy that is based on the latest commit on the main branch (at the time)
-WORKDIR /opt/Python-${PYTHON_VERSION}/bin
-COPY ./requirements.full.txt /opt/gEAR/docker/requirements.full.txt
-RUN ./pip3 install --upgrade pip \
-  # wheel is needed for the installation of biopython
-  && ./pip3 install wheel \
+WORKDIR /opt/Python-${PYTHON_FULL_VERSION}/bin
+COPY ./requirements.txt /opt/gEAR/docker/requirements.txt
+RUN ./pip3 install --upgrade pip setuptools wheel \
   # Ran into "error: resolution-too-deep" so used `pip freeze` from a production env to create requirements.full.txt
   # Source: https://medium.com/@ebenyemiriam17/error-resolution-too-deep-how-i-fixed-my-pip-dependency-resolution-error-9cb3471344f9
-  && ./pip3 install -r /opt/gEAR/docker/requirements.full.txt \
+  && ./pip3 install -r /opt/gEAR/docker/requirements.txt  --prefer-binary \
   # Uninstall dask-expr to avoid issues with spatialdata (https://github.com/scverse/spatialdata/pull/570)
   && ./pip3 uninstall dask-expr -y \
-  && apt-get -qq update \
-  && (chmod 777 /opt/Python-${PYTHON_VERSION}/lib/python${PYTHON_VERSION}/site-packages/scanpy/preprocessing/__pycache__ || true)
-
-# Scikit-learn lib -> https://stackoverflow.com/a/70016416
-#ENV LD_PRELOAD="/usr/lib/aarch64-linux-gnu/libgomp.so.1:/opt/Python-${PYTHON_VERSION}/lib/python3.10/site-packages/scikit_learn.libs/libgomp-d22c30c5.so.1.0.0"
-ENV LD_LIBRARY_PATH="/usr/local/lib/R/lib:$LD_LIBRARY_PATH"
+  && (chmod 777 /opt/Python-${PYTHON_FULL_VERSION}/lib/python${PYTHON_MAJOR_VERSION}/site-packages/scanpy/preprocessing/__pycache__ || true) \
+  && rm -rf ~/.cache/pip \
+  && find /opt/Python-${PYTHON_FULL_VERSION} -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
 # Apache things
 WORKDIR /opt/gEAR
@@ -167,4 +191,4 @@ RUN a2ensite umgear.conf
 RUN a2enmod rewrite cgi wsgi proxy proxy_http proxy_wstunnel include headers
 EXPOSE 80
 
-CMD /usr/sbin/apachectl -D FOREGROUND
+CMD ["/usr/sbin/apachectl", "-D", "FOREGROUND"]

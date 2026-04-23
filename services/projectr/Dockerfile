@@ -1,45 +1,47 @@
 
-# Use the official lightweight Python image.
-# https://hub.docker.com/_/python
-FROM python:3.10
+# Stage 1: Install R packages (using Bioconductor base image)
+FROM bioconductor/bioconductor_docker:3.21-r-4.5.2 AS r-builder
 
-# Allow statements and log messages to immediately appear in the Knative logs
-ENV PYTHONUNBUFFERED=True
-
+# Install additional runtime dependencies if needed
 RUN apt-get -qq update \
-    && DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
-    # Required for R
-	gfortran \
-    # Required for rpy2
-    r-cran-rjava \
-    # Required for R-package devtools (which is required for SJD)
-    libharfbuzz-dev \
-    libfribidi-dev \
-    libfreetype6-dev \
-    libgit2-dev \
-    libpng-dev \
-    libtiff5-dev \
-    libjpeg-dev \
-    libwebp-dev \
-    # Cleanup
-    && apt -qq clean autoclean \
-    && apt -qq autoremove -y \
-    && rm -rf /var/lib/apt/lists/*
+  && DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
+  ca-certificates \
+  curl \
+  # to build rpy2
+  python3-pip \
+  build-essential \
+  && apt -qq clean autoclean \
+  && apt -qq autoremove -y \
+  && rm -rf /var/lib/apt/lists/*
 
-# ProjectR install.  Must be done before rpy2 is installed
-# NOTE: Speed this up... so slow for Linux install.  Maybe build on actual linux hardware, or do a multi-stage docker build
-COPY ./install_bioc.sh /tmp/
-COPY ./install_bioc.R /tmp/
+# Copy install scripts
 COPY ./install_packages.R /tmp/
-WORKDIR /tmp
-RUN /tmp/install_bioc.sh
-RUN Rscript --vanilla install_packages.R || exit 1
+
+# Install R packages
+RUN /usr/local/bin/Rscript --vanilla /tmp/install_packages.R || exit 1
+
+# Pre-build rpy2 wheel
+RUN pip3 wheel --no-cache-dir --no-deps --wheel-dir /tmp/wheels rpy2==3.6.7
+
+
+# Stage 2: Final image
+FROM python:3.14-slim
+
+# Copy compiled R from r-builder stage
+COPY --from=r-builder /usr/local/lib/R /usr/local/lib/R
+
+# Copy pre-built rpy2 wheel
+COPY --from=r-builder /tmp/wheels /tmp/wheels
+
+# LD_LIBRARY_PATH needs R library path for rpy2 compatibility
+ENV LD_LIBRARY_PATH="/usr/local/lib/R/lib"
+ENV R_HOME="/usr/local/lib/R"
 
 # Install production dependencies.
 COPY ./requirements.txt /tmp/
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
-
-ENV LD_LIBRARY_PATH="/usr/local/lib/R/lib:$LD_LIBRARY_PATH"
+RUN pip install --no-cache-dir -r /tmp/requirements.txt \
+  && rm -rf ~/.cache/pip \
+  && find /opt/Python-${PYTHON_FULL_VERSION} -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
 # Copy local code to the container image.
 ENV APP_HOME=/app
@@ -54,4 +56,4 @@ COPY . ./
 
 # SAdkins - "2 * CPU + 1" formula to set Gunicorn workers and threads together
 # https://medium.com/building-the-system/gunicorn-3-means-of-concurrency-efbb547674b7
-CMD exec gunicorn --bind :$PORT --workers 3 --threads 3 --timeout 0 main:app
+CMD ["exec", "gunicorn", "--bind", ":%{PORT:-8080}", "--workers", "3", "--threads", "3", "--timeout", "0", "main:app"]

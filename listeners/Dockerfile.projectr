@@ -1,4 +1,8 @@
-FROM python:3.11-slim
+FROM python:3.14-slim
+
+# For pybigwig dependency
+# TODO: Have specific requirements files for each listener
+ENV PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
 
 WORKDIR /gEAR
 
@@ -11,12 +15,13 @@ RUN apt-get update && apt-get install -y \
 
 # Copy requirements and install Python dependencies (context is gEAR root)
 COPY listeners/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt --prefer-binary \
+  && rm -rf ~/.cache/pip
 
 # Install lib/gear as editable package
 COPY lib/gear ./lib/gear
 COPY lib/setup.py ./lib/
-RUN pip install -e ./lib/
+#RUN pip install -e ./lib/
 
 # Copy consumer script
 RUN mkdir -p listeners

@@ -54,7 +54,6 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
       aiohttp_retry==2.9.1 \
       anndata==0.10.6 \
       biocode==0.10.0 \
-      biopython==1.79 \
       cairosvg==2.7.1 \
       colorcet==3.1.0 \
       dash-bio==1.0.2 \
@@ -62,8 +61,6 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
       Flask==3.0.0 \
       Flask-RESTful==0.3.9 \
       gosling[all]==0.3.0 \
-      gunicorn \
-      h5py==3.10.0 \
       hic2cool==0.8.3 \
       jupyterlab==4.0.5 \
       jupyter==1.0.0 \
@@ -75,33 +72,26 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
       more_itertools==9.0.0 \
       mysql-connector-python==8.0.28 \
       numba==0.58.1 \
-      numexpr==2.8.4 \
       numpy==1.26.4 \
       opencv-python==4.5.5.64 \
       openpyxl==3.1.5 \
       pandas==2.2.1 \
       panel==1.8.7 \
       Pillow==10.2.0 \
-      pika==1.3.1 \
+      pika==1.3.2 \
       plotly==5.20.0 \
-      pyarrow==18.1.0 \ # v19 breaks reading spatial parquet files
       pybigwig==0.3.25 \
       python-dotenv==0.20.0 \
       requests==2.31.0 \
       rpy2==3.5.16 \
-      sanic \
       scanpy==1.10.1 \
-      scikit-learn==1.0.2 \
       scipy==1.11.04 \
-      seaborn==0.13.2 \
       setuptools<82 \ # need pkg_resources methods for some packages
       shadows==0.1a2 \
       spatialdata==0.4.0\
       spatialdata_io==0.1.6 \
       statsmodels==0.13.2 \
-      tables==3.9.2 \
-      watchfiles \
-      xlrd==1.2.0
+      watchfiles=1.1.1 \
     ./pip3 install -e ~jorvis/git/gEAR/lib/
     ./pip3 uninstall dask-expr -y
     sudo mkdir /opt/bin

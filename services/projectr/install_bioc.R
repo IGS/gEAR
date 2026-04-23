@@ -3,7 +3,7 @@
 # Install required packages
 tryCatch( {
     install.packages(c("BiocManager", "remotes"), dependencies=TRUE, repos="http://lib.stat.cmu.edu/R/CRAN/")
-    BiocManager::install(version = "3.19", ask=FALSE)  # required for R 4.4.0
+    BiocManager::install(version = "3.21", ask=FALSE)
     }, error = function(e) {
         message("Error: ", e$message)
         quit(status = 1, save = "no")
