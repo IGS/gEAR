@@ -23,6 +23,9 @@ HOST_DATASETS_ROOT = os.environ["HOST_DATASETS_ROOT"]
 HUB_USERHOMES_ROOT = "/srv/jupyterhub/userhomes"
 HUB_NOTEBOOKS_ROOT = "/srv/jupyterhub/notebooks"
 
+NOTEBOOK_UID = 1000
+NOTEBOOK_GID = 100
+
 c = get_config()
 
 # -----------------------------------------------------------------------------
@@ -76,7 +79,7 @@ c.DockerSpawner.environment = {
 }
 
 # Default resource limits
-c.Spawner.cpu_limit = HOST_SPAWNER_CPU_LIMIT
+c.Spawner.cpu_limit = float(HOST_SPAWNER_CPU_LIMIT)
 c.Spawner.mem_limit = HOST_SPAWNER_MEM_LIMIT
 
 # -----------------------------------------------------------------------------
@@ -106,7 +109,7 @@ async def gear_pre_spawn_hook(spawner: DockerSpawner):
     user_home_hub = os.path.join(HUB_USERHOMES_ROOT, username)
 
     os.makedirs(user_home_hub, exist_ok=True)
-    os.chown(user_home_hub, 1000, 100)
+    os.chown(user_home_hub, NOTEBOOK_UID, NOTEBOOK_GID)
 
     volumes = {
         user_home_host: {
@@ -117,7 +120,7 @@ async def gear_pre_spawn_hook(spawner: DockerSpawner):
 
     starter_dir = os.path.join(user_home_hub, "gear_starters")
     os.makedirs(starter_dir, exist_ok=True)
-    os.chown(starter_dir, 1000, 100)
+    os.chown(starter_dir, NOTEBOOK_UID, NOTEBOOK_GID)
 
     starter_filename = (
         "r_notebook_template.ipynb"
@@ -133,7 +136,7 @@ async def gear_pre_spawn_hook(spawner: DockerSpawner):
 
     if not os.path.exists(dst_template):
         shutil.copy2(src_template, dst_template)
-        os.chown(dst_template, 1000, 100)
+        os.chown(dst_template, NOTEBOOK_UID, NOTEBOOK_GID)
 
     if len(datasets) > 25:
         raise RuntimeError("Too many datasets requested for one session")
