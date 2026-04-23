@@ -897,14 +897,25 @@ class DatasetTile {
      * @param {string} shareId - The share ID of the dataset.
      * @param {string} language - The language for the Jupyter Notebook ('python' or 'r').
      */
-    launchJupyterNotebook(shareId, language) {
-        // Build the URL to launch the Jupyter Notebook
-        // This assumes JupyterHub is available at a specific endpoint
-        // and requires parameters for the dataset and language
-        const jupyterHubUrl = `./jupyter/hub/user-redirect/lab/tree/workspace?dataset_share_id=${shareId}&language=${language}`;
+    async launchJupyterNotebook(shareId, language) {
+        try {
+            // Call the CGI script to get the launch URL
+            const response = await fetch(`./cgi/get_jupyter_notebook_launch_url.cgi?share_id=${encodeURIComponent(shareId)}&language=${encodeURIComponent(language)}`);
+            const data = await response.json();
 
-        // Open in new tab
-        window.open(jupyterHubUrl, "_blank");
+            if (data.error) {
+                createToast(`Error launching Jupyter Notebook: ${data.error}`, "is-danger");
+                return;
+            }
+
+            if (data.url) {
+                // Open the JupyterHub launch URL in a new tab
+                window.open(data.url, "_blank");
+            }
+        } catch (error) {
+            logErrorInConsole(error);
+            createToast("Error launching Jupyter Notebook. Please try again.", "is-danger");
+        }
     }
 
     /**

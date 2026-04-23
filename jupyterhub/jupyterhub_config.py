@@ -11,6 +11,8 @@ sys.path.insert(0, "/srv/jupyterhub")
 
 from dockerspawner import DockerSpawner
 
+HOST_SPAWNER_CPU_LIMIT = os.environ.get("HOST_SPAWNER_CPU_LIMIT", "1")
+HOST_SPAWNER_MEM_LIMIT = os.environ.get("HOST_SPAWNER_MEM_LIMIT", "4G")
 HOST_JUPYTERHUB_ROOT = os.environ["HOST_JUPYTERHUB_ROOT"]
 HOST_USERHOMES_ROOT = os.path.join(HOST_JUPYTERHUB_ROOT, "userhomes")
 HOST_DATASETS_ROOT = os.environ["HOST_DATASETS_ROOT"]
@@ -55,8 +57,8 @@ c.DockerSpawner.use_internal_ip = True
 # Directory inside spawned notebook containers
 c.DockerSpawner.notebook_dir = "/home/jovyan"
 
-# Default image
-c.DockerSpawner.image = "gear-notebook:r"
+# Default image (is currently overridden in pre_spawn_hook based on launch token)
+#c.DockerSpawner.image = "gear-notebook:r"
 
 # Persistent home directories on host
 # Host path is relative to where the Hub container sees it:
@@ -70,8 +72,8 @@ c.DockerSpawner.environment = {
 }
 
 # Default resource limits
-c.Spawner.cpu_limit = 2
-c.Spawner.mem_limit = "16G"
+c.Spawner.cpu_limit = HOST_SPAWNER_CPU_LIMIT
+c.Spawner.mem_limit = HOST_SPAWNER_MEM_LIMIT
 
 # -----------------------------------------------------------------------------
 # Spawn hook: mount only authorized datasets
