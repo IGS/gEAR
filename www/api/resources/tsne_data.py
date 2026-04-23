@@ -17,6 +17,7 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import scanpy as sc
+import seaborn as sns
 from flask import request
 from flask_restful import Resource, reqparse
 from gear.analysis import SpatialAnalysis, get_analysis
@@ -36,6 +37,10 @@ if typing.TYPE_CHECKING:
 from .common import clip_expression_values, create_projection_adata
 
 sc.settings.verbosity = 0
+
+# Apply seaborn theme to matplotlib plots, and change background to white
+sns.set_theme()
+sns.set_style("white")
 
 PLOT_TYPE_TO_BASIS = {
     "tsne_static": "tsne",
