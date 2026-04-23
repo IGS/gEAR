@@ -14,8 +14,12 @@ from dockerspawner import DockerSpawner
 HOST_SPAWNER_CPU_LIMIT = os.environ.get("HOST_SPAWNER_CPU_LIMIT", "1")
 HOST_SPAWNER_MEM_LIMIT = os.environ.get("HOST_SPAWNER_MEM_LIMIT", "4G")
 HOST_JUPYTERHUB_ROOT = os.environ["HOST_JUPYTERHUB_ROOT"]
+
+# HOST_* paths are for Docker bind-mount sources
 HOST_USERHOMES_ROOT = os.path.join(HOST_JUPYTERHUB_ROOT, "userhomes")
 HOST_DATASETS_ROOT = os.environ["HOST_DATASETS_ROOT"]
+
+# HUB_* paths are filesystem paths visible inside the Hub container
 HUB_USERHOMES_ROOT = "/srv/jupyterhub/userhomes"
 HUB_NOTEBOOKS_ROOT = "/srv/jupyterhub/notebooks"
 
@@ -63,7 +67,7 @@ c.DockerSpawner.notebook_dir = "/home/jovyan"
 # Persistent home directories on host
 # Host path is relative to where the Hub container sees it:
 # ./userhomes is mounted into the Hub container at /srv/jupyterhub/userhomes
-c.DockerSpawner.volumes = {}
+#c.DockerSpawner.volumes = {}
 
 # Run notebooks as a non-root user where possible
 c.DockerSpawner.environment = {
