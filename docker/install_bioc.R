@@ -2,7 +2,7 @@
 
 # Install required packages
 tryCatch( {
-    install.packages(c("BiocManager", "remotes"), dependencies=TRUE, repos="http://lib.stat.cmu.edu/R/CRAN/")
+    install.packages(c("BiocManager", "remotes"), dependencies=NA, repos="http://lib.stat.cmu.edu/R/CRAN/")
     BiocManager::install(version = "3.21", ask=FALSE)
     }, error = function(e) {
         message("Error: ", e$message)

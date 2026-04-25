@@ -18,7 +18,7 @@ tar xzf /tmp/${Rver}.tar.gz -C /opt || exit 1
 
 cd /opt/${Rver}
 /opt/${Rver}/configure --with-readline=no --enable-R-shlib --enable-BLAS-shlib --with-x=no || exit 1
-make || exit 1
+make -j$(nproc) || exit 1
 make install || exit 1
 
 # Run Rscript
