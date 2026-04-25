@@ -110,7 +110,6 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
     colorcet==3.1.0 \
     dash-bio==1.0.2
     datashader==0.19.0 \
-    diffxpy @ git+https://github.com/adkinsrs/diffxpy.git@ffd828c280882ca98adc6e42c934625fab0011f6 \
     Flask==3.1.3 \
     Flask-RESTful==0.3.9 \
     gosling==0.3.0 \
@@ -147,8 +146,8 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
     spatialdata_io==0.6.0 \
     shadows==0.1a2 \
     tables==3.11.1 \
-    watchfiles==1.1.1 \
-    ./pip3 install -e ~jorvis/git/gEAR/lib/
+    watchfiles==1.1.1
+    ./pip3 install git+https://github.com/adkinsrs/diffxpy.git@ffd828c280882ca98adc6e42c934625fab0011f6
     ./pip3 uninstall dask-expr -y
 
 ```
