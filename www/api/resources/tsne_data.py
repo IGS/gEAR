@@ -36,7 +36,7 @@ if typing.TYPE_CHECKING:
 
 from .common import clip_expression_values, create_projection_adata
 
-sc.settings.verbosity = 0
+sc.settings.verbosity = 1
 
 # Apply seaborn theme to matplotlib plots, and change background to white
 sns.set_theme()
@@ -91,7 +91,7 @@ parser.add_argument("expression_min_clip", type=float, default=None)
 parser.add_argument("colorblind_mode", type=bool, default=False)
 parser.add_argument("high_dpi", type=bool, default=False)
 parser.add_argument(
-    "grid_spec", type=str, default="1/1/2/2"
+    "grid_spec", type=str
 )  # start_row/start_col/end_row/end_col (end not inclusive)
 
 single_gene_parser = parser.copy()
@@ -761,7 +761,7 @@ def generate_tsne_figure(
     expression_palette: str = "viridis",
     reverse_palette: bool = False,
     high_dpi: bool = False,
-    grid_spec: str = "1/1/2/2",
+    grid_spec: str | None= None,
     max_columns: int | None = None,
     horizontal_legend: bool = False,
     expression_min_clip: float | None = None,
@@ -1045,35 +1045,83 @@ def generate_tsne_figure(
         "vmin": vmin,
         "return_fig": True,
         "ncols": kwargs_ncols,
+        "edges": False
     }
 
-    io_fig: "Figure" = sc.pl.embedding(selected, **kwargs)  # type: ignore
-    ax = io_fig.get_axes()
+    # Define dimensions
+    # 1 unit of height is 360px
+    # 1 unit of width is 90px
+    # We want to define an aspect ratio that fits within the grid spec provided by the UI,
+    # while also accounting for the number of plots we need to make and the potential need for a legend
+    if grid_spec is not None:
+        grid_spec_list = [int(x) for x in grid_spec.split("/")]
+        row_span = grid_spec_list[2] - grid_spec_list[0]
+        col_span = (grid_spec_list[3] - grid_spec_list[1]) / 4
+        aspect_ratio = col_span / row_span
+    else:
+        num_plots_wide = kwargs_ncols
+        num_plots_high = ceil(len(columns) / num_plots_wide)
+        aspect_ratio = num_plots_wide / num_plots_high
+    width = 10 if kwargs_ncols < 5 else 15
+    height = width / aspect_ratio
+    dpi=150
 
-    # Grid/figsize logic (shared)
-    grid_spec_list = [int(x) for x in grid_spec.split("/")]
-    row_span = grid_spec_list[2] - grid_spec_list[0]
-    col_span = ceil((grid_spec_list[3] - grid_spec_list[1]) / 3)
-    num_plots_wide = kwargs_ncols
-    num_plots_high = ceil(len(columns) / num_plots_wide)
+    if high_dpi:
+        dpi = min(450, max(150, int(selected.shape[0] / 100)))
+
+    fig_params = {
+        "figsize":(width, height),
+        # always save image and pass encoding to client
+        "dpi_save":dpi,
+        # Do not use Scanpy's defaults for matplotlib
+        "scanpy":False
+    }
+
+    mpl.rcParams.update(
+        {
+            'font.family': 'sans-serif',
+            'axes.unicode_minus': False,
+            'axes.edgecolor': '#cccccc', # Light gray spines
+            'axes.labelcolor': '#333333',
+            'xtick.color': '#cccccc',
+            'ytick.color': '#cccccc',   # Unfortunately changes colorbar ticks
+            'legend.frameon': False,     # No box around legends
+        }
+    )
+
+    sc.set_figure_params(**fig_params)
+
+    io_fig: "Figure" = sc.pl.embedding(selected, **kwargs)  # type: ignore
+    io_fig.set_layout_engine("constrained")
+    io_fig.set_constrained_layout_pads(w_pad=0.2, h_pad=0.2)
+    axes_list = io_fig.get_axes()
+
+    # Fix the gray colorbar text (if it exists for expression plots)
+    # This finds the colorbar axis and resets label color to dark
+    for ax in axes_list:
+        ax.spines[['top', 'right']].set_visible(False)
+        if ax.get_label() == '<colorbar>':
+            ax.tick_params(labelcolor='#333333')
+
+
     # Adjust figure height for horizontal legend
     legend_height = 1.25 if horizontal_legend else 0  # Add extra height for horizontal legend
-    plot_height = calculate_figure_height(num_plots_high, row_span)
-    plot_width = calculate_figure_width(num_plots_wide, col_span)
+    #plot_height = calculate_figure_height(num_plots_high, row_span)
+    #plot_width = calculate_figure_width(num_plots_wide, col_span)
 
     # Set figure dimensions
-    io_fig.set_figwidth(plot_width) # TODO: Apply legend width only if last ax is in last column
-    io_fig.set_figheight(plot_height + legend_height)  # Add legend height to total figure height
+    #io_fig.set_figwidth(plot_width) # TODO: Apply legend width only if last ax is in last column
+    #io_fig.set_figheight(plot_height + legend_height)  # Add legend height to total figure height
 
     # Axes/legend logic (shared)
-    if isinstance(ax, list):
+    if isinstance(axes_list, list):
         # Rename axes labels for each subplot
-        for f in ax:
+        for f in axes_list:
             if f.get_label() == "<colorbar>":
                 continue
             rename_axes_labels(f, x_axis, y_axis)
 
-        last_ax = ax[-1]  # color axes
+        last_ax = axes_list[-1]  # color axes
         if colorize_by and color_category:
             """
             NOTE: Quick note about legend "loc" and "bbox_to_anchor" attributes:
@@ -1121,13 +1169,11 @@ def generate_tsne_figure(
 
     with io.BytesIO() as io_pic:
         if high_dpi:
-            dpi = max(150, int(selected.shape[0] / 100))
-            sc.settings.set_figure_params(dpi_save=dpi)
-            io_fig.set_figwidth(num_plots_wide * 10)
-            io_fig.set_figheight(num_plots_high * 10)
+            #dpi = min(450, max(150, int(selected.shape[0] / 100)))
+            #sc.settings.set_figure_params(dpi_save=dpi)
             io_fig.savefig(io_pic, format="png", bbox_inches="tight")
         else:
-            sc.settings.set_figure_params(dpi_save=150)
+            #sc.settings.set_figure_params(dpi_save=150)
             io_fig.savefig(io_pic, format="webp", bbox_inches="tight")
         io_pic.seek(0)
         plt.close()

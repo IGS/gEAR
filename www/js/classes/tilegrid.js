@@ -2053,7 +2053,9 @@ class DatasetTile {
         const plotConfig = display.plotly_config;
 
         const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
-        if (!this.isZoomed) {
+        if (this.isZoomed) {
+            delete plotConfig.grid_spec;   // ignore grid spec when zoomed in
+        } else {
             plotConfig.grid_spec = tileElement.style.gridArea   // add grid spec to plot config
             if (plotConfig.grid_spec === "auto") delete plotConfig.grid_spec;   // single dataset grid spec
         }
@@ -2068,6 +2070,8 @@ class DatasetTile {
         plotContainer.append(tsnePreview);
 
         const func = isMultigene ? apiCallsMixin.fetchMgTsneImage : apiCallsMixin.fetchTsneImage;
+
+        console.log(plotConfig);
 
         const data = await func(datasetId, analysisObj, plotType, plotConfig, otherOpts);
         if (data?.success < 1) {
