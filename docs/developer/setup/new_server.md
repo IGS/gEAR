@@ -15,8 +15,9 @@ NOTE: Extra apt install commands are present in the R setup and in the python se
         vim \   # Shaun Adkins was here
         unzip \
         wget \
-        ca-certificates
-
+        ca-certificates \
+        fonts-roboto \    # Matplotlib font
+        ttf-mscorefonts-installer \    # Matplotlib font alternative
 ```
 
 Reboot if there are kernel updates (or just to be safe if you don't know.)
