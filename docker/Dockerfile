@@ -176,7 +176,6 @@ RUN apt-get -qq update \
   libffi-dev \
   libpcre2-dev \
   fonts-roboto \
-  ttf-mscorefonts-installer \
   fontconfig \
   && apt -qq clean autoclean \
   && apt -qq autoremove -y \
