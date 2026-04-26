@@ -17,8 +17,7 @@ NOTE: Extra apt install commands are present in the R setup and in the python se
         wget \
         ca-certificates \
         fonts-roboto \    # Matplotlib font
-        ttf-mscorefonts-installer \    # Matplotlib font alternative
-        fontconfig \
+        fontconfig
     sudo fc-cache -f -v    # cache the fonts
 ```
 
