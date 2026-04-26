@@ -177,9 +177,13 @@ RUN apt-get -qq update \
   libpcre2-dev \
   fonts-roboto \
   ttf-mscorefonts-installer \
+  fontconfig \
   && apt -qq clean autoclean \
   && apt -qq autoremove -y \
   && rm -rf /var/lib/apt/lists/*
+
+# Cache the Roboto and Arial fonts
+RUN fc-cache -f -v
 
 ENV LLVM_CONFIG=/usr/bin/llvm-config-14
 
