@@ -175,6 +175,8 @@ RUN apt-get -qq update \
   php-gd \
   libffi-dev \
   libpcre2-dev \
+  fonts-roboto \
+  ttf-mscorefonts-installer \
   && apt -qq clean autoclean \
   && apt -qq autoremove -y \
   && rm -rf /var/lib/apt/lists/*
