@@ -1036,6 +1036,10 @@ class DatasetTile {
 
             this.parentTileGrid.zoomId = null; // Clear the zoomed display ID in the parent tile grid
 
+            // Trigger resize event for Plotly plots.
+            // Resizing in the "expanded" view will also resize the "condensed" plots.
+            window.dispatchEvent(new Event('resize'));
+
         });
 
         // Add event listener to dropdown trigger
