@@ -45,8 +45,35 @@ IMPORTANT: From the gEAR root `cp docker/gear.ini.docker gear.ini` to make sure 
 * To build gEAR, run `docker buildx build -t umgear:latest .`
   * Ensure the image name here (`umgear:latest`) is reflected in the docker-compose.yml file instead of `adkinsrs/umgear:latest`
 
-
 In the build, the "gear.ini.docker" file will end up copied to "gear.ini" in the "/opt/gEAR" directory for the docker instance. However, if are using docker-compose and the gEAR directory is mounted into the "web" service, this can be overriden to a gear.ini from outside.  If you do not have a "gear.ini" file (only gear.ini.template), then ask @adkinsrs for one.
+
+### The three Dockerfiles
+
+Information about the three Dockerfiles found in `<gear_root>/docker`
+
+#### Dockerfile.python (The Python Base)
+
+This file is dedicated entirely to compiling Python 3.x and installing requirements.txt.
+
+**When you build it**: Only when you need to add a new package to requirements.txt or upgrade the Python version.
+
+**The output**: This is currently built and pushed as adkinsrs/gear-python-base:YYYY-MM-DD
+
+#### Dockerfile.r (The R Base)
+
+This file is dedicated entirely to compiling R and running your Bioconductor scripts.
+
+**When you build it**: Almost never. Only touch this if the team specifically requests a new version of Bioconductor or a brand-new R system library.
+
+**The output**: This is currently built and pushed as adkinsrs/gear-r-base:YYYY-MM-DD
+
+#### Dockerfile (The Final App)
+
+This is your main daily-driver file. It starts with a clean Ubuntu image, uses COPY --from=... to pull in the pre-compiled folders from your registry, installs Apache, and copies over your Flask API and HTML/JS files.
+
+**When you build it**: Every time you update the website, tweak the Apache configuration, or change a CGI script.  Anything gEAR-code related, basically.
+
+**The output**: This builds in seconds and becomes your final production image.  This is pushed as adkinsrs/umgear:YYYY-MM-DD
 
 ## Starting the stack
 
