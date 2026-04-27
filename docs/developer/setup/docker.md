@@ -34,7 +34,17 @@ IMPORTANT: From the gEAR root `cp docker/gear.ini.docker gear.ini` to make sure 
   * Alternatively ask @adkinsrs for a gear.ini.docker file as it will be filled in. Otherwise fill in any values wrapped in brackets
 * To build run `docker buildx build -t umgear:latest .`
   * Ensure the image name here (`umgear:latest`) is reflected in the docker-compose.yml file instead of `adkinsrs/umgear:latest`
-* The build can take a while, particularly in the Bioconductor installation steps. Fortunately completed steps are cachable.
+
+### Method 2a: Build image with updated R or Python stuff
+
+* This will use premade Python and R base Dockerfile images to save on build time. If you want to update the R or Python install, you need to do the following:
+  * Update requirements.txt (for Python) or install_bioc.R, install_bioc.sh, or install_packages.R as needed for R
+  * For R, run `docker buildx build -t gear-r-base -f Dockerfile.r .` (enjoy the bioconductor install slowness)
+  * For Python, run  `docker buildx build -t gear-python-base -f Dockerfile.python .`
+  * In the Dockerfile, change the `COPY --from` commands to point to your reviews r-base or python-base images
+* To build gEAR, run `docker buildx build -t umgear:latest .`
+  * Ensure the image name here (`umgear:latest`) is reflected in the docker-compose.yml file instead of `adkinsrs/umgear:latest`
+
 
 In the build, the "gear.ini.docker" file will end up copied to "gear.ini" in the "/opt/gEAR" directory for the docker instance. However, if are using docker-compose and the gEAR directory is mounted into the "web" service, this can be overriden to a gear.ini from outside.  If you do not have a "gear.ini" file (only gear.ini.template), then ask @adkinsrs for one.
 
