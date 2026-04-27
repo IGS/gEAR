@@ -108,10 +108,11 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
     biocode==0.10.0 \
     cairosvg==2.7.1 \
     colorcet==3.1.0 \
-    dash-bio==1.0.2
+    dash-bio==1.0.2 \
     datashader==0.19.0 \
     Flask==3.1.3 \
     Flask-RESTful==0.3.9 \
+    google-analytics-data==0.21.0 \
     gosling==0.3.0 \
     hic2cool==0.8.3 \
     jupyterlab==4.0.5 \
