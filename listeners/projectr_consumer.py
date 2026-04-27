@@ -106,9 +106,8 @@ class Consumer:
     def run(self) -> None:
         while True:
             try:
-                # create the consumer.
+                # create the consumer (which starts in the callback chain)
                 self._consumer.run()
-                self._consumer.start_consuming()
             except KeyboardInterrupt:
                 self._consumer.stop()
                 break

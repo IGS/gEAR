@@ -1304,6 +1304,11 @@ class ProjectRStatus(Resource):
             # Reject attempts to escape the directory
             from flask import abort
             abort(403, description="Invalid job id/path")
+
+        if not resolved_status_file.is_file():
+            from flask import abort
+            abort(404, description="Job status file not found")
+
         with open(resolved_status_file, "r") as fh:
             status = json.load(fh)
 
