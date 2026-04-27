@@ -2052,17 +2052,20 @@ class DatasetTile {
         const plotType = display.plot_type;
         const plotConfig = display.plotly_config;
 
-        const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
-        if (this.isZoomed) {
-            delete plotConfig.grid_spec;   // ignore grid spec when zoomed in
-        } else {
-            plotConfig.grid_spec = tileElement.style.gridArea   // add grid spec to plot config
-            if (plotConfig.grid_spec === "auto") delete plotConfig.grid_spec;   // single dataset grid spec
-        }
-
         const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
+
+        if (this.isZoomed) {
+            delete plotConfig.aspect_ratio;   // ignore grid spec when zoomed in
+        } else {
+            // build aspect ratio based on width and height of plotContainer
+            const width = plotContainer.clientWidth;
+            const height = plotContainer.clientHeight;
+            if (width && height) {
+                plotConfig.aspect_ratio = width / height;
+            }
+        }
 
         const tsnePreview = document.createElement("img");
         tsnePreview.classList.add("image", "is-fullwidth");
@@ -2071,7 +2074,6 @@ class DatasetTile {
 
         const func = isMultigene ? apiCallsMixin.fetchMgTsneImage : apiCallsMixin.fetchTsneImage;
 
-        console.log(plotConfig);
 
         const data = await func(datasetId, analysisObj, plotType, plotConfig, otherOpts);
         if (data?.success < 1) {
@@ -2136,12 +2138,6 @@ class DatasetTile {
         // deep copy plotly_config to avoid modifying the original
         const plotConfig = JSON.parse(JSON.stringify(display.plotly_config));
         plotConfig.high_dpi = true;
-
-        const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
-        if (!this.isZoomed) {
-            plotConfig.grid_spec = tileElement.style.gridArea   // add grid spec to plot config
-            if (plotConfig.grid_spec === "auto") delete plotConfig.grid_spec;   // single dataset grid spec
-        }
 
         const func = isMultigene ? apiCallsMixin.fetchMgTsneImage : apiCallsMixin.fetchTsneImage;
 
@@ -2301,15 +2297,20 @@ class DatasetTile {
         const plotConfig = display.plotly_config;
         */
 
-        const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
-        if (!this.isZoomed) {
-            plotConfig.grid_spec = tileElement.style.gridArea   // add grid spec to plot config
-            if (plotConfig.grid_spec === "auto") delete plotConfig.grid_spec;   // single dataset grid spec
-        }
-
         const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
+
+        if (this.isZoomed) {
+            delete plotConfig.aspect_ratio;   // ignore grid spec when zoomed in
+        } else {
+            // build aspect ratio based on width and height of plotContainer
+            const width = plotContainer.clientWidth;
+            const height = plotContainer.clientHeight;
+            if (width && height) {
+                plotConfig.aspect_ratio = width / height;
+            }
+        }
 
         const spatialPreview = document.createElement("img");
         spatialPreview.classList.add("image", "is-fullwidth");

@@ -91,8 +91,8 @@ parser.add_argument("expression_min_clip", type=float, default=None)
 parser.add_argument("colorblind_mode", type=bool, default=False)
 parser.add_argument("high_dpi", type=bool, default=False)
 parser.add_argument(
-    "grid_spec", type=str
-)  # start_row/start_col/end_row/end_col (end not inclusive)
+    "aspect_ratio", type=float, default=None
+)  # Width/height ratio for the plot
 
 single_gene_parser = parser.copy()
 single_gene_parser.add_argument("gene_symbol", type=str, default=None)
@@ -761,7 +761,7 @@ def generate_tsne_figure(
     expression_palette: str = "viridis",
     reverse_palette: bool = False,
     high_dpi: bool = False,
-    grid_spec: str | None= None,
+    aspect_ratio: float | None = None,
     max_columns: int | None = None,
     horizontal_legend: bool = False,
     expression_min_clip: float | None = None,
@@ -820,8 +820,8 @@ def generate_tsne_figure(
         Whether to reverse the color palette.
     high_dpi : bool
         Whether to generate a high-DPI image.
-    grid_spec : str
-        Grid specification for the plot layout, as a string (e.g., "0/0/10/10").
+    aspect_ratio : float or None
+        Width/height ratio for the plot.
     max_columns : int or None
         Maximum number of columns in the plot grid.
     horizontal_legend : bool
@@ -1048,20 +1048,10 @@ def generate_tsne_figure(
         "edges": False
     }
 
-    # Define dimensions
-    # 1 unit of height is 360px
-    # 1 unit of width is 90px
-    # We want to define an aspect ratio that fits within the grid spec provided by the UI,
-    # while also accounting for the number of plots we need to make and the potential need for a legend
-    if grid_spec is not None:
-        grid_spec_list = [int(x) for x in grid_spec.split("/")]
-        row_span = grid_spec_list[2] - grid_spec_list[0]
-        col_span = (grid_spec_list[3] - grid_spec_list[1]) / 4
-        aspect_ratio = col_span / row_span
-    else:
-        num_plots_wide = kwargs_ncols
-        num_plots_high = ceil(len(columns) / num_plots_wide)
-        aspect_ratio = num_plots_wide / num_plots_high
+    #if aspect_ratio is None:
+    num_plots_wide = kwargs_ncols
+    num_plots_high = ceil(len(columns) / num_plots_wide)
+    aspect_ratio = num_plots_wide / num_plots_high
     width = 10 if kwargs_ncols < 5 else 15
     height = width / aspect_ratio
     dpi=150
@@ -1079,6 +1069,7 @@ def generate_tsne_figure(
 
     mpl.rcParams.update(
         {
+            "font.sans-serif":['Roboto'],
             'font.family': 'sans-serif',
             'axes.unicode_minus': False,
             'axes.edgecolor': '#cccccc', # Light gray spines
@@ -1102,7 +1093,6 @@ def generate_tsne_figure(
         ax.spines[['top', 'right']].set_visible(False)
         if ax.get_label() == '<colorbar>':
             ax.tick_params(labelcolor='#333333')
-
 
     # Adjust figure height for horizontal legend
     legend_height = 1.25 if horizontal_legend else 0  # Add extra height for horizontal legend
@@ -1221,7 +1211,7 @@ class MGTSNEData(Resource):
             args.get("expression_palette", "YlOrRd"),
             args.get("reverse_palette", False),
             args.get("high_dpi", False),
-            args.get("grid_spec", "1/1/2/2"),
+            args.get("aspect_ratio", None),
             args.get("max_columns", None),
             args.get("horizontal_legend", False),
             args.get("expression_min_clip", None),
@@ -1264,7 +1254,7 @@ class TSNEData(Resource):
             args.get("expression_palette", "YlOrRd"),
             args.get("reverse_palette", False),
             args.get("high_dpi", False),
-            args.get("grid_spec", "1/1/2/2"),
+            args.get("aspect_ratio", None),
             args.get("max_columns", None),
             args.get("horizontal_legend", False),
             args.get("expression_min_clip", None),
