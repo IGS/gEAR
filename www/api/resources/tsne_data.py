@@ -1016,7 +1016,8 @@ def generate_tsne_figure(
     num_plots_wide = kwargs_ncols
     num_plots_high = ceil(len(columns) / num_plots_wide)
     aspect_ratio = num_plots_wide / num_plots_high
-    width = 10 if kwargs_ncols < 5 else 15
+    # Give subplots with more columns a bit more breathing room
+    width = 10 if num_plots_wide < 5 else 15
     height = width / aspect_ratio
     dpi=150
 
@@ -1032,8 +1033,8 @@ def generate_tsne_figure(
     }
 
     # If there are more columns of plots, increase the font size for readability
-    label_scale = "medium" if len(columns) <= 4 else "large"
-    title_scale = "large" if len(columns) <= 4 else "x-large"
+    label_scale = "medium" if num_plots_wide < 5 else "large"
+    title_scale = "large" if num_plots_wide < 5 else "x-large"
 
     mpl.rcParams.update(
         {

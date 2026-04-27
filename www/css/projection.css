@@ -64,13 +64,38 @@ ul#go-terms li {
     border-bottom: 1px solid #e9eef1;
 }
 
+#result-panel-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    /* Use a fixed base height so the tile can't "grow" uncontrollably */
+    /* Using 400px to account for the card header */
+    grid-auto-rows: 400px;
+    gap: 8px;
+}
+
+.js-tile {
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Forces the tile to stay within the 360px row */
+    overflow: hidden;
+}
+
+.js-tile .card-image {
+    align-content: center;
+}
+
 /* tSNE plots */
+
 .js-tile .card-image img {
-    width: fit-content;
-    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
     margin: auto;
+    display: block; /* Removes the baseline gap at the bottom */
     object-fit: contain;
 }
+
 
 /* spatial embeds */
 #result-panel-grid .js-tile .card-image iframe {
