@@ -2056,17 +2056,6 @@ class DatasetTile {
         if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
 
-        if (this.isZoomed) {
-            delete plotConfig.aspect_ratio;   // ignore grid spec when zoomed in
-        } else {
-            // build aspect ratio based on width and height of plotContainer
-            const width = plotContainer.clientWidth;
-            const height = plotContainer.clientHeight;
-            if (width && height) {
-                plotConfig.aspect_ratio = width / height;
-            }
-        }
-
         const tsnePreview = document.createElement("img");
         tsnePreview.classList.add("image", "is-fullwidth");
         tsnePreview.id = `tile-${this.tile.tileId}-tsne-preview`;
@@ -2300,17 +2289,6 @@ class DatasetTile {
         const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
-
-        if (this.isZoomed) {
-            delete plotConfig.aspect_ratio;   // ignore grid spec when zoomed in
-        } else {
-            // build aspect ratio based on width and height of plotContainer
-            const width = plotContainer.clientWidth;
-            const height = plotContainer.clientHeight;
-            if (width && height) {
-                plotConfig.aspect_ratio = width / height;
-            }
-        }
 
         const spatialPreview = document.createElement("img");
         spatialPreview.classList.add("image", "is-fullwidth");
