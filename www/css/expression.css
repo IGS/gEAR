@@ -93,24 +93,31 @@ ul#go-terms li {
 }
 
 #result-panel {
-    overflow-x: auto; /* allow horizontal scrolling if needed */
     width: 100%;
 }
 
 #result-panel-grid {
     display: grid;
     grid-template-columns: repeat(12, 1fr);
-    /* Use a fixed base height so the tile can't "grow" uncontrollably */
     /* Using 400px to account for the card header */
-    grid-auto-rows: 400px;
+    /* But allow it to grow so that aspect ratio can be maintained for ultrawide screens */
+    grid-auto-rows: minmax(400px, auto);
     gap: 8px;
 }
 
 .js-tile {
     display: flex;
     flex-direction: column;
-    height: 100%; /* Forces the tile to stay within the 360px row */
-    overflow: hidden;
+    overflow: visible;
+}
+
+#result-panel-grid .js-tile {
+    height: 100%; /* Forces the tile to stay within the 400px row */
+    max-height: 80vh;
+}
+
+#zoomed-panel-grid .js-tile {
+    height: fit-content;
 }
 
 .js-tile .card-image {
