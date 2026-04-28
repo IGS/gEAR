@@ -618,8 +618,7 @@ def projectr_callback(
     target_df = target_df.fillna(0)  # Fill NaN values with 0
 
     # Ensure adata.obs.index is str, for reindex matching later
-    adata.obs.index = adata.obs.index.astype(str)
-    obs_index_list = adata.obs.index.tolist()
+    obs_index_list = adata.obs.index.astype(str).tolist()
 
     # Close adata so that we do not have a stale opened object
     if adata.isbacked:
