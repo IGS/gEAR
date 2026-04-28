@@ -57,6 +57,8 @@ This file is dedicated entirely to compiling Python 3.x and installing requireme
 
 **When you build it**: Only when you need to add a new package to requirements.txt or upgrade the Python version.
 
+**RPy2**: The "rpy2" package is actually built in the final Docker (umgear) image, due to some dependencies on R.
+
 **The output**: This is currently built and pushed as adkinsrs/gear-python-base:YYYY-MM-DD
 
 #### Dockerfile.r (The R Base)
