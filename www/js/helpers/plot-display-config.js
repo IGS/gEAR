@@ -234,83 +234,8 @@ export const adjustStackedViolinHeight = (plotLayout) => {
     plotLayout.height = 800;
 }
 
-const adjustStackedViolinSharedAxes = (plotLayout) => {
-    return;
-}
-
 // Scaling a number from one range to another range (Source: https://stackoverflow.com/a/31687097)
 const scaleBetween = (unscaledNum, minAllowed, maxAllowed, min, max) => {
     return (maxAllowed - minAllowed) * (unscaledNum - min) / (max - min) + minAllowed;
 }
 
-// Truncate axis labels to a fixed length. Add a hover property to the label to show the full label. Edits inplace.
-const truncateAxisLabels = (plotLayout) =>  {
-    const selector = document.querySelectorAll('.xaxislayer-above text');
-    for (const el of selector) {
-        const elText = el.textContent;
-        const sublabel = elText.length > TICK_LABEL_MAX_LEN_ALLOWED
-            ? `${elText.substring(0, TICK_LABEL_TRUNCATION_LEN)}...`
-            : elText;
-
-
-        const subLabelElt = document.createElement('a');
-        subLabelElt.setAttribute('style', 'fill:inherit;');
-        subLabelElt.textContent = sublabel;
-        el.textContent = "";
-        el.appendChild(subLabelElt);
-    }
-
-    const axis_ticktexts = {}
-
-    for (const element in plotLayout) {
-        if (element.includes("axis")) {
-            const axis = plotLayout[element];
-            if ("ticktext" in axis) {
-                // If tick label exceeds max alloned length, truncate it and add hover property to show full label
-                for (let i = 0; i < axis.ticktext.length; i++) {
-                    const fulllabel = axis.ticktext[i];
-                    if (axis.ticktext[i].length > TICK_LABEL_MAX_LEN_ALLOWED) {
-                        const sublabel = `${fulllabel.substring(0, TICK_LABEL_TRUNCATION_LEN)}...`;
-                        axis.ticktext[i] = sublabel;
-                    }
-                    axis_ticktexts[fulllabel] = axis.ticktext[i];
-                }
-            }
-        }
-    }
-
-    /*
-    Issues with modifying before plot generation - Cannot store both full and shortened name.  Plotly is very restrictive about what goes in the tick text
-    Issues with modifying after plot generation - Plot margin and layout settings are based on the original labels, and shortening the labels does not auto-adjust these.
-    */
-}
-
-// If tick label is hovered over, give full label in designated hoverspace
-/*  !!! Currently event.target.closest does not work
-document.addEventListener("mouseover", (event) => {
-    // mouse enter
-    if (!event.target.closest('.xaxislayer-above a')) {
-        return;
-    }
-    const h5adContainer = event.target.closest('.h5ad-container');
-    const hoverarea = h5adContainer.children(".hoverarea");
-
-    // Show the full label when hovering over the truncated label (assuming we are on a page where the element exists)
-    if (hoverarea.length) {
-        hoverarea.textContent = event.target.dataset.unformatted;
-    }
-});
-
-document.addEventListener('mouseleave', (event) => {
-    // mouse out
-    if (!event.target.closest('.xaxislayer-above a')) {
-        return;
-    }
-    const h5adContainer = event.target.closest('.h5ad-container');
-    const hoverarea = h5adContainer.children(".hoverarea");
-
-    if (hoverarea.length) {
-        hoverarea.textContent = "";
-    }
-});
-*/

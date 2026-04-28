@@ -36,7 +36,7 @@ if typing.TYPE_CHECKING:
 
 from .common import clip_expression_values, create_projection_adata
 
-sc.settings.verbosity = 1
+sc.settings.verbosity = 0
 
 # Apply seaborn theme to matplotlib plots, and change background to white
 sns.set_theme()
@@ -1122,11 +1122,8 @@ def generate_tsne_figure(
 
     with io.BytesIO() as io_pic:
         if high_dpi:
-            #dpi = min(450, max(150, int(selected.shape[0] / 100)))
-            #sc.settings.set_figure_params(dpi_save=dpi)
-            io_fig.savefig(io_pic, format="png", bbox_inches="tight")
+            io_fig.savefig(io_pic, format="png")
         else:
-            #sc.settings.set_figure_params(dpi_save=150)
             io_fig.savefig(io_pic, format="webp", bbox_inches="tight")
         io_pic.seek(0)
         plt.close()

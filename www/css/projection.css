@@ -28,7 +28,6 @@ div#results-main-c {
 }
 
 #result-panel {
-    overflow-x: auto; /* allow horizontal scrolling if needed */
     width: 100%;
 }
 
@@ -76,8 +75,16 @@ ul#go-terms li {
 .js-tile {
     display: flex;
     flex-direction: column;
-    height: 100%; /* Forces the tile to stay within the 360px row */
-    overflow: hidden;
+    overflow: visible;
+}
+
+#result-panel-grid .js-tile {
+    height: 100%; /* Forces the tile to stay within the 400px row */
+    max-height: 80vh;
+}
+
+#zoomed-panel-grid .js-tile {
+    height: fit-content;
 }
 
 .js-tile .card-image {
