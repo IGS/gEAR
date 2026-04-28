@@ -67,50 +67,6 @@ export class TileGrid {
             noDisplaysElt.remove();
         }
 
-        const getTotalAncestorHorizontalPadding = (element) => {
-            let totalPadding = 0;
-            let current = element.parentElement;
-            while (current && current !== document.body) {
-                const style = getComputedStyle(current);
-                totalPadding += parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
-                current = current.parentElement;
-            }
-            return totalPadding;
-        }
-
-
-        // setup grid-auto-rows and grid-auto-columns based on the width of the parent element(s)
-        const ancestorPaddingWidth = getTotalAncestorHorizontalPadding(selectorElt);
-
-        const parentElt = selectorElt.parentElement
-        const parentWidth = parentElt.offsetWidth;
-
-        // Got some oddness when adding these to the CSS... probably because of race conditions with the CSS loading.
-        selectorElt.style.display = "grid";
-        selectorElt.style.gridGap = `${0.5}em`; // 8px
-        selectorElt.style.width = "max-content"; // This is needed to make the grid auto-size to the content
-
-        const gridGap = parseFloat(selectorElt.style.gridGap);
-        const borderWidth = parseFloat(getComputedStyle(selectorElt).borderWidth) || 0; // Get border width, default to 0 if not set
-        // usable width = grid width - 2*border width - ancestor-paddings - grid-gap
-        // NOTE: Not sure why it works better with ancestor padding x 2 instead of just ancestor padding.
-        const usableWidth = parentWidth - (2 * (borderWidth + ancestorPaddingWidth)) - gridGap;
-
-        let columnWidth = usableWidth / 12; // 12 columns in the grid
-        const MIN_COLUMN_WIDTH = 90
-        // If the column width is less than the minimum, then set it to the minimum
-        // Otherwise, some plots will not render correctly.
-        if (columnWidth < MIN_COLUMN_WIDTH) {
-            columnWidth = MIN_COLUMN_WIDTH;
-        }
-
-        const rowWidth = columnWidth * 4; // Row height should be 1/4th of the column width
-
-        // 12 columns
-        selectorElt.style.gridAutoColumns = `${columnWidth}px`;
-        // Row height should be 1/4th of the column width
-        selectorElt.style.gridAutoRows = `${rowWidth}px`;
-
         if (this.type === "dataset") {
             if (!(this.datasets?.length)) {
                 console.error("No datasets found.");
@@ -2052,12 +2008,6 @@ class DatasetTile {
         const plotType = display.plot_type;
         const plotConfig = display.plotly_config;
 
-        const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
-        if (!this.isZoomed) {
-            plotConfig.grid_spec = tileElement.style.gridArea   // add grid spec to plot config
-            if (plotConfig.grid_spec === "auto") delete plotConfig.grid_spec;   // single dataset grid spec
-        }
-
         const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
@@ -2068,6 +2018,7 @@ class DatasetTile {
         plotContainer.append(tsnePreview);
 
         const func = isMultigene ? apiCallsMixin.fetchMgTsneImage : apiCallsMixin.fetchTsneImage;
+
 
         const data = await func(datasetId, analysisObj, plotType, plotConfig, otherOpts);
         if (data?.success < 1) {
@@ -2132,12 +2083,6 @@ class DatasetTile {
         // deep copy plotly_config to avoid modifying the original
         const plotConfig = JSON.parse(JSON.stringify(display.plotly_config));
         plotConfig.high_dpi = true;
-
-        const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
-        if (!this.isZoomed) {
-            plotConfig.grid_spec = tileElement.style.gridArea   // add grid spec to plot config
-            if (plotConfig.grid_spec === "auto") delete plotConfig.grid_spec;   // single dataset grid spec
-        }
 
         const func = isMultigene ? apiCallsMixin.fetchMgTsneImage : apiCallsMixin.fetchTsneImage;
 
@@ -2296,12 +2241,6 @@ class DatasetTile {
         const analysisObj = display.plotly_config.analysis_id ? {id: display.plotly_config.analysis_id} : display.plotly_config.analysis || null;
         const plotConfig = display.plotly_config;
         */
-
-        const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
-        if (!this.isZoomed) {
-            plotConfig.grid_spec = tileElement.style.gridArea   // add grid spec to plot config
-            if (plotConfig.grid_spec === "auto") delete plotConfig.grid_spec;   // single dataset grid spec
-        }
 
         const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned

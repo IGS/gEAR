@@ -86,13 +86,6 @@ ul#go-terms li {
     border-bottom: 1px solid #e9eef1;
 }
 
-/* tSNE plots */
-.js-tile .card-image img {
-    width: fit-content;
-    height: 100%;
-    margin: auto;
-}
-
 #results-main-c, #annotation-and-grid-c {
     width: 100%; /* ensure full width for the main layout and content */
     box-sizing: border-box; /* include padding and border in element's total width */
@@ -102,6 +95,38 @@ ul#go-terms li {
 #result-panel {
     overflow-x: auto; /* allow horizontal scrolling if needed */
     width: 100%;
+}
+
+#result-panel-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    /* Use a fixed base height so the tile can't "grow" uncontrollably */
+    /* Using 400px to account for the card header */
+    grid-auto-rows: 400px;
+    gap: 8px;
+}
+
+.js-tile {
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Forces the tile to stay within the 360px row */
+    overflow: hidden;
+}
+
+.js-tile .card-image {
+    align-content: center;
+}
+
+/* tSNE plots */
+
+.js-tile .card-image img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    margin: auto;
+    display: block; /* Removes the baseline gap at the bottom */
+    object-fit: contain;
 }
 
 /* spatial embeds */
