@@ -878,6 +878,8 @@ def generate_tsne_figure(
     num_plots = len(gene_symbols)
 
     # convert max_columns to int
+    if plot_by_group is None:
+        max_columns = None
     if max_columns:
         max_columns = int(max_columns)
 
@@ -1120,16 +1122,27 @@ def generate_tsne_figure(
     if os.path.exists(dedup_copy):
         os.remove(dedup_copy)
 
+    image_format = "webp"
     with io.BytesIO() as io_pic:
         if high_dpi:
-            io_fig.savefig(io_pic, format="png")
+            image_format = "pdf"
+            io_fig.savefig(io_pic, format="pdf")
         else:
-            io_fig.savefig(io_pic, format="webp", bbox_inches="tight")
+            # WebP has a hard limit of 16383 pixels in either dimension
+            # Fall back to PNG if the figure size exceeds this limit
+            fig_width_px = io_fig.get_figwidth() * dpi
+            fig_height_px = io_fig.get_figheight() * dpi
+            webp_limit = 16383
+            if fig_width_px > webp_limit or fig_height_px > webp_limit:
+                image_format = "png"
+                io_fig.savefig(io_pic, format="png", bbox_inches="tight")
+            else:
+                io_fig.savefig(io_pic, format="webp", bbox_inches="tight")
         io_pic.seek(0)
         plt.close()
         image = base64.b64encode(io_pic.read()).decode("utf-8")
 
-    return {"success": success, "message": message, "image": image}
+    return {"success": success, "message": message, "image": image, "image_format": image_format}
 
 
 # --- Resource classes ---

@@ -1,3 +1,4 @@
+import base64
 import json
 import sys  # for debug prints
 
@@ -105,6 +106,12 @@ class MGPlotlyData(Resource):
     def post(self, dataset_id):
         session_id = request.cookies.get('gear_session_id')
         req = request.get_json()
+        req = request.get_json()
+        if not req:
+            return {
+                "success": -1,
+                'message': "No JSON body provided."
+            }
         analysis = req.get('analysis', None)
         plot_type = req.get('plot_type')
         gene_symbols = req.get('gene_symbols', [])
@@ -149,6 +156,8 @@ class MGPlotlyData(Resource):
         projection_id = req.get('projection_id', None)    # projection id of csv output
         expression_min_clip = req.get('expression_min_clip', None)
         colorblind_mode = req.get('colorblind_mode', False)
+        return_image = req.get('return_image', False)   # Whether to return a base64 encoded image string in the response for direct use in the frontend
+
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         ds = geardb.get_dataset_by_id(dataset_id)
@@ -594,19 +603,25 @@ class MGPlotlyData(Resource):
             df_cols = pd.concat([df.pop(cat) for cat in cols_to_drop], axis=1)
 
             # "df" must be obs label for rows and genes for cols only
-            fig = mg.create_clustergram(df
-                , normalized_genes_list
-                , is_log10
-                , cluster_obs
-                , cluster_genes
-                , flip_axes
-                , center_around_zero
-                , distance_metric
-                , colorscale
-                , reverse_colorscale
-                , hide_obs_labels
-                , hide_gene_labels
-                )
+            try:
+                fig = mg.create_clustergram(df
+                    , normalized_genes_list
+                    , is_log10
+                    , cluster_obs
+                    , cluster_genes
+                    , flip_axes
+                    , center_around_zero
+                    , distance_metric
+                    , colorscale
+                    , reverse_colorscale
+                    , hide_obs_labels
+                    , hide_gene_labels
+                    )
+            except PlotError as pe:
+                return {
+                    'success': -1,
+                    'message': str(pe),
+                }
 
             df = orig_df
             clusterbar_indexes = mg.build_obs_group_indexes(df, filters, clusterbar_fields)
@@ -686,10 +701,6 @@ class MGPlotlyData(Resource):
         if adata.isbacked:
             adata.file.close()
 
-        # If figure is actualy a JSON error message, send that instead
-        if "success" in fig and fig["success"] == -1:
-            return fig
-
         fig.update_layout(autosize=True)
 
         # change background to pure white
@@ -744,8 +755,21 @@ class MGPlotlyData(Resource):
             )
 
         # Pop any default height and widths being added
-        fig["layout"].pop("height", None)
-        fig["layout"].pop("width", None)
+        fig["layout"].pop("height", None)   # type: ignore
+        fig["layout"].pop("width", None)    # type: ignore
+
+        # Return image as base-encoded PDF if requested
+        if return_image:
+            image_format = "pdf"
+            img_bytes = fig.to_image(format=image_format)
+            img_b64 = base64.b64encode(img_bytes).decode('utf-8')
+            return {
+                "success": success
+                , "message": message
+                , "image": img_b64
+                , "image_format": image_format
+            }
+
 
         plot_json = json.dumps(fig, cls=PlotlyJSONEncoder)
 
