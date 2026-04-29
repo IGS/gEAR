@@ -2,7 +2,7 @@
 
 ## Before building
 
-* [Orbstack](https://orbstack.dev/) is recommended over Docker Desktop, but certainly optional. It is faster, lighter, and still uses the same Docker command-line tools.
+* [Orbstack](https://orbstack.dev/) is recommended over Docker Desktop, but certainly optional. It is faster, lighter, and still uses the same Docker command-line tools.  Docker Desktop gets the job done just fine as well.
   * Unfortunately Orbstack does not have Windows support.
 * From the gEAR root, `cd docker`. All commands assume you are in this directory
 * `cp docker-compose.yml.template docker-compose.yml`
