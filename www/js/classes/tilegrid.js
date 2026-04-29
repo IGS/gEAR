@@ -980,8 +980,12 @@ class DatasetTile {
      */
     async launchJupyterNotebook(shareId, language) {
         try {
+            // Get the current user's session ID
+            const currentUser = getCurrentUser();
+            const sessionId = currentUser?.session_id || '';
+
             // Call the CGI script to get the launch URL
-            const response = await fetch(`./cgi/get_jupyter_notebook_launch_url.cgi?share_id=${encodeURIComponent(shareId)}&language=${encodeURIComponent(language)}`);
+            const response = await fetch(`./cgi/get_jupyter_notebook_launch_url.cgi?share_id=${encodeURIComponent(shareId)}&language=${encodeURIComponent(language)}&session_id=${encodeURIComponent(sessionId)}`);
             const data = await response.json();
 
             if (data.error) {

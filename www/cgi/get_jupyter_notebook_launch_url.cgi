@@ -4,6 +4,7 @@
 Generate a JupyterHub launch URL for a given dataset and language.
 
 Accepts:
+  - session_id: The user's session ID for authentication
   - share_id: The dataset share ID
   - language: The notebook language ('python' or 'r')
 
@@ -72,6 +73,7 @@ def main():
     form = cgi.FieldStorage()
     share_id = form.getfirst("share_id", "").strip()
     language = form.getfirst("language", "python").strip().lower()
+    session_id = form.getfirst("session_id", "").strip()
 
     # Validate inputs
     if not share_id:
@@ -80,6 +82,10 @@ def main():
 
     if language not in ["python", "r"]:
         print_json({"error": "Language must be 'python' or 'r'"}, status="400 Bad Request")
+        return
+
+    if not session_id:
+        print_json({"error": "No user session_id provided"}, status="400 Bad Request")
         return
 
     # Get the secret
@@ -102,9 +108,11 @@ def main():
         print_json({"error": f"Error looking up dataset: {str(e)}"}, status="500 Internal Server Error")
         return
 
-    # Try to get the current user; fallback to 'anonymous'
-    # This would need to be enhanced to get the actual logged-in user
-    username = "user"
+    # Try to get the current user from session_id
+    user = geardb.get_user_from_session_id(session_id)
+    if not user:
+        print_json({"error": "Invalid user session_id"}, status="401 Unauthorized")
+        return
 
     try:
         # Create the serializer
@@ -112,7 +120,7 @@ def main():
 
         # Create the payload
         payload = {
-            "username": username,
+            "user_id": f'{user.id}',
             "datasets": [file_path],
             "selected_dataset": file_path,
             "notebook_env": language,

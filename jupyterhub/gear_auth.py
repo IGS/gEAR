@@ -72,13 +72,13 @@ class GearLaunchTokenAuthenticator(Authenticator):
             self.log.warning("Unexpected token decode error: %r", e)
             return None
 
-        username = payload.get("username")
+        user_id = payload.get("user_id")
         datasets = payload.get("datasets", [])
         notebook_env = payload.get("notebook_env", "python")
         selected_dataset = payload.get("selected_dataset")
 
-        if not isinstance(username, str) or not username:
-            self.log.warning("Invalid username in payload: %r", username)
+        if not isinstance(user_id, str) or not user_id:
+            self.log.warning("Invalid user_id in payload: %r", user_id)
             return None
 
         if not isinstance(datasets, list):
@@ -96,7 +96,7 @@ class GearLaunchTokenAuthenticator(Authenticator):
                 return None
 
         auth_model = {
-            "name": username,
+            "name": user_id,
             "auth_state": {
                 "gear_datasets": datasets,
                 "gear_selected_dataset": selected_dataset,
