@@ -25,7 +25,14 @@ How to pull the image
 
 * `docker pull adkinsrs/umgear:latest`.
 
-IMPORTANT: From the gEAR root `cp docker/gear.ini.docker gear.ini` to make sure a working gear.ini file is present in the codebase after mounting the code as a volume in the "web" service in the docker-compose.yml file.
+Grab the gear.ini file:
+
+* `docker run -it adkinsrs/umgear:latest`
+* `docker ps` note the container ID
+* `docker cp <container_id>:/opt/gEAR/gear.ini <gear_root>/gear.ini` which will copy the gear.ini file within the docker container outside.
+* Feel free to stop the container, or leave it up so the docker-compose stack can use it.
+
+This step is necessary if you are mounting your host gEAR code as a volume to the docker compose "web" service.  When you do this, the directory inside the container is replaced with your volume's code, and the gear.ini file within will be missing.
 
 ### Method 2: Build image
 
@@ -105,23 +112,11 @@ You can pre-build the "panel_app" image using the Dockerfile from `<gear_root>/s
 
 You can view logs with `docker compose logs panel`
 
-## Annotations and Datasets
-
-* Annotation and dataset files to use need to be housed on the host machine initially since they are not contained in the gEAR codebase and thus will not be available in the Dockerized version of gEAR out of the box
-* Right now the only annotation I am including is Mouse - release 94.  This is because each annotation directory is about 1Gb each and would overrun the storage on my computer and blow up the size of the 'dataset' Docker image if all were added.  We only need one annotation for sandboxing and development though.
-* I am also using the Hertzano/Ament P2 mouse cochlea dataset for testing (as recommended by Brian Herb)
-
-### Loading annotation data
-
-* After launching the Docker containers via docker-compose, the annotation data may not be loaded into the MySQL database.  To do this (substitute species and release number as needed):
-
-1. Run `docker compose exec web /bin/bash`
-2. `cd /opt/gEAR/annotations/mouse`
-3. Run `../../bin/load_genbank_annotations.py -i ./release-94 -id 1 -r 94` which will load the annotation file
-
 ## Getting datasets
 
-Generally, for development purposes, it is best to just have datasets for a couple of dataset collections, such as "Hearing (site default)" and "Ear (diverse variety)"
+Dataset files to use need to be housed on the host machine initially since they are not contained in the gEAR codebase and thus will not be available in the Dockerized version of gEAR out of the box
+
+Generally, for development purposes, it is best to just have datasets for a couple of dataset collections, such as "Hearing (site default)" and "Ear (diverse variety)". The "Ear" collection does not exist on gEAR anymore but is a good representative collection of datasets.
 
 The following dataset IDs are representative of both of the aforementioned dataset collections:
 
@@ -162,16 +157,11 @@ You can write some script to loop through these IDs and download them to your "d
 
 The docker-compose.yml file is set up to mount the gEAR code as a volume, allowing you to make immediate edits to be reflected inside the container.  If making changes within `<gear_root>/www/api`, they will apply once you run `docker compose restart web`.
 
-At any time you can run `docker compose exec web tail -f /var/log/apache2/ssl_umgear_error.log` to view a running error log.
+## Viewing logs
 
-## Spatial panel
+To view potential logs, run `docker compose logs` for all services or `docker compose logs <service>` for a single service.
 
-```
-cd <gear_root>/spatial
-docker build -t panel_app .
-```
-
-This will enable the spatial panel dashboard to be used in the docker-compose.yml stack
+If you want to view Apache logs, from server-side (Python) code, you can run `docker compose exec web tail -f /var/log/apache2/ssl_umgear_error.log` to view a running error log.  Sometimes it may be necessary to view "/var/log/apache2/error.log" instead.
 
 ## Issues and potential solutions
 
