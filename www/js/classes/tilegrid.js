@@ -840,10 +840,22 @@ class DatasetTile {
 
     /**
      * Opens a menu for the user to choose between Python or R for Jupyter Notebook.
+     * If the user is not logged in, displays a login required message instead.
      *
      * @param {string} shareId - The share ID of the dataset.
      */
     openJupyterLanguageMenu(shareId) {
+        // Check if user is logged in
+        const currentUser = getCurrentUser()?.session_id;
+        if (!currentUser) {
+            this.showJupyterLoginRequiredModal();
+            console.log("User must be logged in to launch Jupyter Notebook.");
+            return;
+        }
+
+        console.log("Opening Jupyter language menu for share ID:", shareId);
+        console.log("Current user:", currentUser);
+
         // Clone the template
         const menuTemplate = document.getElementById('tmpl-tile-grid-jupyter-notebook-modal');
         const menuHTML = menuTemplate.content.cloneNode(true);
@@ -892,6 +904,45 @@ class DatasetTile {
     }
 
     /**
+     * Displays a modal indicating the user must log in to use Jupyter Notebook.
+     */
+    showJupyterLoginRequiredModal() {
+        // Clone the template
+        const loginTemplate = document.getElementById('tmpl-tile-grid-jupyter-notebook-login-required-modal');
+        const loginHTML = loginTemplate.content.cloneNode(true);
+
+        // Set unique ID for this modal
+        const modalDiv = loginHTML.querySelector('.modal');
+        modalDiv.id = `jupyter-login-required-modal-${this.tile.tileId}`;
+
+        // Get references to buttons
+        const modalBackground = loginHTML.querySelector('.modal-background');
+        const deleteButton = loginHTML.querySelector('.delete');
+
+        // Add event listeners to close modal
+        modalBackground.addEventListener("click", () => {
+            modalDiv.remove();
+        });
+
+        deleteButton.addEventListener("click", () => {
+            modalDiv.remove();
+        });
+
+        // Add modal to DOM and make it active
+        document.body.append(loginHTML);
+        modalDiv.classList.add("is-active");
+
+        // Close modal on escape key
+        const closeOnEscape = (event) => {
+            if (event.key === "Escape" && modalDiv.classList.contains("is-active")) {
+                document.removeEventListener("keydown", closeOnEscape);
+                modalDiv.remove();
+            }
+        };
+        document.addEventListener("keydown", closeOnEscape);
+    }
+
+    /**
      * Launches a Jupyter Notebook with the specified language for the dataset.
      *
      * @param {string} shareId - The share ID of the dataset.
@@ -899,6 +950,9 @@ class DatasetTile {
      */
     async launchJupyterNotebook(shareId, language) {
         try {
+            // at this point user data is:
+            console.log(CURRENT_USER);
+
             // Call the CGI script to get the launch URL
             const response = await fetch(`./cgi/get_jupyter_notebook_launch_url.cgi?share_id=${encodeURIComponent(shareId)}&language=${encodeURIComponent(language)}`);
             const data = await response.json();
