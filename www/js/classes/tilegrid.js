@@ -849,12 +849,8 @@ class DatasetTile {
         const currentUser = getCurrentUser()?.session_id;
         if (!currentUser) {
             this.showJupyterLoginRequiredModal();
-            console.log("User must be logged in to launch Jupyter Notebook.");
             return;
         }
-
-        console.log("Opening Jupyter language menu for share ID:", shareId);
-        console.log("Current user:", currentUser);
 
         // Clone the template
         const menuTemplate = document.getElementById('tmpl-tile-grid-jupyter-notebook-modal');
@@ -909,15 +905,19 @@ class DatasetTile {
     showJupyterLoginRequiredModal() {
         // Clone the template
         const loginTemplate = document.getElementById('tmpl-tile-grid-jupyter-notebook-login-required-modal');
+        if (!loginTemplate) {
+            return;
+        }
         const loginHTML = loginTemplate.content.cloneNode(true);
 
         // Set unique ID for this modal
         const modalDiv = loginHTML.querySelector('.modal');
         modalDiv.id = `jupyter-login-required-modal-${this.tile.tileId}`;
 
-        // Get references to buttons
+        // Get references to buttons and links
         const modalBackground = loginHTML.querySelector('.modal-background');
         const deleteButton = loginHTML.querySelector('.delete');
+        const loginLink = loginHTML.querySelector('.js-trigger-navbar-login');
 
         // Add event listeners to close modal
         modalBackground.addEventListener("click", () => {
@@ -927,6 +927,36 @@ class DatasetTile {
         deleteButton.addEventListener("click", () => {
             modalDiv.remove();
         });
+
+        // Add event listener to login link
+        if (loginLink) {
+            loginLink.addEventListener("click", (event) => {
+                event.preventDefault();
+
+                // Hide the modal
+                modalDiv.classList.add("is-hidden");
+
+                // Activate the navbar login dropdown
+                const navbarLoginControls = document.getElementById("navbar-login-controls");
+                if (navbarLoginControls) {
+                    navbarLoginControls.classList.remove("is-hidden");
+
+                    // Target the .not-logged-in dropdown and activate it
+                    const notLoggedInDropdown = navbarLoginControls.querySelector('.not-logged-in');
+                    if (notLoggedInDropdown) {
+                        notLoggedInDropdown.classList.add('is-active');
+                    }
+                }
+
+                // Put the cursor in the E-mail address field of the login form
+                setTimeout(() => {
+                    const emailInput = document.querySelector("#user-email");
+                    if (emailInput) {
+                        emailInput.focus();
+                    }
+                }, 100);
+            });
+        }
 
         // Add modal to DOM and make it active
         document.body.append(loginHTML);
@@ -950,9 +980,6 @@ class DatasetTile {
      */
     async launchJupyterNotebook(shareId, language) {
         try {
-            // at this point user data is:
-            console.log(CURRENT_USER);
-
             // Call the CGI script to get the launch URL
             const response = await fetch(`./cgi/get_jupyter_notebook_launch_url.cgi?share_id=${encodeURIComponent(shareId)}&language=${encodeURIComponent(language)}`);
             const data = await response.json();
