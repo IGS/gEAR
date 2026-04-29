@@ -122,21 +122,20 @@ async def gear_pre_spawn_hook(spawner: DockerSpawner):
     os.makedirs(starter_dir, exist_ok=True)
     os.chown(starter_dir, NOTEBOOK_UID, NOTEBOOK_GID)
 
-    starter_filename = (
-        "r_notebook_template.ipynb"
-        if notebook_env == "r"
-        else "python_notebook_template.ipynb"
-    )
+    # We copy both starter notebooks so users don't see an error if they swap quickly
+    for starter_filename in [
+        "python_notebook_template.ipynb",
+        "r_notebook_template.ipynb",
+    ]:
+        src_template = os.path.join(HUB_NOTEBOOKS_ROOT, starter_filename)
+        dst_template = os.path.join(starter_dir, starter_filename)
 
-    src_template = os.path.join(HUB_NOTEBOOKS_ROOT, starter_filename)
-    dst_template = os.path.join(starter_dir, starter_filename)
+        if not os.path.exists(src_template):
+            raise RuntimeError(f"Starter notebook not found: {src_template}")
 
-    if not os.path.exists(src_template):
-        raise RuntimeError(f"Starter notebook not found: {src_template}")
-
-    if not os.path.exists(dst_template):
-        shutil.copy2(src_template, dst_template)
-        os.chown(dst_template, NOTEBOOK_UID, NOTEBOOK_GID)
+        if not os.path.exists(dst_template):
+            shutil.copy2(src_template, dst_template)
+            os.chown(dst_template, NOTEBOOK_UID, NOTEBOOK_GID)
 
     if len(datasets) > 25:
         raise RuntimeError("Too many datasets requested for one session")
