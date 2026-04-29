@@ -55,7 +55,7 @@ c.JupyterHub.spawner_class = DockerSpawner
 c.DockerSpawner.cmd = ["start-singleuser.py"]
 
 # Remove containers when they stop
-c.DockerSpawner.remove = False
+c.DockerSpawner.remove = True
 
 # Use local Docker default bridge network unless you later define another one
 c.DockerSpawner.network_name = "jupyterhub_default"
