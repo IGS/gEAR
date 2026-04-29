@@ -1436,14 +1436,14 @@ class DatasetTile {
 
                 await this.renderSpatialPanelDisplay(display, otherOpts);
 
-                // Determine how "download_png" is handled for scanpy plots
-                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
-                if (downloadPNG) {
-                    const newDownloadPNG = downloadPNG.cloneNode(true);
-                    downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
+                // Determine how "download_image" is handled for scanpy plots
+                const downloadImage = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
+                if (downloadImage) {
+                    const newDownloadImage = downloadImage.cloneNode(true);
+                    downloadImage.parentNode.replaceChild(newDownloadImage, downloadImage);
 
-                    newDownloadPNG.classList.remove("is-hidden");
-                    newDownloadPNG.addEventListener("click", async (event) => {
+                    newDownloadImage.classList.remove("is-hidden");
+                    newDownloadImage.addEventListener("click", async (event) => {
                         // get the download URL
                         await this.downloadSpatialHTML(display);
                     });
@@ -1511,14 +1511,14 @@ class DatasetTile {
             if (plotlyPlots.includes(display.plot_type)) {
                 await this.renderPlotlyDisplay(display, otherOpts);
 
-                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
-                if (downloadPNG) {
+                const downloadImage = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
+                if (downloadImage) {
 
-                    const newDownloadPNG = downloadPNG.cloneNode(true);
-                    downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
+                    const newDownloadImage = downloadImage.cloneNode(true);
+                    downloadImage.parentNode.replaceChild(newDownloadImage, downloadImage);
 
-                    newDownloadPNG.classList.remove("is-hidden");
-                    newDownloadPNG.addEventListener("click", async (event) => {
+                    newDownloadImage.classList.remove("is-hidden");
+                    newDownloadImage.addEventListener("click", async (event) => {
                         await this.downloadPlotlyImage(display);
                     });
                 }
@@ -2000,7 +2000,9 @@ class DatasetTile {
         // add return image to the plot config so that the API returns the image for download
         plotConfig.return_image = true;
 
-        const data = await apiCallsMixin.fetchPlotlyData(datasetId, analysisObj, plotType, plotConfig);
+        const func = isMultigene ? apiCallsMixin.fetchMgPlotlyData : apiCallsMixin.fetchPlotlyData;
+
+        const data = await func(datasetId, analysisObj, plotType, plotConfig);
 
         const {image, image_format} = data;
         if (!image) {
