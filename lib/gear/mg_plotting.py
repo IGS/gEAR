@@ -254,7 +254,7 @@ def create_clusterbar_z_value(flip_axes, groups_and_colors, key, val):
 
 #@profile(stream=fp)
 def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, cluster_genes=False, flip_axes=False, center_around_zero=False
-                       , distance_metric="euclidean", colorscale=None, reverse_colorscale=False, hide_obs_labels=False, hide_gene_labels=False):
+                       , distance_metric="euclidean", colorscale=None, reverse_colorscale=False, hide_obs_labels=False, hide_gene_labels=False) -> go.Figure:
     """Generate a clustergram (heatmap+dendrogram).  Returns Plotly figure and dendrogram trace info."""
 
     # Clustergram (heatmap) plot
@@ -273,9 +273,9 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
     col_labels = gene_symbols if flip_axes else columns
     row_labels = rows if flip_axes else gene_symbols
 
-    values = df.loc[rows].values + LOG_COUNT_ADJUSTER
+    values = df.loc[rows].to_numpy() + LOG_COUNT_ADJUSTER
     if is_log10:
-        values = df.loc[rows].values
+        values = df.loc[rows].to_numpy()
 
     hidden_labels = set_hidden_labels(hide_obs_labels, hide_gene_labels, flip_axes)
 
@@ -291,9 +291,9 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
         , column_labels=col_labels
         , row_labels=row_labels
         , hidden_labels=hidden_labels
-        , cluster=cluster
-        , col_dist=col_dist
-        , row_dist=row_dist
+        , cluster=cluster   # type: ignore
+        , col_dist=col_dist # type: ignore
+        , row_dist=row_dist # type: ignore
         , center_values=center_around_zero
         , color_map=colorscale
         , display_ratio=0.3                 # Make dendrogram slightly bigger relative to plot
@@ -301,14 +301,18 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
         , log_transform=False if is_log10 else True
     )
 
-    fig.data[-1]["reversescale"] = reverse_colorscale
+    if isinstance(fig, tuple):
+        raise PlotError("Error creating clustergram: Figure object was not returned.")
+
+    # Get a direct reference to the expression heatmap trace (always last trace added)
+    expr_trace: dict = fig.data[-1] # type: ignore
+    expr_trace["reversescale"] = reverse_colorscale
 
     if center_around_zero:
-        fig.data[-1]["zmid"] = 0
+        expr_trace["zmid"] = 0
     else:
-        # both zmin and zmax are required
-        fig.data[-1]["zmin"] = 0
-        fig.data[-1]["zmax"] = max(map(max, fig.data[-1]["z"])) # Highest z-value in 2D arrays
+        expr_trace["zmin"] = 0
+        expr_trace["zmax"] = max(map(max, expr_trace["z"]))
 
     title_text = "Log2 Gene Expression"
     colorbar_title = "Log2 Expr."
@@ -317,26 +321,21 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
         colorbar_title = "Log10 Expr."
 
     fig.update_layout(
-        title={
-            "text":title_text
-            ,"x":0.5
-            ,"xref":"paper"
-            ,"y":0.9
-        }
+        title={"text": title_text, "x": 0.5, "xref": "paper", "y": 0.9}
     )
 
     # Offset the expresison colorbar to the right of the heatmap
     # At this point it's the last trace added
     # NOTE: The bar may need to be adjusted on the gene search display page
-    fig.data[-1]["colorbar"]["x"] = 1.2
-    fig.data[-1]["colorbar"]["xanchor"] = "center"
-    fig.data[-1]["colorbar"]["y"] = 0.5
-    fig.data[-1]["colorbar"]["yanchor"] = "middle"
-    fig.data[-1]["colorbar"]["thickness"] = 15
-    fig.data[-1]["name"] = "expression" # Name colorbar for easier retrieval
-    fig.data[-1]["colorbar"]["title"]["text"] = colorbar_title
-    fig.data[-1]["colorbar"]["title"]["font"]["size"] = 10
-    fig.data[-1]["colorbar"]["tickfont"]["size"] = 10
+    expr_trace["colorbar"]["x"] = 1.2
+    expr_trace["colorbar"]["xanchor"] = "center"
+    expr_trace["colorbar"]["y"] = 0.5
+    expr_trace["colorbar"]["yanchor"] = "middle"
+    expr_trace["colorbar"]["thickness"] = 15
+    expr_trace["name"] = "expression"
+    expr_trace["colorbar"]["title"]["text"] = colorbar_title
+    expr_trace["colorbar"]["title"]["font"]["size"] = 10
+    expr_trace["colorbar"]["tickfont"]["size"] = 10
 
     return fig
 

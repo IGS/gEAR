@@ -1436,14 +1436,14 @@ class DatasetTile {
 
                 await this.renderSpatialPanelDisplay(display, otherOpts);
 
-                // Determine how "download_png" is handled for scanpy plots
-                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
-                if (downloadPNG) {
-                    const newDownloadPNG = downloadPNG.cloneNode(true);
-                    downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
+                // Determine how "download_image" is handled for scanpy plots
+                const downloadImage = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
+                if (downloadImage) {
+                    const newDownloadImage = downloadImage.cloneNode(true);
+                    downloadImage.parentNode.replaceChild(newDownloadImage, downloadImage);
 
-                    newDownloadPNG.classList.remove("is-hidden");
-                    newDownloadPNG.addEventListener("click", async (event) => {
+                    newDownloadImage.classList.remove("is-hidden");
+                    newDownloadImage.addEventListener("click", async (event) => {
                         // get the download URL
                         await this.downloadSpatialHTML(display);
                     });
@@ -1511,15 +1511,15 @@ class DatasetTile {
             if (plotlyPlots.includes(display.plot_type)) {
                 await this.renderPlotlyDisplay(display, otherOpts);
 
-                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
-                if (downloadPNG) {
+                const downloadImage = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
+                if (downloadImage) {
 
-                    const newDownloadPNG = downloadPNG.cloneNode(true);
-                    downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
+                    const newDownloadImage = downloadImage.cloneNode(true);
+                    downloadImage.parentNode.replaceChild(newDownloadImage, downloadImage);
 
-                    newDownloadPNG.classList.remove("is-hidden");
-                    newDownloadPNG.addEventListener("click", async (event) => {
-                        await this.downloadPlotlyPNG(display);
+                    newDownloadImage.classList.remove("is-hidden");
+                    newDownloadImage.addEventListener("click", async (event) => {
+                        await this.downloadPlotlyImage(display);
                     });
                 }
 
@@ -1540,7 +1540,7 @@ class DatasetTile {
                     newDownloadPNG.classList.remove("is-hidden");
                     newDownloadPNG.addEventListener("click", async (event) => {
                         // get the download URL
-                        await this.downloadScanpyPNG(display, false);
+                        await this.downloadScanpyImage(display, false);
                     });
                 }
 
@@ -1615,7 +1615,7 @@ class DatasetTile {
                         newDownloadPNG.classList.remove("is-hidden");
                         newDownloadPNG.addEventListener("click", async (event) => {
                             // get the download URL
-                            await this.downloadScanpyPNG(display, true);
+                            await this.downloadScanpyImage(display, true);
                         });
 
                     }
@@ -1630,7 +1630,7 @@ class DatasetTile {
 
                         newDownloadPNG.classList.remove("is-hidden");
                         newDownloadPNG.addEventListener("click", async (event) => {
-                            await this.downloadPlotlyPNG(display, true);
+                            await this.downloadPlotlyImage(display, true);
                         });
                     }
                 }
@@ -1978,21 +1978,60 @@ class DatasetTile {
     }
 
     /**
-     * Downloads the current Plotly plot as a PNG image.
+     * Downloads the current Plotly plot as an image.
      *
-     * @param {Object} display - The display configuration object containing plot details.
-     * @param {boolean} [isMultigene=false] - Indicates whether the plot is for multiple genes.
-     * @returns {Promise<void>} Resolves when the download is initiated, or shows a toast if the plot is unavailable.
+     * @async
+     * @param {Object} display - The display object containing information about the dataset and plot configuration.
+     * @param {boolean} [isMultigene=false] - Indicates if the display is for multiple genes.
+     * @returns {Promise<void>} - A promise that resolves when the image is downloaded.
+     * @throws {Error} - If the image retrieval is unsuccessful or encounters an unknown error.
      */
-    async downloadPlotlyPNG(display, isMultigene=false) {
-        if (!this.plotlyDiv) {
-            createToast("Plot is not available for download.");
+    async downloadPlotlyImage(display, isMultigene=false) {
+        const datasetId = display.dataset_id;
+        // Create analysis object if it exists.  Also supports legacy "analysis_id" string
+        const analysisObj = display.plotly_config.analysis_id ? {id: display.plotly_config.analysis_id} : display.plotly_config.analysis || null;
+        const plotType = display.plot_type;
+        const plotConfig = display.plotly_config;
+
+        // Used in building the downloadable file name
+        const geneSymbol = isMultigene ? "multigene" : plotConfig.gene_symbol;
+        const shareId = this.dataset.share_id;
+
+        // add return image to the plot config so that the API returns the image for download
+        plotConfig.return_image = true;
+
+        const func = isMultigene ? apiCallsMixin.fetchMgPlotlyData : apiCallsMixin.fetchPlotlyData;
+
+        const data = await func(datasetId, analysisObj, plotType, plotConfig);
+
+        const {image, image_format} = data;
+        if (!image) {
+            console.warn(`Could not retrieve downloadable image for dataset display ${display.id}.`);
             return;
         }
 
-        const geneSymbol = isMultigene ? "multigene" : display.plotly_config.gene_symbol;
-        const shareId = this.dataset.share_id;
-        Plotly.downloadImage(this.plotlyDiv, { format: 'png', width: 1920, height: 1080, filename: `${shareId}_${geneSymbol}_${display.plot_type}` });
+        const imageFormat = image_format || "webp"; // default to webp if not provided
+        const blob = await fetch(`data:image/${imageFormat};base64,${image}`).then(r => r.blob());
+        const download = URL.createObjectURL(blob);
+
+        // create a hidden element that will be clicked to download the PNG
+        const hiddenLink = document.createElement('a');
+        document.body.appendChild(hiddenLink);
+        hiddenLink.classList.add("is-hidden");
+
+        // download URL
+        hiddenLink.download = `${shareId}_${geneSymbol}_${display.plot_type}.${imageFormat}`;
+        hiddenLink.href = download;
+
+        hiddenLink.setAttribute('target', '_blank');
+
+        // click the hidden link to download the PNG
+        hiddenLink.click();
+
+        // save memory (but breaks download)
+        URL.revokeObjectURL(download);
+        hiddenLink.remove();
+
     }
 
     /**
@@ -2028,14 +2067,15 @@ class DatasetTile {
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
-        const {image} = data;
+        const {image, image_format} = data;
 
         if (!image) {
             console.warn(`Could not retrieve plot image for dataset display ${display.id}. Cannot make plot.`);
             return;
         }
 
-        const blob = await fetch(`data:image/webp;base64,${image}`).then(r => r.blob());
+        const imageFormat = image_format || "webp"; // default to webp if not provided
+        const blob = await fetch(`data:image/${imageFormat};base64,${image}`).then(r => r.blob());
 
         // decode base64 image and set as src
         tsnePreview.src = URL.createObjectURL(blob);
@@ -2068,15 +2108,15 @@ class DatasetTile {
 
 
     /**
-     * Retrieves a PNG image for a given display and initiates its download.
+     * Retrieves an image for a given display and initiates its download.
      *
      * @async
      * @param {Object} display - The display object containing information about the dataset and plot configuration.
      * @param {boolean} [isMultigene=false] - Indicates if the display is for multiple genes.
-     * @returns {Promise<void>} - A promise that resolves when the PNG image is downloaded.
+     * @returns {Promise<void>} - A promise that resolves when the image is downloaded.
      * @throws {Error} - If the image retrieval is unsuccessful or encounters an unknown error.
      */
-    async downloadScanpyPNG(display, isMultigene=false) {
+    async downloadScanpyImage(display, isMultigene=false) {
         const datasetId = display.dataset_id;
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
         const analysisObj = display.analysis_id ? {id: display.analysis_id} : display.analysis || null;
@@ -2094,13 +2134,14 @@ class DatasetTile {
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
-        const {image} = data;
+        const {image, image_format} = data;
         if (!image) {
             console.warn(`Could not retrieve downloadable image for dataset display ${display.id}.`);
             return;
         }
 
-        const blob = await fetch(`data:image/png;base64,${image}`).then(r => r.blob());
+        const imageFormat = image_format || "webp"; // default to webp if not provided
+        const blob = await fetch(`data:image/${imageFormat};base64,${image}`).then(r => r.blob());
         const download = URL.createObjectURL(blob);
 
         // create a hidden element that will be clicked to download the PNG
@@ -2109,12 +2150,12 @@ class DatasetTile {
         hiddenLink.classList.add("is-hidden");
 
         // download URL
-        hiddenLink.download = `${shareId}_${geneSymbol}_${display.plot_type}.png`;
+        hiddenLink.download = `${shareId}_${geneSymbol}_${display.plot_type}.${imageFormat}`;
         hiddenLink.href = download;
 
         hiddenLink.setAttribute('target', '_blank');
 
-        // click the hidden link to download the PNG
+        // click the hidden link to download the PDF
         hiddenLink.click();
 
         // save memory (but breaks download)
@@ -2259,7 +2300,7 @@ class DatasetTile {
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
-        const {image} = data;
+        const {image, image_format} = data;
 
         if (!image) {
             console.warn(`Could not retrieve spatial plot image data for dataset ${datasetId}. Cannot make plot.`);
@@ -2267,7 +2308,8 @@ class DatasetTile {
             return;
         }
 
-        const blob = await fetch(`data:image/webp;base64,${image}`).then(r => r.blob());
+        const imageFormat = image_format || "webp"; // default to webp if not provided
+        const blob = await fetch(`data:image/${imageFormat};base64,${image}`).then(r => r.blob());
 
         // decode base64 image and set as src
         spatialPreview.src = URL.createObjectURL(blob);

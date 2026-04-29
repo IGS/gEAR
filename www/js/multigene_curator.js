@@ -878,10 +878,12 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
      */
     async createPlot(datasetId, analysisObj) {
         let image;
+        let image_format;
         try {
             const data = await fetchMgTsneImage(datasetId, analysisObj, this.apiPlotType, this.plotConfig);
-            ({ image } = data);
+            ({ image, image_format } = data);
         } catch (error) {
+            onsole.error("Error fetching multigene TSNE image:", error);
             return;
         }
 
@@ -903,7 +905,8 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
             createToast("Could not retrieve plot image. Cannot make plot.");
             return;
         }
-        const blob = await fetch(`data:image/webp;base64,${image}`).then(r => r.blob());
+        const imageFormat = image_format ?? "webp";
+        const blob = await fetch(`data:image/${imageFormat};base64,${image}`).then(r => r.blob());
         tsnePreview.src = URL.createObjectURL(blob);
         tsnePreview.onload = () => {
             // Revoke the object URL to free up memory
@@ -961,7 +964,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
 
         // Get colors
         const colorElts = document.getElementsByClassName("js-plot-color");
-        const colorSeries = document.getElementById("colorize-legend-by-post").textContent;
+        const colorSeries = document.getElementById("colorize-legend-by-post").value;
         if (colorSeries && colorElts.length) {
             this.plotConfig["colors"] = {};
             [...colorElts].map((field) => {

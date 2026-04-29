@@ -1,3 +1,4 @@
+import base64
 import copy
 import json
 import numbers
@@ -14,7 +15,13 @@ from flask_restful import Resource
 from gear.plotting import PlotError, generate_plot, plotly_color_map
 from plotly.utils import PlotlyJSONEncoder
 
-from .common import clip_expression_values, create_projection_adata, get_adata_from_analysis, get_spatial_adata, order_by_time_point
+from .common import (
+    clip_expression_values,
+    create_projection_adata,
+    get_adata_from_analysis,
+    get_spatial_adata,
+    order_by_time_point,
+)
 
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
@@ -41,6 +48,11 @@ class PlotlyData(Resource):
     def post(self, dataset_id):
         session_id = request.cookies.get('gear_session_id')
         req = request.get_json()
+        if not req:
+            return {
+                "success": -1,
+                'message': "No JSON body provided."
+            }
         gene_symbol = req.get('gene_symbol', None)
         plot_type = req.get('plot_type')
 
@@ -77,6 +89,7 @@ class PlotlyData(Resource):
         projection_id = req.get('projection_id', None)    # projection id of csv output
         expression_min_clip = req.get('expression_min_clip', None)    # Minimum clip value for expression data
         colorblind_mode = req.get('colorblind_mode', False)
+        return_image = req.get('return_image', False)   # Whether to return a base64 encoded image string in the response for direct use in the frontend
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         # Returning initial values in case plotting errors.
@@ -492,6 +505,18 @@ class PlotlyData(Resource):
             return_dict["success"] = -1
             return_dict["message"] = "Encountered error: {}".format(str(e))
             return return_dict
+
+        # Return image as base-encoded PDF if requested
+        if return_image:
+            image_format = "pdf"
+            img_bytes = fig.to_image(format=image_format)
+            img_b64 = base64.b64encode(img_bytes).decode('utf-8')
+            return {
+                "success": success
+                , "message": message
+                , "image": img_b64
+                , "image_format": image_format
+            }
 
         plot_json = json.dumps(fig, cls=PlotlyJSONEncoder)
 
