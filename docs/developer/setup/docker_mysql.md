@@ -27,7 +27,7 @@ NOTE: Change the SQL filename to whatever database dump you are using.
 
 ## Set up the mysql database
 
-### Dump file
+### Method 1: From a dump file
 
 1. Do `docker-compose exec db /bin/bash` to get into the docker instance.  Next do `mysql -uroot -p<ROOT_PASSWORD>` to log into mysql as root.  Note that the "GENERATED_ROOT_PASSWORD" was obtained from the "Get root password" section, and that there is no space between the "-p" and the password.
 2. Run the following (in the mysql client) to setup the initial MySQL tables.
@@ -38,7 +38,7 @@ NOTE: Change the SQL filename to whatever database dump you are using.
     1. `GRANT USAGE ON *.* TO 'gear'@'%';`
     2. `GRANT SELECT, INSERT, UPDATE, DELETE ON gear_portal.* TO 'gear'@'%';`
 
-### No dump file (fresh container only)
+### Method 2; No dump file (fresh container only)
 
 1. Do `docker-compose exec db /bin/bash` to get into the docker instance.  Next do `mysql -uroot -p<ROOT_PASSWORD>` to log into mysql as root.  Note the root password from the "Get root password" section, and that there is no space between the "-p" and the password.
 2. Run the following (in the mysql client) to setup the initial MySQL tables.

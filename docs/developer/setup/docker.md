@@ -2,8 +2,9 @@
 
 ## Before building
 
+* [Orbstack](https://orbstack.dev/) is recommended over Docker Desktop, but certainly optional. It is faster, lighter, and still uses the same Docker command-line tools.
+  * Unfortunately Orbstack does not have Windows support.
 * From the gEAR root, `cd docker`. All commands assume you are in this directory
-
 * `cp docker-compose.yml.template docker-compose.yml`
   * Alternatively ask @adkinsrs for a docker-compose.yml file as it will be filled in. Otherwise fill in any values wrapped in brackets
   * @adkinsrs's file is hard-coded to his paths so be sure to change those.
@@ -24,7 +25,14 @@ How to pull the image
 
 * `docker pull adkinsrs/umgear:latest`.
 
-IMPORTANT: From the gEAR root `cp docker/gear.ini.docker gear.ini` to make sure a working gear.ini file is present in the codebase after mounting the code as a volume in the "web" service in the docker-compose.yml file.
+Grab the gear.ini file:
+
+* `docker run -it adkinsrs/umgear:latest`
+* `docker ps` note the container ID
+* `docker cp <container_id>:/opt/gEAR/gear.ini <gear_root>/gear.ini` which will copy the gear.ini file within the docker container outside.
+* Feel free to stop the container, or leave it up so the docker-compose stack can use it.
+
+This step is necessary if you are mounting your host gEAR code as a volume to the docker compose "web" service.  When you do this, the directory inside the container is replaced with your volume's code, and the gear.ini file within will be missing.
 
 ### Method 2: Build image
 
@@ -33,9 +41,48 @@ IMPORTANT: From the gEAR root `cp docker/gear.ini.docker gear.ini` to make sure 
   * Alternatively ask @adkinsrs for a gear.ini.docker file as it will be filled in. Otherwise fill in any values wrapped in brackets
 * To build run `docker buildx build -t umgear:latest .`
   * Ensure the image name here (`umgear:latest`) is reflected in the docker-compose.yml file instead of `adkinsrs/umgear:latest`
-* The build can take a while, particularly in the Bioconductor installation steps. Fortunately completed steps are cachable.
+
+### Method 2a: Build image with updated R or Python stuff
+
+* This will use premade Python and R base Dockerfile images to save on build time. If you want to update the R or Python install, you need to do the following:
+  * Update requirements.txt (for Python) or install_bioc.R, install_bioc.sh, or install_packages.R as needed for R
+  * For R, run `docker buildx build -t gear-r-base -f Dockerfile.r .` (enjoy the bioconductor install slowness)
+  * For Python, run  `docker buildx build -t gear-python-base -f Dockerfile.python .`
+  * In the Dockerfile, change the `COPY --from` commands to point to your reviews r-base or python-base images
+* To build gEAR, run `docker buildx build -t umgear:latest .`
+  * Ensure the image name here (`umgear:latest`) is reflected in the docker-compose.yml file instead of `adkinsrs/umgear:latest`
 
 In the build, the "gear.ini.docker" file will end up copied to "gear.ini" in the "/opt/gEAR" directory for the docker instance. However, if are using docker-compose and the gEAR directory is mounted into the "web" service, this can be overriden to a gear.ini from outside.  If you do not have a "gear.ini" file (only gear.ini.template), then ask @adkinsrs for one.
+
+### The three Dockerfiles
+
+Information about the three Dockerfiles found in `<gear_root>/docker`
+
+#### Dockerfile.python (The Python Base)
+
+This file is dedicated entirely to compiling Python 3.x and installing requirements.txt.
+
+**When you build it**: Only when you need to add a new package to requirements.txt or upgrade the Python version.
+
+**RPy2**: The "rpy2" package is actually built in the final Docker (umgear) image, due to some dependencies on R.
+
+**The output**: This is currently built and pushed as adkinsrs/gear-python-base:YYYY-MM-DD
+
+#### Dockerfile.r (The R Base)
+
+This file is dedicated entirely to compiling R and running your Bioconductor scripts.
+
+**When you build it**: Almost never. Only touch this if the team specifically requests a new version of Bioconductor or a brand-new R system library.
+
+**The output**: This is currently built and pushed as adkinsrs/gear-r-base:YYYY-MM-DD
+
+#### Dockerfile (The Final App)
+
+This is your main daily-driver file. It starts with a clean Ubuntu image, uses COPY --from=... to pull in the pre-compiled folders from your registry, installs Apache, and copies over your Flask API and HTML/JS files.
+
+**When you build it**: Every time you update the website, tweak the Apache configuration, or change a CGI script.  Anything gEAR-code related, basically.
+
+**The output**: This builds in seconds and becomes your final production image.  This is pushed as adkinsrs/umgear:YYYY-MM-DD
 
 ## Starting the stack
 
@@ -65,23 +112,11 @@ You can pre-build the "panel_app" image using the Dockerfile from `<gear_root>/s
 
 You can view logs with `docker compose logs panel`
 
-## Annotations and Datasets
-
-* Annotation and dataset files to use need to be housed on the host machine initially since they are not contained in the gEAR codebase and thus will not be available in the Dockerized version of gEAR out of the box
-* Right now the only annotation I am including is Mouse - release 94.  This is because each annotation directory is about 1Gb each and would overrun the storage on my computer and blow up the size of the 'dataset' Docker image if all were added.  We only need one annotation for sandboxing and development though.
-* I am also using the Hertzano/Ament P2 mouse cochlea dataset for testing (as recommended by Brian Herb)
-
-### Loading annotation data
-
-* After launching the Docker containers via docker-compose, the annotation data may not be loaded into the MySQL database.  To do this (substitute species and release number as needed):
-
-1. Run `docker compose exec web /bin/bash`
-2. `cd /opt/gEAR/annotations/mouse`
-3. Run `../../bin/load_genbank_annotations.py -i ./release-94 -id 1 -r 94` which will load the annotation file
-
 ## Getting datasets
 
-Generally, for development purposes, it is best to just have datasets for a couple of dataset collections, such as "Hearing (site default)" and "Ear (diverse variety)"
+Dataset files to use need to be housed on the host machine initially since they are not contained in the gEAR codebase and thus will not be available in the Dockerized version of gEAR out of the box
+
+Generally, for development purposes, it is best to just have datasets for a couple of dataset collections, such as "Hearing (site default)" and "Ear (diverse variety)". The "Ear" collection does not exist on gEAR anymore but is a good representative collection of datasets.
 
 The following dataset IDs are representative of both of the aforementioned dataset collections:
 
@@ -122,16 +157,11 @@ You can write some script to loop through these IDs and download them to your "d
 
 The docker-compose.yml file is set up to mount the gEAR code as a volume, allowing you to make immediate edits to be reflected inside the container.  If making changes within `<gear_root>/www/api`, they will apply once you run `docker compose restart web`.
 
-At any time you can run `docker compose exec web tail -f /var/log/apache2/ssl_umgear_error.log` to view a running error log.
+## Viewing logs
 
-## Spatial panel
+To view potential logs, run `docker compose logs` for all services or `docker compose logs <service>` for a single service.
 
-```
-cd <gear_root>/spatial
-docker build -t panel_app .
-```
-
-This will enable the spatial panel dashboard to be used in the docker-compose.yml stack
+If you want to view Apache logs, from server-side (Python) code, you can run `docker compose exec web tail -f /var/log/apache2/ssl_umgear_error.log` to view a running error log.  Sometimes it may be necessary to view "/var/log/apache2/error.log" instead.
 
 ## Issues and potential solutions
 

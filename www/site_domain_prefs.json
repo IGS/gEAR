@@ -2,7 +2,7 @@
     "cache_version": "2026.04.21.013537",
     "domain_label": "gear",
     "domain_short_display_label": "gEAR",
-    "domain_url":"https://umgear.org",
+    "domain_url":"http://localhost:8080",
     "enabled_plugins": {
         "aro_2026_tab": ["index.html"],
         "deafness_gene_annotation": ["expression.html"],
