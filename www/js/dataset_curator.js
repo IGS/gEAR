@@ -452,10 +452,12 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
      */
     async createPlot(datasetId, analysisObj) {
         let image;
+        let image_format;
         try {
             const data = await fetchTsneImage(datasetId, analysisObj, this.apiPlotType, this.plotConfig);
-            ({ image } = data);
+            ({ image, image_format } = data);
         } catch (error) {
+            console.error("Error fetching TSNE image:", error);
             return;
         }
 
@@ -477,7 +479,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
             createToast("Could not retrieve plot image. Cannot make plot.");
             return;
         }
-        const imageFormat = data.image_format ?? "webp";
+        const imageFormat = image_format ?? "webp";
         const blob = await fetch(`data:image/${imageFormat};base64,${image}`).then(r => r.blob());
         tsnePreview.src = URL.createObjectURL(blob);
         tsnePreview.onload = () => {
@@ -526,7 +528,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
 
         // Get colors
         const colorElts = document.getElementsByClassName("js-plot-color");
-        const colorSeries = document.getElementById("colorize-legend-by-post").textContent;
+        const colorSeries = document.getElementById("colorize-legend-by-post").value;
         if (colorSeries && colorElts.length) {
             this.plotConfig["colors"] = {};
             [...colorElts].map((field) => {
@@ -544,7 +546,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
         }
 
         // if no plot-by-group is selected, ensure max columns is not passed to the scanpy code
-        if (!(document.getElementById("plot-by-group-series-post").textContent)) {
+        if (!(document.getElementById("plot-by-group-series-post").value)) {
             this.plotConfig["max_columns"] = null;
         }
 
