@@ -18,7 +18,7 @@ import geardb
 import pandas as pd
 import scipy.stats as stats
 from aiohttp_retry import ExponentialRetry, RetryClient
-from flask import request
+from flask import request, abort
 from flask_restful import Resource, reqparse
 from gear.analysis import get_analysis, SpatialAnalysis
 from gear.orthology import get_ortholog_file, map_dataframe_genes
@@ -529,6 +529,10 @@ def projectr_callback(
         write_projection_status(JOB_STATUS_FILE, status)
         return status
 
+    # This is about the time I could consider this to be running, as this is when we get into potentially memory-intensive steps with the AnnData object
+    status["status"] = "running"
+    write_projection_status(JOB_STATUS_FILE, status)
+
     # Drop duplicate unique identifiers. This may happen if two unweighted gene cart genes point to the same Ensembl ID in the db
     loading_df = loading_df[~loading_df.index.duplicated(keep="first")]
 
@@ -630,10 +634,6 @@ def projectr_callback(
     dataset_projection_csv = build_projection_csv_path(
         dataset_id, projection_id, "dataset"
     )
-
-    # This is about the time I could consider this to be running, as it is the start of the "long-running" part of the task
-    status["status"] = "running"
-    write_projection_status(JOB_STATUS_FILE, status)
 
     # Create lock file if it does not exist
     lockfile = str(dataset_projection_csv) + ".lock"
@@ -1301,11 +1301,9 @@ class ProjectRStatus(Resource):
         resolved_status_file = JOB_STATUS_FILE.resolve()
         if not resolved_status_file.is_relative_to(JOB_STATUS_DIR.resolve()):
             # Reject attempts to escape the directory
-            from flask import abort
             abort(403, description="Invalid job id/path")
 
         if not resolved_status_file.is_file():
-            from flask import abort
             abort(404, description="Job status file not found")
 
         with open(resolved_status_file, "r") as fh:

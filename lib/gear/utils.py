@@ -32,7 +32,7 @@ def catch_memory_error() -> typing.Callable:
             try:
                 return func(*args, **kwargs)
             except MemoryError as e:
-                print(f"Exceeded memory in {func.__name__}: {e}", sys.stderr)
+                print(f"Exceeded memory in {func.__name__}: {e}", file=sys.stderr)
 
                 result = {
                     "message": "Exceeded memory limit",
