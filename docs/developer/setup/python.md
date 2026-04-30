@@ -44,8 +44,8 @@ fixed paths have worked fine for decades.
         php \
         libapache2-mod-php \
         php-gd
-    sudo apt -qq clean autoclean \
-    sudo apt -qq autoremove -y \
+    sudo apt -qq clean autoclean
+    sudo apt -qq autoremove -y
     sudo rm -rf /var/lib/apt/lists/*
 
     export PYTHONV=3.14.4
@@ -62,17 +62,18 @@ fixed paths have worked fine for decades.
     ./configure --prefix=/opt/Python-${PYTHONV} --enable-optimizations --enable-shared \
         LDFLAGS="-L/usr/lib/x86_64-linux-gnu" \
         CPPFLAGS="-I/usr/include" \
-        PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig" \
+        PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig"
     make install
     cd /tmp
     rm -rf Python-${PYTHONV}*
 
-    export LD_LIBRARY_PATH="/opt/Python-${PYTHON_FULL_VERSION}/lib:${LD_LIBRARY_PATH}"
+    export LD_LIBRARY_PATH="/opt/Python-${PYTHONV}/lib:${LD_LIBRARY_PATH}"
 
     cd /opt/Python-${PYTHONV}/bin
     sudo ln -s /opt/Python-${PYTHONV}/lib/libpython${PYTHON_MINORV}.so.1.0 /usr/lib/
 
     sudo mkdir /opt/bin
+    sudo rm /opt/bin/python3 # if it exists.
     sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/
 
     sudo apt install r-base r-base-dev hdf5-helpers hdf5-tools libhdf5-dev zlib1g-dev libblas-dev liblapack-dev libxml2-dev cmake apache2 apache2-dev
@@ -98,9 +99,10 @@ NOTE: Some of the packages will indirectly install dask-expr, which is currently
 
 NOTE 2: Really try to keep the requirements.txt in sync with the files below.  While you can use the file to do the installation, @jorvis prefers to have them explicitly listed here.
 
+I cannot add comments to the bash code without breaking the command.  So consult the requirements.txt file in the "docker" directory for any comments pertaining to why a version was installed.
+
 ```bash
     ./pip3 install --upgrade pip
-
     ./pip3 install \
     aiohttp==3.13.5 \
     aiohttp_retry==2.9.1 \
@@ -119,7 +121,7 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
     jupyter==1.0.0 \
     kaleido==0.2.1 \
     leidenalg==0.10.2 \
-    legacy-cgi==2.6.4 \   # To handle legacy CGI scripts (cgi was removed in Python 3.13)
+    legacy-cgi==2.6.4 \
     llvmlite==0.47.0 \
     matplotlib==3.10.7 \
     mod-wsgi==5.0.2 \
@@ -129,11 +131,11 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
     numpy==2.4.0 \
     opencv-python==4.5.5.64 \
     openpyxl==3.1.5 \
-    pandas==2.3.3 \   # Anndata does not support pandas 3.x.x yet
+    pandas==2.3.3 \
     panel==1.8.10 \
     Pillow==12.2.0 \
     pika==1.3.2 \
-    pims==0.7.0 \ # Need to force the latest version, due to numpy being pretty recent. Relates to spatialdata-io dependency chain
+    pims==0.7.0 \
     plotly==6.6.0 \
     pybigwig==0.3.25 \
     python-dotenv==0.20.0 \
@@ -142,7 +144,7 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
     scanpy==1.12.1 \
     scipy==1.17.1 \
     seaborn==0.13.2 \
-    setuptools<82 \   # need some pkg_resources methods
+    setuptools==81.0.0 \
     spatialdata==0.7.2 \
     spatialdata_io==0.6.0 \
     shadows==0.1a2 \
