@@ -175,7 +175,7 @@ LoadModule wsgi_module "/opt/Python-3.10.4/lib/python3.10/site-packages/mod_wsgi
 
 ## /etc/apache2/mods-enabled/wsgi.conf
 
-Add the line `WSGIPythonHome "/opt/Python-3.10.4"` into the IfModule block.
+Add the line `WSGIPythonHome "/opt/Python-3.14.4"` into the IfModule block.
 
 Then, finally restart apache again.
 

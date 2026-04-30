@@ -155,9 +155,12 @@ I cannot add comments to the bash code without breaking the command.  So consult
 
 ```
 
+Do not forget to change out the old Python version in various files (i.e. systemd files, apache, etc.)
+
+
 ### Apache
 
-If you update python versions, you need to update the wsgi_module path in the apache.conf to reflect the current python version.  Also restart the apache service.
+If you update python versions, you need to update the wsgi_module path in the apache.conf to reflect the current python version.  Also restart the apache service.  Also update `WSGIPythonHome` in the apache.conf as well.
 
 ## Gotchas
 
