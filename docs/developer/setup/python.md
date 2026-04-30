@@ -43,7 +43,7 @@ fixed paths have worked fine for decades.
         apache2 \
         php \
         libapache2-mod-php \
-        php-gd \
+        php-gd
     sudo apt -qq clean autoclean \
     sudo apt -qq autoremove -y \
     sudo rm -rf /var/lib/apt/lists/*
