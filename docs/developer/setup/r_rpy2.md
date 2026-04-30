@@ -41,7 +41,7 @@ cd ./services/projectr/
 sudo sh ./install_bioc.sh
 sudo Rscript --vanilla install_packages.R || exit 1
 
-export R_HOME="/opt/R-4.5.2/R"
+export R_HOME="/usr/local/lib/R"
 export LD_LIBRARY_PATH="/usr/local/lib/R/lib:${LD_LIBRARY_PATH}"
 
 ```
