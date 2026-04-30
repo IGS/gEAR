@@ -155,9 +155,9 @@ I cannot add comments to the bash code without breaking the command.  So consult
 
 ```
 
-### Note about editable pip installs
+### Apache
 
-The previous pip installation methods also includes an extra line to install the gEAR "lib" area as an editable install. Updates to the modules in this directory will be hot-loaded without a re-install.  The "setup.py" script is designed to find the "lib" directory itself as a package. This will allow you to run `import gear` without having to append "lib" into the PYTHONPATH.  However, you will still need to append "lib" to the PYTHONPATH if you want to `import geardb` or something on the same level as "setup.py"
+If you update python versions, you need to update the wsgi_module path in the apache.conf to reflect the current python version.  Also restart the apache service.
 
 ## Gotchas
 
