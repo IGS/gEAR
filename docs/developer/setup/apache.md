@@ -171,7 +171,7 @@ NOTE: For the Flask-API, more processes is better.  The standard of 4 processes 
 
 ### The version numbers here need to coincide with the python version installed
 
-LoadModule wsgi_module "/opt/Python-3.10.4/lib/python3.10/site-packages/mod_wsgi/server/mod_wsgi-py310.cpython-310-x86_64-linux-gnu.so"
+LoadModule wsgi_module "/opt/Python-3.14.4/lib/python3.10/site-packages/mod_wsgi/server/mod_wsgi-py314.cpython-314-x86_64-linux-gnu.so"
 
 ## /etc/apache2/mods-enabled/wsgi.conf
 
