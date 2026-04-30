@@ -3,7 +3,7 @@
 FROM bioconductor/bioconductor_docker:3.21-r-4.5.2 AS r-builder
 
 # Install additional runtime dependencies if needed
-RUN apt-get -qq update \
+RUN apt -qq update \
   && DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
   ca-certificates \
   curl \

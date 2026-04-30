@@ -16,7 +16,7 @@ LABEL author="Shaun Adkins <sadkins@som.umaryland.edu>"
 LABEL maintainer="Shaun Adkins <sadkins@som.umaryland.edu>"
 
 # Install runtime packages
-RUN apt-get -qq update \
+RUN apt -qq update \
   && DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
   ca-certificates \
   curl \

@@ -6,7 +6,7 @@ FROM python:3.14-slim
 ENV PYTHONUNBUFFERED=True
 
 # NOTE: Installing vim so I can debug the container
-RUN apt-get -qq update \
+RUN apt -qq update \
   && DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
   gcc \
   htop \

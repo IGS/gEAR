@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -x
+set -e
 
 Rmaj=R-4
 Rver="${Rmaj}.5.2"

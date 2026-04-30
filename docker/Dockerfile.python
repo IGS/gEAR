@@ -6,7 +6,7 @@ ARG PYTHON_FULL_VERSION=${PYTHON_MAJOR_VERSION}.4
 ARG PYTHON_URL=https://www.python.org/ftp/python/${PYTHON_FULL_VERSION}/Python-${PYTHON_FULL_VERSION}.tar.xz
 
 # Install build dependencies
-RUN apt-get -qq update \
+RUN apt -qq update \
   && DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
   apache2-dev \
   libffi-dev \

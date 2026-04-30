@@ -5,7 +5,7 @@ Rather than using the OS' package manager to install R, we'll use the steps/scri
 ## Prerequesites to install via apt
 
 ```bash
-sudo apt-get -qq update
+sudo apt -qq update
 sudo DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
   gfortran \
   libreadline-dev \

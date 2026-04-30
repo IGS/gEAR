@@ -8,7 +8,7 @@ webserver that's an unnecessary layer.  Also, maybe I'm old-school, but
 fixed paths have worked fine for decades.
 
 ```bash
-    sudo apt-get -qq update
+    sudo apt -qq update
     sudo DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
         apache2-dev \
         libffi-dev \

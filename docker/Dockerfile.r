@@ -6,7 +6,7 @@ FROM ubuntu:jammy AS r-builder
 # which could cause gcc compiler issues in stage 3
 
 # 1. Install required system dependencies for compiling R and packages
-RUN apt-get -qq update \
+RUN apt -qq update \
   && DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
   curl \
   wget \
