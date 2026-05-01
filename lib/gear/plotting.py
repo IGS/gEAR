@@ -256,22 +256,37 @@ def _translate_and_scale(series: pd.Series, x: str) -> float:
     ) + NEW_MIN
 
 
-def _truncate_ticktext(group_list: list[str]) -> list[str] | None:
+def _truncate_ticktext(group_list: list[str]) -> tuple[list[str] | None, dict[str, str]]:
     """Truncate a group of axis ticks to a specified length."""
     TRUNCATION_LEN = 7  # How much of the original text to use (followed by ellipses)
     MAX_LEN_ALLOWED = 10  # Any text over this limit will be truncated
 
     # If only 0 or 1 datapoints in group, categoryarray was not present
     if not group_list:
-        return None
+        return None, {}
 
     new_ticktext = []
+    full_name_mapping = {}
+    truncated_counts: dict[str, int] = {}  # Track how many times a truncated label has been seen
+
     for val in group_list:
         if len(val) > MAX_LEN_ALLOWED:
-            new_ticktext.append("{}...".format(val[0:TRUNCATION_LEN]))
+            base_truncated = "{}...".format(val[0:TRUNCATION_LEN])
+
+            if base_truncated in truncated_counts:
+                # Collision: append a counter to disambiguate
+                truncated_counts[base_truncated] += 1
+                truncated = "{}~{}".format(base_truncated, truncated_counts[base_truncated])
+            else:
+                truncated_counts[base_truncated] = 0
+                truncated = base_truncated
+
+            new_ticktext.append(truncated)
+            full_name_mapping[truncated] = val
         else:
             new_ticktext.append(val)
-    return new_ticktext
+
+    return new_ticktext, full_name_mapping
 
 
 def _update_axis_titles(
@@ -385,6 +400,7 @@ def generate_plot(
     x_title: str | None = None,
     y_title: str | None = None,
     is_projection: bool = False,
+    non_interactive: bool = False,  # If True, will skip certain formatting that causes issues for static images (e.g. truncated axis labels)
     **kwargs: dict,
 ) -> go.Figure:
     """Generates and returns figure for facet grid."""
@@ -400,15 +416,21 @@ def generate_plot(
     kwargs["traces"].setdefault("marker", {})  # If markers does not exist within
     kwargs["traces"]["marker"].setdefault("size", 3)  # If size does not exist within
 
-    # Round y values to 2 decimal places for hover data
-    try:
-        df["y_rounded"] = df[y].astype(float).round(2)
-    except Exception:
-        # If y is not a number, try x.  If that is not a number, use y as is
-        try:
-            df["y_rounded"] = df[x].astype(float).round(2)
-        except Exception:
-            df["y_rounded"] = df[y]
+    hover_name = text_name
+    if non_interactive:
+        hover_name = None
+    else:
+        if not text_name:
+            # Round y values to 2 decimal places for hover data
+            try:
+                df["y_rounded"] = df[y].astype(float).round(2)
+            except Exception:
+                # If y is not a number, try x.  If that is not a number, use y as is
+                try:
+                    df["y_rounded"] = df[x].astype(float).round(2)
+                except Exception:
+                    df["y_rounded"] = df[y]
+            hover_name = "y_rounded"
 
     # These labels allows use to override these labels used for axis titles, etc.
     labels_dict = {x: x_title, y: y_title, "color_name": ""}
@@ -422,7 +444,7 @@ def generate_plot(
         "color": color_name,
         "category_orders": category_orders,
         "labels": labels_dict,
-        "hover_name": text_name if text_name else "y_rounded",
+        "hover_name": hover_name
     }
 
     # Ensure label is one of the labels that is not lost from "gropuby"
@@ -485,7 +507,8 @@ def generate_plot(
                 plotting_args["error_y_minus"] = "std_minus"
 
             # Add standard deviation to hover data
-            plotting_args["hover_data"] = {x: False, y: False, "std": ":.2f"}
+            if not non_interactive:
+                plotting_args["hover_data"] = {x: False, y: False, "std": ":.2f"}
 
     if plot_type == "contour":
         plotting_args["z"] = z
@@ -756,13 +779,17 @@ def generate_plot(
     )
 
     # Truncate faceted column axis labels so annotation can fit
-    if facet_col and _is_categorical(df[x]):
-        fig.for_each_xaxis(
-            lambda a: a.update(
-                ticktext=_truncate_ticktext(a.categoryarray),
+    axis_label_mapping = {}  # Aggregated mapping of truncated -> full label names
+    if not non_interactive and _is_categorical(df[x]):
+        def truncate_and_collect(a):
+            ticktext, mapping = _truncate_ticktext(a.categoryarray)
+            axis_label_mapping.update(mapping)
+            a.update(
+                ticktext=ticktext,
                 tickvals=a.categoryarray,
             )
-        )
+        fig.for_each_xaxis(truncate_and_collect)
+
 
     fig.update_yaxes(
         dict(
@@ -809,7 +836,7 @@ def generate_plot(
     # More general layout updates
     fig.update_layout(
         autosize=True,
-        hovermode="closest",
+        hovermode="closest" if not non_interactive else False,
         legend=dict(itemsizing="constant"),
         showlegend=False
         if hide_legend
@@ -826,6 +853,27 @@ def generate_plot(
 
     if reverse_palette:
         kwargs["coloraxes"]["reversescale"] = reverse_palette
+
+    # Store the axis label mapping in the figure metadata for use on the JS side
+    if axis_label_mapping:
+        existing_meta = fig.layout.meta or {}
+        if isinstance(existing_meta, dict):
+            existing_meta["axis_label_mapping"] = axis_label_mapping
+        else:
+            existing_meta = {"axis_label_mapping": axis_label_mapping}
+        fig.update_layout(meta=existing_meta)
+
+        if not non_interactive:
+            # axis_label_mapping is truncated -> full; we need full -> truncated to find what changed
+            # But trace.x contains the original full values, so we just pass them directly as customdata
+            def patch_hover(trace):
+                if trace.x is None:
+                    return
+                trace.update(
+                    customdata=[[str(xval)] for xval in trace.x],
+                    hovertemplate="<b>%{customdata[0]}</b><br>Value: %{y:.2f}<extra></extra>",
+                )
+            fig.for_each_trace(patch_hover)
 
     # Update this particular entity with kwargs information.  This is generally custom things the user wants
     # that is not avaiable in the general plotly configuration we want nor in dataset_curator options

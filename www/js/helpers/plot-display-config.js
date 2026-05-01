@@ -239,3 +239,93 @@ const scaleBetween = (unscaledNum, minAllowed, maxAllowed, min, max) => {
     return (maxAllowed - minAllowed) * (unscaledNum - min) / (max - min) + minAllowed;
 }
 
+/**
+ * Attaches hover tooltips to truncated Plotly axis tick labels using the
+ * axis_label_mapping stored in the plot's layout metadata.
+ *
+ * @param {string} plotDivId - The ID of the Plotly plot div.
+ */
+export const attachAxisLabelTooltips = (plotDivId) => {
+    const plotDiv = document.getElementById(plotDivId);
+    if (!plotDiv) return;
+
+    const layout = plotDiv.layout;
+    const axisLabelMapping = layout?.meta?.axis_label_mapping;
+    if (!axisLabelMapping || !Object.keys(axisLabelMapping).length) return;
+
+    // Build a map of tick label text -> full name for quick lookup
+    const tickLabelMap = new Map();
+    const tickLabels = plotDiv.querySelectorAll('.xaxislayer-above .xtick text, .xaxislayer .xtick text');
+    for (const tickLabel of tickLabels) {
+        const labelText = tickLabel.textContent?.trim();
+        if (labelText && axisLabelMapping[labelText]) {
+            // map element's text property to full name for tooltip lookup later
+            tickLabelMap.set(tickLabel, axisLabelMapping[labelText]);
+        }
+    }
+
+    if (!tickLabelMap.size) return;
+
+    // Create a shared tooltip element
+    const tooltip = document.createElement('div');
+    tooltip.classList.add('tooltip');   // Bulma's style
+    tooltip.style.position = 'absolute';
+    tooltip.style.pointerEvents = 'none'; // Ensure the tooltip doesn't "intercept" mouse events
+    tooltip.style.fontSize = "12px";
+    tooltip.style.bottom = "0px";
+    tooltip.style.left = "0px";
+    tooltip.style.backgroundColor = 'white';
+    tooltip.style.opacity = 0.8;
+    tooltip.style.color = 'black';
+    tooltip.style.padding = '5px';
+    tooltip.style.border = '1px solid gray';
+    tooltip.style.zIndex = 3;
+    tooltip.style.display = 'none'; // Initial state
+    plotDiv.appendChild(tooltip);
+
+    /**
+     * Check if a mouse event's coordinates fall within a tick label's bounding rect.
+     * Using getBoundingClientRect() works for both HTML and SVG elements and returns
+     * viewport-relative coordinates, matching clientX/clientY directly.
+     */
+    const findHoveredTick = (clientX, clientY) => {
+        for (const [tickEl, fullName] of tickLabelMap) {
+            const rect = tickEl.getBoundingClientRect();
+            if (
+                clientX >= rect.left &&
+                clientX <= rect.right &&
+                clientY >= rect.top &&
+                clientY <= rect.bottom
+            ) {
+                return fullName;
+            }
+        }
+        return null;
+    };
+
+    // Plotly renders a transparent drag layer on top that blocks mouse events to SVG elements.
+    // Attach to the plotDiv itself and use bounding rect comparison to detect tick proximity.
+    plotDiv.addEventListener('mousemove', (event) => {
+        const fullName = findHoveredTick(event.clientX, event.clientY);
+        if (fullName) {
+            tooltip.innerHTML = `<strong>${fullName}</strong>`;
+            tooltip.style.display = 'block';
+        } else {
+            tooltip.style.display = 'none';
+        }
+    });
+
+    plotDiv.addEventListener('mouseleave', () => {
+        tooltip.style.display = 'none';
+    });
+
+ // Clean up tooltip from body when plot div is removed from DOM
+    const observer = new MutationObserver(() => {
+        if (!document.body.contains(plotDiv)) {
+            tooltip.remove();
+            observer.disconnect();
+        }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+};
+

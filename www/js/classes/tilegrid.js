@@ -2,7 +2,7 @@
 
 // This doesn't work unless we refactor everything to use ES modules
 import { apiCallsMixin, closeModal, createToast, getCurrentUser, logErrorInConsole, openModal } from "../common.v2.js";
-import { adjustClusterColorbars, adjustExpressionColorbar, postPlotlyConfig } from "../helpers/plot-display-config.js";
+import { adjustClusterColorbars, adjustExpressionColorbar, attachAxisLabelTooltips, postPlotlyConfig } from "../helpers/plot-display-config.js";
 import { colorSVG } from "../helpers/dataset-svg-fxns.js";
 import { Citation } from "./citation.js";
 
@@ -1953,6 +1953,9 @@ class DatasetTile {
         Plotly.newPlot(plotlyPreview.id, plotJson.data, plotJson.layout, customConfig);
         const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout");
         Plotly.relayout(plotlyPreview.id, customLayout);
+
+        // Attach tooltips for any truncated axis labels
+        attachAxisLabelTooltips(plotlyPreview.id);
 
         this.plotlyDiv = plotlyPreview.id;
         // Add some WCAG accessibility features to the plotly div

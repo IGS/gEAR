@@ -492,6 +492,7 @@ class PlotlyData(Resource):
                 y_title=y_title,
                 vlines=vlines,
                 is_projection=projection_id is not None,
+                non_interactive=return_image,
                 **kwargs
             )
         except PlotError as pe:

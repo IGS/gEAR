@@ -328,7 +328,7 @@ const createSingleScaleColorMapping = (paths, svgDiv, expression, score, lowColo
                 path.attr('aria-label', `${tissue}: score ${score}`);
             }
             const tooltip = document.createElement('div');
-            tooltip.classList.add('tooltip');
+            tooltip.classList.add('tooltip');   // Bulma's style
             tooltip.style.position = 'absolute';
             tooltip.style.pointerEvents = 'none'; // Ensure the tooltip doesn't "intercept" mouse events
             tooltip.style.fontSize = "12px";
