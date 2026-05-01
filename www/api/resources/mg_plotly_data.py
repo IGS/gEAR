@@ -326,7 +326,7 @@ class MGPlotlyData(Resource):
                         reordered_col = col.cat.reorder_categories(
                             sort_order[key], ordered=True)
                         selected.obs[key] = reordered_col
-                    except:
+                    except Exception:
                         pass
 
             # Filter dataframe on the chosen observation filters
@@ -511,7 +511,7 @@ class MGPlotlyData(Resource):
             if colorblind_mode:
                 colorscale = "cividis_r"
 
-            fig = mg.create_dot_plot(df, groupby_filters, is_log10, title, colorscale, reverse_colorscale)
+            fig = mg.create_dot_plot(df, groupby_filters, is_log10, title, colorscale, reverse_colorscale, non_interactive=return_image)
 
         elif plot_type == "heatmap":
 
@@ -616,6 +616,7 @@ class MGPlotlyData(Resource):
                     , reverse_colorscale
                     , hide_obs_labels
                     , hide_gene_labels
+                    , non_interactive=return_image
                     )
             except PlotError as pe:
                 return {
@@ -678,6 +679,7 @@ class MGPlotlyData(Resource):
                 , is_log10
                 , colorscale
                 , reverse_colorscale
+                , non_interactive=return_image
                 )
 
             # Add jitter-based args (to make beeswarm plot)

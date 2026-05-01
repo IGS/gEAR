@@ -72,7 +72,7 @@ def create_dot_legend(fig, legend_col):
         , col=legend_col
     )
 
-def create_dot_plot(df, groupby_filters, is_log10=False, plot_title=None, colorscale="Bluered", reverse_colorscale=False):
+def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, plot_title:str|None=None, colorscale:str|None="Bluered", reverse_colorscale:bool=False, non_interactive:bool=False):
     """Creates a dot plot.  Returns the figure."""
     # x = group
     # y = gene
@@ -103,13 +103,15 @@ def create_dot_plot(df, groupby_filters, is_log10=False, plot_title=None, colors
     if not colorscale:
         colorscale="Bluered"
 
+    hover_template = "N: %{text}<br>Percent: %{marker.size:.2f}<br>Mean: %{marker.color:.2f}"
+    if non_interactive:
+        hover_template = None
+
     fig.add_scatter(
         x=multicategory
         , y=df["gene_symbol"]
         , text = df["count"]
-        , hovertemplate="N: %{text}<br>" +
-            "Percent: %{marker.size:.2f}<br>" +
-            "Mean: %{marker.color:.2f}"
+        , hovertemplate=hover_template
         , mode="markers"
         , marker=dict(
             color=mean
@@ -136,6 +138,33 @@ def create_dot_plot(df, groupby_filters, is_log10=False, plot_title=None, colors
     )
 
     create_dot_legend(fig, legend_col)
+
+    # Truncate faceted column axis labels so annotation can fit
+    axis_label_mapping = {}  # Aggregated mapping of truncated -> full label names
+    if not non_interactive:
+        # For multi-gene plots, categoryarray is not always populated by Plotly automatically.
+        # Derive unique ordered categories directly from the dataframe instead.
+        x_categories = df[groupby_filters[0]].unique().tolist()  # preserves observed order
+
+        def truncate_and_collect(a):
+            # Fall back to dataframe-derived categories if axis hasn't populated categoryarray
+            categories = list(a.categoryarray) if a.categoryarray is not None else x_categories
+            ticktext, mapping = _truncate_ticktext(categories)
+            axis_label_mapping.update(mapping)
+            a.update(
+                ticktext=ticktext,
+                tickvals=categories,
+            )
+        fig.for_each_xaxis(truncate_and_collect)
+
+        # Store the axis label mapping in the figure metadata for use on the JS side
+        if axis_label_mapping:
+            existing_meta = fig.layout.meta or {}
+            if isinstance(existing_meta, dict):
+                existing_meta["axis_label_mapping"] = axis_label_mapping
+            else:
+                existing_meta = {"axis_label_mapping": axis_label_mapping}
+            fig.update_layout(meta=existing_meta)
 
     return fig
 
@@ -254,7 +283,8 @@ def create_clusterbar_z_value(flip_axes, groups_and_colors, key, val):
 
 #@profile(stream=fp)
 def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, cluster_genes=False, flip_axes=False, center_around_zero=False
-                       , distance_metric="euclidean", colorscale=None, reverse_colorscale=False, hide_obs_labels=False, hide_gene_labels=False) -> go.Figure:
+                       , distance_metric="euclidean", colorscale=None, reverse_colorscale=False, hide_obs_labels=False, hide_gene_labels=False,
+                       non_interactive:bool=False) -> go.Figure:
     """Generate a clustergram (heatmap+dendrogram).  Returns Plotly figure and dendrogram trace info."""
 
     # Clustergram (heatmap) plot
@@ -336,6 +366,33 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
     expr_trace["colorbar"]["title"]["text"] = colorbar_title
     expr_trace["colorbar"]["title"]["font"]["size"] = 10
     expr_trace["colorbar"]["tickfont"]["size"] = 10
+
+    # Truncate faceted column axis labels so annotation can fit
+    axis_label_mapping = {}  # Aggregated mapping of truncated -> full label names
+    if not non_interactive:
+        # For multi-gene plots, categoryarray is not always populated by Plotly automatically.
+        # Derive unique ordered categories directly from the dataframe instead.
+        x_categories = col_labels
+
+        def truncate_and_collect(a):
+            # Fall back to dataframe-derived categories if axis hasn't populated categoryarray
+            categories = list(a.categoryarray) if a.categoryarray is not None else x_categories
+            ticktext, mapping = _truncate_ticktext(categories)
+            axis_label_mapping.update(mapping)
+            a.update(
+                ticktext=ticktext,
+                tickvals=categories,
+            )
+        fig.for_each_xaxis(truncate_and_collect)
+
+        # Store the axis label mapping in the figure metadata for use on the JS side
+        if axis_label_mapping:
+            existing_meta = fig.layout.meta or {}
+            if isinstance(existing_meta, dict):
+                existing_meta["axis_label_mapping"] = axis_label_mapping
+            else:
+                existing_meta = {"axis_label_mapping": axis_label_mapping}
+            fig.update_layout(meta=existing_meta)
 
     return fig
 
@@ -623,7 +680,7 @@ def build_violin_x_title(groupby_filters):
         x_title += " and {}".format(groupby_filters[1])
     return x_title
 
-def create_stacked_violin_plot(df: pd.DataFrame, groupby_filters:list, is_log10: bool=False, colorscale: str | None=None, reverse_colorscale: bool=False):
+def create_stacked_violin_plot(df: pd.DataFrame, groupby_filters:list, is_log10: bool=False, colorscale: str | None=None, reverse_colorscale: bool=False, non_interactive: bool=False):
     """Create a stacked violin plot.  Returns the figure."""
 
     # Preserve sort order passed to plot, and assign colors to primary category groups
@@ -743,7 +800,7 @@ def create_stacked_violin_plot(df: pd.DataFrame, groupby_filters:list, is_log10:
 
     return fig
 
-def create_violin_plot(df, groupby_filters, is_log10=False, colorscale=None, reverse_colorscale=False):
+def create_violin_plot(df: pd.DataFrame, groupby_filters:list, is_log10: bool=False, colorscale: str | None=None, reverse_colorscale:bool=False, non_interactive:bool=False):
     """Creates a violin plot.  Returns the figure."""
 
     try:
@@ -779,13 +836,17 @@ def create_violin_plot(df, groupby_filters, is_log10=False, colorscale=None, rev
         if not is_log10:
             group['value'] = np.log2(group['value'] + LOG_COUNT_ADJUSTER)
 
+        # If name is a tuple, create a string name for the scalegroup
+        if isinstance(name, tuple):
+            name = ','.join(str(n) for n in name)
+
         fig.add_violin(
             x=multicategory
             , y=group["value"]
             , name=gene_sym
             # Scalegroup must be unique for all violins to have max equal width.
             # Hence why we have to do a 3-dimensional groupby to make unique traces
-            , scalegroup="{}".format(','.join(name))
+            , scalegroup=name
             , fillcolor=fillcolor
             , offsetgroup=gene_sym   # Cleans up some weird grouping stuff, making plots thicker
             , showlegend=showlegend
@@ -821,6 +882,34 @@ def create_violin_plot(df, groupby_filters, is_log10=False, colorscale=None, rev
     fig.update_yaxes(
         title=y_title
     )
+
+    # Truncate faceted column axis labels so annotation can fit
+    axis_label_mapping = {}  # Aggregated mapping of truncated -> full label names
+    if not non_interactive:
+        # For multi-gene plots, categoryarray is not always populated by Plotly automatically.
+        # Derive unique ordered categories directly from the dataframe instead.
+        x_categories = df[groupby_filters[0]].unique().tolist()  # preserves observed order
+
+        def truncate_and_collect(a):
+            # Fall back to dataframe-derived categories if axis hasn't populated categoryarray
+            categories = list(a.categoryarray) if a.categoryarray is not None else x_categories
+            ticktext, mapping = _truncate_ticktext(categories)
+            axis_label_mapping.update(mapping)
+            a.update(
+                ticktext=ticktext,
+                tickvals=categories,
+            )
+        fig.for_each_xaxis(truncate_and_collect)
+
+        # Store the axis label mapping in the figure metadata for use on the JS side
+        if axis_label_mapping:
+            existing_meta = fig.layout.meta or {}
+            if isinstance(existing_meta, dict):
+                existing_meta["axis_label_mapping"] = axis_label_mapping
+            else:
+                existing_meta = {"axis_label_mapping": axis_label_mapping}
+            fig.update_layout(meta=existing_meta)
+
     return fig
 
 def update_stacked_violin_annotations(fig, primary_groups, color_map):
@@ -1255,3 +1344,35 @@ def get_colorscale(colorscale):
     for i, color in enumerate(color_swatch_map[colorscale]):
         colorscale_list.append([i/length, color])
     return colorscale_list
+
+def _truncate_ticktext(group_list: list[str]) -> tuple[list[str] | None, dict[str, str]]:
+    """Truncate a group of axis ticks to a specified length."""
+    TRUNCATION_LEN = 7  # How much of the original text to use (followed by ellipses)
+    MAX_LEN_ALLOWED = 10  # Any text over this limit will be truncated
+
+    # If only 0 or 1 datapoints in group, categoryarray was not present
+    if not group_list:
+        return None, {}
+
+    new_ticktext = []
+    full_name_mapping = {}
+    truncated_counts: dict[str, int] = {}  # Track how many times a truncated label has been seen
+
+    for val in group_list:
+        if len(val) > MAX_LEN_ALLOWED:
+            base_truncated = "{}...".format(val[0:TRUNCATION_LEN])
+
+            if base_truncated in truncated_counts:
+                # Collision: append a counter to disambiguate
+                truncated_counts[base_truncated] += 1
+                truncated = "{}~{}".format(base_truncated, truncated_counts[base_truncated])
+            else:
+                truncated_counts[base_truncated] = 0
+                truncated = base_truncated
+
+            new_ticktext.append(truncated)
+            full_name_mapping[truncated] = val
+        else:
+            new_ticktext.append(val)
+
+    return new_ticktext, full_name_mapping

@@ -1906,7 +1906,29 @@ class DatasetTile {
         const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout");
         Plotly.relayout(plotlyPreview.id , customLayout);
 
+        // Attach tooltips for any truncated axis labels
+        attachAxisLabelTooltips(plotlyPreview.id);
+
         this.plotlyDiv = plotlyPreview.id;
+
+        // Add some WCAG accessibility features to the plotly div
+        const plotlyDiv = document.getElementById(this.plotlyDiv);
+        if (!plotlyDiv) {
+            return;
+        }
+        plotlyDiv.setAttribute("role", "img");
+
+        const plotLabel = plotType.replace("_dynamic", "");
+        let altText = `${plotLabel} plot in dataset '${this.dataset.title}'`;
+        if (display.plotly_config.projection_id) {
+            altText += "projected into "
+            altText += "multiple patterns";
+        } else {
+            const numGenes = display.plotly_config.gene_symbols.length;
+            altText += `using (${numGenes}) genes`;
+        }
+        // TODO add extra condition information
+        plotlyDiv.setAttribute("alt", altText);
     }
 
     /**
@@ -1964,16 +1986,12 @@ class DatasetTile {
             return;
         }
         plotlyDiv.setAttribute("role", "img");
-        const isMultigene = plotConfig.hasOwnProperty("gene_symbols");
 
         const plotLabel = plotType.replace("_dynamic", "");
         let altText = `${plotLabel} plot in dataset '${this.dataset.title}'`;
         if (display.plotly_config.projection_id) {
             altText += "projected into "
-            altText += isMultigene ? "multiple patterns" : `pattern ${display.plotly_config.gene_symbol}`;
-        } else if (isMultigene) {
-            const numGenes = display.plotly_config.gene_symbols.length;
-            altText += `using (${numGenes}) genes`;
+            altText += `pattern ${display.plotly_config.gene_symbol}`;
         } else {
             altText += `using gene ${display.plotly_config.gene_symbol}`;
         }
