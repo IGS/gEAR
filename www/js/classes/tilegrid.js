@@ -488,6 +488,8 @@ class DatasetTile {
             await this.getOrthologs(geneSymbolInput);
         }
         catch (error) {
+            const msg = error?.response?.data?.message || "An error occurred while fetching orthologs. Please try again or contact the gEAR team.";
+            createCardMessage(tileId, "danger", msg);
             return;
         }
 
