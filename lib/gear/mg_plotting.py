@@ -35,44 +35,7 @@ LOG_COUNT_ADJUSTER = 1
 
 ### Dotplot fxns
 
-def create_dot_legend(fig, legend_col):
-    """Creates the dot plot size legend. Edits figure in-place."""
-
-    # Create a dot size legend
-    steps = 5
-    dot_legend=list()
-    for i in range(steps):
-        dot_legend += [["0", i, i*20+20, "{}%".format(i*20+20)]]
-    dot_legend = pd.DataFrame(dot_legend,columns=['x','y','percent','text'])
-
-    fig.add_scatter(
-        x=dot_legend["x"]
-        , y=dot_legend["y"]
-        , text=dot_legend["text"]
-        , hoverinfo="none"  # Do not have hover text
-        , mode="markers+text"
-        , marker=dict(
-            color="#888"
-            , size=dot_legend["percent"]
-            , sizemode="area"
-            )
-        , showlegend=False
-        , textposition="top center"
-        , row=1
-        , col=legend_col)
-
-    # Hide dot size legend axes
-    fig.update_xaxes(
-        visible=False
-        , col=legend_col
-    )
-    fig.update_yaxes(
-        range=[-0.5, 5]  # Give extra clearance so top dot does not overlap with title
-        , visible=False
-        , col=legend_col
-    )
-
-def create_dot_plot(df, groupby_filters, is_log10=False, plot_title=None, colorscale="Bluered", reverse_colorscale=False):
+def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, plot_title:str|None=None, colorscale:str|None="Magma", reverse_colorscale:bool=False, non_interactive:bool=False):
     """Creates a dot plot.  Returns the figure."""
     # x = group
     # y = gene
@@ -82,16 +45,8 @@ def create_dot_plot(df, groupby_filters, is_log10=False, plot_title=None, colors
     # Taking a lot of influence from
     # https://github.com/interactivereport/CellDepot/blob/ec067978dc456d9262c3c59d212d90547547e61c/bin/src/plotH5ad.py#L113
 
-    # Specify the subplot grid
-    legend_col=5
-    spec_row = [{"colspan":legend_col-1}]
-    spec_row.extend([None for i in range(legend_col-2)])
-    spec_row.append({})
 
-    fig = make_subplots(rows=1, cols=legend_col
-        , specs = [spec_row]   # "None" repeat much be legend_col - 2
-        , subplot_titles=(plot_title, "Fraction of cells<br>in group (%)")
-    )
+    fig = go.Figure()
 
     multicategory = create_multicategory_axis_labels(groupby_filters, df)
 
@@ -100,16 +55,19 @@ def create_dot_plot(df, groupby_filters, is_log10=False, plot_title=None, colors
     if is_log10:
         mean = df['mean']
 
+    # For some reason, the default argument is ignored.
     if not colorscale:
-        colorscale="Bluered"
+        colorscale="Magma"
+
+    hover_template = "N: %{text}<br>Percent: %{marker.size:.2f}<br>Mean: %{marker.color:.2f}"
+    if non_interactive:
+        hover_template = None
 
     fig.add_scatter(
         x=multicategory
         , y=df["gene_symbol"]
         , text = df["count"]
-        , hovertemplate="N: %{text}<br>" +
-            "Percent: %{marker.size:.2f}<br>" +
-            "Mean: %{marker.color:.2f}"
+        , hovertemplate=hover_template
         , mode="markers"
         , marker=dict(
             color=mean
@@ -118,26 +76,124 @@ def create_dot_plot(df, groupby_filters, is_log10=False, plot_title=None, colors
             , size=df["percent"]
             , sizemode="area"
             , colorbar=dict(
-                title="Log10 Mean Expression" if is_log10 else "Log2 Mean Expression"
+                title=dict(
+                    text="Log10 Mean Expression" if is_log10 else "Log2 Mean Expression"
+                    , font=dict(family="Roboto")
+                    , side="right"
+                )
+                , len=0.75
+                , thickness=15
+                , x=1.1
                 )
             )
         , showlegend=False
-        , row=1
-        , col=1)
+        )
 
     x_title = groupby_filters[0]
     if len(groupby_filters) > 1:
         x_title += " and {}".format(groupby_filters[1])
     fig.update_xaxes(
-        title=x_title.capitalize()
+        title=x_title.capitalize(),
+        domain=[0, 0.9]    # Take most of the plot width, but leave space on the right for the size legend
     )
+    # If two x-axes labels are present, constrain the range
+    uniq_cats = set(multicategory)
+    if len(uniq_cats) == 2:
+        fig.update_xaxes(range=[-0.5, 1.5])
+
     fig.update_yaxes(
         title="Genes"
     )
 
-    create_dot_legend(fig, legend_col)
+    create_floating_dot_legend(fig)
+
+    # Truncate faceted column axis labels so annotation can fit
+    axis_label_mapping = {}  # Aggregated mapping of truncated -> full label names
+    if not non_interactive:
+        # For multi-gene plots, categoryarray is not always populated by Plotly automatically.
+        # Derive unique ordered categories directly from the dataframe instead.
+        x_categories = df[groupby_filters[0]].unique().tolist()  # preserves observed order
+
+        def truncate_and_collect(a):
+            # Fall back to dataframe-derived categories if axis hasn't populated categoryarray
+            categories = list(a.categoryarray) if a.categoryarray is not None else x_categories
+            ticktext, mapping = _truncate_ticktext(categories)
+            axis_label_mapping.update(mapping)
+            a.update(
+                ticktext=ticktext,
+                tickvals=categories,
+            )
+        fig.for_each_xaxis(truncate_and_collect)
+
+        # Store the axis label mapping in the figure metadata for use on the JS side
+        if axis_label_mapping:
+            existing_meta = fig.layout.meta or {}
+            if isinstance(existing_meta, dict):
+                existing_meta["axis_label_mapping"] = axis_label_mapping
+            else:
+                existing_meta = {"axis_label_mapping": axis_label_mapping}
+            fig.update_layout(meta=existing_meta)
 
     return fig
+
+def create_floating_dot_legend(fig: go.Figure):
+    """Adds a size legend using paper coordinates to avoid subplot whitespace. Edits in-place."""
+
+    # Create a dot size legend
+    steps = 5
+    dot_legend=list()
+    for i in range(steps):
+        dot_legend += [["0", i, i*20+20, "{}%".format(i*20+20)]]
+    dot_legend = pd.DataFrame(dot_legend,columns=['x','y','percent','text'])
+
+    # Add dots as a scatter trace on 'paper' coordinates
+    fig.add_scatter(
+        x=[1 for i in dot_legend["x"].tolist()], # Positioned on the right side
+        y=[0.1 + i*0.2 for i in dot_legend["y"].tolist()], # Stacked vertically
+        xaxis="x2", yaxis="y2", # Use main axes for positioning
+        mode="markers+text",
+        text=dot_legend["text"],
+        textposition="middle right",
+        marker=dict(
+            color="#888",
+            size=dot_legend["percent"],
+            sizemode="area"
+        ),
+        showlegend=False,
+        hoverinfo="skip",
+        cliponaxis=False
+    )
+
+# Configure the 'Legend' axes to be invisible and fixed
+    fig.update_layout(
+        xaxis2=dict(
+            range=[0, 1],
+            visible=False,
+            overlaying="x",
+            anchor="free",
+            position=1,
+            automargin=True
+            ),
+        yaxis2=dict(
+            range=[0, 1],
+            position=1,
+            # setting visible=False hides the title
+            showgrid=False,         # Hide the grid lines
+            showline=False,         # Hide the vertical axis line
+            showticklabels=False,   # Hide the numbers
+            zeroline=False,         # Hide the baseline
+            ticks="",               # no tick marks
+            overlaying="y",
+            anchor="free",
+            side="right",
+            # Use the axis title instead of an annotation
+            title=dict(
+                text="Percent of cells expressing gene",
+                font=dict(size=14, family="Roboto"),
+                standoff=0,
+            )
+            ),
+    )
 
 ### Heatmap fxns
 #from memory_profiler import profile
@@ -254,7 +310,8 @@ def create_clusterbar_z_value(flip_axes, groups_and_colors, key, val):
 
 #@profile(stream=fp)
 def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, cluster_genes=False, flip_axes=False, center_around_zero=False
-                       , distance_metric="euclidean", colorscale=None, reverse_colorscale=False, hide_obs_labels=False, hide_gene_labels=False):
+                       , distance_metric="euclidean", colorscale=None, reverse_colorscale=False, hide_obs_labels=False, hide_gene_labels=False,
+                       non_interactive:bool=False) -> go.Figure:
     """Generate a clustergram (heatmap+dendrogram).  Returns Plotly figure and dendrogram trace info."""
 
     # Clustergram (heatmap) plot
@@ -273,9 +330,9 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
     col_labels = gene_symbols if flip_axes else columns
     row_labels = rows if flip_axes else gene_symbols
 
-    values = df.loc[rows].values + LOG_COUNT_ADJUSTER
+    values = df.loc[rows].to_numpy() + LOG_COUNT_ADJUSTER
     if is_log10:
-        values = df.loc[rows].values
+        values = df.loc[rows].to_numpy()
 
     hidden_labels = set_hidden_labels(hide_obs_labels, hide_gene_labels, flip_axes)
 
@@ -291,9 +348,9 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
         , column_labels=col_labels
         , row_labels=row_labels
         , hidden_labels=hidden_labels
-        , cluster=cluster
-        , col_dist=col_dist
-        , row_dist=row_dist
+        , cluster=cluster   # type: ignore
+        , col_dist=col_dist # type: ignore
+        , row_dist=row_dist # type: ignore
         , center_values=center_around_zero
         , color_map=colorscale
         , display_ratio=0.3                 # Make dendrogram slightly bigger relative to plot
@@ -301,14 +358,18 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
         , log_transform=False if is_log10 else True
     )
 
-    fig.data[-1]["reversescale"] = reverse_colorscale
+    if isinstance(fig, tuple):
+        raise PlotError("Error creating clustergram: Figure object was not returned.")
+
+    # Get a direct reference to the expression heatmap trace (always last trace added)
+    expr_trace: dict = fig.data[-1] # type: ignore
+    expr_trace["reversescale"] = reverse_colorscale
 
     if center_around_zero:
-        fig.data[-1]["zmid"] = 0
+        expr_trace["zmid"] = 0
     else:
-        # both zmin and zmax are required
-        fig.data[-1]["zmin"] = 0
-        fig.data[-1]["zmax"] = max(map(max, fig.data[-1]["z"])) # Highest z-value in 2D arrays
+        expr_trace["zmin"] = 0
+        expr_trace["zmax"] = max(map(max, expr_trace["z"]))
 
     title_text = "Log2 Gene Expression"
     colorbar_title = "Log2 Expr."
@@ -317,26 +378,48 @@ def create_clustergram(df, gene_symbols, is_log10=False, cluster_obs=False, clus
         colorbar_title = "Log10 Expr."
 
     fig.update_layout(
-        title={
-            "text":title_text
-            ,"x":0.5
-            ,"xref":"paper"
-            ,"y":0.9
-        }
+        title={"text": title_text, "x": 0.5, "xref": "paper", "y": 0.9}
     )
 
     # Offset the expresison colorbar to the right of the heatmap
     # At this point it's the last trace added
     # NOTE: The bar may need to be adjusted on the gene search display page
-    fig.data[-1]["colorbar"]["x"] = 1.2
-    fig.data[-1]["colorbar"]["xanchor"] = "center"
-    fig.data[-1]["colorbar"]["y"] = 0.5
-    fig.data[-1]["colorbar"]["yanchor"] = "middle"
-    fig.data[-1]["colorbar"]["thickness"] = 15
-    fig.data[-1]["name"] = "expression" # Name colorbar for easier retrieval
-    fig.data[-1]["colorbar"]["title"]["text"] = colorbar_title
-    fig.data[-1]["colorbar"]["title"]["font"]["size"] = 10
-    fig.data[-1]["colorbar"]["tickfont"]["size"] = 10
+    expr_trace["colorbar"]["x"] = 1.2
+    expr_trace["colorbar"]["xanchor"] = "center"
+    expr_trace["colorbar"]["y"] = 0.5
+    expr_trace["colorbar"]["yanchor"] = "middle"
+    expr_trace["colorbar"]["thickness"] = 15
+    expr_trace["name"] = "expression"
+    expr_trace["colorbar"]["title"]["text"] = colorbar_title
+    expr_trace["colorbar"]["title"]["font"]["size"] = 10
+    expr_trace["colorbar"]["tickfont"]["size"] = 10
+
+    # Truncate faceted column axis labels so annotation can fit
+    axis_label_mapping = {}  # Aggregated mapping of truncated -> full label names
+    if not non_interactive:
+        # For multi-gene plots, categoryarray is not always populated by Plotly automatically.
+        # Derive unique ordered categories directly from the dataframe instead.
+        x_categories = col_labels
+
+        def truncate_and_collect(a):
+            # Fall back to dataframe-derived categories if axis hasn't populated categoryarray
+            categories = list(a.categoryarray) if a.categoryarray is not None else x_categories
+            ticktext, mapping = _truncate_ticktext(categories)
+            axis_label_mapping.update(mapping)
+            a.update(
+                ticktext=ticktext,
+                tickvals=categories,
+            )
+        fig.for_each_xaxis(truncate_and_collect)
+
+        # Store the axis label mapping in the figure metadata for use on the JS side
+        if axis_label_mapping:
+            existing_meta = fig.layout.meta or {}
+            if isinstance(existing_meta, dict):
+                existing_meta["axis_label_mapping"] = axis_label_mapping
+            else:
+                existing_meta = {"axis_label_mapping": axis_label_mapping}
+            fig.update_layout(meta=existing_meta)
 
     return fig
 
@@ -624,7 +707,7 @@ def build_violin_x_title(groupby_filters):
         x_title += " and {}".format(groupby_filters[1])
     return x_title
 
-def create_stacked_violin_plot(df: pd.DataFrame, groupby_filters:list, is_log10: bool=False, colorscale: str | None=None, reverse_colorscale: bool=False):
+def create_stacked_violin_plot(df: pd.DataFrame, groupby_filters:list, is_log10: bool=False, colorscale: str | None=None, reverse_colorscale: bool=False, non_interactive: bool=False):
     """Create a stacked violin plot.  Returns the figure."""
 
     # Preserve sort order passed to plot, and assign colors to primary category groups
@@ -744,7 +827,7 @@ def create_stacked_violin_plot(df: pd.DataFrame, groupby_filters:list, is_log10:
 
     return fig
 
-def create_violin_plot(df, groupby_filters, is_log10=False, colorscale=None, reverse_colorscale=False):
+def create_violin_plot(df: pd.DataFrame, groupby_filters:list, is_log10: bool=False, colorscale: str | None=None, reverse_colorscale:bool=False, non_interactive:bool=False):
     """Creates a violin plot.  Returns the figure."""
 
     try:
@@ -780,13 +863,17 @@ def create_violin_plot(df, groupby_filters, is_log10=False, colorscale=None, rev
         if not is_log10:
             group['value'] = np.log2(group['value'] + LOG_COUNT_ADJUSTER)
 
+        # If name is a tuple, create a string name for the scalegroup
+        if isinstance(name, tuple):
+            name = ','.join(str(n) for n in name)
+
         fig.add_violin(
             x=multicategory
             , y=group["value"]
             , name=gene_sym
             # Scalegroup must be unique for all violins to have max equal width.
             # Hence why we have to do a 3-dimensional groupby to make unique traces
-            , scalegroup="{}".format(','.join(name))
+            , scalegroup=name
             , fillcolor=fillcolor
             , offsetgroup=gene_sym   # Cleans up some weird grouping stuff, making plots thicker
             , showlegend=showlegend
@@ -822,6 +909,34 @@ def create_violin_plot(df, groupby_filters, is_log10=False, colorscale=None, rev
     fig.update_yaxes(
         title=y_title
     )
+
+    # Truncate faceted column axis labels so annotation can fit
+    axis_label_mapping = {}  # Aggregated mapping of truncated -> full label names
+    if not non_interactive:
+        # For multi-gene plots, categoryarray is not always populated by Plotly automatically.
+        # Derive unique ordered categories directly from the dataframe instead.
+        x_categories = df[groupby_filters[0]].unique().tolist()  # preserves observed order
+
+        def truncate_and_collect(a):
+            # Fall back to dataframe-derived categories if axis hasn't populated categoryarray
+            categories = list(a.categoryarray) if a.categoryarray is not None else x_categories
+            ticktext, mapping = _truncate_ticktext(categories)
+            axis_label_mapping.update(mapping)
+            a.update(
+                ticktext=ticktext,
+                tickvals=categories,
+            )
+        fig.for_each_xaxis(truncate_and_collect)
+
+        # Store the axis label mapping in the figure metadata for use on the JS side
+        if axis_label_mapping:
+            existing_meta = fig.layout.meta or {}
+            if isinstance(existing_meta, dict):
+                existing_meta["axis_label_mapping"] = axis_label_mapping
+            else:
+                existing_meta = {"axis_label_mapping": axis_label_mapping}
+            fig.update_layout(meta=existing_meta)
+
     return fig
 
 def update_stacked_violin_annotations(fig, primary_groups, color_map):
@@ -1256,3 +1371,35 @@ def get_colorscale(colorscale):
     for i, color in enumerate(color_swatch_map[colorscale]):
         colorscale_list.append([i/length, color])
     return colorscale_list
+
+def _truncate_ticktext(group_list: list[str]) -> tuple[list[str] | None, dict[str, str]]:
+    """Truncate a group of axis ticks to a specified length."""
+    TRUNCATION_LEN = 7  # How much of the original text to use (followed by ellipses)
+    MAX_LEN_ALLOWED = 10  # Any text over this limit will be truncated
+
+    # If only 0 or 1 datapoints in group, categoryarray was not present
+    if not group_list:
+        return None, {}
+
+    new_ticktext = []
+    full_name_mapping = {}
+    truncated_counts: dict[str, int] = {}  # Track how many times a truncated label has been seen
+
+    for val in group_list:
+        if len(val) > MAX_LEN_ALLOWED:
+            base_truncated = "{}...".format(val[0:TRUNCATION_LEN])
+
+            if base_truncated in truncated_counts:
+                # Collision: append a counter to disambiguate
+                truncated_counts[base_truncated] += 1
+                truncated = "{}~{}".format(base_truncated, truncated_counts[base_truncated])
+            else:
+                truncated_counts[base_truncated] = 0
+                truncated = base_truncated
+
+            new_ticktext.append(truncated)
+            full_name_mapping[truncated] = val
+        else:
+            new_ticktext.append(val)
+
+    return new_ticktext, full_name_mapping

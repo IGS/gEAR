@@ -87,15 +87,24 @@ def queue_trackhub_job(job_id: str, share_uid: str, hub_json: dict, assembly: st
 
 class TrackHubCopy(Resource):
     def post(self, share_uid):
-        req = request.get_json()
-        if req is None:
+        req_form = request.form
+        if req_form is None:
             return {"success": False, "message": "Invalid JSON body"}, 400
 
         session_id = request.cookies.get('gear_session_id', "")
-        hub_json = req.get("hub_json")
-        assembly = req.get("assembly")
-        track_stanzas = req.get("tracks")
-        dry_run = req.get("dry_run", False)
+        hub_json = req_form.get("hub_json")
+        if not hub_json:
+            return {"success": False, "message": "Missing 'hub_json' parameter"}, 400
+        hub_json = json.loads(hub_json)
+        assembly = req_form.get("assembly")
+        tracks = req_form.get("tracks")
+        if not tracks:
+            return {"success": False, "message": "Missing 'tracks' parameter"}, 400
+        track_stanzas: list = json.loads(tracks)
+        dry_run = req_form.get("dry_run", False)
+        # convert dry_run to boolean if it's a string
+        if isinstance(dry_run, str):
+            dry_run = dry_run.lower() == "true"
 
         result = {"success": False, "message": "", "job_id": None}
 
@@ -115,7 +124,40 @@ class TrackHubCopy(Resource):
 
         # Create initial status
         staging_area.mkdir(parents=True, exist_ok=True)
+
         _create_initial_status_file(status_file, job_id, len(track_stanzas))
+
+        # Cannot serialize File object into JSON for RabbitMQ so save immediately
+        write_status(
+            status_file,
+            job_id=job_id,
+            status="processing",
+            message="First saving uploaded files and preparing track hub for processing",
+            progress=0,
+            completed_tracks=0,
+            total_tracks=len(track_stanzas),
+            track_statuses={},
+        )
+        uploaded_files_map = {}  # Map track_id → File object
+        for track_key in request.files:
+            if '[file]' in track_key:
+                file = request.files.get(track_key)
+                if file and file.filename:
+                    track_id = track_key.split('[')[1].split(']')[0]
+                    # Save file to staging area
+                    dest_path = staging_area / file.filename
+                    if not dry_run:
+                        file.save(dest_path)
+                    # Store filename reference (not the File object)
+                    uploaded_files_map[track_id] = file.filename
+
+        # Initialize all tracks with None, then populate from map
+        for track_stanza in track_stanzas:
+            track_id = track_stanza.get("id")
+            if not track_id:
+                print(f"Warning: Track stanza missing 'id' field. Stanza: {track_stanza}", file=sys.stderr)
+                continue
+            track_stanza["uploadedFileName"] = uploaded_files_map.get(track_id, None)
 
         # Also update metadata file to have the dataset format added
         metadata_file = staging_area / 'metadata.json'

@@ -7,8 +7,14 @@ gosling_upload_consumer.py - RabbitMQ consumer for track hub processing jobs.
 import gc
 import json
 import os
+import sys
 import traceback
 from pathlib import Path
+
+# Gear root for file operations
+gear_root = Path(__file__).resolve().parents[1]
+gear_lib = gear_root / "lib"
+sys.path.insert(0, str(gear_lib))
 
 from gear.serverconfig import ServerConfig  # noqa: I001
 
@@ -19,10 +25,7 @@ os.makedirs("/var/log/gEAR_queue", exist_ok=True)
 logfile = f"/var/log/gEAR_queue/{queue_name}.log"
 pid = os.getpid()
 
-# Gear root for file operations
-gear_root = Path(__file__).resolve().parents[1]
 user_upload_base = gear_root / 'www' / 'uploads' / 'files'
-
 
 def _on_request(channel, method_frame, properties, body):
     """Callback to handle new trackhub job message."""

@@ -374,32 +374,10 @@ systemctl status 'projectr-consumer@*'
 **Purge queue (if needed):**
 
 ```bash
-sudo rabbitmqctl purge_queue projectr_jobs
+sudo rabbitmqctl purge_queue projectr
 ```
 
 **Warning:** This deletes all messages!
-
-### Connection Errors
-
-**RabbitMQ not accessible:**
-
-```bash
-# Check if RabbitMQ is listening
-sudo netstat -tlnp | grep 5672
-
-# Verify firewall rules
-sudo ufw status
-```
-
-**Authentication errors:**
-
-- Verify credentials in `gear.ini`
-- Check RabbitMQ user permissions:
-
-  ```bash
-  sudo rabbitmqctl list_users
-  sudo rabbitmqctl set_permissions -p / guest ".*" ".*" ".*"
-  ```
 
 ## Performance Tuning
 
@@ -485,7 +463,7 @@ If messages are stuck or invalid:
 
 ```bash
 # Purge specific queue
-sudo rabbitmqctl purge_queue projectr_jobs
+sudo rabbitmqctl purge_queue projectr
 ```
 
 ## Related Documentation

@@ -8,25 +8,78 @@ webserver that's an unnecessary layer.  Also, maybe I'm old-school, but
 fixed paths have worked fine for decades.
 
 ```bash
-    sudo apt install libffi-dev libsqlite-dev libsqlite3-dev libhdf5-dev
-    sudo apt install libncursesw5-dev libssl-dev python3-tk tk-dev libgdbm-dev libc6-dev libbz2-dev lzma liblzma-dev
+    sudo apt -qq update
+    sudo DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
+        apache2-dev \
+        libffi-dev \
+        libsqlite3-dev \
+        libreadline-dev \
+        libncursesw5-dev \
+        libssl-dev \
+        tk-dev \
+        libgdbm-dev \
+        libc6-dev \
+        liblzma-dev \
+        libbz2-dev \
+        zlib1g-dev \
+        libpng-dev \
+        libtiff5-dev \
+        libjpeg-dev \
+        libblosc-dev \
+        libhdf5-dev \
+        hdf5-helpers \
+        hdf5-tools \
+        libblas-dev \
+        liblapack-dev \
+        libcairo2-dev \
+        libxml2-dev \
+        libwebp-dev \
+        libpcre2-dev \
+        libicu-dev \
+        libdeflate-dev \
+        libssl3 \
+        pkg-config \
+        llvm \
+        apache2 \
+        php \
+        libapache2-mod-php \
+        php-gd
+    sudo apt -qq clean autoclean
+    sudo apt -qq autoremove -y
+    sudo rm -rf /var/lib/apt/lists/*
 
-    export PYTHONV=3.10.4
-    export PYTHON_MINORV=3.10
+    export PYTHONV=3.14.4
+    export PYTHON_MINORV=3.14
+
     sudo mkdir /opt/Python-${PYTHONV}
     sudo chown $USER /opt/Python-${PYTHONV}
     cd /tmp
     wget https://www.python.org/ftp/python/${PYTHONV}/Python-${PYTHONV}.tar.xz
     tar -xf Python-${PYTHONV}.tar.xz
     cd Python-${PYTHONV}/
-    ./configure --prefix=/opt/Python-${PYTHONV} --enable-optimizations --enable-shared
-    make
+    # LDFLAGS, CPPFLAGS, and PKG_CONFIG_PATH are needed to ensure the build process can find the lzma library and headers,
+    # which are required for Python's lzma module.  Without these flags, the build process may fail to find lzma downstream.
+    ./configure --prefix=/opt/Python-${PYTHONV} --enable-optimizations --enable-shared \
+        LDFLAGS="-L/usr/lib/x86_64-linux-gnu" \
+        CPPFLAGS="-I/usr/include" \
+        PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig"
     make install
+    cd /tmp
+    rm -rf Python-${PYTHONV}*
+
+    export LD_LIBRARY_PATH="/opt/Python-${PYTHONV}/lib:${LD_LIBRARY_PATH}"
 
     cd /opt/Python-${PYTHONV}/bin
     sudo ln -s /opt/Python-${PYTHONV}/lib/libpython${PYTHON_MINORV}.so.1.0 /usr/lib/
 
+    sudo mkdir /opt/bin
+    sudo rm /opt/bin/python3 # if it exists.
+    sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/
+
     sudo apt install r-base r-base-dev hdf5-helpers hdf5-tools libhdf5-dev zlib1g-dev libblas-dev liblapack-dev libxml2-dev cmake apache2 apache2-dev
+
+    # Disable user-installs to guarantee packages go into /opt/Python...
+    export PIP_USER=0
 ```
 
 ## pip install option A (reqs file)
@@ -46,71 +99,68 @@ NOTE: Some of the packages will indirectly install dask-expr, which is currently
 
 NOTE 2: Really try to keep the requirements.txt in sync with the files below.  While you can use the file to do the installation, @jorvis prefers to have them explicitly listed here.
 
+I cannot add comments to the bash code without breaking the command.  So consult the requirements.txt file in the "docker" directory for any comments pertaining to why a version was installed.
+
 ```bash
     ./pip3 install --upgrade pip
-
     ./pip3 install \
-      aiohttp==3.8.3 \
-      aiohttp_retry==2.9.1 \
-      anndata==0.10.6 \
-      biocode==0.10.0 \
-      biopython==1.79 \
-      cairosvg==2.7.1 \
-      colorcet==3.1.0 \
-      dash-bio==1.0.2 \
-      datashader==0.18.0 \
-      Flask==3.0.0 \
-      Flask-RESTful==0.3.9 \
-      gosling[all]==0.3.0 \
-      gunicorn \
-      h5py==3.10.0 \
-      hic2cool==0.8.3 \
-      jupyterlab==4.0.5 \
-      jupyter==1.0.0 \
-      kaleido==0.2.1 \
-      leidenalg==0.10.2 \
-      llvmlite==0.41.1 \
-      matplotlib==3.9.0 \
-      mod-wsgi==4.9.4 \
-      more_itertools==9.0.0 \
-      mysql-connector-python==8.0.28 \
-      numba==0.58.1 \
-      numexpr==2.8.4 \
-      numpy==1.26.4 \
-      opencv-python==4.5.5.64 \
-      openpyxl==3.1.5 \
-      pandas==2.2.1 \
-      panel==1.8.7 \
-      Pillow==10.2.0 \
-      pika==1.3.1 \
-      plotly==5.20.0 \
-      pyarrow==18.1.0 \ # v19 breaks reading spatial parquet files
-      pybigwig==0.3.25 \
-      python-dotenv==0.20.0 \
-      requests==2.31.0 \
-      rpy2==3.5.16 \
-      sanic \
-      scanpy==1.10.1 \
-      scikit-learn==1.0.2 \
-      scipy==1.11.04 \
-      seaborn==0.13.2 \
-      setuptools<82 \ # need pkg_resources methods for some packages
-      shadows==0.1a2 \
-      spatialdata==0.4.0\
-      spatialdata_io==0.1.6 \
-      statsmodels==0.13.2 \
-      tables==3.9.2 \
-      watchfiles \
-      xlrd==1.2.0
-    ./pip3 install -e ~jorvis/git/gEAR/lib/
+    aiohttp==3.13.5 \
+    aiohttp_retry==2.9.1 \
+    anndata==0.12.11 \
+    biocode==0.10.0 \
+    cairosvg==2.7.1 \
+    colorcet==3.1.0 \
+    dash-bio==1.0.2 \
+    datashader==0.19.0 \
+    Flask==3.1.3 \
+    Flask-RESTful==0.3.9 \
+    google-analytics-data==0.21.0 \
+    gosling==0.3.0 \
+    hic2cool==0.8.3 \
+    jupyterlab==4.0.5 \
+    jupyter==1.0.0 \
+    kaleido==0.2.1 \
+    leidenalg==0.10.2 \
+    legacy-cgi==2.6.4 \
+    llvmlite==0.47.0 \
+    matplotlib==3.10.7 \
+    mod-wsgi==5.0.2 \
+    more_itertools==11.0.2 \
+    mysql-connector-python==8.0.28 \
+    numba==0.65.0 \
+    numpy==2.4.0 \
+    opencv-python==4.5.5.64 \
+    openpyxl==3.1.5 \
+    pandas==2.3.3 \
+    panel==1.8.10 \
+    Pillow==12.2.0 \
+    pika==1.3.2 \
+    pims==0.7.0 \
+    plotly==6.6.0 \
+    pybigwig==0.3.25 \
+    python-dotenv==0.20.0 \
+    requests==2.31.0 \
+    rpy2==3.6.7 \
+    scanpy==1.12.1 \
+    scipy==1.17.1 \
+    seaborn==0.13.2 \
+    setuptools==81.0.0 \
+    spatialdata==0.7.2 \
+    spatialdata_io==0.6.0 \
+    shadows==0.1a2 \
+    tables==3.11.1 \
+    watchfiles==1.1.1
+    ./pip3 install git+https://github.com/adkinsrs/diffxpy.git@ffd828c280882ca98adc6e42c934625fab0011f6
     ./pip3 uninstall dask-expr -y
-    sudo mkdir /opt/bin
-    sudo ln -s /opt/Python-${PYTHONV}/bin/python3 /opt/bin/
+
 ```
 
-### Note about editable pip installs
+Do not forget to change out the old Python version in various files (i.e. systemd files, apache, etc.)
 
-The previous pip installation methods also includes an extra line to install the gEAR "lib" area as an editable install. Updates to the modules in this directory will be hot-loaded without a re-install.  The "setup.py" script is designed to find the "lib" directory itself as a package. This will allow you to run `import gear` without having to append "lib" into the PYTHONPATH.  However, you will still need to append "lib" to the PYTHONPATH if you want to `import geardb` or something on the same level as "setup.py"
+
+### Apache
+
+If you update python versions, you need to update the wsgi_module path in the apache.conf to reflect the current python version.  Also restart the apache service.  Also update `WSGIPythonHome` in the apache.conf as well.
 
 ## Gotchas
 
@@ -119,18 +169,6 @@ Scanpy (or dependencies like numba) assumes it can write in several directories 
 ```bash
     cd /opt/Python-${PYTHONV}/lib/python${PYTHON_MINORV}/site-packages/
     find ./ -name __pycache__ -exec chmod 777 {} \;
-```
-
-NOTE: Installing custom version of diffxpy that is based on the latest commit on the main branch (at the time). It does not have a release tag, but fixes a NumPy bug occurs with older diffxpy commits and newer numpy releases.
-
-```bash
-    /opt/Python-${PYTHONV}/bin/python3 -m pip install git+https://github.com/theislab/diffxpy.git@7609ea935936e3739fc4c71b75c8ee8ca57f51ea
-```
-
-The MulticoreTSNE module currently fails with cmake 3.22.0 or greater.  I have a pending pull request to fix this but until then:
-
-```bash
-    /opt/Python-${PYTHONV}/bin/python3 -m pip install git+https://github.com/jorvis/Multicore-TSNE.git@68325753c4ab9758e3d242719cd4845d751a4b6c
 ```
 
 ## Note about Flask

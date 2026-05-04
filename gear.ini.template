@@ -61,7 +61,7 @@ credentials_json=[path_to_credentials_json]
 queue_enabled = 1
 queue_host = localhost
 
-[uploader_service]
+[dataset_uploader]
 queue_enabled = 1
 queue_host = localhost
 

@@ -10,8 +10,9 @@ import os
 import sys
 from pathlib import Path
 
-lib_path = str(Path(__file__).resolve().parents[1].joinpath("lib"))
-sys.path.append(lib_path)
+gear_root = Path(__file__).resolve().parents[1]
+gear_lib = gear_root / "lib"
+sys.path.insert(0, str(gear_lib))
 
 from gear.serverconfig import ServerConfig
 servercfg = ServerConfig().parse()
@@ -105,9 +106,8 @@ class Consumer:
     def run(self) -> None:
         while True:
             try:
-                # create the consumer.
+                # create the consumer (which starts in the callback chain)
                 self._consumer.run()
-                self._consumer.start_consuming()
             except KeyboardInterrupt:
                 self._consumer.stop()
                 break

@@ -373,6 +373,5 @@ class SpatialPanel(Resource):
 
         except Exception as e:
             response["message"] = f"Error preparing data: {e}"
-        finally:
-            return response
+        return response
 

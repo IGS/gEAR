@@ -985,12 +985,16 @@ const createPlot = async (event) => {
 
     plotStyle.populatePlotConfig();
 
-    await curatorSpecifcCreatePlot(plotType, datasetId, analysisObj);
+    try {
+        await curatorSpecifcCreatePlot(plotType, datasetId, analysisObj);
 
-    // Stop loader
-    for (const plotBtn of plotBtns) {
-        plotBtn.classList.remove("is-loading");
+    } finally {
+        // Stop loader
+        for (const plotBtn of plotBtns) {
+            plotBtn.classList.remove("is-loading");
+        }
     }
+
 
     // Hide this view
     document.getElementById("content-c").classList.add("is-hidden");
