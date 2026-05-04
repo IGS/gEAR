@@ -369,7 +369,7 @@ def _update_by_plot_type(fig, plot_type, force_overlay=False, use_jitter=False):
     elif plot_type == "bar":
         fig.update_layout(barmode="group")
         if force_overlay:
-            fig.update_layout(barmode="overlay")
+            fig.update_layout(barmode="overlay", bargap=0.4)
     elif plot_type in ["box", "strip"]:
         fig.update_layout(boxmode="group")
         if force_overlay:

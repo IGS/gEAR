@@ -126,7 +126,13 @@ export const postPlotlyConfig = {
                 autosize: true,
                 modebar: {
                     orientation: "h"
-                }
+                },
+                // modern tweaks
+                font: {
+                        family: 'Inter, Roboto, Arial, sans-serif',
+                        size: 12,
+                        color: '#333333'
+                },
             }
         }, {
             plot_type: "volcano"
@@ -196,9 +202,7 @@ export const adjustExpressionColorbar = (plotData) => {
     for (const element of plotData) {
         if ("colorbar" in element && element.name === "expression") {
             element.colorbar.len = 1.5;
-            //element.colorbar.xpad = 10;
             element.colorbar.x = 1.3;
-            //element.colorbar.title = {text: "Expression"};
         }
     }
 }

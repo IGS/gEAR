@@ -72,7 +72,7 @@ def create_dot_legend(fig, legend_col):
         , col=legend_col
     )
 
-def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, plot_title:str|None=None, colorscale:str|None="Bluered", reverse_colorscale:bool=False, non_interactive:bool=False):
+def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, plot_title:str|None=None, colorscale:str|None="Magma", reverse_colorscale:bool=False, non_interactive:bool=False):
     """Creates a dot plot.  Returns the figure."""
     # x = group
     # y = gene
@@ -83,15 +83,17 @@ def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, 
     # https://github.com/interactivereport/CellDepot/blob/ec067978dc456d9262c3c59d212d90547547e61c/bin/src/plotH5ad.py#L113
 
     # Specify the subplot grid
-    legend_col=5
-    spec_row = [{"colspan":legend_col-1}]
-    spec_row.extend([None for i in range(legend_col-2)])
-    spec_row.append({})
+    #legend_col=5
+    #spec_row = [{"colspan":legend_col-1}]
+    #spec_row.extend([None for i in range(legend_col-2)])
+    #spec_row.append({})
 
-    fig = make_subplots(rows=1, cols=legend_col
-        , specs = [spec_row]   # "None" repeat much be legend_col - 2
-        , subplot_titles=(plot_title, "Fraction of cells<br>in group (%)")
-    )
+    #fig = make_subplots(rows=1, cols=legend_col
+    #    , specs = [spec_row]   # "None" repeat much be legend_col - 2
+    #    , subplot_titles=(plot_title, "Percent of cells<br>expressing gene")
+    #)
+
+    fig = go.Figure()
 
     multicategory = create_multicategory_axis_labels(groupby_filters, df)
 
@@ -100,8 +102,9 @@ def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, 
     if is_log10:
         mean = df['mean']
 
+    # For some reason, the default argument is ignored.
     if not colorscale:
-        colorscale="Bluered"
+        colorscale="Magma"
 
     hover_template = "N: %{text}<br>Percent: %{marker.size:.2f}<br>Mean: %{marker.color:.2f}"
     if non_interactive:
@@ -120,24 +123,38 @@ def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, 
             , size=df["percent"]
             , sizemode="area"
             , colorbar=dict(
-                title="Log10 Mean Expression" if is_log10 else "Log2 Mean Expression"
+                title=dict(
+                    text="Log10 Mean Expression" if is_log10 else "Log2 Mean Expression"
+                    , font=dict(family="Roboto")
+                    , side="right"
+                )
+                , len=0.75
+                , thickness=15
+                , x=1.1
                 )
             )
         , showlegend=False
-        , row=1
-        , col=1)
+        )
 
     x_title = groupby_filters[0]
     if len(groupby_filters) > 1:
         x_title += " and {}".format(groupby_filters[1])
     fig.update_xaxes(
-        title=x_title.capitalize()
+        title=x_title.capitalize(),
+        domain=[0, 0.9]    # Take most of the plot width, but leave space on the right for the size legend
     )
+    # If two x-axes labels are present, constrain the range
+    uniq_cats = set(multicategory)
+    if len(uniq_cats) == 2:
+        fig.update_xaxes(range=[-0.5, 1.5])
+
     fig.update_yaxes(
         title="Genes"
     )
 
-    create_dot_legend(fig, legend_col)
+    #fig.update_layout(margin=dict(r=100))  # Add right margin to make space for legend
+
+    create_floating_dot_legend(fig)
 
     # Truncate faceted column axis labels so annotation can fit
     axis_label_mapping = {}  # Aggregated mapping of truncated -> full label names
@@ -167,6 +184,65 @@ def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, 
             fig.update_layout(meta=existing_meta)
 
     return fig
+
+def create_floating_dot_legend(fig: go.Figure):
+    """Adds a size legend using paper coordinates to avoid subplot whitespace. Edits in-place."""
+
+    # Create a dot size legend
+    steps = 5
+    dot_legend=list()
+    for i in range(steps):
+        dot_legend += [["0", i, i*20+20, "{}%".format(i*20+20)]]
+    dot_legend = pd.DataFrame(dot_legend,columns=['x','y','percent','text'])
+
+    # Add dots as a scatter trace on 'paper' coordinates
+    fig.add_scatter(
+        x=[1 for i in dot_legend["x"].tolist()], # Positioned on the right side
+        y=[0.1 + i*0.2 for i in dot_legend["y"].tolist()], # Stacked vertically
+        xaxis="x2", yaxis="y2", # Use main axes for positioning
+        mode="markers+text",
+        text=dot_legend["text"],
+        textposition="middle right",
+        marker=dict(
+            color="#888",
+            size=dot_legend["percent"],
+            sizemode="area"
+        ),
+        showlegend=False,
+        hoverinfo="skip",
+        cliponaxis=False
+    )
+
+# Configure the 'Legend' axes to be invisible and fixed
+    fig.update_layout(
+        xaxis2=dict(
+            range=[0, 1],
+            visible=False,
+            overlaying="x",
+            anchor="free",
+            position=1,
+            automargin=True
+            ),
+        yaxis2=dict(
+            range=[0, 1],
+            position=1,
+            # setting visible=False hides the title
+            showgrid=False,         # Hide the grid lines
+            showline=False,         # Hide the vertical axis line
+            showticklabels=False,   # Hide the numbers
+            zeroline=False,         # Hide the baseline
+            ticks="",               # no tick marks
+            overlaying="y",
+            anchor="free",
+            side="right",
+            # Use the axis title instead of an annotation
+            title=dict(
+                text="Percent of cells expressing gene",
+                font=dict(size=14, family="Roboto"),
+                standoff=0,
+            )
+            ),
+    )
 
 ### Heatmap fxns
 #from memory_profiler import profile
