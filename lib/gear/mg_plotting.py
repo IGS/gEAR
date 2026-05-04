@@ -35,43 +35,6 @@ LOG_COUNT_ADJUSTER = 1
 
 ### Dotplot fxns
 
-def create_dot_legend(fig, legend_col):
-    """Creates the dot plot size legend. Edits figure in-place."""
-
-    # Create a dot size legend
-    steps = 5
-    dot_legend=list()
-    for i in range(steps):
-        dot_legend += [["0", i, i*20+20, "{}%".format(i*20+20)]]
-    dot_legend = pd.DataFrame(dot_legend,columns=['x','y','percent','text'])
-
-    fig.add_scatter(
-        x=dot_legend["x"]
-        , y=dot_legend["y"]
-        , text=dot_legend["text"]
-        , hoverinfo="none"  # Do not have hover text
-        , mode="markers+text"
-        , marker=dict(
-            color="#888"
-            , size=dot_legend["percent"]
-            , sizemode="area"
-            )
-        , showlegend=False
-        , textposition="top center"
-        , row=1
-        , col=legend_col)
-
-    # Hide dot size legend axes
-    fig.update_xaxes(
-        visible=False
-        , col=legend_col
-    )
-    fig.update_yaxes(
-        range=[-0.5, 5]  # Give extra clearance so top dot does not overlap with title
-        , visible=False
-        , col=legend_col
-    )
-
 def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, plot_title:str|None=None, colorscale:str|None="Magma", reverse_colorscale:bool=False, non_interactive:bool=False):
     """Creates a dot plot.  Returns the figure."""
     # x = group
@@ -82,16 +45,6 @@ def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, 
     # Taking a lot of influence from
     # https://github.com/interactivereport/CellDepot/blob/ec067978dc456d9262c3c59d212d90547547e61c/bin/src/plotH5ad.py#L113
 
-    # Specify the subplot grid
-    #legend_col=5
-    #spec_row = [{"colspan":legend_col-1}]
-    #spec_row.extend([None for i in range(legend_col-2)])
-    #spec_row.append({})
-
-    #fig = make_subplots(rows=1, cols=legend_col
-    #    , specs = [spec_row]   # "None" repeat much be legend_col - 2
-    #    , subplot_titles=(plot_title, "Percent of cells<br>expressing gene")
-    #)
 
     fig = go.Figure()
 
@@ -151,8 +104,6 @@ def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, 
     fig.update_yaxes(
         title="Genes"
     )
-
-    #fig.update_layout(margin=dict(r=100))  # Add right margin to make space for legend
 
     create_floating_dot_legend(fig)
 
