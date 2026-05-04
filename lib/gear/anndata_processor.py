@@ -338,7 +338,7 @@ class AnndataProcessor:
         # Create AnnData object
         adata = anndata.AnnData(X=expression_matrix, obs=var, var=obs)
         adata = adata.transpose()
-        adata.obs = sanitize_obs_for_h5ad(adata.obs)
+        adata.obs = sanitize_obs_for_h5ad(adata.obs)    # type: ignore
 
         self._update_progress(50, "Writing H5AD file...")
 
@@ -438,7 +438,7 @@ class AnndataProcessor:
         self._update_progress(50, "Creating AnnData object...")
 
         adata = anndata.AnnData(X=X, obs=obs_df, var=genes_df)
-        adata.obs = sanitize_obs_for_h5ad(adata.obs)
+        adata.obs = sanitize_obs_for_h5ad(adata.obs)    # type: ignore
 
         self._update_progress(60, "Writing H5AD file...")
 
