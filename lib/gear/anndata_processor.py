@@ -27,6 +27,17 @@ def write_status(status_file, status):
     with open(status_file, 'w') as f:
         f.write(json.dumps(status, indent=2))
 
+def process_anndata_synchronously(job_id, share_uid, staging_area, status_file, dataset_uid, dataset_format, perform_primary_analysis):
+    """Process anndata upload synchronously."""
+    processor = AnndataProcessor(
+        job_id=job_id,
+        share_uid=share_uid,
+        staging_area=staging_area,
+        status_file=status_file,
+        dataset_uid=dataset_uid,
+    )
+    return processor.process(dataset_format, perform_primary_analysis)
+
 def clean_chunk(chunk: pd.DataFrame) -> pd.DataFrame:
     """
     Clean a dataframe chunk by removing whitespace and converting to numeric.
@@ -125,7 +136,7 @@ class AnndataProcessor:
         self.status_file = status_file
         self.dataset_uid = dataset_uid
         self.status = {
-            "process_id": os.getpid(),
+            "job_id": self.job_id,
             "status": "processing",
             "message": "",
             "progress": 0,

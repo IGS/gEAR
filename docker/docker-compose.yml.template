@@ -86,6 +86,23 @@ services:
       - ../lib:/gEAR/lib
       - ../www/uploads/files:/gEAR/www/uploads/files
 
+  # AnnData object Upload RabbitMQ Consumer
+  # i.e. h5ad, mex, tar
+  anndata_upload_consumer:
+    build:
+      context: ..
+      dockerfile: listeners/Dockerfile.anndata_upload
+    depends_on:
+      - queue
+    image: adkinsrs/gear_anndata_upload_consumer:latest
+    networks:
+      - gear
+    restart: on-failure
+    volumes:
+      - ../listeners:/gEAR/listeners
+      - ../lib:/gEAR/lib
+      - ../www/uploads/files:/gEAR/www/uploads/files
+
 volumes:
   db:
     driver: local

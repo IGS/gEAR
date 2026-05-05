@@ -19,10 +19,10 @@ import geardb
 def main():
     print('Content-Type: application/json\n\n')
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    share_uid = form.getvalue('share_uid')
-    dataset_format = form.getvalue('dataset_format')
-    spatial_format = form.getvalue('spatial_format')  # may be None
+    session_id = form.getfirst('session_id')
+    share_uid = form.getfirst('share_uid')
+    dataset_format = form.getfirst('dataset_format')
+    spatial_format = form.getfirst('spatial_format')  # may be None
 
     if not share_uid: # should never happen
         error_msg = f"Unexpected missing share_uid in store_expression_dataset.cgi. session_id={session_id!r}"
@@ -84,7 +84,7 @@ def main():
         result['message'] = 'Dataset file saved successfully.'
 
         status = {
-            "process_id": None,
+            "job_id": None,
             "status": "uploaded",
             "message": "The dataset has been uploaded and is pending processing",
             "progress": 0
