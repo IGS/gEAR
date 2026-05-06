@@ -2,7 +2,7 @@
 
 // This doesn't work unless we refactor everything to use ES modules
 import { apiCallsMixin, closeModal, createToast, getCurrentUser, logErrorInConsole, openModal } from "../common.v2.js";
-import { adjustClusterColorbars, adjustExpressionColorbar, attachAxisLabelTooltips, postPlotlyConfig } from "../helpers/plot-display-config.js";
+import { adjustClusterColorbars, attachAxisLabelTooltips, postPlotlyConfig } from "../helpers/plot-display-config.js";
 import { colorSVG } from "../helpers/dataset-svg-fxns.js";
 import { Citation } from "./citation.js";
 
@@ -1893,7 +1893,6 @@ class DatasetTile {
         if (plotType === 'heatmap') {
             // These modify the plotJson object in place
             // TODO: Adjust these functions
-            adjustExpressionColorbar(plotJson.data);
             adjustClusterColorbars(plotJson.data);
         }
 

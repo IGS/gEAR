@@ -197,17 +197,8 @@ export const postPlotlyConfig = {
 // Functions that cannot be encapsulated by a general config change
 // ! These will modify an object reference in place if the param argument is an object property
 
-export const adjustExpressionColorbar = (plotData) => {
-    // The colorbar is outside of the graph div.  Need to adjust to bring back in.
-    for (const element of plotData) {
-        if ("colorbar" in element && element.name === "expression") {
-            element.colorbar.len = 1.5;
-            element.colorbar.x = 1.3;
-        }
-    }
-}
-
 export const adjustClusterColorbars = (plotData) => {
+    return;   // Disable for now since we are no longer doing clusterbars as separate traces.  Will need to re-evalulate if we want to go back to that approach.
     const plotMinDomain = 0;
     const plotMaxDomain = 1;
     const newMinDomain = -0.5;
