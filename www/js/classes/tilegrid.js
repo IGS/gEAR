@@ -1600,10 +1600,7 @@ class DatasetTile {
                 }
 
             } else if (this.type === "multi") {
-                if (this.dataset.dtype === "spatial") {
-                    // Matplotlib-based display for spatial datasets
-                    await this.renderSpatialScanpyDisplay(null, null);
-                } else if (mgScanpyPlots.includes(display.plot_type)) {
+                if (mgScanpyPlots.includes(display.plot_type)) {
                     // Render multi-gene scanpy display
                     await this.renderScanpyDisplay(display, true, otherOpts);
 
@@ -2280,69 +2277,6 @@ class DatasetTile {
         }
 
         colorSVG(data, this.dataset.id, config, containerInfo, svgScoringMethod);
-    }
-
-    /**
-     * Renders the spatial-based Scanpy display on the tile grid.
-     *
-     * @param {Object} display - The display object containing the dataset and plot information.
-     * @param {Object} otherOpts - Additional options for rendering the display.
-     * @returns {Promise<void>} - A promise that resolves when the display is rendered.
-     * @throws {Error} - If there is an error fetching the image data or if the image data is not available.
-     */
-    async renderSpatialScanpyDisplay(display, otherOpts) {
-
-        const datasetId = this.dataset.id;
-        const analysisObj = null
-        const plotConfig = {gene_symbols: this.geneInput};   // applies for single and multi gene
-
-        this.resetAbortController();
-        otherOpts = {}
-        if (this.controller) {
-            otherOpts.signal = this.controller.signal;
-        }
-
-
-        /* NOT IMPLEMENTED YET
-        const datasetId = display.dataset_id;
-        // Create analysis object if it exists.  Also supports legacy "analysis_id" string
-        const analysisObj = display.plotly_config.analysis_id ? {id: display.plotly_config.analysis_id} : display.plotly_config.analysis || null;
-        const plotConfig = display.plotly_config;
-        */
-
-        const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
-        if (!plotContainer) return; // tile was removed before data was returned
-        plotContainer.replaceChildren();    // erase plot
-
-        const spatialPreview = document.createElement("img");
-        spatialPreview.classList.add("image", "is-fullwidth");
-        spatialPreview.id = `tile-${this.tile.tileId}-spatial-preview`;
-        plotContainer.append(spatialPreview);
-
-        const data = await apiCallsMixin.fetchSpatialScanpyImage(datasetId, analysisObj, plotConfig, otherOpts);
-        if (data?.success < 1) {
-            throw new Error (data?.message ? data.message : "Unknown error.")
-        }
-        const {image, image_format} = data;
-
-        if (!image) {
-            console.warn(`Could not retrieve spatial plot image data for dataset ${datasetId}. Cannot make plot.`);
-            //console.warn(`Could not retrieve plot image for dataset display ${display.id}. Cannot make plot.`);
-            return;
-        }
-
-        const imageFormat = image_format || "webp"; // default to webp if not provided
-        const blob = await fetch(`data:image/${imageFormat};base64,${image}`).then(r => r.blob());
-
-        // decode base64 image and set as src
-        spatialPreview.src = URL.createObjectURL(blob);
-
-        spatialPreview.onload = () => {
-            // Revoke the object URL to free up memory
-            // ! This does prevent right-click saving though
-            //URL.revokeObjectURL(spatialPreview.src);
-        }
-        return;
     }
 
     async renderSpatialPanelDisplay(display, otherOpts) {
