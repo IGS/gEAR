@@ -554,17 +554,14 @@ class MGPlotlyData(Resource):
             df = df.drop(columns=[var_index])
 
             # Groupby to remove the replicates
-            # Ensure the composite index is used as the index for plot labeling
             if matrixplot:
                 if not primary_col:
                     return {
                         'success': -1,
                         'message': "A primary grouping is required for matrixplots. Please update this curation"
                     }
-
                 groupby = ["gene_symbol"]
                 groupby.extend(groupby_filters)
-
                 grouped = df.groupby(groupby, observed=True)
                 df = grouped.mean() \
                     .dropna() \
@@ -574,7 +571,8 @@ class MGPlotlyData(Resource):
 
             # Reverse Cividis so that dark is higher expression
             if colorblind_mode:
-                colorscale = "cividis_r"
+                colorscale = "cividis"
+                reverse_colorscale = True   # Adding _r to colorscale also works, but this plays on the trace options already added.
 
             # "df" must be obs label for rows and genes for cols only
             try:

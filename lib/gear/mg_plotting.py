@@ -14,6 +14,7 @@ import plotly.figure_factory as ff
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy.spatial.distance import pdist
+from scipy.cluster.hierarchy import linkage, leaves_list
 
 ALPHABET_COLORS = px.colors.qualitative.Alphabet
 BOLD_COLORS = px.colors.qualitative.Bold
@@ -65,7 +66,7 @@ def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, 
     if is_log10:
         mean = df['mean']
 
-    # For some reason, the default argument is ignored.
+    # In case colorscale is an empty string
     if not colorscale:
         colorscale="Magma"
 
@@ -215,44 +216,119 @@ def create_floating_dot_legend(fig: go.Figure):
 
 ### Heatmap fxns
 
-def add_clusterbars(fig, all_categories):
-    for i, categories in enumerate(all_categories):
-        add_clusterbar(fig, categories, i)
+def add_clusterbars(fig: go.Figure, obs_columns, all_categories: list, bar_start_pos: float, flip_axes: bool=False, pivot_cols=None):
+    curr_bar_pos = bar_start_pos
+    curr_legend_pos = 1.2
 
-def add_clusterbar(fig, metadata_series, bar_index):
-    """Layers a clusterbar using a secondary axis. Edits in-place."""
+    # Replicate the same obs
+    obs_groups = build_multicategory_obs_labels(obs_columns)
+    x = obs_groups
 
-    palette = get_categorical_palette(bar_index)
+    for i, field in enumerate(all_categories):
 
-    unique_vals = metadata_series.unique()
-    color_map = {val: palette[i] for i, val in enumerate(unique_vals)}
+        if field not in obs_columns.names:
+            raise PlotError(f"Clusterbar field '{field}' not found in heatmap columns. Please ensure all clusterbar fields are included in the heatmap columns.")
 
-    # Calculate bar Y-position based on heatmap top
-    # Assuming heatmap top is 0.8
-    y_pos = 0.82 + (bar_index * 0.04)
+        categories = obs_columns.get_level_values(field)
 
-    fig.add_scatter(
-        x=metadata_series.index,
-        y=[y_pos] * len(metadata_series),
-        mode='markers',
-        marker=dict(
-            color=[color_map[v] for v in metadata_series],
-            symbol='square',
-            size=12
+        y = [curr_bar_pos]
+        text = [categories]
+
+        palette = get_categorical_palette(i)
+        unique_vals = list(dict.fromkeys(categories))
+        # map colors to categories
+        color_map = {val: i for i, val in enumerate(unique_vals)}
+
+        # In order to make the colorscale a discrete one, we must map the start and stop thresholds for our normalized range
+        # You need the stop threshold, otherwise Plotly will try to interpolate some colors and be wrong
+        colorscale = []
+        tickvals = []
+        colorlen = len(unique_vals)
+        for i in range(colorlen):
+            # Start of color thresholds
+            colorscale.append(( (i)/colorlen, palette[i % len(palette)] ))
+            # End of color thresholds
+            colorscale.append(( (i+1)/colorlen, palette[i % len(palette)] ))
+            # Center the group name in its color
+            # SAdkins - I honestly don't remember how I arrived at this formula, but it works
+            tickvals.append((colorscale[-1][0] + colorscale[-2][0]) / 2 * (colorlen-1))
+
+        # Map groups to their integer index in the palette
+        z = [[color_map[v] for v in categories]]
+        if flip_axes:
+            z = np.array(z).T.tolist()  # Transpose to make it a column vector again
+
+        # Unfortunately, since we want unique colorscales per heatmap, we need a unique 1-row heatmap per field.
+        fig.add_heatmap(
+            x=y if flip_axes else x,
+            y=x if flip_axes else y,
+            z=z,
+            text=text,
+            # Define the discrete colorscale for this specific metadata field
+            colorscale=colorscale,
+            showscale=True,  # Kills the extra colorbar
+            xaxis="x",
+            yaxis="y",       # Still use yaxis2 for the domain sandwich
+            hoverongaps=False,
+            hovertemplate=f"{field}: %{{text}}<extra></extra>",
+            name="clusterbar",
+            colorbar=dict(
+                len=0.75,
+                x=curr_legend_pos,         # Sits in the right margin domain
+                y=0.5,         # Centered vertically
+                xanchor="center",
+                yanchor="middle",
+                thickness=15,
+                title=dict(
+                    font=dict(
+                        size=12,
+                        family="Roboto"
+                    ),
+                    text=field,
+                    side="right"
+                ),
+                tickfont=dict(size=10),
+                ticktext=unique_vals,
+                tickvals=tickvals
+            )
+        )
+
+
+        curr_bar_pos += 1  # Move to the next bar position   (bar_height + gap)
+        curr_legend_pos += 0.25  # Move to the next legend position
+
+
+def add_left_dendrogram(fig, data, distfun:callable, dendro_domain:dict|None=None):
+    dendro = ff.create_dendrogram(data, orientation='right', distfun=distfun)
+
+    # Add dendrogram traces to our existing figure
+    for trace in dendro.data:
+        trace.showlegend = False    # Removes "trace 1, trace 2..."
+        trace.hoverinfo = 'skip'     # Modern "Calm" interaction
+        trace.line.color = '#444444' # Single neutral color (dark gray)
+        trace.xaxis = "x2" # Move to a dedicated dendrogram axis
+        trace.yaxis = "y2"
+        fig.add_trace(trace)
+
+    dendro_x_domain = (dendro_domain or {}).get("x", {}).get("left", [0.02, 0.2])
+    dendro_y_domain = (dendro_domain or {}).get("y", {}).get("left", fig.layout.yaxis.domain)  # Match heatmap height by default
+
+    # Align the Dendrogram domain ABOVE the heatmap domain
+    fig.update_layout(
+        xaxis2=dict(
+            domain=dendro_x_domain, # Sits in the left 16% of the card
+            visible=False,
         ),
-        name=metadata_series.name, # This becomes the Legend Header
-        legendgroup=metadata_series.name,
-        showlegend=True,
-        xaxis="x", yaxis="y2", # Use an overlaying axis for bar positioning
-        cliponaxis=False
+        yaxis2=dict(
+            domain=dendro_y_domain, # Matches heatmap height
+            visible=False
+        ),
+        # clear background
+        plot_bgcolor='#FFFFFF',
     )
 
-def add_left_dendrogram(fig, data, distance_metric:str="euclidean"):
-    try:
-        distfun = partial(pdist, metric=distance_metric)
-    except Exception:
-        raise ValueError(f"Invalid distance metric '{distance_metric}' for dendrogram. Please choose a valid metric from scipy.spatial.distance.pdist.")
-    dendro = ff.create_dendrogram(data, orientation='right', distfun=distfun)
+def add_top_dendrogram(fig, data, distfun:callable, dendro_domain:dict|None=None):
+    dendro = ff.create_dendrogram(data, orientation='bottom', distfun=distfun)
 
     # Add dendrogram traces to our existing figure
     for trace in dendro.data:
@@ -263,88 +339,89 @@ def add_left_dendrogram(fig, data, distance_metric:str="euclidean"):
         trace.yaxis = "y3"
         fig.add_trace(trace)
 
+    dendro_x_domain = (dendro_domain or {}).get("x", {}).get("top", fig.layout.xaxis.domain)  # Match heatmap width by default
+    dendro_y_domain = (dendro_domain or {}).get("y", {}).get("top", [0.8, 0.98])
+
     # Align the Dendrogram domain ABOVE the heatmap domain
     fig.update_layout(
         xaxis3=dict(
-            domain=[0.02, 0.18], # Sits in the left 16% of the card
+            domain=dendro_x_domain, # Matches heatmap width
             visible=False
         ),
         yaxis3=dict(
-            domain=[0.1, 0.9], # Matches heatmap height
+            domain=dendro_y_domain, # Sits in the top 16% of the card
             visible=False
         ),
-        # Shrink heatmap domain to avoid overlap
-        xaxis=dict(domain=[0.2, 0.9]),
         # clear background
         plot_bgcolor='#FFFFFF',
     )
 
-def add_top_dendrogram(fig, data, distance_metric:str="euclidean"):
-    try:
-        distfun = partial(pdist, metric=distance_metric)
-    except Exception:
-        raise ValueError(f"Invalid distance metric '{distance_metric}' for dendrogram. Please choose a valid metric from scipy.spatial.distance.pdist.")
-    dendro = ff.create_dendrogram(data, orientation='bottom', distfun=distfun)
+def build_multicategory_obs_labels(obs_columns):
+    obs_groups = obs_columns
+    if isinstance(obs_columns, pd.MultiIndex):
+        # Attempt to make this a multicategory axis of 2 levels (which is the plotly max)
+        if obs_columns.nlevels > 2:
+            # Collapse level 1 onwards into a composite string, keeping level 0 as outermost
+            level_0 = list(obs_columns.get_level_values(0))
+            inner_values = [
+                ";".join(str(obs_columns[i][j]) for j in range(1, obs_columns.nlevels))
+                for i in range(len(obs_columns))
+            ]
+            obs_groups = [level_0, inner_values]
+        else:
+            # Convert to multicategory format: list of lists, one per level
+            obs_groups = [list(obs_columns.get_level_values(i)) for i in range(obs_columns.nlevels)]
+    else:
+        obs_groups = obs_columns.tolist()
+    return obs_groups
 
-    # Add dendrogram traces to our existing figure
-    for trace in dendro.data:
-        trace.showlegend = False    # Removes "trace 1, trace 2..."
-        trace.hoverinfo = 'skip'     # Modern "Calm" interaction
-        trace.line.color = '#444444' # Single neutral color (dark gray)
-        trace.xaxis = "x4" # Move to a dedicated dendrogram axis
-        trace.yaxis = "y4"
-        fig.add_trace(trace)
-
-    # Align the Dendrogram domain ABOVE the heatmap domain
-    fig.update_layout(
-        xaxis4=dict(
-            domain=[0.1, 0.9], # Matches heatmap width
-            visible=False
-        ),
-        yaxis4=dict(
-            domain=[0.82, 0.98], # Sits in the top 16% of the card
-            visible=False
-        ),
-        # Shrink heatmap domain to avoid overlap
-        yaxis=dict(domain=[0.1, 0.8]),
-        # clear background
-        plot_bgcolor='#FFFFFF',
-    )
-
-def calculate_domains(num_clusterbars, show_dendrogram=True):
+def calculate_x_domains(show_dendrogram=True, gene_domain_ratio=1.0):
     # Fixed heights in normalized paper units (0 to 1)
-    bar_height = 0.03
-    gap = 0.01
-    dendro_height = 0.15 if show_dendrogram else 0
+    dendro_width = 0.18 if show_dendrogram else 0
 
-    # Calculate the top boundary of the heatmap
-    heatmap_top = 1.0 - dendro_height - (num_clusterbars * (bar_height + gap))
+    # Calculate the start boundary of the heatmap
+    heatmap_left = 0.02 + dendro_width if show_dendrogram else 0.05
+    heatmap_right = 0.9
+
+    # This should be equal to the heatmap with only the genes
+    dendro_top_width = gene_domain_ratio * (heatmap_right - heatmap_left)
+    dendro_top_right_pos = heatmap_left + dendro_top_width
 
     return {
-        "heatmap": [0.1, heatmap_top],
-        "bars_start": heatmap_top + gap,
-        "dendro": [1.0 - dendro_height, 1.0]
+        "heatmap": [heatmap_left, heatmap_right],
+        "dendro": {
+                "left": [0.02, heatmap_left],
+                "top": [heatmap_left, dendro_top_right_pos]
+        }
     }
 
-def create_heatmap(df:pd.DataFrame, groupby_filters: list, clusterbar_fields, is_log10:bool=False, cluster_obs:bool=False,
-                    cluster_genes:bool=False, flip_axes:bool=False, center_around_zero:bool=False,
-                    distance_metric:str="euclidean", colorscale:str|None=None, reverse_colorscale:bool=False,
-                    title:str|None=None, hide_obs_labels:bool=False, hide_gene_labels:bool=False,
-                    ) -> go.Figure:
+def calculate_y_domains(show_dendrogram=True, gene_domain_ratio=1.0):
+    # Fixed heights in normalized paper units (0 to 1)
+    dendro_height = 0.18 if show_dendrogram else 0
 
-    # df is long form
-    # columns include:
-    # - gene_symbol
-    # - value (expression)
-    # - any other groupby or clusterbar series value
+    # Calculate the top boundary of the heatmap
+    heatmap_bottom = 0.1
+    heatmap_top = 0.95 - dendro_height
 
+    # This should be equal to the heatmap with only the genes
+    dendro_left_height = gene_domain_ratio * (heatmap_top - heatmap_bottom)
+    dendro_left_top_pos = heatmap_bottom + dendro_left_height
+
+    return {
+        "heatmap": [heatmap_bottom, heatmap_top],
+        "dendro": {
+            "left": [heatmap_bottom, dendro_left_top_pos],
+            "top": [1.0 - dendro_height, 0.98]
+        }
+    }
+
+def build_heatmap_obs_groups(df, groupby_filters, clusterbar_fields) -> list:
     obs_groups = df.index.tolist()
     if groupby_filters:
         id_vars = set(groupby_filters + clusterbar_fields)
-
         # if id_vars is 3+, we need to create a composite index for the heatmap rows/columns to group by
-        # Basically mutlicategory only goes 2 levels deep, so we need to take clusterbar fields
-        # and do an index for each groupby filter so there is just 2 categories
+        # Basically mutlicategory only goes 2 levels deep max (blame Plotly), so we need to take clusterbar fields
+        # and do an index for the innermost groupby filter so there is just 2 categories
         groupby_to_use = groupby_filters
         if len(id_vars) > 2:
             # Find clusterbar fields not in groupby_filters
@@ -366,12 +443,198 @@ def create_heatmap(df:pd.DataFrame, groupby_filters: list, clusterbar_fields, is
             df[composite_name] = create_composite_index_column(df, composite_filters)
             groupby_to_use.append(composite_name)
 
-        multicategory = create_multicategory_axis_labels(groupby_to_use, df)
+        multicategory = create_multicategory_axis_labels(groupby_to_use, df, return_unique=True)
         obs_groups = multicategory
+    return obs_groups
+
+def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:list=[], is_log10:bool=False, cluster_obs:bool=False,
+                    cluster_genes:bool=False, flip_axes:bool=False, center_around_zero:bool=False,
+                    distance_metric:str="euclidean", colorscale:str|None="cividis", reverse_colorscale:bool=False,
+                    title:str|None=None, hide_obs_labels:bool=False, hide_gene_labels:bool=False,
+                    ) -> go.Figure:
+
+    # df is long form
+    # columns include:
+    # - gene_symbol
+    # - value (expression)
+    # - any other groupby or clusterbar series value
 
     rows = list(df.index)
-    col_labels = df["gene_symbol"] if flip_axes else obs_groups
-    row_labels = obs_groups if flip_axes else df["gene_symbol"]
+
+    values = df.loc[rows, "value"].to_numpy() + LOG_COUNT_ADJUSTER
+    if is_log10:
+        # Already log-10 transformed
+        values = df.loc[rows, "value"].to_numpy()
+    else:
+        # log-transform to base-2
+        values = np.log2(values)
+
+    df["value"] = values
+
+    pivot_cols = df.index.name
+    id_vars = set(groupby_filters + clusterbar_fields)
+    if len(id_vars):
+        # Sets destroy order, so this preserves it.
+        pivot_cols = list(dict.fromkeys(groupby_filters + clusterbar_fields))
+
+    # df is now wide form
+    # index is gene_symbol
+    # multi-index column of groupby cats and clusterbar fields, or the original index by default.
+    pivot_df = df.pivot_table(index="gene_symbol", columns=pivot_cols, values="value", aggfunc="mean", observed=False)
+    values_2d = pivot_df.to_numpy()
+
+    # Initialize a clean figure
+    fig = go.Figure()
+
+    show_left_dendrogram = False
+    show_top_dendrogram = False
+    if cluster_obs:
+        if flip_axes:
+            show_left_dendrogram = True
+        else:
+            show_top_dendrogram = True
+    if cluster_genes:
+        if flip_axes:
+            show_top_dendrogram = True
+        else:
+            show_left_dendrogram = True
+
+    num_genes = len(pivot_df.index)
+    # This is the ratio of genes to clusterbars in the final heatmap.
+    gene_domain_ratio = num_genes / (num_genes + len(clusterbar_fields))
+
+    domain_x_dict = calculate_x_domains(show_dendrogram=show_left_dendrogram, gene_domain_ratio=gene_domain_ratio)
+    domain_y_dict = calculate_y_domains(show_dendrogram=show_top_dendrogram, gene_domain_ratio=gene_domain_ratio)
+    dendro_dict = {
+        "x": domain_x_dict["dendro"],
+        "y": domain_y_dict["dendro"]
+    }
+
+    # Dendrograms, if present, should be the source of truth for the axis order.
+    # So plot them first.
+    if cluster_obs or cluster_genes:
+        try:
+            distfun = partial(pdist, metric=distance_metric)    # type: ignore
+        except Exception:
+            raise ValueError(f"Invalid distance metric '{distance_metric}' for dendrogram. Please choose a valid metric from scipy.spatial.distance.pdist.")
+
+        if cluster_genes:
+            # use same default linkage method as dash-bio clustergrame
+            # "complete" linkage considers the furthest distnace between groups for clustering.
+            linkage_matrix = linkage(distfun(values_2d), method="complete")
+            # 'leaves' gives you the order of indices [5, 2, 0, 11...]
+            gene_order = leaves_list(linkage_matrix)
+            # Reorder dataframe
+            pivot_df = pivot_df.iloc[gene_order]
+
+            if flip_axes:
+                add_top_dendrogram(fig, values_2d.T, distfun, dendro_dict)
+            else:
+                add_left_dendrogram(fig, values_2d, distfun, dendro_dict)
+
+        if cluster_obs:
+            # use same default linkage method as dash-bio clustergrame
+            linkage_matrix = linkage(distfun(values_2d.T), method="complete")
+            obs_order = leaves_list(linkage_matrix)
+            pivot_df = pivot_df.iloc[:, obs_order]
+
+            if flip_axes:
+                add_left_dendrogram(fig, values_2d.T, distfun, dendro_dict)
+            else:
+                add_top_dendrogram(fig, values_2d, distfun, dendro_dict)
+
+    # Get a int code for the pivot_df index, so we can use them for the tickvals
+    gene_symbol_codes = [i for i, gene in enumerate(pivot_df.index)]
+
+    # Get the observation groups from the pivot table columns.  This will be used for the axis labels and hover info.
+    obs_groups = build_multicategory_obs_labels(pivot_df.columns)
+
+    # Now that pivot_df has been sorted, we need to grab values again.
+    values_2d = pivot_df.to_numpy()
+
+    x = gene_symbol_codes if flip_axes else obs_groups
+    y = obs_groups if flip_axes else gene_symbol_codes
+    z = values_2d.T if flip_axes else values_2d
+
+    # If colorscale is empty string
+    if not colorscale:
+        colorscale = "RdYlBu" if center_around_zero else "Reds"
+        # In the default colorscheme, reversing the scheme depends on if the plot centers around zero.
+        reverse_colorscale = center_around_zero
+
+    title_text = "Log2 Gene Expression"
+    colorbar_title = "Log2 Expr."
+    if is_log10:
+        title_text = "Log10 Gene Expression"
+        colorbar_title = "Log10 Expr."
+    if title:
+        title_text = title
+
+    # Generate the heatmap
+    fig.add_heatmap(
+        x=x,
+        y=y,
+        z=z,
+        # Using your side-aligned colorbar title trick
+        colorbar=dict(
+            title=dict(
+                font=dict(
+                    size=12,
+                    family="Roboto"
+                ),
+                text=colorbar_title,
+                side="right"
+                ),
+            tickfont=dict(size=12),
+            len=0.75,
+            x=1.05,         # Sits in the right margin domain
+            y=0.5,         # Centered vertically
+            xanchor="center",
+            yanchor="middle",
+            thickness=15
+        ),
+        reversescale=reverse_colorscale,
+        colorscale=colorscale,
+        zmin=0 if not center_around_zero else None,
+        zmax=float(values.max()) if not center_around_zero else None,
+        zmid=0 if center_around_zero else None,
+        name="expression"
+    )
+
+    # We need to use ticks for the axis the clusterbar entries share. That way there is a unified coordinate system
+    # and we have full control over the position of things.
+    col_ticktext = None
+    col_tickvals = None
+    row_ticktext = None
+    row_tickvals = None
+    bars_start = None
+    gene_domain_ratio = 1.0
+    if flip_axes:
+        col_ticktext = pivot_df.index.tolist()
+        col_tickvals = gene_symbol_codes
+        bars_start = len(col_ticktext)
+        bar_tick = bars_start
+
+        for field in clusterbar_fields:
+            col_ticktext.append(field)
+            col_tickvals.append(bars_start)
+            bar_tick += 1
+
+    else:
+        row_ticktext = pivot_df.index.tolist()
+        row_tickvals = gene_symbol_codes
+        bars_start = len(row_ticktext)
+        bar_tick = bars_start
+
+        for field in clusterbar_fields:
+            row_ticktext.append(field)
+            row_tickvals.append(bars_start)
+            bar_tick += 1
+
+    # Add clusterbars if they are needed.
+    if clusterbar_fields:
+        add_clusterbars(fig, pivot_df.columns, clusterbar_fields, bars_start, flip_axes, pivot_cols)
+
 
     x_visible = True
     y_visible = True
@@ -386,81 +649,14 @@ def create_heatmap(df:pd.DataFrame, groupby_filters: list, clusterbar_fields, is
         else:
             y_visible = False
 
-    values = df.loc[rows, "value"].to_numpy() + LOG_COUNT_ADJUSTER
-    if is_log10:
-        # Already log-10 transformed
-        values = df.loc[rows, "value"].to_numpy()
-    else:
-        # log-transform to base-2
-        values = np.log2(values)
-
-    if not colorscale:
-        colorscale = "RdYlBu" if center_around_zero else "Reds"
-        # In the default colorscheme, reversing the scheme depends on if the plot centers around zero.
-        reverse_colorscale = center_around_zero
-
-    title_text = "Log2 Gene Expression"
-    colorbar_title = "Log2 Expr."
-    if is_log10:
-        title_text = "Log10 Gene Expression"
-        colorbar_title = "Log10 Expr."
-    if title:
-        title_text = title
-
-    # Initialize a clean figure, not subplots
-    fig = go.Figure()
-
-    # --- STEP 1: Main Heatmap ---
-    fig.add_heatmap(
-        x=col_labels,
-        y=row_labels,
-        z=values,
-        # Using your side-aligned colorbar title trick
-        colorbar=dict(
-            title=dict(
-                font=dict(
-                    size=12,
-                    family="Roboto"
-                ),
-                text=colorbar_title,
-                side="right"
-                ),
-            tickfont=dict(size=12),
-            x=1.1,         # Sits in the right margin domain
-            y=0.5,         # Centered vertically
-            xanchor="center",
-            yanchor="middle",
-            thickness=15
-        ),
-        reversescale=reverse_colorscale,
-        colorscale=colorscale,
-        zmin=0 if not center_around_zero else None,
-        zmax=float(values.max()) if not center_around_zero else None,
-        zmid=0 if center_around_zero else None,
-        name="expression"
-    )
-
-    fig.update_yaxes(
-        tickmode="linear",
-        dtick=1,    # force tick for each category
-        automargin=True,
-        side="right"    # So dendrogram doesn't overlap with labels
-    )
-    fig.update_xaxes(
-        tickmode="linear",
-        dtick=1,    # force tick for each category
-        automargin=True
-    )
-
-    # --- STEP 2: The Domain Fix (The "Sidebar" Area) ---
     # This is how we eliminate the top/left whitespace when dendrograms are off.
     fig.update_layout(
         xaxis=dict(
-            domain=[0.1, 0.9] # Heatmap takes 80% width, 10% left margin is safe.
+            domain=domain_x_dict["heatmap"] # Heatmap takes 80% width, 10% left margin is safe.
             , visible=x_visible
         ),
         yaxis=dict(
-            domain=[0.1, 0.9] # Heatmap takes 80% height, 10% top margin is safe.
+            domain=domain_y_dict["heatmap"] # Heatmap takes 80% height, 10% top margin is safe.
             , visible=y_visible
         ),
 
@@ -468,157 +664,47 @@ def create_heatmap(df:pd.DataFrame, groupby_filters: list, clusterbar_fields, is
         title={"text": title_text, "x": 0.5, "xref": "paper", "y": 0.9}
     )
 
-    show_top_dendrogram = False
-    if cluster_obs and not flip_axes:
-        show_top_dendrogram = True
-    if cluster_genes and flip_axes:
-        show_top_dendrogram = True
-    calculate_domains(num_clusterbars=0, show_dendrogram=show_top_dendrogram)
-
-    return fig
-
-    try:
-        # dendrogram needs 2d values
-        values2d = values.reshape(len(row_labels), len(col_labels))
-
-        if cluster_obs:
-            if flip_axes:
-                add_left_dendrogram(fig, values2d, distance_metric)
-            else:
-                add_top_dendrogram(fig, values2d, distance_metric)
-
-        if cluster_genes:
-            if flip_axes:
-                add_top_dendrogram(fig, values2d, distance_metric)
-            else:
-                add_left_dendrogram(fig, values2d, distance_metric)
-    except ValueError as e:
-        # If an invalid distance metric was provided, raise an error with a clear message
-        raise ValueError(str(e))
-
-    # TODO: Add clusterbars
-
-    return fig
-
-def add_clustergram_cluster_bars(fig, clusterbar_indexes, obs_labels=None, is_log10=False, flip_axes=False) -> None:
-    """Add column traces for each filtered group.  Edits figure in-place."""
-
-    # Heatmap is located on xaxis11 and yaxis11 in dash-1.0.2
-    # Left-side dendrogram is xaxis9 and yaxis9 in dash=1.0.2
-    # Top-sie dendrogram is xaxis3 and yaxis3 in dash=1.0.2
-
-    obs_axis = "xaxis11"
-    gene_axis = "yaxis11"
-    obs_dendro_axis = "xaxis9"
-    gene_dendro_axis = "yaxis9"
+    # Set up layout
     if flip_axes:
-        obs_axis = "yaxis11"
-        gene_axis = "xaxis11"
-        obs_dendro_axis = "yaxis3"
-        gene_dendro_axis = "xaxis3"
-
-    # Get list of observations in the order they appear on the heatmap
-    obs_order = fig.layout[obs_axis]["ticktext"]
-
-    # Update the text with labels based on included/excluded filters
-    if obs_labels:
-        fig.layout[obs_axis]["ticktext"] = obs_labels
-
-    # Assign observations to their categorical groups and assign colors to the groups
-    col_group_markers = build_column_group_markers(clusterbar_indexes, obs_order)
-    groups_and_colors = set_obs_groups_and_colors(clusterbar_indexes)
-
-    # Create a 2D-heatmap.  Convert the discrete groups into integers.
-    # One heatmap per observation category
-    col_group_traces = []
-
-    # Get the position of observations. Individual tickvals are the midpoint for the heatmap square
-    obs_positions=fig.layout[obs_axis]["tickvals"]
-
-    # Put "groups" heatmap tracks either above or to the right of the genes in heatmap
-    # Makes a small space b/t the genes and groups tracks
-    next_bar_position = max(fig.layout[gene_axis]["tickvals"]) + 7
-
-    # Information that will help posittion the "groups" colorbars
-    curr_colorbar_x = 1.25
-
-    for key, val in col_group_markers.items():
-
-        z = create_clusterbar_z_value(flip_axes, groups_and_colors, key, val)
-
-        # In order to make the colorscale a discrete one, we must map the start and stop thresholds for our normalized range
-        colorscale = []
-        # Normally tickvals will stretch to the min and max of the colorbar range. We also need to center the groups in the middle of the color
-        tickvals = []
-
-        colorlen = len(groups_and_colors[key]["colors"])
-        for i in range(colorlen):
-            # Start of color thresholds
-            colorscale.append(( (i)/colorlen, groups_and_colors[key]["colors"][i] ))
-            # End of color thresholds
-            colorscale.append(( (i+1)/colorlen, groups_and_colors[key]["colors"][i] ))
-            # Center the group name in its color
-            tickvals.append((colorscale[-1][0] + colorscale[-2][0]) / 2 * (colorlen-1))
-
-        next_x = obs_positions
-        next_y = [next_bar_position-2, next_bar_position+2]
-        if flip_axes:
-            next_x = [next_bar_position-2, next_bar_position+2]
-            next_y = obs_positions
-
-        # Adjust the colorbar length based on the number of groups, but cap at 1
-        colorbarlen = min(1, max(0.75, colorlen * 0.15))
-
-        trace = go.Heatmap(
-            x=next_x
-            , y=next_y
-            , z=z
-            , colorbar=dict(
-                len=colorbarlen
-                , tickfont=dict(size=12)
-                , ticktext=[group for group in groups_and_colors[key]["truncate"]]
-                , tickvals=tickvals
-                , thickness = 15
-                , title=dict(font=dict(size=12, family="Roboto"), side="right", text=key)
-                , x=curr_colorbar_x
-                , y=1   # Align with bottom of heatmap
-                , yanchor="top"
-                )
-            , colorscale=colorscale
-            , name="clusterbar"
+        fig.update_layout(
+            xaxis=dict(
+                tickmode="array",
+                tickvals=col_tickvals,
+                ticktext=col_ticktext,
+                automargin=True
+            ),
+            yaxis=dict(
+                tickmode="linear",
+                dtick=1,    # force tick for each category
+                automargin=True,
+                side="right"    # So dendrogram doesn't overlap with labels
+            )
         )
-        col_group_traces.append(trace)
+    else:
+        fig.update_layout(
+            xaxis=dict(
+                tickmode="linear",
+                dtick=1,    # force tick for each category
+                automargin=True
+            ),
+            yaxis=dict(
+                tickmode="array",
+                tickvals=row_tickvals,
+                ticktext=row_ticktext,
+                automargin=True,
+                side="right"    # So dendrogram doesn't overlap with labels
+            )
+        )
 
-        # Add group label to axis tuples
-        fig.layout[gene_axis]["ticktext"] = fig.layout[gene_axis]["ticktext"] + (key, )
-        fig.layout[gene_axis]["tickvals"] = fig.layout[gene_axis]["tickvals"] + (next_bar_position, )
+    # This is a band-aid fix to tighten the margins if dendrograms are not present.
+    # The dendrograms add extra margins that we need to account for, but if they are not there, we can reclaim that space.
+    r_margin=80 + (40 * len(clusterbar_fields))
+    fig.update_layout(
+        margin=dict(l=10, t=50, b=30, r=r_margin),
+    )
 
-        next_bar_position += 4 # add enough gap to space the "group" tracks
-        curr_colorbar_x += 0.25
+    return fig
 
-    # Shift genes dendropgram to account for new cluster cols
-    fig.layout[gene_dendro_axis]["range"] = (min(fig.layout[gene_axis]["tickvals"]), max(fig.layout[gene_axis]["tickvals"]))
-
-    # Discovered "xaxis" range won't autoupdate based on tickvals, so pop it off if it is there
-    fig.layout[gene_axis].pop("range", None)
-
-    for cgl in col_group_traces:
-        # This was 2, 2 in Dash 0.6.1 but is now 3, 3 in Dash 1.0.2
-        fig.append_trace(cgl, 3, 3)
-
-def create_clusterbar_z_value(flip_axes, groups_and_colors, key, val):
-    """Create a 2D-heatmap to represent the clusterbar.  Convert the discrete groups into integers."""
-    # number of elements in z array needs to equal number of observations in x-axis
-    # If axes are flipped, we need one-element arrays equal to number of observations in y-axis
-    if flip_axes:
-        return [[ groups_and_colors[key]["groups"].index(cgm["group"])] for cgm in val ]
-    return [[ groups_and_colors[key]["groups"].index(cgm["group"]) for cgm in val ]]
-
-def create_clustergram_observation_labels(df, fig, colname="composite_index", flip_axes=False):
-    """Create a set of labels to replace the current ticktext in the clustergram."""
-    obs_axis = "yaxis11" if flip_axes else "xaxis11"
-    obs_order = fig.layout[obs_axis]["ticktext"]    # Gets order of composite index observations
-    return df.reindex(obs_order)[colname].tolist()  # reindex based on the observation order, and return the labels
 
 ### Quadrant fxns
 
@@ -1336,38 +1422,6 @@ def validate_volcano_conditions(obs_df, query_condition, ref_condition):
 
 ### Misc fxns
 
-def build_column_group_markers(filter_indexes, obs_order=None):
-    """Build dictionaries of group annotations for the clustergram."""
-    col_group_markers = {}
-    # k = obs_category, elem = single observation, i = index position of indiv. observation in observation order list
-    for k, v in filter_indexes.items():
-        # If no obs order is provided, just assign unordered group annotations.
-        if obs_order is None:
-            col_group_markers[k] = {elem: v[elem] for elem in v}
-            continue
-
-        col_group_markers.setdefault(k, [0 for obs in obs_order])
-        for elem in v:
-            # Filter indexes in order of clustering
-            for obs in set(v[elem]):
-                for column_id, value in enumerate(obs_order):
-                    if obs == value:
-                        col_group_markers[k][column_id] = {'group': elem}
-    return col_group_markers
-
-def build_obs_group_indexes(df, filters, clusterbar_fields):
-    """Build dict of group indexes for filtered groups."""
-    filter_indexes = {}
-    for k in clusterbar_fields:
-        filter_indexes.setdefault(k, {})
-        groups = df[k].unique().tolist()
-        if filters and k in filters.keys():
-            groups = filters[k]
-        for elem in groups:
-            obs_index = df.index[df[k] == elem]
-            filter_indexes[k][elem] = obs_index.tolist()
-    return filter_indexes
-
 def create_dataframe_gene_mask(df, gene_symbols):
     """Create a gene mask to filter a dataframe."""
     if "gene_symbol" not in df:
@@ -1432,8 +1486,11 @@ def create_facet_indexes(groups):
     """Create facet indexes for subplots.  Returns a dict of group names to subplot index number."""
     return {group: idx for idx, group in enumerate(groups, start=1)}
 
-def create_multicategory_axis_labels(groupby_filters, df):
+def create_multicategory_axis_labels(groupby_filters, df, return_unique=False):
     """ Creates the multicategory axis labels for a plot."""
+    if return_unique:
+        # Get the unique values for each groupby filter to create the category arrays for the x-axis.  This also preserves the order of the categories as they appear in the dataframe.
+        df = df[groupby_filters].drop_duplicates(keep='first')
     # If only one groupby column, we must flatten the list or else the x-axis will not plot correctly
     if len(groupby_filters) < 2:
         return df[groupby_filters[0]].tolist()
@@ -1446,13 +1503,6 @@ def intersection(lst1, lst2):
     """Intersection of two lists."""
     return list(set(lst1) & set(lst2))
 
-def union(lst1, lst2):
-    """Union of two lists."""
-    return list(set(lst1) | set(lst2))
-
-def truncate(group):
-    """Truncate group names to 10 characters."""
-    return group[:10] + "..." if len(group) > 10 else group
 
 def normalize_searched_genes(gene_list, chosen_genes):
     """Convert to case-insensitive.  Also will not add chosen gene if not in gene list."""
@@ -1460,20 +1510,6 @@ def normalize_searched_genes(gene_list, chosen_genes):
     found_genes = [cg for cg in chosen_genes for g in gene_list if cg.lower() == str(g).lower()]
     return case_insensitive_genes, found_genes
 
-def set_obs_groups_and_colors(filter_indexes):
-    """Create mapping of groups and colors per observation category."""
-    # TODO: Use observation colors if available instead of Dark24."""
-
-    groups_and_colors = {}
-    palette_cycler = cycle(PALETTE_CYCLER)
-    for k, v in filter_indexes.items():
-        groups_and_colors.setdefault(k, {"groups":[], "colors":[]})
-        palette = next(palette_cycler)
-        color_cycler = cycle(palette)
-        groups_and_colors[k]["groups"] = [elem for elem in v]
-        groups_and_colors[k]["colors"] = [next(color_cycler) for elem in v]
-        groups_and_colors[k]["truncate"] = [truncate(elem) for elem in v]
-    return groups_and_colors
 
 def create_composite_index_column(df, columns):
     """
