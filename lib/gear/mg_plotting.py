@@ -106,6 +106,7 @@ def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, 
     x_title = groupby_filters[0]
     if len(groupby_filters) > 1:
         x_title += " and {}".format(groupby_filters[1])
+    x_title = underscore_to_space(x_title)
     fig.update_xaxes(
         title=x_title.capitalize(),
         domain=[0, 0.9]    # Take most of the plot width, but leave space on the right for the size legend
@@ -275,7 +276,7 @@ def add_clusterbars(fig: go.Figure, obs_columns, all_categories: list, bar_start
             xaxis="x",
             yaxis="y",       # Still use yaxis2 for the domain sandwich
             hoverongaps=False,
-            hovertemplate=f"{field}: %{{text}}<extra></extra>",
+            hovertemplate=f"{underscore_to_space(field)}: %{{text}}<extra></extra>",
             name="clusterbar",
             colorbar=dict(
                 len=0.75,
@@ -289,11 +290,11 @@ def add_clusterbars(fig: go.Figure, obs_columns, all_categories: list, bar_start
                         size=12,
                         family="Roboto"
                     ),
-                    text=field,
+                    text=underscore_to_space(field),
                     side="right"
                 ),
                 tickfont=dict(size=10),
-                ticktext=unique_vals,
+                ticktext=map_underscore_to_space(unique_vals),
                 tickvals=tickvals
             )
         )
@@ -658,7 +659,7 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
             xaxis=dict(
                 tickmode="array",
                 tickvals=col_tickvals,
-                ticktext=col_ticktext,
+                ticktext=map_underscore_to_space(col_ticktext),
                 automargin=True
             ),
             yaxis=dict(
@@ -678,7 +679,7 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
             yaxis=dict(
                 tickmode="array",
                 tickvals=row_tickvals,
-                ticktext=row_ticktext,
+                ticktext=map_underscore_to_space(row_ticktext),
                 automargin=True,
                 side="right"    # So dendrogram doesn't overlap with labels
             )
@@ -828,8 +829,12 @@ def create_quadrant_plot(df, control_val, compare1_val, compare2_val, colorscale
                     )
             )
 
-    fig.update_xaxes(title="{} vs {} log2FC".format(compare1_val, control_val))
-    fig.update_yaxes(title="{} vs {} log2FC".format(compare2_val, control_val))
+    pretty_print_compare1_val = underscore_to_space(compare1_val)
+    pretty_print_compare2_val = underscore_to_space(compare2_val)
+    pretty_print_control_val = underscore_to_space(control_val)
+
+    fig.update_xaxes(title="{} vs {} log2FC".format(pretty_print_compare1_val, pretty_print_control_val))
+    fig.update_yaxes(title="{} vs {} log2FC".format(pretty_print_compare2_val, pretty_print_control_val))
     fig.update_layout(
         legend_title_text="Log2FC: Num Genes in Group"
         )
@@ -927,6 +932,7 @@ def build_violin_x_title(groupby_filters):
         x_title += " grouped by {}".format(groupby_filters[0])
     if len(groupby_filters) > 1:
         x_title += " and {}".format(groupby_filters[1])
+    x_title = underscore_to_space(x_title)
     return x_title
 
 def create_stacked_violin_plot(df: pd.DataFrame, groupby_filters:list, is_log10: bool=False, colorscale: str | None=None, reverse_colorscale: bool=False, non_interactive: bool=False):
@@ -1035,6 +1041,7 @@ def create_stacked_violin_plot(df: pd.DataFrame, groupby_filters:list, is_log10:
     plot_title = groupby_filters[0]
     if len(groupby_filters) > 1:
         plot_title += " and {}".format(groupby_filters[1])
+    plot_title = underscore_to_space(plot_title)
     # Thin out the gap between violins. Default is 0.3 for both values.
     fig.update_layout(
         violingap=0.3
@@ -1249,9 +1256,12 @@ def create_volcano_plot(df, query, ref, pval_threshold, logfc_bounds, use_adj_pv
 
     # NOTE: We cannot pass "customdata" to the function, so we must modify the trace afterwards.
 
+    pretty_print_query = underscore_to_space(query)
+    pretty_print_ref = underscore_to_space(ref)
+
     return dashbio.VolcanoPlot(
         dataframe=df
-        , title="Differences in {} vs {}".format(query, ref)
+        , title="Differences in {} vs {}".format(pretty_print_query, pretty_print_ref)
         , col="lightgrey"
         , effect_size="logfoldchanges"
         , effect_size_line=logfc_bounds
@@ -1493,7 +1503,6 @@ def intersection(lst1, lst2):
     """Intersection of two lists."""
     return list(set(lst1) & set(lst2))
 
-
 def normalize_searched_genes(gene_list, chosen_genes):
     """Convert to case-insensitive.  Also will not add chosen gene if not in gene list."""
     case_insensitive_genes = [str(g) for cg in chosen_genes for g in gene_list if cg.lower() == str(g).lower()]
@@ -1558,35 +1567,13 @@ def get_discrete_colors(fields: list, colorscale: str | None="vivid", reverse_co
         colors = color_swatch_map[colorscale][::-1] if reverse_colorscale else color_swatch_map[colorscale]
     return colors
 
-def truncate_xaxis(fig, non_interactive=False, flip_axes=False):
-    """ Truncate faceted column axis labels so annotation can fit"""
+def map_underscore_to_space(items):
+    """Map underscores in a list of strings to spaces."""
+    return [underscore_to_space(item) for item in items]
 
-    obs_axis = "yaxis11" if flip_axes else "xaxis11"
-
-    axis_label_mapping = {}  # Aggregated mapping of truncated -> full label names
-    if not non_interactive and not flip_axes:
-        # For multi-gene plots, categoryarray is not always populated by Plotly automatically.
-        # Derive unique ordered categories directly from the dataframe instead.
-        x_categories =  fig.layout[obs_axis]["ticktext"]
-
-        def truncate_and_collect(a):
-            # Fall back to dataframe-derived categories if axis hasn't populated categoryarray
-            categories = list(a.categoryarray) if a.categoryarray is not None else x_categories
-            ticktext, mapping = _truncate_ticktext(categories)
-            axis_label_mapping.update(mapping)
-            a.update(
-                ticktext=ticktext,
-            )
-        fig.for_each_xaxis(truncate_and_collect)
-
-        # Store the axis label mapping in the figure metadata for use on the JS side
-        if axis_label_mapping:
-            existing_meta = fig.layout.meta or {}
-            if isinstance(existing_meta, dict):
-                existing_meta["axis_label_mapping"] = axis_label_mapping
-            else:
-                existing_meta = {"axis_label_mapping": axis_label_mapping}
-            fig.update_layout(meta=existing_meta)
+def underscore_to_space(string):
+    """Convert underscores in a string to spaces."""
+    return string.replace("_", " ")
 
 def _truncate_ticktext(group_list: list[str]) -> tuple[list[str] | None, dict[str, str]]:
     """Truncate a group of axis ticks to a specified length."""
