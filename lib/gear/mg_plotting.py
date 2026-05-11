@@ -903,7 +903,6 @@ def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val,
                 df1 = group_df
             else:
                 df2 = group_df
-
     else:
         raise PlotError("Invalid DE test algorithm specified. Please choose from 'wald', 'rank', or 't-test'.")
 
@@ -1390,43 +1389,70 @@ def modify_volcano_plot(fig, query, ref, ensm2genesymbol, downcolor=None, upcolo
         }
     )
 
-def prep_volcano_dataframe(adata, key, query_val, ref_val, de_test_algo="ttest", is_log10=False):
+def prep_volcano_dataframe(adata, key, query_val, ref_val, de_test_algo="wald", is_log10=False):
     """Prep the AnnData object to be a viable dataframe to use for making volcano plots."""
-    de_filter1 = adata.obs[key].isin([query_val])
-    selected1 = adata[de_filter1, :]
-    if ref_val == "rest":
-        # Rest is union of rest of conditions that are not the query condition
-        selected2 = adata[~de_filter1, :]
+
+    df = None
+    # Can only use Wald test
+    if de_test_algo == "wald":
+        try:
+            dds = DeseqDataSet(adata=adata
+                            , design=f"~{key}"  # uses grammar from "formulaic" package.
+                            , refit_cooks=True  # Generally advised.
+                            , n_cpus=4
+                            )
+            dds.deseq2()
+
+            ds = DeseqStats(dds, contrast=[key, query_val, ref_val])    # [key, condition_to_test, reference_condition]
+
+            # gene index: [baseMean, log2FoldChange, lfcSE, stat, pvalue, padj]
+            ds.summary()
+            df = ds.results_df
+
+            df["gene"] = df.index.map(lambda x: adata.var.loc[x, "gene_symbol"] if "gene_symbol" in adata.var.columns else x)
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise PlotError("Error running DESeq2. Perhaps this dataset does not have raw counts. Consider using the 'T-test' or 'Wilcoxon' option instead")
+
+    elif de_test_algo in ["rank", "t-test"]:
+        if not is_log10:
+            adata.X = adata.X + LOG_COUNT_ADJUSTER
+
+        import scanpy as sc
+        method = "t-test"
+        if de_test_algo == "rank":
+            method = "wilcoxon"
+        sc.tl.rank_genes_groups(adata, groupby=key, method=method, groups=[query_val], reference=ref_val)
+
+        # The scanpy rank_genes_groups function returns results in adata.uns['rank_genes_groups']
+        # Keys are dict_keys(['params', 'names', 'scores', 'pvals', 'pvals_adj', 'logfoldchanges']) where gene values are tuples based on the groups
+        # We need to convert this into a dataframe format similar to the DESeq2 results for consistency.
+
+        ensm_ids = adata.uns["rank_genes_groups"]["names"]
+        pvals_adj = adata.uns["rank_genes_groups"]["pvals_adj"]
+        logfoldchanges = adata.uns["rank_genes_groups"]["logfoldchanges"]
+        df = pd.DataFrame({
+            "log2FoldChange": logfoldchanges[query_val],
+            "padj": pvals_adj[query_val]
+        }, index=ensm_ids[query_val])
+
+        df["gene"] = df.index.map(lambda x: adata.var.loc[x, "gene_symbol"] if "gene_symbol" in adata.var.columns else x)
+
     else:
-        de_filter2 = adata.obs[key].isin([ref_val])
-        selected2 = adata[de_filter2, :]
-    # Query needs to be appended onto ref to ensure the test results are not flipped
-    de_selected = ad.concat([selected2, selected1], merge="same")
+        raise PlotError("Invalid DE test algorithm specified. Please choose from 'wald', 'rank', or 't-test'.")
 
-    if not is_log10:
-        de_selected.X = de_selected.X + LOG_COUNT_ADJUSTER
+    if df is None:
+        raise PlotError("Error preparing quadrant plot dataframe. DE results could not be calculated.")
 
-    # Wanted to use de.test.two_sample(test=<>) but you cannot pass is_logged=True
-    # which makes the ensuing plot inaccurate
-    # TODO: Figure out how to get wald test to work (and work faster)
-    de_test_func = de.test.t_test
-    if de_test_algo == "rank":
-        de_test_func = de.test.rank_test
-
-    de_results = de_test_func(
-        de_selected
-        , grouping=key
-        , gene_names=de_selected.var["gene_symbol"]
-        , is_logged=is_log10
-    )
-
-    # Cols - ['gene', 'pval', 'qval', 'log2fc', 'mean', 'zero_mean', 'zero_variance']
-    df = de_results.summary()
-    df["ensm_id"] = de_selected.var.index
     df["pvals"] = df["pval"].fillna(1)      # Unexpressed genes show up as NaN
-    df["pvals_adj"] = df["qval"].fillna(1)
-    df["logfoldchanges"] = df["log2fc"]
+    df["pvals_adj"] = df["padj"].fillna(1)
+    df["logfoldchanges"] = df["log2FoldChange"]
     df["gene_symbol"] = df["gene"]
+
+    # Drop redundant names
+    df = df.drop(columns=["pval", "padj", "log2FoldChange", "gene"])
 
     return df
 
