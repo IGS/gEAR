@@ -1186,7 +1186,7 @@ const loadColorscaleSelect = (isContinuous=false, isScanpy=false) => {
         defaultColor = "purp";
         if (isMultigene) {
             // I personally don't like purp for multigene plots
-            defaultColor = "bluered";
+            defaultColor = "reds";
         }
     }
     if (isScanpy) {
