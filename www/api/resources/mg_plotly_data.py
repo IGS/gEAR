@@ -123,7 +123,7 @@ class MGPlotlyData(Resource):
         upper_logfc_threshold = float(req.get("upper_logfc_threshold", 2))
         query_condition = req.get('query_condition', None)
         ref_condition = req.get('ref_condition', None)
-        de_test_algo = req.get("de_test_algo", "t-test")
+        de_test_algo = req.get("de_test_algo", "wald")
         use_adj_pvals = req.get('adj_pvals', True)
         annotate_nonsignificant = req.get('annotate_nonsignificant', True)
         # Violin plot options

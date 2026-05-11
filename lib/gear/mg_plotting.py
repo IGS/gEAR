@@ -6,7 +6,8 @@ from itertools import cycle
 import anndata as ad
 import colorcet as cc
 import dash_bio as dashbio
-import diffxpy.api as de
+from pydeseq2.dds import DeseqDataSet
+from pydeseq2.ds import DeseqStats
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -843,51 +844,80 @@ def create_quadrant_plot(df, control_val, compare1_val, compare2_val, colorscale
 def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val, de_test_algo="t_test", fc_threshold: float=2, fdr_threshold=0.05, include_zero_fc=True, is_log10=False):
     """Prep the AnnData object to be a viable dataframe to use for making volcano plots."""
 
-    # Create some filtered AnnData objects based on each individual comparision group
-    de_filter1 = adata.obs[key].isin([compare1_val])
-    selected1 = adata[de_filter1, :]
-    de_filter2 = adata.obs[key].isin([compare2_val])
-    selected2 = adata[de_filter2, :]
-    de_filter3 = adata.obs[key].isin([control_val])
-    selected3 = adata[de_filter3, :]
-    # Query needs to be appended onto ref to ensure the test results are not flipped
-    de_selected1 = ad.concat([selected3, selected1], merge="same")
-    de_selected2 = ad.concat([selected3, selected2], merge="same")
+    df1 = None
+    df2 = None
+    # Can only use Wald test
+    if de_test_algo == "wald":
+        try:
+            dds = DeseqDataSet(adata=adata
+                            , design=f"~{key}"  # uses grammar from "formulaic" package.
+                            , refit_cooks=True  # Generally advised.
+                            , n_cpus=4
+                            )
+            dds.deseq2()
 
-    if not is_log10:
-        de_selected1.X = de_selected1.X + LOG_COUNT_ADJUSTER
-        de_selected2.X = de_selected2.X + LOG_COUNT_ADJUSTER
+            ds1 = DeseqStats(dds, contrast=[key, compare1_val, control_val])    # [key, condition_to_test, reference_condition]
+            ds2 = DeseqStats(dds, contrast=[key, compare2_val, control_val])
 
-    # Use diffxpy to compute DE statistics for each comparison
-    de_test_func = de.test.t_test
-    if de_test_algo == "rank":
-        de_test_func = de.test.rank_test
+            # gene index: [baseMean, log2FoldChange, lfcSE, stat, pvalue, padj]
+            ds1.summary()
+            df1 = ds1.results_df
+            ds2.summary()
+            df2 = ds2.results_df
 
-    de_results1 = de_test_func(
-        de_selected1
-        , grouping=key
-        , gene_names=de_selected1.var["gene_symbol"]
-        , is_logged=is_log10
-    )
-    de_results2 = de_test_func(
-        de_selected2
-        , grouping=key
-        , gene_names=de_selected2.var["gene_symbol"]
-        , is_logged=is_log10
-    )
+            df1["gene"] = df1.index.map(lambda x: adata.var.loc[x, "gene_symbol"] if "gene_symbol" in adata.var.columns else x)
+            df2["gene"] = df2.index.map(lambda x: adata.var.loc[x, "gene_symbol"] if "gene_symbol" in adata.var.columns else x)
 
-    # Cols - ['gene', 'pval', 'qval', 'log2fc', 'mean', 'zero_mean', 'zero_variance']
-    df1 = de_results1.summary()
-    df2 = de_results2.summary()
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise PlotError("Error running DESeq2. Perhaps this dataset does not have raw counts. Consider using the 'T-test' or 'Wilcoxon' option instead")
+
+    elif de_test_algo in ["rank", "t-test"]:
+        if not is_log10:
+            adata.X = adata.X + LOG_COUNT_ADJUSTER
+
+        import scanpy as sc
+        method = "t-test"
+        if de_test_algo == "rank":
+            method = "wilcoxon"
+        sc.tl.rank_genes_groups(adata, groupby=key, method=method, groups=[compare1_val, compare2_val], reference=control_val)
+
+        # The scanpy rank_genes_groups function returns results in adata.uns['rank_genes_groups']
+        # Keys are dict_keys(['params', 'names', 'scores', 'pvals', 'pvals_adj', 'logfoldchanges']) where gene values are tuples based on the groups
+        # We need to convert this into a dataframe format similar to the DESeq2 results for consistency.
+
+        for group in [compare1_val, compare2_val]:
+            ensm_ids = adata.uns["rank_genes_groups"]["names"]
+            pvals_adj = adata.uns["rank_genes_groups"]["pvals_adj"]
+            logfoldchanges = adata.uns["rank_genes_groups"]["logfoldchanges"]
+            group_df = pd.DataFrame({
+                "log2FoldChange": logfoldchanges[group],
+                "padj": pvals_adj[group]
+            }, index=ensm_ids[group])
+
+            group_df["gene"] = group_df.index.map(lambda x: adata.var.loc[x, "gene_symbol"] if "gene_symbol" in adata.var.columns else x)
+
+            if group == compare1_val:
+                df1 = group_df
+            else:
+                df2 = group_df
+
+    else:
+        raise PlotError("Invalid DE test algorithm specified. Please choose from 'wald', 'rank', or 't-test'.")
+
+    if df1 is None or df2 is None:
+        raise PlotError("Error preparing quadrant plot dataframe. DE results could not be calculated.")
 
     # Build the data for the final dataframe
     df_data = {
         "gene_symbol" : df1["gene"].tolist()
-        ,"ensm_id" : de_selected1.var.index
-        , "s1_c_log2FC" : df1["log2fc"]
-        , "s2_c_log2FC" : df2["log2fc"]
-        , "s1_c_qval" : df1["qval"]
-        , "s2_c_qval" : df2["qval"]
+        ,"ensm_id" : df1.index
+        , "s1_c_log2FC" : df1["log2FoldChange"]
+        , "s2_c_log2FC" : df2["log2FoldChange"]
+        , "s1_c_padj" : df1["padj"]
+        , "s2_c_padj" : df2["padj"]
         }
 
     df =  pd.DataFrame.from_dict(df_data)
