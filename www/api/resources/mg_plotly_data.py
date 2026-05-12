@@ -371,24 +371,15 @@ class MGPlotlyData(Resource):
                     , ref_val
                     , de_test_algo
                     , is_log10
+                    , use_adj_pvals
+                    , pval_threshold
+                    , [lower_logfc_threshold, upper_logfc_threshold]
                     )
             except PlotError as pe:
                 return {
                     'success': -1,
                     'message': str(pe),
                 }
-
-            # Build a dictionary to easily move gene_syms to "text" property and ensembl ids to "customdata" property
-            ensm2genesymbol = pd.Series(df["gene_symbol"].values, index=df["ensm_id"]).to_dict()
-
-            # Volcano plot expects specific parameter names (unless we wish to change the options)
-            fig = mg.create_volcano_plot(df
-                , query_val
-                , ref_val
-                , pval_threshold
-                , [lower_logfc_threshold, upper_logfc_threshold]
-                , use_adj_pvals
-                )
 
             downcolor = None
             upcolor = None
@@ -397,7 +388,16 @@ class MGPlotlyData(Resource):
                 downcolor = "rgb(254, 232, 56)"
                 upcolor = "rgb(0, 34, 78)"
 
-            mg.modify_volcano_plot(fig, query_val, ref_val, ensm2genesymbol, downcolor, upcolor)
+            # Volcano plot expects specific parameter names (unless we wish to change the options)
+            fig = mg.create_volcano_plot(df
+                , query_val
+                , ref_val
+                , pval_threshold
+                , [lower_logfc_threshold, upper_logfc_threshold]
+                , use_adj_pvals
+                , downcolor
+                , upcolor
+                )
 
             if gene_symbols:
                 dataset_genes = df['gene_symbol'].unique().tolist()
@@ -677,7 +677,7 @@ class MGPlotlyData(Resource):
 
         # Title is addressed in the creation of dotplot subplots
         # But we can add it here for other plots
-        if title and not plot_type in ["heatmap", "dotplot"]:
+        if title and plot_type not in ["heatmap", "dotplot"]:
             fig.update_layout(
                 title={
                     "text":title

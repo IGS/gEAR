@@ -4,7 +4,6 @@ anndata==0.12.11
 biocode==0.10.0
 cairosvg==2.7.1
 colorcet==3.1.0
-dash-bio==1.0.2
 datashader==0.19.0
 diffxpy @ git+https://github.com/adkinsrs/diffxpy.git@ffd828c280882ca98adc6e42c934625fab0011f6
 Flask==3.1.3

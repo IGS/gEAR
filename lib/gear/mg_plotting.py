@@ -5,7 +5,6 @@ from itertools import cycle
 
 import anndata as ad
 import colorcet as cc
-import dash_bio as dashbio
 import diffxpy.api as de
 import numpy as np
 import pandas as pd
@@ -840,7 +839,7 @@ def create_quadrant_plot(df, control_val, compare1_val, compare2_val, colorscale
         )
     return fig
 
-def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val, de_test_algo="t_test", fc_threshold: float=2, fdr_threshold=0.05, include_zero_fc=True, is_log10=False):
+def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val, de_test_algo="t-test", fc_threshold: float=2, fdr_threshold=0.05, include_zero_fc=True, is_log10=False):
     """Prep the AnnData object to be a viable dataframe to use for making volcano plots."""
 
     # Create some filtered AnnData objects based on each individual comparision group
@@ -859,6 +858,7 @@ def prep_quadrant_dataframe(adata, key, control_val, compare1_val, compare2_val,
         de_selected2.X = de_selected2.X + LOG_COUNT_ADJUSTER
 
     # Use diffxpy to compute DE statistics for each comparison
+    # Wanted to use Wald test, which is generally better. But it requires raw counts
     de_test_func = de.test.t_test
     if de_test_algo == "rank":
         de_test_func = de.test.rank_test
@@ -1207,8 +1207,9 @@ def update_stacked_violin_annotations(fig, primary_groups, color_map):
 def add_gene_annotations_to_volcano_plot(fig, gene_symbols_list, annot_nonsig=False) -> None:
     """Add annotations to point to each desired gene within the volcano plot. Edits in-place."""
     for gene in gene_symbols_list:
-        # Insignificant genes are at index 0.  If you want to skip annotating them, start at index 1
-        for data_idx in range(0 if annot_nonsig else 1, len(fig.data)):
+        # Insignificant genes are at index 2.  If you want to skip annotating them, end at index 1
+        range_end = len(fig.data) if annot_nonsig else 2
+        for data_idx in range(0, range_end):
             gene_indexes = [idx for idx in range(len(fig.data[data_idx].text))
                 if fig.data[data_idx].text[idx] == gene]
 
@@ -1225,7 +1226,7 @@ def add_gene_annotations_to_volcano_plot(fig, gene_symbols_list, annot_nonsig=Fa
                         , ay=fig.data[data_idx].y[idx] + 2
                         , axref="x"
                         , ayref="y"
-                        , bgcolor=fig.data[data_idx]["marker"]["color"] if data_idx > 0 else "slategrey"
+                        , bgcolor=fig.data[data_idx]["marker"]["color"] if data_idx < 2 else "slategrey"
                         , borderpad=2
                         , showarrow=True
                         , text=gene
@@ -1235,132 +1236,69 @@ def add_gene_annotations_to_volcano_plot(fig, gene_symbols_list, annot_nonsig=Fa
                         , yref="y"
                     )
 
-def categorize_volcano_datapoint(nonsig_data, sig_data, data):
-    """Categorize volcano datapoints based on whether they are significant or not."""
-    if not (data["name"] and data["name"] == "Point(s) of interest"):
-        nonsig_data.append(data)
-    else:
-        sig_data.append(data)
-
-def create_volcano_plot(df, query, ref, pval_threshold, logfc_bounds, use_adj_pvals=False):
+def create_volcano_plot(df, query, ref, pval_threshold, logfc_bounds, use_adj_pvals=False, downcolor="#636EFA", upcolor="#EF553B"):
     """Generate a volcano plot.  Returns Plotly figure."""
-    # Volcano plot
-    # https://github.com/plotly/dash-bio/blob/master/dash_bio/component_factory/_volcano.py
-    # https://dash.plotly.com/dash-bio/volcanoplot
-    # gene_symbol input will be annotated in Volcano plot
 
-    # df must have the following columns ["EFFECTSIZE", "GENE", "P", "SNP (optional)"]
-
-    # y = log2 p-value
-    # x = raw fold-change (effect size)
-
-    # NOTE: We cannot pass "customdata" to the function, so we must modify the trace afterwards.
-
-    pretty_print_query = underscore_to_space(query)
-    pretty_print_ref = underscore_to_space(ref)
-
-    return dashbio.VolcanoPlot(
-        dataframe=df
-        , title="Differences in {} vs {}".format(pretty_print_query, pretty_print_ref)
-        , col="lightgrey"
-        , effect_size="logfoldchanges"
-        , effect_size_line=logfc_bounds
-        , effect_size_line_color="black"
-        , gene="ensm_id"    # Will change to 'gene_symbol' in modification step later
-        , genomewideline_value= -np.log10(pval_threshold)
-        , genomewideline_color="black"
-        , highlight_color="black"
-        , p="pvals_adj" if use_adj_pvals else "pvals"
-        , snp=None
-        , xlabel="log2FC"
-        , ylabel="-log10(adjusted-P)" if use_adj_pvals else "-log10(P)"
-    )
-
-def curate_volcano_datapoint_text(data):
-    """Format the text of volcano plot datapoints.  Edits in-place."""
-    # Get rid of hover "GENE: " label.
-    data['text'] = [text.split(' ')[-1] for text in data['text']]   # gene symbol
-
-def modify_volcano_plot(fig, query, ref, ensm2genesymbol, downcolor=None, upcolor=None):
-    """Adjust figure data to show up- and down-regulated data differently.  Edits figure in-place."""
-    nonsig_data = []
-    sig_data = []
-    for data in fig.data:
-        curate_volcano_datapoint_text(data)
-        categorize_volcano_datapoint(nonsig_data, sig_data, data)
-
-    # Non-significant data does not need to be modified. It is one trace.
-    fig.data = nonsig_data
-
-    fig.data[0]["name"] = "Nonsignificant Genes"
-    fig.data[0]["customdata"] = fig.data[0]["text"] # Ensembl ID to "customdata" and gene symbols to "text" properties
-    gene_symbol_list = [ensm2genesymbol[t] for t in fig.data[0]["text"]]
-    fig.data[0]["text"] = gene_symbol_list
-
+    # In case None is passed in.
     downcolor = downcolor or "#636EFA"
     upcolor = upcolor or "#EF553B"
 
-    #Split the signifcant data into up- and down-regulated traces
-    for data in sig_data:
-        if data["name"] and data["name"] == "Point(s) of interest":
-            downregulated = {
-                "name": "Upregulated in {}".format(ref)
-                , "text":[] # gene_symbol
-                , "customdata":[]   # ensembl id
-                , "x":[]
-                , "y":[]
-                , "marker":{"color":downcolor}
-            }
+    color_map = {
+        'Upregulated': upcolor,
+        'Downregulated': downcolor,
+        'Not Significant': '#D3D3D3'  # Light Gray
+    }
 
-            upregulated = {
-                "name": "Upregulated in {}".format(query)
-                , "text":[]
-                , "customdata":[]
-                , "x":[]
-                , "y":[]
-                , "marker":{"color":upcolor}
-            }
-            for i in range(len(data['x'])):
-                if data['x'][i] > 0:
-                    upregulated['x'].append(data['x'][i])
-                    upregulated['y'].append(data['y'][i])
-                    upregulated['text'].append(ensm2genesymbol[data['text'][i]])
-                    upregulated['customdata'].append(data['text'][i])
+    status_to_name = {
+        'Upregulated': f"Upregulated in {underscore_to_space(query)}",
+        'Downregulated': f"Upregulated in {underscore_to_space(ref)}",
+        'Not Significant': "Nonsignificant Genes"
+    }
 
-                else:
-                    downregulated['x'].append(data['x'][i])
-                    downregulated['y'].append(data['y'][i])
-                    downregulated['text'].append(ensm2genesymbol[data['text'][i]])
-                    downregulated['customdata'].append(data['text'][i])
+    fig = go.Figure()
 
-            for dataset in [upregulated, downregulated]:
-                trace = go.Scattergl(
-                    x=dataset['x']
-                    , y=dataset['y']
-                    , text=dataset['text']
-                    , customdata=dataset['customdata']
-                    , marker=dataset["marker"]
-                    , mode="markers"
-                    , name=dataset["name"]
-                )
-                fig.add_trace(trace)
+    for status, color in color_map.items():
+        subset = df[df['Status'] == status]
+        fig.add_trace(go.Scatter(
+            x=subset['logfoldchanges'],
+            y=subset['nlog10'],
+            mode='markers',
+            name=status_to_name[status],
+            customdata=subset['ensm_id'], # Add ensembl ids to customdata for potential use in JS hover/click interactions
+            text=subset['gene_symbol'],
+            marker=dict(color=color, size=6, opacity=0.7),
+            # Customizing the hover data for gene exploration
+            hovertemplate=(
+                "<b>%{text}</b><br>"
+                "Ensembl ID: %{customdata}<br>"
+                "Log2FC: %{x:.2f}<br>"
+                "-Log10(p): %{y:.2f}"
+            )
+        ))
+
+    # Add Threshold Lines
+    line_styles = dict(line_dash="dash", line_color="black", opacity=0.4, line_width=1)
+    fig.add_hline(y=-np.log10(pval_threshold), **line_styles)
+    fig.add_vline(x=logfc_bounds[0], **line_styles)
+    fig.add_vline(x=logfc_bounds[1], **line_styles)
+
+    # Final Layout Adjustments
+    yaxis_title = "-log10(adjusted-P)" if use_adj_pvals else "-log10(P)"
+    pretty_print_query = underscore_to_space(query)
+    pretty_print_ref = underscore_to_space(ref)
 
     fig.update_layout(
-        legend={
-            "x":1
-            ,"xanchor":"left"
-            ,"y":0.5
-            ,"yanchor":"middle"
-            ,"bgcolor":"rgba(0,0,0,0)",   # transparent background
-        }
-        , title={
-            "x":0.5
-            ,"xref":"paper"
-            ,"y":1
-        }
+        title=f"Differences in {pretty_print_query} vs {pretty_print_ref}",
+        xaxis_title='Log<sub>2</sub> Fold Change',
+        yaxis_title=yaxis_title,
+        template='plotly_white',
+        hovermode='closest',
+        font=dict(family="Roboto", size=12)
     )
 
-def prep_volcano_dataframe(adata, key, query_val, ref_val, de_test_algo="ttest", is_log10=False):
+    return fig
+
+def prep_volcano_dataframe(adata, key, query_val, ref_val, de_test_algo="t-test", is_log10=False, use_adj_pvals=False, pval_threshold=0.05, logfc_bounds=[-1, 1]):
     """Prep the AnnData object to be a viable dataframe to use for making volcano plots."""
     de_filter1 = adata.obs[key].isin([query_val])
     selected1 = adata[de_filter1, :]
@@ -1376,9 +1314,8 @@ def prep_volcano_dataframe(adata, key, query_val, ref_val, de_test_algo="ttest",
     if not is_log10:
         de_selected.X = de_selected.X + LOG_COUNT_ADJUSTER
 
-    # Wanted to use de.test.two_sample(test=<>) but you cannot pass is_logged=True
-    # which makes the ensuing plot inaccurate
-    # TODO: Figure out how to get wald test to work (and work faster)
+    # Use diffxpy to compute DE statistics for each comparison
+    # Wanted to use Wald test, which is generally better. But it requires raw counts
     de_test_func = de.test.t_test
     if de_test_algo == "rank":
         de_test_func = de.test.rank_test
@@ -1397,6 +1334,20 @@ def prep_volcano_dataframe(adata, key, query_val, ref_val, de_test_algo="ttest",
     df["pvals_adj"] = df["qval"].fillna(1)
     df["logfoldchanges"] = df["log2fc"]
     df["gene_symbol"] = df["gene"]
+
+    key = "pvals_adj" if use_adj_pvals else "pvals"
+    df['nlog10'] = -np.log10(df[key])
+
+    # logfc_bounds = [lower, upper]
+    nplog10_pval_threshold = -np.log10(pval_threshold)
+    conditions = [
+        (df['logfoldchanges'] >= logfc_bounds[1]) & (df['nlog10'] >= nplog10_pval_threshold),
+        (df['logfoldchanges'] <= logfc_bounds[0]) & (df['nlog10'] >= nplog10_pval_threshold)
+    ]
+
+    # Split data into 3 categories: upregulated, downregulated, and not significant
+    choices = ['Upregulated', 'Downregulated']
+    df['Status'] = np.select(conditions, choices, default='Not Significant')
 
     return df
 

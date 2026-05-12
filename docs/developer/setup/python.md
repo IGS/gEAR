@@ -110,7 +110,6 @@ I cannot add comments to the bash code without breaking the command.  So consult
     biocode==0.10.0 \
     cairosvg==2.7.1 \
     colorcet==3.1.0 \
-    dash-bio==1.0.2 \
     datashader==0.19.0 \
     Flask==3.1.3 \
     Flask-RESTful==0.3.9 \
