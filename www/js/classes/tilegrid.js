@@ -1685,7 +1685,7 @@ class DatasetTile {
         try {
             const data = await apiCallsMixin.fetchGoslingDisplay(datasetId, plotConfig, zoom, otherOpts)
             if (data?.success < 1) {
-                message = data?.message || "Failed to fetch Gosling display data.";
+                const message = data?.message || "Failed to fetch Gosling display data.";
                 throw new Error(message);
             }
             // spec is a JSON string which needs to be a JSON object
@@ -1699,7 +1699,8 @@ class DatasetTile {
 
         } catch (error) {
             logErrorInConsole(error);
-            createCardMessage(this.tile.tileId, "danger", "An error occurred while fetching the Gosling spec.");
+            const message = error?.message || "An error occurred while fetching the Gosling display data.";
+            createCardMessage(this.tile.tileId, "danger", message);
             return;
         }
 
