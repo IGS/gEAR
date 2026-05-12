@@ -1,18 +1,27 @@
 'use strict';
 
-const isMultigene = 1;
+import { apiCallsMixin, getCurrentUser, createToast, initCommonUI, logErrorInConsole, openModal, trigger } from "./common.v2.js";
+import { curatorCommon } from "./curator_common.js";
+import { Gene, WeightedGene } from "./classes/gene.js";
+import { GeneCart, WeightedGeneCart } from "./classes/genecart.v2.js";
+import { adjustStackedViolinHeight, postPlotlyConfig, setHeatmapHeightBasedOnGenes } from "./helpers/plot-display-config.js";
+import { fetchGeneCartData, geneCollectionState, registerEventListeners as registerGeneListEventListeners } from "../include/gene-collection-selector/gene-collection-selector.js";
 
-// imported from gene-collection-selector.js
-// let selected_genes = new Set();
+curatorCommon.setIsMultigene(1);
 
-let manuallyEnteredGenes = new Set();
+let allColumns = [];
+
+const notFoundGenes = new Set(); // Store genes that are not found in datasetGenes
+
+let datasetGenes = new Set();
 
 let plotSelectedGenes = []; // genes selected from plot "select" utility
 
 const genesAsAxisPlots = ["dotplot", "heatmap", "mg_violin"];
 const genesAsDataPlots = ["quadrant", "volcano"];
+const scanpyPlots = ["mg_pca_static", "mg_tsne_static", "mg_umap_static"];
 
-class GenesAsAxisHandler extends PlotHandler {
+class GenesAsAxisHandler extends curatorCommon.PlotHandler {
     constructor(plotType) {
         super();
         this.plotType = plotType;
@@ -20,12 +29,12 @@ class GenesAsAxisHandler extends PlotHandler {
     }
 
     classElt2Prop = {
-        "js-dash-primary":"primary_col"
-        , "js-dash-secondary":"secondary_col"
-        , "js-dash-color-palette":"colorscale"
-        , "js-dash-reverse-palette":"reverse_colorscale"
-        , "js-dash-distance-metric":"distance_metric"
-        , "js-dash-matrixplot":"matrixplot"
+        "js-dash-primary": "primary_col"
+        , "js-dash-secondary": "secondary_col"
+        , "js-dash-color-palette": "colorscale"
+        , "js-dash-reverse-palette": "reverse_colorscale"
+        , "js-dash-distance-metric": "distance_metric"
+        , "js-dash-matrixplot": "matrixplot"
         , "js-dash-center-mean": "center_around_zero"
         , "js-dash-cluster-obs": "cluster_obs"
         , "js-dash-cluster-genes": "cluster_genes"
@@ -37,7 +46,7 @@ class GenesAsAxisHandler extends PlotHandler {
         , "js-dash-stacked-violin": "stacked_violin"
         , "js-dash-plot-title": "plot_title"
         , "js-dash-legend-title": "legend_title"
-    }
+    };
 
     // deal with clusterbar separately since it is an array of selected options
 
@@ -50,16 +59,17 @@ class GenesAsAxisHandler extends PlotHandler {
     cloneDisplay(config) {
         // load plot values
         for (const prop in config) {
-            setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config[prop]);
+            curatorCommon.setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config[prop]);
         }
 
         // Handle order
         if (config["sort_order"]) {
             for (const series in config["sort_order"]) {
                 const order = config["sort_order"][series];
+                const levels = curatorCommon.getLevels();
                 // sort "levels" series by order
                 levels[series].sort((a, b) => order.indexOf(a) - order.indexOf(b));
-                renderOrderSortableSeries(series);
+                curatorCommon.renderOrderSortableSeries(series);
             }
 
             document.getElementById("order-section").classList.remove("is-hidden");
@@ -67,12 +77,12 @@ class GenesAsAxisHandler extends PlotHandler {
 
         // Handle filters
         if (config["obs_filters"]) {
-            facetWidget.filters = config["obs_filters"];
+            curatorCommon.getFacetWidget().filters = config["obs_filters"];
         }
 
         // handle colors
         if (config["color_palette"]) {
-            setSelectBoxByValue("color-palette-post", config["color_palette"]);
+            curatorCommon.setSelectBoxByValue("color-palette-post", config["color_palette"]);
         }
 
         // handle clusterbar values
@@ -95,8 +105,8 @@ class GenesAsAxisHandler extends PlotHandler {
     async createPlot(datasetId, analysisObj) {
         // Get data and set up the image area
         try {
-            const data = await fetchDashData(datasetId, analysisObj,  this.apiPlotType, this.plotConfig);
-            ({plot_json: this.plotJson} = data);
+            const data = await fetchMgPlotlyData(datasetId, analysisObj, this.apiPlotType, this.plotConfig);
+            ({ plot_json: this.plotJson } = data);
         } catch (error) {
             return;
         }
@@ -119,16 +129,16 @@ class GenesAsAxisHandler extends PlotHandler {
 
         if (this.plotType === 'heatmap') {
             setHeatmapHeightBasedOnGenes(this.plotJson.layout, this.plotConfig.gene_symbols);
-        } else if (this.plotType === "mg_violin" && this.plotConfig.stacked_violin){
+        } else if (this.plotType === "mg_violin" && this.plotConfig.stacked_violin) {
             adjustStackedViolinHeight(this.plotJson.layout);
         }
 
-        // Update plot with custom plot config stuff stored in plot_display_config.js
+        // Update plot with custom plot config stuff stored in plot-display-config.js
         const curatorDisplayConf = postPlotlyConfig.curator;
-        const custonConfig = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
+        const custonConfig = curatorCommon.getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
         Plotly.newPlot("plotly-preview", this.plotJson.data, this.plotJson.layout, custonConfig);   // HIGH MEM/CPU with heatmap no matrixplot
-        const custonLayout = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout")
-        Plotly.relayout("plotly-preview", custonLayout)
+        const custonLayout = curatorCommon.getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout");
+        Plotly.relayout("plotly-preview", custonLayout);
 
         document.getElementById("legend-title-container").classList.remove("is-hidden");
         if (this.plotType === "dotplot") {
@@ -144,8 +154,8 @@ class GenesAsAxisHandler extends PlotHandler {
         const postPlotOptionsElt = document.getElementById("post-plot-adjustments");
         postPlotOptionsElt.replaceChildren();
 
-        prePlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/multi_gene_as_axis.html");
-        postPlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/post_plot/multi_gene_as_axis.html");
+        prePlotOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/pre_plot/multi_gene_as_axis.html");
+        postPlotOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/post_plot/multi_gene_as_axis.html");
 
         // populate advanced options for specific plot types
         const prePlotSpecificOptionsElt = document.getElementById("plot-specific-options");
@@ -153,17 +163,25 @@ class GenesAsAxisHandler extends PlotHandler {
 
         // Load color palette select options
         const isContinuous = ["dotplot", "heatmap"].includes(this.plotType) ? true : false;
-        loadColorscaleSelect(isContinuous);
+        curatorCommon.loadColorscaleSelect(isContinuous);
 
 
         if (this.plotType === "heatmap") {
-            prePlotSpecificOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/advanced_heatmap.html");
-            postPlotSpecificOptionselt.innerHTML = await includeHtml("../include/plot_config/post_plot/advanced_heatmap.html");
+            prePlotSpecificOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/pre_plot/advanced_heatmap.html");
+            postPlotSpecificOptionselt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/post_plot/advanced_heatmap.html");
             return;
         }
         if (this.plotType === "mg_violin") {
-            prePlotSpecificOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/advanced_mg_violin.html");
-            postPlotSpecificOptionselt.innerHTML = await includeHtml("../include/plot_config/post_plot/advanced_mg_violin.html");
+            // Remove reverse palette option since violin plots use categorical palettes
+            const revPalette = document.querySelector(".js-dash-reverse-palette");
+            for (const targetElt of [revPalette]) {
+                if (targetElt) {
+                    targetElt.closest(".is-justify-content-space-between").remove();
+                }
+            }
+
+            prePlotSpecificOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/pre_plot/advanced_mg_violin.html");
+            postPlotSpecificOptionselt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/post_plot/advanced_mg_violin.html");
             return;
         }
     }
@@ -172,7 +190,7 @@ class GenesAsAxisHandler extends PlotHandler {
         this.plotConfig = {};   // Reset plot config
 
         for (const classElt in this.classElt2Prop) {
-            this.plotConfig[this.classElt2Prop[classElt]] = getPlotConfigValueFromClassName(classElt)
+            this.plotConfig[this.classElt2Prop[classElt]] = curatorCommon.getPlotConfigValueFromClassName(classElt);
         }
 
         // Get checked clusterbar values
@@ -195,10 +213,17 @@ class GenesAsAxisHandler extends PlotHandler {
         }
 
         // Filtered observation groups
-        this.plotConfig["obs_filters"] = facetWidget?.filters || {};
+        this.plotConfig["obs_filters"] = curatorCommon.getFacetWidget()?.filters || {};
+        if (Object.keys(this.plotConfig["obs_filters"]).length === 0) {
+            this.plotConfig["obs_filters"] = null; // don't send empty filters
+        }
 
         // Get order
-        this.plotConfig["sort_order"] = getPlotOrderFromSortable();
+        this.plotConfig["sort_order"] = curatorCommon.getPlotOrderFromSortable();
+        if (!curatorCommon.getSortOrderChanged()) {
+            // If no order was changed, set to null so API does not try to sort by the default order
+            this.plotConfig["sort_order"] = null;
+        }
 
     }
 
@@ -207,8 +232,9 @@ class GenesAsAxisHandler extends PlotHandler {
         //setupParamValueCopyEvent("js-dash-enable-subsampling")
     }
 
-    async setupPlotSpecificEvents() {
-        catColumns = await getCategoryColumns();
+    async setupPlotSpecificEvents(datasetId) {
+        const catColumns = await getCategoryColumns(datasetId);
+        curatorCommon.setCatColumns(catColumns);
 
         if (!catColumns.length) {
             document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
@@ -230,13 +256,15 @@ class GenesAsAxisHandler extends PlotHandler {
                     }
                     // disable primary series in secondary series
                     const opt = secondaryClassElt.querySelector(`option[value="${primarySeries}"]`);
-                    opt.setAttribute("disabled", "disabled");
-                    // If this option was selected, unselect it
-                    if (secondaryClassElt.value === primarySeries) {
-                        secondaryClassElt.value = "";
+                    if (opt) {
+                        opt.setAttribute("disabled", "disabled");
+                        // If this option was selected, unselect it
+                        if (secondaryClassElt.value === primarySeries) {
+                            secondaryClassElt.value = "";
+                        }
                     }
                 }
-            })
+            });
         }
 
         // if subsampling is checked, enable subsampling limit
@@ -246,7 +274,7 @@ class GenesAsAxisHandler extends PlotHandler {
                 for (const innerClassElt of document.getElementsByClassName("js-dash-subsampling-limit")) {
                     innerClassElt.disabled = !(checked);
                 }
-            })
+            });
         }
 
         // For clusterbar options, create checkboxes for all catColumns
@@ -262,6 +290,7 @@ class GenesAsAxisHandler extends PlotHandler {
                 const input = document.createElement("input");
                 input.type = "checkbox";
                 input.value = catColumn;
+                input.disabled = true;
                 input.classList.add("js-dash-clusterbar-checkbox");
                 label.appendChild(input);
                 label.innerHTML += ` ${catColumn}`;
@@ -282,7 +311,7 @@ class GenesAsAxisHandler extends PlotHandler {
                         innerClassElt.checked = checked;
                     }
                 }
-            })
+            });
         }
 
         // If stacked violin is checked, disable legend title (since there is no legend)
@@ -296,7 +325,7 @@ class GenesAsAxisHandler extends PlotHandler {
                         legendTitleElt.removeAttribute("disabled");
                     }
                 }
-            })
+            });
         }
 
         // Certain elements trigger plot order
@@ -306,7 +335,7 @@ class GenesAsAxisHandler extends PlotHandler {
                 const paramId = event.target.id;
                 const param = paramId.replace("-series", "").replace("-post", "");
                 // NOTE: continuous series will be handled in the function
-                updateOrderSortable();
+                curatorCommon.updateOrderSortable();
             });
         }
 
@@ -316,7 +345,7 @@ class GenesAsAxisHandler extends PlotHandler {
             heatmapDropdown.addEventListener("click", (event) => {
                 event.stopPropagation();    // This prevents the document from being clicked as well.
                 heatmapDropdown.classList.toggle("is-active");
-            })
+            });
 
             // Close dropdown if it is clicked off of, or ESC is pressed
             // https://siongui.github.io/2018/01/19/bulma-dropdown-with-javascript/#footnote-1
@@ -334,13 +363,104 @@ class GenesAsAxisHandler extends PlotHandler {
                 item.addEventListener("click", showPostHeatmapParamSubsection);
             }
 
+            // If matrixplot is unchecked enable all clusterbars.
+            for (const classElt of document.getElementsByClassName("js-dash-matrixplot")) {
+                classElt.addEventListener("change", (event) => {
+                    const checked = event.target.checked;
+                    if (checked) {
+                        // Get primary and secondary series
+                        const primarySeries = document.querySelector(".js-dash-primary").value;
+                        const secondarySeries = document.querySelector(".js-dash-secondary").value;
+                        const values = [];
+                        if (primarySeries) {
+                            values.push(primarySeries);
+                        }
+                        if (secondarySeries) {
+                            values.push(secondarySeries);
+                        }
+                        // If either series are selected, enable those checkboxes
+                        for (const innerClassElt of document.getElementsByClassName("js-dash-clusterbar-checkbox")) {
+                            if (values.includes(innerClassElt.value)) {
+                                innerClassElt.disabled = false;
+                            } else {
+                                innerClassElt.checked = false;
+                                innerClassElt.disabled = true;
+                            }
+                        }
+                    } else {
+                        for (const innerClassElt of document.getElementsByClassName("js-dash-clusterbar-checkbox")) {
+                            innerClassElt.disabled = false;
+                        }
+                    }
+                });
+            }
+
+
+            // Ensure only clusterbar checkboxes that match the primary and secondary series are enabled to be checked
+            // If a checkbox is checked and the primary or secondary series is changed, uncheck the checkbox
+            for (const classElt of document.getElementsByClassName("js-dash-primary")) {
+                classElt.addEventListener("change", (event) => {
+                    const primarySeries = event.target.value;
+                    const secondarySeries = document.querySelector(".js-dash-secondary").value;
+                    const values = [];
+                    if (primarySeries) {
+                        values.push(primarySeries);
+                    }
+                    if (secondarySeries) {
+                        values.push(secondarySeries);
+                    }
+
+                    // Get matrixplot value
+                    const matrixplot = document.querySelector(".js-dash-matrixplot").checked;
+
+                    if (matrixplot) {
+                        for (const innerClassElt of document.getElementsByClassName("js-dash-clusterbar-checkbox")) {
+                            if (values.includes(innerClassElt.value)) {
+                                innerClassElt.disabled = false;
+                            } else {
+                                innerClassElt.checked = false;
+                                innerClassElt.disabled = true;
+                            }
+                        }
+                    }
+                });
+            }
+            for (const classElt of document.getElementsByClassName("js-dash-secondary")) {
+                classElt.addEventListener("change", (event) => {
+                    const secondarySeries = event.target.value;
+                    const primarySeries = document.querySelector(".js-dash-primary").value;
+                    const values = [];
+                    if (primarySeries) {
+                        values.push(primarySeries);
+                    }
+                    if (secondarySeries) {
+                        values.push(secondarySeries);
+                    }
+
+                    // Get matrixplot value
+                    const matrixplot = document.querySelector(".js-dash-matrixplot").checked;
+
+                    if (matrixplot) {
+                        for (const innerClassElt of document.getElementsByClassName("js-dash-clusterbar-checkbox")) {
+                            if (values.includes(innerClassElt.value)) {
+                                innerClassElt.disabled = false;
+                            } else {
+                                innerClassElt.checked = false;
+                                innerClassElt.disabled = true;
+                            }
+                        }
+                    }
+                });
+            }
+
+
         }
 
     }
 
 }
 
-class GenesAsDataHandler extends PlotHandler {
+class GenesAsDataHandler extends curatorCommon.PlotHandler {
     constructor(plotType) {
         super();
         this.plotType = plotType;
@@ -373,12 +493,12 @@ class GenesAsDataHandler extends PlotHandler {
     cloneDisplay(config) {
         // load plot values
         for (const prop in config) {
-            setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config[prop]);
+            curatorCommon.setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config[prop]);
         }
 
         // Handle filters
         if (config["obs_filters"]) {
-            facetWidget.filters = config["obs_filters"];
+            curatorCommon.getFacetWidget().filters = config["obs_filters"];
         }
 
         // Split compare series and groups
@@ -388,6 +508,7 @@ class GenesAsDataHandler extends PlotHandler {
             classElt.value = compareSeries;
         }
 
+        const levels = curatorCommon.getLevels();
         // populate group options
         updateGroupOptions("js-dash-reference", levels[compareSeries]);
         for (const classElt of document.getElementsByClassName("js-dash-reference")) {
@@ -428,8 +549,8 @@ class GenesAsDataHandler extends PlotHandler {
     async createPlot(datasetId, analysisObj) {
         // Get data and set up the image area
         try {
-            const data = await fetchDashData(datasetId, analysisObj,  this.apiPlotType, this.plotConfig);
-            ({plot_json: this.plotJson} = data);
+            const data = await fetchMgPlotlyData(datasetId, analysisObj, this.apiPlotType, this.plotConfig);
+            ({ plot_json: this.plotJson } = data);
         } catch (error) {
             return;
         }
@@ -449,12 +570,15 @@ class GenesAsDataHandler extends PlotHandler {
             createToast("Could not retrieve plot information. Cannot make plot.");
             return;
         }
-        // Update plot with custom plot config stuff stored in plot_display_config.js
+        // Update plot with custom plot config stuff stored in plot-display-config.js
         const curatorDisplayConf = postPlotlyConfig.curator;
-        const custonConfig = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
+        const custonConfig = curatorCommon.getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "config");
         Plotly.newPlot("plotly-preview", this.plotJson.data, this.plotJson.layout, custonConfig);
-        const custonLayout = getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout")
-        Plotly.relayout("plotly-preview", custonLayout)
+        const custonLayout = curatorCommon.getPlotlyDisplayUpdates(curatorDisplayConf, this.plotType, "layout");
+        Plotly.relayout("plotly-preview", custonLayout);
+
+        // Trigger resize to make sure it fits in the container
+        Plotly.Plots.resize(document.getElementById('plotly-preview'));
 
         // Show button to add genes to gene cart
         document.getElementById("gene-cart-btn-c").classList.remove("is-hidden");
@@ -493,7 +617,7 @@ class GenesAsDataHandler extends PlotHandler {
                 for (const row of geneTableBody.children) {
                     const tableGene = row.children[0].textContent;
                     for (const gene of searchedGenes) {
-                        if (gene.toLowerCase() === tableGene.toLowerCase() ) {
+                        if (gene.toLowerCase() === tableGene.toLowerCase()) {
                             row.classList.add("has-background-success-light");
                         }
                     };
@@ -511,8 +635,8 @@ class GenesAsDataHandler extends PlotHandler {
         const postPlotOptionsElt = document.getElementById("post-plot-adjustments");
         postPlotOptionsElt.replaceChildren();
 
-        prePlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/multi_gene_as_data.html");
-        postPlotOptionsElt.innerHTML = await includeHtml("../include/plot_config/post_plot/multi_gene_as_data.html");
+        prePlotOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/pre_plot/multi_gene_as_data.html");
+        postPlotOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/post_plot/multi_gene_as_data.html");
 
         // populate advanced options for specific plot types
         const prePlotSpecificOptionsElt = document.getElementById("plot-specific-options");
@@ -520,13 +644,13 @@ class GenesAsDataHandler extends PlotHandler {
 
         // For quadrants and volcanos we load the "series" options in the plot-specific HTML, so that should come first
         if (this.plotType === "quadrant") {
-            prePlotSpecificOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/advanced_quadrant.html");
-            postPlotSpecificOptionselt.innerHTML = await includeHtml("../include/plot_config/post_plot/advanced_quadrant.html");
+            prePlotSpecificOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/pre_plot/advanced_quadrant.html");
+            postPlotSpecificOptionselt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/post_plot/advanced_quadrant.html");
             return;
         }
         if (this.plotType === "volcano") {
-            prePlotSpecificOptionsElt.innerHTML = await includeHtml("../include/plot_config/pre_plot/advanced_volcano.html");
-            postPlotSpecificOptionselt.innerHTML = await includeHtml("../include/plot_config/post_plot/advanced_volcano.html");
+            prePlotSpecificOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/pre_plot/advanced_volcano.html");
+            postPlotSpecificOptionselt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/post_plot/advanced_volcano.html");
             return;
         }
     }
@@ -535,7 +659,7 @@ class GenesAsDataHandler extends PlotHandler {
         this.plotConfig = {};   // Reset plot config
 
         for (const classElt in this.classElt2Prop) {
-            this.plotConfig[this.classElt2Prop[classElt]] = getPlotConfigValueFromClassName(classElt)
+            this.plotConfig[this.classElt2Prop[classElt]] = curatorCommon.getPlotConfigValueFromClassName(classElt);
         }
 
         // convert numerical inputs from plotConfig into Number type
@@ -547,40 +671,44 @@ class GenesAsDataHandler extends PlotHandler {
 
         // Get compare series and groups and combine
         const combineSeries = document.querySelector(".js-dash-compare").value;
-        facetWidget.filters[combineSeries] = [];
+        curatorCommon.getFacetWidget().filters[combineSeries] = [];
         const refGroup = document.querySelector(".js-dash-reference").value;
-        this.plotConfig["ref_condition"] = combineSeries + this.compareSeparator + refGroup
-        facetWidget.filters[combineSeries].push(refGroup);
+        this.plotConfig["ref_condition"] = combineSeries + this.compareSeparator + refGroup;
+        curatorCommon.getFacetWidget().filters[combineSeries].push(refGroup);
 
         if (this.plotType === "volcano") {
             const queryGroup = document.querySelector(".js-dash-query").value;
             this.plotConfig["query_condition"] = combineSeries + this.compareSeparator + queryGroup;
-            facetWidget.filters[combineSeries].push(queryGroup);
+            curatorCommon.getFacetWidget().filters[combineSeries].push(queryGroup);
         }
         if (this.plotType === "quadrant") {
             const compare1Group = document.querySelector(".js-dash-compare1").value;
             const compare2Group = document.querySelector(".js-dash-compare2").value;
             this.plotConfig["compare1_condition"] = combineSeries + this.compareSeparator + compare1Group;
             this.plotConfig["compare2_condition"] = combineSeries + this.compareSeparator + compare2Group;
-            facetWidget.filters[combineSeries].push(compare1Group);
-            facetWidget.filters[combineSeries].push(compare2Group);
+            curatorCommon.getFacetWidget().filters[combineSeries].push(compare1Group);
+            curatorCommon.getFacetWidget().filters[combineSeries].push(compare2Group);
         }
 
         // Filtered observation groups
-        this.plotConfig["obs_filters"] = facetWidget?.filters || {};
+        this.plotConfig["obs_filters"] = curatorCommon.getFacetWidget()?.filters || {};
+        if (Object.keys(this.plotConfig["obs_filters"]).length === 0) {
+            this.plotConfig["obs_filters"] = null; // don't send empty filters
+        }
 
     }
 
     async setupParamValueCopyEvent() {
         // These plot parameters do not directly correlate to a plot config property
         for (const classElt of ["js-dash-compare", "js-dash-reference", "js-dash-query", "js-dash-compare1", "js-dash-compare2"]) {
-            setupParamValueCopyEvent(classElt)
+            curatorCommon.setupParamValueCopyEvent(classElt);
         }
     }
 
-    async setupPlotSpecificEvents() {
+    async setupPlotSpecificEvents(datasetId) {
 
-        catColumns = await getCategoryColumns();
+        const catColumns = await getCategoryColumns(datasetId);
+        curatorCommon.setCatColumns(catColumns);
 
         if (!catColumns.length) {
             document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
@@ -590,6 +718,7 @@ class GenesAsDataHandler extends PlotHandler {
 
         updateSeriesOptions("js-dash-compare", catColumns);
 
+        const levels = curatorCommon.getLevels();
         // When compare series changes, update the compare groups
         for (const classElt of document.getElementsByClassName("js-dash-compare")) {
             classElt.addEventListener("change", async (event) => {
@@ -602,7 +731,7 @@ class GenesAsDataHandler extends PlotHandler {
                 if (this.plotType === "volcano") {
                     updateGroupOptions("js-dash-query", levels[compareSeries]);
                 }
-            })
+            });
         }
 
         // When compare groups change, prevent the same group from being selected in the other compare groups
@@ -629,9 +758,251 @@ class GenesAsDataHandler extends PlotHandler {
                         }
                     }
                 }
-            })
+            });
         }
     }
+}
+
+/**
+ * Represents a ScanpyHandler class that extends curatorCommon.PlotHandler.
+ * This class is responsible for creating and manipulating plots for a given dataset using the Scanpy analysis object.
+ */
+class ScanpyHandler extends curatorCommon.PlotHandler {
+    constructor(plotType) {
+        super();
+        this.plotType = plotType;
+        this.apiPlotType = plotType;
+    }
+
+    classElt2Prop = {
+        "js-tsne-x-axis": "x_axis"
+        , "js-tsne-y-axis": "y_axis"
+        , "js-tsne-flip-x": "flip_x"
+        , "js-tsne-flip-y": "flip_y"
+        , "js-tsne-colorize-legend-by": "colorize_legend_by"
+        , "js-tsne-max-columns": "max_columns"
+        , "js-tsne-horizontal-legend": "horizontal_legend"
+        , "js-tsne-marker-size": "marker_size"
+        , "js-tsne-color-palette": "expression_palette"
+        , "js-tsne-reverse-palette": "reverse_palette"
+        , "js-tsne-make-zero-gray": "make_zero_gray"
+        , "js-tsne-center-around-median": "center_around_median"
+        , "js-tsne-vmax": "vmax"
+        , "js-tsne-vmin": "vmin"
+    };
+
+    configProp2ClassElt = Object.fromEntries(Object.entries(this.classElt2Prop).map(([key, value]) => [value, key]));
+
+    plotConfig = {};  // Plot config that is passed to API
+
+    /**
+     * Clones the display based on the given configuration.
+     * @param {Object} config - The configuration object.
+     */
+    cloneDisplay(config) {
+        for (const prop in config) {
+            curatorCommon.setPlotEltValueFromConfig(this.configProp2ClassElt[prop], config[prop]);
+        }
+
+        // Handle order
+        if (config["order"]) {
+            for (const series in config["order"]) {
+                const order = config["order"][series];
+                const levels = curatorCommon.getLevels();
+                // sort "levels" series by order
+                levels[series].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+                curatorCommon.renderOrderSortableSeries(series);
+            }
+
+            document.getElementById("order-section").classList.remove("is-hidden");
+        }
+
+        // Handle filters
+        if (config["obs_filters"]) {
+            curatorCommon.getFacetWidget().filters = config["obs_filters"];
+        }
+
+        // Restoring some disabled/checked elements in UI
+        const horizontalLegend = document.getElementsByClassName("js-tsne-horizontal-legend");
+
+        const catColumns = curatorCommon.getCatColumns();
+
+        if (config["colorize_legend_by"]) {
+            const series = config["colorize_legend_by"];
+            for (const targetElt of [...horizontalLegend]) {
+                targetElt.disabled = true;
+                if (catColumns.includes(series)) {
+                    targetElt.disabled = false;
+                }
+
+                // Applies to horizontal legend
+                curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
+            }
+
+            // Handle colors
+            if (config["colors"]) {
+                curatorCommon.renderColorPicker(series);
+                for (const group in config["colors"]) {
+                    const color = config["colors"][group];
+                    const colorField = document.getElementById(`${group}-color`);
+                    if (colorField) {
+                        colorField.value = color;
+                    } else {
+                        // Optionally log or handle missing field
+                        console.warn(`Color field for group "${group}" not found.`);
+                    }
+                }
+            }
+        }
+
+        if (config["expression_palette"]) {
+            curatorCommon.setSelectBoxByValue("color-palette-post", config["expression_palette"]);
+        }
+
+        // If marker size is present, enable the override option
+        if (config["marker_size"]) {
+            for (const classElt of document.getElementsByClassName("js-tsne-marker-size")) {
+                classElt.disabled = false;
+            }
+            for (const classElt of document.getElementsByClassName("js-tsne-override-marker-size")) {
+                classElt.checked = true;
+            }
+        }
+    }
+
+    /**
+     * Creates a plot for a given dataset using the provided analysis object.
+     * @param {string} datasetId - The ID of the dataset.
+     * @param {Object} analysisObj - The analysis object.
+     * @returns {void}
+     */
+    async createPlot(datasetId, analysisObj) {
+        let image;
+        let image_format;
+        try {
+            const data = await fetchMgTsneImage(datasetId, analysisObj, this.apiPlotType, this.plotConfig);
+            ({ image, image_format } = data);
+        } catch (error) {
+            onsole.error("Error fetching multigene TSNE image:", error);
+            return;
+        }
+
+        const plotContainer = document.getElementById("plot-container");
+        plotContainer.replaceChildren();    // erase plot
+
+        // Add a message saying the image dimensions will change when viewed in the gene expression page
+        const dimensionMessage = document.createElement("div");
+        dimensionMessage.innerHTML = "<strong>Note:</strong> The plot image may render differently when viewed in the gene expression page based on the dimensions of the display tile.";
+        dimensionMessage.classList.add("notification", "is-info", "is-light");
+        plotContainer.append(dimensionMessage);
+
+        const tsnePreview = document.createElement("img");
+        tsnePreview.classList.add("image");
+        tsnePreview.id = "tsne-preview";
+        plotContainer.append(tsnePreview);
+
+        if (!image) {
+            createToast("Could not retrieve plot image. Cannot make plot.");
+            return;
+        }
+        const imageFormat = image_format ?? "webp";
+        const blob = await fetch(`data:image/${imageFormat};base64,${image}`).then(r => r.blob());
+        tsnePreview.src = URL.createObjectURL(blob);
+        tsnePreview.onload = () => {
+            // Revoke the object URL to free up memory
+            URL.revokeObjectURL(tsnePreview.src);
+        };
+        return;
+
+    }
+
+    /**
+     * Loads the plot HTML by replacing the content of prePlotOptionsElt and postPlotOptionsElt elements.
+     * @returns {Promise<void>} A promise that resolves when the plot HTML is loaded.
+     */
+    async loadPlotHtml() {
+        const prePlotOptionsElt = document.getElementById("plot-options-collapsable");
+        prePlotOptionsElt.replaceChildren();
+
+        const postPlotOptionsElt = document.getElementById("post-plot-adjustments");
+        postPlotOptionsElt.replaceChildren();
+
+        prePlotOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/pre_plot/tsne_static.html");
+        postPlotOptionsElt.innerHTML = await curatorCommon.includeHtml("../include/plot_config/post_plot/tsne_static.html");
+
+        // Remove some single-gene options from the post-plot adjustments
+        const plotBySeries = document.querySelector(".js-tsne-plot-by-series");
+        const skipGenePlot = document.querySelector(".js-tsne-skip-gene-plot");
+        const twoWayPalette = document.querySelector(".js-tsne-two-way-palette");
+        for (const targetElt of [plotBySeries, skipGenePlot, twoWayPalette]) {
+            targetElt.closest(".is-justify-content-space-between").remove();
+        }
+
+        document.querySelector(".js-tsne-max-columns").disabled = false;
+
+        curatorCommon.loadColorscaleSelect(true, true);
+    }
+
+    /**
+     * Populates the plot configuration based on various elements and values.
+     */
+    populatePlotConfig() {
+        this.plotConfig = {};   // Reset plot config
+
+        for (const classElt in this.classElt2Prop) {
+            this.plotConfig[this.classElt2Prop[classElt]] = curatorCommon.getPlotConfigValueFromClassName(classElt);
+        }
+
+        // Get order
+        this.plotConfig["order"] = curatorCommon.getPlotOrderFromSortable();
+
+        // Filtered observation groups
+        this.plotConfig["obs_filters"] = curatorCommon.getFacetWidget()?.filters || {};
+        if (Object.keys(this.plotConfig["obs_filters"]).length === 0) {
+            this.plotConfig["obs_filters"] = null;
+        }
+
+        // Get colors
+        const colorElts = document.getElementsByClassName("js-plot-color");
+        const colorSeries = document.getElementById("colorize-legend-by-post").value;
+        if (colorSeries && colorElts.length) {
+            this.plotConfig["colors"] = {};
+            [...colorElts].map((field) => {
+                const group = field.id.replace("-color", "");
+                this.plotConfig["colors"][group] = field.value;
+            });
+        }
+
+        // If user did not want to have a colorized annotation, ensure it does not get passed to the scanpy code
+        if (!(colorSeries)) {
+            this.plotConfig["max_columns"] = null;
+            this.plotConfig["horizontal_legend"] = false;
+        }
+
+        // If override marker size is not checked, ensure it does not get passed to the scanpy code
+        if (!(document.getElementById("override-marker-size-post").checked)) {
+            this.plotConfig["marker_size"] = null;
+        }
+
+    }
+
+    /**
+     * Sets up the event for copying parameter values.
+     * @returns {Promise<void>} A promise that resolves when the event setup is complete.
+     */
+    async setupParamValueCopyEvent() {
+        //pass
+    }
+
+    /**
+     * Sets up plot-specific events.
+     * @param {string} datasetId - The ID of the dataset.
+     * @returns {Promise<void>} A promise that resolves when the setup is complete.
+     */
+    async setupPlotSpecificEvents(datasetId) {
+        await setupScanpyOptions(datasetId);
+    }
+
 }
 
 const adjustGeneTableLabels = (plotType) => {
@@ -647,19 +1018,20 @@ const adjustGeneTableLabels = (plotType) => {
         geneX.innerHTML = 'Log2 FC <span class="icon"><i class="mdi mdi-sort-numeric-ascending" aria-hidden="true"></i></span>';
         geneY.innerHTML = 'P-value <span class="icon"><i class="mdi mdi-sort-numeric-ascending" aria-hidden="true"></i></span>';
     }
-}
+};
 
 
 const appendGeneTagButton = (geneTagElt) => {
     // Add delete button
     const deleteBtnElt = document.createElement("button");
     deleteBtnElt.classList.add("delete", "is-small");
+    deleteBtnElt.setAttribute("aria-label", "Remove gene");
     geneTagElt.appendChild(deleteBtnElt);
     deleteBtnElt.addEventListener("click", (event) => {
-        // Remove gene from selected_genes
+        // Remove gene from selectedGenes
         const gene = event.target.parentNode.textContent;
-		selected_genes.delete(gene);
-		event.target.parentNode.remove();
+        geneCollectionState.selectedGenes.delete(gene);
+        event.target.parentNode.remove();
 
         // Remove checkmark from gene lists dropdown
         const geneListLabel = document.querySelector(`#dropdown-content-genes .gene-item-label[text="${gene}"]`);
@@ -667,7 +1039,7 @@ const appendGeneTagButton = (geneTagElt) => {
             return;
         }
         const geneListElt = geneListLabel.parentElement;
-        const geneListI = geneListElt.querySelector("i.toggler")
+        const geneListI = geneListElt.querySelector("i.toggler");
         if (!geneListI.classList.contains("mdi-check")) {
             return;
         }
@@ -676,35 +1048,67 @@ const appendGeneTagButton = (geneTagElt) => {
         geneListElt.classList.remove("is-selected");
     });
 
-}
+};
 
 const clearGenes = (event) => {
     document.getElementById("clear-genes-btn").classList.add("is-loading");
-	document.getElementById("gene-tags").replaceChildren();
-	selected_genes.clear();
-	document.getElementById("dropdown-gene-list-cancel").click();	// clear the dropdown
+    document.getElementById("gene-tags").replaceChildren();
+    geneCollectionState.selectedGenes.clear();
+    document.getElementById("dropdown-gene-list-cancel").click();	// clear the dropdown
     document.getElementById("clear-genes-btn").classList.remove("is-loading");
-}
+    document.getElementById("genes-manually-entered").value = "";
+};
 
 /**
  * Triggered when a gene is selected.
  *
- * @param {Event} event - The event object.
+ * @param {Array} genes - The selected genes.
  */
-const chooseGenes = (event) => {
+const chooseGenes = (genes=null) => {
+
+    if (genes) {
+        geneCollectionState.manuallyEnteredGenes = new Set(genes);
+        geneCollectionState.selectedGenes = geneCollectionState.manuallyEnteredGenes;
+        const geneSymbolString = genes.join(" ");
+        document.getElementById('genes-manually-entered').value = geneSymbolString;
+    }
 
     // Delete existing tags
     const geneTagsElt = document.getElementById("gene-tags");
     geneTagsElt.replaceChildren();
 
-    document.getElementById("num-selected-genes-c").classList.remove("is-hidden");
-    document.getElementById("num-selected-genes").textContent = selected_genes.size;
-    document.getElementById("num-selected-genes-post").textContent = selected_genes.size;
+    const genesNotFoundTagsElt = document.getElementById("genes-not-found-tags");
+    genesNotFoundTagsElt.replaceChildren();
 
-	if (selected_genes.size == 0) return;  // Do not trigger after initial population
+    // Remove selected genes that are not in datasetGenes (case-insensitive)
+    const datasetGenesLower = new Set(Array.from(datasetGenes, g => g.toLowerCase()));
+
+    for (const gene of geneCollectionState.selectedGenes) {
+        if (gene.trim() === "") continue;  // Skip empty genes
+
+        if (!datasetGenesLower.has(gene.toLowerCase())) {
+            geneCollectionState.selectedGenes.delete(gene);
+            notFoundGenes.add(gene);
+        }
+    }
+
+    // Create tags for each gene not found.
+    document.getElementById("genes-not-found-c").classList.remove("is-hidden");
+    for (const gene of notFoundGenes) {
+        const geneTagElt = document.createElement("span");
+        geneTagElt.classList.add("tag", "is-primary", "is-light", "mx-1");
+        geneTagElt.textContent = gene;
+        genesNotFoundTagsElt.appendChild(geneTagElt);
+    }
+
+    document.getElementById("num-selected-genes-c").classList.remove("is-hidden");
+    document.getElementById("num-selected-genes").textContent = geneCollectionState.selectedGenes.size;
+    document.getElementById("num-selected-genes-post").textContent = geneCollectionState.selectedGenes.size;
+
+    if (geneCollectionState.selectedGenes.size == 0) return;  // Do not trigger after initial population
 
     // Update list of gene tags
-	const sortedGenes = Array.from(selected_genes).sort();
+    const sortedGenes = Array.from(geneCollectionState.selectedGenes).sort();
     for (const opt in sortedGenes) {
         const geneTagElt = document.createElement("span");
         geneTagElt.classList.add("tag", "is-primary", "mx-1");
@@ -715,7 +1119,7 @@ const chooseGenes = (event) => {
 
     document.getElementById("gene-tags-c").classList.remove("is-hidden");
 
-    if (selected_genes.size < 2) {
+    if (geneCollectionState.selectedGenes.size < 2) {
         document.getElementById("gene-s-failed").classList.remove("is-hidden");
         document.getElementById("gene-s-success").classList.add("is-hidden");
         for (const plotBtn of document.getElementsByClassName("js-plot-btn")) {
@@ -726,7 +1130,7 @@ const chooseGenes = (event) => {
     }
 
     // If more than 10 tags, hide the rest and add a "show more" button
-    if (selected_genes.size > 10) {
+    if (geneCollectionState.selectedGenes.size > 10) {
         const geneTags = geneTagsElt.querySelectorAll("span.tag");
         for (let i = 10; i < geneTags.length; i++) {
             geneTags[i].classList.add("is-hidden");
@@ -734,7 +1138,7 @@ const chooseGenes = (event) => {
         // Add show more button
         const showMoreBtnElt = document.createElement("button");
         showMoreBtnElt.classList.add("tag", "button", "is-small", "is-primary", "is-light");
-        const numToDisplay = selected_genes.size - 10;
+        const numToDisplay = geneCollectionState.selectedGenes.size - 10;
         showMoreBtnElt.textContent = `+${numToDisplay} more`;
         showMoreBtnElt.addEventListener("click", (event) => {
             const geneTags = geneTagsElt.querySelectorAll("span.tag");
@@ -751,36 +1155,46 @@ const chooseGenes = (event) => {
 
     document.getElementById("continue-to-plot-options").classList.remove("is-hidden");
 
-}
+};
+curatorCommon.registerChooseGenes(chooseGenes);
 
-const curatorSpecifcCreatePlot = async (plotType) => {
+
+const curatorSpecifcCreatePlot = async (plotType, datasetId, analysisObj) => {
+
+    const plotStyle = curatorCommon.getPlotStyle();
+    // Add gene or genes to plot config
+    plotStyle.plotConfig["gene_symbols"] = Array.from(geneCollectionState.selectedGenes);
+
     // Call API route by plot type
     await plotStyle.createPlot(datasetId, analysisObj);
-}
+};
+curatorCommon.registerCuratorSpecifcCreatePlot(curatorSpecifcCreatePlot);
 
 const curatorSpecifcDatasetTreeCallback = async () => {
+
     document.getElementById("num-selected-genes").textContent = 0;
     document.getElementById("num-selected-genes-post").textContent = 0;
-}
+};
+curatorCommon.registerCuratorSpecifcDatasetTreeCallback(curatorSpecifcDatasetTreeCallback);
 
-/**
- * Callback function for selecting a specific facet item in the curator.
- * @param {string} seriesName - The name of the series.
- */
-const curatorSpecifcFacetItemSelectCallback = (seriesName) => {
-    // pass
-}
 
 const curatorSpecificNavbarUpdates = () => {
-	// Update with current page info
-	document.getElementById("page-header-label").textContent = "Multi-gene Displays";
-}
+    // Update with current page info
+    document.getElementById("page-header-label").textContent = "Multi-gene Displays";
+};
+curatorCommon.registerCuratorSpecificNavbarUpdates(curatorSpecificNavbarUpdates);
+
 
 const curatorSpecificOnLoad = async () => {
+
+    registerGeneListEventListeners(apiCallsMixin);
+
     await fetchGeneCartData();
+
     // Should help with lining things up on index page
     document.getElementById("dropdown-gene-lists").classList.remove("is-right");
-}
+};
+curatorCommon.registerCuratorSpecificOnLoad(curatorSpecificOnLoad);
 
 const curatorSpecificPlotStyle = (plotType) => {
     // include plotting backend options
@@ -788,29 +1202,39 @@ const curatorSpecificPlotStyle = (plotType) => {
         return new GenesAsAxisHandler(plotType);
     } else if (genesAsDataPlots.includes(plotType)) {
         return new GenesAsDataHandler(plotType);
+    } else if (scanpyPlots.includes(plotType)) {
+        return new ScanpyHandler(plotType);
     } else {
         return null;
     }
-}
+};
+curatorCommon.registerCuratorSpecificPlotStyle(curatorSpecificPlotStyle);
 
 const curatorSpecificPlotTypeAdjustments = (plotType) => {
     return plotType;
-}
+};
+curatorCommon.registerCuratorSpecificPlotTypeAdjustments(curatorSpecificPlotTypeAdjustments);
 
 const curatorSpecificUpdateDatasetGenes = async (geneSymbols) => {
-    //pass
-}
+    // Convert geneSymbols to a set
+    // This will be used to check manually entered genes and those from gene lists
+    datasetGenes = new Set(geneSymbols);
+};
+curatorCommon.registerCuratorSpecificUpdateDatasetGenes(curatorSpecificUpdateDatasetGenes);
 
 const curatorSpecificValidationChecks = () => {
     return true;
-}
+};
+curatorCommon.registerCuratorSpecificValidationChecks(curatorSpecificValidationChecks);
 
 const downloadSelectedGenes = (event) => {
     event.preventDefault();
 
-	// Builds a file in memory for the user to download.  Completely client-side.
-	// plot_data contains three keys: x, y and symbols
-	// build the file string from this
+    // Builds a file in memory for the user to download.  Completely client-side.
+    // plot_data contains three keys: x, y and symbols
+    // build the file string from this
+
+    const plotStyle = curatorCommon.getPlotStyle();
 
     const plotType = plotStyle.plotType;
     const plotConfig = plotStyle.plotConfig;
@@ -835,47 +1259,81 @@ const downloadSelectedGenes = (event) => {
         xLabel = `${query} vs ${ref} Log2FC`;
         yLabel = `${query} vs ${ref} p-value`;
     }
-	let fileContents = `gene_symbol\t${xLabel}\t${yLabel}\n`;
+    let fileContents = `gene_symbol\t${xLabel}\t${yLabel}\n`;
 
     // Entering genes and info now.
     plotSelectedGenes.forEach((gene) => {
         fileContents +=
             `${gene.gene_symbol}\t`
             + `${gene.x}\t`
-            + `${gene.y}\n`
-	});
+            + `${gene.y}\n`;
+    });
 
-	const element = document.createElement("a");
-	element.setAttribute(
-		"href",
-		`data:text/tab-separated-values;charset=utf-8,${encodeURIComponent(fileContents)}`
-	);
-	element.setAttribute("download", "selected_genes.tsv");
-	element.style.display = "none";
-	document.body.appendChild(element);
-	element.click();
-	document.body.removeChild(element);
-}
+    const element = document.createElement("a");
+    element.setAttribute(
+        "href",
+        `data:text/tab-separated-values;charset=utf-8,${encodeURIComponent(fileContents)}`
+    );
+    element.setAttribute("download", "selected_genes.tsv");
+    element.style.display = "none";
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+};
 
-const fetchDashData = async (datasetId, analysis, plotType, plotConfig)  => {
+const fetchMgPlotlyData = async (datasetId, analysis, plotType, plotConfig) => {
     try {
-        const data = await apiCallsMixin.fetchDashData(datasetId, analysis, plotType, plotConfig);
+        const data = await apiCallsMixin.fetchMgPlotlyData(datasetId, analysis, plotType, plotConfig);
         if (data?.success < 1) {
-            throw new Error (data?.message || "Unknown error.")
+            throw new Error(data?.message || "Unknown error.");
         }
-        return data
+        return data;
     } catch (error) {
+        const data = error?.response?.data;
+        if (data?.success < 1) {
+            const msg = "Exceeded memory limit. Please try to filter or subsample the dataset in the post-plotting view, or contact the gEAR team.";
+            createToast(msg);
+            throw error;
+        }
+
         logErrorInConsole(error);
-        const msg = "Could not create plot for this dataset and parameters. Please contact the gEAR team."
+        const msg = "Could not create plot for this dataset and parameters. Please contact the gEAR team.";
         createToast(msg);
         throw new Error(msg);
     }
-}
+};
 
-const getCategoryColumns = async () => {
-    const analysisId = getAnalysisId();
+/**
+ * Fetches the multigene TSNE image for a given dataset, analysis, plot type, and plot configuration.
+ *
+ * @param {string} datasetId - The ID of the dataset.
+ * @param {string} analysis - The analysis type.
+ * @param {string} plotType - The type of plot.
+ * @param {object} plotConfig - The configuration for the plot.
+ * @returns {Promise<object>} - The fetched data.
+ * @throws {Error} - If there is an error fetching the data or creating the plot image.
+ */
+const fetchMgTsneImage = async (datasetId, analysis, plotType, plotConfig) => {
+    // NOTE: gene_symbol already passed to plotConfig
     try {
-        ({obs_columns: allColumns, obs_levels: levels} = await curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
+        const data = await apiCallsMixin.fetchMgTsneImage(datasetId, analysis, plotType, plotConfig);
+        if (data?.success < 1) {
+            throw new Error(data?.message ? data.message : "Unknown error.");
+        }
+        return data;
+    } catch (error) {
+        logErrorInConsole(error);
+        const msg = "Could not create plot image for this dataset and parameters. Please contact the gEAR team.";
+        createToast(msg);
+        throw new Error(msg);
+    }
+};
+
+const getCategoryColumns = async (datasetId) => {
+    const analysisId = curatorCommon.getAnalysisId();
+    let levels;
+    try {
+        ({ obs_columns: allColumns, obs_levels: levels } = await curatorCommon.curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
     } catch (error) {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
         return;
@@ -886,13 +1344,14 @@ const getCategoryColumns = async () => {
             delete levels[key];
         }
     }
+    curatorCommon.setLevels(levels);
     return Object.keys(levels);
-}
+};
 
 // Invert a log function
-const invertLogFunction = (value, base=10) => {
+const invertLogFunction = (value, base = 10) => {
     return base ** value;
-}
+};
 
 
 const populateGeneTable = (data, plotType) => {
@@ -919,15 +1378,15 @@ const populateGeneTable = (data, plotType) => {
         row.innerHTML = `<td>${gene.gene_symbol}</td><td>${gene.x}</td><td>${gene.y}</td>`;
         geneTableBody.appendChild(row);
     }
-}
+};
 
 const saveGeneCart = () => {
     // must have access to USER_SESSION_ID
     const gc = new GeneCart({
-        session_id: sessionId
+        session_id: getCurrentUser()?.session_id
         , label: document.getElementById("new-genecart-label").value
         , gctype: "unweighted-list"
-        , organism_id:  organismId
+        , organism_id: curatorCommon.getOrganismId()
         , is_public: 0
     });
 
@@ -940,15 +1399,18 @@ const saveGeneCart = () => {
     }
 
     gc.save(updateUIAfterGeneCartSaveSuccess, updateUIAfterGeneCartSaveFailure);
-}
+};
 
 const saveWeightedGeneCart = () => {
-	// must have access to USER_SESSION_ID
+
+    const plotStyle = curatorCommon.getPlotStyle();
+
+    // must have access to USER_SESSION_ID
     const plotType = plotStyle.plotType;
     const plotConfig = plotStyle.plotConfig;
 
-	// Saving raw FC by default so it is easy to transform weight as needed
-	const foldchangeLabel = "FC"
+    // Saving raw FC by default so it is easy to transform weight as needed
+    const foldchangeLabel = "FC";
     let weightLabels = [foldchangeLabel];
 
 
@@ -959,19 +1421,19 @@ const saveWeightedGeneCart = () => {
         const xLabel = `${query1}-vs-${ref}`;
         const yLabel = `${query2}-vs-${ref}`;
 
-        const fcl1 = `${xLabel}-${foldchangeLabel}`
-        const fcl2 = `${yLabel}-${foldchangeLabel}`
+        const fcl1 = `${xLabel}-${foldchangeLabel}`;
+        const fcl2 = `${yLabel}-${foldchangeLabel}`;
 
         weightLabels = [fcl1, fcl2];
     }
 
-	const gc = new WeightedGeneCart({
-		session_id: sessionId
-		, label:  document.getElementById("new-genecart-label").value
-		, gctype: 'weighted-list'
-		, organism_id: organismId
-		, is_public: 0
-	}, weightLabels);
+    const gc = new WeightedGeneCart({
+        session_id: getCurrentUser()?.session_id
+        , label: document.getElementById("new-genecart-label").value
+        , gctype: 'weighted-list'
+        , organism_id: curatorCommon.getOrganismId()
+        , is_public: 0
+    }, weightLabels);
 
     // Volcano and Quadrant plots have multiple traces of genes, broken into groups.
     // Loop through these to get the info we need.
@@ -995,8 +1457,146 @@ const saveWeightedGeneCart = () => {
         }
     };
 
-	gc.save(updateUIAfterGeneCartSaveSuccess, updateUIAfterGeneCartSaveFailure);
-}
+    gc.save(updateUIAfterGeneCartSaveSuccess, updateUIAfterGeneCartSaveFailure);
+};
+
+/**
+ * Sets up the options for Scanpy analysis.
+ * @param {string} datasetId - The ID of the dataset.
+ * @returns {Promise<void>} A promise that resolves when the setup is complete.
+ */
+const setupScanpyOptions = async (datasetId) => {
+    const analysisId = curatorCommon.getAnalysisId();
+    const plotType = curatorCommon.getSelect2Value(curatorCommon.getPlotTypeSelect());
+    let levels;
+    try {
+        ({ obs_columns: allColumns, obs_levels: levels } = await curatorCommon.curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
+    } catch (error) {
+        document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
+        return;
+    }
+
+    // Filter out values we don't want of "levels", like "colors"
+    allColumns = allColumns.filter((col) => !col.includes("_colors"));
+    for (const key in levels) {
+        if (key.includes("_colors")) {
+            delete levels[key];
+        }
+    }
+
+    curatorCommon.setLevels(levels);
+
+    if (!allColumns.length) {
+        document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
+        createToast("No metadata columns found in dataset. Cannot create a plot. Please choose another analysis or choose another dataset.");
+        return;
+    }
+
+    curatorCommon.setCatColumns(Object.keys(levels));
+    const catColumns = curatorCommon.getCatColumns();
+
+    let xDefaultOption = null;
+    let yDefaultOption = null;
+
+    // If these exist, make the default option
+    switch (plotType) {
+        case "mg_pca_static":
+            xDefaultOption = "X_pca_1";
+            yDefaultOption = "X_pca_2";
+            break;
+        case "mg_tsne_static":
+            xDefaultOption = "X_tsne_1";
+            yDefaultOption = "X_tsne_2";
+            break;
+        case "mg_umap_static":
+            xDefaultOption = "X_umap_1";
+            yDefaultOption = "X_umap_2";
+            break;
+    }
+
+    updateSeriesOptions("js-tsne-x-axis", allColumns, true, xDefaultOption);
+    updateSeriesOptions("js-tsne-y-axis", allColumns, true, yDefaultOption);
+    updateSeriesOptions("js-tsne-colorize-legend-by", allColumns, false);
+
+    const colorizeLegendBy = document.getElementsByClassName("js-tsne-colorize-legend-by");
+    const horizontalLegend = document.getElementsByClassName("js-tsne-horizontal-legend");
+
+    // Do certain things if the chosen annotation series is categorical or continuous
+    for (const elt of colorizeLegendBy) {
+        elt.addEventListener("change", (event) => {
+            for (const targetElt of [...horizontalLegend]) {
+                targetElt.disabled = true;
+                // If colorized legend is continuous, we cannot plot by group
+                // So all dependencies need to be disabled.
+                if ((catColumns.includes(event.target.value))) {
+                    targetElt.disabled = false;
+                    curatorCommon.disableCheckboxLabel(targetElt, false);
+                }
+            }
+        });
+
+        //
+        elt.addEventListener("change", (event) => {
+            // if series is empty or not categorical, remove color picker
+            if ((catColumns.includes(event.target.value))) {
+                curatorCommon.renderColorPicker(event.target.value);
+                return;
+            }
+            const colorsContainer = document.getElementById("colors-container");
+            const colorsSection = document.getElementById("colors-section");
+            colorsSection.classList.add("is-hidden");
+            colorsContainer.replaceChildren();
+            return;
+        });
+    }
+
+    // Ensure that the same series is not selected for both x-axis and y-axis (plot would be meaningless)
+    for (const classElt of [...document.getElementsByClassName("js-tsne-x-axis"), ...document.getElementsByClassName("js-tsne-y-axis")]) {
+        // if x-axis series changes, disable that option in y-axis series, and vice versa
+        classElt.addEventListener("change", (event) => {
+            const series = event.target.value;
+            if (!series) {
+                return;
+            }
+
+            const otherClass = event.target.classList.contains("js-tsne-x-axis") ? "js-tsne-y-axis" : "js-tsne-x-axis";
+
+            for (const otherClassElt of [...document.getElementsByClassName(otherClass)]) {
+                // enable all series
+                for (const opt of otherClassElt.options) {
+                    opt.removeAttribute("disabled");
+                }
+                // disable selected series in other series
+                const opt = otherClassElt.querySelector(`option[value="${series}"]`);
+                opt.setAttribute("disabled", "disabled");
+                // If this option was selected, unselect it
+                if (otherClassElt.value === series) {
+                    otherClassElt.value = "";
+                }
+            }
+        });
+    }
+
+    // Trigger event to enable plot button (in case we switched between plot types, since the HTML vals are saved)
+    if (document.getElementById("x-axis-series").value) {
+        trigger(document.getElementById("x-axis-series"), "change");
+    }
+    if (document.getElementById("y-axis-series").value) {
+        trigger(document.getElementById("y-axis-series"), "change");
+    }
+
+    // If override marker size is checked, enable the marker size field
+    const overrideMarkerSize = document.getElementsByClassName("js-tsne-override-marker-size");
+    const markerSize = document.getElementsByClassName("js-tsne-marker-size");
+    for (const elt of overrideMarkerSize) {
+        elt.addEventListener("change", (event) => {
+            for (const targetElt of markerSize) {
+                targetElt.disabled = event.target.checked ? false : true;
+            }
+        });
+    }
+
+};
 
 /**
  * Shows the corresponding subsection based on the selected option in the plot configuration menu.
@@ -1016,33 +1616,33 @@ const showPostHeatmapParamSubsection = (event) => {
             break;
     }
     event.preventDefault(); // Prevent "link" clicking from "a" elements
-}
+};
 
 // Taken from https://www.w3schools.com/howto/howto_js_sort_table.asp
 const sortGeneTable = (mode) => {
-	let table;
-	let rows;
-	let switching;
-	let i;
-	let x;
-	let y;
-	let shouldSwitch;
-	let dir;
-	let switchcount = 0;
-	table = document.getElementById("tbl-selected-genes");
+    let table;
+    let rows;
+    let switching;
+    let i;
+    let x;
+    let y;
+    let shouldSwitch;
+    let dir;
+    let switchcount = 0;
+    table = document.getElementById("tbl-selected-genes");
 
-	switching = true;
-	// Set the sorting direction to ascending:
-	dir = "asc";
-	/* Make a loop that will continue until
-		no switching has been done: */
-	while (switching) {
-		// Start by saying: no switching is done:
-		switching = false;
-		rows = table.rows;
-		/* Loop through all table rows (except the
-		first, which contains table headers): */
-		for (i = 1; i < rows.length - 1; i++) {
+    switching = true;
+    // Set the sorting direction to ascending:
+    dir = "asc";
+    /* Make a loop that will continue until
+        no switching has been done: */
+    while (switching) {
+        // Start by saying: no switching is done:
+        switching = false;
+        rows = table.rows;
+        /* Loop through all table rows (except the
+        first, which contains table headers): */
+        for (i = 1; i < rows.length - 1; i++) {
             // Start by saying there should be no switching:
             shouldSwitch = false;
             /* Get the two elements you want to compare,
@@ -1073,8 +1673,8 @@ const sortGeneTable = (mode) => {
                     break;
                 }
             }
-		}
-		if (shouldSwitch) {
+        }
+        if (shouldSwitch) {
             /* If a switch has been marked, make the switch
                 and mark that a switch has been done: */
             rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
@@ -1082,15 +1682,15 @@ const sortGeneTable = (mode) => {
             // Each time a switch is done, increase this count by 1:
             switchcount++;
 
-		} else {
+        } else {
             /* If no switching has been done AND the direction is "asc",
                 set the direction to "desc" and run the while loop again. */
             if (switchcount == 0 && dir == "asc") {
                 dir = "desc";
                 switching = true;
             }
-		}
-	}
+        }
+    }
 
     // Reset other sort icons to "ascending" state, to show what direction they will sort when clicked
     const otherTblHeaders = document.querySelectorAll(`.js-tbl-gene-header:not(:nth-child(${mode + 1}))`);
@@ -1126,7 +1726,7 @@ const sortGeneTable = (mode) => {
             currIcon.classList.add("mdi-sort-numeric-descending");
         }
     }
-}
+};
 
 
 // For plotting options, populate select menus with category groups
@@ -1148,7 +1748,7 @@ const updateSeriesOptions = (classSelector, seriesArray) => {
             elt.append(option);
         }
     }
-}
+};
 
 
 // For a given categorical series (e.g. "celltype"), update the "group" options
@@ -1170,14 +1770,18 @@ const updateGroupOptions = (classSelector, groupsArray) => {
         }
     }
 
-}
+};
 
 const updateUIAfterGeneCartSaveSuccess = (gc) => {
-}
+    createToast(`Gene cart saved successfully. <a target='_blank' href='/gene_list_manager.html?sort_by=date_created'>Open Gene List Manager</a>`, "is-success", true, { isHTML: true });
+};
 
 const updateUIAfterGeneCartSaveFailure = (gc, message) => {
     createToast(message);
-}
+};
+
+// Pre-initialize some stuff
+await initCommonUI();
 
 document.getElementById("clear-genes-btn").addEventListener("click", clearGenes);
 
@@ -1200,7 +1804,7 @@ document.getElementById("save-genecart-btn").addEventListener("click", (event) =
     event.target.classList.add("is-loading");
     // get value of genecart radio button group
     const geneCartName = document.querySelector("input[name='genecart_type']:checked").value;
-    if (CURRENT_USER) {
+    if (getCurrentUser()) {
         if (geneCartName === "unweighted") {
             saveGeneCart();
         } else {
@@ -1217,20 +1821,22 @@ document.getElementById('genes-manually-entered').addEventListener('change', (ev
     const searchTermString = event.target.value;
     const newManuallyEnteredGenes = searchTermString.length > 0 ? new Set(searchTermString.split(/[ ,]+/)) : new Set();
 
-    // Remove genes that have been deleted from the selected_genes set
-    for (const gene of manuallyEnteredGenes) {
+    // Remove genes that have been deleted from the geneCollectionState.selectedGenes set
+    for (const gene of geneCollectionState.manuallyEnteredGenes) {
         if (!newManuallyEnteredGenes.has(gene)) {
-            selected_genes.delete(gene);
+            geneCollectionState.selectedGenes.delete(gene);
+            notFoundGenes.delete(gene);
         }
     }
 
-    // Add new genes to the selected_genes set
+    // Add new genes to the selectedGenes set
     for (const gene of newManuallyEnteredGenes) {
-        selected_genes.add(gene);
+        geneCollectionState.selectedGenes.add(gene);
     }
 
-    manuallyEnteredGenes = newManuallyEnteredGenes;
-    chooseGenes(null);
+    geneCollectionState.manuallyEnteredGenes = newManuallyEnteredGenes;
+
+    chooseGenes();
 });
 
-document.getElementById('dropdown-gene-list-proceed').addEventListener('click', chooseGenes);
+document.getElementById('dropdown-gene-list-proceed').addEventListener('click', (event) => {chooseGenes()});

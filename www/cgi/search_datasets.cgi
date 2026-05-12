@@ -1,8 +1,8 @@
 #!/opt/bin/python3
 
 """
-Used by by dataset_explorer.html, this script focuses on searching datasets and
-returns a list of matches with extended attributes.
+Used by by dataset_explorer.html and index.html, this script focuses on searching
+datasets and returns a list of matches with extended attributes.
 
 There are a few main categories of search:
 
@@ -38,14 +38,14 @@ def main():
     custom_list = form.getvalue('custom_list')
     search_terms = form.getvalue('search_terms').split(' ') if form.getvalue('search_terms') else []
     organism_ids = form.getvalue('organism_ids')
-    dtypes = form.getvalue('dtypes')
+    dtypes = form.getvalue('dtypes').split(',') if form.getvalue('dtypes') else []
     date_added = form.getvalue('date_added')
     ownership = form.getvalue('ownership')
     layout_share_id = form.getvalue('layout_share_id')
     include_public_membership = form.getvalue('include_public_collection_membership')
     page = form.getvalue('page', "1")    # page starts at 1
     limit = form.getvalue('limit', str(DEFAULT_MAX_RESULTS))
-    sort_by = re.sub("[^[a-z]]", "", form.getvalue('sort_by'))
+    sort_by = re.sub("[^[a-z]]", "", form.getvalue('sort_by', ''))
     user = geardb.get_user_from_session_id(session_id) if session_id else None
     result = {'success': 1, 'problem': '', 'datasets': []}
 
@@ -105,16 +105,15 @@ def main():
                 qry_params.append(user.id)
 
         else:
+            # When no ownership filter is specified, show only public datasets and user's own datasets
+            # Shared and group datasets should only appear when explicitly requested via ownership filter
             ownership_bits.append("d.is_public = 1")
             ownership_bits.append("d.owner_id = %s")
+
             if shared_dataset_id_str:
                 ownership_bits.append(f"d.id IN ({shared_dataset_id_str})")
 
-            ownership_bits.append("d.owner_id IN \
-                                    (SELECT DISTINCT user_id FROM user_group_membership WHERE group_id IN \
-                                    (SELECT group_id FROM user_group_membership WHERE user_id = %s)) \
-                                    ")
-            qry_params.extend([user.id, user.id])
+            qry_params.append(user.id)
 
         wheres.append(f"({' OR '.join(ownership_bits)})")   # OR accomodates the "not ownership" case
 
@@ -135,9 +134,21 @@ def main():
         organism_ids = re.sub("[^,0-9]", "", organism_ids)
         wheres.append("d.organism_id in ({0})".format(organism_ids))
 
+    SPATIAL_DTYPES = ["spatial", "spatial-h5ad"]
+
     if dtypes:
+        for item in dtypes:
+            # Fix to catch single-cell variations
+            if item == "single-cell-rnaseq":
+                dtypes.append("scRNA-seq")
+                break
+            # Add all spatial dtype variations (i.e. spatial-h5ad)
+            if item == "spatial":
+                dtypes.extend(SPATIAL_DTYPES)
+                break
+
         ## only alphanumeric characters and the dash are allowed here
-        dtypes = re.sub("[^,\-A-Za-z0-9]", "", dtypes).split(',')
+        dtypes = [re.sub("[^,A-Za-z0-9-]", "", item) for item in dtypes]
         dtype_str = (', '.join('"' + item + '"' for item in dtypes))
         wheres.append(f"d.dtype in ({dtype_str})")
 
@@ -216,7 +227,8 @@ def main():
     # NOTE: Must keep as a list to preserve order
     matching_dataset_ids = list()
     # this index keeps track of the size and position of each dataset if a layout was passed
-    for row in cursor:
+    rows = cursor.fetchall() or []
+    for row in rows:
         matching_dataset_ids.append(row[0])
 
     result['datasets'] = datasets_collection.get_by_dataset_ids(matching_dataset_ids)
@@ -233,14 +245,17 @@ def main():
             dataset.preview_image_url = "{0}/{1}.default.png".format(WEB_IMAGE_ROOT, dataset.id)
         elif os.path.exists("{0}/{1}.single.default.png".format(IMAGE_ROOT, dataset.id)):
             dataset.preview_image_url = "{0}/{1}.single.default.png".format(WEB_IMAGE_ROOT, dataset.id)
+
+        elif dataset.dtype == "gosling":
+            dataset.preview_image_url = "{0}/gosling.png".format(WEB_IMAGE_ROOT)
         else:
-            dataset.preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT, dataset.id)
+            dataset.preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT)
 
         # Multi-gene preview image
         if os.path.exists("{0}/{1}.multi.default.png".format(IMAGE_ROOT, dataset.id)):
             dataset.mg_preview_image_url = "{0}/{1}.multi.default.png".format(WEB_IMAGE_ROOT, dataset.id)
         else:
-            dataset.mg_preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT, dataset.id)
+            dataset.mg_preview_image_url = "{0}/missing.png".format(WEB_IMAGE_ROOT)
 
         # add if the user is the owner of the dataset
         dataset.is_owner = True if user and dataset.owner_id == user.id else False
@@ -261,7 +276,11 @@ def main():
 
     # compile pagination information
     result["pagination"] = {}
-    result["pagination"]['total_results'] = cursor.fetchone()[0]
+    row = cursor.fetchone()
+    if row:
+        result["pagination"]['total_results'] = row[0]
+    else:
+        result["pagination"]['total_results'] = 0
     result["pagination"]['current_page'] = int(page)
     result["pagination"]['limit'] = int(limit)
     result["pagination"]["total_pages"] = ceil(int(result["pagination"]['total_results']) / int(result["pagination"]['limit']))

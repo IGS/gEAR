@@ -2,7 +2,7 @@
 <!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
@@ -20,12 +20,6 @@
 
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
-
-        <!-- Ensures we always get a new version (during our current active development cycles) -->
-        <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
-
-        <!--Page-specific CSS here -->
-            <script>document.write('<link rel="stylesheet" href="css/expression.' + (new Date()).getTime() + '.css" />');</script>
     </head>
     <body>
       <div id="main-layout-c" class="columns is-fullheight">
@@ -36,13 +30,14 @@
 
           <!--#include virtual="/include/header_bar.html" -->
 
-          <section id="content-c" class="m-3" data-nav-link="search_expression">
+          <section id="content-c" role="main" class="m-3" data-nav-link="search_expression">
             <!-- This needs to be abstracted out as an include, since both this page and the dashboard use it -->
-            <div id="search-bar-c" class="mt-4 ml-3 mb-4">
+            <div id="search-bar-c" class="mt-4 mb-4">
               <div class="field has-addons is-grouped mb-0">
-                <div class="control has-icons-left has-icons-right mr-0">
-                  <input class="input" type="input" id="genes-manually-entered" placeholder="Type here to search using specific gene symbols">
-                  <span class="icon is-small is-left">
+                <div class="control has-icons-left mr-0 pr-0">
+                  <label for="genes-manually-entered" class="is-sr-only">Search gene symbols</label>
+                  <input class="input" type="search" id="genes-manually-entered" placeholder="Type here to search using specific gene symbols">
+                  <span class="icon is-small is-left" aria-hidden="true">
                     <i class="mdi mdi-magnify"></i>
                   </span>
                 </div>
@@ -64,6 +59,7 @@
                 <!--#include virtual="/include/dataset-collection-selector/dataset-collection-selector.html" -->
 
                 <div class="control">
+                  <label for="submit-expression-search" class="is-sr-only">Search</label>
                   <button id="submit-expression-search" class="button is-primary ml-3">
                     <span class="icon is-small">
                       <i class="mdi mdi-magnify"></i>
@@ -74,7 +70,7 @@
               <div class="field is-grouped">
                 <div class="control">
                   <label class="checkbox">
-                    <input type="checkbox" id="gene-search-exact-match" >
+                    <input type="checkbox" id="gene-search-exact-match" checked="checked">
                     Exact match
                   </label>
                 </div>
@@ -92,7 +88,7 @@
             </div>
             <div id="results-main-c" class="columns">
               <div id="gene-result-list-c" class="column is-narrow is-fullheight p-0">
-                <h3 class="mt-3 ml-3 mr-6 is-hidden">Search<br />results (<span id="gene-result-count"></span>)</h3>
+                <h3 class="m-3 is-hidden">Search results (<span id="gene-result-count"></span>)</h3>
                 <ul id="gene-result-list" class="mt-3"></ul>
                 <template id="tmpl-gene-result-item">
                   <li class="gene-result-list-item is-clickable pl-4"></li>
@@ -102,6 +98,72 @@
                 </template>
               </div>
               <div id="annotation-and-grid-c" class="column">
+                <div id="share-entrance-notification" class="notification is-primary is-hidden">
+                  <button id="share-entrance-notification-close" class="delete" aria-label="Close notification"></button>
+                  <div class="columns">
+                    <div class="column divider-right is-4 mt-0 pt-0 pr-6">
+                      <h2 class="mb-1">
+                        <span class="icon">
+                          <i class="mdi mdi-information-outline"></i>
+                        </span>
+                        Share link detected
+                      </h2>
+                      <p>
+                        You have used a share link to get here, which is great! We have pre-loaded the
+                        dataset(s) listed on the right.
+                      </p>
+                      <br />
+                      <p id="share-entrance-genes-preselected" class="is-hidden">
+                        The share also contained gene information, so results for these will be
+                        automatically displayed. Feel free to use the controls above to perform
+                        additional searches.
+                      </p>
+                      <p id="share-entrance-genes-autoselected" class="is-hidden">
+                        The share did not contain gene information, so we've automatically selected
+                        the first gene curated in one of the datasets for demonstration purposes. Feel
+                        free to use the controls above to perform additional searches.
+                      </p>
+                      <p id="share-entrance-genes-noneselected" class="is-hidden">
+                        The share did not contain gene information, and we couldn't automatically
+                        select one this time. Please use the form above to enter one or more genes
+                        to see results for these data.
+                      </p>
+                    </div>
+                    <div class="column is-8 mt-0 pt-0 pl-6">
+                      <div id="share-entrance-dataset" class="is-hidden">
+                        <h3 class="mb-1">Dataset</h3>
+                        <p class="pl-3">
+                          <strong>Title:</strong>
+                          <span id="share-entrance-dataset-label"></span>
+                        </p>
+                        <p class="pl-3">
+                          <strong>Owner:</strong>
+                          <span id="share-entrance-dataset-owner-label"></span>
+                        </p>
+                      </div>
+                      <div id="share-entrance-layout" class="is-hidden">
+                        <h3 class="mb-1">Dataset Collection</h3>
+                        <p class="pl-3">
+                          <strong>Title:</strong>
+                          <span id="share-entrance-layout-label"></span>
+                        </p>
+                        <p class="pl-3">
+                          <strong>Owner:</strong>
+                          <span id="share-entrance-layout-owner-label"></span>
+                        </p>
+                      </div>
+                      <div id="share-entrance-genes" class="is-hidden mt-4">
+                        <h3 class="mb-1">Gene(s) searched</h3>
+                        <p id="share-entrance-genes-label" class="pl-3"></p>
+                      </div>
+                      <div id="share-entrance-gene-list" class="is-hidden mt-4">
+                        <h3 class="mb-1">Gene list searched</h3>
+                        <p id="share-entrance-gene-list-label" class="pl-3"></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <h3 id="currently-selected-gene-header" class="mb-2 mt-0">
                   Showing results for:
                   <span id="currently-selected-gene"></span>
@@ -142,7 +204,7 @@
                       <div class="field is-grouped">
                         <div id="organism-selector-control" class="control">
                           <div class="select is-small">
-                            <select id="organism-selector" class="pr-6">
+                            <select id="organism-selector" class="pr-6" aria-label="Select an organism">
                               <option value="">Select an organism</option>
                             </select>
                             <template id="tmpl-organism-option">
@@ -196,12 +258,13 @@
                 <section id="result-panel" class="p-3">
                   <div id="result-panel-options">
                     <div id="scoring-method-div">
-                      <span class="option-label pr-1">Scoring method: </span>
+                      <span class="option-label pr-1">SVG expression scoring method: </span>
                       <div class="control select is-small">
-                        <select id="svg-scoring-method">
-                          <option value="gene" selected>Gene scope</option>
+                        <select id="svg-scoring-method" aria-label="SVG expression scoring method">
+                          <option value="gene">Gene scope</option>
                           <option value="tissue">Tissue scope</option>
                           <option value="dataset">Sample scope</option>
+                          <option value="user_defined" selected>Owner-defined scope</option>
                         </select>
                       </div>
                     </div>
@@ -235,18 +298,34 @@
       <script src="js/vendor/jsrender.20181003.min.js"></script>  <!-- ? SAdkins - are we still using this? -->
 
       <script src="js/vendor/snap.svg-min.js"></script>
-      <script src="https://d3js.org/d3.v5.min.js"></script>
-      <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+      <script src="https://cdn.plot.ly/plotly-3.5.0.min.js" charset="utf-8"></script>
 
-      <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
       <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-      <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
-      <script>document.write('<script src="js/classes/tilegrid.' + (new Date()).getTime() + '.js"><\/script>');</script>
-      <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
-      <script>document.write('<script src="js/plot_display_config.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
-      <!-- Page-specific JS file here -->
-      <script>document.write('<script src="js/expression.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script type="module">
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+        const prefs = await getDomainPreferences();
+
+        // Load any local JS with cache-busting version parameter
+        insertVersionedJS('js/expression.js', prefs.cache_version);
+
+        // Now load page-specific CSS
+        insertVersionedCSS('css/common.v2.css', prefs.cache_version);
+        insertVersionedCSS('css/expression.css', prefs.cache_version);
+      </script>
+
+      <!-- WCAG accessibility widget -->
+      <script>
+      window.ACCESSIBILITY_WIDGET_CONFIG = {
+        // Position on left side
+        widgetPosition: {
+          side: 'left',
+          left: '20px',
+          bottom: '20px'
+        }
+      };
+      </script>
+      <script src="https://unpkg.com/accessibility-widgets@latest/widget.js"></script>
 
     </body>
 </html>

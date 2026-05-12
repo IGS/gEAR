@@ -11,6 +11,7 @@ A member is not returned if the dataset is private and the user is not the owner
 
 import cgi, json
 import os, sys
+import configparser
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
@@ -19,13 +20,25 @@ import geardb
 def main():
     print('Content-Type: application/json\n\n')
 
+    config = configparser.ConfigParser()
+    config.read('../../gear.ini')
+
     form = cgi.FieldStorage()
     share_id = form.getvalue('layout_share_id')
     session_id = form.getvalue('session_id')
     user = geardb.get_user_from_session_id(session_id)
 
+    # default to gear.ini default_layout_share_id if not provided
+    if not share_id:
+        share_id = config['content']['default_layout_share_id']
+
     result = { 'layout_members': {"single":[], "multi":[]}, "message":None }
     layout = geardb.get_layout_by_share_id(share_id)
+
+    if not layout:
+        result['message'] = 'Layout for share_id {} not found.'.format(share_id)
+        print(json.dumps(result))
+        return
 
     #if not layout.is_public and layout.user_id != user.id:
     #    result['message'] = 'Layout is private and user is not the owner.'

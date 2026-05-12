@@ -4,7 +4,7 @@
 
 Other things to include:
 
-  - **Technology stack**: The gEAR software is a LAMP stack utilizing Python and MySQL, H5AD for large expression matrix storage, D3 and Plot.ly for data visualization and has embedded [Epiviz](https://epiviz.github.io/) support to display epigenetic data.
+  - **Technology stack**: The gEAR software is a LAMP stack utilizing Python and MySQL, H5AD for large expression matrix storage, D3 and Plot.ly for data visualization and has embedded [Gosling](https://gosling-lang.github.io/) support to display epigenetic data.
   - **Status**:  This project has been in production for several years, though is in constant development so bugs certainly exist.
   - **Production / Demo instances**
 	  - [UMgEAR](https://umgear.org) - Portal for hearing research
@@ -17,11 +17,41 @@ Other things to include:
 
 ## Installation
 
-Setting up your own portal is admittedly a bit of work.  There are a lot of components to the portal and running on a server with at least 16 cores and 100GB+ of RAM is recommended.  The process is documented in the [setup.new_server.notes.md](docs/setup.new_server.notes.md) document.
+Setting up your own portal is admittedly a bit of work.  There are a lot of components to the portal and running on a server with at least 16 cores and 100GB+ of RAM is recommended.  The process is documented in the [Developer Documentation](docs/developer/README.md).
+
+For detailed setup instructions, see:
+- [Server Setup Guide](docs/developer/setup/README.md) - Complete installation guide
 
 ## Usage
 
 To learn how to use the software you can go to any existing portal and click the documentation link at the top, which will take you to a page like [this one](https://umgear.org/manual.html).  It has walk-through slides and YouTube videos for most topics.
+
+## Developer Documentation
+
+For developers and team members working on gEAR:
+
+- **[Developer Guide](docs/developer/README.md)** - Main developer documentation
+  - Architecture overview
+  - Development workflow
+  - Code style guidelines
+  - Common tasks
+
+- **[Setup Guides](docs/developer/setup/README.md)** - Server installation and configuration
+  - New server setup
+  - Component-specific guides (MySQL, Apache, Python, R, RabbitMQ)
+  - Docker development environment
+
+- **[Utility Scripts](docs/developer/scripts/README.md)** - Documentation for 105+ scripts in `/bin`
+  - Data conversion and format scripts
+  - H5AD manipulation tools
+  - Database loading scripts
+  - Validation and testing utilities
+  - Dataset management tools
+
+- **[Microservices](docs/developer/services/README.md)** - Service documentation
+  - ProjectR service (matrix projection)
+  - Spatial panel service
+  - RabbitMQ consumers
 
 ## Known issues
 
@@ -29,7 +59,7 @@ This repository was hosted private for many years and we have just recently tran
 
 ## Getting help
 
-There are a few ways to get help with a gEAR Portal.  
+There are a few ways to get help with a gEAR Portal.
 
  - Check the provided [documentation](https://umgear.org/manual.html).
  - Use the contact form at the top of any existing portal.  [Here](https://umgear.org/contact.html), for example.

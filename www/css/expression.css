@@ -11,6 +11,9 @@ div#annotation-and-grid-c h3 {
 div#annotation-and-grid-c h3 span {
     font-weight: bold;
 }
+div.divider-right {
+    border-right: 1px solid white;
+}
 div#extended-annotation-panel {
     border: 1px solid #e9eef1;
     border-style: rounded;
@@ -22,6 +25,11 @@ div#functional-annotation-c h3 {
 }
 div#gene-result-list-c {
     border-right: 1px solid #e9eef1;
+    position: sticky;
+    top: 0;
+    align-self: flex-start; /* doesn't seem to do anything */
+    height:100vh;
+    overflow-y: auto;   /* scroll if too long */
 }
 div#gene-result-list-c h3 {
     font-weight: bold;
@@ -29,7 +37,17 @@ div#gene-result-list-c h3 {
 }
 div#results-main-c {
     border-top: 1px solid rgb(220, 220, 220);
-    margin-top: 50px;
+}
+div#share-entrance-notification h2 {
+    font-size: 120%;
+    font-weight: bold;
+}
+div#share-entrance-notification h3 {
+    font-size: 110%;
+    font-weight: bold;
+}
+div#share-entrance-notification p {
+    font-size: 90%;
 }
 section#annotation-panel,
 section#result-panel {
@@ -68,17 +86,66 @@ ul#go-terms li {
     border-bottom: 1px solid #e9eef1;
 }
 
+#results-main-c, #annotation-and-grid-c {
+    width: 100%; /* ensure full width for the main layout and content */
+    box-sizing: border-box; /* include padding and border in element's total width */
+    min-width: 0; /* allow flex items to shrink */
+}
+
+#result-panel {
+    width: 100%;
+}
+
 #result-panel-grid {
     display: grid;
-    grid-template-columns: repeat(12, 90px);    /* setting px instead of fr prevernts distortions if grid dimensions change */
-    grid-gap: 0.5em;
-    width: 1080px;  /* grid width + 2*border width */
+    grid-template-columns: repeat(12, 1fr);
+    /* Using 400px to account for the card header */
+    /* But allow it to grow so that aspect ratio can be maintained for ultrawide screens */
+    grid-auto-rows: minmax(400px, auto);
+    gap: 8px;
+}
+
+.js-tile {
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+}
+
+#result-panel-grid .js-tile {
+    height: 100%; /* Forces the tile to stay within the 400px row */
+    max-height: 80vh;
+}
+
+#zoomed-panel-grid .js-tile {
+    height: fit-content;
+}
+
+.js-tile .card-image {
+    align-content: center;
 }
 
 /* tSNE plots */
+
 .js-tile .card-image img {
-    width: fit-content;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    margin: auto;
+    display: block; /* Removes the baseline gap at the bottom */
+    object-fit: contain;
+}
+
+/* spatial embeds */
+#result-panel-grid .js-tile .card-image iframe {
+    width: 100%;
     height: 100%;
+    margin: auto;
+}
+
+#zoomed-panel-grid .js-tile .card-image iframe {
+    width: 100%;
+    height: 1750px;  /* Enough room for the Panel app to be fully displayed without scrolling */
     margin: auto;
 }
 
@@ -127,11 +194,16 @@ ul#go-terms li {
     width: 70%; /* make wider, which makes preview images larger */
 }
 
-#gene-result-list-c {
-    position: sticky;
-    top: 0;
-    align-self: flex-start;
-    height:100vh;
-    overflow-y: auto;   /* scroll if too long */
+/* prevent Gosling from overflowing the card image - Copilot generated */
+.gosling-component {
+    box-sizing: border-box;
+    max-width: 100% !important;
+    width: 100% !important;
+    overflow: hidden;
 }
 
+/* ensure internal canvases/svgs fill the container - Copilot generated */
+.gosling-component > * {
+    max-width: 100% !important;
+    width: 100% !important;
+}

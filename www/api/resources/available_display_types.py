@@ -1,9 +1,11 @@
+import os
+
+import geardb
 from flask import request
 from flask_restful import Resource
-import os
-import geardb
 
-from .common import get_adata_shadow
+from .common import get_adata_shadow, get_spatial_adata
+
 
 def tsne_or_umap_present(ana):
   """Return True if tSNE or UMAP plot was calculated for the given analysis."""
@@ -40,16 +42,31 @@ class MGAvailableDisplayTypes(Resource):
         mg_violin = True
         volcano = True
         quadrant = True
+        mg_tsne_static = False
+        mg_umap_static = False
+        mg_pca_static = False
 
-        ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
-        h5_path = ds.get_file_path()
+        ds = geardb.get_dataset_by_id(dataset_id)
+        if not ds:
+            return {
+                "success": -1,
+                'message': "No dataset found with that ID"
+            }
 
         try:
-            adata = get_adata_shadow(analysis_id, dataset_id, session_id, h5_path)
+          if ds.dtype == "spatial":
+              adata = get_spatial_adata(analysis_id, dataset_id, session_id)
+          else:
+              adata = get_adata_shadow(analysis_id, dataset_id, session_id)
         except FileNotFoundError:
             return {
                 "success": -1,
-                'message': "No h5 file found for this dataset"
+                'message': "No dataset file found."
+            }
+        except Exception as e:
+            return {
+                "success": -1,
+                'message': str(e)
             }
 
         columns = adata.obs.columns.tolist()
@@ -77,12 +94,29 @@ class MGAvailableDisplayTypes(Resource):
         if len(categorical_columns) < 3:
           quadrant = False
 
+        if analysis_id:
+            if hasattr(adata, 'obsm') and 'X_tsne' in adata.obsm:
+                mg_tsne_static = True
+            elif hasattr(adata, 'obsm') and 'X_umap' in adata.obsm:
+                mg_umap_static = True
+            elif hasattr(adata, 'obsm') and 'X_pca' in adata.obsm:
+                mg_pca_static = True
+
+        # if at least two columns are float or int, enable tsne/umap/pca plots
+        if len([col for col in columns if "float" in str(adata.obs[col].dtype) or "int" in str(adata.obs[col].dtype)]) >= 2:
+          mg_tsne_static = True
+          mg_umap_static = True
+          mg_pca_static = True
+
         available_display_types = {
           "dotplot": dotplot,
           "heatmap": heatmap,
           "mg_violin": mg_violin,
           "volcano": volcano,
-          "quadrant": quadrant
+          "quadrant": quadrant,
+          "mg_pca_static": mg_pca_static,
+          "mg_tsne_static": mg_tsne_static,
+          "mg_umap_static": mg_umap_static
         }
 
         return available_display_types, 200
@@ -119,24 +153,38 @@ class AvailableDisplayTypes(Resource):
         tsne_umap_pca_dynamic = False
         svg_exists = False
 
-
-        ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
-        h5_path = ds.get_file_path()
-        # Determine if SVG exists for the primary dataset.
-        (base_path, _) = h5_path.split('/datasets/')
-        svg_path = f"{base_path}/datasets_uploaded/{dataset_id}.svg"
-        # santize svg_path to prevent path traversal
-        base_path = os.path.normpath(base_path)
-        full_svg_path = os.path.normpath(svg_path)
-        if full_svg_path.startswith(base_path) and os.path.exists(full_svg_path):
-          svg_exists = True
+        ds = geardb.get_dataset_by_id(dataset_id)
+        if not ds:
+            return {
+                "success": -1,
+                'message': "No dataset found with that ID"
+            }
 
         try:
-            adata = get_adata_shadow(analysis_id, dataset_id, session_id, h5_path)
+          if ds.dtype == "spatial":
+              adata = get_spatial_adata(analysis_id, dataset_id, session_id)
+          else:
+              adata = get_adata_shadow(analysis_id, dataset_id, session_id)
+
+              # Determine if SVG exists for the primary dataset.
+              h5_path = ds.get_file_path()
+              (base_path, _) = h5_path.split('/datasets/')
+              svg_path = f"{base_path}/datasets_uploaded/{dataset_id}.svg"
+              # santize svg_path to prevent path traversal
+              base_path = os.path.normpath(base_path)
+              full_svg_path = os.path.normpath(svg_path)
+              if full_svg_path.startswith(base_path) and os.path.exists(full_svg_path):
+                svg_exists = True
+
         except FileNotFoundError:
             return {
                 "success": -1,
-                'message': "No h5 file found for this dataset"
+                'message': "No dataset file found."
+            }
+        except Exception as e:
+            return {
+                "success": -1,
+                'message': str(e)
             }
 
         if analysis_id:
@@ -153,6 +201,24 @@ class AvailableDisplayTypes(Resource):
         columns = adata.obs.columns.tolist()
 
         if len(columns) == 0:
+          # If dtype is SVG then we can still show the SVG display type
+          if ds.dtype == "svg-expression":
+            available_display_types = {
+              "scatter": scatter,
+              "tsne_static": tsne_static,
+              "umap_static": umap_static,
+              "pca_static": pca_static,
+              "tsne/umap_dynamic": tsne_umap_pca_dynamic,
+              # Some single cell datasets might have no columns
+              "bar": True if len(columns) else False,
+              "violin": True if len(columns) else False,
+              "line": True if line or "time_point" in columns else False,
+              #"contour":True if len(columns) else False,
+              "svg": svg_exists
+            }
+            if svg_exists:
+              return available_display_types, 200
+
           return {
             "success": -1,
             'message': "No metadata columns found in this dataset, so plots cannot be drawn. Please choose another dataset."

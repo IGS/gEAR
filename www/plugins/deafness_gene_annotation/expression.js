@@ -25,8 +25,8 @@ function add_dga_button_listeners() {
 }
 
 
-function deafness_plugin_gene_change() {
-    const gene_symbol = currently_selected_gene_symbol.toLowerCase();
+function deafness_plugin_gene_change(selected_gene) {
+    const gene_symbol = selected_gene.toLowerCase();
 
     // remove the active class from all dropdowns
     document.querySelectorAll('.dropdown').forEach(item => {
@@ -66,10 +66,12 @@ function deafness_plugin_gene_change() {
             const a = link_template.content.cloneNode(true);
             a.querySelector('a').innerHTML = link['label'];
             a.querySelector('a').href = link['url'];
+            a.querySelector('a').setAttribute('aria-label', `Link to ${link['label']} for mouse deafness gene`);
             document.getElementById('dm-deafness-gene-mouse-links').appendChild(a);
         }
 
         document.getElementById("img-deafness-gene-mouse").src = "./img/icons/org-1-dark-64.svg";
+        document.getElementById("img-deafness-gene-mouse").alt = "Mouse Deafness Gene";
         document.getElementById("btn-deafness-gene-mouse").disabled = false;
     }
 
@@ -84,10 +86,13 @@ function deafness_plugin_gene_change() {
             const a = link_template.content.cloneNode(true);
             a.querySelector('a').innerHTML = link['label'];
             a.querySelector('a').href = link['url'];
+            a.querySelector('a').setAttribute('aria-label', `Link to ${link['label']} for human deafness gene`);
+
             document.getElementById('dm-deafness-gene-human-links').appendChild(a);
         }
 
         document.getElementById("img-deafness-gene-human").src = "./img/icons/org-2-dark-64.svg";
+        document.getElementById("img-deafness-gene-human").alt = "Human Deafness Gene";
         document.getElementById("btn-deafness-gene-human").disabled = false;
     }
 
@@ -101,10 +106,12 @@ function deafness_plugin_gene_change() {
             const a = link_template.content.cloneNode(true);
             a.querySelector('a').innerHTML = link['label'];
             a.querySelector('a').href = link['url'];
+            a.querySelector('a').setAttribute('aria-label', `Link to ${link['label']} for putative human deafness gene`);
             document.getElementById('dm-deafness-gene-human-putative-links').appendChild(a);
         }
 
         document.getElementById("img-deafness-gene-human-putative").src = "./img/icons/org-2-dark-64.svg";
+        document.getElementById("img-deafness-gene-human-putative").alt = "Putative Human Deafness Gene";
         document.getElementById("btn-deafness-gene-human-putative").disabled = false;
     }
 }
@@ -198,6 +205,9 @@ fetch("./plugins/deafness_gene_annotation/mgi_data.json")
     .catch(function(err) {
         console.error('Fetch Error :-S', err);
     });
-    
-geneChangeCallbacks.push(deafness_plugin_gene_change);
+
+// Due to the variance of the import name for a plugin given different domains,
+//   it seems best to add the property to "window" (global scope) and access that way.
+window.geneChangeCallbacks = [deafness_plugin_gene_change]
+
 add_dga_button_listeners();

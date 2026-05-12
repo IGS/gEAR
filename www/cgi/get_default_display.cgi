@@ -25,7 +25,7 @@ def main():
 )
     if default_display_id is None:
       # User owner's default
-      dataset = geardb.get_dataset_by_id(id=dataset_id)
+      dataset = geardb.get_dataset_by_id(d_id=dataset_id)
       default_display_id = geardb.get_default_display(
         user_id=dataset.owner_id
         , dataset_id=dataset_id

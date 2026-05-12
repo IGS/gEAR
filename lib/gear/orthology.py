@@ -27,7 +27,7 @@ organisms = geardb.OrganismCollection().get_all()
 abs_path_www = Path(__file__).resolve().parents[2].joinpath("www") # get www directory
 ORTHOLOG_BASE_DIR = abs_path_www.joinpath("feature_mapping")
 
-def format_orthomap_file_base(first_org_id, second_org_id, annotation_source):
+def format_orthomap_file_base(first_org_id: str, second_org_id: str, annotation_source: str="ensembl") -> str:
     """
     Formats the base filename for an orthomap file.
 
@@ -41,13 +41,13 @@ def format_orthomap_file_base(first_org_id, second_org_id, annotation_source):
     """
     return "orthomap.{0}.{2}__{1}.{2}.hdf5".format(first_org_id, second_org_id, annotation_source)
 
-def get_ortholog_file(gene_organism_id: str, dataset_organism_id: str, annotation_source: str="ensembl"):
+def get_ortholog_file(gene_organism_id: str, dataset_organism_id: str, annotation_source: str="ensembl") -> Path | None:
     """
     Get the ortholog file for a given gene organism ID, dataset organism ID, and annotation source.
 
     Args:
-        gene_organism_id (str): The ID of the gene organism.
-        dataset_organism_id (str): The ID of the dataset organism.
+        gene_organism_id (int): The ID of the gene organism.
+        dataset_organism_id (int): The ID of the dataset organism.
         annotation_source (str, optional): The annotation source. Defaults to "ensembl".
 
     Returns:
@@ -60,7 +60,8 @@ def get_ortholog_file(gene_organism_id: str, dataset_organism_id: str, annotatio
     orthomap_file = ORTHOLOG_BASE_DIR / orthomap_file_base
 
     if not orthomap_file.is_file():
-        raise FileNotFoundError(f"Orthologous mapping file not found: {orthomap_file}")
+        print(f"Orthologous mapping file not found: {orthomap_file}", file=sys.stderr)
+        return None
     return orthomap_file
 
 def get_ortholog_files_from_dataset(dataset_organism_id: str, annotation_source: str="ensembl"):
@@ -85,7 +86,8 @@ def get_ortholog_files_from_dataset(dataset_organism_id: str, annotation_source:
 
     if not orthomap_files:
         dataset_organism_name = get_organism_name_by_id(dataset_organism_id)
-        raise FileNotFoundError(f"Orthologous mapping files not found for dataset organism {dataset_organism_name}")
+        print(f"Orthologous mapping files not found for dataset organism {dataset_organism_name}", file=sys.stderr)
+        raise FileNotFoundError("Could not find any orthologous mapping files for the organism associated with this dataset")
 
     return list(orthomap_files)
 
@@ -167,7 +169,7 @@ def map_dataframe_genes(orig_df: pd.DataFrame, orthomap_file: Path):
         if matches.empty:
             return gene_id
 
-        best_match = matches.sort_values(by="algorithms_match_count", ascending=False).iloc[0]
+        best_match = matches.sort_values(by="algorithms_match_count", ascending=False).iloc[0] # type: ignore
         return best_match["id2"]
 
     # Rename orig_df index (id1) using orthologous id (id2).  If id1 maps to multiple id2, then use the id2 with the highest algorithms_match_count
@@ -190,13 +192,15 @@ def map_single_gene(gene_symbol: str, orthomap_file: Path) -> list:
 
     # Create lowercase gs1 and gs2 columns
     orthology_df["lc_gs1"] = orthology_df["gs1"].str.lower()
-    orthology_df["lc_gs2"] = orthology_df["gs2"].str.lower()
+    #orthology_df["lc_gs2"] = orthology_df["gs2"].str.lower()
 
-    # Check if case-insensitive gene symbol is in dictionary
+    # Find all matches for this gene symbol (case-insensitive)
     lc_gene_symbol = gene_symbol.lower()
+    matching_rows = orthology_df[orthology_df["lc_gs1"] == lc_gene_symbol]["gs2"].tolist()
 
-    # Return the list of all orthologous gene symbols
-    orthologous_genes = orthology_df[orthology_df["lc_gs1"] == lc_gene_symbol]["gs2"].tolist()
+    # Split comma-separated gene symbols into individual entries
+    orthologous_genes = split_comma_separated_genes(matching_rows)
+
     return orthologous_genes
 
 def map_multiple_genes(gene_symbols: list, orthomap_file: Path) -> dict:
@@ -215,98 +219,30 @@ def map_multiple_genes(gene_symbols: list, orthomap_file: Path) -> dict:
 
     # Create lowercase gs1 and gs2 columns
     orthology_df["lc_gs1"] = orthology_df["gs1"].str.lower()
-    orthology_df["lc_gs2"] = orthology_df["gs2"].str.lower()
+    #orthology_df["lc_gs2"] = orthology_df["gs2"].str.lower()
 
-    # Create a dictionary of gene symbol to orthologous gene symbols
-    # This checks if case-insensitive gene symbols are in orthology df.
-    gene_symbol_dict = {
-        gene_symbol: orthology_df[orthology_df["lc_gs1"] == gene_symbol.lower()]["gs2"].tolist()
-        for gene_symbol in gene_symbols
-    }
+
+    # Map each gene symbol to its orthologous genes
+    gene_symbol_dict = {}
+    for gene_symbol in gene_symbols:
+        lc_gene_symbol = gene_symbol.lower()
+        matching_rows = orthology_df[orthology_df["lc_gs1"] == lc_gene_symbol]["gs2"].tolist()
+        gene_symbol_dict[gene_symbol] = split_comma_separated_genes(matching_rows)
 
     return gene_symbol_dict
 
-### Annotation discovery
-
-def find_best_ensembl_release_match(input_file, organism_id, silent=False):
-    qry_ids = list()
-    id_ref = dict()
-
-    line_num = 0
-    for line in open(input_file):
-        line = line.rstrip()
-        line_num += 1
-
-        if line_num > 1:
-            cols = line.split("\t")
-            qry_ids.append(cols[0])
-
-    # connect to db
-    cnx = geardb.Connection()
-    cursor = cnx.get_cursor()
-
-    key_type = get_key_type(input_file)
-
-    # get organism to filter out gene table
-    qry = "SELECT {0}, ensembl_release FROM gene WHERE organism_id = %s".format(key_type)
-    cursor.execute(qry, (organism_id,))
-
-    for (id, release_num) in cursor:
-        if release_num not in id_ref:
-            id_ref[release_num] = dict()
-
-        id_ref[release_num][id] = 1
-
-    best_release = None
-    best_count = 0
-    best_missing_count = 0
-
-    for release_num in sorted(id_ref):
-        cov_count, empty_count = get_count(qry_ids, id_ref[release_num])
-        if not silent:
-            print("release:{0}\tcount:{1}".format(release_num, cov_count))
-
-        if cov_count > best_count:
-            best_count = cov_count
-            best_release = release_num
-            best_missing_count = empty_count
-    if not silent:
-        print("The best release is {0} with {1} of {2} genes unaccounted for.  Of these, {3} were empty".format(
-            best_release, len(qry_ids) - cov_count, len(qry_ids), best_missing_count))
-
-    cursor.close()
-    cnx.close()
-
-    return best_release
-
-def get_count(queries, refs):
-    c = 0
-    m = 0
-
-    for q in queries:
-        if q in refs:
-            c += 1
-
-        elif q is None or q == '':
-            m += 1
-
-    return c, m
-
-def get_key_type(ifile):
+def split_comma_separated_genes(gene_symbols: list[str]) -> list[str]:
     """
-    We want to magically allow for the first column to be either gene symbols or Ensembl gene IDs.
-    This determines the type by checking the first column of the first 10 rows (skipping the header)
-    and returns 'ensembl_id' if all start with ENS, else 'gene_symbol'
+    Split comma-separated gene symbols into individual symbols.
+
+    Args:
+        gene_symbols (list[str]): List of gene symbols that may contain comma-separated values.
+
+    Returns:
+        list[str]: Flattened list of individual gene symbols.
     """
-    line_num = 0
-    for line in open(ifile):
-        line_num += 1
-        if line_num == 1: continue
-        if line_num > 10: break
-
-        key = line.split("\t")[0]
-
-        if not key.startswith('ENS'):
-            return 'gene_symbol'
-
-    return 'ensembl_id'
+    split_genes = []
+    for gene_symbol in gene_symbols:
+        if isinstance(gene_symbol, str):
+            split_genes.extend(gene_symbol.split(","))
+    return split_genes

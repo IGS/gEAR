@@ -217,6 +217,8 @@ def main():
         # Do they have a current layout saved?
         saved_layout_query = "SELECT id FROM layout WHERE user_id = %s AND is_current = 1"
         cursor.execute(saved_layout_query, (current_user_id,))
+
+        layout_id = None
         for row in cursor:
             layout_id = row[0]
             break

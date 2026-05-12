@@ -49,10 +49,15 @@ article[role="tooltip"] {
 /* Arrangement view as a 12-column grid */
 .arrangement-grid {
     display: grid;
-    grid-template-columns: repeat(12, 90px);    /* setting px instead of fr prevernts distortions if grid dimensions change */
+    grid-template-columns: repeat(12, 80px);    /* setting px instead of fr prevernts distortions if grid dimensions change */
     grid-gap: 0;
-    width: 1090px;  /* grid width + 2*border width */
+    width: 970px;  /* grid width + 2*border width */
     border: 5px solid black;
+}
+
+#dataset-arrangement-single-c, #dataset-arrangement-multi-c {
+    width: 100%;
+    overflow-x: auto; /* allow horizontal scrolling if needed */
 }
 
 .js-sortable-tile {
@@ -90,4 +95,21 @@ article[role="tooltip"] {
 
 .js-modal-tooltip {
     z-index: 1000; /* make sure it's on top of the modal */
+}
+
+/* Analysis tool button states */
+.js-analysis-dropdown.is-loading button::before {
+    animation: spinAround 1s infinite linear;
+    border: 2px solid #dbdbdb;
+    border-radius: 290486px;
+    border-right-color: transparent;
+    border-top-color: transparent;
+    content: "";
+    display: inline-block;
+    right: 0.5em;
+    vertical-align: top;
+    height: 1.5em;
+    position: relative;
+    width: 1.5em;
+    margin: auto;
 }

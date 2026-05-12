@@ -1,18 +1,22 @@
 "use strict";
 
-/* Imported variables
-let dataset_collection_data; // from dataset-collection-selector
-let selected_dc_share_id; // from dataset-collection-selector
+import { apiCallsMixin, closeModal, copyToClipboard, createToast, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
+import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, setActiveDCCategory, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js";
 
+
+/* Imported variables
+let datasetCollectionState.data; // from dataset-collection-selector
+let datasetCollectionState.selectedShareId; // from dataset-collection-selector
 */
 
-let firstSearch = true;
 let searchByCollection = false;
 let includePublicMembership = false;
 const resultsPerPage = 20;
 let listView = "table";
 
 let flatDatasetCollectionData = {};   // flattened version of all dataset collections availabe to user
+
+let resultItems = [];   // array of ResultItem objects (with different views of a dataset)
 
 // TODO - Add transformation code for quick dataset transformations
 // TODO - Add superuser edit abilities for "is_curator" users
@@ -28,255 +32,457 @@ const arrow = window.FloatingUIDOM.arrow;
 let singleArrangement;
 let multiArrangement;
 
-class LayoutArrangement {
-
-    constructor(isMulti=false) {
-        this.type = isMulti ? "multi" : "single";
-        this.arrangement = [];
-        this.arrangementDiv = document.getElementById(`dataset-arrangement-${this.type}`);
-
-        this.arrangementWidth = 1080; // NOTE: Originally used singleGeneArrangementDiv.offsetWidth, but it is 0 unless the element is visible
-        this.rowWidth = this.arrangementWidth / 12; // Split width into 12 columns
-        this.colHeight = this.rowWidth * 4; // A unit of height for us is 4 units of width (to make a square)
-    }
-
-    addMember(member) {
-        this.arrangement.push(member);
-    }
-
-    setupArrangementAdjustable() {
-
-        this.maxRow = Math.max(...this.arrangement.map((tile) => tile.startRow + tile.gridHeight)) -1;
-        this.arrangementDiv.style.gridTemplateRows = `repeat(${this.maxRow}, ${this.colHeight}px)`;
-
-        // Sort by row and column
-        this.arrangement.sort((a, b) => {
-            if (a.startRow === b.startRow) {
-                return a.startCol - b.startCol;
-            }
-            return a.startRow - b.startRow;
-        });
-
-        // Clear the arrangement div
-        this.arrangementDiv.innerHTML = "";
-
-        // Add each member to the arrangement div
-        for (const member of this.arrangement) {
-            this.arrangementDiv.appendChild(member.createArrangementTile());
-            member.createInteractable();
-        }
-
-    }
-}
-
-class LayoutArrangementMember {
-
-    constructor(arrangementObj, displayId, gridPosition, startCol, startRow, gridWidth, gridHeight) {
-        this.parentArrangement = arrangementObj;
-        this.displayId = displayId;
-        this.gridPosition = gridPosition;
-        this.startCol = startCol;
-        this.startRow = startRow;
-        this.gridWidth = gridWidth;
-        this.gridHeight = gridHeight;
-        this.datasetTitle = "";
-        this.image = "";
-        this.tileTemplate = document.getElementById("dataset-arrangement-tile-template");
-        this.selector = `.js-sortable-tile[data-display-id="${this.displayId}"]`;
-        this.snapWidth = this.parentArrangement.rowWidth * 2; // Snap to 1/6 increments for width
-        this.snapHeight = this.parentArrangement.colHeight; // Snap to 1/4 increments for height;
-    }
-
-    createArrangementTile() {
-        const tile = this.tileTemplate.content.cloneNode(true);
-
-        setElementProperties(tile, ".js-sortable-tile", { dataset: {displayId: this.displayId} });
-        // add gridAra to tile
-        tile.querySelector(".js-sortable-tile").style.gridArea = `${this.startRow} / ${this.startCol} / span ${this.gridHeight} / span ${this.gridWidth}`;
-        // add dataset title
-        setElementProperties(tile, ".js-sortable-tile-title", { textContent: this.datasetTitle });
-        // add preview image
-        const tileImg = tile.querySelector(".js-sortable-tile-img");
-        tileImg.src = this.image;
-        return tile;
-    }
-
-    createInteractable() {
-        const that = this;  // Preserve this context for event listeners
-
-        this.interactable = interact(this.selector);
-
-        this.interactable.draggable({
-            // keep the element within the area of it's parent
-            modifiers: [
-                interact.modifiers.restrictRect({
-                    restriction: 'parent',  // keep the drag within the parent. If dragged outside, it will snap back
-                    endOnly: true
-                }),
-                interact.modifiers.snap({
-                    // snap to the 12 possible grid columns, and n+1 grid rows.
-                    targets: [
-                        interact.createSnapGrid({ x: that.snapWidth, y: that.snapHeight }),
-                    ],
-                    range: Infinity,
-                    relativePoints: [{ x: 1, y: 1 }],   // snap to the bottom right corner of the element (allows for a 1-to-1 with the grid start row/column)
-                    offset: 'parent'
-                })
-            ],
-            listeners: {
-                move (event) {
-                    const target = event.target
-
-                    // get current style gridArea values (preserve span values)
-                    const rowStart = parseInt(target.style.gridRowStart);
-                    const colStart = parseInt(target.style.gridColumnStart);
-
-                    // These are reported as "span N" in the gridArea style
-                    const rowSpan = parseInt(target.style.gridRowEnd.split(" ")[1]);
-                    const colSpan = parseInt(target.style.gridColumnEnd.split(" ")[1]);
-
-                    const dStartCol = (Math.round(event.delta.x / that.snapWidth) * 2);  // x2 converts to 12 column grid
-                    const dStartRow = Math.round(event.delta.y / that.snapHeight);
-
-                    const newStartCol = colStart + dStartCol;
-                    const newStartRow = rowStart + dStartRow;
-
-                    target.style.gridArea = `${newStartRow} / ${newStartCol} / span ${rowSpan} / span ${colSpan}`;
-
-                    // When dragged to the n+1 row, add a new row to the grid.
-                    const arrangementDiv = target.parentElement;    // AKA this.parentArrangement.arrangementDiv
-                    // get current number of rows in the grid
-                    // it is stored as a string like "repeat(3, 100px)"
-                    const arrangementRows = parseInt(arrangementDiv.style.gridTemplateRows.split(",")[0].split("(")[1]);
-
-                    const lastTileRow = newStartRow + rowSpan -1;
-                    // If the dragged tile's bottom edge is below the last row, add another row to the grid template
-                    if (lastTileRow > arrangementRows) {
-                        arrangementDiv.style.gridTemplateRows = `repeat(${lastTileRow}, ${that.parentArrangement.colHeight}px)`;
-                    }
-                },
-                end: this.determineGridOverlap
-            }
-
-        }).resizable({
-            // resize from only the right and bottom edges (adding top and left adds complexity)
-            edges: { left: false, right: true, bottom: true, top: false },
-            listeners: {
-                move (event) {
-
-                    // get current style gridArea values (at least the ones to preserve)
-                    const rowStart = parseInt(event.target.style.gridRowStart);
-                    const colStart = parseInt(event.target.style.gridColumnStart);
-
-                    // Snap to grid in 1/6 increments for width
-                    const newSpanWidth = (Math.round(event.rect.width / that.snapWidth) * 2);  // x2 converts to 12 column grid
-                    const newSpanHeight = Math.round(event.rect.height / that.snapHeight);
-
-                    event.target.style.gridArea = `${rowStart} / ${colStart} / span ${newSpanHeight} / span ${newSpanWidth}`;
-
-                    // When resized to the n+1 row, add a new row to the grid.
-                    const arrangementDiv = event.target.parentElement;    // AKA this.parentArrangement.arrangementDiv
-                    // get current number of rows in the grid
-                    // it is stored as a string like "repeat(3, 100px)"
-                    const arrangementRows = parseInt(arrangementDiv.style.gridTemplateRows.split(",")[0].split("(")[1]);
-
-                    const lastTileRow = rowStart + newSpanHeight -1;
-                    // If the dragged tile's bottom edge is below the last row, add another row to the grid template
-                    if (lastTileRow > arrangementRows) {
-                        arrangementDiv.style.gridTemplateRows = `repeat(${lastTileRow}, ${that.parentArrangement.colHeight}px)`;
-                    }
-                },
-                end: this.determineGridOverlap
-            }
-        });
-    }
-
-    determineGridOverlap(event) {
-        // Determine if any tiles overlap with one another on the parent grid and provide visual cue
-
-        const eventRowStart = parseInt(event.target.style.gridRowStart);
-        const eventRowEnd = eventRowStart + parseInt(event.target.style.gridRowEnd.split(" ")[1]);
-        const eventColStart = parseInt(event.target.style.gridColumnStart);
-        const eventColEnd = eventColStart + parseInt(event.target.style.gridColumnEnd.split(" ")[1]);
-
-        // Get all tiles in the arrangement
-        const arrangementDiv = event.target.parentElement;
-        const arrangementTiles = arrangementDiv.querySelectorAll(".js-sortable-tile");
-
-        // Check for overlap with other tiles
-        for (const tile of arrangementTiles) {
-            if (tile === event.target) {
-                continue;
-            }
-
-            // Get the grid area of the current tile and event tile
-            const tileRowStart = parseInt(tile.style.gridRowStart);
-            const tileRowEnd = tileRowStart + parseInt(tile.style.gridRowEnd.split(" ")[1]);
-            const tileColStart = parseInt(tile.style.gridColumnStart);
-            const tileColEnd = tileColStart + parseInt(tile.style.gridColumnEnd.split(" ")[1]);
-
-            // Check for overlap
-            // This reminds me of the video game detection algorithms
-            event.target.classList.remove("js-is-overlapping")
-            event.target.style.opacity = 1;
-            event.target.querySelector(".js-sortable-tile-title").classList.remove("has-text-danger-light", "has-background-danger-dark");
-            event.target.querySelector(".js-sortable-tile-title").classList.add("has-background-primary-light");
-            document.getElementById("btn-save-arrangement").disabled = false;
-
-            if (tileRowStart < eventRowEnd
-                && tileRowEnd > eventRowStart
-                && tileColStart < eventColEnd
-                && tileColEnd > eventColStart) {
-                // Overlap detected
-                event.target.classList.add("js-is-overlapping");
-                event.target.style.opacity = 0.5;
-                event.target.querySelector(".js-sortable-tile-title").classList.add("has-text-danger-light", "has-background-danger-dark");
-                event.target.querySelector(".js-sortable-tile-title").classList.remove("has-background-primary-light");
-                break;
-            }
-
-        }
-
-        // only enable when no tiles have "js-is-overlapping" class
-        if( [...document.querySelectorAll(".js-sortable-tile")].some(tile => tile.classList.contains("js-is-overlapping")) ) {
-            document.getElementById("btn-save-arrangement").disabled = true;
-        } else {
-            // All tiles are valid, clear the "overlap" appearances
-            for (const tile of document.querySelectorAll(".js-sortable-tile")) {
-                tile.classList.remove("js-is-overlapping");
-                tile.style.opacity = 1;
-                tile.querySelector(".js-sortable-tile-title").classList.remove("has-text-danger-light", "has-background-danger-dark");
-                tile.querySelector(".js-sortable-tile-title").classList.add("has-background-primary-light");
-            }
-        }
-
-    }
-
-}
-
-/**
- * Adds event listeners for various actions related to datasets.
- * @function
- * @returns {void}
- */
-const addDatasetListEventListeners = () => {
-
-    // Add event listener to analysis dropdown trigger
-    for (const classElt of document.querySelectorAll(".js-analysis-dropdown .dropdown-trigger")) {
-        classElt.addEventListener("click", (event) => {
-            const item = event.currentTarget;
-            item.closest(".dropdown").classList.toggle('is-active');
-        });
+const getAnalysisTools = dtype => {
+    const dict =  {
+        "dataset-curator": [
+            "single-cell-rnaseq",
+            "bulk-rnaseq",
+            "bargraph-standard",
+            "microarray",
+            "svg-expression",
+            "atac-seq",
+            "violin-standard",
+            "spatial",
+            "sc-rna-seq",
+            "linegraph-standard"
+        ],
+        "multigene-viewer": [
+            "single-cell-rnaseq",
+            "bulk-rnaseq",
+            "bargraph-standard",
+            "microarray",
+            "atac-seq",
+            "violin-standard",
+            "spatial",
+            "sc-rna-seq",
+            "linegraph-standard"
+        ],
+        "compare-tool": [
+            "single-cell-rnaseq",
+            "bulk-rnaseq",
+            "bargraph-standard",
+            "microarray",
+            "atac-seq",
+            "violin-standard",
+            "spatial",
+            "sc-rna-seq",
+            "linegraph-standard"
+        ],
+        "sc-workbench": [
+            "single-cell-rnaseq",
+            "atac-seq",
+            "spatial",
+            "sc-rna-seq"
+        ]
     };
 
-    // Expand and collapse dataset view
-    for (const classElt of document.getElementsByClassName("js-expand-box")) {
-        classElt.addEventListener("click", (e) => {
-            const datasetId = e.currentTarget.dataset.datasetId;
-            const selector = `#result-dataset-id-${datasetId} .js-expandable-view`;
-            const expandableViewElts = document.querySelectorAll(selector);
-            for (const classElt of expandableViewElts) {
-                classElt.classList.toggle("is-hidden");
+    const tools = { };
+    for (const [tool, dtypes] of Object.entries(dict)) {
+        tools[tool] = dtypes.includes(dtype);
+    }
+
+    return tools;
+};
+
+class ResultItem {
+    constructor(data) {
+        this.layouts = data.layouts;
+
+        // UI selectors
+        this.tableResultsBody = document.querySelector("#results-table tbody");
+        this.tableTemplate = document.getElementById("results-table-view");
+        this.resultsListDiv = document.getElementById("results-list-div");
+        this.listTemplate = document.getElementById("results-list-view");
+
+        this.datasetId = data.id;
+        this.datasetType = data.dtype;
+        this.label = data.title;
+
+        this.longDesc = data.ldesc || "";
+        this.shareId = data.share_id;
+        this.isPublic = Boolean(data.is_public);
+        this.isDownloadable = Boolean(data.is_downloadable);
+        this.hasH5ad = Boolean(data.has_h5ad);
+        this.dateAdded = new Date(data.date_added).toDateString();
+        // as YYYY/MM/DD
+        this.shortDateAdded = new Date(data.date_added).toISOString().slice(0, 10);
+
+        this.userName = data.user_name;
+        this.organism = data.organism;
+        this.isOwner = data.is_owner
+
+        this.annotSource = data.annotation_source || "Not given";
+        this.annotVersion = data.annotation_release || "Not given";
+
+        this.pubmedId = data.pubmed_id || null;
+        this.geoId = data.geo_id || null;
+
+        if (data?.preview_image_url) {
+            this.previewImageUrl = data.preview_image_url;
+        } else if (this.datasetType == "gosling") {
+            this.previewImageUrl = "/img/dataset_previews/gosling.png";
+        } else {
+            this.previewImageUrl = "/img/dataset_previews/missing.png";
+        }
+
+    }
+
+    createListItem() {
+        const makeRandomString = (length) => {
+            let result = '';
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            const charactersLength = characters.length;
+            for (let i = 0; i < length; i++) {
+                result += characters.charAt(Math.floor(Math.random() * charactersLength));
+            }
+            return result;
+        }
+
+        const datasetId = this.datasetId;
+
+        // Clone the template
+        const listItemView = this.listTemplate.content.cloneNode(true);
+
+        // Adding dataset attrubute to be able to key in doing a querySelector action
+        setElementProperties(listItemView, ".js-dataset-list-element", { dataset: { datasetId } });
+
+        // title section
+        setElementProperties(listItemView, ".js-display-title p", { textContent: this.label });
+        setElementProperties(listItemView, ".js-editable-title input", { value: this.label });
+        // visibility/other metadata section
+        const visibilityId = makeRandomString(10);
+        setElementProperties(listItemView, ".js-editable-visibility input", { id: visibilityId, checked: this.isPublic });
+        setElementProperties(listItemView, ".js-editable-visibility label", { htmlFor: visibilityId, textContent: this.isPublic ? "Public" : "Private" });
+
+        // downloadable section
+        const downloadableId = makeRandomString(10);
+        setElementProperties(listItemView, ".js-editable-downloadable input", { id: downloadableId, checked: this.isDownloadable });
+        setElementProperties(listItemView, ".js-editable-downloadable label", { htmlFor: downloadableId, textContent: this.isDownloadable ? "Yes" : "No" });
+        // if h5ad is not present, then disable input and set to "No"
+        if (!this.hasH5ad) {
+            setElementProperties(listItemView, ".js-editable-downloadable input", { disabled: true });
+            setElementProperties(listItemView, ".js-editable-downloadable label", { textContent: "No" });
+        }
+
+        // organism section
+        setElementProperties(listItemView, ".js-display-organism span:last-of-type", { textContent: this.organism });
+        setElementProperties(listItemView, ".js-editable-organism input", {value: this.organism });
+        // owner section
+        setElementProperties(listItemView, ".js-display-owner span:last-of-type", { textContent: this.userName });
+        setElementProperties(listItemView, ".js-editable-owner input", { value: this.userName });
+        // date added section
+        setElementProperties(listItemView, ".js-display-date-added span:last-of-type", { textContent: this.dateAdded });
+        setElementProperties(listItemView, ".js-editable-date-added input", { value: this.dateAdded });
+
+        // annotation source section
+        setElementProperties(listItemView, ".js-display-annot-source span:last-of-type", { textContent: this.annotSource });
+        setElementProperties(listItemView, ".js-editable-annot-source input", { value: this.annotSource });
+
+        // annotation version section
+        setElementProperties(listItemView, ".js-display-annot-version span:last-of-type", { textContent: this.annotVersion });
+        setElementProperties(listItemView, ".js-editable-annot-version input", { value: this.annotVersion });
+
+        // pubmed id section
+        const pubmedProp = this.pubmedId ? {
+            // Not adding "icon-text" and "icon" classes because it aligns text and icon under the label
+            innerHTML: `<a href="https://pubmed.ncbi.nlm.nih.gov/${this.pubmedId}" target="_blank">
+                    <span>${this.pubmedId}</span>
+                    <i class="mdi mdi-open-in-new"></i>
+                </a>`
+        } : { textContent: "Not available" };
+
+        setElementProperties(listItemView, ".js-display-pubmed-id span:last-of-type", pubmedProp);
+        setElementProperties(listItemView, ".js-editable-pubmed-id input", { value: this.pubmedId });
+
+        // geo id section
+        const geoProp = this.geoId ? {
+            innerHTML: `<a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=${this.geoId}" target="_blank">
+                    <span>${this.geoId}</span>
+                    <i class="mdi mdi-open-in-new"></i>
+                </a>`
+        } : { textContent: "Not available" };
+
+        setElementProperties(listItemView, ".js-display-geo-id span:last-of-type", geoProp);
+        setElementProperties(listItemView, ".js-editable-geo-id input", { value: this.geoId });
+
+        // action buttons section
+        setElementProperties(listItemView, ".js-view-dataset", { value: this.shareId });
+        setElementProperties(listItemView, ".js-view-projection-dataset", { value: this.shareId });
+        setElementProperties(listItemView, ".js-delete-dataset", { value: datasetId });
+        setElementProperties(listItemView, ".js-edit-dataset-permalink", { value: datasetId });
+
+        setElementProperties(listItemView, ".js-share-dataset", { value: this.shareId });
+        setElementProperties(listItemView, ".js-edit-dataset", { value: datasetId });
+        setElementProperties(listItemView, ".js-edit-dataset-save", { value: datasetId });
+        setElementProperties(listItemView, ".js-edit-dataset-cancel", { value: datasetId });
+
+        { // analysis links section
+            const analysisDropdown = listItemView.querySelector(`.js-analysis-dropdown`);
+            analysisDropdown.classList.add("is-disabled", "is-loading");
+
+            const tools = [ "dataset-curator", "multigene-viewer", "compare-tool", "sc-workbench" ];
+            for (const tool of tools) {
+                listItemView.querySelector(`.js-${tool}`).classList.add("is-disabled");
+            }
+
+            const updateAvailableTools = (availableTools) => {
+                const domElement = document.querySelector(`.js-dataset-list-element[data-dataset-id="${this.datasetId}"]`);
+                if (!domElement) {
+                    return;
+                }
+
+                let any = false;
+                for (const tool of tools) {
+                    if (availableTools[tool]) {
+                        const toolElement = domElement.querySelector(`.js-${tool}`);
+                        if (toolElement) {
+                            toolElement.classList.remove("is-disabled");
+                            any = true;
+                        }
+                    }
+                }
+
+                const domAnalysisDropdown = domElement.querySelector(`.js-analysis-dropdown`);
+                domAnalysisDropdown.classList.remove("is-loading");
+                if (any) {
+                    domAnalysisDropdown.classList.remove("is-disabled");
+                } else {
+                    domAnalysisDropdown.setAttribute("data-tooltip-content", "No analysis tools available");
+                    applyTooltip(domAnalysisDropdown, createActionTooltips(domAnalysisDropdown));
+                }
+            };
+
+            if ("datasetType" in this) {
+                const availableTools = getAnalysisTools(this.datasetType);
+                updateAvailableTools(availableTools);
+            } else {
+                apiCallsMixin.fetchAvailableAnalysisTools(this.shareId).then((data) => {
+                    const availableTools = data.available_analysis_tools;
+                    updateAvailableTools(availableTools);
+                });
+            }
+        }
+
+        setElementProperties(listItemView, ".js-dataset-curator", { href: `./dataset_curator.html?share_id=${this.shareId}`});
+        setElementProperties(listItemView, ".js-multigene-viewer", { href: `./multigene_curator.html?share_id=${this.shareId}`});
+        setElementProperties(listItemView, ".js-compare-tool", { href: `./compare_datasets.html?share_id=${this.shareId}`});
+        setElementProperties(listItemView, ".js-sc-workbench", { href: `./sc_workbench.html?share_id=${this.shareId}`});
+
+
+        // dataset type section
+        setElementProperties(listItemView, ".js-display-dataset-type span:last-of-type", { textContent: this.datasetType });
+        setElementProperties(listItemView, ".js-editable-dataset-type input", { value: this.datasetType });
+        // long description section
+        setElementProperties(listItemView, ".js-editable-ldesc textarea", { value: this.longDesc });
+
+        return listItemView;
+    }
+
+    createListViewItem() {
+        const listItemView = this.createListItem();
+
+        // Append the cloned template to the results container
+        this.resultsListDiv.appendChild(listItemView);
+        this.resultListItem = this.resultsListDiv.querySelector(`.js-dataset-list-element[data-dataset-id="${this.datasetId}"]`);
+
+        this.createDeleteDatasetConfirmationPopover(this.resultListItem);
+        this.createRenameDatasetPermalinkPopover(this.resultListItem);
+    }
+
+    createTableExpandRow() {
+        const listItemView = this.createListItem();
+
+        this.tableExpandedRow = this.rowItem.parentElement.querySelector(`[data-dataset-id="${this.datasetId}"] + .js-table-row-expanded`);
+        this.tableExpandedCell = this.tableExpandedRow.querySelector("td");
+
+        // Append the cloned template to the expanded cell
+        this.tableExpandedCell.appendChild(listItemView);
+        this.expandedRowItem = this.tableExpandedCell.querySelector(`.js-dataset-list-element[data-dataset-id="${this.datasetId}"]`);
+
+        this.createDeleteDatasetConfirmationPopover(this.expandedRowItem);
+        this.createRenameDatasetPermalinkPopover(this.expandedRowItem);
+    }
+
+
+    createTableRow() {
+        const datasetId = this.datasetId;
+
+        // Clone the template
+        const rowItem = this.tableTemplate.content.cloneNode(true);
+
+
+        // Adding dataset attrubute to be able to key in doing a querySelector action
+        setElementProperties(rowItem, ".js-table-row", { dataset: { datasetId } });
+
+        // TODO: Truncate titles with tooltip for full title
+        // Set properties for multiple elements
+        setElementProperties(rowItem, ".js-display-title", {textContent: this.label });
+        setElementProperties(rowItem, ".js-display-organism", {textContent: this.organism });
+        setElementProperties(rowItem, ".js-display-owner", { textContent: this.userName });
+        setElementProperties(rowItem, ".js-display-date-added", { textContent: this.shortDateAdded });
+        setElementProperties(rowItem, ".js-display-dataset-type", { textContent: this.datasetType });
+
+        // Append the cloned template to the results container
+        this.tableResultsBody.appendChild(rowItem);
+        this.rowItem = document.querySelector(`.js-table-row[data-dataset-id="${datasetId}"]`);
+        this.addTableVisibilityInfo();
+
+        // Add the expandable row
+        this.createTableExpandRow();
+
+        // Add event listneres
+        this.addTableItemEventListeners();
+
+    }
+
+    /**
+     * Asynchronously renders and opens a modal for displaying dataset information.
+     *
+     * This function calls `renderDisplaysModal` with the dataset's ID, title, and
+     * public status, then retrieves the modal element by its ID and opens it.
+     *
+     * @async
+     * @function displaysModalCallback
+     * @returns {Promise<void>} A promise that resolves when the modal has been rendered and opened.
+     */
+    async displaysModalCallback() {
+        await renderDisplaysModal(this.datasetId, this.title, this.isPublic);
+        const modalElt = document.getElementById(`displays-modal-${this.datasetId}`);
+        openModal(modalElt);
+    }
+
+    // *** Table row stuff ***
+    addTableVisibilityInfo() {
+        const tableVisibility = this.rowItem.querySelector(`.js-display-visibility`);
+        if (this.isPublic) {
+            tableVisibility.classList.add("has-background-primary-light");
+            tableVisibility.textContent = "Public";
+        } else {
+            tableVisibility.classList.add("has-background-danger");
+            tableVisibility.textContent = "Private";
+        }
+    }
+
+    addTableItemEventListeners() {
+        // click .js-td-expand in table row to expand/collapse the row
+        this.rowItem.querySelector(".js-expand-row").addEventListener("click", (e) => {
+            this.tableExpandedRow.classList.toggle("is-hidden");
+            // Check if the row is already expanded
+            if (this.tableExpandedRow.classList.contains("is-hidden")) {
+                // State is expanded
+                e.currentTarget.querySelector(".icon").innerHTML = '<i class="mdi mdi-24px mdi-chevron-down"></i>';
+                return;
+            }
+            // Original state is collapsed
+            e.currentTarget.querySelector(".icon").innerHTML = '<i class="mdi mdi-24px mdi-chevron-up"></i>';
+        });
+
+        this.rowItem.querySelector(".js-view-displays").addEventListener("click", async (e) => {
+            await this.displaysModalCallback();
+        });
+
+    }
+
+    // *** List item stuff ***
+    addCollectionMembershipInfo(parentElt) {
+        parentElt.querySelector(`.js-found-in-collection-text`).innerHTML = "Found in these owned or highlighted collections";
+        if (includePublicMembership) {
+            parentElt.querySelector(`.js-found-in-collection-text`).innerHTML = "Found in these owned or public collections";
+        }
+
+
+        const collections = this.layouts;
+        for (const collectionString of collections) {
+            const collection = JSON.parse(collectionString);
+            const shareId = collection.share_id;
+            const label = collection.label;
+
+            const collectionListElt = parentElt.querySelector(`.js-found-in-collections-list`);
+            // Create list element that can link out to the collection
+            const collectionListItem = document.createElement("li");
+            collectionListItem.innerHTML = `
+            <span>
+                <a href="./p?l=${shareId}" target="_blank">
+                    <span>${label}</span>
+                    <i class="mdi mdi-open-in-new"></i>
+                </a>
+            </span>
+            `;
+            collectionListElt.appendChild(collectionListItem);
+        }
+    }
+
+    addDownloadableInfoToDataset(parentElt){
+        const datasetDisplayContainer = parentElt.querySelector(`.js-display-downloadable`);
+        const datasetDisplaySpan = document.createElement("span");
+        datasetDisplaySpan.classList.add("tag");
+
+        if (this.hasH5ad && this.isDownloadable) {
+            datasetDisplaySpan.classList.add("is-success");
+            datasetDisplaySpan.textContent = "Downloadable";
+        } else {
+            datasetDisplaySpan.classList.add("is-dark");
+            datasetDisplaySpan.textContent = "Not downloadable";
+        }
+        datasetDisplayContainer.appendChild(datasetDisplaySpan);
+    }
+
+    addListVisibilityInfo(parentElt){
+        // add dataset public/private info to DOM
+        const datasetDisplayContainer = parentElt.querySelector(`.js-display-visibility`);
+        const datasetDisplaySpan = document.createElement("span");
+        datasetDisplaySpan.classList.add("tag");
+
+        if (this.isPublic) {
+            datasetDisplaySpan.classList.add("is-primary", "is-light");
+            datasetDisplaySpan.textContent = "Public dataset";
+        } else {
+            datasetDisplaySpan.classList.add("is-danger");
+            datasetDisplaySpan.textContent = "Private dataset";
+        }
+        datasetDisplayContainer.appendChild(datasetDisplaySpan);
+
+        // Toggle switch (public is checked, private is unchecked)
+        const visibilitySwitch = parentElt.querySelector(`.js-editable-visibility input`);
+        visibilitySwitch.addEventListener("change", (e) => {
+            const isPublic = e.currentTarget.checked;
+            e.currentTarget.closest(".field").querySelector("label").textContent = isPublic ? "Public" : "Private";
+        });
+
+        const downloadableSwitch = parentElt.querySelector(`.js-editable-downloadable input`);
+
+        downloadableSwitch.addEventListener("change", (e) => {
+            const isDownloadable = e.currentTarget.checked;
+            e.currentTarget.closest(".field").querySelector("label").textContent = isDownloadable ? "Yes" : "No";
+        });
+    }
+
+    addImagePreview(parentElt) {
+        const datasetImageContainer = parentElt.querySelector(`figure.is-square img`);
+        datasetImageContainer.src = this.previewImageUrl;
+    }
+
+    addDescriptionInfo(parentElt) {
+        // Add ldesc if it exists
+        const ldescText = parentElt.querySelector(".js-display-ldesc-text");
+        const span = document.createElement("span");
+        span.innerHTML = this.longDesc || "No description entered";
+        ldescText.replaceChildren(span);
+    }
+
+    addListItemEventListeners(parentElt) {
+
+        // Add event listener to analysis dropdown trigger
+        parentElt.querySelector(".js-analysis-dropdown .dropdown-trigger").addEventListener("click", (e) => {
+            const item = e.currentTarget;
+            item.closest(".dropdown").classList.toggle('is-active');
+        });
+
+        // Expand and collapse dataset view
+        parentElt.querySelector(".js-expand-box").addEventListener("click", (e) => {
+            const expandableViewElts = parentElt.querySelectorAll(".js-expandable-view");
+            for (const elt of expandableViewElts) {
+                elt.classList.toggle("is-hidden");
             }
 
             // Toggle the icon
@@ -287,108 +493,85 @@ const addDatasetListEventListeners = () => {
             e.currentTarget.innerHTML = '<i class="mdi mdi-arrow-expand"></i>';
 
         });
-    }
 
-    for (const classElt of document.getElementsByClassName("js-download-dataset")) {
-        classElt.addEventListener("click", async (e) => {
-            try {
-                // download the h5ad
-                const datasetId = e.currentTarget.dataset.datasetId;
-                const url = `./cgi/download_source_file.cgi?type=h5ad&dataset_id=${datasetId}`;
-                const {data} = await axios.get(url, {responseType: 'blob'});
-                const blob = new Blob([data], {type: 'application/octet-stream'});
-                const downloadUrl = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = downloadUrl;
-                a.download = `${datasetId}.h5ad`;
-                a.click();
-            } catch (error) {
-                logErrorInConsole(error);
-                createToast("Failed to download dataset");
-            }
-        });
-    }
+        // Download button just needs href set. File will be <dataset_id>.h5ad
+        const downloadSelector = parentElt.querySelector(".js-download-dataset");
+        if (downloadSelector) {
 
-    for (const classElt of document.getElementsByClassName("js-share-dataset")) {
-        classElt.addEventListener("click", (e) => {
+            downloadSelector.addEventListener("click", async (e) => {
+                e.currentTarget.classList.add("is-loading");
+                try {
+                    // download the h5ad
+                    const datasetId = this.datasetId;
+                    const url = `./cgi/download_source_file.cgi?type=h5ad&share_id=${this.shareId}`;
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.click();
+                } catch (error) {
+                    logErrorInConsole(error);
+                    createToast("Failed to download dataset");
+                } finally {
+                    e.currentTarget.classList.remove("is-loading");
+                }
+            });
 
-            const shareId = e.currentTarget.value;
-            const currentPage = getRootUrl();
-            const shareUrl = `${currentPage}/p?s=${shareId}`;
+        }
+
+        parentElt.querySelector(".js-share-dataset").addEventListener("click", (e) => {
+
+            let currentPage = new URL(`${getRootUrl()}/p`);
+            const params = new URLSearchParams(currentPage.search);
+
+            params.set('s', this.shareId);
+
+            currentPage.search = params.toString();
+            const shareUrl = currentPage.toString();
             copyPermalink(shareUrl);
         });
-    }
 
-    for (const classElt of document.getElementsByClassName("js-view-displays")) {
-        classElt.addEventListener("click", async (e) => {
-
-            const datasetId = e.currentTarget.dataset.datasetId;
-            const title = e.currentTarget.dataset.title;
-            const isPublic = parseBool(e.currentTarget.dataset.isPublic);
-            await renderDisplaysModal(datasetId, title, isPublic);
-
-            const modalElt = document.getElementById(`displays-modal-${datasetId}`);
-            openModal(modalElt);
-
+        parentElt.querySelector(".js-view-displays").addEventListener("click", async (e) => {
+            await this.displaysModalCallback();
         });
-    }
 
-    // Cancel button for editing a dataset
-    for (const classElt of document.getElementsByClassName("js-edit-dataset-cancel")) {
-        classElt.addEventListener("click", (e) => {
-            const datasetId = e.currentTarget.dataset.datasetId;
-            const selectorBase = `#result-dataset-id-${datasetId}`;
+        // Cancel button for editing a dataset
+        parentElt.querySelector(".js-edit-dataset-cancel").addEventListener("click", (e) => {
 
             // Show editable versions where there are some and hide the display versions
-            for (const classElt of document.querySelectorAll(`${selectorBase} .js-editable-version`)) {
+            for (const classElt of parentElt.querySelectorAll(`.js-editable-version`)) {
                 classElt.classList.add("is-hidden");
             };
-            for (const classElt of document.querySelectorAll(`${selectorBase} .js-display-version`)) {
+            for (const classElt of parentElt.querySelectorAll(`.js-display-version`)) {
                 classElt.classList.remove("is-hidden");
             };
 
             // Reset any unsaved/edited values
-            const visibility = document.querySelector(`${selectorBase}-editable-visibility`).dataset.originalVal;
-            document.querySelector(`${selectorBase}-editable-visibility`).value = visibility;
-
-            const title = document.querySelector(`${selectorBase}-editable-title`).dataset.originalVal;
-            document.querySelector(`${selectorBase}-editable-title`).value = title;
-
-            const ldesc = document.querySelector(`${selectorBase}-editable-ldesc`).dataset.originalVal;
-            document.querySelector(`${selectorBase}-editable-ldesc`).value = ldesc;
-
-            const pubmedId = document.querySelector(`${selectorBase}-editable-pubmed-id`).dataset.originalVal;
-            document.querySelector(`${selectorBase}-editable-pubmed-id`).value = pubmedId;
-
-            const geoId = document.querySelector(`${selectorBase}-editable-geo-id`).dataset.originalVal;
-            document.querySelector(`${selectorBase}-editable-geo-id`).value = geoId;
-
-            document.querySelector(`${selectorBase} .js-action-links`).classList.remove("is-hidden");
+            parentElt.querySelector(`.js-editable-visibility input`).value = this.isPublic ? "Public" : "Private";
+            parentElt.querySelector(`.js-editable-downloadable input`).value = this.isDownloadable ? "Yes" : "No";
+            parentElt.querySelector(`.js-editable-title input`).value = this.title;
+            parentElt.querySelector(`.js-editable-ldesc textarea`).value = this.longDesc;
+            parentElt.querySelector(`.js-editable-pubmed-id input`).value = this.pubmedId;
+            parentElt.querySelector(`.js-editable-geo-id input`).value = this.geoId;
+            parentElt.querySelector(`.js-action-links`).classList.remove("is-hidden");
 
         });
-    }
 
-    // Save button for editing a dataset
-    for (const classElt of document.getElementsByClassName("js-edit-dataset-save")) {
-        classElt.addEventListener("click", async (e) => {
-            const datasetId = e.currentTarget.dataset.datasetId;
-            const selectorBase = `#result-dataset-id-${datasetId}`;
-            //
-            const newVisibility = document.querySelector(`${selectorBase}-editable-visibility`).checked;
+        // Save button for editing a dataset
+        parentElt.querySelector(".js-edit-dataset-save").addEventListener("click", async (e) => {
+            const newVisibility = parentElt.querySelector(`.js-editable-visibility input`).checked;
             // convert "true/false" visibility to 1/0
             const intNewVisibility = newVisibility ? 1 : 0;
 
-            const isDownloadable = document.querySelector(`${selectorBase}-editable-downloadable`).checked;
+            const isDownloadable = parentElt.querySelector(`.js-editable-downloadable input`).checked;
             // convert "true/false" visibility to 1/0
             const intIsDownloadable = isDownloadable ? 1 : 0;
 
-            const newTitle = document.querySelector(`${selectorBase}-editable-title`).value;
-            const newPubmedId = document.querySelector(`${selectorBase}-editable-pubmed-id`).value;
-            const newGeoId = document.querySelector(`${selectorBase}-editable-geo-id`).value;
-            const newLdesc = document.querySelector(`${selectorBase}-editable-ldesc`).value;
+            const newTitle = parentElt.querySelector(`.js-editable-title input`).value;
+            const newLdesc = parentElt.querySelector(`.js-editable-ldesc textarea`).value;
+            const newPubmedId = parentElt.querySelector(`.js-editable-pubmed-id input`).value;
+            const newGeoId = parentElt.querySelector(`.js-editable-geo-id input`).value;
 
             try {
-                const data = await apiCallsMixin.saveDatasetInfoChanges(datasetId, intNewVisibility, intIsDownloadable, newTitle, newPubmedId, newGeoId, newLdesc);
+                const data = await apiCallsMixin.saveDatasetInfoChanges(this.datasetId, intNewVisibility, intIsDownloadable, newTitle, newPubmedId, newGeoId, newLdesc);
                 createToast("Dataset changes saved", "is-success");
 
             } catch (error) {
@@ -396,425 +579,177 @@ const addDatasetListEventListeners = () => {
                 createToast("Failed to save dataset changes");
                 return;
             } finally {
-                document.querySelector(`${selectorBase} .js-action-links`).classList.remove("is-hidden");
+                parentElt.querySelector(`.js-action-links`).classList.remove("is-hidden");
             }
 
-            // Update the UI for the new values
-            document.querySelector(`${selectorBase}-editable-visibility`).dataset.isPublic = newVisibility;
-            if (newVisibility) {
-                document.querySelector(`${selectorBase}-display-visibility`).textContent = "Public dataset";
-                document.querySelector(`${selectorBase}-table-visibility`).textContent = "Public";
-                document.querySelector(`${selectorBase}-display-visibility`).classList.remove("is-danger");
-                document.querySelector(`${selectorBase}-display-visibility`).classList.add("is-light", "is-primary");
-                document.querySelector(`${selectorBase}-table-visibility`).classList.remove("has-background-danger");
-                document.querySelector(`${selectorBase}-table-visibility`).classList.add("has-background-primary-light");
+            this.isPublic = newVisibility;
+            this.isDownloadable = isDownloadable;
+            this.title = newTitle;
+            this.longDesc = newLdesc;
+            this.pubmedId = newPubmedId;
+            this.geoId = newGeoId;
 
-            } else {
-                document.querySelector(`${selectorBase}-display-visibility`).textContent = "Private dataset";
-                document.querySelector(`${selectorBase}-table-visibility`).textContent = "Private";
-                document.querySelector(`${selectorBase}-display-visibility`).classList.remove("is-light", "is-primary");
-                document.querySelector(`${selectorBase}-display-visibility`).classList.add("is-danger");
-                document.querySelector(`${selectorBase}-table-visibility`).classList.remove("has-background-primary-light");
-                document.querySelector(`${selectorBase}-table-visibility`).classList.add("has-background-danger");
-            }
+            // Update the UI for the new values for the expanded row and the list item
+            for (const selector of [this.expandedRowItem, this.resultListItem]) {
 
-            document.querySelector(`${selectorBase}-editable-downloadable`).dataset.isDownloadable = isDownloadable;
+                if (newVisibility) {
+                    selector.querySelector(`.js-display-visibility span`).textContent = "Public dataset";
+                    selector.querySelector(`.js-display-visibility span`).classList.remove("is-danger");
+                    selector.querySelector(`.js-display-visibility span`).classList.add("is-light", "is-primary");
+                } else {
+                    selector.querySelector(`.js-display-visibility span`).textContent = "Private dataset";
+                    selector.querySelector(`.js-display-visibility span`).classList.remove("is-light", "is-primary");
+                    selector.querySelector(`.js-display-visibility span`).classList.add("is-danger");
+                }
 
-            if (isDownloadable) {
-                document.querySelector(`${selectorBase}-display-downloadable`).textContent = "Downloadable";
-                document.querySelector(`${selectorBase}-display-downloadable`).classList.remove("is-dark");
-                document.querySelector(`${selectorBase}-display-downloadable`).classList.add("is-success");
-            } else {
-                document.querySelector(`${selectorBase}-display-downloadable`).textContent = "Not downloadable";
-                document.querySelector(`${selectorBase}-display-downloadable`).classList.remove("is-success");
-                document.querySelector(`${selectorBase}-display-downloadable`).classList.add("is-dark");
-            }
-            const downloadButton = document.querySelector(`${selectorBase}-download-dataset`);
-            if (downloadButton) {
-                // If button exists (has h5ad), update the button visibility
-                downloadButton.dataset.isDownloadable = isDownloadable;
 
-                disableAndHideElement(downloadButton, true);
                 if (isDownloadable) {
-                    enableAndShowElement(downloadButton, true);
+                    selector.querySelector(`.js-display-downloadable span`).textContent = "Downloadable";
+                    selector.querySelector(`.js-display-downloadable span`).classList.remove("is-dark");
+                    selector.querySelector(`.js-display-downloadable span`).classList.add("is-success");
+                } else {
+                    selector.querySelector(`.js-display-downloadable span`).textContent = "Not downloadable";
+                    selector.querySelector(`.js-display-downloadable span`).classList.remove("is-success");
+                    selector.querySelector(`.js-display-downloadable span`).classList.add("is-dark");
+                }
+
+                const downloadButton = selector.querySelector(`.js-download-dataset`);
+                if (downloadButton) {
+                    // If button exists (has h5ad), update the button visibility
+                    disableAndHideElement(downloadButton, true);
+                    if (isDownloadable) {
+                        enableAndShowElement(downloadButton, true);
+                    }
+                }
+
+                selector.querySelector(`.js-display-title p`).textContent = newTitle;
+
+                const ldescSpan = document.createElement("span");
+                ldescSpan.innerHTML = newLdesc || "No description entered";
+                selector.querySelector(`.js-display-ldesc-text`).replaceChildren(ldescSpan);
+
+                // pubmed and geo display are links if they exist
+                selector.querySelector(`.js-editable-pubmed-id input`).value = newPubmedId;
+                if (newPubmedId) {
+                    selector.querySelector(`.js-display-pubmed-id span:last-of-type`).innerHTML = `<a href="https://pubmed.ncbi.nlm.nih.gov/${newPubmedId}" target="_blank">
+                        <span>${newPubmedId}</span>
+                        <i class="mdi mdi-open-in-new"></i>
+                    </a>`;
+                } else {
+                    selector.querySelector(`.js-display-pubmed-id span:last-of-type`).textContent = "Not available";
+                }
+
+                selector.querySelector(`.js-editable-geo-id input`).value = newGeoId;
+                if (newGeoId) {
+                    selector.querySelector(`.js-display-geo-id span:last-of-type`).innerHTML = `<a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=${newGeoId}" target="_blank">
+                        <span>${newGeoId}</span>
+                        <i class="mdi mdi-open-in-new"></i>
+                    </a>`;
+                } else {
+                    selector.querySelector(`.js-display-geo-id span:last-of-type`).textContent = "Not available";
                 }
             }
 
-            document.querySelector(`${selectorBase}-editable-title`).dataset.originalVal = newTitle;
-            document.querySelector(`${selectorBase}-display-title`).textContent = newTitle;
-            document.querySelector(`${selectorBase}-table-title`).textContent = newTitle;
+            // Update the UI for the table row values
+            if (newVisibility) {
+                this.rowItem.querySelector(`.js-display-visibility`).textContent = "Public";
+                this.rowItem.querySelector(`.js-display-visibility`).classList.replace("has-background-danger", "has-background-primary-light");
 
-            document.querySelector(`${selectorBase}-editable-ldesc`).dataset.originalVal = newLdesc;
-            document.querySelector(`${selectorBase}-display-ldesc`).textContent = newLdesc || "No description entered";
-
-            // pubmed and geo display are links if they exist
-            document.querySelector(`${selectorBase}-editable-pubmed-id`).value = newPubmedId;
-            if (newPubmedId) {
-                document.querySelector(`${selectorBase}-display-pubmed-id`).innerHTML = `<a href="https://pubmed.ncbi.nlm.nih.gov/${newPubmedId}" target="_blank">
-                    <span>${newPubmedId}</span>
-                    <i class="mdi mdi-open-in-new"></i>
-                </a>`;
             } else {
-                document.querySelector(`${selectorBase}-display-pubmed-id`).textContent = "Not available";
+                this.rowItem.querySelector(`.js-display-visibility`).textContent = "Private";
+                this.rowItem.querySelector(`.js-display-visibility`).classList.replace("has-background-primary-light", "has-background-danger");
             }
 
-            document.querySelector(`${selectorBase}-editable-geo-id`).value = newGeoId;
-            if (newGeoId) {
-                document.querySelector(`${selectorBase}-display-geo-id`).innerHTML = `<a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=${newGeoId}" target="_blank">
-                    <span>${newGeoId}</span>
-                    <i class="mdi mdi-open-in-new"></i>
-                </a>`;
-            } else {
-                document.querySelector(`${selectorBase}-display-geo-id`).textContent = "Not available";
-            }
-            document.querySelector(`${selectorBase}-display-geo-id`).value = newGeoId;
+            this.rowItem.querySelector(`.js-display-title`).textContent = newTitle;
 
-            // Put interface back to view mode.
-            toggleEditableMode(true, selectorBase);
+            // Put interface back to view mode for current list item.
+            toggleEditableMode(true, parentElt);
 
         });
-    }
 
-    // Toggle editable mode when edit button is clicked for a dataset
-    for (const classElt of document.getElementsByClassName("js-edit-dataset")) {
-        classElt.addEventListener("click", async (e) => {
+        const editSelector = parentElt.querySelector(".js-edit-dataset");
+        if (editSelector) {
+            // Toggle editable mode when edit button is clicked for a dataset
+            editSelector.addEventListener("click", async (e) => {
+                const editableVisibilityElt = parentElt.querySelector(`.js-editable-visibility input`);
 
-            const datasetId = e.currentTarget.dataset.datasetId;
-            const selectorBase = `#result-dataset-id-${datasetId}`;
+                editableVisibilityElt.checked = this.isPublic;
+                editableVisibilityElt.closest(".field").querySelector("label").textContent = this.isPublic ? "Public" : "Private";
 
-            const editableVisibilityElt = document.querySelector(`${selectorBase}-editable-visibility`);
+                // Show editable versions where there are some and hide the display versions
+                toggleEditableMode(false, parentElt);
 
-            const isPublic = parseBool(editableVisibilityElt.dataset.isPublic);
-
-            editableVisibilityElt.checked = isPublic;
-            editableVisibilityElt.closest(".field").querySelector("label").textContent = isPublic ? "Public" : "Private";
-
-            // Show editable versions where there are some and hide the display versions
-            toggleEditableMode(false, selectorBase);
-
-            // Make sure the view is expanded
-            const expandableViewElt = document.querySelector(`${selectorBase} .js-expandable-view`);
-            if (expandableViewElt.classList.contains('is-hidden')) {
-                document.querySelector(`${selectorBase} span.js-expand-box`).click();
-            }
-
-            document.querySelector(`${selectorBase} .js-action-links`).classList.add("is-hidden");
-
-        });
-    }
-
-    // Redirect to gene expression search
-    for (const classElt of document.getElementsByClassName("js-view-dataset")) {
-        classElt.addEventListener("click", (e) => {
-            window.open(`./p?s=${e.currentTarget.value}`, '_blank');
-        });
-    }
-
-    // Redirect to gene expression search
-    for (const classElt of document.getElementsByClassName("js-view-projection-dataset")) {
-        classElt.addEventListener("click", (e) => {
-            window.open(`./p?p=p&s=${e.currentTarget.value}`, '_blank');
-        });
-    }
-}
-
-/**
- * Adds the dataset title to the modal.
- *
- * @param {HTMLElement} modalHTML - The HTML element representing the modal.
- */
-const addDatasetTitleToModal = (modalHTML, title) => {
-    const modalContent = modalHTML.querySelector('.modal-content');
-    const datasetTitle = modalContent.querySelector("h5");
-    datasetTitle.replaceChildren();
-    datasetTitle.textContent = title;
-}
-
-/**
- * Adds downloadable information to a dataset.
- *
- * @param {string} datasetId - The ID of the dataset.
- * @param {boolean} isDownloadable - Indicates whether the dataset is downloadable.
- * @param {boolean} hasH5ad - Indicates whether the dataset has an H5ad file.
- */
-const addDownloadableInfoToDataset = (datasetId, isDownloadable, hasH5ad) => {
-    const datasetDisplayContainer = document.getElementById(`${datasetId}-display-downloadable`);
-    const datasetDisplaySpan = document.createElement("span");
-    datasetDisplaySpan.classList.add("tag");
-    datasetDisplaySpan.id = `result-dataset-id-${datasetId}-display-downloadable`;
-
-    if (hasH5ad && isDownloadable) {
-        datasetDisplaySpan.classList.add("is-success");
-        datasetDisplaySpan.textContent = "Downloadable";
-    } else {
-        datasetDisplaySpan.classList.add("is-dark");
-        datasetDisplaySpan.textContent = "Not downloadable";
-    }
-    datasetDisplayContainer.appendChild(datasetDisplaySpan);
-}
-
-const addModalEventListeners = () => {
-    for (const classElt of document.getElementsByClassName("js-collection-add-display")) {
-        classElt.addEventListener("click", async (e) => {
-            const thisElt = e.currentTarget;
-
-            // get nearest parent .js-modal-display
-            const displayElement = thisElt.closest(".js-modal-display");
-            const displayId = parseInt(displayElement.dataset.displayId);
-
-            try {
-                const data = await apiCallsMixin.addDisplayToCollection(selected_dc_share_id, displayId);
-                if (!data.success) {
-                    throw new Error(data.error);
+                // Make sure the view is expanded
+                const expandableViewElt = parentElt.querySelector(`.js-expandable-view`);
+                if (expandableViewElt.classList.contains('is-hidden')) {
+                    parentElt.querySelector(`span.js-expand-box`).click();
                 }
-
-                // Update count of how many times the display is in the collection (.js-collection-display-count)
-                const displayCount = displayElement.querySelector('.js-collection-display-count');
-                const currentCount = parseInt(displayCount.textContent);
-                displayCount.textContent = currentCount + 1;
-                // Enable ".js-collection-remove-display" button
-                const removeButton = displayElement.querySelector(".js-collection-remove-display");
-                enableAndShowElement(removeButton);
-
-                createToast("Display added to collection", "is-success");
-
-                // Update the layout arrangement views
-                await updateDatasetCollections();
-
-            } catch (error) {
-                logErrorInConsole(error);
-                createToast("Failed to add dataset to collection");
-            }
-        });
-    }
-
-    for (const classElt of document.getElementsByClassName("js-collection-remove-display")) {
-        classElt.addEventListener("click", async (e) => {
-            const thisElt = e.currentTarget;
-            // get nearest parent .js-modal-display
-            const displayElement = thisElt.closest(".js-modal-display");
-            const displayId = parseInt(displayElement.dataset.displayId);
-
-            try {
-                const data = await apiCallsMixin.deleteDisplayFromCollection(selected_dc_share_id, displayId);
-                if (!data.success) {
-                    throw new Error(data.error);
-                }
-
-                // Update count of how many times the display is in the collection (.js-collection-display-count)
-                const displayCount = displayElement.querySelector('.js-collection-display-count');
-                const currentCount = parseInt(displayCount.textContent);
-                displayCount.textContent = currentCount - 1;
-                // Disable ".js-collection-remove-display" button if this was the last instance of the display
-                if (currentCount === 1) {
-                    disableAndHideElement(thisElt);
-                }
-
-                createToast("Display removed from collection", "is-success");
-
-                // Update the layout arrangement views
-                await updateDatasetCollections();
-            } catch (error) {
-                logErrorInConsole(error);
-                createToast("Failed to remove dataset from collection");
-            }
-        });
-    }
-}
-
-/**
- * Adds a section title to the specified element in a modal display.
- *
- * @param {HTMLElement} element - The element to which the section title will be added.
- * @param {string} titleText - The text content of the section title.
- */
-const addModalDisplaySectionTitle = (element, titleText) => {
-    if (!element.children.length) {
-        return;
-    }
-    const title = document.createElement("p");
-    title.classList.add("has-text-weight-bold", "is-underlined", "column", "is-full");
-    title.textContent = titleText;
-    element.prepend(title);
-}
-
-/**
- * Adds public/private visibility information to a dataset display container in the DOM.
- * @param {string} datasetId - The ID of the datasetdisplay container.
- * @param {boolean} isPublic - A boolean indicating whether the dataset is public or private.
- * @returns {void}
- */
-const addVisibilityInfoToDataset = (datasetId, isPublic) => {
-
-    // add dataset public/private info to DOM
-    const datasetDisplayContainer = document.getElementById(`${datasetId}-display-visibility`);
-    const datasetDisplaySpan = document.createElement("span");
-    datasetDisplaySpan.classList.add("tag");
-    datasetDisplaySpan.id = `result-dataset-id-${datasetId}-display-visibility`;
-    const datasetTableVisibility = document.getElementById(`result-dataset-id-${datasetId}-table-visibility`);
-
-    if (isPublic) {
-        datasetDisplaySpan.classList.add("is-primary", "is-light");
-        datasetDisplaySpan.textContent = "Public dataset";
-        datasetTableVisibility.classList.add("has-background-primary-light");
-        datasetTableVisibility.textContent = "Public";
-    } else {
-        datasetDisplaySpan.classList.add("is-danger");
-        datasetDisplaySpan.textContent = "Private dataset";
-        datasetTableVisibility.classList.add("has-background-danger");
-        datasetTableVisibility.textContent = "Private";
-    }
-    datasetDisplayContainer.appendChild(datasetDisplaySpan);
-
-    // Toggle switch (public is checked, private is unchecked)
-    const visibilitySwitch = document.getElementById(`result-dataset-id-${datasetId}-editable-visibility`);
-
-    visibilitySwitch.addEventListener("change", (e) => {
-        const isPublic = e.currentTarget.checked;
-        e.currentTarget.dataset.isPublic = isPublic;
-        e.currentTarget.closest(".field").querySelector("label").textContent = isPublic ? "Public" : "Private";
-    });
-
-    const downloadableSwitch = document.getElementById(`result-dataset-id-${datasetId}-editable-downloadable`);
-
-    downloadableSwitch.addEventListener("change", (e) => {
-        const isDownloadable = e.currentTarget.checked;
-        e.currentTarget.dataset.isDownloadable = isDownloadable;
-        e.currentTarget.closest(".field").querySelector("label").textContent = isDownloadable ? "Yes" : "No";
-    });
-
-}
-
-/**
- * Applies a tooltip to a reference element.
- *
- * @param {HTMLElement} referenceElement - The element to which the tooltip is applied.
- * @param {HTMLElement} tooltip - The tooltip element.
- * @param {string} [position="top"] - The preferred position of the tooltip relative to the reference element.
- */
-const applyTooltip = (referenceElement, tooltip, position="top") => {
-
-    const hideTooltip = (event) => {
-        tooltip.classList.add("is-hidden");
-    }
-
-    const showTooltip = (event) => {
-        // Compute position
-        computePosition(event.currentTarget, tooltip, {
-            placement: position, // Change this to your preferred placement
-            middleware: [
-                flip(), // flip to bottom if there is not enough space on top
-                shift(), // shift the popover to the right if there is not enough space on the left
-                offset(5), // offset relative to the button
-            ]
-        }).then(({ x, y }) => {
-            // Position the popover
-            Object.assign(tooltip.style, {
-                left: `${x}px`,
-                top: `${y}px`,
+                parentElt.querySelector(`.js-action-links`).classList.add("is-hidden");
             });
+        }
+
+        // Redirect to gene expression search
+        parentElt.querySelector(".js-view-dataset").addEventListener("click", (e) => {
+            window.open(`./p?s=${this.shareId}&gsem=1`, '_blank');
         });
 
-        tooltip.classList.remove("is-hidden");
+        // Redirect to gene expression search
+        parentElt.querySelector(".js-view-projection-dataset").addEventListener("click", (e) => {
+            window.open(`./p?p=p&s=${this.shareId}`, '_blank');
+        });
     }
 
-    [
-        ['mouseenter', showTooltip],
-        ['mouseleave', hideTooltip],
-        ['focus', showTooltip],
-        ['blur', hideTooltip],
-    ].forEach(([event, listener]) => {
+    /**
+     * Updates the dataset list buttons based on the dataset properties.
+     */
+    updateDatasetListButtons(parentElt) {
+        //unhide all buttons
+        for (const actionLinks of parentElt.querySelectorAll(".js-action-links .control")) {
+            actionLinks.classList.remove("is-hidden");
+        }
 
-        referenceElement.addEventListener(event, listener);
-    });
+        // If the dataset has no h5ad file, remove the download button since it cannot be downloaded regardless
+        const downloadButton = parentElt.querySelector("button.js-download-dataset");
+        if (downloadButton && !this.hasH5ad) {
+            downloadButton.parentElement.remove();
+        }
 
-}
+        // If button still exists, update its visibility if the dataset is downloadable
+        if (downloadButton) {
+            disableAndHideElement(downloadButton, true);
+            if (this.isDownloadable) {
+                enableAndShowElement(downloadButton, true);
+            }
+        }
 
-/**
- * Builds a comma-separated string of selected database values for a given group name.
- * @param {string} groupName - The ID of the group to retrieve selected values from.
- * @returns {string} A comma-separated string of selected database values.
- */
-const buildFilterString = (groupName) => {
-    const selected = document.querySelectorAll(`#${groupName} li.js-selected:not(.js-all-selector)`);
-    const dbvals = [];
+        // The ability to edit and delete and dataset are currently paired
+        const deleteButton = parentElt.querySelector("button.js-delete-dataset");
+        const editButton = parentElt.querySelector("button.js-edit-dataset");
+        const editPermalinkButton = parentElt.querySelector("button.js-edit-dataset-permalink");
 
-    for (const li of selected) {
-        dbvals.push(li.dataset.dbval);
+        if (this.isOwner) {
+            return;
+        }
+
+        // If user is not the owner of the dataset, remove the delete and edit buttons so user cannot manipulate
+        // These will be regenerated when a search triggers processSearchResults
+        deleteButton.parentElement.remove(); // remove .control element to prevent heavy line where button was
+        editButton.parentElement.remove()
+        editPermalinkButton.parentElement.remove();
+
+        // Remove all editable elements to prevent editing in the DOM
+        for (const editableElt of parentElt.querySelectorAll(`.js-editable-version`)) {
+            editableElt.classList.remove()
+        }
     }
 
-    return dbvals.join(",");
-}
+    /**
+     * Creates a confirmation popover for deleting a dataset.
+     */
+    createDeleteDatasetConfirmationPopover(parentElt) {
+        parentElt.querySelector(".js-delete-dataset").addEventListener('click', (e) => {
+            const button = e.currentTarget;
 
-/**
- * Clears the results views and hides pagination.
- */
-const clearResultsViews = () => {
-
-    // hide pagination (but keep results were they are)
-    for (const classElt of document.getElementsByClassName("pagination")) {
-        classElt.classList.add("is-invisible");
-    }
-
-    // Clear any existing results
-    const resultsListDiv = document.getElementById("results-list-div");
-    for (const elt of resultsListDiv.querySelectorAll(":not(#results-list-view)")) {
-        elt.remove()
-    }
-
-    const resultsTableBody = document.querySelector("#results-table tbody");
-    for (const elt of resultsTableBody.querySelectorAll(":not(#results-table-view)")) {
-        elt.remove()
-    }
-
-    // remove "no results" message if it exists
-    if (document.getElementById("no-results-message")) {
-        document.getElementById("no-results-message").remove();
-    }
-}
-
-/**
- * Copies a permalink to the clipboard.
- *
- * @param {string} shareUrl - The URL to be copied to the clipboard.
- * @returns {void}
- */
-const copyPermalink = (shareUrl) => {
-    // sanitize shareUrl
-    shareUrl = shareUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-    if(copyToClipboard(shareUrl)) {
-        createToast("URL copied to clipboard", "is-info");
-    } else {
-        createToast(`Failed to copy to clipboard. URL: ${shareUrl}`);
-    }
-
-}
-
-/**
- * Creates a tooltip element and appends it to the body.
- * @param {HTMLElement} referenceElement - The reference element to which the tooltip is associated.
- * @returns {HTMLElement} The created tooltip element.
- */
-const createActionTooltips = (referenceElement) => {
-    // Create tooltip element
-    const tooltip = document.createElement('div');
-    tooltip.className = 'tooltip';
-    tooltip.textContent = referenceElement.dataset.tooltipContent;
-    tooltip.classList.add("has-background-dark", "has-text-white", "is-hidden");
-
-    // Append tooltip to body
-    document.body.appendChild(tooltip);
-    return tooltip;
-}
-
-/**
- * Creates a confirmation popover for deleting a dataset.
- */
-const createDeleteDatasetConfirmationPopover = () => {
-    const deleteButtons = document.getElementsByClassName("js-delete-dataset");
-    for (const button of deleteButtons) {
-        button.addEventListener('click', (e) => {
             // remove existing popovers
             const existingPopover = document.getElementById('delete-dataset-popover');
             if (existingPopover) {
@@ -886,10 +821,6 @@ const createDeleteDatasetConfirmationPopover = () => {
                 });
             });
 
-
-            // Store the dataset ID to delete
-            const datasetIdToDelete = e.currentTarget.value;
-
             // Add event listener to cancel button
             document.getElementById('cancel-dataset-delete').addEventListener('click', () => {
                 popoverContent.remove();
@@ -900,13 +831,15 @@ const createDeleteDatasetConfirmationPopover = () => {
                 event.target.classList.add("is-loading");
 
                 try {
-                    const data = await apiCallsMixin.deleteDataset(datasetIdToDelete);
+                    const data = await apiCallsMixin.deleteDataset(this.datasetId);
 
                     if (data['success'] === 1) {
-                        const resultElement = document.getElementById(`result-dataset-id-${datasetIdToDelete}`);
-                        resultElement.style.transition = 'opacity 1s';
-                        resultElement.style.opacity = 0;
-                        resultElement.remove();
+
+                        // ? Is this necessary if we are blowing away the object anyways
+                        for (const selector of [this.expandedRowItem, this.resultListItem]) {
+                            // Remove the dataset from the DOM
+                            selector.remove();
+                        }
 
                         createToast("Dataset deleted", "is-success");
 
@@ -926,15 +859,14 @@ const createDeleteDatasetConfirmationPopover = () => {
             });
         });
     }
-}
 
-/**
- * Creates a popover for renaming dataset permalink.
- */
-const createRenameDatasetPermalinkPopover = () => {
-    const permalinkButtons = document.getElementsByClassName("js-edit-dataset-permalink");
-    for (const button of permalinkButtons) {
-        button.addEventListener('click', (e) => {
+    /**
+     * Creates a popover for renaming dataset permalink.
+     */
+    createRenameDatasetPermalinkPopover(parentElt) {
+        parentElt.querySelector(".js-edit-dataset-permalink").addEventListener('click', (e) => {
+            const button = e.currentTarget;
+
             // remove existing popovers
             const existingPopover = document.getElementById('rename-dataset-link-popover');
             if (existingPopover) {
@@ -959,7 +891,7 @@ const createRenameDatasetPermalinkPopover = () => {
                             </a>
                         </div>
                         <div class='control'>
-                            <input id='dataset-link-name' class='input' type='text' placeholder='permalink' value=${e.currentTarget.dataset.shareId}>
+                            <input id='dataset-link-name' class='input' type='text' placeholder='permalink' value=${this.shareId}>
                         </div>
                     </div>
                     <div class='field is-grouped' style='width:250px'>
@@ -1015,13 +947,11 @@ const createRenameDatasetPermalinkPopover = () => {
                 });
             });
 
-            const shareId = e.currentTarget.dataset.shareId;
-
             document.getElementById("dataset-link-name").addEventListener("keyup", () => {
                 const newLinkName = document.getElementById("dataset-link-name");
                 const confirmRenameLink = document.getElementById("confirm-dataset-link-rename");
 
-                if (newLinkName.value.length === 0 || newLinkName.value === shareId) {
+                if (newLinkName.value.length === 0 || newLinkName.value === this.shareId) {
                     confirmRenameLink.disabled = true;
                     return;
                 }
@@ -1039,7 +969,7 @@ const createRenameDatasetPermalinkPopover = () => {
                 const newShareId = document.getElementById("dataset-link-name").value;
 
                 try {
-                    const data = await apiCallsMixin.updateShareId(shareId, newShareId, "dataset");
+                    const data = await apiCallsMixin.updateShareId(this.shareId, newShareId, "dataset");
 
                     if ((!data.success) || (data.success < 1)) {
                         const error = data.error || "Unknown error. Please contact gEAR support.";
@@ -1048,13 +978,8 @@ const createRenameDatasetPermalinkPopover = () => {
 
                     createToast("Dataset permalink renamed", "is-success");
 
-                    // Update the share_id in the button, since the previous share_id is now invalid
-                    // find nearest parent .js-edit-dataset-permalink to "e"
-                    // (since e.currentTarget is null after confirm button is clicked)
-                    e.target.closest(".js-action-links").querySelector(".js-edit-dataset-permalink").dataset.shareId = newShareId;
-                    e.target.closest(".js-action-links").querySelector(".js-view-dataset").value = newShareId;
-                    e.target.closest(".js-action-links").querySelector(".js-view-projection-dataset").value = newShareId;
-                    e.target.closest(".js-action-links").querySelector(".js-share-dataset").value = newShareId;
+                    // Update the share_id in the object, since the previous share_id is now invalid
+                    this.shareId = newShareId;
 
                     popoverContent.remove();
 
@@ -1069,6 +994,515 @@ const createRenameDatasetPermalinkPopover = () => {
     }
 }
 
+class LayoutArrangement {
+
+    constructor(isMulti=false) {
+        this.type = isMulti ? "multi" : "single";
+        this.arrangement = [];
+        this.arrangementDiv = document.getElementById(`dataset-arrangement-${this.type}`);
+
+        this.arrangementWidth = 960; // NOTE: Originally used singleGeneArrangementDiv.offsetWidth, but it is 0 unless the element is visible
+        this.rowWidth = this.arrangementWidth / 12; // Split width into 12 columns
+        this.colHeight = this.rowWidth * 4; // A unit of height for us is 4 units of width (to make a square)
+    }
+
+    addMember(member) {
+        this.arrangement.push(member);
+    }
+
+    /**
+     * Sets up the adjustable arrangement grid for displaying tiles.
+     *
+     * - Calculates the maximum number of rows required based on the arrangement.
+     * - Updates the CSS grid template rows for the arrangement container.
+     * - Sorts the arrangement tiles by their starting row and column.
+     * - Clears the arrangement container and appends each tile in order.
+     * - Initializes interactable behavior for each tile.
+     *
+     * @returns {void}
+     */
+    setupArrangementAdjustable() {
+
+        this.maxRow = Math.max(...this.arrangement.map((tile) => tile.startRow + tile.gridHeight)) -1;
+        this.arrangementDiv.style.gridTemplateRows = `repeat(${this.maxRow}, ${this.colHeight}px)`;
+
+        // Sort by row and column
+        this.arrangement.sort((a, b) => {
+            if (a.startRow === b.startRow) {
+                return a.startCol - b.startCol;
+            }
+            return a.startRow - b.startRow;
+        });
+
+        // Clear the arrangement div
+        this.arrangementDiv.innerHTML = "";
+
+        // Add each member to the arrangement div
+        for (const member of this.arrangement) {
+            this.arrangementDiv.appendChild(member.createArrangementTile());
+            member.createInteractable();
+        }
+
+    }
+}
+
+class LayoutArrangementMember {
+
+    constructor(arrangementObj, displayId, gridPosition, startCol, startRow, gridWidth, gridHeight) {
+        this.parentArrangement = arrangementObj;
+        this.displayId = displayId;
+        this.gridPosition = gridPosition;
+        this.startCol = startCol;
+        this.startRow = startRow;
+        this.gridWidth = gridWidth;
+        this.gridHeight = gridHeight;
+        this.datasetTitle = "";
+        this.image = "";
+        this.tileTemplate = document.getElementById("dataset-arrangement-tile-template");
+        this.selector = `.js-sortable-tile[data-display-id="${this.displayId}"]`;
+        this.snapWidth = this.parentArrangement.rowWidth * 2; // Snap to 1/6 increments for width
+        this.snapHeight = this.parentArrangement.colHeight; // Snap to 1/4 increments for height;
+    }
+
+    /**
+     * Creates a new arrangement tile element by cloning the tile template,
+     * setting its properties, grid area, title, and preview image.
+     *
+     * @returns {DocumentFragment} The newly created arrangement tile element.
+     */
+    createArrangementTile() {
+        const tile = this.tileTemplate.content.cloneNode(true);
+
+        setElementProperties(tile, ".js-sortable-tile", { dataset: {displayId: this.displayId} });
+        // add gridAra to tile
+        tile.querySelector(".js-sortable-tile").style.gridArea = `${this.startRow} / ${this.startCol} / span ${this.gridHeight} / span ${this.gridWidth}`;
+        // add dataset title
+        setElementProperties(tile, ".js-sortable-tile-title", { textContent: this.datasetTitle });
+        // add preview image
+        const tileImg = tile.querySelector(".js-sortable-tile-img");
+        tileImg.src = this.image;
+        return tile;
+    }
+
+    /**
+     * Initializes interact.js draggable and resizable functionality on the element specified by `this.selector`.
+     *
+     * - Enables dragging within the parent container, snapping to a grid defined by `snapWidth` and `snapHeight`.
+     * - Updates the CSS Grid layout properties (`gridArea`, `gridRowStart`, `gridColumnStart`, etc.) as the element is moved or resized.
+     * - Dynamically adds new rows to the parent grid if the element is moved or resized beyond the current grid bounds.
+     * - Calls `this.determineGridOverlap` at the end of drag or resize to handle overlap logic.
+     *
+     * @returns {void}
+     */
+    createInteractable() {
+        const that = this;  // Preserve this context for event listeners
+
+        this.interactable = interact(this.selector);
+
+        this.interactable.draggable({
+            // keep the element within the area of it's parent
+            modifiers: [
+                interact.modifiers.restrictRect({
+                    restriction: 'parent',  // keep the drag within the parent. If dragged outside, it will snap back
+                    endOnly: true
+                }),
+                interact.modifiers.snap({
+                    // snap to the 12 possible grid columns, and n+1 grid rows.
+                    targets: [
+                        interact.createSnapGrid({ x: that.snapWidth, y: that.snapHeight }),
+                    ],
+                    range: Infinity,
+                    relativePoints: [{ x: 1, y: 1 }],   // snap to the bottom right corner of the element (allows for a 1-to-1 with the grid start row/column)
+                    offset: 'parent'
+                })
+            ],
+            listeners: {
+                move (event) {
+                    const target = event.target
+
+                    // get current style gridArea values (preserve span values)
+                    const rowStart = parseInt(target.style.gridRowStart);
+                    const colStart = parseInt(target.style.gridColumnStart);
+
+                    // These are reported as "span N" in the gridArea style
+                    const rowSpan = parseInt(target.style.gridRowEnd.split(" ")[1]);
+                    const colSpan = parseInt(target.style.gridColumnEnd.split(" ")[1]);
+
+                    const dStartCol = (Math.round(event.delta.x / that.snapWidth) * 2);  // x2 converts to 12 column grid
+                    const dStartRow = Math.round(event.delta.y / that.snapHeight);
+
+                    const newStartCol = colStart + dStartCol;
+                    const newStartRow = rowStart + dStartRow;
+
+                    target.style.gridArea = `${newStartRow} / ${newStartCol} / span ${rowSpan} / span ${colSpan}`;
+
+                    // When dragged to the n+1 row, add a new row to the grid.
+                    const arrangementDiv = target.parentElement;    // AKA this.parentArrangement.arrangementDiv
+                    // get current number of rows in the grid
+                    // it is stored as a string like "repeat(3, 100px)"
+                    const arrangementRows = parseInt(arrangementDiv.style.gridTemplateRows.split(",")[0].split("(")[1]);
+
+                    const lastTileRow = newStartRow + rowSpan -1;
+                    // If the dragged tile's bottom edge is below the last row, add another row to the grid template
+                    if (lastTileRow > arrangementRows) {
+                        arrangementDiv.style.gridTemplateRows = `repeat(${lastTileRow}, ${that.parentArrangement.colHeight}px)`;
+                    }
+                },
+                end: (event) => {
+                    this.determineGridOverlap(event);
+                }
+            }
+
+        }).resizable({
+            // resize from only the right and bottom edges (adding top and left adds complexity)
+            edges: { left: true, right: true, bottom: true, top: true },
+            listeners: {
+                move (event) {
+                    const target = event.target;
+
+                    // get current style gridArea values (at least the ones to preserve)
+                    let rowStart = parseInt(target.style.gridRowStart);
+                    let colStart = parseInt(target.style.gridColumnStart);
+                    let rowSpan = parseInt(target.style.gridRowEnd.split(" ")[1]);
+                    let colSpan = parseInt(target.style.gridColumnEnd.split(" ")[1]);
+
+                    // Snap to grid in 1/6 increments for width
+                    const newSpanWidth = (Math.round(event.rect.width / that.snapWidth) * 2);  // x2 multiplier converts to 12 column grid
+                    const newSpanHeight = Math.round(event.rect.height / that.snapHeight);
+
+                    // Calculate deltas for left/top resize
+                    let deltaCol = 0;
+                    let deltaRow = 0;
+                    if (event.edges.left) {
+                        deltaCol = colSpan - newSpanWidth;
+                        colStart += deltaCol;
+                    }
+                    colSpan = newSpanWidth;
+                    if (event.edges.top) {
+                        deltaRow = rowSpan - newSpanHeight;
+                        rowStart += deltaRow;
+                    }
+                    rowSpan = newSpanHeight;
+
+                    // Clamp the start positions to ensure they are within the grid bounds
+                    colStart = Math.max(1, colStart);
+                    rowStart = Math.max(1, rowStart);
+
+                    // Set new grid area for the tile
+                    event.target.style.gridArea = `${rowStart} / ${colStart} / span ${newSpanHeight} / span ${newSpanWidth}`;
+
+                    // When resized to the n+1 row, add a new row to the grid.
+                    const arrangementDiv = target.parentElement;    // AKA this.parentArrangement.arrangementDiv
+                    // get current number of rows in the grid
+                    // it is stored as a string like "repeat(3, 100px)"
+                    const arrangementRows = parseInt(arrangementDiv.style.gridTemplateRows.split(",")[0].split("(")[1]);
+
+                    const lastTileRow = rowStart + newSpanHeight -1;
+                    // If the dragged tile's bottom edge is below the last row, add another row to the grid template
+                    if (lastTileRow > arrangementRows) {
+                        arrangementDiv.style.gridTemplateRows = `repeat(${lastTileRow}, ${that.parentArrangement.colHeight}px)`;
+                    }
+                },
+                end: (event) => {
+                    this.determineGridOverlap(event);
+                }
+            }
+        });
+    }
+
+    addOverlapState(tile) {
+        // Add the overlap state for a specific tile
+        tile.classList.add("js-is-overlapping");
+        tile.style.opacity = 0.5;
+        tile.querySelector(".js-sortable-tile-title").classList.add("has-text-danger-light", "has-background-danger-dark");
+        tile.querySelector(".js-sortable-tile-title").classList.remove("has-background-primary-light");
+    }
+
+    removeOverlapState(tile) {
+        // Clear the overlap state for a specific tile
+        tile.classList.remove("js-is-overlapping");
+        tile.style.opacity = 1;
+        tile.querySelector(".js-sortable-tile-title").classList.remove("has-text-danger-light", "has-background-danger-dark");
+        tile.querySelector(".js-sortable-tile-title").classList.add("has-background-primary-light");
+    }
+
+    /**
+     * Determines if the currently moved/resized grid tile overlaps with any other tiles in the parent grid.
+     * Provides a visual cue for overlapping tiles and disables the save button if any overlap is detected.
+     *
+     * @param {Event} event - The event object from the tile movement or resize action. Expects `event.target` to be a grid tile element with CSS grid properties.
+     *
+     * @returns {void}
+     */
+    determineGridOverlap(event) {
+
+        // Get all tiles in the arrangement
+        const arrangementDiv = event.target.parentElement;
+        const arrangementTiles = arrangementDiv.querySelectorAll(".js-sortable-tile");
+
+        // 1. Initialize num_overlaps for all tiles
+        for (const tile of arrangementTiles) {
+            tile.num_overlaps = 0;
+        }
+
+        // 2. Check all pairs for overlap
+        // This is a brute-force O(n^2) check, but for a small number of tiles, it should be fine.
+        for (let i = 0; i < arrangementTiles.length; i++) {
+            for (let j = i + 1; j < arrangementTiles.length; j++) {
+                const tileA = arrangementTiles[i];
+                const tileB = arrangementTiles[j];
+
+                // ...calculate grid positions for tileA and tileB...
+                const tileARowStart = parseInt(tileA.style.gridRowStart);
+                const tileARowEnd = tileARowStart + parseInt(tileA.style.gridRowEnd.split(" ")[1]);
+                const tileAColStart = parseInt(tileA.style.gridColumnStart);
+                const tileAColEnd = tileAColStart + parseInt(tileA.style.gridColumnEnd.split(" ")[1]);
+
+                const tileBRowStart = parseInt(tileB.style.gridRowStart);
+                const tileBRowEnd = tileBRowStart + parseInt(tileB.style.gridRowEnd.split(" ")[1]);
+                const tileBColStart = parseInt(tileB.style.gridColumnStart);
+                const tileBColEnd = tileBColStart + parseInt(tileB.style.gridColumnEnd.split(" ")[1]);
+
+                // Check for overlap
+                // This reminds me of the video game detection algorithms
+                if (tileARowStart < tileBRowEnd
+                    && tileARowEnd > tileBRowStart
+                    && tileAColStart < tileBColEnd
+                    && tileAColEnd > tileBColStart) {
+                    tileA.num_overlaps++;
+                    tileB.num_overlaps++;
+                }
+            }
+        }
+
+        // 3. Update overlap state and save button
+        let anyOverlap = false;
+        for (const tile of arrangementTiles) {
+            if (tile.num_overlaps > 0) {
+                this.addOverlapState(tile);
+                anyOverlap = true;
+            } else {
+                this.removeOverlapState(tile);
+            }
+        }
+        document.getElementById("btn-save-arrangement").disabled = anyOverlap;
+    }
+}
+
+/**
+ * Adds the dataset title to the modal.
+ *
+ * @param {HTMLElement} modalHTML - The HTML element representing the modal.
+ */
+const addDatasetTitleToModal = (modalHTML, title) => {
+    const modalContent = modalHTML.querySelector('.modal-content');
+    const datasetTitle = modalContent.querySelector("h5");
+    datasetTitle.replaceChildren();
+    datasetTitle.textContent = title;
+}
+
+const addModalEventListeners = () => {
+    for (const classElt of document.getElementsByClassName("js-collection-add-display")) {
+        classElt.addEventListener("click", async (e) => {
+            const thisElt = e.currentTarget;
+
+            // get nearest parent .js-modal-display
+            const displayElement = thisElt.closest(".js-modal-display");
+            const displayId = parseInt(displayElement.dataset.displayId);
+
+            try {
+                const data = await apiCallsMixin.addDisplayToCollection(datasetCollectionState.selectedShareId, displayId);
+                if (!data.success) {
+                    throw new Error(data.error);
+                }
+
+                // Update count of how many times the display is in the collection (.js-collection-display-count)
+                const displayCount = displayElement.querySelector('.js-collection-display-count');
+                const currentCount = parseInt(displayCount.textContent);
+                displayCount.textContent = currentCount + 1;
+                // Enable ".js-collection-remove-display" button
+                const removeButton = displayElement.querySelector(".js-collection-remove-display");
+                enableAndShowElement(removeButton);
+
+                createToast("Display added to collection", "is-success");
+
+                // Update the layout arrangement views
+                await updateDatasetCollections();
+
+            } catch (error) {
+                logErrorInConsole(error);
+                createToast("Failed to add dataset to collection");
+            }
+        });
+    }
+
+    for (const classElt of document.getElementsByClassName("js-collection-remove-display")) {
+        classElt.addEventListener("click", async (e) => {
+            const thisElt = e.currentTarget;
+            // get nearest parent .js-modal-display
+            const displayElement = thisElt.closest(".js-modal-display");
+            const displayId = parseInt(displayElement.dataset.displayId);
+
+            try {
+                const data = await apiCallsMixin.deleteDisplayFromCollection(datasetCollectionState.selectedShareId, displayId);
+                if (!data.success) {
+                    throw new Error(data.error);
+                }
+
+                // Update count of how many times the display is in the collection (.js-collection-display-count)
+                const displayCount = displayElement.querySelector('.js-collection-display-count');
+                const currentCount = parseInt(displayCount.textContent);
+                displayCount.textContent = currentCount - 1;
+                // Disable ".js-collection-remove-display" button if this was the last instance of the display
+                if (currentCount === 1) {
+                    disableAndHideElement(thisElt);
+                }
+
+                createToast("Display removed from collection", "is-success");
+
+                // Update the layout arrangement views
+                await updateDatasetCollections();
+            } catch (error) {
+                logErrorInConsole(error);
+                createToast("Failed to remove dataset from collection");
+            }
+        });
+    }
+}
+
+/**
+ * Adds a section title to the specified element in a modal display.
+ *
+ * @param {HTMLElement} element - The element to which the section title will be added.
+ * @param {string} titleText - The text content of the section title.
+ */
+const addModalDisplaySectionTitle = (element, titleText) => {
+    if (!element.children.length) {
+        return;
+    }
+    const title = document.createElement("p");
+    title.classList.add("has-text-weight-bold", "is-underlined", "column", "is-full");
+    title.textContent = titleText;
+    element.prepend(title);
+}
+
+/**
+ * Applies a tooltip to a reference element.
+ *
+ * @param {HTMLElement} referenceElement - The element to which the tooltip is applied.
+ * @param {HTMLElement} tooltip - The tooltip element.
+ * @param {string} [position="top"] - The preferred position of the tooltip relative to the reference element.
+ */
+const applyTooltip = (referenceElement, tooltip, position="top") => {
+
+    const hideTooltip = (event) => {
+        tooltip.classList.add("is-hidden");
+    }
+
+    const showTooltip = (event) => {
+        // Compute position
+        computePosition(event.currentTarget, tooltip, {
+            placement: position, // Change this to your preferred placement
+            middleware: [
+                flip(), // flip to bottom if there is not enough space on top
+                shift(), // shift the popover to the right if there is not enough space on the left
+                offset(5), // offset relative to the button
+            ]
+        }).then(({ x, y }) => {
+            // Position the popover
+            Object.assign(tooltip.style, {
+                left: `${x}px`,
+                top: `${y}px`,
+            });
+        });
+
+        tooltip.classList.remove("is-hidden");
+    }
+
+    [
+        ['mouseenter', showTooltip],
+        ['mouseleave', hideTooltip],
+        ['focus', showTooltip],
+        ['blur', hideTooltip],
+    ].forEach(([event, listener]) => {
+        referenceElement.addEventListener(event, listener);
+    });
+}
+
+/**
+ * Builds a comma-separated string of selected database values for a given group name.
+ * @param {string} groupName - The ID of the group to retrieve selected values from.
+ * @returns {string} A comma-separated string of selected database values.
+ */
+const buildFilterString = (groupName) => {
+    const selected = document.querySelectorAll(`#${groupName} li.js-selected:not(.js-all-selector)`);
+    const dbvals = [];
+
+    for (const li of selected) {
+        dbvals.push(li.dataset.dbval);
+    }
+
+    return dbvals.join(",");
+}
+
+/**
+ * Clears the results views and hides pagination.
+ */
+const clearResultsViews = () => {
+
+    // hide pagination (but keep results were they are)
+    for (const classElt of document.getElementsByClassName("pagination")) {
+        classElt.classList.add("is-invisible");
+    }
+
+    // Clear any existing results
+    const resultsListDiv = document.getElementById("results-list-div");
+    for (const elt of resultsListDiv.querySelectorAll(":not(#results-list-view)")) {
+        elt.remove()
+    }
+
+    const resultsTableBody = document.querySelector("#results-table tbody");
+    for (const elt of resultsTableBody.querySelectorAll(":not(#results-table-view)")) {
+        elt.remove()
+    }
+
+    // remove "no results" message if it exists
+    if (document.getElementById("no-results-message")) {
+        document.getElementById("no-results-message").remove();
+    }
+}
+
+/**
+ * Copies a permalink to the clipboard.
+ *
+ * @param {string} shareUrl - The sanitized URL to be copied to the clipboard.
+ * @returns {void}
+ */
+const copyPermalink = (shareUrl) => {
+    if(copyToClipboard(shareUrl)) {
+        createToast("URL copied to clipboard", "is-info");
+    } else {
+        createToast(`Failed to copy to clipboard. URL: ${shareUrl}`);
+    }
+
+}
+
+/**
+ * Creates a tooltip element and appends it to the body.
+ * @param {HTMLElement} referenceElement - The reference element to which the tooltip is associated.
+ * @returns {HTMLElement} The created tooltip element.
+ */
+const createActionTooltips = (referenceElement) => {
+    // Create tooltip element
+    const tooltip = document.createElement('div');
+    tooltip.className = 'tooltip';
+    tooltip.textContent = referenceElement.dataset.tooltipContent;
+    tooltip.classList.add("has-background-dark", "has-text-white", "is-hidden");
+
+    // Append tooltip to body
+    document.body.appendChild(tooltip);
+    return tooltip;
+}
 
 /**
  * Creates a confirmation popover for deleting a dataset collection.
@@ -1156,10 +1590,10 @@ const createDeleteCollectionConfirmationPopover = () => {
         document.getElementById('confirm-collection-delete').addEventListener('click', async (event) => {
             event.target.classList.add("is-loading");
             try {
-                const data = await apiCallsMixin.deleteDatasetCollection(selected_dc_share_id);
+                const data = await apiCallsMixin.deleteDatasetCollection(datasetCollectionState.selectedShareId);
 
                 if (data['success'] === 1) {
-                    selected_dc_share_id = CURRENT_USER.layout_share_id;
+                    datasetCollectionState.selectedShareId = getCurrentUser()?.layout_share_id;
 
                     // This will trigger
                     // a) selectDatasetCollection
@@ -1297,7 +1731,7 @@ const createNewCollectionPopover = () => {
                 const data = await apiCallsMixin.createDatasetCollection(newName);
 
                 if (data['layout_share_id']) {
-                    selected_dc_share_id = data['layout_share_id'];
+                    datasetCollectionState.selectedShareId = data['layout_share_id'];
                     // This will trigger
                     // a) selectDatasetCollection
                     // b) datasetCollectionSelectorCallback
@@ -1406,7 +1840,7 @@ const createRenameCollectionPopover = () => {
             const newCollectionName = document.getElementById("collection-name");
             const confirmRenameCollection = document.getElementById("confirm-collection-rename");
 
-            if (newCollectionName.value.length === 0 || newCollectionName.value === selected_dc_label) {
+            if (newCollectionName.value.length === 0 || newCollectionName.value === datasetCollectionState.selectedLabel) {
                 confirmRenameCollection.disabled = true;
                 return;
             }
@@ -1424,10 +1858,10 @@ const createRenameCollectionPopover = () => {
             const newName = document.getElementById("collection-name").value;
 
             try {
-                const data = await apiCallsMixin.renameDatasetCollection(selected_dc_share_id, newName);
+                const data = await apiCallsMixin.renameDatasetCollection(datasetCollectionState.selectedShareId, newName);
 
                 if (data['layout_label']) {
-                    selected_dc_share_id = data['layout_share_id'];
+                    datasetCollectionState.selectedShareId = data['layout_share_id'];
                     // This will trigger
                     // a) selectDatasetCollection
                     // b) datasetCollectionSelectorCallback
@@ -1481,7 +1915,7 @@ const createRenameCollectionPermalinkPopover = () => {
                         </a>
                     </div>
                     <div class='control'>
-                        <input id='collection-link-name' class='input' type='text' placeholder='permalink' value=${selected_dc_share_id}>
+                        <input id='collection-link-name' class='input' type='text' placeholder='permalink' value=${datasetCollectionState.selectedShareId}>
                     </div>
                 </div>
                 <div class='field is-grouped' style='width:250px'>
@@ -1541,7 +1975,7 @@ const createRenameCollectionPermalinkPopover = () => {
             const newLinkName = document.getElementById("collection-link-name");
             const confirmRenameLink = document.getElementById("confirm-collection-link-rename");
 
-            if (newLinkName.value.length === 0 || newLinkName.value === selected_dc_share_id) {
+            if (newLinkName.value.length === 0 || newLinkName.value === datasetCollectionState.selectedShareId) {
                 confirmRenameLink.disabled = true;
                 return;
             }
@@ -1559,7 +1993,7 @@ const createRenameCollectionPermalinkPopover = () => {
             const newShareId = document.getElementById("collection-link-name").value;
 
             try {
-                const data = await apiCallsMixin.updateShareId(selected_dc_share_id, newShareId, "layout");
+                const data = await apiCallsMixin.updateShareId(datasetCollectionState.selectedShareId, newShareId, "layout");
 
                 if ((!data.success) || (data.success < 1)) {
                     const error = data.error || "Unknown error. Please contact gEAR support.";
@@ -1596,9 +2030,11 @@ const createPaginationButton = (page, icon = null, clickHandler) => {
     const button = document.createElement("button");
     button.className = "button is-small is-outlined is-dark pagination-link";
     if (icon) {
-        button.innerHTML = `<i class="mdi mdi-chevron-${icon}"></i>`;
+        button.innerHTML = `<i class="mdi mdi-chevron-${icon}" aria-hidden="true"></i>`;
+        button.setAttribute("aria-label", icon === "left" ? "Previous page" : "Next page");
     } else {
         button.textContent = page;
+        button.setAttribute("aria-label", `Page ${page}`);
     }
     button.addEventListener("click", clickHandler);
     li.appendChild(button);
@@ -1639,7 +2075,7 @@ const datasetCollectionSelectionCallback = async () => {
     arrangementViewMulti.innerHTML = "";
 
     // Get collection with displays
-    const data = await apiCallsMixin.fetchDatasetCollectionMembers(selected_dc_share_id);
+    const data = await apiCallsMixin.fetchDatasetCollectionMembers(datasetCollectionState.selectedShareId);
     document.getElementById("btn-arrangement-view").classList.add("is-hidden");
     // If user owns collection, show layout arranger
     if (data.is_owner) {
@@ -1661,19 +2097,14 @@ const datasetCollectionSelectionCallback = async () => {
     // Update action buttons for the dataset collection or datasets
     updateDatasetCollectionButtons(data);
 
-    // Also hide js-view-displays buttons if user is not the owner of the collection
-    const viewDisplayButtons = document.getElementsByClassName("js-view-displays");
-    for (const classElt of viewDisplayButtons) {
-        disableAndHideElement(classElt);
-        if (data?.is_owner) {
-            enableAndShowElement(classElt);
-        }
-    }
+    // Hide js-view-displays buttons if user is not the owner of the collection
+    // Also hide the "Displays" table column under the same condition
+    updateViewDisplayAccess(data);
 
     // If the selected dataset collection is the current collection, make it look like the primary collection
     // ! Currently the selector will auto-make that collection the primary collection
     document.getElementById("btn-set-primary-collection").classList.add("is-outlined");
-    if (selected_dc_share_id === CURRENT_USER.layout_share_id) {
+    if (datasetCollectionState.selectedShareId === getCurrentUser()?.layout_share_id) {
         document.getElementById("btn-set-primary-collection").classList.remove("is-outlined");
     }
 }
@@ -1708,8 +2139,8 @@ const initializeDatasetCollectionSelection = () => {
     observer.observe(document.getElementById("dropdown-dc-selector-label"), { childList: true });
 
     // Trigger the default dataset collection to be selected at the start
-    if (CURRENT_USER.layout_share_id) {
-        selectDatasetCollection(CURRENT_USER.layout_share_id);
+    if (getCurrentUser()?.layout_share_id) {
+        selectDatasetCollection(getCurrentUser().layout_share_id);
     }
 
     // Show action buttons
@@ -1776,269 +2207,63 @@ const processSearchResults = (data) => {
         return;
     }
 
-    const tableResultsBody = document.querySelector("#results-table tbody");
-    const tableTamplate = document.getElementById("results-table-view")
-
-    const resultsListDiv = document.getElementById("results-list-div");
-    const listTemplate = document.getElementById("results-list-view");
-
     // data.datasets is a list of JSON strings
     for (const dataset of data.datasets) {
-        const datasetId = dataset.id;
-        const datasetType = dataset.dtype;
-        const label = dataset.title;
 
-        const longDesc = dataset.ldesc || "";
-        const shareId = dataset.share_id;
-        const isPublic = Boolean(dataset.is_public);
-        const isDownloadable = Boolean(dataset.is_downloadable);
-        const hasH5ad = Boolean(dataset.has_h5ad);
-        const dateAdded = new Date(dataset.date_added).toDateString();
-        // as YYYY/MM/DD
-        const shortDateAdded = new Date(dataset.date_added).toISOString().slice(0, 10);
+        const resultItem = new ResultItem(dataset);
 
-        const userName = dataset.user_name;
-        const organism = dataset.organism;
-        const isOwner = dataset.is_owner
-
-        const annotSource = dataset.annotation_source || "Not given";
-        const annotVersion = dataset.annotation_release || "Not given";
-
-        const pubmedId = dataset.pubmed_id || null;
-        const geoId = dataset.geo_id || null;
-
-        const previewImageUrl = dataset.preview_image_url || "/img/dataset_previews/missing.png";
-
-        const resultDatasetId = `result-dataset-id-${datasetId}`
-
-        // TABLE VIEW
-
-        // Clone the template
-        const tableResultsView = tableTamplate.content.cloneNode(true)
-
-        // Set properties for multiple elements
-        // TODO: Truncate titles with tooltip for full title
-        setElementProperties(tableResultsView, ".js-view-displays", { dataset: { datasetId, title: label, isPublic } });
-        setElementProperties(tableResultsView, ".js-display-title", { id: `${resultDatasetId}-table-title`, textContent: label });
-        setElementProperties(tableResultsView, ".js-display-visibility", { id: `${resultDatasetId}-table-visibility` });
-        setElementProperties(tableResultsView, ".js-display-organism", { id: `${resultDatasetId}-table-organism`, textContent: organism });
-        setElementProperties(tableResultsView, ".js-display-owner", { textContent: userName });
-        setElementProperties(tableResultsView, ".js-display-date-added", { textContent: shortDateAdded });
-        setElementProperties(tableResultsView, ".js-display-dataset-type", { textContent: datasetType });
-
-        // Append the cloned template to the results container
-        tableResultsBody.appendChild(tableResultsView);
+        // TABLE VIEW + EXPANDED ROW
+        resultItem.createTableRow();
 
         // LIST VIEW
+        resultItem.createListViewItem();
 
-        // Clone the template
-        const listResultsView = listTemplate.content.cloneNode(true)
+        for (const selector of [resultItem.expandedRowItem, resultItem.resultListItem]) {
+            // Add collection membership info
+            resultItem.addCollectionMembershipInfo(selector);
 
-        // Set properties for multiple elements
-        setElementProperties(listResultsView, ".js-dataset-list-element", { id: resultDatasetId, dataset: { datasetId } });
+            // Add downloadable info
+            resultItem.addDownloadableInfoToDataset(selector);
 
-        // Figure section
-        setElementProperties(listResultsView, ".js-dataset-list-element figure", { id: `${resultDatasetId}-figure` });
+            // Add list visibility info
+            resultItem.addListVisibilityInfo(selector);
 
-        // title section
-        setElementProperties(listResultsView, ".js-display-title p", { id: `${resultDatasetId}-display-title`, textContent: label });
-        setElementProperties(listResultsView, ".js-editable-title input", { id: `${resultDatasetId}-editable-title`, dataset: { originalVal: label }, value: label });
-        setElementProperties(listResultsView, ".js-expand-box", { dataset: { datasetId } });
-        // visibility/other metadata section
-        setElementProperties(listResultsView, ".js-display-visibility", { id: `${datasetId}-display-visibility` });
-        setElementProperties(listResultsView, ".js-editable-visibility input", { id: `${resultDatasetId}-editable-visibility`, checked: isPublic, dataset: { isPublic } });
-        setElementProperties(listResultsView, ".js-editable-visibility label", { htmlFor: `${resultDatasetId}-editable-visibility`, textContent: isPublic ? "Public" : "Private" });
-        // downloadable section
-        setElementProperties(listResultsView, ".js-display-downloadable", { id: `${datasetId}-display-downloadable`});
-        setElementProperties(listResultsView, ".js-editable-downloadable input", { id: `${resultDatasetId}-editable-downloadable`, checked: isDownloadable, dataset: { downloadable: dataset.is_downloadable } });
-        setElementProperties(listResultsView, ".js-editable-downloadable label", { htmlFor: `${resultDatasetId}-editable-downloadable`, textContent: isDownloadable ? "Yes" : "No" });
-        // if h5ad is not present, then disable input and set to "No"
-        if (!hasH5ad) {
-            setElementProperties(listResultsView, ".js-editable-downloadable input", { disabled: true });
-            setElementProperties(listResultsView, ".js-editable-downloadable label", { textContent: "No" });
+            // Add image preview
+            resultItem.addImagePreview(selector);
+
+            // Add description info
+            resultItem.addDescriptionInfo(selector);
+
         }
 
-        // organism section
-        setElementProperties(listResultsView, ".js-display-organism span:last-of-type", { id: `${resultDatasetId}-display-organism`, textContent: organism });
-        setElementProperties(listResultsView, ".js-editable-organism input", {value: organism });
-        // owner section
-        setElementProperties(listResultsView, ".js-display-owner span:last-of-type", { textContent: userName });
-        setElementProperties(listResultsView, ".js-editable-owner input", { value: userName });
-        // date added section
-        setElementProperties(listResultsView, ".js-display-date-added span:last-of-type", { textContent: dateAdded });
-        setElementProperties(listResultsView, ".js-editable-date-added input", { value: dateAdded });
-
-        // annotation source section
-        setElementProperties(listResultsView, ".js-display-annot-source span:last-of-type", { textContent: annotSource });
-        setElementProperties(listResultsView, ".js-editable-annot-source input", { value: annotSource });
-
-        // annotation version section
-        setElementProperties(listResultsView, ".js-display-annot-version span:last-of-type", { textContent: annotVersion });
-        setElementProperties(listResultsView, ".js-editable-annot-version input", { value: annotVersion });
-
-        // pubmed id section
-        const pubmedProp = pubmedId ? {
-            // Not adding "icon-text" and "icon" classes because it aligns text and icon under the label
-            innerHTML: `<a href="https://pubmed.ncbi.nlm.nih.gov/${pubmedId}" target="_blank">
-                    <span>${pubmedId}</span>
-                    <i class="mdi mdi-open-in-new"></i>
-                </a>`
-        } : { textContent: "Not available" };
-        pubmedProp.id = `${resultDatasetId}-display-pubmed-id`;
-
-        setElementProperties(listResultsView, ".js-display-pubmed-id span:last-of-type", pubmedProp);
-        setElementProperties(listResultsView, ".js-editable-pubmed-id input", { id: `${resultDatasetId}-editable-pubmed-id`, dataset: { originalVal: pubmedId }, value: pubmedId });
-
-        // geo id section
-        const geoProp = geoId ? {
-            innerHTML: `<a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=${geoId}" target="_blank">
-                    <span>${geoId}</span>
-                    <i class="mdi mdi-open-in-new"></i>
-                </a>`
-        } : { textContent: "Not available" };
-        geoProp.id = `${resultDatasetId}-display-geo-id`;
-
-        setElementProperties(listResultsView, ".js-display-geo-id span:last-of-type", geoProp);
-        setElementProperties(listResultsView, ".js-editable-geo-id input", { id: `${resultDatasetId}-editable-geo-id`, dataset: { originalVal: geoId }, value: geoId });
-
-        // action buttons section
-        setElementProperties(listResultsView, ".js-view-dataset", { value: shareId });
-        setElementProperties(listResultsView, ".js-view-projection-dataset", { value: shareId });
-        setElementProperties(listResultsView, ".js-view-displays", { dataset: { datasetId, title: label, isPublic } });
-        setElementProperties(listResultsView, ".js-delete-dataset", { value: datasetId, dataset: { isOwner } });
-        setElementProperties(listResultsView, ".js-edit-dataset-permalink", { value: datasetId, dataset: { isOwner, shareId } });
-
-        setElementProperties(listResultsView, ".js-download-dataset", { id: `${resultDatasetId}-download-dataset`, dataset: { datasetId, isDownloadable, hasH5ad } });
-        setElementProperties(listResultsView, ".js-share-dataset", { value: shareId, dataset: { datasetId } });
-        setElementProperties(listResultsView, ".js-edit-dataset", { value: datasetId, dataset: { datasetId } });
-        setElementProperties(listResultsView, ".js-edit-dataset-save", { value: datasetId, dataset: { datasetId } });
-        setElementProperties(listResultsView, ".js-edit-dataset-cancel", { value: datasetId, dataset: { datasetId } });
-
-        setElementProperties(listResultsView, ".js-dataset-curator", { href: `./dataset_curator.html?dataset_id=${datasetId}`});
-        setElementProperties(listResultsView, ".js-multigene-viewer", { href: `./multigene_curator.html?dataset_id=${datasetId}`});
-        setElementProperties(listResultsView, ".js-compare-tool", { href: `./compare_datasets.html?dataset_id=${datasetId}`});
-        setElementProperties(listResultsView, ".js-sc-workbench", { href: `./sc_workbench.html?dataset_id=${datasetId}`});
-
-
-        // dataset type section
-        setElementProperties(listResultsView, ".js-display-dataset-type span:last-of-type", { textContent: datasetType });
-        setElementProperties(listResultsView, ".js-editable-dataset-type input", { value: datasetType });
-        // long description section
-        setElementProperties(listResultsView, ".js-display-ldesc", { id: `${resultDatasetId}-display-ldesc-container` });
-        setElementProperties(listResultsView, ".js-editable-ldesc textarea", { id: `${resultDatasetId}-editable-ldesc`, dataset: { originalVal: longDesc }, value: longDesc });
-
-        // Append the cloned template to the results container
-        resultsListDiv.appendChild(listResultsView);
-
-        // add collection membership info to dataset
-        document.querySelector(`#${resultDatasetId} .js-found-in-collection-text`).innerHTML = "Found in these owned or highlighted collections";
-        if (includePublicMembership) {
-            document.querySelector(`#${resultDatasetId} .js-found-in-collection-text`).innerHTML = "Found in these owned or public collections";
-        }
-
-        const collections = dataset.layouts;
-        for (const collectionString of collections) {
-            const collection = JSON.parse(collectionString);
-            const shareId = collection.share_id;
-            const label = collection.label;
-
-            const collectionListElt = document.querySelector(`#${resultDatasetId} .js-found-in-collections-list`);
-            // Create list element that can link out to the collection
-            const collectionListItem = document.createElement("li");
-            collectionListItem.innerHTML = `
-            <span>
-                <a href="./p?l=${shareId}" target="_blank">
-                    <span>${label}</span>
-                    <i class="mdi mdi-open-in-new"></i>
-                </a>
-            </span>
-            `;
-            collectionListElt.appendChild(collectionListItem);
-        }
-
-        // EXTRA STUFF TO BOTH VIEWS
-        addDownloadableInfoToDataset(datasetId, isDownloadable, hasH5ad);
-        addVisibilityInfoToDataset(datasetId, isPublic);
-
-        const datasetImageContainer = document.querySelector(`#${resultDatasetId}-figure img`);
-        datasetImageContainer.src = previewImageUrl;
-
-        // Add ldesc if it exists
-        const ldescContainer = document.getElementById(`${resultDatasetId}-display-ldesc-container`);
-        const ldescElt = document.createElement("p");
-        ldescElt.id = `${resultDatasetId}-display-ldesc`;
-        ldescElt.textContent = longDesc || "No description entered";
-        ldescContainer.appendChild(ldescElt);
-
+        resultItems.push(resultItem);
 
     }
 
-    // Configure tooltips before manipulating action link buttons
-    for (const tooltipElt of document.getElementsByClassName("tooltip")) {
-        // Do not remove collection tooltips
-        if (tooltipElt.classList.contains("js-collection-tooltip")) {
-            continue;
-        }
-        // Remove any existing tooltips
-        tooltipElt.remove();
-    }
-
-    // Create tooltips for all elements with the data-tooltip-content attribute
-    // Only creating one set so that they can be reused
-    const actionGroupElt = document.querySelector(".js-action-links");
-    const tooltips = []
-    for (const classElt of actionGroupElt.querySelectorAll("[data-tooltip-content]")) {
-        tooltips.push(createActionTooltips(classElt))
-    }
-    const tableDisplayGroupElt = document.querySelector(".js-table-view-displays");
-    const tableDisplayGroupTooltip = createActionTooltips(tableDisplayGroupElt.querySelector("[data-tooltip-content]"))
-
-    // Then apply each tooltip to the appropriate element for all elements with the data-tooltip-content attribute
-
-    for (const actionElt of document.getElementsByClassName("js-action-links")) {
-        const loopTooltips = [...tooltips];
-        for (const classElt of actionElt.querySelectorAll("[data-tooltip-content]")) {
-            applyTooltip(classElt, loopTooltips.shift());
-        }
-    }
-    for (const actionElt of document.getElementsByClassName("js-table-view-displays")) {
-        for (const classElt of actionElt.querySelectorAll("[data-tooltip-content]")) {
-            applyTooltip(classElt, tableDisplayGroupTooltip);
-        }
-    }
-
-    // Create tooltips for dataset view buttons
-    const viewBtns = document.getElementsByClassName("js-view-btn");
-    for (const classElt of viewBtns) {
-        applyTooltip(classElt, createActionTooltips(classElt), "bottom");
-    }
+    setupDatasetItemActionTooltips();
 
     // Normally this is done in the datasetCollectionCallback but we also need it when searching
     // to ensure the table-view button is shown/hid when filters are applied
     let collection = null;
     try {
-        collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
+        collection = flatDatasetCollectionData.find((collection) => collection.share_id === datasetCollectionState.selectedShareId);
     } catch (error) {
         // pass
     }
-    const viewDisplayButtons = document.getElementsByClassName("js-view-displays");
-    for (const classElt of viewDisplayButtons) {
-        disableAndHideElement(classElt);
-        if (collection?.is_owner) {
-            enableAndShowElement(classElt);
+
+    updateViewDisplayAccess(collection);
+
+    // Now that tooltips have been populated we can remove buttons and add event listeners
+    for (const resultItem of resultItems) {
+        for (const selector of [resultItem.expandedRowItem, resultItem.resultListItem]) {
+            // Add event listeners for all dataset elements
+            resultItem.addListItemEventListeners(selector);
+
+            // Show/hide dataset list buttons based on user ownership
+            resultItem.updateDatasetListButtons(selector);
         }
     }
 
-
-    // Hide/Remove some buttons if user is not owner
-    updateDatasetListButtons();
-
-    // Initiialize delete dataset popover for each delete button
-    createDeleteDatasetConfirmationPopover();
-    createRenameDatasetPermalinkPopover();
-
-    // All event listeners for all dataset elements
-    addDatasetListEventListeners();
 }
 
 /**
@@ -2085,9 +2310,9 @@ const renderDisplaysModal = async (datasetId, title, isPublic) => {
     const ownerDisplaysElt = modalContent.querySelector(".js-modal-owner-displays");
     ownerDisplaysElt.replaceChildren();
 
-    const collection = flatDatasetCollectionData.find((collection) => collection.share_id === selected_dc_share_id);
+    const collection = flatDatasetCollectionData.find((collection) => collection.share_id === datasetCollectionState.selectedShareId);
     if (collection) {
-        const layoutMemberData = await apiCallsMixin.fetchDatasetCollectionMembers(selected_dc_share_id);
+        const layoutMemberData = await apiCallsMixin.fetchDatasetCollectionMembers(datasetCollectionState.selectedShareId);
         collection.members = layoutMemberData.layout_members.single.concat(layoutMemberData.layout_members.multi);
     }
 
@@ -2198,17 +2423,32 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
             logErrorInConsole(error);
             // Realistically we should try to plot, but I assume most saved displays will have an image present.
             displayUrl = "/img/dataset_previews/missing.png";
-            if (display.plot_type === "epiviz") {
-                displayUrl = "/img/epiviz_mini_screenshot.jpg"; // TODO: Replace with real logo
+            if (display.plot_type == "epiviz") {
+                // epiviz is no longer supported.  Continue
+                continue
+            } else if (display.plot_type == "gosling") {
+                displayUrl = "/img/dataset_previews/gosling.png";
             }
         }
 
         const displayImage = displayElement.querySelector('figure > img');
         displayImage.src = displayUrl;
+        displayImage.alt = `Preview of ${display.label || display.plot_type} display`;
 
         // Add tag indicating plot type
         const displayType = displayElement.querySelector('.js-modal-display-type');
-        displayType.textContent = display.plot_type;
+
+        const multiGeneDisplay = ["heatmap", "dotplot", "mg_violin", "volcano", "quadrant", "mg_tsne_static", "mg_umap_static", "mg_pca_static"];
+
+        // Add color tags to displayType depending on plot type
+        if (multiGeneDisplay.includes(display.plot_type)) {
+            displayType.classList.add("is-danger");
+            displayType.textContent = `${display.plot_type} [multigene]`;
+
+        } else {
+            displayType.classList.add("is-info");
+            displayType.textContent = display.plot_type;
+        }
 
         // Determine number of times display is in current layout
         const displayCount = displayElement.querySelector('.js-collection-display-count');
@@ -2237,7 +2477,7 @@ const renderLayoutArranger = async (collection) => {
     document.getElementById("dataset-arrangement-loading-notification").classList.remove("is-hidden");
 
     // The share_id should be updated in the component when a new dataset collection is selected
-    const datasetData = await apiCallsMixin.fetchDatasets({layout_share_id: selected_dc_share_id, sort_by: "date_added"})
+    const datasetData = await apiCallsMixin.fetchDatasets({layout_share_id: datasetCollectionState.selectedShareId, sort_by: "date_added"})
 
     // Get the titles of the datasets
     const titles = {};
@@ -2250,31 +2490,16 @@ const renderLayoutArranger = async (collection) => {
     const singleLayoutMembers = layoutMembers.single || [];
     const multiLayoutMembers = layoutMembers.multi || [];
 
-    // Legacy mode - if all tiles have startCol = 1, then we are in legacy mode
-    // These layouts were generated only with a "width" property
-
-    const combinedLayoutMembers = singleLayoutMembers.concat(multiLayoutMembers);
-
-    const legacyMode = combinedLayoutMembers.every((display) => JSON.parse(display).start_col === 1);
-
-    let currentCol = 1;
-    let currentRow = 1;
-
     singleArrangement = new LayoutArrangement();
     multiArrangement = new LayoutArrangement(true);
 
-    // If no layout members, show a message and hide loading indication
-    document.getElementById("dataset-arrangement-no-displays-notification").classList.add("is-hidden");
-    if (!singleLayoutMembers.length && !multiLayoutMembers.length) {
-        document.getElementById("dataset-arrangement-loading-notification").classList.add("is-hidden");
-        document.getElementById("dataset-arrangement-no-displays-notification").classList.remove("is-hidden");
-    }
+    // Single-gene displays
 
-    const maxEndCol = 13;
-
-    document.getElementById("dataset-arrangement-single-c").classList.remove("is-hidden");
+    document.getElementById("dataset-arrangement-single").classList.remove("is-hidden");
+    document.getElementById("dataset-arrangement-single-no-displays-notification").classList.add("is-hidden");
     if (!singleLayoutMembers.length) {
-        document.getElementById("dataset-arrangement-single-c").classList.add("is-hidden");
+        document.getElementById("dataset-arrangement-single").classList.add("is-hidden");
+        document.getElementById("dataset-arrangement-single-no-displays-notification").classList.remove("is-hidden");
     }
 
     for (const display of singleLayoutMembers) {
@@ -2284,36 +2509,19 @@ const renderLayoutArranger = async (collection) => {
 
         const singleMember = new LayoutArrangementMember(singleArrangement, displayId, member.grid_position, member.start_col, member.start_row, member.grid_width, member.grid_height);
 
-        // If in legacy mode, then we need to calculate the startCol and endCol and startRow and endRow
-        // so the arrangement view can be displayed correctly
-        if (legacyMode) {
-            const width = member.grid_width;
-
-            // If endCol is greater than 13, then this tile is in the next row
-            if (currentCol + width > maxEndCol) {
-                currentCol = 1;
-                currentRow++;
-            }
-
-            singleMember.startCol = currentCol;
-            singleMember.startRow = currentRow;
-
-            currentCol += width;
-        }
-
         singleMember.image = await apiCallsMixin.fetchDatasetDisplayImage(datasetId, displayId)
 
         singleMember.datasetTitle = titles[datasetId];
         singleArrangement.addMember(singleMember);
     }
 
-    // Reset for the multi-gene layout
-    currentCol = 1;
-    currentRow = 1;
+    // Multi-gene displays
 
-    document.getElementById("dataset-arrangement-multi-c").classList.remove("is-hidden");
+    document.getElementById("dataset-arrangement-multi").classList.remove("is-hidden");
+    document.getElementById("dataset-arrangement-multi-no-displays-notification").classList.add("is-hidden");
     if (!multiLayoutMembers.length) {
-        document.getElementById("dataset-arrangement-multi-c").classList.add("is-hidden");
+        document.getElementById("dataset-arrangement-multi").classList.add("is-hidden");
+        document.getElementById("dataset-arrangement-multi-no-displays-notification").classList.remove("is-hidden");
     }
 
     for (const display of multiLayoutMembers) {
@@ -2322,22 +2530,6 @@ const renderLayoutArranger = async (collection) => {
         const datasetId = member.dataset_id;
 
         const multiMember = new LayoutArrangementMember(multiArrangement, displayId, member.grid_position, member.start_col, member.start_row, member.grid_width, member.grid_height);
-
-        if (legacyMode) {
-            const width = member.grid_width;
-
-            // If endCol is greater than 13, then this tile is in the next row
-            if (currentCol + width > maxEndCol) {
-                currentCol = 1;
-                currentRow++;
-            }
-
-            multiMember.startCol = currentCol;
-            multiMember.startRow = currentRow;
-
-            currentCol += width;
-
-        }
 
         multiMember.image = await apiCallsMixin.fetchDatasetDisplayImage(datasetId, displayId)
 
@@ -2353,36 +2545,83 @@ const renderLayoutArranger = async (collection) => {
     document.getElementById("dataset-arrangement-loading-notification").classList.add("is-hidden");
 }
 
-/**
- * Sets the dataset of an element based on the provided dataset object.
- * @param {HTMLElement} parentNode - The parent node containing the element.
- * @param {string} selector - The CSS selector to select the element.
- * @param {Object} dataset - The dataset object containing key-value pairs.
- */
-const setElementDataset = (parentNode, selector, dataset) => {
-    const element = parentNode.querySelector(selector);
-    Object.keys(dataset).forEach((key) => {
-        element.dataset[key] = dataset[key];
-    });
-}
 
 /**
- * Sets the properties of an element selected by a given selector within a parent node.
- * @param {HTMLElement} parentNode - The parent node containing the element.
- * @param {string} selector - The CSS selector used to select the element.
- * @param {Object} properties - An object containing the properties to be set on the element.
+ * Sets properties on a target element found within a given element using a selector.
+ *
+ * @param {HTMLElement} element - The parent element to query within.
+ * @param {string} selector - The CSS selector to find the target element.
+ * @param {Object} properties - An object containing the properties to set on the target element.
+ * @param {Object} [properties.dataset] - An optional object containing data attributes to set on the target element.
  */
-const setElementProperties = (parentNode, selector, properties) => {
-    const element = parentNode.querySelector(selector);
-    Object.keys(properties).forEach((property) => {
-        if (property === "dataset") {
-            setElementDataset(parentNode, selector, properties[property]);
-            return;
+const setElementProperties = (element, selector, properties) => {
+    const targetElement = element.querySelector(selector);
+    if (targetElement) {
+        for (const [key, value] of Object.entries(properties)) {
+            if (key === 'dataset') {
+                for (const [dataKey, dataValue] of Object.entries(value)) {
+                    targetElement.dataset[dataKey] = dataValue;
+                }
+            } else {
+                targetElement[key] = value;
+            }
         }
-        element[property] = properties[property];
-    });
+    }
 }
 
+/**
+ * Sets up tooltips for various elements on the dataset explorer page.
+ *
+ * This function performs the following steps:
+ * 1. Removes existing tooltips from elements, except those with the class "js-collection-tooltip".
+ * 2. Creates new tooltips for elements with the "data-tooltip-content" attribute within the action links group.
+ * 3. Creates a tooltip for the table display group element with the "data-tooltip-content" attribute.
+ * 4. Applies the created tooltips to the appropriate elements in the action links and table display groups.
+ * 5. Creates and applies tooltips for dataset view buttons.
+ */
+const setupDatasetItemActionTooltips = () => {
+    // Configure tooltips before manipulating action link buttons
+    for (const tooltipElt of document.getElementsByClassName("tooltip")) {
+        // Do not remove collection tooltips
+        if (tooltipElt.classList.contains("js-collection-tooltip")) {
+            continue;
+        }
+        // Remove any existing tooltips
+        tooltipElt.remove();
+    }
+
+    // Create tooltips for all elements with the data-tooltip-content attribute
+    // Only creating one set so that they can be reused
+    const actionGroupElt = document.querySelector(".js-action-links");
+    const tooltips = []
+    for (const classElt of actionGroupElt.querySelectorAll("[data-tooltip-content]")) {
+        tooltips.push(createActionTooltips(classElt))
+    }
+    const tableDisplayGroupElt = document.querySelector(".js-td-expand");
+    const tableDisplayGroupTooltip = createActionTooltips(tableDisplayGroupElt.querySelector("[data-tooltip-content]"))
+
+    // Then apply each tooltip to the appropriate element for all elements with the data-tooltip-content attribute
+    // NOTE: It's important to do this after creating all the tooltips so that the tooltips are created in the correct order
+
+    for (const actionElt of document.getElementsByClassName("js-action-links")) {
+        const loopTooltips = [...tooltips];
+        for (const classElt of actionElt.querySelectorAll("[data-tooltip-content]")) {
+            applyTooltip(classElt, loopTooltips.shift());
+        }
+    }
+    for (const actionElt of document.getElementsByClassName("js-td-expand")) {
+        for (const classElt of actionElt.querySelectorAll("[data-tooltip-content]")) {
+            applyTooltip(classElt, tableDisplayGroupTooltip);
+        }
+    }
+
+    // Create tooltips for dataset view buttons
+    const viewBtns = document.getElementsByClassName("js-view-btn");
+    for (const classElt of viewBtns) {
+        applyTooltip(classElt, createActionTooltips(classElt), "bottom");
+    }
+
+}
 
 /**
  * Sets up the pagination UI based on the provided pagination data.
@@ -2473,22 +2712,19 @@ const setupPagination = (pagination) => {
  */
 const submitSearch = async (page=1) => {
 
+    // destroy current ResultItem objects
+    resultItems = [];
+
     const searchTerms = document.getElementById("search-terms").value;
 
-    // If this is the first time searching with terms, set the sort by to relevance
-    if (searchTerms && firstSearch) {
-        document.getElementById("sort-by").value = 'relevance';
-        firstSearch = false;
-    }
-
     const searchCriteria = {
-        'session_id': CURRENT_USER.session_id,
+        'session_id': getCurrentUser()?.session_id,
         'search_terms': searchTerms,
         'sort_by': document.getElementById("sort-by").value
     };
 
     if (searchByCollection) {
-        searchCriteria.layout_share_id = selected_dc_share_id;
+        searchCriteria.layout_share_id = datasetCollectionState.selectedShareId;
     }
 
     if (includePublicMembership) {
@@ -2539,14 +2775,14 @@ const submitSearch = async (page=1) => {
 /**
  * Toggles the editable mode of elements with the given selector base.
  * @param {boolean} hideEditable - Whether to hide the editable elements or not.
- * @param {string} [selectorBase=""] - The base selector to use for finding the editable and non-editable elements.
+ * @param {string} [target=""] - The base selector to use for finding the editable and non-editable elements.
  */
-const toggleEditableMode = (hideEditable, selectorBase="") => {
-    const editableElements = document.querySelectorAll(`${selectorBase} .js-editable-version`);
-    const nonEditableElements = document.querySelectorAll(`${selectorBase} .js-display-version`);
+const toggleEditableMode = (hideEditable, target="") => {
+    const editableElements = target.getElementsByClassName(`js-editable-version`);
+    const nonEditableElements = target.getElementsByClassName(`js-display-version`);
 
-    editableElements.forEach(el => el.classList.toggle("is-hidden", hideEditable));
-    nonEditableElements.forEach(el => el.classList.toggle("is-hidden", !hideEditable));
+    [...editableElements].forEach(el => el.classList.toggle("is-hidden", hideEditable));
+    [...nonEditableElements].forEach(el => el.classList.toggle("is-hidden", !hideEditable));
 }
 
 /**
@@ -2591,8 +2827,8 @@ const updateDatasetCollectionButtons = (collection=null) => {
     collectionVisibilityInput.addEventListener("change", async (event) => {
         const visibility = event.target.checked;
         try {
-            await apiCallsMixin.updateDatasetCollectionVisibility(selected_dc_share_id, visibility);
-            createToast("Collection visibility updated");
+            await apiCallsMixin.updateDatasetCollectionVisibility(datasetCollectionState.selectedShareId, visibility);
+            createToast("Collection visibility updated", "is-success");
         } catch (error) {
             logErrorInConsole(error);
             createToast("Failed to update collection visibility");
@@ -2611,69 +2847,13 @@ const updateDatasetCollectionButtons = (collection=null) => {
 const updateDatasetCollections = async () => {
 
     // Fetch the dataset collections, which will update the dataset collection selector
-    await fetchDatasetCollections()
+    await fetchDatasetCollections();
 
     // Uses dataset-collection-selector.js variable
-    const datasetCollectionData = dataset_collection_data;
+    const datasetCollectionData = datasetCollectionState.data;
     // merge all dataset collection data from domain_layouts, group_layouts, public_layouts, shared_layouts, and user_layouts into one array
     flatDatasetCollectionData = [...datasetCollectionData.domain_layouts, ...datasetCollectionData.group_layouts, ...datasetCollectionData.public_layouts, ...datasetCollectionData.shared_layouts, ...datasetCollectionData.user_layouts];
 
-}
-
-/**
- * Updates the dataset list buttons based on the dataset properties.
- */
-const updateDatasetListButtons = () => {
-
-    const datasetListElements = document.getElementsByClassName("js-dataset-list-element");
-    for (const classElt of datasetListElements) {
-        const datasetId = classElt.dataset.datasetId;
-
-        //unhide all buttons
-        for (const actionLinks of classElt.querySelectorAll(".js-action-links .control")) {
-            actionLinks.classList.remove("is-hidden");
-        }
-
-        // If the dataset has no h5ad file, remove the download button since it cannot be downloaded regardless
-        const downloadButton = classElt.querySelector("button.js-download-dataset");
-        if (downloadButton) {
-            const hasH5ad = parseBool(downloadButton.dataset.hasH5ad);
-            if (!hasH5ad) {
-                downloadButton.parentElement.remove();
-            }
-        }
-
-        // If button still exists, update its visibility if the dataset is downloadable
-        if (downloadButton) {
-            const isDownloadable = parseBool(downloadButton.dataset.isDownloadable);
-            disableAndHideElement(downloadButton, true);
-            if (isDownloadable) {
-                enableAndShowElement(downloadButton, true);
-            }
-        }
-
-        // The ability to edit and delete and dataset are currently paired
-        const deleteButton = classElt.querySelector("button.js-delete-dataset");
-        const editButton = classElt.querySelector("button.js-edit-dataset");
-        const editPermalinkButton = classElt.querySelector("button.js-edit-dataset-permalink");
-
-        const selectorBase = `#result-dataset-id-${datasetId}`;
-
-        if (deleteButton) {
-            // If user is not the owner of the dataset, remove the delete and edit buttons so user cannot manipulate
-            // These will be regenerated when a search triggers processSearchResults
-            if (deleteButton.dataset.isOwner === "false") {
-                deleteButton.parentElement.remove();
-                editButton.parentElement.remove()
-                editPermalinkButton.parentElement.remove();
-
-                // Remove all editable elements to prevent editing in the DOM
-                for (const editableElt of classElt.querySelectorAll(`${selectorBase} .js-editable-version`)) {
-                    editableElt.classList.remove()
-                }
-            };
-        }
-    }
 }
 
 /**
@@ -2697,8 +2877,8 @@ const updateDisplayAddRemoveToCollectionButtons = (modalDivId, collection=null) 
         enableAndShowElement(addToCollectionButton);
         enableAndShowElement(removeFromCollectionButton);
 
-        // if dataset collection is domain, remove the "add to collection" and "remove from collection" buttons
-        if (!collection || Boolean(collection.is_domain)) {
+        // if dataset collection, remove the "add to collection" and "remove from collection" buttons
+        if (!collection) {
             collectionAddRemoveGroup.classList.add("is-hidden");
             disableAndHideElement(addToCollectionButton);
             disableAndHideElement(removeFromCollectionButton);
@@ -2713,17 +2893,50 @@ const updateDisplayAddRemoveToCollectionButtons = (modalDivId, collection=null) 
     }
 }
 
+/**
+ * Updates the display access for view display buttons and table columns based on the provided data.
+ *
+ * @param {Object} data - The data object containing user information.
+ * @param {boolean} data.is_owner - Indicates if the current user is the owner.
+ */
+const updateViewDisplayAccess = (data) => {
+    const viewDisplayButtons = document.getElementsByClassName("js-view-displays");
+    for (const classElt of viewDisplayButtons) {
+        disableAndHideElement(classElt);
+        if (data?.is_owner) {
+            enableAndShowElement(classElt);
+        }
+    }
+    const viewDisplaysTableHeader = document.getElementById("view-displays-header");
+    viewDisplaysTableHeader.classList.add("is-hidden");
+    if (data?.is_owner) {
+        viewDisplaysTableHeader.classList.remove("is-hidden");
+    }
+    const columnIndex = viewDisplaysTableHeader.cellIndex;
+    // get all rows in the table
+    const rows = document.querySelectorAll("#results-table tbody tr.js-table-row");
+    for (const row of rows) {
+        const cell = row.cells[columnIndex];
+        cell.classList.add("is-hidden");
+        if (data?.is_owner) {
+            cell.classList.remove("is-hidden");
+        }
+    }
+}
+
 /* --- Entry point --- */
 const handlePageSpecificLoginUIUpdates = async (event) => {
 
 	// User settings has no "active" state for the sidebar
 	document.getElementById("page-header-label").textContent = "Dataset Explorer";
 
-    const sessionId = CURRENT_USER.session_id;
-
+    const sessionId = getCurrentUser()?.session_id;
 	if (! sessionId ) {
         // ? Technically we can show profiles, but I would need to build in "logged out controls".
         document.getElementById("collection-management").classList.add("is-hidden");
+        document.getElementById("filter-collection-container").classList.add("is-hidden");
+        // Ensure this toggle remains hidden when user switches views
+        document.getElementById("filter-collection-container").classList.remove("js-trigger-dataset-search");
         // only show public datasets option
         for (const elt of document.querySelectorAll("#controls-ownership li:not([data-dbval='public'])")) {
             elt.remove();
@@ -2743,13 +2956,15 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     // Prep filters
     await loadOrganismList();
 
+    registerDatasetCollectionEventListeners(apiCallsMixin, getCurrentUser());
+
     // Select the user's last remembered filter options
     const defaultOwnershipView = Cookies.get("default_collection_ownership_view");
     const defaultOrganismView = Cookies.get("default_collection_organism_view");
     const defaultDateAddedView = Cookies.get("default_collection_date_added_view");
     const defaultDatasetTypeView = Cookies.get("default_collection_dataset_type_view");
 
-    if (defaultOwnershipView && CURRENT_USER.session_id) {
+    if (defaultOwnershipView && getCurrentUser()?.session_id) {
         // deselect All
         document.querySelector("#controls-ownership li.js-all-selector").classList.remove("js-selected");
 
@@ -2757,17 +2972,19 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
             document.querySelector(`#controls-ownership li[data-dbval='${ownership}']`).classList.add("js-selected");
         }
     }
-    if (defaultOrganismView && CURRENT_USER.session_id) {
+    if (defaultOrganismView && getCurrentUser()?.session_id) {
         // deselect All
         document.querySelector("#controls-organism li.js-all-selector").classList.remove("js-selected");
         for (const organism of defaultOrganismView.split(",")) {
             document.querySelector(`#controls-organism li[data-dbval='${organism}']`).classList.add("js-selected");
         }
     }
-    if (defaultDateAddedView && CURRENT_USER.session_id) {
-        document.querySelector(`#controls-date-added li[data-dbval='${CURRENT_USER.default_date_added_view}']`).classList.add("js-selected");
+    if (defaultDateAddedView && getCurrentUser()?.session_id) {
+        // deselect All and select the cookie saved view
+        document.querySelector("#controls-date-added li.js-all-selector").classList.remove("js-selected");
+        document.querySelector(`#controls-date-added li[data-dbval='${defaultDateAddedView}']`).classList.add("js-selected");
     }
-    if (defaultDatasetTypeView && CURRENT_USER.session_id) {
+    if (defaultDatasetTypeView && getCurrentUser()?.session_id) {
         // deselect All
         document.querySelector("#controls-dataset-type li.js-all-selector").classList.remove("js-selected");
         for (const dtype of defaultDatasetTypeView.split(",")) {
@@ -2776,9 +2993,40 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 
     // If they passed search_string URL parameter, set that
-    let search_string = getUrlParameter("search_string");
-    if (search_string) {
-        document.getElementById("search-terms").value = search_string;
+    let searchString = getUrlParameter("search_string");
+    if (searchString) {
+        document.getElementById("search-terms").value = searchString;
+    }
+
+    let organismIDPassed = getUrlParameter("organism_id");
+    if (organismIDPassed) {
+        // deselect All
+        document.querySelector("#controls-organism li.js-all-selector").classList.remove("js-selected");
+        const organismElt = document.querySelector(`#controls-organism li[data-dbval='${organismIDPassed}']`);
+        if (organismElt) {
+            organismElt.classList.add("js-selected");
+        }
+    }
+
+    let dtypePassed = getUrlParameter("dataset_type");
+    if (dtypePassed) {
+        // deselect All
+        document.querySelector("#controls-dataset-type li.js-all-selector").classList.remove("js-selected");
+        const dtypeElt = document.querySelector(`#controls-dataset-type li[data-dbval='${dtypePassed}']`);
+        if (dtypeElt) {
+            dtypeElt.classList.add("js-selected");
+        }
+    }
+
+    let sortByPassed = getUrlParameter("sort_by");
+    if (sortByPassed) {
+        const sortByElt = document.getElementById("sort-by");
+        for (const option of sortByElt.options) {
+            if (option.value === sortByPassed) {
+                sortByElt.value = sortByPassed;
+                break;
+            }
+        }
     }
 
     await submitSearch();
@@ -2828,6 +3076,11 @@ const handlePageSpecificLoginUIUpdates = async (event) => {
     }
 
 };
+registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
+
+// Pre-initialize some stuff
+await initCommonUI();
+
 
 document.getElementById("search-clear").addEventListener("click", async () => {
     document.getElementById("search-terms").value = "";
@@ -2863,6 +3116,8 @@ document.getElementById("btn-table-view").addEventListener("click", () => {
     document.getElementById("btn-table-view").classList.add('is-gear-bg-secondary');
     document.getElementById("btn-table-view").classList.remove('is-dark');
 
+    document.getElementById("title-filter-controls").classList.remove("is-hidden");
+
     for (const classElt of document.getElementsByClassName("js-trigger-dataset-search")) {
         classElt.classList.remove("is-hidden");
     }
@@ -2889,6 +3144,8 @@ document.getElementById("btn-list-view-compact").addEventListener("click", () =>
 
     document.getElementById("btn-list-view-compact").classList.add('is-gear-bg-secondary');
     document.getElementById("btn-list-view-compact").classList.remove('is-dark');
+
+    document.getElementById("title-filter-controls").classList.remove("is-hidden");
 
     for (const classElt of document.getElementsByClassName("js-trigger-dataset-search")) {
         classElt.classList.remove("is-hidden");
@@ -2927,6 +3184,8 @@ document.getElementById("btn-list-view-expanded").addEventListener("click", () =
 
     document.getElementById("btn-list-view-expanded").classList.add('is-gear-bg-secondary');
     document.getElementById("btn-list-view-expanded").classList.remove('is-dark');
+
+    document.getElementById("title-filter-controls").classList.remove("is-hidden");
 
     for (const classElt of document.getElementsByClassName("js-trigger-dataset-search")) {
         classElt.classList.remove("is-hidden");
@@ -2967,6 +3226,8 @@ document.getElementById("btn-arrangement-view").addEventListener("click", () => 
 
     document.getElementById("include-public-membership-c").classList.add("is-hidden");
 
+    document.getElementById("title-filter-controls").classList.add("is-hidden");
+
     // Elements that would trigger submitSearch() are hidden so that pagination and count label won't appear
     for (const classElt of document.getElementsByClassName("js-trigger-dataset-search")) {
         classElt.classList.add("is-hidden");
@@ -3003,7 +3264,7 @@ for (const elt of document.querySelectorAll(".js-expandable-control")) {
     }
 )};
 
-// If checkbox is changed, set the searchByCollection flag
+// If checkbox is changed, set the searchByCollection
 document.getElementById("filter-only-in-collection").addEventListener("change", (e) => {
     searchByCollection = e.currentTarget.checked;
     // If the checkbox is checked, change label accordingly
@@ -3013,7 +3274,7 @@ document.getElementById("filter-only-in-collection").addEventListener("change", 
     submitSearch();
 });
 
-// If checkbox is changed, set the searchByCollection flag
+// If checkbox is changed, set the searchByCollection
 document.getElementById("include-public-membership").addEventListener("change", (e) => {
     includePublicMembership = e.currentTarget.checked;
     // If the checkbox is checked, change label accordingly
@@ -3055,7 +3316,7 @@ document.getElementById("btn-save-arrangement").addEventListener("click", async 
     }
 
 
-    const data = await apiCallsMixin.saveDatasetCollectionArrangement(selected_dc_share_id, layoutArrangement)
+    const data = await apiCallsMixin.saveDatasetCollectionArrangement(datasetCollectionState.selectedShareId, layoutArrangement)
     if (data.success) {
         createToast("Layout arrangement saved successfully", "is-success");
     } else {
@@ -3065,11 +3326,11 @@ document.getElementById("btn-save-arrangement").addEventListener("click", async 
 
 document.getElementById("btn-set-primary-collection").addEventListener("click", async () => {
     try {
-        const data = await apiCallsMixin.setUserPrimaryDatasetCollection(selected_dc_share_id)
+        const data = await apiCallsMixin.setUserPrimaryDatasetCollection(datasetCollectionState.selectedShareId)
         if (data.success) {
             createToast("Primary collection set successfully", "is-success");
 
-            Cookies.set('gear_default_domain', selected_dc_share_id);
+            Cookies.set('gear_default_domain', datasetCollectionState.selectedShareId);
 
             // Make button outlined to look "official"
             document.getElementById("btn-set-primary-collection").classList.remove("is-outlined");
@@ -3083,7 +3344,10 @@ document.getElementById("btn-set-primary-collection").addEventListener("click", 
 });
 
 document.getElementById("btn-share-collection").addEventListener("click", (e) => {
-    const currentPage = getRootUrl();
-    const shareUrl = `${currentPage}/p?l=${selected_dc_share_id}`;
+    const currentPage = new URL(`${getRootUrl()}/p`);
+    const params = new URLSearchParams(currentPage.search);
+    params.set("l", datasetCollectionState.selectedShareId);
+    currentPage.search = params.toString();
+    const shareUrl = currentPage.toString();
     copyPermalink(shareUrl);
 });

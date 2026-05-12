@@ -1,9 +1,11 @@
+import os
+
+import geardb
 from flask import request
 from flask_restful import Resource
-import os
-import geardb
 
-from .common import get_adata_shadow
+from .common import get_adata_shadow, get_spatial_adata
+
 
 class GeneSymbols(Resource):
     """Gene Symbols
@@ -20,17 +22,29 @@ class GeneSymbols(Resource):
     def get(self, dataset_id):
         analysis_id = request.args.get('analysis')
         session_id = request.cookies.get('gear_session_id')
-        user = geardb.get_user_from_session_id(session_id)
 
-        ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
-        h5_path = ds.get_file_path()
+        ds = geardb.get_dataset_by_id(dataset_id)
+        if not ds:
+            return {
+                "success": -1,
+                'message': "No dataset found with that ID"
+            }
 
         try:
-            adata = get_adata_shadow(analysis_id, dataset_id, session_id, h5_path)
+            if ds.dtype == "spatial":
+                adata = get_spatial_adata(analysis_id, dataset_id, session_id)
+            else:
+                adata = get_adata_shadow(analysis_id, dataset_id, session_id)
+
         except FileNotFoundError:
             return {
                 "success": -1,
-                'message': "No h5 file found for this dataset"
+                'message': "No file found for this dataset"
+            }
+        except Exception as e:
+            return {
+                "success": -1,
+                'message': str(e)
             }
 
         return {

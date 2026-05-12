@@ -2,116 +2,89 @@
 # Dockerfile to build gEAR web application
 ############################################################
 
-FROM ubuntu:jammy
-# ubuntu 22.04
+# Stage 3: Final runtime image
+FROM ubuntu:jammy AS final
 
+ARG TARGETARCH
+# Some package building issues when attempting to use 3.14
+ARG PYTHON_MAJOR_VERSION=3.14
+ARG PYTHON_FULL_VERSION=${PYTHON_MAJOR_VERSION}.4
+ARG GEAR_URL=https://www.github.com/IGS/gEAR.git
+ARG GEAR_BRANCH=devel
+
+LABEL author="Shaun Adkins <sadkins@som.umaryland.edu>"
 LABEL maintainer="Shaun Adkins <sadkins@som.umaryland.edu>"
 
-ARG CMAKE_VERSION=3.19.8
-ARG CMAKE_URL=https://github.com/Kitware/CMake/archive/refs/tags/v${CMAKE_VERSION}.tar.gz
-
-ARG PYTHON_VERSION=3.10.4
-ARG PYTHON_URL=https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tar.xz
-
-ARG GEAR_URL=https://www.github.com/IGS/gEAR.git
-ARG GEAR_BRANCH=main
-
-# Install packages to Ubuntu
-RUN apt-get -qq update \
+# Install runtime packages
+RUN apt -qq update \
   && DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
-  libffi-dev \
-  libsqlite-dev \
-  libsqlite3-dev \
-  libhdf5-dev \
-  libreadline-dev \
-  libncursesw5-dev \
-  libssl-dev \
-  tk-dev \
-  libgdbm-dev \
-  libc6-dev \
-  libbz2-dev \
-  lzma \
-  liblzma-dev \
-  hdf5-helpers \
-  hdf5-tools \
-  libhdf5-dev \
-  zlib1g-dev \
-  libblas-dev \
-  liblapack-dev \
-  libcairo2-dev \
-  libxml2-dev \
-  libhdf5-serial-dev \
-  cmake \
+  ca-certificates \
   curl \
+  make \
+  gcc \
+  g++ \
+  rsync \
   wget \
   git \
   vim \
   unzip \
-  software-properties-common \
-  build-essential \
-  gcc \
-  python3-dev \
-  python3-tk \
-  openssh-server \
   llvm \
-  # Required for R
-	gfortran \
-  # Required for rpy2
-  r-cran-rjava \
-  # Required for R-package devtools (which is required for SJD)
-  libharfbuzz-dev \
-  libfribidi-dev \
-  libfreetype6-dev \
-  libgit2-dev \
-  libpng-dev \
-  libtiff5-dev \
-  libjpeg-dev \
-  # Apache2 and PHP
-  libapache2-mod-wsgi-py3 \
-  apache2-dev \
   apache2 \
   php \
+  libffi-dev \
+  libpcre2-dev \
+  zlib1g-dev \
+  libbz2-dev \
+  liblzma-dev \
+  libicu-dev \
+  libdeflate-dev \
+  libssl3 \
   libapache2-mod-php \
   php-gd \
-  # Cleanup
+  libffi-dev \
+  libpcre2-dev \
+  fonts-roboto \
+  fontconfig \
   && apt -qq clean autoclean \
   && apt -qq autoremove -y \
   && rm -rf /var/lib/apt/lists/*
 
-ENV LLVM_CONFIG=/usr/bin/llvm-config-9
+# Cache the Roboto and Arial fonts
+RUN fc-cache -f -v
 
-# Install CMake
-# Ubuntu Bionic package is 3.10 which is too outdated for louvain-igraph install
-# The Kitware PPA repo for apt does not go earlier than 3.20, and anything later than 3.20 also breaks
-# So need to build from source instead
+ENV LLVM_CONFIG=/usr/bin/llvm-config-14
 
-WORKDIR /tmp
-RUN wget $CMAKE_URL \
-  && tar -xzf v${CMAKE_VERSION}.tar.gz \
-  && cd CMake-${CMAKE_VERSION} \
-  && ./bootstrap \
-  && make install \
-  && rm -rf CMake-${CMAKE_VERSION} v${CMAKE_VERSION}.tar.gz
+# Copy compiled Python from builder stage
+COPY --from=adkinsrs/gear-python-base:2026-04-27 /opt/Python-${PYTHON_FULL_VERSION} /opt/Python-${PYTHON_FULL_VERSION}
 
-# ProjectR install.  Must be done before rpy2 is installed
-# NOTE: Speed this up... so slow for Linux install.  Maybe build on actual linux hardware, or do a multi-stage docker build
-COPY ./install_bioc.sh /tmp/
-COPY ./install_bioc.R /tmp/
-WORKDIR /tmp
-RUN /tmp/install_bioc.sh
+# Copy compiled R from r-builder stage
+COPY --from=adkinsrs/gear-r-base:2026-04-27 /usr/local/lib/R /usr/local/lib/R
+COPY --from=adkinsrs/gear-r-base:2026-04-27 /usr/local/bin/R /usr/local/bin/R
+COPY --from=adkinsrs/gear-r-base:2026-04-27 /usr/local/bin/Rscript /usr/local/bin/Rscript
 
-# Install Python (with configuration options needed for gEAR)
-WORKDIR /tmp
-RUN wget $PYTHON_URL \
-  && tar -xf Python-${PYTHON_VERSION}.tar.xz \
-  && cd Python-${PYTHON_VERSION} \
-  && ./configure --prefix=/opt/Python-${PYTHON_VERSION} --enable-optimizations --enable-shared \
-  && make install \
-  && cd /tmp \
-  && rm -rf  Python-${PYTHON_VERSION}* \
-  && mkdir -p /opt/bin \
-  && ln -s /opt/Python-${PYTHON_VERSION}/bin/python3 /opt/bin/python3 \
-  && ln -s /opt/Python-${PYTHON_VERSION}/lib/libpython3.10.so.1.0 /usr/lib/
+# Link Python and shared library
+RUN mkdir -p /opt/bin \
+  && ln -s /opt/Python-${PYTHON_FULL_VERSION}/bin/python3 /opt/bin/python3 \
+  && ln -s /opt/Python-${PYTHON_FULL_VERSION}/lib/libpython${PYTHON_MAJOR_VERSION}.so.1.0 /usr/lib/
+
+# Tell the system linker about the new Python libs
+RUN echo "/opt/Python-${PYTHON_FULL_VERSION}/lib" > /etc/ld.so.conf.d/python314.conf \
+    && ldconfig
+
+# LD_LIBRARY_PATH needs R library path for rpy2 compatibility and Python library path too
+ENV LD_LIBRARY_PATH="/usr/local/lib/R/lib:/opt/Python-${PYTHON_FULL_VERSION}/lib"
+ENV R_HOME="/usr/local/lib/R"
+ENV PATH="/opt/Python-${PYTHON_FULL_VERSION}/bin:/usr/local/lib/R/bin:${PATH}"
+
+# Force GCC 11 to use a newer C standard to understand R 4.5.2 headers
+ENV CFLAGS="-std=gnu2x"
+
+# Install rpy2 now that R has installed
+RUN /opt/bin/python3 -m pip install rpy2==3.6.7
+
+# Pre-compile all Python bytecode during the build so Apache doesn't try to write it at runtime
+#RUN /opt/Python-${PYTHON_FULL_VERSION}/bin/python3 -m compileall -q /opt/Python-${PYTHON_FULL_VERSION}/lib/python${PYTHON_MAJOR_VERSION}/site-packages/
+RUN find /opt/Python-${PYTHON_FULL_VERSION}/lib/python${PYTHON_MAJOR_VERSION}/site-packages/ -name __pycache__ -exec chmod 777 {} \;
 
 # Get gEAR code.  Currently cannot do a git clone by normal means due to the repo being "private"
 WORKDIR /opt
@@ -121,43 +94,20 @@ RUN git clone -b ${GEAR_BRANCH} --single-branch ${GEAR_URL} \
 
 COPY ./gear.ini.docker /opt/gEAR/gear.ini
 
-# Upgrade pip and install requirements from file
-# This set of modules will be used by the main Python install and scripts that call it (like CGI ones)
-# numpy is installed before requirements.txt because of dependency requirement issues
-# NOTE: Installing custom version of diffxpy that is based on the latest commit on the main branch (at the time)
-WORKDIR /opt/Python-${PYTHON_VERSION}/bin
-COPY ./requirements.txt /opt/gEAR/docker/requirements.txt
-RUN ./pip3 install --upgrade pip \
-  # wheel is needed for the installation of biopython
-  && ./pip3 install wheel \
-  && ./pip3 install -r /opt/gEAR/docker/requirements.txt \
-  && ./python3 -m pip install git+https://github.com/theislab/diffxpy.git@7609ea935936e3739fc4c71b75c8ee8ca57f51ea \
-  && apt-get -qq update \
-  && (chmod 777 /opt/Python-${PYTHON_VERSION}/lib/python${PYTHON_VERSION}/site-packages/scanpy/preprocessing/__pycache__ || true)
-
-# Scikit-learn lib -> https://stackoverflow.com/a/70016416
-#ENV LD_PRELOAD="/usr/lib/aarch64-linux-gnu/libgomp.so.1:/opt/Python-${PYTHON_VERSION}/lib/python3.10/site-packages/scikit_learn.libs/libgomp-d22c30c5.so.1.0.0"
-ENV LD_LIBRARY_PATH="/usr/local/lib/R/lib:$LD_LIBRARY_PATH"
-
-# Install gcloud (need to figure out how to do init w/o interaction)
-#WORKDIR /opt
-#RUN curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-424.0.0-linux-x86_64.tar.gz \
-#  && tar -xzf google-cloud-cli-424.0.0-linux-x86_64.tar.gz \
-#  && ./google-cloud-sdk/install.sh --quiet
-  #&& ./google-cloud-sdk/bin/gcloud init --console-only
-
-
 # Apache things
 WORKDIR /opt/gEAR
 COPY ./apache2.conf /etc/apache2/apache2.conf
 COPY ./wsgi.conf /etc/apache2/mods-available/wsgi.conf
-COPY ./wsgi.load /etc/apache2/mods-available/wsgi.load
+
+# The wsgi.load .so file name is different for different architectures,
+# so we have separate ones for each architecture.
+COPY ./wsgi.${TARGETARCH}.load /etc/apache2/mods-available/wsgi.load
 COPY ./000-default.conf /etc/apache2/sites-available/000-default.conf
 COPY ./umgear.conf /etc/apache2/sites-available/umgear.conf
 COPY ./php.ini /etc/php/8.1/apache2/php.ini
 RUN a2dissite 000-default.conf
 RUN a2ensite umgear.conf
-RUN a2enmod rewrite cgi wsgi proxy include
+RUN a2enmod rewrite cgi wsgi proxy proxy_http proxy_wstunnel include headers
 EXPOSE 80
 
-CMD /usr/sbin/apachectl -D FOREGROUND
+CMD ["/usr/sbin/apachectl", "-D", "FOREGROUND"]

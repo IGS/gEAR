@@ -3,7 +3,6 @@ import pandas as pd
 import requests
 from typing import Union
 
-from gear.metadatavalidator import MetadataValidator as mdv
 
 class FromGeo:
     """
@@ -14,7 +13,7 @@ class FromGeo:
     """
 
     @classmethod
-    def get_geo_data(cls, geo_id="") -> list[str]:
+    def get_geo_data(cls, geo_id: str | None=None) -> list:
         """
         Using geo_id (GSExxxxx or GSMxxxx), retrieves GEO metadata for that ID.
 
@@ -65,7 +64,7 @@ class FromGeo:
         return content
 
     @classmethod
-    def process_geo_data(cls, content:list[str]=[]) -> dict:
+    def process_geo_data(cls, content: list | None=None, json_or_dataframe: str | None=None) -> str | pd.DataFrame | None:
         """
         Use this to process the request GET content retrieved from in method get_geo_data()
 
@@ -84,6 +83,9 @@ class FromGeo:
 
         geo_data = {}
         duplicates = {}
+
+        if content is None:
+            return None
 
         for item in content:
             if item.startswith('!'):
@@ -109,51 +111,12 @@ class FromGeo:
 
             # geo_data[k] = v
             geo_data[k] = ", ".join([str(val) for val in v])
-        return geo_data
+
+        if json_or_dataframe.lower() == 'json':
+            return json.dumps(geo_data)
 
     @classmethod
-    def process_geo_return_json(cls, content:list[str]=[]) -> str:
-        """
-        Use this to process the request GET content retrieved from in method get_geo_data()
-
-        This method outputs a JSON formatted string.
-        Input
-        -----
-            content = list of content from GEO request
-
-        Output
-        ------
-            parsed GEO content is a JSON string
-        """
-        if not content:
-            raise Exception("No 'content' provided. Provide list of metadata from GEO to continue.")
-        geo_data = FromGeo.process_geo_data(content=content)
-
-        return json.dumps(geo_data)
-
-    @classmethod
-    def process_geo_return_dataframe(cls, content:list[str]=[]) -> pd.DataFrame:
-        """
-        Use this to process the request GET content retrieved from in method get_geo_data()
-
-        This method outputs a pandas dataframe.
-        Input
-        -----
-            content = list of content from GEO request
-
-        Output
-        ------
-            parsed GEO content is a pandas dataframe
-        """
-        if not content:
-            raise Exception("No 'content' provided. Provide list of metadata from GEO to continue.")
-
-        geo_data = FromGeo.process_geo_data(content=content)
-
-        return pd.DataFrame.from_dict(geo_data, orient='index')
-
-    @classmethod
-    def add_geo_data(cls, metadata=None, geo_data=None):
+    def add_geo_data(cls, metadata: pd.DataFrame | None=None, geo_data: pd.DataFrame | None=None) -> pd.DataFrame | None:
         """
         If a value is empty (np.nan) in the user's metadata, populate it with the
         value from the same field in the GEO dataframe.
@@ -178,17 +141,17 @@ class FromGeo:
             missing_values = metadata[metadata['value'].isna() & (metadata['filled_by_geo'].notna())]
 
             # For each empty field, fill it with the value from the GEO dataframe (if it's present in the GEO dataframe)
-            for index, value in missing_values.iterrows():
+            for index, value in missing_values.itertuples():
                 if index in geo_data.index:
-                    metadata.loc[index, 'value'] = geo_data.loc[index, 0]
+                    metadata.loc[index, 'value'] = geo_data.loc[index][0]
         else:
             #print("DEBUG: filled_by_geo not in metadata", file=sys.stderr)
-            for index, value in geo_data.iterrows():
+            for index, value in geo_data.itertuples():
                 #print("\tDEBUG: iterating a row", file=sys.stderr)
 
                 if index in metadata.index and metadata.loc[index, 'value'] == "":
                     #print("\tDEBUG: assigning metadata value for index {0}".format(index), file=sys.stderr)
-                    metadata.loc[index, 'value'] = geo_data.loc[index, 0]
+                    metadata.loc[index, 'value'] = geo_data.loc[index][0]
 
         #print("DEBUG: returning metadata object", file=sys.stderr)
         return metadata

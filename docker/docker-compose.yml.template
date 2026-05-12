@@ -1,5 +1,3 @@
-version: '3'
-
 networks:
   gear:
 
@@ -10,20 +8,22 @@ services:
       MYSQL_USER: [user]
       MYSQL_PASSWORD: [pw]
       MYSQL_ROOT_PASSWORD: [pw]
-    image: mysql:8.0.20-oracle  # for arm64v8 architecture
+    image: mysql:8.0-oracle  # for arm64v8 architecture
     networks:
       - gear
     ports:
       - "3306:3306"
     restart: always
     volumes:
-      - ./mysql:/var/lib/mysql
+      - db:/var/lib/mysql:rw
 
   web:
-    build: .
+    # build: .  # uncomment out if umgear:main does not exist
     depends_on:
       - db
-    image: umgear:main
+    environment:
+      - ENVIRONMENT=development # Set environment variable for development
+    image: adkinsrs/umgear:latest
     networks:
       - gear
     ports:
@@ -33,16 +33,63 @@ services:
       - ..:/opt/gEAR/
 
   queue:
-    image: rabbitmq:3.11.4
+    image: rabbitmq:4.1
     networks:
       - gear
     ports:
       - "5672:5672"
     restart: always
 
-  # consumer:
-  #   image: busybox
-  #   tty: true
-  #   volumes:
-  #     - python_vol:/opt/Python-3.10.4
-  #     - ..:/opt/gEAR
+  panel:
+    build:
+      context: ../services/spatial
+      dockerfile: Dockerfile
+    image: adkinsrs/spatial_panel_app:latest
+    networks:
+      - gear
+    ports:
+      - "5006:5006" # host:container
+    restart: always
+    volumes:
+      - <spatial_panel_cache_path>:/gEAR/www/cache/spatial_panel
+      - <spatial_code_path>:/gEAR/services/spatial
+
+
+  # ProjectR RabbitMQ Consumer
+  #projectr_consumer:
+  #  build:
+  #    context: ..
+  #   dockerfile: listeners/Dockerfile.projectr
+  #  depends_on:
+  #    - queue
+  #  image: adkinsrs/gear_projectr_consumer:latest
+  #  networks:
+  #    - gear
+  #  restart: on-failure
+  #  volumes:
+  #    - ../listeners:/gEAR/listeners
+  #    - ../lib:/gEAR/lib
+
+  # TrackHub (Gosling Upload) RabbitMQ Consumer
+  gosling_upload_consumer:
+    build:
+      context: ..
+      dockerfile: listeners/Dockerfile.gosling_upload
+    depends_on:
+      - queue
+    image: adkinsrs/gear_gosling_upload_consumer:latest
+    networks:
+      - gear
+    restart: on-failure
+    volumes:
+      - ../listeners:/gEAR/listeners
+      - ../lib:/gEAR/lib
+      - ../www/uploads/files:/gEAR/www/uploads/files
+
+volumes:
+  db:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./mysql
+      o: bind

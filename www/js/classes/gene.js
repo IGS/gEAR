@@ -1,6 +1,6 @@
 "use strict";
 
-class Gene {
+export class Gene {
     constructor ({id, ensembl_id, genbank_acc, organism_id, gene_symbol,
                   product, biotype} = {}) {
         this.id = id;
@@ -14,7 +14,7 @@ class Gene {
 
 }
 
-class WeightedGene extends Gene {
+export class WeightedGene extends Gene {
     constructor ({...args} = {}, weights) {
         super(args);
         this.weights = weights || [];

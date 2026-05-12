@@ -15,12 +15,15 @@ Requires:
 
 """
 
-import cgi, json
-import sys, os
+import cgi
+import json
+import os
+import sys
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+
 
 def main():
     print('Content-Type: application/json\n\n')
@@ -29,17 +32,26 @@ def main():
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
-    gc_id = form.getvalue('gene_list_id')
+    share_id = form.getvalue('share_id')
 
     current_user_id = get_user_id_from_session_id(cursor, session_id)
 
-    # Does user own the cart...
-    owns_gc = check_cart_ownership(cursor, current_user_id, gc_id)
+    gene_cart = geardb.get_gene_cart_by_share_id(share_id)
+    if gene_cart is None:
+        error = "Invalid share_id."
+        result = { 'success': 0, 'error': error }
+        print(json.dumps(result))
+        return
 
-    if owns_gc == True:
+    gene_cart_id = gene_cart.id
+
+    # Does user own the cart...
+    owns_gc = check_cart_ownership(cursor, current_user_id, gene_cart_id)
+
+    if owns_gc:
         result = { 'success': 1, 'gc':[] }
 
-        cart = geardb.GeneCart(id=gc_id)
+        cart = geardb.GeneCart(id=gene_cart_id)
         cart.remove()
 
         print(json.dumps(result))
@@ -62,7 +74,7 @@ def check_cart_ownership(cursor, current_user_id, gc_id):
     cursor.execute(qry, (gc_id,))
 
     for row in cursor:
-        print(row[1], current_user_id, file=sys.stderr)
+        #print(row[1], current_user_id, file=sys.stderr)
         # Change access if user owns it
         if row[1] == current_user_id:
             return True

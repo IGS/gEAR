@@ -1,3 +1,4 @@
+import base64
 import copy
 import json
 import numbers
@@ -5,14 +6,22 @@ import re
 import sys
 
 import geardb
+import numpy as np
 import pandas as pd
 import plotly.express.colors as pxc
+import scipy.sparse
 from flask import request
 from flask_restful import Resource
+from gear.plotting import PlotError, generate_plot, plotly_color_map
 from plotly.utils import PlotlyJSONEncoder
 
-from gear.plotting import PlotError, generate_plot, plotly_color_map
-from .common import create_projection_adata, order_by_time_point
+from .common import (
+    clip_expression_values,
+    create_projection_adata,
+    get_adata_from_analysis,
+    get_spatial_adata,
+    order_by_time_point,
+)
 
 COLOR_HEX_PTRN = r"^#(?:[0-9a-fA-F]{3}){1,2}$"
 
@@ -39,6 +48,11 @@ class PlotlyData(Resource):
     def post(self, dataset_id):
         session_id = request.cookies.get('gear_session_id')
         req = request.get_json()
+        if not req:
+            return {
+                "success": -1,
+                'message': "No JSON body provided."
+            }
         gene_symbol = req.get('gene_symbol', None)
         plot_type = req.get('plot_type')
 
@@ -73,7 +87,9 @@ class PlotlyData(Resource):
         vlines = req.get('vlines', [])    # Array of vertical line dict properties
         filters = req.get('obs_filters', {})   # Dict of lists
         projection_id = req.get('projection_id', None)    # projection id of csv output
+        expression_min_clip = req.get('expression_min_clip', None)    # Minimum clip value for expression data
         colorblind_mode = req.get('colorblind_mode', False)
+        return_image = req.get('return_image', False)   # Whether to return a base64 encoded image string in the response for direct use in the frontend
         kwargs = req.get("custom_props", {})    # Dictionary of custom properties to use in plot
 
         # Returning initial values in case plotting errors.
@@ -117,23 +133,29 @@ class PlotlyData(Resource):
             return_dict["message"] = "Request needs both dataset id and gene symbol."
             return return_dict
 
-        try:
-            ana = geardb.get_analysis(analysis, dataset_id, session_id)
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return_dict["success"] = -1
-            return_dict["message"] = "Could not retrieve analysis."
-            return return_dict
+        ds = geardb.get_dataset_by_id(dataset_id)
+        if not ds:
+            return {
+                "success": -1,
+                'message': "No dataset found with that ID"
+            }
+        is_spatial = ds.dtype == "spatial"
 
         try:
-            adata = ana.get_adata(backed=True)
+            if is_spatial:
+                adata = get_spatial_adata(analysis, dataset_id, session_id)
+            else:
+                adata = get_adata_from_analysis(analysis, dataset_id, session_id, backed=True)
+        except FileNotFoundError:
+            return {
+                "success": -1,
+                'message': "No dataset file found."
+            }
         except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return_dict["success"] = -1
-            return_dict["message"] = "Could not retrieve AnnData."
-            return return_dict
+            return {
+                "success": -1,
+                'message': str(e)
+            }
 
         # quick check to ensure x, y, color, facet columns are in the adata.obs
         if x_axis not in adata.obs.columns:
@@ -180,6 +202,10 @@ class PlotlyData(Resource):
                     'message': str(pe),
                 }
 
+        # Apply transformations
+        if expression_min_clip is not None:
+            adata = clip_expression_values(adata, min_clip=expression_min_clip)
+
         adata.obs = order_by_time_point(adata.obs)
 
         # Reorder the categorical values in the observation dataframe
@@ -197,7 +223,7 @@ class PlotlyData(Resource):
                         reordered_col = col.cat.reorder_categories(
                             order[key], ordered=True)
                         adata.obs[key] = reordered_col
-                    except:
+                    except Exception:
                         pass
 
             # get a map of all levels for each column
@@ -224,9 +250,17 @@ class PlotlyData(Resource):
 
             try:
                 selected = adata[:, gene_filter].to_memory()
-            except:
+            except Exception:
                 # The "try" may fail for projections as it is already in memory
                 selected = adata[:, gene_filter]
+
+            # convert adata.X to a dense matrix if it is sparse
+            # This prevents potential downstream issues
+            if scipy.sparse.issparse(selected.X):
+                selected.X = selected.X.toarray() # type: ignore
+            else:
+                selected.X = np.asarray(selected.X)
+
 
             # Filter by obs filters
             if filters:
@@ -239,7 +273,7 @@ class PlotlyData(Resource):
                     if "NA" in values and "NA" not in selected.obs[col].cat.categories:
                         values.remove("NA")
                         selected.obs[col].cat.add_categories("NA")
-                        selected.obs[col].fillna("NA", inplace=True)
+                        selected.obs[col] = selected.obs[col].fillna("NA")
 
                     selected_filter = selected.obs[col].isin(values)
                     selected = selected[selected_filter, :]
@@ -256,7 +290,7 @@ class PlotlyData(Resource):
                 # we don't want to reorder these
                 if col in [x_axis, color_name, facet_col, facet_row]:
                     order_res[col] = selected.obs[col].cat.categories.tolist()
-            except:
+            except Exception:
                 pass
 
         # Close adata so that we do not have a stale opened object
@@ -277,8 +311,8 @@ class PlotlyData(Resource):
         # This resolves https://github.com/IGS/gEAR/issues/878 where the gene_symbol index may be the same as a observation column (i.e. projections)
         selected.var.index = pd.Index(["raw_value"])
 
-        df = selected.to_df()
-        df = pd.concat([df,selected.obs], axis=1)
+        dataframe = selected.to_df()
+        dataframe = pd.concat([dataframe,selected.obs], axis=1)
 
         # fill any missing adata.obs values with "NA"
         # The below line gives the error - TypeError: Cannot setitem on a Categorical with a new category (NA), set the categories first
@@ -296,16 +330,16 @@ class PlotlyData(Resource):
                 if x_axis in analysis_tsne_columns and y_axis in analysis_tsne_columns:
                     # A filtered AnnData object is an 'ArrayView' object and must
                     # be accessed as selected.obsm["X_tsne"] rather than selected.obsm.X_tsne
-                    df[x_axis] = selected.obsm["X_tsne"].transpose()[X]
-                    df[y_axis] = selected.obsm["X_tsne"].transpose()[Y]
+                    dataframe[x_axis] = selected.obsm["X_tsne"].transpose()[X]
+                    dataframe[y_axis] = selected.obsm["X_tsne"].transpose()[Y]
             elif 'X_umap' in selected.obsm:
                 if x_axis in analysis_umap_columns and y_axis in analysis_umap_columns:
-                    df[x_axis] = selected.obsm["X_umap"].transpose()[X]
-                    df[y_axis] = selected.obsm["X_umap"].transpose()[Y]
+                    dataframe[x_axis] = selected.obsm["X_umap"].transpose()[X]
+                    dataframe[y_axis] = selected.obsm["X_umap"].transpose()[Y]
             elif 'X_pca' in selected.obsm:
                 if x_axis in analysis_pca_columns and y_axis in analysis_pca_columns:
-                    df[x_axis] = selected.obsm["X_pca"].transpose()[X]
-                    df[y_axis] = selected.obsm["X_pca"].transpose()[Y]
+                    dataframe[x_axis] = selected.obsm["X_pca"].transpose()[X]
+                    dataframe[y_axis] = selected.obsm["X_pca"].transpose()[Y]
 
         # Close adata so that we do not have a stale opened object
         if selected.isbacked:
@@ -314,8 +348,7 @@ class PlotlyData(Resource):
         if color_map and color_name:
             # Validate if all color map keys are in the dataframe columns
             # Ran into an issue where the color map keys were truncated compared to the dataframe column values
-            # Setting to categories ensures nulls are dropped, which are dropped already in the dataframe
-            col_values = set(df[color_name].cat.categories)
+            col_values = set(dataframe[color_name].unique())
             diff = col_values.difference(color_map.keys())
             if diff:
                 message =  "WARNING: Color map has values not in the dataframe column '{}': {}\n".format(color_name, diff)
@@ -324,13 +357,19 @@ class PlotlyData(Resource):
                 # If any element in diff is nan and color_map contains a valid missing value key like "NA", change the value in the dataframe to match the color_map key
                 for key in list(diff):
                     if pd.isna(key) and "NA" in color_map.keys():
-                        df[color_name] = df[color_name].replace({key: "NA"})
+                        dataframe[color_name] = dataframe[color_name].replace({key: "NA"})
                         col_values.remove(key)  # Remove the nan value from the set
                         col_values = col_values.union({"NA"})
                         break
 
                 # Sort both the colormap and dataframe column alphabetically
-                sorted_column_values = sorted(col_values)
+                # Check for mixed types before sorting for efficiency
+                if len(set(type(x) for x in col_values)) > 1:
+                    # If there are mixed types, convert all to string for sorting
+                    sorted_column_values = sorted(col_values, key=lambda x: str(x))
+                else:
+                    sorted_column_values = sorted(col_values)
+
                 updated_color_map = {}
                 # Replace all the colormap values with the dataframe column values
                 # There is a good chance that the dataframe column values will be in the same order as the colormap values
@@ -343,7 +382,7 @@ class PlotlyData(Resource):
         if color_name and not (color_map or palette):
             # For numerical color dimensions, we want to use
             # one of plotly's baked in scales.
-            if isinstance(df[color_name].iloc[0], numbers.Number):
+            if isinstance(dataframe[color_name].iloc[0], numbers.Number):
                 purples = [
                     [0, 'rgb(218, 183, 193)'],
                     [0.35, 'rgb(194, 137, 166)'],
@@ -354,17 +393,17 @@ class PlotlyData(Resource):
                 ]
                 color_map = purples
             else:
-                names = df[color_name].cat.categories.tolist()
+                names = dataframe[color_name].unique().tolist()
                 color_map = plotly_color_map(names)
 
                 # Check if color hexcodes exist and use if validated
                 color_code = "{}_colors".format(color_name)
-                if color_code in df.columns:
-                    grouped = df.groupby([color_name, color_code])
+                if color_code in dataframe.columns:
+                    grouped = dataframe.groupby([color_name, color_code])
                     # Ensure one-to-one mapping of color names to codes
                     if len(grouped) == len(names):
                         # Test if names are color hexcodes and use those if applicable
-                        color_hex = df[color_code].cat.categories.tolist()
+                        color_hex = dataframe[color_code].unique().tolist()
                         if re.search(COLOR_HEX_PTRN, color_hex[0]):
                             color_map = {name[0]:name[1] for name, group in grouped}
 
@@ -388,8 +427,8 @@ class PlotlyData(Resource):
                     sampled_colors = pxc.sample_colorscale(viridis_colors, num_entries)
                     color_map = {key: value for key, value in zip(color_map.keys(), sampled_colors)}
 
-        if 'replicate' in df and plot_type == 'scatter':
-            df = df.drop(['replicate'], axis=1)
+        if 'replicate' in dataframe and plot_type == 'scatter':
+            dataframe = dataframe.drop(['replicate'], axis=1)
 
         # kwargs will equal various options that should be passed to various plotly update functions
         # keys for kwargs: 'annotations', 'coloraxes', 'layout', 'traces', 'xaxes', 'yaxes'
@@ -427,7 +466,7 @@ class PlotlyData(Resource):
         # Create plot
         try:
             fig = generate_plot(
-                df,
+                dataframe,
                 x=x_axis,
                 y=y_axis,
                 z=z_axis,
@@ -453,6 +492,7 @@ class PlotlyData(Resource):
                 y_title=y_title,
                 vlines=vlines,
                 is_projection=projection_id is not None,
+                non_interactive=return_image,
                 **kwargs
             )
         except PlotError as pe:
@@ -466,6 +506,18 @@ class PlotlyData(Resource):
             return_dict["success"] = -1
             return_dict["message"] = "Encountered error: {}".format(str(e))
             return return_dict
+
+        # Return image as base-encoded PDF if requested
+        if return_image:
+            image_format = "pdf"
+            img_bytes = fig.to_image(format=image_format)
+            img_b64 = base64.b64encode(img_bytes).decode('utf-8')
+            return {
+                "success": success
+                , "message": message
+                , "image": img_b64
+                , "image_format": image_format
+            }
 
         plot_json = json.dumps(fig, cls=PlotlyJSONEncoder)
 

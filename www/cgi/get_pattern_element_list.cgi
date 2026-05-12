@@ -6,7 +6,7 @@ For a given weighted or unweighted genecart, return the pattern labels.
 If genecart is weighted, return the top 10 up- and down-regulated genes for each pattern
 """
 
-import cgi
+import cgi, sys
 import json
 import pandas as pd
 from pathlib import Path
@@ -32,7 +32,12 @@ def main():
     # TODO: Consider loading from h5ad instead of tab if it exists
     file_path = Path(CARTS_BASE_DIR).joinpath("{}.tab".format("cart." + source_id))
 
-    df = pd.read_csv(file_path, sep="\t")
+    try:
+        df = pd.read_csv(file_path, sep="\t")
+    except FileNotFoundError as e:
+        print(e, file=sys.stderr)
+        print(json.dumps(result))
+        return
 
     # Col 0 is uniq ID, col 1 is gene symbol (but the column name may vary).
     for col in df.columns[2:]:

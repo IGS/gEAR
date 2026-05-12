@@ -1,6 +1,12 @@
 #!/usr/bin/env Rscript --vanilla
 
-install.packages(c("BiocManager", "devtools"), dependencies=TRUE, repos="http://lib.stat.cmu.edu/R/CRAN/")
-BiocManager::install(version = "3.19")  # required for R 4.4.0
-BiocManager::install(c("genesofeve/projectR", "biomaRt"), ask=FALSE)
-library(devtools); install_github("CHuanSite/SJD")
+# Install required packages
+tryCatch( {
+    install.packages(c("BiocManager", "remotes"), dependencies=NA, repos="http://lib.stat.cmu.edu/R/CRAN/")
+    BiocManager::install(version = "3.21", ask=FALSE)
+    }, error = function(e) {
+        message("Error: ", e$message)
+        quit(status = 1, save = "no")
+    }
+)
+# Individual packages are installed in a separate script so that the lengthy installation process can be cached

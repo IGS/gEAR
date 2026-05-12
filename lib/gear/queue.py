@@ -1,4 +1,6 @@
-import os, sys
+import os
+import sys
+
 import pika
 
 
@@ -33,7 +35,7 @@ def get_async_connection(host="localhost", heartbeat_time=None, socket_time=None
 
 class RabbitMQQueue:
     def __init__(self):
-        connection = None
+        pass
 
     def connect(self, host="localhost", publisher_or_consumer=None, async_connection=False):
         '''

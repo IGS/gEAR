@@ -30,9 +30,14 @@ def main():
 
     qry = "SELECT id, schematic_image FROM dataset WHERE schematic_image IS NOT NULL"
     cursor.execute(qry)
-    for (id, schematic_image) in cursor:
-        #skip epiviz datasets and any ' ' values (not sure how that one happened)
-        if 'epiviz' not in schematic_image and len(schematic_image) > 2:
+    rows = cursor.fetchall()
+    if rows is None:
+        print("No datasets found with schematic images. Exiting.")
+        return
+
+    for (id, schematic_image) in rows:
+        #skip gosling datasets and any ' ' values (not sure how that one happened)
+        if 'gosling' not in schematic_image and len(schematic_image) > 2:
             print("Updating dataset: ", id)
             filename = schematic_image.rsplit('/', 1)[1]
 

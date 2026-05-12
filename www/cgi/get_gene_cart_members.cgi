@@ -30,9 +30,6 @@ def main():
     gene_cart_share_id = form.getvalue('share_id')
     result = { 'gene_symbols':[], 'success': 0 }
 
-    if user is None:
-        raise Exception("ERROR: failed to get user ID from session_id {0}".format(session_id))
-
     if not gene_cart_share_id:
         raise Exception("ERROR: missing gene cart share ID")
 

@@ -163,40 +163,63 @@ def main():
         ofh.close()
 
     cursor.execute(qry, qry_params)
+    rows = cursor.fetchall()
 
-    for row in cursor:
-        gc = geardb.GeneCart(id=row[0], gctype=row[2], label=row[3], ldesc=row[4], share_id=row[5],
-                             is_public=row[6], date_added=row[7], organism_id=row[10], user_id=row[11])
-        gc.user_name = row[1]
-        gc.organism = "{0} {1}".format(row[8], row[9])
-        gc.is_owner = True if user and gc.user_id == user.id else False
-        gc.get_genes()
-        gene_carts.append(gc)   # this appends as a JSON dumped string
+    result["pagination"] = {
+        "total_results": 0,
+        "current_page": int(page),
+        "limit": int(limit),
+        "total_pages": 0,
+        "next_page": None,
+        "prev_page": None,
+    }
 
-    # Get count of total results
-    qry_count = """
-        SELECT COUNT(*)
-        FROM {0}
-        WHERE {1}
-        """.format(
-            ", ".join(froms),
-            " ".join(wheres)
-        )
+    if rows:
 
-    # if search terms are defined, remove first qry_param (since it's in the SELECT statement)
-    if search_terms:
-        qry_params.pop(0)
+        for row in rows:
+            gc = geardb.GeneCart(id=row[0], gctype=row[2], label=row[3], ldesc=row[4], share_id=row[5],
+                                is_public=row[6], date_added=row[7], organism_id=row[10], user_id=row[11])
+            gc.user_name = row[1]
+            gc.organism = "{0} {1}".format(row[8], row[9])
+            gc.is_owner = True if user and gc.user_id == user.id else False
 
-    cursor.execute(qry_count, qry_params)
+            # Add number of genes to the collection
+            if gc.gctype == "unweighted-list":
+                gc.get_genes()
+            elif gc.gctype == "weighted-list":
+                gc.get_gene_counts()
+            else:
+                # failsafe
+                gc.num_genes = 0
 
-    # compile pagination information
-    result["pagination"] = {}
-    result["pagination"]['total_results'] = cursor.fetchone()[0]
-    result["pagination"]['current_page'] = int(page)
-    result["pagination"]['limit'] = int(limit)
-    result["pagination"]["total_pages"] = ceil(int(result["pagination"]['total_results']) / int(result["pagination"]['limit']))
-    result["pagination"]["next_page"] = int(result["pagination"]['current_page']) + 1 if int(result["pagination"]['current_page']) < int(result["pagination"]['total_pages']) else None
-    result["pagination"]["prev_page"] = int(result["pagination"]['current_page']) - 1 if int(result["pagination"]['current_page']) > 1 else None
+            gene_carts.append(gc)   # this appends as a JSON dumped string
+
+        # Get count of total results
+        qry_count = """
+            SELECT COUNT(*)
+            FROM {0}
+            WHERE {1}
+            """.format(
+                ", ".join(froms),
+                " ".join(wheres)
+            )
+
+        # if search terms are defined, remove first qry_param (since it's in the SELECT statement)
+        if search_terms:
+            qry_params.pop(0)
+
+        cursor.execute(qry_count, qry_params)
+
+        row = cursor.fetchone()
+        total_results = 0
+        if row:
+            total_results = row[0]
+
+        # compile pagination information
+        result["pagination"]['total_results'] = total_results
+        result["pagination"]["total_pages"] = ceil(int(result["pagination"]['total_results']) / int(result["pagination"]['limit']))
+        result["pagination"]["next_page"] = int(result["pagination"]['current_page']) + 1 if int(result["pagination"]['current_page']) < int(result["pagination"]['total_pages']) else None
+        result["pagination"]["prev_page"] = int(result["pagination"]['current_page']) - 1 if int(result["pagination"]['current_page']) > 1 else None
 
     result['gene_carts'] = gene_carts
     result['success'] = 1

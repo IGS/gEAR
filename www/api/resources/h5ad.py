@@ -1,9 +1,9 @@
+import geardb
 from flask import request
 from flask_restful import Resource
-import os
-import geardb
 
-from .common import get_adata_shadow
+from .common import get_adata_shadow, get_spatial_adata
+
 
 class H5ad(Resource):
     """H5ad Container
@@ -19,15 +19,29 @@ class H5ad(Resource):
         analysis_id = args.get('analysis_id')
         session_id = request.cookies.get('gear_session_id')
 
-        ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
-        h5_path = ds.get_file_path()
+        ds = geardb.get_dataset_by_id(dataset_id)
+        if not ds:
+            return {
+                "success": -1,
+                'message': "No dataset found with that ID"
+            }
+        is_spatial = ds.dtype == "spatial"
+
 
         try:
-            adata = get_adata_shadow(analysis_id, dataset_id, session_id, h5_path)
+            if is_spatial:
+                adata = get_spatial_adata(analysis_id, dataset_id, session_id)
+            else:
+                adata = get_adata_shadow(analysis_id, dataset_id, session_id)
         except FileNotFoundError:
             return {
                 "success": -1,
-                'message': "No h5 file found for this dataset"
+                'message': "No dataset file found."
+            }
+        except Exception as e:
+            return {
+                "success": -1,
+                'message': str(e)
             }
 
         columns = adata.obs.columns.tolist()
@@ -69,7 +83,7 @@ class H5ad(Resource):
                 if len(levels[col]) > 50:
                     del levels[col]
 
-            except:
+            except Exception as e:
                 pass
                 # If levels are not categorical I don't believe
                 # we need to return levels

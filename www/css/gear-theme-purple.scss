@@ -3,6 +3,10 @@
 // Import a Google Font
 @import url('https://fonts.googleapis.com/css?family=Inter:400,700');
 
+// Backup
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap");
+
+
 // Brand colors
 // For NeMO site
 // https://mycolor.space/?hex=%232A3236&sub=1
@@ -14,6 +18,16 @@
 $gear-bg-primary: #362E5C;
 $gear-bg-secondary: #544A8E;
 $gear-bg-tertiary: #EFEDF7;
+
+// For SENgEAR
+//$gear-bg-primary: #9D68AC;
+//$gear-bg-secondary: #505250;
+//$gear-bg-tertiary: #FBEAF4;
+
+// For cancer-gEAR
+//$gear-bg-primary: #9483b9;
+//$gear-bg-secondary: #6f94cd;
+//$gear-bg-tertiary: #FAFBF4;
 
 $gear-state-success: #E2FFBD;
 $gear-state-error: #FFCDBD;

@@ -9,9 +9,12 @@ Description: Given the current AnnData object
 3. Return as JSON
 """
 
-import cgi, json
-import sys, os
+import cgi
+import json
+import os
+import sys
 from pathlib import Path
+
 import pandas as pd
 
 original_stdout = sys.stdout
@@ -24,6 +27,8 @@ abs_path_lib = abs_path_gear.joinpath('lib')
 sys.path.insert(0, str(abs_path_lib))
 
 import geardb
+from gear.analysis import get_analysis
+
 
 def main():
     form = cgi.FieldStorage()
@@ -31,22 +36,49 @@ def main():
     analysis_type = form.getvalue('analysis_type')
     dataset_id = form.getvalue('dataset_id')
     session_id = form.getvalue('session_id')
-    user = geardb.get_user_from_session_id(session_id)
 
-    ana = geardb.Analysis(id=analysis_id, type=analysis_type, dataset_id=dataset_id,
-                          session_id=session_id, user_id=user.id)
+    if not dataset_id:
+        return_error_response("No dataset_id provided")
+        return
 
-    adata = ana.get_adata()
+    ds = geardb.get_dataset_by_id(dataset_id)
+    if not ds:
+        return_error_response("No dataset found with that ID")
+        return
+
+    is_spatial = ds.dtype == "spatial"
+
+    analysis_obj = None
+    if analysis_id or analysis_type:
+        analysis_obj = {}
+        if analysis_id:
+            analysis_obj['id'] = analysis_id
+        if analysis_type:
+            analysis_obj['type'] = analysis_type
+
+    try:
+        ana = get_analysis(analysis_obj, dataset_id, session_id, is_spatial=is_spatial)
+    except Exception:
+        return_error_response("Analysis for this dataset is unavailable.")
+        return
+
+    try:
+        adata = ana.get_adata()
+    except Exception as e:
+        print(e, file=sys.stderr)
+        return_error_response("Could not create dataset object using analysis.")
+        return
 
     if "PCs" not in adata.varm:
         return_error_response("PCs not found in AnnData object")
+        return
 
     pc_data = adata.varm["PCs"]
     columns = make_pc_columns(pc_data.shape[1])
     genes = adata.var.index.tolist()
     gene_symbols = adata.var.gene_symbol.tolist()    # Not needed for the weighted gene cart but are needed to make the geardb.Gene objects
 
-    df = pd.DataFrame(pc_data, index=genes, columns=columns)
+    df = pd.DataFrame(pc_data, index=genes, columns=columns) # type: ignore
 
     json_obj = json.loads(df.to_json(orient="split"))
 
@@ -71,7 +103,6 @@ def return_error_response(msg):
     sys.stdout = original_stdout
     print('Content-Type: application/json\n\n')
     print(json.dumps(result))
-    sys.exit()
 
 if __name__ == '__main__':
     main()

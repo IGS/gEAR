@@ -13,12 +13,15 @@ Data structure returned:
 
 """
 
-import cgi, json
-import os, sys
+import cgi
+import json
+import os
+import sys
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+
 
 def main():
     cnx = geardb.Connection()
@@ -32,7 +35,7 @@ def main():
     result = {'email':None, 'user_name':None, 'success':0}
 
     session_qry = """
-       SELECT u.email, u.user_name, u.is_admin, u.id, u.institution, u.colorblind_mode, 
+       SELECT u.email, u.user_name, u.is_admin, u.id, u.institution, u.colorblind_mode,
               u.updates_wanted, u.default_org_id, l.share_id
          FROM guser u
               JOIN user_session us ON u.id=us.user_id
@@ -41,19 +44,22 @@ def main():
     """
 
     cursor.execute(session_qry, (session_id,))
-    for row in cursor:
-        result = {
-            'email':row[0],
-            'user_name':row[1],
-            'is_admin':row[2],
-            'institution':row[4],
-            'colorblind_mode': row[5],
-            'updates_wanted':row[6],
-            'default_org_id':row[7],
-            'layout_share_id':row[8],
-            'success':1
-        }
-        break
+    row = cursor.fetchone()
+    if not row:
+        print(json.dumps(result))
+        cursor.close()
+        return
+    result = {
+        'email':row[0],
+        'user_name':row[1],
+        'is_admin':row[2],
+        'institution':row[4],
+        'colorblind_mode': row[5],
+        'updates_wanted':row[6],
+        'default_org_id':row[7],
+        'layout_share_id':row[8],
+        'success':1
+    }
 
     # if we didn't get a layout_share_id then pull it from the gear.ini file
     if result['layout_share_id'] is None:

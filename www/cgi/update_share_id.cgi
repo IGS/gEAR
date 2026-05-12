@@ -121,7 +121,7 @@ def main():
         # Any projection.json files that reference this genecart will also need to be updated.
 
         # rename carts
-        if gene_cart.gctype == "weighted":
+        if gene_cart.gctype == "weighted-list":
             os.chdir(str(CARTS_BASE_DIR))
 
             for filename in os.listdir("."):

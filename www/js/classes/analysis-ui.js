@@ -1,5 +1,7 @@
 'use strict';
 
+import { blockStepWithHref, openNextStepWithHrefs } from "../helpers/stepper-fxns.js";
+
 class AnalysisUI {
     // This class is a singleton that manages the UI elements of the analysis pipeline.
 
@@ -9,18 +11,22 @@ class AnalysisUI {
     // dataset elemnents
     datasetSection = "#dataset-s"
     datasetContainer = "#dataset-c"
+    datasetSelectionContainer = "#dataset-selection-c"
     datasetSectionSuccessElt = "#dataset-s-success"
     datasetSectionFailedElt = "#dataset-s-failed"
     currentDatasetContainer = "#current-dataset-c"
-    currentDatasetElt = "#current-dataset"
+    currentDatasetElts = ".js-current-dataset"
     datasetQueryElt = "#dataset-query"
     datasetTreeElt = "#dataset-tree"
+    btnToggleDatasetTreeElt = "#btn-toggle-dataset-tree"
 
     // general analysis
     analysisSection = "#analysis-s"
     analysisContainer = "#analysis-c"
-    currentAnalysisElt = "#current-analysis"
+    currentAnalysisElts = ".js-current-analysis"
     analysisSelect = "#analysis-select"
+    analysisSelectSuccessElt = "#analysis-type-select-c-success"
+    analysisSelectFailedElt = "#analysis-type-select-c-failed"
     newAnalysisOptionElt = `${this.analysisSelect} option[data-analysis-id='0']`
     analysisPrimaryElt = "#analyses-primary"
     analysisPrimaryNotificationElt = "#analysis-primary-notification"
@@ -238,6 +244,8 @@ class AnalysisUI {
     compareGenesViolinContainer = "#compare-genes-violin-c"
     compareGenesRankedRevContainer = "#compare-genes-ranked-rev-c"
     compareGenesViolinRevContainer = "#compare-genes-violin-rev-c"
+    compareGenesTableContainerF = "#compare-genes-table-container-f"
+    compareGenesTableContainerR = "#compare-genes-table-container-r"
     compareGenesTableFElt = "#compare-genes-table-f"
     compareGenesTableRElt = "#compare-genes-table-r"
     compareGenesInstructionsElt = `${this.compareGenesSection} .tool-instructions`
@@ -247,13 +255,13 @@ class AnalysisUI {
 }
 
 // Singleton instance of the AnalysisUI class
-const UI = new AnalysisUI();
+export const UI = new AnalysisUI();
 
 /**
  * Blocks a step from being opened, such as an irreversible step.
  * @param {string} selector - The CSS selector for the step element.
  */
-const blockAnalysisStep = (selector) => {
+export const blockAnalysisStep = (selector) => {
     blockStepWithHref(selector);
     // disable all buttons in the blocked step
     document.querySelectorAll(`${selector} button`).forEach((button) => {
@@ -268,8 +276,8 @@ const blockAnalysisStep = (selector) => {
  * @param {string|null} activeSelectorHref - The href of the active selector. Defaults to null.
  * @param {boolean} clickActive - Specifies whether to click the active selector. Defaults to false.
  */
-const openNextAnalysisStep = (selectors, activeSelectorHref=null, clickActive=false) => {
-    for (let selector of selectors) {
+export const openNextAnalysisStep = (selectors, activeSelectorHref=null, clickActive=false) => {
+    for (const selector of selectors) {
         document.querySelector(selector).classList.remove("is-pointer-events-none");
     }
     openNextStepWithHrefs(selectors, activeSelectorHref, clickActive);

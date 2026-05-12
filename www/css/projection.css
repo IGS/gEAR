@@ -7,6 +7,11 @@
 
 div#pattern-result-list-c {
     border-right: 1px solid #e9eef1;
+    position: sticky;
+    top: 0;
+    align-self: flex-start; /* doesn't seem to do anything */
+    height:100vh;
+    overflow-y: auto;   /* scroll if too long */
 }
 div#pattern-result-list-c h3 {
     font-weight: bold;
@@ -14,17 +19,18 @@ div#pattern-result-list-c h3 {
 }
 div#results-main-c {
     border-top: 1px solid rgb(220, 220, 220);
-    margin-top: 50px;
 }
-div#result-panel-grid .card {
-    /* https://github.com/jgthms/bulma/issues/218 */
-    height: 100%;
-    display: flex;
-    flex-direction: column;
+
+#results-main-c, #annotation-and-grid-c {
+    width: 100%; /* ensure full width for the main layout and content */
+    box-sizing: border-box; /* include padding and border in element's total width */
+    min-width: 0; /* allow flex items to shrink */
 }
-div#result-panel-grid .card-content {
-    height: 100%;
+
+#result-panel {
+    width: 100%;
 }
+
 section#result-panel {
     background-color: #fbfcfd;
     border: 1px solid #e9eef1;
@@ -59,15 +65,55 @@ ul#go-terms li {
 
 #result-panel-grid {
     display: grid;
-    grid-template-columns: repeat(12, 90px);    /* setting px instead of fr prevernts distortions if grid dimensions change */
-    grid-gap: 0.5em;
-    width: 1080px;  /* grid width + 2*border width */
+    grid-template-columns: repeat(12, 1fr);
+    /* Use a fixed base height so the tile can't "grow" uncontrollably */
+    /* Using 400px to account for the card header */
+    grid-auto-rows: 400px;
+    gap: 8px;
+}
+
+.js-tile {
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+}
+
+#result-panel-grid .js-tile {
+    height: 100%; /* Forces the tile to stay within the 400px row */
+    max-height: 80vh;
+}
+
+#zoomed-panel-grid .js-tile {
+    height: fit-content;
+}
+
+.js-tile .card-image {
+    align-content: center;
 }
 
 /* tSNE plots */
+
 .js-tile .card-image img {
-    width: fit-content;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    margin: auto;
+    display: block; /* Removes the baseline gap at the bottom */
+    object-fit: contain;
+}
+
+
+/* spatial embeds */
+#result-panel-grid .js-tile .card-image iframe {
+    width: 100%;
     height: 100%;
+    margin: auto;
+}
+
+#zoomed-panel-grid .js-tile .card-image iframe {
+    width: 100%;
+    height: 1750px;  /* Enough room for the Panel app to be fully displayed without scrolling */
     margin: auto;
 }
 
@@ -114,12 +160,4 @@ ul#go-terms li {
 
 .js-choose-display-modal .modal-content {
     width: 70%; /* make wider, which makes preview images larger */
-}
-
-#pattern-result-list-c {
-    position: sticky;
-    top: 0;
-    align-self: flex-start; /* doesn't seem to do anything */
-    height:100vh;
-    overflow-y: auto;   /* scroll if too long */
 }

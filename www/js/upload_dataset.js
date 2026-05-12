@@ -1,206 +1,164 @@
-/*
-
-*/
-
 'use strict';
 
-let dataset_uid = null;
-let share_uid = null;
-let dataset_format = null;
+import { apiCallsMixin, convertToFormData, createToast, getCurrentUser, guid, initCommonUI, openModal } from "./common.v2.js";
+import { HubContainer, TrackContainer, TRACK_STATUS_COLORS } from "./classes/trackhub.js";
 
-let processing_status = null;
-const processing_status_check_interval = 10; // seconds
+/* --- constants and variables --- */
 
-let required_metadata_fields = ['metadata-title', 'metadata-summary', 'metadata-dataset-type',
+let datasetUid = null;
+let shareUid = null;
+let datasetFormat = null;   // set when user chooses a dataset type
+let spatialFormat = null;   // set when user chooses a spatial platform (if applicable)
+let performPrimaryAnalysis = true
+
+// TrackHub stuff
+let hubContainer;
+let trackContainer;
+
+let processingStatus = null;
+const processingStatusCheckInterval = 10; // seconds
+
+const requiredMetadataFields = ['metadata-title', 'metadata-summary', 'metadata-dataset-type',
     'metadata-contact-name', 'metadata-annotation-source', 'metadata-annotation-version',
     'metadata-contact-name', 'metadata-contact-email',
     'metadata-taxon-id', 'metadata-organism'
 ];
 
-let optional_metadata_fields = ['metadata-contact-institute', 'metadata-platform-id',
+const optionalMetadataFields = ['metadata-contact-institute', 'metadata-platform-id',
     'metadata-instrument', 'metadata-library-selection', 'metadata-library-source',
     'metadata-geo-id', 'metadata-library-strategy', 'metadata-pubmed-id'
 ];
 
-window.onload=function() {
-    // Set the page title
-    document.getElementById('page-header-label').textContent = 'Upload an expression dataset';
-
-    // Generate the UID that will be used for this submission
-    dataset_uid = guid('long');
-    share_uid = guid('short');
-
-    // Add click listeners for all buttons of class 'format-selector'
-    document.querySelectorAll('.format-selector').forEach((btn) => {
-        btn.addEventListener('click', (event) => {
-
-            // Reset each as selectable
-            document.querySelectorAll('.format-selector').forEach((element) => {
-                if (! element.disabled) {
-                    // set the classList on this button to only be 'mdi' and 'mdi-cancel'
-                    let icon = element.querySelector('span.icon i');
-                    icon.classList.remove(...icon.classList);
-                    icon.classList.add('mdi', 'mdi-checkbox-blank-outline');
-
-                    element.querySelector('span.format-status').textContent = 'Choose';
-                }
-            });
-
-            // Now set things for the one actually clicked
-            btn.querySelector('span.icon i').classList.remove('mdi', 'mdi-checkbox-blank-outline');
-            btn.querySelector('span.icon i').classList.add('mdi', 'mdi-checkbox-outline');
-            btn.querySelector('span.format-status').textContent = 'Selected';
-            dataset_format = btn.dataset.format;
-        });
-    });
-
-    document.getElementById('new-submission-toggle').addEventListener('click', (event) => {
-        event.preventDefault();
-
-        document.getElementById('submissions-in-progress').classList.add('is-hidden');
-        document.getElementById('submission-c').classList.remove('is-hidden');
-    });
-
-    document.getElementById('dataset-processing-submit').addEventListener('click', (event) => {
-        event.preventDefault();
-
-        stepTo('finalize-dataset');
-    });
-
-    document.getElementById('dataset-curate-submit').addEventListener('click', (event) => {
-        event.preventDefault();
-
-        let url = `/dataset_curator.html?dataset_id=${dataset_uid}`;
-        window.location.href = url;
-    });
-
-    document.getElementById('metadata-form-submit').addEventListener('click', (event) => {
-        event.preventDefault();
-        let errored_fields = validateMetadataForm();
-
-        if (errored_fields && Object.keys(errored_fields).length === 0) {
-            // Form looks good!
-            document.getElementById('errored-field-list-c').classList.add('is-hidden');
-            storeMetadata();
-
-        } else {
-            const errored_fields_ul = document.getElementById('errored-field-list');
-            errored_fields_ul.innerHTML = '';
-
-            // iterate over the errored fields and display them
-            for (const field in errored_fields) {
-                let field_label = prettifyFieldName(field);
-                let field_msg = errored_fields[field];
-
-                const li = document.createElement('li');
-                li.textContent = `${field_label}: ${field_msg}`;
-                errored_fields_ul.appendChild(li);
-            };
-
-            document.getElementById('errored-field-list-c').classList.remove('is-hidden');
-        }
-    });
-
-    document.getElementById('dataset-file-input').addEventListener('change', (event) => {
-        // Was a file selected?
-        if (event.target.files.length > 0) {
-            document.getElementById('dataset-upload-submit').disabled = false;
-            const file = event.target.files[0];
-            document.getElementById('dataset-file-name').textContent = file.name;
-        } else {
-            document.getElementById('dataset-upload-submit').disabled = true;
-            document.getElementById('dataset-file-name').textContent = 'No file selected';
-        }
-    });
-
-    document.getElementById('dataset-finalize-submit').addEventListener('click', (event) => {
-        event.preventDefault();
-        document.getElementById('dataset-finalize-submit').disabled = true;
-        document.getElementById('finalize-dataset-status-c').classList.remove('is-hidden');
-
-        finalizeUpload();
-    });
-
-    document.getElementById('dataset-finalize-next-step').addEventListener('click', (event) => {
-        event.preventDefault();
-
-        // Move to the next step
-        stepTo('curate-dataset');
-    });
-
-    document.getElementById('metadata-file-input').addEventListener('change', (event) => {
-        // Was a file selected?
-        if (event.target.files.length > 0) {
-            document.getElementById('metadata-upload-submit').disabled = false;
-            const file = event.target.files[0];
-            document.getElementById('metadata-file-name').textContent = file.name;
-            document.getElementsByName('metadata-dataset-id')[0].value = dataset_uid;
-        } else {
-            document.getElementById('metadata-upload-submit').disabled = true;
-            document.getElementById('metadata-file-name').textContent = 'No file selected';
-        }
-    });
-
-    document.getElementById('dataset-upload-submit').addEventListener('click', (event) => {
-        event.preventDefault();
-
-        // make sure they chose a format
-        if (!dataset_format) {
-            document.getElementById('dataset-upload-status-message').textContent = 'Please choose a format above first.';
-            document.getElementById('dataset-upload-status').classList.remove('is-hidden');
-            return;
-        }
-
-        // change submit button to spinner
-        let button = document.getElementById('dataset-upload-submit');
-        button.disabled = true;
-        button.classList.add('is-loading');
-        document.getElementById('dataset-upload-status').classList.add('is-hidden');
-        uploadDataset();
-    });
-
-    document.getElementById('metadata-upload-submit').addEventListener('click', (event) => {
-        // change submit button to spinner
-        event.preventDefault();
-
-        let button = document.getElementById('metadata-upload-submit');
-        button.disabled = true;
-        button.classList.add('is-loading');
-        document.getElementById('metadata-upload-status').classList.add('is-hidden');
-        populateMetadataFormFromFile();
-    });
-
-    document.getElementById('metadata-geo-lookup').addEventListener('click', (event) => {
-        event.preventDefault();
-        let button = document.getElementById('metadata-geo-lookup');
-        button.disabled = true;
-        button.classList.add('is-loading');
-        let geo_data = getGeoData();
-    });
-};
-
-const checkDatasetProcessingStatus = async () => {
-    const {data} = await axios.post('./cgi/check_dataset_processing_status.cgi', convertToFormData({
-        share_uid: share_uid,
-        session_id: CURRENT_USER.session_id
+/* --- Functions and Classes --- */
+/**
+ * Sends a POST request to add a primary analysis to the current dataset upload.
+ * Displays a success toast if the operation is successful, or a warning toast if not.
+ *
+ * @async
+ * @function addPrimaryAnalysisToDataset
+ * @returns {Promise<void>} Resolves when the operation is complete and the toast is shown.
+ */
+const addPrimaryAnalysisToDataset = async () => {
+    const {data} = await axios.post('./cgi/add_primary_analysis_to_dataset_upload.cgi', convertToFormData({
+        share_uid: shareUid,
+        dataset_format: datasetFormat,
+        session_id: getCurrentUser()?.session_id,
     }));
 
-    processing_status = data.status;
-    document.getElementById('step-process-dataset-status').textContent = processing_status.charAt(0).toUpperCase() + processing_status.slice(1);
-    document.getElementById('step-process-dataset-status-message').textContent = data.message;
-    document.getElementById('dataset-processing-progress').value = data.progress;
+    document.getElementById('finalize-migrating-primary-analysis-li').classList.remove("is-hidden");
+    if (data.success) {
+        createToast('Primary analysis added successfully','is-success');
 
-    // TODO: Handle the different statuses here
-    if (processing_status === 'complete') {
-        document.getElementById('dataset-processing-submit').disabled = false;
+        // If dataset was not single-cell or spatial, then we cannot have a primary analysis
+        if (!data.perform_primary_analysis) {
+            performPrimaryAnalysis = false;
+            document.getElementById('finalize-migrating-primary-analysis-li').classList.add("is-hidden");
+        }
+    } else {
+        // This is non-fatal, so just show a warning toast
+        createToast('Error adding primary analysis to uploaded dataset');
+        processingStatus = "error";
     }
 }
 
-const deleteUploadInProgress = async (share_uid, dataset_id) => {
+/**
+ * Checks the current processing status of the dataset by making an asynchronous request
+ * to the server. Updates the UI elements to reflect the current status, message, and progress.
+ * If processing is complete, enables the dataset processing submit button.
+ *
+ * @async
+ * @function checkDatasetProcessingStatus
+ * @returns {Promise<void>} Resolves when the status check and UI updates are complete.
+ */
+const checkDatasetProcessingStatus = async () => {
+
+    const payload = {
+        "dataset_format": datasetFormat
+    }
+
+    const {data} = await axios.post(
+        `./api/import/dataset/${shareUid}/status`,
+        payload  // Empty JSON so that it doesn't think it's FormData
+    );
+
+    processingStatus = data.status;
+    document.getElementById('step-process-dataset-status').textContent = processingStatus.charAt(0).toUpperCase() + processingStatus.slice(1);
+    document.getElementById('step-process-dataset-status-message').textContent = data.message;
+    document.getElementById('dataset-processing-progress').value = data.progress;
+
+    // Only enable next button when both dataset processing AND primary analysis are complete
+    if (processingStatus === 'complete') {
+        document.getElementById('dataset-processing-submit').disabled = false;
+    } else if (processingStatus === 'error') {
+        document.getElementById('step-process-dataset-status-message').textContent = "Error during processing";
+    }
+}
+
+/**
+ * Checks the status of the track hub processing.
+ *
+ * @async
+ * @function checkTrackhubStatus
+ * @returns {Promise<string>} Resolves to the current status of the track hub processing.
+ */
+const checkTrackhubStatus = async() => {
+    const payload = {
+        "dataset_format": datasetFormat
+    }
+
+    const {data} = await axios.post(
+        `./api/import/dataset/${shareUid}/status`,
+        payload  // Empty JSON so that it doesn't think it's FormData
+    );
+
+    const {status, progress, completed_tracks, total_tracks, message, track_statuses} = data;
+
+
+    processingStatus = status
+    document.getElementById('step-process-dataset-status').textContent = status.charAt(0).toUpperCase() + status.slice(1);
+
+    // Update status of entire hub
+    let statusMessage = `Status: ${status || 'Unknown'}. `;
+    if (completed_tracks !== undefined && total_tracks !== undefined) {
+        statusMessage += ` (${completed_tracks}/${total_tracks} tracks completed)`;
+    }
+
+    document.getElementById('step-process-dataset-status-message').textContent = statusMessage;
+    document.getElementById('dataset-processing-progress').value = progress;
+
+    // Update track status badges
+    if (trackContainer) {
+        updateAllTrackStatusesInProcessStep(trackContainer, track_statuses || {});
+    }
+
+    if (status === 'complete') {
+        createToast('Track hub processed successfully!', 'is-success');
+        document.getElementById('dataset-processing-submit').disabled = false
+    } else if (status === 'error') {
+        createToast(`Processing failed: ${message}`, 'is-danger');
+    }
+
+    return status;
+}
+
+
+/**
+ * Deletes an upload in progress for a given share and dataset.
+ *
+ * Sends a POST request to the server to delete the specified upload in progress.
+ * On success, reloads the list of uploads in progress. On failure, displays a warning toast.
+ *
+ * @async
+ * @function
+ * @param {string} shareUid - The unique identifier for the share.
+ * @param {string} datasetId - The unique identifier for the dataset.
+ * @returns {Promise<void>} Resolves when the operation is complete.
+ */
+const deleteUploadInProgress = async (shareUid, datasetId) => {
     const {data} = await axios.post('./cgi/delete_upload_in_progress.cgi', convertToFormData({
-        share_uid: share_uid,
-        dataset_id: dataset_id,
-        session_id: CURRENT_USER.session_id
+        share_uid: shareUid,
+        dataset_id: datasetId,
+        session_id: getCurrentUser()?.session_id
     }));
 
     if (data.success) {
@@ -210,17 +168,27 @@ const deleteUploadInProgress = async (share_uid, dataset_id) => {
     }
 }
 
+/**
+ * Finalizes the dataset upload process by sending form data to the server,
+ * updating UI elements to reflect the status of metadata loading, h5ad migration,
+ * and user data migration, and enabling the next step if successful.
+ *
+ * @async
+ * @function finalizeUpload
+ * @returns {Promise<void>} Resolves when the upload finalization process is complete.
+ */
 const finalizeUpload = async () => {
-    let formData = new FormData();
-    formData.append('share_uid', share_uid);
-    formData.append('session_id', CURRENT_USER.session_id);
-    formData.append('dataset_uid', dataset_uid);
-    formData.append('dataset_format', dataset_format);
 
-    const dataset_visibility = document.querySelector('input[name=dataset-visibility]:checked').value;
-    formData.append('dataset_visibility', dataset_visibility);
+    const payload = {
+        dataset_uid: datasetUid,
+        share_uid: shareUid,
+        session_id: getCurrentUser()?.session_id,
+        dataset_format: datasetFormat,
+        perform_analysis_migration: performPrimaryAnalysis ? 1 : 0,
+        dataset_visibility: document.querySelector('input[name=dataset-visibility]:checked').value
+    }
 
-    const data = await apiCallsMixin.finalizeExpressionUpload(formData);
+    const data = await apiCallsMixin.finalizeExpressionUpload(payload);
 
     if (data['metadata_loaded']) {
         document.getElementById('finalize-storing-metadata').classList.remove('mdi-checkbox-blank-outline');
@@ -246,24 +214,43 @@ const finalizeUpload = async () => {
         document.getElementById('finalize-migrating-userdata').classList.add('mdi-skull-scan');
     }
 
+    if (data['primary_analysis_migrated']) {
+        document.getElementById('finalize-migrating-primary-analysis').classList.remove('mdi-checkbox-blank-outline');
+        document.getElementById('finalize-migrating-primary-analysis').classList.add('mdi-checkbox-marked');
+    } else {
+        document.getElementById('finalize-migrating-primary-analysis').classList.remove('mdi-checkbox-blank-outline');
+        document.getElementById('finalize-migrating-primary-analysis').classList.add('mdi-skull-scan');
+    }
+
     if (data.success) {
         // Not actually doing anything further with access rights after the initial insert,
         // so can set it as successful here
         document.getElementById('finalize-setting-access').classList.remove('mdi-checkbox-blank-outline');
         document.getElementById('finalize-setting-access').classList.add('mdi-checkbox-marked');
         document.getElementById('dataset-finalize-next-step').disabled = false;
-    } else {
-        console.log("ERROR");
-        console.log(data);
-        document.getElementById('dataset-finalize-status-message').innerText = data.message;
-        document.getElementById('dataset-finalize-status-message-c').classList.remove('is-hidden');
+        return;
     }
+    const msg = data.message || 'Error finalizing dataset upload';
+
+    console.error(`ERROR: ${msg}`);
+    document.getElementById('dataset-finalize-status-message').innerText = msg;
+    document.getElementById('dataset-finalize-status-message-c').classList.remove('is-hidden');
 }
 
+/**
+ * Asynchronously populates the metadata form fields with values parsed from an uploaded metadata file.
+ * Utilizes the `apiCallsMixin.parseMetadataFile` method to extract metadata from the uploaded file,
+ * and fills the corresponding form fields if parsing is successful. Handles both success and error states,
+ * updating the UI accordingly (form fields, status messages, and button states).
+ *
+ * @async
+ * @function populateMetadataFormFromFile
+ * @returns {Promise<void>} Resolves when the form has been populated or an error message has been displayed.
+ */
 const populateMetadataFormFromFile = async () => {
     const formData = new FormData(document.getElementById('metadata-upload-form'));
     const data = await apiCallsMixin.parseMetadataFile(formData);
-    let button = document.getElementById('metadata-upload-submit');
+    const button = document.getElementById('metadata-upload-submit');
 
     // Fill out the form with the data
     if (data.success) {
@@ -286,10 +273,10 @@ const populateMetadataFormFromFile = async () => {
         document.getElementsByName('metadata-pubmed-id')[0].value = data.metadata.pubmed_id.value;
 
         // Handle the metadata-dataset-type select box
-        let dataset_type_select = document.getElementsByName('metadata-dataset-type')[0];
-        for (let i = 0; i < dataset_type_select.options.length; i++) {
-            if (dataset_type_select.options[i].value === data.metadata.dataset_type.value) {
-                dataset_type_select.selectedIndex = i;
+        const datasetTypeSelect = document.getElementsByName('metadata-dataset-type')[0];
+        for (let i = 0; i < datasetTypeSelect.options.length; i++) {
+            if (datasetTypeSelect.options[i].value === data.metadata.dataset_type.value) {
+                datasetTypeSelect.selectedIndex = i;
                 break;
             }
         }
@@ -308,89 +295,303 @@ const populateMetadataFormFromFile = async () => {
     button.classList.remove('is-loading');
 }
 
-const handlePageSpecificLoginUIUpdates = async (event) => {
-    if (CURRENT_USER.session_id) {
-        document.getElementById('logged-in-c').classList.remove('is-hidden');
-        loadUploadsInProgress();
-    } else {
-        document.getElementById('not-logged-in-c').classList.remove('is-hidden');
+/**
+ * Asynchronously populates hub and track containers from a track hub URL or file.
+ *
+ * Retrieves hub configuration and track definitions from a provided UCSC-format track hub URL or file,
+ * validates that the selected assembly exists in the hub, and populates Track objects for each
+ * discovered track. Handles both single-file hub mode (tracks defined in hub.txt) and multi-file
+ * mode (tracks defined in separate trackDb.txt file referenced from genomes.txt).
+ *
+ * For file-based hubs, tracks are only prepopulated if useOneFile="on" and track bigDataUrl values are URLs.
+ * Local file references in file-based hubs require manual user configuration.
+ *
+ * @async
+ * @function populateHubAndTracks
+ * @param {HubContainer} hubContainer - Container object for managing hub metadata and configuration.
+ * @param {TrackContainer} trackContainer - Container object for managing track definitions.
+ * @returns {Promise<void>} Resolves when hub and track data have been populated or early-returned
+ *                          on validation/initialization failure. Errors are logged as warnings and
+ *                          displayed as warning toasts (non-fatal).
+ *
+ * @description
+ * Execution flow:
+ * 1. Validates that an assembly was previously selected via DOM element 'trackhub-assembly-select'.
+ * 2. Retrieves hub URL/file and assembly value from DOM inputs.
+ * 3. Returns early if neither hub URL nor file is provided.
+ * 4. Parses hub source (file or URL) to populate hub metadata.
+ * 5. For URL-based hubs: Checks hub mode and parses tracks accordingly (oneFile or trackDb.txt).
+ * 6. For file-based hubs: Only parses tracks if oneFile mode AND tracks have URL-based bigDataUrl values.
+ * 7. Displays warning toasts for any parsing errors encountered.
+ *
+ * @see {@link HubContainer#parseHubFile}
+ * @see {@link HubContainer#parseHubUrl}
+ * @see {@link HubContainer#retrieveTrackDbPath}
+ * @see {@link TrackContainer#parseHubTracks}
+ * @see {@link TrackContainer#parseTrackDbUrl}
+ */
+const populateHubAndTracks = async (hubContainer, trackContainer) => {
+    // If an assembly genome was selected in the previous step, set it as the default for the hub
+    const assemblySelect = document.getElementById('trackhub-assembly-select');
+    if (!assemblySelect) {
+        // If assembly wasn't provided, then hub URL wasn't provided either.
+        return;
+    }
+
+    // If a hub.txt file was previously provided
+    // 1) populate the Hub object with its contents
+    // 2) Ensure the selected assembly exists in the hub, otherwise add a warning and leave tracks empty
+    // 3) If trackDb files exist, parse them for the parameters we need and create Track objects for each track found.
+
+    const hubUrl = document.getElementById("trackhub-url-input").value
+    const fileInput = document.getElementById("trackhub-file-input");
+    const assembly = assemblySelect.value;
+
+    // Don't bother if no URL or file provided.
+    if (!hubUrl && !fileInput.files.length) {
+        return;
+    }
+
+    try {
+
+        const isFileSource = fileInput.files.length > 0;
+        const file = isFileSource ? fileInput.files[0] : null;
+
+        // Parse hub from file or URL
+        if (isFileSource) {
+            await hubContainer.parseHubFile(file, assembly);
+        } else {
+            await hubContainer.parseHubUrl(hubUrl, assembly);
+        }
+
+        // Attempt to populate tracks based on hub mode and source
+        await populateTracks(hubContainer, trackContainer, isFileSource, hubUrl);
+
+    } catch (error) {
+        console.warn(error);
+        createToast(`Error parsing track hub URL... initializing empty form.`, 'is-warning');
+        return;
     }
 }
 
-const getGeoData = async () => {
-    const geo_id = document.getElementsByName('metadata-geo-id')[0].value;
-    const geo_data = await apiCallsMixin.fetchGeoData(geo_id);
+/**
+ * Helper function to populate tracks based on hub configuration and source type.
+ * For URL sources: fetches tracks from hub.txt (oneFile) or trackDb.txt.
+ * For file sources: only populates tracks if oneFile mode is enabled and bigDataUrl values are URLs; otherwise, shows warnings about local file references and manual configuration.
+ *
+ * @async
+ * @private
+ * @param {HubContainer} hubContainer - The hub container with parsed hub metadata.
+ * @param {TrackContainer} trackContainer - The track container to populate.
+ * @param {boolean} isFileSource - Whether the hub came from a file upload.
+ * @returns {Promise<void>}
+ */
+const populateTracks = async (hubContainer, trackContainer, isFileSource, hubUrl=null) => {
+    const hubContent = hubContainer.hubContent
 
-    if (Object.keys(geo_data).length === 0) {
+    // If oneFile mode, tracks should be defined in the hub.txt file, so attempt to parse them directly from the hub content (regardless of source)
+    if (hubContainer.oneFileMode) {
+        try {
+            await trackContainer.parseHubTracksFromContent(hubContent);
+        } catch (error) {
+            console.warn(error);
+            createToast(`Error parsing hub "oneFile" tracks... cannot populate tracks.`, 'is-warning');
+        }
+        return;
+    }
+
+    // If not oneFile mode, then we need to retrieve and parse the trackDb.txt file to get track information.
+    // For file-based hubs, this is not possible because we cannot resolve local file references, so we return early with a warning.
+    if (isFileSource) {
+        createToast(`Hub is in file-based multi-file mode, which cannot be prepopulated. Please configure tracks manually, or try again using useOneFile mode in the hub.txt file.`, 'is-warning');
+        return;
+    }
+
+    if (!hubUrl) {
+        createToast(`Hub URL is required to retrieve trackDb.txt information for non-oneFile hubs.`, 'is-warning');
+        return;
+    }
+
+    // Find the trackDb file in genomes.txt and parse it
+    try {
+        await hubContainer.retrieveTrackDbPath(hubUrl);
+    } catch (error) {
+        console.warn(error);
+        createToast(`Error retrieving trackDb.txt path from genomes.txt in hub URL... cannot populate tracks.`, 'is-warning');
+        return;
+    }
+
+    try {
+        await trackContainer.parseTrackDbUrl(hubContainer.getTrackDbUrl());
+    } catch (error) {
+        console.warn(error);
+        createToast(`Error parsing trackDb.txt... cannot populate tracks.`, 'is-warning');
+    }
+};
+
+/**
+ * Asynchronously fetches GEO metadata based on the user-provided GEO ID and populates
+ * corresponding form fields with the retrieved data. If no data is found, displays a status message.
+ * Also manages the loading state of the GEO lookup button.
+ *
+ * @async
+ * @function getGeoData
+ * @returns {Promise<void>} Resolves when the GEO data has been fetched and the form updated.
+ */
+const getGeoData = async () => {
+    const geoId = document.getElementsByName('metadata-geo-id')[0].value;
+    const geoData = await apiCallsMixin.fetchGeoData(geoId);
+
+    if (Object.keys(geoData).length === 0) {
         document.getElementById('metadata-geo-lookup-status').classList.remove('is-hidden');
     } else {
         document.getElementById('metadata-geo-lookup-status').classList.add('is-hidden');
-        document.getElementsByName('metadata-contact-name')[0].value = geo_data.contact_name;
-        document.getElementsByName('metadata-contact-email')[0].value = geo_data.contact_email;
-        document.getElementsByName('metadata-contact-institute')[0].value = geo_data.contact_institute;
-        document.getElementsByName('metadata-taxon-id')[0].value = geo_data.taxid_ch1;
-        document.getElementsByName('metadata-organism')[0].value = geo_data.organism_ch1;
-        document.getElementsByName('metadata-platform-id')[0].value = geo_data.platform_id;
-        document.getElementsByName('metadata-instrument')[0].value = geo_data.instrument_model;
-        document.getElementsByName('metadata-library-selection')[0].value = geo_data.library_selection;
-        document.getElementsByName('metadata-library-source')[0].value = geo_data.library_source;
-        document.getElementsByName('metadata-library-strategy')[0].value = geo_data.library_strategy;
-        document.getElementsByName('metadata-pubmed-id')[0].value = geo_data.pubmed_id;
+        document.getElementsByName('metadata-contact-name')[0].value = geoData.contact_name;
+        document.getElementsByName('metadata-contact-email')[0].value = geoData.contact_email;
+        document.getElementsByName('metadata-contact-institute')[0].value = geoData.contact_institute;
+        document.getElementsByName('metadata-taxon-id')[0].value = geoData.taxid_ch1;
+        document.getElementsByName('metadata-organism')[0].value = geoData.organism_ch1;
+        document.getElementsByName('metadata-platform-id')[0].value = geoData.platform_id;
+        document.getElementsByName('metadata-instrument')[0].value = geoData.instrument_model;
+        document.getElementsByName('metadata-library-selection')[0].value = geoData.library_selection;
+        document.getElementsByName('metadata-library-source')[0].value = geoData.library_source;
+        document.getElementsByName('metadata-library-strategy')[0].value = geoData.library_strategy;
+        document.getElementsByName('metadata-pubmed-id')[0].value = geoData.pubmed_id;
     }
 
-    let button = document.getElementById('metadata-geo-lookup');
+    const button = document.getElementById('metadata-geo-lookup');
     button.disabled = false;
     button.classList.remove('is-loading');
 }
 
+const updateConfigureTrackHubButtonState = (urlInput, fileInput, assemblySelect) => {
+    const submitButton = document.getElementById('configure-trackhub-submit');
+    const statusMessage = document.getElementById('trackhub-upload-status-message');
+    const statusContainer = document.getElementById('trackhub-upload-status');
+
+    // If neither URL nor file is provided, enable the submit button and hide the status message
+    if (!urlInput.value && !fileInput.value) {
+        submitButton.disabled = false;
+        statusContainer.classList.add('is-hidden');
+        return
+    }
+
+    // If both URL and file are provided, show an error message
+    if (urlInput.value && fileInput.value) {
+        statusMessage.textContent = 'Please provide either a URL or a file, not both.';
+        statusContainer.classList.remove('is-hidden');
+        submitButton.disabled = true;
+        return;
+    }
+
+    // Disable the submit button by default
+    submitButton.disabled = true;
+
+    if (!assemblySelect.value) {
+        // If no assembly is selected, show an error message
+        statusMessage.textContent = 'Please select an assembly.';
+        statusContainer.classList.remove('is-hidden');
+        return;
+    }
+
+    // url should be in HTTP or HTTPS format and have no spaces (basic validation)
+    if (urlInput.value) {
+        const isUrl = urlInput.value.startsWith("http://") || urlInput.value.startsWith("https://");
+        if (isUrl && !urlInput.value.includes(' ')) {
+            // Valid URL, enable the submit button and hide the status message
+            submitButton.disabled = false;
+            statusContainer.classList.add('is-hidden');
+        } else {
+            // Invalid URL, show an error message
+            statusMessage.textContent = 'Please enter a valid HTTP or HTTPS URL.';
+            statusContainer.classList.remove('is-hidden');
+        }
+    } else {
+        // If a file is provided, enable the submit button and hide the status message
+        submitButton.disabled = false;
+        statusContainer.classList.add('is-hidden');
+    }
+}
+
+/**
+ * Fetches the content of an HTML file from the specified URL.
+ *
+ * @param {string} url - The URL of the HTML file to fetch.
+ * @returns {Promise<string>} - A promise that resolves with the content of the HTML file as a string.
+ */
+const includeHtml = async (url) => {
+    const preResponse = await fetch(url, {cache: "reload"});
+    return await preResponse.text();
+}
+
+/**
+ * Navigates to a specific step in the dataset upload process, updating the UI to reflect the current step.
+ * Handles step marker icons and classes for visual feedback, manages step content visibility,
+ * and triggers dataset processing status checks when appropriate.
+ *
+ * @param {string} step - The label of the step to navigate to. Must be one of:
+ *   'enter-metadata', 'upload-dataset', 'process-dataset', 'finalize-dataset', 'curate-dataset'.
+ */
 const stepTo = (step) => {
-    const step_labels = ['enter-metadata', 'upload-dataset', 'process-dataset',
+    // TODO: switch to using the stepper-fxns.js functions (and unify the two stepper implementations)
+
+    const stepLabels = ['enter-metadata', 'upload-dataset', 'build-trackhub', 'process-dataset',
         'finalize-dataset', 'curate-dataset'
     ];
-    let step_reached = false;
+    let stepReached = false;
 
     // Walk forward in the steps and handle each
-    for (const label of step_labels) {
-        let step_li = document.getElementById('step-' + label);
-        let step_marker = step_li.firstElementChild;
-        let step_icon = step_marker.firstElementChild;
+    for (const label of stepLabels) {
+        const stepLi = document.getElementById(`step-${label}`);
+        const stepMarker = stepLi.firstElementChild;
+        const stepIcon = stepMarker.firstElementChild;
 
         // If the step is the one we want, add the check icon
         if (label === step) {
-            step_marker.classList.add('is-light');
-            step_li.classList.add('is-active');
-            step_icon.firstElementChild.classList.remove('mdi-check-bold');
-            step_icon.firstElementChild.classList.add('mdi-wrench');
-            step_reached = true;
+            stepMarker.classList.add('is-light');
+            stepLi.classList.add('is-active');
+            stepIcon.firstElementChild.classList.remove('mdi-check-bold');
+            stepIcon.firstElementChild.classList.add('mdi-wrench');
+            stepReached = true;
 
         // If not the current step, handle if it's before or after the current
+        } else if (stepReached) {
+            // These are the steps markers after the current one
+            stepLi.classList.remove('is-active');
+            stepMarker.classList.remove('is-light');
+            stepIcon.firstElementChild.classList.remove('mdi-wrench');
+            stepIcon.firstElementChild.classList.remove('mdi-check-bold');
         } else {
-            if (step_reached) {
-                // These are the steps markers after the current one
-                step_li.classList.remove('is-active');
-                step_marker.classList.remove('is-light');
-                step_icon.firstElementChild.classList.remove('mdi-wrench');
-                step_icon.firstElementChild.classList.remove('mdi-check-bold');
-            } else {
-                // These are the step markers before the current one
-                step_li.classList.remove('is-active');
-                step_marker.classList.remove('is-light');
-                step_icon.firstElementChild.classList.remove('mdi-wrench');
-                step_icon.firstElementChild.classList.add('mdi-check-bold');
-            }
+            // These are the step markers before the current one
+            stepLi.classList.remove('is-active');
+            stepMarker.classList.remove('is-light');
+            stepIcon.firstElementChild.classList.remove('mdi-wrench');
+            stepIcon.firstElementChild.classList.add('mdi-check-bold');
         }
     }
 
-    // if the step is process-dataset, we need to check on the status
+    // Some steps require polling for status, so set that up if we're on one of those steps
+    let pollingFn = null;
     if (step === 'process-dataset') {
-        // Check the status immediately, then set an interval to keep doing it.
-        checkDatasetProcessingStatus();
+        pollingFn = datasetFormat === 'gosling' ? checkTrackhubStatus : checkDatasetProcessingStatus;
+
+        // For Gosling, render track status list once on entry (works for both new and resumed uploads)
+        // TODO: this will never execute when resuming.  Need to revise.
+        if (datasetFormat === 'gosling' && trackContainer) {
+            renderTrackStatusList(trackContainer);
+        }
+
+    }
+
+    if (pollingFn) {
+        // Check the status immediately (to establish the initial UI state), then set an interval to keep doing it.
+        pollingFn();
 
         setInterval(() => {
-            if (processing_status !== 'complete' && processing_status !== 'error') {
-                checkDatasetProcessingStatus();
+            if (processingStatus !== 'complete' && processingStatus !== 'error') {
+                pollingFn();
             }
-        }, processing_status_check_interval * 1000);
+        }, processingStatusCheckInterval * 1000);
     }
 
     // Inactivate all step contents, then display the one we want
@@ -404,41 +605,68 @@ const stepTo = (step) => {
     window.scrollTo(0, 0);
 }
 
+/**
+ * Loads the list of uploads currently in progress for the current user and updates the UI accordingly.
+ *
+ * - Fetches uploads in progress from the server using the user's session ID.
+ * - Populates the submissions-in-progress table with the retrieved uploads.
+ * - Adds event listeners to handle resuming or deleting uploads.
+ * - Shows or hides relevant UI sections based on whether uploads are present.
+ * - Displays a warning toast if an error occurs during the fetch.
+ *
+ * @async
+ * @function loadUploadsInProgress
+ * @returns {Promise<void>} Resolves when the uploads in progress have been loaded and the UI updated.
+ */
 const loadUploadsInProgress = async () => {
     const {data} = await axios.post('./cgi/get_uploads_in_progress.cgi', convertToFormData({
-        session_id: CURRENT_USER.session_id
+        session_id: getCurrentUser()?.session_id
     }));
 
     if (data.success) {
+        const tableBody = document.getElementById('submissions-in-progress-table-tbody');
+
         if (data.uploads.length > 0) {
             const template = document.getElementById('submission-history-row');
-            document.querySelector('#submissions-in-progress-table-tbody').innerHTML = '';
+            tableBody.innerHTML = '';
 
-            data.uploads.forEach((upload) => {
-                let clone = template.content.cloneNode(true);
+            for (const upload of data.uploads) {
+                const clone = template.content.cloneNode(true);
                 clone.querySelector('tr').dataset.shareId = upload.share_id;
                 clone.querySelector('tr').dataset.datasetId = upload.dataset_id;
                 clone.querySelector('tr').dataset.loadStep = upload.load_step;
+                clone.querySelector('tr').dataset.performPrimaryAnalysis = upload.perform_primary_analysis; // true/false assigned as string
+                clone.querySelector('tr').dataset.datasetFormat = upload.dataset_format;
 
                 clone.querySelector('.submission-share-id').textContent = upload.share_id;
                 clone.querySelector('.submission-status').textContent = upload.status;
                 clone.querySelector('.submission-title').textContent = upload.title;
-                clone.querySelector('.submission-dataset-type').textContent = upload.dataset_type;
-                document.querySelector('#submissions-in-progress-table-tbody').appendChild(clone);
-            });
+                clone.querySelector('.submission-dataset-type').textContent = upload.dataset_type == "gosling" ? "epigenome" : upload.dataset_type;
+                tableBody.appendChild(clone);
+            };
 
             // Add click listeners for submissions-in-progress-table-tbody rows we just added
             // First, the resume button
-            document.querySelectorAll('.submission-history-row .submission-resume').forEach((row) => {
+            for (const row of document.querySelectorAll('.submission-history-row .submission-resume')) {
                 row.addEventListener('click', (event) => {
-                    let row = event.target.closest('tr');
+                    const row = event.target.closest('tr');
 
-                    share_uid = row.dataset.shareId;
+                    shareUid = row.dataset.shareId;
                     const step = row.dataset.loadStep;
 
                     if (row.dataset.datasetId) {
-                        dataset_uid = row.dataset.datasetId;
+                        datasetUid = row.dataset.datasetId;
                     }
+
+                    performPrimaryAnalysis = row.dataset.performPrimaryAnalysis;
+                    if (performPrimaryAnalysis) {
+                        document.getElementById('finalize-migrating-primary-analysis-li').classList.add("is-hidden");
+                    }
+
+                    datasetFormat = row.dataset.datasetFormat;
+                    // processingStatus will be updated in initial polling again
+
+                    adjustUIForGosling()
 
                     // Do we want to dynamically load the next step or page refresh for it?
                     //  If dynamic we have to reset all the forms.
@@ -447,42 +675,64 @@ const loadUploadsInProgress = async () => {
                     document.getElementById('submissions-in-progress').classList.add('is-hidden');
                     document.getElementById('submission-c').classList.remove('is-hidden');
                 });
-            });
+            };
 
             // Now the delete button
-            document.querySelectorAll('.submission-history-row .submission-delete').forEach((row) => {
+            for (const row of document.querySelectorAll('.submission-history-row .submission-delete')) {
                 row.addEventListener('click', (event) => {
                     // reset row to be the parent tr element
-                    let row = event.target.closest('tr');
+                    const row = event.target.closest('tr');
 
-                    share_uid = row.dataset.shareId;
+                    shareUid = row.dataset.shareId;
                     const dataset_id = row.dataset.datasetId;
-                    deleteUploadInProgress(share_uid, dataset_id);
+                    deleteUploadInProgress(shareUid, dataset_id);
                 });
-            });
+            };
 
             document.getElementById('submissions-in-progress').classList.remove('is-hidden');
         } else {
+            // remove the last row of the table and hide the submissions in progress section
+            tableBody.innerHTML = '';
+            document.getElementById('submissions-in-progress').classList.add('is-hidden');
+
             document.getElementById('submission-c').classList.remove('is-hidden');
         }
 
     } else {
-        createToast('Error loading uploads in progress: ' + data.message, 'is-warning');
+        createToast(`Error loading uploads in progress: ${data.message}`, 'is-warning');
     }
 }
 
-const prettifyFieldName = (field) => {
+/**
+ * Converts a field name by removing the 'metadata-' prefix, replacing hyphens with spaces,
+ * and capitalizing the first letter.
+ *
+ * @param {string} field - The field name to prettify.
+ * @returns {string} The prettified field name.
+ */
+const prettifyMetadataFieldName = (field) => {
     field = field.replace('metadata-', '');
     field = field.replaceAll('-', ' ');
-    field = field.charAt(0).toUpperCase() + field.slice(1);
-    return field;
+    return field.charAt(0).toUpperCase() + field.slice(1);
 }
 
+/**
+ * Asynchronously collects metadata from form fields, sends it to the server for storage,
+ * and updates the UI based on the server response.
+ *
+ * Sends a POST request with dataset metadata to the backend CGI script.
+ * On success, advances the UI to the next step and scrolls to the top of the page.
+ * On failure, displays an error toast notification.
+ *
+ * @async
+ * @function storeMetadata
+ * @returns {Promise<void>} Resolves when the operation is complete.
+ */
 const storeMetadata = async () => {
     const {data} = await axios.post('./cgi/store_expression_metadata.cgi', convertToFormData({
-        dataset_uid: dataset_uid,
-        share_uid: share_uid,
-        session_id: CURRENT_USER.session_id,
+        dataset_uid: datasetUid,
+        share_uid: shareUid,
+        session_id: getCurrentUser()?.session_id,
         title: document.getElementsByName('metadata-title')[0].value,
         summary: document.getElementsByName('metadata-summary')[0].value,
         dataset_type: document.getElementsByName('metadata-dataset-type')[0].value,
@@ -499,25 +749,11 @@ const storeMetadata = async () => {
         library_selection: document.getElementsByName('metadata-library-selection')[0].value,
         library_source: document.getElementsByName('metadata-library-source')[0].value,
         library_strategy: document.getElementsByName('metadata-library-strategy')[0].value,
-        pubmed_id: document.getElementsByName('metadata-pubmed-id')[0].value
+        pubmed_id: document.getElementsByName('metadata-pubmed-id')[0].value,
+        user_pii_affirmed: document.getElementsByName('metadata-no-pii')[0].checked ? 1 : 0
     }));
 
     if (data.success) {
-        // UI for next step:
-        /*
-        // For the current step:
-        <span class="steps-marker">
-            <span class="icon">
-            <i class="mdi mdi-check-bold"></i>
-            </span>
-        </span>
-        // For the next step:
-        <span class="steps-marker is-light">
-            <span class="icon">
-            <i class="mdi mdi-wrench"></i>
-            </span>
-        </span>
-        */
 
         stepTo('upload-dataset');
 
@@ -530,25 +766,95 @@ const storeMetadata = async () => {
     }
 }
 
+/**
+ * Asynchronously builds and populates the trackhub interface for Gosling dataset uploads.
+ *
+ * Fetches HTML templates for hub and track sections, initializes Hub and Track container objects,
+ * populates them with data from a provided trackhub URL, and navigates the UI to the build-trackhub step.
+ *
+ * The function performs the following operations:
+ * 1. Loads HTML template for the hub section and injects it into the DOM
+ * 2. Loads HTML template for the track section and injects it into the DOM
+ * 3. Creates new HubContainer and TrackContainer instances to manage hub and track data
+ * 4. Parses hub configuration and track definitions from the provided trackhub URL
+ * 5. Advances the UI stepper to the build-trackhub step
+ *
+ * @async
+ * @function buildTrackhub
+ * @returns {Promise<void>} Resolves when the trackhub interface has been fully populated and the UI step has been updated.
+ *
+ * @description
+ * This function is called when a user selects the Gosling format and provides a trackhub URL.
+ * It assumes the presence of DOM elements with IDs 'hub-section' and 'track-section'.
+ * Error handling is performed by `populateHubAndTracks()`, which displays warning toasts if parsing fails.
+ *
+ * @see {@link populateHubAndTracks} for details on hub/track population and error handling
+ * @see {@link stepTo} for navigation logic
+ */
+const buildTrackhub = async () => {
+    const hubSection = document.getElementById("hub-section")
+    hubSection.innerHTML = await includeHtml("../include/trackhub/hub.html");
+    const trackSection = document.getElementById("track-section")
+    trackSection.innerHTML = await includeHtml("../include/trackhub/track.html");
+
+    // Manipulates the contents in the section inner HTML and also creates new Hub and Track objects.
+    hubContainer = new HubContainer();
+    trackContainer = new TrackContainer();
+    hubContainer.setTrackContainer(trackContainer);
+    trackContainer.setHubContainer(hubContainer);
+
+    await populateHubAndTracks(hubContainer, trackContainer);
+
+    // Register a listener to enable "Build track hub" button if there is at least 1 track with a data file provided
+    trackContainer.registerTrackDataFileListener(() => {
+        const submitButton = document.getElementById('build-trackhub-submit');
+        submitButton.disabled = trackContainer.hasAtLeastOneTrackWithDataFile() ? false : true;
+    });
+
+    stepTo("build-trackhub");
+}
+
+/**
+ * Handles uploading a dataset file to the server using XMLHttpRequest.
+ * Collects form data including dataset identifiers, user session, format, and file input,
+ * then sends it to the backend endpoint. Updates the UI to reflect upload progress,
+ * handles server response, and initiates dataset processing upon successful upload.
+ *
+ * Side Effects:
+ * - Updates progress bar and status messages in the DOM.
+ * - Disables/enables submit button and toggles loading/status classes.
+ * - Calls `processDataset()` and advances UI steps on success.
+ *
+ * Dependencies:
+ * - Assumes existence of global variables: `datasetUid`, `shareUid`, `datasetFormat`.
+ * - Requires DOM elements with IDs: 'dataset-file-input', 'dataset-upload-progress',
+ *   'dataset-upload-status-message', 'dataset-upload-submit', 'dataset-upload-status'.
+ * - Requires functions: `getCurrentUser()`, `processDataset()`, `stepTo()`.
+ * @async
+ * @function uploadDataset
+ * @returns {Promise<void>} Resolves when the upload process is complete.
+ */
 const uploadDataset = () => {
     const formData = new FormData();
-    formData.append('dataset_uid', dataset_uid);
-    formData.append('share_uid', share_uid);
-    formData.append('session_id', CURRENT_USER.session_id);
-    formData.append('dataset_format', dataset_format);
+    formData.append('share_uid', shareUid);
+    formData.append('session_id', getCurrentUser()?.session_id);
+    formData.append('dataset_format', datasetFormat);
+    if (spatialFormat) {
+        formData.append('spatial_format', spatialFormat);
+    }
     formData.append('dataset_file', document.getElementById('dataset-file-input').files[0]);
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', './cgi/store_expression_dataset.cgi', true);
 
-    xhr.upload.onprogress = function(event) {
+    xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
             const percentComplete = (event.loaded / event.total) * 100;
             document.getElementById('dataset-upload-progress').value = percentComplete;
         }
     };
 
-    xhr.onload = function() {
+    xhr.onload = () => {
         const response = JSON.parse(xhr.responseText);
 
         document.getElementById('dataset-upload-status-message').textContent = '';
@@ -566,53 +872,237 @@ const uploadDataset = () => {
             setTimeout(() => {
                 stepTo('process-dataset');
             }, 3000);
+            return;
 
-        } else {
-            document.getElementById('dataset-upload-status-message').textContent = response.message;
-            document.getElementById('dataset-upload-submit').disabled = false;
         }
+        document.getElementById('dataset-upload-status-message').textContent = response.message;
+        document.getElementById('dataset-upload-submit').disabled = false;
     };
 
     xhr.send(formData);
 }
 
+/**
+ * Processes the uploaded dataset by sending form data to the server.
+ * Appends share UID, dataset format, and current user session ID to the form data,
+ * then sends a POST request to the server endpoint for processing.
+ * Handles the server response, but relies on external status checking for further actions.
+ *
+ * @async
+ * @function
+ * @returns {Promise<void>} Resolves when the request is complete.
+ */
 const processDataset = async () => {
     const formData = new FormData();
-    formData.append('share_uid', share_uid);
-    formData.append('dataset_format', dataset_format);
-    formData.append('session_id', CURRENT_USER.session_id);
+    formData.append('share_uid', shareUid);
+    formData.append('dataset_format', datasetFormat);
+    if (spatialFormat) {
+        formData.append('spatial_format', spatialFormat);
+    }
+    formData.append('session_id', getCurrentUser()?.session_id);
 
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', './cgi/process_uploaded_expression_dataset.cgi', true);
+    try {
+        const response = await fetch('./cgi/process_uploaded_expression_dataset.cgi', {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await response.json();
 
-    xhr.onload = function() {
-        const response = JSON.parse(xhr.responseText);
+        if (data.success) {
+            // Nothing really to do here since status checking happens elsewhere
+        }
+    } catch (error) {
+        console.error('Error processing dataset:', error);
+        createToast('Error processing dataset');
+    }
+}
 
-        if (response.success) {
-            // Nothing really to do here since status checking happening elsewhere
+const stageTrackHub = async (hubContainer, trackContainer) => {
+    const hubValidation = hubContainer.validateHub();
+    const trackValidation = trackContainer.validateTracks();
+
+    if (hubValidation.errors.length > 0) {
+        createToast("Validation issues with hub metadata. Please correct and submit again");
+        // log errors
+        console.warn("Hub validation errors:", hubValidation.errors);
+        return;
+    }
+
+    if (trackValidation.errors.length > 0) {
+        createToast("Validation issues with one or more tracks. Please correct.");
+        // log errors
+        console.warn("Track validation errors:", trackValidation.errors);
+        return;
+    }
+
+    const hubJson = hubContainer.generateHubJson();
+    const trackStanzas = trackContainer.generateTrackDbEntries();
+
+    if (!hubJson || trackStanzas.length === 0) {
+        return;
+    }
+
+    // Build main FormData
+    const formData = new FormData();
+    formData.append('hub_json', JSON.stringify(hubJson));
+    formData.append('tracks', JSON.stringify(trackStanzas));
+    formData.append('assembly', hubContainer.getAssembly());
+    formData.append('dry_run', false);
+
+    // Append files separately
+    const trackFilesFormData = trackContainer.buildTrackFilesFormData();
+    for (const [key, value] of trackFilesFormData.entries()) {
+        formData.append(key, value);
+    }
+
+    try {
+        const {data} = await axios.post(
+            `./api/import/trackhub/${shareUid}/copy`,
+            formData
+        );
+
+        if (!data?.success) {
+            throw new Error(data?.message || 'Unknown error');
+        }
+
+        stepTo('process-dataset');
+
+    } catch (error) {
+        createToast(`Error staging trackhub data: ${error.message}`);
+    }
+};
+
+/**
+ * Renders a list of track statuses in the Process Dataset step.
+ * Called when transitioning from Build Track Hub to Process Dataset for Gosling uploads.
+ *
+ * @param {TrackContainer} trackContainer - The container with track information.
+ * @returns {void}
+ */
+const renderTrackStatusList = (trackContainer) => {
+    const trackStatusContainer = document.getElementById('track-status-container');
+    const trackStatusList = document.getElementById('track-status-list');
+
+    if (!trackContainer || Object.keys(trackContainer.tracks).length === 0) {
+        trackStatusContainer.classList.add('is-hidden');
+        return;
+    }
+
+    // Clear the list
+    trackStatusList.innerHTML = '';
+
+    // Create list item for each track
+    for (const trackId in trackContainer.tracks) {
+        const track = trackContainer.tracks[trackId];
+        const trackName = track.identifier || `Track ${trackId}`;
+
+        const listItem = document.createElement('li');
+        listItem.className = 'mb-2';
+        listItem.id = `track-status-item-${trackId}`;
+        listItem.innerHTML = `
+            <span class="icon-text">
+                <span class="icon">
+                    <i class="mdi mdi-checkbox-blank-outline js-track-status-icon"></i>
+                </span>
+                <span class="js-track-status-name">${trackName}</span>
+                <span class="tag is-light js-track-status-badge" style="display: none; margin-left: 0.5rem;"></span>
+            </span>
+        `;
+
+        trackStatusList.appendChild(listItem);
+    }
+
+    trackStatusContainer.classList.remove('is-hidden');
+};
+
+/**
+ * Updates the track status in the Process Dataset step.
+ * Called during polling to update individual track statuses.
+ *
+ * @param {number} trackId - The ID of the track to update.
+ * @param {string} status - The current status of the track (e.g., 'downloading', 'completed').
+ * @returns {void}
+ */
+const updateTrackStatusInProcessStep = (trackId, status) => {
+    const trackStatusItem = document.getElementById(`track-status-item-${trackId}`);
+    if (!trackStatusItem) return;
+
+    const statusInfo = TRACK_STATUS_COLORS[status];
+    if (!statusInfo) return;
+
+    const statusBadge = trackStatusItem.querySelector('.js-track-status-badge');
+    const statusIcon = trackStatusItem.querySelector('.js-track-status-icon');
+
+    // Update badge
+    statusBadge.className = `tag is-light js-track-status-badge ${statusInfo.color}`;
+    statusBadge.textContent = statusInfo.label;
+    statusBadge.style.display = 'inline-block';
+
+    // Update icon based on status
+    statusIcon.className = 'mdi mdi-checkbox-blank-outline js-track-status-icon';
+    if (status === 'completed') {
+        statusIcon.classList.remove('mdi-checkbox-blank-outline');
+        statusIcon.classList.add('mdi-check-circle');
+    } else if (status === 'failed') {
+        statusIcon.classList.remove('mdi-checkbox-blank-outline');
+        statusIcon.classList.add('mdi-alert-circle');
+    }
+};
+
+/**
+ * Updates all track statuses in the Process Dataset step based on the provided status object.
+ * Called during polling to reflect the current state of all tracks.
+ *
+ * @param {TrackContainer} trackContainer - The container with track information.
+ * @param {Object} trackStatuses - Object mapping track names to their current status.
+ * @returns {void}
+ */
+const updateAllTrackStatusesInProcessStep = (trackContainer, trackStatuses) => {
+    if (!trackContainer) return;
+
+    for (const trackId in trackContainer.tracks) {
+        const track = trackContainer.tracks[trackId];
+        const trackName = track.shortLabel;
+        const status = trackStatuses[trackName];
+
+        if (status) {
+            updateTrackStatusInProcessStep(trackId, status);
+        }
+    }
+};
+
+/**
+ * Validates the metadata form by checking required fields for values and enforcing SQL character length limits.
+ * Highlights fields with errors by adding the 'is-danger' class.
+ *
+ * @returns {Object} An object mapping field names to error messages for fields that failed validation.
+ */
+const validateMetadataForm = () => {
+    const erroredFields = {};
+
+    // Each element with a name in required_metadata_fields must have a value
+    for (const field of requiredMetadataFields) {
+        const element = document.getElementsByName(field)[0];
+
+        if (element.value) {
+            element.classList.remove('is-danger');
+        } else {
+            element.classList.add('is-danger');
+            erroredFields[field] = 'Requires a value';
         }
     }
 
-    xhr.send(formData);
-}
-
-const validateMetadataForm = () => {
-    let errored_fields = {};
-
-    // Each element with a name in required_metadata_fields must have a value
-    for (const field of required_metadata_fields) {
-        const element = document.getElementsByName(field)[0];
-
-        if (!element.value) {
-            element.classList.add('is-danger');
-            errored_fields[field] = 'Requires a value';
-        } else {
-            element.classList.remove('is-danger');
-        }
+    // Check that the personal data affirmation checkbox is checked
+    const piiAffirmed = document.getElementsByName('metadata-no-pii')[0].checked;
+    if (!piiAffirmed) {
+        document.getElementsByName('metadata-no-pii')[0].classList.add('is-danger');
+        erroredFields['metadata-no-pii'] = 'You must affirm that the dataset contains no personally identifiable information';
+    } else {
+        document.getElementsByName('metadata-no-pii')[0].classList.remove('is-danger');
     }
 
     // Check SQL length limitations
-    const field_character_limits = {
+    const fieldCharacterLimits = {
         'metadata-title': 255,
         'metadata-summary': 65535,
         'metadata-annotation-source': 20,
@@ -629,38 +1119,380 @@ const validateMetadataForm = () => {
         'metadata-pubmed-id': 20
     };
 
-    for (const field in field_character_limits) {
+    for (const field in fieldCharacterLimits) {
         const element = document.getElementsByName(field)[0];
-        if (element.value.length > field_character_limits[field]) {
+        if (element.value.length > fieldCharacterLimits[field]) {
             element.classList.add('is-danger');
-            errored_fields[field] = `Exceeds ${field_character_limits[field]} character limit`;
+            erroredFields[field] = `Exceeds ${fieldCharacterLimits[field]} character limit`;
         } else {
             element.classList.remove('is-danger');
         }
     }
 
-    return errored_fields;
+    return erroredFields;
 }
 
 /**
- * Generates a GUID string
- * @returns {String} The generated GUID
- * @example af8a8416-6e18-a307-bd9c-f2c947bbb3aa
- * @author Slavik Meltser (slavik@meltser.info)
- * @link http://slavik.meltser.info/?p=142
+ * Adjusts the UI elements on the upload dataset page based on the selected dataset format, specifically for Gosling uploads.
+ * Hides or shows relevant sections and inputs to guide the user through the appropriate upload process for Gosling track hubs.
  */
-function guid(uid_length) {
-    function _p8(s) {
-        var p = (Math.random().toString(16)+"000000000").substr(2,8);
-        return s ? "-" + p.substr(0,4) + "-" + p.substr(4,4) : p ;
+
+const adjustUIForGosling = () => {
+    // Gosling has special uploader
+    if (datasetFormat === "gosling") {
+        document.getElementById("dataset-upload-c").classList.add("is-hidden");
+        document.getElementById("dataset-upload-status").classList.add("is-hidden");
+        document.getElementById("dataset-curate-div").classList.add("is-hidden");
+
+        document.getElementById("step-build-trackhub").classList.remove("is-hidden");
+        document.getElementById("trackhub-upload-c").classList.remove("is-hidden");
+        document.getElementById("dataset-no-curate-div").classList.remove("is-hidden");
+
+        document.getElementById("dataset-file-input").value = "";
+        document.getElementById("dataset-url-input").value = "";
+        return;
     }
-    if (uid_length == 'long') {
-        return _p8() + _p8(true) + _p8(true) + _p8();
-    }
-    if (uid_length == 'short') {
-        return _p8();
-    }
+    document.getElementById("dataset-upload-c").classList.remove("is-hidden");
+    document.getElementById("dataset-upload-status").classList.remove("is-hidden");
+    document.getElementById("dataset-curate-div").classList.remove("is-hidden");
+
+    document.getElementById("step-build-trackhub").classList.add("is-hidden");
+    document.getElementById("trackhub-upload-c").classList.add("is-hidden");
+    document.getElementById("dataset-no-curate-div").classList.add("is-hidden");
+
+    document.getElementById("trackhub-file-input").value = "";
+    document.getElementById("trackhub-file-name").textContent = "";
+    document.getElementById("trackhub-url-input").value = "";
 }
+
+/**
+ * Initializes the upload dataset page by:
+ * - Checking if the user is logged in and displaying the appropriate UI elements.
+ * - Loading uploads in progress for logged-in users.
+ * - Setting the page header label.
+ * - Generating unique identifiers for the dataset and sharing.
+ *
+ * Assumes the existence of global functions `getCurrentUser()`, `loadUploadsInProgress()`, and `guid()`,
+ * as well as global variables `datasetUid` and `shareUid`.
+ */
+const initPage = () => {
+    if (getCurrentUser()?.session_id) {
+        document.getElementById('logged-in-c').classList.remove('is-hidden');
+        loadUploadsInProgress();
+    } else {
+        document.getElementById('not-logged-in-c').classList.remove('is-hidden');
+    }
+
+    // Set the page title
+    document.getElementById('page-header-label').textContent = 'Upload an expression dataset';
+
+    // Generate the UID that will be used for this submission
+    datasetUid = guid('long');
+    shareUid = guid('short');
+}
+
+/* --- Initialization logic --- */
+
+await initCommonUI();
+await initPage();
+
+/* --- Event listeners --- */
+
+// Add click listeners for all buttons of class 'format-selector'
+const formatSelectorElts = document.getElementsByClassName('format-selector');
+for (const btn of formatSelectorElts) {
+    btn.addEventListener('click', (event) => {
+        // Reset each as selectable
+        for (const element of formatSelectorElts) {
+            if (element.disabled) {
+                continue;
+            }
+            // set the classList on this button to only be 'mdi' and 'mdi-cancel'
+            const icon = element.querySelector('span.icon i');
+            icon.classList.remove(...icon.classList);
+            icon.classList.add('mdi', 'mdi-checkbox-blank-outline');
+
+            element.querySelector('span.format-status').textContent = 'Choose';
+        };
+
+        // Now set things for the one actually clicked
+        btn.querySelector('span.icon i').classList.remove('mdi', 'mdi-checkbox-blank-outline');
+        btn.querySelector('span.icon i').classList.add('mdi', 'mdi-checkbox-outline');
+        btn.querySelector('span.format-status').textContent = 'Selected';
+        datasetFormat = btn.dataset.format;
+
+        // If the format is "special", update the text in the finalize step.
+        const migrateH5adSpan = document.getElementById("finalize-migrating-h5ad-text");
+        migrateH5adSpan.textContent = 'Migrating H5AD file';
+        if (datasetFormat === 'spatial') {
+            migrateH5adSpan.textContent = 'Migrating Zarr store';
+        } else if (datasetFormat == 'gosling') {
+            migrateH5adSpan.textContent = 'Migrating track hub and files';
+        }
+
+        adjustUIForGosling();
+
+    });
+};
+
+document.getElementById('new-submission-toggle').addEventListener('click', (event) => {
+    event.preventDefault();
+
+    document.getElementById('submissions-in-progress').classList.add('is-hidden');
+    document.getElementById('submission-c').classList.remove('is-hidden');
+});
+
+document.getElementById('dataset-processing-submit').addEventListener('click', (event) => {
+    event.preventDefault();
+
+    stepTo('finalize-dataset');
+});
+
+document.getElementById('dataset-curate-submit').addEventListener('click', (event) => {
+    event.preventDefault();
+
+    const url = `/dataset_curator.html?dataset_id=${datasetUid}`;
+    window.open(url, '_blank');
+});
+
+document.getElementById('dataset-explorer-redirect').addEventListener('click', (event) => {
+    event.preventDefault();
+    window.open(`./p?s=${shareUid}&gsem=1`, '_blank');
+});
+
+
+document.getElementById('metadata-form-submit').addEventListener('click', (event) => {
+    event.preventDefault();
+    const erroredFields = validateMetadataForm();
+
+    if (erroredFields && Object.keys(erroredFields).length === 0) {
+        // Form looks good!
+        document.getElementById('errored-field-list-c').classList.add('is-hidden');
+        storeMetadata();
+        return;
+
+    }
+    const erroredFieldsUl = document.getElementById('errored-field-list');
+    erroredFieldsUl.innerHTML = '';
+
+    // iterate over the errored fields and display them
+    for (const field in erroredFields) {
+        const fieldLabel = prettifyMetadataFieldName(field);
+        const fieldMsg = erroredFields[field];
+
+        const li = document.createElement('li');
+        li.textContent = `${fieldLabel}: ${fieldMsg}`;
+        erroredFieldsUl.appendChild(li);
+    };
+
+    document.getElementById('errored-field-list-c').classList.remove('is-hidden');
+});
+
+document.getElementById('dataset-file-input').addEventListener('change', (event) => {
+    // Was a file selected?
+    if (event.currentTarget.files.length > 0) {
+        document.getElementById('dataset-upload-submit').disabled = false;
+        const file = event.currentTarget.files[0];
+        document.getElementById('dataset-file-name').textContent = file.name;
+        return;
+    }
+    document.getElementById('dataset-upload-submit').disabled = true;
+    document.getElementById('dataset-file-name').textContent = 'No file selected';
+});
+
+// Enable 'Upload dataset' button if a URL is entered and an assembly is selected.
+const hubUrlInput = document.getElementById('trackhub-url-input');
+const hubFileInput = document.getElementById('trackhub-file-input');
+const hubAssemblySelect = document.getElementById('trackhub-assembly-select');
+hubUrlInput.addEventListener('input', (event) => {
+    document.getElementById('trackhub-validation-warnings').classList.add('is-hidden');
+    document.getElementById("use-one-file-warning").classList.add('is-hidden');
+    updateConfigureTrackHubButtonState(hubUrlInput, hubFileInput, hubAssemblySelect);
+})
+hubFileInput.addEventListener('change', async (event) => {
+    document.getElementById('trackhub-validation-warnings').classList.add('is-hidden');
+    document.getElementById("use-one-file-warning").classList.add('is-hidden');
+    updateConfigureTrackHubButtonState(hubUrlInput, hubFileInput, hubAssemblySelect);
+
+    // Validate hub file for local references
+    if (event.target.files.length > 0) {
+        try {
+            const file = event.target.files[0];
+            const fileContent = await file.text();
+
+            document.getElementById("trackhub-file-name").textContent = file.name;
+
+            // Check for local file references and show warnings if found
+            if (HubContainer.hasLocalFileReferences(fileContent)) {
+                document.getElementById('trackhub-validation-warnings').classList.remove('is-hidden');
+                if (!HubContainer.hasUseOneFileMode(fileContent)) {
+                    document.getElementById("use-one-file-warning").classList.remove('is-hidden');
+                }
+            }
+        } catch (error) {
+            console.warn('Error reading hub file:', error);
+            createToast('Error reading hub file for validation. Please ensure the file is a valid text file.', 'is-warning');
+        }
+    }
+
+})
+hubAssemblySelect.addEventListener('change', (event) => {
+    updateConfigureTrackHubButtonState(hubUrlInput, hubFileInput, hubAssemblySelect);
+})
+
+document.getElementById('dataset-finalize-submit').addEventListener('click', (event) => {
+    event.preventDefault();
+    event.currentTarget.disabled = true;
+    document.getElementById('finalize-dataset-status-c').classList.remove('is-hidden');
+
+    finalizeUpload();
+});
+
+document.getElementById('dataset-finalize-next-step').addEventListener('click', (event) => {
+    event.preventDefault();
+
+    // Move to the next step
+    stepTo('curate-dataset');
+});
+
+document.getElementById('metadata-file-input').addEventListener('change', (event) => {
+    const metadataUploadSubmit = document.getElementById('metadata-upload-submit');
+    // Was a file selected?
+    if (event.currentTarget.files.length > 0) {
+        metadataUploadSubmit.disabled = false;
+        const file = event.currentTarget.files[0];
+        document.getElementById('metadata-file-name').textContent = file.name;
+        document.getElementsByName('metadata-dataset-id')[0].value = datasetUid;
+        return;
+    }
+    metadataUploadSubmit.disabled = true;
+    document.getElementById('metadata-file-name').textContent = 'No file selected';
+});
+
+document.getElementById('dataset-upload-submit').addEventListener('click', (event) => {
+    event.preventDefault();
+    // make sure they chose a format (sanity check)
+    if (!datasetFormat) {
+        document.getElementById('dataset-upload-status-message').textContent = 'Please choose a format above first.';
+        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+        return;
+    }
+
+    if (datasetFormat === "spatial") {
+        const spatialFormatSelect = document.getElementById('select-spatial-platform');
+        if (spatialFormatSelect.value === '') {
+            document.getElementById('dataset-upload-status-message').textContent = 'Please choose a spatial platform above first.';
+            document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+            return;
+        }
+        spatialFormat = spatialFormatSelect.value;
+    } else {
+        spatialFormat = null;   // safeguard
+    }
+
+    // change submit button to spinner
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.classList.add('is-loading');
+    document.getElementById('dataset-upload-status').classList.add('is-hidden');
+
+    if (datasetFormat === "gosling") {
+        throw new Error("Gosling should be handled separately and should not reach this point. Please contact a gEAR developer.");
+    }
+    uploadDataset();
+});
+
+document.getElementById('configure-trackhub-submit').addEventListener('click', (event) => {
+    event.preventDefault();
+    // make sure they chose a format (sanity check)
+    if (datasetFormat !== "gosling") {
+        document.getElementById('dataset-upload-status-message').textContent = 'Please choose the Gosling format above first.';
+        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+        return;
+    }
+
+    spatialFormat = null;   // safeguard since gosling doesn't use spatial formats
+
+    // change submit button to spinner
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.classList.add('is-loading');
+    document.getElementById('dataset-upload-status').classList.add('is-hidden');
+
+    buildTrackhub();
+});
+
+document.getElementById("build-trackhub-submit").addEventListener("click", async (event) => {
+    event.preventDefault();
+
+    if (!hubContainer || !trackContainer) {
+        document.getElementById('dataset-upload-status-message').textContent = 'Error: Hub and track information not found. Please try again.';
+        document.getElementById('dataset-upload-status').classList.remove('is-hidden');
+        return;
+    }
+
+    const button = event.currentTarget;  // ← Store reference BEFORE async call
+    button.classList.add('is-loading');
+
+    try {
+        await stageTrackHub(hubContainer, trackContainer);
+    } finally {
+        // Now safely remove the loading class
+        if (button?.parentElement) {  // ← Verify button still exists in DOM
+            button.classList.remove('is-loading');
+        }
+    }
+
+})
+
+document.getElementById('metadata-upload-submit').addEventListener('click', (event) => {
+    // change submit button to spinner
+    event.preventDefault();
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.classList.add('is-loading');
+    document.getElementById('metadata-upload-status').classList.add('is-hidden');
+    populateMetadataFormFromFile();
+});
+
+document.getElementById('metadata-geo-lookup').addEventListener('click', (event) => {
+    event.preventDefault();
+    const button = event.currentTarget
+    button.disabled = true;
+    button.classList.add('is-loading');
+    const getData = getGeoData();
+});
+
+document.getElementById('select-spatial-platform').addEventListener('change', (e) => {
+    const platform = e.target.value;
+    const reqsSpan = document.getElementById('spatial-requirements');
+
+    if (platform === '') {
+        reqsSpan.classList.add('is-hidden');
+        document.getElementById("btn-spatial-format-selector").disabled = true;
+    } else {
+        reqsSpan.classList.remove('is-hidden');
+        document.getElementById("btn-spatial-format-selector").disabled = false;
+    }
+});
+
+// Show modal of spatial requirements if clicked
+document.getElementById("spatial-requirements").addEventListener("click", (e) => {
+    e.preventDefault();
+    const modalId = e.target.dataset.target;
+    const modalElt = document.getElementById(modalId);
+    openModal(modalElt);
+
+    const platform = document.getElementById("select-spatial-platform").value;
+    // Get the text content for the selected option
+    const platformText = document.querySelector(`#select-spatial-platform option[value="${platform}"]`).textContent;
+    // populate the modal
+    document.querySelector(`#${modalId} .modal-card-body .content`).innerHTML =
+        document.getElementById(`${platform}-spatial-reqs`).innerHTML;
+
+    document.querySelector(`#${modalId} .modal-card-title`).textContent = platformText;
+});
+
 
 
 /*  From Shaun, used to toggle element's stickiness */
@@ -674,3 +1506,8 @@ window.addEventListener("scroll", (event) => {
     }
 });
 */
+
+const testing = document.getElementById("testing");
+if (testing && testing.value === "true") {
+    stepTo('upload-dataset');
+}

@@ -29,6 +29,15 @@ def main():
 
     display = geardb.get_display_by_id(display_id)
 
+    if not display:
+        # If display not found, return success as True
+        result = dict(success=True)
+        cursor.close()
+        sys.stdout = original_stdout
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(result))
+        return
+
     user = geardb.get_user_from_session_id(session_id=session_id)
 
     # If no display found for this ID, treat as if it were already deleted.

@@ -2,7 +2,7 @@
 <!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
@@ -22,13 +22,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
 
     <!-- Fancy animation effects -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
-
-    <!-- Ensures we always get a new version (during our current active development cycles) -->
-    <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
-
-    <!--Page-specific CSS here -->
-    <script>document.write('<link rel="stylesheet" href="css/gene_list_manager.' + (new Date()).getTime() + '.css" />');</script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css""/>
 </head>
 <body>
     <!--[if lt IE 7]>
@@ -39,7 +33,7 @@
         <!--#include virtual="/include/primary_nav.html" -->
         <section id="main-c" class="column pl-0 pt-0">
             <!--#include virtual="/include/header_bar.html" -->
-            <section id="content-c" class="m-3 container" data-nav-link="manage_genes">
+            <section id="content-c" role="main" class="m-3 container" data-nav-link="manage_genes">
                 <article id="not-logged-in-msg" class="message is-danger is-hidden">
                     <div class="message-body">
                         You must be logged in as a user to create new gene lists.
@@ -62,11 +56,11 @@
 
                         <!-- search field -->
                         <div class="field">
-                            <label class="label">Find gene lists</label>
+                            <label class="label" for="search-terms">Find gene lists</label>
                             <div class="control has-icons-right">
-                                <input id="search-terms" class="input" type="text" placeholder="Keyword search">
-                                <span class="icon is-hidden is-right is-clickable" id="search-clear">
-                                    <i class="mdi mdi-close-circle"></i>
+                                <input id="search-terms" class="input" type="search" placeholder="Keyword search" aria-label="Search gene lists by keyword">
+                                <span class="icon is-hidden is-right is-clickable" id="search-clear" aria-label="Clear search">
+                                    <i class="mdi mdi-close-circle" aria-hidden="true"></i>
                                 </span>
                             </div>
                         </div>
@@ -169,7 +163,8 @@
                                     </footer>
                                 </div>
 
-                                <div class="card column has-background-light is-flex is-flex-direction-column">
+                                <!-- Hiding labeled uploader for now -->
+                                <div class="card column has-background-light is-flex is-flex-direction-column is-hidden">
                                     <header class="card-header">
                                         <p class="card-header-title has-text-dark js-new-list-header" id="new-list-labeled-header">
                                             Labeled gene list
@@ -217,7 +212,8 @@
                                         <div class="field">
                                             <p class="label">Visibility</p>
                                             <!-- toggle switch --->
-                                            <input type="checkbox" class="switch is-primary" name="new-list-visibility" id="new-list-visibility"/>
+                                            <label for="new-list-visibility" class="is-sr-only">Toggle visibility of new list</label>
+                                            <input type="checkbox" class="switch is-primary" name="new-list-visibility" id="new-list-visibility" />
                                             <label for="new-list-visibility"></label>
                                         </div>
                                     </div>
@@ -230,8 +226,7 @@
                                 </div>
                                 <div class="field" id="new-list-upload-c">
                                     <label class="label">Upload gene list
-                                        <a id="list-upload-reqs" tabindex="0" class="button is-small is-text has-text-gear-bg-secondary" role="button" data-target="list-upload-reqs-modal">Click for requirements</a>
-
+                                        <div id="list-upload-reqs" tabindex="0" class="button is-clickable is-small is-text has-text-gear-bg-secondary" role="button" data-target="list-upload-reqs-modal">Click for requirements</div>
                                     </label>
                                     <div class="field">
                                         <div class="control">
@@ -299,11 +294,11 @@
                                     </div>
                                 </div>
                                 <div class="level-item">
-                                    <label class="label mr-3">Sort by:</label>  <!-- .field.is-horizontal + .field-label scrunches the label up -->
+                                    <label class="label mr-3" for="sort-by">Sort by:</label>  <!-- .field.is-horizontal + .field-label scrunches the label up -->
                                     <div class="field">
                                         <div class="control">
                                             <div class="select is-small">
-                                                <select name="sort-by" id="sort-by">
+                                                <select name="sort-by" id="sort-by" aria-label="Sort gene lists by">
                                                     <option value="relevance">Relevance</option>
                                                     <option value="title">Gene cart title</option>
                                                     <option value="date_added" selected>Date created</option>
@@ -335,25 +330,33 @@
                             <table id="results-table" class="table is-narrow is-striped is-fullwidth">
                                 <thead>
                                     <tr>
-                                        <th>Title</th>
-                                        <th>Visibility</th>
-                                        <th>Organism</th>
-                                        <th>Owner</th>
-                                        <th>Date added</th>
-                                        <th>Type</th>
-                                        <th>Num Genes</th>
+                                        <th scope="col"></th>
+                                        <th scope="col">Title</th>
+                                        <th scope="col">Visibility</th>
+                                        <th scope="col">Organism</th>
+                                        <th scope="col">Owner</th>
+                                        <th scope="col">Type</th>
+                                        <th scope="col">Num Genes</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <template id="results-table-view">
                                         <tr>
+                                            <tr class="js-table-row">
+                                                <td class="js-td-expand">
+                                                    <button class="button is-small js-expand-row" data-tooltip-content="Expand entry for more info and actions" aria-label="Expand entry for more info and actions">
+                                                        <span class="icon" aria-hidden="true"><i class="mdi mdi-24px mdi-chevron-down"></i></span>
+                                                    </button>
+                                                </td>
                                             <td class="js-display-title"></td>
                                             <td class="js-display-visibility"></td>
                                             <td class="js-display-organism"></td>
                                             <td class="js-display-owner"></td>
-                                            <td class="js-display-date-added"></td>
                                             <td class="js-display-gctype"></td>
                                             <td class="js-display-num-genes"></td>
+                                        </tr>
+                                        <tr class="js-table-row-expanded is-hidden">
+                                            <td colspan=7></td>
                                         </tr>
                                     </template>
                                 </tbody>
@@ -369,16 +372,16 @@
                                                 <div class="js-display-version js-display-title">
                                                     <p class="has-text-weight-bold"></p>
                                                 </div>
-                                                <div id="editable-title-c" class="js-editable-version js-editable-title is-hidden">
+                                                <div class="js-editable-version js-editable-title is-hidden">
                                                     <div class="field">
                                                         <span class="has-text-weight-semibold">Title</span>
-                                                        <input type="text" class="input"/>
+                                                        <input type="text" class="input" aria-label="Gene list title"/>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <div class="column is-1 py-0">
-                                                <span class="is-clickable is-pulled-right js-expand-box icon"><i class="mdi mdi-arrow-expand"></i></span>
+                                                <span class="is-clickable is-pulled-right js-expand-box icon" aria-label="Expand/collapse entry"><i class="mdi mdi-arrow-expand" aria-hidden="true"></i></span>
                                             </div>
                                         </div>
 
@@ -390,7 +393,7 @@
                                                     <div class="field">
                                                         <p class="label">Visibility</p>
                                                         <!-- toggle switch --->
-                                                        <input type="checkbox" class="switch is-primary"/>
+                                                        <input type="checkbox" class="switch is-primary" aria-label="Toggle gene list visibility"/>
                                                         <label></label>
                                                     </div>
                                                 </div>
@@ -406,7 +409,7 @@
                                                         <label class="label">Organism</label>
                                                         <div class="control">
                                                             <div class="select">
-                                                                <select></select>
+                                                                <select aria-label="Organism"></select>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -421,7 +424,7 @@
                                                     <div class="field">
                                                         <label class="label">Owner</label>
                                                         <div class="control">
-                                                            <input class="input is-static" readonly>
+                                                            <input class="input is-static" readonly aria-label="Owner">
                                                         </div>
                                                     </div>
                                                 </div>
@@ -434,7 +437,7 @@
                                                     <div class="field">
                                                         <label class="label">Added</label>
                                                         <div class="control">
-                                                            <input class="input is-static" readonly>
+                                                            <input class="input is-static" readonly aria-label="Date added">
                                                         </div>
                                                     </div>
                                                 </div>
@@ -443,40 +446,50 @@
                                         <!-- preview + action buttons section -->
                                         <div class="columns is-size-7 my-0">
                                             <div class="column is-3 py-0">
-                                                <div class="js-preview-genes-button-container"></div>
+                                                <div class="js-preview-genes-button-container">
+                                                    <button class="button is-small is-outlined is-dark" title="Show gene list" aria-label="Show gene list">
+                                                        <span class="icon is-small" aria-hidden="true"><i class="mdi mdi-format-list-bulleted"></i></span>
+                                                        <span class="js-gc-button-label"></span>
+                                                    </button>
+                                                </div>
                                             </div>
                                             <div class="column is-9 py-0">
                                                 <div class="columns my-0">
                                                     <div class="column is-two-thirds py-0">
-                                                        <div class="field has-addons js-action-links my-0" role="group">
+                                                        <div class="field has-addons js-action-links my-0" role="group" aria-label="Gene list actions">
                                                             <p class="control">
-                                                                <button class="button is-small is-outlined is-dark js-view-gc" data-tooltip-content="View on front page">
-                                                                    <span class="icon"><i class="mdi mdi-18px mdi-eye"></i></span>
+                                                                <button class="button is-small is-outlined is-dark js-view-gc" data-tooltip-content="View in expression viewer" aria-label="View in expression viewer">
+                                                                    <span class="icon" aria-hidden="true"><i class="mdi mdi-18px mdi-test-tube"></i></span>
                                                                 </button>
                                                             </p>
                                                             <p class="control">
-                                                                <button class="button is-small is-danger js-delete-gc" data-tooltip-content="Delete list">
-                                                                    <span class="icon"><i class="mdi mdi-18px mdi-delete"></i></span>
+                                                                <button class="button is-small is-outlined is-dark js-view-projection-gc" data-tooltip-content="View in projection tool" aria-label="View in projection tool">
+                                                                    <span class="icon" aria-hidden="true"><i class="mdi mdi-18px mdi-hexagon-multiple"></i></span>
                                                                 </button>
                                                             </p>
                                                             <p class="control">
-                                                                <button class="button is-small is-outlined is-dark js-download-gc" data-tooltip-content="Download list as tsv">
-                                                                    <span class="icon"><i class="mdi mdi-18px mdi-download"></i></span>
+                                                                <button class="button is-small is-danger js-delete-gc" data-tooltip-content="Delete list" aria-label="Delete gene list">
+                                                                    <span class="icon" aria-hidden="true"><i class="mdi mdi-18px mdi-delete"></i></span>
                                                                 </button>
                                                             </p>
                                                             <p class="control">
-                                                                <button class="button is-small is-outlined is-dark js-share-gc" data-tooltip-content="Get shareable link">
-                                                                    <span class="icon"><i class="mdi mdi-18px mdi-share-variant"></i></span>
+                                                                <button class="button is-small is-outlined is-dark js-download-gc" data-tooltip-content="Download list as tsv" aria-label="Download list as TSV">
+                                                                    <span class="icon" aria-hidden="true"><i class="mdi mdi-18px mdi-download"></i></span>
                                                                 </button>
                                                             </p>
                                                             <p class="control">
-                                                                <button class="button is-small is-outlined is-dark js-edit-gc-permalink" data-tooltip-content="Edit permalink">
-                                                                    <span class="icon"><i class="mdi mdi-18px mdi-link-edit"></i></span>
+                                                                <button class="button is-small is-outlined is-dark js-share-gc" data-tooltip-content="Get shareable link" aria-label="Get shareable link">
+                                                                    <span class="icon" aria-hidden="true"><i class="mdi mdi-18px mdi-share-variant"></i></span>
                                                                 </button>
                                                             </p>
                                                             <p class="control">
-                                                                <button class="button is-small is-outlined is-dark js-edit-gc js-display-version" data-tooltip-content="Edit list metadata">
-                                                                    <span class="icon"><i class="mdi mdi-18px mdi-pencil"></i></span>
+                                                                <button class="button is-small is-outlined is-dark js-edit-gc-permalink" data-tooltip-content="Edit permalink" aria-label="Edit permalink">
+                                                                    <span class="icon" aria-hidden="true"><i class="mdi mdi-18px mdi-link-edit"></i></span>
+                                                                </button>
+                                                            </p>
+                                                            <p class="control">
+                                                                <button class="button is-small is-outlined is-dark js-edit-gc js-display-version" data-tooltip-content="Edit list metadata" aria-label="Edit list metadata">
+                                                                    <span class="icon" aria-hidden="true"><i class="mdi mdi-18px mdi-pencil"></i></span>
                                                                 </button>
                                                             </p>
                                                         </div>
@@ -501,7 +514,7 @@
                                                             <div class="field">
                                                                 <label class="label">Type</label>
                                                                 <div class="control">
-                                                                    <input class="input is-static" readonly>
+                                                                    <input class="input is-static" readonly aria-label="Gene list type">
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -512,19 +525,22 @@
                                         </div> <!-- end .columns -->
 
                                         <!-- Gene preview section -->
-                                        <div class="js-preview-genes-container is-hidden"></div>
+                                        <div class="js-preview-genes-container is-hidden">
+                                        </div>
                                         <hr class="js-expandable-view is-hidden" />
                                         <!-- Long description section -->
                                         <div class="columns js-expandable-view is-hidden">
                                             <div class="column is-3 py-0"></div>
                                             <div class="column is-9 py-0 js-display-version js-display-ldesc">
                                                 <p class="has-text-weight-semibold">Long description</p>
+                                                <p class="js-display-ldesc-text"></p>
                                             </div>
                                             <div class="column is-9 py-0 js-editable-version js-editable-ldesc is-hidden">
                                                 <div class="field">
-                                                    <label class="label">Long description</label>
                                                     <div class="control">
-                                                        <textarea class="textarea" rows="4"></textarea>
+                                                        <label class="label">Long description
+                                                            <textarea class="textarea" rows="4"></textarea>
+                                                        </label>
                                                     </div>
                                                 </div>
                                             </div>
@@ -556,115 +572,6 @@
             <section class="modal-card-body">
             <!-- Content ... -->
                 <div class="content">
-
-                <template id="unweighted-example">
-                    <p>Genes in the file must be separated by either commas, spaces, tab-indented, or on separate lines.</p>
-                    <p>gEAR will determine the Ensembl ID for each gene based on the organism selected.</p>
-
-                    <h5>Example</h5>
-                    <p>Pou4f3, Sox2, Atoh1</p>
-
-                    <h5>Example 2</h5>
-                    <p>
-                        Pou4f3<br />
-                        Sox2<br />
-                        Atoh1
-                    </p>
-                </template>
-
-                <template id="weighted-example">
-                    <ul>
-                        <li>File upload must be in CSV, TAB, or Excel-format only.</li>
-                        <li>A header row of columns is required. The names are not important but the third-column name onwards will be used as weight names.</li>
-                        <li>The first column must be unique gene identifiers. This is needed for potential cross-organism mapping with datasets.</li>
-                        <li>The second column must be gene symbols.</li>
-                        <li>All columns beyond the second must be numeric weights.</li>
-                        <li>The file will be parsed and validated before being uploaded.</li>
-                    </ul>
-
-                    <h5>Example</h5>
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>ensembl_id</th>
-                                <th>gene_symbol</th>
-                                <th>PC1</th>
-                                <th>PC2</th>
-                                <th>MyCoolMetric</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>ENSG00000000003</td>
-                                <td>TSPAN6</td>
-                                <td>0.1</td>
-                                <td>-0.2</td>
-                                <td>3</td>
-                            </tr>
-                            <tr>
-                                <td>ENSG00000000005</td>
-                                <td>TSPAN5</td>
-                                <td>0.4</td>
-                                <td>0.5</td>
-                                <td>6</td>
-                            </tr>
-                            <tr>
-                                <td>ENSG00000000419</td>
-                                <td>DPM1</td>
-                                <td>0.7</td>
-                                <td>-0.8</td>
-                                <td>9</td>
-                            </tr>
-                            <tr>
-                                <td>ENSG00000000457</td>
-                                <td>SCYL3</td>
-                                <td>1.0</td>
-                                <td>-1.1</td>
-                                <td>12</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </template>
-
-                <template id="labeled-example">
-                    <ul>
-                        <li>File upload must be in Excel-format only.</li>
-                        <li>A header row of columns is required.</li>
-                        <li>The header name in each column is the label of the list of genes (i.e. marker gene names).</li>
-                        <li>The second row onwards is the gene symbols for that label. The label must have at least one gene symbol. Ensembl IDs are not needed.</li>
-                        <li>The file will be parsed and validated before being uploaded.</li>
-                    </ul>
-
-                    <h5>Example</h5>
-
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Astrocytes</th>
-                                <th>Neurons</th>
-                                <th>Microglia</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>AQP4</td>
-                                <td>APOE</td>
-                            </tr>
-                            <tr>
-                                <td>GRIN2A</td>
-                                <td>SLA</td>
-                                <td>SNAP25</td>
-                            </tr>
-                            <tr>
-                                <td>CSF1</td>
-                                <td>CSF1R</td>
-                                <td>IL6</td>
-                                <td>TNFA</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </template>
-
                 </div>
             </section>
             <footer class="modal-card-foot">
@@ -672,6 +579,114 @@
             </footer>
         </div>
     </div>
+
+    <template id="unweighted-example">
+        <p>Genes in the file must be separated by either commas, spaces, tab-indented, or on separate lines.</p>
+        <p>gEAR will determine the Ensembl ID for each gene based on the organism selected.</p>
+
+        <h5>Example</h5>
+        <p>Pou4f3, Sox2, Atoh1</p>
+
+        <h5>Example 2</h5>
+        <p>
+            Pou4f3<br />
+            Sox2<br />
+            Atoh1
+        </p>
+    </template>
+
+    <template id="weighted-example">
+        <ul>
+            <li>File upload must be in CSV, TAB, or Excel-format only.</li>
+            <li>A header row of columns is required. The names are not important but the third-column name onwards will be used as weight names.</li>
+            <li>The first column must be unique gene identifiers. This is needed for potential cross-organism mapping with datasets.</li>
+            <li>The second column must be gene symbols.</li>
+            <li>All columns beyond the second must be numeric weights.</li>
+            <li>The file will be parsed and validated before being uploaded.</li>
+        </ul>
+
+        <h5>Example</h5>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ensembl_id</th>
+                    <th>gene_symbol</th>
+                    <th>PC1</th>
+                    <th>PC2</th>
+                    <th>MyCoolMetric</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>ENSG00000000003</td>
+                    <td>TSPAN6</td>
+                    <td>0.1</td>
+                    <td>-0.2</td>
+                    <td>3</td>
+                </tr>
+                <tr>
+                    <td>ENSG00000000005</td>
+                    <td>TSPAN5</td>
+                    <td>0.4</td>
+                    <td>0.5</td>
+                    <td>6</td>
+                </tr>
+                <tr>
+                    <td>ENSG00000000419</td>
+                    <td>DPM1</td>
+                    <td>0.7</td>
+                    <td>-0.8</td>
+                    <td>9</td>
+                </tr>
+                <tr>
+                    <td>ENSG00000000457</td>
+                    <td>SCYL3</td>
+                    <td>1.0</td>
+                    <td>-1.1</td>
+                    <td>12</td>
+                </tr>
+            </tbody>
+        </table>
+    </template>
+
+    <template id="labeled-example">
+        <ul>
+            <li>File upload must be in Excel-format only.</li>
+            <li>A header row of columns is required.</li>
+            <li>The header name in each column is the label of the list of genes (i.e. marker gene names).</li>
+            <li>The second row onwards is the gene symbols for that label. The label must have at least one gene symbol. Ensembl IDs are not needed.</li>
+            <li>The file will be parsed and validated before being uploaded.</li>
+        </ul>
+
+        <h5>Example</h5>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Astrocytes</th>
+                    <th>Neurons</th>
+                    <th>Microglia</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>AQP4</td>
+                    <td>APOE</td>
+                </tr>
+                <tr>
+                    <td>GRIN2A</td>
+                    <td>SLA</td>
+                    <td>SNAP25</td>
+                </tr>
+                <tr>
+                    <td>CSF1</td>
+                    <td>CSF1R</td>
+                    <td>IL6</td>
+                    <td>TNFA</td>
+                </tr>
+            </tbody>
+        </table>
+    </template>
 
 
     <!-- Promise based HTTP client for the browser  -->
@@ -683,24 +698,31 @@
     <script src="https://cdn.jsdelivr.net/npm/@floating-ui/core@1.5.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.5.3"></script>
 
-    <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-    <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
-    <script>document.write('<script src="js/classes/genecart.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+    <!-- Page-specific CSS/JS loading here -->
+      <script type="module">
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+        const prefs = await getDomainPreferences();
 
+        // Load any local JS with cache-busting version parameter
+        insertVersionedJS('js/gene_list_manager.js', prefs.cache_version);
 
-    <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
-    <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+        // Now load page-specific CSS
+        insertVersionedCSS('css/common.v2.css', prefs.cache_version);
+        insertVersionedCSS('css/gene_list_manager.css', prefs.cache_version);
+      </script>
 
-    <!-- Page-specific JS file here -->
-    <script>document.write('<script src="js/gene_list_manager.' + (new Date()).getTime() + '.js"><\/script>');</script>
-
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-59916932-1"></script>
+    <!-- WCAG accessibility widget -->
     <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'UA-59916932-1');
+    window.ACCESSIBILITY_WIDGET_CONFIG = {
+        // Position on left side
+        widgetPosition: {
+        side: 'left',
+        left: '20px',
+        bottom: '20px'
+        }
+    };
     </script>
+    <script src="https://unpkg.com/accessibility-widgets@latest/widget.js"></script>
+
 </body>
 </html>

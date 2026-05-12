@@ -24,8 +24,8 @@ class MetadataValidator:
         ]
 
     # check that required fields are populated
-    @classmethod
-    def validate_required_field(cls, value=None):
+    @staticmethod
+    def validate_required_field(value: str | None=None) -> bool:
         is_valid = False
         if value is None:
             return is_valid
@@ -35,8 +35,8 @@ class MetadataValidator:
 
         return is_valid
 
-    @classmethod
-    def validate_tags(cls, value=None):
+    @staticmethod
+    def validate_tags(value: str | None=None) -> bool:
         #Tags are optional so empty is okay
         is_valid = True
         if value is None:
@@ -45,11 +45,10 @@ class MetadataValidator:
             if len(str(value)) > 1:
                 if ';' in str(value):
                     is_valid = True
-
         return is_valid
 
-    @classmethod
-    def validate_email(cls, email: str = ""):
+    @staticmethod
+    def validate_email(email: str | None=None) -> bool:
         #Check the format of the email
         if not email:
             return False
@@ -72,8 +71,8 @@ class MetadataValidator:
 
 
     # check if pubmed id is valid through URL search
-    @classmethod
-    def validate_pubmed_id(cls, pubmed_id=None):
+    @staticmethod
+    def validate_pubmed_id(pubmed_id: str | None=None) -> bool:
         is_valid = False
         print("DEBUG: Going to validate this pubmed ID:({0})".format(pubmed_id), file=sys.stderr)
         if pubmed_id is None:
@@ -84,8 +83,8 @@ class MetadataValidator:
 
 
     # check if geo id is valid
-    @classmethod
-    def validate_geo_id(cls, geo_id=None):
+    @staticmethod
+    def validate_geo_id(geo_id: str | None=None) -> bool:
         is_valid = False
         if geo_id is None:
             return is_valid
@@ -98,8 +97,8 @@ class MetadataValidator:
 
         return is_valid
 
-    @classmethod
-    def validate_taxon_id(cls, txid=None):
+    @staticmethod
+    def validate_taxon_id(txid: str | None=None) -> bool:
         """
         Currently only checks that the taxon ID is numeric.
         """

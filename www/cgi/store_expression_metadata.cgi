@@ -40,6 +40,10 @@ def main():
         os.makedirs(user_upload_file_base)
 
     user = geardb.get_user_from_session_id(session_id)
+    if not user:
+        print(json.dumps({'success': 0, 'error': 'Invalid session_id'}))
+        return
+
     result = {'success': 0, 'error': None}
 
     # names are changed here so the files are compatible with the legacy ones
@@ -64,12 +68,17 @@ def main():
             'library_source': form.getvalue('library_source'),
             'library_strategy': form.getvalue('library_strategy'),
             'pubmed_id': form.getvalue('pubmed_id'),
+            'user_pii_affirmed': form.getvalue('user_pii_affirmed'),
             # These needed to be added/supported for real
             'expression_unit': 'normalized log count',
             'tags': None,
             'default_plot_type': None,
             'schematic_image': None
     }
+
+    # Add some extra parameters that we can access in the future in the UI
+    formdata["perform_primary_analysis"] = False
+    formdata["dataset_format"] = ""
 
     # Save the metadata to a file
     metadata_filename = os.path.join(user_upload_file_base, 'metadata.json')

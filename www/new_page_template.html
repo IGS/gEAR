@@ -2,7 +2,7 @@
 <!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
@@ -19,13 +19,7 @@
         <base href="/" />
 
         <link rel="stylesheet" href="css/gear-theme-purple.css" />
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css" />
-
-        <!-- Ensures we always get a new version (during our current active development cycles) -->
-        <script>document.write('<link rel="stylesheet" href="css/common.v2.' + (new Date()).getTime() + '.css" />');</script>
-
-        <!--Page-specific CSS here -->
-            <script>document.write('<link rel="stylesheet" href="css/index.v2.' + (new Date()).getTime() + '.css" />');</script>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
     </head>
     <body>
       <div id="main-layout-c" class="columns is-fullheight">
@@ -36,7 +30,7 @@
 
           <!--#include virtual="/include/header_bar.html" -->
 
-          <section id="content-c" class="m-3" data-nav-link="workspace">
+          <section id="content-c" role="main" class="m-3" data-nav-link="workspace">
             <!-- This is the section to be populated for new pages -->
             <p>Page content here</p>
           </section><!-- end #content-c -->
@@ -52,10 +46,32 @@
 
       <!-- Helps ensure the user gets the latest code, needed while we're pushing out so many updates -->
       <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-      <script>document.write('<script src="js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
-      <script>document.write('<script src="js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
 
-      <!-- Page-specific JS file here -->
+      <!-- Page-specific CSS/JS loading here -->
+      <script type="module">
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+        const prefs = await getDomainPreferences();
+
+        // Load any local JS with cache-busting version parameter
+        //insertVersionedJS('js/index.js', prefs.cache_version);
+
+        // Now load page-specific CSS
+        insertVersionedCSS('css/common.v2.css', prefs.cache_version);
+        //insertVersionedCSS('css/index.css', prefs.cache_version);
+      </script>
+
+      <!-- WCAG accessibility widget -->
+      <script>
+      window.ACCESSIBILITY_WIDGET_CONFIG = {
+        // Position on left side
+        widgetPosition: {
+          side: 'left',
+          left: '20px',
+          bottom: '20px'
+        }
+      };
+      </script>
+      <script src="https://unpkg.com/accessibility-widgets@latest/widget.js"></script>
 
     </body>
 </html>

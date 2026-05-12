@@ -1,0 +1,36 @@
+FROM python:3.14-slim
+
+# For pybigwig dependency
+# TODO: Have specific requirements files for each listener
+ENV PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
+
+WORKDIR /gEAR
+
+# Install system dependencies
+RUN apt update && apt install -y \
+    build-essential \
+    curl \
+    zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install Python dependencies (context is gEAR root)
+COPY listeners/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt --prefer-binary \
+  && rm -rf ~/.cache/pip
+
+# Install lib/gear as editable package
+COPY lib/gear ./lib/gear
+COPY lib/setup.py ./lib/
+#RUN pip install -e ./lib/
+
+# Copy consumer script
+RUN mkdir -p listeners
+COPY listeners/projectr_consumer.py ./listeners/
+
+# Ensure log directory exists
+RUN mkdir -p /var/log/gEAR_queue
+
+# Copy gear.ini
+COPY gear.ini ./gear.ini
+
+CMD ["python", "listeners/projectr_consumer.py"]

@@ -1,7 +1,12 @@
+import os
+
+import geardb
 from flask import request
 from flask_restful import Resource
-import os
-import geardb
+from gear.analysis import get_analysis
+
+from .common import get_adata_from_analysis, get_spatial_adata
+
 
 class TopPCAGenes(Resource):
     """Plot Top Genes of Prinicpal Components"""
@@ -22,18 +27,32 @@ class TopPCAGenes(Resource):
         dataset_id = req.get('dataset_id')
         session_id = req.get('session_id')
 
-        user = geardb.get_user_from_session_id(session_id)
-        ana = geardb.Analysis(
-            id=analysis_id,
-            type=analysis_type,
-            dataset_id=dataset_id,
-            session_id=session_id,
-            user_id=user.id
-        )
+        if not dataset_id:
+            return {
+                "success": 0,
+                "message": "Missing dataset_id",
+            }
 
-        source_datafile_path = ana.dataset_path()
+        ds = geardb.get_dataset_by_id(dataset_id)
+        if not ds:
+            return {
+                "success": 0,
+                "message": "Invalid dataset_id",
+            }
 
-        dest_datafile_path = ana.dataset_path()
+        is_spatial = ds.dtype == "spatial"
+
+        analysis = None
+        if analysis_id or analysis_type:
+            analysis = {}
+            if analysis_id:
+                analysis['id'] = analysis_id
+            if analysis_type:
+                analysis['type'] = analysis_type
+
+        ana = get_analysis(analysis, dataset_id, session_id, is_spatial=is_spatial)
+
+        dest_datafile_path = ana.dataset_path
         dest_directory = os.path.dirname(dest_datafile_path)
 
         #print("DEBUG: dest_directory: {0}".format(dest_directory), file=sys.stderr)
@@ -41,9 +60,16 @@ class TopPCAGenes(Resource):
         if not os.path.exists(dest_directory):
             os.makedirs(dest_directory)
 
-        import scanpy as sc
+        try:
+            adata = ana.get_adata()
+        except Exception as e:
+            return {
+                "success": -1,
+                "message": str(e),
+            }
 
-        adata = sc.read_h5ad(source_datafile_path)
+
+        import scanpy as sc
         sc.settings.figdir = dest_directory + "/figures"
 
         #print("DEBUG: Writing file to path: {0}".format(dest_datafile_path), file=sys.stderr)
@@ -52,8 +78,9 @@ class TopPCAGenes(Resource):
 
         try:
             sc.pl.pca_loadings(adata, components=pcs, save='.png')
-        except:
+        except Exception as e:
             return {
+                "message": str(e),
                 "success": -1,
             }
         # Code below is to grab top genes from PCA. Will have to use

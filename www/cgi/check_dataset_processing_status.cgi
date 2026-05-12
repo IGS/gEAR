@@ -18,8 +18,12 @@ Structure returned:
 Where status can be 'extracting', 'processing', 'error', or 'complete'.
 """
 
-import cgi, json
-import os, sys
+import cgi
+import json
+import os
+import sys
+from pathlib import Path
+
 
 def main():
     print('Content-Type: application/json\n\n')
@@ -27,11 +31,12 @@ def main():
     form = cgi.FieldStorage()
     session_id = form.getvalue('session_id')
     share_uid = form.getvalue('share_uid')
-    
-    user_upload_file_base = os.path.join("../uploads/files", session_id, share_uid)
-    status_file = os.path.join(user_upload_file_base, 'status.json')
 
-    if not os.path.exists(status_file):
+    user_upload_file_root = Path(__file__).resolve().parents[1] / 'uploads' / 'files'
+    user_upload_file_base = user_upload_file_root / session_id / share_uid
+    status_file = user_upload_file_base / 'status.json'
+
+    if not status_file.is_file():
         status = {
             "process_id": -1,
             "status": "error",
@@ -40,17 +45,17 @@ def main():
         }
         print(f"ERROR: Failed to find status file: {status_file}", file=sys.stderr)
         print(json.dumps(status))
-        return
-    
+        return status
+
     with open(status_file, 'r') as f:
         status = json.load(f)
 
     state = status.get('status', '')
 
     if state in 'complete':
-        print(json.dumps(status))
-        return
-    
+        status['progress'] = 100
+        return status
+
     if state == 'processing':
         # Check if the process is still running
         process_id = status.get('process_id', -1)
@@ -61,12 +66,8 @@ def main():
                 status['message'] = 'The processing step failed. Please contact the gEAR team.'
                 status['progress'] = 0
 
-        print(json.dumps(status))
-        return
-
-    
-    print(json.dumps(status))
-
+    return status
 
 if __name__ == '__main__':
-    main()
+    result = main()
+    print(json.dumps(result))

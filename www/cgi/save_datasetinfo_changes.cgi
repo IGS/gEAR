@@ -49,7 +49,11 @@ def main():
     ldesc = form.getvalue('ldesc')
 
     user = geardb.get_user_from_session_id(session_id)
-    dataset = geardb.get_dataset_by_id(id=dataset_id)
+    dataset = geardb.get_dataset_by_id(d_id=dataset_id)
+    if dataset is None:
+        result = {'error': 'Dataset not found', 'success': 0}
+        print(json.dumps(result))
+        return
 
     # Does user own the dataset...
     owns_dataset = check_dataset_ownership(cursor, user.id, dataset.id)
