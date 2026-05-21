@@ -38,9 +38,8 @@ sys.stdout = open(os.devnull, 'w')
 lib_path = Path(__file__).resolve().parents[2] / 'lib'
 sys.path.append(str(lib_path))
 import geardb
-from gear.primary_analysis import add_primary_analysis_to_dataset, PrimaryAnalysisProcessingError
 from gear.spatialhandler import SPATIALTYPE2CLASS
-from gear.utils import update_adata_with_ensembl_ids
+import gear.SeuratUploader as SeuratUploader
 
 share_uid = None
 session_id = None
@@ -74,8 +73,9 @@ def main():
         result['message'] = 'User ID not found. Please log in to continue.'
         return result
 
-    # values are mex_3tab, excel, rdata, h5ad
-    dataset_formats = ['mex_3tab', 'excel', 'rdata', 'h5ad', 'spatial']
+    # values are mex_3tab, excel, rdata, h5ad, rds, or spatial formats
+    # Removed rdata from list as rdata will be difficult to process efficiently
+    dataset_formats = ['mex_3tab', 'excel', 'h5ad', 'spatial','rds']
     dataset_upload_dir = Path(user_upload_file_base) / session_id / share_uid
 
     # quickly write the status so the page doesn't error out
@@ -107,13 +107,9 @@ def main():
         return
     with open(metadata_file, 'r') as f:
         metadata = json.load(f)
-        dataset_uid = metadata.get('dataset_uid', '')
-        dataset_type = metadata.get('dataset_type', '')
 
     # Update metadata for downstream uses
     metadata["dataset_format"] = dataset_format
-    metadata["perform_primary_analysis"] = True if dataset_type in ['single-cell-rnaseq', 'spatial'] else False
-
     with open(metadata_file, 'w') as f:
         json.dump(metadata, f, indent=4)
 
@@ -147,36 +143,28 @@ def main():
         # CHILD CONTINUES FROM HERE
 
     status['process_id'] = os.getpid()
-
+    
     # new child command
     if dataset_format == 'mex_3tab':
-        process_mex_3tab(dataset_upload_dir, metadata["perform_primary_analysis"])
+        process_mex_3tab(dataset_upload_dir)
     elif dataset_format == 'excel':
-        process_excel(dataset_upload_dir, metadata["perform_primary_analysis"])
+        process_excel(dataset_upload_dir)
     elif dataset_format == "h5ad":
-        process_h5ad(dataset_upload_dir, metadata["perform_primary_analysis"])
+        process_h5ad(dataset_upload_dir)
+    elif dataset_format == 'rds' or dataset_format=='rdata':
+        process_seurat(dataset_upload_dir)
     elif dataset_format == "spatial":
-        process_spatial(dataset_upload_dir, spatial_format, metadata["perform_primary_analysis"])
+        process_spatial(dataset_upload_dir, spatial_format)
     else:
         result["success"] = 0
         result["message"] = f"Unsupported dataset format: {dataset_format}"
         return result
 
-    if metadata["perform_primary_analysis"]:
-        try:
-            result["success"] = add_primary_analysis_to_dataset(dataset_uid, share_uid, dataset_upload_dir, dataset_format)
-        except PrimaryAnalysisProcessingError as e:
-            write_status(dataset_upload_dir, 'error', f"Error during primary analysis: {str(e)}")
-            return result
-
-    status["progress"] = 100
-    write_status(dataset_upload_dir, 'complete', "Dataset processed successfully.")
-
     result["success"] = 1
     result["message"] = "Dataset processed successfully."
     return result
 
-def process_h5ad(upload_dir: Path, perform_primary_analysis: bool) -> None:
+def process_h5ad(upload_dir: Path) -> None:
     """
     Processes an uploaded .h5ad (AnnData) file in the specified upload directory by performing the following steps:
     1. Reads the .h5ad file as an AnnData object.
@@ -194,42 +182,14 @@ def process_h5ad(upload_dir: Path, perform_primary_analysis: bool) -> None:
     # If the file is an h5ad, it should be formatted as an AnnData object already.
     # But we still want to do some sanitization of the obs dataframe.
 
-    # TODO: Read in chunks to save memory
-
     write_status(upload_dir, 'processing', 'Initializing dataset processing.')
 
     filepath = upload_dir / f"{share_uid}.h5ad"
     adata = anndata.read_h5ad(filepath)
     obs = adata.obs
 
-    total_steps = 4 if perform_primary_analysis else 3
-    step_counter = 1
-    status["progress"] = int((step_counter / total_steps) * 100)
-    write_status(upload_dir, 'processing', 'Sanitizing AnnData object')
-
     categorize_observation_columns(obs)
     adata.obs = sanitize_obs_for_h5ad(obs)
-
-    if "gene_symbol" not in adata.var.columns:
-        # get organism_id by converting sample_taxid
-        metadata_file = upload_dir / 'metadata.json'
-        if not metadata_file.is_file():
-            write_status(upload_dir, 'error', "No metadata JSON file found.")
-            return
-
-        with open(metadata_file, 'r') as f:
-            metadata = json.load(f)
-        sample_taxid = metadata.get("sample_taxid", None)
-        organism_id=geardb.get_organism_id_by_taxon_id(sample_taxid)
-        if not organism_id:
-            write_status(upload_dir, 'error', "Could not determine organism ID from sample taxonomic ID.")
-            return
-
-        adata = update_adata_with_ensembl_ids(adata, organism_id, "UNMAPPED_")
-
-    step_counter += 1
-    status["progress"] = int((step_counter / total_steps) * 100)
-    write_status(upload_dir, 'processing', 'Writing sanitized data to new H5AD.')
 
     h5ad_path = upload_dir / f"{share_uid}.new.h5ad"
     adata.write(h5ad_path)
@@ -238,11 +198,66 @@ def process_h5ad(upload_dir: Path, perform_primary_analysis: bool) -> None:
     filepath.unlink()  # remove original
     h5ad_path.rename(filepath)  # rename new to original name
 
-    step_counter += 1
-    status["progress"] = int((step_counter / total_steps) * 100)
-    write_status(upload_dir, 'processing', f"Finished processing dataset. {'Performing primary analysis...' if perform_primary_analysis else ''}")
+    write_status(upload_dir, 'complete', 'Dataset processed successfully.')
 
-def process_3tab(upload_dir: Path, perform_primary_analysis: bool) -> None:
+def process_seurat(upload_dir: Path) -> None:
+    # Take in an RDS file, convert to anndata, update the obs metadata based on reductions,
+    # convert gene symbols to ensemble IDs, and write to an updated h5ad file.
+    write_status(upload_dir, "processing", "Initializing dataset processing.")
+    seurat_filepath = upload_dir / f"{share_uid}.rds"
+
+    # seurat to anndata uses rpy2 to convert the RDS to anndata
+    adata_filepath = SeuratUploader.seurat_to_anndata(str(seurat_filepath), share_uid, str(upload_dir))
+    if not adata_filepath:
+        write_status(upload_dir, 'error', 'Failed to convert RDS to h5ad.')
+        return
+    try:
+        adata = anndata.read_h5ad(adata_filepath)
+    except Exception as e:
+        write_status(upload_dir, 'error', f'Failed to read h5ad: {str(e)}')
+        return
+
+
+    # Update obs metadata based on reductions
+    try:
+        adata = SeuratUploader.reduction_to_metadata(adata)
+    except Exception as e:
+        write_status(upload_dir, 'error', f'Failed to update Reductions to metadata: {str(e)}')
+        return
+    # Convert gene symbols to ensemble IDs
+    metadata_file = upload_dir / 'metadata.json'
+    if not metadata_file.is_file():
+        write_status(upload_dir, 'error', "No metadata JSON file found.")
+
+    # get organism_id by converting sample_taxid(needed for some but not all spatial handlers)
+    with open(metadata_file, 'r') as f:
+        metadata = json.load(f)
+    
+    sample_taxid = metadata.get("sample_taxid", None)
+    try:
+        adata = SeuratUploader.genes_to_ensembl(adata,sample_taxid)
+    except Exception as e:
+        write_status(upload_dir, 'error', f'Failed to convert genes to Ensembl: {str(e)}')
+        return
+    if adata.X is None:
+        adata = SeuratUploader.layer_to_X(adata, layer_name='data')
+    h5ad_path = upload_dir / f"{share_uid}.new.h5ad"
+    try:
+        adata.write(h5ad_path)
+
+        # Replace the original file with the sanitized one
+        seurat_filepath.unlink()
+        Path(adata_filepath).unlink()
+        h5ad_path.rename(upload_dir / f"{share_uid}.h5ad")  
+    except Exception as e:
+        write_status(upload_dir, 'error', f'Failed to write h5ad or during cleanup: {str(e)}')
+        return
+
+    write_status(upload_dir, "complete", "Dataset processed successfully.")
+
+
+
+def process_3tab(upload_dir: Path) -> None:
     import subprocess
 
     chunk_size = 500
@@ -285,21 +300,8 @@ def process_3tab(upload_dir: Path, perform_primary_analysis: bool) -> None:
     adata = sc.AnnData(obs=var, var=obs)
     reader = pd.read_csv(expression_matrix_path, sep='\t', index_col=0, chunksize=chunk_size)
 
-    # Count rows safely without shell execution (https://github.com/IGS/gEAR/security/code-scanning/229)
-    try:
-        result = subprocess.run(
-            ['/usr/bin/wc', '-l', str(expression_matrix_path)],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        total_rows = int(result.stdout.split()[0])
-    except (subprocess.CalledProcessError, ValueError, FileNotFoundError):
-        # Fallback to Python if wc fails
-        total_rows = sum(1 for _ in open(expression_matrix_path)) - 1
-
-    if perform_primary_analysis:
-        total_rows += 1  # account for the additional primary analysis step that will be performed after this
+    # This can be an order of magnitude faster than the using python alone
+    total_rows = int(subprocess.check_output(f"/usr/bin/wc -l {expression_matrix_path}", shell=True).split()[0])
 
     expression_matrix = []
     rows_read = 0
@@ -313,8 +315,9 @@ def process_3tab(upload_dir: Path, perform_primary_analysis: bool) -> None:
             expression_matrix.append(sparse.csr_matrix(chunk.values))
 
             status['progress'] = percentage
-            message = f"Processed {rows_read}/{total_rows} expression matrix chunks ..."
-            write_status(upload_dir, 'processing', message)
+            status['message'] = f"Processed {rows_read}/{total_rows} expression matrix chunks ..."
+            with open(upload_dir / "status.json", 'w') as f:
+                f.write(json.dumps(status))
 
         adata.X = sparse.vstack(expression_matrix) # type: ignore
     except Exception:
@@ -345,8 +348,10 @@ def process_3tab(upload_dir: Path, perform_primary_analysis: bool) -> None:
                 rows_read += chunk_size
                 percentage = int((rows_read / total_rows) * 100)
 
-                message = f"Processed {rows_read}/{total_rows} expression matrix chunks ..."
-                write_status(upload_dir, 'processing', message)
+                status['progress'] = percentage
+                status['message'] = f"Processed {rows_read}/{total_rows} expression matrix chunks ..."
+                with open(upload_dir / "status.json", 'w') as f:
+                    f.write(json.dumps(status))
 
             except Exception:
                 #print(f"\nError in chunk {chunk_index}: {inner_e}")
@@ -363,7 +368,9 @@ def process_3tab(upload_dir: Path, perform_primary_analysis: bool) -> None:
             #print("Collected chunk shapes:")
             #for i, shape in enumerate(chunk_shapes):
             #    print(f"  Chunk {i+1}: {shape}")
+
             raise
+
 
     adata = adata.transpose()
     adata.obs = sanitize_obs_for_h5ad(adata.obs)
@@ -371,10 +378,9 @@ def process_3tab(upload_dir: Path, perform_primary_analysis: bool) -> None:
     h5ad_path = upload_dir / f"{share_uid}.h5ad"
     adata.write(h5ad_path)
 
-    # Progress is accounted for in chunk processing
-    write_status(upload_dir, 'processing', f"Finished processing dataset. {'Performing primary analysis...' if perform_primary_analysis else ''}")
+    write_status(upload_dir, 'complete', 'Dataset processed successfully.')
 
-def process_excel(upload_dir: Path, perform_primary_analysis: bool) -> None:
+def process_excel(upload_dir: Path) -> None:
     filepath = upload_dir / f"{share_uid}.xlsx"
 
     write_status(upload_dir, 'processing', 'Initializing dataset processing.')
@@ -454,15 +460,12 @@ def process_excel(upload_dir: Path, perform_primary_analysis: bool) -> None:
     h5ad_path = upload_dir / f"{share_uid}.h5ad"
     adata.write(h5ad_path)
 
-    total_steps = 2 if perform_primary_analysis else 1
-    status["progress"] = int((1 / total_steps) * 100)
-    write_status(upload_dir, 'processing', f"Finished processing dataset. {'Performing primary analysis...' if perform_primary_analysis else ''}")
+    write_status(upload_dir, 'complete', 'Dataset processed successfully.')
 
-
-def process_mex(upload_dir: Path, perform_primary_analysis: bool) -> None:
+def process_mex(upload_dir: Path) -> None:
     pass
 
-def process_mex_3tab(upload_dir: Path, perform_primary_analysis: bool) -> None:
+def process_mex_3tab(upload_dir: Path) -> None:
     # Extract the file
     import tarfile
     compression_format = None
@@ -541,11 +544,11 @@ def process_mex_3tab(upload_dir: Path, perform_primary_analysis: bool) -> None:
 
     # Call the appropriate function
     if dataset_type == 'threetab':
-        process_3tab(upload_dir, perform_primary_analysis)
+        process_3tab(upload_dir)
     elif dataset_type == 'mex':
-        process_mex(upload_dir, perform_primary_analysis)
+        process_mex(upload_dir)
 
-def process_spatial(upload_dir: Path, spatial_format: str, perform_primary_analysis: bool) -> None:
+def process_spatial(upload_dir: Path, spatial_format: str) -> None:
     """
     Processes a spatial transcriptomics dataset uploaded to a specified directory.
 
@@ -562,9 +565,6 @@ def process_spatial(upload_dir: Path, spatial_format: str, perform_primary_analy
     Raises:
         Writes error status if the metadata file is missing or if reading/converting the spatial file fails.
     """
-
-    write_status(upload_dir, 'processing', 'Initializing dataset processing.')
-
     spatial_obj = SPATIALTYPE2CLASS[spatial_format]()   # instantiate the appropriate handler class
     metadata_file = upload_dir / 'metadata.json'
     if not metadata_file.is_file():
@@ -594,16 +594,9 @@ def process_spatial(upload_dir: Path, spatial_format: str, perform_primary_analy
         import shutil
         shutil.rmtree(output_path)
 
-    total_steps = 3 if perform_primary_analysis else 2
-    step_counter = 1
-    status["progress"] = int((step_counter / total_steps) * 100)
     write_status(upload_dir, 'processing', 'Writing Zarr store')
-
     spatial_obj.write_to_zarr(filepath=output_path)
-
-    step_counter += 1
-    status["progress"] = int((step_counter / total_steps) * 100)
-    write_status(upload_dir, 'processing', f"Finished processing spatial dataset. {'Performing primary analysis...' if perform_primary_analysis else ''}")
+    write_status(upload_dir, 'complete', 'Dataset processed successfully.')
 
 def sanitize_obs_for_h5ad(obs_df: pd.DataFrame) -> pd.DataFrame:
     for col in obs_df.columns:
