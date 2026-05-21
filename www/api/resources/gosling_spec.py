@@ -569,13 +569,13 @@ def build_genome_wide_view(
     return genome_wide_view
 
 
-def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, prefix="", position_str="NA"):
+def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bool=False, prefix:str="", position_str:str="NA"):
     """
     Builds and configures Gosling tracks based on the provided track specifications.
 
     Args:
-        parent_tracks_dict (dict): A dictionary with keys "left" and optionally "right", each mapping to a list of track objects.
-        tracks (list): A list of dictionaries, each representing a track specification. Each track dict should contain at least:
+        rendered_tracks (list): A list of track objects.
+        track_descriptors (list): A list of dictionaries, each representing a track specification. Each track dict should contain at least:
             - "type" (str): The type of the track (e.g., "bam", "bigWig", "bed", "vcf").
             - "bigDataUrl" (str): The URL to the data file for the track.
             - Optional: "color" (str), and other track-specific attributes.
@@ -583,8 +583,8 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, prefix="", posi
 
     Returns:
         tuple:
-            - parent_view_left: The Gosling  view for the left panel.
-            - parent_view_right: The Gosling  view for the right panel if zoom is True, otherwise None.
+            - parent_view: The Gosling  view for the panel.
+            - hic_found: A boolean flag indicating whether any HiC tracks were found (used for downstream layout decisions).
 
     Notes:
         - Unsupported track types or tracks missing "bigDataUrl" are skipped with a warning.
@@ -605,10 +605,15 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, prefix="", posi
     multiwig_groups = {}
 
     # Build each individual track based on its type
-    for group_track in tracks:
+    for group_track in track_descriptors:
         container = group_track.get("container", None)
         if container and container == "multiWig":
-            multiwig_groups[group_track["track"]] = {"visibility": group_track.get("visibility", "dense"), "tracks": []}
+            multiwig_groups[group_track["track"]] = {
+                "visibility": group_track.get("visibility", "dense"),
+                "tracks": [],
+                "index": len(rendered_tracks)
+            }
+            rendered_tracks.append(None)  # reserve this exact position for later
             continue
 
         # Process multiWig view after all the individual views
@@ -666,7 +671,7 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, prefix="", posi
             # Skip if track validation failed (render returns None)
             if rendered_track is None:
                 continue
-            parent_tracks_dict.append(rendered_track)
+            rendered_tracks.append(rendered_track)
         except Exception as e:
             print(f"ERROR building track '{title}': {e}", file=sys.stderr)
             continue
@@ -686,14 +691,16 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, prefix="", posi
             multiwig_view_obj.add_member(track_obj)
 
         multiwig_view = multiwig_view_obj.render(prefix=prefix)
-        if multiwig_view is not None:
-            parent_tracks_dict.append(multiwig_view)
+        rendered_tracks[group_tracks["index"]] = multiwig_view if multiwig_view is not None else None
+
+    # filter out Nones in the tracks
+    rendered_tracks = [track for track in rendered_tracks if track is not None]
 
     link_id = "zoom-to-panel-a"
     if prefix == "right-":
         link_id = "zoom-to-panel-b"
 
-    parent_view = gos.stack(*parent_tracks_dict).properties(
+    parent_view = gos.stack(*rendered_tracks).properties(
         id=f"{prefix}view", linkingId=link_id, spacing=0,
     )
 
@@ -983,7 +990,7 @@ class BigWigSpec(TrackSpec):
             gos.Track(
                 data=bigwig_data,  # pyright: ignore[reportArgumentType]
             )
-            .mark_bar()
+            .mark_area()
             .encode(
                 color=gos.Color(value=color),
                 # Tooltip only works when hovering over the peak
