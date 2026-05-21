@@ -508,17 +508,19 @@ export class Track {
      * @param {string} shortLabel - Short label for the track.
      * @param {string} longLabel - Optional. Long label for the track.
      * @param {string} tracktype - Type of the track (e.g., bigWig, bigBed).
+     * @param {boolean} multiwig - Whether the track is a multiWig container (applicable for bigWig tracks).
      * @param {string} url - URL to the track data file.
      * @param {string} visibility - Optional. Visibility setting for the track (e.g., "dense", "full").
      * @param {string} color - Optional. RGB color for the track (e.g., "255,0,0").
      * @param {string|null} parent - Identifier of the parent track (if applicable).
      */
-    constructor(identifier, shortLabel, longLabel, tracktype, url, visibility, color, parent = null) {
+    constructor(identifier, shortLabel, longLabel, tracktype, multiwig, url, visibility, color, parent = null) {
         this.id = Track.trackCount++; // Assign a unique ID to each track instance based on the global track count
         this.identifier = identifier;
         this.shortLabel = shortLabel;
         this.longLabel = longLabel || "";
         this.tracktype = tracktype;
+        this.multiwig = multiwig;
         this.url = url;
         this.visibility = visibility || "dense";
         this.color = color || "0,0,0";
@@ -537,6 +539,7 @@ export class Track {
             shortLabel: this.shortLabel,
             longLabel: this.longLabel,
             type: this.tracktype,
+            multiWig: this.multiwig,
             bigDataUrl: this.url,
             visibility: this.visibility,
             color: this.color,
@@ -706,9 +709,37 @@ export class TrackContainer {
             this.tracks[trackId].longLabel = e.target.value.trim();
         });
 
+        collapsibleContent.querySelector('.js-track-multiwig').addEventListener('change', (e) => {
+            this.tracks[trackId].multiWig = e.target.checked;
+            // If multiwig is checked, enable parent track group selection and disable bigDataUrl
+            if (e.target.checked) {
+                collapsibleContent.querySelector(`#track-parent-${trackId}`).disabled = false;
+                document.querySelector(`#track-${trackId} .js-track-url`).disabled = true;
+                document.querySelector(`#track-${trackId} .js-track-url`).value = "";
+                this.tracks[trackId].url = "";
+                return;
+            }
+            collapsibleContent.querySelector(`#track-parent-${trackId}`).disabled = true;
+            collapsibleContent.querySelector(`#track-parent-${trackId}`).value = "";
+            document.querySelector(`#track-${trackId} .js-track-url`).disabled = false;
+            this.tracks[trackId].parent = null;
+        });
+
         collapsibleContent.querySelector('.js-track-type select').addEventListener('change', (e) => {
             document.querySelector(`#track-${trackId} .js-track-type`).classList.remove("is-danger");
             this.tracks[trackId].tracktype = e.target.value.trim();
+            // If this is bigWig, enable "track-parent-{trackId}" else disable and clear
+                if (e.target.value.trim() === "bigWig") {
+                    collapsibleContent.querySelector(`#track-multiwig-${trackId}`).disabled = false;
+                    collapsibleContent.querySelector(`#track-parent-${trackId}`).disabled = false;
+                return;
+                }
+            collapsibleContent.querySelector(`#track-multiwig-${trackId}`).disabled = true;
+            collapsibleContent.querySelector(`#track-multiwig-${trackId}`).checked = false;
+            collapsibleContent.querySelector(`#track-parent-${trackId}`).disabled = true;
+            collapsibleContent.querySelector(`#track-parent-${trackId}`).value = "";
+            this.tracks[trackId].multiWig = false;
+            this.tracks[trackId].parent = null;
         });
 
         collapsibleContent.querySelector('.js-track-url').addEventListener('input', (e) => {
@@ -895,6 +926,14 @@ export class TrackContainer {
                 case 'type':
                     track.tracktype = value;
                     document.querySelector(`#track-${trackId} .js-track-type select`).value = value;
+                    document.querySelector(`#track-${trackId} .js-track-parent`).disabled = value.trim() === "bigWig" ? false : true;
+                    break;
+                case 'container':
+                    if (value === "multiWig") {
+                        track.multiwig = true;
+                        document.querySelector(`#track-${trackId} .js-track-multiwig`).checked = true;
+                        document.querySelector(`#track-${trackId} .js-track-url`).disabled = true;
+                    }
                     break;
                 case 'bigDataUrl':
                     if (value.startsWith('http://') || value.startsWith('https://')) {
@@ -926,9 +965,9 @@ export class TrackContainer {
                     const hexColor = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
                     document.querySelector(`#track-${trackId} .js-track-color`).value = hexColor;
                     break;
-                //case 'parent':
-                //    track.parent = value
-                //    break;
+                case 'parent':
+                    track.parent = value
+                    break;
                 default:
                     // populate extra keys
                     if (key) {

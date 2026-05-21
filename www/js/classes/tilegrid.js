@@ -1675,6 +1675,9 @@ class DatasetTile {
             return
         }
 
+        // TESTING
+        plotConfig.hubUrl = plotConfig.hubUrl.replace("https://umgear.org", "http://localhost:8080")
+
 
         const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned
@@ -1690,6 +1693,7 @@ class DatasetTile {
             }
             // spec is a JSON string which needs to be a JSON object
             spec = (typeof data.spec === "string") ? JSON.parse(data.spec) : data.spec;
+
             positionArr[0] = data.position;
             if (zoom) {
                 positionArr[1] = data.position;

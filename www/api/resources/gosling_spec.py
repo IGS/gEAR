@@ -93,12 +93,14 @@ def _validate_hub_url(hub_url: str) -> None:
     """
     try:
         domain_url = geardb._read_domain_url()
+
         if not domain_url:
             raise ValueError("Domain URL not configured. Cannot process track hub.")
 
         # Build allowed domains list from configuration
+        parsed_domain_url = urlparse(domain_url)
+        domain_url = parsed_domain_url.hostname
         allowed_domains = [domain_url]
-
 
         # Allow internal Docker service name in development only
         if os.getenv("ENVIRONMENT", "production").lower() == "development":
@@ -196,10 +198,10 @@ def _fetch_tracks_from_hub(hub_url: str, assembly: str) -> list[dict]:
                 f"Failed to retrieve trackDb from {trackdb_url}: {str(e)}"
             ) from e
 
-        tracks = parse_tracks_from_trackdb(trackdb_response.text, trackdb_url)
-
-    return tracks
-
+        try:
+            return parse_tracks_from_trackdb(trackdb_response.text, trackdb_url)
+        except ValueError as e:
+            raise ValueError(f"Failed to parse trackDb from {trackdb_url}: {str(e)}") from e
 
 def build_assembly_array(assembly) -> list:
     """
@@ -596,40 +598,54 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, position_str="N
         "hic": HiCSpec,
     }
 
-    kwargs = {}
     hic_found = False
 
+    multiwig_groups = {}
+
     # Build each individual track based on its type
-    for track in tracks:
-        track_type = track.get("type", "")
+    for group_track in tracks:
+        container = group_track.get("container", None)
+        if container and container == "multiWig":
+            multiwig_groups[group_track["track"]] = {"visibility": group_track.get("visibility", "dense"), "tracks": []}
+            continue
+
+        # Process multiWig view after all the individual views
+        parent = group_track.get("parent", None)
+        if parent and parent in multiwig_groups and group_track.get("type", "") == "bigWig":
+            multiwig_groups[parent]["tracks"].append(group_track)
+            continue
+
+        track_type = group_track.get("type", "")
         spec_builder_class = TRACK_TYPE_2_SPEC.get(track_type, None)
         if not spec_builder_class:
             print(
-                f"WARNING: Unsupported track type '{track_type}' for track '{track.get('shortLabel', '')}'; skipping.",
+                f"WARNING: Unsupported track type '{track_type}' for track '{group_track.get('shortLabel', '')}'; skipping.",
                 file=sys.stderr,
             )
             continue
 
         # Resolve URL for Gosling context
-        data_url = _resolve_track_url(track, use_gosling=True)
+        data_url = _resolve_track_url(group_track, use_gosling=True)
         if not data_url:
             print(
-                f"WARNING: Could not resolve URL for track '{track.get('shortLabel', '')}'; skipping.",
+                f"WARNING: Could not resolve URL for track '{group_track.get('shortLabel', '')}'; skipping.",
                 file=sys.stderr,
             )
             continue
 
         # Get other attributes to pass to the class
-        color = track.get("color", "orange")  # Default color if not specified
+        color = group_track.get("color", "orange")  # Default color if not specified
 
         # Title should be based on shortLabel, longLabel, bigDataUrl (in that order)
-        title = track.get("shortLabel", track.get("longLabel", "bigDataUrl"))
+        title = group_track.get("shortLabel", group_track.get("longLabel", "bigDataUrl"))
 
-        visibility = track.get("visibility", "dense")  # Dense, full, hide
+        visibility = group_track.get("visibility", "dense")  # Dense, full, hide
+
+        ident = group_track.get("track") or title.replace(" ", "_").lower()  # Use track ID if available, otherwise a sanitized version of the title
 
         try:
             spec_builder = spec_builder_class(
-                data_url=data_url, color=color, zoom=zoom, title=title, visibility=visibility
+                data_url=data_url, color=color, zoom=zoom, title=title, ident=ident, visibility=visibility,
             )
 
             # If our datatype is HiC, do two things:
@@ -637,14 +653,14 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, position_str="N
             # 2) Set a flag that can be passed downstream to add padding to the zoomed region, since HiC tracks need more context to be interpretable.
             if spec_builder_class == HiCSpec:
                 hic_view_obj = HiCViewSpec(
-                    title=title, zoom=zoom, visibility=visibility
+                    title=title, zoom=zoom, ident=ident, visibility=visibility
                 )
-                hic_view = hic_view_obj.render(hic_obj=spec_builder, position_str=position_str)
+                hic_view = hic_view_obj.render(hic_obj=spec_builder, prefix="left-", position_str=position_str)
                 if hic_view is not None:
                     left_track = hic_view
                 hic_found = True
             else:
-                left_track = spec_builder.render(**kwargs)
+                left_track = spec_builder.render(prefix="left-")
             # Skip if track validation failed (render returns None)
             if left_track is None:
                 continue
@@ -653,19 +669,44 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, position_str="N
             if zoom:
                 if spec_builder_class == HiCSpec:
                     right_view_obj = HiCViewSpec(
-                        title=title, zoom=zoom, visibility=visibility
+                        title=title, zoom=zoom, ident=ident, visibility=visibility
                     )
-                    right_view = right_view_obj.render(hic_obj=spec_builder, position_str=position_str)
+                    right_view = right_view_obj.render(hic_obj=spec_builder, prefix="right-", position_str=position_str)
                     if right_view is not None:
                         right_track = right_view
                 else:
-                    right_track = spec_builder.render(**kwargs)
+                    right_track = spec_builder.render(prefix="right-")
+
                 if right_track is not None:
-                    right_track.id = f"right-track-{Path(data_url).stem}"
                     parent_tracks_dict["right"].append(right_track)
         except Exception as e:
             print(f"ERROR building track '{title}': {e}", file=sys.stderr)
             continue
+
+    # Build multiWig views after all the individual tracks have been built
+    for parent_id, group_tracks in multiwig_groups.items():
+        if not group_tracks:
+            continue
+        multiwig_view_obj = MultiWigSpec(title=parent_id, ident=parent_id, zoom=zoom, visibility=group_tracks["visibility"])
+        for group_track in group_tracks["tracks"]:
+            track_obj = BigWigSpec(
+                data_url=_resolve_track_url(group_track, use_gosling=True),
+                color=group_track.get("color", "orange"),
+                ident=group_track.get("track") or group_track.get("shortLabel", "").replace(" ", "_").lower(),
+                zoom=zoom
+            )
+            multiwig_view_obj.add_member(track_obj)
+
+        multiwig_view = multiwig_view_obj.render(prefix="left-")
+        if multiwig_view is not None:
+            parent_tracks_dict["left"].append(multiwig_view)
+
+        if zoom:
+            multiwig_view_right = multiwig_view_obj.render(prefix="right-")
+            if multiwig_view_right is not None:
+                parent_tracks_dict["right"].append(multiwig_view_right)
+
+
 
     parent_view_left = gos.stack(*parent_tracks_dict["left"]).properties(
         id="left-view", linkingId="zoom-to-panel-a", spacing=0,
@@ -806,13 +847,14 @@ class Component(ABC):
         pass
 
 class TrackSpec(ABC):
-    def __init__(self, data_url, color="steelblue", zoom=False, title="", visibility="full"):
+    def __init__(self, data_url, color="steelblue", zoom=False, title="", ident="", visibility="full"):
         self.data_url = data_url
         self.color = color  # Passed as RGB string
         self.zoom = zoom
         self.width = EXPANDED_WIDTH if zoom else CONDENSED_WIDTH
         self.height = EXPANDED_HEIGHT if zoom else CONDENSED_HEIGHT
         self.title = title
+        self.ident = ident or title
         self.visibility = visibility
         self.track = None
 
@@ -822,15 +864,15 @@ class TrackSpec(ABC):
             self.height *= 1.5
 
     @abstractmethod
-    def get_encoding(self, width, height, title=None):
+    def get_encoding(self, width, height, prefix="", is_child=False):
         """Returns a track with specific dimensions applied by the parent."""
         pass
 
-    def render(self):
+    def render(self, prefix=""):
         """Standalone render using default dimensions."""
         if self.visibility == "hide":
             return None
-        return self.get_encoding(self.width, self.height, self.title)
+        return self.get_encoding(self.width, self.height, prefix=prefix, is_child=False)
 
     def validate_track_url(self, url: str, expected_extensions: list[str]) -> None:
         """
@@ -868,7 +910,7 @@ class BamSpec(TrackSpec):
     def __init__(self, *args, **kwargs):
         raise NotImplementedError("BAM tracks are currently not supported due to performance issues. Please use BigWig or BigBed formats instead.")
 
-    def get_encoding(self, width, height, title=None, **kwargs):
+    def get_encoding(self, width, height, prefix="", is_child=False):
         url = self.data_url
         color = self.color
 
@@ -876,7 +918,7 @@ class BamSpec(TrackSpec):
             self.validate_track_url(url, [".bam"])
             self.validate_track_url(f"{url}.bai", [".bam.bai"])
         except ValueError as e:
-            print(f"WARNING: Skipping BAM track '{title}': {e}", file=sys.stderr)
+            print(f"WARNING: Skipping BAM track '{self.title}': {e}", file=sys.stderr)
             return None
 
         bamData = gos.bam(url=url, indexUrl=f"{url}.bai")
@@ -893,17 +935,21 @@ class BamSpec(TrackSpec):
                 color=gos.Color(value=color),
             ).properties(
                 width=width,
-                height=height,
-                title=title,  # Use the file name as the title
-                id=f"left-track-{title}",   # Use the file name without extension as the ID
-                **kwargs
+                id=f"{prefix}track-{self.ident}",   # Use the file name without extension as the ID
             )
         )
+
+        if not is_child:
+            track = track.properties(
+                height=height,
+                title=self.title
+                )
+
         return track
 
 
 class BedSpec(TrackSpec):
-    def get_encoding(self, width, height, title=None, **kwargs):
+    def get_encoding(self, width, height, prefix="", is_child=False):
         url = self.data_url
         color = self.color
 
@@ -911,7 +957,7 @@ class BedSpec(TrackSpec):
             self.validate_track_url(url, [".bed.gz"])
             self.validate_track_url(f"{url}.tbi", [".bed.gz.tbi"])
         except ValueError as e:
-            print(f"WARNING: Skipping BED track '{title}': {e}", file=sys.stderr)
+            print(f"WARNING: Skipping BED track '{self.title}': {e}", file=sys.stderr)
             return None
 
         bed_data = gos.bed(url=url, indexUrl=f"{url}.tbi")
@@ -928,30 +974,31 @@ class BedSpec(TrackSpec):
                 color=gos.Color(value=color),
             ).properties(
                 width=width,
-                height=height,
-                title=title,  # Use the file name as the title
-                id=f"left-track-{title}",  # Use the file name without extension as the ID
-                **kwargs
+                id=f"{prefix}track-{self.ident}",  # Use the file name without extension as the ID
             )
         )
+
+        if not is_child:
+            track = track.properties(
+                height=height,
+                title=self.title
+                )
+
         return track
 
 class BigWigSpec(TrackSpec):
-    def get_encoding(self, width, height, title=None, **kwargs):
+    def get_encoding(self, width, height, prefix="", is_child=False):
         url = self.data_url
         color = self.color
 
         try:
             self.validate_track_url(url, [".bw", ".bigwig"])
         except ValueError as e:
-            print(f"WARNING: Skipping BigWig track '{title}': {e}", file=sys.stderr)
+            print(f"WARNING: Skipping BigWig track '{self.title}': {e}", file=sys.stderr)
             return None
 
         # TODO: figure out appropriate binsize when zooming out: Default is 256. It looks blocky briefly
         bigwig_data = gos.bigwig(url=url)
-
-        y_kwargs = {}
-        y_field="value"
 
         track = (
             gos.Track(
@@ -959,28 +1006,33 @@ class BigWigSpec(TrackSpec):
             )
             .mark_bar()
             .encode(
-                x=gos.X(field="start", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
-                xe=gos.X(field="end", type="genomic"),  # pyright: ignore[reportArgumentType]
-                y=gos.Y(field=y_field, type="quantitative", axis="right", aggregate="count", **y_kwargs),  # pyright: ignore[reportArgumentType]
                 color=gos.Color(value=color),
                 # Tooltip only works when hovering over the peak
                 tooltip=[
                     gos.Tooltip(field="position", type="genomic", alt="Position"),  # type: ignore
                     gos.Tooltip(field="value", type="quantitative", alt="Peak value", format=".2"),  # type: ignore
-
                 ],
-            ).properties(
+                x=gos.X(field="start", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
+                xe=gos.X(field="end", type="genomic"),  # pyright: ignore[reportArgumentType]
+                y=gos.Y(field="value", type="quantitative", axis="right", aggregate="count"),  # pyright: ignore[reportArgumentType]
+            )
+            .properties(
                 width=width,
-                height=height,
-                title=title,  # Use the file name as the title
-                id=f"left-track-{title}",  # Use the file name without extension as the ID
-                **kwargs
+                id=f"{prefix}track-{self.ident}",  # Use the file name without extension as the ID
             )
         )
+
+        # If this track has a parent view, the encoding will be determined by the parent.
+        if not is_child:
+            track = track.properties(
+                height=height,
+                title=self.title,
+            )
+
         return track
 
 class VcfSpec(TrackSpec):
-    def get_encoding(self, width, height, title=None, **kwargs):
+    def get_encoding(self, width, height, prefix="", is_child=False):
         url = self.data_url
         color = self.color
 
@@ -988,7 +1040,7 @@ class VcfSpec(TrackSpec):
             self.validate_track_url(url, [".vcf.gz"])
             self.validate_track_url(f"{url}.tbi", [".vcf.gz.tbi"])
         except ValueError as e:
-            print(f"WARNING: Skipping VCF track '{title}': {e}", file=sys.stderr)
+            print(f"WARNING: Skipping VCF track '{self.title}': {e}", file=sys.stderr)
             return None
 
         vcf_data = gos.VcfData(type="vcf", url=url, indexUrl=f"{url}.tbi")  # type: ignore
@@ -1005,16 +1057,19 @@ class VcfSpec(TrackSpec):
                 color=gos.Color(value=color),
             ).properties(
                 width=width,
-                height=height,
-                title=title,  # Use the file name as the title
-                id=f"left-track-{title}",  # Use the file name without extension as the ID
-                **kwargs
+                id=f"{prefix}track-{self.ident}",  # Use the file name without extension as the ID
             )
         )
+
+        if not is_child:
+            track = track.properties(
+                height=height,
+                title=self.title)
+
         return track
 
 class HiCSpec(TrackSpec):
-    def get_encoding(self, width, height, title=None, **kwargs):
+    def get_encoding(self, width, height, prefix="", is_child=False):
         url = self.data_url
         #color = self.color  # colorscale instead of single color
 
@@ -1052,10 +1107,15 @@ class HiCSpec(TrackSpec):
                 style=gos.Style(matrixExtent="full"), # pyright: ignore[reportArgumentType]
             ).properties(
                 width=width,
-                height=height,
-                title=title,  # Use the file name as the title
+                id=f"{prefix}track-{self.ident}",  # Use the file name without extension as the ID
             )
         )
+
+        if not is_child:
+            hic_track = hic_track.properties(
+                height=height,
+                title=self.title
+                )
 
         return hic_track
 
@@ -1101,8 +1161,9 @@ class AssemblySpec:
 
 
 class ViewSpec(ABC):
-    def __init__(self, title="", zoom=False, visibility="full"):
+    def __init__(self, title="", zoom=False, ident="", visibility="full"):
         self.title = title
+        self.ident = ident or title
         self.zoom = zoom
         self.visibility = visibility
         self.width = EXPANDED_WIDTH if zoom else CONDENSED_WIDTH
@@ -1118,13 +1179,16 @@ class ViewSpec(ABC):
     def add_member(self, track: TrackSpec):
         self.members.append(track)
 
+    def clear_members(self):
+        self.members = []
+
     @abstractmethod
     def render(self):
         """Returns the final gosling view (overlay/stack)"""
         pass
 
 class HiCViewSpec(ViewSpec):
-    def render(self, hic_obj: HiCSpec, position_str="NA"):
+    def render(self, hic_obj: HiCSpec,  prefix="", position_str="NA"):
         if self.visibility == "hide":
             return None
 
@@ -1132,13 +1196,13 @@ class HiCViewSpec(ViewSpec):
             raise ValueError("HiCViewSpec requires a hic_obj to render.")
 
         # Use "width" as "height" to maintain square aspect ratio
-        hic_track = hic_obj.get_encoding(width=self.width, height=self.width, title=self.title)
+        hic_track = hic_obj.get_encoding(width=self.width, height=self.width, is_child=True)
 
         if position_str == "NA":
             return hic_track
 
         annotation_track = hic_obj.add_annotation_track(position_str)
-        view = gos.overlay(hic_track, annotation_track, width=self.width, height=self.width, id=f"left-track-{self.title}")
+        view = gos.overlay(hic_track, annotation_track, width=self.width, height=self.width, id=f"{prefix}view-{self.ident}")
 
         return view
 
@@ -1148,22 +1212,30 @@ class MultiWigSpec(ViewSpec):
     They will be displayed in an overlay format instead of a stack, so that they can be easily compared to each other.
     """
 
-    def render(self):
+    def render(self, prefix=""):
         if self.visibility == "hide":
             return None
 
         # Each child 'encodes' itself, but the MultiWig controls the container properties
         rendered_members = [
-            m.get_encoding(width=self.width, height=self.height)
+            m.get_encoding(width=self.width, height=self.height, prefix=prefix, is_child=True)
             for m in self.members
         ]
+
+        # for the second track onwards, hide the y-axis
+        for i in range(1, len(rendered_members)):
+            if rendered_members[i] is not None:  # Check if the track was successfully rendered
+                rendered_members[i] = rendered_members[i].properties(
+                    y=gos.Y(field="value", type="quantitative", axis="none", aggregate="count")  # pyright: ignore[reportArgumentType]
+                )
 
         # We wrap them in the overlay
         return gos.overlay(*rendered_members).properties(
             title=self.title,
             width=self.width,
             height=self.height,
-            opacity=gos.Opacity(value=0.5) # Better for 3-way overlays
+            opacity=gos.Opacity(value=0.5), # Better for multi-way overlays,
+            id=f"{prefix}view-{self.ident}"
         )
 
 #####################

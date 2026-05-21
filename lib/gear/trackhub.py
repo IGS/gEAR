@@ -24,7 +24,7 @@ VALID_TYPES = ["bigWig", "bigBed", "hic", "vcfTabix"]
 VALID_CONTAINER_TYPES = ["multiWig"]
 
 HUB_FIELDS = ["hub", "shortLabel", "longLabel", "email", "useOneFile", "genome", "genomesFile"]
-TRACK_FIELDS = ["type", "bigDataUrl", "shortLabel", "longLabel", "visibility", "color", "autoScale"]
+TRACK_FIELDS = ["track", "name", "type", "bigDataUrl", "shortLabel", "longLabel", "visibility", "color", "autoScale", "container", "parent"]
 
 def write_status(
     status_file: Path,
@@ -147,16 +147,22 @@ def _normalize_track_dict(track: dict, resolve_urls: bool = False, trackdb_url: 
     """
     normalized = {}
 
-    # Map both "track" and "name" keys to "track"
-    if "track" in track:
-        normalized["track"] = track["track"]
-    elif "name" in track:
-        normalized["track"] = track["name"]
-
     # Copy standard fields
-    for key in ["type", "shortLabel", "longLabel", "visibility", "autoScale", "color"]:
+    for key in TRACK_FIELDS:
         if key in track:
             normalized[key] = track[key]
+
+    if "track" not in normalized:
+        print(f"WARNING: Track stanza is missing 'track' field. Skipping track: {track}", file=sys.stderr)
+        raise ValueError(f"Track stanza is missing required 'track' field")
+
+    # Normalize color format to rgb()
+    if "color" in normalized and not normalized["color"].startswith("rgb("):
+        normalized["color"] = f"rgb({normalized['color']})"
+
+    # Container tracks don't have bigDataUrl, so we can return early
+    if "container" in normalized and normalized["container"] in VALID_CONTAINER_TYPES:
+        return normalized
 
     # Handle bigDataUrl with optional URL resolution
     if "bigDataUrl" in track:
@@ -179,10 +185,6 @@ def _normalize_track_dict(track: dict, resolve_urls: bool = False, trackdb_url: 
             except Exception as e:
                 print(f"WARNING: Could not resolve URL for track '{normalized.get('track')}': {e}", file=sys.stderr)
         normalized["bigDataUrl"] = url
-
-    # Normalize color format to rgb()
-    if "color" in normalized and not normalized["color"].startswith("rgb("):
-        normalized["color"] = f"rgb({normalized['color']})"
 
     return normalized
 
@@ -253,7 +255,7 @@ def parse_tracks_from_trackdb(trackdb_txt: str, trackdb_url: str) -> list[dict]:
             "shortLabel": "ATAC-seq 1st replicate",
             "longLabel": "ATAC-seq 1st replicate",
             "color": "rgb(31,119,180)",
-            "visibility": "dense"
+            "visibility": "dense",
         }
     """
     return _parse_track_stanzas(trackdb_txt.splitlines(), resolve_urls=True, trackdb_url=trackdb_url)

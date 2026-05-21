@@ -83,6 +83,21 @@
     </div>
     <div class="field is-horizontal">
         <div class="field-label">
+            <label class="label" for="track-multiwig-{trackId}"></label>
+        </div>
+        <div class="field-body">
+            <div class="field">
+                <div class="control">
+                    <label class="checkbox">
+                        <input id="track-multiwig-{trackId}" class="js-track-multiwig" type="checkbox" />
+                        Check to make this track a <a href="https://genome.ucsc.edu/goldenPath/help/hubQuickStartGroups.html#multiWig">multiWig</a> container
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="field is-horizontal">
+        <div class="field-label">
             <label class="label" for="track-data-source-{trackId}">Track Data Source</label>
         </div>
         <div class="field-body">
@@ -149,7 +164,7 @@
     </div>
     <div class="field is-horizontal is-hidden">
         <div class="field-label">
-            <label class="label" for="track-parent-{trackId}">Parent Track</label>
+            <label class="label" for="track-parent-{trackId}">Parent Identifier</label>
         </div>
         <div class="field-body">
             <div class="field is-narrow">
@@ -157,8 +172,8 @@
                     <input id="track-parent-{trackId}" class="input js-track-parent" type="text" placeholder="(Optional - COMING SOON) Parent Track Identifier" disabled>
                 </div>
                 <p class="help">
-                    For aggregating BigWig tracks only.
-                    Creates an overlay instead of stacking them.
+                    Use an existing identifier to aggregate related BigWig tracks (i.e. replicates).
+                    Creates an overlay instead of stacking the tracks.
                 </p>
             </div>
         </div>
