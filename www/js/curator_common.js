@@ -985,12 +985,16 @@ const createPlot = async (event) => {
 
     plotStyle.populatePlotConfig();
 
-    await curatorSpecifcCreatePlot(plotType, datasetId, analysisObj);
+    try {
+        await curatorSpecifcCreatePlot(plotType, datasetId, analysisObj);
 
-    // Stop loader
-    for (const plotBtn of plotBtns) {
-        plotBtn.classList.remove("is-loading");
+    } finally {
+        // Stop loader
+        for (const plotBtn of plotBtns) {
+            plotBtn.classList.remove("is-loading");
+        }
     }
+
 
     // Hide this view
     document.getElementById("content-c").classList.add("is-hidden");
@@ -1182,7 +1186,7 @@ const loadColorscaleSelect = (isContinuous=false, isScanpy=false) => {
         defaultColor = "purp";
         if (isMultigene) {
             // I personally don't like purp for multigene plots
-            defaultColor = "bluered";
+            defaultColor = "reds";
         }
     }
     if (isScanpy) {

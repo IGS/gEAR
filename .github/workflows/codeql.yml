@@ -62,7 +62,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Install "rename" utility
-      run: sudo apt-get install rename
+      run: sudo apt install rename
 
     - name: Rename all CGI files to have Python extension
       shell: bash

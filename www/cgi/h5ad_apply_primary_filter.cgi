@@ -72,8 +72,6 @@ def main():
 
     try:
         args = {}
-        if is_spatial:
-            args['include_images'] = False
         adata = ana.get_adata(**args)
     except Exception:
         print("Could not create dataset object using analysis.", file=sys.stderr)

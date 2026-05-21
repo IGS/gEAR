@@ -27,7 +27,6 @@ pid = os.getpid()
 
 user_upload_base = gear_root / 'www' / 'uploads' / 'files'
 
-
 def _on_request(channel, method_frame, properties, body):
     """Callback to handle new trackhub job message."""
     from gear.trackhub import TrackHubProcessor  # noqa: E402

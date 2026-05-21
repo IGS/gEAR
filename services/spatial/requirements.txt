@@ -1,7 +1,6 @@
-panel==1.8.7
-plotly==5.20.0
-pandas==2.2.1
-pyarrow==18.1.0 # v19 breaks reading spatial parquet files
+panel==1.8.10
+plotly==6.6.0
+pandas==2.3.3   # Anndata does not support pandas 3.x.x yet
 werkzeug==2.0.2
-watchfiles
-datashader==0.18.0
+watchfiles==1.1.1
+datashader==0.19.0
