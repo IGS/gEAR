@@ -385,6 +385,7 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     gene_track = base_track.transform_filter(field="type", oneOf=["gene"])
 
     """
+    # Instead of splitting by strand, displace on potential overlaps, though this isn't working right
     if zoom:
         gene_track = (
             gene_track
@@ -426,6 +427,7 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
         )
 
     """
+    # Instead of splitting by strand, displace on potential overlaps, though this isn't working right
     if zoom:
         exon_track = exon_track.transform_displace(
                 method="pile",
@@ -567,7 +569,7 @@ def build_genome_wide_view(
     return genome_wide_view
 
 
-def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, position_str="NA"):
+def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, prefix="", position_str="NA"):
     """
     Builds and configures Gosling tracks based on the provided track specifications.
 
@@ -649,36 +651,22 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, position_str="N
             )
 
             # If our datatype is HiC, do two things:
-            # 1) Build the view using the HiC track and assign that as the "left track"
+            # 1) Build the view using the HiC track and assign that as the "rendeed track
             # 2) Set a flag that can be passed downstream to add padding to the zoomed region, since HiC tracks need more context to be interpretable.
             if spec_builder_class == HiCSpec:
                 hic_view_obj = HiCViewSpec(
                     title=title, zoom=zoom, ident=ident, visibility=visibility
                 )
-                hic_view = hic_view_obj.render(hic_obj=spec_builder, prefix="left-", position_str=position_str)
+                hic_view = hic_view_obj.render(hic_obj=spec_builder, prefix=prefix, position_str=position_str)
                 if hic_view is not None:
-                    left_track = hic_view
+                    rendered_track = hic_view
                 hic_found = True
             else:
-                left_track = spec_builder.render(prefix="left-")
+                rendered_track = spec_builder.render(prefix=prefix)
             # Skip if track validation failed (render returns None)
-            if left_track is None:
+            if rendered_track is None:
                 continue
-            parent_tracks_dict["left"].append(left_track)
-
-            if zoom:
-                if spec_builder_class == HiCSpec:
-                    right_view_obj = HiCViewSpec(
-                        title=title, zoom=zoom, ident=ident, visibility=visibility
-                    )
-                    right_view = right_view_obj.render(hic_obj=spec_builder, prefix="right-", position_str=position_str)
-                    if right_view is not None:
-                        right_track = right_view
-                else:
-                    right_track = spec_builder.render(prefix="right-")
-
-                if right_track is not None:
-                    parent_tracks_dict["right"].append(right_track)
+            parent_tracks_dict.append(rendered_track)
         except Exception as e:
             print(f"ERROR building track '{title}': {e}", file=sys.stderr)
             continue
@@ -697,28 +685,19 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, position_str="N
             )
             multiwig_view_obj.add_member(track_obj)
 
-        multiwig_view = multiwig_view_obj.render(prefix="left-")
+        multiwig_view = multiwig_view_obj.render(prefix=prefix)
         if multiwig_view is not None:
-            parent_tracks_dict["left"].append(multiwig_view)
+            parent_tracks_dict.append(multiwig_view)
 
-        if zoom:
-            multiwig_view_right = multiwig_view_obj.render(prefix="right-")
-            if multiwig_view_right is not None:
-                parent_tracks_dict["right"].append(multiwig_view_right)
+    link_id = "zoom-to-panel-a"
+    if prefix == "right-":
+        link_id = "zoom-to-panel-b"
 
-
-
-    parent_view_left = gos.stack(*parent_tracks_dict["left"]).properties(
-        id="left-view", linkingId="zoom-to-panel-a", spacing=0,
+    parent_view = gos.stack(*parent_tracks_dict).properties(
+        id=f"{prefix}view", linkingId=link_id, spacing=0,
     )
 
-    parent_view_right = None
-    if zoom:
-        parent_view_right = gos.stack(*parent_tracks_dict["right"]).properties(
-            id="right-view", linkingId="zoom-to-panel-b", spacing=0
-        )
-
-    return parent_view_left, parent_view_right, hic_found
+    return parent_view, hic_found
 
 
 def build_region_view(parent_view_left, parent_view_right=None):
@@ -1300,14 +1279,17 @@ class GoslingSpec(Resource):
         # build left and right track
         # Insert into gos_tracks["left"] at index 0 (and gos_tracks["right"] if zoom)
         gos_tracks["left"].append(build_bed_annotation_tracks(assembly, zoom, "left"))
+        (parent_view_left, hic_found) = build_gosling_tracks(
+            gos_tracks["left"], tracks, zoom=zoom, prefix="left-", position_str=position_str
+        )
+        parent_view_right = None
         if zoom:
             gos_tracks["right"].append(
                 build_bed_annotation_tracks(assembly, zoom, "right")
             )
-
-        (parent_view_left, parent_view_right, hic_found) = build_gosling_tracks(
-            gos_tracks, tracks, zoom=zoom, position_str=position_str
-        )
+            (parent_view_right, _) = build_gosling_tracks(
+                gos_tracks["right"], tracks, zoom=zoom, prefix="right-", position_str=position_str
+            )
 
         # Start building the Gosling spec
         region_view = build_region_view(parent_view_left, parent_view_right)
