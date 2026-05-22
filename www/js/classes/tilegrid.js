@@ -1675,10 +1675,6 @@ class DatasetTile {
             return
         }
 
-        // TESTING
-        plotConfig.hubUrl = plotConfig.hubUrl.replace("https://umgear.org", "http://localhost:8080")
-
-
         const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
