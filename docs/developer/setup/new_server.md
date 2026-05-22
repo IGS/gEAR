@@ -11,6 +11,7 @@ NOTE: Extra apt install commands are present in the R setup and in the python se
     sudo apt upgrade
     sudo apt install build-essential \  # installs gcc, g++, make
         curl \
+        git \
         rsync \
         vim \   # Shaun Adkins was here
         unzip \
@@ -22,13 +23,6 @@ NOTE: Extra apt install commands are present in the R setup and in the python se
 ```
 
 Reboot if there are kernel updates (or just to be safe if you don't know.)
-
-```bash
-    cd && mkdir git
-    sudo apt install git
-    cd git
-    git clone https://github.com/IGS/gEAR.git
-```
 
 ### MYSQL
 

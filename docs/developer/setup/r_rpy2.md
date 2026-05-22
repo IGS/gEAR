@@ -24,7 +24,7 @@ sudo DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends
   libwebp-dev \
   libgit2-dev \
   libuv1-dev \
-  tzdata \
+  tzdata
 sudo apt -qq clean autoclean
 sudo apt -qq autoremove -y
 sudo rm -rf /var/lib/apt/lists/*
