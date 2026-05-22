@@ -32,6 +32,8 @@ RUN apt -qq update \
   tzdata \
   git \
   unzip \
+  libgfortran5 \
+  libhdf5-dev \
   && apt -qq clean autoclean \
   && apt -qq autoremove -y \
   && rm -rf /var/lib/apt/lists/*
