@@ -9,15 +9,15 @@ NOTE: Extra apt install commands are present in the R setup and in the python se
 ```bash
     sudo apt update
     sudo apt upgrade
-    sudo apt install build-essential \  # installs gcc, g++, make
+    sudo apt install build-essential \
         curl \
         git \
         rsync \
-        vim \   # Shaun Adkins was here
+        vim \
         unzip \
         wget \
         ca-certificates \
-        fonts-roboto \    # Matplotlib font
+        fonts-roboto \
         fontconfig
     sudo fc-cache -f -v    # cache the fonts
 ```
