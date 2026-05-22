@@ -161,6 +161,13 @@ async def gear_pre_spawn_hook(spawner: DockerSpawner):
 
     spawner.volumes = volumes
 
+
+    public_base_url = os.environ.get("HUB_PUBLIC_BASE_URL", "")
+
+    if public_base_url.startswith("https://"):
+        c.JupyterHub.cookie_options = {"secure": True}
+        c.JupyterHub.trusted_downstream_ips = ["127.0.0.1"]
+
     # Add convenience environment variables
     env = dict(spawner.environment or {})
     env["GEAR_DATASET_FILES"] = ":".join(mounted_filenames)
