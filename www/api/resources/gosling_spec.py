@@ -97,6 +97,8 @@ def _validate_hub_url(hub_url: str) -> None:
             raise ValueError("Domain URL not configured. Cannot process track hub.")
 
         # Build allowed domains list from configuration
+        parsed_domain_url = urlparse(domain_url)
+        domain_url = parsed_domain_url.hostname
         allowed_domains = [domain_url]
 
 
