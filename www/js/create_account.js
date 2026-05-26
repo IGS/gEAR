@@ -4,7 +4,7 @@ import { convertToFormData, initCommonUI } from "./common.v2.js";
 
 let verification_uuid = null;
 
-window.onload=function() {
+const initializePageUI = () => {
     // Set the page title
     document.getElementById('page-header-label').textContent = 'Create an account';
 
@@ -301,5 +301,6 @@ async function validateAccountCreationForm() {
     return true;
 }
 
-// Pre-initialize some stuff
+// Initialize common UI first, then initialize page-specific UI
 await initCommonUI();
+initializePageUI();
