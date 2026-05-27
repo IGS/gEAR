@@ -876,8 +876,6 @@ def generate_tsne_figure(
     num_plots = len(gene_symbols)
 
     # convert max_columns to int
-    if plot_by_group is None:
-        max_columns = None
     if max_columns:
         max_columns = int(max_columns)
 
@@ -1057,6 +1055,7 @@ def generate_tsne_figure(
     sc.set_figure_params(**fig_params)
 
     io_fig: "Figure" = sc.pl.embedding(selected, **kwargs)  # type: ignore
+    #io_fig.set_layout_engine("compressed")
     ax = io_fig.get_axes()
 
     # Axes/legend logic (shared)
@@ -1069,6 +1068,9 @@ def generate_tsne_figure(
                 f.tick_params(labelcolor='#333333')
                 continue
             rename_axes_labels(f, x_axis, y_axis)
+
+            # Ensure axes are square (which is typically the case with the coordinate systems we use)
+            #f.set_aspect("equal")
 
         last_ax = ax[-1]  # color axes
         if colorize_by and color_category:
@@ -1097,7 +1099,9 @@ def generate_tsne_figure(
                 fontsize="small",
             )
             if horizontal_legend:
-                last_ax.get_legend().remove()  # Remove legend added by scanpy
+                last_ax.get_legend()
+                if last_ax.get_legend() is not None:
+                    last_ax.get_legend().remove()  # Remove legend added by scanpy
                 io_fig.legend(
                     loc="lower center",
                     bbox_to_anchor=(0.5, -0.03), # Place legend below the figure
@@ -1113,6 +1117,8 @@ def generate_tsne_figure(
             # should never happen
             ax.tick_params(labelcolor='#333333')
         rename_axes_labels(ax, x_axis, y_axis)
+        # Ensure axes are square (which is typically the case with the coordinate systems we use)
+        #ax.set_aspect("equal")
 
     # Clean up
     if selected.isbacked:
