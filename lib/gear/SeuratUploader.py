@@ -124,7 +124,7 @@ def genes_to_ensembl(adata, taxid=None):
             count += 1
     # Overwrite the current adata.var
     adata.var = pd.DataFrame(
-        index=list(ensembl_mapping_dict.values()), data={"gene_names": list(ensembl_mapping_dict.keys())}
+        index=list(ensembl_mapping_dict.values()), data={"gene_symbol": list(ensembl_mapping_dict.keys())}
     )
     return adata
 
