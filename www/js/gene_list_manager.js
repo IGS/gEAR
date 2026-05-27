@@ -225,7 +225,9 @@ class ResultItem {
     addDescriptionInfo(parentElt) {
         // Add ldesc if it exists
         const ldescText = parentElt.querySelector(".js-display-ldesc-text");
-        ldescText.textContent = this.longDesc || "No description entered";
+        const span = document.createElement("span");
+        span.innerHTML = this.longDesc || "No description entered";
+        ldescText.replaceChildren(span);		
     }
 
     addListItemEventListeners(parentElt) {
@@ -381,7 +383,9 @@ class ResultItem {
                 }
 
                 selector.querySelector(`.js-display-title p`).textContent = newTitle;
-                selector.querySelector(`.js-display-ldesc-text`).textContent = newLdesc || "No description entered";
+                const ldescSpan = document.createElement("span");
+                ldescSpan.innerHTML = newLdesc || "No description entered";
+                selector.querySelector(`.js-display-ldesc-text`).replaceChildren(ldescSpan);
 
                 selector.querySelector(`.js-display-organism span:last-of-type`).textContent = newOrgText;
             }
