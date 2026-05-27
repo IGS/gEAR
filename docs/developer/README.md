@@ -79,7 +79,7 @@ We follow the [nvie.com git branching model](https://nvie.com/posts/a-successful
 4. **Install Git Hooks (Pre-commit)**
 
    This project uses [pre-commit](https://pre-commit.com/) to manage git hooks. These hooks automatically:
-   - Bump the cache version in `www/site_domain_prefs.json` on commits with code changes
+   - Bump the cache version in `www/cache_version.json` on commits with code changes
    - Check code formatting and linting with Ruff
    - Fix common issues like trailing whitespace and file endings
 

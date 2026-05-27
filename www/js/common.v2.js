@@ -262,8 +262,16 @@ PMID: 34172972`;
 
 
 const getDomainPreferences = async () => {
-    const response = await fetch('/site_domain_prefs.json');
-    return response.json();
+    const prefsResponse = await fetch('/site_domain_prefs.json');
+    const prefs = await prefsResponse.json();
+    
+    const cacheResponse = await fetch('/cache_version.json');
+    const cacheData = await cacheResponse.json();
+    
+    // Merge cache_version into the preferences object
+    prefs.cache_version = cacheData.cache_version;
+    
+    return prefs;
 }
 
 /**
