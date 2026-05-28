@@ -75,7 +75,7 @@ def main():
 
     # values are mex_3tab, excel, rdata, h5ad, rds, or spatial formats
     # Removed rdata from list as rdata will be difficult to process efficiently
-    dataset_formats = ['mex_3tab', 'excel', 'h5ad', 'spatial','rds']
+    dataset_formats = ['mex_3tab', 'excel', 'h5ad', 'spatial','rds','rdata']
     dataset_upload_dir = Path(user_upload_file_base) / session_id / share_uid
 
     # quickly write the status so the page doesn't error out
@@ -91,7 +91,7 @@ def main():
         return result
 
     if dataset_format not in dataset_formats:
-        result['message'] = 'Unsupported dataset format.'
+        result['message'] = f'Unsupported dataset format: {dataset_format} '
         write_status(dataset_upload_dir, 'error', result['message'])
         return result
 
