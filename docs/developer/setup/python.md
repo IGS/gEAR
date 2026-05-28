@@ -38,6 +38,9 @@ fixed paths have worked fine for decades.
         libicu-dev \
         libdeflate-dev \
         libssl3 \
+        libgfortran5 \
+        libuv1 \
+        libhdf5-dev \
         pkg-config \
         llvm \
         apache2 \
@@ -148,7 +151,15 @@ I cannot add comments to the bash code without breaking the command.  So consult
     spatialdata_io==0.6.0 \
     shadows==0.1a2 \
     tables==3.11.1 \
-    watchfiles==1.1.1
+    watchfiles==1.1.1 \
+    Bio==1.8.3 \ 
+    biopython==1.87 \ 
+    biothings-client==0.5.0 \ 
+    gprofiler-official==1.0.0 \
+    h11==0.16.0 \
+    httpcore==1.0.9 \ 
+    httpx==0.28.1 \
+    mygene==3.2.2\
     ./pip3 install git+https://github.com/adkinsrs/diffxpy.git@ffd828c280882ca98adc6e42c934625fab0011f6
     ./pip3 uninstall dask-expr -y
 
