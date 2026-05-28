@@ -5,6 +5,7 @@ Shared between API and RabbitMQ consumers.
 
 import ipaddress
 import json
+import os
 import shlex
 import shutil
 import socket
@@ -23,6 +24,7 @@ from Bio import bgzf
 VALID_TYPES = ["bigWig", "bigBed", "hic", "vcfTabix"]
 VALID_CONTAINER_TYPES = ["multiWig"]
 
+# These are the fields that we will use for Gosling, though other fields will be preserved for compatibility with the UCSC Genome Browser.
 HUB_FIELDS = ["hub", "shortLabel", "longLabel", "email", "useOneFile", "genome", "genomesFile"]
 TRACK_FIELDS = ["track", "name", "type", "bigDataUrl", "shortLabel", "longLabel", "visibility", "color", "autoScale", "container", "parent"]
 
@@ -112,6 +114,10 @@ def _is_safe_public_http_url(url: str) -> bool:
         if parsed.scheme not in ("http", "https") or not parsed.hostname:
             return False
 
+        # Allow all URLs in development environment to facilitate testing with local servers.
+        if os.getenv("ENVIRONMENT", "production").lower() == "development":
+            return True
+
         host = parsed.hostname
         addrinfo = socket.getaddrinfo(host, None)
 
@@ -154,7 +160,7 @@ def _normalize_track_dict(track: dict, resolve_urls: bool = False, trackdb_url: 
 
     if "track" not in normalized:
         print(f"WARNING: Track stanza is missing 'track' field. Skipping track: {track}", file=sys.stderr)
-        raise ValueError(f"Track stanza is missing required 'track' field")
+        raise ValueError("Track stanza is missing required 'track' field")
 
     # Normalize color format to rgb()
     if "color" in normalized and not normalized["color"].startswith("rgb("):
@@ -516,14 +522,35 @@ def validate_hub_contents(hub_json: dict, track_stanzas: list) -> bool:
             return False
 
     for track in track_stanzas:
-        required_track_fields = ["track", "type", "bigDataUrl", "shortLabel", "longLabel", "visibility"]
+        required_track_fields = ["track", "type", "shortLabel", "longLabel", "visibility"]
+        exclusive_track_fields = ["bigDataUrl", "container"]
         for field in required_track_fields:
             if field not in track:
                 print(f"Missing required field '{field}' in track stanza.", file=sys.stderr)
                 return False
-        if track["type"] not in VALID_TYPES + VALID_CONTAINER_TYPES:
+        # Must have one of the exclusive fields (bigDataUrl for data tracks, container for container tracks)
+        if not any(field in track for field in exclusive_track_fields):
+            print(f"Track '{track['track']}' must have either 'bigDataUrl' or 'container' field.", file=sys.stderr)
+            return False
+        if track["type"] not in VALID_TYPES:
             print(f"Invalid track type '{track['type']}'.", file=sys.stderr)
             return False
+
+        # Currently we only support container type "multiwig", which is for grouping bigWig tracks.
+        if "container" in track and track["container"] not in VALID_CONTAINER_TYPES:
+            print(f"Invalid container type '{track['container']}' in track '{track['track']}'.", file=sys.stderr)
+            return False
+
+        # If "parent" is in track, ensure the referenced parent track exists and is a container
+        if "parent" in track:
+            parent_name = track["parent"]
+            parent_track = next((t for t in track_stanzas if t.get("track") == parent_name), None)
+            if not parent_track:
+                print(f"Track '{track['track']}' references non-existent parent '{parent_name}'.", file=sys.stderr)
+                return False
+            if "container" not in parent_track or parent_track["container"] not in VALID_CONTAINER_TYPES:
+                print(f"Track '{track['track']}' references parent '{parent_name}' which is not a valid container.", file=sys.stderr)
+                return False
 
         # if human assembly, disallow VCF and HIC types for privacy reasons
         if hub_json.get("genome", "").lower() in ["hg19", "hg38"] and track["type"] in ["vcfTabix", "hic"]:
@@ -619,6 +646,21 @@ class TrackHubProcessor:
             dest_hub = self.staging_area / "hub.txt"
             if not dry_run:
                 with open(dest_hub, 'w', buffering=1) as f:
+                    # If "extraKeys" exists, unpack the key/value pairs to write
+                    # These are probably extra UCSC TrackHub properties that were not required in Gosling
+                    extra = hub_json.get("extraKeys", {})
+                    if isinstance(extra, dict):
+                        for key, value in extra.items():
+                            if (
+                                not key
+                                or key in HUB_FIELDS  # Don't write extra keys that conflict with standard hub fields
+                                or value is None
+                                or value == ""
+                            ):
+                                continue
+                            hub_json[key] = value
+                    hub_json.pop("extraKeys", None)
+
                     for key, value in hub_json.items():
                         if key == "genome":
                             f.write("\n")
@@ -639,6 +681,11 @@ class TrackHubProcessor:
                     f"Downloading {track_name}...",
                     track_statuses,
                 )
+
+                if "container" in track:
+                    # Container tracks don't have bigDataUrl and don't require downloading
+                    track_statuses[track_name] = "completed"
+                    continue
 
                 big_data_url = track.get("bigDataUrl", "").strip()
                 uploaded_file_name = track.get("uploadedFileName")
@@ -663,6 +710,8 @@ class TrackHubProcessor:
                             f"Uploaded file for track '{track_name}' not found in staging area: {dest_path}"
                         )
                     # File is already in place, no need to save again
+
+                    track.pop("uploadedFileName", None)
                 else:
                     raise ValueError(
                         f"No bigDataUrl or uploadedFileName specified for track '{track_name}'"
@@ -741,6 +790,24 @@ class TrackHubProcessor:
                 with open(dest_hub, 'a', buffering=1) as f:
                     for track in track_stanzas:
                         f.write("\n")
+
+                        # NOTE: Tracks with the "parent" attribute could be indented but it isn't required. We could do this in the future though.
+
+                        # If "extraKeys" exists, unpack the key/value pairs to write
+                        # These are probably extra UCSC TrackHub properties that were not required in Gosling
+                        extra = track.get("extraKeys", {})
+                        if isinstance(extra, dict):
+                            for key, value in extra.items():
+                                if (
+                                    not key
+                                    or key in TRACK_FIELDS  # Don't write extraKeys that conflict with standard fields
+                                    or value is None
+                                    or value == ""
+                                ):
+                                    continue
+                                track[key] = value
+                        track.pop("extraKeys", None)
+
                         for key, value in track.items():
                             f.write(f"{key} {value}\n")
 

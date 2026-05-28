@@ -156,7 +156,7 @@ def _fetch_tracks_from_hub(hub_url: str, assembly: str) -> list[dict]:
     # Addresses https://github.com/IGS/gEAR/security/code-scanning/344
     try:
         _validate_hub_url(hub_url)
-    except ValueError as e:
+    except ValueError:
         raise
 
     # Fix for Docker
@@ -172,36 +172,38 @@ def _fetch_tracks_from_hub(hub_url: str, assembly: str) -> list[dict]:
     hub_txt = hub_response.text
     hub_json, tracks = parse_hub_from_file(hub_txt)
 
+    if hub_json.get("useOneFile", "") == "on":
+        return tracks
+
     # Traditional mode: parse genomes.txt and trackDb.txt
-    if not hub_json.get("useOneFile", "") == "on":
-        base_url = hub_url.rsplit("/", 1)[0]
+    base_url = hub_url.rsplit("/", 1)[0]
 
-        genomes_file_name = hub_json.get("genomesFile", "genomes.txt")
-        genomes_url = f"{base_url}/{genomes_file_name}"
+    genomes_file_name = hub_json.get("genomesFile", "genomes.txt")
+    genomes_url = f"{base_url}/{genomes_file_name}"
 
-        try:
-            genomes_response = requests.get(genomes_url)
-            genomes_response.raise_for_status()
-        except requests.RequestException as e:
-            raise ValueError(
-                f"Failed to retrieve genomes.txt from {genomes_url}: {str(e)}"
-            ) from e
+    try:
+        genomes_response = requests.get(genomes_url)
+        genomes_response.raise_for_status()
+    except requests.RequestException as e:
+        raise ValueError(
+            f"Failed to retrieve genomes.txt from {genomes_url}: {str(e)}"
+        ) from e
 
-        trackdb_path = fetch_trackdb_path(genomes_response.text, assembly)
-        trackdb_url = f"{base_url}/{trackdb_path}"
+    trackdb_path = fetch_trackdb_path(genomes_response.text, assembly)
+    trackdb_url = f"{base_url}/{trackdb_path}"
 
-        try:
-            trackdb_response = requests.get(trackdb_url)
-            trackdb_response.raise_for_status()
-        except requests.RequestException as e:
-            raise ValueError(
-                f"Failed to retrieve trackDb from {trackdb_url}: {str(e)}"
-            ) from e
+    try:
+        trackdb_response = requests.get(trackdb_url)
+        trackdb_response.raise_for_status()
+    except requests.RequestException as e:
+        raise ValueError(
+            f"Failed to retrieve trackDb from {trackdb_url}: {str(e)}"
+        ) from e
 
-        try:
-            return parse_tracks_from_trackdb(trackdb_response.text, trackdb_url)
-        except ValueError as e:
-            raise ValueError(f"Failed to parse trackDb from {trackdb_url}: {str(e)}") from e
+    try:
+        return parse_tracks_from_trackdb(trackdb_response.text, trackdb_url)
+    except ValueError as e:
+        raise ValueError(f"Failed to parse trackDb from {trackdb_url}: {str(e)}") from e
 
 def build_assembly_array(assembly) -> list:
     """
