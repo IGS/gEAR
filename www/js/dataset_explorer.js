@@ -1915,7 +1915,7 @@ const createRenameCollectionPermalinkPopover = () => {
                         </a>
                     </div>
                     <div class='control'>
-                        <input id='collection-link-name' class='input' type='text' placeholder='permalink' value=${datasetCollectionState.selectedShareId}>
+                        <input id='collection-link-name' class='input' type='text' placeholder='permalink'>
                     </div>
                 </div>
                 <div class='field is-grouped' style='width:250px'>
@@ -1932,6 +1932,11 @@ const createRenameCollectionPermalinkPopover = () => {
 
         // append element to DOM to get its dimensions
         document.body.appendChild(popoverContent);
+
+        const collectionLinkNameInput = document.getElementById('collection-link-name');
+        if (collectionLinkNameInput) {
+            collectionLinkNameInput.value = datasetCollectionState.selectedShareId || "";
+        }
 
         const arrowElement = document.getElementById('arrow');
 
