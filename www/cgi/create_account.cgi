@@ -14,8 +14,8 @@ The returned session ID has some informational content:
 """
 
 import cgi
-import json
 import hashlib
+import json
 import os
 import sys
 import uuid
@@ -30,16 +30,21 @@ def main():
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    user_name = form.getvalue('first-last')
-    institution = form.getvalue('institution')
-    user_email = form.getvalue('email')
-    user_pass = form.getvalue('password')
-    colorblind_mode = form.getvalue('colorblind_mode')  # checkbox
-    get_updates = form.getvalue('email_updates')
+    user_name = form.getfirst('first-last')
+    institution = form.getfirst('institution')
+    user_email = form.getfirst('email')
+    user_pass = form.getfirst('password')
+    colorblind_mode = form.getfirst('colorblind_mode')  # checkbox
+    get_updates = form.getfirst('email_updates')
     remember_me = 'yes'  # Leaving here in case we want to add it back to the form
-    verification_code_long = form.getvalue('verification_code_long')
-    verification_code_short = form.getvalue('verification_code_short')
+    verification_code_long = form.getfirst('verification_code_long')
+    verification_code_short = form.getfirst('verification_code_short')
     result = {'success': 0, 'session_id': 0, 'long_session': 0, 'error': ""}
+
+    if user_pass is None:
+        result['error'] = "Password is required."
+        print(json.dumps(result))
+        return
 
     if geardb.get_verification_code_short_form(verification_code_long) != verification_code_short:
         result['error'] = "Verification code mismatch. Please refresh and try again."
@@ -74,7 +79,7 @@ def main():
     else:
         print("DEBUG: adding user to database", file=sys.stderr)
         try:
-            encoded_pass = hashlib.md5(user_pass.encode('utf-8')).hexdigest()
+            encoded_pass = hashlib.sha256(user_pass.encode('utf-8')).hexdigest()
             help_id = str(uuid.uuid4())
             cursor.execute(add_user_sql, (user_name, user_email, institution, encoded_pass, colorblind_mode, get_updates, help_id))
             user_id = cursor.lastrowid
