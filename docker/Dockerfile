@@ -45,6 +45,9 @@ RUN apt -qq update \
   libpcre2-dev \
   fonts-roboto \
   fontconfig \
+  libgfortran5 \
+  libuv1 \
+  libhdf5-dev \
   && apt -qq clean autoclean \
   && apt -qq autoremove -y \
   && rm -rf /var/lib/apt/lists/*
