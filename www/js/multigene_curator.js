@@ -883,7 +883,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
             const data = await fetchMgTsneImage(datasetId, analysisObj, this.apiPlotType, this.plotConfig);
             ({ image, image_format } = data);
         } catch (error) {
-            onsole.error("Error fetching multigene TSNE image:", error);
+            console.error("Error fetching multigene TSNE image:", error);
             return;
         }
 

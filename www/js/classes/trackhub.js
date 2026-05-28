@@ -382,34 +382,46 @@ export class HubContainer {
         const errors = [];
         let hasLocalFileReferences = false;
 
+        const markFieldAndLabelDanger = (fieldId) => {
+            const field = document.getElementById(fieldId);
+            if (!field) return;
+            field.classList.add("is-danger");
+
+            // Label explicitly bound to this input/select
+            const label = document.querySelector(`label[for="${fieldId}"]`);
+            if (label) {
+                label.classList.add("has-text-danger-dark"); // or "has-text-danger" if preferred in Bulma
+            }
+        };
+
         if (this.hub.identifier) {
             // Hub identifier must be a single word with no spaces
             if (/\s/.test(this.hub.identifier)) {
-                document.getElementById("hub-identifier").classList.add("is-danger");
+                markFieldAndLabelDanger("hub-identifier");
                 errors.push("Hub identifier must be a single word with no spaces.");
             }
         } else {
-            document.getElementById("hub-identifier").classList.add("is-danger");
+            markFieldAndLabelDanger("hub-identifier");
             errors.push("Hub identifier is required.");
         }
 
         if (!this.hub.shortLabel) {
-            document.getElementById("hub-short-label").classList.add("is-danger");
+            markFieldAndLabelDanger("hub-short-label");
             errors.push("Hub short label is required.");
         }
 
         if (!this.hub.longLabel) {
-            document.getElementById("hub-long-label").classList.add("is-danger");
+            markFieldAndLabelDanger("hub-long-label");
             errors.push("Hub long label is required.");
         }
 
         if (!this.hub.email) {
-            document.getElementById("hub-email").classList.add("is-danger");
+            markFieldAndLabelDanger("hub-email");
             errors.push("Hub email is required.");
         }
 
         if (!this.hub.genome) {
-            document.getElementById("hub-genome-select").classList.add("is-danger");
+            markFieldAndLabelDanger("hub-genome-select");
             errors.push("Hub genome assembly is required.");
         }
 
@@ -508,17 +520,19 @@ export class Track {
      * @param {string} shortLabel - Short label for the track.
      * @param {string} longLabel - Optional. Long label for the track.
      * @param {string} tracktype - Type of the track (e.g., bigWig, bigBed).
+     * @param {boolean} multiwig - Whether the track is a multiWig container (applicable for bigWig tracks).
      * @param {string} url - URL to the track data file.
      * @param {string} visibility - Optional. Visibility setting for the track (e.g., "dense", "full").
      * @param {string} color - Optional. RGB color for the track (e.g., "255,0,0").
      * @param {string|null} parent - Identifier of the parent track (if applicable).
      */
-    constructor(identifier, shortLabel, longLabel, tracktype, url, visibility, color, parent = null) {
+    constructor(identifier, shortLabel, longLabel, tracktype, multiwig, url, visibility, color, parent = null) {
         this.id = Track.trackCount++; // Assign a unique ID to each track instance based on the global track count
         this.identifier = identifier;
         this.shortLabel = shortLabel;
         this.longLabel = longLabel || "";
         this.tracktype = tracktype;
+        this.multiwig = multiwig;
         this.url = url;
         this.visibility = visibility || "dense";
         this.color = color || "0,0,0";
@@ -537,6 +551,7 @@ export class Track {
             shortLabel: this.shortLabel,
             longLabel: this.longLabel,
             type: this.tracktype,
+            container: this.multiwig ? "multiWig" : null,   //! Case-sensitive
             bigDataUrl: this.url,
             visibility: this.visibility,
             color: this.color,
@@ -570,6 +585,10 @@ export class TrackContainer {
 
         this.trackDbUrl = null;
         this.tracks = {}; // Store track data with track ID as key
+
+        this.multiwigIdentifiers = new Set(); // To keep track of identifiers of multiWig tracks for validation when creating new tracks
+
+        // Map to store track ID to uploaded file mapping. This is needed to update the track URL after file upload.
         this.trackFilesMap = new Map()
 
         this.hubContainerObj;
@@ -612,13 +631,58 @@ export class TrackContainer {
         return draggableElements.reduce((closest, child) => {
             const box = child.getBoundingClientRect();
             const offset = y - box.top - box.height / 2;
+            let retval = closest;
             if (offset < 0 && offset > closest.offset) {
-                return { offset, element: child };
-            } else {
-                return closest;
+                retval = { offset, element: child };
             }
+            return val
         }, { offset: Number.NEGATIVE_INFINITY }).element;
     };
+
+
+    /**
+     * Adds a new multiWig option to the parent select dropdowns in the track forms.
+     * Called when a track is checked as multiWig.
+     * @param {string} identifier - The identifier of the multiWig track to add as an option.
+     * @returns {void}
+     */
+    addMultiwigSelectOption(identifier) {
+        const parentSelects = document.querySelectorAll(".js-track-parent select");
+        for (const parentSelect of parentSelects) {
+            const option = document.createElement('option');
+            option.value = identifier;
+            option.textContent = identifier;
+            parentSelect.appendChild(option);
+        }
+    }
+
+    /**
+     * Deletes a multiWig option from the parent select dropdowns
+     * and clears any parent values from tracks that had this as their parent.
+     * Called when a track is unchecked as multiWig or deleted.
+     * @param {string} identifier - The identifier of the multiWig track to delete as an option.
+     * @returns {void}
+     */
+    deleteMultiwigOption(identifier) {
+        this.multiwigIdentifiers.delete(identifier);
+        const parentSelects = document.querySelectorAll(".js-track-parent select");
+        for (const parentSelect of parentSelects) {
+            const option = parentSelect.querySelector(`option[value="${identifier}"]`);
+            if (option) {
+                option.remove();
+            }
+        }
+
+        // if any track had this as their parent value, clear it
+        for (const trackId in this.tracks) {
+            const currTrack = this.tracks[trackId];
+            if (currTrack.parent === identifier) {
+                currTrack.parent = null;
+                // Enable visibility field if they were disabled due to being a child of a multiwig
+                document.getElementById(`track-visibility-${trackId}`).disabled = false;
+            }
+        }
+    }
 
     // Function to create a new track item with event listeners
     createTrackItem() {
@@ -690,29 +754,66 @@ export class TrackContainer {
             const labelElt = collapsibleHeader.querySelector('.track-title');
             labelElt.textContent = value || labelElt.dataset.origName;
 
-            document.querySelector(`#track-${trackId} .js-track-identifier`).classList.remove("is-danger");
+            collapsibleContent.querySelector('.js-track-identifier').classList.remove("is-danger");
             // update the track object
             this.tracks[trackId].identifier = value;
         });
 
         collapsibleContent.querySelector('.js-track-short-label').addEventListener('input', (e) => {
-            document.querySelector(`#track-${trackId} .js-track-short-label`).classList.remove("is-danger");
+            collapsibleContent.querySelector('.js-track-short-label').classList.remove("is-danger");
 
             this.tracks[trackId].shortLabel = e.target.value.trim();
         });
 
         collapsibleContent.querySelector('.js-track-long-label').addEventListener('input', (e) => {
-            document.querySelector(`#track-${trackId} .js-track-long-label`).classList.remove("is-danger");
+            collapsibleContent.querySelector('.js-track-long-label').classList.remove("is-danger");
             this.tracks[trackId].longLabel = e.target.value.trim();
         });
 
         collapsibleContent.querySelector('.js-track-type select').addEventListener('change', (e) => {
-            document.querySelector(`#track-${trackId} .js-track-type`).classList.remove("is-danger");
+            collapsibleContent.querySelector('.js-track-type select').classList.remove("is-danger");
             this.tracks[trackId].tracktype = e.target.value.trim();
+            // If this is bigWig, enable "track-parent-{trackId}" else disable and clear
+                if (e.target.value.trim() === "bigWig") {
+                    collapsibleContent.querySelector('.js-track-multiwig').disabled = false;
+                    collapsibleContent.querySelector('.js-track-parent select').disabled = false;
+                return;
+                }
+            collapsibleContent.querySelector('.js-track-multiwig').disabled = true;
+            collapsibleContent.querySelector('.js-track-multiwig').checked = false;
+            collapsibleContent.querySelector('.js-track-parent select').disabled = true;
+            collapsibleContent.querySelector('.js-track-parent select').value = "";
+            this.tracks[trackId].multiwig = false;
+            this.tracks[trackId].parent = null;
         });
 
+        collapsibleContent.querySelector('.js-track-multiwig').addEventListener('change', (e) => {
+            this.tracks[trackId].multiwig = e.target.checked;
+            // If multiwig is checked, enable parent track group selection and disable a few other fields.
+            if (e.target.checked) {
+                this.disableAndClearMultiwigDependentFields(collapsibleContent, trackId);
+                return;
+            }
+            collapsibleContent.querySelector('.js-track-parent select').disabled = false;
+            collapsibleContent.querySelector('.js-track-url').disabled = false;
+            collapsibleContent.querySelector('.js-track-file').disabled = false;
+            collapsibleContent.querySelector('.js-track-color').disabled = false;
+            this.deleteMultiwigOption(this.tracks[trackId].identifier);
+
+        });
+
+        collapsibleContent.querySelector('.js-track-parent select').addEventListener('change', (e) => {
+            this.tracks[trackId].parent = e.target.value.trim() || null;
+            collapsibleContent.querySelector('.js-track-visibility select').disabled = false;
+            if (e.target.value) {
+                collapsibleContent.querySelector('.js-track-visibility select').disabled = true;
+                this.tracks[trackId].visibility = "dense";  // default
+            }
+        });
+
+
         collapsibleContent.querySelector('.js-track-url').addEventListener('input', (e) => {
-            document.querySelector(`#track-${trackId} .js-track-url`).classList.remove("is-danger");
+            collapsibleContent.querySelector(`.js-track-url`).classList.remove("is-danger");
             this.tracks[trackId].url = e.target.value.trim();
             if (this.tracks[trackId].url) {
                 // If there is a URL, remove any file that was selected for this track
@@ -720,7 +821,7 @@ export class TrackContainer {
                 collapsibleContent.querySelector('.js-track-file').value = ""; // Clear the file input
 
                 // remove warning from header
-                const dangerElt = document.querySelector(`#track-${trackId} .track-status-danger`);
+                const dangerElt = collapsibleHeader.querySelector('.track-status-danger');
                 dangerElt.classList.add("is-hidden");
             }
 
@@ -733,14 +834,14 @@ export class TrackContainer {
         collapsibleContent.querySelector('.js-track-file').addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
                 this.trackFilesMap.set(trackId, e.target.files[0]);
-                document.querySelector(`#track-${trackId} .file-name`).textContent = e.target.files[0].name;
+                collapsibleContent.querySelector('.js-track-file').nextElementSibling.textContent = e.target.files[0].name;
 
                 // If a file is selected, clear the URL field for this track
                 this.tracks[trackId].url = "";
                 collapsibleContent.querySelector('.js-track-url').value = ""; // Clear the URL input
 
                 // remove warning from header
-                const dangerElt = document.querySelector(`#track-${trackId} .track-status-danger`);
+                const dangerElt = collapsibleHeader.querySelector('.track-status-danger');
                 dangerElt.classList.add("is-hidden");
 
             } else {
@@ -753,7 +854,7 @@ export class TrackContainer {
 
         });
 
-        collapsibleContent.querySelector('.js-track-visibility').addEventListener('input', (e) => {
+        collapsibleContent.querySelector('.js-track-visibility select').addEventListener('change', (e) => {
             this.tracks[trackId].visibility = e.target.value.trim();
         });
 
@@ -788,6 +889,8 @@ export class TrackContainer {
     createNewTracksFromData(trackData) {
         // Create new track objects and form fields based on parsed trackDb.txt data
         const trackEntries = trackData.split('track ')
+        const id2multiwig = {};
+
         for (const trackEntry of trackEntries) {
             // skip empty entries
             if (!trackEntry.trim()) {
@@ -806,8 +909,78 @@ export class TrackContainer {
             // add "track " back into the stanza since we split it out (it's a field name)
             const stanza = `track ${trackEntry}`;
             const trackId = this.createTrackItem(); // This will create a new track item and increment the track count
-            this.populateTrackData(trackId, stanza); // Populate the new track item with data
+            id2multiwig[trackId] = null;
+            this.populateTrackData(trackId, stanza, id2multiwig); // Populate the new track item with data
         };
+
+        // Pass through again now that all tracks have been created to set parent-child relationships for multiWig tracks
+        for (const ident of this.multiwigIdentifiers) {
+            this.addMultiwigSelectOption(ident);
+        }
+
+        for (const trackId in id2multiwig) {
+            if (id2multiwig[trackId]) {
+                const value = id2multiwig[trackId];
+                if (this.multiwigIdentifiers.has(value)) {
+                    this.tracks[trackId].parent = value;
+                    document.getElementById(`track-parent-${trackId}`).value = value;
+                    document.getElementById(`track-visibility-${trackId}`).disabled = true;
+                } else {
+                    console.warn(`Parent track "${value}" not found for track "${this.tracks[trackId].identifier}". Parent track must be defined as a multiWig container track.`);
+                }
+            }
+        }
+
+    }
+
+    /**
+     * Disables and clears fields that are not applicable when a track is marked as a
+     * `multiWig` container.
+     *
+     * Side effects:
+     * - Disables and clears `parent`, `bigDataUrl` (URL), file input, and color controls
+     *   for the target track form.
+     * - Clears corresponding model values in `this.tracks` and removes any staged file
+     *   from `this.trackFilesMap`.
+     * - Ensures multiWig container identifiers remain unique by checking
+     *   `this.multiwigIdentifiers`.
+     * - If identifier is duplicate, reverts multiWig-related UI/model state and shows
+     *   a warning toast.
+     * - If identifier is unique, registers it in `this.multiwigIdentifiers` and adds it
+     *   to parent-track dropdown options.
+     *
+     * @param {HTMLElement} collapsibleContent - The track panel root element for the
+     * current track item.
+     * @returns {void}
+     */
+    disableAndClearMultiwigDependentFields(collapsibleContent, trackId) {
+        collapsibleContent.querySelector('.js-track-parent select').disabled = true;
+        collapsibleContent.querySelector('.js-track-parent select').value = "";
+        this.tracks[trackId].parent = null;
+        collapsibleContent.querySelector('.js-track-url').disabled = true;
+        collapsibleContent.querySelector('.js-track-url').value = "";
+        collapsibleContent.querySelector('.js-track-file').disabled = true;
+        collapsibleContent.querySelector('.js-track-file').value = "";
+        this.tracks[trackId].url = "";
+        this.trackFilesMap.delete(trackId);
+        collapsibleContent.querySelector('.js-track-color').disabled = true;
+        collapsibleContent.querySelector('.js-track-color').value = "#000000";
+        this.tracks[trackId].url = "";
+
+        // Add the identifier for this track as a "parent" select option if it isn't a duplicate.
+        if (this.multiwigIdentifiers.has(this.tracks[trackId].identifier)) {
+            createToast(`Another track with identifier "${this.tracks[trackId].identifier}" is already set as multiWig. Please choose a unique identifier for this track.`, 'is-warning');
+            e.target.checked = false;
+            this.tracks[trackId].multiwig = false;
+            collapsibleContent.querySelector('.js-track-parent select').disabled = false;
+            collapsibleContent.querySelector('.js-track-url').disabled = false;
+            collapsibleContent.querySelector('.js-track-file').disabled = false;
+            collapsibleContent.querySelector('.js-track-color').disabled = false;
+            return;
+        }
+        this.multiwigIdentifiers.add(this.tracks[trackId].identifier);
+        this.addMultiwigSelectOption(this.tracks[trackId].identifier);
+
     }
 
     parseHubTracksFromContent(hubContent) {
@@ -863,7 +1036,7 @@ export class TrackContainer {
         this.createNewTracksFromData(trackDbContent);
     }
 
-    populateTrackData(trackId, stanza) {
+    populateTrackData(trackId, stanza, id2multiwig) {
         // Parse trackDb.txt entry text data and populate the track object and form fields
         const lines = stanza.split('\n');
         const track = this.tracks[trackId];
@@ -875,7 +1048,7 @@ export class TrackContainer {
             }
 
             // Split to "key value"
-            const [key, ...rest] = line.split(' ');
+            const [key, ...rest] = line.trim().split(' ');
             const value = rest.join(" ").trim();
             switch (key) {
                 case 'track':
@@ -895,6 +1068,23 @@ export class TrackContainer {
                 case 'type':
                     track.tracktype = value;
                     document.querySelector(`#track-${trackId} .js-track-type select`).value = value;
+                    document.querySelector(`#track-${trackId} .js-track-parent select`).disabled = value.trim() === "bigWig" ? false : true;
+                    break;
+                case 'container':
+                    if (value === "multiWig") {
+                        if (this.multiwigIdentifiers.has(track.identifier)) {
+                            console.warn(`Duplicate multiWig container identifier "${track.identifier}" found. Skipping multiWig container assignment.`);
+                            break;
+                        }
+
+                        track.multiwig = true;
+                        this.multiwigIdentifiers.add(track.identifier);
+                        document.querySelector(`#track-${trackId} .js-track-parent select`).disabled = true;
+                        document.querySelector(`#track-${trackId} .js-track-multiwig`).checked = true;
+                        document.querySelector(`#track-${trackId} .js-track-url`).disabled = true;
+                        document.querySelector(`#track-${trackId} .js-track-file`).disabled = true;
+                        document.querySelector(`#track-${trackId} .js-track-color`).disabled = true;
+                    }
                     break;
                 case 'bigDataUrl':
                     if (value.startsWith('http://') || value.startsWith('https://')) {
@@ -917,7 +1107,7 @@ export class TrackContainer {
                     break;
                 case 'visibility':
                     track.visibility = value;
-                    document.querySelector(`#track-${trackId} .js-track-visibility`).value = value;
+                    document.querySelector(`#track-${trackId} .js-track-visibility select`).value = value;
                     break;
                 case 'color':
                     track.color = value;
@@ -926,9 +1116,10 @@ export class TrackContainer {
                     const hexColor = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
                     document.querySelector(`#track-${trackId} .js-track-color`).value = hexColor;
                     break;
-                //case 'parent':
-                //    track.parent = value
-                //    break;
+                case 'parent':
+                    // The element will be set after all tracks elements have been created.
+                    id2multiwig[trackId] = value;
+                    break;
                 default:
                     // populate extra keys
                     if (key) {
@@ -950,31 +1141,50 @@ export class TrackContainer {
         const errors = [];
         const missingFileOrUrl = {}; // Map trackId → true if both URL and file are missing
 
+        const markFieldAndLabelDanger = (fieldId) => {
+            const field = document.getElementById(fieldId);
+            if (!field) return;
+            field.classList.add("is-danger");
+
+            // Label explicitly bound to this input/select
+            const label = document.querySelector(`label[for="${fieldId}"]`);
+            if (label) {
+                label.classList.add("has-text-danger-dark"); // or "has-text-danger" if preferred in Bulma
+            }
+            // Add asterisk to label to indicate required field
+            if (label && !label.textContent.includes("*")) {
+                label.textContent += " *";
+            }
+        };
+
         for (const trackId in this.tracks) {
+
             const track = this.tracks[trackId];
+            const errorMsgStart = `Track ${track.identifier || trackId}: `;
             if (!track.identifier) {
-                document.querySelector(`#track-${trackId} .js-track-identifier`).classList.add("is-danger");
-                errors.push(`Track ${trackId}: Identifier is required.`);
+                markFieldAndLabelDanger(`track-identifier-${trackId}`);
+                errors.push(`${errorMsgStart} Identifier is required.`);
             }
             if (!track.shortLabel) {
-                document.querySelector(`#track-${trackId} .js-track-short-label`).classList.add("is-danger");
-                errors.push(`Track ${trackId}: Short label is required.`);
+                markFieldAndLabelDanger(`track-short-label-${trackId}`);
+                errors.push(`${errorMsgStart} Short label is required.`);
             }
             if (!track.longLabel) {
-                document.querySelector(`#track-${trackId} .js-track-long-label`).classList.add("is-danger");
-                errors.push(`Track ${trackId}: Long label is required.`);
+                markFieldAndLabelDanger(`track-long-label-${trackId}`);
+                errors.push(`${errorMsgStart} Long label is required.`);
             }
             if (!track.tracktype) {
-                document.querySelector(`#track-${trackId} .js-track-type`).classList.add("is-danger");
-                errors.push(`Track ${trackId}: Track type is required.`);
+                markFieldAndLabelDanger(`track-type-${trackId}`);
+                errors.push(`${errorMsgStart} Track type is required.`);
             }
             // Check for either URL or uploaded file
             const hasUrl = track.url?.trim();
             const hasFile = this.trackFilesMap.has(String(trackId));
+            const isMultiwig = track.multiwig;
 
-            if (!hasUrl && !hasFile) {
-                document.querySelector(`#track-${trackId} .js-track-url`).classList.add("is-danger");
-                errors.push(`Track ${trackId}: Must provide either a URL or upload a file.`);
+            if (!hasUrl && !hasFile && !isMultiwig) {
+                markFieldAndLabelDanger(`track-url-${trackId}`);
+                errors.push(`${errorMsgStart} Must provide either a URL, upload a file, or specify as a multiWig container.`);
                 missingFileOrUrl[trackId] = true;
             }
         }
