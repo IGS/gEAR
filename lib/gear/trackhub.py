@@ -537,20 +537,29 @@ def validate_hub_contents(hub_json: dict, track_stanzas: list) -> bool:
             return False
 
         # Currently we only support container type "multiwig", which is for grouping bigWig tracks.
-        if "container" in track and track["container"] not in VALID_CONTAINER_TYPES:
-            print(f"Invalid container type '{track['container']}' in track '{track['track']}'.", file=sys.stderr)
-            return False
+        if "container" in track:
+            # Remove container if it's null to avoid confusion
+            if track["container"] is None:
+                track.pop("container")
+            else:
+                if track["container"] not in VALID_CONTAINER_TYPES:
+                    print(f"Invalid container type '{track['container']}' in track '{track['track']}'.", file=sys.stderr)
+                    return False
 
         # If "parent" is in track, ensure the referenced parent track exists and is a container
         if "parent" in track:
             parent_name = track["parent"]
-            parent_track = next((t for t in track_stanzas if t.get("track") == parent_name), None)
-            if not parent_track:
-                print(f"Track '{track['track']}' references non-existent parent '{parent_name}'.", file=sys.stderr)
-                return False
-            if "container" not in parent_track or parent_track["container"] not in VALID_CONTAINER_TYPES:
-                print(f"Track '{track['track']}' references parent '{parent_name}' which is not a valid container.", file=sys.stderr)
-                return False
+            # If parent is null or empty, treat it as no parent
+            if parent_name is None:
+                track.pop("parent")
+            else:
+                parent_track = next((t for t in track_stanzas if t.get("track") == parent_name), None)
+                if not parent_track:
+                    print(f"Track '{track['track']}' references non-existent parent '{parent_name}'.", file=sys.stderr)
+                    return False
+                if "container" not in parent_track or parent_track["container"] not in VALID_CONTAINER_TYPES:
+                    print(f"Track '{track['track']}' references parent '{parent_name}' which is not a valid container.", file=sys.stderr)
+                    return False
 
         # if human assembly, disallow VCF and HIC types for privacy reasons
         if hub_json.get("genome", "").lower() in ["hg19", "hg38"] and track["type"] in ["vcfTabix", "hic"]:

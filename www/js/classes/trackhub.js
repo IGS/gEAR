@@ -551,7 +551,7 @@ export class Track {
             shortLabel: this.shortLabel,
             longLabel: this.longLabel,
             type: this.tracktype,
-            container: this.multiwig ? "multiwig" : null,
+            container: this.multiwig ? "multiWig" : null,   //! Case-sensitive
             bigDataUrl: this.url,
             visibility: this.visibility,
             color: this.color,
