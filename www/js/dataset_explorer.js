@@ -1,8 +1,7 @@
 "use strict";
 
-import { apiCallsMixin, closeModal, copyToClipboard, createToast, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
+import { apiCallsMixin, closeModal, copyToClipboard, createToast, escapeHtml, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
 import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, setActiveDCCategory, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js";
-
 
 /* Imported variables
 let datasetCollectionState.data; // from dataset-collection-selector
@@ -891,7 +890,7 @@ class ResultItem {
                             </a>
                         </div>
                         <div class='control'>
-                            <input id='dataset-link-name' class='input' type='text' placeholder='permalink' value=${this.shareId}>
+                            <input id='dataset-link-name' class='input' type='text' placeholder='permalink' value=${escapeHtml(this.shareId)}>
                         </div>
                     </div>
                     <div class='field is-grouped' style='width:250px'>

@@ -1,6 +1,6 @@
 "use strict";
 
-import { apiCallsMixin, convertToFormData, copyToClipboard, createToast, getCurrentUser, getRootUrl, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
+import { apiCallsMixin, convertToFormData, copyToClipboard, createToast, escapeHtml, getCurrentUser, getRootUrl, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
 import { GeneCart } from "./classes/genecart.v2.js";
 
 let firstSearch = true;
@@ -227,7 +227,7 @@ class ResultItem {
         const ldescText = parentElt.querySelector(".js-display-ldesc-text");
         const span = document.createElement("span");
         span.innerHTML = this.longDesc || "No description entered";
-        ldescText.replaceChildren(span);		
+        ldescText.replaceChildren(span);
     }
 
     addListItemEventListeners(parentElt) {
@@ -734,7 +734,7 @@ class ResultItem {
                             </a>
                         </div>
                         <div class='control'>
-                            <input id='gc-link-name' class='input' type='text' placeholder='permalink' value=${this.shareId}>
+                            <input id='gc-link-name' class='input' type='text' placeholder='permalink' value=${escapeHtml(this.shareId)}>
                         </div>
                     </div>
                     <div class='field is-grouped' style='width:250px'>
