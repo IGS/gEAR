@@ -502,8 +502,8 @@ class ResultItem {
                 e.currentTarget.classList.add("is-loading");
                 try {
                     // download the h5ad
-                    const datasetId = this.datasetId;
-                    const url = `./cgi/download_source_file.cgi?type=h5ad&share_id=${this.shareId}`;
+                    const safeShareId = encodeURIComponent(String(this.shareId || ""));
+	                const url = `./cgi/download_source_file.cgi?type=h5ad&share_id=${safeShareId}`;
                     const a = document.createElement('a');
                     a.href = url;
                     a.click();
