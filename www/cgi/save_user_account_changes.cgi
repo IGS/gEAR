@@ -65,7 +65,7 @@ def main():
             exit()
 
         # Generate encoded password
-        encoded_pass = hashlib.sha256(new_password.encode('utf-8')).hexdigest()
+        encoded_pass = hashlib.sha3_256(new_password.encode('utf-8')).hexdigest()
 
         # Save new password
         save_new_password(cursor, help_id, encoded_pass)
@@ -109,7 +109,7 @@ def main():
         if new_password:
             mid_query_settings.append(" pass = %s")
             # Generate encoded password
-            encoded_pass = hashlib.sha256(new_password.encode('utf-8')).hexdigest()
+            encoded_pass = hashlib.sha3_256(new_password.encode('utf-8')).hexdigest()
 
             field_values.append(encoded_pass)
 

@@ -37,7 +37,7 @@ def main():
         user_pass = ""
 
     encoded_pass = hashlib.md5(user_pass.encode('utf-8')).hexdigest()
-    encoded_256_pass = hashlib.sha256(user_pass.encode('utf-8')).hexdigest()
+    encoded_256_pass = hashlib.sha3_256(user_pass.encode('utf-8')).hexdigest()
 
     result = {}
     result["session_id"] = 0
@@ -65,7 +65,7 @@ def main():
             is_admin = row[3]
             break
 
-        # Many older accounts may still be using the md5 encoding, so check that as well if the sha256 doesn't match
+        # Many older accounts may still be using the md5 encoding, so check that as well if the sha3_256 doesn't match
         if not password_correct:
             if row[2] == encoded_pass:
                 password_correct = True

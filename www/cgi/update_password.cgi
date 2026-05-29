@@ -40,7 +40,7 @@ def main():
         print(json.dumps(result))
         return
 
-    encoded_pass = hashlib.sha256(password.encode('utf-8')).hexdigest()
+    encoded_pass = hashlib.sha3_256(password.encode('utf-8')).hexdigest()
 
     qry = "UPDATE guser SET pass = %s WHERE help_id = %s"
     cursor.execute(qry, (encoded_pass, help_id))

@@ -79,7 +79,7 @@ def main():
     else:
         print("DEBUG: adding user to database", file=sys.stderr)
         try:
-            encoded_pass = hashlib.sha256(user_pass.encode('utf-8')).hexdigest()
+            encoded_pass = hashlib.sha3_256(user_pass.encode('utf-8')).hexdigest()
             help_id = str(uuid.uuid4())
             cursor.execute(add_user_sql, (user_name, user_email, institution, encoded_pass, colorblind_mode, get_updates, help_id))
             user_id = cursor.lastrowid

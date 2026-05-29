@@ -32,7 +32,7 @@ CREATE TABLE guser (
        user_name      VARCHAR(255),
        email          VARCHAR(255),
        institution    VARCHAR(255),
-       pass           VARCHAR(50),
+       pass           VARCHAR(64), -- hashlib sha3_256 hexdigest is 64 characters
        colorblind_mode TINYINT(1) DEFAULT 0,
        updates_wanted TINYINT(1),
        is_admin       TINYINT(1) DEFAULT 0,
