@@ -121,7 +121,8 @@ async function sendVerificationEmail(verification_uuid) {
 
 async function validateEmail() {
     const email = document.getElementById('email').value;
-    const email_regex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+    // see https://github.com/IGS/gEAR/security/code-scanning/201
+    const email_regex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
     if (email_regex.test(email) ) {
         document.getElementById('email').classList.remove('is-danger');
         document.getElementById('email-error-message').classList.add('is-hidden');
