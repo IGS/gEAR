@@ -11,7 +11,15 @@ RUN apt-get update && \
         libhdf5-dev \
         libcurl4-openssl-dev \
         libssl-dev \
-        libxml2-dev && \
+        libxml2-dev \
+        libcairo2-dev \
+        libpng-dev \
+        libjpeg-dev \
+        libtiff-dev \
+        libfreetype6-dev \
+        libfontconfig1-dev \
+        libharfbuzz-dev \
+        libfribidi-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
