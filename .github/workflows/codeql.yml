@@ -76,9 +76,9 @@ jobs:
     - name: Install "rename" utility
       run: sudo apt install rename
 
-    #- name: Rename all CGI files to have Python extension
-    #  shell: bash
-    #  run: rename 's/\.cgi/\.py/' www/cgi/*.cgi
+    - name: Rename all CGI files to have Python extension
+      shell: bash
+      run: rename 's/\.cgi/\.py/' www/cgi/*.cgi
 
     # Add any setup steps before running the `github/codeql-action/init` action.
     # This includes steps like installing compilers or runtimes (`actions/setup-node`
@@ -103,5 +103,6 @@ jobs:
       uses: github/codeql-action/analyze@v4
       with:
         category: "/language:${{matrix.language}}"
-      env:
-        LGTM_INDEX_FILETYPES: ".cgi:python"
+      #TODO: Figure this part out (https://github.com/github/codeql/blob/467231e46940d3b9d3536c05509ce536e9bf9718/javascript/extractor/src/com/semmle/js/extractor/AutoBuild.java#L96-L98)
+      #env:
+      #  LGTM_INDEX_FILETYPES: ".cgi:python"
