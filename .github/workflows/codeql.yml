@@ -104,4 +104,4 @@ jobs:
       with:
         category: "/language:${{matrix.language}}"
       env:
-        LGTM_INDEX_FILETYPES=".cgi:python"
+        LGTM_INDEX_FILETYPES: ".cgi:python"
