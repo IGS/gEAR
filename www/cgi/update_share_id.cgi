@@ -3,9 +3,11 @@
 # This script is used to update the share id (permalink)
 # of either a layout, genecart, or dataset.
 
-import cgi, json
+import cgi
+import json
 import os
 import sys
+
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
@@ -21,17 +23,28 @@ def main():
     cnx = geardb.Connection()
     print('Content-Type: application/json\n\n')
 
-    cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    share_id = form.getvalue('share_id')
-    new_share_id = form.getvalue('new_share_id')
-    scope = form.getvalue('scope') # 'dataset', 'layout', 'genecart'
+    session_id = form.getfirst('session_id')
+    share_id = form.getfirst('share_id')
+    new_share_id = form.getfirst('new_share_id')
+    scope = form.getfirst('scope') # 'dataset', 'layout', 'genecart'
     result = { 'error':"", 'success': 0 }
 
     user = geardb.get_user_from_session_id(session_id)
     if user is None:
         error = "Invalid session_id. User not found"
+        result['error'] = error
+        print(json.dumps(result))
+        return
+
+    if share_id is None:
+        error = "Invalid share_id."
+        result['error'] = error
+        print(json.dumps(result))
+        return
+
+    if new_share_id is None:
+        error = "Invalid new_share_id."
         result['error'] = error
         print(json.dumps(result))
         return
@@ -49,6 +62,12 @@ def main():
             return
 
         dataset = geardb.get_dataset_by_id(dataset_id)
+
+        if dataset is None:
+            error = "Dataset not found."
+            result['error'] = error
+            print(json.dumps(result))
+            return
 
         # Verify this user owns the dataset
         if dataset.owner_id != user.id:
@@ -125,7 +144,7 @@ def main():
             os.chdir(str(CARTS_BASE_DIR))
 
             for filename in os.listdir("."):
-                if not share_id in filename:
+                if share_id not in filename:
                     continue
                 if filename.endswith(".h5ad") or filename.endswith(".tab"):
                     # Replace old_id with new_id in the filename
@@ -155,12 +174,12 @@ def main():
         os.chdir(str(BY_GENECART_DIR))
         for root, dirs, files in os.walk("."):
             for dirname in dirs:
-                if not share_id in dirname:
+                if share_id not in dirname:
                     continue
                 new_dir = dirname.replace(share_id, new_share_id)
                 try:
                     os.rename(dirname, new_dir)
-                except:
+                except FileNotFoundError:
                     # If the new_dir already exists, we can't rename the directory
                     # The "by_genecart" directory is not exactly used, so not overly worried.
                     # But projections.json may need to be merged and files moved.
