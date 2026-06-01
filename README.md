@@ -4,13 +4,13 @@
 
 Other things to include:
 
-- **Technology stack**: The gEAR software is a LAMP stack utilizing Python and MySQL, H5AD for large expression matrix storage, D3 and Plot.ly for data visualization and has embedded [Gosling](https://gosling-lang.github.io/) support to display epigenetic data.
+- **Technology stack**: The gEAR software is a LAMP stack utilizing Python and MySQL, H5AD for large expression matrix storage, Plotly and Scanpy for data visualization and has embedded [Gosling](https://gosling-lang.github.io/) support to display epigenetic data.
 - **Status**:  This project has been in production for several years, though is in constant development so bugs certainly exist.
 - **Production / Demo instances**
   - [UMgEAR](https://umgear.org) - Portal for hearing research
   - [NeMO Analytics](nemoanalytics.org) - Portal for brain research
-  - [sen-gEAR](https://senescence.umgear.org) - Portal for senescent cell research
-  - [Cancer-gEAR](https://cancer.umgear.org) - Portal for cancer research
+  - [SENgEAR](https://senescence.umgear.org) - Portal for senescent cell research
+  - [Cancer gEAR](https://cancer.umgear.org) - Portal for cancer research
 
 **Screenshot**: Example of home page after searching for a gene:
 
