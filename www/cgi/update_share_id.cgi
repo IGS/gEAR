@@ -7,20 +7,18 @@ import cgi
 import json
 import os
 import sys
+from pathlib import Path
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
 
-from pathlib import Path
 abs_path_www = Path(__file__).resolve().parents[1] # web-root dir
 CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 BY_DATASET_DIR = abs_path_www.joinpath("projections", "by_dataset")
 BY_GENECART_DIR = abs_path_www.joinpath("projections", "by_genecart")
 
-
 def main():
-    cnx = geardb.Connection()
     print('Content-Type: application/json\n\n')
 
     form = cgi.FieldStorage()

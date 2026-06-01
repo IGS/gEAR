@@ -199,6 +199,17 @@ def main() -> dict:
             result['message'] = 'Zarr store not found: {}'.format(zarr_file)
             return result
 
+        config = {
+            "min_genes": 0,
+            "selection_x1": None,
+            "selection_y1": None,
+            "selection_x2": None,
+            "selection_y2": None,
+            "gene_symbol": "Pou4f3" # Just need a filler, really
+        }
+
+        geardb.add_spatial_panel_curation(dataset_id, user, config)
+
         try:
             shutil.move(zarr_file, dataset_final_dir / f'{dataset_id}.zarr')
             result['h5ad_migrated'] = 1
