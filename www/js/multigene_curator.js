@@ -780,6 +780,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
         , "js-tsne-flip-x": "flip_x"
         , "js-tsne-flip-y": "flip_y"
         , "js-tsne-colorize-legend-by": "colorize_legend_by"
+        , "js-tsne-enforce-equal-aspect": "enforce_equal_aspect"
         , "js-tsne-max-columns": "max_columns"
         , "js-tsne-horizontal-legend": "horizontal_legend"
         , "js-tsne-marker-size": "marker_size"

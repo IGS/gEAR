@@ -82,6 +82,7 @@ parser.add_argument("center_around_median", type=bool, default=False)
 parser.add_argument('vmax', type=float, default=None)
 parser.add_argument('vmin', type=float, default=None)
 parser.add_argument("make_zero_gray", type=bool, default=True)  # Keep with old plot styles
+parser.add_argument("enforce_equal_aspect", type=bool, default=False)
 parser.add_argument("obs_filters", type=dict, default={})  # dict of lists
 parser.add_argument(
     "projection_id", type=str, default=None
@@ -731,6 +732,7 @@ def generate_tsne_figure(
     horizontal_legend: bool = False,
     expression_min_clip: float | None = None,
     make_zero_gray: bool = True,
+    enforce_equal_aspect: bool = False,
     skip_gene_plot=None,
     plot_by_group=None,
     two_way_palette=None,
@@ -793,6 +795,8 @@ def generate_tsne_figure(
         Minimum expression value to clip.
     make_zero_gray : bool
         Whether to make the zero-value expression color gray or the minimum colorscale color.
+    enforce_equal_aspect : bool
+        Whether to enforce equal aspect ratio on the plot axes.
     skip_gene_plot : bool or None, optional
         If True, skips plotting the gene expression plot (single-gene mode).
     plot_by_group : str or None, optional
@@ -1047,6 +1051,7 @@ def generate_tsne_figure(
             "font.sans-serif":['Roboto'],
             'font.family': 'sans-serif',
             'legend.frameon': False,     # No box around legends
+            'legend.fontsize': 'medium',
             'xtick.color': '#cccccc',
             'ytick.color': '#cccccc',   # Unfortunately changes colorbar ticks
         }
@@ -1055,6 +1060,7 @@ def generate_tsne_figure(
     sc.set_figure_params(**fig_params)
 
     io_fig: "Figure" = sc.pl.embedding(selected, **kwargs)  # type: ignore
+
     #io_fig.set_layout_engine("compressed")
     ax = io_fig.get_axes()
 
@@ -1064,13 +1070,22 @@ def generate_tsne_figure(
             # Fix the gray colorbar text (if it exists for expression plots)
             # This finds the colorbar axis and resets label color to dark
             f.spines[['top', 'right']].set_visible(False)
+
+            # Check if the axes actually contains scatter data.
+            # This prevents you from accidentally squishing colorbars or legend axes.
+            # TODO: Test this in place of the if f.get_label == "<colorbar>"
+            #if not f.collections:
+            #    continue
+
             if f.get_label() == "<colorbar>":
                 f.tick_params(labelcolor='#333333')
                 continue
             rename_axes_labels(f, x_axis, y_axis)
 
-            # Ensure axes are square (which is typically the case with the coordinate systems we use)
-            #f.set_aspect("equal")
+            # Ensure axes are square
+            if enforce_equal_aspect:
+                f.set_aspect("equal", adjustable="box")
+            f.margins(0.02) # Reduce from the default margins
 
         last_ax = ax[-1]  # color axes
         if colorize_by and color_category:
@@ -1096,7 +1111,6 @@ def generate_tsne_figure(
                 frameon=False,
                 handles=handles,
                 labels=labels,
-                fontsize="small",
             )
             if horizontal_legend:
                 last_ax.get_legend()
@@ -1109,16 +1123,19 @@ def generate_tsne_figure(
                     ncol=num_horizontal_cols,
                     handles=handles,
                     labels=labels,
-                    fontsize="small",
                 )
     else:
         ax.spines[['top', 'right']].set_visible(False)
         if ax.get_label() == '<colorbar>':
             # should never happen
             ax.tick_params(labelcolor='#333333')
-        rename_axes_labels(ax, x_axis, y_axis)
-        # Ensure axes are square (which is typically the case with the coordinate systems we use)
-        #ax.set_aspect("equal")
+        else:
+            rename_axes_labels(ax, x_axis, y_axis)
+
+            # Ensure axes are square
+            if enforce_equal_aspect:
+                ax.set_aspect("equal", adjustable="box")
+            ax.margins(0.02)
 
     # Clean up
     if selected.isbacked:
@@ -1191,7 +1208,8 @@ class MGTSNEData(Resource):
             args.get("max_columns", None),
             args.get("horizontal_legend", False),
             args.get("expression_min_clip", None),
-            args.get("make_zero_gray", True)
+            args.get("make_zero_gray", True),
+            args.get("enforce_equal_aspect", False)
         )
 
 
@@ -1234,6 +1252,7 @@ class TSNEData(Resource):
             args.get("horizontal_legend", False),
             args.get("expression_min_clip", None),
             args.get("make_zero_gray", True),
+            args.get("enforce_equal_aspect", False),
             args.get("skip_gene_plot", False),
             args.get("plot_by_group", None),
             args.get("two_way_palette", False),
