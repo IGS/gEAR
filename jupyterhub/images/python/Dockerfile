@@ -14,7 +14,7 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir \
+RUN python -m pip install --no-cache-dir \
     scanpy \
     anndata \
     h5py \
