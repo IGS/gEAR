@@ -52,7 +52,7 @@ def r_package_importer(package_name:str):
     try:
         pkg = importr(package_name)
         return pkg
-    except:
+    except Exception:
         importErrorMessage += f"{package_name} not installed or can not be imported"
         sys.exit(importErrorMessage)
 
@@ -87,7 +87,7 @@ def seurat_to_anndata(file_path: str, share_name: str, output_dir: str = "."):
         ro.r(f'write_h5ad(adata, "{output_path}")')
         return output_path
     # In cases where the write fails we will assume the h5ad already exists
-    except:
+    except Exception:
         print(f"h5ad name already exists {output_path}")
         return False
 

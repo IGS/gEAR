@@ -256,6 +256,18 @@ def main() -> dict:
             result['message'] = 'Error migrating Excel file: {}'.format(str(e))
             return result
 
+    elif dataset_format == 'rds':
+        # migrate the RDS file
+        rds_file = dataset_upload_dir / f'{share_uid}.rds'
+        rds_dest = dataset_final_dir / f'{dataset_id}.rds'
+
+        try:
+            shutil.move(rds_file, rds_dest)
+            result['userdata_migrated'] = 1
+        except Exception as e:
+            result['message'] = 'Error migrating RDS file: {}'.format(str(e))
+            return result
+
     elif dataset_format == "spatial":
         # migrate the spatial tarball
         spatial_src = dataset_upload_dir / f'{share_uid}.tar.gz'

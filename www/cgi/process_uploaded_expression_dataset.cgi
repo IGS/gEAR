@@ -64,10 +64,10 @@ def main():
     global session_id
 
     form = cgi.FieldStorage()
-    share_uid = form.getvalue('share_uid')
-    session_id = form.getvalue('session_id')
-    dataset_format = form.getvalue('dataset_format')
-    spatial_format = form.getvalue('spatial_format')  # may be None
+    share_uid = form.getfirst('share_uid')
+    session_id = form.getfirst('session_id')
+    dataset_format = form.getfirst('dataset_format')
+    spatial_format = form.getfirst('spatial_format')  # may be None
 
     if share_uid is None or session_id is None or dataset_format is None:
         result['message'] = 'Missing one or more required parameters.'
