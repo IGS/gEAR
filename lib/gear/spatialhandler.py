@@ -986,7 +986,6 @@ class GeoMxHandler(SpatialHandler):
         return self
 
 class VisiumHandler(SpatialHandler):
-    # NOTE: Uploads work but it cannot be used in a spatial panel yet because clusters have not been provided.
     """
     Factory class for Visium dataset uploads and conversions.
 

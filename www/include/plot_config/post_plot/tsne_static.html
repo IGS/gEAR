@@ -36,6 +36,12 @@
 <p class="help">Split samples into category groups, then create plots per group.</p>
 
 <p class="is-flex is-justify-content-space-between pr-3 mb-1">
+    <span class="has-text-weight-medium">Enforce equal aspect ratio</span>
+    <input class="js-tsne-enforce-equal-aspect" id="enforce-equal-aspect-post" type="checkbox">
+</p>
+<p class="help">Make the axes square, ensuring equal scaling on both axes for all subplots.</p>
+
+<p class="is-flex is-justify-content-space-between pr-3 mb-1">
     <span class="has-text-weight-medium">Number of subplot columns</span>
     <input class="js-tsne-max-columns" id="max-columns-post" type="number" min="0" max="9" value="3" disabled aria-label="Number of subplot columns"/>
 </p>

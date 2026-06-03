@@ -584,7 +584,7 @@ def projectr_callback(
     intersection_size = index_intersection.size
 
     if intersection_size == 0:
-        message = "No common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(
+        message = "No common genes between the target dataset ({} genes) and the pattern ({} genes).".format(
             num_target_genes, num_loading_genes
         )
         status["status"] = "failed"
@@ -598,7 +598,7 @@ def projectr_callback(
         write_projection_status(JOB_STATUS_FILE, status)
         return status
 
-    message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(
+    message = "Found {} common genes between the target dataset ({} genes) and the pattern ({} genes).".format(
         intersection_size, num_target_genes, num_loading_genes
     )
 
@@ -1183,7 +1183,7 @@ class ProjectR(Resource):
 
                 message = ""
                 if common_genes:
-                    message = "Found {} common genes between the target dataset ({} genes) and the pattern file ({} genes).".format(
+                    message = "Found {} common genes between the target dataset ({} genes) and the pattern ({} genes).".format(
                         common_genes, dataset_genes, genecart_genes
                     )
 

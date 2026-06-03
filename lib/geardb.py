@@ -1035,6 +1035,42 @@ def get_gene_by_gene_symbol(gene_symbol, dataset_id) -> "Gene | None":
 
     return gene
 
+def add_spatial_panel_curation(dataset_id: str, user: "User", config: dict) -> None:
+    """
+    Adds a spatial_panel display curation for the specified dataset and user.
+    """
+
+    if not user or not user.id:
+        raise ValueError("Valid user with an ID must be provided to add a default spatial curation.")
+
+    # add file to both dataset and dataset_epiviz
+    cnx = Connection()
+    cursor = cnx.get_cursor()
+
+    #  insert into dataset_display
+    dataset_display_sql = """
+        INSERT INTO dataset_display (dataset_id, user_id, label, plot_type, plotly_config)
+        VALUES (%s, %s, %s, %s, %s)
+    """
+
+    # Insert dataset_spatial info to database
+    cursor.execute(dataset_display_sql, (dataset_id, user.id, "Spatial curation", "spatial_panel", json.dumps(config)))
+    cnx.commit()
+
+    #  set preference
+    dataset_preference_sql = """
+        INSERT INTO dataset_preference (user_id, dataset_id, display_id)
+        VALUES (%s, %s, %s)
+    """
+
+    # Insert dataset_epiviz info to database
+    cursor.execute(dataset_preference_sql, (user.id, dataset_id, cursor.lastrowid,))
+    cnx.commit()
+
+    # close connection
+    cursor.close()
+    cnx.close()
+
 def add_gosling_display_curation(dataset_id: str, user: "User", config: dict) -> None:
     """
     Adds a gosling display curation for the specified dataset and user.
