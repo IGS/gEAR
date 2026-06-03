@@ -1,15 +1,14 @@
 import argparse
-
-import rpy2.robjects as ro
-from rpy2.robjects.packages import importr
-import rpy2.rinterface_lib.callbacks as r_cbs
-import rpy2.robjects.packages as rpackages
+import os
 import sys
+
 import mygene
 import pandas as pd
+import rpy2.rinterface_lib.callbacks as r_cbs
+import rpy2.robjects as ro
+import rpy2.robjects.packages as rpackages
 import scanpy
-import os
-import argparse
+from rpy2.robjects.packages import importr
 
 
 def silent_handler(s:str) -> None:
