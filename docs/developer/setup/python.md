@@ -111,6 +111,8 @@ I cannot add comments to the bash code without breaking the command.  So consult
     aiohttp_retry==2.9.1 \
     anndata==0.12.11 \
     biocode==0.10.0 \
+    biopython==1.87 \
+    biothings-client==0.5.0 \
     cairosvg==2.7.1 \
     colorcet==3.1.0 \
     datashader==0.19.0 \
@@ -118,7 +120,10 @@ I cannot add comments to the bash code without breaking the command.  So consult
     Flask-RESTful==0.3.9 \
     google-analytics-data==0.21.0 \
     gosling==0.3.0 \
+    h11==0.16.0 \
     hic2cool==0.8.3 \
+    httpcore==1.0.9 \
+    httpx==0.28.1 \
     jupyterlab==4.0.5 \
     jupyter==1.0.0 \
     kaleido==0.2.1 \
@@ -128,6 +133,7 @@ I cannot add comments to the bash code without breaking the command.  So consult
     matplotlib==3.10.7 \
     mod-wsgi==5.0.2 \
     more_itertools==11.0.2 \
+    mygene==3.2.2 \
     mysql-connector-python==8.0.28 \
     numba==0.65.0 \
     numpy==2.4.0 \
@@ -152,14 +158,6 @@ I cannot add comments to the bash code without breaking the command.  So consult
     shadows==0.1a2 \
     tables==3.11.1 \
     watchfiles==1.1.1 \
-    Bio==1.8.3 \ 
-    biopython==1.87 \ 
-    biothings-client==0.5.0 \ 
-    gprofiler-official==1.0.0 \
-    h11==0.16.0 \
-    httpcore==1.0.9 \ 
-    httpx==0.28.1 \
-    mygene==3.2.2\
     ./pip3 install git+https://github.com/adkinsrs/diffxpy.git@ffd828c280882ca98adc6e42c934625fab0011f6
     ./pip3 uninstall dask-expr -y
 
