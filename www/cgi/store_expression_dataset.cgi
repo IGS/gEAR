@@ -67,7 +67,7 @@ def main():
             return result
 
     if dataset_format == "rds":
-        if not filename.lower().endswith('rds'):
+        if not filename.endswith('rds'):
             result['message'] = 'Invalid file extension for RDS format. Expected .rds'
             return result
 
