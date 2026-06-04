@@ -89,8 +89,7 @@ def seurat_to_anndata(file_path: str, share_name: str, output_dir: str = "."):
     # In cases where the write fails we will assume the h5ad already exists
     except Exception:
         print(f"h5ad name already exists {output_path}")
-        return False
-
+        raise
 
 def openh5ad(h5ad_name):
     """Just open the supplied h5ad file"""
@@ -103,8 +102,13 @@ def genes_to_ensembl(adata, taxid=None):
     if taxid is None:
         return None
     genes = adata.var.index.tolist()
-    mg = mygene.MyGeneInfo()
-    mg_genes = mg.querymany(genes, scopes="symbol", fields="ensembl.gene", species=f"{taxid}")
+    try:
+        # TODO: Perhaps add a retry mechanism in case the API returns 500
+        mg = mygene.MyGeneInfo()
+        mg_genes = mg.querymany(genes, scopes="symbol", fields="ensembl.gene", species=f"{taxid}")
+    except Exception as e:
+        print(f"Error occurred while querying MyGene: {e}", file=sys.stderr)
+        raise
     ensembl_mapping_dict = {}
     for mg_gene in mg_genes:
         gene_name = mg_gene['query']

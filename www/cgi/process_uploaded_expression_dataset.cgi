@@ -167,6 +167,10 @@ def main():
         result["message"] = f"Unsupported dataset format: {dataset_format}"
         return result
 
+    # If the functions error, we do not want them to try to do primary analysis. So exit and let the user see the original error message.
+    if status.get("status", "error") == "error":
+        result["success"] = 0
+        return result
 
     if metadata["perform_primary_analysis"]:
         try:
@@ -249,8 +253,9 @@ def process_h5ad(upload_dir: Path, perform_primary_analysis: bool) -> None:
     write_status(upload_dir, 'processing', f"Finished processing dataset. {'Performing primary analysis...' if perform_primary_analysis else ''}")\
 
 def process_seurat(upload_dir: Path, perform_primary_analysis: bool) -> None:
-    total_steps = 2 if perform_primary_analysis else 1
+    total_steps = 7 if perform_primary_analysis else 6
     step_counter = 1
+    status["progress"] = int((step_counter / total_steps) * 100)
 
     # Take in an RDS file, convert to anndata, update the obs metadata based on reductions,
     # convert gene symbols to ensemble IDs, and write to an updated h5ad file.
@@ -258,23 +263,31 @@ def process_seurat(upload_dir: Path, perform_primary_analysis: bool) -> None:
     seurat_filepath = upload_dir / f"{share_uid}.rds"
 
     # seurat to anndata uses rpy2 to convert the RDS to anndata
+    # filepath name has "tmp_" appended in front
     adata_filepath = SeuratUploader.seurat_to_anndata(str(seurat_filepath), share_uid, str(upload_dir))
     if not adata_filepath:
         write_status(upload_dir, 'error', 'Failed to convert RDS to h5ad.')
         return
+
+    step_counter += 1
+    status["progress"] = int((step_counter / total_steps) * 100)
+    write_status(upload_dir, 'processing', 'Reading converted h5ad file.')
     try:
         adata = anndata.read_h5ad(adata_filepath)
     except Exception as e:
         write_status(upload_dir, 'error', f'Failed to read h5ad: {str(e)}')
         return
 
-
     # Update obs metadata based on reductions
+    step_counter += 1
+    status["progress"] = int((step_counter / total_steps) * 100)
+    write_status(upload_dir, 'processing', 'Updating metadata from reductions.')
     try:
         adata = SeuratUploader.reduction_to_metadata(adata)
     except Exception as e:
         write_status(upload_dir, 'error', f'Failed to update Reductions to metadata: {str(e)}')
         return
+
     # Convert gene symbols to ensemble IDs
     metadata_file = upload_dir / 'metadata.json'
     if not metadata_file.is_file():
@@ -284,22 +297,30 @@ def process_seurat(upload_dir: Path, perform_primary_analysis: bool) -> None:
     with open(metadata_file, 'r') as f:
         metadata = json.load(f)
 
+    step_counter += 1
+    status["progress"] = int((step_counter / total_steps) * 100)
+    write_status(upload_dir, 'processing', 'Converting gene symbols to Ensembl IDs.')
     sample_taxid = metadata.get("sample_taxid", None)
     try:
-        adata = SeuratUploader.genes_to_ensembl(adata,sample_taxid)
+        adata = SeuratUploader.genes_to_ensembl(adata, sample_taxid)
         if adata is None:
             raise Exception("genes_to_ensembl returned None")
     except Exception as e:
         write_status(upload_dir, 'error', f'Failed to convert genes to Ensembl: {str(e)}')
         return
+
+    step_counter += 1
+    status["progress"] = int((step_counter / total_steps) * 100)
+    write_status(upload_dir, 'processing', 'Writing final h5ad file.')
     if adata.X is None:
+        # TODO: This is currently not an option in the UI, but was suggested to be one by @jorvis
         adata = SeuratUploader.layer_to_X(adata, layer_name='data')
     h5ad_path = upload_dir / f"{share_uid}.new.h5ad"
     try:
         adata.write(h5ad_path)
 
         # Replace the original file with the sanitized one
-        seurat_filepath.unlink()
+        #seurat_filepath.unlink()
         Path(adata_filepath).unlink()
         h5ad_path.rename(upload_dir / f"{share_uid}.h5ad")
     except Exception as e:
