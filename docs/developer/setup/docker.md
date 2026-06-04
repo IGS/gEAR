@@ -80,7 +80,7 @@ This file is dedicated entirely to compiling R and running your Bioconductor scr
 
 This is your main daily-driver file. It starts with a clean Ubuntu image, uses COPY --from=... to pull in the pre-compiled folders from your registry, installs Apache, and copies over your Flask API and HTML/JS files.
 
-Currently the inherited R and Python images are set to use the "latest" tag, as most of the time we want the most up-to-date version. If for some reason you need an earlier version, edit the Dockerfile to use one of the existing YYYY-MM-DD tags stored in Docker Hub.
+Currently the inherited R and Python images are set to use the "latest" tag of a locally built image, as most of the time we want the most up-to-date version. If for some reason you need an earlier version, edit the Dockerfile to use one of the existing `adkinsrs/<image>:YYYY-MM-DD` tags stored in Docker Hub.
 
 **When you build it**: Every time you update the website, tweak the Apache configuration, or change a CGI script.  Anything gEAR-code related, basically.
 
