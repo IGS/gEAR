@@ -66,7 +66,7 @@ This file is dedicated entirely to compiling Python 3.x and installing requireme
 
 **RPy2**: The "rpy2" package is actually built in the final Docker (umgear) image, due to some dependencies on R.
 
-**The output**: This is currently built and pushed as adkinsrs/gear-python-base:YYYY-MM-DD
+**The output**: This is currently built and pushed as adkinsrs/gear-python-base:YYYY-MM-DD and also tagged with the "latest" tag.
 
 #### Dockerfile.r (The R Base)
 
@@ -74,15 +74,17 @@ This file is dedicated entirely to compiling R and running your Bioconductor scr
 
 **When you build it**: Almost never. Only touch this if the team specifically requests a new version of Bioconductor or a brand-new R system library.
 
-**The output**: This is currently built and pushed as adkinsrs/gear-r-base:YYYY-MM-DD
+**The output**: This is currently built and pushed as adkinsrs/gear-r-base:YYYY-MM-DD and also tagged with the "latest" tag.
 
 #### Dockerfile (The Final App)
 
 This is your main daily-driver file. It starts with a clean Ubuntu image, uses COPY --from=... to pull in the pre-compiled folders from your registry, installs Apache, and copies over your Flask API and HTML/JS files.
 
+Currently the inherited R and Python images are set to use the "latest" tag, as most of the time we want the most up-to-date version. If for some reason you need an earlier version, edit the Dockerfile to use one of the existing YYYY-MM-DD tags stored in Docker Hub.
+
 **When you build it**: Every time you update the website, tweak the Apache configuration, or change a CGI script.  Anything gEAR-code related, basically.
 
-**The output**: This builds in seconds and becomes your final production image.  This is pushed as adkinsrs/umgear:YYYY-MM-DD
+**The output**: This builds in seconds and becomes your final production image.  This is pushed as adkinsrs/umgear:YYYY-MM-DD and also tagged with the "latest" tag.
 
 ## Starting the stack
 
