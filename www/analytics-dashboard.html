@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>gEAR Analytics</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="-1">
+        <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
+
+        <!-- This is needed because mod_rewrite doesn't work well with relative paths.  This will need
+            to be changed for any hosts where gEAR is not at the webserver root.
+        -->
+        <base href="/" />
+
+        <link rel="stylesheet" href="css/gear-theme-purple.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
+
+        <!-- Fancy animation effects -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+
+        <style>
+            body {
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+                margin: 0;
+                padding: 0;
+            }
+            .main-content {
+                display: flex;
+                flex: 1;
+                overflow: hidden;
+            }
+            .sidebar {
+                width: 25vw;
+                border-left: 1px solid #dbdbdb;
+                overflow-y: auto;
+                background-color: #fafafa;
+                padding: 1.5rem;
+            }
+            .content-area {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                overflow: auto;
+                padding: 1.5rem;
+            }
+            .chart-container {
+                flex: 1;
+                position: relative;
+                background-color: #fff;
+                border: 1px solid #dbdbdb;
+                border-radius: 4px;
+                padding: 1rem;
+            }
+            .chart-header {
+                position: absolute;
+                top: 0.75rem;
+                left: 0.75rem;
+                z-index: 10;
+            }
+            .sidebar-section {
+                margin-bottom: 2rem;
+            }
+            .sidebar-section h3 {
+                font-size: 0.875rem;
+                font-weight: 700;
+                margin-bottom: 0.75rem;
+                color: #363636;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            .sidebar-content {
+                line-height: 1.6;
+                font-size: 0.875rem;
+                color: #606060;
+            }
+
+            .stat-cards {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 1.5rem;
+                margin-bottom: 2rem;
+            }
+
+            .stat-card {
+                background-color: #f8f9fa;
+                border: 1px solid #dbdbdb;
+                border-radius: 8px;
+                padding: 1.5rem;
+                text-align: center;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+                transition: all 0.2s ease;
+            }
+
+            .stat-card:hover {
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                border-color: #b5b5b5;
+            }
+
+            .stat-value {
+                font-size: 2rem;
+                font-weight: 700;
+                color: #3273dc;
+                margin-bottom: 0.5rem;
+            }
+
+            .stat-label {
+                font-size: 0.875rem;
+                font-weight: 600;
+                color: #606060;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .info-section {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 2rem;
+                margin-top: 2rem;
+            }
+
+            .info-column {
+                background-color: #f8f9fa;
+                border: 1px solid #dbdbdb;
+                border-radius: 8px;
+                padding: 1.5rem;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            }
+
+            .info-column h4 {
+                margin-top: 0;
+                margin-bottom: 1rem;
+                font-size: 1rem;
+                font-weight: 700;
+                color: #363636;
+                border-bottom: 2px solid #3273dc;
+                padding-bottom: 0.5rem;
+            }
+
+            .info-column p {
+                margin: 0.5rem 0;
+                font-size: 0.875rem;
+                line-height: 1.5;
+                color: #606060;
+            }
+
+            .info-column strong {
+                color: #363636;
+                font-weight: 600;
+            }
+
+            .loading-indicator {
+                display: none;
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                background-color: rgba(255, 255, 255, 0.95);
+                padding: 2rem;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                z-index: 100;
+            }
+
+            .spinner {
+                border: 4px solid #f0f0f0;
+                border-top: 4px solid #3273dc;
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                animation: spin 1s linear infinite;
+                margin-bottom: 1rem;
+            }
+
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+
+            .loading-text {
+                font-size: 0.875rem;
+                color: #606060;
+                font-weight: 500;
+            }
+
+            .sidebar-stat-card {
+                background-color: #fff;
+                border-left: 4px solid #3273dc;
+                padding: 0.75rem;
+                margin-bottom: 0.75rem;
+                border-radius: 4px;
+                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            }
+
+            .sidebar-stat-value {
+                font-size: 1.25rem;
+                font-weight: 700;
+                color: #3273dc;
+                margin-bottom: 0.25rem;
+            }
+
+            .sidebar-stat-label {
+                font-size: 0.75rem;
+                font-weight: 600;
+                color: #606060;
+                text-transform: uppercase;
+                letter-spacing: 0.3px;
+            }
+
+            /* Analytics Dashboard Styles */
+            .analytics-section {
+                margin-bottom: 2rem;
+            }
+
+            .analytics-section h3 {
+                font-size: 1.125rem;
+                font-weight: 700;
+                margin-bottom: 1rem;
+                color: #363636;
+                border-bottom: 2px solid #3273dc;
+                padding-bottom: 0.5rem;
+            }
+
+            .summary-cards {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 1rem;
+                margin-bottom: 2rem;
+            }
+
+            .card {
+                background-color: white;
+                color: #363636;
+
+                text-align: center;
+
+                transition: all 0.2s ease;
+            }
+            .card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            }
+
+            .summary-value {
+                font-size: 2.5rem;
+                font-weight: 700;
+                margin-bottom: 0.5rem;
+            }
+
+            .summary-label {
+                font-size: 0.875rem;
+                font-weight: 600;
+                letter-spacing: 0.5px;
+                text-transform: uppercase;
+            }
+
+            .summary-sublabel {
+                font-size: 0.75rem;
+                opacity: 0.9;
+                margin-top: 0.25rem;
+            }
+
+            .analytics-table {
+                width: 100%;
+                border-collapse: collapse;
+                background-color: #fff;
+                border: 1px solid #dbdbdb;
+                border-radius: 4px;
+                overflow: hidden;
+            }
+
+            .analytics-table thead {
+                background-color: #f5f5f5;
+                border-bottom: 2px solid #dbdbdb;
+            }
+
+            .analytics-table th {
+                padding: 0.75rem 1rem;
+                text-align: left;
+                font-weight: 600;
+                color: #363636;
+                font-size: 0.875rem;
+                text-transform: uppercase;
+                letter-spacing: 0.3px;
+            }
+
+            .analytics-table th.number {
+                text-align: right;
+
+                border-radius: 0px;
+
+                display: table-cell;
+            }
+
+            .analytics-table tbody tr {
+                border-bottom: 1px solid #f0f0f0;
+                transition: background-color 0.2s ease;
+            }
+
+            .analytics-table tbody tr:hover {
+                background-color: #fafafa;
+            }
+
+            .analytics-table tbody tr:last-child {
+                border-bottom: none;
+            }
+
+            .analytics-table td {
+                padding: 0.75rem 1rem;
+                color: #606060;
+                font-size: 0.875rem;
+            }
+
+            .analytics-table td.number {
+                text-align: right;
+                font-weight: 500;
+
+                display: table-cell;
+
+                border-radius: 0px;
+
+                background: transparent;
+            }
+
+            .analytics-table td code {
+                background-color: #f5f5f5;
+                padding: 0.2rem 0.4rem;
+                border-radius: 3px;
+                font-family: 'Courier New', monospace;
+                color: #e83e8c;
+            }
+
+            .table-container {
+                background-color: #fff;
+                border: 1px solid #dbdbdb;
+                border-radius: 4px;
+                padding: 1rem;
+                margin-bottom: 1.5rem;
+                overflow-x: auto;
+            }
+
+            .chart-wrapper {
+                position: relative;
+                height: 400px;
+                background-color: #fff;
+                border: 1px solid #dbdbdb;
+                border-radius: 4px;
+                padding: 1rem;
+            }
+
+
+
+            .dataset-chart-container {
+                display: none;
+            }
+
+            .sidebar-chart-wrapper {
+                height: 250px;
+                position: relative;
+                background-color: #fff;
+                border: 1px solid #dbdbdb;
+                border-radius: 4px;
+                padding: 1rem;
+            }
+
+            /* Realtime Section Styles */
+            .realtime-active-users {
+                background-color: #fff;
+                border: 2px solid #3273dc;
+                border-radius: 4px;
+                padding: 1.5rem;
+                text-align: center;
+                margin-bottom: 1.5rem;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 0 0 0 rgba(50, 115, 220, 0.2);
+                position: relative;
+                animation: liveGlow 2s ease-in-out infinite;
+            }
+
+            @keyframes liveGlow {
+                0%, 100% {
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 0 0 0 rgba(50, 115, 220, 0.2);
+                }
+                50% {
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05), 0 0 12px 3px rgba(50, 115, 220, 0.15);
+                }
+            }
+
+            .realtime-active-users::before {
+                content: '';
+                position: absolute;
+                top: 8px;
+                left: 8px;
+                width: 12px;
+                height: 12px;
+                background-color: #3273dc;
+                border-radius: 50%;
+                animation: livePulse 1.5s ease-in-out infinite;
+            }
+
+            @keyframes livePulse {
+                0% {
+                    scale: 1;
+                    opacity: 1;
+                }
+                50% {
+                    scale: 1.2;
+                    opacity: 0.8;
+                }
+                100% {
+                    scale: 1;
+                    opacity: 1;
+                }
+            }
+
+            .realtime-active-users::after {
+                content: 'LIVE';
+                position: absolute;
+                top: 6px;
+                left: 27px;
+                font-size: 0.7rem;
+                font-weight: 800;
+                color: #3273dc;
+                letter-spacing: 2px;
+            }
+
+            .active-users-count {
+                font-size: 2.5rem;
+                font-weight: 700;
+                margin-bottom: 0.5rem;
+                color: #3273dc;
+            }
+
+            .active-users-label {
+                font-size: 0.875rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                color: #606060;
+                margin-bottom: 0.5rem;
+                padding-bottom: 1.25rem;
+                border-bottom: 1px solid #e0e0e0;
+            }
+
+            .realtime-countries {
+                margin-top: 0;
+            }
+
+            .realtime-country {
+                background-color: transparent;
+                border-left: none;
+                border-bottom: 1px solid #f0f0f0;
+                padding: 0.75rem;
+                margin-bottom: 0;
+                border-radius: 5px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                transition: all 0.2s ease;
+                box-shadow: none;
+                position: relative;
+            }
+
+            .realtime-country:last-child {
+                border-bottom: none;
+            }
+
+            .realtime-country:hover {
+                background-color: rgba(50, 115, 220, 0.05);
+                box-shadow: none;
+            }
+
+            .country-name {
+                font-weight: 500;
+                color: #363636;
+                font-size: 0.8rem;
+            }
+
+            .realtime-country .active-users {
+                font-size: 0.75rem;
+                color: #3273dc;
+                font-weight: 700;
+            }
+
+            @media (max-width: 768px) {
+                .summary-cards {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+
+                .realtime-section {
+                    grid-template-columns: 1fr;
+                }
+
+                .analytics-table {
+                    font-size: 0.75rem;
+                }
+
+                .analytics-table th,
+                .analytics-table td {
+                    padding: 0.5rem;
+                }
+
+                .active-users-count {
+                    font-size: 2rem;
+                }
+
+                .realtime-country {
+                    flex-direction: column;
+                    align-items: flex-start;
+                }
+
+                .realtime-country .active-users {
+                    margin-top: 0.5rem;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="main-content">
+            <div class="content-area">
+                <div id="analyticsLoader" class="loading-indicator">
+                    <div class="spinner"></div>
+                    <div class="loading-text">Loading analytics...</div>
+                </div>
+
+                <!-- Summary Cards Section -->
+                <div id="analyticsSummary"></div>
+
+                <!-- Timeseries Chart -->
+                <div class="analytics-section">
+                    <h3>Activity Trends</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="timeseriesChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Top Pages -->
+                <div class="analytics-section">
+                    <h3>Top Pages</h3>
+                    <div class="table-container">
+                        <div id="topPagesContainer"></div>
+                    </div>
+                </div>
+
+                <!-- Traffic Sources -->
+                <div class="analytics-section">
+                    <h3>Traffic Sources</h3>
+                    <div class="table-container">
+                        <div id="trafficSourcesContainer"></div>
+                    </div>
+                </div>
+
+                <!-- Countries -->
+                <div class="analytics-section">
+                    <h3>Geographic Distribution</h3>
+                    <div class="table-container">
+                        <div id="countriesContainer"></div>
+                    </div>
+                </div>
+
+                <!-- Top Events -->
+                <div class="analytics-section">
+                    <h3>Top Events</h3>
+                    <div class="table-container">
+                        <div id="topEventsContainer"></div>
+                    </div>
+                </div>
+            </div>
+
+            <aside class="sidebar" id="datasetSidebar">
+                <div class="sidebar-section" id="realtimeSidebar"></div>
+                <div class="sidebar-section" id="databaseStatsSidebar"></div>
+                <div class="sidebar-section" id="datasetDatesSidebar">
+                    <h3>Datasets Added Over Time</h3>
+                    <div class="sidebar-chart-wrapper">
+                        <canvas id="datasets-dates-chart"></canvas>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>Database Status</h3>
+                    <div class="sidebar-chart-wrapper">
+                        <canvas id="database-status"></canvas>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>Database Type</h3>
+                    <div class="sidebar-chart-wrapper">
+                        <canvas id="database-type"></canvas>
+                    </div>
+                </div>
+            </aside>
+        </div>
+
+        <!-- Chart.js Library -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+        <script src="./js/analytics-dashboard.js"></script>
+    </body>
+</html>

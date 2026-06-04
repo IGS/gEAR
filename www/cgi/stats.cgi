@@ -221,7 +221,7 @@ def get_top_pages(client, property_id, days, top_n):
     response = run_report(
         client=client,
         property_id=property_id,
-        dimensions=["pagePath"],
+        dimensions=["pagePathAndQueryString"],
         metrics=["screenPageViews", "activeUsers", "sessions"],
         start_date=f"{days}daysAgo",
         end_date="today",
