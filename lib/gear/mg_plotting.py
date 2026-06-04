@@ -1540,6 +1540,8 @@ def _truncate_ticktext(group_list: list[str]) -> tuple[list[str] | None, dict[st
     truncated_counts: dict[str, int] = {}  # Track how many times a truncated label has been seen
 
     for val in group_list:
+        # Ensure val is a string for length checking and mapping.
+        val = str(val)
         if len(val) > MAX_LEN_ALLOWED:
             base_truncated = "{}...".format(val[0:TRUNCATION_LEN])
 
