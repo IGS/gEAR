@@ -1,0 +1,45 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "gEAR Public API",
+    "version": "1.0.0",
+    "description": "OpenAPI documentation for public API endpoints."
+  },
+  "paths": {
+    "/status": {
+      "get": {
+        "summary": "Health check",
+        "description": "Returns the current health status of the public API.",
+        "operationId": "getStatus",
+        "tags": ["Status"],
+        "responses": {
+          "200": {
+            "description": "Public API is up and running.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "OK"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Public API is up and running!"
+                    }
+                  },
+                  "required": ["status", "message"]
+                },
+                "example": {
+                  "status": "OK",
+                  "message": "Public API is up and running!"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
