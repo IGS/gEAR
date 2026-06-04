@@ -1185,7 +1185,7 @@ def update_stacked_violin_annotations(fig, primary_groups, color_map):
         # Am attempting to do this based on the assumption that row facet titles will never have yanchor of bottom
         # (or y-pos of 1) or have certain text shared with the axes titles
         lambda a: a.update(
-            font=dict(color=color_map[a.text])
+            font=dict(color=color_map.get(a.text, "black"))
             , textangle=0
             , x=0
             , xanchor="right"
