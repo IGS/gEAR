@@ -854,12 +854,13 @@ class DatasetTile {
                 case "cite":
                     item.addEventListener("click", async (event) => {
                         let modalHTML;
+                        console.log(dataset);
                         if (pubmedId) {
                             modalHTML = this.createModalCitation(apiCallsMixin.fetchCitationFromPubmedId(pubmedId));
                         } else {
                             const citation = {
                                 apa: Citation.APA(
-                                    [ dataset.user_name ],
+                                    (dataset.contact_name ?? null) === null ? null : [ dataset.contact_name ], // if contact name is null or undefined, pass null to APA function, otherwise pass as array
                                     new Date(dataset.date_added).getFullYear(),
                                     dataset.title,
                                     dataset.share_id,

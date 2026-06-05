@@ -29,29 +29,41 @@ export class Citation {
     }
 
     static APA(authors, year, title, shareId, accessDate, license) {
-        authors = authors.map(author => {
-            const names = author.split(' ').map(s => s.trim());
-            const lastName = names.pop();
+        if (authors === null) {
+            accessDate = accessDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
 
-            const initials = names.map(n => n[0].toUpperCase() + '.').join(' ');
-            return `${lastName}, ${initials}`;
-        });
-        if (authors.length === 1) {
-            authors = authors[0];
-        } else if (authors.length <= 20) {
-            authors = authors.slice(0, -1).join(', ') + ' & ' + authors.slice(-1);
+            if (license)
+                license = ` Licensed under ${license}.`;
+
+            return {
+                orig: `${title} (${year}). [Data set]. gEAR Portal. Retrieved ${accessDate}, from ${Citation.getDOI(shareId)}.${license || ""}`,
+                format: `<i>${title}</i> (${year}). [Data set]. gEAR Portal. Retrieved ${accessDate}, from ${Citation.getDOI(shareId)}.${license || ""}`
+            };
         } else {
-            authors = authors.slice(0, 19).join(', ') + ', ... & ' + authors.slice(-1);
+            authors = authors.map(author => {
+                const names = author.split(' ').map(s => s.trim());
+                const lastName = names.pop();
+
+                const initials = names.map(n => n[0].toUpperCase() + '.').join(' ');
+                return `${lastName}, ${initials}`;
+            });
+            if (authors.length === 1) {
+                authors = authors[0];
+            } else if (authors.length <= 20) {
+                authors = authors.slice(0, -1).join(', ') + ' & ' + authors.slice(-1);
+            } else {
+                authors = authors.slice(0, 19).join(', ') + ', ... & ' + authors.slice(-1);
+            }
+
+            accessDate = accessDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+
+            if (license)
+                license = ` Licensed under ${license}.`;
+
+            return {
+                orig: `${authors} (${year}). ${title} [Data set]. gEAR Portal. Retrieved ${accessDate}, from ${Citation.getDOI(shareId)}.${license || ""}`,
+                format: `${authors} (${year}). <i>${title}</i> [Data set]. gEAR Portal. Retrieved ${accessDate}, from ${Citation.getDOI(shareId)}.${license || ""}`
+            };
         }
-
-        accessDate = accessDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-
-        if (license)
-            license = ` Licensed under ${license}.`;
-
-        return {
-            orig: `${authors} (${year}). ${title} [Data set]. gEAR Portal. Retrieved ${accessDate}, from ${Citation.getDOI(shareId)}.${license || ""}`,
-            format: `${authors} (${year}). <i>${title}</i> [Data set]. gEAR Portal. Retrieved ${accessDate}, from ${Citation.getDOI(shareId)}.${license || ""}`
-        };
     }
 }
