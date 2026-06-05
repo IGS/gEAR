@@ -97,6 +97,9 @@ single_gene_parser.add_argument(
     "plot_by_group", type=str, default=None
 )  # If true, plot by group
 single_gene_parser.add_argument(
+    "hide_group_nonmembers", type=bool, default=False
+)  # If true, hide data points not belonging to the group
+single_gene_parser.add_argument(
     "skip_gene_plot", type=bool, default=False
 )  # If true, skip the gene expression plot
 single_gene_parser.add_argument(
@@ -735,6 +738,7 @@ def generate_tsne_figure(
     enforce_equal_aspect: bool = False,
     skip_gene_plot=None,
     plot_by_group=None,
+    hide_group_nonmembers=False,
     two_way_palette=None,
 ) -> dict:
     """
@@ -801,6 +805,8 @@ def generate_tsne_figure(
         If True, skips plotting the gene expression plot (single-gene mode).
     plot_by_group : str or None, optional
         Name of the group to split plots by.
+    hide_group_nonmembers: bool, optional
+        Whether to hide data points that are not members of a particular group when using plot_by_group.
     two_way_palette : str or None, optional
         Name of a two-way color palette for special sorting.
 
@@ -970,14 +976,14 @@ def generate_tsne_figure(
             # This will create a new column for each group in the plot_by_group
             for _, name in enumerate(column_order):
                 group_name = name + "_split_by_group"
+
                 selected.obs[group_name] = selected.obs.apply(
-                    lambda row: row["gene_expression"]
-                    if row[plot_by_group] == name
-                    else 0,
-                    axis=1,
+                    lambda row: row["gene_expression"] if row[plot_by_group] == name else np.nan, axis=1
                 )
+
                 columns.append(group_name)
                 titles.append(name)
+
             kwargs_ncols = max_cols
 
             # Set vmax if not provided
@@ -1002,6 +1008,7 @@ def generate_tsne_figure(
         "basis": basis,
         "color": columns,
         "color_map": expression_color,
+        "na_color": "none" if hide_group_nonmembers else "lightgray",  # "none" is shorthand for completely transparent
         "show": False,
         "use_raw": False,
         "title": titles,
@@ -1253,7 +1260,9 @@ class TSNEData(Resource):
             args.get("expression_min_clip", None),
             args.get("make_zero_gray", True),
             args.get("enforce_equal_aspect", False),
+            # These options are not in the multigene plot args.
             args.get("skip_gene_plot", False),
             args.get("plot_by_group", None),
+            args.get("hide_group_nonmembers", False),
             args.get("two_way_palette", False),
         )
