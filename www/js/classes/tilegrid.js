@@ -854,7 +854,6 @@ class DatasetTile {
                 case "cite":
                     item.addEventListener("click", async (event) => {
                         let modalHTML;
-                        console.log(dataset);
                         if (pubmedId) {
                             modalHTML = this.createModalCitation(apiCallsMixin.fetchCitationFromPubmedId(pubmedId));
                         } else {
