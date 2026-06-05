@@ -933,6 +933,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
 
         // Remove some single-gene options from the post-plot adjustments
         const plotBySeries = document.querySelector(".js-tsne-plot-by-series");
+        const hideGroupNonmembers = document.querySelector(".js-tsne-hide-group-nonmembers");
         const skipGenePlot = document.querySelector(".js-tsne-skip-gene-plot");
         const twoWayPalette = document.querySelector(".js-tsne-two-way-palette");
         for (const targetElt of [plotBySeries, skipGenePlot, twoWayPalette]) {
