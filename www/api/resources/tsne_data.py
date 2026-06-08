@@ -1044,6 +1044,7 @@ def generate_tsne_figure(
     # If there are more columns of plots, increase the font size for readability
     label_scale = "medium" if num_plots_wide < 5 else "large"
     title_scale = "large" if num_plots_wide < 5 else "x-large"
+    legend_scale = "medium" if horizontal_legend else "small"
 
     mpl.rcParams.update(
         {
@@ -1058,7 +1059,7 @@ def generate_tsne_figure(
             "font.sans-serif":['Roboto'],
             'font.family': 'sans-serif',
             'legend.frameon': False,     # No box around legends
-            'legend.fontsize': 'medium',
+            'legend.fontsize': legend_scale,
             'xtick.color': '#cccccc',
             'ytick.color': '#cccccc',   # Unfortunately changes colorbar ticks
         }
