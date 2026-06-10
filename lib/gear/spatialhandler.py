@@ -643,26 +643,26 @@ class SpatialHandler(ABC):
             raise Exception("Error occurred while writing to file: ", err)
         return self
 
-class CoxMxHandler(SpatialHandler):
+class CosMxHandler(SpatialHandler):
     """
-    Factory class for CoxMx dataset uploads and conversions.
+    Factory class for CosMx dataset uploads and conversions.
 
     Standardized names for different files:
-    * 'spatialdata_anndata.h5ad': Counts and metadata file.
-    * 'spatialdata_cluster_assignment.txt': Cluster assignment file.
-    * 'spatialdata_Metrics.csv': Metrics file.
-    * 'spatialdata_variable_features_clusters.txt': Variable features clusters file.
-    * 'spatialdata_variable_features_spatial_moransi.txt': Variable features Moran’s I file.
+    * `<dataset_id>_`'exprMat_file.csv'`: Counts matrix.
+    * `<dataset_id>_`'metadata_file.csv'`: Metadata file.
+    * `<dataset_id>_`'fov_positions_file.csv'`: Field of view file.
+    * 'CellComposite': Directory containing the images.
+    * 'CellLabels': Directory containing the labels.
     """
 
     @property
     def has_images(self) -> bool:
-        """Whether this handler has associated images (always False for CoxMx)."""
-        return False
+        """Whether this handler has associated images (always False for CosMx)."""
+        return True
 
     @property
     def coordinate_system(self) -> str:
-        """Returns the coordinate system used by CoxMx datasets."""
+        """Returns the coordinate system used by CosMx datasets."""
         return "global"
 
     @property
@@ -682,13 +682,13 @@ class CoxMxHandler(SpatialHandler):
 
     @property
     def img_name(self) -> str | None:
-        """Returns the image name associated with this handler (always None for CoxMx)."""
+        """Returns the image name associated with this handler (always None for CosMx)."""
         return None
 
     def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
         """
-        Reads and processes a CoxMx spatial data file from the given filepath.
-        For CoxMx, this is a stub and does not perform any operation.
+        Reads and processes a CosMx spatial data file from the given filepath.
+        For CosMx, this is a stub and does not perform any operation.
         """
         return self
 
@@ -1388,7 +1388,7 @@ class XeniumHandler(SpatialHandler):
 ### Helper constants
 
 SPATIALTYPE2CLASS = {
-    #"cosmx": CoxMxHandler,
+    #"cosmx": CosMxHandler,
     "curio": CurioHandler,
     "geomx": GeoMxHandler,
     "visium": VisiumHandler,
