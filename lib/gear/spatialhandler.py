@@ -1,4 +1,5 @@
 import os
+import subprocess
 import sys
 import tarfile
 import typing
@@ -23,6 +24,11 @@ from spatialdata_io.experimental import from_legacy_anndata, to_legacy_anndata
 if typing.TYPE_CHECKING:
     from anndata import AnnData
     from spatialdata import SpatialData
+
+def _remove_dir(dir_to_remove: str) -> None:
+    """Remove a directory safely using subprocess (no shell)."""
+    if os.path.isdir(dir_to_remove):
+        subprocess.run(["rm", "-rf", dir_to_remove], check=True)
 
 class SpatialHandler(ABC):
     """
@@ -751,9 +757,7 @@ class CurioHandler(SpatialHandler):
         else:
             raise Exception("File must be a .tar or .tar.gz file.")
 
-        if os.path.isdir(extract_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(extract_dir))
+        _remove_dir(extract_dir)
 
         with tarfile.open(filepath, mode) as tf:
             for entry in tf:
@@ -835,6 +839,8 @@ class GeoMxHandler(SpatialHandler):
     * "xlsx" file with information.
       * This Excel file must contain a sheet named "SegmentProperties" with a column named "SegmentDisplayName" which will be used as the cell ID.
       * This Excel file must contain a sheet named "TargetCountMatrix" or "BioProbeCountMatrix" with the counts matrix.
+        * "BioProbeCountMatrix" would be found from the "Export1_InitialDataset" or "Export2_TechnicalQC" file.
+        * "TargetCountMatrix" would be found from the "Export3_BiologicalProbeQC" or "Export4_NormalizationQ3" file.
 
     NOT IMPLEMENTED - Polygon data from XML files
 
@@ -889,9 +895,7 @@ class GeoMxHandler(SpatialHandler):
         else:
             raise Exception("File must be a .tar or .tar.gz file.")
 
-        if os.path.isdir(extract_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(extract_dir))
+        _remove_dir(extract_dir)
 
         information_file = None
 
@@ -1044,9 +1048,7 @@ class VisiumHandler(SpatialHandler):
         else:
             raise Exception("File must be a .tar or .tar.gz file.")
 
-        if os.path.isdir(extract_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(extract_dir))
+        _remove_dir(extract_dir)
 
         with tarfile.open(filepath, mode) as tf:
             for entry in tf:
@@ -1157,9 +1159,7 @@ class VisiumHDHandler(SpatialHandler):
         else:
             raise Exception("File must be a .tar or .tar.gz file.")
 
-        if os.path.isdir(extract_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(extract_dir))
+        _remove_dir(extract_dir)
 
         with tarfile.open(filepath, mode) as tf:
             for entry in tf:
@@ -1301,9 +1301,7 @@ class XeniumHandler(SpatialHandler):
         else:
             raise Exception("File must be a .tar or .tar.gz file.")
 
-        if os.path.isdir(extract_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(extract_dir))
+        _remove_dir(extract_dir)
 
         # settings to enable or disable based on if a file is present in the uploaded tarball
         include_raster_labels = False
