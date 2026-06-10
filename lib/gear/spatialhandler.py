@@ -651,6 +651,7 @@ class CosMxHandler(SpatialHandler):
     * `<dataset_id>_`'exprMat_file.csv'`: Counts matrix.
     * `<dataset_id>_`'metadata_file.csv'`: Metadata file.
     * `<dataset_id>_`'fov_positions_file.csv'`: Field of view file.
+    * (Optional) `<dataset_id>_`'tx_file.csv'`: Transcripts file
     * 'CellComposite': Directory containing the images.
     * 'CellLabels': Directory containing the labels.
     """
@@ -663,17 +664,17 @@ class CosMxHandler(SpatialHandler):
     @property
     def coordinate_system(self) -> str:
         """Returns the coordinate system used by CosMx datasets."""
-        return "global"
+        return "global" # may also be "spatial"
 
     @property
     def region_id(self) -> str:
         """Returns the region ID used for spot data."""
-        return "instance_id"
+        return "cell_ID"
 
     @property
     def region_name(self) -> str:
         """Returns the name of the region used for spot data."""
-        return "locations"
+        return "fov_labels"
 
     @property
     def platform(self) -> str:
@@ -687,11 +688,87 @@ class CosMxHandler(SpatialHandler):
 
     def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
         """
-        Reads and processes a CosMx spatial data file from the given filepath.
-        For CosMx, this is a stub and does not perform any operation.
+        Reads and processes a Xenium spatial data tarball from the given filepath.
+        Extracts required files, loads clustering and spatial data, updates gene IDs, and loads into a SpatialData object.
         """
-        return self
+        extract_dir = kwargs.get("extract_dir", '/tmp/')
+        extract_dir = os.path.join(extract_dir, 'files')
 
+        if filepath.endswith(".tar.gz"):
+            mode = "r:gz"  # Read as gzipped tar file
+        elif filepath.endswith(".tar"):
+            mode = "r"     # Read as plain tar file
+        else:
+            raise Exception("File must be a .tar or .tar.gz file.")
+
+        _remove_dir(extract_dir)
+
+        transcripts_present = False
+
+        with tarfile.open(filepath, mode) as tf:
+            for entry in tf:
+                # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
+                if ".DS_Store" in entry.name or "._" in entry.name:
+                    continue
+
+                # IF file is gzipped, gunzip it
+                if entry.name.endswith(".gz"):
+                    entry_io = tf.extractfile(entry)
+                    if entry_io is None:
+                        raise Exception("Error occurred while extracting file: ", entry.name)
+                    with entry_io as f:
+                        with open(os.path.join(extract_dir, entry.name[:-3]), "wb") as out_f:
+                            out_f.write(f.read())
+                    entry.name = entry.name[:-3]    # Adjust file name
+
+                if entry.name.endswith("tx_file.csv"):
+                    transcripts_present = True
+
+                # Extract file into tmp dir
+                filepath = "{0}/{1}".format(extract_dir, entry.name)
+                tf.extract(entry, path=extract_dir)
+
+        # If clustering file does not exist, raise an exception
+        clustering_csv_path = "{}/clusters.csv".format(extract_dir)
+        if not os.path.exists(clustering_csv_path):
+            raise Exception("clusters.csv file not found in tarball.")
+
+        # If clustering file does not have "Barcode" and "Cluster" columns, raise an exception
+        #with open(clustering_csv_path, 'r') as f:
+        #    first_line = f.readline()
+        #    if "Barcode" not in first_line or "Cluster" not in first_line:
+        #        raise Exception("clusters.csv file does not have 'Barcode' and 'Cluster' columns in clusters.csv file in tarball.")
+
+        try:
+            sdata = sdio.cosmx(extract_dir
+                                    , dataset_id="spatialdata"   # Provide a name to standarize downstream usage
+                                    , transcripts=transcripts_present
+                                    )
+        except Exception:
+            raise
+
+        # add clustering information to the vis_sdata.table.obs dataframe
+        #clustering = pd.read_csv(clustering_csv_path)
+        # make barcode as index
+        #clustering = clustering.set_index('Barcode')
+        #sdata.tables[self.NORMALIZED_TABLE_NAME].obs['clusters'] = clustering['Cluster'].astype('category')
+        # If all clusters are missing, raise an exception
+        #if sdata.tables[self.NORMALIZED_TABLE_NAME].obs['clusters'].isna().all():
+        #    raise Exception("All cluster values are missing in clusters.csv file in tarball.")
+
+        # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
+        sdata.tables[self.NORMALIZED_TABLE_NAME].var_names_make_unique()
+
+        # currently gene symbols are the index, need to move them to a column
+        sdata.tables[self.NORMALIZED_TABLE_NAME].var["gene_symbol"] = sdata.tables[self.NORMALIZED_TABLE_NAME].var.index
+
+        # set the index to the ensembl id (gene_ids)
+        sdata.tables[self.NORMALIZED_TABLE_NAME].var = sdata.tables[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids")
+
+        self.sdata = sdata
+        self.standardize_sdata()
+        self.originalFile = filepath
+        return self
 
 class CurioHandler(SpatialHandler):
     """
@@ -810,7 +887,10 @@ class CurioHandler(SpatialHandler):
         var_features_moransi.to_csv(spatial_moransi_file, sep="\t", header=True, index=True, index_label=False)
 
         # Now are ready to read in to a SpatialData object
-        sdata = sdio.curio(extract_dir)
+        try:
+            sdata = sdio.curio(extract_dir)
+        except Exception:
+            raise
 
         # To get the adata equivalent, look at sdata.tables["table"]
 
@@ -1073,7 +1153,10 @@ class VisiumHandler(SpatialHandler):
             if "Barcode" not in first_line or "Cluster" not in first_line:
                 raise Exception("clusters.csv file does not have 'Barcode' and 'Cluster' columns in clusters.csv file in tarball.")
 
-        sdata = sdio.visium(path=extract_dir, dataset_id="spatialdata")    # Provide a name to standarize downstream usage
+        try:
+            sdata = sdio.visium(path=extract_dir, dataset_id="spatialdata")    # Provide a name to standarize downstream usage
+        except Exception:
+            raise
 
         # add clustering information to the vis_sdata.table.obs dataframe
         clustering = pd.read_csv(clustering_csv_path)
@@ -1151,6 +1234,10 @@ class VisiumHDHandler(SpatialHandler):
         return "spatialdata_hires_image"
 
     def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
+        """
+        Reads and processes a Xenium spatial data tarball from the given filepath.
+        Extracts required files, loads clustering and spatial data, updates gene IDs, and loads into a SpatialData object.
+        """
         extract_dir = kwargs.get("extract_dir", '/tmp/')
         extract_dir = os.path.join(extract_dir, 'files')
 
@@ -1203,7 +1290,8 @@ class VisiumHDHandler(SpatialHandler):
         if not os.path.exists("{}/spatialdata_feature_slice.h5".format(binned_outputs_dir)):
             os.symlink("{}/feature_slice.h5".format(absolute_path), "{}/spatialdata_feature_slice.h5".format(binned_outputs_dir))
 
-        sdata = sdio.visium_hd(binned_outputs_dir
+        try:
+            sdata = sdio.visium_hd(binned_outputs_dir
                                 , dataset_id="spatialdata"   # Provide a name to standarize downstream usage
                                 , bin_size=8
                                 , filtered_counts_file=True
@@ -1211,6 +1299,8 @@ class VisiumHDHandler(SpatialHandler):
                                 , fullres_image_file=None
                                 , bins_as_squares=True
                                 )
+        except Exception:
+            raise
 
         # add clustering information to the vis_sdata.table.obs dataframe
         clustering = pd.read_csv(clustering_csv_path)
@@ -1340,7 +1430,8 @@ class XeniumHandler(SpatialHandler):
             if "Barcode" not in first_line or "Cluster" not in first_line:
                 raise Exception("clusters.csv file does not have 'Barcode' and 'Cluster' columns in clusters.csv file in tarball.")
 
-        sdata = sdio.xenium(extract_dir
+        try:
+            sdata = sdio.xenium(extract_dir
                             , cells_labels=False # Avoid adding polygons to SpatialData object (for now due to out-of-memory issues)
                             , nucleus_labels=False
                             , cell_boundaries=cell_boundaries_present
@@ -1349,6 +1440,8 @@ class XeniumHandler(SpatialHandler):
                             , cells_as_circles=True  # Table is associated with the cells instead of the nuclei (faster performance)
                             , morphology_mip=False   # Using the morphology_focus image instead
                             )
+        except Exception:
+            raise
 
         # In code, it seems that the Xenium reader is supposed to set the index to the "barcodes" column
         # But this column is not found, so we need to manually replace with "cell_id"
