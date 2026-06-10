@@ -833,6 +833,8 @@ class GeoMxHandler(SpatialHandler):
     Code is mostly inspired by https://github.com/LiHongCSBLab/SOAPy/blob/153095a44200a07a73a6a72c9978adfa1581c853/SOAPy_st/pp/all2adata.py#L229
     I wanted to install SOAPy but ran into pip requirement compatibility issues.  For example, we use a later version of AnnData in gEAR than SOAPy does.
 
+    Description of output can be found at https://brukerspatialbiology.com/resources/readme_mu_brain-docx/ (DOCX file)
+
     Factory class for GeoMx dataset uploads and conversions.
 
     Required files:
