@@ -4,48 +4,53 @@
 
 Instances of a gEAR Portal are most often run within a cloud instance, where you can choose your own operating system and resources.  On Google Cloud for a starter instance I chose an e2-standard-2 (2 vCPUs and 48GB RAM) with 300GB of solid state disk space.  You'll definitely want to increase the CPU as you gain more simultaneous users and RAM depending on your dataset sizes.  Once you create and start the instance:
 
+NOTE: Extra apt install commands are present in the R setup and in the python setup.
+
 ```bash
     sudo apt update
     sudo apt upgrade
-    sudo apt install build-essential
+    sudo apt install build-essential \
+        curl \
+        git \
+        rsync \
+        vim \
+        unzip \
+        wget \
+        ca-certificates \
+        fonts-roboto \
+        fontconfig
+    sudo fc-cache -f -v    # cache the fonts
 ```
 
 Reboot if there are kernel updates (or just to be safe if you don't know.)
-
-```bash
-    cd && mkdir git
-    sudo apt install git
-    cd git
-    git clone https://github.com/IGS/gEAR.git
-```
 
 ### MYSQL
 
 `sudo apt install mysql-server`
 
-Follow instructions in our setup.mysql.md document
+Follow instructions in [the MySQL setup](./mysql.md) document
 
 ### R
 
 Not necessary if you want projectR to run on a Google Cloud Run service (configurable in gear.ini)
 
-Please consult `setup.r_rpy2.md` for packages to install in order to install R and requisite R packages
+Please consult [the R setup](./r_rpy2.md) for packages to install in order to install R and requisite R packages
 
 ### RabbitMQ
 
 Not necessary if you want projectR to run in the Apache environment or do not want to setup the RabbitMQ messaging service (configurable in gear.ini)
 
-Follow instructions in setup.rabbit_mq.md document
+Follow instructions in [the RabbitMQ setup](./rabbitmq.md) document
 
 ### Python
 
-Follow instructions in setup.python.md document
+Follow instructions in [the Python setup](./python.md) document
 
 ### APACHE
 
 `sudo apt install apache2 apache2-dev`
 
-Follow instructions in setup.apache.md document
+Follow instructions in [the Apache setup](./apache.md) document
 
 ### Sass
 
@@ -63,17 +68,6 @@ cd /var
 sudo rm -rf www && sudo ln -s ~jorvis/git/gEAR/www
 ```
 
-### Executables
-
-There are some third-party executables that gEAR will need for some functionality
-
-```bash
-cd ~jorvis/git/gEAR; mkdir -p src;
-rsync -aP hgdownload.soe.ucsc.edu::genome/admin/exe/linux.x86_64/hubClone /opt/gEAR/src/ \
-  && rsync -aP hgdownload.soe.ucsc.edu::genome/admin/exe/linux.x86_64/hubCheck /opt/gEAR/src/ \
-  && rsync -aP hgdownload.soe.ucsc.edu::genome/admin/exe/linux.x86_64/bigBedToBed /opt/gEAR/src/ \
-```
-
 ### Systemd Services
 
 More information about these services can be found at `gEAR/systemd/README.md`
@@ -83,11 +77,13 @@ cd ~jorvis/git/gEAR/systemd
 sudo cp *target /etc/systemd/system/
 sudo cp *service /etc/systemd/system/
 
+echo "**IMPORTANT**: For the *service files, correct the <gEAR_path> to point to the gEAR root on this server"
+
 # Start the services
 cd /etc/systemd/system
 
-sudo systemctl enable projectr-consumer.target
-sudo systemctl start projectr-consumer.target
+sudo systemctl enable projectr-consumer.target gosling-upload-consumer.target
+sudo systemctl start projectr-consumer.target gosling-upload-consumer.target
 
 sudo systemctl enable spatial-panel.service
 sudo systemctl start spatial-panel.service

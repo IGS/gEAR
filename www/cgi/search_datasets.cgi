@@ -34,18 +34,33 @@ def main():
     cursor = cnx.get_cursor()
 
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    custom_list = form.getvalue('custom_list')
-    search_terms = form.getvalue('search_terms').split(' ') if form.getvalue('search_terms') else []
-    organism_ids = form.getvalue('organism_ids')
-    dtypes = form.getvalue('dtypes').split(',') if form.getvalue('dtypes') else []
-    date_added = form.getvalue('date_added')
-    ownership = form.getvalue('ownership')
-    layout_share_id = form.getvalue('layout_share_id')
-    include_public_membership = form.getvalue('include_public_collection_membership')
-    page = form.getvalue('page', "1")    # page starts at 1
-    limit = form.getvalue('limit', str(DEFAULT_MAX_RESULTS))
-    sort_by = re.sub("[^[a-z]]", "", form.getvalue('sort_by', ''))
+    session_id = form.getfirst('session_id')
+    custom_list = form.getfirst('custom_list')
+    search_terms = form.getfirst('search_terms')
+    if search_terms:
+        search_terms = search_terms.split(' ')
+    else:
+        search_terms = []
+    organism_ids = form.getfirst('organism_ids')
+    dtypes = form.getfirst('dtypes')
+    if dtypes:
+        dtypes = dtypes.split(',')
+    else:
+        dtypes = []
+    date_added = form.getfirst('date_added')
+    ownership = form.getfirst('ownership')
+    layout_share_id = form.getfirst('layout_share_id')
+    include_public_membership = form.getfirst('include_public_collection_membership')
+    page = form.getfirst('page')    # page starts at 1
+    if page is None:
+        page = "1"
+    limit = form.getfirst('limit')
+    if limit is None:
+        limit = str(DEFAULT_MAX_RESULTS)
+    sort_by_str = form.getfirst('sort_by', '')
+    if sort_by_str is None:
+        sort_by_str = ''
+    sort_by = re.sub("[^[a-z]]", "", sort_by_str)
     user = geardb.get_user_from_session_id(session_id) if session_id else None
     result = {'success': 1, 'problem': '', 'datasets': []}
 

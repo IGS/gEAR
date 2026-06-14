@@ -1,0 +1,6 @@
+[Unit]
+Description=TrackHub (Gosling Upload) RabbitMQ Consumer Workers
+Wants=gosling-upload-consumer@1.service gosling-upload-consumer@2.service gosling-upload-consumer@3.service
+
+[Install]
+WantedBy=multi-user.target

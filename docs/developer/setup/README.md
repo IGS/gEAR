@@ -125,7 +125,7 @@ $HOME/git/gEAR/www/analyses
 
 ## Docker Alternative
 
-For development, consider using Docker instead of a full server setup:
+For development, strongly recommended to use Docker instead of a full server setup:
 
 - See [Docker Setup Guide](./docker.md)
 - Faster setup but requires more disk space
@@ -147,7 +147,7 @@ cd /path/to/gEAR
 git pull origin devel
 # Restart services (if needed)
 sudo systemctl restart apache2
-sudo systemctl restart projectr-consumer.target
+sudo systemctl restart projectr-consumer.target gosling-upload-consumer.target
 sudo systemctl restart spatial-panel.service
 ```
 

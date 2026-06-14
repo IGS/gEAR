@@ -168,7 +168,7 @@ def parse_tracks_from_trackdb(trackdb_txt, trackdb_url) -> list:
     longLabel ATAC-seq 1st replicate
     group ATAC
     color 31,119,180
-    autoscale on
+    autoScale on
     visibility dense
     type bigWig
     """

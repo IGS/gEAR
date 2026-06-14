@@ -4,7 +4,7 @@ import { convertToFormData, initCommonUI } from "./common.v2.js";
 
 let verification_uuid = null;
 
-window.onload=function() {
+const initializePageUI = () => {
     // Set the page title
     document.getElementById('page-header-label').textContent = 'Create an account';
 
@@ -121,7 +121,8 @@ async function sendVerificationEmail(verification_uuid) {
 
 async function validateEmail() {
     const email = document.getElementById('email').value;
-    const email_regex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+    // see https://github.com/IGS/gEAR/security/code-scanning/201
+    const email_regex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
     if (email_regex.test(email) ) {
         document.getElementById('email').classList.remove('is-danger');
         document.getElementById('email-error-message').classList.add('is-hidden');
@@ -301,5 +302,6 @@ async function validateAccountCreationForm() {
     return true;
 }
 
-// Pre-initialize some stuff
+// Initialize common UI first, then initialize page-specific UI
 await initCommonUI();
+initializePageUI();

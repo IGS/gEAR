@@ -6,7 +6,11 @@ Details - https://cloud.google.com/run/docs/quickstarts/build-and-deploy/deploy-
 
 NOTE: Cloud Build times out when attempting to build this image. Need to build locally. For my purposes, I named my image "projectr_service".
 
-Also if building on an M1 Mac, you need to add platform information to make it build with Linux architecture.  Otherwise it will not be able to run in the Google Cloud services.  My docker command to build was `docker build --platform linux/amd64 --no-cache -t projectr_service .`
+Build projectr service, and tag specifically for Google Cloud services (which requires linux/amd64 platform):
+
+1. `docker buildx build --platform linux/arm64,linux/amd64 -t projectr .`
+2. `docker buildx imagetools create -t projectr_service --platform linux/amd64 projectr:latest`
+
 
 ## Pushing Docker images to Google Artifact Registry
 

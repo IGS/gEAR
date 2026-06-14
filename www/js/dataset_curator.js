@@ -308,6 +308,8 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
         , "js-tsne-flip-y": "flip_y"
         , "js-tsne-colorize-legend-by": "colorize_legend_by"
         , "js-tsne-plot-by-series": "plot_by_group"
+        , "js-tsne-hide-group-nonmembers": "hide_group_nonmembers"
+        , "js-tsne-enforce-equal-aspect": "enforce_equal_aspect"
         , "js-tsne-max-columns": "max_columns"
         , "js-tsne-skip-gene-plot": "skip_gene_plot"
         , "js-tsne-horizontal-legend": "horizontal_legend"
@@ -353,6 +355,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
 
         // Restoring some disabled/checked elements in UI
         const plotBySeries = document.getElementsByClassName("js-tsne-plot-by-series");
+        const hideGroupNonmembers = document.getElementsByClassName("js-tsne-hide-group-nonmembers");
         const maxColumns = document.getElementsByClassName('js-tsne-max-columns');
         const skipGenePlot = document.getElementsByClassName("js-tsne-skip-gene-plot");
         const horizontalLegend = document.getElementsByClassName("js-tsne-horizontal-legend");
@@ -361,7 +364,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
 
         if (config["colorize_legend_by"]) {
             const series = config["colorize_legend_by"];
-            for (const targetElt of [...plotBySeries, ...horizontalLegend]) {
+            for (const targetElt of [...plotBySeries, ...hideGroupNonmembers, ...horizontalLegend]) {
                 targetElt.disabled = true;
                 if (catColumns.includes(series)) {
                     targetElt.disabled = false;
@@ -403,8 +406,14 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
                 targetElt.checked = false;
                 curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
             }
-            for (const targetElt of [...maxColumns]) {
+            for (const targetElt of [...maxColumns, ...hideGroupNonmembers]) {
                 targetElt.disabled = false;
+            }
+        } else {
+            for (const targetElt of [...hideGroupNonmembers]) {
+                targetElt.disabled = true;
+                targetElt.checked = false;
+                curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
             }
         }
 
@@ -452,10 +461,12 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
      */
     async createPlot(datasetId, analysisObj) {
         let image;
+        let image_format;
         try {
             const data = await fetchTsneImage(datasetId, analysisObj, this.apiPlotType, this.plotConfig);
-            ({ image } = data);
+            ({ image, image_format } = data);
         } catch (error) {
+            console.error("Error fetching TSNE image:", error);
             return;
         }
 
@@ -477,7 +488,8 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
             createToast("Could not retrieve plot image. Cannot make plot.");
             return;
         }
-        const blob = await fetch(`data:image/webp;base64,${image}`).then(r => r.blob());
+        const imageFormat = image_format ?? "webp";
+        const blob = await fetch(`data:image/${imageFormat};base64,${image}`).then(r => r.blob());
         tsnePreview.src = URL.createObjectURL(blob);
         tsnePreview.onload = () => {
             // Revoke the object URL to free up memory
@@ -525,7 +537,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
 
         // Get colors
         const colorElts = document.getElementsByClassName("js-plot-color");
-        const colorSeries = document.getElementById("colorize-legend-by-post").textContent;
+        const colorSeries = document.getElementById("colorize-legend-by-post").value;
         if (colorSeries && colorElts.length) {
             this.plotConfig["colors"] = {};
             [...colorElts].map((field) => {
@@ -540,11 +552,13 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
             this.plotConfig["max_columns"] = null;
             this.plotConfig["skip_gene_plot"] = false;
             this.plotConfig["horizontal_legend"] = false;
+            this.plotConfig["hide_group_nonmembers"] = false;
         }
 
         // if no plot-by-group is selected, ensure max columns is not passed to the scanpy code
-        if (!(document.getElementById("plot-by-group-series-post").textContent)) {
+        if (!(document.getElementById("plot-by-group-series-post").value)) {
             this.plotConfig["max_columns"] = null;
+            this.plotConfig["hide_group_nonmembers"] = false;
         }
 
         // If override marker size is not checked, ensure it does not get passed to the scanpy code
@@ -1381,6 +1395,7 @@ const setupScanpyOptions = async (datasetId) => {
 
     const colorizeLegendBy = document.getElementsByClassName("js-tsne-colorize-legend-by");
     const plotBySeries = document.getElementsByClassName("js-tsne-plot-by-series");
+    const hideGroupNonmembers = document.getElementsByClassName("js-tsne-hide-group-nonmembers");
     const maxColumns = document.getElementsByClassName('js-tsne-max-columns');
     const skipGenePlot = document.getElementsByClassName("js-tsne-skip-gene-plot");
     const horizontalLegend = document.getElementsByClassName("js-tsne-horizontal-legend");
@@ -1399,7 +1414,7 @@ const setupScanpyOptions = async (datasetId) => {
             }
 
             // The "max columns" parameter should only be disabled if the colorized legend is continuous
-            for (const targetElt of [...maxColumns]) {
+            for (const targetElt of [...maxColumns, ...hideGroupNonmembers]) {
                 targetElt.disabled = catColumns.includes(event.target.value) ? false : true;
                 curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
             }
@@ -1430,7 +1445,7 @@ const setupScanpyOptions = async (datasetId) => {
                 curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
             }
             // Must be allowed to specify max columns if series value selected
-            for (const targetElt of [...maxColumns]) {
+            for (const targetElt of [...maxColumns, ...hideGroupNonmembers]) {
                 targetElt.disabled = event.target.value ? false : true;
                 curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
             }

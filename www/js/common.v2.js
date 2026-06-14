@@ -6,6 +6,16 @@ let SITE_PREFS = null;
 
 const getCurrentUser = () => CURRENT_USER;
 
+// Utility function to escape HTML special characters to prevent XSS attacks when inserting user-generated content into the DOM
+const escapeHtml = (value) => {
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+	}
+
 // If a page wants to use this action, it can register a callback function
 let pageSpecificLoginUIUpdates = () => {};
 const registerPageSpecificLoginUIUpdates = (fn) => pageSpecificLoginUIUpdates = fn;
@@ -262,30 +272,41 @@ PMID: 34172972`;
 
 
 const getDomainPreferences = async () => {
-    const response = await fetch('/site_domain_prefs.json');
-    return response.json();
+    const prefsResponse = await fetch('/site_domain_prefs.json');
+    const prefs = await prefsResponse.json();
+
+    const cacheResponse = await fetch('/cache_version.json');
+    const cacheData = await cacheResponse.json();
+
+    // Merge cache_version into the preferences object
+    prefs.cache_version = cacheData.cache_version;
+
+    return prefs;
 }
 
 /**
- * Appends the cache version to an asset URL to bust browser cache.
- * 
- * @param {string} assetPath - The path to the CSS/JS file (e.g., 'css/common.v2.css')
- * @returns {string} - The asset path with version query parameter
- * 
- * @example
- * const cssUrl = versionedAsset('css/common.v2.css');
- * // Returns: 'css/common.v2.css?v=2026.02.10.123456'
+ * Inserts a versioned CSS file into the document head.
+ * @param {string} href - The href path to the CSS file.
+ * @param {string} cacheVersion - The cache version to append as a query parameter.
  */
-const versionedAsset = (assetPath) => {
-    if (!SITE_PREFS || !SITE_PREFS.cache_version) {
-        console.warn('Cache version not loaded yet, returning unversioned asset path');
-        return assetPath;
-    }
-    const separator = assetPath.includes('?') ? '&' : '?';
-    return `${assetPath}${separator}v=${SITE_PREFS.cache_version}`;
+const insertVersionedCSS = (href, cacheVersion) => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = `${href}?v=${cacheVersion}`;
+    document.head.appendChild(link);
 }
 
-
+/**
+ * Inserts a versioned JS file into the document head.
+ * @param {string} href - The href path to the JS file.
+ * @param {string} cacheVersion - The cache version to append as a query parameter.
+ */
+const insertVersionedJS = (href, cacheVersion) => {
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.src = `${href}?v=${cacheVersion}`;
+    document.body.appendChild(script);
+}
 
 /**
  * Retrieves the value of a specified URL parameter.
@@ -613,6 +634,7 @@ const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { 
     toast.classList.add("notification", "js-toast", levelClass, "animate__animated", "animate__fadeInUp");
     const toastButton = document.createElement("button");
     toastButton.classList.add("delete");
+    toastButton.setAttribute("aria-label", "Dismiss notification");
     toastButton.addEventListener("click", (event) => {
         const notification = event.currentTarget.closest(".js-toast.notification");
         notification.remove();
@@ -620,7 +642,19 @@ const createToast = (msg, levelClass="is-danger", closeManually=false, opts = { 
     toast.appendChild(toastButton);
     toast.appendChild(opts?.isHTML ? (() => {
         const span = document.createElement("span");
-        span.innerHTML = msg;
+        const lines = String(msg).split("\n");
+        for (let i = 0; i < lines.length; i++) {
+            span.appendChild(document.createTextNode(lines[i]));
+            if (i < lines.length - 1) {
+                span.appendChild(document.createElement("br"));
+            }
+        }
+        lines.forEach((line, index) => {
+            if (index > 0) {
+                span.appendChild(document.createElement("br"));
+            }
+            span.appendChild(document.createTextNode(line));
+        });
         return span;
     })() : document.createTextNode(msg));
 
@@ -976,6 +1010,15 @@ const apiCallsMixin = {
         // NOTE: gene_symbol should already be already passed to plotConfig
         const payload = { ...plotConfig, plot_type: plotType, analysis, colorblind_mode: apiCallsMixin.colorblindMode };
         const {data} = await axios.post(`/api/plot/${datasetId}/mg_plotly`, payload, otherOpts);
+        return data;
+    },
+    /**
+     * Fetches citation information for a given PubMed ID.
+     * @param {string} pubmedId - The PubMed ID for which to fetch citation information.
+     * @returns {Promise<object>} - A promise that resolves to the fetched citation data.
+     */
+    async fetchCitationFromPubmedId(pubmedId) {
+        const {data} = await axios.post("cgi/get_citation_from_pubmed_id.cgi", convertToFormData({pubmed_id: pubmedId}));
         return data;
     },
     /**
@@ -1622,6 +1665,7 @@ const apiCallsMixin = {
 export {
     apiCallsMixin,
     createToast,
+    escapeHtml,
     getCurrentUser,
     getDomainPreferences,
     getRootUrl,
@@ -1639,5 +1683,6 @@ export {
     trigger,
     openModal,
     closeModal,
-    versionedAsset,
+    insertVersionedCSS,
+    insertVersionedJS,
 };

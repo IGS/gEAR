@@ -780,6 +780,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
         , "js-tsne-flip-x": "flip_x"
         , "js-tsne-flip-y": "flip_y"
         , "js-tsne-colorize-legend-by": "colorize_legend_by"
+        , "js-tsne-enforce-equal-aspect": "enforce_equal_aspect"
         , "js-tsne-max-columns": "max_columns"
         , "js-tsne-horizontal-legend": "horizontal_legend"
         , "js-tsne-marker-size": "marker_size"
@@ -878,10 +879,12 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
      */
     async createPlot(datasetId, analysisObj) {
         let image;
+        let image_format;
         try {
             const data = await fetchMgTsneImage(datasetId, analysisObj, this.apiPlotType, this.plotConfig);
-            ({ image } = data);
+            ({ image, image_format } = data);
         } catch (error) {
+            console.error("Error fetching multigene TSNE image:", error);
             return;
         }
 
@@ -903,7 +906,8 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
             createToast("Could not retrieve plot image. Cannot make plot.");
             return;
         }
-        const blob = await fetch(`data:image/webp;base64,${image}`).then(r => r.blob());
+        const imageFormat = image_format ?? "webp";
+        const blob = await fetch(`data:image/${imageFormat};base64,${image}`).then(r => r.blob());
         tsnePreview.src = URL.createObjectURL(blob);
         tsnePreview.onload = () => {
             // Revoke the object URL to free up memory
@@ -929,6 +933,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
 
         // Remove some single-gene options from the post-plot adjustments
         const plotBySeries = document.querySelector(".js-tsne-plot-by-series");
+        const hideGroupNonmembers = document.querySelector(".js-tsne-hide-group-nonmembers");
         const skipGenePlot = document.querySelector(".js-tsne-skip-gene-plot");
         const twoWayPalette = document.querySelector(".js-tsne-two-way-palette");
         for (const targetElt of [plotBySeries, skipGenePlot, twoWayPalette]) {
@@ -961,7 +966,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
 
         // Get colors
         const colorElts = document.getElementsByClassName("js-plot-color");
-        const colorSeries = document.getElementById("colorize-legend-by-post").textContent;
+        const colorSeries = document.getElementById("colorize-legend-by-post").value;
         if (colorSeries && colorElts.length) {
             this.plotConfig["colors"] = {};
             [...colorElts].map((field) => {
@@ -1022,6 +1027,7 @@ const appendGeneTagButton = (geneTagElt) => {
     // Add delete button
     const deleteBtnElt = document.createElement("button");
     deleteBtnElt.classList.add("delete", "is-small");
+    deleteBtnElt.setAttribute("aria-label", "Remove gene");
     geneTagElt.appendChild(deleteBtnElt);
     deleteBtnElt.addEventListener("click", (event) => {
         // Remove gene from selectedGenes

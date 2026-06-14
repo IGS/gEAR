@@ -2,8 +2,9 @@
 
 // This doesn't work unless we refactor everything to use ES modules
 import { apiCallsMixin, closeModal, createToast, getCurrentUser, logErrorInConsole, openModal } from "../common.v2.js";
-import { adjustClusterColorbars, adjustExpressionColorbar, postPlotlyConfig } from "../helpers/plot-display-config.js";
+import { attachAxisLabelTooltips, postPlotlyConfig } from "../helpers/plot-display-config.js";
 import { colorSVG } from "../helpers/dataset-svg-fxns.js";
+import { Citation } from "./citation.js";
 
 /* Given a passed-in layout_id, genereate a 2-dimensional tile-based grid object.
 This uses Bulma CSS for stylings (https://bulma.io/documentation/layout/tiles/)
@@ -65,50 +66,6 @@ export class TileGrid {
         if (noDisplaysElt) {
             noDisplaysElt.remove();
         }
-
-        const getTotalAncestorHorizontalPadding = (element) => {
-            let totalPadding = 0;
-            let current = element.parentElement;
-            while (current && current !== document.body) {
-                const style = getComputedStyle(current);
-                totalPadding += parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
-                current = current.parentElement;
-            }
-            return totalPadding;
-        }
-
-
-        // setup grid-auto-rows and grid-auto-columns based on the width of the parent element(s)
-        const ancestorPaddingWidth = getTotalAncestorHorizontalPadding(selectorElt);
-
-        const parentElt = selectorElt.parentElement
-        const parentWidth = parentElt.offsetWidth;
-
-        // Got some oddness when adding these to the CSS... probably because of race conditions with the CSS loading.
-        selectorElt.style.display = "grid";
-        selectorElt.style.gridGap = `${0.5}em`; // 8px
-        selectorElt.style.width = "max-content"; // This is needed to make the grid auto-size to the content
-
-        const gridGap = parseFloat(selectorElt.style.gridGap);
-        const borderWidth = parseFloat(getComputedStyle(selectorElt).borderWidth) || 0; // Get border width, default to 0 if not set
-        // usable width = grid width - 2*border width - ancestor-paddings - grid-gap
-        // NOTE: Not sure why it works better with ancestor padding x 2 instead of just ancestor padding.
-        const usableWidth = parentWidth - (2 * (borderWidth + ancestorPaddingWidth)) - gridGap;
-
-        let columnWidth = usableWidth / 12; // 12 columns in the grid
-        const MIN_COLUMN_WIDTH = 90
-        // If the column width is less than the minimum, then set it to the minimum
-        // Otherwise, some plots will not render correctly.
-        if (columnWidth < MIN_COLUMN_WIDTH) {
-            columnWidth = MIN_COLUMN_WIDTH;
-        }
-
-        const rowWidth = columnWidth * 4; // Row height should be 1/4th of the column width
-
-        // 12 columns
-        selectorElt.style.gridAutoColumns = `${columnWidth}px`;
-        // Row height should be 1/4th of the column width
-        selectorElt.style.gridAutoRows = `${rowWidth}px`;
 
         if (this.type === "dataset") {
             if (!(this.datasets?.length)) {
@@ -531,6 +488,8 @@ class DatasetTile {
             await this.getOrthologs(geneSymbolInput);
         }
         catch (error) {
+            const msg = error?.response?.data?.message || "An error occurred while fetching orthologs. Please try again or contact the gEAR team.";
+            createCardMessage(tileId, "danger", msg);
             return;
         }
 
@@ -892,6 +851,32 @@ class DatasetTile {
                         item.classList.add("is-hidden");
                     }
                     break;
+                case "cite":
+                    item.addEventListener("click", async (event) => {
+                        let modalHTML;
+                        if (pubmedId) {
+                            modalHTML = this.createModalCitation(apiCallsMixin.fetchCitationFromPubmedId(pubmedId));
+                        } else {
+                            const citation = {
+                                apa: Citation.APA(
+                                    (dataset.contact_name ?? null) === null ? null : [ dataset.contact_name ], // if contact name is null or undefined, pass null to APA function, otherwise pass as array
+                                    new Date(dataset.date_added).getFullYear(),
+                                    dataset.title,
+                                    dataset.share_id,
+                                    new Date(),
+                                    dataset.license ?? "AGPL-3" // default to AGPL-3 for now
+                                )
+                            };
+
+                            modalHTML = this.createModalCitation(new Promise((res) => res(citation)));
+                        }
+
+                        // Add modal to DOM
+                        document.body.append(modalHTML);
+                        const modalElt = document.getElementById(`citation-modal-${this.tile.tileId}`);
+                        openModal(modalElt);
+                    });
+                    break;
                 case "geo":
                     // Link to GEO entry if it exists
                     if (geoId) {
@@ -1053,6 +1038,10 @@ class DatasetTile {
 
             this.parentTileGrid.zoomId = null; // Clear the zoomed display ID in the parent tile grid
 
+            // Trigger resize event for Plotly plots.
+            // Resizing in the "expanded" view will also resize the "condensed" plots.
+            window.dispatchEvent(new Event('resize'));
+
         });
 
         // Add event listener to dropdown trigger
@@ -1151,6 +1140,50 @@ class DatasetTile {
         });
 
         return infoboxHTML;
+    }
+
+    /*
+     * Creates a modal for displaying citation information for the dataset. The citation information is loaded asynchronously from a promise, and the modal includes functionality to switch between different citation formats (e.g., MLA, gEAR) and to copy the citation to the clipboard.
+     */
+    createModalCitation(citationPromise) {
+        const modalTemplate = document.getElementById("tmpl-tile-grid-citation-modal");
+        const modalHTML = modalTemplate.content.cloneNode(true);
+
+        const modalDiv = modalHTML.querySelector('.modal');
+        modalDiv.id = `citation-modal-${this.tile.tileId}`;
+
+        modalHTML.querySelector(".modal-card-body .js-citation-content").textContent = "Loading citation information...";
+
+        citationPromise.then((citation) => {
+            const modal = document.getElementById(`citation-modal-${this.tile.tileId}`);
+
+            modal.querySelector(".modal-card-body .js-citation-content").innerHTML = (citation.apa ?? citation.apa).format;
+
+            // Copy button
+            modal.querySelector(".modal-card-foot .js-citation-copy").addEventListener("click", (event) => {
+                const item = new ClipboardItem({
+                    "text/plain": new Blob([citation.apa.orig], { type: "text/plain" }),
+                    "text/html": new Blob([citation.apa.format], { type: "text/html" })
+                });
+                navigator.clipboard.write([item]).then(() => {
+                    createToast(`Citation copied to clipboard!`, "is-success");
+                }).catch((error) => {
+                    logErrorInConsole(error);
+                    createToast("Failed to copy citation to clipboard.", "is-danger");
+                });
+            });
+        });
+
+        // Close button event listener
+        const closeButton = modalDiv.querySelector(".delete");
+        closeButton.addEventListener("click", (event) => {
+            closeModal(modalDiv);
+        });
+        const modalBackground = modalDiv.querySelector(".modal-background");
+        modalBackground.addEventListener("click", (event) => {
+            closeModal(modalDiv);
+        });
+        return modalHTML;
     }
 
     /**
@@ -1405,16 +1438,16 @@ class DatasetTile {
 
                 await this.renderSpatialPanelDisplay(display, otherOpts);
 
-                // Determine how "download_png" is handled for scanpy plots
-                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
-                if (downloadPNG) {
-                    const newDownloadPNG = downloadPNG.cloneNode(true);
-                    downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
+                // Determine how "download_image" is handled for scanpy plots
+                const downloadImage = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
+                if (downloadImage) {
+                    const newDownloadImage = downloadImage.cloneNode(true);
+                    downloadImage.parentNode.replaceChild(newDownloadImage, downloadImage);
 
-                    newDownloadPNG.classList.remove("is-hidden");
-                    newDownloadPNG.addEventListener("click", async (event) => {
+                    newDownloadImage.classList.remove("is-hidden");
+                    newDownloadImage.addEventListener("click", async (event) => {
                         // get the download URL
-                        await this.downloadSpatialPNG(display);
+                        await this.downloadSpatialHTML(display);
                     });
                 }
                 return;
@@ -1459,17 +1492,19 @@ class DatasetTile {
         }
 
         // if projection ran, add the projection info to the plotly config
-        if (this.projectR.modeEnabled && this.projectR.projectionId && this.dataset.is_downloadable) {
+        if (this.projectR.modeEnabled && this.projectR.projectionId) {
             display.plotly_config.projection_id = this.projectR.projectionId;
 
-            const downloadProjection = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-projection"]`);
-            downloadProjection.classList.remove("is-hidden");
-            try {
-                const url = `./cgi/download_projection.cgi?projection_id=${this.projectR.projectionId}&share_id=${this.dataset.share_id}`;
-                downloadProjection.href = url;
-            } catch (error) {
-                logErrorInConsole(error);
-                createToast("An error occurred while trying to download the projection output.");
+            if (this.dataset.is_downloadable) {
+                const downloadProjection = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-projection"]`);
+                downloadProjection.classList.remove("is-hidden");
+                try {
+                    const url = `./cgi/download_projection.cgi?projection_id=${this.projectR.projectionId}&share_id=${this.dataset.share_id}`;
+                    downloadProjection.href = url;
+                } catch (error) {
+                    logErrorInConsole(error);
+                    createToast("An error occurred while trying to download the projection output.");
+                }
             }
         }
 
@@ -1478,15 +1513,15 @@ class DatasetTile {
             if (plotlyPlots.includes(display.plot_type)) {
                 await this.renderPlotlyDisplay(display, otherOpts);
 
-                const downloadPNG = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
-                if (downloadPNG) {
+                const downloadImage = document.querySelector(`#tile-${this.tile.tileId} .dropdown-item[data-tool="download-image"]`);
+                if (downloadImage) {
 
-                    const newDownloadPNG = downloadPNG.cloneNode(true);
-                    downloadPNG.parentNode.replaceChild(newDownloadPNG, downloadPNG);
+                    const newDownloadImage = downloadImage.cloneNode(true);
+                    downloadImage.parentNode.replaceChild(newDownloadImage, downloadImage);
 
-                    newDownloadPNG.classList.remove("is-hidden");
-                    newDownloadPNG.addEventListener("click", async (event) => {
-                        await this.downloadPlotlyPNG(display);
+                    newDownloadImage.classList.remove("is-hidden");
+                    newDownloadImage.addEventListener("click", async (event) => {
+                        await this.downloadPlotlyImage(display);
                     });
                 }
 
@@ -1507,7 +1542,7 @@ class DatasetTile {
                     newDownloadPNG.classList.remove("is-hidden");
                     newDownloadPNG.addEventListener("click", async (event) => {
                         // get the download URL
-                        await this.downloadScanpyPNG(display, false);
+                        await this.downloadScanpyImage(display, false);
                     });
                 }
 
@@ -1537,7 +1572,7 @@ class DatasetTile {
                     newDownloadPNG.classList.remove("is-hidden");
                     newDownloadPNG.addEventListener("click", async (event) => {
                         // get the download URL
-                        await this.downloadSpatialPNG(display);
+                        await this.downloadSpatialHTML(display);
                     });
                 }
             } else if (display.plot_type === "gosling") {
@@ -1565,10 +1600,7 @@ class DatasetTile {
                 }
 
             } else if (this.type === "multi") {
-                if (this.dataset.dtype === "spatial") {
-                    // Matplotlib-based display for spatial datasets
-                    await this.renderSpatialScanpyDisplay(null, null);
-                } else if (mgScanpyPlots.includes(display.plot_type)) {
+                if (mgScanpyPlots.includes(display.plot_type)) {
                     // Render multi-gene scanpy display
                     await this.renderScanpyDisplay(display, true, otherOpts);
 
@@ -1582,7 +1614,7 @@ class DatasetTile {
                         newDownloadPNG.classList.remove("is-hidden");
                         newDownloadPNG.addEventListener("click", async (event) => {
                             // get the download URL
-                            await this.downloadScanpyPNG(display, true);
+                            await this.downloadScanpyImage(display, true);
                         });
 
                     }
@@ -1597,7 +1629,7 @@ class DatasetTile {
 
                         newDownloadPNG.classList.remove("is-hidden");
                         newDownloadPNG.addEventListener("click", async (event) => {
-                            await this.downloadPlotlyPNG(display, true);
+                            await this.downloadPlotlyImage(display, true);
                         });
                     }
                 }
@@ -1643,7 +1675,6 @@ class DatasetTile {
             return
         }
 
-
         const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
@@ -1653,11 +1684,12 @@ class DatasetTile {
         try {
             const data = await apiCallsMixin.fetchGoslingDisplay(datasetId, plotConfig, zoom, otherOpts)
             if (data?.success < 1) {
-                message = data?.message || "Failed to fetch Gosling display data.";
+                const message = data?.message || "Failed to fetch Gosling display data.";
                 throw new Error(message);
             }
             // spec is a JSON string which needs to be a JSON object
             spec = (typeof data.spec === "string") ? JSON.parse(data.spec) : data.spec;
+
             positionArr[0] = data.position;
             if (zoom) {
                 positionArr[1] = data.position;
@@ -1667,7 +1699,8 @@ class DatasetTile {
 
         } catch (error) {
             logErrorInConsole(error);
-            createCardMessage(this.tile.tileId, "danger", "An error occurred while fetching the Gosling spec.");
+            const message = error?.message || "An error occurred while fetching the Gosling display data.";
+            createCardMessage(this.tile.tileId, "danger", message);
             return;
         }
 
@@ -1855,13 +1888,6 @@ class DatasetTile {
             return;
         }
 
-        if (plotType === 'heatmap') {
-            // These modify the plotJson object in place
-            // TODO: Adjust these functions
-            adjustExpressionColorbar(plotJson.data);
-            adjustClusterColorbars(plotJson.data);
-        }
-
         // Update plot with custom plot config stuff stored in plot-display-config.js
         const expressionDisplayConf = postPlotlyConfig.expression;
         const customConfig = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "config");
@@ -1871,7 +1897,29 @@ class DatasetTile {
         const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout");
         Plotly.relayout(plotlyPreview.id , customLayout);
 
+        // Attach tooltips for any truncated axis labels
+        attachAxisLabelTooltips(plotlyPreview.id);
+
         this.plotlyDiv = plotlyPreview.id;
+
+        // Add some WCAG accessibility features to the plotly div
+        const plotlyDiv = document.getElementById(this.plotlyDiv);
+        if (!plotlyDiv) {
+            return;
+        }
+        plotlyDiv.setAttribute("role", "img");
+
+        const plotLabel = plotType.replace("_dynamic", "");
+        let altText = `${plotLabel} plot in dataset '${this.dataset.title}'`;
+        if (display.plotly_config.projection_id) {
+            altText += "projected into "
+            altText += "multiple patterns";
+        } else {
+            const numGenes = display.plotly_config.gene_symbols.length;
+            altText += `using (${numGenes}) genes`;
+        }
+        // TODO add extra condition information
+        plotlyDiv.setAttribute("alt", altText);
     }
 
     /**
@@ -1919,25 +1967,85 @@ class DatasetTile {
         const customLayout = getPlotlyDisplayUpdates(expressionDisplayConf, this.plotType, "layout");
         Plotly.relayout(plotlyPreview.id, customLayout);
 
+        // Attach tooltips for any truncated axis labels
+        attachAxisLabelTooltips(plotlyPreview.id);
+
         this.plotlyDiv = plotlyPreview.id;
+        // Add some WCAG accessibility features to the plotly div
+        const plotlyDiv = document.getElementById(this.plotlyDiv);
+        if (!plotlyDiv) {
+            return;
+        }
+        plotlyDiv.setAttribute("role", "img");
+
+        const plotLabel = plotType.replace("_dynamic", "");
+        let altText = `${plotLabel} plot in dataset '${this.dataset.title}'`;
+        if (display.plotly_config.projection_id) {
+            altText += "projected into "
+            altText += `pattern ${display.plotly_config.gene_symbol}`;
+        } else {
+            altText += `using gene ${display.plotly_config.gene_symbol}`;
+        }
+        // TODO add extra condition information
+        plotlyDiv.setAttribute("alt", altText);
+
     }
 
     /**
-     * Downloads the current Plotly plot as a PNG image.
+     * Downloads the current Plotly plot as an image.
      *
-     * @param {Object} display - The display configuration object containing plot details.
-     * @param {boolean} [isMultigene=false] - Indicates whether the plot is for multiple genes.
-     * @returns {Promise<void>} Resolves when the download is initiated, or shows a toast if the plot is unavailable.
+     * @async
+     * @param {Object} display - The display object containing information about the dataset and plot configuration.
+     * @param {boolean} [isMultigene=false] - Indicates if the display is for multiple genes.
+     * @returns {Promise<void>} - A promise that resolves when the image is downloaded.
+     * @throws {Error} - If the image retrieval is unsuccessful or encounters an unknown error.
      */
-    async downloadPlotlyPNG(display, isMultigene=false) {
-        if (!this.plotlyDiv) {
-            createToast("Plot is not available for download.");
+    async downloadPlotlyImage(display, isMultigene=false) {
+        const datasetId = display.dataset_id;
+        // Create analysis object if it exists.  Also supports legacy "analysis_id" string
+        const analysisObj = display.plotly_config.analysis_id ? {id: display.plotly_config.analysis_id} : display.plotly_config.analysis || null;
+        const plotType = display.plot_type;
+        const plotConfig = display.plotly_config;
+
+        // Used in building the downloadable file name
+        const geneSymbol = isMultigene ? "multigene" : plotConfig.gene_symbol;
+        const shareId = this.dataset.share_id;
+
+        // add return image to the plot config so that the API returns the image for download
+        plotConfig.return_image = true;
+
+        const func = isMultigene ? apiCallsMixin.fetchMgPlotlyData : apiCallsMixin.fetchPlotlyData;
+
+        const data = await func(datasetId, analysisObj, plotType, plotConfig);
+
+        const {image, image_format} = data;
+        if (!image) {
+            console.warn(`Could not retrieve downloadable image for dataset display ${display.id}.`);
             return;
         }
 
-        const geneSymbol = isMultigene ? "multigene" : display.plotly_config.gene_symbol;
-        const shareId = this.dataset.share_id;
-        Plotly.downloadImage(this.plotlyDiv, { format: 'png', width: 1920, height: 1080, filename: `${shareId}_${geneSymbol}_${display.plot_type}` });
+        const imageFormat = image_format || "webp"; // default to webp if not provided
+        const blob = await fetch(`data:image/${imageFormat};base64,${image}`).then(r => r.blob());
+        const download = URL.createObjectURL(blob);
+
+        // create a hidden element that will be clicked to download the PNG
+        const hiddenLink = document.createElement('a');
+        document.body.appendChild(hiddenLink);
+        hiddenLink.classList.add("is-hidden");
+
+        // download URL
+        hiddenLink.download = `${shareId}_${geneSymbol}_${display.plot_type}.${imageFormat}`;
+        hiddenLink.href = download;
+
+        hiddenLink.setAttribute('target', '_blank');
+
+        // click the hidden link to download the PNG
+        hiddenLink.click();
+
+        // save memory (but breaks download)
+        URL.revokeObjectURL(download);
+        hiddenLink.remove();
+
     }
 
     /**
@@ -1957,12 +2065,6 @@ class DatasetTile {
         const plotType = display.plot_type;
         const plotConfig = display.plotly_config;
 
-        const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
-        if (!this.isZoomed) {
-            plotConfig.grid_spec = tileElement.style.gridArea   // add grid spec to plot config
-            if (plotConfig.grid_spec === "auto") delete plotConfig.grid_spec;   // single dataset grid spec
-        }
-
         const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
         if (!plotContainer) return; // tile was removed before data was returned
         plotContainer.replaceChildren();    // erase plot
@@ -1974,35 +2076,61 @@ class DatasetTile {
 
         const func = isMultigene ? apiCallsMixin.fetchMgTsneImage : apiCallsMixin.fetchTsneImage;
 
+
         const data = await func(datasetId, analysisObj, plotType, plotConfig, otherOpts);
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
-        const {image} = data;
+        const {image, image_format} = data;
 
         if (!image) {
             console.warn(`Could not retrieve plot image for dataset display ${display.id}. Cannot make plot.`);
             return;
         }
 
-        const blob = await fetch(`data:image/webp;base64,${image}`).then(r => r.blob());
+        const imageFormat = image_format || "webp"; // default to webp if not provided
+        const blob = await fetch(`data:image/${imageFormat};base64,${image}`).then(r => r.blob());
 
         // decode base64 image and set as src
         tsnePreview.src = URL.createObjectURL(blob);
+
+       // Generate alt text based on gene symbol(s) and a few key plotly_config parameters
+        let altText = "";
+
+        const plotLabel = plotType.replace("_static", "");
+        altText += `${plotLabel} plot in dataset '${this.dataset.title}' `;
+
+        if (display.plotly_config.projection_id) {
+            altText += "projected into "
+            altText += isMultigene ? "multiple patterns" : `pattern ${display.plotly_config.gene_symbol}`;
+        } else if (isMultigene) {
+            const numGenes = display.plotly_config.gene_symbols.length;
+            altText += `using (${numGenes}) genes`;
+        } else {
+            altText += `using gene ${display.plotly_config.gene_symbol}`;
+        }
+
+        // Add legend color information if it exists
+        if (display.plotly_config.colorize_legend_by) {
+            altText += ` with legend colored by ${display.plotly_config.colorize_legend_by}`;
+        }
+
+        tsnePreview.alt = altText
+
         return;
     }
 
 
     /**
-     * Retrieves a PNG image for a given display and initiates its download.
+     * Retrieves an image for a given display and initiates its download.
      *
      * @async
      * @param {Object} display - The display object containing information about the dataset and plot configuration.
      * @param {boolean} [isMultigene=false] - Indicates if the display is for multiple genes.
-     * @returns {Promise<void>} - A promise that resolves when the PNG image is downloaded.
+     * @returns {Promise<void>} - A promise that resolves when the image is downloaded.
      * @throws {Error} - If the image retrieval is unsuccessful or encounters an unknown error.
      */
-    async downloadScanpyPNG(display, isMultigene=false) {
+    async downloadScanpyImage(display, isMultigene=false) {
         const datasetId = display.dataset_id;
         // Create analysis object if it exists.  Also supports legacy "analysis_id" string
         const analysisObj = display.analysis_id ? {id: display.analysis_id} : display.analysis || null;
@@ -2014,25 +2142,20 @@ class DatasetTile {
         const plotConfig = JSON.parse(JSON.stringify(display.plotly_config));
         plotConfig.high_dpi = true;
 
-        const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
-        if (!this.isZoomed) {
-            plotConfig.grid_spec = tileElement.style.gridArea   // add grid spec to plot config
-            if (plotConfig.grid_spec === "auto") delete plotConfig.grid_spec;   // single dataset grid spec
-        }
-
         const func = isMultigene ? apiCallsMixin.fetchMgTsneImage : apiCallsMixin.fetchTsneImage;
 
         const data = await func(datasetId, analysisObj, plotType, plotConfig);
         if (data?.success < 1) {
             throw new Error (data?.message ? data.message : "Unknown error.")
         }
-        const {image} = data;
+        const {image, image_format} = data;
         if (!image) {
             console.warn(`Could not retrieve downloadable image for dataset display ${display.id}.`);
             return;
         }
 
-        const blob = await fetch(`data:image/png;base64,${image}`).then(r => r.blob());
+        const imageFormat = image_format || "webp"; // default to webp if not provided
+        const blob = await fetch(`data:image/${imageFormat};base64,${image}`).then(r => r.blob());
         const download = URL.createObjectURL(blob);
 
         // create a hidden element that will be clicked to download the PNG
@@ -2041,12 +2164,12 @@ class DatasetTile {
         hiddenLink.classList.add("is-hidden");
 
         // download URL
-        hiddenLink.download = `${shareId}_${geneSymbol}_${display.plot_type}.png`;
+        hiddenLink.download = `${shareId}_${geneSymbol}_${display.plot_type}.${imageFormat}`;
         hiddenLink.href = download;
 
         hiddenLink.setAttribute('target', '_blank');
 
-        // click the hidden link to download the PNG
+        // click the hidden link to download the PDF
         hiddenLink.click();
 
         // save memory (but breaks download)
@@ -2148,74 +2271,6 @@ class DatasetTile {
         }
 
         colorSVG(data, this.dataset.id, config, containerInfo, svgScoringMethod);
-    }
-
-    /**
-     * Renders the spatial-based Scanpy display on the tile grid.
-     *
-     * @param {Object} display - The display object containing the dataset and plot information.
-     * @param {Object} otherOpts - Additional options for rendering the display.
-     * @returns {Promise<void>} - A promise that resolves when the display is rendered.
-     * @throws {Error} - If there is an error fetching the image data or if the image data is not available.
-     */
-    async renderSpatialScanpyDisplay(display, otherOpts) {
-
-        const datasetId = this.dataset.id;
-        const analysisObj = null
-        const plotConfig = {gene_symbols: this.geneInput};   // applies for single and multi gene
-
-        this.resetAbortController();
-        otherOpts = {}
-        if (this.controller) {
-            otherOpts.signal = this.controller.signal;
-        }
-
-
-        /* NOT IMPLEMENTED YET
-        const datasetId = display.dataset_id;
-        // Create analysis object if it exists.  Also supports legacy "analysis_id" string
-        const analysisObj = display.plotly_config.analysis_id ? {id: display.plotly_config.analysis_id} : display.plotly_config.analysis || null;
-        const plotConfig = display.plotly_config;
-        */
-
-        const tileElement = document.getElementById(`tile-${this.tile.tileId}`);
-        if (!this.isZoomed) {
-            plotConfig.grid_spec = tileElement.style.gridArea   // add grid spec to plot config
-            if (plotConfig.grid_spec === "auto") delete plotConfig.grid_spec;   // single dataset grid spec
-        }
-
-        const plotContainer = document.querySelector(`#tile-${this.tile.tileId} .card-image`);
-        if (!plotContainer) return; // tile was removed before data was returned
-        plotContainer.replaceChildren();    // erase plot
-
-        const spatialPreview = document.createElement("img");
-        spatialPreview.classList.add("image", "is-fullwidth");
-        spatialPreview.id = `tile-${this.tile.tileId}-spatial-preview`;
-        plotContainer.append(spatialPreview);
-
-        const data = await apiCallsMixin.fetchSpatialScanpyImage(datasetId, analysisObj, plotConfig, otherOpts);
-        if (data?.success < 1) {
-            throw new Error (data?.message ? data.message : "Unknown error.")
-        }
-        const {image} = data;
-
-        if (!image) {
-            console.warn(`Could not retrieve spatial plot image data for dataset ${datasetId}. Cannot make plot.`);
-            //console.warn(`Could not retrieve plot image for dataset display ${display.id}. Cannot make plot.`);
-            return;
-        }
-
-        const blob = await fetch(`data:image/webp;base64,${image}`).then(r => r.blob());
-
-        // decode base64 image and set as src
-        spatialPreview.src = URL.createObjectURL(blob);
-
-        spatialPreview.onload = () => {
-            // Revoke the object URL to free up memory
-            // ! This does prevent right-click saving though
-            //URL.revokeObjectURL(spatialPreview.src);
-        }
-        return;
     }
 
     async renderSpatialPanelDisplay(display, otherOpts) {
@@ -2382,9 +2437,9 @@ class DatasetTile {
         }
     }
 
-    async downloadSpatialPNG(display) {
+    async downloadSpatialHTML(display) {
         if (!this.spatialUrlParams) {
-            createToast("Cannot download PNG because spatial display parameters are not available.", "is-warning");
+            createToast("Cannot download HTML because spatial display parameters are not available.", "is-warning");
             return;
         }
 

@@ -1,4 +1,5 @@
 import os
+import subprocess
 import sys
 import tarfile
 import typing
@@ -23,6 +24,11 @@ from spatialdata_io.experimental import from_legacy_anndata, to_legacy_anndata
 if typing.TYPE_CHECKING:
     from anndata import AnnData
     from spatialdata import SpatialData
+
+def _remove_dir(dir_to_remove: str) -> None:
+    """Remove a directory safely using subprocess (no shell)."""
+    if os.path.isdir(dir_to_remove):
+        subprocess.run(["rm", "-rf", dir_to_remove], check=True)
 
 class SpatialHandler(ABC):
     """
@@ -86,6 +92,8 @@ class SpatialHandler(ABC):
         Returns:
             AnnData: The underlying AnnData object.
         """
+        if self._adata is None:
+            raise Exception("No AnnData object present for this instance.")
         return self._adata
 
     @adata.setter
@@ -106,6 +114,8 @@ class SpatialHandler(ABC):
         Returns:
             SpatialData: The spatial data instance associated with this handler.
         """
+        if self._sdata is None:
+            raise Exception("No spatial data object present for this instance.")
         return self._sdata
 
     @sdata.setter
@@ -302,9 +312,6 @@ class SpatialHandler(ABC):
         NOTE: This is a slow process that can be slower if include_images=True. It is better to read either an h5ad directly
         or read AnnData from SpatialData.tables["table"]
         """
-        if self.sdata is None:
-            raise Exception("No spatial data object present to convert to AnnData object.")
-
         if include_images is None:
             include_images = self.has_images
 
@@ -440,7 +447,7 @@ class SpatialHandler(ABC):
         # While it is possible to save a "transform" (and time) by combining the two in a Sequence transformation,
         # this is necessary to ensure the scaling is done correctly based on the updated coordinates.
         if set_to_zero:
-            translation = Translation([-region_extent["x"][0], -region_extent["y"][0]], axes=["x", "y"])
+            translation = Translation([-region_extent["x"][0], -region_extent["y"][0]], axes=("x", "y"))
             set_transformation(sdata[self.region_name], translation, to_coordinate_system=self.coordinate_system)
             sdata.transform_element_to_coordinate_system(self.region_name, target_coordinate_system=self.coordinate_system)
 
@@ -591,8 +598,6 @@ class SpatialHandler(ABC):
         Raises:
             Exception: If no spatial data object is present, no file path is provided, or an error occurs during writing.
         """
-        if self.sdata is None:
-            raise Exception("No spatial data object present to write to file.")
         if filepath is None:
             raise Exception("No destination file path given. Provide one to write file.")
         try:
@@ -627,8 +632,6 @@ class SpatialHandler(ABC):
             Exception: If no AnnData object is present, if no file path is provided, or if an error occurs during writing.
                 In case of a write error, any partially written file at the destination path is removed.
         """
-        if self.adata is None:
-            raise Exception("No AnnData object present to write to file.")
         if filepath is None:
             raise Exception("No destination file path given. Provide one to write file.")
         try:
@@ -640,26 +643,26 @@ class SpatialHandler(ABC):
             raise Exception("Error occurred while writing to file: ", err)
         return self
 
-class CoxMxHandler(SpatialHandler):
+class CosMxHandler(SpatialHandler):
     """
-    Factory class for CoxMx dataset uploads and conversions.
+    Factory class for CosMx dataset uploads and conversions.
 
     Standardized names for different files:
-    * <dataset_id>_`'anndata.h5ad'`: Counts and metadata file.
-    * <dataset_id>_`'cluster_assignment.txt'`: Cluster assignment file.
-    * <dataset_id>_`'Metrics.csv'`: Metrics file.
-    * <dataset_id>_`'variable_features_clusters.txt'`: Variable features clusters file.
-    * <dataset_id>_`'variable_features_spatial_moransi.txt'`: Variable features Moran’s I file.
+    * `<dataset_id>_`'exprMat_file.csv'`: Counts matrix.
+    * `<dataset_id>_`'metadata_file.csv'`: Metadata file.
+    * `<dataset_id>_`'fov_positions_file.csv'`: Field of view file.
+    * 'CellComposite': Directory containing the images.
+    * 'CellLabels': Directory containing the labels.
     """
 
     @property
     def has_images(self) -> bool:
-        """Whether this handler has associated images (always False for CoxMx)."""
-        return False
+        """Whether this handler has associated images (always False for CosMx)."""
+        return True
 
     @property
     def coordinate_system(self) -> str:
-        """Returns the coordinate system used by CoxMx datasets."""
+        """Returns the coordinate system used by CosMx datasets."""
         return "global"
 
     @property
@@ -679,13 +682,13 @@ class CoxMxHandler(SpatialHandler):
 
     @property
     def img_name(self) -> str | None:
-        """Returns the image name associated with this handler (always None for CoxMx)."""
+        """Returns the image name associated with this handler (always None for CosMx)."""
         return None
 
     def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
         """
-        Reads and processes a CoxMx spatial data file from the given filepath.
-        For CoxMx, this is a stub and does not perform any operation.
+        Reads and processes a CosMx spatial data file from the given filepath.
+        For CosMx, this is a stub and does not perform any operation.
         """
         return self
 
@@ -695,11 +698,11 @@ class CurioHandler(SpatialHandler):
     Factory class for Curio Seeker dataset uploads and conversions.
 
     Standardized names for different files:
-    * <dataset_id>_`'anndata.h5ad'`: Counts and metadata file.
-    * <dataset_id>_`'cluster_assignment.txt'`: Cluster assignment file.
-    * <dataset_id>_`'Metrics.csv'`: Metrics file.
-    * <dataset_id>_`'variable_features_clusters.txt'`: Variable features clusters file.
-    * <dataset_id>_`'variable_features_spatial_moransi.txt'`: Variable features Moran’s I file.
+    * 'spatialdata_anndata.h5ad': Counts and metadata file.
+    * 'spatialdata_cluster_assignment.txt': Cluster assignment file.
+    * 'spatialdata_Metrics.csv': Metrics file.
+    * 'spatialdata_variable_features_clusters.txt': Variable features clusters file.
+    * 'spatialdata_variable_features_spatial_moransi.txt': Variable features Moran’s I file.
 
     It seems Curio Seeker only provides gene IDs (as indexes to an empty dataframe),
     so you need to modify the included h5ad file to include ensembl IDs in adata.var.
@@ -754,9 +757,7 @@ class CurioHandler(SpatialHandler):
         else:
             raise Exception("File must be a .tar or .tar.gz file.")
 
-        if os.path.isdir(extract_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(extract_dir))
+        _remove_dir(extract_dir)
 
         with tarfile.open(filepath, mode) as tf:
             for entry in tf:
@@ -832,12 +833,16 @@ class GeoMxHandler(SpatialHandler):
     Code is mostly inspired by https://github.com/LiHongCSBLab/SOAPy/blob/153095a44200a07a73a6a72c9978adfa1581c853/SOAPy_st/pp/all2adata.py#L229
     I wanted to install SOAPy but ran into pip requirement compatibility issues.  For example, we use a later version of AnnData in gEAR than SOAPy does.
 
+    Description of output can be found at https://brukerspatialbiology.com/resources/readme_mu_brain-docx/ (DOCX file)
+
     Factory class for GeoMx dataset uploads and conversions.
 
     Required files:
     * "xlsx" file with information.
       * This Excel file must contain a sheet named "SegmentProperties" with a column named "SegmentDisplayName" which will be used as the cell ID.
       * This Excel file must contain a sheet named "TargetCountMatrix" or "BioProbeCountMatrix" with the counts matrix.
+        * "BioProbeCountMatrix" would be found from the "Export1_InitialDataset" or "Export2_TechnicalQC" file.
+        * "TargetCountMatrix" would be found from the "Export3_BiologicalProbeQC" or "Export4_NormalizationQ3" file.
 
     NOT IMPLEMENTED - Polygon data from XML files
 
@@ -892,9 +897,7 @@ class GeoMxHandler(SpatialHandler):
         else:
             raise Exception("File must be a .tar or .tar.gz file.")
 
-        if os.path.isdir(extract_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(extract_dir))
+        _remove_dir(extract_dir)
 
         information_file = None
 
@@ -989,13 +992,12 @@ class GeoMxHandler(SpatialHandler):
         return self
 
 class VisiumHandler(SpatialHandler):
-    # NOTE: Uploads work but it cannot be used in a spatial panel yet because clusters have not been provided.
     """
     Factory class for Visium dataset uploads and conversions.
 
     Standardized names for different files:
-    * (<dataset_id>_)`'filtered_feature_bc_matrix.h5'`: Counts and metadata file.
-    * 'analysis/clustering/gene_expression_graphclust/clusters.csv': Clustering information. Preferable if "Cluster" column has actual labels instead of numbers.
+    * 'spatialdata_filtered_feature_bc_matrix.h5': Counts and metadata file.
+    * 'clusters.csv': Clustering information. Preferable if "Cluster" column has actual labels instead of numbers.
     * 'spatial/tissue_hires_image.png': High resolution image.
     * 'spatial/tissue_lowres_image.png': Low resolution image.
     * 'spatial/scalefactors_json.json': Scalefactors file.
@@ -1003,7 +1005,7 @@ class VisiumHandler(SpatialHandler):
     * fullres_image_file: (NOT USED) large microscopy image used as input for space ranger.
 
     Recommended tar command to create tarball:
-    `tar cvf <dataset>.tar <dataset>_filtered_feature_bc_matrix.h5 spatial analysis`
+    `tar cvf <dataset>.tar <dataset>_filtered_feature_bc_matrix.h5 clusters.csv spatial`
     """
 
     @property
@@ -1048,9 +1050,7 @@ class VisiumHandler(SpatialHandler):
         else:
             raise Exception("File must be a .tar or .tar.gz file.")
 
-        if os.path.isdir(extract_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(extract_dir))
+        _remove_dir(extract_dir)
 
         with tarfile.open(filepath, mode) as tf:
             for entry in tf:
@@ -1062,7 +1062,7 @@ class VisiumHandler(SpatialHandler):
                 tf.extract(entry, path=extract_dir)
 
 
-        clustering_csv_path = "{}/analysis/clustering/gene_expression_graphclust/clusters.csv".format(extract_dir)
+        clustering_csv_path = "{}/clusters.csv".format(extract_dir)
         # If clustering file does not exist, raise an exception
         if not os.path.exists(clustering_csv_path):
             raise Exception("clusters.csv file not found in tarball.")
@@ -1102,16 +1102,16 @@ class VisiumHDHandler(SpatialHandler):
     Explanation of Space Ranger v3 output here -> https://www.10xgenomics.com/support/software/space-ranger/latest/analysis/outputs/output-overview#hd-outputs
 
     Required files that will break the upload if not present:
-    /binned_outputs/square_008um/filtered_feature_bc_matrix.h5
-    /binned_outputs/square_008um/analysis/clustering/gene_expression_graphclust/clusters.csv
-    /binned_outputs/feature_slice.h5
-    /binned_outputs/square_008um/spatial/scalefactors_json.json
-    /binned_outputs/square_008um/spatial/tissue_hires_image.png
-    /binned_outputs/square_008um/spatial/tissue_lowres_image.png
-    /binned_outputs/square_008um/spatial/tissue_positions.parquet
+    * /binned_outputs/square_008um/filtered_feature_bc_matrix.h5
+    * clusters.csv
+    * /binned_outputs/feature_slice.h5
+    * /binned_outputs/square_008um/spatial/scalefactors_json.json
+    * /binned_outputs/square_008um/spatial/tissue_hires_image.png
+    * /binned_outputs/square_008um/spatial/tissue_lowres_image.png
+    * /binned_outputs/square_008um/spatial/tissue_positions.parquet
 
     Recommended tar command to create tarball:
-    `tar cvf <dataset>.tar binned_outputs/feature_slice.h5 binned_outputs/square_008um`
+    `tar cvf <dataset>.tar binned_outputs/feature_slice.h5 clusters.csv binned_outputs/square_008um`
 
     Special note: We have observed that bin sizes finer than 8 microns per pixel will generally have more cells, which can lead to longer analysis times.
     For now, we will attempt to use the "square_008um" binned output.
@@ -1154,12 +1154,6 @@ class VisiumHDHandler(SpatialHandler):
         extract_dir = kwargs.get("extract_dir", '/tmp/')
         extract_dir = os.path.join(extract_dir, 'files')
 
-        binned_outputs_dir = "{}/binned_outputs".format(extract_dir)
-        bin_008_dataset_path = "{}/{}/".format(binned_outputs_dir, self.table_name)
-        clustering_csv_path = "{}/analysis/clustering/gene_expression_graphclust/clusters.csv".format(bin_008_dataset_path)
-
-        absolute_path = os.path.abspath(binned_outputs_dir)
-
         if filepath.endswith(".tar.gz"):
             mode = "r:gz"  # Read as gzipped tar file
         elif filepath.endswith(".tar"):
@@ -1167,9 +1161,7 @@ class VisiumHDHandler(SpatialHandler):
         else:
             raise Exception("File must be a .tar or .tar.gz file.")
 
-        if os.path.isdir(extract_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(extract_dir))
+        _remove_dir(extract_dir)
 
         with tarfile.open(filepath, mode) as tf:
             for entry in tf:
@@ -1185,10 +1177,15 @@ class VisiumHDHandler(SpatialHandler):
                 filepath = "{0}/{1}".format(extract_dir, entry.name)
                 tf.extract(entry, path=extract_dir)
 
+
+        binned_outputs_dir = "{}/binned_outputs".format(extract_dir)
+        absolute_path = os.path.abspath(binned_outputs_dir)
+
         if not os.path.exists("{}/feature_slice.h5".format(binned_outputs_dir)):
             raise Exception("feature_slice.h5 file not found in /binned_outputs directory in tarball.")
 
         # If clustering file does not exist, raise an exception
+        clustering_csv_path = "{}/clusters.csv".format(extract_dir)
         if not os.path.exists(clustering_csv_path):
             raise Exception("clusters.csv file not found in tarball.")
 
@@ -1220,6 +1217,8 @@ class VisiumHDHandler(SpatialHandler):
         # make barcode as index
         clustering = clustering.set_index('Barcode')
         sdata.tables[self.table_name].obs['clusters'] = clustering['Cluster'].astype('category')
+        if sdata.tables[self.NORMALIZED_TABLE_NAME].obs['clusters'].isna().all():
+            raise Exception("All cluster values are missing in clusters.csv file in tarball.")
 
         # To get the adata equivalent, look at sdata.tables["table"]
         # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
@@ -1252,7 +1251,7 @@ class XeniumHandler(SpatialHandler):
     * 'cell_boundaries.parquet': Polygons of cell boundaries.
     * 'transcripts.parquet': File containing transcripts.
     * 'cells.zarr.zip': Zarr file containing cell and nucleus label data (NOT USING FOR NOW)
-    * 'analysis/clustering/gene_expression_graphclust/clusters.csv': Clustering information. Preferable if "Cluster" column has actual labels instead of numbers.
+    * 'clusters.csv': Clustering information. Preferable if "Cluster" column has actual labels instead of numbers.
 
     Currently we are not using the cells.zarr.zip file because of memory issues when converting the resulting cell labels as part of the AnnData conversion process.
 
@@ -1304,9 +1303,7 @@ class XeniumHandler(SpatialHandler):
         else:
             raise Exception("File must be a .tar or .tar.gz file.")
 
-        if os.path.isdir(extract_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(extract_dir))
+        _remove_dir(extract_dir)
 
         # settings to enable or disable based on if a file is present in the uploaded tarball
         include_raster_labels = False
@@ -1333,7 +1330,7 @@ class XeniumHandler(SpatialHandler):
                     transcripts_present = True
 
         # If clustering file does not exist, raise an exception
-        clustering_csv_path = "{}/analysis/clustering/gene_expression_graphclust/clusters.csv".format(extract_dir)
+        clustering_csv_path = "{}/clusters.csv".format(extract_dir)
         if not os.path.exists(clustering_csv_path):
             raise Exception("clusters.csv file not found in tarball.")
 
@@ -1369,6 +1366,9 @@ class XeniumHandler(SpatialHandler):
         # make barcode as index
         clustering = clustering.set_index('Barcode')
         sdata.tables[self.NORMALIZED_TABLE_NAME].obs['clusters'] = clustering['Cluster'].astype('category')
+        # If all clusters are missing, raise an exception
+        if sdata.tables[self.NORMALIZED_TABLE_NAME].obs['clusters'].isna().all():
+            raise Exception("All cluster values are missing in clusters.csv file in tarball.")
 
         # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
         sdata.tables[self.NORMALIZED_TABLE_NAME].var_names_make_unique()
@@ -1388,7 +1388,7 @@ class XeniumHandler(SpatialHandler):
 ### Helper constants
 
 SPATIALTYPE2CLASS = {
-    #"cosmx": CoxMxHandler,
+    #"cosmx": CosMxHandler,
     "curio": CurioHandler,
     "geomx": GeoMxHandler,
     "visium": VisiumHandler,

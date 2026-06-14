@@ -45,6 +45,7 @@ from resources.available_display_types import (  # noqa: E402
     MGAvailableDisplayTypes,
 )
 from resources.dataset_display import DatasetDisplay  # noqa: E402
+from resources.dataset_processing import DatasetProcessingStatus # noqa: E402
 from resources.gene_symbols import GeneSymbols  # noqa: E402
 from resources.gosling_spec import GoslingSpec  # noqa: E402
 from resources.h5ad import H5ad  # noqa: E402
@@ -63,7 +64,7 @@ from resources.spatialpanel import SpatialPanel  # noqa: E402
 from resources.svg_data import SvgData  # noqa: E402
 from resources.top_pca_genes import TopPCAGenes  # noqa: E402
 from resources.tsne_data import MGTSNEData, TSNEData  # noqa: E402
-from resources.track_hub import TrackHubValidate, TrackHubCopy, TrackHubStatus # noqa: E402
+from resources.track_hub import TrackHubCopy # noqa: E402
 
 # plot routs
 api.add_resource(PlotlyData, '/plot/<dataset_id>'   # Default endpoint
@@ -92,9 +93,8 @@ api.add_resource(Orthologs, '/h5ad/<dataset_id>/orthologs')
 api.add_resource(GeneSymbols, '/h5ad/<dataset_id>/genes')
 
 # import routes (TODO: migrate dataset import to API calls)
-api.add_resource(TrackHubValidate, '/import/trackhub/<share_uid>validate')
 api.add_resource(TrackHubCopy, '/import/trackhub/<share_uid>/copy')
-api.add_resource(TrackHubStatus, '/import/trackhub/<share_uid>/status')
+api.add_resource(DatasetProcessingStatus, '/import/dataset/<share_uid>/status')
 
 # other routes
 api.add_resource(TopPCAGenes, '/analysis/plotTopGenesPCA')

@@ -1,8 +1,7 @@
 "use strict";
 
-import { apiCallsMixin, closeModal, copyToClipboard, createToast, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
+import { apiCallsMixin, closeModal, copyToClipboard, createToast, escapeHtml, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
 import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, setActiveDCCategory, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js";
-
 
 /* Imported variables
 let datasetCollectionState.data; // from dataset-collection-selector
@@ -465,7 +464,9 @@ class ResultItem {
     addDescriptionInfo(parentElt) {
         // Add ldesc if it exists
         const ldescText = parentElt.querySelector(".js-display-ldesc-text");
-        ldescText.textContent = this.longDesc || "No description entered";
+        const span = document.createElement("span");
+        span.innerHTML = this.longDesc || "No description entered";
+        ldescText.replaceChildren(span);
     }
 
     addListItemEventListeners(parentElt) {
@@ -500,8 +501,8 @@ class ResultItem {
                 e.currentTarget.classList.add("is-loading");
                 try {
                     // download the h5ad
-                    const datasetId = this.datasetId;
-                    const url = `./cgi/download_source_file.cgi?type=h5ad&share_id=${this.shareId}`;
+                    const safeShareId = encodeURIComponent(String(this.shareId || ""));
+	                const url = `./cgi/download_source_file.cgi?type=h5ad&share_id=${safeShareId}`;
                     const a = document.createElement('a');
                     a.href = url;
                     a.click();
@@ -622,7 +623,9 @@ class ResultItem {
 
                 selector.querySelector(`.js-display-title p`).textContent = newTitle;
 
-                selector.querySelector(`.js-display-ldesc-text`).textContent = newLdesc || "No description entered";
+                const ldescSpan = document.createElement("span");
+                ldescSpan.innerHTML = newLdesc || "No description entered";
+                selector.querySelector(`.js-display-ldesc-text`).replaceChildren(ldescSpan);
 
                 // pubmed and geo display are links if they exist
                 selector.querySelector(`.js-editable-pubmed-id input`).value = newPubmedId;
@@ -887,7 +890,7 @@ class ResultItem {
                             </a>
                         </div>
                         <div class='control'>
-                            <input id='dataset-link-name' class='input' type='text' placeholder='permalink' value=${this.shareId}>
+                            <input id='dataset-link-name' class='input' type='text' placeholder='permalink' value=${escapeHtml(this.shareId)}>
                         </div>
                     </div>
                     <div class='field is-grouped' style='width:250px'>
@@ -1911,7 +1914,7 @@ const createRenameCollectionPermalinkPopover = () => {
                         </a>
                     </div>
                     <div class='control'>
-                        <input id='collection-link-name' class='input' type='text' placeholder='permalink' value=${datasetCollectionState.selectedShareId}>
+                        <input id='collection-link-name' class='input' type='text' placeholder='permalink'>
                     </div>
                 </div>
                 <div class='field is-grouped' style='width:250px'>
@@ -1928,6 +1931,11 @@ const createRenameCollectionPermalinkPopover = () => {
 
         // append element to DOM to get its dimensions
         document.body.appendChild(popoverContent);
+
+        const collectionLinkNameInput = document.getElementById('collection-link-name');
+        if (collectionLinkNameInput) {
+            collectionLinkNameInput.value = datasetCollectionState.selectedShareId || "";
+        }
 
         const arrowElement = document.getElementById('arrow');
 
@@ -2026,9 +2034,11 @@ const createPaginationButton = (page, icon = null, clickHandler) => {
     const button = document.createElement("button");
     button.className = "button is-small is-outlined is-dark pagination-link";
     if (icon) {
-        button.innerHTML = `<i class="mdi mdi-chevron-${icon}"></i>`;
+        button.innerHTML = `<i class="mdi mdi-chevron-${icon}" aria-hidden="true"></i>`;
+        button.setAttribute("aria-label", icon === "left" ? "Previous page" : "Next page");
     } else {
         button.textContent = page;
+        button.setAttribute("aria-label", `Page ${page}`);
     }
     button.addEventListener("click", clickHandler);
     li.appendChild(button);
@@ -2427,6 +2437,7 @@ const renderDisplaysModalDisplays = async (displays, collection, displayElt, dat
 
         const displayImage = displayElement.querySelector('figure > img');
         displayImage.src = displayUrl;
+        displayImage.alt = `Preview of ${display.label || display.plot_type} display`;
 
         // Add tag indicating plot type
         const displayType = displayElement.querySelector('.js-modal-display-type');

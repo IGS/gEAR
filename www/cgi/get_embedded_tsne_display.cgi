@@ -67,9 +67,7 @@ def main():
 
     try:
             args = {}
-            if is_spatial:
-                args['include_images'] = False
-            else:
+            if not is_spatial:
                 args['backed'] = True
             adata = ana.get_adata(**args)
     except Exception:

@@ -10,6 +10,8 @@ This document is intended to capture all the customizations to the apache2 confi
     $ sudo apt install libapache2-mod-wsgi-py3 apache2-dev
     $ sudo a2enmod wsgi
     $ sudo a2enmod proxy
+    $ sudo a2enmod proxy_http
+    $ sudo a2enmod proxy_wstunnel
     $ sudo a2dismod mpm_event && sudo a2enmod mpm_prefork
 
 ## /etc/apache2/apache2.conf
@@ -40,8 +42,8 @@ Aside from the default things, these sections are important
             SetHandler cgi-script
     </FilesMatch>
 
-    WSGIPythonHome "/opt/Python-3.10.4"
-    LoadModule wsgi_module "/opt/Python-3.10.4/lib/python3.10/site-packages/mod_wsgi/server/mod_wsgi-py310.cpython-310-x86_64-linux-gnu.so"
+    WSGIPythonHome "/opt/Python-3.14.4"
+    LoadModule wsgi_module "/opt/Python-3.14.4/lib/python3.14/site-packages/mod_wsgi/server/mod_wsgi-py314.cpython-314-x86_64-linux-gnu.so"
 
 ## /etc/apache2/sites-available/000-default.conf
 
@@ -54,7 +56,7 @@ Then the Directory commands can look like this. Would be nice to find why combin
 causes errors.
 
     <Directory /var/www>
-        Options Indexes FollowSymLinks
+        Options -Indexes +FollowSymLinks
         AllowOverride None
         Require all granted
     </Directory>
@@ -169,11 +171,11 @@ NOTE: For the Flask-API, more processes is better.  The standard of 4 processes 
 
 ### The version numbers here need to coincide with the python version installed
 
-LoadModule wsgi_module "/opt/Python-3.10.4/lib/python3.10/site-packages/mod_wsgi/server/mod_wsgi-py310.cpython-310-x86_64-linux-gnu.so"
+LoadModule wsgi_module "/opt/Python-3.14.4/lib/python3.10/site-packages/mod_wsgi/server/mod_wsgi-py314.cpython-314-x86_64-linux-gnu.so"
 
 ## /etc/apache2/mods-enabled/wsgi.conf
 
-Add the line `WSGIPythonHome "/opt/Python-3.10.4"` into the IfModule block.
+Add the line `WSGIPythonHome "/opt/Python-3.14.4"` into the IfModule block.
 
 Then, finally restart apache again.
 

@@ -1,0 +1,16 @@
+[Unit]
+Description="TrackHub (Gosling Upload) RabbitMQ Consumer - #%i"
+Documentation=https://github.com/IGS/gEAR/blob/main/docs/setup.rabbitmq.md
+After=rabbitmq-server.service
+
+[Service]
+Type=simple
+Environment=APACHE_STARTED_BY_SYSTEMD=true
+ExecStart=/opt/bin/python3 <gear_root>/listeners/gosling_upload_consumer.py
+KillMode=mixed
+PrivateTmp=true
+Restart=always
+RestartSec=2s
+
+[Install]
+WantedBy=multi-user.target

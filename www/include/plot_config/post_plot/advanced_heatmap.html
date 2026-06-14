@@ -24,7 +24,7 @@
     <p class="content is-flex is-justify-content-space-between pr-3">
         <span class="has-text-weight-medium">Distance metric</span>
         <span class="select is-small">
-            <select class="js-dash-distance-metric" id="distance-select-post">
+            <select class="js-dash-distance-metric" id="distance-select-post" aria-label="Distance metric">
                     <!--<option value="braycurtis">Bray-Curtis</option>-->
                     <option value="euclidean" selected="selected">Euclidean</option>
                     <option value="cityblock">Manhattan (Cityblock)</option>
@@ -92,7 +92,7 @@
 
     <p class="is-flex is-justify-content-space-between pr-3 mb-1">
         <span class="has-text-weight-medium">Subsampling limit</span>
-        <input class="js-dash-subsampling-limit" id="subsampling-limit-post" type="number" value="0" min="0" disabled/>
+        <input class="js-dash-subsampling-limit" id="subsampling-limit-post" type="number" value="0" min="0" disabled aria-label="Subsampling limit"/>
     </p>
     <p class="help">Select a number of random observation samples from the total set to use. Saves on computation resources.</p>
     <p class="help">NOTE: If clustering is enabled, and the number of selected observations is >5000, subsampling will be auto-enabled at a 5000 sample limit (or less).</p>

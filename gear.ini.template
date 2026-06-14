@@ -61,6 +61,11 @@ credentials_json=[path_to_credentials_json]
 queue_enabled = 1
 queue_host = localhost
 
-[uploader_service]
+[dataset_uploader]
 queue_enabled = 1
 queue_host = localhost
+
+[higlass]
+admin_user = [user]
+admin_pass = [pass]
+hostname = [host]
