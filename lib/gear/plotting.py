@@ -468,6 +468,11 @@ def generate_plot(
         plotting_args["render_mode"] = "svg"
         plotting_args["line_shape"] = "spline"
 
+        # If x axis is continuous, sort dataframe by this column.
+        # Issue found in https://github.com/IGS/gEAR/issues/1285 where 0.0 was last entry causing line to loop back.
+        if x in df.columns and df[x].dtype in ["float64", "int64"]:
+            df = df.sort_values(x)
+
     # Scatter plots are the only types that let you set marker size by group
     # TODO: SAdkins - this is ugly... come up with better way to handle 'integer size' vs 'size by group'
     if plot_type == "scatter":
