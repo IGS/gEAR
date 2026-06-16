@@ -1,4 +1,5 @@
 import traceback
+
 import datashader as ds
 import holoviews as hv
 import hvplot
@@ -7,8 +8,14 @@ import numpy as np
 import panel as pn
 import param
 from common import (
-    create_spatial_plot, create_umap_plot, create_violin_plot,
-    retrieve_dataframe, retrieve_image_array, normalize_expression_name, has_selection, Settings
+    Settings,
+    create_spatial_plot,
+    create_umap_plot,
+    create_violin_plot,
+    has_selection,
+    normalize_expression_name,
+    retrieve_dataframe,
+    retrieve_image_array,
 )
 
 # CRITICAL: Initialize the Bokeh backend for interactivity
@@ -22,7 +29,9 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
     settings = Settings()
 
+    # Any potential bound widgets should be declared here so they are accessible in the base class and subclasses
     use_clusters = param.Boolean(default=False, doc="Whether to show clusters or gene expression in the main plots")
+    min_genes = param.Integer(default=0, doc="Minimum number of genes expressed to include a cell observation", bounds=(0, 500))
 
     def __init__(self, **params):
         super().__init__(**params)
@@ -55,11 +64,8 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         self.orig_df['clusters'] = self.orig_df['clusters'].astype('category')
 
         # If min_genes is set, filter the dataframe to only include observations with at least that many genes
-        # TODO: bind to a slider, which will again filter the original dataframe for updating the plots.
-        if self.settings.min_genes and self.settings.min_genes > 0:
-            self.df = self.orig_df[self.orig_df['n_genes_by_counts'] >= self.settings.min_genes]
-        else:
-            self.df = self.orig_df
+        self.min_genes = self.settings.min_genes
+        self._filter_df()
 
         self.image_array = retrieve_image_array(self.settings.dataset_id)
 
@@ -84,8 +90,6 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         self.bounds_stream_composite = hv.streams.BoundsXY(bounds=self.saved_bounds)  # type: ignore
 
         # Set up a callback to update the URL params whenever the user draws or clears a box
-        #self.bounds_stream_image.param.watch(self._update_bounds_callback, 'bounds')
-        #self.bounds_stream_composite.param.watch(self._update_bounds_callback, 'bounds')
         self.bounds_stream_image.add_subscriber(self._update_bounds_callback)
         self.bounds_stream_composite.add_subscriber(self._update_bounds_callback)
 
@@ -95,10 +99,12 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
         self.expression_agg = ds.max('raw_value')
         self.expression_cmap = 'YlOrRd'
+
         self.clusters_agg = ds.count_cat('clusters')
         self.cluster_cmap = dict(zip(self.df['clusters'], self.df['colors']))
 
         self.bg_image = None
+        self.bg_image_dimmed = None
         self.img_height = None
         self.img_width = None
         if self.image_array is not None:
@@ -111,29 +117,46 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             self.img_height = self.image_array.shape[0]
             self.img_width = self.image_array.shape[1]
 
+            # This is a fully opaque version
             self.bg_image = hv.RGB(self.image_array, bounds=img_bounds).opts(
-                        xaxis=None, yaxis=None, frame_width=300, frame_height=200,
+                        xaxis=None, yaxis=None,
                         tools=["box_select"], default_tools=[]
                     )
 
-        self.layout_height = 312  # 360px - tile header height
-        if self.settings.display_height and self.settings.display_height > 0: # type: ignore
-            self.layout_height: int = self.settings.display_height # type: ignore
+            # Create a more opaque version of the image.
+            alpha_channel = np.full((self.img_height, self.img_width, 1), int(255 * 0.5), dtype=np.uint8)
 
-        self.layout_width = 1100  # Default width
-        if self.settings.display_width and self.settings.display_width > 0: # type: ignore
-            self.layout_width: int = self.settings.display_width # type: ignore
+            # Check if image is RGB (3 channels). If so, append alpha. If already RGBA, just overwrite alpha.
+            if self.image_array.shape[-1] == 3:
+                dimmed_array = np.concatenate([self.image_array, alpha_channel], axis=-1)
+            else:
+                dimmed_array = self.image_array.copy()
+
+                # SAdkins note - '...' means all rows in this case.
+                dimmed_array[..., 3] = int(255 * 0.5)
+
+            self.bg_image_dimmed = hv.RGB(dimmed_array, bounds=img_bounds).opts(
+                        xaxis=None, yaxis=None, responsive=True,
+                        tools=["box_select"], default_tools=[]
+                    )
 
         self._init_widgets()
 
-    def _update_bounds_callback(self, event):
+    def _filter_df(self):
+        """Applies any necessary filtering to the dataframe based on the current settings."""
+        df = self.orig_df
+        if self.min_genes and self.min_genes > 0:
+            self.df = df[df['n_genes_by_counts'] >= self.min_genes]
+        else:
+            self.df = df
+
+    def _update_bounds_callback(self, bounds=None):
         """
         This callback fires automatically when the user draws or clears a box.
         It breaks the tuple into individual params, which location.sync pushes to the URL.
         """
-        new_bounds = event.new
 
-        if new_bounds is None:
+        if bounds is None:
             # User clicked off/cleared the box
             self.settings.selection_x1 = None
             self.settings.selection_y1 = None
@@ -141,14 +164,24 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             self.settings.selection_y2 = None
         else:
             # User drew a box
-            self.settings.selection_x1, self.settings.selection_y1, self.settings.selection_x2, self.settings.selection_y2 = new_bounds
+            (self.settings.selection_x1, self.settings.selection_y1, self.settings.selection_x2, self.settings.selection_y2) = bounds
 
-        # Instantly updates zoom panel with new bounds
-        self._update_zoom_panel(new_bounds)
+        # Trigger the zoom update!
+        self._update_zoom_panel(bounds)
 
     def _create_ghost_legend(self):
             """Creates a fake, invisible plot just to force Bokeh to draw a legend."""
             ghost_points = []
+
+            # TODO: add some "click" interactivity to hide plot elements based on if legend item is enabled or disabled.
+
+            # Hook to strip the invisible padding Bokeh reserves for axes
+            def remove_bokeh_borders(plot, element):
+                plot.state.min_border = 0
+                plot.state.min_border_left = 0
+                plot.state.min_border_right = 0
+                plot.state.min_border_top = 0
+                plot.state.min_border_bottom = 0
 
             # self.cluster_cmap should be a dict like {'Cluster 1': '#FF0000', ...}
             for cluster_name, hex_color in self.cluster_cmap.items():
@@ -157,7 +190,7 @@ class BaseSpatialViewer(pn.viewable.Viewer):
                 pt = hv.Points(
                     [(np.nan, np.nan)],
                     label=str(cluster_name)
-                ).opts(color=hex_color, size=10, tools=[], default_tools=[])
+                ).opts(color=hex_color, size=10, tools=[], default_tools=[], hooks=[remove_bokeh_borders])
 
                 ghost_points.append(pt)
 
@@ -217,36 +250,44 @@ class CondensedSpatialViewer(BaseSpatialViewer):
                 self.bounds_stream_image.source = image_panel
 
             linked_composite = self._add_center_plot
-            self.zoom_pane = pn.pane.HoloViews(None)
+            self.zoom_pane = pn.pane.HoloViews(None, sizing_mode="stretch_both", linked_axes=False)
 
-            main_row = pn.Row(image_panel, linked_composite, self.zoom_pane)
+            # dedicated pane for the legend so plots can be resized without the legend affecting them
+            self.legend_pane = pn.pane.HoloViews(None)
 
-            # Lay out the non-zoom panels side-by-side using HoloView
+            self.legend_container = pn.Column(
+                        self.legend_pane,
+                        width=200,
+                        height=275,
+                        scroll=True,     # Activates the native CSS scrollbar
+                        visible=False,
+                        margin=(0,0,0,0)
+                    )
 
-            markdown_width = 400    # Manually measured.
-            markdown_padding = 20  # Total left/right padding for the markdown pane
+
+            self.main_row = pn.Row(image_panel,
+                            linked_composite,
+                            self.zoom_pane,
+                            self.legend_container,
+                            sizing_mode='stretch_width'
+                            )
+
+            # Lay out the non-zoom panels side-by-side using HoloViews
             self.intro_markdown = pn.pane.Markdown(
-                "### Click the Expand icon in the top right corner to see all plots", width=markdown_width
+                "### Click the Expand icon in the top right corner to see all plots", #width=markdown_width
             )
-
-            # When width is too short, things break down.
-            if self.layout_width < 1100:
-                self.layout_width = 1100
-                self.layout_height = 312
-
-            spacer_width = self.layout_width - markdown_width - markdown_padding - self.switch_content_width
-            if spacer_width < 0:
-                spacer_width = 100
 
             self.pre_layout = pn.Row(
                 self.intro_markdown,
-                pn.Spacer(width=spacer_width),
+                pn.Spacer(),
                 self.switch_layout,
-                height=30
             )
 
             # Return final Panel layout
-            return pn.Column(self.pre_layout, main_row)
+            return pn.Column(self.pre_layout,
+                            self.main_row,
+                            sizing_mode='stretch_both' # Fills the 100%x100% iframe
+                            )
         except Exception as e:
             traceback.format_exc()
             return pn.pane.Alert(f"Error: {e}", alert_type="danger")
@@ -261,31 +302,51 @@ class CondensedSpatialViewer(BaseSpatialViewer):
         main_base = plot
         zoom_base = plot
 
+        # Attach the stream to capture drawn boxes
+        self.bounds_stream_composite.source = main_base
+
         # Apply the background image
-        image_panel = None
-        if hasattr(self, 'bg_image') and self.bg_image is not None:
-            image_panel = self.bg_image
-            main_base = image_panel * plot # type: ignore
-            zoom_base = image_panel * plot # type: ignore
+        if hasattr(self, 'bg_image') and self.bg_image_dimmed is not None:
+            main_base = self.bg_image_dimmed * plot # type: ignore
+            zoom_base = self.bg_image_dimmed * plot # type: ignore
 
-        # Add a ghost legend overlay to properly display a cluster legend
-        if self.use_clusters:
-            ghost_legend = self._create_ghost_legend()
-            # Overlay (multiply) the ghost legend on top, and explicitly tell it to show the legend
-            main_base = (main_base * ghost_legend).opts(show_legend=True, legend_position='right')
-            zoom_base = (zoom_base * ghost_legend).opts(show_legend=True, legend_position='right')
+        if hasattr(self, 'legend_container'):
+            self.legend_container.visible = self.use_clusters
 
+        # Push the legend to the 4th pane instead of the center plot
+        if hasattr(self, 'legend_pane'):
+            if self.use_clusters:
+                # Calculate the required width based on the longest cluster name
+                needed_width = max(180, max(len(str(name)) for name in self.cluster_cmap) * 7)  # Adjust the multiplier as needed
+
+                # Calculate the required canvas height: ~22px per cluster item + 50px for margins
+                needed_height = max(300, len(self.cluster_cmap) * 22 + 50)
+
+                ghost_legend = self._create_ghost_legend().opts(
+                    show_legend=True,
+                    legend_position="bottom_left",
+                    xaxis=None, yaxis=None,
+                    show_frame=False, toolbar=None, # Hide the empty plot canvas
+                    margin=(0,0,0,0),
+                    width=needed_width,
+                    height=needed_height   # defined so things do not overlap elsewhere.
+                )
+                self.legend_pane.object = ghost_legend
+            else:
+                self.legend_pane.object = None # Clear it for Expression view
         # Overlay the background image over the other plots
-        if hasattr(self, 'bg_image') and self.bg_image is not None:
+        if hasattr(self, 'bg_image') and self.bg_image_dimmed is not None:
             # The image slides safely underneath the interactive linked points
-            main_composite = self.bg_image * main_base
-            zoom_composite = self.bg_image * zoom_base
+            main_composite = self.bg_image_dimmed * main_base
+            zoom_composite = self.bg_image_dimmed * zoom_base
         else:
             main_composite = main_base
             zoom_composite = zoom_base
 
-        # Attach the stream to capture drawn boxes
-        self.bounds_stream_composite.source = main_composite
+
+
+        # Store the master composite objects so we can apply the zoom limits in the callback without having to rebuild the entire plot from scratch
+        self.zoom_composite = zoom_composite
 
         # Update the zoom pane with the new composite plot (with or without background)
         if hasattr(self, 'zoom_pane'):
@@ -309,43 +370,45 @@ class CondensedSpatialViewer(BaseSpatialViewer):
         - The layout includes commented-out HTML labels for potential future use
           to center labels using HTML, as referenced in a GitHub issue discussion.
         """
-        self.clusters_switch = pn.widgets.Switch.from_param(self.param.use_clusters, name="Show Clusters", margin=(10, 10))
+        self.clusters_switch = pn.widgets.Switch.from_param(self.param.use_clusters, name="Show Clusters", margin=(12, 0, 0, 10))
 
-        # Using HTML to center the labels (https://github.com/holoviz/panel/issues/1313#issuecomment-1582731241)
-        self.switch_content_width = 250
         self.switch_layout = pn.Row(
             self.clusters_switch,
-            width=self.switch_content_width
         )
 
     def _update_zoom_panel(self, bounds):
         """
-        Updates the zoom panel based on the provided bounds.
-
-        This method is called when the user draws a box on one of the plots to zoom in on that area.
-        It updates the `zoom_pane` dynamic map with the new bounds, which triggers a re-render of the zoomed-in view.
+        This method updates the zoomed-in plot based on the provided bounds.
+        The method applies the new limits to the master composite plot and updates the zoom pane accordingly.
 
         Parameters:
         - bounds: A tuple containing the new bounds in the format (left, bottom, right, top).
                   If bounds is None, it indicates that the user has cleared the selection.
         """
-        if not hasattr(self, 'zoom_pane') or self.zoom_pane.object is None:
+
+        # Safety check to ensure the master canvas exists
+        if not hasattr(self, 'zoom_composite'):
             return
 
-        if bounds is not None:
-            l, b, r, t = bounds
-
-            # 1. Protect against inverted Y-axes ignoring the zoom
-            xlim = (min(l, r), max(l, r))
-            ylim = (min(b, t), max(b, t))
-
-            # 2. clone=True forces Panel to realize this is a new object to push to the frontend
-            new_zoomed_obj = self.zoom_pane.object.opts(xlim=xlim, ylim=ylim, clone=True)
-            self.zoom_pane.object = new_zoomed_obj
+        # Apply the new limits to the master canvas
+        if bounds is None:
+            new_zoomed_obj = self.zoom_composite.opts(xlim=(None, None), ylim=(None, None), clone=True)
         else:
-            # Clear the limits
-            new_zoomed_obj = self.zoom_pane.object.opts(xlim=(None, None), ylim=(None, None), clone=True)
-            self.zoom_pane.object = new_zoomed_obj
+            x1, y1, x2, y2 = bounds
+            new_zoomed_obj = self.zoom_composite.opts(
+                xlim=(min(x1, x2), max(x1, x2)),
+                ylim=(min(y1, y2), max(y1, y2)),
+                clone=True
+            )
+
+        # Wrap it in a brand-new pane
+        new_pane = pn.pane.HoloViews(new_zoomed_obj, sizing_mode='stretch_both', linked_axes=False)
+
+        # Hot-swap it into the browser DOM (Index 2 is the 3rd panel in the row)
+        self.zoom_pane = new_pane
+        if hasattr(self, 'main_row'):
+            self.main_row[2] = self.zoom_pane
+
 
 class ExpandedSpatialViewer(BaseSpatialViewer):
     """
@@ -366,3 +429,46 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
         except Exception as e:
             traceback.format_exc()
             return pn.pane.Alert(f"Error: {e}", alert_type="danger")
+
+    def _init_widgets(self):
+        # ? This can be useful for filtering datasets even for projections, but how best to word it?
+        min_slider_width = 300
+        self.min_genes_slider = pn.widgets.IntSlider(
+            name="Filter - Mininum genes per observation",
+            start=0,
+            end=500,
+            step=25,
+            width=min_slider_width,
+            value=self.min_genes,
+        )
+
+        self.display_name = pn.widgets.TextInput(
+            name="Display name",
+            placeholder="Name this display to save...",
+            width=250,
+            visible=not self.nosave,
+        )
+        self.save_button = pn.widgets.Button(
+            name="Save settings", button_type="primary", width=100, align="end"
+            , visible=not self.nosave
+        )
+        self.make_default = pn.widgets.Checkbox(
+            name="Make this the default display", value=False
+            , visible=not self.nosave
+        )
+
+        markdown_width = 675
+        spacer_width = markdown_width - min_slider_width    # Make default button should left-align with the above text input
+
+        self.pre_layout = pn.Column(
+            pn.Row(
+                pn.pane.Markdown(
+                    "## Select a region to modify zoomed in view in the bottom panel",
+                    height=30,
+                    width=markdown_width,
+                ),
+                self.display_name,
+                self.save_button,
+            ),
+            pn.Row(self.min_genes_slider, pn.Spacer(width=spacer_width), self.make_default),
+        )

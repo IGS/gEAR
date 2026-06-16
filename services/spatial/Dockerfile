@@ -23,9 +23,7 @@ COPY ./requirements.txt ./
 RUN pip install --upgrade pip
 # --prefer-binary to avoid issues with some packages
 RUN pip install -r requirements.txt --prefer-binary \
-  && pip uninstall dask-expr -y \
-  && rm -rf ~/.cache/pip \
-  && find /opt/Python-${PYTHON_FULL_VERSION} -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+  && rm -rf ~/.cache/pip
 
 # Copy local code to the container image.
 # App home is reflecting the relative levels within the gEAR repo
@@ -35,10 +33,12 @@ COPY . ./
 
 EXPOSE 5006
 
+ENV PYTHONPATH=/gEAR/services/spatial
+
 # Run the web service on container startup.
 # NOTE: num-threads is set in the app, and will throw an error if also set here
 #CMD ["panel", "serve", "panel_app.py", "panel_app_expanded.py", "--plugins", "download_plugin", "--address", "0.0.0.0", "--port", "5006", "--allow-websocket-origin", "*", "--global-loading-spinner"]
-CMD ["panel", "serve", "panel_app.py" "--address", "0.0.0.0", "--port", "5006", "--allow-websocket-origin", "*", "--global-loading-spinner"]
+CMD ["panel", "serve", "panel_app.py", "panel_app_expanded.py", "--address", "0.0.0.0", "--port", "5006", "--allow-websocket-origin", "*", "--global-loading-spinner"]
 
 
 # For the future.  Is added to systemd service file

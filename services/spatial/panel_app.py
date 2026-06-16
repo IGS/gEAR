@@ -1,5 +1,4 @@
 import logging
-import sys
 
 import panel as pn
 from panel_common import CondensedSpatialViewer

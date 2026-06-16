@@ -1,10 +1,7 @@
 import logging
-import sys
 
 import panel as pn
-import param
 from panel_common import ExpandedSpatialViewer
-
 
 # Reset logging level to "error" to suppress a bokeh "dropping patch" info message
 # https://github.com/bokeh/bokeh/issues/13229

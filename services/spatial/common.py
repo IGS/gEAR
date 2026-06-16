@@ -1,12 +1,12 @@
-from pathlib import Path
 import sys
+from pathlib import Path
 
-from bokeh.models import HoverTool
 import datashader as ds
-from holoviews.operation.datashader import spread
 import numpy as np
 import pandas as pd
 import param
+from bokeh.models import CustomJSHover, HoverTool
+from holoviews.operation.datashader import dynspread, spread
 from werkzeug.utils import secure_filename
 
 gear_root = Path(__file__).resolve().parents[2]
@@ -16,20 +16,24 @@ SPATIAL_IMAGE_NAME = "spatial_img.npy"
 
 ### Functions
 
-def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='raw_value', cmap='YlOrRd', is_categorical=False, width=300, height=200):
+def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='raw_value', cmap='YlOrRd', is_categorical=False):
     """Generates a Datashaded spatial plot colored by expression of the specified gene."""
 
     plot = df.hvplot.points(
         x=x_col, y=y_col, c=color_col,
         rasterize=True, aggregator=agg,
-        cmap=cmap, frame_width=width, frame_height=height,
+        cmap=cmap,
         xaxis=None, yaxis=None,
 
         # 1. Kill the colorbar if it's categorical
         colorbar=not is_categorical,
 
         # 2. Force the legend on
-       # legend='right' if is_categorical else False
+        # legend='right' if is_categorical else False
+
+        # 3. Responsiveness if the browser is resized
+        responsive=True, # Automatically stretches to fill its container
+        min_height=300   # Set a floor so plots don't collapse to 0px
     )
 
     tools = ['box_select']
@@ -41,20 +45,53 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
             ])
     else:
         label_name = color_col.title()
-        # @image is a special variable that datashader uses to store the aggregated value for the hovered pixel
-        custom_hover = HoverTool(tooltips=[
-                (label_name, "@field")
-            ], limit=3)
+
+        # Unfortunately the datashader array only has the aggregated counts,
+        # so we need to do some JS magic (thanks Gemini) to get the hover to show the category name instead of the count
+        categories = list(df[color_col].cat.categories)
+
+        # Build the JavaScript to find the dominant category in the pixel
+        js_code = f"""
+            const counts = value;
+            const cats = {categories};
+            let max_val = -1;
+            let max_idx = -1;
+
+            // Find the index of the highest count
+            for (let i = 0; i < counts.length; i++) {{
+                if (counts[i] > max_val) {{
+                    max_val = counts[i];
+                    max_idx = i;
+                }}
+            }}
+
+            // Return the category name (and optionally the cell count!)
+            if (max_val > 0) {{
+                return cats[max_idx]; // + " (" + max_val + " cells)";
+            }}
+            return "No Data";
+        """
+
+        # Create the formatter and apply it strictly to the @image field
+        formatter = CustomJSHover(code=js_code)
+        custom_hover = HoverTool(
+            tooltips=[(label_name, "@image{custom}")],
+            formatters={"@image": formatter}
+        )
 
     tools.append(custom_hover)  # type: ignore
 
     plot = plot.opts(
             tools=tools,
             active_tools=['box_select'],
-            default_tools=[]
+            default_tools=[],
         )
 
+    # NOTE: Cluster downsampling will have a striped appearance called the Moiré Interference Pattern.
+    # I tried to use dynspread to remedy it, but the data points end up being too light.
+    # Mostly an issue with very dense data, like Visium HD
     return spread(plot, px=5)
+
 
 def create_umap_plot(df, color_col, cmap, is_categorical=False, width=400, height=300):
     """Generates a Datashaded UMAP."""
@@ -220,9 +257,6 @@ class Settings(param.Parameterized):
 
     filename = param.String(doc="Filename for the dataframe to retrieve")
     dataset_id = param.String(doc="Dataset ID to display")
-    min_genes = param.Integer(
-        doc="Minimum number of genes per observation", default=0, bounds=(0, 500)
-    )
     projection_id = param.String(doc="Projection ID to display", allow_None=True)
     selection_x1 = param.Number(doc="left selection range", allow_None=True)
     selection_x2 = param.Number(doc="right selection range", allow_None=True)
@@ -232,6 +266,7 @@ class Settings(param.Parameterized):
     display_width = param.Integer(doc="Width of the display in pixels", allow_None=True)
     expression_min_clip = param.Number(doc="Minimum expression value to clip", allow_None=True)
 
+    min_genes = param.Integer(default=0, doc="Minimum number of genes expressed to include a cell observation", bounds=(0, 500))
     save = param.Boolean(
         doc="If true, save this configuration as a new display.", default=False
     )
