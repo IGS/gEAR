@@ -93,24 +93,24 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
     return spread(plot, px=5)
 
 
-def create_umap_plot(df, color_col, cmap, is_categorical=False, width=400, height=300):
+def create_umap_plot(df, color_col, cmap, is_categorical=False):
     """Generates a Datashaded UMAP."""
     agg = ds.count_cat(color_col) if is_categorical else ds.mean(color_col)
 
     return df.hvplot.points(
         x='UMAP_1', y='UMAP_2', c=color_col,
         rasterize=True, aggregator=agg, dynspread=True,
-        cmap=cmap, frame_width=width, frame_height=height,
+        cmap=cmap, min_height=300, responsive=True,
         xaxis=None, yaxis=None, title=f"UMAP: {color_col}",
     )
 
-def create_violin_plot(df, y_col, group_col='cluster', cmap='Category10', width=900, height=300):
+def create_violin_plot(df, y_col, group_col='cluster', cmap='Category10'):
     """Generates standard bokeh violin plots (no Datashader needed here)."""
     return df.hvplot.violin(
         y=y_col, by=group_col, c=group_col, cmap=cmap,
         ylabel='Expression', xlabel='Annotation Cluster',
         title=f"Expression Distribution: {y_col}",
-        frame_width=width, frame_height=height, legend=False
+        min_height=300, responsive=True, legend=False
     ).opts(violin_fill_alpha=0.7)
 
 def clip_expression_values(dataframe: pd.DataFrame, min_clip: float | None=None, max_clip: float | None=None) -> pd.DataFrame:

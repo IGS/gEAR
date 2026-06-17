@@ -162,9 +162,11 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             self.settings.selection_y1 = None
             self.settings.selection_x2 = None
             self.settings.selection_y2 = None
+            self.saved_bounds = None
         else:
             # User drew a box
             (self.settings.selection_x1, self.settings.selection_y1, self.settings.selection_x2, self.settings.selection_y2) = bounds
+            self.saved_bounds = bounds
 
         # Trigger the zoom update!
         self._update_zoom_panel(bounds)
@@ -343,10 +345,11 @@ class CondensedSpatialViewer(BaseSpatialViewer):
             main_composite = main_base
             zoom_composite = zoom_base
 
-
-
         # Store the master composite objects so we can apply the zoom limits in the callback without having to rebuild the entire plot from scratch
         self.zoom_composite = zoom_composite
+
+        # TODO: Trigger zoom update on initial load or if switch is toggled.
+        #self._update_zoom_panel(self.saved_bounds)
 
         # Update the zoom pane with the new composite plot (with or without background)
         if hasattr(self, 'zoom_pane'):
