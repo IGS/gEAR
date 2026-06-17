@@ -71,6 +71,8 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
         self.current_gene = normalize_expression_name(self.settings.filename)
 
+        self.nosave = self.settings.nosave
+
         # If selection_x1/x2/y1/y2 are present save as a tuple in the form of (left, right, bottom, top)
         saved_bounds = None
         if has_selection(self.settings):
@@ -120,11 +122,12 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             # This is a fully opaque version
             self.bg_image = hv.RGB(self.image_array, bounds=img_bounds).opts(
                         xaxis=None, yaxis=None,
-                        tools=["box_select"], default_tools=[]
+                        tools=["box_select"], active_tools=["box_select"], default_tools=[]
                     )
 
             # Create a more opaque version of the image.
-            alpha_channel = np.full((self.img_height, self.img_width, 1), int(255 * 0.5), dtype=np.uint8)
+            opacity_value = int(255 * 0.4)  # Adjust the multiplier to set the desired opacity level
+            alpha_channel = np.full((self.img_height, self.img_width, 1), opacity_value, dtype=np.uint8)
 
             # Check if image is RGB (3 channels). If so, append alpha. If already RGBA, just overwrite alpha.
             if self.image_array.shape[-1] == 3:
@@ -133,11 +136,11 @@ class BaseSpatialViewer(pn.viewable.Viewer):
                 dimmed_array = self.image_array.copy()
 
                 # SAdkins note - '...' means all rows in this case.
-                dimmed_array[..., 3] = int(255 * 0.5)
+                dimmed_array[..., 3] = opacity_value
 
             self.bg_image_dimmed = hv.RGB(dimmed_array, bounds=img_bounds).opts(
                         xaxis=None, yaxis=None, responsive=True,
-                        tools=["box_select"], default_tools=[]
+                        tools=["box_select"], active_tools=["box_select"], default_tools=[]
                     )
 
         self._init_widgets()
@@ -173,7 +176,6 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
     def _create_ghost_legend(self):
             """Creates a fake, invisible plot just to force Bokeh to draw a legend."""
-            ghost_points = []
 
             # TODO: add some "click" interactivity to hide plot elements based on if legend item is enabled or disabled.
 
@@ -185,8 +187,11 @@ class BaseSpatialViewer(pn.viewable.Viewer):
                 plot.state.min_border_top = 0
                 plot.state.min_border_bottom = 0
 
+            ghost_points = []
             # self.cluster_cmap should be a dict like {'Cluster 1': '#FF0000', ...}
-            for cluster_name, hex_color in self.cluster_cmap.items():
+            for cluster_name in sorted(self.cluster_cmap.keys()):
+                hex_color = self.cluster_cmap[cluster_name]
+
                 # Create a single point at (NaN, NaN) so it doesn't draw on the screen
                 # But give it a label and a color so the legend picks it up
                 pt = hv.Points(
@@ -250,6 +255,7 @@ class CondensedSpatialViewer(BaseSpatialViewer):
                 image_panel = self.bg_image
                 # Attach the stream to capture drawn boxes
                 self.bounds_stream_image.source = image_panel
+                # TODO: Figure out how to get self.linker and the bounds stream to work together
 
             linked_composite = self._add_center_plot
             self.zoom_pane = pn.pane.HoloViews(None, sizing_mode="stretch_both", linked_axes=False)
@@ -301,6 +307,7 @@ class CondensedSpatialViewer(BaseSpatialViewer):
         else:
             plot =  create_spatial_plot(self.df, self.expression_agg, y_col='y_plot', color_col='raw_value', cmap=self.expression_cmap) # type: ignore
 
+        # TODO: Figure out how to get self.linker and the bounds stream to work together
         main_base = plot
         zoom_base = plot
 
@@ -420,15 +427,78 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
 
     def _build_layout(self):
         # Build your spatial rows, UMAPs, and Violins here...
-
         try:
 
-            main_plots = None
-            zoom_plots = None
-            umap_row = None
-            violin_row = None
+            # One unfortunately annoyance is that datashader's default behavior is to flip the y-axis,
+            # which is not what we want for spatial data. To fix this,
+            # we can reverse the y-axis limits by setting ylim to (max, min) instead of (min, max).
+            self.df["y_plot"] = self.df["spatial2"]
+            if self.img_height is not None:
+                self.df["y_plot"] = self.img_height - self.df["spatial2"]
 
-            return pn.Column(main_plots, zoom_plots, umap_row, violin_row)
+            # Generate base plots
+            image_panel = None
+            if hasattr(self, 'bg_image'):
+                image_panel = self.bg_image
+                # Attach the stream to capture drawn boxes
+                self.bounds_stream_image.source = image_panel
+
+            # Represents main row and zoom row
+            spatial_grid = pn.pane.Markdown("### Spatial Grid Work-In-Progress", height=400)
+
+            ### UMAP row
+            expr_umap = create_umap_plot(
+                self.df, self.expression_agg, color_col='raw_value', cmap="cividis_r", is_categorical=False, title=self.current_gene
+            )
+            cluster_umap = create_umap_plot(
+                self.df, self.clusters_agg, color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters"
+            )
+
+            # Wrap them in the cross-filtering linker
+            linked_expr_umap = self.linker(expr_umap)
+            linked_cluster_umap = self.linker(cluster_umap)
+
+            # Create the UMAP legend
+            needed_width = max(180, max(len(str(name)) for name in self.cluster_cmap) * 7)
+            needed_height = max(300, len(self.cluster_cmap) * 22 + 50)
+
+            umap_ghost_legend = self._create_ghost_legend().opts(
+                show_legend=True,
+                legend_position="top_left",
+                xaxis=None, yaxis=None,
+                show_frame=False, toolbar=None,
+                width=needed_width,
+                height=needed_height
+            )
+
+            umap_legend_container = pn.Column(
+                umap_ghost_legend,
+                width=200,
+                height=300, # Match UMAP min_height
+                scroll=True,
+                margin=(0, 0, 0, 0)
+            )
+
+            # Layout the UMAP row
+            umap_row = pn.Row(
+                linked_expr_umap,
+                linked_cluster_umap,
+                umap_legend_container,
+                sizing_mode='stretch_width'
+            )
+
+            # Violin
+            violin_row = pn.pane.Markdown("### Violin Work-In-Progress", height=400)
+
+            return pn.Column(
+                self.pre_layout,
+                spatial_grid,
+                pn.layout.Divider(margin=(20, 0)), # Visual breathing room
+                umap_row,
+                pn.layout.Divider(margin=(20, 0)),
+                violin_row,
+                sizing_mode='stretch_both'
+            )
         except Exception as e:
             traceback.format_exc()
             return pn.pane.Alert(f"Error: {e}", alert_type="danger")
@@ -475,3 +545,19 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
             ),
             pn.Row(self.min_genes_slider, pn.Spacer(width=spacer_width), self.make_default),
         )
+
+    def _update_zoom_panel(self, bounds):
+        """
+        This method updates the row of zoomed-in plots based on the provided bounds.
+        The method applies the new limits to the master composite plots and updates the zoom row accordingly.
+
+        Parameters:
+        - bounds: A tuple containing the new bounds in the format (left, bottom, right, top).
+                  If bounds is None, it indicates that the user has cleared the selection.
+        """
+
+        # Safety check to ensure the master canvas exists
+        if not hasattr(self, 'zoom_composite'):
+            return
+
+        self.zoom_row = None    # placeholder for now

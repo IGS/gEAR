@@ -15,9 +15,4 @@ else:
     # Instantiate the component
     spatial_dashboard = ExpandedSpatialViewer()
 
-    # Drop it directly into the page template
-    template = pn.template.GoldenTemplate(
-        title='gEAR Spatial Enhanced View',
-        main=[spatial_dashboard] # Treats the class instance exactly like a pn.Row!
-    )
-    template.servable()
+    spatial_dashboard.servable()

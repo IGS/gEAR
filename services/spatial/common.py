@@ -25,13 +25,10 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
         cmap=cmap,
         xaxis=None, yaxis=None,
 
-        # 1. Kill the colorbar if it's categorical
+        #Kill the colorbar if it's categorical
         colorbar=not is_categorical,
 
-        # 2. Force the legend on
-        # legend='right' if is_categorical else False
-
-        # 3. Responsiveness if the browser is resized
+        # Responsiveness if the browser is resized
         responsive=True, # Automatically stretches to fill its container
         min_height=300   # Set a floor so plots don't collapse to 0px
     )
@@ -39,10 +36,18 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
     tools = ['box_select']
     if color_col == "raw_value":
         label_name = "Expression"
-        # @image is a special variable that datashader uses to store the aggregated value for the hovered pixel
-        custom_hover = HoverTool(tooltips=[
-                (label_name, "@image")
-            ])
+        # Intercept the NaN values and round the long floats
+        js_code_expr = """
+            if (isNaN(value)) {
+                return "No data";
+            }
+            return value.toFixed(2);
+        """
+        formatter = CustomJSHover(code=js_code_expr)
+        custom_hover = HoverTool(
+            tooltips=[(label_name, "@image{custom}")],
+            formatters={"@image": formatter}
+        )
     else:
         label_name = color_col.title()
 
@@ -93,16 +98,84 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
     return spread(plot, px=5)
 
 
-def create_umap_plot(df, color_col, cmap, is_categorical=False):
+def create_umap_plot(df, agg, color_col, cmap, is_categorical=False, title=None):
     """Generates a Datashaded UMAP."""
-    agg = ds.count_cat(color_col) if is_categorical else ds.mean(color_col)
 
-    return df.hvplot.points(
-        x='UMAP_1', y='UMAP_2', c=color_col,
-        rasterize=True, aggregator=agg, dynspread=True,
-        cmap=cmap, min_height=300, responsive=True,
-        xaxis=None, yaxis=None, title=f"UMAP: {color_col}",
+    color_col_title = title if title else color_col.title()
+
+    plot =  df.hvplot.points(
+        x='UMAP1', y='UMAP2', c=color_col,
+        aggregator=agg, cmap=cmap,
+        xaxis="bottom", yaxis="left",
+        xlabel="UMAP_1", ylabel="UMAP_2",
+        title=f"UMAP: {color_col_title}",
+        #Kill the colorbar if it's categorical
+        colorbar=not is_categorical,
+        rasterize=True,
+        responsive=True,
+        height=300,
     )
+
+    if is_categorical:
+        label_name = color_col.title()
+
+        # Unfortunately the datashader array only has the aggregated counts,
+        # so we need to do some JS magic (thanks Gemini) to get the hover to show the category name instead of the count
+        categories = list(df[color_col].cat.categories)
+
+        # Build the JavaScript to find the dominant category in the pixel
+        js_code = f"""
+            const counts = value;
+            const cats = {categories};
+            let max_val = -1;
+            let max_idx = -1;
+
+            // Find the index of the highest count
+            for (let i = 0; i < counts.length; i++) {{
+                if (counts[i] > max_val) {{
+                    max_val = counts[i];
+                    max_idx = i;
+                }}
+            }}
+
+            // Return the category name (and optionally the cell count!)
+            if (max_val > 0) {{
+                return cats[max_idx]; // + " (" + max_val + " cells)";
+            }}
+            return "No Data";
+        """
+
+        # Create the formatter and apply it strictly to the @image field
+        formatter = CustomJSHover(code=js_code)
+        custom_hover = HoverTool(
+            tooltips=[(label_name, "@image{custom}")],
+            formatters={"@image": formatter}
+        )
+    else:
+        label_name = "Expression"
+        # Intercept the NaN values and round the long floats
+        js_code_expr = """
+            if (isNaN(value)) {
+                return "No data";
+            }
+            return value.toFixed(2);
+        """
+        formatter = CustomJSHover(code=js_code_expr)
+        custom_hover = HoverTool(
+            tooltips=[(label_name, "@image{custom}")],
+            formatters={"@image": formatter}
+        )
+
+    tools = [custom_hover]
+    plot = plot.opts(
+            tools=tools,
+            active_tools=['box_select'],
+            default_tools=[],
+            data_aspect=1,  # square aspect ratio for UMAP
+            xticks=0, yticks=0,    # No ticks.
+        )
+
+    return spread(plot)
 
 def create_violin_plot(df, y_col, group_col='cluster', cmap='Category10'):
     """Generates standard bokeh violin plots (no Datashader needed here)."""
