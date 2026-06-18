@@ -16,29 +16,43 @@ SPATIAL_IMAGE_NAME = "spatial_img.npy"
 
 ### Functions
 
-def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='raw_value', cmap='YlOrRd', is_categorical=False):
+def autohide_toolbar(plot, element):
+    plot.state.toolbar.autohide = True
+
+def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='raw_value', cmap='YlOrRd', is_categorical=False, title=None):
     """Generates a Datashaded spatial plot colored by expression of the specified gene."""
+
+    # Fixes a Holoviews bug where the linker callback cannot find the categorical metadata dimension that Datashader named
+    # Gemini suggested
+    if is_categorical and isinstance(cmap, dict):
+        if hasattr(df[color_col], 'cat'):
+            categories = df[color_col].cat.categories
+        else:
+            categories = sorted(df[color_col].unique())
+        cmap = [cmap.get(cat, '#CCCCCC') for cat in categories]
 
     plot = df.hvplot.points(
         x=x_col, y=y_col, c=color_col,
         rasterize=True, aggregator=agg,
         cmap=cmap,
         xaxis=None, yaxis=None,
+        title=title,
 
         #Kill the colorbar if it's categorical
         colorbar=not is_categorical,
+        legend=False,    # using a ghost legend so the legend does not squish the plot
 
         # Responsiveness if the browser is resized
         responsive=True, # Automatically stretches to fill its container
         min_height=300   # Set a floor so plots don't collapse to 0px
     )
 
-    tools = ['box_select']
+    tools = ['box_select', 'tap']
     if color_col == "raw_value":
         label_name = "Expression"
         # Intercept the NaN values and round the long floats
         js_code_expr = """
-            if (isNaN(value)) {
+            if (value === "NaN") {
                 return "No data";
             }
             return value.toFixed(2);
@@ -90,16 +104,27 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
             tools=tools,
             active_tools=['box_select'],
             default_tools=[],
+            colorbar_opts={"width": 12},    # thin the colorbar out.
+            hooks=[autohide_toolbar]
         )
 
     # NOTE: Cluster downsampling will have a striped appearance called the Moiré Interference Pattern.
     # I tried to use dynspread to remedy it, but the data points end up being too light.
     # Mostly an issue with very dense data, like Visium HD
-    return spread(plot, px=5)
+    return spread(plot, px=2, shape="square")
 
 
 def create_umap_plot(df, agg, color_col, cmap, is_categorical=False, title=None):
     """Generates a Datashaded UMAP."""
+
+    # Fixes a Holoviews bug where the linker callback cannot find the categorical metadata dimension that Datashader named
+    # Gemini suggested
+    if is_categorical and isinstance(cmap, dict):
+        if hasattr(df[color_col], 'cat'):
+            categories = df[color_col].cat.categories
+        else:
+            categories = sorted(df[color_col].unique())
+        cmap = [cmap.get(cat, '#CCCCCC') for cat in categories]
 
     color_col_title = title if title else color_col.title()
 
@@ -113,6 +138,7 @@ def create_umap_plot(df, agg, color_col, cmap, is_categorical=False, title=None)
         colorbar=not is_categorical,
         rasterize=True,
         responsive=True,
+        legend=False,    # using a ghost legend so the legend does not squish the plot
         height=300,
     )
 
@@ -155,7 +181,7 @@ def create_umap_plot(df, agg, color_col, cmap, is_categorical=False, title=None)
         label_name = "Expression"
         # Intercept the NaN values and round the long floats
         js_code_expr = """
-            if (isNaN(value)) {
+            if (value === "NaN") {
                 return "No data";
             }
             return value.toFixed(2);
@@ -166,25 +192,46 @@ def create_umap_plot(df, agg, color_col, cmap, is_categorical=False, title=None)
             formatters={"@image": formatter}
         )
 
-    tools = [custom_hover]
+    tools = [custom_hover, 'box_select', 'lasso_select', 'tap']
     plot = plot.opts(
             tools=tools,
             active_tools=['box_select'],
             default_tools=[],
-            data_aspect=1,  # square aspect ratio for UMAP
+            #data_aspect=1,  # square aspect ratio for UMAP
             xticks=0, yticks=0,    # No ticks.
+            colorbar_opts={"width": 12},    # thin the colorbar out.
+            hooks=[autohide_toolbar]
         )
 
     return spread(plot)
 
-def create_violin_plot(df, y_col, group_col='cluster', cmap='Category10'):
+def create_violin_plot(df, y_col, group_col='cluster', cmap='Category10', title=None):
     """Generates standard bokeh violin plots (no Datashader needed here)."""
-    return df.hvplot.violin(
+    plot_title = title if title else f"Expression Distribution: {y_col}"
+
+    # Bokeh will try to wrap in a list, so we need to convert to a flattened list of hex colors.
+    if isinstance(cmap, dict):
+        # Determine the exact order of categories Bokeh will use
+        if hasattr(df[group_col], 'cat'):
+            categories = df[group_col].cat.categories
+        else:
+            categories = sorted(df[group_col].unique())
+
+        cmap = [cmap.get(cat, '#CCCCCC') for cat in categories]
+
+    plot = df.hvplot.violin(
         y=y_col, by=group_col, c=group_col, cmap=cmap,
         ylabel='Expression', xlabel='Annotation Cluster',
-        title=f"Expression Distribution: {y_col}",
+        title=plot_title,
         min_height=300, responsive=True, legend=False
-    ).opts(violin_fill_alpha=0.7)
+    )
+
+    return plot.opts(
+        violin_fill_alpha=0.7,
+        xrotation=45,
+        tools = ['box_select', 'lasso_select', 'tap'],
+        hooks=[autohide_toolbar] # Keep the toolbar hidden until hover
+    )
 
 def clip_expression_values(dataframe: pd.DataFrame, min_clip: float | None=None, max_clip: float | None=None) -> pd.DataFrame:
     """
@@ -218,6 +265,10 @@ def clip_expression_values(dataframe: pd.DataFrame, min_clip: float | None=None,
     >>> df["raw_value"].tolist()
     [0.0, 0.0, 2.5, 5.0]
     """
+    if "raw_value" not in dataframe.columns:
+        raise KeyError("DataFrame must contain a 'raw_value' column to clip.")
+
+    dataframe["raw_value"] = dataframe["raw_value"].clip(lower=min_clip, upper=max_clip)
     return dataframe
 
 def has_selection(settings) -> bool:

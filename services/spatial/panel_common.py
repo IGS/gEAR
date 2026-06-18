@@ -9,6 +9,8 @@ import panel as pn
 import param
 from common import (
     Settings,
+    autohide_toolbar,
+    clip_expression_values,
     create_spatial_plot,
     create_umap_plot,
     create_violin_plot,
@@ -16,6 +18,7 @@ from common import (
     normalize_expression_name,
     retrieve_dataframe,
     retrieve_image_array,
+    sort_clusters,
 )
 
 # CRITICAL: Initialize the Bokeh backend for interactivity
@@ -62,6 +65,7 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
         self.orig_df = retrieve_dataframe(self.settings.dataset_id, self.settings.filename)
         self.orig_df['clusters'] = self.orig_df['clusters'].astype('category')
+        self.orig_df = clip_expression_values(self.orig_df, self.settings.expression_min_clip)
 
         # If min_genes is set, filter the dataframe to only include observations with at least that many genes
         self.min_genes = self.settings.min_genes
@@ -86,7 +90,7 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
         self.saved_bounds = saved_bounds
 
-        # Initialize linking and streams
+        # Initialize linking (data filtering) and streams (coordinate reporting)
         self.linker = hv.link_selections.instance(unselected_alpha=0.5)
         self.bounds_stream_image = hv.streams.BoundsXY(bounds=self.saved_bounds)  # type: ignore
         self.bounds_stream_composite = hv.streams.BoundsXY(bounds=self.saved_bounds)  # type: ignore
@@ -122,11 +126,12 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             # This is a fully opaque version
             self.bg_image = hv.RGB(self.image_array, bounds=img_bounds).opts(
                         xaxis=None, yaxis=None,
-                        tools=["box_select"], active_tools=["box_select"], default_tools=[]
+                        tools=["box_select"], active_tools=["box_select"], default_tools=[],
+                        hooks=[autohide_toolbar]
                     )
 
             # Create a more opaque version of the image.
-            opacity_value = int(255 * 0.4)  # Adjust the multiplier to set the desired opacity level
+            opacity_value = int(255 * 0.5)  # Adjust the multiplier to set the desired opacity level
             alpha_channel = np.full((self.img_height, self.img_width, 1), opacity_value, dtype=np.uint8)
 
             # Check if image is RGB (3 channels). If so, append alpha. If already RGBA, just overwrite alpha.
@@ -140,7 +145,8 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
             self.bg_image_dimmed = hv.RGB(dimmed_array, bounds=img_bounds).opts(
                         xaxis=None, yaxis=None, responsive=True,
-                        tools=["box_select"], active_tools=["box_select"], default_tools=[]
+                        tools=["box_select"], active_tools=["box_select"], default_tools=[],
+                        hooks=[autohide_toolbar]
                     )
 
         self._init_widgets()
@@ -189,7 +195,9 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
             ghost_points = []
             # self.cluster_cmap should be a dict like {'Cluster 1': '#FF0000', ...}
-            for cluster_name in sorted(self.cluster_cmap.keys()):
+
+            sorted_clusters = sort_clusters(self.cluster_cmap.keys())
+            for cluster_name in sorted_clusters:
                 hex_color = self.cluster_cmap[cluster_name]
 
                 # Create a single point at (NaN, NaN) so it doesn't draw on the screen
@@ -282,7 +290,7 @@ class CondensedSpatialViewer(BaseSpatialViewer):
 
             # Lay out the non-zoom panels side-by-side using HoloViews
             self.intro_markdown = pn.pane.Markdown(
-                "### Click the Expand icon in the top right corner to see all plots", #width=markdown_width
+                "### Click the Expand icon in the top right corner for added functionality",
             )
 
             self.pre_layout = pn.Row(
@@ -436,15 +444,8 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
             if self.img_height is not None:
                 self.df["y_plot"] = self.img_height - self.df["spatial2"]
 
-            # Generate base plots
-            image_panel = None
-            if hasattr(self, 'bg_image'):
-                image_panel = self.bg_image
-                # Attach the stream to capture drawn boxes
-                self.bounds_stream_image.source = image_panel
-
             # Represents main row and zoom row
-            spatial_grid = pn.pane.Markdown("### Spatial Grid Work-In-Progress", height=400)
+            spatial_grid = self._generate_spatial_grid()
 
             ### UMAP row
             expr_umap = create_umap_plot(
@@ -487,8 +488,21 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
                 sizing_mode='stretch_width'
             )
 
-            # Violin
-            violin_row = pn.pane.Markdown("### Violin Work-In-Progress", height=400)
+            ### Violin
+            violin_base = create_violin_plot(
+                self.df,
+                y_col='raw_value',
+                group_col='clusters',
+                cmap=self.cluster_cmap,
+                title=f"Expression Distribution: {self.current_gene} by Cluster"
+            )
+
+            linked_violin = self.linker(violin_base)
+
+            violin_row = pn.Row(
+                linked_violin,
+                sizing_mode='stretch_width'
+            )
 
             return pn.Column(
                 self.pre_layout,
@@ -536,7 +550,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
         self.pre_layout = pn.Column(
             pn.Row(
                 pn.pane.Markdown(
-                    "## Select a region to modify zoomed in view in the bottom panel",
+                    "## Select a region to modify zoomed in view in the second row.",
                     height=30,
                     width=markdown_width,
                 ),
@@ -556,8 +570,107 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
                   If bounds is None, it indicates that the user has cleared the selection.
         """
 
-        # Safety check to ensure the master canvas exists
-        if not hasattr(self, 'zoom_composite'):
+        if not hasattr(self, 'zoom_master_expr'):
             return
 
-        self.zoom_row = None    # placeholder for now
+        # 1. Determine bounds
+        if bounds is None:
+            opts_dict = dict(xlim=(None, None), ylim=(None, None), clone=True)
+        else:
+            x1, y1, x2, y2 = bounds
+            opts_dict = dict(
+                xlim=(min(x1, x2), max(x1, x2)),
+                ylim=(min(y1, y2), max(y1, y2)),
+                clone=True,
+                active_tools=['pan', 'wheel_zoom'] # Disable box select on zoomed plots
+            )
+
+        # 2. Apply limits to all three master canvases
+        new_zoom_image = self.master_image.opts(**opts_dict) if self.master_image is not None else None
+        new_zoom_expr = self.zoom_master_expr.opts(**opts_dict)
+        new_zoom_cluster = self.zoom_master_cluster.opts(**opts_dict)
+
+        # 3. Swing the Sledgehammer (Hot-swap all three panes)
+        self.zoom_image_pane = pn.pane.HoloViews(new_zoom_image, sizing_mode='stretch_width', linked_axes=False)
+        self.zoom_expr_pane = pn.pane.HoloViews(new_zoom_expr, sizing_mode='stretch_width', linked_axes=False)
+        self.zoom_cluster_pane = pn.pane.HoloViews(new_zoom_cluster, sizing_mode='stretch_width', linked_axes=False)
+
+        # 4. Inject back into Row 2 (preserving the spacer at index 3)
+        if hasattr(self, 'zoom_row'):
+            self.zoom_row[0] = self.zoom_image_pane
+            self.zoom_row[1] = self.zoom_expr_pane
+            self.zoom_row[2] = self.zoom_cluster_pane
+
+    def _generate_spatial_grid(self):
+        """
+        Generates the spatial grid layout with the background image, expression plot, and cluster plot.
+        Row 1 is the main view, and Row 2 is the zoomed-in view. The legend is also included in Row 1.
+        """
+        # Generate base plots
+        expr_plot = create_spatial_plot(self.df, self.expression_agg, y_col="y_plot", color_col='raw_value', cmap=self.expression_cmap, title=f"Expression: {self.current_gene}")
+        cluster_plot = create_spatial_plot(self.df, self.clusters_agg, y_col="y_plot", color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters") # type: ignore
+        master_image = self.bg_image if hasattr(self, 'bg_image') else pn.pane.HoloViews(None)
+
+        # Update bounds streams for the image and expression plots.
+        self.bounds_stream_image.source = master_image
+        self.bounds_stream_composite.source = expr_plot
+
+        # Create a 3rd stream for the cluster plot so it can also trigger the zoom
+        if not hasattr(self, 'bounds_stream_cluster'):
+            self.bounds_stream_cluster = hv.streams.BoundsXY(bounds=self.saved_bounds)
+            self.bounds_stream_cluster.add_subscriber(self._update_bounds_callback)
+            self.bounds_stream_cluster.source = cluster_plot
+
+        # Apply cross-filtering linker BEFORE adding images
+        linked_expr = self.linker(expr_plot)
+        linked_cluster = self.linker(cluster_plot)
+
+        # Create composites with the background image
+        if hasattr(self, 'bg_image_dimmed') and self.bg_image_dimmed is not None:
+            # Row 1 (Linked)
+            main_expr = self.bg_image_dimmed * linked_expr
+            main_cluster = self.bg_image_dimmed * linked_cluster
+            # Row 2 Zoom (Unlinked/Raw)
+            zoom_master_expr = self.bg_image_dimmed * expr_plot
+            zoom_master_cluster = self.bg_image_dimmed * cluster_plot
+        else:
+            main_expr = linked_expr
+            main_cluster = linked_cluster
+            zoom_master_expr = expr_plot
+            zoom_master_cluster = cluster_plot
+
+        # Store master composites for the zoom callback
+        self.master_image = master_image
+        self.zoom_master_expr = zoom_master_expr
+        self.zoom_master_cluster = zoom_master_cluster
+
+        # Create the Ghost Legend and Container (Row 1 only)
+        needed_width = max(180, max(len(str(name)) for name in self.cluster_cmap) * 7)
+        needed_height = max(300, len(self.cluster_cmap) * 22 + 50)
+
+        ghost_legend = self._create_ghost_legend().opts(
+            show_legend=True, legend_position="top_left",
+            xaxis=None, yaxis=None, show_frame=False, toolbar=None,
+            width=needed_width, height=needed_height
+        )
+
+        legend_container = pn.Column(
+            pn.pane.HoloViews(ghost_legend),
+            width=200, height=300, scroll=True, margin=(0,0,0,0)
+        )
+
+        # Initialize Zoom Panes
+        self.zoom_image_pane = pn.pane.HoloViews(master_image, sizing_mode='stretch_width', linked_axes=False)
+        self.zoom_expr_pane = pn.pane.HoloViews(zoom_master_expr, sizing_mode='stretch_width', linked_axes=False)
+        self.zoom_cluster_pane = pn.pane.HoloViews(zoom_master_cluster, sizing_mode='stretch_width', linked_axes=False)
+
+        # Assemble Rows (4 slots each to maintain vertical alignment)
+        self.main_row = pn.Row(master_image, main_expr, main_cluster, legend_container, sizing_mode='stretch_width')
+
+        # Use a spacer in Row 2 to match the legend width perfectly
+        zoom_spacer = pn.Spacer(width=200, margin=(0,0,0,0))
+        self.zoom_row = pn.Row(self.zoom_image_pane, self.zoom_expr_pane, self.zoom_cluster_pane, zoom_spacer, sizing_mode='stretch_width')
+
+        zoom_markdown = pn.pane.Markdown('### Zoomed View', height=30)
+
+        return pn.Column(self.main_row, zoom_markdown, self.zoom_row, sizing_mode='stretch_width')

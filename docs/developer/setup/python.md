@@ -117,6 +117,7 @@ I cannot add comments to the bash code without breaking the command.  So consult
     google-analytics-data==0.21.0 \
     gosling==0.3.0 \
     hic2cool==0.8.3 \
+    hvplot==0.12.2
     jupyterlab==4.0.5 \
     jupyter==1.0.0 \
     kaleido==0.2.1 \
@@ -132,7 +133,7 @@ I cannot add comments to the bash code without breaking the command.  So consult
     opencv-python==4.5.5.64 \
     openpyxl==3.1.5 \
     pandas==2.3.3 \
-    panel==1.8.10 \
+    panel==1.9.3 \
     Pillow==12.2.0 \
     pika==1.3.2 \
     pims==0.7.0 \
@@ -147,6 +148,7 @@ I cannot add comments to the bash code without breaking the command.  So consult
     setuptools==81.0.0 \
     spatialdata==0.7.2 \
     spatialdata_io==0.6.0 \
+    spatialpandas==0.5.0 \
     shadows==0.1a2 \
     tables==3.11.1 \
     watchfiles==1.1.1
