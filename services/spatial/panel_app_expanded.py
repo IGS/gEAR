@@ -13,7 +13,6 @@ args = pn.state.session_args
 if not args:
     pn.pane.Markdown("OK").servable()
 else:
-
     # Instantiate the component
     spatial_dashboard = ExpandedSpatialViewer()
 

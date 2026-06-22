@@ -19,7 +19,7 @@ SPATIAL_IMAGE_NAME = "spatial_img.npy"
 def autohide_toolbar(plot, element):
     plot.state.toolbar.autohide = True
 
-def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='raw_value', cmap='YlOrRd', is_categorical=False, title=None):
+def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='raw_value', cmap='YlOrRd', is_categorical=False, title=None, mode="standard"):
     """Generates a Datashaded spatial plot colored by expression of the specified gene."""
 
     # Fixes a Holoviews bug where the linker callback cannot find the categorical metadata dimension that Datashader named
@@ -47,7 +47,9 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
         min_height=300   # Set a floor so plots don't collapse to 0px
     )
 
-    tools = ['box_select', 'tap']
+    default_tools = ["box_zoom", "wheel_zoom", "pan", "reset"]
+    if mode == "expanded":
+        default_tools = ['box_select', 'reset']
     if color_col == "raw_value":
         label_name = "Expression"
         # Intercept the NaN values and round the long floats
@@ -98,12 +100,9 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
             formatters={"@image": formatter}
         )
 
-    tools.append(custom_hover)  # type: ignore
-
     plot = plot.opts(
-            tools=tools,
-            active_tools=['box_select'],
-            default_tools=[],
+            tools=[custom_hover],
+            default_tools=default_tools,
             colorbar_opts={"width": 12},    # thin the colorbar out.
             hooks=[autohide_toolbar]
         )
@@ -192,11 +191,11 @@ def create_umap_plot(df, agg, color_col, cmap, is_categorical=False, title=None)
             formatters={"@image": formatter}
         )
 
-    tools = [custom_hover, 'box_select', 'lasso_select', 'tap']
+    default_tools = ['box_select', 'lasso_select', 'tap']
     plot = plot.opts(
-            tools=tools,
+            tools=[custom_hover],
             active_tools=['box_select'],
-            default_tools=[],
+            default_tools=default_tools,
             #data_aspect=1,  # square aspect ratio for UMAP
             xticks=0, yticks=0,    # No ticks.
             colorbar_opts={"width": 12},    # thin the colorbar out.
@@ -226,13 +225,13 @@ def create_violin_plot(df, y_col, group_col='cluster', cmap='Category10', title=
         y=y_col, by=group_col, c=group_col, cmap=cmap,
         ylabel='Expression', xlabel='Annotation Cluster',
         title=plot_title,
-        min_height=300, responsive=True, legend=False
+        min_height=400, responsive=True, legend=False
     )
 
     return plot.opts(
         violin_fill_alpha=0.7,
         xrotation=45,
-        tools = ['box_select', 'lasso_select', 'tap'],
+        default_tools = ['box_select', 'lasso_select', 'tap'],
         hooks=[autohide_toolbar] # Keep the toolbar hidden until hover
     )
 

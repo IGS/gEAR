@@ -2329,7 +2329,9 @@ class DatasetTile {
             // Enforce boundaries so Panel's stretch_both has walls to push against
             cardImage.style.display = "block";
             cardImage.style.width = "100%";
-            cardImage.style.minHeight = self.isZoomed ? "1750px" : "360px";
+            if (!self.isZoomed) {
+                cardImage.style.minHeight = "360px";
+            }
 
             // inject the script into the card to trigger loading the Panel app (Bokeh server_document)
             if (parsedScript) {
@@ -2342,6 +2344,62 @@ class DatasetTile {
 
                 // Copy the actual inline JavaScript payload
                 scriptElement.textContent = parsedScript.textContent;
+
+                // 1. Create a true absolute overlay to hide the empty white layout
+                const loader = document.createElement('div');
+                // Use your existing gEAR classes if you have them, or use this default spinner
+                loader.innerHTML = `
+                    <div style="width: 3rem; height: 3rem; border: 4px solid #f3f3f3; border-top: 4px solid #544A8E; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <div style="margin-top: 15px; font-weight: bold; color: #444;">Loading spatial architecture...</div>
+                    <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+                `;
+                loader.style.position = "absolute";
+                loader.style.top = "0";
+                loader.style.left = "0";
+                loader.style.width = "100%";
+                loader.style.height = "100%";
+                loader.style.backgroundColor = "white"; // Solid white perfectly hides the rendering boxes
+                loader.style.display = "flex";
+                loader.style.flexDirection = "column";
+                loader.style.justifyContent = "center";
+                loader.style.alignItems = "center";
+                loader.style.zIndex = "9999";
+
+                // The parent container MUST be relative so the absolute overlay fits perfectly inside it
+                cardImage.style.position = "relative";
+                cardImage.appendChild(loader);
+
+                // 2. Indestructible Polling Loop
+                let attempts = 0;
+                const maxAttempts = 200; // 20 seconds maximum wait time (100ms * 200)
+
+                const checkRender = setInterval(() => {
+                    attempts++;
+
+                    // Look for ANY physical plot boundary Bokeh creates, not just a canvas.
+                    // .bk-panel-models-layout-Column
+                    const plotElements = cardImage.querySelectorAll('.bk-panel-models-layout-Column');
+
+                    if (plotElements.length > 0) {
+                        // The DOM structure has arrived! Stop polling.
+                        clearInterval(checkRender);
+
+                        // Give Datashader/WebGL an extra 800ms to push the final pixel colors
+                        // into those containers before lifting the curtain.
+                        setTimeout(() => {
+                            loader.style.transition = "opacity 0.2s ease";
+                            loader.style.opacity = "0";
+                            setTimeout(() => loader.remove(), 200);
+                        }, 800);
+                    }
+                    else if (attempts >= maxAttempts) {
+                        // FAILSAFE: If the backend crashed silently, do not trap the user.
+                        clearInterval(checkRender);
+                        createCardMessage(tileId, "danger", "Spatial display failed to load. Please check the dataset or refresh the page.");
+                        // Remove the loader after showing the error for 3 seconds so they can see any Bokeh error text
+                        setTimeout(() => loader.remove(), 200);
+                    }
+                }, 100); // Check the DOM every 1/10th of a second
 
                 // Append and execute
                 cardImage.appendChild(scriptElement);
