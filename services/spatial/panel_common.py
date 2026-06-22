@@ -1,3 +1,5 @@
+import asyncio
+import gc
 import sys
 import traceback
 
@@ -34,7 +36,6 @@ class BaseSpatialViewer(pn.viewable.Viewer):
     settings = Settings()   # Set default settings
 
     # Any potential bound widgets should be declared here so they are accessible in the base class and subclasses
-    use_clusters = param.Boolean(default=False, doc="Whether to show clusters or gene expression in the main plots")
     min_genes = param.Integer(default=0, doc="Minimum number of genes expressed to include a cell observation", bounds=(0, 500))
 
     def __init__(self, **params):
@@ -129,7 +130,6 @@ class BaseSpatialViewer(pn.viewable.Viewer):
                 self.settings.selection_y2,
             )
 
-
         self.saved_bounds = saved_bounds
 
         # Initialize linking (data filtering) and streams (coordinate reporting)
@@ -167,7 +167,7 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             # This is a fully opaque version
             self.bg_image = hv.RGB(self.image_array, bounds=img_bounds).opts(
                         xaxis=None, yaxis=None,
-                        tools=["box_select"], active_tools=["box_select"], default_tools=[],
+                        tools=[], active_tools=[], default_tools=[],
                         hooks=[autohide_toolbar]
                     )
 
@@ -332,6 +332,10 @@ class CondensedSpatialViewer(BaseSpatialViewer):
         Generates the spatial grid layout with the background image, expression plot, and cluster plot.
         Row 1 is the main view, and Row 2 is the zoomed-in view. The legend is also included in Row 1.
         """
+
+        if hasattr(self, 'bg_image'):
+            self.bg_image = self.bg_image.opts(default_tools = ["box_zoom", "wheel_zoom", "pan", "reset"])
+
         # Generate base plots
         expr_plot = create_spatial_plot(self.df, self.expression_agg, y_col="y_plot", color_col='raw_value', cmap=self.expression_cmap, title=f"Expression: {self.current_gene}", mode="standard")
         cluster_plot = create_spatial_plot(self.df, self.clusters_agg, y_col="y_plot", color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters", mode="standard") # type: ignore
@@ -395,7 +399,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
                 self.df["y_plot"] = self.img_height - self.df["spatial2"]
 
             # Represents main row and zoom row
-            spatial_grid = self._generate_spatial_grid()
+            self.spatial_grid_container = self._generate_spatial_grid()
 
             ### UMAP row
             expr_umap = create_umap_plot(
@@ -431,7 +435,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
             )
 
             # Layout the UMAP row
-            umap_row = pn.Row(
+            self.umap_row_container = pn.Row(
                 linked_expr_umap,
                 linked_cluster_umap,
                 umap_legend_container,
@@ -449,18 +453,18 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
 
             linked_violin = self.linker(violin_base)
 
-            violin_row = pn.Row(
+            self.violin_row_container = pn.Row(
                 linked_violin,
                 sizing_mode='stretch_width'
             )
 
             return pn.Column(
                 self.pre_layout,
-                spatial_grid,
+                self.spatial_grid_container,
                 pn.layout.Divider(margin=(20, 0)), # Visual breathing room
-                umap_row,
+                self.umap_row_container,
                 pn.layout.Divider(margin=(20, 0)),
-                violin_row,
+                self.violin_row_container,
                 sizing_mode='stretch_both'
             )
         except Exception as e:
@@ -532,7 +536,62 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
 
             // Dispatch it to the host window so the vanilla JS listener catches it instantly
             window.dispatchEvent(evt);
-            """)
+            """)  # noqa: F541
+
+        self.min_genes_slider.param.watch(self._update_min_genes, 'value_throttled')
+
+    async def _update_min_genes(self, event):
+        """Triggered when the min_genes slider changes."""
+
+        # Start event loading spinners on the affected containers
+        self.spatial_grid_container.loading = True
+        self.umap_row_container.loading = True
+        self.violin_row_container.loading = True
+
+        # Yield control to the event loop to give the browser time to render spinners
+        await asyncio.sleep(0.05)
+
+        try:
+            # 1. Update state and re-filter the underlying dataframe
+            self.min_genes = event.new
+            self._filter_df()
+
+            # Recreate the linker
+            self.linker = hv.link_selections.instance(unselected_alpha=0.5)
+
+            # 2. Fix the y-axis for the newly filtered dataframe
+            self.df["y_plot"] = self.df["spatial2"]
+            if self.img_height is not None:
+                self.df["y_plot"] = self.img_height - self.df["spatial2"]
+
+            # 3. Rebuild the Spatial Grid
+            new_spatial_grid = self._generate_spatial_grid()
+            self.spatial_grid_container[:] = new_spatial_grid[:]
+
+            # 4. Rebuild and link the UMAPs
+            expr_umap = create_umap_plot(
+                self.df, self.expression_agg, color_col='raw_value', cmap="cividis_r", is_categorical=False, title=self.current_gene
+            )
+            cluster_umap = create_umap_plot(
+                self.df, self.clusters_agg, color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters"
+            )
+            # Hot-swap the UMAP plots into indices 0 and 1 (leaving the legend at index 2 untouched)
+            self.umap_row_container[0] = self.linker(expr_umap)
+            self.umap_row_container[1] = self.linker(cluster_umap)
+
+            # 5. Rebuild and link the Violin
+            violin_base = create_violin_plot(
+                self.df, y_col='raw_value', group_col='clusters', cmap=self.cluster_cmap, title=f"Expression Distribution: {self.current_gene} by Cluster"
+            )
+            self.violin_row_container[0] = self.linker(violin_base)
+
+        finally:
+            # Turn off the spinners and sweep memory
+            self.spatial_grid_container.loading = False
+            self.umap_row_container.loading = False
+            self.violin_row_container.loading = False
+            gc.collect()
+
 
     def _update_zoom_panel(self, bounds):
         """
@@ -580,6 +639,10 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
         Generates the spatial grid layout with the background image, expression plot, and cluster plot.
         Row 1 is the main view, and Row 2 is the zoomed-in view. The legend is also included in Row 1.
         """
+
+        if hasattr(self, 'bg_image'):
+            self.bg_image = self.bg_image.opts(default_tools = ["box_select", "reset"])
+
         # Generate base plots
         expr_plot = create_spatial_plot(self.df, self.expression_agg, y_col="y_plot", color_col='raw_value', cmap=self.expression_cmap, title=f"Expression: {self.current_gene}", mode="expanded")
         cluster_plot = create_spatial_plot(self.df, self.clusters_agg, y_col="y_plot", color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters", mode="expanded") # type: ignore

@@ -2406,8 +2406,17 @@ class DatasetTile {
             }
 
             // Listen to various events
+
             const eventName = `save_spatial_display_${this.dataset.id}`;
-            window.addEventListener(eventName, async (event) => {
+
+            // Remove any previously registered listener to prevent double-firing
+            if (this._saveSpatialHandler) {
+                window.removeEventListener(eventName, this._saveSpatialHandler);
+                this._saveSpatialHandler = null;
+            }
+
+            // Add the "save" event listener
+            this._saveSpatialHandler = async (event) => {
                 const { displayName, makeDefault, minGenes, bounds } = event.detail;
 
                 // Sync the local state
@@ -2425,11 +2434,14 @@ class DatasetTile {
                         throw new Error("Must be logged in to save as a display.");
                     }
                     await this.saveSpatialParameters(displayName, makeDefault, geneSymbol);
-                    createToast("Spatial display saved successfully!", "success");
+                    createToast("Spatial display saved successfully!", "is-success");
                 } catch (error) {
                     console.error(error);
                 }
-            }, { once: true }); // Use once:true if you want to rebuild the listener per load, or manage it carefully
+            };
+            if (this.isZoomed) {
+                window.addEventListener(eventName, this._saveSpatialHandler, { once: true });
+            }
 
         } catch (error) {
             console.error(error);
