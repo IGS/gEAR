@@ -2384,13 +2384,15 @@ class DatasetTile {
                         // The DOM structure has arrived! Stop polling.
                         clearInterval(checkRender);
 
-                        // Give Datashader/WebGL an extra 800ms to push the final pixel colors
+                        loader.style.transition = "opacity 0.3s ease";
+                        loader.style.opacity = "0";
+
+                        // Give Datashader/WebGL an extra 300ms to push the final pixel colors
                         // into those containers before lifting the curtain.
                         setTimeout(() => {
-                            loader.style.transition = "opacity 0.2s ease";
-                            loader.style.opacity = "0";
-                            setTimeout(() => loader.remove(), 200);
-                        }, 800);
+
+                            loader.remove();
+                        }, 300);
                     }
                     else if (attempts >= maxAttempts) {
                         // FAILSAFE: If the backend crashed silently, do not trap the user.
