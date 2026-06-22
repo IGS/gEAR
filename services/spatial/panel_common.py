@@ -1,3 +1,4 @@
+import sys
 import traceback
 
 import datashader as ds
@@ -30,7 +31,7 @@ class BaseSpatialViewer(pn.viewable.Viewer):
     Base Viewer component. Handles state and linking.
     """
 
-    settings = Settings()
+    settings = Settings()   # Set default settings
 
     # Any potential bound widgets should be declared here so they are accessible in the base class and subclasses
     use_clusters = param.Boolean(default=False, doc="Whether to show clusters or gene expression in the main plots")
@@ -43,25 +44,66 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         raw_value,spatial1,spatial2,n_genes_by_counts,UMAP1,UMAP2,clusters,clusters_cat_codes,colors
         """
 
-        if pn.state.location is not None:
-            pn.state.location.sync(
-                self.settings,
-                {
-                    "dataset_id": "dataset_id",
-                    "filename": "filename",
-                    "min_genes": "min_genes",
-                    "selection_x1": "selection_x1",
-                    "selection_x2": "selection_x2",
-                    "selection_y1": "selection_y1",
-                    "selection_y2": "selection_y2",
-                    "display_height": "height",
-                    "display_width": "width",
-                    "expression_min_clip": "expression_min_clip",
-                    "save": "save",
-                    "display_name": "display_name",
-                    "make_default": "make_default",
-                },
-            )
+        if pn.state.session_args is not None:
+
+            args = pn.state.session_args
+
+            def get_arg(key, default=None):
+                if key in args:
+                    value = args[key][0].decode('utf-8')
+
+                    # type coercion on some common keywords due to the stringification of the URL params.
+                    if value.lower() in ('none', 'null', ''):
+                        return None
+                    if value.lower() == 'true':
+                        return True
+                    if value.lower() == 'false':
+                        return False
+                    return value
+
+                return default
+
+            # Decode the bytes back to standard Python strings
+            # Format is {'filename': [b'my_data.parquet']}
+            if 'dataset_id' in args:
+                self.settings.dataset_id = get_arg('dataset_id', "")
+
+            if 'filename' in args:
+                self.settings.filename = get_arg('filename', "")
+
+            if 'min_genes' in args:
+                self.settings.min_genes = int(get_arg('min_genes', 0))
+
+            if 'selection_x1' in args:
+                selection_x1 = get_arg('selection_x1')
+                if selection_x1 is not None:
+                    self.settings.selection_x1 = float(selection_x1)
+            if 'selection_x2' in args:
+                selection_x2 = get_arg('selection_x2')
+                if selection_x2 is not None:
+                    self.settings.selection_x2 = float(selection_x2)
+            if 'selection_y1' in args:
+                selection_y1 = get_arg('selection_y1')
+                if selection_y1 is not None:
+                    self.settings.selection_y1 = float(selection_y1)
+            if 'selection_y2' in args:
+                selection_y2 = get_arg('selection_y2')
+                if selection_y2 is not None:
+                    self.settings.selection_y2 = float(selection_y2)
+
+            if 'expression_min_clip' in args:
+                expression_min_clip = get_arg('expression_min_clip')
+                if expression_min_clip is not None:
+                    self.settings.expression_min_clip = float(expression_min_clip)
+
+            if 'nosave' in args:
+                self.settings.nosave = bool(int(get_arg('nosave', True)))
+
+            if 'display_name' in args:
+                self.settings.display_name = get_arg('display_name', "")
+
+            if 'make_default' in args:
+                self.settings.make_default = bool(int(get_arg('make_default', False)))
 
         self.orig_df = retrieve_dataframe(self.settings.dataset_id, self.settings.filename)
         self.orig_df['clusters'] = self.orig_df['clusters'].astype('category')
@@ -559,6 +601,30 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
             ),
             pn.Row(self.min_genes_slider, pn.Spacer(width=spacer_width), self.make_default),
         )
+
+        # Emit a DOM event instead of changing a URL param
+        # Pass the active states of the widgets down to the JS context (some things, like gene_symbol are already in the frontend)
+        self.save_button.js_on_click(
+            args={
+                'name_input': self.display_name,
+                'default_cb': self.make_default,
+                'min_genes_slider': self.min_genes_slider,
+                'dataset_id': self.settings.dataset_id
+            },
+            code=f"""
+            // Create a custom event containing all the widget values
+            const evt = new CustomEvent(`save_spatial_display_${{dataset_id}}`, {{
+                detail: {{
+                    displayName: name_input.value,
+                    makeDefault: default_cb.active,
+                    minGenes: min_genes_slider.value,
+                    // If you tracked bounds in JS, you could grab them, or grab them from Panel
+                }}
+            }});
+
+            // Dispatch it to the host window so the vanilla JS listener catches it instantly
+            window.dispatchEvent(evt);
+            """)
 
     def _update_zoom_panel(self, bounds):
         """

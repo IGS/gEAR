@@ -7,8 +7,10 @@ from panel_common import ExpandedSpatialViewer
 # https://github.com/bokeh/bokeh/issues/13229
 logging.getLogger().setLevel(logging.ERROR)
 
-# If not params passed, just show OK as a way to test the app
-if pn.state.location is None or not pn.state.location.query_params:
+args = pn.state.session_args
+
+# If no params passed, just show OK as a way to test the app
+if not args:
     pn.pane.Markdown("OK").servable()
 else:
 

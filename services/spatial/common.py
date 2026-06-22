@@ -219,6 +219,9 @@ def create_violin_plot(df, y_col, group_col='cluster', cmap='Category10', title=
 
         cmap = [cmap.get(cat, '#CCCCCC') for cat in categories]
 
+    # Sort df by the group_col
+    df = df.sort_values(by=group_col)
+
     plot = df.hvplot.violin(
         y=y_col, by=group_col, c=group_col, cmap=cmap,
         ylabel='Expression', xlabel='Annotation Cluster',
@@ -386,8 +389,6 @@ class Settings(param.Parameterized):
     selection_x2 = param.Number(doc="right selection range", allow_None=True)
     selection_y1 = param.Number(doc="upper selection range", allow_None=True)
     selection_y2 = param.Number(doc="lower selection range", allow_None=True)
-    display_height = param.Integer(doc="Height of the display in pixels", allow_None=True)
-    display_width = param.Integer(doc="Width of the display in pixels", allow_None=True)
     expression_min_clip = param.Number(doc="Minimum expression value to clip", allow_None=True)
 
     min_genes = param.Integer(default=0, doc="Minimum number of genes expressed to include a cell observation", bounds=(0, 500))

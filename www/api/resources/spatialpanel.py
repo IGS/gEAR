@@ -1,12 +1,15 @@
 
+import os
 import sys
 import typing
 from pathlib import Path
 
 import colorcet as cc
+import geardb
 import numpy as np
 import pandas as pd
 import spatialdata as sd
+from bokeh.embed import server_document
 from flask import request
 from flask_restful import Resource
 
@@ -303,6 +306,40 @@ def normalize_searched_gene(gene_set, chosen_gene) -> str | None:
             raise
     return None
 
+def get_viewer_script(is_zoomed, config={}) -> str:
+    """Get the script tag to embed the Panel viewer app, with the appropriate server URL and arguments.
+
+    Parameters
+    ----------
+    is_zoomed : bool
+        Whether to use the zoomed-in version of the Panel app or the standard version.
+    config : dict, optional
+        A dictionary of arguments to pass to the Panel server. Default is an empty dict.
+
+    Returns
+    -------
+    str
+        A string containing the <script> tag to embed the Panel viewer app, with the appropriate server URL and arguments.
+
+    """
+
+    domain_url = geardb._read_domain_url()
+
+    if os.environ.get("ENVIRONMENT", "production").lower() == "development":
+        domain_url = "http://localhost:8080"
+
+    panel_server_last = "panel_app_expanded" if is_zoomed else "panel_app"
+    panel_server_url = f'{domain_url}/panel/ws/{panel_server_last}'
+
+    # Pass necessary URL arguments to the Panel server
+    script_tag = server_document(
+        url=panel_server_url,
+        arguments=config
+    )
+
+    # Return this string directly to your frontend framework
+    return script_tag
+
 class SpatialPanel(Resource):
     """Resource for prepping spatial data to use in Holoviz Panel app.
 
@@ -315,15 +352,37 @@ class SpatialPanel(Resource):
         req = request.get_json()
         if req is None:
             return {
-                "filename": None,
+                "script": None,
                 "success": 0,
                 "message": "No JSON body provided in the request.",
             }
         gene_symbol = req.get('gene_symbol', None)  # gene symbol or projection pattern
         projection_id = req.get('projection_id', None)
+        is_zoomed = req.get('is_zoomed', False)
+        min_genes = req.get('min_genes', 0)
+        min_genes = int(min_genes) if min_genes is not None else 0
+        expression_min_clip = req.get('expression_min_clip', None)
+        selection_x1 = req.get('selection_x1', None)
+        selection_x2 = req.get('selection_x2', None)
+        selection_y1 = req.get('selection_y1', None)
+        selection_y2 = req.get('selection_y2', None)
+        nosave = req.get('disable_save', True)  # Disable save button for saving displays
+
+        config = {
+            "dataset_id": dataset_id,
+            "gene_symbol": gene_symbol,
+            "projection_id": projection_id,
+            "min_genes": min_genes,
+            "expression_min_clip": expression_min_clip,
+            "selection_x1": selection_x1,
+            "selection_x2": selection_x2,
+            "selection_y1": selection_y1,
+            "selection_y2": selection_y2,
+            "nosave": nosave
+        }
 
         response = {
-            "filename": None,
+            "script": None,
             "success": 0,
             "message": "",
         }
@@ -338,12 +397,14 @@ class SpatialPanel(Resource):
         # If csv is cached, return it
         csv_path = DATASET_DIR / filename_to_check
         if csv_path.is_file():
-            response["filename"] = str(csv_path.name)
+
+            config["filename"] = str(csv_path.name)
+            response["script"] = get_viewer_script(is_zoomed, config)
             response["message"] = "Using cached file."
             response["success"] = 1
             return response
 
-
+        # Create cached csv if it doesn't exist, then return it
         try:
             spatial_obj = prep_sdata(dataset_id)
 
@@ -368,10 +429,17 @@ class SpatialPanel(Resource):
 
             gene_df.to_csv(csv_path, index=False)
 
-            response["success"] = 1
-            response["filename"] = str(csv_path.name)
-
+            config["filename"] = str(csv_path.name)
         except Exception as e:
             response["message"] = f"Error preparing data: {e}"
+            return response
+
+        # Generate the script to load the Panel app with the prepared data
+        try:
+            response["script"]  = get_viewer_script(is_zoomed, config)
+            response["success"] = 1
+        except Exception as e:
+            response["message"] += f" Error generating viewer script: {e}"
+
         return response
 

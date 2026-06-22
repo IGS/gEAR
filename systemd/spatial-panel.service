@@ -6,7 +6,7 @@ Documentation=https://github.com/IGS/gEAR/blob/main/docs/setup.new_server_notes.
 Type=simple
 Environment=APACHE_STARTED_BY_SYSTEMD=true
 Environment=PYTHONPATH=<gear_root>/services/spatial
-ExecStart=/opt/Python-3.14.4/bin/panel serve <gear_root>/services/spatial/panel_app.py <gear_root>/services/spatial/panel_app_expanded.py --plugins=download_plugin --address=0.0.0.0 --port=5006 --num-procs=4 --allow-websocket-origin="*" --global-loading-spinner
+ExecStart=/opt/Python-3.14.4/bin/panel serve <gear_root>/services/spatial/panel_app.py <gear_root>/services/spatial/panel_app_expanded.py --plugins=download_plugin --address=0.0.0.0 --port=5006 --num-procs=4 --allow-websocket-origin="<domain url>" --global-loading-spinner
 KillMode=mixed
 PrivateTmp=true
 Restart=always

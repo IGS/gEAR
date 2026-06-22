@@ -136,20 +136,6 @@ ul#go-terms li {
     object-fit: contain;
 }
 
-/* spatial embeds */
-#result-panel-grid .js-tile .card-image iframe {
-    width: 100%;
-    height: 100%;
-    min-height: 360px;  /* enough room for the Panel app to be useable, even on smaller screens */
-    margin: auto;
-}
-
-#zoomed-panel-grid .js-tile .card-image iframe {
-    width: 100%;
-    height: 1750px;  /* Enough room for the Panel app to be fully displayed without scrolling */
-    margin: auto;
-}
-
 /* This is the main svg image */
 .js-tile .card-image .svg svg {
     height: inherit;    /* match the height set by the SVG container (after legend applied) */

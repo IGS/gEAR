@@ -44,6 +44,8 @@ services:
     build:
       context: ../services/spatial
       dockerfile: Dockerfile
+    environment:
+      - BOKEH_RESOURCES=cdn # Pull Bokeh library from CDN
     image: adkinsrs/spatial_panel_app:latest
     networks:
       - gear
