@@ -721,14 +721,46 @@ class CosMxHandler(SpatialHandler):
                             out_f.write(f.read())
                     entry.name = entry.name[:-3]    # Adjust file name
 
+                # ? We could include this to use the "points" for future additions, but not including it saves space in the output Zarr
                 if entry.name.endswith("tx_file.csv"):
                     transcripts_present = True
+
+                # For the exprMat_file.csv, fov_positions_file.csv, and metadata_file.csv files, replace the dataset_id prefix with "spatialdata" to standardize downstream usage
+                if any(entry.name.endswith(suffix) for suffix in ["exprMat_file.csv", "fov_positions_file.csv", "metadata_file.csv"]):
+                    new_name = entry.name.split("_", 1)[-1]  # Remove the dataset_id prefix
+                    new_name = "spatialdata_" + new_name    # Add the standard prefix
+                    entry.name = new_name
+
+                # For the CellComposite or CellLabels directories, strip off the dataset_id prefix to standardize downstream usage
+                if any(entry.name.startswith(prefix) for prefix in ["CellComposite", "CellLabels"]):
+                    new_name = entry.name.split("_", 1)[-1]  # Remove the dataset_id prefix
+                    entry.name = new_name
 
                 # Extract file into tmp dir
                 filepath = "{0}/{1}".format(extract_dir, entry.name)
                 tf.extract(entry, path=extract_dir)
 
+        # Try to get organism id directly or through dataset metadata
+        organism_id = kwargs.get("organism_id", None)
+        if organism_id is None and "dataset_id" in kwargs:
+            from geardb import get_dataset_by_id
+            dataset = get_dataset_by_id(kwargs.get("dataset_id"))   # assumes the metadata is already present
+            if dataset:
+                organism_id = dataset.organism_id
+        if organism_id is None:
+            raise Exception("Organism ID not found in dataset metadata or provided as an argument.")
+
+        # In the metadata_file.csv file, rename the "cell_id" column if it exists, as it is redundant with the "cell_ID" column
+        metadata_csv_path = "{}/metadata_file.csv".format(extract_dir)
+        if os.path.exists(metadata_csv_path):
+            metadata_df = pd.read_csv(metadata_csv_path)
+            if "cell_id" in metadata_df.columns:
+                metadata_df = metadata_df.rename(columns={"cell_id": "orig_cell_id"})
+                metadata_df.to_csv(metadata_csv_path, index=False)
+
         # If clustering file does not exist, raise an exception
+        # TODO: Figure out how to implement this
+        # Barcode needs to be a combination of the following values <cell_ID>_<fov>
         clustering_csv_path = "{}/clusters.csv".format(extract_dir)
         if not os.path.exists(clustering_csv_path):
             raise Exception("clusters.csv file not found in tarball.")
@@ -762,8 +794,13 @@ class CosMxHandler(SpatialHandler):
         # currently gene symbols are the index, need to move them to a column
         sdata.tables[self.NORMALIZED_TABLE_NAME].var["gene_symbol"] = sdata.tables[self.NORMALIZED_TABLE_NAME].var.index
 
-        # set the index to the ensembl id (gene_ids)
-        sdata.tables[self.NORMALIZED_TABLE_NAME].var = sdata.tables[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids")
+        # Add ensemble IDs to the adata.var
+        sdata.tables[self.NORMALIZED_TABLE_NAME] = update_adata_with_ensembl_ids(sdata.tables[self.NORMALIZED_TABLE_NAME], organism_id, "UNMAPPED_")
+
+        # Rename the "CenterX_global_px" column to "spatial1" and the "CenterY_global_px" column to "spatial2" in the observation table
+        sdata.tables[self.NORMALIZED_TABLE_NAME].obs = sdata.tables[self.NORMALIZED_TABLE_NAME].obs.rename(
+            columns={"CenterX_global_px": "spatial1", "CenterY_global_px": "spatial2"}
+            )
 
         self.sdata = sdata
         self.standardize_sdata()
