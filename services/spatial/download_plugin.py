@@ -1,16 +1,10 @@
 from io import BytesIO
 
 import panel as pn
-from common import (
-    has_selection,
-    normalize_expression_name,
-    retrieve_dataframe,
-    retrieve_image_array,
-)
-from panel_app_expanded import ExpandedSettings, ExpandedSpatialViewer
+from panel_app_expanded import ExpandedSpatialViewer
 from tornado.web import HTTPError, RequestHandler
 
-pn.extension("plotly", loading_indicator=True, defer_load=True, nthreads=4)
+pn.extension("bokeh", loading_indicator=True, defer_load=True, nthreads=4)
 
 class DownloadHandler(RequestHandler):
     """
@@ -25,82 +19,41 @@ class DownloadHandler(RequestHandler):
     needs to render the panel correctly.
     """
 
-    arg_mapping = {
-        "dataset_id": "dataset_id",
-        "filename": "filename",
-        "min_genes": "min_genes",
-        "selection_x1": "selection_x1",
-        "selection_x2": "selection_x2",
-        "selection_y1": "selection_y1",
-        "selection_y2": "selection_y2",
-        "display_height": "height",
-        "display_width": "width",
-        "expression_min_clip": "expression_min_clip",
-    }
-
     def get(self):
-        # self.request.arguments values are a list of a single-byte element.
-        # this also decodes the arguments.
-        query_args = {}
-        for arg in self.request.arguments:
-            # Ensure mappings work with the names used in "settings"
-            mapped_key = self.arg_mapping.get(arg)
-            if not mapped_key:
-                continue
-            query_args[mapped_key] = self.get_query_argument(arg)
-            # if argument can be coaxed into an int or a float, do so
-            # As the "settings" have specific types that are checked.
-            try:
-                query_args[mapped_key] = int(query_args[mapped_key])
-            except ValueError:
-                try:
-                    query_args[mapped_key] = float(query_args[mapped_key])
-                except ValueError:
-                    pass
-
-        # build settings from whatever query parameters were supplied on
-        # this request; note that session_args is *not* used here.
-        settings = ExpandedSettings(**query_args)
-
-        df = retrieve_dataframe(settings.dataset_id, settings.filename)
-        image_array = retrieve_image_array(settings.dataset_id)
-        current_gene = normalize_expression_name(settings.filename)
-
-        # If selection_x1/x2/y1/y2 are present save as a tuple in the form of (left, right, bottom, top)
-        saved_bounds = None
-        if has_selection(settings):
-            saved_bounds = (
-                settings.selection_x1,
-                settings.selection_x2,
-                settings.selection_y1,
-                settings.selection_y2,
-            )
-
-        # Instantiate the component
-        import sys
-        sys.exit()
-
-        # construct a transient SpatialPanel and force it to load its data
         try:
-            panel = ExpandedSpatialViewer(dataframe=df, image_array=image_array, current_gene=current_gene, saved_bounds=saved_bounds)
-            # run the init_data generator to completion so df, maps, etc. exist
-            for _ in panel.init_data():
-                pass
+            # 1. Instantiate the refactored Viewer
+            panel_app = ExpandedSpatialViewer(session_args_override=self.request.arguments)
+
+            # 2. Clean up the UI for export
+            # The exported HTML is offline. Datashader images will embed as static rasters,
+            # and Python sliders won't work. We strip the controls (pre_layout)
+            # so the user gets a clean, professional report.
+            layout_components = [
+                pn.pane.Markdown(f"## Spatial Display Export: {panel_app.current_gene}", height=30)
+            ]
+
+            # Extract all visualization rows, skipping the interactive controls at index 0
+            built_ui = panel_app._build_layout()
+            for item in built_ui.objects:
+                if item is not panel_app.pre_layout:
+                    layout_components.append(item)
+
+            export_layout = pn.Column(*layout_components, sizing_mode='stretch_both')
+
+            # 3. Generate the HTML file
+            buf = BytesIO()
+            # embed=True packs the current JS and Datashader rasters into a single file
+            pn.io.save.save(export_layout, buf, resources="cdn", embed=True, title="gEAR Spatial Export")
+            buf.seek(0)
+
+            # 4. Send to browser
+            self.set_header("Content-Type", "text/html")
+            self.write(buf.read())
+
         except Exception as e:
-            raise HTTPError(400, f"Failed to create panel: {e}")
-
-        # choose which parts of the layout we want in the image
-        layout = pn.Column(
-            pn.pane.Markdown("## Full view", height=30),
-            panel.normal_pane,
-            panel.fig_layout
-            )
-
-        buf = BytesIO()
-        pn.io.save.save(layout, buf, resources="cdn", embed=True)
-        buf.seek(0)
-        self.set_header("Content-Type", "text/html")
-        self.write(buf.read())
+            import traceback
+            traceback.print_exc()
+            raise HTTPError(400, f"Failed to create HTML export: {e}")
 
 # make it servable on a distinct prefix
 ROUTES = [('/spatial_download', DownloadHandler, {})]

@@ -2453,12 +2453,13 @@ class DatasetTile {
     }
 
     async downloadSpatialHTML(display) {
-        if (!this.spatialUrlParams) {
+        // These are grabbed from the state sync within the Panel app
+        if (!window.gearSpatialUrlParams) {
             createToast("Cannot download HTML because spatial display parameters are not available.", "is-warning");
             return;
         }
 
-        const urlParams = this.spatialUrlParams;
+        const urlParams = window.gearSpatialUrlParams;
         urlParams.append("_", Date.now());   // add timestamp to prevent caching issues
 
         // Must hit regular URL and not websocket (ws) version

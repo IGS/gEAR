@@ -1,5 +1,6 @@
 import asyncio
 import gc
+import json
 import sys
 import traceback
 
@@ -33,21 +34,24 @@ class BaseSpatialViewer(pn.viewable.Viewer):
     Base Viewer component. Handles state and linking.
     """
 
-    settings = Settings()   # Set default settings
-
-    # Any potential bound widgets should be declared here so they are accessible in the base class and subclasses
-    min_genes = param.Integer(default=0, doc="Minimum number of genes expressed to include a cell observation", bounds=(0, 500))
-
     def __init__(self, **params):
+        # Override session_args if provided, otherwise use the default.
+        # Useful for download_plugin where we want to pass in the request arguments to simulate a session.
+        override_args = params.pop('session_args_override', None)
+
+        # Instantiate an isolated settings object for this specific user session
+        self.settings = Settings()
+
         super().__init__(**params)
+
         """
         DataFrame columns
         raw_value,spatial1,spatial2,n_genes_by_counts,UMAP1,UMAP2,clusters,clusters_cat_codes,colors
         """
 
-        if pn.state.session_args is not None:
-
-            args = pn.state.session_args
+        # Prioritize the injected override, fallback to the global WebSocket state
+        args = override_args if override_args is not None else pn.state.session_args
+        if args is not None:
 
             def get_arg(key, default=None):
                 if key in args:
@@ -105,6 +109,29 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
             if 'make_default' in args:
                 self.settings.make_default = bool(int(get_arg('make_default', False)))
+
+        # Add a hidden widget to sync url parameter state to the JS context.
+        # This is so we can pass the params to the download widget so it can recreate the plot.
+        # But first, give it a dummy string so the browser definitely recognizes a change later
+        self.state_sync = pn.widgets.TextInput(value="INITIALIZING", visible=False)
+        self.state_sync.jscallback(value="""
+            if (cb_obj.value && cb_obj.value !== "INITIALIZING") {
+                // Parse the updated state from Python
+                const state = JSON.parse(cb_obj.value);
+
+                // Construct a fresh URLSearchParams object
+                const params = new URLSearchParams();
+                for (const [key, val] of Object.entries(state)) {
+                    params.append(key, val);
+                }
+
+                // Expose it globally to the frontend DOM
+                window.gearSpatialUrlParams = params;
+            }
+        """)
+
+        # Do an initial call to set state
+        pn.state.onload(self._sync_state_to_js)
 
         self.orig_df = retrieve_dataframe(self.settings.dataset_id, self.settings.filename)
         self.orig_df['clusters'] = self.orig_df['clusters'].astype('category')
@@ -200,6 +227,33 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         else:
             self.df = df
 
+    def _sync_state_to_js(self):
+        """Serializes current active settings and pipes them to the frontend DOM."""
+
+        min_genes = self.settings.min_genes
+        if hasattr(self, "min_genes") and self.min_genes is not None:
+            min_genes = self.min_genes
+
+        state = {
+            "dataset_id": self.settings.dataset_id,
+            "filename": self.settings.filename,
+            "min_genes": min_genes,  # Use the active class property
+        }
+
+        # Include expression clip if it exists
+        if self.settings.expression_min_clip is not None:
+            state["expression_min_clip"] = self.settings.expression_min_clip
+
+        # Include spatial bounds if an active selection exists
+        if self.settings.selection_x1 is not None:
+            state["selection_x1"] = self.settings.selection_x1
+            state["selection_x2"] = self.settings.selection_x2
+            state["selection_y1"] = self.settings.selection_y1
+            state["selection_y2"] = self.settings.selection_y2
+
+        # Writing to this value triggers the JS callback instantly
+        self.state_sync.value = json.dumps(state)
+
     def _update_bounds_callback(self, bounds=None):
         """
         This callback fires automatically when the user draws or clears a box.
@@ -220,6 +274,9 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
         # Trigger the zoom update!
         self._update_zoom_panel(bounds)
+
+        # BROADCAST TO FRONTEND
+        self._sync_state_to_js()
 
     def _create_ghost_legend(self):
             """Creates a fake, invisible plot just to force Bokeh to draw a legend."""
@@ -287,6 +344,7 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         Panel automatically looks for this method.
         It MUST return a Panel viewable object (Row, Column, Pane, etc.)
         """
+
         return self._build_layout()
 
 class CondensedSpatialViewer(BaseSpatialViewer):
@@ -319,10 +377,12 @@ class CondensedSpatialViewer(BaseSpatialViewer):
             )
 
             # Return final Panel layout
-            return pn.Column(self.pre_layout,
-                            self.main_row,
-                            sizing_mode='stretch_both' # Fills the 100%x100% iframe
-                            )
+            return pn.Column(
+                self.state_sync, # Invisible DOM injector
+                self.pre_layout,
+                self.main_row,
+                sizing_mode='stretch_both' # Fills the 100%x100% iframe
+                )
         except Exception as e:
             traceback.format_exc()
             return pn.pane.Alert(f"Error: {e}", alert_type="danger")
@@ -459,6 +519,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
             )
 
             return pn.Column(
+                self.state_sync, # Invisible DOM injector
                 self.pre_layout,
                 self.spatial_grid_container,
                 pn.layout.Divider(margin=(20, 0)), # Visual breathing room
@@ -590,6 +651,10 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
             self.spatial_grid_container.loading = False
             self.umap_row_container.loading = False
             self.violin_row_container.loading = False
+
+            # BROADCAST TO FRONTEND
+            self._sync_state_to_js()
+
             gc.collect()
 
 
