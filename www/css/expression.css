@@ -122,6 +122,10 @@ ul#go-terms li {
 
 .js-tile .card-image {
     align-content: center;
+
+    /* Useful for spatial plots that use a min_width to ensure they do not bleed out of the container */
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 /* tSNE plots */

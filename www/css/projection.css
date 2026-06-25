@@ -66,9 +66,9 @@ ul#go-terms li {
 #result-panel-grid {
     display: grid;
     grid-template-columns: repeat(12, 1fr);
-    /* Use a fixed base height so the tile can't "grow" uncontrollably */
     /* Using 400px to account for the card header */
-    grid-auto-rows: 400px;
+    /* But allow it to grow so that aspect ratio can be maintained for ultrawide screens */
+    grid-auto-rows: minmax(400px, auto);
     gap: 8px;
 }
 
@@ -89,6 +89,10 @@ ul#go-terms li {
 
 .js-tile .card-image {
     align-content: center;
+
+    /* Useful for spatial plots that use a min_width to ensure they do not bleed out of the container */
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 /* tSNE plots */

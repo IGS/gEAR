@@ -40,11 +40,13 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
 
         #Kill the colorbar if it's categorical
         colorbar=not is_categorical,
+        clabel="",  # No label for the colorbar
         legend=False,    # using a ghost legend so the legend does not squish the plot
 
         # Responsiveness if the browser is resized
         responsive=True, # Automatically stretches to fill its container
-        min_height=300   # Set a floor so plots don't collapse to 0px
+        min_height=300,   # Set a floor so plots don't collapse to 0px
+        min_width=275    # Tells Bokeh the canvas cannot drop below 275px (prevent squishing if the layout for the display is not full width)
     )
 
     default_tools = ["box_zoom", "wheel_zoom", "pan", "reset"]
@@ -103,6 +105,7 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
     plot = plot.opts(
             tools=[custom_hover],
             default_tools=default_tools,
+            toolbar="below",
             colorbar_opts={"width": 12},    # thin the colorbar out.
             hooks=[autohide_toolbar]
         )
@@ -135,6 +138,7 @@ def create_umap_plot(df, agg, color_col, cmap, is_categorical=False, title=None)
         title=f"UMAP: {color_col_title}",
         #Kill the colorbar if it's categorical
         colorbar=not is_categorical,
+        clabel="",  # No label for the colorbar
         rasterize=True,
         responsive=True,
         legend=False,    # using a ghost legend so the legend does not squish the plot

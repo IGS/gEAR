@@ -194,7 +194,7 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             # This is a fully opaque version
             self.bg_image = hv.RGB(self.image_array, bounds=img_bounds).opts(
                         xaxis=None, yaxis=None,
-                        tools=[], active_tools=[], default_tools=[],
+                        tools=[], active_tools=[], default_tools=[], toolbar="below",
                         hooks=[autohide_toolbar]
                     )
 
@@ -213,6 +213,7 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
             self.bg_image_dimmed = hv.RGB(dimmed_array, bounds=img_bounds).opts(
                         xaxis=None, yaxis=None, responsive=True,
+                        # No tools or toolbar as the composite plot takes care of this
                         tools=[], active_tools=[], default_tools=[],
                         hooks=[autohide_toolbar]
                     )
@@ -372,16 +373,17 @@ class CondensedSpatialViewer(BaseSpatialViewer):
             )
 
             self.pre_layout = pn.Row(
-                self.intro_markdown,
+                #self.intro_markdown,
                 pn.Spacer()
             )
 
             # Return final Panel layout
             return pn.Column(
                 self.state_sync, # Invisible DOM injector
-                self.pre_layout,
+                #self.pre_layout,
                 self.main_row,
-                sizing_mode='stretch_both' # Fills the 100%x100% iframe
+                sizing_mode='stretch_both', # Fills the 100%x100% iframe
+                margin=(0, 0, 0, 0)
                 )
         except Exception as e:
             traceback.format_exc()
@@ -427,7 +429,13 @@ class CondensedSpatialViewer(BaseSpatialViewer):
             width=200, height=300, scroll=True, margin=(0,0,0,0)
         )
 
-        return pn.Row(master_image, main_expr, main_cluster, legend_container, sizing_mode='stretch_width')
+        # This has a min_width to prevent plots from being squished in smaller layout tile configurations.
+        return pn.Row(
+            master_image, main_expr, main_cluster, legend_container,
+            sizing_mode='stretch_both',
+            min_width=1080,
+            margin=(0, 0, 0, 0)
+        )
 
     def _init_widgets(self):
         """
@@ -463,7 +471,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
 
             ### UMAP row
             expr_umap = create_umap_plot(
-                self.df, self.expression_agg, color_col='raw_value', cmap="cividis_r", is_categorical=False, title=self.current_gene
+                self.df, self.expression_agg, color_col='raw_value', cmap="cividis_r", is_categorical=False, title=f"{self.current_gene} Expression"
             )
             cluster_umap = create_umap_plot(
                 self.df, self.clusters_agg, color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters"
@@ -565,7 +573,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
         self.pre_layout = pn.Column(
             pn.Row(
                 pn.pane.Markdown(
-                    "## Select a region to modify zoomed in view in the second row.",
+                    '## Use the "box select" tool on the top row to update the zoomed view.',
                     height=30,
                     width=markdown_width,
                 ),
