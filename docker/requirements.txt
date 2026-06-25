@@ -11,6 +11,7 @@ diffxpy @ git+https://github.com/theislab/diffxpy.git@7609ea935936e3739fc4c71b75
 Flask==3.0.0
 Flask-RESTful==0.3.9
 gosling[all]==0.3.0
+google-analytics-data==0.21.0
 gunicorn
 h5py==3.10.0
 hic2cool==0.8.3

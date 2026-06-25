@@ -61,6 +61,7 @@ NOTE 2: Really try to keep the requirements.txt in sync with the files below.  W
       datashader==0.18.0 \
       Flask==3.0.0 \
       Flask-RESTful==0.3.9 \
+      google-analytics-data==0.21.0 \
       gosling[all]==0.3.0 \
       gunicorn \
       h5py==3.10.0 \
