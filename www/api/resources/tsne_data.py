@@ -1155,6 +1155,8 @@ def generate_tsne_figure(
     with io.BytesIO() as io_pic:
         if high_dpi:
             image_format = "pdf"
+            # Force into a TrueType font for editability in PDF editor software
+            plt.rcParams["pdf.fonttype"] = "truetype"
             io_fig.savefig(io_pic, format="pdf")
         else:
             # WebP has a hard limit of 16383 pixels in either dimension
