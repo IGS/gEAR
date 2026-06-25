@@ -160,7 +160,10 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         self.saved_bounds = saved_bounds
 
         # Initialize linking (data filtering) and streams (coordinate reporting)
-        self.linker = hv.link_selections.instance(unselected_alpha=0.5)
+        self.linker = hv.link_selections.instance(
+            unselected_alpha=0.25,
+            unselected_color='#808080'  # Gray out unselected points for better visibility
+        )
         self.bounds_stream_image = hv.streams.BoundsXY(bounds=self.saved_bounds)  # type: ignore
         self.bounds_stream_composite = hv.streams.BoundsXY(bounds=self.saved_bounds)  # type: ignore
 

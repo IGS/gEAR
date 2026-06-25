@@ -19,6 +19,31 @@ SPATIAL_IMAGE_NAME = "spatial_img.npy"
 def autohide_toolbar(plot, element):
     plot.state.toolbar.autohide = True
 
+def fix_colorbar_hook(plot, element):
+    """
+    Forces the Bokeh colorbar to use the colormap of the top-most (selected) layer,
+    bypassing the HoloViews unselected_color hijack.
+    """
+    try:
+        from bokeh.models import ColorBar
+        # Locate the colorbar in the plot layout
+        colorbars = [obj for layout in ['right', 'left', 'above', 'below']
+                     for obj in getattr(plot.state, layout, [])
+                     if isinstance(obj, ColorBar)]
+
+        if colorbars:
+            cb = colorbars[0]
+            # Find all image renderers that possess a color_mapper
+            renderers = [r for r in plot.state.renderers
+                         if hasattr(r, 'glyph') and hasattr(r.glyph, 'color_mapper')]
+
+            if renderers:
+                # The selected data is drawn last, meaning it is the last renderer in the list.
+                # Force the colorbar to sync with it.
+                cb.color_mapper = renderers[-1].glyph.color_mapper
+    except Exception:
+        pass
+
 def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='raw_value', cmap='YlOrRd', is_categorical=False, title=None, mode="standard"):
     """Generates a Datashaded spatial plot colored by expression of the specified gene."""
 
@@ -107,7 +132,7 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
             default_tools=default_tools,
             toolbar="below",
             colorbar_opts={"width": 12},    # thin the colorbar out.
-            hooks=[autohide_toolbar]
+            hooks=[autohide_toolbar, fix_colorbar_hook]
         )
 
     # NOTE: Cluster downsampling will have a striped appearance called the Moiré Interference Pattern.
@@ -195,7 +220,7 @@ def create_umap_plot(df, agg, color_col, cmap, is_categorical=False, title=None)
             formatters={"@image": formatter}
         )
 
-    default_tools = ['box_select', 'lasso_select', 'tap']
+    default_tools = ['box_select', 'lasso_select', 'reset']
     plot = plot.opts(
             tools=[custom_hover],
             active_tools=['box_select'],
@@ -203,7 +228,7 @@ def create_umap_plot(df, agg, color_col, cmap, is_categorical=False, title=None)
             #data_aspect=1,  # square aspect ratio for UMAP
             xticks=0, yticks=0,    # No ticks.
             colorbar_opts={"width": 12},    # thin the colorbar out.
-            hooks=[autohide_toolbar]
+            hooks=[autohide_toolbar, fix_colorbar_hook]
         )
 
     return spread(plot)
@@ -235,7 +260,7 @@ def create_violin_plot(df, y_col, group_col='cluster', cmap='Category10', title=
     return plot.opts(
         violin_fill_alpha=0.7,
         xrotation=45,
-        default_tools = ['box_select', 'lasso_select', 'tap'],
+        default_tools = ['box_select', 'lasso_select', 'reset'],
         hooks=[autohide_toolbar] # Keep the toolbar hidden until hover
     )
 
