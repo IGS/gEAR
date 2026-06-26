@@ -130,6 +130,7 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
     plot = plot.opts(
             tools=[custom_hover],
             default_tools=default_tools,
+            active_tools=['box_zoom'],
             toolbar="below",
             colorbar_opts={"width": 12},    # thin the colorbar out.
             hooks=[autohide_toolbar, fix_colorbar_hook]
@@ -138,7 +139,7 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
     # NOTE: Cluster downsampling will have a striped appearance called the Moiré Interference Pattern.
     # I tried to use dynspread to remedy it, but the data points end up being too light.
     # Mostly an issue with very dense data, like Visium HD
-    return spread(plot, px=2, shape="square")
+    return spread(plot, px=1, shape="square")
 
 
 def create_umap_plot(df, agg, color_col, cmap, is_categorical=False, title=None):
