@@ -52,7 +52,7 @@ ASSEMBLY_TO_CHROMSIZES_FILE = {
     "hg19": "hg19.chromInfo.txt",
     "hg38": "hg38.chromInfo.txt",
     "mm10": "mm10.chromInfo.txt",
-    # "mm39": "mm39.chromInfo.txt",
+    "mm39": "mm39.chromInfo.txt",
     "rn6": "rn6.chromInfo.txt",  # rat
     # "calJac3": "calJac3.chromInfo.txt", # marmoset
 }
@@ -318,7 +318,7 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
         "hg19": "XXcPeaTRSiy8_yxNwjtzEQ",
         "hg38": "GhiCXRRHTH2u-24jRq0HRQ",
         "mm10": "VNbLgNO3T8uAcp_5vRFqdQ",
-        # "mm39": "mm39.annotation.beddb",
+        "mm39": "F8arVMzwSW-hkDCgjzCDwA",
         "rn6": "C6Tw-g54Rl602PqE62qTHw", # rat
         # "calJac3": "calJac3.annotation.beddb", # marmoset
     }
