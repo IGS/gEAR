@@ -9,6 +9,7 @@ import rpy2.robjects as ro
 import rpy2.robjects.packages as rpackages
 import scanpy
 from rpy2.robjects.packages import importr
+import time
 
 
 def silent_handler(s:str) -> None:
@@ -96,36 +97,49 @@ def openh5ad(h5ad_name):
     adata = scanpy.read_h5ad(h5ad_name)
     return adata
 
+
 def genes_to_ensembl(adata, taxid=None):
-    # We are calling an external API for genes to ensembl mapping
-    # Potentially problematic down the road if this shuts down
     if taxid is None:
         return None
+
     genes = adata.var.index.tolist()
-    try:
-        # TODO: Perhaps add a retry mechanism in case the API returns 500
-        mg = mygene.MyGeneInfo()
-        mg_genes = mg.querymany(genes, scopes="symbol", fields="ensembl.gene", species=f"{taxid}")
-    except Exception as e:
-        print(f"Error occurred while querying MyGene: {e}", file=sys.stderr)
-        raise
+    max_retries = 5
+    base_delay = 2  # seconds
+
+    for attempt in range(max_retries):
+        try:
+            mg = mygene.MyGeneInfo()
+            mg_genes = mg.querymany(genes, scopes="symbol", fields="ensembl.gene", species=f"{taxid}")
+            break  # success — exit retry loop
+        except Exception as e:
+            is_server_error = "500" in str(e) or "Internal Server Error" in str(e).lower()
+            if is_server_error and attempt < max_retries - 1:
+                delay = base_delay ** (attempt + 1)  # 2, 4, 8, 16, 32 seconds
+                print(
+                    f"MyGene API returned a 500 error (attempt {attempt + 1}/{max_retries}). "
+                    f"Retrying in {delay}s...",
+                )
+                time.sleep(delay)
+            else:
+                # Non-500 error, or all retries exhausted
+                print(f"Error occurred while querying MyGene: {e}")
+                raise
+
     ensembl_mapping_dict = {}
     for mg_gene in mg_genes:
         gene_name = mg_gene['query']
         if 'ensembl' in mg_gene.keys():
-            if isinstance(mg_gene['ensembl'],list):
-                # Currently taking first value, not sure of a better way to handle one gene having multiple ensembl IDs
+            if isinstance(mg_gene['ensembl'], list):
                 ensembl_mapping_dict[gene_name] = mg_gene['ensembl'][0]['gene']
             else:
                 ensembl_mapping_dict[gene_name] = mg_gene['ensembl']['gene']
+
     count = 0
-    # We still need an ensembl id for the genes that do not actually have them.
-    # So here we create a FAKE# for each one so that it can be searchable in gEAR
     for gene in genes:
         if gene not in ensembl_mapping_dict.keys():
             ensembl_mapping_dict[gene] = f"Fake{count}"
             count += 1
-    # Overwrite the current adata.var
+
     adata.var = pd.DataFrame(
         index=list(ensembl_mapping_dict.values()), data={"gene_symbol": list(ensembl_mapping_dict.keys())}
     )
