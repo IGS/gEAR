@@ -1,4 +1,5 @@
 import os
+import subprocess
 import sys
 import tarfile
 import typing
@@ -23,6 +24,11 @@ from spatialdata_io.experimental import from_legacy_anndata, to_legacy_anndata
 if typing.TYPE_CHECKING:
     from anndata import AnnData
     from spatialdata import SpatialData
+
+def _remove_dir(dir_to_remove: str) -> None:
+    """Remove a directory safely using subprocess (no shell)."""
+    if os.path.isdir(dir_to_remove):
+        subprocess.run(["rm", "-rf", dir_to_remove], check=True)
 
 class SpatialHandler(ABC):
     """
@@ -637,26 +643,26 @@ class SpatialHandler(ABC):
             raise Exception("Error occurred while writing to file: ", err)
         return self
 
-class CoxMxHandler(SpatialHandler):
+class CosMxHandler(SpatialHandler):
     """
-    Factory class for CoxMx dataset uploads and conversions.
+    Factory class for CosMx dataset uploads and conversions.
 
     Standardized names for different files:
-    * 'spatialdata_anndata.h5ad': Counts and metadata file.
-    * 'spatialdata_cluster_assignment.txt': Cluster assignment file.
-    * 'spatialdata_Metrics.csv': Metrics file.
-    * 'spatialdata_variable_features_clusters.txt': Variable features clusters file.
-    * 'spatialdata_variable_features_spatial_moransi.txt': Variable features Moran’s I file.
+    * `<dataset_id>_`'exprMat_file.csv'`: Counts matrix.
+    * `<dataset_id>_`'metadata_file.csv'`: Metadata file.
+    * `<dataset_id>_`'fov_positions_file.csv'`: Field of view file.
+    * 'CellComposite': Directory containing the images.
+    * 'CellLabels': Directory containing the labels.
     """
 
     @property
     def has_images(self) -> bool:
-        """Whether this handler has associated images (always False for CoxMx)."""
-        return False
+        """Whether this handler has associated images (always False for CosMx)."""
+        return True
 
     @property
     def coordinate_system(self) -> str:
-        """Returns the coordinate system used by CoxMx datasets."""
+        """Returns the coordinate system used by CosMx datasets."""
         return "global"
 
     @property
@@ -676,13 +682,13 @@ class CoxMxHandler(SpatialHandler):
 
     @property
     def img_name(self) -> str | None:
-        """Returns the image name associated with this handler (always None for CoxMx)."""
+        """Returns the image name associated with this handler (always None for CosMx)."""
         return None
 
     def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
         """
-        Reads and processes a CoxMx spatial data file from the given filepath.
-        For CoxMx, this is a stub and does not perform any operation.
+        Reads and processes a CosMx spatial data file from the given filepath.
+        For CosMx, this is a stub and does not perform any operation.
         """
         return self
 
@@ -751,9 +757,7 @@ class CurioHandler(SpatialHandler):
         else:
             raise Exception("File must be a .tar or .tar.gz file.")
 
-        if os.path.isdir(extract_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(extract_dir))
+        _remove_dir(extract_dir)
 
         with tarfile.open(filepath, mode) as tf:
             for entry in tf:
@@ -829,12 +833,16 @@ class GeoMxHandler(SpatialHandler):
     Code is mostly inspired by https://github.com/LiHongCSBLab/SOAPy/blob/153095a44200a07a73a6a72c9978adfa1581c853/SOAPy_st/pp/all2adata.py#L229
     I wanted to install SOAPy but ran into pip requirement compatibility issues.  For example, we use a later version of AnnData in gEAR than SOAPy does.
 
+    Description of output can be found at https://brukerspatialbiology.com/resources/readme_mu_brain-docx/ (DOCX file)
+
     Factory class for GeoMx dataset uploads and conversions.
 
     Required files:
     * "xlsx" file with information.
       * This Excel file must contain a sheet named "SegmentProperties" with a column named "SegmentDisplayName" which will be used as the cell ID.
       * This Excel file must contain a sheet named "TargetCountMatrix" or "BioProbeCountMatrix" with the counts matrix.
+        * "BioProbeCountMatrix" would be found from the "Export1_InitialDataset" or "Export2_TechnicalQC" file.
+        * "TargetCountMatrix" would be found from the "Export3_BiologicalProbeQC" or "Export4_NormalizationQ3" file.
 
     NOT IMPLEMENTED - Polygon data from XML files
 
@@ -889,9 +897,7 @@ class GeoMxHandler(SpatialHandler):
         else:
             raise Exception("File must be a .tar or .tar.gz file.")
 
-        if os.path.isdir(extract_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(extract_dir))
+        _remove_dir(extract_dir)
 
         information_file = None
 
@@ -1044,9 +1050,7 @@ class VisiumHandler(SpatialHandler):
         else:
             raise Exception("File must be a .tar or .tar.gz file.")
 
-        if os.path.isdir(extract_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(extract_dir))
+        _remove_dir(extract_dir)
 
         with tarfile.open(filepath, mode) as tf:
             for entry in tf:
@@ -1157,9 +1161,7 @@ class VisiumHDHandler(SpatialHandler):
         else:
             raise Exception("File must be a .tar or .tar.gz file.")
 
-        if os.path.isdir(extract_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(extract_dir))
+        _remove_dir(extract_dir)
 
         with tarfile.open(filepath, mode) as tf:
             for entry in tf:
@@ -1301,9 +1303,7 @@ class XeniumHandler(SpatialHandler):
         else:
             raise Exception("File must be a .tar or .tar.gz file.")
 
-        if os.path.isdir(extract_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(extract_dir))
+        _remove_dir(extract_dir)
 
         # settings to enable or disable based on if a file is present in the uploaded tarball
         include_raster_labels = False
@@ -1388,7 +1388,7 @@ class XeniumHandler(SpatialHandler):
 ### Helper constants
 
 SPATIALTYPE2CLASS = {
-    #"cosmx": CoxMxHandler,
+    #"cosmx": CosMxHandler,
     "curio": CurioHandler,
     "geomx": GeoMxHandler,
     "visium": VisiumHandler,

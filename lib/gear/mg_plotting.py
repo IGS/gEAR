@@ -127,6 +127,7 @@ def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, 
     )
 
     create_floating_dot_legend(fig)
+    return fig
 
     # Truncate faceted column axis labels so annotation can fit
     axis_label_mapping = {}  # Aggregated mapping of truncated -> full label names
@@ -1145,6 +1146,8 @@ def create_violin_plot(df: pd.DataFrame, groupby_filters:list, is_log10: bool=Fa
     fig.update_yaxes(
         title=y_title
     )
+
+    return fig
 
     # Truncate faceted column axis labels so annotation can fit
     axis_label_mapping = {}  # Aggregated mapping of truncated -> full label names
