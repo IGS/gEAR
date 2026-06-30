@@ -48,7 +48,7 @@ from resources.dataset_display import DatasetDisplay  # noqa: E402
 from resources.dataset_processing import DatasetProcessingStatus # noqa: E402
 from resources.gene_symbols import GeneSymbols  # noqa: E402
 from resources.gosling_spec import GoslingSpec  # noqa: E402
-#from resources.higlass import HiGlassGene
+from resources.higlass import HiGlassGene
 from resources.h5ad import H5ad  # noqa: E402
 from resources.mg_plotly_data import MGPlotlyData  # noqa: E402
 from resources.orthologs import Orthologs  # noqa: E402
