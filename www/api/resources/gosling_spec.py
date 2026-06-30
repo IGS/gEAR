@@ -16,6 +16,8 @@ from gear.trackhub import (
     parse_tracks_from_trackdb,
 )
 
+from .common import ANNOTATION_BEDDB_UID, HIGLASS_URL
+
 """
 NOTE: The "gos" documentation kind of sucks, and requires some trial and error to figure out where things go.
 Generally you can make a data class type (i.e. BedData) and add that as a property to a gos.Track
@@ -309,20 +311,6 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     - The view includes text, rule, and rect tracks for gene names, gene regions, and exon regions, respectively.
     """
 
-    # These files will be based on Ensembl's annotation naming structure, but sorted in chromosome order.
-    # I am adding a 2nd column of 1's to allow us to use the files in a "genomic" track.
-
-    ANNOTATION_BEDDB_UID = {
-        "danRer10": "YwOpmCgUSqKdJSGtGXWeJw", # zebrafish
-        #"galGal6": "galGal6.annotation.beddb", # chicken - could not get to load
-        "hg19": "XXcPeaTRSiy8_yxNwjtzEQ",
-        "hg38": "GhiCXRRHTH2u-24jRq0HRQ",
-        "mm10": "VNbLgNO3T8uAcp_5vRFqdQ",
-        "mm39": "F8arVMzwSW-hkDCgjzCDwA",
-        "rn6": "C6Tw-g54Rl602PqE62qTHw", # rat
-        # "calJac3": "calJac3.annotation.beddb", # marmoset
-    }
-
     ANNOTATION_CONDENSED_HEIGHT = EXPANDED_HEIGHT # Always taller for annotations
     #ANNOTATION_EXPANDED_HEIGHT = ANNOTATION_CONDENSED_HEIGHT * 2
     ANNOTATION_EXPANDED_HEIGHT = ANNOTATION_CONDENSED_HEIGHT
@@ -333,7 +321,7 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
             f"Assembly {assembly} is not supported or does not have a BEDdb UID."
         )
 
-    beddb_url = f"https://higlass.umgear.org/api/v1/tileset_info/?d={beddb_uid}"
+    beddb_url = f"{HIGLASS_URL}/tileset_info/?d={beddb_uid}"
 
     # chrom, start, end, name, score, strand, exon_start, exon_end
     beddb_data = gos.beddb(
@@ -602,6 +590,11 @@ def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bo
         "hic": HiCSpec,
     }
 
+    # Some data, like CSV data, is not constrained to one track type, so we specify the scope of the input
+    CSV_SCOPE_2_SPEC = {
+        "sashimi": SashimiSpec
+    }
+
     hic_found = False
 
     multiwig_groups = {}
@@ -626,7 +619,19 @@ def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bo
 
         track_type = group_track.get("type", "")
         spec_builder_class = TRACK_TYPE_2_SPEC.get(track_type, None)
-        if not spec_builder_class:
+        if spec_builder_class is None:
+            if track_type == "csv":
+                scope = group_track.get("gos_scope", None)
+                if not scope:
+                    print(
+                        f"WARNING: CSV track '{group_track.get('shortLabel', '')}' is missing 'gos-scope' attribute; skipping.",
+                        file=sys.stderr,
+                    )
+                    continue
+                spec_builder_class = CSV_SCOPE_2_SPEC.get(scope, None)
+
+
+        if spec_builder_class is None:
             print(
                 f"WARNING: Unsupported track type '{track_type}' for track '{group_track.get('shortLabel', '')}'; skipping.",
                 file=sys.stderr,
@@ -889,8 +894,11 @@ class TrackSpec(ABC):
 
     @staticmethod
     def _validate_url_extension(url: str, valid_extensions: list[str]) -> None:
-        """Validate URL ends with one of the valid extensions."""
-        if not any(url.endswith(ext) for ext in valid_extensions):
+        """Validate URL ends with one of the valid extensions (case-insensitive)."""
+        normalized_url = url.lower()
+        normalized_extensions = [ext.lower() for ext in valid_extensions]
+
+        if not any(normalized_url.endswith(ext) for ext in normalized_extensions):
             extensions_str = ", ".join(valid_extensions)
             raise ValueError(f"Invalid URL: must end with {extensions_str}")
 
@@ -1011,6 +1019,49 @@ class BigWigSpec(TrackSpec):
         )
 
         # If this track has a parent view, the encoding will be determined by the parent.
+        if not is_child:
+            track = track.properties(
+                height=height,
+                title=self.title,
+            )
+
+        return track
+
+class SashimiSpec(TrackSpec):
+    # This is based on STAR splice-junction output, which is a tab-delimited file with the following columns:
+    # chr, start, end, strand, intron_motif, annotated, unique_reads, multi_reads, max_overhang
+    def get_encoding(self, width, height, prefix="", is_child=False):
+        url = self.data_url
+        color = self.color
+
+        try:
+            self.validate_track_url(url, [".csv", ".tsv", ".txt", ".tab"])
+        except ValueError as e:
+            print(f"WARNING: Skipping Sashimi track '{self.title}': {e}", file=sys.stderr)
+            return None
+
+        sashimi_data = gos.csv(url=url,
+                            separator="\t",
+                            headerNames=["chr", "start", "end", "strand", "intron_motif", "annotated", "unique_reads", "multi_reads", "max_overhang"],
+                            chromosomeField="chr",
+                            genomicFields=["start", "end"],
+                            )
+
+        track = (
+            gos.Track(
+                data=sashimi_data,  # pyright: ignore[reportArgumentType]
+            )
+            .mark_withinLink()
+            .encode(
+                x=gos.X(field="start", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
+                xe=gos.X(field="end", type="genomic"),  # pyright: ignore[reportArgumentType]
+                color=gos.Color(value=color),
+            ).properties(
+                width=width,
+                id=f"{prefix}track-{self.ident}",  # Use the file name without extension as the ID
+            )
+        )
+
         if not is_child:
             track = track.properties(
                 height=height,

@@ -87,7 +87,10 @@ Current (uploader) way
 
 The trackDb.txt file also allows for custom metadata tags, which will be subject to future additon.
 
-* gos_url (filled in during upload if type is hic)
+* gos_url (filled in during upload if type is hic or bed)
+  * The URL for gosling to read so the original URL can be used in UCSC
+* gos_scope
+  * If track type is CSV/JSON allows for it to be processed for multiple purposes.
 
 ### Special considerations for certain file types
 

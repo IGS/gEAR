@@ -51,17 +51,17 @@ This creates a BED file where the exons are set in blockSizes and blockStarts co
     2. If genome (i.e. mm39) is not in the negspy list of genomes, copy the chromInfo.txt file you made with the chromosome order and sizes.
 16. Turn into a beddb file
     1. scp onto higlass-manage-prod
-    2. cd \~/higlass/bin
-    3. source .activate to activate the venv
+    2. `cd \~/higlass/bin`
+    3. `source .activate` to activate the venv
     4. If genome was not in negspy you need to ingest the chromInfo.txt you copied over
        1. I don't think this is actually needed.
        2. `higlass-manage ingest \--filetype chromsizes-tsv \--datatype chromsizes \--assembly {genome} /tmp/ {genome}.chromInfo.txt`
-    5. clodius aggregate bedfile –assembly={genome} {genome}.annotation.bed
+    5. `clodius aggregate bedfile –assembly={genome} {genome}.annotation.bed`
        1. If using a custom assembly, add "--chromsizes-filename \<filepath\>" to the command.
     6. I was not able to run clodius on galGal6
     7. The "assembly" argument genomes are retrieved from negspy
 17. Ingest with Higlass
-    1. higlass-manage ingest {genome}.annotation.bed.beddb
+    1. `higlass-manage ingest {genome}.annotation.bed.beddb`
 
 ## Hi-C file ingest (manual)
 
@@ -73,3 +73,18 @@ Example files at https://server.gosling-lang.org/api/v1/tilesets/?t=cooler
    1. hic2cool.hic2cool\_convert(\<infile\>, \<outfile\>, 0\) ([https://github.com/4dn-dcic/hic2cool/](https://github.com/4dn-dcic/hic2cool/))
 2. Ingest .mcool file to use in HiGlass
    1. Check [https://docs.higlass.io/higlass\_server.html\#uploading-data-post](https://docs.higlass.io/higlass_server.html#uploading-data-post)
+
+## STAR splice junction file ingest (manual)
+
+### Convert to BEDDB (Gosling)
+
+### Convert to BigInteract (UCSC)
+
+I wrote a script in "bin" to do this.
+
+`python ~/git/gEAR/bin/convert_STAR_sj_tab_into_biginteract.py --star_file=<SJ_out.tab> --chromsizes_file=<genome.chromSizes.txt> --output_file=<SJ.biginteract> --bedtobigbed_path=/path/to/bedToBigBed`
+
+* star_file = Splice junctions tab file from STAR. Remove any chromosome entries that are not in the chromSizes file
+* chromsizes_file = List of sorted chromosomes with chromosome sizes. Should be available per assembly.  Ask @adkinsrs if you can't find it.
+* output_file = path for the bigInteract file. Extension suggestions can be .bi or .biginteract
+* bedtobigbed_path = path to the UCSC Utils bedToBigBed executable.
