@@ -107,7 +107,7 @@ I cannot add comments to the bash code without breaking the command.  So consult
     aiohttp==3.13.5 \
     aiohttp_retry==2.9.1 \
     anndata==0.12.11 \
-    bio==1.8.3 \
+    biopython==1.86 \
     biocode==0.10.0 \
     cairosvg==2.7.1 \
     colorcet==3.1.0 \
