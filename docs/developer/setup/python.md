@@ -38,6 +38,9 @@ fixed paths have worked fine for decades.
         libicu-dev \
         libdeflate-dev \
         libssl3 \
+        libgfortran5 \
+        libuv1 \
+        libhdf5-dev \
         pkg-config \
         llvm \
         apache2 \
@@ -109,6 +112,8 @@ I cannot add comments to the bash code without breaking the command.  So consult
     anndata==0.12.11 \
     bio==1.8.3 \
     biocode==0.10.0 \
+    biopython==1.87 \
+    biothings-client==0.5.0 \
     cairosvg==2.7.1 \
     colorcet==3.1.0 \
     datashader==0.19.0 \
@@ -116,7 +121,10 @@ I cannot add comments to the bash code without breaking the command.  So consult
     Flask-RESTful==0.3.9 \
     google-analytics-data==0.21.0 \
     gosling==0.3.0 \
+    h11==0.16.0 \
     hic2cool==0.8.3 \
+    httpcore==1.0.9 \
+    httpx==0.28.1 \
     hvplot==0.12.2
     jupyterlab==4.0.5 \
     jupyter==1.0.0 \
@@ -127,6 +135,7 @@ I cannot add comments to the bash code without breaking the command.  So consult
     matplotlib==3.10.7 \
     mod-wsgi==5.0.2 \
     more_itertools==11.0.2 \
+    mygene==3.2.2 \
     mysql-connector-python==8.0.28 \
     numba==0.65.0 \
     numpy==2.4.0 \

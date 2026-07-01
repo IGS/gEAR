@@ -45,6 +45,9 @@ RUN apt -qq update \
   libpcre2-dev \
   fonts-roboto \
   fontconfig \
+  libgfortran5 \
+  libuv1 \
+  libhdf5-dev \
   && apt -qq clean autoclean \
   && apt -qq autoremove -y \
   && rm -rf /var/lib/apt/lists/*
@@ -55,12 +58,12 @@ RUN fc-cache -f -v
 ENV LLVM_CONFIG=/usr/bin/llvm-config-14
 
 # Copy compiled Python from builder stage
-COPY --from=adkinsrs/gear-python-base:2026-04-27 /opt/Python-${PYTHON_FULL_VERSION} /opt/Python-${PYTHON_FULL_VERSION}
+COPY --from=gear-python-base:latest /opt/Python-${PYTHON_FULL_VERSION} /opt/Python-${PYTHON_FULL_VERSION}
 
 # Copy compiled R from r-builder stage
-COPY --from=adkinsrs/gear-r-base:2026-04-27 /usr/local/lib/R /usr/local/lib/R
-COPY --from=adkinsrs/gear-r-base:2026-04-27 /usr/local/bin/R /usr/local/bin/R
-COPY --from=adkinsrs/gear-r-base:2026-04-27 /usr/local/bin/Rscript /usr/local/bin/Rscript
+COPY --from=gear-r-base:latest /usr/local/lib/R /usr/local/lib/R
+COPY --from=gear-r-base:latest /usr/local/bin/R /usr/local/bin/R
+COPY --from=gear-r-base:latest /usr/local/bin/Rscript /usr/local/bin/Rscript
 
 # Link Python and shared library
 RUN mkdir -p /opt/bin \
