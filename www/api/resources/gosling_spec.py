@@ -645,9 +645,15 @@ def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bo
 
         ident = group_track.get("track") or title.replace(" ", "_").lower()  # Use track ID if available, otherwise a sanitized version of the title
 
+        # add any "gos_*" properties to kwargs
+        kwargs = {}
+        for key, value in group_track.items():
+            if key.startswith("gos_"):
+                kwargs[key] = value
+
         try:
             spec_builder = spec_builder_class(
-                data_url=data_url, color=color, zoom=zoom, title=title, ident=ident, visibility=visibility,
+                data_url=data_url, color=color, zoom=zoom, title=title, ident=ident, visibility=visibility, **kwargs
             )
 
             # If our datatype is HiC, do two things:
@@ -817,7 +823,7 @@ class Component(ABC):
         pass
 
 class TrackSpec(ABC):
-    def __init__(self, data_url, color="steelblue", zoom=False, title="", ident="", visibility="full"):
+    def __init__(self, data_url, color="steelblue", zoom=False, title="", ident="", visibility="full", **kwargs):
         self.data_url = data_url
         self.color = color  # Passed as RGB string
         self.zoom = zoom
@@ -832,6 +838,10 @@ class TrackSpec(ABC):
             self.height = 0 # effectively hide it
         elif self.visibility == "full":
             self.height *= 1.5
+
+        if kwargs:
+            for key, value in kwargs.items():
+                setattr(self, key, value)
 
     @abstractmethod
     def get_encoding(self, width, height, prefix="", is_child=False):
@@ -1011,6 +1021,9 @@ class BigInteractSpec(TrackSpec):
         url = self.data_url
         color = self.color
 
+        flip = False
+        if hasattr(self, 'gos_flip'):
+            flip = True if self.gos_flip.lower() in ["true", "yes", "1"] else False
 
         biginteract_data = gos.beddb(
             url=url,
@@ -1032,6 +1045,7 @@ class BigInteractSpec(TrackSpec):
             .encode(
                 x=gos.X(field="start", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
                 xe=gos.X(field="end", type="genomic"),  # pyright: ignore[reportArgumentType]
+                y=gos.Y(flip=flip),
                 stroke=gos.Stroke(value=color),
                 strokeWidth=gos.StrokeWidth(value=1)
             ).properties(
