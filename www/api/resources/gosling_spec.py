@@ -76,6 +76,7 @@ def _resolve_track_url(track: dict, use_gosling: bool = True) -> str | None:
     Returns:
         str or None: The resolved URL, or None if URL cannot be determined.
     """
+
     # Gosling context: prefer gos_url if available
     if use_gosling and track.get("gos_url"):
         return track["gos_url"]
@@ -311,7 +312,7 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     - The view includes text, rule, and rect tracks for gene names, gene regions, and exon regions, respectively.
     """
 
-    ANNOTATION_CONDENSED_HEIGHT = EXPANDED_HEIGHT # Always taller for annotations
+    ANNOTATION_CONDENSED_HEIGHT = 60 # Always taller for annotations
     #ANNOTATION_EXPANDED_HEIGHT = ANNOTATION_CONDENSED_HEIGHT * 2
     ANNOTATION_EXPANDED_HEIGHT = ANNOTATION_CONDENSED_HEIGHT
 
@@ -340,11 +341,12 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
         ]
     )
 
-    #MINUS_ROW_POSITION = 50 if zoom else 35
-    MINUS_ROW_POSITION = 25
+    # Making these position and padding values precise, so the text from the first row
+    # does not overlap with the 2nd row while keeping track height as slim as possible
+    MINUS_ROW_POSITION = 51
 
     # These are shared amongst the genes and exons track
-    condensed_row = gos.Row(field="strand", type="nominal", domain=["+", "-"], range=[0, MINUS_ROW_POSITION])  # type:ignore
+    condensed_row = gos.Row(field="strand", type="nominal", domain=["+", "-"], range=[0, MINUS_ROW_POSITION], padding=-6)  # type:ignore
     expanded_row = gos.Row(field="displace_row", type="nominal")    # type: ignore
     #row = expanded_row if zoom else condensed_row
     row=condensed_row
@@ -395,6 +397,7 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
 
     text_track = gene_track.mark_text().encode(
         text=gos.Text(field="name", type="nominal"),  # type: ignore
+        size=gos.Size(value=10),  # type: ignore
         style=gos.Style(dy=-10),  # type: ignore
     )
 
@@ -675,7 +678,7 @@ def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bo
         multiwig_view_obj = MultiWigSpec(title=parent_id, ident=parent_id, zoom=zoom, visibility=group_tracks["visibility"])
         for group_track in group_tracks["tracks"]:
             track_obj = BigWigSpec(
-                data_url=_resolve_track_url(group_track, use_gosling=True),
+                data_url = _resolve_track_url(group_track, use_gosling=True),
                 color=group_track.get("color", "orange"),
                 ident=group_track.get("track") or group_track.get("shortLabel", "").replace(" ", "_").lower(),
                 zoom=zoom
@@ -1008,7 +1011,8 @@ class BigInteractSpec(TrackSpec):
         url = self.data_url
         color = self.color
 
-        sashimi_data = gos.beddb(
+
+        biginteract_data = gos.beddb(
             url=url,
             genomicFields=[
                 {"index": 1, "name": "start"},
@@ -1022,7 +1026,7 @@ class BigInteractSpec(TrackSpec):
 
         track = (
             gos.Track(
-                data=sashimi_data,  # pyright: ignore[reportArgumentType]
+                data=biginteract_data,  # pyright: ignore[reportArgumentType]
             )
             .mark_withinLink()
             .encode(

@@ -1704,8 +1704,6 @@ class DatasetTile {
             return;
         }
 
-        //console.info(spec);
-
         const goslingContainer = document.createElement("div");
         goslingContainer.id = `tile-${this.tile.tileId}-gosling`;
         goslingContainer.style.width = "100%";

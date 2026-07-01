@@ -23,8 +23,13 @@ def get_gene_coords_from_higlass(tileset_id: str, gene_name: str):
             print(f"No data returned from HiGlass for tileset {tileset_id} and gene {gene_name}.")
             return None
 
-        # list of dicts.  For now just return the first result in case of fuzzy searches (best score)
-        # Fields - chr, txStart, txEnd, score, geneName
+        # list of dicts with fields - chr, txStart, txEnd, score, geneName
+
+        # First pass, look for an exact match (case-insensitive)
+        # Second pass if not found, just return first result
+        for entry in data:
+            if entry.get("geneName", "").lower() == gene_name.lower():
+                return entry
         return data[0]
     except requests.RequestException as e:
         print(f"Error querying HiGlass for tileset {tileset_id} and gene {gene_name}: {e}")
