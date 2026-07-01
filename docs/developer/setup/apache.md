@@ -73,27 +73,26 @@ domain, of course:
 
     Redirect permanent / https://umgear.org/
 
-## Disable apache's PrivateTmp
+## Override defaule apache systemd file
 
-gEAR lets users write datafiles such as analyses in an area under /tmp until they want to
-save, when they are moved to a directory within the application.  If Apache has PrivateTmp
-on this causes an error like this:
+The default apache service settings have some undesirable configurations. Editing the
+systemd service file tends to get reverted whenever Ubuntu's package manager perfoms
+updates.  Because it is symlinked to ` /lib/systemd/system/apache2.service` and that
+file is overwritten back to the default, we need to create a systemd override file
 
-   OSError: [Errno 18] Invalid cross-device link
+1. Run `sudo systemctl edit apache2.service`. This will bring up a file in (probably) nano.
+2. Add the following after the two initial commented lines (which indicate where to place the overrides)
 
-For now, the solution is to disable this.  If you run this:
+```ini
+[Service]
+PrivateTmp=false
+Restart=always
+```
 
-    $ systemctl show apache2 | grep PrivateTmp
-
-And you get this:
-
-    PrivateTmp=yes
-
-You need to turn it off.  On Ubuntu 22, you can find the setting in this file:
-
-    /usr/lib/systemd/system/apache2.service
-
-Set it to false, then restart apache.
+3. Save the file.  If in nano, press Ctrl+O, Enter, then Ctrl+X. Suggested save filename is ok.
+  1. File will be saved into /etc/systemd/system/apache2.service.d/override.conf
+4. Run `sudo service restart apache2` to apply changes
+5. Verify properties are set by running `systemctl show apache2 --property=PrivateTmp --property=Restart`
 
 ## Victor's SSL instructions
 
