@@ -588,11 +588,7 @@ def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bo
         "bigBed": BedSpec,
         "vcfTabix": VcfSpec,
         "hic": HiCSpec,
-    }
-
-    # Some data, like CSV data, is not constrained to one track type, so we specify the scope of the input
-    CSV_SCOPE_2_SPEC = {
-        "sashimi": SashimiSpec
+        "bigInteract": BigInteractSpec,
     }
 
     hic_found = False
@@ -619,17 +615,6 @@ def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bo
 
         track_type = group_track.get("type", "")
         spec_builder_class = TRACK_TYPE_2_SPEC.get(track_type, None)
-        if spec_builder_class is None:
-            if track_type == "csv":
-                scope = group_track.get("gos_scope", None)
-                if not scope:
-                    print(
-                        f"WARNING: CSV track '{group_track.get('shortLabel', '')}' is missing 'gos-scope' attribute; skipping.",
-                        file=sys.stderr,
-                    )
-                    continue
-                spec_builder_class = CSV_SCOPE_2_SPEC.get(scope, None)
-
 
         if spec_builder_class is None:
             print(
@@ -740,45 +725,34 @@ def build_region_view(parent_view_left, parent_view_right=None):
 
     return region_view
 
-def get_gene_info(gene_symbol, dataset_id, assembly):
+def get_gene_info(gene_symbol, assembly):
     """
-    Fetches gene coordinate information for a given gene symbol from the geardb database.
-
-    Args:
-        gene_symbol (str): The gene symbol to look up.
-        dataset_id (str or int): The identifier for the dataset to query.
-        assembly (str): The genome assembly name (e.g., 'hg38', 'mm10').
+    Fetches gene coordinate information for a given gene symbol from the assembly stored in HiGlass
 
     Returns:
-        tuple:
-            - position_str (str): The genomic position in the format '{assembly}.chr:start-end', suitable for UCSC Genome Browser.
-            - gene_symbol (str): The canonical gene symbol as stored in the database.
-
-    Notes:
-        - If the gene symbol is not found in the dataset, returns ("NA", "NA").
-        - Chromosome names are normalized to UCSC-style (e.g., 'chr1', 'chrX', 'chrM').
+        tuple: A tuple containing (position_str, gene_symbol) where position_str is in the
+            format 'assembly.chromosome:start-end' and gene_symbol is the official gene name.
     """
-    # Fetch gene coordinates from geardb
-    gene_info = geardb.get_gene_by_gene_symbol(gene_symbol, dataset_id)
-    if not gene_info:
+
+    try:
+        response = requests.get(f"http://127.0.0.1/api/higlass/genes/{gene_symbol}", params={"assembly": assembly})
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"Failed to retrieve gene information for {gene_symbol}", file=sys.stderr)
+        return ("NA", "NA")
+
+    gene_info = response.json()
+    if gene_info is None:
         print(
-            f"WARNING: Gene symbol '{gene_symbol}' not found in dataset {dataset_id}; cannot zoom track.",
+            f"WARNING: Gene symbol '{gene_symbol}' not found in assembly {assembly}; cannot zoom track.",
             file=sys.stderr,
         )
         return ("NA", "NA")
 
-    chrom = gene_info.molecule or "unknown"
-
-    # if chrom is a number, convert it to a string with "chr" prefix
-    if chrom.isdigit() or chrom in ["X", "Y"]:
-        chrom = f"chr{chrom}"
-    # if chrom is MT, convert to "chrM"
-    if chrom == "MT":
-        chrom = "chrM"
-
-    start = gene_info.start
-    end = gene_info.stop
-    gene_symbol = gene_info.gene_symbol # To use correct naming later
+    chrom = gene_info["chr"]
+    start = gene_info["txStart"]
+    end = gene_info["txEnd"]
+    gene_symbol = gene_info["geneName"] # To use correct naming later
 
     left_position = f"{chrom}:{start}-{end}"
     position_str = f"{assembly}.{left_position}"  # This is the format if we want to export position to UCSC Genome Browser
@@ -1027,25 +1001,24 @@ class BigWigSpec(TrackSpec):
 
         return track
 
-class SashimiSpec(TrackSpec):
+class BigInteractSpec(TrackSpec):
     # This is based on STAR splice-junction output, which is a tab-delimited file with the following columns:
     # chr, start, end, strand, intron_motif, annotated, unique_reads, multi_reads, max_overhang
     def get_encoding(self, width, height, prefix="", is_child=False):
         url = self.data_url
         color = self.color
 
-        try:
-            self.validate_track_url(url, [".csv", ".tsv", ".txt", ".tab"])
-        except ValueError as e:
-            print(f"WARNING: Skipping Sashimi track '{self.title}': {e}", file=sys.stderr)
-            return None
-
-        sashimi_data = gos.csv(url=url,
-                            separator="\t",
-                            headerNames=["chr", "start", "end", "strand", "intron_motif", "annotated", "unique_reads", "multi_reads", "max_overhang"],
-                            chromosomeField="chr",
-                            genomicFields=["start", "end"],
-                            )
+        sashimi_data = gos.beddb(
+            url=url,
+            genomicFields=[
+                {"index": 1, "name": "start"},
+                {"index": 2, "name": "end"}
+            ],
+            valueFields=[
+                {"index": 0, "name": "chr", "type": "nominal"},
+                {"index": 3, "name": "strand", "type": "nominal"},
+            ],
+        )
 
         track = (
             gos.Track(
@@ -1055,7 +1028,8 @@ class SashimiSpec(TrackSpec):
             .encode(
                 x=gos.X(field="start", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
                 xe=gos.X(field="end", type="genomic"),  # pyright: ignore[reportArgumentType]
-                color=gos.Color(value=color),
+                stroke=gos.Stroke(value=color),
+                strokeWidth=gos.StrokeWidth(value=1)
             ).properties(
                 width=width,
                 id=f"{prefix}track-{self.ident}",  # Use the file name without extension as the ID
@@ -1329,7 +1303,7 @@ class GoslingSpec(Resource):
             return response, 400
 
         # Let's get the coordinates of the gene_symbol.
-        (position_str, new_gene_symbol) = get_gene_info(gene_symbol, dataset_id, assembly)
+        (position_str, new_gene_symbol) = get_gene_info(gene_symbol, assembly)
 
         if new_gene_symbol != "NA":
             gene_symbol = new_gene_symbol

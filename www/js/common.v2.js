@@ -1268,6 +1268,20 @@ const apiCallsMixin = {
         return data;
     },
     /**
+     * Fetches coordinate information for the passed gene symbol from the assembly on the HiGlass server
+     *
+     * @param {string} geneSymbol - The gene symbol to search for. Single-gene only
+     * @param {string} assembly - The genome assembly to use for the search.
+     * @returns {Promise<any>} - The fetched gene coords.
+     */
+    async fetchHiglassGeneCoords(geneSymbol, assembly) {
+        const urlParams = new URLSearchParams();
+        urlParams.append('assembly', assembly);
+
+        const {data} = await axios.get(`/api/higlass/genes/${geneSymbol}?${urlParams.toString()}`);
+        return data;
+    },
+    /**
      * Fetches info on all the organisms in the database
      * @returns {Promise<any>} - A promise that resolves to the list of organisms
      */

@@ -1,13 +1,10 @@
 import os
-import requests
 
+import requests
 from flask import request
 from flask_restful import Resource
 
 from .common import ANNOTATION_BEDDB_UID, HIGLASS_URL
-
-# TODO: Need to figure out how to do this, as we have no way to search a gene from a tile/tileset.
-
 
 def get_gene_coords_from_higlass(tileset_id: str, gene_name: str):
     """

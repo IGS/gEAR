@@ -50,12 +50,12 @@ This creates a BED file where the exons are set in blockSizes and blockStarts co
     1. Or just pass the single bed file instead if copying just one.
     2. If genome (i.e. mm39) is not in the negspy list of genomes, copy the chromInfo.txt file you made with the chromosome order and sizes.
 16. Turn into a beddb file
-    1. scp onto higlass-manage-prod
+    1. scp onto higlass-manage-prod, and ssh in
     2. `cd \~/higlass/bin`
     3. `source .activate` to activate the venv
     4. If genome was not in negspy you need to ingest the chromInfo.txt you copied over
        1. I don't think this is actually needed.
-       2. `higlass-manage ingest \--filetype chromsizes-tsv \--datatype chromsizes \--assembly {genome} /tmp/ {genome}.chromInfo.txt`
+       2. `higlass-manage ingest \--filetype chromsizes-tsv \--datatype chromsizes \--assembly {genome} /tmp/{genome}.chromInfo.txt`
     5. `clodius aggregate bedfile –assembly={genome} {genome}.annotation.bed`
        1. If using a custom assembly, add "--chromsizes-filename \<filepath\>" to the command.
     6. I was not able to run clodius on galGal6
@@ -77,6 +77,14 @@ Example files at https://server.gosling-lang.org/api/v1/tilesets/?t=cooler
 ## STAR splice junction file ingest (manual)
 
 ### Convert to BEDDB (Gosling)
+
+The STAR splice junction tab output file is fine for this.
+
+1. scp the file onto the "higlass-manage-prod" server, then ssh in
+2. `cd \~/higlass/bin`
+3. `source .activate` to activate the venv
+4. `clodius aggregate bedfile –assembly={genome} --chromsizes-filename={genome}.chromInfo.txt SJ.out.tab`
+5. `higlass-manage ingest SJ.out.tab.beddb`
 
 ### Convert to BigInteract (UCSC)
 
