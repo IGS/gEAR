@@ -31,7 +31,7 @@ ANNOTATION_BEDDB_UID = {
     "hg19": "XXcPeaTRSiy8_yxNwjtzEQ",
     "hg38": "GhiCXRRHTH2u-24jRq0HRQ",
     "mm10": "VNbLgNO3T8uAcp_5vRFqdQ",
-    "mm39": "F8arVMzwSW-hkDCgjzCDwA",
+    "mm39": "PTEifA0MT0KUAUQR6w-BqQ",
     "rn6": "C6Tw-g54Rl602PqE62qTHw", # rat
     # "calJac3": "calJac3.annotation.beddb", # marmoset
 }

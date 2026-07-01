@@ -42,8 +42,8 @@ This creates a BED file where the exons are set in blockSizes and blockStarts co
        1. This is assuming you don't care about the random scaffolds, which will have different IDs. Just delete the scaffolds
        2. Sizes can be obtained from UCSC [https://hgdownload.gi.ucsc.edu/goldenPath/mm39/bigZips/mm39.chrom.sizes](https://hgdownload.gi.ucsc.edu/goldenPath/mm39/bigZips/mm39.chrom.sizes) example using mm39
     6. The chromInfo.txt file needs to also be copied to the "https://umgear.org/tracks/genomes/<assembly>"" directory
-14. Combine both files into one BED12 file
-    1. Run `gEAR/bin/convert_exon_bed_to_bed12.sh gene.bed exon.bed gene6and2.bed`
+14. Combine both files into one BED8 file
+    1. Run `gEAR/bin/convert_exon_bed_to_bed6and2.sh gene.bed exon.bed gene8.bed`
     2. For each gene, this adds all exons as a list of exonStart and exonEnd columns.  A lot of Gosling examples use this (see "Way 1" above)
     3. I renamed these as {genome}.annotation.bed
 15. tar up all the annotation.bed files and send to the higlass-manage-prod server… unzip

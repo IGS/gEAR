@@ -346,7 +346,7 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     MINUS_ROW_POSITION = 51
 
     # These are shared amongst the genes and exons track
-    condensed_row = gos.Row(field="strand", type="nominal", domain=["+", "-"], range=[0, MINUS_ROW_POSITION], padding=-6)  # type:ignore
+    condensed_row = gos.Row(field="strand", type="nominal", domain=["+", "-"], range=[0, MINUS_ROW_POSITION])  # type:ignore
     expanded_row = gos.Row(field="displace_row", type="nominal")    # type: ignore
     #row = expanded_row if zoom else condensed_row
     row=condensed_row
