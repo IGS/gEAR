@@ -20,6 +20,7 @@ def argument_parser():
     parser = argparse.ArgumentParser(usage="%(prog)s -r [RDS Object] -s [Share ID]",add_help=True)
     parser.add_argument('-r', '--rds', required=True, type=str)
     parser.add_argument('-s', '--share-id', required=True, type=str)
+    parser.add_argument('-t','--tax-id',required=False,type=str)
     args = vars(parser.parse_args())
     return args
 
@@ -89,8 +90,9 @@ def seurat_to_anndata(file_path: str, share_name: str, output_dir: str = "."):
         return output_path
     # In cases where the write fails we will assume the h5ad already exists
     except Exception:
-        print(f"h5ad name already exists {output_path}")
         raise
+        print(f"h5ad name already exists {output_path}")
+        
 
 def openh5ad(h5ad_name):
     """Just open the supplied h5ad file"""
@@ -168,18 +170,20 @@ def main():
     # Args
     rds_path = arguments['rds']
     share_name = arguments['share_id']
+    tax_id = arguments.get('tax_id',None)
     r_package_installer()
     # Take the RDS and output the most basic h5ad
     h5ad_name = seurat_to_anndata(rds_path,share_name)
     # Below are some changes and checks to the h5ad to correctly format for gEAR
     if h5ad_name:
-        adata = openh5ad(f'tmp_{h5ad_name}')
-        adata = genes_to_ensembl(adata)
-        if adata is None:
+        print(h5ad_name)
+        adata = openh5ad(f'{h5ad_name}')
+        if tax_id is None:
             sys.exit("TaxID not supplied")
+        adata = genes_to_ensembl(adata,taxid=tax_id)
         adata = reduction_to_metadata(adata)
-        adata.write({h5ad_name.replace('tmp_','')})
-        os.remove(f'tmp_{h5ad_name}')
+        adata.write(str(h5ad_name.replace('tmp_','').replace('./','')))
+        os.remove(f'{h5ad_name}')
 
 
 if __name__ == "__main__":
