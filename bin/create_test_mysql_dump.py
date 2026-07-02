@@ -309,9 +309,19 @@ def main(argv: list | None = None):
     parser = argparse.ArgumentParser(description="Dump only dataset-related rows referenced by layouts.")
     parser.add_argument("--layout-ids", "-l", nargs="+", type=int, required=True, help="Layout id(s) to include")
     parser.add_argument("--dump-file", "-o", required=True, help="Output mysqldump filename")
+    parser.add_argument("--user", "-u", help="MySQL user (overrides config)")
+    parser.add_argument("--password", "-p", help="MySQL password (overrides config)")
+    parser.add_argument("--host", "-H", help="MySQL host (overrides config)")
     args = parser.parse_args(argv)
 
     servercfg = ServerConfig().parse()
+    if args.user:
+        servercfg["database"]["user"] = args.user
+    if args.password:
+        servercfg["database"]["password"] = args.password
+    if args.host:
+        servercfg["database"]["host"] = args.host
+
     conn = Connection()
 
     try:
@@ -349,6 +359,7 @@ def main(argv: list | None = None):
         success = run_mysqldump_schema(servercfg, tables_unique, args.dump_file)
         if not success:
             print("Schema dump failed. Aborting.", file=sys.stderr)
+            Path(args.dump_file).unlink(missing_ok=True)
             return
 
         # Step 2: append data per table

@@ -31,6 +31,7 @@ RUN apt -qq update \
   llvm \
   apache2 \
   php \
+  mysql-client \
   libffi-dev \
   libpcre2-dev \
   zlib1g-dev \
