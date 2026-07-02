@@ -2371,7 +2371,7 @@ class DatasetTile {
 
                 // 2. Indestructible Polling Loop
                 let attempts = 0;
-                const maxAttempts = 200; // 20 seconds maximum wait time (100ms * 200)
+                const maxAttempts = 300; // 20 seconds maximum wait time (100ms * 300)
 
                 const checkRender = setInterval(() => {
                     attempts++;
