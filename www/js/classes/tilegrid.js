@@ -2446,7 +2446,8 @@ class DatasetTile {
             }
 
         } catch (error) {
-            console.error(error);
+            createToast(`Error rendering spatial display: ${error.message}`, "is-danger");
+            console.trace(error);
         } finally {
             return;
         }
