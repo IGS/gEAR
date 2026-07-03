@@ -2,7 +2,6 @@
 aiohttp==3.13.5
 aiohttp_retry==2.9.1
 anndata==0.12.11
-bio==1.8.3
 hic2cool==0.8.3
 more_itertools==11.0.2
 mysql-connector-python==8.0.28
