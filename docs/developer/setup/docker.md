@@ -142,6 +142,8 @@ You can write some script to loop through these IDs and download them to your "d
 
 `cd <gear_root>/www/datasets`
 `wget https://umgear.org/datasets/<dataset_id>.h5ad .`
+`cd <gear_root>/www/datasets_uploaded`
+`wget https://umgear.org/datasets_uploaded/<dataset_id>.svg .`
 
 ## MySQL
 
