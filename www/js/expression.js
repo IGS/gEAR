@@ -17,6 +17,7 @@ let shareUsed = false;
 let currentlySelectedOrgId = "";
 let annotationData = null;
 let currentlySelectedGeneSymbol = null;  // goes to the plugin expression.js
+let activeSearchToken = 0;
 
 /*
 TODOs:
@@ -67,6 +68,7 @@ document.getElementById('functional-annotation-toggle').addEventListener('click'
 // add event listener for when the submit-expression-search button is clicked
 document.getElementById('submit-expression-search').addEventListener('click', async (event) => {
     const currentTarget = event.currentTarget;
+    const searchToken = ++activeSearchToken;
     currentTarget.classList.add('is-loading');
     const isExactMatch = document.getElementById('gene-search-exact-match').checked;
 
@@ -103,7 +105,13 @@ document.getElementById('submit-expression-search').addEventListener('click', as
 
         const setupTileGridFn = (datasetShareId) ? setupTileGrid(datasetShareId, "dataset") : setupTileGrid(datasetCollectionState.selectedShareId);
 
-        const [annotRes, tilegridRes] = await Promise.allSettled([fetchGeneAnnotations(), setupTileGridFn]);
+        const [annotRes, tilegridRes] = await Promise.allSettled([fetchGeneAnnotations(searchToken), setupTileGridFn]);
+
+        // Ignore stale search results if a newer search has started.
+        if (searchToken !== activeSearchToken) {
+            return;
+        }
+
         tilegrid = tilegridRes.value;
 
         if (!annotRes.value) {
@@ -136,20 +144,43 @@ document.getElementById('submit-expression-search').addEventListener('click', as
 
         }
 
-        // If the user isn't logged in, set the first organism's annotation as the default
-        if (!getCurrentUser()?.session_id && tilegrid?.datasets.length > 0) {
-            const first_organism_id = tilegrid.datasets[0].organism_id;
-            currentlySelectedOrgId = parseInt(first_organism_id);
-            organismSelector.value = currentlySelectedOrgId;
-            updateAnnotationDisplay();
+        // Ensure the selected organism is valid for the current dataset scope.
+        // This protects first-load behavior for three cases:
+        // 1) anonymous users, 2) logged-in users without a default, and
+        // 3) logged-in users whose default organism is not present in this layout/dataset scope.
+        // If invalid, choose a deterministic fallback so annotation/link rendering is stable.
+        if (tilegrid?.datasets.length > 0) {
+            const datasetOrgIds = tilegrid.datasets
+                .map((dataset) => parseInt(dataset.organism_id))
+                .filter(Number.isFinite);
+
+            const sortedOrgIds = [...new Set(datasetOrgIds)].sort((a, b) => a - b);
+            const currentOrgId = parseInt(currentlySelectedOrgId);
+            const hasValidSelectedOrg = Number.isFinite(currentOrgId) && sortedOrgIds.includes(currentOrgId);
+
+            if (sortedOrgIds.length > 0 && !hasValidSelectedOrg) {
+                currentlySelectedOrgId = sortedOrgIds[0];
+                organismSelector.value = String(currentlySelectedOrgId);
+                hideOrganismSelectorTooltip();
+                updateAnnotationDisplay();
+
+                // If logged in and this differs from the user's default (or no default exists),
+                // expose the button so they can persist this fallback as their default organism.
+                if (getCurrentUser()?.session_id) {
+                    const shouldHide = getCurrentUser()?.default_org_id === currentlySelectedOrgId;
+                    setDefaultOrganism.classList.toggle('is-hidden', shouldHide);
+                }
+            }
         }
 
     } catch (error) {
         logErrorInConsole(error);
         return;
     } finally {
-        currentTarget.classList.remove('is-loading');
-        document.getElementById("result-panel-loader").classList.add('is-hidden');
+        if (searchToken === activeSearchToken) {
+            currentTarget.classList.remove('is-loading');
+            document.getElementById("result-panel-loader").classList.add('is-hidden');
+        }
     }
 
     const url = buildStateURL();
@@ -260,15 +291,21 @@ const buildStateURL = () => {
  * @param {Function} callback - The callback function to be executed after fetching gene annotations.
  * @returns {Promise<void>} - A promise that resolves when the gene annotations are fetched.
  */
-const fetchGeneAnnotations = async (callback) => {
+const fetchGeneAnnotations = async (searchToken = null) => {
     try {
-        annotationData = await apiCallsMixin.fetchGeneAnnotations(
+        const fetchedAnnotationData = await apiCallsMixin.fetchGeneAnnotations(
             Array.from(geneCollectionState.selectedGenes).join(','),
             document.getElementById('gene-search-exact-match').checked,
-            false,  // case-insensitive
             datasetCollectionState.selectedShareId,
             isMultigene
         );
+
+        // Ignore stale async responses from older searches.
+        if (searchToken !== null && searchToken !== activeSearchToken) {
+            return false;
+        }
+
+        annotationData = fetchedAnnotationData;
 
         const geneResultCountElt = document.getElementById("gene-result-count");
         geneResultCountElt.innerHTML = Object.keys(annotationData).length;
@@ -285,7 +322,9 @@ const fetchGeneAnnotations = async (callback) => {
             const template = document.getElementById('tmpl-gene-result-item');
             document.getElementById('gene-result-list').innerHTML = '';
 
-            for (const geneSymbol in annotationData) {
+            // Sort to keep first auto-selected result deterministic across reloads.
+            const sortedGeneSymbols = Object.keys(annotationData).sort((a, b) => a.localeCompare(b));
+            for (const geneSymbol of sortedGeneSymbols) {
                 const row = template.content.cloneNode(true);
                 row.querySelector('li').innerHTML = geneSymbol;
                 document.getElementById('gene-result-list').appendChild(row);
@@ -592,16 +631,33 @@ const updateAnnotationDisplay = () => {
 
     // External database references
     let good_dbxref_count = 0;
+    const seenDbxrefs = new Set();
 
-    for (const dbxref of annotation['dbxrefs']) {
-        if (dbxref['url'] !== null) {
-            const dbxref_template = document.getElementById('tmpl-external-resource-link');
-            const row = dbxref_template.content.cloneNode(true);
-            row.querySelector('a').innerHTML = dbxref['source'];
-            row.querySelector('a').href = dbxref['url'];
-            document.getElementById('external-resource-links').appendChild(row);
-            good_dbxref_count++;
+    // Sort + dedupe to avoid non-deterministic display/order differences when payload order varies.
+    const sortedDbxrefs = annotation['dbxrefs']
+        .filter((dbxref) => dbxref['url'] !== null)
+        .slice()
+        .sort((a, b) => {
+            const sourceCompare = a['source'].localeCompare(b['source']);
+            if (sourceCompare !== 0) {
+                return sourceCompare;
+            }
+            return a['url'].localeCompare(b['url']);
+        });
+
+    for (const dbxref of sortedDbxrefs) {
+        const dbxrefKey = `${dbxref['source']}|${dbxref['url']}`;
+        if (seenDbxrefs.has(dbxrefKey)) {
+            continue;
         }
+        seenDbxrefs.add(dbxrefKey);
+
+        const dbxref_template = document.getElementById('tmpl-external-resource-link');
+        const row = dbxref_template.content.cloneNode(true);
+        row.querySelector('a').innerHTML = dbxref['source'];
+        row.querySelector('a').href = dbxref['url'];
+        document.getElementById('external-resource-links').appendChild(row);
+        good_dbxref_count++;
     }
 
     if (good_dbxref_count === 0) {
