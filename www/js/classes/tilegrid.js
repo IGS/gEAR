@@ -2419,10 +2419,11 @@ class DatasetTile {
 
             // Add the "save" event listener
             this._saveSpatialHandler = async (event) => {
-                const { displayName, makeDefault, minGenes, bounds } = event.detail;
+                const { displayName, makeDefault, markerShape, hideZeros, bounds } = event.detail;
 
                 // Sync the local state
-                this.spatial.min_genes = minGenes;
+                this.spatial.marker_shape = markerShape;
+                this.spatial.hide_zeros = hideZeros
                 if (bounds) {
                     this.spatial.selection_x1 = bounds[0];
                     this.spatial.selection_y1 = bounds[1];

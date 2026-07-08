@@ -44,7 +44,7 @@ def fix_colorbar_hook(plot, element):
     except Exception:
         pass
 
-def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='raw_value', cmap='YlOrRd', is_categorical=False, title=None, mode="standard"):
+def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='raw_value', cmap='YlOrRd', is_categorical=False, title=None, mode="standard", shape="square"):
     """Generates a Datashaded spatial plot colored by expression of the specified gene."""
 
     # Fixes a Holoviews bug where the linker callback cannot find the categorical metadata dimension that Datashader named
@@ -139,7 +139,7 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
     # NOTE: Cluster downsampling will have a striped appearance called the Moiré Interference Pattern.
     # I tried to use dynspread to remedy it, but the data points end up being too light.
     # Mostly an issue with very dense data, like Visium HD
-    return spread(plot, px=1, shape="square")
+    return spread(plot, px=1, shape=shape)
 
 
 def create_umap_plot(df, agg, color_col, cmap, is_categorical=False, title=None):
@@ -420,7 +420,12 @@ class Settings(param.Parameterized):
     selection_y2 = param.Number(doc="lower selection range", allow_None=True)
     expression_min_clip = param.Number(doc="Minimum expression value to clip", allow_None=True)
 
-    min_genes = param.Integer(default=0, doc="Minimum number of genes expressed to include a cell observation", bounds=(0, 500))
+    hide_zeros = param.Boolean(
+        doc="If true, hide zero expression values in the display.", default=False
+    )
+    marker_shape = param.String(
+        doc="The shape of the markers in the spatial data plot.", default="square"
+    )
     save = param.Boolean(
         doc="If true, save this configuration as a new display.", default=False
     )
