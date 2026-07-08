@@ -44,6 +44,8 @@ services:
     build:
       context: ../services/spatial
       dockerfile: Dockerfile
+    environment:
+      - BOKEH_RESOURCES=cdn # Pull Bokeh library from CDN
     image: adkinsrs/spatial_panel_app:latest
     networks:
       - gear
@@ -77,6 +79,8 @@ services:
       dockerfile: listeners/Dockerfile.gosling_upload
     depends_on:
       - queue
+    environment:
+      - ENVIRONMENT=development # Set environment variable for development
     image: adkinsrs/gear_gosling_upload_consumer:latest
     networks:
       - gear

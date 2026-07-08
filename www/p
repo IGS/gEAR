@@ -48,19 +48,19 @@ def check_for_truthy(value):
 def main():
     print('Content-Type: text/html\n\n')
     form = cgi.FieldStorage()
-    gene_cart = form.getvalue('c')
-    gene_symbol = form.getvalue('g')
-    gene_symbol_exact_match = form.getvalue('gsem', 1)
-    multi = form.getvalue("multi")
-    patterns = form.getvalue("ptrns")
-    algo = form.getvalue("algo")
-    zscore = form.getvalue("zscore")
-    minclip = form.getvalue("minclip", None)
-    layout_share_id = form.getvalue('l')
-    page = form.getvalue('p')
-    dataset_share_id = form.getvalue('s')
-    identifiers_org_id = form.getvalue('id')
-    search_string = form.getvalue('ss') # URL-encoded
+    gene_cart = form.getfirst('c')
+    gene_symbol = form.getfirst('g')
+    gene_symbol_exact_match = form.getfirst('gsem', 1)
+    multi = form.getfirst("multi")
+    patterns = form.getfirst("ptrns")
+    algo = form.getfirst("algo")
+    zscore = form.getfirst("zscore")
+    minclip = form.getfirst("minclip", None)
+    layout_share_id = form.getfirst('l')
+    page = form.getfirst('p')
+    dataset_share_id = form.getfirst('s')
+    identifiers_org_id = form.getfirst('id')
+    search_string = form.getfirst('ss') # URL-encoded
     share_used = 1
 
     url_base = os.environ['REQUEST_SCHEME'] + '://' + os.environ['HTTP_HOST'] + os.environ['REQUEST_URI'].split('p')[0]

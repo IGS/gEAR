@@ -47,7 +47,7 @@ for line in open(sys.argv[1]):
             max_column_length = len(cell)
 
 
-print("File: {0}\nRow_count: {1}\nMin/max column count: {2}/{3}".format(sys.argv[0], row_count, min_column_count,
+print("File: {0}\nRow_count: {1}\nMin/max column count: {2}/{3}".format(sys.argv[1], row_count, min_column_count,
                                                                           max_column_count))
 
 if min_column_count != max_column_count:

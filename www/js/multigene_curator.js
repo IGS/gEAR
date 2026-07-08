@@ -780,6 +780,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
         , "js-tsne-flip-x": "flip_x"
         , "js-tsne-flip-y": "flip_y"
         , "js-tsne-colorize-legend-by": "colorize_legend_by"
+        , "js-tsne-enforce-equal-aspect": "enforce_equal_aspect"
         , "js-tsne-max-columns": "max_columns"
         , "js-tsne-horizontal-legend": "horizontal_legend"
         , "js-tsne-marker-size": "marker_size"
@@ -883,7 +884,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
             const data = await fetchMgTsneImage(datasetId, analysisObj, this.apiPlotType, this.plotConfig);
             ({ image, image_format } = data);
         } catch (error) {
-            onsole.error("Error fetching multigene TSNE image:", error);
+            console.error("Error fetching multigene TSNE image:", error);
             return;
         }
 
@@ -932,6 +933,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
 
         // Remove some single-gene options from the post-plot adjustments
         const plotBySeries = document.querySelector(".js-tsne-plot-by-series");
+        const hideGroupNonmembers = document.querySelector(".js-tsne-hide-group-nonmembers");
         const skipGenePlot = document.querySelector(".js-tsne-skip-gene-plot");
         const twoWayPalette = document.querySelector(".js-tsne-two-way-palette");
         for (const targetElt of [plotBySeries, skipGenePlot, twoWayPalette]) {

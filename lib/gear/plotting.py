@@ -408,6 +408,10 @@ def generate_plot(
     # If replicates are present, use mean and stdev of expression data as datapoints
     if "replicate" in df.columns and plot_type not in ["violin", "contour"]:
         df = _aggregate_dataframe(df, x, y, facet_row, facet_col, color_name)  # noqa: PD901
+    elif plot_type == "bar":
+        # Later datasets do not have a replicate column. Bars need to be run through groupby,
+        # otherwise in the "group" barmode the bars will be stacked instead of side-by-side giving wrong visualizations.
+        df = _aggregate_dataframe(df, x, y, facet_row, facet_col, color_name)  # noqa: PD901
 
     # Little bit of safeguarding with kwargs
     # keys for kwargs: 'annotations', 'coloraxes', 'layout', 'traces', 'xaxes', 'yaxes'
@@ -447,7 +451,7 @@ def generate_plot(
         "hover_name": hover_name
     }
 
-    # Ensure label is one of the labels that is not lost from "gropuby"
+    # Ensure label is one of the labels that is not lost from "groupby"
     # TODO: Fix to only work when the df has been 'groupby' transformed
     # if plotting_args["hover_name"] not in [x, y, facet_row, facet_col, color_name]:
     #    raise PlotError("Selected label {} is not the same as one of the 'x', 'y', 'facet', or 'color' conditions".format(plotting_args["hover_name"]))
@@ -467,6 +471,11 @@ def generate_plot(
     if plot_type == "line":
         plotting_args["render_mode"] = "svg"
         plotting_args["line_shape"] = "spline"
+
+        # If x axis is continuous, sort dataframe by this column.
+        # Issue found in https://github.com/IGS/gEAR/issues/1285 where 0.0 was last entry causing line to loop back.
+        if x in df.columns and df[x].dtype in ["float64", "int64"]:
+            df = df.sort_values(x)
 
     # Scatter plots are the only types that let you set marker size by group
     # TODO: SAdkins - this is ugly... come up with better way to handle 'integer size' vs 'size by group'

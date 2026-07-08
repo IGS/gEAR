@@ -127,6 +127,7 @@ def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, 
     )
 
     create_floating_dot_legend(fig)
+    return fig
 
     # Truncate faceted column axis labels so annotation can fit
     axis_label_mapping = {}  # Aggregated mapping of truncated -> full label names
@@ -1146,6 +1147,8 @@ def create_violin_plot(df: pd.DataFrame, groupby_filters:list, is_log10: bool=Fa
         title=y_title
     )
 
+    return fig
+
     # Truncate faceted column axis labels so annotation can fit
     axis_label_mapping = {}  # Aggregated mapping of truncated -> full label names
     if not non_interactive and len(groupby_filters) == 1:
@@ -1185,7 +1188,7 @@ def update_stacked_violin_annotations(fig, primary_groups, color_map):
         # Am attempting to do this based on the assumption that row facet titles will never have yanchor of bottom
         # (or y-pos of 1) or have certain text shared with the axes titles
         lambda a: a.update(
-            font=dict(color=color_map[a.text])
+            font=dict(color=color_map.get(a.text, "black"))
             , textangle=0
             , x=0
             , xanchor="right"
@@ -1540,6 +1543,8 @@ def _truncate_ticktext(group_list: list[str]) -> tuple[list[str] | None, dict[st
     truncated_counts: dict[str, int] = {}  # Track how many times a truncated label has been seen
 
     for val in group_list:
+        # Ensure val is a string for length checking and mapping.
+        val = str(val)
         if len(val) > MAX_LEN_ALLOWED:
             base_truncated = "{}...".format(val[0:TRUNCATION_LEN])
 

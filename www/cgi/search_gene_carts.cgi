@@ -25,14 +25,25 @@ def main():
     cursor = cnx.get_cursor()
 
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    search_terms = form.getvalue('search_terms').split(' ') if form.getvalue('search_terms') else []
-    organism_ids = form.getvalue('organism_ids')
-    date_added = form.getvalue('date_added')
-    ownership = form.getvalue('ownership')
-    page = form.getvalue('page', "1")    # page starts at 1
-    limit = form.getvalue('limit', str(DEFAULT_MAX_RESULTS))
-    sort_by = re.sub("[^[a-z]]", "", form.getvalue('sort_by'))
+    session_id = form.getfirst('session_id')
+    search_terms = form.getfirst('search_terms')
+    if search_terms:
+        search_terms = search_terms.split(' ')
+    else:
+        search_terms = []
+    organism_ids = form.getfirst('organism_ids')
+    date_added = form.getfirst('date_added')
+    ownership = form.getfirst('ownership')
+    page = form.getfirst('page')    # page starts at 1
+    if page is None:
+        page = "1"
+    limit = form.getfirst('limit')
+    if limit is None:
+        limit = str(DEFAULT_MAX_RESULTS)
+    sort_by_str = form.getfirst('sort_by')
+    if sort_by_str is None:
+        sort_by_str = ''
+    sort_by = re.sub("[^[a-z]]", "", sort_by_str)
     user = geardb.get_user_from_session_id(session_id) if session_id else None
     result = {'success': 0, 'problem': '', 'gene_carts': []}
 
@@ -57,14 +68,14 @@ def main():
                "gc.user_id"]
     froms = ["gene_cart gc", "guser g", "organism o"]
     wheres = [
-        "gc.user_id = g.id ",
-        "AND gc.organism_id = o.id "
+        "gc.user_id = g.id",
+        "gc.organism_id = o.id"
     ]
     orders_by = []
 
     if not user:
         # user not logged in, they can only see public datasets
-        wheres.append("AND gc.is_public = 1")
+        wheres.append("gc.is_public = 1")
     else:
         # if any ownership filters are defined, collect those
         if ownership:
@@ -90,11 +101,11 @@ def main():
                         ")
                 qry_params.append(user.id)
 
-            wheres.append("AND ({0})".format(' OR '.join(ownership_bits)))
+            wheres.append(f"({' OR '.join(ownership_bits)})")   # OR accomodates the "not ownership" case
 
         # otherwise, give the usual self and public.
         else:
-            wheres.append("AND (gc.is_public = 1 \
+            wheres.append("(gc.is_public = 1 \
                                 OR gc.user_id = %s \
                                 OR (gc.user_id IN \
                                     (SELECT DISTINCT user_id FROM user_group_membership WHERE group_id IN \
@@ -104,8 +115,8 @@ def main():
             qry_params.extend([user.id, user.id])
 
     if search_terms:
-        selects.append(' MATCH(gc.label, gc.ldesc) AGAINST("%s" IN BOOLEAN MODE) as rscore')
-        wheres.append(' AND MATCH(gc.label, gc.ldesc) AGAINST("%s" IN BOOLEAN MODE)')
+        selects.append('MATCH(gc.label, gc.ldesc) AGAINST("%s" IN BOOLEAN MODE) as rscore')
+        wheres.append('MATCH(gc.label, gc.ldesc) AGAINST("%s" IN BOOLEAN MODE)')
 
         # this is the only instance where a placeholder can be in the SELECT statement, so it will
         #  be the first qry param
@@ -115,37 +126,33 @@ def main():
     if organism_ids:
         ## only numeric characters and the comma are allowed here
         organism_ids = re.sub("[^,0-9]", "", organism_ids)
-        wheres.append("AND gc.organism_id in ({0})".format(organism_ids))
+        wheres.append(f"gc.organism_id in ({organism_ids})")
 
     if date_added:
         date_added = re.sub("[^a-z]", "", date_added)
-        wheres.append("AND gc.date_added BETWEEN date_sub(now(), INTERVAL 1 {0}) AND now()".format(date_added))
+        wheres.append(f"gc.date_added BETWEEN date_sub(now(), INTERVAL 1 {date_added}) AND now()")
 
     if sort_by == 'relevance':
         # relevance can only be ordered if a search term was used
         if search_terms:
-            orders_by.append(" rscore DESC")
+            orders_by.append("rscore DESC")
         else:
-            orders_by.append(" gc.date_added DESC")
+            orders_by.append("gc.date_added DESC")
     elif sort_by == 'title':
-        orders_by.append(" gc.label")
+        orders_by.append("gc.label")
     elif sort_by == 'owner':
-        orders_by.append(" g.user_name")
+        orders_by.append("g.user_name")
     else:
-        orders_by.append(" gc.date_added DESC")
+        orders_by.append("gc.date_added DESC")
 
     # build query
-    qry = """
-    SELECT {0}
-    FROM {1}
-    WHERE {2}
-    ORDER BY {3}
-    """.format(
-        ", ".join(selects),
-        ", ".join(froms),
-        " ".join(wheres),
-        " ".join(orders_by)
-    )
+    qry = f"""
+    SELECT {', '.join(selects)}
+    FROM {', '.join(froms)}
+    WHERE {' AND '.join(wheres)}
+    ORDER BY {', '.join(orders_by)}
+    """
+
 
     # if a limit is defined, add it to the query
     if int(limit):
@@ -161,6 +168,9 @@ def main():
         ofh.write("QRY:\n{0}\n".format(qry))
         ofh.write("QRY_params:\n{0}\n".format(qry_params))
         ofh.close()
+
+    print(qry, file=sys.stderr)
+    print(qry_params, file=sys.stderr)
 
     cursor.execute(qry, qry_params)
     rows = cursor.fetchall()
@@ -201,7 +211,7 @@ def main():
             WHERE {1}
             """.format(
                 ", ".join(froms),
-                " ".join(wheres)
+                " AND ".join(wheres)
             )
 
         # if search terms are defined, remove first qry_param (since it's in the SELECT statement)

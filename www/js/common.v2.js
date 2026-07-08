@@ -6,6 +6,16 @@ let SITE_PREFS = null;
 
 const getCurrentUser = () => CURRENT_USER;
 
+// Utility function to escape HTML special characters to prevent XSS attacks when inserting user-generated content into the DOM
+const escapeHtml = (value) => {
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+	}
+
 // If a page wants to use this action, it can register a callback function
 let pageSpecificLoginUIUpdates = () => {};
 const registerPageSpecificLoginUIUpdates = (fn) => pageSpecificLoginUIUpdates = fn;
@@ -262,8 +272,16 @@ PMID: 34172972`;
 
 
 const getDomainPreferences = async () => {
-    const response = await fetch('/site_domain_prefs.json');
-    return response.json();
+    const prefsResponse = await fetch('/site_domain_prefs.json');
+    const prefs = await prefsResponse.json();
+
+    const cacheResponse = await fetch('/cache_version.json');
+    const cacheData = await cacheResponse.json();
+
+    // Merge cache_version into the preferences object
+    prefs.cache_version = cacheData.cache_version;
+
+    return prefs;
 }
 
 /**
@@ -1647,6 +1665,7 @@ const apiCallsMixin = {
 export {
     apiCallsMixin,
     createToast,
+    escapeHtml,
     getCurrentUser,
     getDomainPreferences,
     getRootUrl,
