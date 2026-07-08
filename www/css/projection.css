@@ -151,3 +151,8 @@ ul#go-terms li {
 .js-choose-display-modal .modal-content {
     width: 70%; /* make wider, which makes preview images larger */
 }
+
+#algo-explainer-modal .modal-card {
+    width: 100%;
+    max-width: 900px;
+}
