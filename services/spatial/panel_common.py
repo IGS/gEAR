@@ -1,7 +1,6 @@
 import asyncio
 import gc
 import json
-import sys
 import traceback
 
 import datashader as ds
@@ -9,9 +8,7 @@ import holoviews as hv
 import hvplot
 import hvplot.pandas  # noqa
 import numpy as np
-import pandas as pd
 import panel as pn
-import param
 from common import (
     Settings,
     autohide_toolbar,
@@ -19,7 +16,6 @@ from common import (
     create_spatial_plot,
     create_umap_plot,
     create_violin_plot,
-    has_selection,
     normalize_expression_name,
     retrieve_dataframe,
     retrieve_image_array,
@@ -84,29 +80,18 @@ class BaseSpatialViewer(pn.viewable.Viewer):
                 else:
                     self.settings.hide_zeros = False
 
+            # Legacy option
+            if "min_genes" in args:
+                min_genes = get_arg("min_genes", None)
+                if min_genes is not None and int(min_genes) > 0:
+                    self.settings.hide_zeros = True
+
             if "marker_shape" in args:
                 marker_shape = get_arg("marker_shape", "square")
                 if marker_shape is not None:
                     self.settings.marker_shape = str(marker_shape)
                 else:
                     self.settings.marker_shape = "square"
-
-            if 'selection_x1' in args:
-                selection_x1 = get_arg('selection_x1')
-                if selection_x1 is not None:
-                    self.settings.selection_x1 = float(selection_x1)
-            if 'selection_x2' in args:
-                selection_x2 = get_arg('selection_x2')
-                if selection_x2 is not None:
-                    self.settings.selection_x2 = float(selection_x2)
-            if 'selection_y1' in args:
-                selection_y1 = get_arg('selection_y1')
-                if selection_y1 is not None:
-                    self.settings.selection_y1 = float(selection_y1)
-            if 'selection_y2' in args:
-                selection_y2 = get_arg('selection_y2')
-                if selection_y2 is not None:
-                    self.settings.selection_y2 = float(selection_y2)
 
             if 'expression_min_clip' in args:
                 expression_min_clip = get_arg('expression_min_clip')
@@ -163,28 +148,6 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
         self.nosave = self.settings.nosave
 
-        # If selection_x1/x2/y1/y2 are present save as a tuple in the form of (left, right, bottom, top)
-        saved_bounds = None
-        if has_selection(self.settings):
-            saved_bounds = (
-                self.settings.selection_x1,
-                self.settings.selection_x2,
-                self.settings.selection_y1,
-                self.settings.selection_y2,
-            )
-
-        self.saved_bounds = saved_bounds
-
-        self.bounds_stream_image = hv.streams.BoundsXY(bounds=self.saved_bounds)  # type: ignore
-        self.bounds_stream_composite = hv.streams.BoundsXY(bounds=self.saved_bounds)  # type: ignore
-
-        # Track current viewport to retain zoom during widget interactions
-        self.viewport_stream = hv.streams.RangeXY()
-
-        # Set up a callback to update the URL params whenever the user draws or clears a box
-        self.bounds_stream_image.add_subscriber(self._update_bounds_callback)
-        self.bounds_stream_composite.add_subscriber(self._update_bounds_callback)
-
         # Set up the background image and its dimmed version for overlaying on the plots
         self.bg_image = None
         self.bg_image_dimmed = None
@@ -209,7 +172,7 @@ class BaseSpatialViewer(pn.viewable.Viewer):
                     )
 
             # Create a more opaque version of the image.
-            opacity_value = int(255 * 0.5)  # Adjust the multiplier to set the desired opacity level
+            opacity_value = int(255 * 0.4)  # Adjust the multiplier to set the desired opacity level
             alpha_channel = np.full((self.img_height, self.img_width, 1), opacity_value, dtype=np.uint8)
 
             # Check if image is RGB (3 channels). If so, append alpha. If already RGBA, just overwrite alpha.
@@ -237,11 +200,11 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         if self.img_height is not None:
             self.df["y_plot"] = self.img_height - self.df["spatial2"]
 
+        ### Set up some initial attributes to use when plotting
+        self.marker_shape = self.settings.marker_shape
+        self.hide_zeros = self.settings.hide_zeros
+
         self._init_widgets()
-
-
-        ### Set up some attributes to use when plotting
-        self.shape = "square"
 
         # Precompute the datashader aggregations since they can be shared across multiple plots
         self.expression_agg = ds.mean('raw_value')
@@ -273,39 +236,8 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         if self.settings.expression_min_clip is not None:
             state["expression_min_clip"] = self.settings.expression_min_clip
 
-        # Include spatial bounds if an active selection exists
-        if self.settings.selection_x1 is not None:
-            state["selection_x1"] = self.settings.selection_x1
-            state["selection_x2"] = self.settings.selection_x2
-            state["selection_y1"] = self.settings.selection_y1
-            state["selection_y2"] = self.settings.selection_y2
-
         # Writing to this value triggers the JS callback instantly
         self.state_sync.value = json.dumps(state)
-
-    def _update_bounds_callback(self, bounds=None):
-        """
-        This callback fires automatically when the user draws or clears a box.
-        It breaks the tuple into individual params, which location.sync pushes to the URL.
-        """
-
-        if bounds is None:
-            # User clicked off/cleared the box
-            self.settings.selection_x1 = None
-            self.settings.selection_y1 = None
-            self.settings.selection_x2 = None
-            self.settings.selection_y2 = None
-            self.saved_bounds = None
-        else:
-            # User drew a box
-            (self.settings.selection_x1, self.settings.selection_y1, self.settings.selection_x2, self.settings.selection_y2) = bounds
-            self.saved_bounds = bounds
-
-        # Trigger the zoom update!
-        self._update_zoom_panel(bounds)
-
-        # BROADCAST TO FRONTEND
-        self._sync_state_to_js()
 
     def _create_ghost_legend(self):
             """Creates a fake, invisible plot just to force Bokeh to draw a legend."""
@@ -339,12 +271,11 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             # Combine all the ghost points into a single overlay
             return hv.Overlay(ghost_points)
 
-    def _generate_spatial_grid(self):
+    def _generate_spatial_plots(self):
         """
-        This is where you would implement the logic to generate the spatial grid layout with the background image, expression plot, and cluster plot.
-        Row 1 is the main view, and Row 2 (optional) is the zoomed-in view. The legend is also included in Row 1.
+        This is where you would implement the logic to generate the plots to be returned for the spatial grid layout. Includes the background image, expression plot, and cluster plot.
         """
-        raise NotImplementedError("Subclasses must implement _generate_spatial_grid")
+        raise NotImplementedError("Subclasses must implement _generate_spatial_plots")
 
     def _init_widgets(self):
         """
@@ -354,13 +285,13 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
         self.hide_zeros_toggle = pn.widgets.Checkbox(
                 name='Hide Zero Expression Observations',
-                value=False,
+                value=self.hide_zeros,
                 margin=(10, 10)
             )
 
         self.marker_shape_toggle = pn.widgets.Select(
             options={'Square': 'square', 'Circle': 'circle'},
-            value='square',
+            value=self.marker_shape,
             width=100,
             align="center"
         )
@@ -389,14 +320,6 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         """
         raise NotImplementedError("Subclasses must implement _update_plots")
 
-    def _update_zoom_panel(self, bounds):
-        """
-        This is where you would implement the logic to update the zoomed-in plot based on the provided bounds.
-        The bounds parameter will be a tuple in the form of (left, right, bottom, top) representing the coordinates of the box drawn by the user.
-        You can use these bounds to set the xlim and ylim of the zoomed-in plot accordingly.
-        """
-        raise NotImplementedError("Subclasses must implement _update_zoom_panel")
-
     def __panel__(self):
         """
         Panel automatically looks for this method.
@@ -413,58 +336,48 @@ class CondensedSpatialViewer(BaseSpatialViewer):
     def _build_layout(self):
         """Builds the 3-panel condensed row."""
         try:
+            # Generate raw plots
+            master_image, main_expr, main_cluster = self._generate_spatial_plots()
 
-            # Generate base plots
-            self.main_row = self._generate_spatial_grid()
+            # Wrap in explicit Panes so we can safely update their .object properties later
+            self.master_pane = pn.pane.HoloViews(master_image, sizing_mode='stretch_width')
+            self.expr_pane = pn.pane.HoloViews(main_expr, sizing_mode='stretch_width')
+            self.cluster_pane = pn.pane.HoloViews(main_cluster, sizing_mode='stretch_width')
 
-            # Return final Panel layout
-            return pn.Column(
-                self.state_sync, # Invisible DOM injector
-                self.pre_layout,
-                self.main_row,
-                sizing_mode='stretch_both', # Fills the 100%x100% iframe
-                margin=(0, 0, 0, 0)
-                )
+            # Create standalone legend
+            needed_width = max(180, max(len(str(name)) for name in self.cluster_cmap) * 7)
+            needed_height = max(300, len(self.cluster_cmap) * 22 + 50)
+            ghost_legend = self._create_ghost_legend().opts(
+                show_legend=True, legend_position="top_left", xaxis=None, yaxis=None, show_frame=False, toolbar=None, width=needed_width, height=needed_height
+            )
+            self.legend_pane = pn.Column(pn.pane.HoloViews(ghost_legend), width=200, height=300, scroll=True, margin=(0,0,0,0))
+
+            # Build the permanent layout row
+            self.main_row = pn.Row(
+                self.master_pane, self.expr_pane, self.cluster_pane, self.legend_pane,
+                sizing_mode='stretch_both', min_width=1080, margin=(0, 0, 0, 0)
+            )
+
+            return pn.Column(self.state_sync, self.pre_layout, self.main_row, sizing_mode='stretch_both', margin=(0, 0, 0, 0))
+
         except Exception as e:
-            traceback.format_exc()
+            traceback.print_exc()
             return pn.pane.Alert(f"Error: {e}", alert_type="danger")
 
-    def _generate_spatial_grid(self):
-        """
-        Generates the spatial grid layout with the background image, expression plot, and cluster plot.
-        Row 1 is the main view, and Row 2 is the zoomed-in view. The legend is also included in Row 1.
-        """
-
+    def _generate_spatial_plots(self):
+        """Generates the raw HoloViews objects without wrapping them in Panel layouts."""
         if getattr(self, 'bg_image', None) is not None:
-            self.bg_image = self.bg_image.opts(default_tools = ["box_zoom", "wheel_zoom", "pan", "reset"])
+            self.bg_image = self.bg_image.opts(default_tools=["box_zoom", "wheel_zoom", "pan", "reset"])
 
-        # Drop the rows completely for maximum Datashader stability
         if hasattr(self, 'hide_zeros_toggle') and self.hide_zeros_toggle.value:
             spatial_df = self.df[self.df['raw_value'] > 0]
         else:
             spatial_df = self.df
 
         # Generate base plots
-        expr_plot = create_spatial_plot(spatial_df, self.expression_agg, y_col="y_plot", color_col='raw_value', cmap=self.expression_cmap, title=f"Expression: {self.current_gene}", mode="standard", shape=self.shape)
-        cluster_plot = create_spatial_plot(spatial_df, self.clusters_agg, y_col="y_plot", color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters", mode="standard", shape=self.shape) # type: ignore
+        expr_plot = create_spatial_plot(spatial_df, self.expression_agg, y_col="y_plot", color_col='raw_value', cmap=self.expression_cmap, title=f"Expression: {self.current_gene}", shape=self.marker_shape)
+        cluster_plot = create_spatial_plot(spatial_df, self.clusters_agg, y_col="y_plot", color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters", shape=self.marker_shape)
 
-        # Capture the exact viewport limits right before the redraw
-        current_x = self.viewport_stream.x_range
-        current_y = self.viewport_stream.y_range
-
-        # If the user is currently zoomed/panned, apply those limits to the new plots
-        if current_x and current_y:
-            expr_plot = expr_plot.opts(xlim=current_x, ylim=current_y)
-            cluster_plot = cluster_plot.opts(xlim=current_x, ylim=current_y)
-            if hasattr(self, 'bg_image') and getattr(self, 'bg_image', None) is not None:
-                self.bg_image = self.bg_image.opts(xlim=current_x, ylim=current_y)
-
-        # Attach the stream to the new expression plot to track future interactions
-        self.viewport_stream.source = expr_plot
-
-        master_image = self.bg_image if getattr(self, 'bg_image', None) is not None else pn.pane.HoloViews(None)
-
-        # Create composites with the background image
         if hasattr(self, 'bg_image_dimmed') and self.bg_image_dimmed is not None:
             main_expr = self.bg_image_dimmed * expr_plot
             main_cluster = self.bg_image_dimmed * cluster_plot
@@ -472,31 +385,7 @@ class CondensedSpatialViewer(BaseSpatialViewer):
             main_expr = expr_plot
             main_cluster = cluster_plot
 
-        # Store master composites for the zoom callback
-        self.master_image = master_image
-
-        # Create the Ghost Legend and Container (Row 1 only)
-        needed_width = max(180, max(len(str(name)) for name in self.cluster_cmap) * 7)
-        needed_height = max(300, len(self.cluster_cmap) * 22 + 50)
-
-        ghost_legend = self._create_ghost_legend().opts(
-            show_legend=True, legend_position="top_left",
-            xaxis=None, yaxis=None, show_frame=False, toolbar=None,
-            width=needed_width, height=needed_height
-        )
-
-        legend_container = pn.Column(
-            pn.pane.HoloViews(ghost_legend),
-            width=200, height=300, scroll=True, margin=(0,0,0,0)
-        )
-
-        # This has a min_width to prevent plots from being squished in smaller layout tile configurations.
-        return pn.Row(
-            master_image, main_expr, main_cluster, legend_container,
-            sizing_mode='stretch_both',
-            min_width=1080,
-            margin=(0, 0, 0, 0)
-        )
+        return self.bg_image, main_expr, main_cluster
 
     def _init_widgets(self):
         """Initializes widgets and builds the condensed control bar."""
@@ -512,46 +401,29 @@ class CondensedSpatialViewer(BaseSpatialViewer):
         )
 
     async def _update_plots(self, event):
-        """Triggered when a widget change occurs, allowing for hot-swapping."""
-
+        """Hot-swaps the underlying objects without destroying the DOM layout."""
         self.hide_zeros = self.hide_zeros_toggle.value
-        self.marker_shape = self.marker_shape_toggle.value
+        self.marker_shape = "circle" if self.marker_shape_toggle.value == "circle" else "square"
 
-        if self.marker_shape == "circle":
-            self.shape="circle"
-        else:
-            self.shape="square"
-
-        # Start event loading spinners on the affected containers
         self.main_row.loading = True
-
-        # Yield control to the event loop to give the browser time to render spinners
         await asyncio.sleep(0.05)
 
         try:
+            # Generate new raw plots
+            master_image, main_expr, main_cluster = self._generate_spatial_plots()
 
-            # Rebuild the Spatial Grid
-            new_spatial_grid = self._generate_spatial_grid()
-            self.main_row[:] = new_spatial_grid[:]
+            # Update the existing panes. Zoom state natively survives!
+            self.master_pane.object = master_image
+            self.expr_pane.object = main_expr
+            self.cluster_pane.object = main_cluster
+
         except Exception as e:
-            # Catch and print any hidden Datashader or Panel errors to your terminal
             print(f"Error updating plots: {e}")
             traceback.print_exc()
         finally:
-            # Turn off the spinners and sweep memory
             self.main_row.loading = False
-
-            # BROADCAST TO FRONTEND
             self._sync_state_to_js()
-
             gc.collect()
-
-
-    def _update_zoom_panel(self, bounds):
-        """
-        Currently not needed.
-        """
-        pass
 
 
 class ExpandedSpatialViewer(BaseSpatialViewer):
@@ -560,76 +432,73 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
     """
 
     def _build_layout(self):
-        # Build your spatial rows, UMAPs, and Violins here...
         try:
+            # Generate Raw Plots
+            master_image, main_expr, main_cluster = self._generate_spatial_plots()
 
-            # Represents main row and zoom row
-            self.spatial_grid_container = self._generate_spatial_grid()
+            # Main Row Panes
+            self.master_pane = pn.pane.HoloViews(master_image, sizing_mode='stretch_width')
+            self.expr_pane = pn.pane.HoloViews(main_expr, sizing_mode='stretch_width')
+            self.cluster_pane = pn.pane.HoloViews(main_cluster, sizing_mode='stretch_width')
 
-            ### UMAP row
-            expr_umap = create_umap_plot(
-                self.df, self.expression_agg, color_col='raw_value', cmap="cividis_r", is_categorical=False, title=f"{self.current_gene} Expression"
-            )
-            cluster_umap = create_umap_plot(
-                self.df, self.clusters_agg, color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters"
-            )
-
-            # Create the UMAP legend
             needed_width = max(180, max(len(str(name)) for name in self.cluster_cmap) * 7)
             needed_height = max(300, len(self.cluster_cmap) * 22 + 50)
-
-            umap_ghost_legend = self._create_ghost_legend().opts(
-                show_legend=True,
-                legend_position="top_left",
-                xaxis=None, yaxis=None,
-                show_frame=False, toolbar=None,
-                width=needed_width,
-                height=needed_height
+            ghost_legend = self._create_ghost_legend().opts(
+                show_legend=True, legend_position="top_left", xaxis=None, yaxis=None, show_frame=False, toolbar=None, width=needed_width, height=needed_height
             )
+            self.legend_pane = pn.Column(pn.pane.HoloViews(ghost_legend), width=200, height=300, scroll=True, margin=(0,0,0,0))
 
-            umap_legend_container = pn.Column(
-                umap_ghost_legend,
-                width=200,
-                height=300, # Match UMAP min_height
-                scroll=True,
-                margin=(0, 0, 0, 0)
-            )
+            self.main_row = pn.Row(self.master_pane, self.expr_pane, self.cluster_pane, self.legend_pane, sizing_mode='stretch_width')
 
-            # Layout the UMAP row
-            self.umap_row_container = pn.Row(
-                expr_umap,
-                cluster_umap,
-                umap_legend_container,
-                sizing_mode='stretch_width'
-            )
+            self.spatial_grid_container = pn.Column(self.main_row, sizing_mode='stretch_width')
 
-            ### Violin
-            violin_base = create_violin_plot(
-                self.df,
-                y_col='raw_value',
-                group_col='clusters',
-                cmap=self.cluster_cmap,
-                title=f"Expression Distribution: {self.current_gene} by Cluster"
-            )
+            # Projections
+            expr_umap = create_umap_plot(self.df, self.expression_agg, color_col='raw_value', cmap="cividis_r", is_categorical=False, title=f"{self.current_gene} Expression")
+            cluster_umap = create_umap_plot(self.df, self.clusters_agg, color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters")
 
-            self.violin_row_container = pn.Row(
-                violin_base,
-                sizing_mode='stretch_width'
-            )
+            umap_ghost_legend = self._create_ghost_legend().opts(show_legend=True, legend_position="top_left", xaxis=None, yaxis=None, show_frame=False, toolbar=None, width=needed_width, height=needed_height)
+            umap_legend_container = pn.Column(umap_ghost_legend, width=200, height=300, scroll=True, margin=(0, 0, 0, 0))
+
+            self.umap_row_container = pn.Row(expr_umap, cluster_umap, umap_legend_container, sizing_mode='stretch_width')
+
+            violin_base = create_violin_plot(self.df, y_col='raw_value', group_col='clusters', cmap=self.cluster_cmap, title=f"Expression Distribution: {self.current_gene} by Cluster")
+            self.violin_row_container = pn.Row(violin_base, sizing_mode='stretch_width')
 
             return pn.Column(
-                self.state_sync, # Invisible DOM injector
-                self.pre_layout,
-                self.spatial_grid_container,
-                pn.layout.Divider(margin=(20, 0)), # Visual breathing room
-                self.umap_row_container,
-                pn.layout.Divider(margin=(20, 0)),
-                self.violin_row_container,
+                self.state_sync, self.pre_layout, self.spatial_grid_container,
+                pn.layout.Divider(margin=(20, 0)), self.umap_row_container,
+                pn.layout.Divider(margin=(20, 0)), self.violin_row_container,
                 sizing_mode='stretch_both'
             )
         except Exception as e:
-            traceback.format_exc()
+            traceback.print_exc()
             return pn.pane.Alert(f"Error: {e}", alert_type="danger")
+
+    def _generate_spatial_plots(self):
+        """Generates raw objects and prepares the background zoom attributes."""
+        if getattr(self, 'bg_image', None) is not None:
+            self.bg_image = self.bg_image.opts(default_tools=["box_zoom", "wheel_zoom", "pan", "reset"])
+
+        if hasattr(self, 'hide_zeros_toggle') and self.hide_zeros_toggle.value:
+            spatial_df = self.df[self.df['raw_value'] > 0]
+        else:
+            spatial_df = self.df
+
+        # Main row
+        expr_plot = create_spatial_plot(spatial_df, self.expression_agg, y_col="y_plot", color_col='raw_value', cmap=self.expression_cmap, title=f"Expression: {self.current_gene}", shape=self.marker_shape)
+        cluster_plot = create_spatial_plot(spatial_df, self.clusters_agg, y_col="y_plot", color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters", shape=self.marker_shape)
+
+        self.master_image = self.bg_image
+
+        # Create the image + plot overlays.
+        if hasattr(self, 'bg_image_dimmed') and self.bg_image_dimmed is not None:
+            main_expr = self.bg_image_dimmed * expr_plot
+            main_cluster = self.bg_image_dimmed * cluster_plot
+        else:
+            main_expr = expr_plot
+            main_cluster = cluster_plot
+
+        return self.bg_image, main_expr, main_cluster
 
     def _init_widgets(self):
         # ? This can be useful for filtering datasets even for projections, but how best to word it?
@@ -651,26 +520,29 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
             , visible=not self.nosave
         )
 
-        markdown_width = 675
-        # Rebuild the pre_layout with the new toggles on the bottom row
-        self.pre_layout = pn.Column(
-            pn.Row(
-                pn.pane.Markdown(
-                    '## Use the "box select" tool on the top row to update the zoomed view.',
-                    height=30,
-                    width=markdown_width,
-                ),
-                self.display_name,
-                self.save_button,
-            ),
+        # Build the pre_layout
+        self.left_pre = pn.Column(
             pn.Row(
                 self.hide_zeros_toggle,
                 pn.Spacer(width=50),
                 self.marker_shape_ui,
-                pn.Spacer(), # Auto-fills space between toggles and the save checkbox
-                self.make_default,
                 sizing_mode='stretch_width'
             ),
+        )
+
+        self.right_pre = pn.Column(
+            pn.Row(
+
+                self.display_name,
+                self.save_button,
+            ),
+            self.make_default,
+            align="end"
+        )
+
+        self.pre_layout = pn.Row(
+            self.left_pre,
+            self.right_pre
         )
 
         # Emit a DOM event instead of changing a URL param
@@ -690,8 +562,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
                     displayName: name_input.value,
                     makeDefault: default_cb.active,
                     hideZeros: hide_zeros_toggle.active,
-                    marker_shape: marker_shape_toggle.active
-                    // If you tracked bounds in JS, you could grab them, or grab them from Panel
+                    markerShape: marker_shape_toggle.value
                 }}
             }});
 
@@ -701,175 +572,24 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
 
     async def _update_plots(self, event):
         """Triggered when a widget change occurs, allowing for hot-swapping."""
-
         self.hide_zeros = self.hide_zeros_toggle.value
-        self.marker_shape = self.marker_shape_toggle.value
+        self.marker_shape = "circle" if self.marker_shape_toggle.value == "circle" else "square"
 
-        if self.marker_shape == "circle":
-            self.shape="circle"
-        else:
-            self.shape="square"
-
-        # Start event loading spinners on the affected containers
         self.spatial_grid_container.loading = True
-
-        # Yield control to the event loop to give the browser time to render spinners
         await asyncio.sleep(0.05)
 
         try:
-            # Rebuild the Spatial Grid
-            new_spatial_grid = self._generate_spatial_grid()
-            self.spatial_grid_container[:] = new_spatial_grid[:]
+            # Generate new raw plots
+            master_image, main_expr, main_cluster = self._generate_spatial_plots()
 
-            # Re-trigger zoom if a box is currently drawn
-            if self.saved_bounds is not None:
-                self._update_zoom_panel(self.saved_bounds)
+            # Hot-swap the underlying objects safely (No DOM replacement)
+            self.master_pane.object = master_image
+            self.expr_pane.object = main_expr
+            self.cluster_pane.object = main_cluster
         except Exception as e:
-            # Catch and print any hidden Datashader or Panel errors to your terminal
             print(f"Error updating plots: {e}")
             traceback.print_exc()
         finally:
-            # Turn off the spinners and sweep memory
             self.spatial_grid_container.loading = False
-
-            # BROADCAST TO FRONTEND
             self._sync_state_to_js()
-
             gc.collect()
-
-
-    def _update_zoom_panel(self, bounds):
-        """
-        This method updates the row of zoomed-in plots based on the provided bounds.
-        The method applies the new limits to the master composite plots and updates the zoom row accordingly.
-
-        Parameters:
-        - bounds: A tuple containing the new bounds in the format (left, bottom, right, top).
-                  If bounds is None, it indicates that the user has cleared the selection.
-        """
-
-        if not hasattr(self, 'zoom_master_expr'):
-            return
-
-        # 1. Determine bounds
-        if bounds is None:
-            opts_dict = dict(xlim=(None, None), ylim=(None, None), clone=True)
-        else:
-            x1, y1, x2, y2 = bounds
-            opts_dict = dict(
-                xlim=(min(x1, x2), max(x1, x2)),
-                ylim=(min(y1, y2), max(y1, y2)),
-                clone=True,
-                active_tools=['pan', 'wheel_zoom'] # Disable box select on zoomed plots
-            )
-
-        # 2. Apply limits to all three master canvases
-        new_zoom_image = self.master_image.opts(**opts_dict) if self.master_image is not None else None
-        new_zoom_expr = self.zoom_master_expr.opts(**opts_dict)
-        new_zoom_cluster = self.zoom_master_cluster.opts(**opts_dict)
-
-        # 3. Swing the Sledgehammer (Hot-swap all three panes)
-        self.zoom_image_pane = pn.pane.HoloViews(new_zoom_image, sizing_mode='stretch_width', linked_axes=False)
-        self.zoom_expr_pane = pn.pane.HoloViews(new_zoom_expr, sizing_mode='stretch_width', linked_axes=False)
-        self.zoom_cluster_pane = pn.pane.HoloViews(new_zoom_cluster, sizing_mode='stretch_width', linked_axes=False)
-
-        # 4. Inject back into Row 2 (preserving the spacer at index 3)
-        if hasattr(self, 'zoom_row'):
-            self.zoom_row[0] = self.zoom_image_pane
-            self.zoom_row[1] = self.zoom_expr_pane
-            self.zoom_row[2] = self.zoom_cluster_pane
-
-    def _generate_spatial_grid(self):
-        """
-        Generates the spatial grid layout with the background image, expression plot, and cluster plot.
-        Row 1 is the main view, and Row 2 is the zoomed-in view. The legend is also included in Row 1.
-        """
-
-        if getattr(self, 'bg_image', None) is not None:
-            self.bg_image = self.bg_image.opts(default_tools = ["box_select", "reset"])
-
-        # Drop the rows completely for maximum Datashader stability
-        if hasattr(self, 'hide_zeros_toggle') and self.hide_zeros_toggle.value:
-            spatial_df = self.df[self.df['raw_value'] > 0]
-        else:
-            spatial_df = self.df
-
-        # Generate base plots
-        expr_plot = create_spatial_plot(spatial_df, self.expression_agg, y_col="y_plot", color_col='raw_value', cmap=self.expression_cmap, title=f"Expression: {self.current_gene}", mode="expanded", shape=self.shape)
-        cluster_plot = create_spatial_plot(spatial_df, self.clusters_agg, y_col="y_plot", color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters", mode="expanded", shape=self.shape) # type: ignore
-
-        # Capture the exact viewport limits right before the redraw
-        current_x = self.viewport_stream.x_range
-        current_y = self.viewport_stream.y_range
-
-        # If the user is currently zoomed/panned, apply those limits to the new plots
-        if current_x and current_y:
-            expr_plot = expr_plot.opts(xlim=current_x, ylim=current_y)
-            cluster_plot = cluster_plot.opts(xlim=current_x, ylim=current_y)
-            if hasattr(self, 'bg_image') and getattr(self, 'bg_image', None) is not None:
-                self.bg_image = self.bg_image.opts(xlim=current_x, ylim=current_y)
-
-        # Attach the stream to the new expression plot to track future interactions
-        self.viewport_stream.source = expr_plot
-
-        master_image = self.bg_image if getattr(self, 'bg_image', None) is not None else pn.pane.HoloViews(None)
-
-        # Update bounds streams for the image and expression plots.
-        self.bounds_stream_image.source = master_image
-        self.bounds_stream_composite.source = expr_plot
-
-        # Create a 3rd stream for the cluster plot so it can also trigger the zoom
-        if not hasattr(self, 'bounds_stream_cluster'):
-            self.bounds_stream_cluster = hv.streams.BoundsXY(bounds=self.saved_bounds)
-            self.bounds_stream_cluster.add_subscriber(self._update_bounds_callback)
-            self.bounds_stream_cluster.source = cluster_plot
-
-        # Create composites with the background image
-        if hasattr(self, 'bg_image_dimmed') and self.bg_image_dimmed is not None:
-            # Row 1
-            main_expr = self.bg_image_dimmed
-            main_cluster = self.bg_image_dimmed
-            # Row 2 Zoom
-            zoom_master_expr = self.bg_image_dimmed * expr_plot
-            zoom_master_cluster = self.bg_image_dimmed * cluster_plot
-        else:
-            main_expr = expr_plot
-            main_cluster = cluster_plot
-            zoom_master_expr = expr_plot
-            zoom_master_cluster = cluster_plot
-
-        # Store master composites for the zoom callback
-        self.master_image = master_image
-        self.zoom_master_expr = zoom_master_expr
-        self.zoom_master_cluster = zoom_master_cluster
-
-        # Create the Ghost Legend and Container (Row 1 only)
-        needed_width = max(180, max(len(str(name)) for name in self.cluster_cmap) * 7)
-        needed_height = max(300, len(self.cluster_cmap) * 22 + 50)
-
-        ghost_legend = self._create_ghost_legend().opts(
-            show_legend=True, legend_position="top_left",
-            xaxis=None, yaxis=None, show_frame=False, toolbar=None,
-            width=needed_width, height=needed_height
-        )
-
-        legend_container = pn.Column(
-            pn.pane.HoloViews(ghost_legend),
-            width=200, height=300, scroll=True, margin=(0,0,0,0)
-        )
-
-        # Initialize Zoom Panes
-        self.zoom_image_pane = pn.pane.HoloViews(master_image, sizing_mode='stretch_width', linked_axes=False)
-        self.zoom_expr_pane = pn.pane.HoloViews(zoom_master_expr, sizing_mode='stretch_width', linked_axes=False)
-        self.zoom_cluster_pane = pn.pane.HoloViews(zoom_master_cluster, sizing_mode='stretch_width', linked_axes=False)
-
-        # Assemble Rows (4 slots each to maintain vertical alignment)
-        self.main_row = pn.Row(master_image, main_expr, main_cluster, legend_container, sizing_mode='stretch_width')
-
-        # Use a spacer in Row 2 to match the legend width perfectly
-        zoom_spacer = pn.Spacer(width=200, margin=(0,0,0,0))
-        self.zoom_row = pn.Row(self.zoom_image_pane, self.zoom_expr_pane, self.zoom_cluster_pane, zoom_spacer, sizing_mode='stretch_width')
-
-        zoom_markdown = pn.pane.Markdown('### Zoomed View', height=30)
-
-        return pn.Column(self.main_row, zoom_markdown, self.zoom_row, sizing_mode='stretch_width')

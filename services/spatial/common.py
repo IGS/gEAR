@@ -1,12 +1,10 @@
-import sys
 from pathlib import Path
 
-import datashader as ds
 import numpy as np
 import pandas as pd
 import param
 from bokeh.models import CustomJSHover, HoverTool
-from holoviews.operation.datashader import dynspread, spread
+from holoviews.operation.datashader import spread
 from werkzeug.utils import secure_filename
 
 gear_root = Path(__file__).resolve().parents[2]
@@ -44,7 +42,7 @@ def fix_colorbar_hook(plot, element):
     except Exception:
         pass
 
-def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='raw_value', cmap='YlOrRd', is_categorical=False, title=None, mode="standard", shape="square"):
+def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='raw_value', cmap='YlOrRd', is_categorical=False, title=None, shape="square"):
     """Generates a Datashaded spatial plot colored by expression of the specified gene."""
 
     # Fixes a Holoviews bug where the linker callback cannot find the categorical metadata dimension that Datashader named
@@ -74,9 +72,6 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
         min_width=275    # Tells Bokeh the canvas cannot drop below 275px (prevent squishing if the layout for the display is not full width)
     )
 
-    default_tools = ["box_zoom", "wheel_zoom", "pan", "reset"]
-    if mode == "expanded":
-        default_tools = ['box_select', 'reset']
     if color_col == "raw_value":
         label_name = "Expression"
         # Intercept the NaN values and round the long floats
@@ -129,8 +124,8 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
 
     plot = plot.opts(
             tools=[custom_hover],
-            default_tools=default_tools,
-            active_tools=['box_zoom'],
+            default_tools=["box_zoom", "wheel_zoom", "pan", "reset"],
+            active_tools=["wheel_zoom"],
             toolbar="below",
             colorbar_opts={"width": 12},    # thin the colorbar out.
             hooks=[autohide_toolbar, fix_colorbar_hook]
@@ -139,9 +134,8 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
     # NOTE: Cluster downsampling will have a striped appearance called the Moiré Interference Pattern.
     # I tried to use dynspread to remedy it, but the data points end up being too light.
     # Mostly an issue with very dense data, like Visium HD
-    spread_px = 2 if shape == "circle" else 2
+    spread_px = 3 if shape == "circle" else 2
     return spread(plot, px=spread_px, shape=shape)
-
 
 def create_umap_plot(df, agg, color_col, cmap, is_categorical=False, title=None):
     """Generates a Datashaded UMAP."""
@@ -304,21 +298,6 @@ def clip_expression_values(dataframe: pd.DataFrame, min_clip: float | None=None,
     dataframe["raw_value"] = dataframe["raw_value"].clip(lower=min_clip, upper=max_clip)
     return dataframe
 
-def has_selection(settings) -> bool:
-    """
-    Return ``True`` when the bounds stored in ``self.settings`` describe a
-    non‑degenerate rectangle.
-
-    The legacy convention used by the panel app was that *all four*
-    selection values would be equal when no box was supplied (either
-    via the UI or the URL).  The boolean return value allows callers to
-    apply zoom/mirroring only when there really is something to zoom to.
-    """
-
-    return not (
-        settings.selection_x1 == settings.selection_x2 == settings.selection_y1 == settings.selection_y2
-    )
-
 def normalize_expression_name(filename) -> str:
         """
         Extract and normalize an expression name from a filename.
@@ -415,10 +394,6 @@ class Settings(param.Parameterized):
     filename = param.String(doc="Filename for the dataframe to retrieve")
     dataset_id = param.String(doc="Dataset ID to display")
     projection_id = param.String(doc="Projection ID to display", allow_None=True)
-    selection_x1 = param.Number(doc="left selection range", allow_None=True)
-    selection_x2 = param.Number(doc="right selection range", allow_None=True)
-    selection_y1 = param.Number(doc="upper selection range", allow_None=True)
-    selection_y2 = param.Number(doc="lower selection range", allow_None=True)
     expression_min_clip = param.Number(doc="Minimum expression value to clip", allow_None=True)
 
     hide_zeros = param.Boolean(

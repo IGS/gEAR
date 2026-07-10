@@ -362,22 +362,17 @@ class SpatialPanel(Resource):
         min_genes = req.get('min_genes', 0)
         min_genes = int(min_genes) if min_genes is not None else 0
         expression_min_clip = req.get('expression_min_clip', None)
-        selection_x1 = req.get('selection_x1', None)
-        selection_x2 = req.get('selection_x2', None)
-        selection_y1 = req.get('selection_y1', None)
-        selection_y2 = req.get('selection_y2', None)
+        hide_zeros = req.get('hide_zeros', False)
+        marker_shape = req.get('marker_shape', 'square')
         nosave = req.get('disable_save', True)  # Disable save button for saving displays
 
         config = {
             "dataset_id": dataset_id,
             "gene_symbol": gene_symbol,
             "projection_id": projection_id,
-            "min_genes": min_genes,
             "expression_min_clip": expression_min_clip,
-            "selection_x1": selection_x1,
-            "selection_x2": selection_x2,
-            "selection_y1": selection_y1,
-            "selection_y2": selection_y2,
+            "hide_zeros": hide_zeros,
+            "marker_shape": marker_shape,
             "nosave": nosave
         }
 

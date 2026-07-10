@@ -325,15 +325,6 @@ class DatasetTile {
         // performingProjection: Promise - The promise that resolves when the projection is performed
         // success: boolean - Indicates whether the projection was successful
         this.projectR = {modeEnabled: false, projectionId: null, projectionInfo: null, performingProjection: null, success: false};
-
-        // Spatial parameters
-        this.spatial = {
-            min_genes: null,
-            selection_x1: null,
-            selection_x2: null,
-            selection_y1: null,
-            selection_y2: null,
-        }
     }
 
     /**
@@ -2282,29 +2273,14 @@ class DatasetTile {
         createCardMessage(tileId, "info", "Loading spatial display...");
 
         const plotConfig = display.plotly_config;
-        const {gene_symbol: geneSymbol, expression_min_clip: minclip} = plotConfig;
-
-        // build spatial object from the plotly config
-        // This spatial object will keep the current state as the user switches genes
-        this.spatial = {
-            min_genes: plotConfig.min_genes,
-            selection_x1: plotConfig.selection_x1,
-            selection_x2: plotConfig.selection_x2,
-            selection_y1: plotConfig.selection_y1,
-            selection_y2: plotConfig.selection_y2,
-            projection_id: plotConfig.projection_id,
-        };
 
         const prepPlotConfig = {
-            gene_symbol: geneSymbol,
+            gene_symbol: plotConfig.gene_symbol,
             projection_id: plotConfig.projection_id,
             is_zoomed: this.isZoomed,
-            min_genes: plotConfig.min_genes,
+            hide_zeros: plotConfig.hide_zeros,
+            marker_shape: plotConfig.marker_shape,
             expression_min_clip: plotConfig.expression_min_clip,
-            selection_x1: plotConfig.selection_x1,
-            selection_x2: plotConfig.selection_x2,
-            selection_y1: plotConfig.selection_y1,
-            selection_y2: plotConfig.selection_y2,
             disable_save: !apiCallsMixin.sessionId && this.isZoomed,  // If not logged in, then do not allow saving the display
         }
 
@@ -2419,31 +2395,25 @@ class DatasetTile {
 
             // Add the "save" event listener
             this._saveSpatialHandler = async (event) => {
-                const { displayName, makeDefault, markerShape, hideZeros, bounds } = event.detail;
+                const { displayName, makeDefault, markerShape, hideZeros } = event.detail;
 
-                // Sync the local state
-                this.spatial.marker_shape = markerShape;
-                this.spatial.hide_zeros = hideZeros
-                if (bounds) {
-                    this.spatial.selection_x1 = bounds[0];
-                    this.spatial.selection_y1 = bounds[1];
-                    this.spatial.selection_x2 = bounds[2];
-                    this.spatial.selection_y2 = bounds[3];
-                }
+                // Sync the local state to the plotConfig
+                plotConfig.marker_shape = markerShape;
+                plotConfig.hide_zeros = hideZeros
 
                 try {
                     if (!apiCallsMixin.sessionId) {
                         createToast("Must be logged in to save as a display.");
                         throw new Error("Must be logged in to save as a display.");
                     }
-                    await this.saveSpatialParameters(displayName, makeDefault, geneSymbol);
+                    await this.saveSpatialParameters(displayName, makeDefault, plotConfig);
                     createToast("Spatial display saved successfully!", "is-success");
                 } catch (error) {
                     console.error(error);
                 }
             };
             if (this.isZoomed) {
-                window.addEventListener(eventName, this._saveSpatialHandler, { once: true });
+                window.addEventListener(eventName, this._saveSpatialHandler);
             }
 
         } catch (error) {
@@ -2506,17 +2476,17 @@ class DatasetTile {
 
     }
 
-    async saveSpatialParameters(displayName, makeDefault, geneSymbol) {
-        const spatialConfig = this.spatial;
-        if (this.type === "single" ) {
-            spatialConfig["gene_symbol"] = geneSymbol;
+    async saveSpatialParameters(displayName, makeDefault, plotConfig) {
+        console.log(plotConfig);
+        if (this.type === "multi" ) {
+            throw new Error("Saving spatial display is not supported for multi-gene displays.");
         }
         const datasetId = this.dataset.id;
         const plotType = "spatial_panel";
         const isMultigene = (this.type === "single") ? 0 : 1;  // Should be 0 for now.
 
         try {
-            const {display_id: displayId, success: saveSuccess} = await apiCallsMixin.saveDatasetDisplay(datasetId, null, displayName, plotType, spatialConfig);
+            const {display_id: displayId, success: saveSuccess} = await apiCallsMixin.saveDatasetDisplay(datasetId, null, displayName, plotType, plotConfig);
             if (!saveSuccess) {
                 throw new Error("Could not save this new display. Please contact the gEAR team.");
             }
