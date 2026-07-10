@@ -370,13 +370,13 @@ class CondensedSpatialViewer(BaseSpatialViewer):
             self.bg_image = self.bg_image.opts(default_tools=["box_zoom", "wheel_zoom", "pan", "reset"])
 
         if hasattr(self, 'hide_zeros_toggle') and self.hide_zeros_toggle.value:
-            spatial_df = self.df[self.df['raw_value'] > 0]
+            expr_df = self.df[self.df['raw_value'] > 0]
         else:
-            spatial_df = self.df
+            expr_df = self.df
 
         # Generate base plots
-        expr_plot = create_spatial_plot(spatial_df, self.expression_agg, y_col="y_plot", color_col='raw_value', cmap=self.expression_cmap, title=f"Expression: {self.current_gene}", shape=self.marker_shape)
-        cluster_plot = create_spatial_plot(spatial_df, self.clusters_agg, y_col="y_plot", color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters", shape=self.marker_shape)
+        expr_plot = create_spatial_plot(expr_df, self.expression_agg, y_col="y_plot", color_col='raw_value', cmap=self.expression_cmap, title=f"Expression: {self.current_gene}", shape=self.marker_shape)
+        cluster_plot = create_spatial_plot(self.df, self.clusters_agg, y_col="y_plot", color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters", shape=self.marker_shape)
 
         if hasattr(self, 'bg_image_dimmed') and self.bg_image_dimmed is not None:
             main_expr = self.bg_image_dimmed * expr_plot
@@ -480,13 +480,13 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
             self.bg_image = self.bg_image.opts(default_tools=["box_zoom", "wheel_zoom", "pan", "reset"])
 
         if hasattr(self, 'hide_zeros_toggle') and self.hide_zeros_toggle.value:
-            spatial_df = self.df[self.df['raw_value'] > 0]
+            expr_df = self.df[self.df['raw_value'] > 0]
         else:
-            spatial_df = self.df
+            expr_df = self.df
 
         # Main row
-        expr_plot = create_spatial_plot(spatial_df, self.expression_agg, y_col="y_plot", color_col='raw_value', cmap=self.expression_cmap, title=f"Expression: {self.current_gene}", shape=self.marker_shape)
-        cluster_plot = create_spatial_plot(spatial_df, self.clusters_agg, y_col="y_plot", color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters", shape=self.marker_shape)
+        expr_plot = create_spatial_plot(expr_df, self.expression_agg, y_col="y_plot", color_col='raw_value', cmap=self.expression_cmap, title=f"Expression: {self.current_gene}", shape=self.marker_shape)
+        cluster_plot = create_spatial_plot(self.df, self.clusters_agg, y_col="y_plot", color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters", shape=self.marker_shape)
 
         self.master_image = self.bg_image
 

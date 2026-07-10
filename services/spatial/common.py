@@ -131,11 +131,16 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
             hooks=[autohide_toolbar, fix_colorbar_hook]
         )
 
-    # NOTE: Cluster downsampling will have a striped appearance called the Moiré Interference Pattern.
-    # I tried to use dynspread to remedy it, but the data points end up being too light.
-    # Mostly an issue with very dense data, like Visium HD
-    spread_px = 2 if shape == "circle" else 1
-    return spread(plot, px=spread_px, shape=shape)
+
+    if color_col == "raw_value":
+        # NOTE: Cluster downsampling will have a striped appearance called the Moiré Interference Pattern.
+        # I tried to use dynspread to remedy it, but the data points end up being too light.
+        # Mostly an issue with very dense data, like Visium HD
+        spread_px = 2 if shape == "circle" else 1
+        return spread(plot, px=spread_px, shape=shape)
+
+    # Pure Data View (No artifacts, perfect grid)
+    return plot
 
 def create_umap_plot(df, agg, color_col, cmap, is_categorical=False, title=None):
     """Generates a Datashaded UMAP."""
