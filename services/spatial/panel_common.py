@@ -86,13 +86,6 @@ class BaseSpatialViewer(pn.viewable.Viewer):
                 if min_genes is not None and int(min_genes) > 0:
                     self.settings.hide_zeros = True
 
-            if "marker_shape" in args:
-                marker_shape = get_arg("marker_shape", "square")
-                if marker_shape is not None:
-                    self.settings.marker_shape = str(marker_shape)
-                else:
-                    self.settings.marker_shape = "square"
-
             if 'expression_min_clip' in args:
                 expression_min_clip = get_arg('expression_min_clip')
                 if expression_min_clip is not None:
@@ -172,7 +165,7 @@ class BaseSpatialViewer(pn.viewable.Viewer):
                     )
 
             # Create a more opaque version of the image.
-            opacity_value = int(255 * 0.4)  # Adjust the multiplier to set the desired opacity level
+            opacity_value = int(255 * 0.3)  # Adjust the multiplier to set the desired opacity level
             alpha_channel = np.full((self.img_height, self.img_width, 1), opacity_value, dtype=np.uint8)
 
             # Check if image is RGB (3 channels). If so, append alpha. If already RGBA, just overwrite alpha.
@@ -200,15 +193,20 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         if self.img_height is not None:
             self.df["y_plot"] = self.img_height - self.df["spatial2"]
 
+        # Get 98th-percentile of valid expression for clipping the color scale. This is to avoid outliers dominating the color mapping.
+        # Using all data runs into the issue of the value being 0.
+        self.expression_98 = self.df[self.df['raw_value'] > 0]["raw_value"].quantile(0.98)
+        if self.expression_98 == 0:
+            self.expression_98 = None
+
         ### Set up some initial attributes to use when plotting
-        self.marker_shape = self.settings.marker_shape
         self.hide_zeros = self.settings.hide_zeros
 
         self._init_widgets()
 
         # Precompute the datashader aggregations since they can be shared across multiple plots
         self.expression_agg = ds.mean('raw_value')
-        self.expression_cmap = 'YlOrRd'
+        self.expression_cmap = 'fire_r'
 
         self.clusters_agg = ds.count_cat('clusters')
         self.cluster_cmap = dict(zip(self.df['clusters'], self.df['colors']))
@@ -221,15 +219,10 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         if hasattr(self, "hide_zeros") and self.hide_zeros is not None:
             hide_zeros = self.hide_zeros
 
-        marker_shape = self.settings.marker_shape
-        if hasattr(self, "marker_shape") and self.marker_shape is not None:
-            marker_shape = self.marker_shape
-
         state = {
             "dataset_id": self.settings.dataset_id,
             "filename": self.settings.filename,
             "hide_zeros": hide_zeros,  # Use the active class property
-            "marker_shape": marker_shape,  # Use the active class property
         }
 
         # Include expression clip if it exists
@@ -289,21 +282,8 @@ class BaseSpatialViewer(pn.viewable.Viewer):
                 margin=(10, 10)
             )
 
-        self.marker_shape_toggle = pn.widgets.Select(
-            options={'Square': 'square', 'Circle': 'circle'},
-            value=self.marker_shape,
-            width=100,
-            align="center"
-        )
-
-        self.marker_shape_ui = pn.Row(
-            pn.widgets.StaticText(value='Marker Shape:', align='start', margin=(10, 10)),
-            self.marker_shape_toggle
-        )
-
         # Bind the master update function to the exact dropdown widget, not the container
         self.hide_zeros_toggle.param.watch(self._update_plots, 'value')
-        self.marker_shape_toggle.param.watch(self._update_plots, 'value')
 
     def _build_layout(self):
         """
@@ -375,8 +355,8 @@ class CondensedSpatialViewer(BaseSpatialViewer):
             expr_df = self.df
 
         # Generate base plots
-        expr_plot = create_spatial_plot(expr_df, self.expression_agg, y_col="y_plot", color_col='raw_value', cmap=self.expression_cmap, title=f"Expression: {self.current_gene}", shape=self.marker_shape)
-        cluster_plot = create_spatial_plot(self.df, self.clusters_agg, y_col="y_plot", color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters", shape=self.marker_shape)
+        expr_plot = create_spatial_plot(expr_df, self.expression_agg, y_col="y_plot", color_col='raw_value', cmap=self.expression_cmap, title=f"Expression: {self.current_gene}", cbar_max=self.expression_98)
+        cluster_plot = create_spatial_plot(self.df, self.clusters_agg, y_col="y_plot", color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters")
 
         if hasattr(self, 'bg_image_dimmed') and self.bg_image_dimmed is not None:
             main_expr = self.bg_image_dimmed * expr_plot
@@ -394,8 +374,6 @@ class CondensedSpatialViewer(BaseSpatialViewer):
         # Build the top control bar
         self.pre_layout = pn.Row(
             self.hide_zeros_toggle,
-            pn.Spacer(width=50),
-            self.marker_shape_ui,
             sizing_mode='stretch_width',
             margin=(0, 0, 10, 0)
         )
@@ -403,7 +381,6 @@ class CondensedSpatialViewer(BaseSpatialViewer):
     async def _update_plots(self, event):
         """Hot-swaps the underlying objects without destroying the DOM layout."""
         self.hide_zeros = self.hide_zeros_toggle.value
-        self.marker_shape = "circle" if self.marker_shape_toggle.value == "circle" else "square"
 
         self.main_row.loading = True
         await asyncio.sleep(0.05)
@@ -453,7 +430,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
             self.spatial_grid_container = pn.Column(self.main_row, sizing_mode='stretch_width')
 
             # Projections
-            expr_umap = create_umap_plot(self.df, self.expression_agg, color_col='raw_value', cmap="cividis_r", is_categorical=False, title=f"{self.current_gene} Expression")
+            expr_umap = create_umap_plot(self.df, self.expression_agg, color_col='raw_value', cmap="cividis_r", is_categorical=False, title=f"{self.current_gene} Expression", cbar_max=self.expression_98)
             cluster_umap = create_umap_plot(self.df, self.clusters_agg, color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters")
 
             umap_ghost_legend = self._create_ghost_legend().opts(show_legend=True, legend_position="top_left", xaxis=None, yaxis=None, show_frame=False, toolbar=None, width=needed_width, height=needed_height)
@@ -485,8 +462,8 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
             expr_df = self.df
 
         # Main row
-        expr_plot = create_spatial_plot(expr_df, self.expression_agg, y_col="y_plot", color_col='raw_value', cmap=self.expression_cmap, title=f"Expression: {self.current_gene}", shape=self.marker_shape)
-        cluster_plot = create_spatial_plot(self.df, self.clusters_agg, y_col="y_plot", color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters", shape=self.marker_shape)
+        expr_plot = create_spatial_plot(expr_df, self.expression_agg, y_col="y_plot", color_col='raw_value', cmap=self.expression_cmap, title=f"Expression: {self.current_gene}", cbar_max=self.expression_98)
+        cluster_plot = create_spatial_plot(self.df, self.clusters_agg, y_col="y_plot", color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters")
 
         self.master_image = self.bg_image
 
@@ -524,8 +501,6 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
         self.left_pre = pn.Column(
             pn.Row(
                 self.hide_zeros_toggle,
-                pn.Spacer(width=50),
-                self.marker_shape_ui,
                 sizing_mode='stretch_width'
             ),
         )
@@ -552,7 +527,6 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
                 'name_input': self.display_name,
                 'default_cb': self.make_default,
                 'hide_zeros_toggle': self.hide_zeros_toggle,
-                'marker_shape_toggle': self.marker_shape_toggle,
                 'dataset_id': self.settings.dataset_id
             },
             code=f"""
@@ -562,7 +536,6 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
                     displayName: name_input.value,
                     makeDefault: default_cb.active,
                     hideZeros: hide_zeros_toggle.active,
-                    markerShape: marker_shape_toggle.value
                 }}
             }});
 
@@ -573,7 +546,6 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
     async def _update_plots(self, event):
         """Triggered when a widget change occurs, allowing for hot-swapping."""
         self.hide_zeros = self.hide_zeros_toggle.value
-        self.marker_shape = "circle" if self.marker_shape_toggle.value == "circle" else "square"
 
         self.spatial_grid_container.loading = True
         await asyncio.sleep(0.05)

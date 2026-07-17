@@ -5,6 +5,7 @@ import pandas as pd
 import param
 from bokeh.models import CustomJSHover, HoverTool
 from holoviews.operation.datashader import spread
+import holoviews as hv
 from werkzeug.utils import secure_filename
 
 gear_root = Path(__file__).resolve().parents[2]
@@ -42,21 +43,13 @@ def fix_colorbar_hook(plot, element):
     except Exception:
         pass
 
-def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='raw_value', cmap='YlOrRd', is_categorical=False, title=None, shape="square"):
+def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='raw_value', cmap='fire_r', is_categorical=False, title=None, cbar_max=None):
     """Generates a Datashaded spatial plot colored by expression of the specified gene."""
 
-    # Fixes a Holoviews bug where the linker callback cannot find the categorical metadata dimension that Datashader named
-    # Gemini suggested
-    if is_categorical and isinstance(cmap, dict):
-        if hasattr(df[color_col], 'cat'):
-            categories = df[color_col].cat.categories
-        else:
-            categories = sorted(df[color_col].unique())
-        cmap = [cmap.get(cat, '#CCCCCC') for cat in categories]
 
     plot = df.hvplot.points(
         x=x_col, y=y_col, c=color_col,
-        rasterize=True, aggregator=agg,
+        rasterize=False, #aggregator=agg,
         cmap=cmap,
         xaxis=None, yaxis=None,
         title=title,
@@ -64,6 +57,7 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
         #Kill the colorbar if it's categorical
         colorbar=not is_categorical,
         clabel="",  # No label for the colorbar
+        clim = (0, cbar_max) if cbar_max is not None else None,
         legend=False,    # using a ghost legend so the legend does not squish the plot
 
         # Responsiveness if the browser is resized
@@ -72,55 +66,10 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
         min_width=275    # Tells Bokeh the canvas cannot drop below 275px (prevent squishing if the layout for the display is not full width)
     )
 
-    if color_col == "raw_value":
-        label_name = "Expression"
-        # Intercept the NaN values and round the long floats
-        js_code_expr = """
-            if (value === "NaN") {
-                return "No data";
-            }
-            return value.toFixed(2);
-        """
-        formatter = CustomJSHover(code=js_code_expr)
-        custom_hover = HoverTool(
-            tooltips=[(label_name, "@image{custom}")],
-            formatters={"@image": formatter}
-        )
-    else:
-        label_name = color_col.title()
-
-        # Unfortunately the datashader array only has the aggregated counts,
-        # so we need to do some JS magic (thanks Gemini) to get the hover to show the category name instead of the count
-        categories = list(df[color_col].cat.categories)
-
-        # Build the JavaScript to find the dominant category in the pixel
-        js_code = f"""
-            const counts = value;
-            const cats = {categories};
-            let max_val = -1;
-            let max_idx = -1;
-
-            // Find the index of the highest count
-            for (let i = 0; i < counts.length; i++) {{
-                if (counts[i] > max_val) {{
-                    max_val = counts[i];
-                    max_idx = i;
-                }}
-            }}
-
-            // Return the category name (and optionally the cell count!)
-            if (max_val > 0) {{
-                return cats[max_idx]; // + " (" + max_val + " cells)";
-            }}
-            return "No Data";
-        """
-
-        # Create the formatter and apply it strictly to the @image field
-        formatter = CustomJSHover(code=js_code)
-        custom_hover = HoverTool(
-            tooltips=[(label_name, "@image{custom}")],
-            formatters={"@image": formatter}
-        )
+    label_name = "Expression" if color_col == "raw_value" else color_col.title()
+    custom_hover = HoverTool(
+        tooltips=[(label_name, f"@{color_col}")],
+    )
 
     plot = plot.opts(
             tools=[custom_hover],
@@ -131,18 +80,12 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
             hooks=[autohide_toolbar, fix_colorbar_hook]
         )
 
-
-    if color_col == "raw_value":
-        # NOTE: Cluster downsampling will have a striped appearance called the Moiré Interference Pattern.
-        # I tried to use dynspread to remedy it, but the data points end up being too light.
-        # Mostly an issue with very dense data, like Visium HD
-        spread_px = 2 if shape == "circle" else 1
-        return spread(plot, px=spread_px, shape=shape)
-
     # Pure Data View (No artifacts, perfect grid)
+    radius = 4 if color_col == "raw_value" else 3
+    plot = plot.opts(radius=radius, line_color=None,)
     return plot
 
-def create_umap_plot(df, agg, color_col, cmap, is_categorical=False, title=None):
+def create_umap_plot(df, agg, color_col, cmap="cividis_r", is_categorical=False, title=None, cbar_max=None):
     """Generates a Datashaded UMAP."""
 
     # Fixes a Holoviews bug where the linker callback cannot find the categorical metadata dimension that Datashader named
@@ -165,6 +108,7 @@ def create_umap_plot(df, agg, color_col, cmap, is_categorical=False, title=None)
         #Kill the colorbar if it's categorical
         colorbar=not is_categorical,
         clabel="",  # No label for the colorbar
+        clim = (0, cbar_max) if cbar_max is not None else None,
         rasterize=True,
         responsive=True,
         legend=False,    # using a ghost legend so the legend does not squish the plot
@@ -221,11 +165,10 @@ def create_umap_plot(df, agg, color_col, cmap, is_categorical=False, title=None)
             formatters={"@image": formatter}
         )
 
-    default_tools = ['box_select', 'lasso_select', 'reset']
     plot = plot.opts(
             tools=[custom_hover],
-            active_tools=['box_select'],
-            default_tools=default_tools,
+            default_tools=["box_zoom", "wheel_zoom", "pan", "reset"],
+            active_tools=["wheel_zoom"],
             #data_aspect=1,  # square aspect ratio for UMAP
             xticks=0, yticks=0,    # No ticks.
             colorbar_opts={"width": 12},    # thin the colorbar out.
@@ -403,9 +346,6 @@ class Settings(param.Parameterized):
 
     hide_zeros = param.Boolean(
         doc="If true, hide zero expression values in the display.", default=False
-    )
-    marker_shape = param.String(
-        doc="The shape of the markers in the spatial data plot.", default="square"
     )
     save = param.Boolean(
         doc="If true, save this configuration as a new display.", default=False

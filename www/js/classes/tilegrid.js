@@ -2279,7 +2279,6 @@ class DatasetTile {
             projection_id: plotConfig.projection_id,
             is_zoomed: this.isZoomed,
             hide_zeros: plotConfig.hide_zeros,
-            marker_shape: plotConfig.marker_shape,
             expression_min_clip: plotConfig.expression_min_clip,
             disable_save: !apiCallsMixin.sessionId && this.isZoomed,  // If not logged in, then do not allow saving the display
         }
@@ -2395,10 +2394,9 @@ class DatasetTile {
 
             // Add the "save" event listener
             this._saveSpatialHandler = async (event) => {
-                const { displayName, makeDefault, markerShape, hideZeros } = event.detail;
+                const { displayName, makeDefault, hideZeros } = event.detail;
 
                 // Sync the local state to the plotConfig
-                plotConfig.marker_shape = markerShape;
                 plotConfig.hide_zeros = hideZeros
 
                 try {
