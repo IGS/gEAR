@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import param
-from bokeh.models import CustomJSHover, HoverTool
+from bokeh.models import CustomJS, CustomJSHover, HoverTool, Span
 from holoviews.operation.datashader import spread
 import holoviews as hv
 from werkzeug.utils import secure_filename
@@ -12,6 +12,10 @@ gear_root = Path(__file__).resolve().parents[2]
 www_path = gear_root.joinpath("www")
 PANEL_CSV_CACHE_DIR = www_path / "cache" / "spatial_panel"
 SPATIAL_IMAGE_NAME = "spatial_img.npy"
+
+# NOTE: When you see the word "glyph" thrown around, that is Bokeh's terminology for the actual visual representation of a data point.
+# Examples are circle, square, line, etc.
+# A "renderer" is the object that takes the data and draws it using a glyph.
 
 ### Functions
 
@@ -43,12 +47,118 @@ def fix_colorbar_hook(plot, element):
     except Exception:
         pass
 
-def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='raw_value', cmap='fire_r', is_categorical=False, title=None, cbar_max=None):
+def link_crosshairs(figures, color='#333333', line_dash='dashed', line_width=1):
+    """
+    Synchronizes a crosshair (a vertical + horizontal guide line) across multiple
+    already-rendered Bokeh figures that share the same coordinate space.
+
+    Pure client-side JS (a shared Span pair per figure, updated via a single
+    CustomJS on mousemove) rather than a HoloViews PointerXY stream, which
+    would round-trip to the Bokeh server on every mouse move.
+
+    Parameters
+    ----------
+    figures : list[bokeh.plotting.figure]
+        The concrete Bokeh figures to link. They should share the same x/y
+        coordinate system for the crosshair position to line up across them.
+    """
+    vlines, hlines = [], []
+    for fig in figures:
+        vline = Span(location=0, dimension='height', line_color=color,
+                    line_dash=line_dash, line_width=line_width, visible=False)
+        hline = Span(location=0, dimension='width', line_color=color,
+                    line_dash=line_dash, line_width=line_width, visible=False)
+        fig.add_layout(vline)
+        fig.add_layout(hline)
+        vlines.append(vline)
+        hlines.append(hline)
+
+    move_callback = CustomJS(args=dict(vlines=vlines, hlines=hlines), code="""
+        const x = cb_obj.x;
+        const y = cb_obj.y;
+        for (let i = 0; i < vlines.length; i++) {
+            vlines[i].location = x;
+            vlines[i].visible = true;
+            hlines[i].location = y;
+            hlines[i].visible = true;
+        }
+    """)
+    leave_callback = CustomJS(args=dict(vlines=vlines, hlines=hlines), code="""
+        for (let i = 0; i < vlines.length; i++) {
+            vlines[i].visible = false;
+            hlines[i].visible = false;
+        }
+    """)
+
+    for fig in figures:
+        fig.js_on_event('mousemove', move_callback)
+        fig.js_on_event('mouseleave', leave_callback)
+
+def link_ranges(figures):
+    """
+    Links pan/zoom together across multiple Bokeh figures by sharing the same
+    x_range/y_range model instances, so panning or box/wheel-zooming any one
+    of them moves all the others in lockstep. This is the standard Bokeh
+    "linked panning" technique.
+
+    Because it's a literal shared model (not values kept in sync via a
+    callback), Bokeh keeps every figure referencing it in sync automatically,
+    for both the live client and this server-side session.
+
+    Parameters
+    ----------
+    figures : list[bokeh.plotting.figure]
+        The concrete Bokeh figures to link. They should share the same x/y
+        coordinate system -- sharing ranges across figures with different
+        coordinate systems will make them all zoom to whatever the first
+        figure's extent is, which is rarely what you want.
+    """
+    if len(figures) < 2:
+        return
+    reference = figures[0]
+    for fig in figures[1:]:
+        fig.x_range = reference.x_range
+        fig.y_range = reference.y_range
+
+def _prepare_category_renderers(cmap, registry=None):
+    """
+    Returns a HoloViews plot hook for categorical (NdOverlay-based) spatial
+    plots that does two things once the plot is actually rendered:
+
+    1. Re-applies the intended category->color mapping directly onto each
+       category's Bokeh glyph. Works around a hvplot/HoloViews issue
+       where `by=` grouping combined with a dict `cmap` does not reliably
+       preserve the category->color correspondence, leading to colors
+       being assigned to the wrong category.
+    2. If `registry` (a dict) is provided, populates it with
+       {category_name: bokeh_glyph_renderer} so a caller can wire up
+       per-category show/hide from an external legend afterward
+    """
+    def hook(plot, element):
+        for key, subplot in getattr(plot, 'subplots', {}).items():
+            category = key[0] if isinstance(key, tuple) else key
+            renderer = subplot.handles.get('glyph_renderer')
+            if renderer is None:
+                continue
+
+            if isinstance(cmap, dict):
+                hexcolor = cmap.get(category, '#CCCCCC')
+                if hasattr(renderer.glyph, 'fill_color'):
+                    renderer.glyph.fill_color = hexcolor
+                if hasattr(renderer.glyph, 'line_color') and renderer.glyph.line_color is not None:
+                    renderer.glyph.line_color = hexcolor
+
+            if registry is not None:
+                registry[category] = renderer
+    return hook
+
+
+def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='raw_value', cmap='fire_r', is_categorical=False, title=None, cbar_max=None, category_renderers=None, min_height=300, min_width=275):
     """Generates a Datashaded spatial plot colored by expression of the specified gene."""
 
 
-    plot = df.hvplot.points(
-        x=x_col, y=y_col, c=color_col,
+    plot_kwargs = dict(
+        x=x_col, y=y_col,
         rasterize=False, #aggregator=agg,
         cmap=cmap,
         xaxis=None, yaxis=None,
@@ -62,27 +172,47 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
 
         # Responsiveness if the browser is resized
         responsive=True, # Automatically stretches to fill its container
-        min_height=300,   # Set a floor so plots don't collapse to 0px
-        min_width=275    # Tells Bokeh the canvas cannot drop below 275px (prevent squishing if the layout for the display is not full width)
+        min_height=min_height,   # Set a floor so plots don't collapse to 0px
+        min_width=min_width    # Tells Bokeh the canvas cannot drop below 275px (prevent squishing if the layout for the display is not full width)
     )
+
+    if is_categorical:
+        # `by=` splits this into one renderer per category
+        # instead of one combined glyph, which is what makes per-category
+        # show/hide possible downstream.
+        plot = df.hvplot.points(by=color_col, **plot_kwargs)
+    else:
+        plot = df.hvplot.points(c=color_col, **plot_kwargs)
+
 
     label_name = "Expression" if color_col == "raw_value" else color_col.title()
     custom_hover = HoverTool(
         tooltips=[(label_name, f"@{color_col}")],
     )
 
-    plot = plot.opts(
-            tools=[custom_hover],
-            default_tools=["box_zoom", "wheel_zoom", "pan", "reset"],
-            active_tools=["wheel_zoom"],
-            toolbar="below",
-            colorbar_opts={"width": 12},    # thin the colorbar out.
-            hooks=[autohide_toolbar, fix_colorbar_hook]
-        )
+    hooks = [autohide_toolbar, fix_colorbar_hook]
+    if is_categorical:
+        # Always run this for categorical plots -- it's also what fixes the
+        # by=/cmap color assignment, not just the registry population.
+        hooks.append(_prepare_category_renderers(cmap, category_renderers))
 
-    # Pure Data View (No artifacts, perfect grid)
-    radius = 4 if color_col == "raw_value" else 3
-    plot = plot.opts(radius=radius, line_color=None,)
+    opts_kwargs = dict(
+        tools=[custom_hover],
+        default_tools=["box_zoom", "wheel_zoom", "pan", "reset"],
+        active_tools=["wheel_zoom"],
+        toolbar="below",
+        hooks=hooks
+    )
+    if not is_categorical:
+        # This only applies to the continuous/expression plot.
+        opts_kwargs["colorbar_opts"] = {"width": 12}    # thin the colorbar out.
+
+    plot = plot.opts(**opts_kwargs)
+
+    # Pure Data View (No artifacts, perfect grid). Scoped to the Points type
+    # so this applies correctly whether `plot` is a single Points element
+    # (continuous/expression case) or an NdOverlay of Points (categorical case).
+    plot = plot.opts(hv.opts.Points(radius=3, line_color=None))
     return plot
 
 def create_umap_plot(df, agg, color_col, cmap="cividis_r", is_categorical=False, title=None, cbar_max=None):
@@ -344,9 +474,6 @@ class Settings(param.Parameterized):
     projection_id = param.String(doc="Projection ID to display", allow_None=True)
     expression_min_clip = param.Number(doc="Minimum expression value to clip", allow_None=True)
 
-    hide_zeros = param.Boolean(
-        doc="If true, hide zero expression values in the display.", default=False
-    )
     save = param.Boolean(
         doc="If true, save this configuration as a new display.", default=False
     )

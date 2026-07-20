@@ -2278,9 +2278,14 @@ class DatasetTile {
             gene_symbol: plotConfig.gene_symbol,
             projection_id: plotConfig.projection_id,
             is_zoomed: this.isZoomed,
-            hide_zeros: plotConfig.hide_zeros,
             expression_min_clip: plotConfig.expression_min_clip,
             disable_save: !apiCallsMixin.sessionId && this.isZoomed,  // If not logged in, then do not allow saving the display
+        }
+
+        // Grab the saved range from the global state if it exists and apply it to the prepPlotConfig
+        const savedRange = window.gearSpatialViewState?.[this.dataset.id];
+        if (savedRange) {
+            Object.assign(prepPlotConfig, savedRange);
         }
 
         try {
@@ -2394,10 +2399,8 @@ class DatasetTile {
 
             // Add the "save" event listener
             this._saveSpatialHandler = async (event) => {
-                const { displayName, makeDefault, hideZeros } = event.detail;
+                const { displayName, makeDefault } = event.detail;
 
-                // Sync the local state to the plotConfig
-                plotConfig.hide_zeros = hideZeros
 
                 try {
                     if (!apiCallsMixin.sessionId) {

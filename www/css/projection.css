@@ -76,6 +76,7 @@ ul#go-terms li {
     display: flex;
     flex-direction: column;
     overflow: visible;
+    min-width: 0; /* allow flex items to shrink below the content's natural width */
 }
 
 #result-panel-grid .js-tile {
@@ -92,7 +93,7 @@ ul#go-terms li {
 
     /* Useful for spatial plots that use a min_width to ensure they do not bleed out of the container */
     overflow-x: auto;
-    overflow-y: hidden;
+    overflow-y: auto;
 }
 
 /* tSNE plots */

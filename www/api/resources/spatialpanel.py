@@ -362,17 +362,31 @@ class SpatialPanel(Resource):
         min_genes = req.get('min_genes', 0)
         min_genes = int(min_genes) if min_genes is not None else 0
         expression_min_clip = req.get('expression_min_clip', None)
-        hide_zeros = req.get('hide_zeros', False)
         nosave = req.get('disable_save', True)  # Disable save button for saving displays
+
+        x_range_start = req.get('x_range_start', None)
+        x_range_end = req.get('x_range_end', None)
+        y_range_start = req.get('y_range_start', None)
+        y_range_end = req.get('y_range_end', None)
 
         config = {
             "dataset_id": dataset_id,
             "gene_symbol": gene_symbol,
             "projection_id": projection_id,
             "expression_min_clip": expression_min_clip,
-            "hide_zeros": hide_zeros,
             "nosave": nosave
         }
+
+        # All 4 values must be provided to set the initial view range, otherwise ignore them
+        if x_range_start is not None \
+            and x_range_end is not None \
+            and y_range_start is not None \
+            and y_range_end is not None:
+            config["x_range_start"] = x_range_start
+            config["x_range_end"] = x_range_end
+            config["y_range_start"] = y_range_start
+            config["y_range_end"] = y_range_end
+
 
         response = {
             "script": None,
