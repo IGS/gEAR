@@ -2478,13 +2478,17 @@ class DatasetTile {
     }
 
     async saveSpatialParameters(displayName, makeDefault, plotConfig) {
-        console.log(plotConfig);
         if (this.type === "multi" ) {
             throw new Error("Saving spatial display is not supported for multi-gene displays.");
         }
         const datasetId = this.dataset.id;
         const plotType = "spatial_panel";
         const isMultigene = (this.type === "single") ? 0 : 1;  // Should be 0 for now.
+
+        const savedRange = window.gearSpatialViewState?.[this.dataset.id];
+        if (savedRange) {
+            Object.assign(plotConfig, savedRange);
+        }
 
         try {
             const {display_id: displayId, success: saveSuccess} = await apiCallsMixin.saveDatasetDisplay(datasetId, null, displayName, plotType, plotConfig);
