@@ -195,6 +195,8 @@ def create_spatial_plot(df:pd.DataFrame, x_col:str='spatial1', y_col:str='spatia
     custom_hover = HoverTool(
         tooltips=[(label_name, f"@{color_col}")],
     )
+    default_tools=["box_zoom", "wheel_zoom", "pan", "reset"]
+    active_tools=["wheel_zoom", "pan"]
 
     hooks = [autohide_toolbar, fix_colorbar_hook]
     if is_categorical:
@@ -202,12 +204,7 @@ def create_spatial_plot(df:pd.DataFrame, x_col:str='spatial1', y_col:str='spatia
         # by=/cmap color assignment, not just the registry population.
         hooks.append(_prepare_category_renderers(cmap, category_renderers))
 
-    opts_kwargs = dict(
-        default_tools=["box_zoom", "wheel_zoom", "pan", "reset"],
-        active_tools=["wheel_zoom"],
-        toolbar="below",
-        hooks=hooks
-    )
+    opts_kwargs = dict(hooks=hooks)
     if not is_categorical:
         # This only applies to the continuous/expression plot.
         opts_kwargs["colorbar_opts"] = {"width": 12}    # thin the colorbar out.
@@ -215,7 +212,12 @@ def create_spatial_plot(df:pd.DataFrame, x_col:str='spatial1', y_col:str='spatia
     plot = plot.opts(**opts_kwargs)
 
     # Add some opts that are scoped to the Points element itself, not the overall plot.
-    plot = plot.opts(hv.opts.Points(radius=radius, line_color=None, tools=[custom_hover]))
+    # These particular options will override any defaults that hvplot may try to add in.
+    plot = plot.opts(hv.opts.Points(
+        radius=radius, line_color=None,
+        tools=[custom_hover], default_tools=default_tools, active_tools=active_tools,
+        toolbar="below",
+        ))
     return plot
 
 def create_umap_plot(df:pd.DataFrame, agg:callable, color_col:str, cmap:str="cividis_r", is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None):
@@ -301,7 +303,7 @@ def create_umap_plot(df:pd.DataFrame, agg:callable, color_col:str, cmap:str="civ
     plot = plot.opts(
             tools=[custom_hover],
             default_tools=["box_zoom", "wheel_zoom", "pan", "reset"],
-            active_tools=["wheel_zoom"],
+            active_tools=["wheel_zoom", "pan"],
             #data_aspect=1,  # square aspect ratio for UMAP
             xticks=0, yticks=0,    # No ticks.
             colorbar_opts={"width": 12},    # thin the colorbar out.

@@ -213,7 +213,7 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             self.bg_image_dimmed = hv.RGB(dimmed_array, bounds=img_bounds).opts(
                         xaxis=None, yaxis=None, responsive=True,
                         # No tools or toolbar as the composite plot takes care of this
-                        tools=[], active_tools=[], default_tools=[],
+                        tools=[], default_tools=[],
                         hooks=[autohide_toolbar],
                     )
 
@@ -528,7 +528,7 @@ class CondensedSpatialViewer(BaseSpatialViewer):
     def _generate_spatial_plots(self):
         """Generates the raw HoloViews objects without wrapping them in Panel layouts."""
         if getattr(self, 'bg_image', None) is not None:
-            self.bg_image = self.bg_image.opts(default_tools=["box_zoom", "wheel_zoom", "pan", "reset"], min_width=275, min_height=300)
+            self.bg_image = self.bg_image.opts(default_tools=["box_zoom", "wheel_zoom", "pan", "reset"], active_tools=["wheel_zoom", "pan"], min_width=275, min_height=300)
 
         # This gets filled in during the cluster spatial plot creation
         # It is a registry of category to renderer, which can then be
@@ -635,7 +635,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
     def _generate_spatial_plots(self):
         """Generates raw objects and prepares the background zoom attributes."""
         if getattr(self, 'bg_image', None) is not None:
-            self.bg_image = self.bg_image.opts(default_tools=["box_zoom", "wheel_zoom", "pan", "reset"], min_width=EXPANDED_PLOT_MIN_WIDTH, min_height=EXPANDED_PLOT_MIN_HEIGHT)
+            self.bg_image = self.bg_image.opts(default_tools=["box_zoom", "wheel_zoom", "pan", "reset"], active_tools=["wheel_zoom", "pan"], min_width=EXPANDED_PLOT_MIN_WIDTH, min_height=EXPANDED_PLOT_MIN_HEIGHT)
 
         # This gets filled in during the cluster spatial plot creation
         # It is a registry of category to renderer, which can then be
