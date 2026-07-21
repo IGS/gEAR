@@ -1,5 +1,7 @@
 from pathlib import Path
+import sys
 
+import datashader as ds
 import numpy as np
 import pandas as pd
 import param
@@ -12,6 +14,9 @@ gear_root = Path(__file__).resolve().parents[2]
 www_path = gear_root.joinpath("www")
 PANEL_CSV_CACHE_DIR = www_path / "cache" / "spatial_panel"
 SPATIAL_IMAGE_NAME = "spatial_img.npy"
+
+DEFAULT_PLOT_WIDTH = 275
+DEFAULT_PLOT_HEIGHT = 300
 
 # NOTE: When you see the word "glyph" thrown around, that is Bokeh's terminology for the actual visual representation of a data point.
 # Examples are circle, square, line, etc.
@@ -153,9 +158,10 @@ def _prepare_category_renderers(cmap, registry=None):
     return hook
 
 
-def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='raw_value', cmap='fire_r', is_categorical=False, title=None, cbar_max=None, category_renderers=None, min_height=300, min_width=275):
+def create_spatial_plot(df:pd.DataFrame, x_col:str='spatial1', y_col:str='spatial2', color_col:str='raw_value', cmap:str='fire_r',
+                        is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None, category_renderers:dict|None=None,
+                        min_height:int=DEFAULT_PLOT_HEIGHT, min_width:int=DEFAULT_PLOT_WIDTH, radius:int=3):
     """Generates a Datashaded spatial plot colored by expression of the specified gene."""
-
 
     plot_kwargs = dict(
         x=x_col, y=y_col,
@@ -197,7 +203,6 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
         hooks.append(_prepare_category_renderers(cmap, category_renderers))
 
     opts_kwargs = dict(
-        tools=[custom_hover],
         default_tools=["box_zoom", "wheel_zoom", "pan", "reset"],
         active_tools=["wheel_zoom"],
         toolbar="below",
@@ -209,13 +214,11 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
 
     plot = plot.opts(**opts_kwargs)
 
-    # Pure Data View (No artifacts, perfect grid). Scoped to the Points type
-    # so this applies correctly whether `plot` is a single Points element
-    # (continuous/expression case) or an NdOverlay of Points (categorical case).
-    plot = plot.opts(hv.opts.Points(radius=3, line_color=None))
+    # Add some opts that are scoped to the Points element itself, not the overall plot.
+    plot = plot.opts(hv.opts.Points(radius=radius, line_color=None, tools=[custom_hover]))
     return plot
 
-def create_umap_plot(df, agg, color_col, cmap="cividis_r", is_categorical=False, title=None, cbar_max=None):
+def create_umap_plot(df:pd.DataFrame, agg:callable, color_col:str, cmap:str="cividis_r", is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None):
     """Generates a Datashaded UMAP."""
 
     # Fixes a Holoviews bug where the linker callback cannot find the categorical metadata dimension that Datashader named
@@ -242,7 +245,7 @@ def create_umap_plot(df, agg, color_col, cmap="cividis_r", is_categorical=False,
         rasterize=True,
         responsive=True,
         legend=False,    # using a ghost legend so the legend does not squish the plot
-        height=300,
+        height=DEFAULT_PLOT_HEIGHT,
     )
 
     if is_categorical:
@@ -375,6 +378,79 @@ def clip_expression_values(dataframe: pd.DataFrame, min_clip: float | None=None,
 
     dataframe["raw_value"] = dataframe["raw_value"].clip(lower=min_clip, upper=max_clip)
     return dataframe
+
+def compute_aggregation_params(df, x_col, y_col, target_markers=80_000, min_dim=275):
+    """
+    Computes (width, height, radius) for create_datashader_agg + create_spatial_plot.
+
+    width/height are proportional to the data's x/y extent, so bin spacing
+    comes out equal in both dimensions -- an aggregation resolution that
+    isn't proportional to the data's aspect ratio produces different spacing
+    in x vs y, and a single radius can't match both, causing visible tearing.
+    radius is derived from that spacing so markers tile without gaps or overlap.
+    """
+    x_extent = df[x_col].max() - df[x_col].min()
+    y_extent = df[y_col].max() - df[y_col].min()
+    aspect = x_extent / y_extent if y_extent else 1.0
+
+    height = max(min_dim, int(round((target_markers / aspect) ** 0.5)))
+    width = max(min_dim, int(round(height * aspect)))
+
+    spacing = y_extent / height
+    radius = spacing / 2 * 1.05  # slight overlap avoids hairline gaps
+
+    return width, height, radius
+
+def create_datashader_agg(df, x: str, y: str, width:int=DEFAULT_PLOT_WIDTH, height:int=DEFAULT_PLOT_HEIGHT) -> "DataArray":
+    """
+    Aggregates data points from the DataFrame using Datashader, producing a summary for visualization.
+
+    Parameters:
+        df (pd.DataFrame): The DataFrame containing the data to aggregate.
+        x (str): The name of the column to use for the x-axis.
+        y (str): The name of the column to use for the y-axis.
+
+    Returns:
+        xarray.DataArray: An aggregated DataArray where each pixel contains the maximum 'raw_value' expression
+        and a boolean indicating the presence of each cluster (by 'clusters_cat_codes').
+
+    Notes:
+        - The x and y values are swapped for aggregation compared to plotting.
+        - The aggregation computes the maximum 'raw_value' per pixel and tracks cluster membership.
+    """
+
+    # Create a canvas with the specified width and height
+    cvs = ds.Canvas(plot_width=width, plot_height=height)
+
+    # NOTE: This seems to affect the expression aggregation but does not matter for the clusters
+    # We need to swap the x and y values for aggregation compared to what we eventually plot.
+
+    df["clusters_cat_codes"] = df["clusters_cat_codes"].astype("category")
+
+    agg = cvs.points(
+        df,
+        x=x,
+        y=y,
+        agg=ds.summary(
+            expression=ds.max("raw_value"),
+            clusters=ds.by("clusters_cat_codes", ds.any()),  # type: ignore
+        ),
+    )
+    return agg
+
+def create_clusters_df(agg):
+    agg_df = agg.to_dataframe(name="clusters_cat_codes")
+    agg_df = agg_df[agg_df["clusters_cat_codes"]]
+    # The columns we want are in the multi-index, so we need to make them into a dataframe
+    final_df =  agg_df.index.to_frame(index=False)
+    return final_df
+
+def create_expression_df(agg):
+    agg_df = agg.to_dataframe(name="raw_value")
+    # Drop missing values
+    agg_df = agg_df.dropna()
+    final_df = agg_df.reset_index()
+    return final_df
 
 def normalize_expression_name(filename) -> str:
         """

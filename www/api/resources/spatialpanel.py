@@ -254,17 +254,15 @@ def create_gene_df(adata: "AnnData", gene_symbol: str) -> pd.DataFrame:
 
 def map_colors(dataframe: pd.DataFrame, spatial_img: np.ndarray | None, is_cool_dataset: bool) -> pd.DataFrame:
     # Assuming df is your DataFrame and it has a column "clusters"
-    unique_clusters = dataframe["clusters"].unique()
+    unique_clusters = dataframe["clusters"].cat.categories
     sorted_clusters = sort_clusters(unique_clusters)
-
-    unique_clusters = sorted_clusters
 
     if "colors" in dataframe:
         color_map = {
             cluster: dataframe[dataframe["clusters"] == cluster][
                 "colors"
             ].to_numpy()[0]
-            for cluster in unique_clusters
+            for cluster in sorted_clusters
         }
     else:
         # Some glasbey_bw_colors may not show well on a dark background so use "light" colors if images are not present
@@ -278,7 +276,7 @@ def map_colors(dataframe: pd.DataFrame, spatial_img: np.ndarray | None, is_cool_
 
         color_map = {
             cluster: swatch_color[i % len(swatch_color)]
-            for i, cluster in enumerate(unique_clusters)
+            for i, cluster in enumerate(sorted_clusters)
         }
         # Map the colors to the clusters
         dataframe["colors"] = dataframe["clusters"].map(color_map)
@@ -418,7 +416,10 @@ class SpatialPanel(Resource):
             # Generate spatial image if not already cached
             spatial_img = None
             spatial_img_path = DATASET_DIR / "spatial_img.npy"
-            if not spatial_img_path.is_file():
+            if spatial_img_path.is_file():
+                # Load so that the right glasbey colors can be mapped to the clusters
+                spatial_img = np.load(spatial_img_path)
+            else:
                 spatial_img = generate_spatial_image_df(spatial_obj)
 
                 if spatial_img is not None:

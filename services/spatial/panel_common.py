@@ -14,6 +14,10 @@ from common import (
     Settings,
     autohide_toolbar,
     clip_expression_values,
+    compute_aggregation_params,
+    create_datashader_agg,
+    create_clusters_df,
+    create_expression_df,
     create_spatial_plot,
     create_umap_plot,
     create_violin_plot,
@@ -224,6 +228,12 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
         self.expr_df = self.df[self.df['raw_value'] > 0]
 
+        # Create a mapping of cluster cat codes to names to re-add after datashader aggregation
+        self.cluster_map = {
+            code: self.df[self.df["clusters_cat_codes"] == code]["clusters"].to_numpy()[0]
+            for code in self.df["clusters_cat_codes"].unique()
+        }
+
         # Get 98th-percentile of valid expression for clipping the color scale. This is to avoid outliers dominating the color mapping.
         # Using all data runs into the issue of the value being 0.
         self.expression_98 = self.expr_df["raw_value"].quantile(0.98)
@@ -234,10 +244,20 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         self._init_widgets()
 
         # Precompute the datashader aggregations since they can be shared across multiple plots
-        self.expression_agg = ds.mean('raw_value')
+        # For some reason, the x and y values are swapped for aggregation compared to what we eventually plot, so we need to swap them here.
+        agg_width, agg_height, self.marker_radius = compute_aggregation_params(self.df, x_col="y_plot", y_col="spatial1")
+        self.agg = create_datashader_agg(self.df, x="y_plot", y="spatial1", width=agg_width, height=agg_height)
+
+        self.expression_agg = self.agg["expression"]
+        self.umap_expression_agg = ds.max('raw_value')
+        self.expression_df = create_expression_df(self.expression_agg)
+        self.expression_df = self.expression_df[self.expression_df['raw_value'] > 0]
         self.expression_cmap = 'fire_r'
 
-        self.clusters_agg = ds.count_cat('clusters')
+        self.clusters_agg = self.agg["clusters"]
+        self.umap_clusters_agg = ds.count_cat('clusters')
+        self.clusters_df = create_clusters_df(self.clusters_agg)
+        self.clusters_df["clusters"] = self.clusters_df["clusters_cat_codes"].map(self.cluster_map)
         self.cluster_cmap = dict(zip(self.df['clusters'], self.df['colors']))
 
 
@@ -389,7 +409,7 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         recompute and repaint it, the same way toggling a renderer's
         `visible` via click_policy does.
 
-        NOTE: Still don't fully understand the bug.
+        NOTE: SAdkins - Still don't fully understand the bug.
         """
         if not ghost_fig.legend:
             return
@@ -516,8 +536,12 @@ class CondensedSpatialViewer(BaseSpatialViewer):
         category_renderers = {}
 
         # Generate base plots
-        expr_plot = create_spatial_plot(self.expr_df, self.expression_agg, y_col="y_plot", color_col='raw_value', cmap=self.expression_cmap, title=f"Expression: {self.current_gene}", cbar_max=self.expression_98)
-        cluster_plot = create_spatial_plot(self.df, self.clusters_agg, y_col="y_plot", color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters", category_renderers=category_renderers)
+        expr_plot = create_spatial_plot(self.expression_df, y_col="y_plot", color_col='raw_value',
+                                        cmap=self.expression_cmap, title=f"Expression: {self.current_gene}",
+                                        cbar_max=self.expression_98, radius=self.marker_radius)
+        cluster_plot = create_spatial_plot(self.clusters_df, y_col="y_plot", color_col='clusters',
+                                        cmap=self.cluster_cmap, is_categorical=True, title="Clusters",
+                                        category_renderers=category_renderers, radius=self.marker_radius)
 
         if hasattr(self, 'bg_image_dimmed') and self.bg_image_dimmed is not None:
             main_expr = self.bg_image_dimmed * expr_plot
@@ -587,8 +611,8 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
             self.spatial_grid_container = pn.Column(self.main_row, sizing_mode='stretch_width')
 
             # Projections
-            expr_umap = create_umap_plot(self.df, self.expression_agg, color_col='raw_value', cmap="cividis_r", is_categorical=False, title=f"{self.current_gene} Expression", cbar_max=self.expression_98)
-            cluster_umap = create_umap_plot(self.df, self.clusters_agg, color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters")
+            expr_umap = create_umap_plot(self.df, self.umap_expression_agg, color_col='raw_value', cmap="cividis_r", is_categorical=False, title=f"{self.current_gene} Expression", cbar_max=self.expression_98)
+            cluster_umap = create_umap_plot(self.df, self.umap_clusters_agg, color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters")
 
             umap_ghost_legend = self._create_ghost_legend().opts(show_legend=True, legend_position="top_left", xaxis=None, yaxis=None, show_frame=False, toolbar=None, width=needed_width, height=needed_height)
             umap_legend_container = pn.Column(umap_ghost_legend, width=200, height=300, scroll=True, margin=(0, 0, 0, 0))
@@ -619,8 +643,14 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
         category_renderers = {}
 
         # Main row
-        expr_plot = create_spatial_plot(self.expr_df, self.expression_agg, y_col="y_plot", color_col='raw_value', cmap=self.expression_cmap, title=f"Expression: {self.current_gene}", cbar_max=self.expression_98, min_height=EXPANDED_PLOT_MIN_HEIGHT, min_width=EXPANDED_PLOT_MIN_WIDTH)
-        cluster_plot = create_spatial_plot(self.df, self.clusters_agg, y_col="y_plot", color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters", category_renderers=category_renderers, min_height=EXPANDED_PLOT_MIN_HEIGHT, min_width=EXPANDED_PLOT_MIN_WIDTH)
+        expr_plot = create_spatial_plot(self.expression_df, y_col="y_plot", color_col='raw_value',
+                                        cmap=self.expression_cmap, title=f"Expression: {self.current_gene}",
+                                        cbar_max=self.expression_98, min_height=EXPANDED_PLOT_MIN_HEIGHT,
+                                        min_width=EXPANDED_PLOT_MIN_WIDTH, radius=self.marker_radius)
+        cluster_plot = create_spatial_plot(self.clusters_df, y_col="y_plot", color_col='clusters',
+                                        cmap=self.cluster_cmap, is_categorical=True, title="Clusters",
+                                        category_renderers=category_renderers, min_height=EXPANDED_PLOT_MIN_HEIGHT,
+                                        min_width=EXPANDED_PLOT_MIN_WIDTH, radius=self.marker_radius)
 
         self.master_image = self.bg_image
 
