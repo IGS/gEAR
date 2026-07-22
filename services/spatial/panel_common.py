@@ -688,7 +688,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
     def _generate_umap_plots(self):
         umap_category_renderers = {}
         expr_umap = create_umap_plot(
-            self.expression_umap_df, color_col='raw_value', cmap="cividis_r", is_categorical=False,
+            self.expression_umap_df, color_col='raw_value', cmap="fire_r", is_categorical=False,
             title=f"{self.current_gene} Expression", cbar_max=self.expression_98, radius=self.umap_marker_radius
             )
         cluster_umap = create_umap_plot(

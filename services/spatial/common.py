@@ -220,7 +220,7 @@ def create_spatial_plot(df:pd.DataFrame, x_col:str='spatial1', y_col:str='spatia
         ))
     return plot
 
-def create_umap_plot(df:pd.DataFrame, color_col:str="raw_value", cmap:str="cividis_r", is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None, category_renderers:dict|None=None, radius:float=0.15):
+def create_umap_plot(df:pd.DataFrame, color_col:str="raw_value", cmap:str="fire_r", is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None, category_renderers:dict|None=None, radius:float=0.15):
     """Generates a Datashaded UMAP."""
 
     color_col_title = title if title else color_col.title()
