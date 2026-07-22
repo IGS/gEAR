@@ -246,18 +246,24 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         # Precompute the datashader aggregations since they can be shared across multiple plots
         # For some reason, the x and y values are swapped for aggregation compared to what we eventually plot, so we need to swap them here.
         agg_width, agg_height, self.marker_radius = compute_aggregation_params(self.df, x_col="y_plot", y_col="spatial1")
+        # Target_markers is lower for UMAP so we can keep things performant
+        umap_agg_width, umap_agg_height, self.umap_marker_radius = compute_aggregation_params(self.df, x_col="UMAP1", y_col="UMAP2", target_markers=30_000)
         self.agg = create_datashader_agg(self.df, x="y_plot", y="spatial1", width=agg_width, height=agg_height)
+        self.umap_agg = create_datashader_agg(self.df, x="UMAP1", y="UMAP2", width=umap_agg_width, height=umap_agg_height)
 
         self.expression_agg = self.agg["expression"]
-        self.umap_expression_agg = ds.max('raw_value')
         self.expression_df = create_expression_df(self.expression_agg)
         self.expression_df = self.expression_df[self.expression_df['raw_value'] > 0]
+        self.expression_umap_agg = self.umap_agg["expression"]
+        self.expression_umap_df = create_expression_df(self.expression_umap_agg)
         self.expression_cmap = 'fire_r'
 
         self.clusters_agg = self.agg["clusters"]
-        self.umap_clusters_agg = ds.count_cat('clusters')
         self.clusters_df = create_clusters_df(self.clusters_agg)
         self.clusters_df["clusters"] = self.clusters_df["clusters_cat_codes"].map(self.cluster_map)
+        self.clusters_umap_agg = self.umap_agg["clusters"]
+        self.clusters_umap_df = create_clusters_df(self.clusters_umap_agg)
+        self.clusters_umap_df["clusters"] = self.clusters_umap_df["clusters_cat_codes"].map(self.cluster_map)
         self.cluster_cmap = dict(zip(self.df['clusters'], self.df['colors']))
 
 
@@ -610,15 +616,30 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
 
             self.spatial_grid_container = pn.Column(self.main_row, sizing_mode='stretch_width')
 
-            # Projections
-            expr_umap = create_umap_plot(self.df, self.umap_expression_agg, color_col='raw_value', cmap="cividis_r", is_categorical=False, title=f"{self.current_gene} Expression", cbar_max=self.expression_98)
-            cluster_umap = create_umap_plot(self.df, self.umap_clusters_agg, color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters")
+            ### UMAP
+            expr_umap, cluster_umap, umap_category_renderers = self._generate_umap_plots()
+            bokeh_expr_umap = hv.render(expr_umap, backend='bokeh')
+            bokeh_cluster_umap = hv.render(cluster_umap, backend='bokeh')
+            umap_figures_to_link = [bokeh_expr_umap, bokeh_cluster_umap]
 
-            umap_ghost_legend = self._create_ghost_legend().opts(show_legend=True, legend_position="top_left", xaxis=None, yaxis=None, show_frame=False, toolbar=None, width=needed_width, height=needed_height)
-            umap_legend_container = pn.Column(umap_ghost_legend, width=200, height=300, scroll=True, margin=(0, 0, 0, 0))
+            expr_umap_pane = pn.pane.Bokeh(bokeh_expr_umap, sizing_mode='stretch_width')
+            cluster_umap_pane = pn.pane.Bokeh(bokeh_cluster_umap, sizing_mode='stretch_width')
 
-            self.umap_row_container = pn.Row(expr_umap, cluster_umap, umap_legend_container, sizing_mode='stretch_width')
+            umap_ghost_legend = self._create_ghost_legend().opts(
+                show_legend=True, legend_position="top_left", xaxis=None, yaxis=None, show_frame=False, toolbar=None, width=needed_width, height=needed_height
+                )
 
+            link_ranges(umap_figures_to_link)
+            link_crosshairs(umap_figures_to_link)
+
+            bokeh_umap_ghost = hv.render(umap_ghost_legend, backend='bokeh')
+            self._sync_cluster_legend_toggle(bokeh_umap_ghost, umap_category_renderers)
+            self._force_legend_redraw_on_range_change(bokeh_umap_ghost, bokeh_cluster_umap)
+            umap_legend_container = pn.Column(pn.pane.Bokeh(bokeh_umap_ghost), width=200, height=300, scroll=True, margin=(0, 0, 0, 0))
+
+            self.umap_row_container = pn.Row(expr_umap_pane, cluster_umap_pane, umap_legend_container, sizing_mode='stretch_width')
+
+            ### Violin
             violin_base = create_violin_plot(self.df, y_col='raw_value', group_col='clusters', cmap=self.cluster_cmap, title=f"Expression Distribution: {self.current_gene} by Cluster")
             self.violin_row_container = pn.Row(violin_base, sizing_mode='stretch_width')
 
@@ -663,6 +684,18 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
             main_cluster = cluster_plot
 
         return self.bg_image, main_expr, main_cluster, category_renderers
+
+    def _generate_umap_plots(self):
+        umap_category_renderers = {}
+        expr_umap = create_umap_plot(
+            self.expression_umap_df, color_col='raw_value', cmap="cividis_r", is_categorical=False,
+            title=f"{self.current_gene} Expression", cbar_max=self.expression_98, radius=self.umap_marker_radius
+            )
+        cluster_umap = create_umap_plot(
+            self.clusters_umap_df, color_col='clusters', cmap=self.cluster_cmap, is_categorical=True,
+            title="Clusters", category_renderers=umap_category_renderers, radius=self.umap_marker_radius
+            )
+        return expr_umap, cluster_umap, umap_category_renderers
 
     def _init_widgets(self):
         self.display_name = pn.widgets.TextInput(

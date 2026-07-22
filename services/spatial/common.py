@@ -220,97 +220,66 @@ def create_spatial_plot(df:pd.DataFrame, x_col:str='spatial1', y_col:str='spatia
         ))
     return plot
 
-def create_umap_plot(df:pd.DataFrame, agg:callable, color_col:str, cmap:str="cividis_r", is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None):
+def create_umap_plot(df:pd.DataFrame, color_col:str="raw_value", cmap:str="cividis_r", is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None, category_renderers:dict|None=None, radius:float=0.15):
     """Generates a Datashaded UMAP."""
-
-    # Fixes a Holoviews bug where the linker callback cannot find the categorical metadata dimension that Datashader named
-    # Gemini suggested
-    if is_categorical and isinstance(cmap, dict):
-        if hasattr(df[color_col], 'cat'):
-            categories = df[color_col].cat.categories
-        else:
-            categories = sorted(df[color_col].unique())
-        cmap = [cmap.get(cat, '#CCCCCC') for cat in categories]
 
     color_col_title = title if title else color_col.title()
 
-    plot =  df.hvplot.points(
-        x='UMAP1', y='UMAP2', c=color_col,
-        aggregator=agg, cmap=cmap,
+    plot_kwargs = dict(
+        x='UMAP1', y='UMAP2',
+        rasterize=False, #aggregator=agg,
+        cmap=cmap,
         xaxis="bottom", yaxis="left",
         xlabel="UMAP_1", ylabel="UMAP_2",
         title=f"UMAP: {color_col_title}",
+
         #Kill the colorbar if it's categorical
         colorbar=not is_categorical,
         clabel="",  # No label for the colorbar
         clim = (0, cbar_max) if cbar_max is not None else None,
-        rasterize=True,
-        responsive=True,
         legend=False,    # using a ghost legend so the legend does not squish the plot
-        height=DEFAULT_PLOT_HEIGHT,
+
+        # Responsiveness if the browser is resized
+        responsive=True, # Automatically stretches to fill its container
+        height=DEFAULT_PLOT_HEIGHT    # Tells Bokeh the canvas cannot drop below 275px (prevent squishing if the layout for the display is not full width)
     )
 
     if is_categorical:
-        label_name = color_col.title()
-
-        # Unfortunately the datashader array only has the aggregated counts,
-        # so we need to do some JS magic (thanks Gemini) to get the hover to show the category name instead of the count
-        categories = list(df[color_col].cat.categories)
-
-        # Build the JavaScript to find the dominant category in the pixel
-        js_code = f"""
-            const counts = value;
-            const cats = {categories};
-            let max_val = -1;
-            let max_idx = -1;
-
-            // Find the index of the highest count
-            for (let i = 0; i < counts.length; i++) {{
-                if (counts[i] > max_val) {{
-                    max_val = counts[i];
-                    max_idx = i;
-                }}
-            }}
-
-            // Return the category name (and optionally the cell count!)
-            if (max_val > 0) {{
-                return cats[max_idx]; // + " (" + max_val + " cells)";
-            }}
-            return "No Data";
-        """
-
-        # Create the formatter and apply it strictly to the @image field
-        formatter = CustomJSHover(code=js_code)
-        custom_hover = HoverTool(
-            tooltips=[(label_name, "@image{custom}")],
-            formatters={"@image": formatter}
-        )
+        # `by=` splits this into one renderer per category
+        # instead of one combined glyph, which is what makes per-category
+        # show/hide possible downstream.
+        plot = df.hvplot.points(by=color_col, **plot_kwargs)
     else:
-        label_name = "Expression"
-        # Intercept the NaN values and round the long floats
-        js_code_expr = """
-            if (value === "NaN") {
-                return "No data";
-            }
-            return value.toFixed(2);
-        """
-        formatter = CustomJSHover(code=js_code_expr)
-        custom_hover = HoverTool(
-            tooltips=[(label_name, "@image{custom}")],
-            formatters={"@image": formatter}
-        )
+        plot = df.hvplot.points(c=color_col, **plot_kwargs)
 
-    plot = plot.opts(
-            tools=[custom_hover],
-            default_tools=["box_zoom", "wheel_zoom", "pan", "reset"],
-            active_tools=["wheel_zoom", "pan"],
-            #data_aspect=1,  # square aspect ratio for UMAP
-            xticks=0, yticks=0,    # No ticks.
-            colorbar_opts={"width": 12},    # thin the colorbar out.
-            hooks=[autohide_toolbar, fix_colorbar_hook]
-        )
+    label_name = "Expression" if color_col == "raw_value" else color_col.title()
+    custom_hover = HoverTool(
+        tooltips=[(label_name, f"@{color_col}")],
+    )
+    default_tools=["box_zoom", "wheel_zoom", "pan", "reset"]
+    active_tools=["wheel_zoom", "pan"]
 
-    return spread(plot)
+    hooks = [autohide_toolbar, fix_colorbar_hook]
+    if is_categorical:
+        # Always run this for categorical plots -- it's also what fixes the
+        # by=/cmap color assignment, not just the registry population.
+        hooks.append(_prepare_category_renderers(cmap, category_renderers))
+
+    opts_kwargs = dict(hooks=hooks)
+    if not is_categorical:
+        # This only applies to the continuous/expression plot.
+        opts_kwargs["colorbar_opts"] = {"width": 12}    # thin the colorbar out.
+
+    plot = plot.opts(**opts_kwargs)
+
+    # Add some opts that are scoped to the Points element itself, not the overall plot.
+    # These particular options will override any defaults that hvplot may try to add in.
+    plot = plot.opts(hv.opts.Points(
+        radius=radius, line_color=None,
+        tools=[custom_hover], default_tools=default_tools, active_tools=active_tools,
+        toolbar="right",
+        ))
+    return plot
 
 def create_violin_plot(df, y_col, group_col='cluster', cmap='Category10', title=None):
     """Generates standard bokeh violin plots (no Datashader needed here)."""
