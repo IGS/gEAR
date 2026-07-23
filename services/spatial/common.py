@@ -1,6 +1,6 @@
 from pathlib import Path
-import sys
 
+import colorcet as cc
 import datashader as ds
 import numpy as np
 import pandas as pd
@@ -158,7 +158,7 @@ def _prepare_category_renderers(cmap, registry=None):
     return hook
 
 
-def create_spatial_plot(df:pd.DataFrame, x_col:str='spatial1', y_col:str='spatial2', color_col:str='raw_value', cmap:str='fire_r',
+def create_spatial_plot(df:pd.DataFrame, x_col:str='spatial1', y_col:str='spatial2', color_col:str='raw_value', cmap="YlOrRd",
                         is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None, category_renderers:dict|None=None,
                         min_height:int=DEFAULT_PLOT_HEIGHT, min_width:int=DEFAULT_PLOT_WIDTH, radius:int=3):
     """Generates a Datashaded spatial plot colored by expression of the specified gene."""
@@ -220,7 +220,7 @@ def create_spatial_plot(df:pd.DataFrame, x_col:str='spatial1', y_col:str='spatia
         ))
     return plot
 
-def create_umap_plot(df:pd.DataFrame, color_col:str="raw_value", cmap:str="fire_r", is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None, category_renderers:dict|None=None, radius:float=0.15):
+def create_umap_plot(df:pd.DataFrame, color_col:str="raw_value", cmap="YlOrRd", is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None, category_renderers:dict|None=None, radius:float=0.15):
     """Generates a Datashaded UMAP."""
 
     color_col_title = title if title else color_col.title()
@@ -265,7 +265,9 @@ def create_umap_plot(df:pd.DataFrame, color_col:str="raw_value", cmap:str="fire_
         # by=/cmap color assignment, not just the registry population.
         hooks.append(_prepare_category_renderers(cmap, category_renderers))
 
-    opts_kwargs = dict(hooks=hooks)
+    opts_kwargs = dict(hooks=hooks,
+                    xticks=0, yticks=0,    # No ticks.
+                    )
     if not is_categorical:
         # This only applies to the continuous/expression plot.
         opts_kwargs["colorbar_opts"] = {"width": 12}    # thin the colorbar out.
@@ -422,6 +424,52 @@ def create_expression_df(agg):
     agg_df = agg_df.dropna()
     final_df = agg_df.reset_index()
     return final_df
+
+def create_umap_sample(df, value_col='raw_value', cluster_col='clusters', background_target_markers=8_000, cluster_floor=20, small_cluster_threshold=200, seed=0):
+    """
+    Creates a sampled dataframe for UMAP visualization, ensuring that the background (non-expressing) cells are represented proportionally across clusters.
+
+    Parameters:
+        df (pd.DataFrame): The input dataframe containing UMAP coordinates and expression values.
+        value_col (str): The name of the column indicating expression values.
+        cluster_col (str): The name of the column indicating cluster assignments.
+        background_target_markers (int): The target number of background markers to sample.
+        cluster_floor (int): The minimum number of markers to sample from each large cluster.
+        small_cluster_threshold (int): The threshold below which clusters are considered "small" and fully included in the background sample.
+        seed (int): Random seed for reproducibility of sampling.
+
+    Returns:
+        pd.DataFrame: A new dataframe containing all expressing cells and a sampled subset of background cells
+    """
+
+    # Split the dataframe into expressing and background subsets
+    expressing = df[df[value_col] > 0]
+    background = df[df[value_col] == 0]
+
+    # Just use the original dataframe if the background is already small enough
+    if len(background) <= background_target_markers:
+        return df.reset_index(drop=True)
+
+    # Split the background into clusters and determine how many to sample from each cluster
+    counts = background[cluster_col].value_counts()
+    small_clusters = counts[counts < small_cluster_threshold].index
+    large_clusters = counts[counts >= small_cluster_threshold].index
+
+    # Use all of the small clusters and sample proportionally from the large clusters
+    small_bg = background[background[cluster_col].isin(small_clusters)]
+    large_counts = counts[large_clusters]
+    remaining_budget = max(background_target_markers - len(small_bg), 0)
+    proportional = (large_counts / large_counts.sum() * remaining_budget).round().astype(int) if len(large_counts) else large_counts
+    allocation = proportional.clip(lower=cluster_floor).clip(upper=large_counts)
+
+    # Combine the small clusters and the sampled large clusters into a single dataframe
+    parts = [small_bg]
+    for cluster, n in allocation.items():
+        cluster_bg = background[background[cluster_col] == cluster]
+        parts.append(cluster_bg.sample(n=n, random_state=seed))
+
+    bg_sampled = pd.concat(parts, ignore_index=True)
+    return pd.concat([expressing, bg_sampled], ignore_index=True)
 
 def normalize_expression_name(filename) -> str:
         """

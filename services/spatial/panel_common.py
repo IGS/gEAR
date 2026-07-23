@@ -1,9 +1,7 @@
-import asyncio
-import gc
 import json
 import traceback
 
-import datashader as ds
+import colorcet as cc
 import holoviews as hv
 import hvplot
 import hvplot.pandas  # noqa
@@ -20,6 +18,7 @@ from common import (
     create_expression_df,
     create_spatial_plot,
     create_umap_plot,
+    create_umap_sample,
     create_violin_plot,
     link_crosshairs,
     link_ranges,
@@ -246,26 +245,21 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         # Precompute the datashader aggregations since they can be shared across multiple plots
         # For some reason, the x and y values are swapped for aggregation compared to what we eventually plot, so we need to swap them here.
         agg_width, agg_height, self.marker_radius = compute_aggregation_params(self.df, x_col="y_plot", y_col="spatial1")
-        # Target_markers is lower for UMAP so we can keep things performant
-        umap_agg_width, umap_agg_height, self.umap_marker_radius = compute_aggregation_params(self.df, x_col="UMAP1", y_col="UMAP2", target_markers=30_000)
         self.agg = create_datashader_agg(self.df, x="y_plot", y="spatial1", width=agg_width, height=agg_height)
-        self.umap_agg = create_datashader_agg(self.df, x="UMAP1", y="UMAP2", width=umap_agg_width, height=umap_agg_height)
 
         self.expression_agg = self.agg["expression"]
         self.expression_df = create_expression_df(self.expression_agg)
         self.expression_df = self.expression_df[self.expression_df['raw_value'] > 0]
-        self.expression_umap_agg = self.umap_agg["expression"]
-        self.expression_umap_df = create_expression_df(self.expression_umap_agg)
-        self.expression_cmap = 'fire_r'
+        self.expression_cmap = cc.m_CET_L4_r
 
         self.clusters_agg = self.agg["clusters"]
         self.clusters_df = create_clusters_df(self.clusters_agg)
         self.clusters_df["clusters"] = self.clusters_df["clusters_cat_codes"].map(self.cluster_map)
-        self.clusters_umap_agg = self.umap_agg["clusters"]
-        self.clusters_umap_df = create_clusters_df(self.clusters_umap_agg)
-        self.clusters_umap_df["clusters"] = self.clusters_umap_df["clusters_cat_codes"].map(self.cluster_map)
         self.cluster_cmap = dict(zip(self.df['clusters'], self.df['colors']))
 
+        # Precompute the UMAP aggregation and sample for the UMAP plots
+        _, _, self.umap_marker_radius = compute_aggregation_params(self.df, x_col="UMAP1", y_col="UMAP2", target_markers=30_000)
+        self.umap_df = create_umap_sample(self.df)
 
     def _sync_state_to_js(self):
         """Serializes current active settings and pipes them to the frontend DOM."""
@@ -688,11 +682,11 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
     def _generate_umap_plots(self):
         umap_category_renderers = {}
         expr_umap = create_umap_plot(
-            self.expression_umap_df, color_col='raw_value', cmap="fire_r", is_categorical=False,
+            self.umap_df, color_col='raw_value', cmap=self.expression_cmap, is_categorical=False,
             title=f"{self.current_gene} Expression", cbar_max=self.expression_98, radius=self.umap_marker_radius
             )
         cluster_umap = create_umap_plot(
-            self.clusters_umap_df, color_col='clusters', cmap=self.cluster_cmap, is_categorical=True,
+            self.umap_df, color_col='clusters', cmap=self.cluster_cmap, is_categorical=True,
             title="Clusters", category_renderers=umap_category_renderers, radius=self.umap_marker_radius
             )
         return expr_umap, cluster_umap, umap_category_renderers
