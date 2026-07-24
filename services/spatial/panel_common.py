@@ -25,6 +25,7 @@ from common import (
     normalize_expression_name,
     retrieve_dataframe,
     retrieve_image_array,
+    rotate_spatial,
     sort_clusters,
 )
 
@@ -120,9 +121,22 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
             self.restore_xlim = _get_restore_range('x_range_start', 'x_range_end')
             self.restore_ylim = _get_restore_range('y_range_start', 'y_range_end')
+
+            # Rotation state, same carry-forward mechanism as the view range.
+            self.rotation = 0
+            if "rotation" in args:
+                rotation_raw = get_arg('rotation')
+                try:
+                    self.rotation = int(rotation_raw) if rotation_raw is not None else 0
+                except (TypeError, ValueError):
+                    self.rotation = 0
+                if self.rotation not in (0, 90, 180, 270):
+                    self.rotation = 0
+
         else:
             self.restore_xlim = None
             self.restore_ylim = None
+            self.rotation = 0
 
         # Add a hidden widget to sync url parameter state to the JS context.
         # This is so we can pass the params to the download widget so it can recreate the plot.
@@ -142,21 +156,29 @@ class BaseSpatialViewer(pn.viewable.Viewer):
                 // Expose it globally to the frontend DOM
                 window.gearSpatialUrlParams = params;
 
-                // Sync zoom range to frontend so switching genes
+                // Sync zoom range and rotation state to frontend so switching genes
                 // (which spins up a brand new Panel session) can carry
                 // the last zoom/pan position forward into the next one.
-                if (state.dataset_id &&
-                    state.x_range_start !== undefined && state.x_range_end !== undefined &&
+                if (state.x_range_start !== undefined && state.x_range_end !== undefined &&
                     state.y_range_start !== undefined && state.y_range_end !== undefined) {
-                    window.gearSpatialViewState = window.gearSpatialViewState || {};
-                    window.gearSpatialViewState[state.dataset_id] = {
-                        x_range_start: state.x_range_start,
-                        x_range_end: state.x_range_end,
-                        y_range_start: state.y_range_start,
-                        y_range_end: state.y_range_end,
-                    };
-                }
 
+                    // Store the current view range in a global object keyed by dataset_id, so it can be restored later.
+                    window.gearSpatialViewState = window.gearSpatialViewState || {};
+                    const newState = {};
+
+                    if (state.x_range_start !== undefined && state.x_range_end !== undefined &&
+                        state.y_range_start !== undefined && state.y_range_end !== undefined) {
+                        newState.x_range_start = state.x_range_start;
+                        newState.x_range_end = state.x_range_end;
+                        newState.y_range_start = state.y_range_start;
+                        newState.y_range_end = state.y_range_end;
+                    }
+                    if (state.rotation !== undefined) {
+                        newState.rotation = state.rotation;
+                    }
+
+                    window.gearSpatialViewState[state.dataset_id] = newState;
+                }
             }
         """)
 
@@ -168,6 +190,13 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         self.orig_df = clip_expression_values(self.orig_df, self.settings.expression_min_clip)
 
         self.image_array = retrieve_image_array(self.settings.dataset_id)
+
+        # Rotate the raw inputs here, before anything else (img_height/width,
+        # y_plot, aggregation) is derived from them -- everything downstream
+        # then treats the rotated image/coordinates as if they were the
+        # originals, with no other change needed anywhere else.
+        if self.rotation != 0:
+            self.orig_df, self.image_array = rotate_spatial(self.orig_df, self.image_array, self.rotation)
 
         self.current_gene = normalize_expression_name(self.settings.filename)
 
@@ -241,6 +270,7 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
         ### Set up some initial attributes to use when plotting
         self._init_widgets()
+        self._init_rotation_buttons()
 
         # Precompute the datashader aggregations since they can be shared across multiple plots
         # For some reason, the x and y values are swapped for aggregation compared to what we eventually plot, so we need to swap them here.
@@ -267,6 +297,7 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         state = {
             "dataset_id": self.settings.dataset_id,
             "filename": self.settings.filename,
+            "rotation": self.rotation,
         }
 
         # Include expression clip if it exists
@@ -305,6 +336,42 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         if self.restore_xlim is not None and self.restore_ylim is not None:
             figure.x_range.start, figure.x_range.end = self.restore_xlim
             figure.y_range.start, figure.y_range.end = self.restore_ylim
+
+    def _init_rotation_buttons(self):
+        """
+        Set up the rotate buttons and their actions
+        """
+        self.rotate_cw_button = pn.widgets.ButtonIcon(
+            icon="rotate-clockwise", size="2em", description="Rotate 90\u00b0 clockwise"
+        )
+        self.rotate_ccw_button = pn.widgets.ButtonIcon(
+            icon="rotate-2", size="2em", description="Rotate 90\u00b0 counterclockwise"
+        )
+        self.rotate_cw_button.on_click(lambda event: self._rotate(90))
+        self.rotate_ccw_button.on_click(lambda event: self._rotate(-90))
+
+    def _rotate(self, delta):
+        """
+        Updates rotation state and triggers a full session rebuild with the
+        new value, the same way switching genes already does.
+        """
+        self.rotation = (self.rotation + delta) % 360
+
+        # Rebuild the state payload WITHOUT any saved view range -- rotating
+        # swaps width/height, so a range saved under the old orientation
+        # would no longer make sense in the new one.
+        state = {
+            "dataset_id": self.settings.dataset_id,
+            "filename": self.settings.filename,
+            "rotation": self.rotation,
+        }
+        if self.settings.expression_min_clip is not None:
+            state["expression_min_clip"] = self.settings.expression_min_clip
+        self.state_sync.value = json.dumps(state)
+
+        if pn.state.location is not None:
+            pn.state.location.search = "?" + "&".join(f"{k}={v}" for k, v in state.items())
+            pn.state.location.reload = True
 
     def _sync_cluster_legend_toggle(self, ghost_fig, real_renderers_by_cat):
         """
@@ -513,13 +580,17 @@ class CondensedSpatialViewer(BaseSpatialViewer):
             self._force_legend_redraw_on_range_change(bokeh_ghost, bokeh_expr)
             self.legend_pane = pn.Column(pn.pane.Bokeh(bokeh_ghost), width=200, height=300, scroll=True, margin=(0,0,0,0))
 
+            self.widget_row = pn.Row(
+                self.rotate_ccw_button, self.rotate_cw_button
+            )
+
             # Build the permanent layout row
             self.main_row = pn.Row(
                 self.master_pane, self.expr_pane, self.cluster_pane, self.legend_pane,
                 sizing_mode='stretch_both', min_width=1080, margin=(0, 0, 0, 0)
             )
 
-            return pn.Column(self.state_sync, self.main_row, sizing_mode='stretch_both', max_width=MAX_CARD_WIDTH, margin=(0, 0, 0, 0))
+            return pn.Column(self.state_sync, self.widget_row, self.main_row, sizing_mode='stretch_both', max_width=MAX_CARD_WIDTH, margin=(0, 0, 0, 0))
 
         except Exception as e:
             traceback.print_exc()
@@ -710,6 +781,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
         # Build the pre_layout
         self.left_pre = pn.Column(
             pn.Row(
+                self.rotate_ccw_button, self.rotate_cw_button,
                 sizing_mode='stretch_width'
             ),
         )

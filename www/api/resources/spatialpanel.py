@@ -366,6 +366,7 @@ class SpatialPanel(Resource):
         x_range_end = req.get('x_range_end', None)
         y_range_start = req.get('y_range_start', None)
         y_range_end = req.get('y_range_end', None)
+        rotation = req.get('rotation', None)
 
         config = {
             "dataset_id": dataset_id,
@@ -385,6 +386,8 @@ class SpatialPanel(Resource):
             config["y_range_start"] = y_range_start
             config["y_range_end"] = y_range_end
 
+        if rotation is not None:
+            config["rotation"] = rotation
 
         response = {
             "script": None,

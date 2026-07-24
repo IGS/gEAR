@@ -547,6 +547,38 @@ def retrieve_image_array(dataset_id) -> np.ndarray | None:
         return np.load(spatial_img_path)
     return None
 
+def rotate_spatial(df, image_array, rotation, x_col="spatial1", y_col="spatial2"):
+    """
+    Rotates the raw image array and the raw spatial coordinates together, by
+    `rotation` degrees clockwise (0/90/180/270 only). Objective is to keep
+    a cell's coordinate co-located with its corresponding image pixel after rotation.
+    """
+    if rotation not in (0, 90, 180, 270):
+        raise ValueError(f"rotation must be one of 0, 90, 180, 270 -- got {rotation}")
+    if rotation == 0:
+        return df, image_array
+
+    df = df.copy()
+    x, y = df[x_col].to_numpy(), df[y_col].to_numpy()
+
+    if image_array is not None:
+        H, W = image_array.shape[0], image_array.shape[1]
+        k = {90: -1, 180: 2, 270: 1}[rotation]
+        image_array = np.rot90(image_array, k=k)
+    else:
+        # No background image -- still need bounds to rotate coordinates consistently
+        W, H = x.max(), y.max()
+
+    if rotation == 90:
+        new_x, new_y = H - y, x # swap and flip y
+    elif rotation == 180:
+        new_x, new_y = W - x, H - y # flip both
+    else:  # 270
+        new_x, new_y = y, W - x # swap and flip x
+
+    df[x_col], df[y_col] = new_x, new_y
+    return df, image_array
+
 def sort_clusters(clusters) -> list:
     """
     Sort clusters by number if numerical, otherwise by name.
