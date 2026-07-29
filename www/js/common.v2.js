@@ -309,6 +309,38 @@ const insertVersionedJS = (href, cacheVersion) => {
 }
 
 /**
+ * Loads the domain-specific funding HTML into a target container.
+ *
+ * @param {Object|null} domainPreferences - Optional domain preferences object.
+ * @param {string} fundingContainerId - The ID of the container that receives funding HTML.
+ * @returns {Promise<void>}
+ */
+const loadDomainFunding = async (domainPreferences = null, fundingContainerId = 'funding') => {
+    try {
+        const fundingContainer = document.getElementById(fundingContainerId);
+        if (!fundingContainer) {
+            return;
+        }
+
+        const prefs = domainPreferences || await getDomainPreferences();
+        if (!prefs || !prefs.domain_label) {
+            logErrorInConsole('Missing domain_label in domain preferences while loading funding include.');
+            return;
+        }
+
+        const fundingResponse = await fetch(`/include/by_domain/${prefs.domain_label}/funding.html`);
+        if (!fundingResponse.ok) {
+            logErrorInConsole(`Failed to load funding include for domain ${prefs.domain_label}.`);
+            return;
+        }
+
+        fundingContainer.innerHTML = await fundingResponse.text();
+    } catch (error) {
+        logErrorInConsole('Unexpected error loading domain funding include.', error);
+    }
+}
+
+/**
  * Retrieves the value of a specified URL parameter.
  *
  * @param {string} sParam - The name of the URL parameter.
@@ -1685,4 +1717,5 @@ export {
     closeModal,
     insertVersionedCSS,
     insertVersionedJS,
+    loadDomainFunding,
 };

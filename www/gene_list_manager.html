@@ -581,6 +581,10 @@
         </div>
     </div>
 
+    <footer>
+        <div id="funding"></div>
+</footer>
+
     <template id="unweighted-example">
         <p>Genes in the file must be separated by either commas, spaces, tab-indented, or on separate lines.</p>
         <p>gEAR will determine the Ensembl ID for each gene based on the organism selected.</p>
@@ -689,7 +693,6 @@
         </table>
     </template>
 
-
     <!-- Promise based HTTP client for the browser  -->
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
@@ -701,8 +704,10 @@
 
     <!-- Page-specific CSS/JS loading here -->
       <script type="module">
-        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS, loadDomainFunding } from './js/common.v2.js';
         const prefs = await getDomainPreferences();
+
+        await loadDomainFunding(prefs);
 
         // Load any local JS with cache-busting version parameter
         insertVersionedJS('js/gene_list_manager.js', prefs.cache_version);
