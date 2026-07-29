@@ -656,8 +656,8 @@
     </div>
 
     <footer>
-        <!--#include virtual="/include/by_domain/gear/funding.html" -->
-    </footer>
+        <div id="funding"></div>
+</footer>
 
     <template id="tmpl-displays-modal">
         <div class="js-displays-modal modal">
@@ -711,8 +711,10 @@
 
     <!-- Page-specific CSS/JS loading here -->
     <script type="module">
-        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS, loadDomainFunding } from './js/common.v2.js';
         const prefs = await getDomainPreferences();
+
+        await loadDomainFunding(prefs);
 
         // Load any local JS with cache-busting version parameter
         insertVersionedJS('js/dataset_explorer.js', prefs.cache_version);

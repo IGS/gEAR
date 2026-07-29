@@ -1195,8 +1195,8 @@ Currently Gosling only supports single-organism tracks">
         </section> <!-- end #main-c -->
       </div>
       <footer>
-        <!--#include virtual="/include/by_domain/gear/funding.html" -->
-      </footer>
+        <div id="funding"></div>
+</footer>
 
     <div id="spatial-reqs-modal" class="modal">
         <div class="modal-background"></div>
@@ -1319,8 +1319,10 @@ Currently Gosling only supports single-organism tracks">
 
       <!-- Page-specific CSS/JS loading here -->
       <script type="module">
-        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS, loadDomainFunding } from './js/common.v2.js';
         const prefs = await getDomainPreferences();
+
+        await loadDomainFunding(prefs);
 
         // Load any local JS with cache-busting version parameter
         insertVersionedJS('js/upload_dataset.js', prefs.cache_version);

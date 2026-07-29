@@ -150,7 +150,7 @@
       </div>
       <footer>
         <div>
-          <!--#include virtual="/include/by_domain/gear/funding.html" -->
+          <div id="funding"></div>
         </div>
       </footer>
 
@@ -158,7 +158,8 @@
 
       <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
       <script type="module">
-        import { initCommonUI } from '../../js/common.v2.js';
+        import { getDomainPreferences, initCommonUI, loadDomainFunding } from '../../js/common.v2.js';
+        await loadDomainFunding(await getDomainPreferences());
         initCommonUI();
       </script>
 

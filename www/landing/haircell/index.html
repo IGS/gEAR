@@ -203,7 +203,7 @@
       </div>
       <footer>
         <div>
-          <!--#include virtual="/include/by_domain/gear/funding.html" -->
+          <div id="funding"></div>
         </div>
       </footer>
 
@@ -213,6 +213,10 @@
       <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
       <script>document.write('<script src="../../js/common.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
       <script>document.write('<script src="../../js/classes/user.v2.' + (new Date()).getTime() + '.js"><\/script>');</script>
+      <script type="module">
+        import { getDomainPreferences, loadDomainFunding } from '../../js/common.v2.js';
+        await loadDomainFunding(await getDomainPreferences());
+      </script>
 
       <!-- Page-specific JS file here -->
       <script src="index.js"></script>
