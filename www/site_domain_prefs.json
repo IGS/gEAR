@@ -1,6 +1,7 @@
 {
     "domain_label": "gear",
     "domain_short_display_label": "gEAR",
+    "domain_tagline": "gene Expression Analysis Resource",
     "domain_url":"https://umgear.org",
     "enabled_plugins": {
         "aro_2026_tab": ["index.html"],

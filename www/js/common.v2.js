@@ -62,6 +62,17 @@ const initCommonUI = async () => {
         const logoSmall = document.getElementById('navbar-logo-small');
         logoSmall.src = "/img/by_domain/" + SITE_PREFS.domain_label + "/logo-main-small.png"
 
+        const domainTaglineElement = document.getElementById('domain-tagline');
+        if (domainTaglineElement) {
+            const domainTagline = SITE_PREFS.domain_tagline;
+            if (typeof domainTagline === 'string' && domainTagline.trim().length > 0) {
+                domainTaglineElement.textContent = domainTagline;
+                domainTaglineElement.classList.remove('is-hidden');
+            } else {
+                domainTaglineElement.classList.add('is-hidden');
+            }
+        }
+
         // Load analytics
         const head = document.getElementsByTagName('head')[0];
         const ga_script = document.createElement('script');
