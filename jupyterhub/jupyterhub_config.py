@@ -7,6 +7,7 @@
 import os
 import sys
 import shutil
+import re
 sys.path.insert(0, "/srv/jupyterhub")
 
 from dockerspawner import DockerSpawner
@@ -46,6 +47,7 @@ c.Authenticator.allow_all = True
 
 # Use the custom launch-token authenticator
 c.JupyterHub.authenticator_class = "gear_auth.GearLaunchTokenAuthenticator"
+c.JupyterHub.allow_named_servers = True
 
 # -----------------------------------------------------------------------------
 # DockerSpawner settings
@@ -86,14 +88,41 @@ c.Spawner.mem_limit = HOST_SPAWNER_MEM_LIMIT
 # Spawn hook: mount only authorized datasets
 # -----------------------------------------------------------------------------
 
-async def gear_pre_spawn_hook(spawner: DockerSpawner):
-    auth_state = await spawner.user.get_auth_state()
-    if not auth_state:
-        raise RuntimeError("No auth_state available for user")
+def parse_named_server_scope(server_name: str):
+    """Parse dataset/language scope from a named server string.
 
-    datasets = auth_state.get("gear_datasets", [])
-    selected_dataset = auth_state.get("gear_selected_dataset")
-    notebook_env = str(auth_state.get("gear_notebook_env", "python")).strip().lower()
+    Expected format: ds-<dataset_id>-<language>
+    where language is one of: python, r
+    """
+    if not server_name:
+        return None, None
+
+    match = re.fullmatch(r"ds-([a-zA-Z0-9\-]+)-(python|r)", server_name)
+    if not match:
+        return None, None
+
+    dataset_id = match.group(1)
+    notebook_env = match.group(2)
+    return dataset_id, notebook_env
+
+async def gear_pre_spawn_hook(spawner: DockerSpawner):
+    auth_state = await spawner.user.get_auth_state() or {}
+
+    # Preferred source of scope is the named server itself so multiple servers
+    # per user can run concurrently with independent dataset/language contexts.
+    dataset_id, notebook_env = parse_named_server_scope(spawner.name or "")
+
+    if dataset_id and notebook_env:
+        selected_dataset = os.path.join(HOST_DATASETS_ROOT, f"{dataset_id}.h5ad")
+        datasets = [selected_dataset]
+    else:
+        # Backward compatibility for default/legacy launches.
+        datasets = auth_state.get("gear_datasets", [])
+        selected_dataset = auth_state.get("gear_selected_dataset")
+        notebook_env = str(auth_state.get("gear_notebook_env", "python")).strip().lower()
+
+    if not datasets:
+        raise RuntimeError("No dataset scope available for notebook spawn")
 
     if notebook_env == "r":
         spawner.image = "gear-notebook:r"

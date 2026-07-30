@@ -1141,10 +1141,17 @@ class DatasetTile {
                 case "jupyter-notebook":
                     // Open menu to choose language for Jupyter Notebook
                     if (hasH5ad) {
-                        item.addEventListener("click", (event) => {
+                        item.dataset.shareId = shareId;
+                        item.onclick = (event) => {
                             event.preventDefault();
-                            this.openJupyterLanguageMenu(shareId);
-                        });
+                            event.stopPropagation();
+                            const datasetShareId = event.currentTarget?.dataset?.shareId;
+                            if (!datasetShareId) {
+                                createToast("Unable to determine dataset for Jupyter Notebook launch.", "is-danger");
+                                return;
+                            }
+                            this.openJupyterLanguageMenu(datasetShareId);
+                        };
                     } else {
                         item.classList.add("is-hidden");
                     }

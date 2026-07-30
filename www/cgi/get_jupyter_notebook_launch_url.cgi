@@ -18,6 +18,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from urllib.parse import urlencode
 from dotenv import dotenv_values
 from itsdangerous import URLSafeTimedSerializer
 
@@ -119,11 +120,13 @@ def main():
         s = URLSafeTimedSerializer(secret, salt="gear-launch")
 
         # Create the payload
+        server_name = f"ds-{dataset.id}-{language}"
         payload = {
             "user_id": f'{user.id}',
             "datasets": [file_path],
             "selected_dataset": file_path,
             "notebook_env": language,
+            "server_name": server_name,
         }
 
         # Generate the token
@@ -131,8 +134,10 @@ def main():
 
         # Build the URL
         hub_base = get_hub_base_url().rstrip('/')
-        next_url = f"/hub/user-redirect/lab/tree/gear_starters/{language}_notebook_template.ipynb"
-        launch_url = f"{hub_base}/hub/gear-login?launch_token={token}&next={next_url}"
+        starter_notebook_path = f"/user/{user.id}/{server_name}/lab/tree/gear_starters/{language}_notebook_template.ipynb"
+        spawn_query = urlencode({"next": starter_notebook_path})
+        next_url = f"/hub/spawn/{user.id}/{server_name}?{spawn_query}"
+        launch_url = f"{hub_base}/hub/gear-login?{urlencode({'launch_token': token, 'next': next_url})}"
 
         print_json({"url": launch_url, "success": 1})
 
