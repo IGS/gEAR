@@ -2325,7 +2325,7 @@ class DatasetTile {
                 // Copy the actual inline JavaScript payload
                 scriptElement.textContent = parsedScript.textContent;
 
-                // 1. Create a true absolute overlay to hide the empty white layout
+                // Create a absolute overlay to hide the empty white layout
                 const loader = document.createElement('div');
                 // Use your existing gEAR classes if you have them, or use this default spinner
                 loader.innerHTML = `
@@ -2349,7 +2349,7 @@ class DatasetTile {
                 cardImage.style.position = "relative";
                 cardImage.appendChild(loader);
 
-                // 2. Indestructible Polling Loop
+                // Polling Loop with a timeout if it takes too long.
                 let attempts = 0;
                 const maxAttempts = 300; // 20 seconds maximum wait time (100ms * 300)
 
