@@ -1,6 +1,7 @@
 hvplot==0.12.2
 panel==1.9.3
 pandas==2.3.3
+Pillow==12.2.0
 #pyarrow==18.1.0 # v19 breaks reading spatial parquet files (used by Visium HD and Xenium)
 spatialpandas==0.5.0
 werkzeug==3.1.0
