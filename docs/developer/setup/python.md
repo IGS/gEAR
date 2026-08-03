@@ -156,8 +156,8 @@ I cannot add comments to the bash code without breaking the command.  So consult
     scipy==1.17.1 \
     seaborn==0.13.2 \
     setuptools==81.0.0 \
-    spatialdata==0.7.2 \
-    spatialdata_io==0.6.0 \
+    spatialdata==0.7.3 \
+    spatialdata_io==0.7.1 \
     spatialpandas==0.5.0 \
     shadows==0.1a2 \
     tables==3.11.1 \
