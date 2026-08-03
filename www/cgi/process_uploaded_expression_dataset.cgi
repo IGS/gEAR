@@ -623,7 +623,7 @@ def process_mex_3tab(upload_dir: Path, perform_primary_analysis: bool) -> None:
     elif dataset_type == 'mex':
         process_mex(upload_dir, perform_primary_analysis)
 
-def process_spatial(upload_dir: Path, spatial_format: str, perform_primary_analysis: bool) -> None:
+def process_spatial(upload_dir: Path, spatial_format: str | None, perform_primary_analysis: bool) -> None:
     """
     Processes a spatial transcriptomics dataset uploaded to a specified directory.
 
@@ -635,7 +635,7 @@ def process_spatial(upload_dir: Path, spatial_format: str, perform_primary_analy
 
     Args:
         upload_dir (str): The directory where the uploaded files are located.
-        spatial_format (str): The format of the spatial data, used to select the appropriate handler.
+        spatial_format (str | None): The format of the spatial data, used to select the appropriate handler.
 
     Raises:
         Writes error status if the metadata file is missing or if reading/converting the spatial file fails.
@@ -643,11 +643,15 @@ def process_spatial(upload_dir: Path, spatial_format: str, perform_primary_analy
 
     write_status(upload_dir, 'processing', 'Initializing dataset processing.')
 
+    if spatial_format is None:
+        write_status(upload_dir, 'error', "Spatial format not specified.")
+        return
+
     spatial_obj = SPATIALTYPE2CLASS[spatial_format]()   # instantiate the appropriate handler class
     metadata_file = upload_dir / 'metadata.json'
     if not metadata_file.is_file():
         write_status(upload_dir, 'error', "No metadata JSON file found.")
-
+        return
     # get organism_id by converting sample_taxid(needed for some but not all spatial handlers)
     with open(metadata_file, 'r') as f:
         metadata = json.load(f)
