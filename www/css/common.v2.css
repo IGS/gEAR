@@ -16,6 +16,9 @@ html, body {
     box-sizing: border-box; /* include padding and border in element's total width */
     min-width: 0; /* allow flex items to shrink */
 }
+#main-layout-c {
+    margin-bottom: 0;
+}
 
 
 /* Get rid of underlines on the tooltip elements */
@@ -37,6 +40,16 @@ html, body {
 
 /* ---------------- */
 /* -= Typography =- */
+
+
+/* -------------------- */
+/* -= Footer section =- */
+
+div.footer-divider-bar {
+    height: 3em;
+    margin: 0;
+}
+
 
 
 /* -------------------- */

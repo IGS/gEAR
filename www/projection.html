@@ -228,9 +228,9 @@
                       <p>
                           Calculates the expression level of each pattern by counting the number of genes in the pattern that are expressed at non-zero levels in each new sample.
                       </p>
-                      <div class="notification is-warning is-light">
-                          <strong>Note:</strong> Should only be used in single-cell data. This method is simple and interpretable, but may not capture complex continuous signals.
-                      </div>
+                      <p>
+                          <strong>Note:</strong> This algorithm should only be used in single-cell data. This method is simple and interpretable, but may not capture complex continuous signals.
+                      </p>
                   </div>
 
               </div>
@@ -242,10 +242,8 @@
     </div>
 
       <footer>
-        <div>
-          <!-- content here TO BE inserted via common.js -->
-        </div>
-      </footer>
+        <div id="funding"></div>
+</footer>
 
       <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
       <script src="js/vendor/js.cookie.js"></script>
@@ -255,8 +253,10 @@
 
 
       <script type="module">
-        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS, loadDomainFunding } from './js/common.v2.js';
         const prefs = await getDomainPreferences();
+
+        await loadDomainFunding(prefs);
 
         // Load any local JS with cache-busting version parameter
         insertVersionedJS('js/projection.js', prefs.cache_version);

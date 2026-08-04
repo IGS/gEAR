@@ -4,6 +4,7 @@
 
 * [Orbstack](https://orbstack.dev/) is recommended over Docker Desktop, but certainly optional. It is faster, lighter, and still uses the same Docker command-line tools.  Docker Desktop gets the job done just fine as well.
   * Unfortunately Orbstack does not have Windows support.
+* Perform a `git clone` on the gEAR repository if you have not.  This is so you can hot-load code changes into your container and still be able to commit it.
 * From the gEAR root, `cd docker`. All commands assume you are in this directory
 * `cp docker-compose.yml.template docker-compose.yml`
   * Alternatively ask @adkinsrs for a docker-compose.yml file as it will be filled in. Otherwise fill in any values wrapped in brackets

@@ -1,18 +1,26 @@
-import sys
 from pathlib import Path
 
+import colorcet as cc
 import datashader as ds
 import numpy as np
 import pandas as pd
 import param
-from bokeh.models import CustomJSHover, HoverTool
-from holoviews.operation.datashader import dynspread, spread
+from bokeh.models import CustomJS, CustomJSHover, HoverTool, Span
+from holoviews.operation.datashader import spread
+import holoviews as hv
 from werkzeug.utils import secure_filename
 
 gear_root = Path(__file__).resolve().parents[2]
 www_path = gear_root.joinpath("www")
 PANEL_CSV_CACHE_DIR = www_path / "cache" / "spatial_panel"
 SPATIAL_IMAGE_NAME = "spatial_img.npy"
+
+DEFAULT_PLOT_WIDTH = 275
+DEFAULT_PLOT_HEIGHT = 300
+
+# NOTE: When you see the word "glyph" thrown around, that is Bokeh's terminology for the actual visual representation of a data point.
+# Examples are circle, square, line, etc.
+# A "renderer" is the object that takes the data and draws it using a glyph.
 
 ### Functions
 
@@ -44,21 +52,120 @@ def fix_colorbar_hook(plot, element):
     except Exception:
         pass
 
-def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='raw_value', cmap='YlOrRd', is_categorical=False, title=None, mode="standard"):
+def link_crosshairs(figures, color='#333333', line_dash='dashed', line_width=1):
+    """
+    Synchronizes a crosshair (a vertical + horizontal guide line) across multiple
+    already-rendered Bokeh figures that share the same coordinate space.
+
+    Pure client-side JS (a shared Span pair per figure, updated via a single
+    CustomJS on mousemove) rather than a HoloViews PointerXY stream, which
+    would round-trip to the Bokeh server on every mouse move.
+
+    Parameters
+    ----------
+    figures : list[bokeh.plotting.figure]
+        The concrete Bokeh figures to link. They should share the same x/y
+        coordinate system for the crosshair position to line up across them.
+    """
+    vlines, hlines = [], []
+    for fig in figures:
+        vline = Span(location=0, dimension='height', line_color=color,
+                    line_dash=line_dash, line_width=line_width, visible=False)
+        hline = Span(location=0, dimension='width', line_color=color,
+                    line_dash=line_dash, line_width=line_width, visible=False)
+        fig.add_layout(vline)
+        fig.add_layout(hline)
+        vlines.append(vline)
+        hlines.append(hline)
+
+    move_callback = CustomJS(args=dict(vlines=vlines, hlines=hlines), code="""
+        const x = cb_obj.x;
+        const y = cb_obj.y;
+        for (let i = 0; i < vlines.length; i++) {
+            vlines[i].location = x;
+            vlines[i].visible = true;
+            hlines[i].location = y;
+            hlines[i].visible = true;
+        }
+    """)
+    leave_callback = CustomJS(args=dict(vlines=vlines, hlines=hlines), code="""
+        for (let i = 0; i < vlines.length; i++) {
+            vlines[i].visible = false;
+            hlines[i].visible = false;
+        }
+    """)
+
+    for fig in figures:
+        fig.js_on_event('mousemove', move_callback)
+        fig.js_on_event('mouseleave', leave_callback)
+
+def link_ranges(figures):
+    """
+    Links pan/zoom together across multiple Bokeh figures by sharing the same
+    x_range/y_range model instances, so panning or box/wheel-zooming any one
+    of them moves all the others in lockstep. This is the standard Bokeh
+    "linked panning" technique.
+
+    Because it's a literal shared model (not values kept in sync via a
+    callback), Bokeh keeps every figure referencing it in sync automatically,
+    for both the live client and this server-side session.
+
+    Parameters
+    ----------
+    figures : list[bokeh.plotting.figure]
+        The concrete Bokeh figures to link. They should share the same x/y
+        coordinate system -- sharing ranges across figures with different
+        coordinate systems will make them all zoom to whatever the first
+        figure's extent is, which is rarely what you want.
+    """
+    if len(figures) < 2:
+        return
+    reference = figures[0]
+    for fig in figures[1:]:
+        fig.x_range = reference.x_range
+        fig.y_range = reference.y_range
+
+def _prepare_category_renderers(cmap, registry=None):
+    """
+    Returns a HoloViews plot hook for categorical (NdOverlay-based) spatial
+    plots that does two things once the plot is actually rendered:
+
+    1. Re-applies the intended category->color mapping directly onto each
+       category's Bokeh glyph. Works around a hvplot/HoloViews issue
+       where `by=` grouping combined with a dict `cmap` does not reliably
+       preserve the category->color correspondence, leading to colors
+       being assigned to the wrong category.
+    2. If `registry` (a dict) is provided, populates it with
+       {category_name: bokeh_glyph_renderer} so a caller can wire up
+       per-category show/hide from an external legend afterward
+    """
+    def hook(plot, element):
+        for key, subplot in getattr(plot, 'subplots', {}).items():
+            category = key[0] if isinstance(key, tuple) else key
+            renderer = subplot.handles.get('glyph_renderer')
+            if renderer is None:
+                continue
+
+            if isinstance(cmap, dict):
+                hexcolor = cmap.get(category, '#CCCCCC')
+                if hasattr(renderer.glyph, 'fill_color'):
+                    renderer.glyph.fill_color = hexcolor
+                if hasattr(renderer.glyph, 'line_color') and renderer.glyph.line_color is not None:
+                    renderer.glyph.line_color = hexcolor
+
+            if registry is not None:
+                registry[category] = renderer
+    return hook
+
+
+def create_spatial_plot(df:pd.DataFrame, x_col:str='spatial1', y_col:str='spatial2', color_col:str='raw_value', cmap="YlOrRd",
+                        is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None, category_renderers:dict|None=None,
+                        min_height:int=DEFAULT_PLOT_HEIGHT, min_width:int=DEFAULT_PLOT_WIDTH, radius:int=3):
     """Generates a Datashaded spatial plot colored by expression of the specified gene."""
 
-    # Fixes a Holoviews bug where the linker callback cannot find the categorical metadata dimension that Datashader named
-    # Gemini suggested
-    if is_categorical and isinstance(cmap, dict):
-        if hasattr(df[color_col], 'cat'):
-            categories = df[color_col].cat.categories
-        else:
-            categories = sorted(df[color_col].unique())
-        cmap = [cmap.get(cat, '#CCCCCC') for cat in categories]
-
-    plot = df.hvplot.points(
-        x=x_col, y=y_col, c=color_col,
-        rasterize=True, aggregator=agg,
+    plot_kwargs = dict(
+        x=x_col, y=y_col,
+        rasterize=False, #aggregator=agg,
         cmap=cmap,
         xaxis=None, yaxis=None,
         title=title,
@@ -66,173 +173,115 @@ def create_spatial_plot(df, agg, x_col='spatial1', y_col='spatial2', color_col='
         #Kill the colorbar if it's categorical
         colorbar=not is_categorical,
         clabel="",  # No label for the colorbar
+        clim = (0, cbar_max) if cbar_max is not None else None,
         legend=False,    # using a ghost legend so the legend does not squish the plot
 
         # Responsiveness if the browser is resized
         responsive=True, # Automatically stretches to fill its container
-        min_height=300,   # Set a floor so plots don't collapse to 0px
-        min_width=275    # Tells Bokeh the canvas cannot drop below 275px (prevent squishing if the layout for the display is not full width)
-    )
-
-    default_tools = ["box_zoom", "wheel_zoom", "pan", "reset"]
-    if mode == "expanded":
-        default_tools = ['box_select', 'reset']
-    if color_col == "raw_value":
-        label_name = "Expression"
-        # Intercept the NaN values and round the long floats
-        js_code_expr = """
-            if (value === "NaN") {
-                return "No data";
-            }
-            return value.toFixed(2);
-        """
-        formatter = CustomJSHover(code=js_code_expr)
-        custom_hover = HoverTool(
-            tooltips=[(label_name, "@image{custom}")],
-            formatters={"@image": formatter}
-        )
-    else:
-        label_name = color_col.title()
-
-        # Unfortunately the datashader array only has the aggregated counts,
-        # so we need to do some JS magic (thanks Gemini) to get the hover to show the category name instead of the count
-        categories = list(df[color_col].cat.categories)
-
-        # Build the JavaScript to find the dominant category in the pixel
-        js_code = f"""
-            const counts = value;
-            const cats = {categories};
-            let max_val = -1;
-            let max_idx = -1;
-
-            // Find the index of the highest count
-            for (let i = 0; i < counts.length; i++) {{
-                if (counts[i] > max_val) {{
-                    max_val = counts[i];
-                    max_idx = i;
-                }}
-            }}
-
-            // Return the category name (and optionally the cell count!)
-            if (max_val > 0) {{
-                return cats[max_idx]; // + " (" + max_val + " cells)";
-            }}
-            return "No Data";
-        """
-
-        # Create the formatter and apply it strictly to the @image field
-        formatter = CustomJSHover(code=js_code)
-        custom_hover = HoverTool(
-            tooltips=[(label_name, "@image{custom}")],
-            formatters={"@image": formatter}
-        )
-
-    plot = plot.opts(
-            tools=[custom_hover],
-            default_tools=default_tools,
-            active_tools=['box_zoom'],
-            toolbar="below",
-            colorbar_opts={"width": 12},    # thin the colorbar out.
-            hooks=[autohide_toolbar, fix_colorbar_hook]
-        )
-
-    # NOTE: Cluster downsampling will have a striped appearance called the Moiré Interference Pattern.
-    # I tried to use dynspread to remedy it, but the data points end up being too light.
-    # Mostly an issue with very dense data, like Visium HD
-    return spread(plot, px=1, shape="square")
-
-
-def create_umap_plot(df, agg, color_col, cmap, is_categorical=False, title=None):
-    """Generates a Datashaded UMAP."""
-
-    # Fixes a Holoviews bug where the linker callback cannot find the categorical metadata dimension that Datashader named
-    # Gemini suggested
-    if is_categorical and isinstance(cmap, dict):
-        if hasattr(df[color_col], 'cat'):
-            categories = df[color_col].cat.categories
-        else:
-            categories = sorted(df[color_col].unique())
-        cmap = [cmap.get(cat, '#CCCCCC') for cat in categories]
-
-    color_col_title = title if title else color_col.title()
-
-    plot =  df.hvplot.points(
-        x='UMAP1', y='UMAP2', c=color_col,
-        aggregator=agg, cmap=cmap,
-        xaxis="bottom", yaxis="left",
-        xlabel="UMAP_1", ylabel="UMAP_2",
-        title=f"UMAP: {color_col_title}",
-        #Kill the colorbar if it's categorical
-        colorbar=not is_categorical,
-        clabel="",  # No label for the colorbar
-        rasterize=True,
-        responsive=True,
-        legend=False,    # using a ghost legend so the legend does not squish the plot
-        height=300,
+        min_height=min_height,   # Set a floor so plots don't collapse to 0px
+        min_width=min_width    # Tells Bokeh the canvas cannot drop below 275px (prevent squishing if the layout for the display is not full width)
     )
 
     if is_categorical:
-        label_name = color_col.title()
-
-        # Unfortunately the datashader array only has the aggregated counts,
-        # so we need to do some JS magic (thanks Gemini) to get the hover to show the category name instead of the count
-        categories = list(df[color_col].cat.categories)
-
-        # Build the JavaScript to find the dominant category in the pixel
-        js_code = f"""
-            const counts = value;
-            const cats = {categories};
-            let max_val = -1;
-            let max_idx = -1;
-
-            // Find the index of the highest count
-            for (let i = 0; i < counts.length; i++) {{
-                if (counts[i] > max_val) {{
-                    max_val = counts[i];
-                    max_idx = i;
-                }}
-            }}
-
-            // Return the category name (and optionally the cell count!)
-            if (max_val > 0) {{
-                return cats[max_idx]; // + " (" + max_val + " cells)";
-            }}
-            return "No Data";
-        """
-
-        # Create the formatter and apply it strictly to the @image field
-        formatter = CustomJSHover(code=js_code)
-        custom_hover = HoverTool(
-            tooltips=[(label_name, "@image{custom}")],
-            formatters={"@image": formatter}
-        )
+        # `by=` splits this into one renderer per category
+        # instead of one combined glyph, which is what makes per-category
+        # show/hide possible downstream.
+        plot = df.hvplot.points(by=color_col, **plot_kwargs)
     else:
-        label_name = "Expression"
-        # Intercept the NaN values and round the long floats
-        js_code_expr = """
-            if (value === "NaN") {
-                return "No data";
-            }
-            return value.toFixed(2);
-        """
-        formatter = CustomJSHover(code=js_code_expr)
-        custom_hover = HoverTool(
-            tooltips=[(label_name, "@image{custom}")],
-            formatters={"@image": formatter}
-        )
+        plot = df.hvplot.points(c=color_col, **plot_kwargs)
 
-    default_tools = ['box_select', 'lasso_select', 'reset']
-    plot = plot.opts(
-            tools=[custom_hover],
-            active_tools=['box_select'],
-            default_tools=default_tools,
-            #data_aspect=1,  # square aspect ratio for UMAP
-            xticks=0, yticks=0,    # No ticks.
-            colorbar_opts={"width": 12},    # thin the colorbar out.
-            hooks=[autohide_toolbar, fix_colorbar_hook]
-        )
 
-    return spread(plot)
+    label_name = "Expression" if color_col == "raw_value" else color_col.title()
+    custom_hover = HoverTool(
+        tooltips=[(label_name, f"@{color_col}")],
+    )
+    default_tools=["box_zoom", "wheel_zoom", "pan", "reset"]
+    active_tools=["wheel_zoom", "pan"]
+
+    hooks = [autohide_toolbar, fix_colorbar_hook]
+    if is_categorical:
+        # Always run this for categorical plots -- it's also what fixes the
+        # by=/cmap color assignment, not just the registry population.
+        hooks.append(_prepare_category_renderers(cmap, category_renderers))
+
+    opts_kwargs = dict(hooks=hooks)
+    if not is_categorical:
+        # This only applies to the continuous/expression plot.
+        opts_kwargs["colorbar_opts"] = {"width": 12}    # thin the colorbar out.
+
+    plot = plot.opts(**opts_kwargs)
+
+    # Add some opts that are scoped to the Points element itself, not the overall plot.
+    # These particular options will override any defaults that hvplot may try to add in.
+    plot = plot.opts(hv.opts.Points(
+        radius=radius, line_color=None,
+        tools=[custom_hover], default_tools=default_tools, active_tools=active_tools,
+        toolbar="below",
+        ))
+    return plot
+
+def create_umap_plot(df:pd.DataFrame, color_col:str="raw_value", cmap="YlOrRd", is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None, category_renderers:dict|None=None, radius:float=0.15):
+    """Generates a Datashaded UMAP."""
+
+    color_col_title = title if title else color_col.title()
+
+    plot_kwargs = dict(
+        x='UMAP1', y='UMAP2',
+        rasterize=False, #aggregator=agg,
+        cmap=cmap,
+        xaxis="bottom", yaxis="left",
+        xlabel="UMAP_1", ylabel="UMAP_2",
+        title=f"UMAP: {color_col_title}",
+
+        #Kill the colorbar if it's categorical
+        colorbar=not is_categorical,
+        clabel="",  # No label for the colorbar
+        clim = (0, cbar_max) if cbar_max is not None else None,
+        legend=False,    # using a ghost legend so the legend does not squish the plot
+
+        # Responsiveness if the browser is resized
+        responsive=True, # Automatically stretches to fill its container
+        height=DEFAULT_PLOT_HEIGHT    # Tells Bokeh the canvas cannot drop below 275px (prevent squishing if the layout for the display is not full width)
+    )
+
+    if is_categorical:
+        # `by=` splits this into one renderer per category
+        # instead of one combined glyph, which is what makes per-category
+        # show/hide possible downstream.
+        plot = df.hvplot.points(by=color_col, **plot_kwargs)
+    else:
+        plot = df.hvplot.points(c=color_col, **plot_kwargs)
+
+    label_name = "Expression" if color_col == "raw_value" else color_col.title()
+    custom_hover = HoverTool(
+        tooltips=[(label_name, f"@{color_col}")],
+    )
+    default_tools=["box_zoom", "wheel_zoom", "pan", "reset"]
+    active_tools=["wheel_zoom", "pan"]
+
+    hooks = [autohide_toolbar, fix_colorbar_hook]
+    if is_categorical:
+        # Always run this for categorical plots -- it's also what fixes the
+        # by=/cmap color assignment, not just the registry population.
+        hooks.append(_prepare_category_renderers(cmap, category_renderers))
+
+    opts_kwargs = dict(hooks=hooks,
+                    xticks=0, yticks=0,    # No ticks.
+                    )
+    if not is_categorical:
+        # This only applies to the continuous/expression plot.
+        opts_kwargs["colorbar_opts"] = {"width": 12}    # thin the colorbar out.
+
+    plot = plot.opts(**opts_kwargs)
+
+    # Add some opts that are scoped to the Points element itself, not the overall plot.
+    # These particular options will override any defaults that hvplot may try to add in.
+    plot = plot.opts(hv.opts.Points(
+        radius=radius, line_color=None,
+        tools=[custom_hover], default_tools=default_tools, active_tools=active_tools,
+        toolbar="right",
+        ))
+    return plot
 
 def create_violin_plot(df, y_col, group_col='cluster', cmap='Category10', title=None):
     """Generates standard bokeh violin plots (no Datashader needed here)."""
@@ -303,20 +352,124 @@ def clip_expression_values(dataframe: pd.DataFrame, min_clip: float | None=None,
     dataframe["raw_value"] = dataframe["raw_value"].clip(lower=min_clip, upper=max_clip)
     return dataframe
 
-def has_selection(settings) -> bool:
+def compute_aggregation_params(df, x_col, y_col, target_markers=80_000, min_dim=275):
     """
-    Return ``True`` when the bounds stored in ``self.settings`` describe a
-    non‑degenerate rectangle.
+    Computes (width, height, radius) for create_datashader_agg + create_spatial_plot.
 
-    The legacy convention used by the panel app was that *all four*
-    selection values would be equal when no box was supplied (either
-    via the UI or the URL).  The boolean return value allows callers to
-    apply zoom/mirroring only when there really is something to zoom to.
+    width/height are proportional to the data's x/y extent, so bin spacing
+    comes out equal in both dimensions -- an aggregation resolution that
+    isn't proportional to the data's aspect ratio produces different spacing
+    in x vs y, and a single radius can't match both, causing visible tearing.
+    radius is derived from that spacing so markers tile without gaps or overlap.
+    """
+    x_extent = df[x_col].max() - df[x_col].min()
+    y_extent = df[y_col].max() - df[y_col].min()
+    aspect = x_extent / y_extent if y_extent else 1.0
+
+    height = max(min_dim, int(round((target_markers / aspect) ** 0.5)))
+    width = max(min_dim, int(round(height * aspect)))
+
+    spacing = y_extent / height
+    radius = spacing / 2 * 1.05  # slight overlap avoids hairline gaps
+
+    return width, height, radius
+
+def create_datashader_agg(df, x: str, y: str, width:int=DEFAULT_PLOT_WIDTH, height:int=DEFAULT_PLOT_HEIGHT) -> "DataArray":
+    """
+    Aggregates data points from the DataFrame using Datashader, producing a summary for visualization.
+
+    Parameters:
+        df (pd.DataFrame): The DataFrame containing the data to aggregate.
+        x (str): The name of the column to use for the x-axis.
+        y (str): The name of the column to use for the y-axis.
+
+    Returns:
+        xarray.DataArray: An aggregated DataArray where each pixel contains the maximum 'raw_value' expression
+        and a boolean indicating the presence of each cluster (by 'clusters_cat_codes').
+
+    Notes:
+        - The x and y values are swapped for aggregation compared to plotting.
+        - The aggregation computes the maximum 'raw_value' per pixel and tracks cluster membership.
     """
 
-    return not (
-        settings.selection_x1 == settings.selection_x2 == settings.selection_y1 == settings.selection_y2
+    # Create a canvas with the specified width and height
+    cvs = ds.Canvas(plot_width=width, plot_height=height)
+
+    # NOTE: This seems to affect the expression aggregation but does not matter for the clusters
+    # We need to swap the x and y values for aggregation compared to what we eventually plot.
+
+    df["clusters_cat_codes"] = df["clusters_cat_codes"].astype("category")
+
+    agg = cvs.points(
+        df,
+        x=x,
+        y=y,
+        agg=ds.summary(
+            expression=ds.max("raw_value"),
+            clusters=ds.by("clusters_cat_codes", ds.any()),  # type: ignore
+        ),
     )
+    return agg
+
+def create_clusters_df(agg):
+    agg_df = agg.to_dataframe(name="clusters_cat_codes")
+    agg_df = agg_df[agg_df["clusters_cat_codes"]]
+    # The columns we want are in the multi-index, so we need to make them into a dataframe
+    final_df =  agg_df.index.to_frame(index=False)
+    return final_df
+
+def create_expression_df(agg):
+    agg_df = agg.to_dataframe(name="raw_value")
+    # Drop missing values
+    agg_df = agg_df.dropna()
+    final_df = agg_df.reset_index()
+    return final_df
+
+def create_umap_sample(df, value_col='raw_value', cluster_col='clusters', background_target_markers=8_000, cluster_floor=20, small_cluster_threshold=200, seed=0):
+    """
+    Creates a sampled dataframe for UMAP visualization, ensuring that the background (non-expressing) cells are represented proportionally across clusters.
+
+    Parameters:
+        df (pd.DataFrame): The input dataframe containing UMAP coordinates and expression values.
+        value_col (str): The name of the column indicating expression values.
+        cluster_col (str): The name of the column indicating cluster assignments.
+        background_target_markers (int): The target number of background markers to sample.
+        cluster_floor (int): The minimum number of markers to sample from each large cluster.
+        small_cluster_threshold (int): The threshold below which clusters are considered "small" and fully included in the background sample.
+        seed (int): Random seed for reproducibility of sampling.
+
+    Returns:
+        pd.DataFrame: A new dataframe containing all expressing cells and a sampled subset of background cells
+    """
+
+    # Split the dataframe into expressing and background subsets
+    expressing = df[df[value_col] > 0]
+    background = df[df[value_col] == 0]
+
+    # Just use the original dataframe if the background is already small enough
+    if len(background) <= background_target_markers:
+        return df.reset_index(drop=True)
+
+    # Split the background into clusters and determine how many to sample from each cluster
+    counts = background[cluster_col].value_counts()
+    small_clusters = counts[counts < small_cluster_threshold].index
+    large_clusters = counts[counts >= small_cluster_threshold].index
+
+    # Use all of the small clusters and sample proportionally from the large clusters
+    small_bg = background[background[cluster_col].isin(small_clusters)]
+    large_counts = counts[large_clusters]
+    remaining_budget = max(background_target_markers - len(small_bg), 0)
+    proportional = (large_counts / large_counts.sum() * remaining_budget).round().astype(int) if len(large_counts) else large_counts
+    allocation = proportional.clip(lower=cluster_floor).clip(upper=large_counts)
+
+    # Combine the small clusters and the sampled large clusters into a single dataframe
+    parts = [small_bg]
+    for cluster, n in allocation.items():
+        cluster_bg = background[background[cluster_col] == cluster]
+        parts.append(cluster_bg.sample(n=n, random_state=seed))
+
+    bg_sampled = pd.concat(parts, ignore_index=True)
+    return pd.concat([expressing, bg_sampled], ignore_index=True)
 
 def normalize_expression_name(filename) -> str:
         """
@@ -414,13 +567,8 @@ class Settings(param.Parameterized):
     filename = param.String(doc="Filename for the dataframe to retrieve")
     dataset_id = param.String(doc="Dataset ID to display")
     projection_id = param.String(doc="Projection ID to display", allow_None=True)
-    selection_x1 = param.Number(doc="left selection range", allow_None=True)
-    selection_x2 = param.Number(doc="right selection range", allow_None=True)
-    selection_y1 = param.Number(doc="upper selection range", allow_None=True)
-    selection_y2 = param.Number(doc="lower selection range", allow_None=True)
     expression_min_clip = param.Number(doc="Minimum expression value to clip", allow_None=True)
 
-    min_genes = param.Integer(default=0, doc="Minimum number of genes expressed to include a cell observation", bounds=(0, 500))
     save = param.Boolean(
         doc="If true, save this configuration as a new display.", default=False
     )

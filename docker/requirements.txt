@@ -45,8 +45,8 @@ scanpy==1.12.1
 scipy==1.17.1
 seaborn==0.13.2
 setuptools<82   # need some pkg_resources methods
-spatialdata==0.7.2
-spatialdata_io==0.6.0
+spatialdata==0.7.3
+spatialdata_io==0.7.1
 shadows==0.1a2
 tables==3.11.1
 watchfiles==1.1.1

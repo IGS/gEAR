@@ -89,9 +89,11 @@ fixed paths have worked fine for decades.
 
 Check the requirement.txt file in <git_repo_root>/docker for the latest packages that have been tested locally. They work in a Dockerized ubuntu environment so should be able to work on the VMs. You can run `./pip3 install -r requirements.txt` as a shortcut.
 
+Previously only the "docker" path requirements.txt was necessary, but now that the pip installations are broken up amongst the various services, more requirements.txt files will be necessary to get a comprehensive package installation onto the monolith VM. For this reason, you may elect to use option B instead.
+
 `./pip3 install -r <git_repo_root/docker/requirements.txt`
-`./pip3 uninstall dask-expr -y`
-`./pip3 install -e <git_repo_root>/lib/`
+`./pip3 install -r <git_repo_root/services/spatial/requirements.txt`
+`./pip3 install -r <git_repo_root/services/projectr/requirements.txt`
 
 If the requirements.txt will not install due to a stack depth issue, you can use the `requirements.full.txt` instead, which was made using `pip freeze > requirements.full.txt`. This file contains all versioned scripts so pip does not have to compute the best version for non-mentioned packages.
 
@@ -154,14 +156,13 @@ I cannot add comments to the bash code without breaking the command.  So consult
     scipy==1.17.1 \
     seaborn==0.13.2 \
     setuptools==81.0.0 \
-    spatialdata==0.7.2 \
-    spatialdata_io==0.6.0 \
+    spatialdata==0.7.3 \
+    spatialdata_io==0.7.1 \
     spatialpandas==0.5.0 \
     shadows==0.1a2 \
     tables==3.11.1 \
     watchfiles==1.1.1
     ./pip3 install git+https://github.com/adkinsrs/diffxpy.git@ffd828c280882ca98adc6e42c934625fab0011f6
-    ./pip3 uninstall dask-expr -y
 
 ```
 

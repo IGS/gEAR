@@ -1,33 +1,41 @@
-import asyncio
-import gc
 import json
-import sys
 import traceback
 
-import datashader as ds
+import colorcet as cc
 import holoviews as hv
 import hvplot
 import hvplot.pandas  # noqa
 import numpy as np
 import panel as pn
-import param
+from bokeh.models import CustomJS
 from common import (
     Settings,
     autohide_toolbar,
     clip_expression_values,
+    compute_aggregation_params,
+    create_clusters_df,
+    create_datashader_agg,
+    create_expression_df,
     create_spatial_plot,
     create_umap_plot,
+    create_umap_sample,
     create_violin_plot,
-    has_selection,
+    link_crosshairs,
+    link_ranges,
     normalize_expression_name,
     retrieve_dataframe,
     retrieve_image_array,
     sort_clusters,
 )
+from PIL import Image as PILImage
 
 # CRITICAL: Initialize the Bokeh backend for interactivity
 hvplot.extension('bokeh', logo=False) # type: ignore
 pn.extension(loading_indicator=True, defer_load=True, nthreads=4)  # type: ignore)
+
+MAX_CARD_WIDTH = 1800
+EXPANDED_PLOT_MIN_HEIGHT = 380
+EXPANDED_PLOT_MIN_WIDTH = 320
 
 class BaseSpatialViewer(pn.viewable.Viewer):
     """
@@ -76,39 +84,46 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             if 'filename' in args:
                 self.settings.filename = get_arg('filename', "")
 
-            if 'min_genes' in args:
-                self.settings.min_genes = int(get_arg('min_genes', 0))
-
-            if 'selection_x1' in args:
-                selection_x1 = get_arg('selection_x1')
-                if selection_x1 is not None:
-                    self.settings.selection_x1 = float(selection_x1)
-            if 'selection_x2' in args:
-                selection_x2 = get_arg('selection_x2')
-                if selection_x2 is not None:
-                    self.settings.selection_x2 = float(selection_x2)
-            if 'selection_y1' in args:
-                selection_y1 = get_arg('selection_y1')
-                if selection_y1 is not None:
-                    self.settings.selection_y1 = float(selection_y1)
-            if 'selection_y2' in args:
-                selection_y2 = get_arg('selection_y2')
-                if selection_y2 is not None:
-                    self.settings.selection_y2 = float(selection_y2)
-
             if 'expression_min_clip' in args:
                 expression_min_clip = get_arg('expression_min_clip')
                 if expression_min_clip is not None:
                     self.settings.expression_min_clip = float(expression_min_clip)
 
             if 'nosave' in args:
-                self.settings.nosave = bool(int(get_arg('nosave', True)))
+                nosave = get_arg('nosave', True)
+                if nosave is not None:
+                    self.settings.nosave = bool(int(nosave))
+                else:
+                    self.settings.nosave = False
 
             if 'display_name' in args:
                 self.settings.display_name = get_arg('display_name', "")
 
             if 'make_default' in args:
-                self.settings.make_default = bool(int(get_arg('make_default', False)))
+                make_default = get_arg('make_default', False)
+                if make_default is not None:
+                    self.settings.make_default = bool(int(make_default))
+                else:
+                    self.settings.make_default = False
+
+            # Preserve view range carried forward from a previous gene's
+            # session. Switching genes tears down this
+            # whole Panel/Bokeh server session and spins up a fresh one, so
+            # we apply this as the initial range.
+            def _get_restore_range(start_key, end_key):
+                start_raw, end_raw = get_arg(start_key), get_arg(end_key)
+                if start_raw is None or end_raw is None:
+                    return None
+                try:
+                    return (float(start_raw), float(end_raw))
+                except (TypeError, ValueError):
+                    return None
+
+            self.restore_xlim = _get_restore_range('x_range_start', 'x_range_end')
+            self.restore_ylim = _get_restore_range('y_range_start', 'y_range_end')
+        else:
+            self.restore_xlim = None
+            self.restore_ylim = None
 
         # Add a hidden widget to sync url parameter state to the JS context.
         # This is so we can pass the params to the download widget so it can recreate the plot.
@@ -127,6 +142,22 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
                 // Expose it globally to the frontend DOM
                 window.gearSpatialUrlParams = params;
+
+                // Sync zoom range to frontend so switching genes
+                // (which spins up a brand new Panel session) can carry
+                // the last zoom/pan position forward into the next one.
+                if (state.dataset_id &&
+                    state.x_range_start !== undefined && state.x_range_end !== undefined &&
+                    state.y_range_start !== undefined && state.y_range_end !== undefined) {
+                    window.gearSpatialViewState = window.gearSpatialViewState || {};
+                    window.gearSpatialViewState[state.dataset_id] = {
+                        x_range_start: state.x_range_start,
+                        x_range_end: state.x_range_end,
+                        y_range_start: state.y_range_start,
+                        y_range_end: state.y_range_end,
+                    };
+                }
+
             }
         """)
 
@@ -137,62 +168,63 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         self.orig_df['clusters'] = self.orig_df['clusters'].astype('category')
         self.orig_df = clip_expression_values(self.orig_df, self.settings.expression_min_clip)
 
-        # If min_genes is set, filter the dataframe to only include observations with at least that many genes
-        self.min_genes = self.settings.min_genes
-        self._filter_df()
-
         self.image_array = retrieve_image_array(self.settings.dataset_id)
 
         self.current_gene = normalize_expression_name(self.settings.filename)
 
         self.nosave = self.settings.nosave
 
-        # If selection_x1/x2/y1/y2 are present save as a tuple in the form of (left, right, bottom, top)
-        saved_bounds = None
-        if has_selection(self.settings):
-            saved_bounds = (
-                self.settings.selection_x1,
-                self.settings.selection_x2,
-                self.settings.selection_y1,
-                self.settings.selection_y2,
-            )
-
-        self.saved_bounds = saved_bounds
-
-        # Initialize linking (data filtering) and streams (coordinate reporting)
-        self.linker = hv.link_selections.instance(
-            unselected_alpha=0.25,
-            unselected_color='#808080'  # Gray out unselected points for better visibility
-        )
-        self.bounds_stream_image = hv.streams.BoundsXY(bounds=self.saved_bounds)  # type: ignore
-        self.bounds_stream_composite = hv.streams.BoundsXY(bounds=self.saved_bounds)  # type: ignore
-
-        # Set up a callback to update the URL params whenever the user draws or clears a box
-        self.bounds_stream_image.add_subscriber(self._update_bounds_callback)
-        self.bounds_stream_composite.add_subscriber(self._update_bounds_callback)
-
-        # Add some attributes that will be used in various places
-        # This includes precomputing the datashader aggregations since they can be shared across multiple plots
-
-        self.expression_agg = ds.max('raw_value')
-        self.expression_cmap = 'YlOrRd'
-
-        self.clusters_agg = ds.count_cat('clusters')
-        self.cluster_cmap = dict(zip(self.df['clusters'], self.df['colors']))
-
+        # Set up the background image and its dimmed version for overlaying on the plots
         self.bg_image = None
         self.bg_image_dimmed = None
         self.img_height = None
         self.img_width = None
-        if self.image_array is not None:
-            # Ensure array contents are UInt8 (0-255) for proper display. If not, normalize to that range and convert.
-            if self.image_array.dtype != np.uint8:
-                self.image_array = (255 * (self.image_array - np.min(self.image_array)) / (np.ptp(self.image_array) + 1e-8)).astype(np.uint8)
 
-            # use image_array shape to build image bounds. Image is 3-dimensional where shape is (y, x, c)
-            img_bounds = (0, 0, self.image_array.shape[1], self.image_array.shape[0])
+        if self.image_array is not None:
+            # Store the original image dimensions for later use.
             self.img_height = self.image_array.shape[0]
             self.img_width = self.image_array.shape[1]
+
+            # Downsample if the image is too large to avoid memory issues and improve performance
+            MAX_DIM = 4000
+            if max(self.img_height, self.img_width) > MAX_DIM:
+                scale = MAX_DIM / max(self.img_height, self.img_width)
+                new_h, new_w = int(self.img_height * scale), int(self.img_width * scale)
+                # Downsample per-channel via PIL (numpy has no built-in image resize)
+                arr = self.image_array
+                if arr.ndim == 2:
+                    arr = arr[..., np.newaxis]
+                channels = [np.array(PILImage.fromarray(arr[..., c]).resize((new_w, new_h))) for c in range(arr.shape[-1])]
+                self.image_array = np.stack(channels, axis=-1)
+
+            # Ensure array contents are UInt8 (0-255) for proper display. If not, normalize to that range and convert.
+            if self.image_array.dtype != np.uint8:
+                img = self.image_array.astype(np.float32)  # was implicit float64 but more memory intensive than needed
+                # Use percentile clipping to avoid outliers dominating the normalization
+                p_low, p_high = np.percentile(img, [1, 99])
+                img = np.clip(img, p_low, p_high)
+                img = 255 * (img - p_low) / (p_high - p_low + 1e-8)
+                self.image_array = img.astype(np.uint8)
+
+            # Normalize to a consistent channel count. Xenium uploads
+            # in particular can come back as single-channel (H,W,1), or with 2+
+            # channels for different stains -- neither is directly RGB/RGBA-usable.
+            if self.image_array.ndim == 2:
+                self.image_array = self.image_array[..., np.newaxis]
+            n_channels = self.image_array.shape[-1]
+
+            # Xenium case
+            if n_channels == 1:
+                self.image_array = np.repeat(self.image_array, 3, axis=-1)
+            elif n_channels == 2 or n_channels > 4:
+                # Ambiguous/multi-stain -- use the first channel only, matching
+                # the old Plotly pipeline's approach, then broadcast to RGB
+                # TODO: let the user select channels, though we have lost this info in the npy file.
+                self.image_array = np.repeat(self.image_array[..., :1], 3, axis=-1)
+
+            # use original image_array shape to build image bounds.
+            # Image is 3-dimensional where shape is (y, x, c)
+            img_bounds = (0, 0, self.img_width, self.img_height)
 
             # This is a fully opaque version
             self.bg_image = hv.RGB(self.image_array, bounds=img_bounds).opts(
@@ -202,8 +234,8 @@ class BaseSpatialViewer(pn.viewable.Viewer):
                     )
 
             # Create a more opaque version of the image.
-            opacity_value = int(255 * 0.5)  # Adjust the multiplier to set the desired opacity level
-            alpha_channel = np.full((self.img_height, self.img_width, 1), opacity_value, dtype=np.uint8)
+            opacity_value = int(255 * 0.3)  # Adjust the multiplier to set the desired opacity level
+            alpha_channel = np.full((self.image_array.shape[0], self.image_array.shape[1], 1), opacity_value, dtype=np.uint8)
 
             # Check if image is RGB (3 channels). If so, append alpha. If already RGBA, just overwrite alpha.
             if self.image_array.shape[-1] == 3:
@@ -217,70 +249,154 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             self.bg_image_dimmed = hv.RGB(dimmed_array, bounds=img_bounds).opts(
                         xaxis=None, yaxis=None, responsive=True,
                         # No tools or toolbar as the composite plot takes care of this
-                        tools=[], active_tools=[], default_tools=[],
-                        hooks=[autohide_toolbar]
+                        tools=[], default_tools=[],
+                        hooks=[autohide_toolbar],
                     )
 
+        self.df = self.orig_df.copy()
+
+        # One unfortunately annoyance is that datashader's default behavior is to flip the y-axis,
+        # which is not what we want for spatial data. To fix this,
+        # we can reverse the y-axis limits by setting ylim to (max, min) instead of (min, max).
+        self.df["y_plot"] = self.df["spatial2"]
+        if self.img_height is not None:
+            self.df["y_plot"] = self.img_height - self.df["spatial2"]
+
+        self.expr_df = self.df[self.df['raw_value'] > 0]
+
+        # Create a mapping of cluster cat codes to names to re-add after datashader aggregation
+        self.cluster_map = {
+            code: self.df[self.df["clusters_cat_codes"] == code]["clusters"].to_numpy()[0]
+            for code in self.df["clusters_cat_codes"].unique()
+        }
+
+        # Get 98th-percentile of valid expression for clipping the color scale. This is to avoid outliers dominating the color mapping.
+        # Using all data runs into the issue of the value being 0.
+        self.expression_98 = self.expr_df["raw_value"].quantile(0.98)
+        if self.expression_98 == 0:
+            self.expression_98 = None
+
+        ### Set up some initial attributes to use when plotting
         self._init_widgets()
 
-    def _filter_df(self):
-        """Applies any necessary filtering to the dataframe based on the current settings."""
-        df = self.orig_df
-        if self.min_genes and self.min_genes > 0:
-            self.df = df[df['n_genes_by_counts'] >= self.min_genes]
-        else:
-            self.df = df
+        # Precompute the datashader aggregations since they can be shared across multiple plots
+        # For some reason, the x and y values are swapped for aggregation compared to what we eventually plot, so we need to swap them here.
+        agg_width, agg_height, self.marker_radius = compute_aggregation_params(self.df, x_col="y_plot", y_col="spatial1")
+        self.agg = create_datashader_agg(self.df, x="y_plot", y="spatial1", width=agg_width, height=agg_height)
+
+        self.expression_agg = self.agg["expression"]
+        self.expression_df = create_expression_df(self.expression_agg)
+        self.expression_df = self.expression_df[self.expression_df['raw_value'] > 0]
+        self.expression_cmap = cc.m_CET_L4_r
+
+        self.clusters_agg = self.agg["clusters"]
+        self.clusters_df = create_clusters_df(self.clusters_agg)
+        self.clusters_df["clusters"] = self.clusters_df["clusters_cat_codes"].map(self.cluster_map)
+        self.cluster_cmap = dict(zip(self.df['clusters'], self.df['colors']))
+
+        # Precompute the UMAP aggregation and sample for the UMAP plots
+        _, _, self.umap_marker_radius = compute_aggregation_params(self.df, x_col="UMAP1", y_col="UMAP2", target_markers=30_000)
+        self.umap_df = create_umap_sample(self.df)
 
     def _sync_state_to_js(self):
         """Serializes current active settings and pipes them to the frontend DOM."""
 
-        min_genes = self.settings.min_genes
-        if hasattr(self, "min_genes") and self.min_genes is not None:
-            min_genes = self.min_genes
-
         state = {
             "dataset_id": self.settings.dataset_id,
             "filename": self.settings.filename,
-            "min_genes": min_genes,  # Use the active class property
         }
 
         # Include expression clip if it exists
         if self.settings.expression_min_clip is not None:
             state["expression_min_clip"] = self.settings.expression_min_clip
 
-        # Include spatial bounds if an active selection exists
-        if self.settings.selection_x1 is not None:
-            state["selection_x1"] = self.settings.selection_x1
-            state["selection_x2"] = self.settings.selection_x2
-            state["selection_y1"] = self.settings.selection_y1
-            state["selection_y2"] = self.settings.selection_y2
+        # Include the current view range, if zoomed in
+        range_fig = getattr(self, '_range_figure', None)
+        if range_fig is not None:
+            try:
+                if range_fig.x_range.start is not None \
+                    and range_fig.x_range.end is not None \
+                    and range_fig.y_range.start is not None \
+                    and range_fig.y_range.end is not None:
+                    state["x_range_start"] = float(range_fig.x_range.start)
+                    state["x_range_end"] = float(range_fig.x_range.end)
+                    state["y_range_start"] = float(range_fig.y_range.start)
+                    state["y_range_end"] = float(range_fig.y_range.end)
+            except (TypeError, ValueError):
+                pass
 
         # Writing to this value triggers the JS callback instantly
         self.state_sync.value = json.dumps(state)
 
-    def _update_bounds_callback(self, bounds=None):
+    # NOTE: We only need to watch one figure, as the range will propagate to the others via the link_ranges function
+    def _apply_restored_range(self, figure):
         """
-        This callback fires automatically when the user draws or clears a box.
-        It breaks the tuple into individual params, which location.sync pushes to the URL.
+        Applies self.restore_xlim/self.restore_ylim (parsed in __init__ from
+        the x_range_start/end, y_range_start/end URL args) as the initial
+        view range on the provided Bokeh figure, if
+        present. Call this before _wire_range_capture so we don't immediately
+        "capture" our own restored range as a spurious change.
         """
+        if figure is None:
+            return
+        if self.restore_xlim is not None and self.restore_ylim is not None:
+            figure.x_range.start, figure.x_range.end = self.restore_xlim
+            figure.y_range.start, figure.y_range.end = self.restore_ylim
 
-        if bounds is None:
-            # User clicked off/cleared the box
-            self.settings.selection_x1 = None
-            self.settings.selection_y1 = None
-            self.settings.selection_x2 = None
-            self.settings.selection_y2 = None
-            self.saved_bounds = None
-        else:
-            # User drew a box
-            (self.settings.selection_x1, self.settings.selection_y1, self.settings.selection_x2, self.settings.selection_y2) = bounds
-            self.saved_bounds = bounds
+    def _sync_cluster_legend_toggle(self, ghost_fig, real_renderers_by_cat):
+        """
+        Rewires the standalone (already-rendered) ghost legend's Bokeh Legend
+        so clicking a swatch toggles visibility of the cluster-plot
+        renderer, not just the invisible ghost one -- recreating the
+        Plotly-style "click to hide" behavior
+        """
+        if not ghost_fig.legend:
+            return
 
-        # Trigger the zoom update!
-        self._update_zoom_panel(bounds)
+        # Map each legend item to the renderer for the Bokeh cluster spatial plot
+        legend = ghost_fig.legend[0]
+        for item in legend.items:
+            label = item.label
+            if isinstance(label, dict):
+                label = label.get('value') or label.get('field')
+            elif hasattr(label, 'value'):
+                label = label.value
 
-        # BROADCAST TO FRONTEND
-        self._sync_state_to_js()
+            real_renderer = real_renderers_by_cat.get(label)
+            if real_renderer is not None:
+                item.renderers = list(item.renderers) + [real_renderer]
+
+        # toggles visibility
+        legend.click_policy = 'hide'
+
+
+    def _sync_range_updates(self, figure):
+        """
+        Watches the figure's x_range/y_range for live changes (pan, box-zoom,
+        wheel-zoom) and pushes the current range up to the frontend via the
+        state_sync -> window.gearSpatialViewState bridge, so switching genes
+        can restore the same view. Bokeh Server automatically syncs client-
+        side property changes back to these same server-side Range1d objects,
+        so a plain `.on_change` here is standard Bokeh behavior.
+
+        The spatial figures aren't linked to pan/zoom together today, so this
+        just tracks whichever one was interacted with most recently as the
+        "current" view to restore.
+        """
+        def make_callback(fig):
+            def on_range_change(attr, old, new):
+                self._range_figure = fig
+                self._sync_state_to_js()
+            return on_range_change
+
+        if figure is None:
+            return
+        cb = make_callback(figure)
+        figure.x_range.on_change('start', cb)
+        figure.x_range.on_change('end', cb)
+        figure.y_range.on_change('start', cb)
+        figure.y_range.on_change('end', cb)
+
 
     def _create_ghost_legend(self):
             """Creates a fake, invisible plot just to force Bokeh to draw a legend."""
@@ -314,18 +430,50 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             # Combine all the ghost points into a single overlay
             return hv.Overlay(ghost_points)
 
-    def _generate_spatial_grid(self):
+    def _force_legend_redraw_on_range_change(self, ghost_fig, range_source_fig):
         """
-        This is where you would implement the logic to generate the spatial grid layout with the background image, expression plot, and cluster plot.
-        Row 1 is the main view, and Row 2 (optional) is the zoomed-in view. The legend is also included in Row 1.
+        Workaround for an observed Bokeh rendering quirk: after panning/
+        zooming the (range-linked) spatial figures, the ghost legend's swatch
+        icons can stop being painted, and only reliably come back once a
+        legend item is actually clicked -- which apparently forces Bokeh to
+        fully redraw the legend as a side effect of the click_policy='hide'
+        interaction, regardless of which item was clicked or whether it was
+        being hidden or shown.
+
+        This forces that same redraw proactively, client-side only, whenever
+        the range changes, instead of waiting for a click: briefly toggling
+        the legend's own `visible` property off and back on forces Bokeh to
+        recompute and repaint it, the same way toggling a renderer's
+        `visible` via click_policy does.
+
+        NOTE: SAdkins - Still don't fully understand the bug.
         """
-        raise NotImplementedError("Subclasses must implement _generate_spatial_grid")
+        if not ghost_fig.legend:
+            return
+
+        legend = ghost_fig.legend[0]
+        force_redraw = CustomJS(args=dict(legend=legend), code="""
+            legend.visible = false;
+            requestAnimationFrame(() => { legend.visible = true; });
+        """)
+        range_source_fig.x_range.js_on_change('start', force_redraw)
+        range_source_fig.x_range.js_on_change('end', force_redraw)
+        range_source_fig.y_range.js_on_change('start', force_redraw)
+        range_source_fig.y_range.js_on_change('end', force_redraw)
+
+
+    def _generate_spatial_plots(self):
+        """
+        This is where you would implement the logic to generate the plots to be returned for the spatial grid layout. Includes the background image, expression plot, and cluster plot.
+        """
+        raise NotImplementedError("Subclasses must implement _generate_spatial_plots")
 
     def _init_widgets(self):
         """
         This is where you would initialize any Panel widgets (sliders, dropdowns, etc.) that you want to use in your app.
         You can then reference these widgets in your _build_layout method to include them in the layout and set up callbacks.
         """
+
         raise NotImplementedError("Subclasses must implement _init_widgets")
 
     def _build_layout(self):
@@ -335,13 +483,13 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         """
         raise NotImplementedError("Subclasses must implement _build_layout")
 
-    def _update_zoom_panel(self, bounds):
+    def _update_plots(self, event):
         """
-        This is where you would implement the logic to update the zoomed-in plot based on the provided bounds.
-        The bounds parameter will be a tuple in the form of (left, right, bottom, top) representing the coordinates of the box drawn by the user.
-        You can use these bounds to set the xlim and ylim of the zoomed-in plot accordingly.
+        This is where you would implement the logic to update the plots based on widget changes.
+        The event parameter will contain information about which widget changed and its new value.
+        You can use this information to filter your dataframe, update plot parameters, or trigger a redraw of the plots.
         """
-        raise NotImplementedError("Subclasses must implement _update_zoom_panel")
+        raise NotImplementedError("Subclasses must implement _update_plots")
 
     def __panel__(self):
         """
@@ -359,54 +507,79 @@ class CondensedSpatialViewer(BaseSpatialViewer):
     def _build_layout(self):
         """Builds the 3-panel condensed row."""
         try:
+            # Generate raw plots
+            master_image, main_expr, main_cluster, category_renderers = self._generate_spatial_plots()
 
-            # One unfortunately annoyance is that datashader's default behavior is to flip the y-axis,
-            # which is not what we want for spatial data. To fix this,
-            # we can reverse the y-axis limits by setting ylim to (max, min) instead of (min, max).
-            self.df["y_plot"] = self.df["spatial2"]
-            if self.img_height is not None:
-                self.df["y_plot"] = self.img_height - self.df["spatial2"]
+            # Render to concrete Bokeh figures (instead of pn.pane.HoloViews), so we can synchronize some things across each
+            bokeh_expr = hv.render(main_expr, backend='bokeh')
+            bokeh_cluster = hv.render(main_cluster, backend='bokeh')
+            figures_to_link = [bokeh_expr, bokeh_cluster]
 
-            # Generate base plots
-            self.main_row = self._generate_spatial_grid()
+            # If a master image exists, render it to Bokeh and add it to the list of figures to link
+            if master_image is not None:
+                bokeh_master = hv.render(master_image, backend='bokeh')
+                figures_to_link.insert(0, bokeh_master)
+                self.master_pane = pn.pane.Bokeh(bokeh_master, sizing_mode='stretch_width')
+            else:
+                self.master_pane = pn.pane.HoloViews(master_image, sizing_mode='stretch_width')
 
-            # Lay out the non-zoom panels side-by-side using HoloViews
-            self.intro_markdown = pn.pane.Markdown(
-                "### Click the Expand icon in the top right corner for added functionality",
+            link_ranges(figures_to_link)
+            link_crosshairs(figures_to_link)
+
+            # Restore a carried-over view range (from switching genes) before
+            # wiring up capture, so we don't immediately re-report our own
+            # restored range as a fresh "change".
+            self._apply_restored_range(bokeh_expr)
+            self._sync_range_updates(bokeh_expr)
+
+            # Worth noting the tradeoff in using the Bokeh pane instead of Holoviews is that we lose
+            # some reactivity, but gain access to the underlying Bokeh figure.
+            # Hence, why some things like link_ranges has be implemented manually.
+            self.expr_pane = pn.pane.Bokeh(bokeh_expr, sizing_mode='stretch_width')
+            self.cluster_pane = pn.pane.Bokeh(bokeh_cluster, sizing_mode='stretch_width')
+
+            # Create standalone legend
+            needed_width = max(180, max(len(str(name)) for name in self.cluster_cmap) * 7)
+            needed_height = max(300, len(self.cluster_cmap) * 22 + 50)
+            ghost_legend = self._create_ghost_legend().opts(
+                show_legend=True, legend_position="top_left", xaxis=None, yaxis=None, show_frame=False, toolbar=None, width=needed_width, height=needed_height
             )
 
-            self.pre_layout = pn.Row(
-                #self.intro_markdown,
-                pn.Spacer()
+            bokeh_ghost = hv.render(ghost_legend, backend='bokeh')
+            self._sync_cluster_legend_toggle(bokeh_ghost, category_renderers)
+            self._force_legend_redraw_on_range_change(bokeh_ghost, bokeh_expr)
+            self.legend_pane = pn.Column(pn.pane.Bokeh(bokeh_ghost), width=200, height=300, scroll=True, margin=(0,0,0,0))
+
+            # Build the permanent layout row
+            self.main_row = pn.Row(
+                self.master_pane, self.expr_pane, self.cluster_pane, self.legend_pane,
+                sizing_mode='stretch_both', min_width=1080, margin=(0, 0, 0, 0)
             )
 
-            # Return final Panel layout
-            return pn.Column(
-                self.state_sync, # Invisible DOM injector
-                #self.pre_layout,
-                self.main_row,
-                sizing_mode='stretch_both', # Fills the 100%x100% iframe
-                margin=(0, 0, 0, 0)
-                )
+            return pn.Column(self.state_sync, self.main_row, sizing_mode='stretch_both', max_width=MAX_CARD_WIDTH, margin=(0, 0, 0, 0))
+
         except Exception as e:
-            traceback.format_exc()
+            traceback.print_exc()
             return pn.pane.Alert(f"Error: {e}", alert_type="danger")
 
-    def _generate_spatial_grid(self):
-        """
-        Generates the spatial grid layout with the background image, expression plot, and cluster plot.
-        Row 1 is the main view, and Row 2 is the zoomed-in view. The legend is also included in Row 1.
-        """
+    def _generate_spatial_plots(self):
+        """Generates the raw HoloViews objects without wrapping them in Panel layouts."""
+        if getattr(self, 'bg_image', None) is not None:
+            self.bg_image = self.bg_image.opts(default_tools=["box_zoom", "wheel_zoom", "pan", "reset"], active_tools=["wheel_zoom", "pan"], min_width=275, min_height=300)
 
-        if hasattr(self, 'bg_image'):
-            self.bg_image = self.bg_image.opts(default_tools = ["box_zoom", "wheel_zoom", "pan", "reset"])
+        # This gets filled in during the cluster spatial plot creation
+        # It is a registry of category to renderer, which can then be
+        # used to wire up the ghost legend to toggle visibility of the real cluster plot.
+        category_renderers = {}
 
         # Generate base plots
-        expr_plot = create_spatial_plot(self.df, self.expression_agg, y_col="y_plot", color_col='raw_value', cmap=self.expression_cmap, title=f"Expression: {self.current_gene}", mode="standard")
-        cluster_plot = create_spatial_plot(self.df, self.clusters_agg, y_col="y_plot", color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters", mode="standard") # type: ignore
-        master_image = self.bg_image if hasattr(self, 'bg_image') else pn.pane.HoloViews(None)
+        expr_plot = create_spatial_plot(self.expression_df, y_col="y_plot", color_col='raw_value',
+                                        cmap=self.expression_cmap, title=f"Expression: {self.current_gene}",
+                                        cbar_max=self.expression_98, radius=self.marker_radius)
+        cluster_plot = create_spatial_plot(self.clusters_df, y_col="y_plot", color_col='clusters',
+                                        cmap=self.cluster_cmap, is_categorical=True, title="Clusters",
+                                        category_renderers=category_renderers, radius=self.marker_radius)
 
-        # Create composites with the background image
         if hasattr(self, 'bg_image_dimmed') and self.bg_image_dimmed is not None:
             main_expr = self.bg_image_dimmed * expr_plot
             main_cluster = self.bg_image_dimmed * cluster_plot
@@ -414,42 +587,10 @@ class CondensedSpatialViewer(BaseSpatialViewer):
             main_expr = expr_plot
             main_cluster = cluster_plot
 
-        # Store master composites for the zoom callback
-        self.master_image = master_image
-
-        # Create the Ghost Legend and Container (Row 1 only)
-        needed_width = max(180, max(len(str(name)) for name in self.cluster_cmap) * 7)
-        needed_height = max(300, len(self.cluster_cmap) * 22 + 50)
-
-        ghost_legend = self._create_ghost_legend().opts(
-            show_legend=True, legend_position="top_left",
-            xaxis=None, yaxis=None, show_frame=False, toolbar=None,
-            width=needed_width, height=needed_height
-        )
-
-        legend_container = pn.Column(
-            pn.pane.HoloViews(ghost_legend),
-            width=200, height=300, scroll=True, margin=(0,0,0,0)
-        )
-
-        # This has a min_width to prevent plots from being squished in smaller layout tile configurations.
-        return pn.Row(
-            master_image, main_expr, main_cluster, legend_container,
-            sizing_mode='stretch_both',
-            min_width=1080,
-            margin=(0, 0, 0, 0)
-        )
+        return self.bg_image, main_expr, main_cluster, category_renderers
 
     def _init_widgets(self):
-        """
-        Initializes the widgets for the panel layout. Currently not needed.
-        """
-        pass
-
-    def _update_zoom_panel(self, bounds):
-        """
-        Currently not needed.
-        """
+        """Initializes widgets and builds the condensed control bar."""
         pass
 
 
@@ -459,102 +600,135 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
     """
 
     def _build_layout(self):
-        # Build your spatial rows, UMAPs, and Violins here...
         try:
+            # Generate Raw Plots
+            master_image, main_expr, main_cluster, category_renderers = self._generate_spatial_plots()
 
-            # One unfortunately annoyance is that datashader's default behavior is to flip the y-axis,
-            # which is not what we want for spatial data. To fix this,
-            # we can reverse the y-axis limits by setting ylim to (max, min) instead of (min, max).
-            self.df["y_plot"] = self.df["spatial2"]
-            if self.img_height is not None:
-                self.df["y_plot"] = self.img_height - self.df["spatial2"]
+            # Render to concrete Bokeh figures (instead of pn.pane.HoloViews), so we can synchronize some things across each
+            bokeh_expr = hv.render(main_expr, backend='bokeh')
+            bokeh_cluster = hv.render(main_cluster, backend='bokeh')
+            figures_to_link = [bokeh_expr, bokeh_cluster]
 
-            # Represents main row and zoom row
-            self.spatial_grid_container = self._generate_spatial_grid()
+            # If a master image exists, render it to Bokeh and add it to the list of figures to link
+            if master_image is not None:
+                bokeh_master = hv.render(master_image, backend='bokeh')
+                figures_to_link.insert(0, bokeh_master)
+                self.master_pane = pn.pane.Bokeh(bokeh_master, sizing_mode='stretch_width')
+            else:
+                self.master_pane = pn.pane.HoloViews(master_image, sizing_mode='stretch_width')
 
-            ### UMAP row
-            expr_umap = create_umap_plot(
-                self.df, self.expression_agg, color_col='raw_value', cmap="cividis_r", is_categorical=False, title=f"{self.current_gene} Expression"
-            )
-            cluster_umap = create_umap_plot(
-                self.df, self.clusters_agg, color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters"
-            )
+            link_ranges(figures_to_link)
+            link_crosshairs(figures_to_link)
 
-            # Wrap them in the cross-filtering linker
-            linked_expr_umap = self.linker(expr_umap)
-            linked_cluster_umap = self.linker(cluster_umap)
+            # Restore a carried-over view range (from switching genes) before
+            # wiring up capture, so we don't immediately re-report our own
+            # restored range as a fresh "change".
+            self._apply_restored_range(bokeh_expr)
+            self._sync_range_updates(bokeh_expr)
 
-            # Create the UMAP legend
+            # Worth noting the tradeoff in using the Bokeh pane instead of Holoviews is that we lose
+            # some reactivity, but gain access to the underlying Bokeh figure.
+            # Hence, why some things like link_ranges has be implemented manually.
+            self.expr_pane = pn.pane.Bokeh(bokeh_expr, sizing_mode='stretch_width')
+            self.cluster_pane = pn.pane.Bokeh(bokeh_cluster, sizing_mode='stretch_width')
+
             needed_width = max(180, max(len(str(name)) for name in self.cluster_cmap) * 7)
             needed_height = max(300, len(self.cluster_cmap) * 22 + 50)
+            ghost_legend = self._create_ghost_legend().opts(
+                show_legend=True, legend_position="top_left", xaxis=None, yaxis=None, show_frame=False, toolbar=None, width=needed_width, height=needed_height
+            )
+
+            bokeh_ghost = hv.render(ghost_legend, backend='bokeh')
+            self._sync_cluster_legend_toggle(bokeh_ghost, category_renderers)
+            self._force_legend_redraw_on_range_change(bokeh_ghost, bokeh_expr)
+            self.legend_pane = pn.Column(pn.pane.Bokeh(bokeh_ghost), width=200, height=300, scroll=True, margin=(0,0,0,0))
+
+            self.main_row = pn.Row(self.master_pane, self.expr_pane, self.cluster_pane, self.legend_pane, sizing_mode='stretch_width')
+
+            self.spatial_grid_container = pn.Column(self.main_row, sizing_mode='stretch_width')
+
+            ### UMAP
+            expr_umap, cluster_umap, umap_category_renderers = self._generate_umap_plots()
+            bokeh_expr_umap = hv.render(expr_umap, backend='bokeh')
+            bokeh_cluster_umap = hv.render(cluster_umap, backend='bokeh')
+            umap_figures_to_link = [bokeh_expr_umap, bokeh_cluster_umap]
+
+            expr_umap_pane = pn.pane.Bokeh(bokeh_expr_umap, sizing_mode='stretch_width')
+            cluster_umap_pane = pn.pane.Bokeh(bokeh_cluster_umap, sizing_mode='stretch_width')
 
             umap_ghost_legend = self._create_ghost_legend().opts(
-                show_legend=True,
-                legend_position="top_left",
-                xaxis=None, yaxis=None,
-                show_frame=False, toolbar=None,
-                width=needed_width,
-                height=needed_height
-            )
+                show_legend=True, legend_position="top_left", xaxis=None, yaxis=None, show_frame=False, toolbar=None, width=needed_width, height=needed_height
+                )
 
-            umap_legend_container = pn.Column(
-                umap_ghost_legend,
-                width=200,
-                height=300, # Match UMAP min_height
-                scroll=True,
-                margin=(0, 0, 0, 0)
-            )
+            link_ranges(umap_figures_to_link)
+            link_crosshairs(umap_figures_to_link)
 
-            # Layout the UMAP row
-            self.umap_row_container = pn.Row(
-                linked_expr_umap,
-                linked_cluster_umap,
-                umap_legend_container,
-                sizing_mode='stretch_width'
-            )
+            bokeh_umap_ghost = hv.render(umap_ghost_legend, backend='bokeh')
+            self._sync_cluster_legend_toggle(bokeh_umap_ghost, umap_category_renderers)
+            self._force_legend_redraw_on_range_change(bokeh_umap_ghost, bokeh_cluster_umap)
+            umap_legend_container = pn.Column(pn.pane.Bokeh(bokeh_umap_ghost), width=200, height=300, scroll=True, margin=(0, 0, 0, 0))
+
+            self.umap_row_container = pn.Row(expr_umap_pane, cluster_umap_pane, umap_legend_container, sizing_mode='stretch_width')
 
             ### Violin
-            violin_base = create_violin_plot(
-                self.df,
-                y_col='raw_value',
-                group_col='clusters',
-                cmap=self.cluster_cmap,
-                title=f"Expression Distribution: {self.current_gene} by Cluster"
-            )
-
-            linked_violin = self.linker(violin_base)
-
-            self.violin_row_container = pn.Row(
-                linked_violin,
-                sizing_mode='stretch_width'
-            )
+            violin_base = create_violin_plot(self.df, y_col='raw_value', group_col='clusters', cmap=self.cluster_cmap, title=f"Expression Distribution: {self.current_gene} by Cluster")
+            self.violin_row_container = pn.Row(violin_base, sizing_mode='stretch_width')
 
             return pn.Column(
-                self.state_sync, # Invisible DOM injector
-                self.pre_layout,
-                self.spatial_grid_container,
-                pn.layout.Divider(margin=(20, 0)), # Visual breathing room
-                self.umap_row_container,
-                pn.layout.Divider(margin=(20, 0)),
-                self.violin_row_container,
-                sizing_mode='stretch_both'
+                self.state_sync, self.pre_layout, self.spatial_grid_container,
+                pn.layout.Divider(margin=(20, 0)), self.umap_row_container,
+                pn.layout.Divider(margin=(20, 0)), self.violin_row_container,
+                sizing_mode='stretch_both', max_width=MAX_CARD_WIDTH
             )
         except Exception as e:
-            traceback.format_exc()
+            traceback.print_exc()
             return pn.pane.Alert(f"Error: {e}", alert_type="danger")
 
-    def _init_widgets(self):
-        # ? This can be useful for filtering datasets even for projections, but how best to word it?
-        min_slider_width = 300
-        self.min_genes_slider = pn.widgets.IntSlider(
-            name="Filter - Mininum genes per observation",
-            start=0,
-            end=500,
-            step=25,
-            width=min_slider_width,
-            value=self.min_genes,
-        )
+    def _generate_spatial_plots(self):
+        """Generates raw objects and prepares the background zoom attributes."""
+        if getattr(self, 'bg_image', None) is not None:
+            self.bg_image = self.bg_image.opts(default_tools=["box_zoom", "wheel_zoom", "pan", "reset"], active_tools=["wheel_zoom", "pan"], min_width=EXPANDED_PLOT_MIN_WIDTH, min_height=EXPANDED_PLOT_MIN_HEIGHT)
 
+        # This gets filled in during the cluster spatial plot creation
+        # It is a registry of category to renderer, which can then be
+        # used to wire up the ghost legend to toggle visibility of the real cluster plot.
+        category_renderers = {}
+
+        # Main row
+        expr_plot = create_spatial_plot(self.expression_df, y_col="y_plot", color_col='raw_value',
+                                        cmap=self.expression_cmap, title=f"Expression: {self.current_gene}",
+                                        cbar_max=self.expression_98, min_height=EXPANDED_PLOT_MIN_HEIGHT,
+                                        min_width=EXPANDED_PLOT_MIN_WIDTH, radius=self.marker_radius)
+        cluster_plot = create_spatial_plot(self.clusters_df, y_col="y_plot", color_col='clusters',
+                                        cmap=self.cluster_cmap, is_categorical=True, title="Clusters",
+                                        category_renderers=category_renderers, min_height=EXPANDED_PLOT_MIN_HEIGHT,
+                                        min_width=EXPANDED_PLOT_MIN_WIDTH, radius=self.marker_radius)
+
+        self.master_image = self.bg_image
+
+        # Create the image + plot overlays.
+        if hasattr(self, 'bg_image_dimmed') and self.bg_image_dimmed is not None:
+            main_expr = self.bg_image_dimmed * expr_plot
+            main_cluster = self.bg_image_dimmed * cluster_plot
+        else:
+            main_expr = expr_plot
+            main_cluster = cluster_plot
+
+        return self.bg_image, main_expr, main_cluster, category_renderers
+
+    def _generate_umap_plots(self):
+        umap_category_renderers = {}
+        expr_umap = create_umap_plot(
+            self.umap_df, color_col='raw_value', cmap=self.expression_cmap, is_categorical=False,
+            title=f"{self.current_gene} Expression", cbar_max=self.expression_98, radius=self.umap_marker_radius
+            )
+        cluster_umap = create_umap_plot(
+            self.umap_df, color_col='clusters', cmap=self.cluster_cmap, is_categorical=True,
+            title="Clusters", category_renderers=umap_category_renderers, radius=self.umap_marker_radius
+            )
+        return expr_umap, cluster_umap, umap_category_renderers
+
+    def _init_widgets(self):
         self.display_name = pn.widgets.TextInput(
             name="Display name",
             placeholder="Name this display to save...",
@@ -570,20 +744,26 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
             , visible=not self.nosave
         )
 
-        markdown_width = 675
-        spacer_width = markdown_width - min_slider_width    # Make default button should left-align with the above text input
-
-        self.pre_layout = pn.Column(
+        # Build the pre_layout
+        self.left_pre = pn.Column(
             pn.Row(
-                pn.pane.Markdown(
-                    '## Use the "box select" tool on the top row to update the zoomed view.',
-                    height=30,
-                    width=markdown_width,
-                ),
+                sizing_mode='stretch_width'
+            ),
+        )
+
+        self.right_pre = pn.Column(
+            pn.Row(
+
                 self.display_name,
                 self.save_button,
             ),
-            pn.Row(self.min_genes_slider, pn.Spacer(width=spacer_width), self.make_default),
+            self.make_default,
+            align="end"
+        )
+
+        self.pre_layout = pn.Row(
+            #self.left_pre,
+            self.right_pre
         )
 
         # Emit a DOM event instead of changing a URL param
@@ -592,7 +772,6 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
             args={
                 'name_input': self.display_name,
                 'default_cb': self.make_default,
-                'min_genes_slider': self.min_genes_slider,
                 'dataset_id': self.settings.dataset_id
             },
             code=f"""
@@ -601,189 +780,9 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
                 detail: {{
                     displayName: name_input.value,
                     makeDefault: default_cb.active,
-                    minGenes: min_genes_slider.value,
-                    // If you tracked bounds in JS, you could grab them, or grab them from Panel
                 }}
             }});
 
             // Dispatch it to the host window so the vanilla JS listener catches it instantly
             window.dispatchEvent(evt);
             """)  # noqa: F541
-
-        self.min_genes_slider.param.watch(self._update_min_genes, 'value_throttled')
-
-    async def _update_min_genes(self, event):
-        """Triggered when the min_genes slider changes."""
-
-        # Start event loading spinners on the affected containers
-        self.spatial_grid_container.loading = True
-        self.umap_row_container.loading = True
-        self.violin_row_container.loading = True
-
-        # Yield control to the event loop to give the browser time to render spinners
-        await asyncio.sleep(0.05)
-
-        try:
-            # 1. Update state and re-filter the underlying dataframe
-            self.min_genes = event.new
-            self._filter_df()
-
-            # Recreate the linker
-            self.linker = hv.link_selections.instance(unselected_alpha=0.5)
-
-            # 2. Fix the y-axis for the newly filtered dataframe
-            self.df["y_plot"] = self.df["spatial2"]
-            if self.img_height is not None:
-                self.df["y_plot"] = self.img_height - self.df["spatial2"]
-
-            # 3. Rebuild the Spatial Grid
-            new_spatial_grid = self._generate_spatial_grid()
-            self.spatial_grid_container[:] = new_spatial_grid[:]
-
-            # 4. Rebuild and link the UMAPs
-            expr_umap = create_umap_plot(
-                self.df, self.expression_agg, color_col='raw_value', cmap="cividis_r", is_categorical=False, title=self.current_gene
-            )
-            cluster_umap = create_umap_plot(
-                self.df, self.clusters_agg, color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters"
-            )
-            # Hot-swap the UMAP plots into indices 0 and 1 (leaving the legend at index 2 untouched)
-            self.umap_row_container[0] = self.linker(expr_umap)
-            self.umap_row_container[1] = self.linker(cluster_umap)
-
-            # 5. Rebuild and link the Violin
-            violin_base = create_violin_plot(
-                self.df, y_col='raw_value', group_col='clusters', cmap=self.cluster_cmap, title=f"Expression Distribution: {self.current_gene} by Cluster"
-            )
-            self.violin_row_container[0] = self.linker(violin_base)
-
-        finally:
-            # Turn off the spinners and sweep memory
-            self.spatial_grid_container.loading = False
-            self.umap_row_container.loading = False
-            self.violin_row_container.loading = False
-
-            # BROADCAST TO FRONTEND
-            self._sync_state_to_js()
-
-            gc.collect()
-
-
-    def _update_zoom_panel(self, bounds):
-        """
-        This method updates the row of zoomed-in plots based on the provided bounds.
-        The method applies the new limits to the master composite plots and updates the zoom row accordingly.
-
-        Parameters:
-        - bounds: A tuple containing the new bounds in the format (left, bottom, right, top).
-                  If bounds is None, it indicates that the user has cleared the selection.
-        """
-
-        if not hasattr(self, 'zoom_master_expr'):
-            return
-
-        # 1. Determine bounds
-        if bounds is None:
-            opts_dict = dict(xlim=(None, None), ylim=(None, None), clone=True)
-        else:
-            x1, y1, x2, y2 = bounds
-            opts_dict = dict(
-                xlim=(min(x1, x2), max(x1, x2)),
-                ylim=(min(y1, y2), max(y1, y2)),
-                clone=True,
-                active_tools=['pan', 'wheel_zoom'] # Disable box select on zoomed plots
-            )
-
-        # 2. Apply limits to all three master canvases
-        new_zoom_image = self.master_image.opts(**opts_dict) if self.master_image is not None else None
-        new_zoom_expr = self.zoom_master_expr.opts(**opts_dict)
-        new_zoom_cluster = self.zoom_master_cluster.opts(**opts_dict)
-
-        # 3. Swing the Sledgehammer (Hot-swap all three panes)
-        self.zoom_image_pane = pn.pane.HoloViews(new_zoom_image, sizing_mode='stretch_width', linked_axes=False)
-        self.zoom_expr_pane = pn.pane.HoloViews(new_zoom_expr, sizing_mode='stretch_width', linked_axes=False)
-        self.zoom_cluster_pane = pn.pane.HoloViews(new_zoom_cluster, sizing_mode='stretch_width', linked_axes=False)
-
-        # 4. Inject back into Row 2 (preserving the spacer at index 3)
-        if hasattr(self, 'zoom_row'):
-            self.zoom_row[0] = self.zoom_image_pane
-            self.zoom_row[1] = self.zoom_expr_pane
-            self.zoom_row[2] = self.zoom_cluster_pane
-
-    def _generate_spatial_grid(self):
-        """
-        Generates the spatial grid layout with the background image, expression plot, and cluster plot.
-        Row 1 is the main view, and Row 2 is the zoomed-in view. The legend is also included in Row 1.
-        """
-
-        if hasattr(self, 'bg_image'):
-            self.bg_image = self.bg_image.opts(default_tools = ["box_select", "reset"])
-
-        # Generate base plots
-        expr_plot = create_spatial_plot(self.df, self.expression_agg, y_col="y_plot", color_col='raw_value', cmap=self.expression_cmap, title=f"Expression: {self.current_gene}", mode="expanded")
-        cluster_plot = create_spatial_plot(self.df, self.clusters_agg, y_col="y_plot", color_col='clusters', cmap=self.cluster_cmap, is_categorical=True, title="Clusters", mode="expanded") # type: ignore
-        master_image = self.bg_image if hasattr(self, 'bg_image') else pn.pane.HoloViews(None)
-
-        # Update bounds streams for the image and expression plots.
-        self.bounds_stream_image.source = master_image
-        self.bounds_stream_composite.source = expr_plot
-
-        # Create a 3rd stream for the cluster plot so it can also trigger the zoom
-        if not hasattr(self, 'bounds_stream_cluster'):
-            self.bounds_stream_cluster = hv.streams.BoundsXY(bounds=self.saved_bounds)
-            self.bounds_stream_cluster.add_subscriber(self._update_bounds_callback)
-            self.bounds_stream_cluster.source = cluster_plot
-
-        # Apply cross-filtering linker BEFORE adding images
-        linked_expr = self.linker(expr_plot)
-        linked_cluster = self.linker(cluster_plot)
-
-        # Create composites with the background image
-        if hasattr(self, 'bg_image_dimmed') and self.bg_image_dimmed is not None:
-            # Row 1 (Linked)
-            main_expr = self.bg_image_dimmed * linked_expr
-            main_cluster = self.bg_image_dimmed * linked_cluster
-            # Row 2 Zoom (Unlinked/Raw)
-            zoom_master_expr = self.bg_image_dimmed * expr_plot
-            zoom_master_cluster = self.bg_image_dimmed * cluster_plot
-        else:
-            main_expr = linked_expr
-            main_cluster = linked_cluster
-            zoom_master_expr = expr_plot
-            zoom_master_cluster = cluster_plot
-
-        # Store master composites for the zoom callback
-        self.master_image = master_image
-        self.zoom_master_expr = zoom_master_expr
-        self.zoom_master_cluster = zoom_master_cluster
-
-        # Create the Ghost Legend and Container (Row 1 only)
-        needed_width = max(180, max(len(str(name)) for name in self.cluster_cmap) * 7)
-        needed_height = max(300, len(self.cluster_cmap) * 22 + 50)
-
-        ghost_legend = self._create_ghost_legend().opts(
-            show_legend=True, legend_position="top_left",
-            xaxis=None, yaxis=None, show_frame=False, toolbar=None,
-            width=needed_width, height=needed_height
-        )
-
-        legend_container = pn.Column(
-            pn.pane.HoloViews(ghost_legend),
-            width=200, height=300, scroll=True, margin=(0,0,0,0)
-        )
-
-        # Initialize Zoom Panes
-        self.zoom_image_pane = pn.pane.HoloViews(master_image, sizing_mode='stretch_width', linked_axes=False)
-        self.zoom_expr_pane = pn.pane.HoloViews(zoom_master_expr, sizing_mode='stretch_width', linked_axes=False)
-        self.zoom_cluster_pane = pn.pane.HoloViews(zoom_master_cluster, sizing_mode='stretch_width', linked_axes=False)
-
-        # Assemble Rows (4 slots each to maintain vertical alignment)
-        self.main_row = pn.Row(master_image, main_expr, main_cluster, legend_container, sizing_mode='stretch_width')
-
-        # Use a spacer in Row 2 to match the legend width perfectly
-        zoom_spacer = pn.Spacer(width=200, margin=(0,0,0,0))
-        self.zoom_row = pn.Row(self.zoom_image_pane, self.zoom_expr_pane, self.zoom_cluster_pane, zoom_spacer, sizing_mode='stretch_width')
-
-        zoom_markdown = pn.pane.Markdown('### Zoomed View', height=30)
-
-        return pn.Column(self.main_row, zoom_markdown, self.zoom_row, sizing_mode='stretch_width')

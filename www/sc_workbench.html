@@ -1532,6 +1532,10 @@ At the completion of this step press on ‘save these genes’.
         </section>
     </div>
 
+    <footer>
+        <div id="funding"></div>
+</footer>
+
     <!-- Tree view/grid -->
     <script src="https://cdn.jsdelivr.net/gh/mar10/wunderbaum@v0.10.0/dist/wunderbaum.umd.min.js"></script>
 
@@ -1546,8 +1550,10 @@ At the completion of this step press on ‘save these genes’.
 
     <!-- Page-specific CSS/JS loading here -->
     <script type="module">
-    import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+    import { getDomainPreferences, insertVersionedCSS, insertVersionedJS, loadDomainFunding } from './js/common.v2.js';
     const prefs = await getDomainPreferences();
+
+    await loadDomainFunding(prefs);
 
     // Load any local JS with cache-busting version parameter
     insertVersionedJS('js/sc_workbench.js', prefs.cache_version);
