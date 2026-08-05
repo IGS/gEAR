@@ -1,4 +1,5 @@
 
+import json
 import os
 import sys
 import typing
@@ -12,6 +13,7 @@ import spatialdata as sd
 from bokeh.embed import server_document
 from flask import request
 from flask_restful import Resource
+from werkzeug.utils import secure_filename
 
 from .common import create_projection_adata
 
@@ -108,7 +110,7 @@ def prep_sdata(dataset_id: str) -> "SpatialHandler":
     spatial_obj.sdata = sdata
     return spatial_obj
 
-def generate_spatial_image_df(spatial_obj: "SpatialHandler") -> np.ndarray | None:
+def generate_spatial_image_df(spatial_obj) -> tuple[dict[str, np.ndarray], tuple[int,int]] | None:
     """
     Generate a NumPy array representation of the spatial image for a given SpatialHandler.
 
@@ -125,31 +127,18 @@ def generate_spatial_image_df(spatial_obj: "SpatialHandler") -> np.ndarray | Non
 
     Returns
     -------
-    np.ndarray | None
-        A NumPy array containing the image data if extraction succeeds, otherwise
-        None when no image is available or an error occurred during extraction.
-
-    Notes
-    -----
-    - Errors raised by spatial_obj.extract_img() are handled internally; they will
-      not be propagated to the caller. Instead, a message describing the failure
-      is written to sys.stderr.
-    - This function is intended for non-fatal retrieval of optional image data.
-
-    Examples
-    --------
-    >>> arr = generate_spatial_image_df(spatial_obj)
-    >>> if arr is not None:
-    ...     # process the NumPy array
-    ...     pass
+    tuple[dict[str, np.ndarray], tuple[int,int]] | None
+        A tuple containing:
+            - A dictionary mapping channel names to their corresponding NumPy arrays.
+            - A tuple containing the original height and width of the image.
+        If extraction fails, returns None.
     """
 
     try:
         return spatial_obj.extract_img()
     except Exception as e:
-        # This is not a fatal error. Some spatial datasets do not have images
         print(f"No image found or error converting image to dataframe: {e}", file=sys.stderr)
-    return None
+        return None
 
 def create_gene_df(adata: "AnnData", gene_symbol: str) -> pd.DataFrame:
     """
@@ -413,18 +402,26 @@ class SpatialPanel(Resource):
         try:
             spatial_obj = prep_sdata(dataset_id)
 
-            # Generate spatial image if not already cached
             spatial_img = None
-            spatial_img_path = DATASET_DIR / "spatial_img.npy"
-            if spatial_img_path.is_file():
-                # Load so that the right glasbey colors can be mapped to the clusters
-                spatial_img = np.load(spatial_img_path)
-            else:
-                spatial_img = generate_spatial_image_df(spatial_obj)
-
-                if spatial_img is not None:
-                    spatial_img_path = DATASET_DIR / "spatial_img.npy"
-                    np.save(spatial_img_path, spatial_img)
+            if spatial_obj.has_images:
+                # Generate spatial image if not already cached
+                existing = list(DATASET_DIR.glob("spatial_img*.npy"))
+                if existing:
+                    spatial_img = np.load(existing[0])  # any one, just for map_colors presence check
+                else:
+                    result = generate_spatial_image_df(spatial_obj)
+                    if result is not None:
+                        channels, (orig_h, orig_w) = result
+                        # If there's only one channel, rename it to "default" for consistency
+                        if len(channels) == 1:
+                            only_key = next(iter(channels))
+                            channels = {"default": channels[only_key]}
+                        # Save each channel as a separate .npy file in the dataset directory
+                        for channel_name, arr in channels.items():
+                            np.save(DATASET_DIR / f"spatial_img_{secure_filename(channel_name)}.npy", arr)
+                        with open(DATASET_DIR / "spatial_props.json", "w") as f:
+                            json.dump({"height": orig_h, "width": orig_w}, f)
+                        spatial_img = next(iter(channels.values()))  # just for the map_colors presence check
 
             adata = spatial_obj.sdata.tables["table"]
 

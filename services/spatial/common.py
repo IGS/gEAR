@@ -1,13 +1,14 @@
+import json
 from pathlib import Path
 
 import colorcet as cc
 import datashader as ds
+import holoviews as hv
 import numpy as np
 import pandas as pd
 import param
 from bokeh.models import CustomJS, CustomJSHover, HoverTool, Span
 from holoviews.operation.datashader import spread
-import holoviews as hv
 from werkzeug.utils import secure_filename
 
 gear_root = Path(__file__).resolve().parents[2]
@@ -531,20 +532,44 @@ def retrieve_dataframe(dataset_id, filename) -> pd.DataFrame:
 
     return pd.read_csv(df_path)
 
-def retrieve_image_array(dataset_id) -> np.ndarray | None:
+def retrieve_image_array(dataset_id, channel_name=None) -> np.ndarray | None:
     """
     Retrieve a spatial image array from the cache for a given dataset ID.
 
     Args:
         dataset_id (str): The identifier of the dataset. Will be sanitized using secure_filename.
+        channel_name (str, optional): The name of the channel to retrieve. If None, retrieves the first available channel.
 
     Returns:
         np.ndarray | None: The image array if it exists, otherwise None.
     """
-    dataset_id = secure_filename(dataset_id)  # type: ignore
-    spatial_img_path = PANEL_CSV_CACHE_DIR / dataset_id / SPATIAL_IMAGE_NAME
-    if spatial_img_path.is_file():
-        return np.load(spatial_img_path)
+    dataset_id = secure_filename(dataset_id)
+    img_dir = PANEL_CSV_CACHE_DIR / dataset_id
+    if channel_name is not None:
+        path = img_dir / f"spatial_img_{secure_filename(channel_name)}.npy"
+        return np.load(path) if path.is_file() else None
+    # If no channel name is provided, attempt to load the first available spatial image file
+    candidates = sorted(img_dir.glob("spatial_img*.npy"))
+    if not candidates:
+        raise FileNotFoundError(f"No spatial image files found in {img_dir}")
+    return np.load(candidates[0]) if candidates else None
+
+def retrieve_image_dims(dataset_id) -> tuple[int, int] | None:
+    """
+    Retrieve the dimensions of a spatial image from the cache for a given dataset ID.
+
+    Args:
+        dataset_id (str): The identifier of the dataset. Will be sanitized using secure_filename.
+
+    Returns:
+        tuple[int, int] | None: The height and width of the image if it exists, otherwise None.
+    """
+    dataset_id = secure_filename(dataset_id)
+    dims_path = PANEL_CSV_CACHE_DIR / dataset_id / "spatial_props.json"
+    if dims_path.is_file():
+        with open(dims_path) as f:
+            d = json.load(f)
+        return d["height"], d["width"]
     return None
 
 def sort_clusters(clusters) -> list:
