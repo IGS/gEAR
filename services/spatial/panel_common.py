@@ -169,8 +169,6 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         self.orig_df['clusters'] = self.orig_df['clusters'].astype('category')
         self.orig_df = clip_expression_values(self.orig_df, self.settings.expression_min_clip)
 
-        self.image_array = retrieve_image_array(self.settings.dataset_id)
-
         self.current_gene = normalize_expression_name(self.settings.filename)
 
         self.nosave = self.settings.nosave
@@ -186,20 +184,6 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             self.img_height, self.img_width = self.image_array.shape[0], self.image_array.shape[1]
 
         if self.image_array is not None:
-            if self.image_array.dtype != np.uint8:
-                img = self.image_array.astype(np.float32)
-                p_low, p_high = np.percentile(img, [1, 99])
-                img = np.clip(img, p_low, p_high)
-                self.image_array = (255 * (img - p_low) / (p_high - p_low + 1e-8)).astype(np.uint8)
-
-            # Normalize to a consistent channel count. Xenium uploads
-            # in particular can come back as single-channel (H,W,1), or with 2+
-            # channels for different stains -- neither is directly RGB/RGBA-usable.
-            if self.image_array.ndim == 2:
-                self.image_array = self.image_array[..., np.newaxis]
-            if self.image_array.shape[-1] == 1:
-                # xenium single-channel case, broadcast to RGB
-                self.image_array = np.repeat(self.image_array, 3, axis=-1)
 
             # use original image_array shape to build image bounds.
             # Image is 3-dimensional where shape is (y, x, c)

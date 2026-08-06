@@ -4,7 +4,7 @@ import panel as pn
 from panel_app_expanded import ExpandedSpatialViewer
 from tornado.web import HTTPError, RequestHandler
 
-pn.extension("bokeh", loading_indicator=True, defer_load=True, nthreads=4)
+pn.extension(loading_indicator=True, defer_load=True, nthreads=4)
 
 class DownloadHandler(RequestHandler):
     """
