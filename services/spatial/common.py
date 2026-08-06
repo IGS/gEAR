@@ -463,6 +463,26 @@ def create_umap_sample(df, value_col='raw_value', cluster_col='clusters', backgr
     bg_sampled = pd.concat(parts, ignore_index=True)
     return pd.concat([expressing, bg_sampled], ignore_index=True)
 
+def list_image_channels(dataset_id) -> list[str]:
+    """
+    List the available image channels for a given dataset.
+
+    Args:
+        dataset_id (str): The identifier of the dataset. Will be sanitized using secure_filename.
+
+    Returns:
+        list[str]: A list of available image channel names.
+    """
+    dataset_id = secure_filename(dataset_id)
+    img_dir = PANEL_CSV_CACHE_DIR / dataset_id
+    candidates = sorted(img_dir.glob("spatial_img*.npy"))
+    names = []
+    for path in candidates:
+        stem = path.stem  # "spatial_img_DAPI" or legacy "spatial_img"
+        name = stem[len("spatial_img"):].lstrip("_") or "default"
+        names.append(name)
+    return names
+
 def normalize_expression_name(filename) -> str:
         """
         Extract and normalize an expression name from a filename.
