@@ -140,6 +140,44 @@ def generate_spatial_image_df(spatial_obj) -> tuple[dict[str, np.ndarray], tuple
         print(f"No image found or error converting image to dataframe: {e}", file=sys.stderr)
         return None
 
+def normalize_image_array(arr: np.ndarray|None) -> np.ndarray:
+    """
+    This function takes a NumPy array (which may be of any numeric type) and normalizes
+    its values to the range [0, 255], converting it to uint8 format.
+
+    Occasionally when viewing the raw image channel values, outliers can skew the color mapping.
+    To mitigate this, the function clips the values to the 1st and 99th percentiles before normalization.
+
+    Parameters
+    ----------
+    arr : np.ndarray
+        Input image array of any numeric type.
+
+    Returns
+    -------
+    np.ndarray
+        Normalized image array in uint8 format, with shape (H, W, 3) for RGB images.
+        If the input is grayscale, it will be converted to RGB by repeating the
+        single channel across the three RGB channels.
+    """
+    if arr is None:
+        raise ValueError("Image array is None")
+
+    if arr.dtype != np.uint8:
+        img = arr.astype(np.float32)
+        p_low, p_high = np.percentile(img, [1, 99])
+        img = np.clip(img, p_low, p_high)
+        arr = (255 * (img - p_low) / (p_high - p_low + 1e-8)).astype(np.uint8)
+
+    if arr is None:
+        raise ValueError("Image array is None after normalization")
+
+    if arr.ndim == 2:
+        arr = arr[..., np.newaxis]
+    if arr.shape[-1] == 1:
+        arr = np.repeat(arr, 3, axis=-1)
+    return arr
+
 def create_gene_df(adata: "AnnData", gene_symbol: str) -> pd.DataFrame:
     """
     Create a pandas DataFrame for a single gene from an AnnData object, including spatial,
@@ -415,9 +453,11 @@ class SpatialPanel(Resource):
                         # If there's only one channel, rename it to "default" for consistency
                         if len(channels) == 1:
                             only_key = next(iter(channels))
-                            channels = {"default": channels[only_key]}
+                            arr = normalize_image_array(channels[only_key])
+                            channels = {"default": arr}
                         # Save each channel as a separate .npy file in the dataset directory
                         for channel_name, arr in channels.items():
+                            arr = normalize_image_array(arr)
                             np.save(DATASET_DIR / f"spatial_img_{secure_filename(channel_name)}.npy", arr)
                         with open(DATASET_DIR / "spatial_props.json", "w") as f:
                             json.dump({"height": orig_h, "width": orig_w}, f)

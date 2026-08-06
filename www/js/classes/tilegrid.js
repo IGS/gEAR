@@ -2351,7 +2351,7 @@ class DatasetTile {
 
                 // Polling Loop with a timeout if it takes too long.
                 let attempts = 0;
-                const maxAttempts = 300; // 20 seconds maximum wait time (100ms * 300)
+                const maxAttempts = 600; // 1 minute maximum wait time (100ms * 600)
 
                 const checkRender = setInterval(() => {
                     attempts++;
