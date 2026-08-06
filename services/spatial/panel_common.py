@@ -25,13 +25,14 @@ from common import (
     normalize_expression_name,
     retrieve_dataframe,
     retrieve_image_array,
+    retrieve_image_dims,
     sort_clusters,
 )
 from PIL import Image as PILImage
 
 # CRITICAL: Initialize the Bokeh backend for interactivity
 hvplot.extension('bokeh', logo=False) # type: ignore
-pn.extension(loading_indicator=True, defer_load=True, nthreads=4)  # type: ignore)
+pn.extension(loading_indicator=True, defer_load=True, nthreads=4)  # type: ignore
 
 MAX_CARD_WIDTH = 1800
 EXPANDED_PLOT_MIN_HEIGHT = 380
@@ -174,53 +175,31 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
         self.nosave = self.settings.nosave
 
-        # Set up the background image and its dimmed version for overlaying on the plots
-        self.bg_image = None
-        self.bg_image_dimmed = None
-        self.img_height = None
-        self.img_width = None
+        # Retrieve the image array and its dimensions. If the dimensions are not available, infer them from the image array itself.
+        self.image_array = retrieve_image_array(self.settings.dataset_id)
+        orig_dims = retrieve_image_dims(self.settings.dataset_id)
+
+        self.img_height, self.img_width = None, None
+        if orig_dims is not None:
+            self.img_height, self.img_width = orig_dims
+        elif self.image_array is not None:
+            self.img_height, self.img_width = self.image_array.shape[0], self.image_array.shape[1]
 
         if self.image_array is not None:
-            # Store the original image dimensions for later use.
-            self.img_height = self.image_array.shape[0]
-            self.img_width = self.image_array.shape[1]
-
-            # Downsample if the image is too large to avoid memory issues and improve performance
-            MAX_DIM = 4000
-            if max(self.img_height, self.img_width) > MAX_DIM:
-                scale = MAX_DIM / max(self.img_height, self.img_width)
-                new_h, new_w = int(self.img_height * scale), int(self.img_width * scale)
-                # Downsample per-channel via PIL (numpy has no built-in image resize)
-                arr = self.image_array
-                if arr.ndim == 2:
-                    arr = arr[..., np.newaxis]
-                channels = [np.array(PILImage.fromarray(arr[..., c]).resize((new_w, new_h))) for c in range(arr.shape[-1])]
-                self.image_array = np.stack(channels, axis=-1)
-
-            # Ensure array contents are UInt8 (0-255) for proper display. If not, normalize to that range and convert.
             if self.image_array.dtype != np.uint8:
-                img = self.image_array.astype(np.float32)  # was implicit float64 but more memory intensive than needed
-                # Use percentile clipping to avoid outliers dominating the normalization
+                img = self.image_array.astype(np.float32)
                 p_low, p_high = np.percentile(img, [1, 99])
                 img = np.clip(img, p_low, p_high)
-                img = 255 * (img - p_low) / (p_high - p_low + 1e-8)
-                self.image_array = img.astype(np.uint8)
+                self.image_array = (255 * (img - p_low) / (p_high - p_low + 1e-8)).astype(np.uint8)
 
             # Normalize to a consistent channel count. Xenium uploads
             # in particular can come back as single-channel (H,W,1), or with 2+
             # channels for different stains -- neither is directly RGB/RGBA-usable.
             if self.image_array.ndim == 2:
                 self.image_array = self.image_array[..., np.newaxis]
-            n_channels = self.image_array.shape[-1]
-
-            # Xenium case
-            if n_channels == 1:
+            if self.image_array.shape[-1] == 1:
+                # xenium single-channel case, broadcast to RGB
                 self.image_array = np.repeat(self.image_array, 3, axis=-1)
-            elif n_channels == 2 or n_channels > 4:
-                # Ambiguous/multi-stain -- use the first channel only, matching
-                # the old Plotly pipeline's approach, then broadcast to RGB
-                # TODO: let the user select channels, though we have lost this info in the npy file.
-                self.image_array = np.repeat(self.image_array[..., :1], 3, axis=-1)
 
             # use original image_array shape to build image bounds.
             # Image is 3-dimensional where shape is (y, x, c)

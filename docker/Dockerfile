@@ -59,12 +59,12 @@ RUN fc-cache -f -v
 ENV LLVM_CONFIG=/usr/bin/llvm-config-14
 
 # Copy compiled Python from builder stage
-COPY --from=gear-python-base:latest /opt/Python-${PYTHON_FULL_VERSION} /opt/Python-${PYTHON_FULL_VERSION}
+COPY --from=adkinsrs/gear-python-base:latest /opt/Python-${PYTHON_FULL_VERSION} /opt/Python-${PYTHON_FULL_VERSION}
 
 # Copy compiled R from r-builder stage
-COPY --from=gear-r-base:latest /usr/local/lib/R /usr/local/lib/R
-COPY --from=gear-r-base:latest /usr/local/bin/R /usr/local/bin/R
-COPY --from=gear-r-base:latest /usr/local/bin/Rscript /usr/local/bin/Rscript
+COPY --from=adkinsrs/gear-r-base:latest /usr/local/lib/R /usr/local/lib/R
+COPY --from=adkinsrs/gear-r-base:latest /usr/local/bin/R /usr/local/bin/R
+COPY --from=adkinsrs/gear-r-base:latest /usr/local/bin/Rscript /usr/local/bin/Rscript
 
 # Link Python and shared library
 RUN mkdir -p /opt/bin \
