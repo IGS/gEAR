@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import sys
 
 import colorcet as cc
 import datashader as ds
@@ -288,21 +289,11 @@ def create_violin_plot(df, y_col, group_col='cluster', cmap='Category10', title=
     """Generates standard bokeh violin plots (no Datashader needed here)."""
     plot_title = title if title else f"Expression Distribution: {y_col}"
 
-    # Bokeh will try to wrap in a list, so we need to convert to a flattened list of hex colors.
-    if isinstance(cmap, dict):
-        # Determine the exact order of categories Bokeh will use
-        if hasattr(df[group_col], 'cat'):
-            categories = df[group_col].cat.categories
-        else:
-            categories = sorted(df[group_col].unique())
-
-        cmap = [cmap.get(cat, '#CCCCCC') for cat in categories]
-
     # Sort df by the group_col
     df = df.sort_values(by=group_col)
 
     plot = df.hvplot.violin(
-        y=y_col, by=group_col, c=group_col, cmap=cmap,
+        y=y_col, by=group_col, color=group_col, cmap=cmap,
         ylabel='Expression', xlabel='Annotation Cluster',
         title=plot_title,
         min_height=400, responsive=True, legend=False

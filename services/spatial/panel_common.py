@@ -32,7 +32,7 @@ from PIL import Image as PILImage
 
 # CRITICAL: Initialize the Bokeh backend for interactivity
 hvplot.extension('bokeh', logo=False) # type: ignore
-pn.extension(loading_indicator=True, defer_load=True, nthreads=4)  # type: ignore)
+pn.extension(loading_indicator=True, defer_load=True, nthreads=4)  # type: ignore
 
 MAX_CARD_WIDTH = 1800
 EXPANDED_PLOT_MIN_HEIGHT = 380
