@@ -61,15 +61,15 @@ parser = reqparse.RequestParser(bundle_errors=True)
 # Common for both MGTSNEData and TSNEData
 # NOTE: By default the parser assumes the location is coming from "values", which breaks lists, so we set the location to "json" explicitly for that.
 parser.add_argument("plot_type", type=str, default="tsne_static")
-parser.add_argument("analysis", type=dict, default=None)
+parser.add_argument("analysis", type=dict, default=None, location="json")
 parser.add_argument("colorize_legend_by", type=str, default=None)
 parser.add_argument(
     "max_columns", type=int, default=None
 )  # Max number of columns before plotting to a new row
 parser.add_argument("expression_palette", type=str, default="YlOrRd")
 parser.add_argument("reverse_palette", type=bool, default=False)
-parser.add_argument("colors", type=dict, default={})
-parser.add_argument("order", type=dict, default={})
+parser.add_argument("colors", type=dict, default={}, location="json")
+parser.add_argument("order", type=dict, default={}, location="json")
 parser.add_argument(
     "x_axis", type=str, default="tSNE_1"
 )  # Add here in case old tSNE plotly configs are missing axes data
@@ -83,7 +83,7 @@ parser.add_argument('vmax', type=float, default=None)
 parser.add_argument('vmin', type=float, default=None)
 parser.add_argument("make_zero_gray", type=bool, default=True)  # Keep with old plot styles
 parser.add_argument("enforce_equal_aspect", type=bool, default=False)
-parser.add_argument("obs_filters", type=dict, default={})  # dict of lists
+parser.add_argument("obs_filters", type=dict, default={}, location="json")  # dict of lists
 parser.add_argument(
     "projection_id", type=str, default=None
 )  # projection id of csv output
