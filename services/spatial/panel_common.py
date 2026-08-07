@@ -452,7 +452,6 @@ class BaseSpatialViewer(pn.viewable.Viewer):
             self.image_renderers[0].data_source.data['image'] = opaque_packed
             for r in self.image_renderers[1:]:
                 r.data_source.data['image'] = dimmed_packed
-
         pn.state.execute(_apply)
 
     def _track_image_renderers(self, bokeh_master, bokeh_expr, bokeh_cluster):
@@ -481,6 +480,7 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         if len(self.channels) > 1:
             self.channel_select = pn.widgets.Select(name="Image Channel", options=self.channels, value=self.channels[0])
             self.channel_select.param.watch(self._on_channel_change, 'value')
+            # NOTE: For any thing that requires param.watch or .on_click, the function needs a pn.state.execute() wrapper to ensure it runs in the Bokeh server thread context.
 
     def _build_layout(self):
         """
