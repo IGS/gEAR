@@ -353,7 +353,31 @@ def compute_aggregation_params(df, x_col, y_col, target_markers=80_000, min_dim=
     isn't proportional to the data's aspect ratio produces different spacing
     in x vs y, and a single radius can't match both, causing visible tearing.
     radius is derived from that spacing so markers tile without gaps or overlap.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame containing the data to aggregate.
+    x_col : str
+        The name of the column to use for the x-axis.
+    y_col : str
+        The name of the column to use for the y-axis.
+    target_markers : int, optional
+        The target number of markers to display in the aggregated plot. Default is 80,000.
+    min_dim : int, optional
+        The minimum dimension (width or height) for the aggregated plot. Default is 275.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the computed width, height, and radius.
+
     """
+    n = len(df)
+    target_markers = min(target_markers, n)
+    # For displays with small numbers of points, like Visium, don't force a grid finer than the real point density supports
+    min_dim = min(min_dim, int(n ** 0.5))
+
     x_extent = df[x_col].max() - df[x_col].min()
     y_extent = df[y_col].max() - df[y_col].min()
     aspect = x_extent / y_extent if y_extent else 1.0
@@ -462,6 +486,31 @@ def create_umap_sample(df, value_col='raw_value', cluster_col='clusters', backgr
 
     bg_sampled = pd.concat(parts, ignore_index=True)
     return pd.concat([expressing, bg_sampled], ignore_index=True)
+
+def list_image_channels(dataset_id) -> list[str]:
+    """
+    List the available image channels for a given dataset.
+
+    Args:
+        dataset_id (str): The identifier of the dataset. Will be sanitized using secure_filename.
+
+    Returns:
+        list[str]: A list of available image channel names.
+    """
+    dataset_id = secure_filename(dataset_id)
+    img_dir = PANEL_CSV_CACHE_DIR / dataset_id
+    candidates = sorted(img_dir.glob("spatial_img*.npy"))
+    names = []
+    for path in candidates:
+        stem = path.stem  # "spatial_img_DAPI" or legacy "spatial_img"
+        name = stem[len("spatial_img"):].lstrip("_") or "default"
+        names.append(name)
+
+    # If "default" in names, move it to the front of the list
+    if "default" in names:
+        names.remove("default")
+        names.insert(0, "default")
+    return names
 
 def normalize_expression_name(filename) -> str:
         """

@@ -22,13 +22,13 @@ from common import (
     create_violin_plot,
     link_crosshairs,
     link_ranges,
+    list_image_channels,
     normalize_expression_name,
     retrieve_dataframe,
     retrieve_image_array,
     retrieve_image_dims,
     sort_clusters,
 )
-from PIL import Image as PILImage
 
 # CRITICAL: Initialize the Bokeh backend for interactivity
 hvplot.extension('bokeh', logo=False) # type: ignore
@@ -172,9 +172,10 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         self.current_gene = normalize_expression_name(self.settings.filename)
 
         self.nosave = self.settings.nosave
+        self.channels = list_image_channels(self.settings.dataset_id)
 
         # Retrieve the image array and its dimensions. If the dimensions are not available, infer them from the image array itself.
-        self.image_array = retrieve_image_array(self.settings.dataset_id)
+        self.image_array = retrieve_image_array(self.settings.dataset_id, channel_name=self.channels[0] if self.channels else None)
         orig_dims = retrieve_image_dims(self.settings.dataset_id)
 
         self.img_height, self.img_width = None, None
@@ -197,17 +198,7 @@ class BaseSpatialViewer(pn.viewable.Viewer):
                     )
 
             # Create a more opaque version of the image.
-            opacity_value = int(255 * 0.3)  # Adjust the multiplier to set the desired opacity level
-            alpha_channel = np.full((self.image_array.shape[0], self.image_array.shape[1], 1), opacity_value, dtype=np.uint8)
-
-            # Check if image is RGB (3 channels). If so, append alpha. If already RGBA, just overwrite alpha.
-            if self.image_array.shape[-1] == 3:
-                dimmed_array = np.concatenate([self.image_array, alpha_channel], axis=-1)
-            else:
-                dimmed_array = self.image_array.copy()
-
-                # SAdkins note - '...' means all rows in this case.
-                dimmed_array[..., 3] = opacity_value
+            dimmed_array = self._build_dimmed_array(self.image_array)
 
             self.bg_image_dimmed = hv.RGB(dimmed_array, bounds=img_bounds).opts(
                         xaxis=None, yaxis=None, responsive=True,
@@ -332,7 +323,6 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         # toggles visibility
         legend.click_policy = 'hide'
 
-
     def _sync_range_updates(self, figure):
         """
         Watches the figure's x_range/y_range for live changes (pan, box-zoom,
@@ -359,7 +349,6 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         figure.x_range.on_change('end', cb)
         figure.y_range.on_change('start', cb)
         figure.y_range.on_change('end', cb)
-
 
     def _create_ghost_legend(self):
             """Creates a fake, invisible plot just to force Bokeh to draw a legend."""
@@ -424,6 +413,58 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         range_source_fig.y_range.js_on_change('start', force_redraw)
         range_source_fig.y_range.js_on_change('end', force_redraw)
 
+    def _build_dimmed_array(self, array):
+        """
+        Creates a dimmed version of the image array by adding an alpha channel.
+        """
+        opacity_value = int(255 * 0.3)  # Adjust the multiplier to set the desired opacity level
+        alpha_channel = np.full((array.shape[0], array.shape[1], 1), opacity_value, dtype=np.uint8)
+
+        # Check if image is RGB (3 channels). If so, append alpha. If already RGBA, just overwrite alpha.
+        if array.shape[-1] == 3:
+            dimmed_array = np.concatenate([array, alpha_channel], axis=-1)
+        else:
+            dimmed_array = array.copy()
+
+            # SAdkins note - '...' means all rows in this case.
+            dimmed_array[..., 3] = opacity_value
+        return dimmed_array
+
+    def _on_channel_change(self, event):
+        """
+        Callback function to handle image channel changes.
+
+        This function retrieves the new image array for the selected channel,
+        creates both an opaque and a dimmed version of the image, and updates
+        the image renderers.
+        """
+        new_array = retrieve_image_array(self.settings.dataset_id, channel_name=event.new)
+        bounds = (0, 0, self.img_width, self.img_height)
+
+        opaque_packed = hv.render(hv.RGB(new_array, bounds=bounds), backend='bokeh').renderers[0].data_source.data['image']
+        dimmed_array = self._build_dimmed_array(new_array)
+        dimmed_packed = hv.render(hv.RGB(dimmed_array, bounds=bounds), backend='bokeh').renderers[0].data_source.data['image']
+
+        assert len(self.image_renderers) >= 1, "No ImageRGBA renderers found to update."
+
+        # Apply the mutation to the Bokeh document to ensure thread safety
+        def _apply():
+            self.image_renderers[0].data_source.data['image'] = opaque_packed
+            for r in self.image_renderers[1:]:
+                r.data_source.data['image'] = dimmed_packed
+        pn.state.execute(_apply)
+
+    def _track_image_renderers(self, bokeh_master, bokeh_expr, bokeh_cluster):
+        """
+        Store the ImageRGBA renderers for each figure so we can update their data when the channel changes
+        """
+        self.image_renderers = []
+        for fig in (bokeh_master, bokeh_expr, bokeh_cluster):
+            if fig is None:
+                continue
+            image_r = next((r for r in fig.renderers if type(r.glyph).__name__ == 'ImageRGBA'), None)
+            if image_r is not None:
+                self.image_renderers.append(image_r)
 
     def _generate_spatial_plots(self):
         """
@@ -433,11 +474,13 @@ class BaseSpatialViewer(pn.viewable.Viewer):
 
     def _init_widgets(self):
         """
-        This is where you would initialize any Panel widgets (sliders, dropdowns, etc.) that you want to use in your app.
-        You can then reference these widgets in your _build_layout method to include them in the layout and set up callbacks.
+        Initializes widgets common to both views
         """
-
-        raise NotImplementedError("Subclasses must implement _init_widgets")
+        self.channel_select = None
+        if len(self.channels) > 1:
+            self.channel_select = pn.widgets.Select(name="Image Channel", options=self.channels, value=self.channels[0])
+            self.channel_select.param.watch(self._on_channel_change, 'value')
+            # NOTE: For any thing that requires param.watch or .on_click, the function needs a pn.state.execute() wrapper to ensure it runs in the Bokeh server thread context.
 
     def _build_layout(self):
         """
@@ -483,6 +526,7 @@ class CondensedSpatialViewer(BaseSpatialViewer):
                 bokeh_master = hv.render(master_image, backend='bokeh')
                 figures_to_link.insert(0, bokeh_master)
                 self.master_pane = pn.pane.Bokeh(bokeh_master, sizing_mode='stretch_width')
+                self._track_image_renderers(bokeh_master, bokeh_expr, bokeh_cluster)
             else:
                 self.master_pane = pn.pane.HoloViews(master_image, sizing_mode='stretch_width')
 
@@ -519,7 +563,7 @@ class CondensedSpatialViewer(BaseSpatialViewer):
                 sizing_mode='stretch_both', min_width=1080, margin=(0, 0, 0, 0)
             )
 
-            return pn.Column(self.state_sync, self.main_row, sizing_mode='stretch_both', max_width=MAX_CARD_WIDTH, margin=(0, 0, 0, 0))
+            return pn.Column(self.state_sync, self.pre_layout, self.main_row, sizing_mode='stretch_both', max_width=MAX_CARD_WIDTH, margin=(0, 0, 0, 0))
 
         except Exception as e:
             traceback.print_exc()
@@ -554,8 +598,17 @@ class CondensedSpatialViewer(BaseSpatialViewer):
 
     def _init_widgets(self):
         """Initializes widgets and builds the condensed control bar."""
-        pass
+        super()._init_widgets()
+        self.left_pre = pn.Column(
+            pn.Row(
+                self.channel_select,
+                sizing_mode='stretch_width'
+            ),
+        )
 
+        self.pre_layout = pn.Row(
+            self.left_pre,
+        )
 
 class ExpandedSpatialViewer(BaseSpatialViewer):
     """
@@ -577,6 +630,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
                 bokeh_master = hv.render(master_image, backend='bokeh')
                 figures_to_link.insert(0, bokeh_master)
                 self.master_pane = pn.pane.Bokeh(bokeh_master, sizing_mode='stretch_width')
+                self._track_image_renderers(bokeh_master, bokeh_expr, bokeh_cluster)
             else:
                 self.master_pane = pn.pane.HoloViews(master_image, sizing_mode='stretch_width')
 
@@ -692,6 +746,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
         return expr_umap, cluster_umap, umap_category_renderers
 
     def _init_widgets(self):
+        super()._init_widgets()
         self.display_name = pn.widgets.TextInput(
             name="Display name",
             placeholder="Name this display to save...",
@@ -710,13 +765,13 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
         # Build the pre_layout
         self.left_pre = pn.Column(
             pn.Row(
+                self.channel_select,
                 sizing_mode='stretch_width'
             ),
         )
 
         self.right_pre = pn.Column(
             pn.Row(
-
                 self.display_name,
                 self.save_button,
             ),
@@ -725,7 +780,7 @@ class ExpandedSpatialViewer(BaseSpatialViewer):
         )
 
         self.pre_layout = pn.Row(
-            #self.left_pre,
+            self.left_pre,
             self.right_pre
         )
 

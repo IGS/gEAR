@@ -279,7 +279,7 @@ def create_gene_df(adata: "AnnData", gene_symbol: str) -> pd.DataFrame:
 
     return dataframe
 
-def map_colors(dataframe: pd.DataFrame, spatial_img: np.ndarray | None, is_cool_dataset: bool) -> pd.DataFrame:
+def map_colors(dataframe: pd.DataFrame, found_img: bool, is_cool_dataset: bool) -> pd.DataFrame:
     # Assuming df is your DataFrame and it has a column "clusters"
     unique_clusters = dataframe["clusters"].cat.categories
     sorted_clusters = sort_clusters(unique_clusters)
@@ -295,7 +295,7 @@ def map_colors(dataframe: pd.DataFrame, spatial_img: np.ndarray | None, is_cool_
         # Some glasbey_bw_colors may not show well on a dark background so use "light" colors if images are not present
         # Prepending b_ to the name will return a list of RGB colors (though glasbey_light seems to already do this)
         swatch_color = (
-            cc.b_glasbey_bw if spatial_img is not None else cc.glasbey_light
+            cc.b_glasbey_bw if found_img is not None else cc.glasbey_light
         )
 
         if is_cool_dataset:
@@ -426,26 +426,18 @@ class SpatialPanel(Resource):
         if projection_id:
             filename_to_check = f"{projection_id}_{gene_symbol}.csv"
 
-        # If csv is cached, return it
-        csv_path = DATASET_DIR / filename_to_check
-        if csv_path.is_file():
-
-            config["filename"] = str(csv_path.name)
-            response["script"] = get_viewer_script(is_zoomed, config)
-            response["message"] = "Using cached file."
-            response["success"] = 1
-            return response
+        message = ""
+        found_img = False
 
         # Create cached csv if it doesn't exist, then return it
         try:
             spatial_obj = prep_sdata(dataset_id)
-
-            spatial_img = None
             if spatial_obj.has_images:
                 # Generate spatial image if not already cached
                 existing = list(DATASET_DIR.glob("spatial_img*.npy"))
                 if existing:
-                    spatial_img = np.load(existing[0])  # any one, just for map_colors presence check
+                    message += "Using cached spatial image. "
+                    found_img = True
                 else:
                     result = generate_spatial_image_df(spatial_obj)
                     if result is not None:
@@ -461,22 +453,33 @@ class SpatialPanel(Resource):
                             np.save(DATASET_DIR / f"spatial_img_{secure_filename(channel_name)}.npy", arr)
                         with open(DATASET_DIR / "spatial_props.json", "w") as f:
                             json.dump({"height": orig_h, "width": orig_w}, f)
-                        spatial_img = next(iter(channels.values()))  # just for the map_colors presence check
+                        found_img = True
+            else:
+                message += "Dataset spatial type does not support image generation. "
+        except Exception as e:
+            response["message"] = f"Error preparing data image: {e}"
+            return response
 
-            adata = spatial_obj.sdata.tables["table"]
+        try:
+            # If csv is cached, return it
+            csv_path = DATASET_DIR / filename_to_check
+            if csv_path.is_file():
+                response["message"] += "Using cached file."
+            else:
+                adata = spatial_obj.sdata.tables["table"]
 
-            # Modify the adata object to use the projection ID if it exists
-            if projection_id:
-                adata = create_projection_adata(adata, dataset_id, projection_id)
+                # Modify the adata object to use the projection ID if it exists
+                if projection_id:
+                    adata = create_projection_adata(adata, dataset_id, projection_id)
 
-            gene_df = create_gene_df(adata, gene_symbol)
-            gene_df = map_colors(gene_df, spatial_img, dataset_id in COOL_DATASETS)
+                gene_df = create_gene_df(adata, gene_symbol)
+                gene_df = map_colors(gene_df, found_img, dataset_id in COOL_DATASETS)
 
-            gene_df.to_csv(csv_path, index=False)
+                gene_df.to_csv(csv_path, index=False)
 
             config["filename"] = str(csv_path.name)
         except Exception as e:
-            response["message"] = f"Error preparing data: {e}"
+            response["message"] = f"Error preparing data markers: {e}"
             return response
 
         # Generate the script to load the Panel app with the prepared data
