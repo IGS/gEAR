@@ -505,6 +505,11 @@ def list_image_channels(dataset_id) -> list[str]:
         stem = path.stem  # "spatial_img_DAPI" or legacy "spatial_img"
         name = stem[len("spatial_img"):].lstrip("_") or "default"
         names.append(name)
+
+    # If "default" in names, move it to the front of the list
+    if "default" in names:
+        names.remove("default")
+        names.insert(0, "default")
     return names
 
 def normalize_expression_name(filename) -> str:
@@ -583,10 +588,6 @@ def retrieve_image_array(dataset_id, channel_name=None) -> np.ndarray | None:
     if channel_name is not None:
         path = img_dir / f"spatial_img_{secure_filename(channel_name)}.npy"
         return np.load(path) if path.is_file() else None
-    # Attempt to load the default image if no channel name is provided
-    default_path = img_dir / "spatial_img_default.npy"
-    if default_path.is_file():
-        return np.load(default_path)
     # If no channel name is provided, attempt to load the first available spatial image file
     candidates = sorted(img_dir.glob("spatial_img*.npy"))
     if not candidates:

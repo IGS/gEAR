@@ -175,7 +175,7 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         self.channels = list_image_channels(self.settings.dataset_id)
 
         # Retrieve the image array and its dimensions. If the dimensions are not available, infer them from the image array itself.
-        self.image_array = retrieve_image_array(self.settings.dataset_id)
+        self.image_array = retrieve_image_array(self.settings.dataset_id, channel_name=self.channels[0] if self.channels else None)
         orig_dims = retrieve_image_dims(self.settings.dataset_id)
 
         self.img_height, self.img_width = None, None
