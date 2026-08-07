@@ -353,7 +353,31 @@ def compute_aggregation_params(df, x_col, y_col, target_markers=80_000, min_dim=
     isn't proportional to the data's aspect ratio produces different spacing
     in x vs y, and a single radius can't match both, causing visible tearing.
     radius is derived from that spacing so markers tile without gaps or overlap.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame containing the data to aggregate.
+    x_col : str
+        The name of the column to use for the x-axis.
+    y_col : str
+        The name of the column to use for the y-axis.
+    target_markers : int, optional
+        The target number of markers to display in the aggregated plot. Default is 80,000.
+    min_dim : int, optional
+        The minimum dimension (width or height) for the aggregated plot. Default is 275.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the computed width, height, and radius.
+
     """
+    n = len(df)
+    target_markers = min(target_markers, n)
+    # For displays with small numbers of points, like Visium, don't force a grid finer than the real point density supports
+    min_dim = min(min_dim, int(n ** 0.5))
+
     x_extent = df[x_col].max() - df[x_col].min()
     y_extent = df[y_col].max() - df[y_col].min()
     aspect = x_extent / y_extent if y_extent else 1.0
@@ -559,6 +583,10 @@ def retrieve_image_array(dataset_id, channel_name=None) -> np.ndarray | None:
     if channel_name is not None:
         path = img_dir / f"spatial_img_{secure_filename(channel_name)}.npy"
         return np.load(path) if path.is_file() else None
+    # Attempt to load the default image if no channel name is provided
+    default_path = img_dir / "spatial_img_default.npy"
+    if default_path.is_file():
+        return np.load(default_path)
     # If no channel name is provided, attempt to load the first available spatial image file
     candidates = sorted(img_dir.glob("spatial_img*.npy"))
     if not candidates:
