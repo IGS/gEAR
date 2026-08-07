@@ -67,29 +67,29 @@ parser.add_argument(
     "max_columns", type=int, default=None
 )  # Max number of columns before plotting to a new row
 parser.add_argument("expression_palette", type=str, default="YlOrRd")
-parser.add_argument("reverse_palette", type=bool, default=False)
+parser.add_argument("reverse_palette", type=bool, default=False, location="json")
 parser.add_argument("colors", type=dict, default={}, location="json")
 parser.add_argument("order", type=dict, default={}, location="json")
 parser.add_argument(
     "x_axis", type=str, default="tSNE_1"
 )  # Add here in case old tSNE plotly configs are missing axes data
 parser.add_argument("y_axis", type=str, default="tSNE_2")
-parser.add_argument("flip_x", type=bool, default=False)
-parser.add_argument("flip_y", type=bool, default=False)
-parser.add_argument("horizontal_legend", type=bool, default=False)
+parser.add_argument("flip_x", type=bool, default=False, location="json")
+parser.add_argument("flip_y", type=bool, default=False, location="json")
+parser.add_argument("horizontal_legend", type=bool, default=False, location="json")
 parser.add_argument("marker_size", type=int, default=None)
-parser.add_argument("center_around_median", type=bool, default=False)
+parser.add_argument("center_around_median", type=bool, default=False, location="json")
 parser.add_argument('vmax', type=float, default=None)
 parser.add_argument('vmin', type=float, default=None)
-parser.add_argument("make_zero_gray", type=bool, default=True)  # Keep with old plot styles
-parser.add_argument("enforce_equal_aspect", type=bool, default=False)
+parser.add_argument("make_zero_gray", type=bool, default=True, location="json")  # Keep with old plot styles
+parser.add_argument("enforce_equal_aspect", type=bool, default=False, location="json")
 parser.add_argument("obs_filters", type=dict, default={}, location="json")  # dict of lists
 parser.add_argument(
     "projection_id", type=str, default=None
 )  # projection id of csv output
 parser.add_argument("expression_min_clip", type=float, default=None)
-parser.add_argument("colorblind_mode", type=bool, default=False)
-parser.add_argument("high_dpi", type=bool, default=False)
+parser.add_argument("colorblind_mode", type=bool, default=False, location="json")
+parser.add_argument("high_dpi", type=bool, default=False, location="json")
 
 single_gene_parser = parser.copy()
 single_gene_parser.add_argument("gene_symbol", type=str, default=None)
@@ -97,13 +97,13 @@ single_gene_parser.add_argument(
     "plot_by_group", type=str, default=None
 )  # If true, plot by group
 single_gene_parser.add_argument(
-    "hide_group_nonmembers", type=bool, default=False
+    "hide_group_nonmembers", type=bool, default=False, location="json"
 )  # If true, hide data points not belonging to the group
 single_gene_parser.add_argument(
-    "skip_gene_plot", type=bool, default=False
+    "skip_gene_plot", type=bool, default=False, location="json"
 )  # If true, skip the gene expression plot
 single_gene_parser.add_argument(
-    "two_way_palette", type=bool, default=False
+    "two_way_palette", type=bool, default=False, location="json"
 )  # If true, data extremes are in the forefront
 
 multi_gene_parser = parser.copy()
