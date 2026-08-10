@@ -1,7 +1,9 @@
 
+import datetime
 import json
 import os
 import sys
+import traceback
 import typing
 from pathlib import Path
 
@@ -109,36 +111,6 @@ def prep_sdata(dataset_id: str) -> "SpatialHandler":
     spatial_obj: "SpatialHandler" = SPATIALTYPE2CLASS[platform]()
     spatial_obj.sdata = sdata
     return spatial_obj
-
-def generate_spatial_image_df(spatial_obj) -> tuple[dict[str, np.ndarray], tuple[int,int]] | None:
-    """
-    Generate a NumPy array representation of the spatial image for a given SpatialHandler.
-
-    This function attempts to extract an image from the provided spatial handler by
-    calling its extract_img() method. Some spatial datasets do not include image
-    data or may raise errors during extraction/conversion; such errors are caught,
-    an error message is printed to sys.stderr, and the function returns None.
-
-    Parameters
-    ----------
-    spatial_obj : SpatialHandler
-        An object that implements an extract_img() method which returns a NumPy array
-        representation of the spatial image.
-
-    Returns
-    -------
-    tuple[dict[str, np.ndarray], tuple[int,int]] | None
-        A tuple containing:
-            - A dictionary mapping channel names to their corresponding NumPy arrays.
-            - A tuple containing the original height and width of the image.
-        If extraction fails, returns None.
-    """
-
-    try:
-        return spatial_obj.extract_img()
-    except Exception as e:
-        print(f"No image found or error converting image to dataframe: {e}", file=sys.stderr)
-        return None
 
 def normalize_image_array(arr: np.ndarray|None) -> np.ndarray:
     """
@@ -295,7 +267,7 @@ def map_colors(dataframe: pd.DataFrame, found_img: bool, is_cool_dataset: bool) 
         # Some glasbey_bw_colors may not show well on a dark background so use "light" colors if images are not present
         # Prepending b_ to the name will return a list of RGB colors (though glasbey_light seems to already do this)
         swatch_color = (
-            cc.b_glasbey_bw if found_img is not None else cc.glasbey_light
+            cc.b_glasbey_bw if found_img else cc.glasbey_light
         )
 
         if is_cool_dataset:
@@ -427,33 +399,36 @@ class SpatialPanel(Resource):
             filename_to_check = f"{projection_id}_{gene_symbol}.csv"
 
         message = ""
-        found_img = False
 
-        # Create cached csv if it doesn't exist, then return it
+        found_img = False
+        error_log_path = DATASET_DIR / "image_extraction_error.log"
         try:
             spatial_obj = prep_sdata(dataset_id)
             if spatial_obj.has_images:
-                # Generate spatial image if not already cached
                 existing = list(DATASET_DIR.glob("spatial_img*.npy"))
                 if existing:
                     message += "Using cached spatial image. "
                     found_img = True
                 else:
-                    result = generate_spatial_image_df(spatial_obj)
-                    if result is not None:
-                        channels, (orig_h, orig_w) = result
-                        # If there's only one channel, rename it to "default" for consistency
+                    # Create cached image for each channel if they do not exist
+                    try:
+                        channels, (orig_h, orig_w) = spatial_obj.extract_img()
                         if len(channels) == 1:
                             only_key = next(iter(channels))
-                            arr = normalize_image_array(channels[only_key])
-                            channels = {"default": arr}
-                        # Save each channel as a separate .npy file in the dataset directory
+                            channels = {"default": channels[only_key]}
                         for channel_name, arr in channels.items():
                             arr = normalize_image_array(arr)
                             np.save(DATASET_DIR / f"spatial_img_{secure_filename(channel_name)}.npy", arr)
                         with open(DATASET_DIR / "spatial_props.json", "w") as f:
                             json.dump({"height": orig_h, "width": orig_w}, f)
                         found_img = True
+                        if error_log_path.is_file():
+                            error_log_path.unlink()
+                    except Exception:
+                        with open(error_log_path, "w") as f:
+                            f.write(f"Image extraction failed at {datetime.datetime.now().isoformat()}\n\n")
+                            f.write(traceback.format_exc())
+                        print(f"Image extraction failed for {dataset_id}, see {error_log_path}", file=sys.stderr)
             else:
                 message += "Dataset spatial type does not support image generation. "
         except Exception as e:
