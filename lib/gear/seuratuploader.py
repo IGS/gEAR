@@ -56,8 +56,7 @@ def r_package_importer(package_name:str):
         return pkg
     except Exception:
         importErrorMessage += f"{package_name} not installed or can not be imported"
-        sys.exit(importErrorMessage)
-
+        raise ImportError(importErrorMessage)
 
 
 def seurat_to_anndata(file_path: str, share_name: str, output_dir: str = "."):
@@ -80,7 +79,12 @@ def seurat_to_anndata(file_path: str, share_name: str, output_dir: str = "."):
     r_package_importer('anndataR')
     # Use R's readRDS to load the object.
     # The result is an R object within the Python environment.
-    r_seurat_obj = base.readRDS(file_path)
+    try:
+        r_seurat_obj = base.readRDS(file_path)
+    except Exception as e:
+        print(f"Error reading RDS file using readRDS: {e}", file=sys.stderr)
+        print("ERROR (readRDS): Perhaps the file is not a valid RDS file (from saveRDS), or the path is incorrect.", file=sys.stderr)
+        raise ValueError("Error reading RDS file")
     ro.globalenv['seurat_obj'] = r_seurat_obj
     # Using anndataR write out a converted h5ad
     ro.r('adata <- as_AnnData(seurat_obj)')
@@ -90,9 +94,9 @@ def seurat_to_anndata(file_path: str, share_name: str, output_dir: str = "."):
         return output_path
     # In cases where the write fails we will assume the h5ad already exists
     except Exception:
-        raise
-        print(f"h5ad name already exists {output_path}")
-        
+        print(f"h5ad name already exists {output_path}", file=sys.stderr)
+        raise ValueError("Error writing h5ad file to output path")
+
 
 def openh5ad(h5ad_name):
     """Just open the supplied h5ad file"""
@@ -152,10 +156,14 @@ def reduction_to_metadata(adata):
     # Discussion with Carlo and Brian resulted in us determining we would like to
     # take the first 2 values of each reduction
     # PCA in the future, and potentially other reductions may need more
-    for reduction in adata.obsm:
-        if adata.obsm[reduction].shape[1] > 1:
-            for i in range(2):
-                adata.obs[f'{reduction}_{i+1}'] = adata.obsm[reduction][:,i]
+    try:
+        for reduction in adata.obsm:
+            if adata.obsm[reduction].shape[1] > 1:
+                for i in range(2):
+                    adata.obs[f'{reduction}_{i+1}'] = adata.obsm[reduction][:,i]
+    except Exception as e:
+        print(f"Error processing reductions: {e}", file=sys.stderr)
+        raise ValueError("Error processing reductions in AnnData object")
     return adata
 
 
@@ -179,9 +187,11 @@ def main():
         print(h5ad_name)
         adata = openh5ad(f'{h5ad_name}')
         if tax_id is None:
-            sys.exit("TaxID not supplied")
+            raise ValueError("TaxID not supplied")
         adata = genes_to_ensembl(adata,taxid=tax_id)
         adata = reduction_to_metadata(adata)
+        if adata is None:
+            raise ValueError("Anndata object is None after gene conversion")
         adata.write(str(h5ad_name.replace('tmp_','').replace('./','')))
         os.remove(f'{h5ad_name}')
 

@@ -82,15 +82,16 @@ const checkDatasetProcessingStatus = async () => {
     );
 
     processingStatus = data.status;
+    const message = data.message;
     document.getElementById('step-process-dataset-status').textContent = processingStatus.charAt(0).toUpperCase() + processingStatus.slice(1);
-    document.getElementById('step-process-dataset-status-message').textContent = data.message;
+    document.getElementById('step-process-dataset-status-message').textContent = message;
     document.getElementById('dataset-processing-progress').value = data.progress;
 
     // Only enable next button when both dataset processing AND primary analysis are complete
     if (processingStatus === 'complete') {
         document.getElementById('dataset-processing-submit').disabled = false;
     } else if (processingStatus === 'error') {
-        document.getElementById('step-process-dataset-status-message').textContent = "Error during processing";
+        document.getElementById('step-process-dataset-status-message').textContent = `Error during processing: ${message}`;
     }
 }
 

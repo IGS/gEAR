@@ -257,6 +257,10 @@ def process_seurat(upload_dir: Path, perform_primary_analysis: bool) -> None:
     step_counter = 1
     status["progress"] = int((step_counter / total_steps) * 100)
 
+    if share_uid is None:
+        write_status(upload_dir, 'error', "Share UID not supplied.")
+        return
+
     # Take in an RDS file, convert to anndata, update the obs metadata based on reductions,
     # convert gene symbols to ensemble IDs, and write to an updated h5ad file.
     write_status(upload_dir, "processing", "Initializing dataset processing.")
@@ -264,9 +268,10 @@ def process_seurat(upload_dir: Path, perform_primary_analysis: bool) -> None:
 
     # seurat to anndata uses rpy2 to convert the RDS to anndata
     # filepath name has "tmp_" appended in front
-    adata_filepath = SeuratUploader.seurat_to_anndata(str(seurat_filepath), share_uid, str(upload_dir))
-    if not adata_filepath:
-        write_status(upload_dir, 'error', 'Failed to convert RDS to h5ad.')
+    try:
+        adata_filepath = SeuratUploader.seurat_to_anndata(str(seurat_filepath), share_uid, str(upload_dir))
+    except Exception as e:
+        write_status(upload_dir, 'error', f"Failed to convert RDS to h5ad: {str(e)}")
         return
 
     step_counter += 1
@@ -285,7 +290,7 @@ def process_seurat(upload_dir: Path, perform_primary_analysis: bool) -> None:
     try:
         adata = SeuratUploader.reduction_to_metadata(adata)
     except Exception as e:
-        write_status(upload_dir, 'error', f'Failed to update Reductions to metadata: {str(e)}')
+        write_status(upload_dir, 'error', 'Failed to update reductions to AnnData object')
         return
 
     # Convert gene symbols to ensemble IDs
