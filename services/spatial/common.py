@@ -1,21 +1,310 @@
-import base64
+import json
+from pathlib import Path
 import sys
-import typing
-from io import BytesIO
-from typing import Literal
 
+import colorcet as cc
 import datashader as ds
+import holoviews as hv
 import numpy as np
 import pandas as pd
 import param
-from PIL import Image
-from plotly import graph_objects as go
-from plotly.subplots import make_subplots
+from bokeh.models import CustomJS, CustomJSHover, HoverTool, Span
+from holoviews.operation.datashader import spread
+from werkzeug.utils import secure_filename
 
-if typing.TYPE_CHECKING:
-    from xarray import DataArray
+gear_root = Path(__file__).resolve().parents[2]
+www_path = gear_root.joinpath("www")
+PANEL_CSV_CACHE_DIR = www_path / "cache" / "spatial_panel"
+SPATIAL_IMAGE_NAME = "spatial_img.npy"
+
+DEFAULT_PLOT_WIDTH = 275
+DEFAULT_PLOT_HEIGHT = 300
+
+# NOTE: When you see the word "glyph" thrown around, that is Bokeh's terminology for the actual visual representation of a data point.
+# Examples are circle, square, line, etc.
+# A "renderer" is the object that takes the data and draws it using a glyph.
 
 ### Functions
+
+def autohide_toolbar(plot, element):
+    plot.state.toolbar.autohide = True
+
+def fix_colorbar_hook(plot, element):
+    """
+    Forces the Bokeh colorbar to use the colormap of the top-most (selected) layer,
+    bypassing the HoloViews unselected_color hijack.
+    """
+    try:
+        from bokeh.models import ColorBar
+        # Locate the colorbar in the plot layout
+        colorbars = [obj for layout in ['right', 'left', 'above', 'below']
+                     for obj in getattr(plot.state, layout, [])
+                     if isinstance(obj, ColorBar)]
+
+        if colorbars:
+            cb = colorbars[0]
+            # Find all image renderers that possess a color_mapper
+            renderers = [r for r in plot.state.renderers
+                         if hasattr(r, 'glyph') and hasattr(r.glyph, 'color_mapper')]
+
+            if renderers:
+                # The selected data is drawn last, meaning it is the last renderer in the list.
+                # Force the colorbar to sync with it.
+                cb.color_mapper = renderers[-1].glyph.color_mapper
+    except Exception:
+        pass
+
+def link_crosshairs(figures, color='#333333', line_dash='dashed', line_width=1):
+    """
+    Synchronizes a crosshair (a vertical + horizontal guide line) across multiple
+    already-rendered Bokeh figures that share the same coordinate space.
+
+    Pure client-side JS (a shared Span pair per figure, updated via a single
+    CustomJS on mousemove) rather than a HoloViews PointerXY stream, which
+    would round-trip to the Bokeh server on every mouse move.
+
+    Parameters
+    ----------
+    figures : list[bokeh.plotting.figure]
+        The concrete Bokeh figures to link. They should share the same x/y
+        coordinate system for the crosshair position to line up across them.
+    """
+    vlines, hlines = [], []
+    for fig in figures:
+        vline = Span(location=0, dimension='height', line_color=color,
+                    line_dash=line_dash, line_width=line_width, visible=False)
+        hline = Span(location=0, dimension='width', line_color=color,
+                    line_dash=line_dash, line_width=line_width, visible=False)
+        fig.add_layout(vline)
+        fig.add_layout(hline)
+        vlines.append(vline)
+        hlines.append(hline)
+
+    move_callback = CustomJS(args=dict(vlines=vlines, hlines=hlines), code="""
+        const x = cb_obj.x;
+        const y = cb_obj.y;
+        for (let i = 0; i < vlines.length; i++) {
+            vlines[i].location = x;
+            vlines[i].visible = true;
+            hlines[i].location = y;
+            hlines[i].visible = true;
+        }
+    """)
+    leave_callback = CustomJS(args=dict(vlines=vlines, hlines=hlines), code="""
+        for (let i = 0; i < vlines.length; i++) {
+            vlines[i].visible = false;
+            hlines[i].visible = false;
+        }
+    """)
+
+    for fig in figures:
+        fig.js_on_event('mousemove', move_callback)
+        fig.js_on_event('mouseleave', leave_callback)
+
+def link_ranges(figures):
+    """
+    Links pan/zoom together across multiple Bokeh figures by sharing the same
+    x_range/y_range model instances, so panning or box/wheel-zooming any one
+    of them moves all the others in lockstep. This is the standard Bokeh
+    "linked panning" technique.
+
+    Because it's a literal shared model (not values kept in sync via a
+    callback), Bokeh keeps every figure referencing it in sync automatically,
+    for both the live client and this server-side session.
+
+    Parameters
+    ----------
+    figures : list[bokeh.plotting.figure]
+        The concrete Bokeh figures to link. They should share the same x/y
+        coordinate system -- sharing ranges across figures with different
+        coordinate systems will make them all zoom to whatever the first
+        figure's extent is, which is rarely what you want.
+    """
+    if len(figures) < 2:
+        return
+    reference = figures[0]
+    for fig in figures[1:]:
+        fig.x_range = reference.x_range
+        fig.y_range = reference.y_range
+
+def _prepare_category_renderers(cmap, registry=None):
+    """
+    Returns a HoloViews plot hook for categorical (NdOverlay-based) spatial
+    plots that does two things once the plot is actually rendered:
+
+    1. Re-applies the intended category->color mapping directly onto each
+       category's Bokeh glyph. Works around a hvplot/HoloViews issue
+       where `by=` grouping combined with a dict `cmap` does not reliably
+       preserve the category->color correspondence, leading to colors
+       being assigned to the wrong category.
+    2. If `registry` (a dict) is provided, populates it with
+       {category_name: bokeh_glyph_renderer} so a caller can wire up
+       per-category show/hide from an external legend afterward
+    """
+    def hook(plot, element):
+        for key, subplot in getattr(plot, 'subplots', {}).items():
+            category = key[0] if isinstance(key, tuple) else key
+            renderer = subplot.handles.get('glyph_renderer')
+            if renderer is None:
+                continue
+
+            if isinstance(cmap, dict):
+                hexcolor = cmap.get(category, '#CCCCCC')
+                if hasattr(renderer.glyph, 'fill_color'):
+                    renderer.glyph.fill_color = hexcolor
+                if hasattr(renderer.glyph, 'line_color') and renderer.glyph.line_color is not None:
+                    renderer.glyph.line_color = hexcolor
+
+            if registry is not None:
+                registry[category] = renderer
+    return hook
+
+
+def create_spatial_plot(df:pd.DataFrame, x_col:str='spatial1', y_col:str='spatial2', color_col:str='raw_value', cmap="YlOrRd",
+                        is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None, category_renderers:dict|None=None,
+                        min_height:int=DEFAULT_PLOT_HEIGHT, min_width:int=DEFAULT_PLOT_WIDTH, radius:int=3):
+    """Generates a Datashaded spatial plot colored by expression of the specified gene."""
+
+    plot_kwargs = dict(
+        x=x_col, y=y_col,
+        rasterize=False, #aggregator=agg,
+        cmap=cmap,
+        xaxis=None, yaxis=None,
+        title=title,
+
+        #Kill the colorbar if it's categorical
+        colorbar=not is_categorical,
+        clabel="",  # No label for the colorbar
+        clim = (0, cbar_max) if cbar_max is not None else None,
+        legend=False,    # using a ghost legend so the legend does not squish the plot
+
+        # Responsiveness if the browser is resized
+        responsive=True, # Automatically stretches to fill its container
+        min_height=min_height,   # Set a floor so plots don't collapse to 0px
+        min_width=min_width    # Tells Bokeh the canvas cannot drop below 275px (prevent squishing if the layout for the display is not full width)
+    )
+
+    if is_categorical:
+        # `by=` splits this into one renderer per category
+        # instead of one combined glyph, which is what makes per-category
+        # show/hide possible downstream.
+        plot = df.hvplot.points(by=color_col, **plot_kwargs)
+    else:
+        plot = df.hvplot.points(c=color_col, **plot_kwargs)
+
+
+    label_name = "Expression" if color_col == "raw_value" else color_col.title()
+    custom_hover = HoverTool(
+        tooltips=[(label_name, f"@{color_col}")],
+    )
+    default_tools=["box_zoom", "wheel_zoom", "pan", "reset"]
+    active_tools=["wheel_zoom", "pan"]
+
+    hooks = [autohide_toolbar, fix_colorbar_hook]
+    if is_categorical:
+        # Always run this for categorical plots -- it's also what fixes the
+        # by=/cmap color assignment, not just the registry population.
+        hooks.append(_prepare_category_renderers(cmap, category_renderers))
+
+    opts_kwargs = dict(hooks=hooks)
+    if not is_categorical:
+        # This only applies to the continuous/expression plot.
+        opts_kwargs["colorbar_opts"] = {"width": 12}    # thin the colorbar out.
+
+    plot = plot.opts(**opts_kwargs)
+
+    # Add some opts that are scoped to the Points element itself, not the overall plot.
+    # These particular options will override any defaults that hvplot may try to add in.
+    plot = plot.opts(hv.opts.Points(
+        radius=radius, line_color=None,
+        tools=[custom_hover], default_tools=default_tools, active_tools=active_tools,
+        toolbar="below",
+        ))
+    return plot
+
+def create_umap_plot(df:pd.DataFrame, color_col:str="raw_value", cmap="YlOrRd", is_categorical:bool=False, title:str|None=None, cbar_max:float|None=None, category_renderers:dict|None=None, radius:float=0.15):
+    """Generates a Datashaded UMAP."""
+
+    color_col_title = title if title else color_col.title()
+
+    plot_kwargs = dict(
+        x='UMAP1', y='UMAP2',
+        rasterize=False, #aggregator=agg,
+        cmap=cmap,
+        xaxis="bottom", yaxis="left",
+        xlabel="UMAP_1", ylabel="UMAP_2",
+        title=f"UMAP: {color_col_title}",
+
+        #Kill the colorbar if it's categorical
+        colorbar=not is_categorical,
+        clabel="",  # No label for the colorbar
+        clim = (0, cbar_max) if cbar_max is not None else None,
+        legend=False,    # using a ghost legend so the legend does not squish the plot
+
+        # Responsiveness if the browser is resized
+        responsive=True, # Automatically stretches to fill its container
+        height=DEFAULT_PLOT_HEIGHT    # Tells Bokeh the canvas cannot drop below 275px (prevent squishing if the layout for the display is not full width)
+    )
+
+    if is_categorical:
+        # `by=` splits this into one renderer per category
+        # instead of one combined glyph, which is what makes per-category
+        # show/hide possible downstream.
+        plot = df.hvplot.points(by=color_col, **plot_kwargs)
+    else:
+        plot = df.hvplot.points(c=color_col, **plot_kwargs)
+
+    label_name = "Expression" if color_col == "raw_value" else color_col.title()
+    custom_hover = HoverTool(
+        tooltips=[(label_name, f"@{color_col}")],
+    )
+    default_tools=["box_zoom", "wheel_zoom", "pan", "reset"]
+    active_tools=["wheel_zoom", "pan"]
+
+    hooks = [autohide_toolbar, fix_colorbar_hook]
+    if is_categorical:
+        # Always run this for categorical plots -- it's also what fixes the
+        # by=/cmap color assignment, not just the registry population.
+        hooks.append(_prepare_category_renderers(cmap, category_renderers))
+
+    opts_kwargs = dict(hooks=hooks,
+                    xticks=0, yticks=0,    # No ticks.
+                    )
+    if not is_categorical:
+        # This only applies to the continuous/expression plot.
+        opts_kwargs["colorbar_opts"] = {"width": 12}    # thin the colorbar out.
+
+    plot = plot.opts(**opts_kwargs)
+
+    # Add some opts that are scoped to the Points element itself, not the overall plot.
+    # These particular options will override any defaults that hvplot may try to add in.
+    plot = plot.opts(hv.opts.Points(
+        radius=radius, line_color=None,
+        tools=[custom_hover], default_tools=default_tools, active_tools=active_tools,
+        toolbar="right",
+        ))
+    return plot
+
+def create_violin_plot(df, y_col, group_col='cluster', cmap='Category10', title=None):
+    """Generates standard bokeh violin plots (no Datashader needed here)."""
+    plot_title = title if title else f"Expression Distribution: {y_col}"
+
+    # Sort df by the group_col
+    df = df.sort_values(by=group_col)
+
+    plot = df.hvplot.violin(
+        y=y_col, by=group_col, color=group_col, cmap=cmap,
+        ylabel='Expression', xlabel='Annotation Cluster',
+        title=plot_title,
+        min_height=400, responsive=True, legend=False
+    )
+
+    return plot.opts(
+        violin_fill_alpha=0.7,
+        xrotation=45,
+        default_tools = ['box_select', 'lasso_select', 'reset'],
+        hooks=[autohide_toolbar] # Keep the toolbar hidden until hover
+    )
 
 def clip_expression_values(dataframe: pd.DataFrame, min_clip: float | None=None, max_clip: float | None=None) -> pd.DataFrame:
     """
@@ -49,8 +338,279 @@ def clip_expression_values(dataframe: pd.DataFrame, min_clip: float | None=None,
     >>> df["raw_value"].tolist()
     [0.0, 0.0, 2.5, 5.0]
     """
+    if "raw_value" not in dataframe.columns:
+        raise KeyError("DataFrame must contain a 'raw_value' column to clip.")
+
+    dataframe["raw_value"] = dataframe["raw_value"].clip(lower=min_clip, upper=max_clip)
     return dataframe
 
+def compute_aggregation_params(df, x_col, y_col, target_markers=80_000, min_dim=275):
+    """
+    Computes (width, height, radius) for create_datashader_agg + create_spatial_plot.
+
+    width/height are proportional to the data's x/y extent, so bin spacing
+    comes out equal in both dimensions -- an aggregation resolution that
+    isn't proportional to the data's aspect ratio produces different spacing
+    in x vs y, and a single radius can't match both, causing visible tearing.
+    radius is derived from that spacing so markers tile without gaps or overlap.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame containing the data to aggregate.
+    x_col : str
+        The name of the column to use for the x-axis.
+    y_col : str
+        The name of the column to use for the y-axis.
+    target_markers : int, optional
+        The target number of markers to display in the aggregated plot. Default is 80,000.
+    min_dim : int, optional
+        The minimum dimension (width or height) for the aggregated plot. Default is 275.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the computed width, height, and radius.
+
+    """
+    n = len(df)
+    target_markers = min(target_markers, n)
+    # For displays with small numbers of points, like Visium, don't force a grid finer than the real point density supports
+    min_dim = min(min_dim, int(n ** 0.5))
+
+    x_extent = df[x_col].max() - df[x_col].min()
+    y_extent = df[y_col].max() - df[y_col].min()
+    aspect = x_extent / y_extent if y_extent else 1.0
+
+    height = max(min_dim, int(round((target_markers / aspect) ** 0.5)))
+    width = max(min_dim, int(round(height * aspect)))
+
+    spacing = y_extent / height
+    radius = spacing / 2 * 1.05  # slight overlap avoids hairline gaps
+
+    return width, height, radius
+
+def create_datashader_agg(df, x: str, y: str, width:int=DEFAULT_PLOT_WIDTH, height:int=DEFAULT_PLOT_HEIGHT) -> "DataArray":
+    """
+    Aggregates data points from the DataFrame using Datashader, producing a summary for visualization.
+
+    Parameters:
+        df (pd.DataFrame): The DataFrame containing the data to aggregate.
+        x (str): The name of the column to use for the x-axis.
+        y (str): The name of the column to use for the y-axis.
+
+    Returns:
+        xarray.DataArray: An aggregated DataArray where each pixel contains the maximum 'raw_value' expression
+        and a boolean indicating the presence of each cluster (by 'clusters_cat_codes').
+
+    Notes:
+        - The x and y values are swapped for aggregation compared to plotting.
+        - The aggregation computes the maximum 'raw_value' per pixel and tracks cluster membership.
+    """
+
+    # Create a canvas with the specified width and height
+    cvs = ds.Canvas(plot_width=width, plot_height=height)
+
+    # NOTE: This seems to affect the expression aggregation but does not matter for the clusters
+    # We need to swap the x and y values for aggregation compared to what we eventually plot.
+
+    df["clusters_cat_codes"] = df["clusters_cat_codes"].astype("category")
+
+    agg = cvs.points(
+        df,
+        x=x,
+        y=y,
+        agg=ds.summary(
+            expression=ds.max("raw_value"),
+            clusters=ds.by("clusters_cat_codes", ds.any()),  # type: ignore
+        ),
+    )
+    return agg
+
+def create_clusters_df(agg):
+    agg_df = agg.to_dataframe(name="clusters_cat_codes")
+    agg_df = agg_df[agg_df["clusters_cat_codes"]]
+    # The columns we want are in the multi-index, so we need to make them into a dataframe
+    final_df =  agg_df.index.to_frame(index=False)
+    return final_df
+
+def create_expression_df(agg):
+    agg_df = agg.to_dataframe(name="raw_value")
+    # Drop missing values
+    agg_df = agg_df.dropna()
+    final_df = agg_df.reset_index()
+    return final_df
+
+def create_umap_sample(df, value_col='raw_value', cluster_col='clusters', background_target_markers=8_000, cluster_floor=20, small_cluster_threshold=200, seed=0):
+    """
+    Creates a sampled dataframe for UMAP visualization, ensuring that the background (non-expressing) cells are represented proportionally across clusters.
+
+    Parameters:
+        df (pd.DataFrame): The input dataframe containing UMAP coordinates and expression values.
+        value_col (str): The name of the column indicating expression values.
+        cluster_col (str): The name of the column indicating cluster assignments.
+        background_target_markers (int): The target number of background markers to sample.
+        cluster_floor (int): The minimum number of markers to sample from each large cluster.
+        small_cluster_threshold (int): The threshold below which clusters are considered "small" and fully included in the background sample.
+        seed (int): Random seed for reproducibility of sampling.
+
+    Returns:
+        pd.DataFrame: A new dataframe containing all expressing cells and a sampled subset of background cells
+    """
+
+    # Split the dataframe into expressing and background subsets
+    expressing = df[df[value_col] > 0]
+    background = df[df[value_col] == 0]
+
+    # Just use the original dataframe if the background is already small enough
+    if len(background) <= background_target_markers:
+        return df.reset_index(drop=True)
+
+    # Split the background into clusters and determine how many to sample from each cluster
+    counts = background[cluster_col].value_counts()
+    small_clusters = counts[counts < small_cluster_threshold].index
+    large_clusters = counts[counts >= small_cluster_threshold].index
+
+    # Use all of the small clusters and sample proportionally from the large clusters
+    small_bg = background[background[cluster_col].isin(small_clusters)]
+    large_counts = counts[large_clusters]
+    remaining_budget = max(background_target_markers - len(small_bg), 0)
+    proportional = (large_counts / large_counts.sum() * remaining_budget).round().astype(int) if len(large_counts) else large_counts
+    allocation = proportional.clip(lower=cluster_floor).clip(upper=large_counts)
+
+    # Combine the small clusters and the sampled large clusters into a single dataframe
+    parts = [small_bg]
+    for cluster, n in allocation.items():
+        cluster_bg = background[background[cluster_col] == cluster]
+        parts.append(cluster_bg.sample(n=n, random_state=seed))
+
+    bg_sampled = pd.concat(parts, ignore_index=True)
+    return pd.concat([expressing, bg_sampled], ignore_index=True)
+
+def list_image_channels(dataset_id) -> list[str]:
+    """
+    List the available image channels for a given dataset.
+
+    Args:
+        dataset_id (str): The identifier of the dataset. Will be sanitized using secure_filename.
+
+    Returns:
+        list[str]: A list of available image channel names.
+    """
+    dataset_id = secure_filename(dataset_id)
+    img_dir = PANEL_CSV_CACHE_DIR / dataset_id
+    candidates = sorted(img_dir.glob("spatial_img*.npy"))
+    names = []
+    for path in candidates:
+        stem = path.stem  # "spatial_img_DAPI" or legacy "spatial_img"
+        name = stem[len("spatial_img"):].lstrip("_") or "default"
+        names.append(name)
+
+    # If "default" in names, move it to the front of the list
+    if "default" in names:
+        names.remove("default")
+        names.insert(0, "default")
+    return names
+
+def normalize_expression_name(filename) -> str:
+        """
+        Extract and normalize an expression name from a filename.
+
+        If the filename stem follows the pattern <uuid4>_<str>, extracts the <str> part.
+        Additionally, if the extracted name is "unweighted", it is replaced with "Pattern".
+
+        Args:
+            filename (str or Path): The filename to process.
+
+        Returns:
+            str: The normalized expression name.
+
+        Examples:
+            >>> normalize_expression_name("550e8400-e29b-41d4-a716-446655440000_myexpression.txt")
+            'myexpression'
+            >>> normalize_expression_name("550e8400-e29b-41d4-a716-446655440000_unweighted.txt")
+            'Pattern'
+            >>> normalize_expression_name("expression.txt")
+            'expression'
+        """
+        expression_name = str(Path(filename).stem)
+        # If expression_name has a pattern of <uuid4>_<str>, extract the <str> part
+        if "_" in expression_name:
+            parts = expression_name.split("_", 1)
+            # Test for the UUID pattern too
+            if len(parts[0]) == 36 and parts[0].count("-") == 4:
+                expression_name = parts[1]
+                if expression_name == "unweighted":
+                    expression_name = "Pattern"
+
+        return expression_name
+
+def retrieve_dataframe(dataset_id, filename) -> pd.DataFrame:
+    """
+    Retrieve a dataframe from a CSV file in the spatial data cache.
+
+    Args:
+        dataset_id (str): The identifier of the dataset. Will be sanitized using secure_filename.
+        filename (str): The name of the CSV file to retrieve. Will be sanitized using secure_filename.
+
+    Returns:
+        pd.DataFrame: The dataframe loaded from the specified CSV file.
+
+    Raises:
+        FileNotFoundError: If the CSV file does not exist at the expected cache path.
+
+    Note:
+        This function attempts to load a spatial image file if it exists at the dataset cache path,
+        though the loaded image is not currently used or returned.
+    """
+    dataset_id = secure_filename(dataset_id)  # type: ignore
+    filename = secure_filename(filename)  # type: ignore
+
+    df_path = PANEL_CSV_CACHE_DIR / dataset_id / filename
+    if not df_path.is_file():
+        raise FileNotFoundError(f"Data file not found: {df_path}")
+
+    return pd.read_csv(df_path)
+
+def retrieve_image_array(dataset_id, channel_name=None) -> np.ndarray | None:
+    """
+    Retrieve a spatial image array from the cache for a given dataset ID.
+
+    Args:
+        dataset_id (str): The identifier of the dataset. Will be sanitized using secure_filename.
+        channel_name (str, optional): The name of the channel to retrieve. If None, retrieves the first available channel.
+
+    Returns:
+        np.ndarray | None: The image array if it exists, otherwise None.
+    """
+    dataset_id = secure_filename(dataset_id)
+    img_dir = PANEL_CSV_CACHE_DIR / dataset_id
+    if channel_name is not None:
+        path = img_dir / f"spatial_img_{secure_filename(channel_name)}.npy"
+        return np.load(path) if path.is_file() else None
+    # If no channel name is provided, attempt to load the first available spatial image file
+    candidates = sorted(img_dir.glob("spatial_img*.npy"))
+    if not candidates:
+        raise FileNotFoundError(f"No spatial image files found in {img_dir}")
+    return np.load(candidates[0]) if candidates else None
+
+def retrieve_image_dims(dataset_id) -> tuple[int, int] | None:
+    """
+    Retrieve the dimensions of a spatial image from the cache for a given dataset ID.
+
+    Args:
+        dataset_id (str): The identifier of the dataset. Will be sanitized using secure_filename.
+
+    Returns:
+        tuple[int, int] | None: The height and width of the image if it exists, otherwise None.
+    """
+    dataset_id = secure_filename(dataset_id)
+    dims_path = PANEL_CSV_CACHE_DIR / dataset_id / "spatial_props.json"
+    if dims_path.is_file():
+        with open(dims_path) as f:
+            d = json.load(f)
+        return d["height"], d["width"]
+    return None
 
 def sort_clusters(clusters) -> list:
     """
@@ -67,586 +627,23 @@ def sort_clusters(clusters) -> list:
 class Settings(param.Parameterized):
     """
     Settings class for configuring parameters related to gene display and selection ranges.
-
-    Attributes:
-        filename (param.String): Filename for the dataframe to retieve.
-        dataset_id (param.String): Dataset ID to display.
-        min_genes (param.Integer): Minimum number of genes per observation, with a default of 200 and bounds between 0 and 500.
-        selection_x1 (param.Integer): Left selection range.
-        selection_x2 (param.Integer): Right selection range.
-        selection_y1 (param.Integer): Upper selection range.
-        selection_y2 (param.Integer): Lower selection range.
-        projection_id (param.String): Projection ID to display.
-        save (param.Boolean): If true, save this configuration as a new display.
-        display_name (param.String): Display name for the saved configuration.
-        make_default (param.Boolean): If true, make this the default display.
     """
 
     filename = param.String(doc="Filename for the dataframe to retrieve")
     dataset_id = param.String(doc="Dataset ID to display")
-    min_genes = param.Integer(
-        doc="Minimum number of genes per observation", default=0, bounds=(0, 500)
-    )
     projection_id = param.String(doc="Projection ID to display", allow_None=True)
-    selection_x1 = param.Number(doc="left selection range", allow_None=True)
-    selection_x2 = param.Number(doc="right selection range", allow_None=True)
-    selection_y1 = param.Number(doc="upper selection range", allow_None=True)
-    selection_y2 = param.Number(doc="lower selection range", allow_None=True)
-    display_height = param.Integer(doc="Height of the display in pixels", allow_None=True)
-    display_width = param.Integer(doc="Width of the display in pixels", allow_None=True)
     expression_min_clip = param.Number(doc="Minimum expression value to clip", allow_None=True)
 
-
-class SpatialFigure:
-    """
-    SpatialFigure is a class for creating interactive spatial gene expression visualizations using Plotly and Datashader.
-
-    This class provides methods to generate figures with subplots for spatial images, gene expression scatter plots, and cluster annotations. It supports overlaying spatial transcriptomics data on tissue images, visualizing gene expression levels, and displaying cluster assignments. The class handles image encoding, axis configuration, color mapping, and efficient aggregation of large datasets.
-
-    Attributes:
-        settings (Settings): Configuration object containing selection and plot settings.
-        df (pd.DataFrame): DataFrame containing spatial coordinates, expression values, and cluster assignments.
-        spatial_img (np.ndarray | None): Optional background image as a NumPy array.
-        color_map (dict): Mapping from cluster identifiers to colors.
-        cluster_map (dict): Mapping from cluster category codes to cluster names.
-        expression_name (str): Name of the expression metric (e.g., "expression", "relative expression").
-        expression_color (str): Color scale for expression visualization.
-        dragmode (str): Plotly drag mode (e.g., "select").
-        marker_size (int): Size of scatter plot markers.
-        base64_string (str | None): Base64-encoded PNG string of the background image.
-        PLOT_WIDTH (int): Width of the plot canvas for aggregation.
-        PLOT_HEIGHT (int): Height of the plot canvas for aggregation.
-        range_x1, range_x2, range_y1, range_y2 (float): Ranges for spatial axes.
-        fig (go.Figure): The Plotly figure object.
-
-    Methods:
-        __init__(...): Initializes the SpatialFigure with data, settings, and visualization parameters.
-        make_expression_scatter(expression_agg): Creates a Plotly scatter plot for gene expression.
-        add_cluster_traces(cluster_agg, cluster_col): Adds cluster scatter traces to the figure.
-        add_cluster_scatter(fig, dataframe, clusters, color_map, x_col, y_col, col, row): Adds scatter traces for each cluster.
-        create_datashader_agg(x, y): Aggregates data using Datashader for efficient visualization.
-        make_fig(): Constructs and configures the complete Plotly figure with subplots and traces.
-        encode_pil_image(pil_img): Encodes a PIL image as a base64 PNG data URI.
-        convert_background_image(): Converts and crops the background image, encoding it as base64.
-        create_subplots(num_cols, titles): Creates subplots with the specified number of columns.
-        create_subplots_two(titles): Creates a two-column subplot layout.
-        create_subplots_three(titles): Creates a three-column subplot layout.
-        update_axes(): Configures axes ranges, titles, and appearance.
-        add_image_trace(): Adds the background image to all subplot columns.
-        get_legend_font_size(): Determines legend font size based on cluster name lengths.
-    """
-
-    # TODO: Change "expression" to "relative expression" for projections
-
-    def __init__(
-        self,
-        settings: Settings,
-        df: pd.DataFrame,
-        spatial_img: np.ndarray | None,
-        color_map: dict,
-        cluster_map: dict,
-        expression_name: str,
-        expression_color: str,
-        dragmode: str = "select",
-        **kwargs: dict | None,
-    ) -> None:
-        self.settings = settings
-        self.df = df
-        self.spatial_img = spatial_img  # None or numpy array
-        self.color_map = color_map
-        self.cluster_map = cluster_map
-        self.fig = go.Figure()
-        self.expression_name = expression_name
-        self.expression_color = expression_color
-        self.dragmode = dragmode
-        self.marker_size = 2
-        self.base64_string = None
-        self.PLOT_WIDTH = 200
-        self.PLOT_HEIGHT = 200
-
-        # https://spatialdata.scverse.org/projects/io/en/latest/generated/spatialdata_io.experimental.to_legacy_anndata.html
-        # (see section Matching of spatial coordinates and pixel coordinates)
-        # The downscaled image (x,y) coordinate matches (spatial2, spatial1) in the dataframe
-        # We traditionally use the 1-coord as x and the 2-coord as y, so we need to address these in various plots.
-        self.range_x1 = 0 if self.spatial_img is not None else min(df["spatial1"])
-        self.range_x2 = (
-            self.spatial_img.shape[1]
-            if self.spatial_img is not None
-            else max(df["spatial1"])
-        )
-        self.range_y1 = 0 if self.spatial_img is not None else min(df["spatial2"])
-        self.range_y2 = (
-            self.spatial_img.shape[0]
-            if self.spatial_img is not None
-            else max(df["spatial2"])
-        )
-
-    def make_expression_scatter(
-        self, expression_agg: "DataArray", cbar_loc: float, expression_color: str | None
-    ) -> go.Scatter:
-        """
-        Creates a Plotly Scatter plot visualizing gene expression values in spatial coordinates.
-
-        Parameters
-        ----------
-        expression_agg : pandas.Series or pandas.DataFrame
-            Aggregated expression values indexed by spatial coordinates. Must be convertible to a DataFrame
-            with columns 'spatial1', 'spatial2', and expression values.
-
-        Returns
-        -------
-        plotly.graph_objs.Scatter
-            A Plotly Scatter object with marker color representing expression values and spatial coordinates
-            as x and y axes.
-        """
-        dataframe = self.df
-
-        agg_df = expression_agg.to_dataframe(name="raw_value")
-        # Drop missing values
-        agg_df = agg_df.dropna()
-        dataframe = agg_df.reset_index()
-
-        if expression_color is None:
-            expression_color = self.expression_color
-
-        return go.Scatter(
-            x=dataframe["spatial1"],
-            y=dataframe["spatial2"],
-            mode="markers",
-            marker=dict(
-                cauto=False,  # Do not adjust the color scale
-                cmin=0,  # No expression
-                cmax=dataframe["raw_value"].max(),  # Max expression value
-                # ? This would not apply if data is log-transformed
-                color=dataframe["raw_value"],
-                colorscale=expression_color,  # You can choose any colorscale you like
-                size=self.marker_size,  # Adjust the marker size as needed
-                colorbar=dict(
-                    len=1,  # Adjust the length of the colorbar
-                    thickness=15,  # Adjust the thickness of the colorbar (default is 30)
-                    x=cbar_loc,  # Adjust the x position of the colorbar
-                ),
-            ),
-            showlegend=False,
-            unselected=dict(
-                marker=dict(opacity=1)
-            ),  # Helps with viewing unselected regions
-            hovertemplate="Expression: %{marker.color:.2f}<extra></extra>",
-        )
-
-    def add_cluster_traces(
-        self, cluster_agg: "DataArray", cluster_col: int, show_legend=True
-    ) -> None:
-        """
-        Adds cluster scatter traces to the figure based on aggregated cluster data.
-
-        Parameters:
-            cluster_agg (DataArray): An xarray DataArray containing aggregated cluster information.
-            cluster_col (int): The column index to use for plotting clusters.
-
-        Returns:
-            None
-        """
-        fig = self.fig
-
-        agg_df = cluster_agg.to_dataframe(name="clusters_cat_codes")
-        # Drop rows where "clusters" is False
-        agg_df = agg_df[agg_df["clusters_cat_codes"]]
-        # The columns we want are in the multi-index, so we need to make them into a dataframe
-        dataframe = agg_df.index.to_frame(index=False)
-
-        color_map = self.color_map
-
-        # map cluster cat_codes to cluster names
-        dataframe["clusters"] = dataframe["clusters_cat_codes"].map(self.cluster_map)
-        try:
-            # If clusters are float, convert to int (for later sorting)
-            dataframe["clusters"] = dataframe["clusters"].astype(int).astype("category")
-        except ValueError:
-            # If clusters are not numeric, keep as category
-            dataframe["clusters"] = dataframe["clusters"].astype("category")
-
-        self.add_cluster_scatter(
-            fig,
-            dataframe,
-            color_map,
-            "spatial1",
-            "spatial2",
-            col=cluster_col,
-            row=1,
-            show_legend=show_legend,
-        )
-        # TODO: Add click event for removing equivalent points from expression plot if legend item is clicked
-
-        # Update the scatter trace to ensure unselected points are visible
-        fig.update_traces(
-            unselected=dict(marker=dict(opacity=1)),
-            selector=dict(type="scatter"),
-            col=cluster_col,
-            row=1,
-        )
-
-    def add_cluster_scatter(
-        self,
-        fig: go.Figure,
-        dataframe: pd.DataFrame,
-        color_map: dict,
-        x_col: str,
-        y_col: str,
-        col: int,
-        row: int,
-        show_legend: bool = True,
-    ) -> None:
-        """
-        Adds scatter plot traces for each cluster to a Plotly figure.
-
-        Parameters:
-            fig (go.Figure): The Plotly figure to which the scatter traces will be added.
-            dataframe (pd.DataFrame): The DataFrame containing the data to plot.
-            clusters (list): A list of cluster identifiers to plot.
-            color_map (dict): A mapping from cluster identifiers to colors.
-            x_col (str): The name of the column to use for x-axis values.
-            y_col (str): The name of the column to use for y-axis values.
-            col (int): The column position in the subplot grid.
-            row (int): The row position in the subplot grid.
-
-        Returns:
-            None
-        """
-
-        # Ensure clusters are categorical and sorted
-        dataframe["clusters"] = dataframe["clusters"].astype("category")
-        unique_clusters = dataframe["clusters"].unique()
-        sorted_clusters = sort_clusters(unique_clusters)
-
-        for cluster in sorted_clusters:
-            cluster_data = dataframe[dataframe["clusters"] == cluster]
-            fig.add_trace(
-                go.Scatter(
-                    x=cluster_data[x_col],
-                    y=cluster_data[y_col],
-                    marker=dict(color=color_map[cluster], size=self.marker_size),
-                    mode="markers",
-                    name=str(cluster),
-                    text=cluster_data["clusters"],
-                    hovertemplate="Cluster: %{text}<extra></extra>",
-                    showlegend=show_legend,  # Show legend only if specified
-                ),
-                col=col,
-                row=row,
-            )
-
-    def create_datashader_agg(self, x: str, y: str) -> "DataArray":
-        """
-        Aggregates data points from the DataFrame using Datashader, producing a summary for visualization.
-
-        Parameters:
-            x (str): The name of the column to use for the x-axis.
-            y (str): The name of the column to use for the y-axis.
-
-        Returns:
-            xarray.DataArray: An aggregated DataArray where each pixel contains the maximum 'raw_value' expression
-            and a boolean indicating the presence of each cluster (by 'clusters_cat_codes').
-
-        Notes:
-            - The x and y values are swapped for aggregation compared to plotting.
-            - The aggregation computes the maximum 'raw_value' per pixel and tracks cluster membership.
-        """
-
-        # Create a canvas with the specified width and height
-        cvs = ds.Canvas(plot_width=self.PLOT_WIDTH, plot_height=self.PLOT_HEIGHT)
-
-        # NOTE: This seems to affect the expression aggregation but does not matter for the clusters
-        # We need to swap the x and y values for aggregation compared to what we eventually plot.
-
-        agg = cvs.points(
-            self.df,
-            x=x,
-            y=y,
-            agg=ds.summary(
-                expression=ds.max("raw_value"),
-                clusters=ds.by("clusters_cat_codes", ds.any()),  # type: ignore
-            ),
-        )
-        return agg
-
-    def _setup_fig(self) -> None:
-        """
-        Creates and configures a Plotly figure with subplots for spatial and expression data visualization.
-
-        Returns:
-            plotly.graph_objs._figure.Figure: The configured Plotly figure object.
-        """
-
-        # domain is adjusted whether there are images or not
-        if self.spatial_img is not None:
-            self.create_subplots(num_cols=3)  # sets self.fig
-            self.expression_col = 2
-            self.cluster_col = 3
-            self.fig.update_layout(
-                xaxis=dict(domain=[0, 0.29]),
-                xaxis2=dict(domain=[0.33, 0.62]),  # Leave room for cluster annotations
-                xaxis3=dict(domain=[0.71, 1]),
-            )
-        else:
-            self.create_subplots(num_cols=2)  # sets self.fig
-            self.expression_col = 1
-            self.cluster_col = 2
-            self.fig.update_layout(
-                xaxis=dict(domain=[0, 0.45]),
-                xaxis2=dict(domain=[0.55, 1]),  # Leave room for cluster annotations
-            )
-        self.update_axes()
-
-        if self.spatial_img is not None:
-            self.add_image_trace()
-
-    def _add_traces_to_fig(self) -> go.Figure:
-        # Get max domain for axis 1 or axis 2
-        if self.expression_col == 1:
-            max_x = self.fig.layout.xaxis.domain[1]  # type: ignore
-        else:
-            max_x = self.fig.layout.xaxis2.domain[1]  # type: ignore
-
-        agg = self.create_datashader_agg(x="spatial2", y="spatial1")
-
-        cbar_loc = max_x + 0.005  # Leave space for colorbar
-
-        self.fig.add_trace(
-            self.make_expression_scatter(
-                agg["expression"],
-                cbar_loc=cbar_loc,
-                expression_color=self.expression_color,
-            ),
-            row=1,
-            col=self.expression_col,
-        )
-        self.add_cluster_traces(agg["clusters"], self.cluster_col)
-
-        font_size = self.get_legend_font_size()
-
-        # make legend markers bigger
-        self.fig.update_layout(
-            legend=dict(font=dict(size=font_size), itemsizing="constant"),
-            margin=dict(l=20, r=0, t=50, b=10),
-            width=None,
-            height=None,
-            dragmode=self.dragmode,
-            selectdirection="d",
-        )
-
-        # Mirror the background color of visium images
-        # Do not set if image is present as there is a slight padding between data and axes ticks
-        plot_bgcolor = None
-        if self.spatial_img is None:
-            plot_bgcolor = "#000000"
-
-        self.fig.update_layout(
-            plot_bgcolor=plot_bgcolor,
-        )
-
-        return self.fig
-
-    def encode_pil_image(self, pil_img: Image.Image) -> str:
-        """
-        Encodes a PIL Image object as a base64-encoded PNG data URI string.
-
-        Args:
-            pil_img (Image.Image): The PIL Image to encode.
-
-        Returns:
-            str: A string containing the base64-encoded PNG image, prefixed with the appropriate data URI scheme.
-        """
-        prefix = "data:image/png;base64,"
-        with BytesIO() as stream:
-            pil_img.save(stream, format="png")
-            return prefix + base64.b64encode(stream.getvalue()).decode("utf-8")
-
-    def convert_background_image(self) -> None:
-        """
-        Converts the spatial image array to a cropped PIL image based on the selected range,
-        then encodes the cropped image as a base64 string for efficient loading and storage.
-
-        Returns:
-            None
-        """
-
-        if self.spatial_img is None:
-            raise ValueError("Spatial image is not provided. Should not have been called.")
-
-        img = self.spatial_img.squeeze()
-
-        # If the image has a "c" dimension (e.g., shape (c, y, x)), select the first channel
-        # This came about because some Xenium uploads have multiple c channels (different staining methods?)
-        # 3 channels is RGB
-        # 4 channels is RGBA
-        # See https://pillow.readthedocs.io/en/stable/handbook/concepts.html#modes
-        if img.ndim == 3:
-            if img.shape[2] == 2 or img.shape[2] > 4:  # Check if "c" exists and does not appear to be a valid RGB format
-                img = img[:, :, 0]  # Use only the first "c" entry
-
-        # Ensure image is uint8 for consistent contrast (256-color channels)
-        # Xenium images are uint16, so this is why we need to convert
-        if img.dtype != np.uint8:
-            img = img.astype(np.float32)
-            img = 255 * (img - img.min()) / (img.max() - img.min() + 1e-8)
-            img = img.astype(np.uint8)
-
-        pil_img = Image.fromarray(img)
-        pil_img = pil_img.crop(
-            (self.range_x1, self.range_y1, self.range_x2, self.range_y2)
-        )
-
-        self.base64_string = self.encode_pil_image(pil_img)
-
-    def create_subplots(self, num_cols: int = 2, titles: tuple = ()) -> None:
-        """
-        Creates subplots with either two or three columns, delegating to the appropriate method.
-
-        Args:
-            num_cols (int, optional): Number of columns for the subplots. Must be either 2 or 3. Defaults to 2.
-            titles (tuple, optional): Titles for each subplot. Defaults to an empty tuple.
-
-        Raises:
-            ValueError: If num_cols is not 2 or 3.
-
-        Returns:
-            None
-        """
-        if num_cols not in (2, 3):
-            raise ValueError("num_cols must be 2 or 3")
-        if num_cols == 3:
-            self.create_subplots_three(titles)
-        else:
-            self.create_subplots_two(titles)
-
-    def create_subplots_two(self, titles: tuple) -> None:
-        """
-        Creates a figure with two subplots arranged in a single row.
-
-        Args:
-            titles (tuple): A tuple containing titles for the two subplots. If empty or None, default titles are used.
-
-        Returns:
-            None
-        """
-        if not titles:
-            titles = (f"{self.expression_name} Expression", "Clusters")
-
-        self.fig = make_subplots(
-            rows=1,
-            cols=2,
-            column_titles=titles,
-            horizontal_spacing=0.1,
-        )
-
-    def create_subplots_three(self, titles: tuple) -> None:
-        """
-        Creates a figure with three subplots arranged in a single row, each with a specified title.
-
-        Args:
-            titles (tuple): A tuple containing titles for the three subplots. If not provided or empty,
-                            default titles are used: "Image Only", "<expression_name> Expression", and "Clusters".
-
-        Returns:
-            None
-        """
-        if not titles:
-            titles = (
-                "Image Only",
-                f"{self.expression_name} Expression",
-                "Clusters",
-            )
-        self.fig = make_subplots(
-            rows=1,
-            cols=3,
-            column_titles=titles,
-            horizontal_spacing=0.1,
-        )
-
-    def update_axes(self) -> None:
-        """
-        Updates the x and y axes of the figure (`self.fig`) with custom settings.
-
-        Returns:
-            None
-        """
-        self.fig.update_xaxes(
-            range=[self.range_x1, self.range_x2],
-            title_text="spatial1",
-            showgrid=False,
-            showticklabels=False,
-            ticks="",
-        )
-        # y-axis needs to be flipped. 0,0 is the top left corner
-        self.fig.update_yaxes(
-            range=[self.range_y2, self.range_y1],
-            title_text="spatial2",
-            showgrid=False,
-            showticklabels=False,
-            ticks="",
-            title_standoff=0,
-        )
-
-    def add_image_trace(self) -> None:
-        """
-        Adds a background image trace to each subplot column in the figure.
-
-        Returns:
-            None
-        """
-        self.convert_background_image()
-        # Note that passing the spatial img array to the "z" property instead of the base64-encoded string causes a big performance hit
-        image_trace = go.Image(
-            source=self.base64_string, x0=self.range_x1, y0=self.range_y1
-        )
-        for col in range(1, 4):
-            self.fig.add_trace(image_trace, row=1, col=col)
-
-    def get_legend_font_size(self) -> Literal[10] | Literal[12]:
-        """
-        Determines the appropriate font size for the legend based on the length of the longest cluster name.
-
-        Returns:
-            Literal[10] | Literal[12]: The font size to use for the legend. Returns 12 if the longest cluster name
-            is 10 characters or fewer, otherwise returns 10.
-        """
-        # Get longest cluster name for legend
-        font_size = 12
-
-        # If the dataframe has no 'clusters' column or the column is empty, use the default font size.
-        if "clusters" not in self.df.columns:
-            return font_size
-
-        col = self.df["clusters"]
-
-        # If the series is empty, return the default font size.
-        if col.empty:
-            return font_size
-
-        # Drop NA values and compute string lengths safely.
-        non_null = col.dropna().astype(str)
-        if non_null.empty:
-            return font_size
-
-        longest_cluster = int(non_null.str.len().max())
-        if longest_cluster > 10:
-            font_size = 10
-        return font_size
-
-    def has_selection(self) -> bool:
-        """
-        Return ``True`` when the bounds stored in ``self.settings`` describe a
-        non‑degenerate rectangle.
-
-        The legacy convention used by the panel app was that *all four*
-        selection values would be equal when no box was supplied (either
-        via the UI or the URL).  The boolean return value allows callers to
-        apply zoom/mirroring only when there really is something to zoom to.
-        """
-
-        return not (
-            self.settings.selection_x1 == self.settings.selection_x2
-            == self.settings.selection_y1
-            == self.settings.selection_y2
-        )
+    save = param.Boolean(
+        doc="If true, save this configuration as a new display.", default=False
+    )
+    display_name = param.String(
+        doc="Display name for the saved configuration", allow_None=True
+    )
+    make_default = param.Boolean(
+        doc="If true, make this the default display.", default=False
+    )
+
+    nosave = param.Boolean(
+        doc="If true, do not show the contents related to saving.", default=False
+    )

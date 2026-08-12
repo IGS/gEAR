@@ -65,7 +65,7 @@ def main() -> tuple:
         return result, 401
 
     # Validate dataset format
-    supported_adata_formats = ['h5ad', 'mex_3tab', 'excel', 'rdata']
+    supported_adata_formats = ['h5ad', 'mex_3tab', 'excel', 'rds']
     spatial_formats = list(SPATIALTYPE2CLASS.keys())
 
     if dataset_format not in supported_adata_formats and dataset_format != 'spatial':
@@ -173,7 +173,7 @@ def process_spatial(job_id, upload_dir: Path, share_uid: str, spatial_format: st
 
     Args:
         upload_dir (str): The directory where the uploaded files are located.
-        spatial_format (str): The format of the spatial data, used to select the appropriate handler.
+        spatial_format (str | None): The format of the spatial data, used to select the appropriate handler.
 
     Raises:
         Writes error status if the metadata file is missing or if reading/converting the spatial file fails.
@@ -187,6 +187,10 @@ def process_spatial(job_id, upload_dir: Path, share_uid: str, spatial_format: st
     }
     status_file = upload_dir / 'status.json'
     write_status(status_file, status)
+
+    if spatial_format is None:
+        write_status(upload_dir, 'error', "Spatial format not specified.")
+        return
 
     spatial_obj = SPATIALTYPE2CLASS[spatial_format]()   # instantiate the appropriate handler class
     metadata_file = upload_dir / 'metadata.json'
@@ -227,6 +231,7 @@ def process_spatial(job_id, upload_dir: Path, share_uid: str, spatial_format: st
     status["progress"] = int((step_counter / total_steps) * 100)
     write_status(status_file, status)
 
+    write_status(upload_dir, 'processing', 'Writing Zarr store')
     spatial_obj.write_to_zarr(filepath=output_path)
 
     step_counter += 1

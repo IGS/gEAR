@@ -1,4 +1,5 @@
 import os
+import subprocess
 import sys
 import tarfile
 import typing
@@ -23,6 +24,30 @@ from spatialdata_io.experimental import from_legacy_anndata, to_legacy_anndata
 if typing.TYPE_CHECKING:
     from anndata import AnnData
     from spatialdata import SpatialData
+
+def _remove_dir(dir_to_remove: str) -> None:
+    """Remove a directory safely using subprocess (no shell)."""
+    if os.path.isdir(dir_to_remove):
+        subprocess.run(["rm", "-rf", dir_to_remove], check=True)
+
+def _select_pyramid_level(img, max_dim: int = 4000):
+    """
+    Picks the smallest available pyramid level whose largest dimension is
+    still >= max_dim, avoiding loading higher resolution than needed.
+    Falls back to the smallest level available if all are below max_dim.
+
+    Useful for downsampling large images to a manageable size for processing, while still retaining sufficient detail.
+    """
+    levels = list(sd.get_pyramid_levels(img))
+    if not levels:
+        raise ValueError("No pyramid levels found for this image.")
+
+    best = levels[0]
+    for level in levels:
+        if max(level.sizes.get('y', 0), level.sizes.get('x', 0)) < max_dim:
+            break
+        best = level
+    return best
 
 class SpatialHandler(ABC):
     """
@@ -325,7 +350,7 @@ class SpatialHandler(ABC):
         self.adata = adata
         return self
 
-    def extract_img(self) -> np.ndarray:
+    def extract_img(self) -> tuple[dict[str, np.ndarray], tuple]:
         """
         Extracts an image from the spatial data object and returns it as a NumPy array in (y, x, c) format.
 
@@ -334,24 +359,29 @@ class SpatialHandler(ABC):
         to a NumPy array and its axes are rearranged from (c, y, x) to (y, x, c).
 
         Returns:
-            np.ndarray: The extracted image as a NumPy array in (y, x, c) format.
+            tuple: A tuple containing:
+                dict[str, np.ndarray]: The extracted image as a NumPy array in (y, x, c) format.
+                tuple: The original height and width of the image.
 
         Raises:
             Exception: If `self.img_name` is not specified.
         """
-
         if not self.img_name:
             raise Exception("No image name specified for conversion to 2D array.")
 
         img = self.sdata.images[self.img_name]
+        orig_height, orig_width = None, None
         if isinstance(img, xarray.DataTree):
-            img = sd.get_pyramid_levels(img, n=0)
+            full_res = sd.get_pyramid_levels(img, n=0)
+            orig_height, orig_width = full_res.sizes.get('y'), full_res.sizes.get('x')
+            img = _select_pyramid_level(img, max_dim=4000)
+        else:
+            orig_height, orig_width = img.sizes.get('y'), img.sizes.get('x')
 
-        # Convert xarray DataArray to numpy array
         img = img.to_numpy()
+        # change dims from (c, y, x) to (y, x, c)
+        return {"composite": np.moveaxis(img, 0, -1)}, (orig_height, orig_width)
 
-        # Currently the image is in (c, y, x) format, and needs to be converted to (y, x, c) format
-        return np.moveaxis(img, 0, -1)
 
     def merge_centroids_with_obs(self) -> "SpatialHandler":
         """
@@ -637,26 +667,26 @@ class SpatialHandler(ABC):
             raise Exception("Error occurred while writing to file: ", err)
         return self
 
-class CoxMxHandler(SpatialHandler):
+class CosMxHandler(SpatialHandler):
     """
-    Factory class for CoxMx dataset uploads and conversions.
+    Factory class for CosMx dataset uploads and conversions.
 
     Standardized names for different files:
-    * 'spatialdata_anndata.h5ad': Counts and metadata file.
-    * 'spatialdata_cluster_assignment.txt': Cluster assignment file.
-    * 'spatialdata_Metrics.csv': Metrics file.
-    * 'spatialdata_variable_features_clusters.txt': Variable features clusters file.
-    * 'spatialdata_variable_features_spatial_moransi.txt': Variable features Moran’s I file.
+    * `<dataset_id>_`'exprMat_file.csv'`: Counts matrix.
+    * `<dataset_id>_`'metadata_file.csv'`: Metadata file.
+    * `<dataset_id>_`'fov_positions_file.csv'`: Field of view file.
+    * 'CellComposite': Directory containing the images.
+    * 'CellLabels': Directory containing the labels.
     """
 
     @property
     def has_images(self) -> bool:
-        """Whether this handler has associated images (always False for CoxMx)."""
-        return False
+        """Whether this handler has associated images (always False for CosMx)."""
+        return True
 
     @property
     def coordinate_system(self) -> str:
-        """Returns the coordinate system used by CoxMx datasets."""
+        """Returns the coordinate system used by CosMx datasets."""
         return "global"
 
     @property
@@ -676,13 +706,13 @@ class CoxMxHandler(SpatialHandler):
 
     @property
     def img_name(self) -> str | None:
-        """Returns the image name associated with this handler (always None for CoxMx)."""
+        """Returns the image name associated with this handler (always None for CosMx)."""
         return None
 
     def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
         """
-        Reads and processes a CoxMx spatial data file from the given filepath.
-        For CoxMx, this is a stub and does not perform any operation.
+        Reads and processes a CosMx spatial data file from the given filepath.
+        For CosMx, this is a stub and does not perform any operation.
         """
         return self
 
@@ -751,9 +781,7 @@ class CurioHandler(SpatialHandler):
         else:
             raise Exception("File must be a .tar or .tar.gz file.")
 
-        if os.path.isdir(extract_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(extract_dir))
+        _remove_dir(extract_dir)
 
         with tarfile.open(filepath, mode) as tf:
             for entry in tf:
@@ -829,12 +857,16 @@ class GeoMxHandler(SpatialHandler):
     Code is mostly inspired by https://github.com/LiHongCSBLab/SOAPy/blob/153095a44200a07a73a6a72c9978adfa1581c853/SOAPy_st/pp/all2adata.py#L229
     I wanted to install SOAPy but ran into pip requirement compatibility issues.  For example, we use a later version of AnnData in gEAR than SOAPy does.
 
+    Description of output can be found at https://brukerspatialbiology.com/resources/readme_mu_brain-docx/ (DOCX file)
+
     Factory class for GeoMx dataset uploads and conversions.
 
     Required files:
     * "xlsx" file with information.
       * This Excel file must contain a sheet named "SegmentProperties" with a column named "SegmentDisplayName" which will be used as the cell ID.
       * This Excel file must contain a sheet named "TargetCountMatrix" or "BioProbeCountMatrix" with the counts matrix.
+        * "BioProbeCountMatrix" would be found from the "Export1_InitialDataset" or "Export2_TechnicalQC" file.
+        * "TargetCountMatrix" would be found from the "Export3_BiologicalProbeQC" or "Export4_NormalizationQ3" file.
 
     NOT IMPLEMENTED - Polygon data from XML files
 
@@ -889,9 +921,7 @@ class GeoMxHandler(SpatialHandler):
         else:
             raise Exception("File must be a .tar or .tar.gz file.")
 
-        if os.path.isdir(extract_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(extract_dir))
+        _remove_dir(extract_dir)
 
         information_file = None
 
@@ -986,7 +1016,6 @@ class GeoMxHandler(SpatialHandler):
         return self
 
 class VisiumHandler(SpatialHandler):
-    # NOTE: Uploads work but it cannot be used in a spatial panel yet because clusters have not been provided.
     """
     Factory class for Visium dataset uploads and conversions.
 
@@ -1045,9 +1074,7 @@ class VisiumHandler(SpatialHandler):
         else:
             raise Exception("File must be a .tar or .tar.gz file.")
 
-        if os.path.isdir(extract_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(extract_dir))
+        _remove_dir(extract_dir)
 
         with tarfile.open(filepath, mode) as tf:
             for entry in tf:
@@ -1158,9 +1185,7 @@ class VisiumHDHandler(SpatialHandler):
         else:
             raise Exception("File must be a .tar or .tar.gz file.")
 
-        if os.path.isdir(extract_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(extract_dir))
+        _remove_dir(extract_dir)
 
         with tarfile.open(filepath, mode) as tf:
             for entry in tf:
@@ -1287,6 +1312,31 @@ class XeniumHandler(SpatialHandler):
         """Returns the image name associated with this handler."""
         return "morphology_focus"
 
+    def extract_img(self) -> tuple[dict[str, np.ndarray], tuple]:
+        """
+        Xenium images carry multiple independently-meaningful stain channels
+        (e.g. DAPI, PolyT) -- split them apart rather than keep them as one
+        composite, since (unlike RGB) they don't need to be combined to be
+        individually useful.
+        """
+        if not self.img_name:
+            raise Exception("No image name specified for conversion to 2D array.")
+
+        orig_height, orig_width = None, None
+        img = self.sdata.images[self.img_name]
+        if isinstance(img, xarray.DataTree):
+            full_res = sd.get_pyramid_levels(img, n=0)
+            orig_height, orig_width = full_res.sizes.get('y'), full_res.sizes.get('x')
+            # Get a downsized version of the image for processing
+            img = _select_pyramid_level(img, max_dim=4000)
+
+        channel_dim = img.dims[0]
+        # Extract names of the various staining channels.  Can also just be "0" if no channel names are present.
+        channel_names = [str(c) for c in img.coords[channel_dim].to_numpy()]
+
+        arr = img.to_numpy()  # (c, y, x)
+        return {name: arr[i] for i, name in enumerate(channel_names)}, (orig_height, orig_width)  # each already (y, x)
+
     def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
         """
         Reads and processes a Xenium spatial data tarball from the given filepath.
@@ -1302,9 +1352,7 @@ class XeniumHandler(SpatialHandler):
         else:
             raise Exception("File must be a .tar or .tar.gz file.")
 
-        if os.path.isdir(extract_dir):
-            # Remove any existing directory
-            os.system("rm -rf {}".format(extract_dir))
+        _remove_dir(extract_dir)
 
         # settings to enable or disable based on if a file is present in the uploaded tarball
         include_raster_labels = False
@@ -1389,7 +1437,7 @@ class XeniumHandler(SpatialHandler):
 ### Helper constants
 
 SPATIALTYPE2CLASS = {
-    #"cosmx": CoxMxHandler,
+    #"cosmx": CosMxHandler,
     "curio": CurioHandler,
     "geomx": GeoMxHandler,
     "visium": VisiumHandler,

@@ -8,18 +8,20 @@ in formats: H5AD, 3-tab, Excel, MEX.
 import gc
 import json
 import os
-from pathlib import Path
 import tarfile
 import zipfile
+from pathlib import Path
 
 import anndata
-import pandas as pd
-from scipy import sparse
-
+import gear.seuratuploader as SeuratUploader
 import geardb
-from gear.primary_analysis import add_primary_analysis_to_dataset, PrimaryAnalysisProcessingError
-from gear.utils import update_var_with_ensembl_ids
-
+import pandas as pd
+from gear.primary_analysis import (
+    PrimaryAnalysisProcessingError,
+    add_primary_analysis_to_dataset,
+)
+from gear.utils import update_adata_with_ensembl_ids, update_var_with_ensembl_ids
+from scipy import sparse
 
 
 def write_status(status_file, status):
@@ -192,16 +194,12 @@ class AnndataProcessor:
             return self._process_h5ad()
         elif dataset_format == "mex_3tab":
             return self._process_mex_3tab()
+        elif dataset_format == "rds":
+            return self._process_seurat()
         elif dataset_format == "excel":
             return self._process_excel()
-        elif dataset_format == "rdata":
-            raise NotImplementedError("RData format processing not yet implemented.")
-            return self._process_rdata()
         else:
             raise ProcessingError(f"Unsupported dataset format: {dataset_format}")
-
-    def _process_rdata(self):
-        pass
 
     def _process_h5ad(self) -> Path:
         """Process .h5ad file with backed mode for memory efficiency."""
@@ -386,6 +384,70 @@ class AnndataProcessor:
             raise ProcessingError("No expression file found (expected expression.tab or DataMTX.tab).")
 
         return expression_matrix_path, obs, var
+
+    def _process_seurat(self) -> Path:
+        if self.share_uid is None:
+            raise ProcessingError("Share UID is required for Seurat processing.")
+
+        # Take in an RDS file, convert to anndata, update the obs metadata based on reductions,
+        # convert gene symbols to ensemble IDs, and write to an updated h5ad file.
+        self._update_progress(5, "Starting Seurat processing...")
+        seurat_filepath = self.staging_area / f"{self.share_uid}.rds"
+
+        # seurat to anndata uses rpy2 to convert the RDS to anndata
+        # filepath name has "tmp_" appended in front
+        try:
+            adata_filepath = SeuratUploader.seurat_to_anndata(str(seurat_filepath), share_uid, str(upload_dir))
+        except Exception as e:
+            raise ProcessingError(f"Failed to convert RDS to h5ad: {str(e)}")
+
+        self._update_progress(15, "Reading converted h5ad file...")
+        try:
+            adata = anndata.read_h5ad(adata_filepath)
+        except Exception as e:
+            raise ProcessingError(f"Failed to read converted h5ad file: {str(e)}")
+
+        # Update obs metadata based on reductions
+        self._update_progress(25, "Updating metadata from reductions...")
+        try:
+            adata = SeuratUploader.reduction_to_metadata(adata)
+        except Exception as e:
+            raise ProcessingError(f"Failed to update reductions to AnnData object")
+
+        # Convert gene symbols to ensemble IDs
+        metadata_file = self.staging_area / 'metadata.json'
+        if not metadata_file.is_file():
+            raise ProcessingError("No metadata JSON file found for Seurat processing.")
+        # get organism_id by converting sample_taxid(needed for some but not all spatial handlers)
+        with open(metadata_file, 'r') as f:
+            metadata = json.load(f)
+
+        self._update_progress(35, "Converting gene symbols to Ensembl IDs...")
+        sample_taxid = metadata.get("sample_taxid", None)
+        try:
+            adata = SeuratUploader.genes_to_ensembl(adata, sample_taxid)
+            if adata is None:
+                raise ProcessingError("genes_to_ensembl Anndata conversion returned None")
+        except Exception as e:
+            raise ProcessingError(f'Failed to convert genes to Ensembl: {str(e)}')
+
+        self._update_progress(50, "Writing final H5AD file...")
+        if adata.X is None:
+            # TODO: This is currently not an option in the UI, but was suggested to be one by @jorvis
+            adata = SeuratUploader.layer_to_X(adata, layer_name='data')
+        h5ad_path = self.staging_area / f"{self.share_uid}.new.h5ad"
+        try:
+            adata.write(h5ad_path)
+
+            # Replace the original file with the sanitized one
+            #seurat_filepath.unlink()
+            Path(adata_filepath).unlink()
+            h5ad_path.rename(self.staging_area / f"{self.share_uid}.h5ad")
+        except Exception as e:
+            raise ProcessingError(f"Failed to write h5ad or during cleanup: {str(e)}")
+
+        self._update_progress(65, "Seurat processing complete.")
+        return h5ad_path
 
     def _process_excel(self) -> Path:
         """Process Excel file with expression, observations, and genes sheets."""

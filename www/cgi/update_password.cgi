@@ -4,9 +4,11 @@
 Updates the password for the user, based on their session ID.
 """
 
-import cgi, json
-import os, sys
+import cgi
 import hashlib
+import json
+import os
+import sys
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
@@ -19,8 +21,13 @@ def main():
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    password = form.getvalue('password')
-    help_id = form.getvalue('help_id')
+    password = form.getfirst('password')
+    help_id = form.getfirst('help_id')
+
+    if password is None:
+        result['error'] = "No password provided."
+        print(json.dumps(result))
+        return
 
     qry = "SELECT COUNT(*) FROM guser WHERE help_id = %s"
     cursor.execute(qry, (help_id,))
@@ -32,12 +39,12 @@ def main():
         result['error'] = ('Duplicate help ID prefixes')
         print(json.dumps(result))
         return
-    
-    encoded_pass = hashlib.md5(password.encode('utf-8')).hexdigest()
+
+    encoded_pass = hashlib.sha3_256(password.encode('utf-8')).hexdigest()
 
     qry = "UPDATE guser SET pass = %s WHERE help_id = %s"
     cursor.execute(qry, (encoded_pass, help_id))
-    
+
     result['success'] = 1
     print(json.dumps(result))
 

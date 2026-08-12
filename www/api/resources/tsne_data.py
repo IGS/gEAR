@@ -61,34 +61,35 @@ parser = reqparse.RequestParser(bundle_errors=True)
 # Common for both MGTSNEData and TSNEData
 # NOTE: By default the parser assumes the location is coming from "values", which breaks lists, so we set the location to "json" explicitly for that.
 parser.add_argument("plot_type", type=str, default="tsne_static")
-parser.add_argument("analysis", type=dict, default=None)
+parser.add_argument("analysis", type=dict, default=None, location="json")
 parser.add_argument("colorize_legend_by", type=str, default=None)
 parser.add_argument(
     "max_columns", type=int, default=None
 )  # Max number of columns before plotting to a new row
 parser.add_argument("expression_palette", type=str, default="YlOrRd")
-parser.add_argument("reverse_palette", type=bool, default=False)
-parser.add_argument("colors", type=dict, default={})
-parser.add_argument("order", type=dict, default={})
+parser.add_argument("reverse_palette", type=bool, default=False, location="json")
+parser.add_argument("colors", type=dict, default={}, location="json")
+parser.add_argument("order", type=dict, default={}, location="json")
 parser.add_argument(
     "x_axis", type=str, default="tSNE_1"
 )  # Add here in case old tSNE plotly configs are missing axes data
 parser.add_argument("y_axis", type=str, default="tSNE_2")
-parser.add_argument("flip_x", type=bool, default=False)
-parser.add_argument("flip_y", type=bool, default=False)
-parser.add_argument("horizontal_legend", type=bool, default=False)
+parser.add_argument("flip_x", type=bool, default=False, location="json")
+parser.add_argument("flip_y", type=bool, default=False, location="json")
+parser.add_argument("horizontal_legend", type=bool, default=False, location="json")
 parser.add_argument("marker_size", type=int, default=None)
-parser.add_argument("center_around_median", type=bool, default=False)
+parser.add_argument("center_around_median", type=bool, default=False, location="json")
 parser.add_argument('vmax', type=float, default=None)
 parser.add_argument('vmin', type=float, default=None)
-parser.add_argument("make_zero_gray", type=bool, default=True)  # Keep with old plot styles
-parser.add_argument("obs_filters", type=dict, default={})  # dict of lists
+parser.add_argument("make_zero_gray", type=bool, default=True, location="json")  # Keep with old plot styles
+parser.add_argument("enforce_equal_aspect", type=bool, default=False, location="json")
+parser.add_argument("obs_filters", type=dict, default={}, location="json")  # dict of lists
 parser.add_argument(
     "projection_id", type=str, default=None
 )  # projection id of csv output
 parser.add_argument("expression_min_clip", type=float, default=None)
-parser.add_argument("colorblind_mode", type=bool, default=False)
-parser.add_argument("high_dpi", type=bool, default=False)
+parser.add_argument("colorblind_mode", type=bool, default=False, location="json")
+parser.add_argument("high_dpi", type=bool, default=False, location="json")
 
 single_gene_parser = parser.copy()
 single_gene_parser.add_argument("gene_symbol", type=str, default=None)
@@ -96,10 +97,13 @@ single_gene_parser.add_argument(
     "plot_by_group", type=str, default=None
 )  # If true, plot by group
 single_gene_parser.add_argument(
-    "skip_gene_plot", type=bool, default=False
+    "hide_group_nonmembers", type=bool, default=False, location="json"
+)  # If true, hide data points not belonging to the group
+single_gene_parser.add_argument(
+    "skip_gene_plot", type=bool, default=False, location="json"
 )  # If true, skip the gene expression plot
 single_gene_parser.add_argument(
-    "two_way_palette", type=bool, default=False
+    "two_way_palette", type=bool, default=False, location="json"
 )  # If true, data extremes are in the forefront
 
 multi_gene_parser = parser.copy()
@@ -439,9 +443,7 @@ def validate_args(
 
     try:
             args = {}
-            if is_spatial:
-                args['include_images'] = False
-            else:
+            if not is_spatial:
                 args['backed'] = True
             adata = ana.get_adata(**args)
     except Exception:
@@ -733,8 +735,10 @@ def generate_tsne_figure(
     horizontal_legend: bool = False,
     expression_min_clip: float | None = None,
     make_zero_gray: bool = True,
+    enforce_equal_aspect: bool = False,
     skip_gene_plot=None,
     plot_by_group=None,
+    hide_group_nonmembers=False,
     two_way_palette=None,
 ) -> dict:
     """
@@ -795,10 +799,14 @@ def generate_tsne_figure(
         Minimum expression value to clip.
     make_zero_gray : bool
         Whether to make the zero-value expression color gray or the minimum colorscale color.
+    enforce_equal_aspect : bool
+        Whether to enforce equal aspect ratio on the plot axes.
     skip_gene_plot : bool or None, optional
         If True, skips plotting the gene expression plot (single-gene mode).
     plot_by_group : str or None, optional
         Name of the group to split plots by.
+    hide_group_nonmembers: bool, optional
+        Whether to hide data points that are not members of a particular group when using plot_by_group.
     two_way_palette : str or None, optional
         Name of a two-way color palette for special sorting.
 
@@ -878,8 +886,6 @@ def generate_tsne_figure(
     num_plots = len(gene_symbols)
 
     # convert max_columns to int
-    if plot_by_group is None:
-        max_columns = None
     if max_columns:
         max_columns = int(max_columns)
 
@@ -970,14 +976,14 @@ def generate_tsne_figure(
             # This will create a new column for each group in the plot_by_group
             for _, name in enumerate(column_order):
                 group_name = name + "_split_by_group"
+
                 selected.obs[group_name] = selected.obs.apply(
-                    lambda row: row["gene_expression"]
-                    if row[plot_by_group] == name
-                    else 0,
-                    axis=1,
+                    lambda row: row["gene_expression"] if row[plot_by_group] == name else np.nan, axis=1
                 )
+
                 columns.append(group_name)
                 titles.append(name)
+
             kwargs_ncols = max_cols
 
             # Set vmax if not provided
@@ -1002,6 +1008,7 @@ def generate_tsne_figure(
         "basis": basis,
         "color": columns,
         "color_map": expression_color,
+        "na_color": "none" if hide_group_nonmembers else "lightgray",  # "none" is shorthand for completely transparent
         "show": False,
         "use_raw": False,
         "title": titles,
@@ -1037,6 +1044,7 @@ def generate_tsne_figure(
     # If there are more columns of plots, increase the font size for readability
     label_scale = "medium" if num_plots_wide < 5 else "large"
     title_scale = "large" if num_plots_wide < 5 else "x-large"
+    legend_scale = "medium" if horizontal_legend else "small"
 
     mpl.rcParams.update(
         {
@@ -1051,6 +1059,7 @@ def generate_tsne_figure(
             "font.sans-serif":['Roboto'],
             'font.family': 'sans-serif',
             'legend.frameon': False,     # No box around legends
+            'legend.fontsize': legend_scale,
             'xtick.color': '#cccccc',
             'ytick.color': '#cccccc',   # Unfortunately changes colorbar ticks
         }
@@ -1059,6 +1068,8 @@ def generate_tsne_figure(
     sc.set_figure_params(**fig_params)
 
     io_fig: "Figure" = sc.pl.embedding(selected, **kwargs)  # type: ignore
+
+    #io_fig.set_layout_engine("compressed")
     ax = io_fig.get_axes()
 
     # Axes/legend logic (shared)
@@ -1067,10 +1078,22 @@ def generate_tsne_figure(
             # Fix the gray colorbar text (if it exists for expression plots)
             # This finds the colorbar axis and resets label color to dark
             f.spines[['top', 'right']].set_visible(False)
+
+            # Check if the axes actually contains scatter data.
+            # This prevents you from accidentally squishing colorbars or legend axes.
+            # TODO: Test this in place of the if f.get_label == "<colorbar>"
+            #if not f.collections:
+            #    continue
+
             if f.get_label() == "<colorbar>":
                 f.tick_params(labelcolor='#333333')
                 continue
             rename_axes_labels(f, x_axis, y_axis)
+
+            # Ensure axes are square
+            if enforce_equal_aspect:
+                f.set_aspect("equal", adjustable="box")
+            f.margins(0.02) # Reduce from the default margins
 
         last_ax = ax[-1]  # color axes
         if colorize_by and color_category:
@@ -1096,10 +1119,11 @@ def generate_tsne_figure(
                 frameon=False,
                 handles=handles,
                 labels=labels,
-                fontsize="small",
             )
             if horizontal_legend:
-                last_ax.get_legend().remove()  # Remove legend added by scanpy
+                last_ax.get_legend()
+                if last_ax.get_legend() is not None:
+                    last_ax.get_legend().remove()  # Remove legend added by scanpy
                 io_fig.legend(
                     loc="lower center",
                     bbox_to_anchor=(0.5, -0.03), # Place legend below the figure
@@ -1107,14 +1131,19 @@ def generate_tsne_figure(
                     ncol=num_horizontal_cols,
                     handles=handles,
                     labels=labels,
-                    fontsize="small",
                 )
     else:
         ax.spines[['top', 'right']].set_visible(False)
         if ax.get_label() == '<colorbar>':
             # should never happen
             ax.tick_params(labelcolor='#333333')
-        rename_axes_labels(ax, x_axis, y_axis)
+        else:
+            rename_axes_labels(ax, x_axis, y_axis)
+
+            # Ensure axes are square
+            if enforce_equal_aspect:
+                ax.set_aspect("equal", adjustable="box")
+            ax.margins(0.02)
 
     # Clean up
     if selected.isbacked:
@@ -1126,6 +1155,8 @@ def generate_tsne_figure(
     with io.BytesIO() as io_pic:
         if high_dpi:
             image_format = "pdf"
+            # Force into a TrueType font for editability in PDF editor software
+            plt.rcParams["pdf.fonttype"] = "truetype"
             io_fig.savefig(io_pic, format="pdf")
         else:
             # WebP has a hard limit of 16383 pixels in either dimension
@@ -1187,7 +1218,8 @@ class MGTSNEData(Resource):
             args.get("max_columns", None),
             args.get("horizontal_legend", False),
             args.get("expression_min_clip", None),
-            args.get("make_zero_gray", True)
+            args.get("make_zero_gray", True),
+            args.get("enforce_equal_aspect", False)
         )
 
 
@@ -1230,7 +1262,10 @@ class TSNEData(Resource):
             args.get("horizontal_legend", False),
             args.get("expression_min_clip", None),
             args.get("make_zero_gray", True),
+            args.get("enforce_equal_aspect", False),
+            # These options are not in the multigene plot args.
             args.get("skip_gene_plot", False),
             args.get("plot_by_group", None),
+            args.get("hide_group_nonmembers", False),
             args.get("two_way_palette", False),
         )

@@ -82,15 +82,16 @@ const checkDatasetProcessingStatus = async () => {
     );
 
     processingStatus = data.status;
+    const message = data.message;
     document.getElementById('step-process-dataset-status').textContent = processingStatus.charAt(0).toUpperCase() + processingStatus.slice(1);
-    document.getElementById('step-process-dataset-status-message').textContent = data.message;
+    document.getElementById('step-process-dataset-status-message').textContent = message;
     document.getElementById('dataset-processing-progress').value = data.progress;
 
     // Only enable next button when both dataset processing AND primary analysis are complete
     if (processingStatus === 'complete') {
         document.getElementById('dataset-processing-submit').disabled = false;
     } else if (processingStatus === 'error') {
-        document.getElementById('step-process-dataset-status-message').textContent = "Error during processing";
+        document.getElementById('step-process-dataset-status-message').textContent = `Error during processing: ${message}`;
     }
 }
 
@@ -924,14 +925,14 @@ const stageTrackHub = async (hubContainer, trackContainer) => {
     const trackValidation = trackContainer.validateTracks();
 
     if (hubValidation.errors.length > 0) {
-        createToast("Validation issues with hub metadata. Please correct and submit again");
+        createToast("Validation issues with hub metadata. Please correct the fields marked with * and submit again");
         // log errors
         console.warn("Hub validation errors:", hubValidation.errors);
         return;
     }
 
     if (trackValidation.errors.length > 0) {
-        createToast("Validation issues with one or more tracks. Please correct.");
+        createToast("Validation issues with one or more tracks. Please correct the fields marked with * and submit again.");
         // log errors
         console.warn("Track validation errors:", trackValidation.errors);
         return;

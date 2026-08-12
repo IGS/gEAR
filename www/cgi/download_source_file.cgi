@@ -5,9 +5,10 @@ or H5AD file.
 
 '''
 
+import cgi
+import html
 import os
 import sys
-import cgi, html
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
@@ -37,11 +38,11 @@ def to_file(content, prefix='', suffix=''):
 
 def main():
     form = cgi.FieldStorage()
-    dataset_id = html.escape(form.getvalue('dataset_id', ""))
-    share_id = html.escape(form.getvalue("share_id", ""))
-    analysis_id = html.escape(form.getvalue('analysis_id', ""))
-    session_id = html.escape(form.getvalue('session_id', ""))
-    dtype = html.escape(form.getvalue('type', ""))
+    dataset_id = html.escape(form.getfirst('dataset_id') or "")
+    share_id = html.escape(form.getfirst("share_id") or "")
+    analysis_id = html.escape(form.getfirst('analysis_id') or "")
+    session_id = html.escape(form.getfirst('session_id') or "")
+    dtype = html.escape(form.getfirst('type') or "")
 
     if not dataset_id and not share_id:
         raise ValueError("Either dataset ID or share ID must be provided")

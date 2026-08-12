@@ -66,6 +66,12 @@ def main():
             result['message'] = 'Invalid file extension for H5AD format. Expected .h5ad'
             return result
 
+    if dataset_format == "rds":
+        if not filename.endswith('rds'):
+            result['message'] = 'Invalid file extension for RDS format. Expected .rds'
+            return result
+        # TODO: Ensure this is a valid RDS object by examining the file
+
     if dataset_format == 'spatial':
         if not filename.endswith('tar.gz'):
             result['message'] = 'Invalid file extension for Spatial format. Expected .tar.gz'

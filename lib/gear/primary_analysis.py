@@ -163,7 +163,7 @@ def create_composition_plots(adata: "AnnData", dataset_path: str, is_spatial: bo
 
     sc.pp.filter_cells(adata_mem, min_genes=3)  # this adds adata.obs.n_genes
     sc.pp.filter_genes(adata_mem, min_cells=300)    # this adds adata.obs.n_cells though we do not use it
-    sc.pp.calculate_qc_metrics(adata_mem, inplace=True) # This will get total_counts
+    sc.pp.calculate_qc_metrics(adata_mem, percent_top=None, inplace=True) # This will get total_counts
 
     # rename total_counts to n_counts for consistency with the rest of the codebase
     adata_mem.obs['n_counts'] = adata_mem.obs['total_counts']
