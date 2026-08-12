@@ -44,7 +44,7 @@
             <hr />
 
             <div class="figure-c">
-              <img class="figure-img img-fluid" src="Figure5.png" alt="Figure 5">
+              <img class="figure-img img-fluid" src="Figure6.jpg" alt="Figure 6 from paper">
               <p class="figure-title">
                 Public dissemination and user-friendly analysis and visualization enabled by the cancer gEAR platform
               </p>
@@ -70,21 +70,13 @@
 
             <hr />
 
-            <h3><a name="approach1"></a>1. Data collections (profiles) focused on pancreatic ductal adenocarcinoma in Cancer gEAR</h3>
-            <div id="data-collections-c">
-              <p><strong>IPMN Spatial (Sans 2023):</strong> <a target="_blank" href="https://www.ncbi.nlm.nih.gov/pubmed/37285225">Paper</a></p>
-              <p><strong>PanIN Spatial HG and LG (Bell 2024):</strong> <a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/39116880">Paper</a></p>
-              <p><strong>Papillary Mucinous Neoplasms (Semaan 2023):</strong> <a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/37721516">Paper</a></p>
-              <p><strong>Early Neoplastic Lesions (Carpentar 2023):</strong> <a target="_blank" href="https://www.ncbi.nlm.nih.gov/pubmed/37021392">Paper</a></p>
-            </div>
-
-            <h3><a name="approach2"></a>2. Pattern signatures derived from <a target="_blank" target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/37989764/">CoGAPS non-negative matrix factorization (NMF)</a> projected across pancreatic precancer data using <a target="_blank" href="https://doi.org/10.1093/bioinformatics/btaa183">ProjectR</a>.</h3>
+            <h3><a name="approach1"></a>3. Pattern signatures derived from <a target="_blank" target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/37989764/">CoGAPS non-negative matrix factorization (NMF)</a> projected across pancreatic precancer data using <a target="_blank" href="https://doi.org/10.1093/bioinformatics/btaa183">ProjectR</a>.</h3>
             <div id="gene-signatures-c">
               <p><strong>CoGAPS_Semaan:</strong> Noller et al 2025 - Transcriptional subtypes defined from epithelial cells in IPMN data from <a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/37721516/">Semaan et al, 2023</a>.</p>
               <p><strong>CoGAPS_PDAC:</strong> Guinn et al 2024 - Transcription subtypes defined for PDAC epithelial cells <a target="_blank" href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11065624/">Guinn et al, 2024</a> and analysed in PanINs <a target="_blank" href="https://www.sciencedirect.com/science/article/pii/S2405471224001832">Bell et al, 2024</a>.</p>
             </div>
 
-            <h3><a name="approach3"></a>3. Projection links to explore pattern signatures across the PDAC data collections</h3>
+            <h3><a name="approach2"></a>2. Projection links to explore pattern signatures across the PDAC data collections</h3>
             <div id="links-section">
               <p>
                 Each cell in the table links to the projection of one of the Cancer gEAR data collections described
@@ -99,11 +91,12 @@
               <table>
                 <thead>
                   <tr>
-                    <th class="table-color">&nbsp;</th>
+                    <th class="table-color" colspan="2">&nbsp;</th>
                     <th colspan="3" class="table-color underline td-center">Pattern signatures</th>
                   </tr>
                   <tr>
                     <th class="table-color underline">Dataset collections</th>
+                    <th class="secondary-color">Pubmed link</th>
                     <th class="secondary-color">Individual gene links</th>
                     <th class="secondary-color">CoGAPS_Semaan</th>
                     <th class="secondary-color">CoGAPS_PDAC</th>
@@ -112,27 +105,59 @@
                 <tbody>
                   <tr>
                     <td class="secondary-color">IPMN Spatial (Sans 2023)</td>
+                    <td class="td-center"><a target="_blank" href="https://www.ncbi.nlm.nih.gov/pubmed/37285225" target="_blank">Paper</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?l=ipmnsans&g=cdkn2a&gsem=1" target="_blank">LINK</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=ipmnsans&c=22cbec09&algo=nmf&zscore=1" target="_blank">LINK</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=ipmnsans&c=245819e7&algo=nmf&zscore=1" target="_blank">LINK</a></td>
                   </tr>
                   <tr>
                     <td class="secondary-color">PanIN Spatial HG and LG (Bell 2024)</td>
+                    <td class="td-center"><a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/39116880" target="_blank">Paper</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?l=PanINBell&g=cdkn2a&gsem=1" target="_blank">LINK</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=PanINBell&c=22cbec09&algo=nmf&zscore=1" target="_blank">LINK</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=PanINBell&c=245819e7&algo=nmf&zscore=1" target="_blank">LINK</a></td>
                   </tr>
                   <tr>
                     <td class="secondary-color">Papillary Mucinous Neoplasms (Semaan 2023)</td>
+                    <td class="td-center"><a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/37721516" target="_blank">Paper</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?l=Semaan2023&g=cdkn2a&gsem=1" target="_blank">LINK</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=Semaan2023&c=22cbec09&algo=nmf&zscore=1" target="_blank">LINK</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=Semaan2023&c=245819e7&algo=nmf&zscore=1" target="_blank">LINK</a></td>
                   </tr>
                   <tr>
-                    <td class="secondary-color">Early Neoplastic Lesions (Carpentar 2023)</td>
+                    <td class="secondary-color">Early Neoplastic Lesions (Carpenter 2023)</td>
+                    <td class="td-center"><a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/37285225" target="_blank">Paper</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?l=e979080b&g=cdkn2a&gsem=1" target="_blank">LINK</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=e979080b&c=22cbec09&algo=nmf&zscore=1" target="_blank">LINK</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=e979080b&c=245819e7&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                  </tr>
+                  <tr>
+                    <td class="secondary-color">PanIN and CAF Spatial - Xenium (Bell 2024)</td>
+                    <td class="td-center"><a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/39116880" target="_blank">Paper</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?l=PanINXenium&g=cdkn2a&gsem=1" target="_blank">LINK</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=PanINXenium&c=22cbec09&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=PanINXenium&c=245819e7&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                  </tr>
+                  <tr>
+                    <td class="secondary-color">Stress and T Clonal Response (Link 2025)</td>
+                    <td class="td-center"><a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/39789181" target="_blank">Paper</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?l=9579d52a&g=cdkn2a&gsem=1" target="_blank">LINK</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=9579d52a&c=22cbec09&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=9579d52a&c=245819e7&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                  </tr>
+                  <tr>
+                    <td class="secondary-color">Markers of malignant transformation IPMN (Agostini 2024)</td>
+                    <td class="td-center"><a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/38553466" target="_blank">Paper</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?l=e519980a&g=cdkn2a&gsem=1" target="_blank">LINK</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=e519980a&c=22cbec09&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=e519980a&c=245819e7&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                  </tr>
+                  <tr>
+                    <td class="secondary-color">KRT17-positive epithelial population (Li 2024)</td>
+                    <td class="td-center"><a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/41638478" target="_blank">Paper</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?l=9147a6a8&g=cdkn2a&gsem=1" target="_blank">LINK</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=9147a6a8&c=22cbec09&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=9147a6a8&c=245819e7&algo=nmf&zscore=1" target="_blank">LINK</a></td>
                   </tr>
                 </tbody>
               </table>
