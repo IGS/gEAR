@@ -50,12 +50,12 @@ def r_package_importer(package_name:str):
     Output:
         The R package that was imported or if there's an error the message will be returned
     """
-    importErrorMessage = ""
     try:
         pkg = importr(package_name)
         return pkg
     except Exception:
-        importErrorMessage += f"{package_name} not installed or can not be imported"
+        importErrorMessage = f"{package_name} not installed or can not be imported"
+        print(importErrorMessage, file=sys.stderr)
         raise ImportError(importErrorMessage)
 
 
@@ -74,9 +74,12 @@ def seurat_to_anndata(file_path: str, share_name: str, output_dir: str = "."):
     r_cbs.consolewrite_warnerror = silent_handler
     # Import required R packages
     base = rpackages.importr('base')
-    r_package_importer('Seurat')
-    r_package_importer('rhdf5')
-    r_package_importer('anndataR')
+    try:
+        r_package_importer('Seurat')
+        r_package_importer('rhdf5')
+        r_package_importer('anndataR')
+    except ImportError:
+        raise
     # Use R's readRDS to load the object.
     # The result is an R object within the Python environment.
     try:
