@@ -50,3 +50,4 @@ spatialdata_io==0.7.1
 shadows==0.1a2
 tables==3.11.1
 watchfiles==1.1.1
+zarrs==0.2.3
