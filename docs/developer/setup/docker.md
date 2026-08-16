@@ -46,7 +46,7 @@ This step is necessary if you are mounting your host gEAR code as a volume to th
 ### Method 2a: Build image with updated R or Python stuff
 
 * This will use premade Python and R base Dockerfile images to save on build time. If you want to update the R or Python install, you need to do the following:
-  * Update requirements.txt (for Python) or install_bioc.R, install_bioc.sh, or install_packages.R as needed for R
+  * Update requirements.txt (for Python) or install_R.sh, or install_packages.R as needed for R
   * For R, run `docker buildx build -t gear-r-base -f Dockerfile.r .` (enjoy the bioconductor install slowness)
   * For Python, run  `docker buildx build -t gear-python-base -f Dockerfile.python .`
   * In the Dockerfile, change the `COPY --from` commands to point to your reviews r-base or python-base images

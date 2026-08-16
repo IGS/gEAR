@@ -38,13 +38,32 @@ from the gEAR root:
 
 ```bash
 cd ./services/projectr/
-sudo sh ./install_bioc.sh
-sudo Rscript --vanilla install_packages.R || exit 1
+# Install R and packages
+sudo sh ./install_R.sh
 
 export R_HOME="/usr/local/lib/R"
 export LD_LIBRARY_PATH="/usr/local/lib/R/lib:${LD_LIBRARY_PATH}"
 
 ```
+
+### If install fails
+
+I have observed "pak" installation failure as it relies on an "apt update" internally and will fail if that has errors.
+
+Some possible fixes (based on errors encountered)
+
+```bash
+# Import the missing Google Cloud GPG key so APT can verify the Google repository
+curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/google-cloud-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/google-cloud-keyring.gpg] https://packages.cloud.google.com/apt google-cloud-ops-agent-jammy-all main" | sudo tee /etc/apt/sources.list.d/google-cloud-ops-agent.list
+
+# Remove or Disable Broken RabbitMQ Repositories
+sudo rm -f /etc/apt/sources.list.d/*rabbitmq*.list
+```
+
+Run the install after this.
+
+### Fix the libR.conf file
 
 To ensure R's shared libraries are found create a file "libR.conf" in /etc/ld.so.conf.d and add the following contents:
 

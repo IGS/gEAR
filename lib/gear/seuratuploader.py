@@ -36,6 +36,9 @@ def r_package_installer() -> None:
         utils.install_packages('reticulate')
     if not rpackages.isinstalled('Seurat'):
         utils.install_packages('Seurat')
+    if not rpackages.isinstalled('Signac'):
+        ro.r("setRepositories(ind = 1:3)") # needed to automatically install Bioconductor dependencies
+        utils.install_packages('Signac')
     if not rpackages.isinstalled('anndataR'):
         BiocManager.install('anndataR')
     if not rpackages.isinstalled('rhdf5'):
@@ -78,6 +81,7 @@ def seurat_to_anndata(file_path: str, share_name: str, output_dir: str = "."):
         r_package_importer('Seurat')
         r_package_importer('rhdf5')
         r_package_importer('anndataR')
+        r_package_importer('Signac')    # For some extra stuff Carlo adds in
     except ImportError:
         raise
     # Use R's readRDS to load the object.

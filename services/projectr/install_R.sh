@@ -23,6 +23,6 @@ make install || exit 1
 
 # Run Rscript
 cd ${current_dir}
-Rscript --vanilla install_bioc.R || exit 1
+Rscript --vanilla install_packages.R || exit 1
 
 # done
