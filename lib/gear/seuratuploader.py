@@ -24,6 +24,7 @@ def argument_parser():
     args = vars(parser.parse_args())
     return args
 
+# TODO: Recently switched to the pak installer for the docker image, should consider switching this too
 def r_package_installer() -> None:
     utils = rpackages.importr('utils')
     # Install BiocManager if not installed
