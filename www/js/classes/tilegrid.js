@@ -565,6 +565,8 @@ class DatasetTile {
             otherOpts.signal = this.controller.signal;
         }
 
+        createCardMessage(this.tile.tileId, "info", `Checking for existing projection...`);
+
         const parentTileGrid = this.parentTileGrid;
         // check if any tiles share this tile's datasetId
         const datasetId = this.dataset.id
