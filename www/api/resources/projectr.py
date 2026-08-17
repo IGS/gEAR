@@ -1113,7 +1113,7 @@ class ProjectR(Resource):
                 full_output = True
 
         # Currently only NMF runs through the actual projectR code and can give full output
-        if algorithm not in ["nmf", "fixednmf"]:
+        if algorithm != "nmf":
             full_output = False
 
         uuid_args = (dataset_id, genecart_id, algorithm, zscore)
