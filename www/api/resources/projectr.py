@@ -18,9 +18,9 @@ import geardb
 import pandas as pd
 import scipy.stats as stats
 from aiohttp_retry import ExponentialRetry, RetryClient
-from flask import request, abort
-from flask_restful import Resource, reqparse
-from gear.analysis import get_analysis, SpatialAnalysis
+from flask import abort, request
+from flask_restful import Resource, inputs, reqparse
+from gear.analysis import SpatialAnalysis, get_analysis
 from gear.orthology import get_ortholog_file, map_dataframe_genes
 from gear.utils import catch_memory_error
 from more_itertools import sliced
@@ -80,16 +80,16 @@ parser.add_argument(
 parser.add_argument(
     "zscore",
     help="If true, compute z-score calculation before running projectR (or assume it has been calculated)",
-    type=bool,
+    type=inputs.boolean,
     default=False,
     required=False,
 )
 parser.add_argument(
     "full_output",
     help="If true, return the full output of the projection, which includes a p-value matrix",
-    type=bool,
-    default=True,
-    required=False,
+    type=inputs.boolean,
+    default=None,
+    required=False
 )
 parser.add_argument("analysis", type=str, required=False)  # not used at the moment
 
