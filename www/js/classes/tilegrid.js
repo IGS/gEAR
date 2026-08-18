@@ -1697,8 +1697,6 @@ class DatasetTile {
             return;
         }
 
-        //console.info(spec);
-
         const goslingContainer = document.createElement("div");
         goslingContainer.id = `tile-${this.tile.tileId}-gosling`;
         goslingContainer.style.width = "100%";
@@ -1759,35 +1757,23 @@ class DatasetTile {
                 return;
             }
 
-            let panelBGeneResults = null;
+            let panelBData = null;
             try {
-                const panelBData = await apiCallsMixin.fetchGeneAnnotations(gene, true, null, null )
-                panelBGeneResults = panelBData[gene.toLowerCase()];
+                panelBData = await apiCallsMixin.fetchHiglassGeneCoords(gene, assembly);
             } catch (error) {
                 console.error("Error searching for gene:", error);
                 createToast(`An error occurred while searching for gene: ${gene}`);
             }
 
-            const geneData = panelBGeneResults?.by_organism[orgId];
-            if (!geneData || geneData.length === 0) {
-                alert(`Gene ${gene} not found.`);
+            if (!panelBData) {
+                alert(`Gene ${gene} not found for assembly ${assembly}.`);
                 return;
             }
-            // Parse the first result (assuming it's the most relevant)
-            const geneInfo = JSON.parse(geneData[0]);
-            // Get start, end, strand, chromosome (as molecule
-            const start = geneInfo.start;
-            const end = geneInfo.stop;
-            //dconst strand = geneInfo.strand || "+"; // Default to positive strand if not provided
-            let chr = geneInfo.molecule || "unknown"; // Default to unknown chromosome if not provided
-            // if chr is a number, convert it to a string with "chr" prefix
-            if (!isNaN(Number(chr)) || chr === "X" || chr === "Y") {
-                chr = `chr${chr}`;
-            }
-            // if chr is MT, convert to "chrM"
-            if (chr === "MT") {
-                chr = "chrM";
-            }
+
+            const chr = panelBData.chr
+            const start = panelBData.txStart
+            const end = panelBData.txEnd
+            //const gene_symbol = panelBData.geneName
 
             const basePadding = 1500; // Base padding for zooming
             //const basePadding = 0; // Base padding for zooming

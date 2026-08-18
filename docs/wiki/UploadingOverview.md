@@ -188,6 +188,7 @@ The gEAR team plans to add the ability to have multiWig containers as well, in t
 - hg19
 - hg38
 - mm10
+- mm39
 - rn6
 
 If you want to upload epigenome data from one of the human references, because of concerns with personally-identifiable information, Hi-C and VCF file types will not be processed.

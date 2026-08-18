@@ -21,10 +21,11 @@ import pyBigWig
 import requests
 from Bio import bgzf
 
-VALID_TYPES = ["bigWig", "bigBed", "hic", "vcfTabix"]
+VALID_TYPES = ["bigWig", "bigInteract", "bigBed", "hic", "vcfTabix"]
 VALID_CONTAINER_TYPES = ["multiWig"]
 
 # These are the fields that we will use for Gosling, though other fields will be preserved for compatibility with the UCSC Genome Browser.
+# These are valid UCSC fields and will not include custom fields for Gosling (marked with "gos_").
 HUB_FIELDS = ["hub", "shortLabel", "longLabel", "email", "useOneFile", "genome", "genomesFile"]
 TRACK_FIELDS = ["track", "name", "type", "bigDataUrl", "shortLabel", "longLabel", "visibility", "color", "autoScale", "container", "parent"]
 
@@ -158,6 +159,11 @@ def _normalize_track_dict(track: dict, resolve_urls: bool = False, trackdb_url: 
         if key in track:
             normalized[key] = track[key]
 
+    # Copy Gosling fields
+    for key in track:
+        if key.startswith("gos_"):
+            normalized[key] = track[key]
+
     if "track" not in normalized:
         print(f"WARNING: Track stanza is missing 'track' field. Skipping track: {track}", file=sys.stderr)
         raise ValueError("Track stanza is missing required 'track' field")
@@ -215,12 +221,15 @@ def _parse_track_stanzas(lines, resolve_urls: bool = False, trackdb_url: str = "
     for line in lines:
         line = line.strip()
 
-        # Skip empty lines and finalize current track if present
-        if not line:
-            if current_track:
-                track_list.append(_normalize_track_dict(current_track, resolve_urls, trackdb_url))
-                current_track = {}
+        # Ignore blank lines and comments
+        if not line or line.startswith("#"):
             continue
+
+        # Add any Gosling-specific fields to the current track.
+        if line.startswith("gos_"):
+            if current_track:
+                current_track[line.split(" ", 1)[0]] = line.split(" ", 1)[1]
+                continue
 
         # Start of new track stanza
         if line.startswith("track "):
