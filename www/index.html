@@ -46,7 +46,7 @@
               <div class="column mt-0 mb-0 pt-0 pb-0 is-narrow has-text-right">
                 <div id="onboarding-c">
                   <button id="onboarding-btn" class="button is-primary is-dark">
-                    New to gEAR? Click here.
+                    New to&nbsp;<span id="onboarding-domain-short-label">gEAR</span>? Click here.
                   </button>
                 </div>
               </div>
@@ -519,10 +519,8 @@
         </section> <!-- end #main-c -->
       </div>
       <footer>
-        <div>
-          <!-- content here TO BE inserted via common.js -->
-        </div>
-      </footer>
+        <div id="funding"></div>
+</footer>
 
       <script src="js/vendor/js.cookie.js"></script>
       <script src="js/vendor/jsrender.20181003.min.js"></script>
@@ -534,8 +532,15 @@
 
       <!-- Page-specific CSS/JS loading here -->
       <script type="module">
-        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS, loadDomainFunding } from './js/common.v2.js';
         const prefs = await getDomainPreferences();
+
+        const onboardingDomainShortLabel = document.getElementById('onboarding-domain-short-label');
+        if (onboardingDomainShortLabel && typeof prefs.domain_short_display_label === 'string' && prefs.domain_short_display_label.trim().length > 0) {
+          onboardingDomainShortLabel.textContent = prefs.domain_short_display_label;
+        }
+
+        await loadDomainFunding(prefs);
 
         // Load any local JS with cache-busting version parameter
         insertVersionedJS('js/index.js', prefs.cache_version);

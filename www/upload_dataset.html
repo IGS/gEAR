@@ -666,9 +666,9 @@
                       </div>
                     </div>
                     <div class="column format-column is-3 is-flex">
-                      <!-- Rdata/Seurat -->
+                      <!-- RDS/Seurat -->
                       <div class="box format-selection-box">
-                        <h3>Rdata / Seurat</h3>
+                        <h3>RDS / Seurat</h3>
                         <p class="format-description">
                           This is a binary format used by the Seurat package in R. If you've already been
                           working with your dataset in R, including clustering and other analyses, this is
@@ -682,21 +682,21 @@
                         <ul class="format-documentation-links">
                           <li>
                             <span class="icon-text"><span class="icon"><i class="mdi mdi-open-in-new"></i></span>
-                              <span><a href="https://bioinformatics.ccr.cancer.gov/docs/getting-started-with-scrna-seq/IntroToR_Seurat/" target="_blank">Rdata info</a></span>
+                              <span><a href="https://bioinformatics.ccr.cancer.gov/docs/getting-started-with-scrna-seq/IntroToR_Seurat/" target="_blank">RDS info</a></span>
                             </span>
                           </li>
                           <li>
                             <span class="icon-text"><span class="icon"><i class="mdi mdi-download"></i></span>
-                              <span>Rdata example</span>
+                              <span>RDS example</span>
                             </span>
                           </li>
                         </ul>
                         <div class="control">
-                          <button data-format="rdata" class="button is-primary is-fullwidth format-selector" disabled>
+                          <button data-format="rds" class="button is-primary is-fullwidth format-selector">
                             <span class="icon">
-                              <i class="mdi mdi-cancel"></i>
+                              <i class="mdi mdi-checkbox-blank-outline"></i>
                             </span>
-                            <span class="format-status">Not yet available</span>
+                            <span class="format-status">Choose</span>
                           </button>
                         </div>
                       </div>
@@ -1196,10 +1196,8 @@ Currently Gosling only supports single-organism tracks">
         </section> <!-- end #main-c -->
       </div>
       <footer>
-        <div>
-          <!-- content here TO BE inserted via common.js -->
-        </div>
-      </footer>
+        <div id="funding"></div>
+</footer>
 
     <div id="spatial-reqs-modal" class="modal">
         <div class="modal-background"></div>
@@ -1322,8 +1320,10 @@ Currently Gosling only supports single-organism tracks">
 
       <!-- Page-specific CSS/JS loading here -->
       <script type="module">
-        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS, loadDomainFunding } from './js/common.v2.js';
         const prefs = await getDomainPreferences();
+
+        await loadDomainFunding(prefs);
 
         // Load any local JS with cache-busting version parameter
         insertVersionedJS('js/upload_dataset.js', prefs.cache_version);
