@@ -17,12 +17,6 @@ packages_list <- list(c(
         'reticulate'
         , 'ctlab/fgsea'
         , 'genesofeve/projectR@d3dd79e2b14172a9561059d58462c97f0a78d4c8'
-        , 'stuart-lab/signac'
-        , 'httpuv'
-        , 'hdf5r'
-        , 'Seurat'
-        , 'bioc::rhdf5'
-        , 'bioc::anndataR'
         , 'bioc::biomaRt'
         , "CHuanSite/SJD"
         )
