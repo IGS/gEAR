@@ -3,13 +3,16 @@
 """
 anndata_upload_consumer.py - RabbitMQ consumer for expression dataset upload jobs.
 
-Processes H5AD, 3-tab, Excel, and MEX format datasets.
+Processes H5AD, Seurat, 3-tab, Excel, and MEX format datasets.
+
+Spatial uploads are handled differently as they create a SpatialData object
 """
 
 import gc
 import json
 import os
 import sys
+import time
 import traceback
 from pathlib import Path
 
@@ -18,6 +21,7 @@ gear_root = Path(__file__).resolve().parents[1]
 gear_lib = gear_root / "lib"
 sys.path.insert(0, str(gear_lib))
 
+import gearqueue
 from gear.serverconfig import ServerConfig  # noqa: I001
 
 servercfg = ServerConfig().parse()
@@ -105,17 +109,7 @@ class Consumer:
         self._reconnect_delay = 0
         self.host = host
 
-        import gearqueue  # noqa: F401
-
-        self._consumer = gearqueue.AsyncConnection(
-            host=self.host,
-            publisher_or_consumer="consumer",
-            queue_name=queue_name,
-            on_message_callback=_on_request,
-            pid=pid,
-            logfile=logfile,
-            purge_queue=False,
-        )
+        self._consumer = self._new_connection()
 
     def run(self) -> None:
         """Run the consumer with automatic reconnection."""
@@ -125,14 +119,30 @@ class Consumer:
             except KeyboardInterrupt:
                 self._consumer.stop()
                 break
+            except Exception as exc:
+                print(f"{pid} - Consumer loop error: {exc}", flush=True)
+                traceback.print_exc()
+                self._consumer.should_reconnect = True
+
+            if not getattr(self._consumer, "should_reconnect", False):
+                break
+
             self._maybe_reconnect()
+
+    def _new_connection(self) -> "gearqueue.AsyncConnection":
+        """Create a new AsyncConnection instance."""
+        return gearqueue.AsyncConnection(
+            host=self.host,
+            publisher_or_consumer="consumer",
+            queue_name=queue_name,
+            on_message_callback=_on_request,
+            pid=pid,
+            logfile=logfile,
+            purge_queue=False,
+        )
 
     def _maybe_reconnect(self) -> None:
         """Attempt reconnection with exponential backoff."""
-        import time
-
-        import gearqueue  # noqa: F401
-
         if self._consumer.should_reconnect:
             self._consumer.stop()
             reconnect_delay = self._get_reconnect_delay()
@@ -141,14 +151,7 @@ class Consumer:
                 flush=True,
             )
             time.sleep(reconnect_delay)
-            self._consumer = gearqueue.AsyncConnection(
-                host=self.host,
-                publisher_or_consumer="consumer",
-                queue_name=queue_name,
-                on_message_callback=_on_request,
-                pid=pid,
-                logfile=logfile,
-            )
+            self._consumer = self._new_connection()
 
     def _get_reconnect_delay(self) -> int:
         """Calculate reconnect delay with exponential backoff."""

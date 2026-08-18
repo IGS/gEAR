@@ -33,6 +33,12 @@ services:
       - ..:/opt/gEAR/
 
   queue:
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
     image: rabbitmq:4.1
     networks:
       - gear
@@ -63,7 +69,8 @@ services:
   #    context: ..
   #   dockerfile: listeners/Dockerfile.projectr
   #  depends_on:
-  #    - queue
+  #     queue:
+  #      condition: service_healthy
   #  image: adkinsrs/gear_projectr_consumer:latest
   #  networks:
   #    - gear
@@ -78,7 +85,8 @@ services:
       context: ..
       dockerfile: listeners/Dockerfile.gosling_upload
     depends_on:
-      - queue
+      queue:
+        condition: service_healthy
     environment:
       - ENVIRONMENT=development # Set environment variable for development
     image: adkinsrs/gear_gosling_upload_consumer:latest
@@ -97,7 +105,8 @@ services:
       context: ..
       dockerfile: listeners/Dockerfile.anndata_upload
     depends_on:
-      - queue
+      queue:
+        condition: service_healthy
     image: adkinsrs/gear_anndata_upload_consumer:latest
     networks:
       - gear
