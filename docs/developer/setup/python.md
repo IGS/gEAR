@@ -161,7 +161,8 @@ I cannot add comments to the bash code without breaking the command.  So consult
     spatialpandas==0.5.0 \
     shadows==0.1a2 \
     tables==3.11.1 \
-    watchfiles==1.1.1
+    watchfiles==1.1.1 \
+    zarrs==0.2.3
     ./pip3 install git+https://github.com/adkinsrs/diffxpy.git@ffd828c280882ca98adc6e42c934625fab0011f6
 
 ```

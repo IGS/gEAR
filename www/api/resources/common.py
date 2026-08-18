@@ -23,6 +23,20 @@ TWO_LEVELS_UP = 2
 abs_path_www = Path(__file__).resolve().parents[TWO_LEVELS_UP]  # web-root dir
 PROJECTIONS_BASE_DIR = abs_path_www.joinpath("projections")
 
+# These files will be based on Ensembl's annotation naming structure, but sorted in chromosome order.
+# I am adding a 2nd column of 1's to allow us to use the files in a "genomic" track.
+ANNOTATION_BEDDB_UID = {
+    "danRer10": "YwOpmCgUSqKdJSGtGXWeJw", # zebrafish
+    #"galGal6": "galGal6.annotation.beddb", # chicken - could not get to load
+    "hg19": "XXcPeaTRSiy8_yxNwjtzEQ",
+    "hg38": "GhiCXRRHTH2u-24jRq0HRQ",
+    "mm10": "VNbLgNO3T8uAcp_5vRFqdQ",
+    "mm39": "PTEifA0MT0KUAUQR6w-BqQ",
+    "rn6": "C6Tw-g54Rl602PqE62qTHw", # rat
+    # "calJac3": "calJac3.annotation.beddb", # marmoset
+}
+HIGLASS_URL="https://higlass.umgear.org/api/v1"
+
 def clip_expression_values(adata: "AnnData", min_clip: float | None=None, max_clip: float | None=None) -> "AnnData":
     """
     Clips the expression values in an AnnData object to specified minimum and/or maximum values.

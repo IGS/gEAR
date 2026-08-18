@@ -24,6 +24,7 @@ def argument_parser():
     args = vars(parser.parse_args())
     return args
 
+# TODO: Recently switched to the pak installer for the docker image, should consider switching this too
 def r_package_installer() -> None:
     utils = rpackages.importr('utils')
     # Install BiocManager if not installed
@@ -36,6 +37,9 @@ def r_package_installer() -> None:
         utils.install_packages('reticulate')
     if not rpackages.isinstalled('Seurat'):
         utils.install_packages('Seurat')
+    if not rpackages.isinstalled('Signac'):
+        ro.r("setRepositories(ind = 1:3)") # needed to automatically install Bioconductor dependencies
+        utils.install_packages('Signac')
     if not rpackages.isinstalled('anndataR'):
         BiocManager.install('anndataR')
     if not rpackages.isinstalled('rhdf5'):
@@ -50,12 +54,12 @@ def r_package_importer(package_name:str):
     Output:
         The R package that was imported or if there's an error the message will be returned
     """
-    importErrorMessage = ""
     try:
         pkg = importr(package_name)
         return pkg
     except Exception:
-        importErrorMessage += f"{package_name} not installed or can not be imported"
+        importErrorMessage = f"{package_name} not installed or can not be imported"
+        print(importErrorMessage, file=sys.stderr)
         raise ImportError(importErrorMessage)
 
 
@@ -74,9 +78,13 @@ def seurat_to_anndata(file_path: str, share_name: str, output_dir: str = "."):
     r_cbs.consolewrite_warnerror = silent_handler
     # Import required R packages
     base = rpackages.importr('base')
-    r_package_importer('Seurat')
-    r_package_importer('rhdf5')
-    r_package_importer('anndataR')
+    try:
+        r_package_importer('Seurat')
+        r_package_importer('rhdf5')
+        r_package_importer('anndataR')
+        r_package_importer('Signac')    # For some extra stuff Carlo adds in
+    except ImportError:
+        raise
     # Use R's readRDS to load the object.
     # The result is an R object within the Python environment.
     try:
