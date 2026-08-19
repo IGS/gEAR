@@ -48,29 +48,34 @@ JSONEncoder.default = _default  # type: ignore
 def _read_site_domain_config():
     """Convert site domain preferences into a dictionary."""
     this_dir = os.path.dirname(os.path.abspath(__file__))
-    with open("{0}/../www/site_domain_prefs.json".format(this_dir)) as json_file:
-        return json.loads(json_file.read())
+    try:
+        with open("{0}/../www/site_domain_prefs.json".format(this_dir)) as json_file:
+            return json.loads(json_file.read())
+    except FileNotFoundError:
+        # Not every deployment (e.g. RabbitMQ consumer containers) mounts the full
+        # www/ tree, so this file may not be present. Fall back to empty prefs.
+        return {}
 
 
 def _read_domain_url():
     json_conf = _read_site_domain_config()
     # Can build a longer URL off of this one
-    return json_conf["domain_url"]
+    return json_conf.get("domain_url")
 
 
 def _read_domain_label():
     json_conf = _read_site_domain_config()
-    return json_conf["domain_label"]
+    return json_conf.get("domain_label")
 
 
 def _read_domain_links_out():
     json_conf = _read_site_domain_config()
-    return json_conf["links_out"]
+    return json_conf.get("links_out")
 
 
 def _read_domain_short_label():
     json_conf = _read_site_domain_config()
-    return json_conf["domain_short_display_label"]
+    return json_conf.get("domain_short_display_label")
 
 
 # For those functional differences we have depending on the site domain

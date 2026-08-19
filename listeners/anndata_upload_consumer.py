@@ -93,7 +93,6 @@ def _on_request(channel, method_frame, properties, body) -> None:
 
             print(f"{pid} - Job {job_id}: {result['message']}", flush=True, file=fh)
             channel.basic_ack(delivery_tag=delivery_tag)
-
         except Exception as e:
             traceback.print_exc()
             print(f"{pid} - Caught error '{str(e)}'", flush=True, file=fh)

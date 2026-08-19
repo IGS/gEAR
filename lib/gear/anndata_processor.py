@@ -13,7 +13,6 @@ import zipfile
 from pathlib import Path
 
 import anndata
-import gear.seuratuploader as SeuratUploader
 import geardb
 import pandas as pd
 from gear.primary_analysis import (
@@ -386,6 +385,8 @@ class AnndataProcessor:
         return expression_matrix_path, obs, var
 
     def _process_seurat(self) -> Path:
+        import gear.seuratuploader as SeuratUploader
+
         if self.share_uid is None:
             raise ProcessingError("Share UID is required for Seurat processing.")
 

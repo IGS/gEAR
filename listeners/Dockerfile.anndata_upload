@@ -1,5 +1,8 @@
 FROM python:3.14-slim
 
+ARG PYTHON_MAJOR_VERSION=3.14
+ARG PYTHON_FULL_VERSION=${PYTHON_MAJOR_VERSION}.4
+
 # NOTE: Call in context of the gEAR root directory
 
 # For pybigwig dependency
@@ -18,6 +21,31 @@ RUN apt update && apt install -y \
 COPY listeners/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt --prefer-binary \
   && rm -rf ~/.cache/pip
+
+# Copy compiled R from r-builder stage
+COPY --from=adkinsrs/gear-r-base:latest /usr/local/lib/R /usr/local/lib/R
+COPY --from=adkinsrs/gear-r-base:latest /usr/local/bin/R /usr/local/bin/R
+COPY --from=adkinsrs/gear-r-base:latest /usr/local/bin/Rscript /usr/local/bin/Rscript
+
+# Link Python and shared library
+RUN mkdir -p /opt/bin \
+  && ln -s /opt/Python-${PYTHON_FULL_VERSION}/bin/python3 /opt/bin/python3 \
+  && ln -s /opt/Python-${PYTHON_FULL_VERSION}/lib/libpython${PYTHON_MAJOR_VERSION}.so.1.0 /usr/lib/
+
+# Tell the system linker about the new Python libs
+RUN echo "/opt/Python-${PYTHON_FULL_VERSION}/lib" > /etc/ld.so.conf.d/python314.conf \
+    && ldconfig
+
+# LD_LIBRARY_PATH needs R library path for rpy2 compatibility and Python library path too
+ENV LD_LIBRARY_PATH="/usr/local/lib/R/lib:/opt/Python-${PYTHON_FULL_VERSION}/lib"
+ENV R_HOME="/usr/local/lib/R"
+ENV PATH="/opt/Python-${PYTHON_FULL_VERSION}/bin:/usr/local/lib/R/bin:${PATH}"
+
+# Force GCC 11 to use a newer C standard to understand R 4.5.2 headers
+ENV CFLAGS="-std=gnu2x"
+
+# Install rpy2 now that R has installed
+RUN python3 -m pip install rpy2==3.6.7
 
 # Install lib/gear as editable package
 COPY lib/gear ./lib/gear

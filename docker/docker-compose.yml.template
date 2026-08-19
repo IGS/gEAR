@@ -97,7 +97,7 @@ services:
       - ../listeners:/gEAR/listeners
       - ../lib:/gEAR/lib
       - ../www/uploads/files:/gEAR/www/uploads/files
-
+\
   # AnnData object Upload RabbitMQ Consumer
   # i.e. h5ad, mex, tar
   anndata_upload_consumer:
@@ -114,6 +114,7 @@ services:
     volumes:
       - ../listeners:/gEAR/listeners
       - ../lib:/gEAR/lib
+      - ../data:/gEAR/data
       - ../www/uploads/files:/gEAR/www/uploads/files
 
 volumes:

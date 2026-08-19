@@ -136,7 +136,9 @@ const checkTrackhubStatus = async() => {
         createToast('Track hub processed successfully!', 'is-success');
         document.getElementById('dataset-processing-submit').disabled = false
     } else if (status === 'error') {
-        createToast(`Processing failed: ${message}`, 'is-danger');
+        createToast("Track hub processing failed", 'is-danger');
+        document.getElementById('step-process-dataset-status-message').textContent = statusMessage;
+
     }
 
     return status;
