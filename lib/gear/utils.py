@@ -371,3 +371,68 @@ def update_var_with_ensembl_ids(
     result = pd.concat([ensembl_id_var, unmapped_var], axis=0)
 
     return result
+
+def map_gene_symbols_via_mygene(
+    gene_symbols: list, taxid: int, verbose: bool = False
+) -> dict:
+    """
+    Query MyGene.info for Ensembl gene IDs matching the given gene symbols.
+
+    Intended as a fallback for genes the local `gene` table can't resolve
+    (e.g. older Ensembl releases). Best-effort: symbols MyGene can't resolve,
+    or any request failure after retries, should be handled by the caller.
+
+    Parameters
+    ----------
+    gene_symbols : list
+        Gene symbols to look up.
+    taxid : int
+        NCBI taxonomy ID for the organism.
+    verbose : bool, optional (default: False)
+        Print progress information.
+
+    Returns
+    -------
+    dict
+        Mapping of gene_symbol -> ensembl_id for symbols MyGene resolved.
+        Unresolved symbols are omitted.
+    """
+    import time
+
+    import mygene
+
+    if not gene_symbols:
+        return {}
+
+    max_retries = 5
+    base_delay = 2  # seconds
+
+    mg_genes = None
+    for attempt in range(max_retries):
+        try:
+            mg = mygene.MyGeneInfo()
+            mg_genes = mg.querymany(gene_symbols, scopes="symbol", fields="ensembl.gene", species=str(taxid))
+            break
+        except Exception as e:
+            is_server_error = "500" in str(e) or "internal server error" in str(e).lower()
+            if is_server_error and attempt < max_retries - 1:
+                delay = base_delay ** (attempt + 1)
+                if verbose:
+                    print(
+                        f"MyGene API returned a 500 error (attempt {attempt + 1}/{max_retries}). "
+                        f"Retrying in {delay}s..."
+                    )
+                time.sleep(delay)
+            else:
+                if verbose:
+                    print(f"Error occurred while querying MyGene: {e}")
+                raise
+
+    mapping = {}
+    for mg_gene in mg_genes or []:
+        if "ensembl" not in mg_gene:
+            continue
+        ensembl = mg_gene["ensembl"]
+        mapping[mg_gene["query"]] = ensembl[0]["gene"] if isinstance(ensembl, list) else ensembl["gene"]
+
+    return mapping

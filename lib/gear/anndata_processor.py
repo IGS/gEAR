@@ -19,7 +19,10 @@ from gear.primary_analysis import (
     PrimaryAnalysisProcessingError,
     add_primary_analysis_to_dataset,
 )
-from gear.utils import update_adata_with_ensembl_ids, update_var_with_ensembl_ids
+from gear.utils import (
+    map_gene_symbols_via_mygene,
+    update_var_with_ensembl_ids,
+)
 from scipy import sparse
 
 
@@ -605,7 +608,7 @@ class AnndataProcessor:
             return []
 
     def _update_var_with_ensembl_ids(self, var_df: pd.DataFrame) -> pd.DataFrame:
-        """Update var dataframe with Ensembl IDs."""
+        """Update var dataframe with Ensembl IDs, falling back to MyGene for genes the local DB misses."""
         metadata_file = self.staging_area / 'metadata.json'
         with open(metadata_file, 'r') as f:
             metadata = json.load(f)
@@ -616,7 +619,24 @@ class AnndataProcessor:
         if not organism_id:
             raise ProcessingError("Could not determine organism ID from sample taxonomic ID.")
 
-        return update_var_with_ensembl_ids(var_df, organism_id, "UNMAPPED_")
+        id_prefix = "UNMAPPED_"
+        var_df = update_var_with_ensembl_ids(var_df, organism_id, id_prefix)
+
+        unmapped_mask = var_df.index.str.startswith(id_prefix)
+        if unmapped_mask.any() and sample_taxid:
+            unmapped_symbols = var_df.loc[unmapped_mask, "gene_symbol"].tolist()
+            try:
+                mygene_mapping = map_gene_symbols_via_mygene(unmapped_symbols, sample_taxid)
+            except Exception:
+                mygene_mapping = {}
+
+            if mygene_mapping:
+                new_index = var_df.index.to_series()
+                resolved = var_df.loc[unmapped_mask, "gene_symbol"].map(mygene_mapping)
+                new_index.loc[unmapped_mask] = resolved.where(resolved.notna(), new_index.loc[unmapped_mask])
+                var_df.index = pd.Index(new_index, name=var_df.index.name)
+
+        return var_df
 
     def _update_progress(self, progress: int, message: str) -> None:
         """Update progress and write status file."""
