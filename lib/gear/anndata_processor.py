@@ -206,35 +206,27 @@ class AnndataProcessor:
 
         filepath = self.staging_area / f"{self.share_uid}.h5ad"
 
-        # Read in backed mode to avoid loading full file into memory
+        # Read in backed mode to avoid loading full X matrix into memory
         adata = anndata.read_h5ad(filepath, backed='r')
 
         self._update_progress(15, "Sanitizing observation metadata...")
 
-        # Convert obs to memory (typically small)
+        # obs/var are metadata only (small); safe to mutate in place on the backed object
         obs = adata.obs
         categorize_observation_columns(obs)
-        obs = sanitize_obs_for_h5ad(obs)
+        adata.obs = sanitize_obs_for_h5ad(obs)
 
-        # Update var if gene_symbol missing
-        var = adata.var if "gene_symbol" not in adata.var.columns else None
-        if var is not None:
+        if "gene_symbol" not in adata.var.columns:
             self._update_progress(25, "Mapping gene symbols via Ensembl...")
-            var = self._update_var_with_ensembl_ids(var)
-
-        # Close backed file before final write
-        adata.file.close()
+            adata.var = self._update_var_with_ensembl_ids(adata.var)
 
         self._update_progress(50, "Writing H5AD file...")
 
-        # Re-read for full write (necessary for consistency)
-        adata = anndata.read_h5ad(filepath)
-        adata.obs = obs
-        if var is not None:
-            adata.var = var
-
+        # Write directly from the backed object so anndata streams X from the
+        # source file in chunks rather than loading the full matrix into memory
         h5ad_temp = self.staging_area / f"{self.share_uid}.new.h5ad"
         adata.write(h5ad_temp, compression='gzip')
+        adata.file.close()
 
         filepath.unlink()
         h5ad_temp.rename(filepath)

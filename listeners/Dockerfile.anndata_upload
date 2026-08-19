@@ -10,6 +10,8 @@ ENV PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
 
 WORKDIR /gEAR
 
+ENV LLVM_CONFIG=/usr/bin/llvm-config-14
+
 # Install system dependencies
 RUN apt update && apt install -y \
     build-essential \
