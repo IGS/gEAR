@@ -18,12 +18,14 @@ sudo DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends
   libharfbuzz-dev \
   libfribidi-dev \
   libfreetype6-dev \
+  libglpk-dev \
   libpng-dev \
   libtiff5-dev \
   libjpeg-dev \
   libwebp-dev \
   libgit2-dev \
   libuv1-dev \
+  pandoc \
   tzdata
 sudo apt -qq clean autoclean
 sudo apt -qq autoremove -y
@@ -60,6 +62,8 @@ echo "deb [signed-by=/usr/share/keyrings/google-cloud-keyring.gpg] https://packa
 # Remove or Disable Broken RabbitMQ Repositories
 sudo rm -f /etc/apt/sources.list.d/*rabbitmq*.list
 ```
+
+Another fix is to ensure `options(pkg.sysreqs = FALSE)` in install_packages.R.  It is true for Docker installs but should be false for server installs.
 
 Run the install after this.
 

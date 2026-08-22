@@ -22,12 +22,14 @@ RUN apt -qq update \
   libharfbuzz-dev \
   libfribidi-dev \
   libfreetype6-dev \
+  libglpk-dev \
   libpng-dev \
   libtiff5-dev \
   libjpeg-dev \
   libwebp-dev \
   libgit2-dev \
   libuv1-dev \
+  pandoc \
   ca-certificates \
   tzdata \
   git \

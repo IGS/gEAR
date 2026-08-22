@@ -22,6 +22,7 @@ RUN apt -qq update \
   libbz2-dev \
   liblzma-dev \
   libdeflate-dev \
+  libglpk-dev \
   libhdf5-dev \
   libtirpc-dev \
   libicu-dev \
@@ -31,6 +32,16 @@ RUN apt -qq update \
   libsqlite3-dev \
   libgfortran5 \
   libuv1 \
+  pandoc \
+  libgl1 \
+  libice6 \
+  libsm6 \
+  libx11-6 \
+  libxext6 \
+  libxcb1 \
+  libglib2.0-0 \
+  libnspr4 \
+  libnss3 \
   && apt -qq clean autoclean \
   && apt -qq autoremove -y \
   && rm -rf /var/lib/apt/lists/*
