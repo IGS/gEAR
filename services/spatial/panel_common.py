@@ -179,11 +179,13 @@ class BaseSpatialViewer(pn.viewable.Viewer):
         orig_dims = retrieve_image_dims(self.settings.dataset_id)
 
         self.img_height, self.img_width = None, None
-        if orig_dims is not None:
+        if orig_dims is not None and orig_dims[0] is not None and orig_dims[1] is not None:
             self.img_height, self.img_width = orig_dims
         elif self.image_array is not None:
             self.img_height, self.img_width = self.image_array.shape[0], self.image_array.shape[1]
 
+        self.bg_image = None
+        self.bg_image_dimmed = None
         if self.image_array is not None:
 
             # use original image_array shape to build image bounds.

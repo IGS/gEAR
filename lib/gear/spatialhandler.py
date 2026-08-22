@@ -1329,6 +1329,8 @@ class XeniumHandler(SpatialHandler):
             orig_height, orig_width = full_res.sizes.get('y'), full_res.sizes.get('x')
             # Get a downsized version of the image for processing
             img = _select_pyramid_level(img, max_dim=4000)
+        else:
+            orig_height, orig_width = img.sizes.get('y'), img.sizes.get('x')
 
         channel_dim = img.dims[0]
         # Extract names of the various staining channels.  Can also just be "0" if no channel names are present.
