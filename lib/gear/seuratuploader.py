@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+import traceback
 
 import pandas as pd
 import rpy2.rinterface_lib.callbacks as r_cbs
@@ -58,7 +59,7 @@ def r_package_importer(package_name:str):
         return pkg
     except Exception:
         importErrorMessage = f"{package_name} not installed or can not be imported"
-        print(importErrorMessage, file=sys.stderr)
+        traceback.print_exc()
         raise ImportError(importErrorMessage)
 
 

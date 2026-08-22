@@ -3,6 +3,7 @@
 options(warn = 2) # Treat warnings as errors (i.e. missing Ubuntu modules)
 
 # Tell pak to prefer binary packages
+# NOTE: Unset pkg.sysreqs if on server, as apt update will fail otherwise
 options(pkg.sysreqs = TRUE)
 options(repos = c(CRAN = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"))
 #options(Ncpus = 1)

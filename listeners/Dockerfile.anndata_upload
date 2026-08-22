@@ -1,4 +1,4 @@
-FROM python:3.14-slim
+FROM ubuntu:jammy
 
 ARG PYTHON_MAJOR_VERSION=3.14
 ARG PYTHON_FULL_VERSION=${PYTHON_MAJOR_VERSION}.4
@@ -12,22 +12,38 @@ WORKDIR /gEAR
 
 ENV LLVM_CONFIG=/usr/bin/llvm-config-14
 
-# Install system dependencies
-RUN apt update && apt install -y \
-    build-essential \
-    curl \
-    zlib1g-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Install system dependencies (Ubuntu jammy - matches gear-r-base OS)
+RUN apt -qq update \
+  && DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
+  ca-certificates \
+  build-essential \
+  curl \
+  zlib1g-dev \
+  libbz2-dev \
+  liblzma-dev \
+  libdeflate-dev \
+  libhdf5-dev \
+  libtirpc-dev \
+  libicu-dev \
+  libffi-dev \
+  libpcre2-dev \
+  libssl3 \
+  libsqlite3-dev \
+  libgfortran5 \
+  libuv1 \
+  && apt -qq clean autoclean \
+  && apt -qq autoremove -y \
+  && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies (context is gEAR root)
-COPY listeners/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt --prefer-binary \
-  && rm -rf ~/.cache/pip
+# Copy compiled Python from builder stage (same source as main Dockerfile)
+COPY --from=adkinsrs/gear-listener-python-base:latest /opt/Python-${PYTHON_FULL_VERSION} /opt/Python-${PYTHON_FULL_VERSION}
 
 # Copy compiled R from r-builder stage
 COPY --from=adkinsrs/gear-r-base:latest /usr/local/lib/R /usr/local/lib/R
 COPY --from=adkinsrs/gear-r-base:latest /usr/local/bin/R /usr/local/bin/R
 COPY --from=adkinsrs/gear-r-base:latest /usr/local/bin/Rscript /usr/local/bin/Rscript
+
+RUN ldconfig
 
 # Link Python and shared library
 RUN mkdir -p /opt/bin \
@@ -47,12 +63,12 @@ ENV PATH="/opt/Python-${PYTHON_FULL_VERSION}/bin:/usr/local/lib/R/bin:${PATH}"
 ENV CFLAGS="-std=gnu2x"
 
 # Install rpy2 now that R has installed
-RUN python3 -m pip install rpy2==3.6.7
+RUN /opt/bin/python3 -m pip install rpy2==3.6.7
 
 # Install lib/gear as editable package
 COPY lib/gear ./lib/gear
 COPY lib/setup.py ./lib/
-#RUN pip install -e ./lib/
+#RUN /opt/bin/python3 -m pip install -e ./lib/
 
 # Copy consumer script
 RUN mkdir -p listeners
@@ -64,4 +80,4 @@ RUN mkdir -p /var/log/gEAR_queue
 # Copy gear.ini
 COPY gear.ini ./gear.ini
 
-CMD ["python3", "listeners/anndata_upload_consumer.py"]
+CMD ["/opt/bin/python3", "listeners/anndata_upload_consumer.py"]

@@ -393,7 +393,7 @@ class AnndataProcessor:
         # seurat to anndata uses rpy2 to convert the RDS to anndata
         # filepath name has "tmp_" appended in front
         try:
-            adata_filepath = SeuratUploader.seurat_to_anndata(str(seurat_filepath), share_uid, str(upload_dir))
+            adata_filepath = SeuratUploader.seurat_to_anndata(str(seurat_filepath), self.share_uid, str(self.staging_area))
         except Exception as e:
             raise ProcessingError(f"Failed to convert RDS to h5ad: {str(e)}")
 
@@ -408,7 +408,7 @@ class AnndataProcessor:
         try:
             adata = SeuratUploader.reduction_to_metadata(adata)
         except Exception as e:
-            raise ProcessingError(f"Failed to update reductions to AnnData object")
+            raise ProcessingError("Failed to update reductions to AnnData object")
 
         # Convert gene symbols to ensemble IDs
         metadata_file = self.staging_area / 'metadata.json'
