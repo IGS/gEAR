@@ -18,7 +18,6 @@ services:
       - db:/var/lib/mysql:rw
 
   web:
-    build: .  # uncomment out if umgear:main does not exist
     depends_on:
       - db
     environment:
@@ -28,7 +27,7 @@ services:
       - gear
     ports:
       - "8080:80"
-    pull_policy: build
+    pull_policy: always
     restart: on-failure
     volumes:
       - ..:/opt/gEAR/
@@ -48,9 +47,6 @@ services:
     restart: always
 
   panel:
-    build:
-      context: ../services/spatial
-      dockerfile: Dockerfile
     environment:
       - BOKEH_RESOURCES=cdn # Pull Bokeh library from CDN
     image: adkinsrs/spatial_panel_app:latest
@@ -58,7 +54,7 @@ services:
       - gear
     ports:
       - "5006:5006" # host:container
-    pull_policy: build
+    pull_policy: always
     restart: always
     volumes:
       - <spatial_panel_cache_path>:/gEAR/www/cache/spatial_panel
@@ -67,15 +63,13 @@ services:
 
   # ProjectR RabbitMQ Consumer
   #projectr_consumer:
-  #  build:
-  #    context: ..
-  #   dockerfile: listeners/Dockerfile.projectr
   #  depends_on:
   #     queue:
   #      condition: service_healthy
   #  image: adkinsrs/gear_projectr_consumer:latest
   #  networks:
   #    - gear
+  #  pull_policy: always
   #  restart: on-failure
   #  volumes:
   #    - ../listeners:/gEAR/listeners
@@ -83,9 +77,6 @@ services:
 
   # TrackHub (Gosling Upload) RabbitMQ Consumer
   gosling_upload_consumer:
-    build:
-      context: ..
-      dockerfile: listeners/Dockerfile.gosling_upload
     depends_on:
       queue:
         condition: service_healthy
@@ -94,7 +85,7 @@ services:
     image: adkinsrs/gear_gosling_upload_consumer:latest
     networks:
       - gear
-    pull_policy: build
+    pull_policy: always
     restart: on-failure
     volumes:
       - ../listeners:/gEAR/listeners
@@ -104,16 +95,13 @@ services:
   # AnnData object Upload RabbitMQ Consumer
   # i.e. h5ad, mex, tar
   anndata_upload_consumer:
-    build:
-      context: ..
-      dockerfile: listeners/Dockerfile.anndata_upload
     depends_on:
       queue:
         condition: service_healthy
     image: adkinsrs/gear_anndata_upload_consumer:latest
     networks:
       - gear
-    pull_policy: build
+    pull_policy: always
     restart: on-failure
     volumes:
       - ../listeners:/gEAR/listeners

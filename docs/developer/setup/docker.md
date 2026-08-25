@@ -9,113 +9,19 @@
 * `cp docker-compose.yml.template docker-compose.yml`
   * Alternatively ask @adkinsrs for a docker-compose.yml file as it will be filled in. Otherwise fill in any values wrapped in brackets
   * @adkinsrs's file is hard-coded to his paths so be sure to change those.
+* `mkdir mysql` - Necessary to mount the MySQL data directory for preserving
 
-## Acquiring the gEAR image
+## Files from @adkinsrs
 
-There are two options here.  The first method is significantly quicker, but there is a chance it may not be updated based on the latest Dockerfile instructions in Github (if @adkinsrs forgets to push the latest image up).
+There are various .template files hanging around with some missing paths.  @adkinsrs has live versions of the files that he can give you.
 
-### Method 1: Pull image
+* gear.ini - Goes in <gear_root> directory (parent directory of "docker")
+* docker-compose.yml - Goes in "docker" directory. Ensure the volume mount paths reflect your own gEAR repo location.
+* feature_mapping.tar.gz - Extract this directory into `<gear_root>/www/`. Contains orthology mapping files in hdf5 format.
+* MySQL dump file.  Please consult [MySQL Setup Notes](./docker_mysql.md) to load this file after you bring the docker compose stack up
+  * Do note that if there may be weighted gene list entries in the db and you do not have the physical file, then you may have errors.
 
-Recently, docker images have switched to a multi-platform build where Docker will internally determine which image to pull based on your current platform. This requires you to ensure that the containerd store option is enabled on your copy of Docker Desktop.
-
-Info on how to enable the containerd store
-
-* https://docs.docker.com/engine/storage/containerd/
-
-How to pull the image
-
-* `docker pull adkinsrs/umgear:latest`.
-
-Grab the gear.ini file:
-
-* `docker run -it adkinsrs/umgear:latest`
-* `docker ps` note the container ID
-* `docker cp <container_id>:/opt/gEAR/gear.ini <gear_root>/gear.ini` which will copy the gear.ini file within the docker container outside.
-* Feel free to stop the container, or leave it up so the docker-compose stack can use it.
-
-This step is necessary if you are mounting your host gEAR code as a volume to the docker compose "web" service.  When you do this, the directory inside the container is replaced with your volume's code, and the gear.ini file within will be missing.
-
-### Method 2: Build image
-
-* Ensure you are in the "devel" branch of gEAR before building (`git checkout devel`)
-* `cp gear.ini.docker.template gear.ini.docker`
-  * Alternatively ask @adkinsrs for a gear.ini.docker file as it will be filled in. Otherwise fill in any values wrapped in brackets
-* To build run `docker buildx build -t umgear:latest .`
-  * Ensure the image name here (`umgear:latest`) is reflected in the docker-compose.yml file instead of `adkinsrs/umgear:latest`
-
-### Method 2a: Build image with updated R or Python stuff
-
-* This will use premade Python and R base Dockerfile images to save on build time. If you want to update the R or Python install, you need to do the following:
-  * Update requirements.txt (for Python) or install_R.sh, or install_packages.R as needed for R
-  * For R, run `docker buildx build -t gear-r-base -f Dockerfile.r .` (enjoy the bioconductor install slowness)
-  * For Python, run  `docker buildx build -t gear-python-base -f Dockerfile.python .`
-  * In the Dockerfile, change the `COPY --from` commands to point to your reviews r-base or python-base images
-* To build gEAR, run `docker buildx build -t umgear:latest .`
-  * Ensure the image name here (`umgear:latest`) is reflected in the docker-compose.yml file instead of `adkinsrs/umgear:latest`
-
-In the build, the "gear.ini.docker" file will end up copied to "gear.ini" in the "/opt/gEAR" directory for the docker instance. However, if are using docker-compose and the gEAR directory is mounted into the "web" service, this can be overriden to a gear.ini from outside.  If you do not have a "gear.ini" file (only gear.ini.template), then ask @adkinsrs for one.
-
-### The three Dockerfiles
-
-Information about the three Dockerfiles found in `<gear_root>/docker`
-
-#### Dockerfile.python (The Python Base)
-
-This file is dedicated entirely to compiling Python 3.x and installing requirements.txt.
-
-**When you build it**: Only when you need to add a new package to requirements.txt or upgrade the Python version.
-
-**RPy2**: The "rpy2" package is actually built in the final Docker (umgear) image, due to some dependencies on R.
-
-**The output**: This is currently built and pushed as adkinsrs/gear-python-base:YYYY-MM-DD and also tagged with the "latest" tag.
-
-#### Dockerfile.r (The R Base)
-
-This file is dedicated entirely to compiling R and running your Bioconductor scripts.
-
-**When you build it**: Almost never. Only touch this if the team specifically requests a new version of Bioconductor or a brand-new R system library.
-
-**The output**: This is currently built and pushed as adkinsrs/gear-r-base:YYYY-MM-DD and also tagged with the "latest" tag.
-
-#### Dockerfile (The Final App)
-
-This is your main daily-driver file. It starts with a clean Ubuntu image, uses COPY --from=... to pull in the pre-compiled folders from your registry, installs Apache, and copies over your Flask API and HTML/JS files.
-
-Currently the inherited R and Python images are set to use the "latest" tag of a locally built image, as most of the time we want the most up-to-date version. If for some reason you need an earlier version, edit the Dockerfile to use one of the existing `adkinsrs/<image>:YYYY-MM-DD` tags stored in Docker Hub.
-
-**When you build it**: Every time you update the website, tweak the Apache configuration, or change a CGI script.  Anything gEAR-code related, basically.
-
-**The output**: This builds in seconds and becomes your final production image.  This is pushed as adkinsrs/umgear:YYYY-MM-DD and also tagged with the "latest" tag.
-
-## Starting the stack
-
-If you used Method 1, in the `docker-compose.yml file` ensure the "build" step from the "web" service is commented out or deleted.
-
-To start:
-`docker compose up -d`
-To stop:
-`docker compose down -v`
-
-
-Adding a service name (i.e. "web", "db") to the end of a command just performs this for that service.
-
-### Get feature mapping files
-
-Ask @adkinsrs for these (which will probably be in tar.gz format).  These hdf5 files should go in `<gear_root>/www/feature_mapping` so that orthology mapping will work.
-
-## ProjectR
-
-Currently the gear.ini.docker file is configured to send projectR jobs to the cloud, but to not use RabbitMQ.  This is to save me the hassle of managing an extra service.  What this means is that apache process will manage the jobs and job logging will write to /var/log/apache2/ssl_umgear_error.log in the container.
-
-## "panel" service
-
-If you do not plan on working on spatial panel stuff, feel free to comment out the "panel" service block from the docker-compose.yml file and skip this step.
-
-You can pre-build the "panel_app" image using the Dockerfile from `<gear_root>/services/spatial/Dockerfile`
-
-You can view logs with `docker compose logs panel`
-
-## Getting datasets
+### Getting datasets
 
 Dataset files to use need to be housed on the host machine initially since they are not contained in the gEAR codebase and thus will not be available in the Dockerized version of gEAR out of the box
 
@@ -146,19 +52,89 @@ You can write some script to loop through these IDs and download them to your "d
 `cd <gear_root>/www/datasets_uploaded`
 `wget https://umgear.org/datasets_uploaded/<dataset_id>.svg .`
 
-## MySQL
+## Acquiring the gEAR images
 
-* See [MySQL Setup Notes](./docker_mysql.md) for more information.  Shaun has a dump file you can use (just ask @adkinsrs).  However do note that if there is a dataset or weighted gene list entry in the db and you do not have the physical file, then you may have errors.
+The easiest way to get the gEAR stack is to `cd docker` (if you have not done so) and run `docker compose up -d`, which will pull the images off of Docker Hub.
 
-## Running the docker container
+Running `docker compose up -d` will also perform a check to see if the image (typically the "latest" tag) has been updated in the Docker Hub registry and will pull that down if it needs to.
+
+After all containers are up, if you have not done so set up MySQL [MySQL Setup Notes](./docker_mysql.md)
+
+## Starting the stack
+
+To start:
+`docker compose up -d`
+
+Perform `docker compose ps` to see the status of running containers.
+
+To stop:
+`docker compose down -v`
+
+You can also pass the name of a specific service, like "web" to any docker compose command to only do this just for that service.  An example would be `docker compose up -d web`
 
 The docker-compose.yml file is set up to mount the gEAR code as a volume, allowing you to make immediate edits to be reflected inside the container.  If making changes within `<gear_root>/www/api`, they will apply once you run `docker compose restart web`.
 
-## Viewing logs
+Adding a service name (i.e. "web", "db") to the end of a command just performs this for that service.
+
+### Viewing logs
 
 To view potential logs, run `docker compose logs` for all services or `docker compose logs <service>` for a single service.
 
 If you want to view Apache logs, from server-side (Python) code, you can run `docker compose exec web tail -f /var/log/apache2/ssl_umgear_error.log` to view a running error log.  Sometimes it may be necessary to view "/var/log/apache2/error.log" instead.
+
+## Other services
+
+### ProjectR
+
+Currently the gear.ini.docker file is configured to send projectR jobs to the cloud, but to not use RabbitMQ.  This is to save me the hassle of managing an extra service.  What this means is that apache process will manage the jobs and job logging will write to /var/log/apache2/ssl_umgear_error.log in the container.
+
+### "panel" service
+
+If you do not plan on working on spatial panel stuff, feel free to comment out the "panel" service block from the docker-compose.yml file and skip this step.
+
+You can pre-build the "panel_app" image using the Dockerfile from `<gear_root>/services/spatial/Dockerfile`
+
+You can view logs with `docker compose logs panel`
+
+## Building the images manually (Advanced)
+
+These steps will both build all images and push to the adkinsrs Docker Hub repository.  You will not have access to this repo (unless you are Shaun), so you just do the `docker compose up -d` method, or rewrite `Dockerfile`, `docker-bake.hci`, and `docker-compose.yml` to point to your own space.
+
+1. `cd docker`
+2. Build intermediate images with `docker buildx bake --allow=fs.read=.. intermediate`
+3. Build the docker compose stack images with `docker buildx bake --allow=fs.read=.. default`
+
+### The three "umgear" Dockerfiles
+
+Information about the three Dockerfiles found in `<gear_root>/docker`
+
+#### Dockerfile.python (The Python Base)
+
+This file is dedicated entirely to compiling Python 3.x and installing requirements.txt.
+
+**When you build it**: Only when you need to add a new package to requirements.txt or upgrade the Python version.
+
+**RPy2**: The "rpy2" package is actually built in the final Docker (umgear) image, due to some dependencies on R.
+
+**The output**: This is currently built and pushed as adkinsrs/gear-python-base:YYYY-MM-DD and also tagged with the "latest" tag.
+
+#### Dockerfile.r (The R Base)
+
+This file is dedicated entirely to compiling R and running your Bioconductor scripts.
+
+**When you build it**: Almost never. Only touch this if the team specifically requests a new version of Bioconductor or a brand-new R system library.
+
+**The output**: This is currently built and pushed as adkinsrs/gear-r-base:YYYY-MM-DD and also tagged with the "latest" tag.
+
+#### Dockerfile (The Final App)
+
+This is your main daily-driver file. It starts with a clean Ubuntu image, uses COPY --from=... to pull in the pre-compiled folders from your registry, installs Apache, and copies over your Flask API and HTML/JS files.
+
+Currently the inherited R and Python images are set to use the "latest" tag of a locally built image, as most of the time we want the most up-to-date version. If for some reason you need an earlier version, edit the Dockerfile to use one of the existing `adkinsrs/<image>:YYYY-MM-DD` tags stored in Docker Hub.
+
+**When you build it**: Every time you update the website, tweak the Apache configuration, or change a CGI script.  Anything gEAR-code related, basically.
+
+**The output**: This builds in seconds and becomes your final production image.  This is pushed as adkinsrs/umgear:YYYY-MM-DD and also tagged with the "latest" tag.
 
 ## Issues and potential solutions
 

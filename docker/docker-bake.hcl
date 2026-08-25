@@ -6,9 +6,10 @@ variable "REGISTRY" {
   default = "adkinsrs"
 }
 
-function "date" {
-    params = []
-    result = "${formatdate("YYYY-MM-DD", timestamp())}" # later, convert to use formattimestamp
+# Grab date from the passed in envvar set in the terminal
+# DATE=$(date +%Y-%m-%d) docker buildx bake --allow=fs.read=.. <group>
+variable "DATE" {
+    default = "devel"
 }
 
 group "all" {
@@ -42,59 +43,65 @@ group "intermediate" {
     ]
 }
 
+# Define a reusable base configuration target
+target "_common" {
+    platforms = ["linux/amd64", "linux/arm64"]
+    output    = ["type=registry"]  # auto-pushes to dockerhub, but MUST be pulled locally.
+}
+
 target "python-base" {
+    inherits = ["_common"]
     context = "."
     dockerfile = "Dockerfile.python"
-    tags = ["${REGISTRY}/gear-python-base:${TAG}", "${REGISTRY}/gear-python-base:${date()}"]
-    platforms = ["linux/amd64", "linux/arm64"]
+    tags = ["${REGISTRY}/gear-python-base:${TAG}", "${REGISTRY}/gear-python-base:${DATE}"]
 }
 
 target "r-base" {
+    inherits = ["_common"]
     context = "."
     dockerfile = "Dockerfile.r"
-    tags = ["${REGISTRY}/gear-r-base:${TAG}", "${REGISTRY}/gear-r-base:${date()}"]
-    platforms = ["linux/amd64", "linux/arm64"]
+    tags = ["${REGISTRY}/gear-r-base:${TAG}", "${REGISTRY}/gear-r-base:${DATE}"]
 }
 
 target "listener-python-base" {
+    inherits = ["_common"]
     context = ".."
     dockerfile = "listeners/Dockerfile.python_base"
-    tags = ["${REGISTRY}/gear-listener-python-base:${TAG}", "${REGISTRY}/gear-listener-python-base:${date()}"]
-    platforms = ["linux/amd64", "linux/arm64"]
+    tags = ["${REGISTRY}/gear-listener-python-base:${TAG}", "${REGISTRY}/gear-listener-python-base:${DATE}"]
 }
 
 target "web" {
-  context    = "."
-  dockerfile = "Dockerfile"
-  tags       = ["${REGISTRY}/umgear:${TAG}", "${REGISTRY}/umgear:${date()}"]
-  platforms  = ["linux/amd64", "linux/arm64"]
+    inherits = ["_common"]
+    context    = "."
+    dockerfile = "Dockerfile"
+    tags       = ["${REGISTRY}/umgear:${TAG}", "${REGISTRY}/umgear:${DATE}"]
 }
 
 target "panel" {
-  context    = "../services/spatial"
-  dockerfile = "Dockerfile"
-  tags       = ["${REGISTRY}/spatial_panel_app:${TAG}", "${REGISTRY}/spatial_panel_app:${date()}"]
-  platforms  = ["linux/amd64", "linux/arm64"]
+    inherits = ["_common"]
+    context    = "../services/spatial"
+    dockerfile = "Dockerfile"
+    tags       = ["${REGISTRY}/spatial_panel_app:${TAG}", "${REGISTRY}/spatial_panel_app:${DATE}"]
 }
 
 target "gosling_upload_consumer" {
-  context    = ".."
-  dockerfile = "listeners/Dockerfile.gosling_upload"
-  tags       = ["${REGISTRY}/gear_gosling_upload_consumer:${TAG}", "${REGISTRY}/gear_gosling_upload_consumer:${date()}"]
-  platforms  = ["linux/amd64", "linux/arm64"]
+    inherits = ["_common"]
+    context    = ".."
+    dockerfile = "listeners/Dockerfile.gosling_upload"
+    tags       = ["${REGISTRY}/gear_gosling_upload_consumer:${TAG}", "${REGISTRY}/gear_gosling_upload_consumer:${DATE}"]
 }
 
 target "anndata_upload_consumer" {
-  context    = ".."
-  dockerfile = "listeners/Dockerfile.anndata_upload"
-  tags       = ["${REGISTRY}/gear_anndata_upload_consumer:${TAG}", "${REGISTRY}/gear_anndata_upload_consumer:${date()}"]
-  platforms  = ["linux/amd64", "linux/arm64"]
+    inherits = ["_common"]
+    context    = ".."
+    dockerfile = "listeners/Dockerfile.anndata_upload"
+    tags       = ["${REGISTRY}/gear_anndata_upload_consumer:${TAG}", "${REGISTRY}/gear_anndata_upload_consumer:${DATE}"]
 }
 
 # NOTE: Not currently implemented, so it is not in the groupings.
 target "projectr_consumer" {
-  context    = ".."
-  dockerfile = "listeners/Dockerfile.projectr"
-  tags       = ["${REGISTRY}/gear_projectr_consumer:${TAG}", "${REGISTRY}/gear_projectr_consumer:${date()}"]
-  platforms  = ["linux/amd64", "linux/arm64"]
+    inherits = ["_common"]
+    context    = ".."
+    dockerfile = "listeners/Dockerfile.projectr"
+    tags       = ["${REGISTRY}/gear_projectr_consumer:${TAG}", "${REGISTRY}/gear_projectr_consumer:${DATE}"]
 }
