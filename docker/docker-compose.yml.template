@@ -18,7 +18,7 @@ services:
       - db:/var/lib/mysql:rw
 
   web:
-    # build: .  # uncomment out if umgear:main does not exist
+    build: .  # uncomment out if umgear:main does not exist
     depends_on:
       - db
     environment:
@@ -28,6 +28,7 @@ services:
       - gear
     ports:
       - "8080:80"
+    pull_policy: build
     restart: on-failure
     volumes:
       - ..:/opt/gEAR/
@@ -57,6 +58,7 @@ services:
       - gear
     ports:
       - "5006:5006" # host:container
+    pull_policy: build
     restart: always
     volumes:
       - <spatial_panel_cache_path>:/gEAR/www/cache/spatial_panel
@@ -92,12 +94,13 @@ services:
     image: adkinsrs/gear_gosling_upload_consumer:latest
     networks:
       - gear
+    pull_policy: build
     restart: on-failure
     volumes:
       - ../listeners:/gEAR/listeners
       - ../lib:/gEAR/lib
       - ../www/uploads/files:/gEAR/www/uploads/files
-\
+
   # AnnData object Upload RabbitMQ Consumer
   # i.e. h5ad, mex, tar
   anndata_upload_consumer:
@@ -110,6 +113,7 @@ services:
     image: adkinsrs/gear_anndata_upload_consumer:latest
     networks:
       - gear
+    pull_policy: build
     restart: on-failure
     volumes:
       - ../listeners:/gEAR/listeners
