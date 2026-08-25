@@ -101,8 +101,10 @@ You can view logs with `docker compose logs panel`
 These steps will both build all images and push to the adkinsrs Docker Hub repository.  You will not have access to this repo (unless you are Shaun), so you just do the `docker compose up -d` method, or rewrite `Dockerfile`, `docker-bake.hci`, and `docker-compose.yml` to point to your own space.
 
 1. `cd docker`
-2. Build intermediate images with `docker buildx bake --allow=fs.read=.. intermediate`
-3. Build the docker compose stack images with `docker buildx bake --allow=fs.read=.. default`
+2. Build intermediate images with `DATE=$(date +%Y-%m-%d) docker buildx bake --allow=fs.read=.. intermediate`
+3. Build the docker compose stack images with `DATE=$(date +%Y-%m-%d) docker buildx bake --allow=fs.read=.. default`
+
+The "DATE" environment variable allows us to create a date stamp as a tag in addition to the standard "latest" tag.
 
 ### The three "umgear" Dockerfiles
 
