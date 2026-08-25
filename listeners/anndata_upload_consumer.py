@@ -1,7 +1,11 @@
 #!/opt/bin/python3
 
 """
-gosling_upload_consumer.py - RabbitMQ consumer for track hub processing jobs.
+anndata_upload_consumer.py - RabbitMQ consumer for expression dataset upload jobs.
+
+Processes H5AD, Seurat, 3-tab, Excel, and MEX format datasets.
+
+Spatial uploads are handled differently as they create a SpatialData object
 """
 
 import gc
@@ -17,52 +21,50 @@ gear_root = Path(__file__).resolve().parents[1]
 gear_lib = gear_root / "lib"
 sys.path.insert(0, str(gear_lib))
 
-import gearqueue  # noqa: F401
+import gearqueue
 from gear.serverconfig import ServerConfig  # noqa: I001
 
 servercfg = ServerConfig().parse()
 
-queue_name = "trackhub_copy_jobs"
+queue_name = "anndata_upload_jobs"
 os.makedirs("/var/log/gEAR_queue", exist_ok=True)
 logfile = f"/var/log/gEAR_queue/{queue_name}.log"
 pid = os.getpid()
 
 user_upload_base = gear_root / 'www' / 'uploads' / 'files'
 
-def _on_request(channel, method_frame, properties, body):
-    """Callback to handle new trackhub job message."""
-    from gear.trackhub import TrackHubProcessor  # noqa: E402
+
+def _on_request(channel, method_frame, properties, body) -> None:
+    """Callback to handle new anndata upload job message."""
+    from gear.anndata_processor import AnndataProcessor  # noqa: E402
 
     delivery_tag = method_frame.delivery_tag
     deserialized_body = json.loads(body)
 
     job_id = deserialized_body["job_id"]
     share_uid = deserialized_body["share_uid"]
-    hub_json = deserialized_body["hub_json"]
-    assembly = deserialized_body["assembly"]
-    track_stanzas = deserialized_body["track_stanzas"]
-    hub_url = deserialized_body.get("hub_url", "")
-    dry_run = deserialized_body.get("dry_run", False)
+    dataset_uid = deserialized_body["dataset_uid"]
+    dataset_format = deserialized_body["dataset_format"]
+    perform_primary_analysis = deserialized_body.get("perform_primary_analysis", False)
 
     with open(logfile, "a") as fh:
         print(
-            f"{pid} - [x] - Received request for trackhub job {job_id}",
+            f"{pid} - [x] Received request for anndata job {job_id}",
             flush=True,
             file=fh,
         )
 
         if not user_upload_base.is_dir():
-            print(f"{pid} - ERROR: User upload base directory {user_upload_base} does not exist", flush=True, file=fh)
-            channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
-            return
-
-        if not hub_url:
-            print(f"{pid} - ERROR: Hub URL base not configured. Cannot process track hub.", flush=True, file=fh)
+            print(
+                f"{pid} - ERROR: User upload base directory {user_upload_base} does not exist",
+                flush=True,
+                file=fh,
+            )
             channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
             return
 
         try:
-            # Infer session_id from share_uid directory structure
+            # Infer staging_area from share_uid directory structure
             staging_area = None
             for session_dir in user_upload_base.iterdir():
                 candidate = session_dir / share_uid
@@ -75,29 +77,22 @@ def _on_request(channel, method_frame, properties, body):
 
             status_file = staging_area / "status.json"
 
-            # Get HiGlass config
-            higlass_config = None
-            if "higlass" in servercfg and servercfg["higlass"]:
-                higlass_config = {
-                    "higlass_hostname": servercfg["higlass"].get("hostname", ""),
-                    "higlass_admin_user": servercfg["higlass"].get("admin_user", ""),
-                    "higlass_admin_pass": servercfg["higlass"].get("admin_pass", ""),
-                }
-
             # Process the job
-            processor = TrackHubProcessor(
+            processor = AnndataProcessor(
                 job_id=job_id,
                 share_uid=share_uid,
                 staging_area=staging_area,
                 status_file=status_file,
-                higlass_config=higlass_config,
-                hub_url=hub_url
+                dataset_uid=dataset_uid,
             )
 
-            result = processor.process(hub_json, assembly, track_stanzas, dry_run)
+            result = processor.process(
+                dataset_format=dataset_format,
+                perform_primary_analysis=perform_primary_analysis,
+            )
+
             print(f"{pid} - Job {job_id}: {result['message']}", flush=True, file=fh)
             channel.basic_ack(delivery_tag=delivery_tag)
-
         except Exception as e:
             traceback.print_exc()
             print(f"{pid} - Caught error '{str(e)}'", flush=True, file=fh)
@@ -107,13 +102,13 @@ def _on_request(channel, method_frame, properties, body):
 
 
 class Consumer:
-    """RabbitMQ consumer with automatic reconnection for trackhub processing."""
+    """RabbitMQ consumer with automatic reconnection for anndata uploads."""
 
     def __init__(self, host: str) -> None:
         self._reconnect_delay = 0
         self.host = host
-        self._consumer = self._new_connection()
 
+        self._consumer = self._new_connection()
 
     def run(self) -> None:
         """Run the consumer with automatic reconnection."""
@@ -130,6 +125,7 @@ class Consumer:
 
             if not getattr(self._consumer, "should_reconnect", False):
                 break
+
             self._maybe_reconnect()
 
     def _new_connection(self) -> "gearqueue.AsyncConnection":
@@ -168,7 +164,7 @@ class Consumer:
 
 
 def main() -> None:
-    """Start the trackhub processing consumer."""
+    """Start the anndata processing consumer."""
     host = servercfg["dataset_uploader"]["queue_host"]
     consumer = Consumer(host=host)
     consumer.run()
