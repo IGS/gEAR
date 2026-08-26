@@ -25,6 +25,16 @@ Result Storage (Database, File System)
 
 ## Available Consumers
 
+### Anndata Upload Consume
+
+Facilitates uploading of various file formats into Anndata (H5AD) format.
+
+- **Listener**: `listeners/anndata_upload_consumer.py`
+- **Queue**: `anndata_upload_jobs`
+- **Service Template**: `systemd/anndata-upload-consumer@.service`
+- **Service Group**: `systemd/anndata-upload-consumer.target`
+
+
 ### Gosling Upload Consume
 
 Facilitates uploading of track files for the epigenome uploader.

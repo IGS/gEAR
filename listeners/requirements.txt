@@ -2,9 +2,10 @@
 aiohttp==3.13.5
 aiohttp_retry==2.9.1
 anndata==0.12.11
-bio==1.8.3
+biopython==1.87
 hic2cool==0.8.3
 more_itertools==11.0.2
+mygene==3.2.2
 mysql-connector-python==8.0.28
 numpy==2.4.0
 pandas==2.3.3   # Anndata does not support pandas 3.x.x yet
@@ -13,5 +14,6 @@ plotly==6.6.0
 pybigwig==0.3.25
 python-dotenv==0.20.0
 requests==2.31.0
+scanpy==1.12.1
 scipy==1.17.1
 setuptools<82

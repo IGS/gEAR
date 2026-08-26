@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html lang="en-us" class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html lang="en-us" class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html lang="en-us" class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html lang="en-us" class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>Pou3f4 landing page</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="-1">
+        <meta http-equiv="CACHE-CONTROL" content="NO-CACHE">
+
+        <link rel="stylesheet" href="../../css/gear-theme-purple.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" />
+
+        <link rel="stylesheet" href="../../css/common.v2.css" />
+
+        <!--Page-specific CSS here -->
+        <link rel="stylesheet" href="./index.css" />
+
+    </head>
+    <body>
+      <div id="main-layout-c" class="columns is-fullheight">
+
+        <!--#include virtual="/include/primary_nav.html" -->
+
+        <section id="main-c" class="column pl-0 pt-0">
+
+          <!--#include virtual="/include/header_bar.html" -->
+
+          <section id="content-c" role="main" class="m-3 p-3" data-nav-link="workspace">
+            <h1>POU3F4 Establishes Context-dependent Gene Regulatory Networks that Diversify Otic Mesenchyme Cell Fates</h1>
+            <!-- This is the section to be populated for new pages -->
+            <p id="author-list">
+              Wei Song, Kevin Rose, Christopher Shutls, Beatrice Milon, Yang Song, Thomas M. Coate, Ran Elkon, Ronna Hertzano        
+            </p>
+            <p>
+              [ <a href="https://umgear.org/p?l=Pou3f4OMC">Access these data</a> ]
+            </p>
+
+            <hr />
+
+            <div class="figure-c">
+              <p class="figure-title">
+                Heterogeneity of Otic Mesenchyme Cells (OMCs)
+              </p>
+              <img class="figure-img img-fluid" src="figure1.png" alt="Figure 1">
+            </div>
+
+            <p>
+              <strong>Subtitle:</strong>Broadly expressed developmental TFs diversify neighboring cell populations by engaging distinct combinations 
+              of lineage-specific TFs, a multiomics approach.
+            </p>
+            <p>
+              <strong>Abstract:</strong> Developmental transcription factors (TFs) often function across multiple neighboring 
+              cell populations, yet how they generate distinct cell identities within the same tissue remains poorly understood. 
+              Here, we define the regulatory mechanisms by which the deafness-associated TF POU3F4 directs diversification of 
+              otic mesenchyme cells (OMCs) during cochlear development. Integrating single-cell RNA sequencing, single-cell 
+              chromatin accessibility profiling, spatial transcriptomics, and enhancer-based gene regulatory network inference, 
+              we reconstruct the developmental trajectories of four OMCs subtypes and identify the regulatory programs governing 
+              their differentiation. Although POU3F4 is broadly active across all OMCs, it engages distinct subtype-specific TF 
+              modules that establish divergent regulatory networks. Loss of POU3F4 disrupts these networks, delays differentiation 
+              across all lineages, and identifies an osteogenic regulatory module centered on RUNX2, DLX5, and MEF2C that is 
+              required for modiolar development. Together, these findings demonstrate how broadly expressed developmental TFs 
+              generate distinct cellular identities by operating within lineage-specific chromatin landscapes and recruiting 
+              different TF partners, providing a mechanistic framework for cochlear morphogenesis and POU3F4-associated hearing 
+              loss.
+            </p>
+
+            <div class="columns">
+              <div class="column">
+                <div class="figure-c">
+                  <p class="figure-title">
+                    Transcriptional Dynamics in Development of Cochlear OMC Subtypes Using scRNA-seq 
+                  </p>
+                  <img class="figure-img img-fluid" src="figure2a.png" alt="Figure 2a">
+                  <p class="figure-legend">
+                    <strong>A: </strong>Visualization of scRNA-seq data at E15, P2 and P7 using UMAP, showing increased heterogeneity and 
+                    differentiation pattern of OMCs subtypes. 
+                    <strong>B: </strong> Differentially expressed genes in between Pou3f4 KO 
+                    and Wildtype in Type III OMCs (modiolus).
+                  </p>
+                </div>
+              </div>
+              <div class="column">
+                <div class="figure-c">
+                  <p class="figure-title">
+                    scATAC-seq Analysis Defines OMC Subtype-specific Regulatory Network
+                  </p>
+                  <img class="figure-img img-fluid" src="figure2b.png" alt="Figure 2b">
+                  <p class="figure-legend">
+                    <strong>A: </strong> The gene expression level and the chromatin accessibility of their linked peaks are highly correlated for 
+                    scRNA-seq and scATAC-seq datasets. 
+                    <strong>B: </strong> Gene regulatory network inferred from scATAC-seq data for OMCs subtypes.
+                  </p>
+                </div>
+              </div>
+              <div class="column">
+                <div class="figure-c">
+                  <p class="figure-title">
+                    Validation for Pou3f4 and Ibsp Linked to Modiolar Bone Formation
+                  </p>
+                  <img class="figure-img img-fluid" src="./figure2c.png" alt="Figure 2c">
+                  <p class="figure-legend">
+                    <strong>A: </strong> The landscape of Ibsp gene in Type III OMC modiolus shows regulatory module driven by Pou3f4 and key 
+                    factors. <strong>B: </strong> Decreased expression of Ibsp and abnormal structure of modiolus in Pou3f4 KO cochlea through 
+                    spatial transcriptomics. 
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          </section><!-- end #content-c -->
+        </section> <!-- end #main-c -->
+      </div>
+      <footer>
+        <div>
+          <div id="funding"></div>
+        </div>
+      </footer>
+
+      <script src="../../js/vendor/js.cookie.js"></script>
+
+      <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+      <script type="module">
+        import { getDomainPreferences, initCommonUI, loadDomainFunding } from '../../js/common.v2.js';
+        await loadDomainFunding(await getDomainPreferences());
+        initCommonUI();
+      </script>
+
+      <!-- Page-specific JS file here -->
+      <script src="index.js"></script>
+    </body>
+</html>

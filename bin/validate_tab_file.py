@@ -5,7 +5,7 @@
 Performs basic validation on an input TAB file.  Currently, this includes:
 
 - Check that all rows have the same column count as the first row
-- Check that all values outside the first row and column are integers or floats
+- Check that all values outside the first row and column are integers or floats (unless -snc option is passed)
 
 """
 
@@ -18,6 +18,7 @@ def main():
     parser = argparse.ArgumentParser( description='Input tab file validator')
 
     parser.add_argument('-i', '--input_file', type=str, required=True, help='Path to an input file to be read' )
+    parser.add_argument('-snc', '--skip_numeric_checks', action='store_true', help='Skips checking to see if matrix values are numeric' )
     args = parser.parse_args()
 
     first_col_count = None
@@ -35,12 +36,14 @@ def main():
         if line_num > 1:
             col_num = 1
             for col in cols[1:]:
-                try:
-                    new_num = float(col)
-                    if math.isnan(new_num) or math.isinf(new_num):
+
+                if not args.skip_numeric_checks:
+                    try:
+                        new_num = float(col)
+                        if math.isnan(new_num) or math.isinf(new_num):
+                            print("ERROR: value in row {0}, column {1} doesn't appear to be numeric ({2})".format(line_num, col_num, col))
+                    except:
                         print("ERROR: value in row {0}, column {1} doesn't appear to be numeric ({2})".format(line_num, col_num, col))
-                except:
-                    print("ERROR: value in row {0}, column {1} doesn't appear to be numeric ({2})".format(line_num, col_num, col))
 
                 col_num += 1
 

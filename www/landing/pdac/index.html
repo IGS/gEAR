@@ -35,16 +35,16 @@
             <h1>Integrative analysis of genomic and transcriptomic data informs precancer progression in the pancreas</h1>
             <!-- This is the section to be populated for new pages -->
             <p id="author-list">
-              Kathleen Noller, Jiaying Lai, Daniel Lesperance, Ricky S. Adkins, Ahmed Elhossiny, Paola A. Guerrero, Kimal I. Rajapakshe, Michelle Giglio, Anirban Maitra, Anup Mahurkar, Owen White, Marina Pasca Di Magliano, Michael F. Ochs, Luciane T. Kagohara, Laura D. Wood, Rachel Karchin, Elana J. Fertig
+              Kathleen Noller, Jiaying Lai, Daniel Lesperance, Ricky Adkins, Ahmed Elhossiny, Paola Guerrero, Kimal Rajapakshe, Anirban Maitra, Roy Elias, Atul Deshpande, Michelle Giglio, Anup Mahurkar, Owen White, Dove Keith, Matthew Iyer, Rosalie Sears, Marina Pasca di Magliano, Michael Ochs, Luciane Kagohara, Laura Wood, Rachel Karchin, and Elana Fertig
             </p>
             <p>
-              Pancreatic ductal adenocarcinoma (PDAC) arises from heterogeneous precursor lesions, including intraductal papillary mucinous neoplasms (IPMNs), but the features distinguishing indolent from progressive lesions remain unclear. We performed an integrative analysis of transcriptomic, genomic, and microenvironmental profiles of IPMNs to define multi-omic phenotypes. Using transfer learning, we projected IPMN-derived transcriptional programs onto spatial transcriptomic datasets from IPMNs and pancreatic intraepithelial neoplasias (PanINs). We identified two major phenotypes: one associated with cancer-associated fibroblasts and epithelial-to-mesenchymal transition, shared across IPMN, PanIN, and PDAC; and a second, glycolysis-enriched phenotype with a unique somatic variant profile specific to IPMN. Spatial mapping further revealed grade-specific enrichment of transcriptional programs and distinct interactions with stromal and immune subtypes, underscoring the role of the precancer microenvironment in progression. These findings establish multi-omic phenotypes that unify genetic, transcriptional, and microenvironmental heterogeneity, providing a framework for distinguishing progressive from indolent precancers and a web-based public atlas for future exploration of these data and transcriptional phenotypes.
+              Pancreatic ductal adenocarcinoma (PDAC) arises from heterogeneous precursor lesions, including intraductal papillary mucinous neoplasms (IPMNs), but the molecular features underlying IPMN heterogeneity are not fully characterized. We performed an integrative analysis of transcriptomic, genomic, and microenvironmental profiles of IPMNs to define five multi-omic phenotypes. Using transfer learning, we projected IPMN-derived transcriptional programs onto spatial transcriptomic datasets from IPMNs and pancreatic intraepithelial neoplasias (PanINs). We focus our analysis on two major phenotypes: one strongly associated with microenvironmental features, namely cancer-associated fibroblasts and epithelial-to-mesenchymal transition (EMT) gene expression, and shared across IPMN, PanIN, and PDAC; and a second, glycolysis-enriched phenotype with a unique somatic mutation profile enriched in IPMNs. Spatial mapping further revealed grade-specific enrichment of transcriptional programs and distinct interactions with stromal and immune subtypes, underscoring the role of the precancer microenvironment in progression. Finally, we provide a web-based analysis tool, called cancer gEAR, to enable user-friendly cross-comparison of our transcriptional patterns to other publicly available transcriptomic datasets, providing a framework for the independent interrogation of patterns associated with microenvironmental, clinical, or transcriptional features of interest.
             </p>
 
             <hr />
 
             <div class="figure-c">
-              <img class="figure-img img-fluid" src="Figure5.png" alt="Figure 5">
+              <img class="figure-img img-fluid" src="Figure6.jpg" alt="Figure 6 from paper">
               <p class="figure-title">
                 Public dissemination and user-friendly analysis and visualization enabled by the cancer gEAR platform
               </p>
@@ -70,21 +70,13 @@
 
             <hr />
 
-            <h3><a name="approach1"></a>1. Data collections (profiles) focused on pancreatic ductal adenocarcinoma in Cancer gEAR</h3>
-            <div id="data-collections-c">
-              <p><strong>IPMN Spatial (Sans 2023):</strong> <a target="_blank" href="https://www.ncbi.nlm.nih.gov/pubmed/37285225">Paper</a></p>
-              <p><strong>PanIN Spatial HG and LG (Bell 2024):</strong> <a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/39116880">Paper</a></p>
-              <p><strong>Papillary Mucinous Neoplasms (Semaan 2023):</strong> <a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/37721516">Paper</a></p>
-              <p><strong>Early Neoplastic Lesions (Carpentar 2023):</strong> <a target="_blank" href="https://www.ncbi.nlm.nih.gov/pubmed/37021392">Paper</a></p>
-            </div>
-
-            <h3><a name="approach2"></a>2. Pattern signatures derived from <a target="_blank" target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/37989764/">CoGAPS non-negative matrix factorization (NMF)</a> projected across pancreatic precancer data using <a target="_blank" href="https://doi.org/10.1093/bioinformatics/btaa183">ProjectR</a>.</h3>
+            <h3><a name="approach1"></a>1. Pattern signatures derived from <a target="_blank" target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/37989764/">CoGAPS non-negative matrix factorization (NMF)</a> projected across pancreatic precancer data using <a target="_blank" href="https://doi.org/10.1093/bioinformatics/btaa183">ProjectR</a>.</h3>
             <div id="gene-signatures-c">
               <p><strong>CoGAPS_Semaan:</strong> Noller et al 2025 - Transcriptional subtypes defined from epithelial cells in IPMN data from <a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/37721516/">Semaan et al, 2023</a>.</p>
               <p><strong>CoGAPS_PDAC:</strong> Guinn et al 2024 - Transcription subtypes defined for PDAC epithelial cells <a target="_blank" href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11065624/">Guinn et al, 2024</a> and analysed in PanINs <a target="_blank" href="https://www.sciencedirect.com/science/article/pii/S2405471224001832">Bell et al, 2024</a>.</p>
             </div>
 
-            <h3><a name="approach3"></a>3. Projection links to explore pattern signatures across the PDAC data collections</h3>
+            <h3><a name="approach2"></a>2. Projection links to explore pattern signatures across the PDAC data collections</h3>
             <div id="links-section">
               <p>
                 Each cell in the table links to the projection of one of the Cancer gEAR data collections described
@@ -99,11 +91,12 @@
               <table>
                 <thead>
                   <tr>
-                    <th class="table-color">&nbsp;</th>
+                    <th class="table-color" colspan="2">&nbsp;</th>
                     <th colspan="3" class="table-color underline td-center">Pattern signatures</th>
                   </tr>
                   <tr>
                     <th class="table-color underline">Dataset collections</th>
+                    <th class="secondary-color">PubMed link</th>
                     <th class="secondary-color">Individual gene links</th>
                     <th class="secondary-color">CoGAPS_Semaan</th>
                     <th class="secondary-color">CoGAPS_PDAC</th>
@@ -112,27 +105,66 @@
                 <tbody>
                   <tr>
                     <td class="secondary-color">IPMN Spatial (Sans 2023)</td>
+                    <td class="td-center"><a target="_blank" href="https://www.ncbi.nlm.nih.gov/pubmed/37285225" target="_blank">Paper</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?l=ipmnsans&g=cdkn2a&gsem=1" target="_blank">LINK</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=ipmnsans&c=22cbec09&algo=nmf&zscore=1" target="_blank">LINK</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=ipmnsans&c=245819e7&algo=nmf&zscore=1" target="_blank">LINK</a></td>
                   </tr>
                   <tr>
                     <td class="secondary-color">PanIN Spatial HG and LG (Bell 2024)</td>
+                    <td class="td-center"><a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/39116880" target="_blank">Paper</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?l=PanINBell&g=cdkn2a&gsem=1" target="_blank">LINK</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=PanINBell&c=22cbec09&algo=nmf&zscore=1" target="_blank">LINK</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=PanINBell&c=245819e7&algo=nmf&zscore=1" target="_blank">LINK</a></td>
                   </tr>
                   <tr>
                     <td class="secondary-color">Papillary Mucinous Neoplasms (Semaan 2023)</td>
+                    <td class="td-center"><a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/37721516" target="_blank">Paper</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?l=Semaan2023&g=cdkn2a&gsem=1" target="_blank">LINK</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=Semaan2023&c=22cbec09&algo=nmf&zscore=1" target="_blank">LINK</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=Semaan2023&c=245819e7&algo=nmf&zscore=1" target="_blank">LINK</a></td>
                   </tr>
                   <tr>
-                    <td class="secondary-color">Early Neoplastic Lesions (Carpentar 2023)</td>
+                    <td class="secondary-color">Early Neoplastic Lesions (Carpenter 2023)</td>
+                    <td class="td-center"><a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/37285225" target="_blank">Paper</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?l=e979080b&g=cdkn2a&gsem=1" target="_blank">LINK</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=e979080b&c=22cbec09&algo=nmf&zscore=1" target="_blank">LINK</a></td>
                     <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=e979080b&c=245819e7&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                  </tr>
+                  <tr>
+                    <td class="secondary-color">PanIN and CAF Spatial - Xenium (Bell 2024)</td>
+                    <td class="td-center"><a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/39116880" target="_blank">Paper</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?l=PanINXenium&g=cdkn2a&gsem=1" target="_blank">LINK</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=PanINXenium&c=22cbec09&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=PanINXenium&c=245819e7&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                  </tr>
+                  <tr>
+                    <td class="secondary-color">Stress and T Clonal Response (Link 2025)</td>
+                    <td class="td-center"><a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/39789181" target="_blank">Paper</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?l=9579d52a&g=cdkn2a&gsem=1" target="_blank">LINK</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=9579d52a&c=22cbec09&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=9579d52a&c=245819e7&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                  </tr>
+                  <tr>
+                    <td class="secondary-color">Markers of malignant transformation IPMN (Agostini 2024)</td>
+                    <td class="td-center"><a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/38553466" target="_blank">Paper</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?l=e519980a&g=cdkn2a&gsem=1" target="_blank">LINK</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=e519980a&c=22cbec09&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=e519980a&c=245819e7&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                  </tr>
+                  <tr>
+                    <td class="secondary-color">KRT17-positive epithelial population (Li 2024)</td>
+                    <td class="td-center"><a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/41638478" target="_blank">Paper</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?l=9147a6a8&g=cdkn2a&gsem=1" target="_blank">LINK</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=9147a6a8&c=22cbec09&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=9147a6a8&c=245819e7&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                  </tr>
+                  <tr>
+                    <td class="secondary-color">Spatial IPMN Divergent Phenotypes (Iyer 2025)</td>
+                    <td class="td-center"><a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/39969959" target="_blank">Paper</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?l=99e95963&g=cdkn2a&gsem=1" target="_blank">LINK</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=99e95963&c=22cbec09&algo=nmf&zscore=1" target="_blank">LINK</a></td>
+                    <td class="td-center"><a target="_blank" href="https://cancer.umgear.org/p?p=p&l=99e95963&c=245819e7&algo=nmf&zscore=1" target="_blank">LINK</a></td>
                   </tr>
                 </tbody>
               </table>
@@ -150,7 +182,7 @@
       </div>
       <footer>
         <div>
-          <!-- content here TO BE inserted via common.js -->
+          <div id="funding"></div>
         </div>
       </footer>
 
@@ -158,7 +190,8 @@
 
       <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
       <script type="module">
-        import { initCommonUI } from '../../js/common.v2.js';
+        import { getDomainPreferences, initCommonUI, loadDomainFunding } from '../../js/common.v2.js';
+        await loadDomainFunding(await getDomainPreferences());
         initCommonUI();
       </script>
 

@@ -38,6 +38,9 @@ fixed paths have worked fine for decades.
         libicu-dev \
         libdeflate-dev \
         libssl3 \
+        libgfortran5 \
+        libuv1 \
+        libhdf5-dev \
         pkg-config \
         llvm \
         apache2 \
@@ -86,9 +89,11 @@ fixed paths have worked fine for decades.
 
 Check the requirement.txt file in <git_repo_root>/docker for the latest packages that have been tested locally. They work in a Dockerized ubuntu environment so should be able to work on the VMs. You can run `./pip3 install -r requirements.txt` as a shortcut.
 
+Previously only the "docker" path requirements.txt was necessary, but now that the pip installations are broken up amongst the various services, more requirements.txt files will be necessary to get a comprehensive package installation onto the monolith VM. For this reason, you may elect to use option B instead.
+
 `./pip3 install -r <git_repo_root/docker/requirements.txt`
-`./pip3 uninstall dask-expr -y`
-`./pip3 install -e <git_repo_root>/lib/`
+`./pip3 install -r <git_repo_root/services/spatial/requirements.txt`
+`./pip3 install -r <git_repo_root/services/projectr/requirements.txt`
 
 If the requirements.txt will not install due to a stack depth issue, you can use the `requirements.full.txt` instead, which was made using `pip freeze > requirements.full.txt`. This file contains all versioned scripts so pip does not have to compute the best version for non-mentioned packages.
 
@@ -107,8 +112,9 @@ I cannot add comments to the bash code without breaking the command.  So consult
     aiohttp==3.13.5 \
     aiohttp_retry==2.9.1 \
     anndata==0.12.11 \
-    bio==1.8.3 \
     biocode==0.10.0 \
+    biopython==1.87 \
+    biothings-client==0.5.0 \
     cairosvg==2.7.1 \
     colorcet==3.1.0 \
     datashader==0.19.0 \
@@ -116,7 +122,11 @@ I cannot add comments to the bash code without breaking the command.  So consult
     Flask-RESTful==0.3.9 \
     google-analytics-data==0.21.0 \
     gosling==0.3.0 \
+    h11==0.16.0 \
     hic2cool==0.8.3 \
+    httpcore==1.0.9 \
+    httpx==0.28.1 \
+    hvplot==0.12.2 \
     jupyterlab==4.0.5 \
     jupyter==1.0.0 \
     kaleido==0.2.1 \
@@ -124,15 +134,15 @@ I cannot add comments to the bash code without breaking the command.  So consult
     legacy-cgi==2.6.4 \
     llvmlite==0.47.0 \
     matplotlib==3.10.7 \
-    mod-wsgi==5.0.2 \
+    mod-wsgi==6.0.6 \
     more_itertools==11.0.2 \
+    mygene==3.2.2 \
     mysql-connector-python==8.0.28 \
     numba==0.65.0 \
     numpy==2.4.0 \
-    opencv-python==4.5.5.64 \
     openpyxl==3.1.5 \
     pandas==2.3.3 \
-    panel==1.8.10 \
+    panel==1.9.3 \
     Pillow==12.2.0 \
     pika==1.3.2 \
     pims==0.7.0 \
@@ -145,14 +155,14 @@ I cannot add comments to the bash code without breaking the command.  So consult
     scipy==1.17.1 \
     seaborn==0.13.2 \
     setuptools==81.0.0 \
-    spatialdata==0.7.2 \
-    spatialdata_io==0.6.0 \
+    spatialdata==0.7.3 \
+    spatialdata_io==0.7.1 \
+    spatialpandas==0.5.0 \
     shadows==0.1a2 \
     tables==3.11.1 \
-    watchfiles==1.1.1
+    watchfiles==1.1.1 \
+    zarrs==0.2.3
     ./pip3 install git+https://github.com/adkinsrs/diffxpy.git@ffd828c280882ca98adc6e42c934625fab0011f6
-    ./pip3 uninstall dask-expr -y
-
 ```
 
 Do not forget to change out the old Python version in various files (i.e. systemd files, apache, etc.)

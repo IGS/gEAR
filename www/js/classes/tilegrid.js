@@ -325,15 +325,6 @@ class DatasetTile {
         // performingProjection: Promise - The promise that resolves when the projection is performed
         // success: boolean - Indicates whether the projection was successful
         this.projectR = {modeEnabled: false, projectionId: null, projectionInfo: null, performingProjection: null, success: false};
-
-        // Spatial parameters
-        this.spatial = {
-            min_genes: null,
-            selection_x1: null,
-            selection_x2: null,
-            selection_y1: null,
-            selection_y2: null,
-        }
     }
 
     /**
@@ -573,6 +564,8 @@ class DatasetTile {
         if (this.controller) {
             otherOpts.signal = this.controller.signal;
         }
+
+        createCardMessage(this.tile.tileId, "info", `Checking for existing projection...`);
 
         const parentTileGrid = this.parentTileGrid;
         // check if any tiles share this tile's datasetId
@@ -1704,8 +1697,6 @@ class DatasetTile {
             return;
         }
 
-        //console.info(spec);
-
         const goslingContainer = document.createElement("div");
         goslingContainer.id = `tile-${this.tile.tileId}-gosling`;
         goslingContainer.style.width = "100%";
@@ -1766,35 +1757,23 @@ class DatasetTile {
                 return;
             }
 
-            let panelBGeneResults = null;
+            let panelBData = null;
             try {
-                const panelBData = await apiCallsMixin.fetchGeneAnnotations(gene, true, null, null )
-                panelBGeneResults = panelBData[gene.toLowerCase()];
+                panelBData = await apiCallsMixin.fetchHiglassGeneCoords(gene, assembly);
             } catch (error) {
                 console.error("Error searching for gene:", error);
                 createToast(`An error occurred while searching for gene: ${gene}`);
             }
 
-            const geneData = panelBGeneResults?.by_organism[orgId];
-            if (!geneData || geneData.length === 0) {
-                alert(`Gene ${gene} not found.`);
+            if (!panelBData) {
+                alert(`Gene ${gene} not found for assembly ${assembly}.`);
                 return;
             }
-            // Parse the first result (assuming it's the most relevant)
-            const geneInfo = JSON.parse(geneData[0]);
-            // Get start, end, strand, chromosome (as molecule
-            const start = geneInfo.start;
-            const end = geneInfo.stop;
-            //dconst strand = geneInfo.strand || "+"; // Default to positive strand if not provided
-            let chr = geneInfo.molecule || "unknown"; // Default to unknown chromosome if not provided
-            // if chr is a number, convert it to a string with "chr" prefix
-            if (!isNaN(Number(chr)) || chr === "X" || chr === "Y") {
-                chr = `chr${chr}`;
-            }
-            // if chr is MT, convert to "chrM"
-            if (chr === "MT") {
-                chr = "chrM";
-            }
+
+            const chr = panelBData.chr
+            const start = panelBData.txStart
+            const end = panelBData.txEnd
+            //const gene_symbol = panelBData.geneName
 
             const basePadding = 1500; // Base padding for zooming
             //const basePadding = 0; // Base padding for zooming
@@ -2282,168 +2261,166 @@ class DatasetTile {
         createCardMessage(tileId, "info", "Loading spatial display...");
 
         const plotConfig = display.plotly_config;
-        const {gene_symbol: geneSymbol, expression_min_clip: minclip} = plotConfig;
-
-        // build spatial object from the plotly config
-        // This spatial object will keep the current state as the user switches genes
-        this.spatial = {
-            min_genes: plotConfig.min_genes,
-            selection_x1: plotConfig.selection_x1,
-            selection_x2: plotConfig.selection_x2,
-            selection_y1: plotConfig.selection_y1,
-            selection_y2: plotConfig.selection_y2,
-            projection_id: plotConfig.projection_id,
-        };
 
         const prepPlotConfig = {
-            gene_symbol: geneSymbol,
+            gene_symbol: plotConfig.gene_symbol,
             projection_id: plotConfig.projection_id,
+            is_zoomed: this.isZoomed,
+            expression_min_clip: plotConfig.expression_min_clip,
+            disable_save: !apiCallsMixin.sessionId && this.isZoomed,  // If not logged in, then do not allow saving the display
         }
 
-        const data = await apiCallsMixin.prepSpatialPanelData(this.dataset.id, prepPlotConfig, otherOpts);
-        if (data?.success < 1) {
-            throw new Error (data?.message ? data.message : "Unknown error.")
+        // Grab the saved range from the global state if it exists and apply it to the prepPlotConfig
+        const savedRange = window.gearSpatialViewState?.[this.dataset.id];
+        if (savedRange) {
+            Object.assign(prepPlotConfig, savedRange);
         }
-
-        // build the URL for the spatial app
-        const urlParams = new URLSearchParams();
-        urlParams.append("dataset_id", this.dataset.id);
-        urlParams.append("filename", data.filename);
-
-        // Add spatial parameters to the URL if they exist
-        if (this.spatial.min_genes) {
-            urlParams.append("min_genes", this.spatial.min_genes);
-        }
-        if (this.spatial.selection_x1) {
-            urlParams.append("selection_x1", this.spatial.selection_x1);
-        }
-        if (this.spatial.selection_x2) {
-            urlParams.append("selection_x2", this.spatial.selection_x2);
-        }
-        if (this.spatial.selection_y1) {
-            urlParams.append("selection_y1", this.spatial.selection_y1);
-        }
-        if (this.spatial.selection_y2) {
-            urlParams.append("selection_y2", this.spatial.selection_y2);
-        }
-
-        // Adjust the spatial panel dimensions.
-        if (this.cardImgHeight) {
-            urlParams.append("height", this.cardImgHeight);
-        }
-        if (this.cardImgWidth) {
-            urlParams.append("width", this.cardImgWidth);
-        }
-
-        if (minclip) {
-            urlParams.append("expression_min_clip", minclip);
-        }
-
-        // If not logged in, then do not allow saving the display
-        if (!apiCallsMixin.sessionId && this.isZoomed) {
-            urlParams.append("nosave", true);
-        }
-
-        this.spatialUrlParams = urlParams;   // store the URL params for future use (i.e. when gene is switched)
-
-        const endpoint = this.isZoomed ? "panel_app_expanded" : "panel_app"
-        const url = `/panel/ws/${endpoint}?${urlParams.toString()}`;
 
         try {
+            const data = await apiCallsMixin.prepSpatialPanelData(this.dataset.id, prepPlotConfig, otherOpts);
+            if (data?.success < 1) {
+                throw new Error (data?.message ? data.message : "Unknown error.")
+            }
+            if (! data?.script) {
+                throw new Error("Could not retrieve script for spatial display.");
+            }
+
+            const script = data.script;   // store the script for future use (i.e. when gene is switched)
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(script, 'text/html');
+            const parsedScript = doc.querySelector('script');
+
             const cardImage = tileElement.querySelector('.card-image');
             cardImage.replaceChildren();
 
-            // Clear all references to the previous iframe (to help with memory leaks)
-            const existingIframe = cardImage.querySelector("iframe");
-            if (existingIframe) {
-                existingIframe.src = "about:blank";
-                // Remove any event listeners or timers
-                clearInterval(existingIframe.pollInterval)
-                existingIframe.remove();
+            // Enforce boundaries so Panel's stretch_both has walls to push against
+            cardImage.style.display = "block";
+            cardImage.style.width = "100%";
+            if (!self.isZoomed) {
+                cardImage.style.minHeight = "360px";
             }
 
-            const iframe = document.createElement("iframe");
-            // srcDoc html requires Panel static files to be served from the same domain, so use src instead
-            iframe.src = url;
-            iframe.loading="lazy";
-            iframe.referrerPolicy="origin"; // honestly doesn't matter if provided
-            // allow-scripts - allow running scripts
-            // allow-same-origin - allow cookies to be sent (i.e. session cookie)
-            // allow-downloads - allow downloads from the iframe (i.e. saving displays)
-            iframe.sandbox="allow-scripts allow-same-origin allow-downloads";
-            cardImage.append(iframe);
+            // inject the script into the card to trigger loading the Panel app (Bokeh server_document)
+            if (parsedScript) {
+                const scriptElement = document.createElement('script');
 
-            this.spatialIframe = iframe;   // store reference to the iframe for future use (i.e. when gene is switched)
+                // Copy attributes over
+                Array.from(parsedScript.attributes).forEach(attr => {
+                    scriptElement.setAttribute(attr.name, attr.value);
+                });
 
-            const iframeSearch = iframe.contentWindow.location.search;
-            let urlParams = new URLSearchParams(iframeSearch);  // initially empty
+                // Copy the actual inline JavaScript payload
+                scriptElement.textContent = parsedScript.textContent;
 
-            // Create a polling function to check for changes to the iframe content URL
-            // SAdkins - This is kind of hacky as I cannot get the mutation observer or related callback to work
-            const pollIframe = async () => {
-                // If iframe contentWindow is null, then return (i.e. switching genes)
-                if (!iframe.contentWindow) {
-                    return;
-                }
+                // Create a absolute overlay to hide the empty white layout
+                const loader = document.createElement('div');
+                // Use your existing gEAR classes if you have them, or use this default spinner
+                loader.innerHTML = `
+                    <div style="width: 3rem; height: 3rem; border: 4px solid #f3f3f3; border-top: 4px solid #544A8E; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <div style="margin-top: 15px; font-weight: bold; color: #444;">Loading spatial architecture...</div>
+                    <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+                `;
+                loader.style.position = "absolute";
+                loader.style.top = "0";
+                loader.style.left = "0";
+                loader.style.width = "100%";
+                loader.style.height = "100%";
+                loader.style.backgroundColor = "white"; // Solid white perfectly hides the rendering boxes
+                loader.style.display = "flex";
+                loader.style.flexDirection = "column";
+                loader.style.justifyContent = "center";
+                loader.style.alignItems = "center";
+                loader.style.zIndex = "9999";
 
-                // If params are the same, then return
-                const newUrlParams = new URLSearchParams(iframe.contentWindow.location.search);
-                if (urlParams.toString() === newUrlParams.toString()) {
-                    return;
-                }
+                // The parent container MUST be relative so the absolute overlay fits perfectly inside it
+                cardImage.style.position = "relative";
+                cardImage.appendChild(loader);
 
-                urlParams = newUrlParams;
+                // Polling Loop with a timeout if it takes too long.
+                let attempts = 0;
+                const maxAttempts = 600; // 1 minute maximum wait time (100ms * 600)
 
-                // extract query params from the URL and store to persist across iframe reloads
-                this.spatial.min_genes = parseInt(urlParams.get("min_genes")) || null;
-                this.spatial.selection_x1 = parseFloat(urlParams.get("selection_x1")) || null;
-                this.spatial.selection_x2 = parseFloat(urlParams.get("selection_x2")) || null;
-                this.spatial.selection_y1 = parseFloat(urlParams.get("selection_y1")) || null;
-                this.spatial.selection_y2 = parseFloat(urlParams.get("selection_y2")) || null;
+                const checkRender = setInterval(() => {
+                    attempts++;
 
-                // Only applies for endpoint "panel_app_expanded"
-                // The "save" parameter is added to the URL when the user clicks the "Save Display" button in the spatial panel app, which should trigger saving the display with the current spatial parameters
-                if (urlParams.get("save")) {
-                    urlParams.delete("save");
+                    // Look for ANY physical plot boundary Bokeh creates, not just a canvas.
+                    // .bk-panel-models-layout-Column
+                    const plotElements = cardImage.querySelectorAll('.bk-panel-models-layout-Column');
 
-                    // save the spatial parameters as a new configured display
-                    const displayName = urlParams.get("display_name");
-                    const makeDefault = urlParams.get("make_default");
+                    if (plotElements.length > 0) {
+                        // The DOM structure has arrived! Stop polling.
+                        clearInterval(checkRender);
 
-                    // load the URL so that the "save" parameter is removed.
-                    // This should prevent endless loop of saving the display
-                    // ? Alternatively should "save" be synced after button is clicked, then immediately unsynced in Panel?
-                    iframe.src = `/panel/ws/panel_app_expanded?${urlParams.toString()}`;
+                        loader.style.transition = "opacity 0.3s ease";
+                        loader.style.opacity = "0";
 
-                    try {
-                        if (!apiCallsMixin.sessionId) {
-                            createToast("Must be logged in to save as a display.");
-                            throw new Error("Must be logged in to save as a display.");
-                        }
-                        await this.saveSpatialParameters(displayName, makeDefault, geneSymbol);
-                    } catch (error) {
-                        console.error(error);
+                        // Give Datashader/WebGL an extra 300ms to push the final pixel colors
+                        // into those containers before lifting the curtain.
+                        setTimeout(() => {
+
+                            loader.remove();
+                        }, 300);
                     }
-                }
+                    else if (attempts >= maxAttempts) {
+                        // FAILSAFE: If the backend crashed silently, do not trap the user.
+                        clearInterval(checkRender);
+                        createCardMessage(tileId, "danger", "Spatial display failed to load. Please check the dataset or refresh the page.");
+                        // Remove the loader after showing the error for 3 seconds so they can see any Bokeh error text
+                        setTimeout(() => loader.remove(), 200);
+                    }
+                }, 100); // Check the DOM every 1/10th of a second
+
+                // Append and execute
+                cardImage.appendChild(scriptElement);
             }
 
-            // Poll the iframe every 3 seconds
-            setInterval(pollIframe, 3000);
+            // Listen to various events
+
+            const eventName = `save_spatial_display_${this.dataset.id}`;
+
+            // Remove any previously registered listener to prevent double-firing
+            if (this._saveSpatialHandler) {
+                window.removeEventListener(eventName, this._saveSpatialHandler);
+                this._saveSpatialHandler = null;
+            }
+
+            // Add the "save" event listener
+            this._saveSpatialHandler = async (event) => {
+                const { displayName, makeDefault } = event.detail;
+
+
+                try {
+                    if (!apiCallsMixin.sessionId) {
+                        createToast("Must be logged in to save as a display.");
+                        throw new Error("Must be logged in to save as a display.");
+                    }
+                    await this.saveSpatialParameters(displayName, makeDefault, plotConfig);
+                    createToast("Spatial display saved successfully!", "is-success");
+                } catch (error) {
+                    console.error(error);
+                }
+            };
+            if (this.isZoomed) {
+                window.addEventListener(eventName, this._saveSpatialHandler);
+            }
 
         } catch (error) {
-            console.error(error);
+            createToast(`Error rendering spatial display: ${error.message}`, "is-danger");
+            console.trace(error);
         } finally {
             return;
         }
     }
 
     async downloadSpatialHTML(display) {
-        if (!this.spatialUrlParams) {
+        // These are grabbed from the state sync within the Panel app
+        if (!window.gearSpatialUrlParams) {
             createToast("Cannot download HTML because spatial display parameters are not available.", "is-warning");
             return;
         }
 
-        const urlParams = this.spatialUrlParams;
+        const urlParams = window.gearSpatialUrlParams;
         urlParams.append("_", Date.now());   // add timestamp to prevent caching issues
 
         // Must hit regular URL and not websocket (ws) version
@@ -2488,17 +2465,21 @@ class DatasetTile {
 
     }
 
-    async saveSpatialParameters(displayName, makeDefault, geneSymbol) {
-        const spatialConfig = this.spatial;
-        if (this.type === "single" ) {
-            spatialConfig["gene_symbol"] = geneSymbol;
+    async saveSpatialParameters(displayName, makeDefault, plotConfig) {
+        if (this.type === "multi" ) {
+            throw new Error("Saving spatial display is not supported for multi-gene displays.");
         }
         const datasetId = this.dataset.id;
         const plotType = "spatial_panel";
         const isMultigene = (this.type === "single") ? 0 : 1;  // Should be 0 for now.
 
+        const savedRange = window.gearSpatialViewState?.[this.dataset.id];
+        if (savedRange) {
+            Object.assign(plotConfig, savedRange);
+        }
+
         try {
-            const {display_id: displayId, success: saveSuccess} = await apiCallsMixin.saveDatasetDisplay(datasetId, null, displayName, plotType, spatialConfig);
+            const {display_id: displayId, success: saveSuccess} = await apiCallsMixin.saveDatasetDisplay(datasetId, null, displayName, plotType, plotConfig);
             if (!saveSuccess) {
                 throw new Error("Could not save this new display. Please contact the gEAR team.");
             }

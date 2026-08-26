@@ -15,8 +15,11 @@ Data structure returned:
 
 """
 
-import cgi, json
-import os, sys
+import cgi
+import json
+import os
+import subprocess
+import sys
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
@@ -109,13 +112,23 @@ def main():
                         result['uploads'][-1]['status'] = 'processing'
                         result['uploads'][-1]['load_step'] = 'process-dataset'
 
-                        # Check if the process is still running
-                        process_id = status_json.get('process_id', -1)
+                        # Check job IDs
+                        job_id = status_json.get('job_id', -1)
+                        if job_id == -1:
+                            # Check if the process is still running
+                            # Legacy implementation
+                            process_id = status_json.get('process_id', -1)
 
-                        if process_id > 0:
-                            # TODO: check that the process is the correct name too
-                            if os.system(f'ps -p {process_id} > /dev/null') != 0:
+                            if process_id == -1:
                                 result['uploads'][-1]['status'] = 'error'
+
+                            sp_result = subprocess.run(
+                                ['ps', '-p', str(process_id)],
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL
+                            )
+                            if sp_result.returncode != 0:
+                                    result['uploads'][-1]['status'] = 'error'
 
                     elif processing_status == 'complete':
                         result['uploads'][-1]['status'] = 'processed'

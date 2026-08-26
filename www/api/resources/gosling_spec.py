@@ -16,6 +16,8 @@ from gear.trackhub import (
     parse_tracks_from_trackdb,
 )
 
+from .common import ANNOTATION_BEDDB_UID, HIGLASS_URL
+
 """
 NOTE: The "gos" documentation kind of sucks, and requires some trial and error to figure out where things go.
 Generally you can make a data class type (i.e. BedData) and add that as a property to a gos.Track
@@ -52,7 +54,7 @@ ASSEMBLY_TO_CHROMSIZES_FILE = {
     "hg19": "hg19.chromInfo.txt",
     "hg38": "hg38.chromInfo.txt",
     "mm10": "mm10.chromInfo.txt",
-    # "mm39": "mm39.chromInfo.txt",
+    "mm39": "mm39.chromInfo.txt",
     "rn6": "rn6.chromInfo.txt",  # rat
     # "calJac3": "calJac3.chromInfo.txt", # marmoset
 }
@@ -74,6 +76,7 @@ def _resolve_track_url(track: dict, use_gosling: bool = True) -> str | None:
     Returns:
         str or None: The resolved URL, or None if URL cannot be determined.
     """
+
     # Gosling context: prefer gos_url if available
     if use_gosling and track.get("gos_url"):
         return track["gos_url"]
@@ -309,21 +312,7 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     - The view includes text, rule, and rect tracks for gene names, gene regions, and exon regions, respectively.
     """
 
-    # These files will be based on Ensembl's annotation naming structure, but sorted in chromosome order.
-    # I am adding a 2nd column of 1's to allow us to use the files in a "genomic" track.
-
-    ANNOTATION_BEDDB_UID = {
-        "danRer10": "YwOpmCgUSqKdJSGtGXWeJw", # zebrafish
-        #"galGal6": "galGal6.annotation.beddb", # chicken - could not get to load
-        "hg19": "XXcPeaTRSiy8_yxNwjtzEQ",
-        "hg38": "GhiCXRRHTH2u-24jRq0HRQ",
-        "mm10": "VNbLgNO3T8uAcp_5vRFqdQ",
-        # "mm39": "mm39.annotation.beddb",
-        "rn6": "C6Tw-g54Rl602PqE62qTHw", # rat
-        # "calJac3": "calJac3.annotation.beddb", # marmoset
-    }
-
-    ANNOTATION_CONDENSED_HEIGHT = EXPANDED_HEIGHT # Always taller for annotations
+    ANNOTATION_CONDENSED_HEIGHT = 60 # Always taller for annotations
     #ANNOTATION_EXPANDED_HEIGHT = ANNOTATION_CONDENSED_HEIGHT * 2
     ANNOTATION_EXPANDED_HEIGHT = ANNOTATION_CONDENSED_HEIGHT
 
@@ -333,7 +322,7 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
             f"Assembly {assembly} is not supported or does not have a BEDdb UID."
         )
 
-    beddb_url = f"https://higlass.umgear.org/api/v1/tileset_info/?d={beddb_uid}"
+    beddb_url = f"{HIGLASS_URL}/tileset_info/?d={beddb_uid}"
 
     # chrom, start, end, name, score, strand, exon_start, exon_end
     beddb_data = gos.beddb(
@@ -352,8 +341,9 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
         ]
     )
 
-    #MINUS_ROW_POSITION = 50 if zoom else 35
-    MINUS_ROW_POSITION = 25
+    # Making these position and padding values precise, so the text from the first row
+    # does not overlap with the 2nd row while keeping track height as slim as possible
+    MINUS_ROW_POSITION = 51
 
     # These are shared amongst the genes and exons track
     condensed_row = gos.Row(field="strand", type="nominal", domain=["+", "-"], range=[0, MINUS_ROW_POSITION])  # type:ignore
@@ -407,6 +397,7 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
 
     text_track = gene_track.mark_text().encode(
         text=gos.Text(field="name", type="nominal"),  # type: ignore
+        size=gos.Size(value=10),  # type: ignore
         style=gos.Style(dy=-10),  # type: ignore
     )
 
@@ -600,6 +591,7 @@ def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bo
         "bigBed": BedSpec,
         "vcfTabix": VcfSpec,
         "hic": HiCSpec,
+        "bigInteract": BigInteractSpec,
     }
 
     hic_found = False
@@ -626,7 +618,8 @@ def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bo
 
         track_type = group_track.get("type", "")
         spec_builder_class = TRACK_TYPE_2_SPEC.get(track_type, None)
-        if not spec_builder_class:
+
+        if spec_builder_class is None:
             print(
                 f"WARNING: Unsupported track type '{track_type}' for track '{group_track.get('shortLabel', '')}'; skipping.",
                 file=sys.stderr,
@@ -652,9 +645,15 @@ def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bo
 
         ident = group_track.get("track") or title.replace(" ", "_").lower()  # Use track ID if available, otherwise a sanitized version of the title
 
+        # add any "gos_*" properties to kwargs
+        kwargs = {}
+        for key, value in group_track.items():
+            if key.startswith("gos_"):
+                kwargs[key] = value
+
         try:
             spec_builder = spec_builder_class(
-                data_url=data_url, color=color, zoom=zoom, title=title, ident=ident, visibility=visibility,
+                data_url=data_url, color=color, zoom=zoom, title=title, ident=ident, visibility=visibility, **kwargs
             )
 
             # If our datatype is HiC, do two things:
@@ -685,7 +684,7 @@ def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bo
         multiwig_view_obj = MultiWigSpec(title=parent_id, ident=parent_id, zoom=zoom, visibility=group_tracks["visibility"])
         for group_track in group_tracks["tracks"]:
             track_obj = BigWigSpec(
-                data_url=_resolve_track_url(group_track, use_gosling=True),
+                data_url = _resolve_track_url(group_track, use_gosling=True),
                 color=group_track.get("color", "orange"),
                 ident=group_track.get("track") or group_track.get("shortLabel", "").replace(" ", "_").lower(),
                 zoom=zoom
@@ -735,45 +734,34 @@ def build_region_view(parent_view_left, parent_view_right=None):
 
     return region_view
 
-def get_gene_info(gene_symbol, dataset_id, assembly):
+def get_gene_info(gene_symbol, assembly):
     """
-    Fetches gene coordinate information for a given gene symbol from the geardb database.
-
-    Args:
-        gene_symbol (str): The gene symbol to look up.
-        dataset_id (str or int): The identifier for the dataset to query.
-        assembly (str): The genome assembly name (e.g., 'hg38', 'mm10').
+    Fetches gene coordinate information for a given gene symbol from the assembly stored in HiGlass
 
     Returns:
-        tuple:
-            - position_str (str): The genomic position in the format '{assembly}.chr:start-end', suitable for UCSC Genome Browser.
-            - gene_symbol (str): The canonical gene symbol as stored in the database.
-
-    Notes:
-        - If the gene symbol is not found in the dataset, returns ("NA", "NA").
-        - Chromosome names are normalized to UCSC-style (e.g., 'chr1', 'chrX', 'chrM').
+        tuple: A tuple containing (position_str, gene_symbol) where position_str is in the
+            format 'assembly.chromosome:start-end' and gene_symbol is the official gene name.
     """
-    # Fetch gene coordinates from geardb
-    gene_info = geardb.get_gene_by_gene_symbol(gene_symbol, dataset_id)
-    if not gene_info:
+
+    try:
+        response = requests.get(f"http://127.0.0.1/api/higlass/genes/{gene_symbol}", params={"assembly": assembly})
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"Failed to retrieve gene information for {gene_symbol}", file=sys.stderr)
+        return ("NA", "NA")
+
+    gene_info = response.json()
+    if gene_info is None:
         print(
-            f"WARNING: Gene symbol '{gene_symbol}' not found in dataset {dataset_id}; cannot zoom track.",
+            f"WARNING: Gene symbol '{gene_symbol}' not found in assembly {assembly}; cannot zoom track.",
             file=sys.stderr,
         )
         return ("NA", "NA")
 
-    chrom = gene_info.molecule or "unknown"
-
-    # if chrom is a number, convert it to a string with "chr" prefix
-    if chrom.isdigit() or chrom in ["X", "Y"]:
-        chrom = f"chr{chrom}"
-    # if chrom is MT, convert to "chrM"
-    if chrom == "MT":
-        chrom = "chrM"
-
-    start = gene_info.start
-    end = gene_info.stop
-    gene_symbol = gene_info.gene_symbol # To use correct naming later
+    chrom = gene_info["chr"]
+    start = gene_info["txStart"]
+    end = gene_info["txEnd"]
+    gene_symbol = gene_info["geneName"] # To use correct naming later
 
     left_position = f"{chrom}:{start}-{end}"
     position_str = f"{assembly}.{left_position}"  # This is the format if we want to export position to UCSC Genome Browser
@@ -835,7 +823,7 @@ class Component(ABC):
         pass
 
 class TrackSpec(ABC):
-    def __init__(self, data_url, color="steelblue", zoom=False, title="", ident="", visibility="full"):
+    def __init__(self, data_url, color="steelblue", zoom=False, title="", ident="", visibility="full", **kwargs):
         self.data_url = data_url
         self.color = color  # Passed as RGB string
         self.zoom = zoom
@@ -850,6 +838,10 @@ class TrackSpec(ABC):
             self.height = 0 # effectively hide it
         elif self.visibility == "full":
             self.height *= 1.5
+
+        if kwargs:
+            for key, value in kwargs.items():
+                setattr(self, key, value)
 
     @abstractmethod
     def get_encoding(self, width, height, prefix="", is_child=False):
@@ -889,8 +881,11 @@ class TrackSpec(ABC):
 
     @staticmethod
     def _validate_url_extension(url: str, valid_extensions: list[str]) -> None:
-        """Validate URL ends with one of the valid extensions."""
-        if not any(url.endswith(ext) for ext in valid_extensions):
+        """Validate URL ends with one of the valid extensions (case-insensitive)."""
+        normalized_url = url.lower()
+        normalized_extensions = [ext.lower() for ext in valid_extensions]
+
+        if not any(normalized_url.endswith(ext) for ext in normalized_extensions):
             extensions_str = ", ".join(valid_extensions)
             raise ValueError(f"Invalid URL: must end with {extensions_str}")
 
@@ -1011,6 +1006,54 @@ class BigWigSpec(TrackSpec):
         )
 
         # If this track has a parent view, the encoding will be determined by the parent.
+        if not is_child:
+            track = track.properties(
+                height=height,
+                title=self.title,
+            )
+
+        return track
+
+class BigInteractSpec(TrackSpec):
+    # This is based on STAR splice-junction output, which is a tab-delimited file with the following columns:
+    # chr, start, end, strand, intron_motif, annotated, unique_reads, multi_reads, max_overhang
+    def get_encoding(self, width, height, prefix="", is_child=False):
+        url = self.data_url
+        color = self.color
+
+        flip = False
+        if hasattr(self, 'gos_flip'):
+            flip = True if self.gos_flip.lower() in ["true", "yes", "1"] else False
+
+        biginteract_data = gos.beddb(
+            url=url,
+            genomicFields=[
+                {"index": 1, "name": "start"},
+                {"index": 2, "name": "end"}
+            ],
+            valueFields=[
+                {"index": 0, "name": "chr", "type": "nominal"},
+                {"index": 3, "name": "strand", "type": "nominal"},
+            ],
+        )
+
+        track = (
+            gos.Track(
+                data=biginteract_data,  # pyright: ignore[reportArgumentType]
+            )
+            .mark_withinLink()
+            .encode(
+                x=gos.X(field="start", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
+                xe=gos.X(field="end", type="genomic"),  # pyright: ignore[reportArgumentType]
+                y=gos.Y(flip=flip),
+                stroke=gos.Stroke(value=color),
+                strokeWidth=gos.StrokeWidth(value=1)
+            ).properties(
+                width=width,
+                id=f"{prefix}track-{self.ident}",  # Use the file name without extension as the ID
+            )
+        )
+
         if not is_child:
             track = track.properties(
                 height=height,
@@ -1278,7 +1321,7 @@ class GoslingSpec(Resource):
             return response, 400
 
         # Let's get the coordinates of the gene_symbol.
-        (position_str, new_gene_symbol) = get_gene_info(gene_symbol, dataset_id, assembly)
+        (position_str, new_gene_symbol) = get_gene_info(gene_symbol, assembly)
 
         if new_gene_symbol != "NA":
             gene_symbol = new_gene_symbol

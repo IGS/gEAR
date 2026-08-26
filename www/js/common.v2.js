@@ -16,6 +16,112 @@ const escapeHtml = (value) => {
         .replace(/'/g, "&#39;");
 	}
 
+const normalizeDomainCitations = (citationConfig) => {
+    const citationEntries = Array.isArray(citationConfig) ? citationConfig : [];
+
+    const normalizedCitations = [];
+    for (const entry of citationEntries) {
+        if (typeof entry === 'string' && entry.trim().length > 0) {
+            normalizedCitations.push({lines: [entry.trim()], links: []});
+            continue;
+        }
+
+        if (!entry || typeof entry !== 'object') {
+            continue;
+        }
+
+        const lines = Array.isArray(entry.lines)
+            ? entry.lines.filter((line) => typeof line === 'string' && line.trim().length > 0)
+            : [];
+
+        const links = Array.isArray(entry.links)
+            ? entry.links
+                .filter((link) => link && typeof link === 'object')
+                .map((link) => ({
+                    label: typeof link.label === 'string' ? link.label.trim() : '',
+                    url: typeof link.url === 'string' ? link.url.trim() : ''
+                }))
+                .filter((link) => link.label.length > 0 && link.url.length > 0)
+            : [];
+
+        if (lines.length > 0 || links.length > 0) {
+            normalizedCitations.push({lines, links});
+        }
+    }
+
+    return normalizedCitations;
+}
+
+const buildCitationCopyText = (citations) => citations
+    .map((citation) => {
+        const lines = [...citation.lines];
+        for (const link of citation.links) {
+            lines.push(`${link.label} (${link.url})`);
+        }
+        return lines.join('\n');
+    })
+    .join('\n\n');
+
+const renderDomainCitations = (domainPreferences = null) => {
+    const citationContainer = document.getElementById('citation-content');
+    const citationCard = document.getElementById('citation-c');
+    if (!citationContainer) {
+        return '';
+    }
+
+    const citations = normalizeDomainCitations(domainPreferences?.citations);
+
+    if (citations.length === 0) {
+        citationContainer.innerHTML = '';
+        if (citationCard) {
+            citationCard.dataset.hasCitations = 'false';
+            citationCard.classList.add('is-hidden');
+        }
+        return '';
+    }
+
+    if (citationCard) {
+        citationCard.dataset.hasCitations = 'true';
+        citationCard.classList.remove('is-hidden');
+    }
+
+    citationContainer.innerHTML = '';
+
+    for (let citationIndex = 0; citationIndex < citations.length; citationIndex++) {
+        const citation = citations[citationIndex];
+        const citationEntry = document.createElement('div');
+
+        for (const line of citation.lines) {
+            citationEntry.append(document.createTextNode(line));
+            citationEntry.append(document.createElement('br'));
+        }
+
+        for (let linkIndex = 0; linkIndex < citation.links.length; linkIndex++) {
+            const link = citation.links[linkIndex];
+            const linkElement = document.createElement('a');
+            linkElement.href = link.url;
+            linkElement.target = '_blank';
+            linkElement.rel = 'noopener noreferrer';
+            linkElement.textContent = link.label;
+            citationEntry.append(linkElement);
+
+            if (linkIndex < citation.links.length - 1) {
+                citationEntry.append(document.createElement('br'));
+            }
+        }
+
+        citationContainer.append(citationEntry);
+
+        if (citationIndex < citations.length - 1) {
+            const divider = document.createElement('hr');
+            divider.classList.add('my-2');
+            citationContainer.append(divider);
+        }
+    }
+
+    return buildCitationCopyText(citations);
+}
+
 // If a page wants to use this action, it can register a callback function
 let pageSpecificLoginUIUpdates = () => {};
 const registerPageSpecificLoginUIUpdates = (fn) => pageSpecificLoginUIUpdates = fn;
@@ -46,6 +152,8 @@ window.addEventListener("unhandledrejection", (event) => {
  * @returns {void}
  */
 const initCommonUI = async () => {
+    let citationCopyText = renderDomainCitations();
+
     // load the site preferences JSON file, then call any functions which need it
     getDomainPreferences().then((result) => {
         SITE_PREFS = result;
@@ -61,6 +169,19 @@ const initCommonUI = async () => {
 
         const logoSmall = document.getElementById('navbar-logo-small');
         logoSmall.src = "/img/by_domain/" + SITE_PREFS.domain_label + "/logo-main-small.png"
+
+        const domainTaglineElement = document.getElementById('domain-tagline');
+        if (domainTaglineElement) {
+            const domainTagline = SITE_PREFS.domain_tagline;
+            if (typeof domainTagline === 'string' && domainTagline.trim().length > 0) {
+                domainTaglineElement.textContent = domainTagline;
+                domainTaglineElement.classList.remove('is-hidden');
+            } else {
+                domainTaglineElement.classList.add('is-hidden');
+            }
+        }
+
+        citationCopyText = renderDomainCitations(SITE_PREFS);
 
         // Load analytics
         const head = document.getElementsByTagName('head')[0];
@@ -121,11 +242,17 @@ const initCommonUI = async () => {
         window.location.replace('./index.html');
     });
 
-    document.getElementById('citation-copy').addEventListener('click', () => {
-        const citationText = `gEAR: Gene Expression Analysis Resource portal for community-driven, multi-omic data exploration.
-Orvis J, et al. Nat Methods. 2021 Jun 25.
-doi: 10.1038/s41592-021-01200-9
-PMID: 34172972`;
+    const citationCopyButton = document.getElementById('citation-copy');
+    citationCopyButton?.addEventListener('click', () => {
+        const citationText = citationCopyText
+            || document.getElementById('citation-content')?.textContent?.trim()
+            || '';
+
+        if (citationText.length === 0) {
+            createToast("No citation text available to copy.", "is-danger");
+            return;
+        }
+
         copyToClipboard(citationText).then((copied) => {
             if (copied) {
                 createToast("Citation copied to clipboard.", "is-success");
@@ -204,7 +331,9 @@ PMID: 34172972`;
         toggleClass('#navbar-logo-normal', 'is-hidden', false);
         toggleClass('#logo-c-text', 'is-hidden', false);
         toggleClass('#navbar-logo-small', 'is-hidden', true);
-        toggleClass('#citation-c', 'is-hidden', false);
+        const citationCard = document.getElementById('citation-c');
+        const shouldShowCitationCard = citationCard?.dataset.hasCitations === 'true';
+        toggleClass('#citation-c', 'is-hidden', !shouldShowCitationCard);
         toggleClass("#navbar-toggler i", "mdi-arrow-collapse-left", true);
         toggleClass("#navbar-toggler i", "mdi-arrow-collapse-right", false);
 
@@ -306,6 +435,38 @@ const insertVersionedJS = (href, cacheVersion) => {
     script.type = 'module';
     script.src = `${href}?v=${cacheVersion}`;
     document.body.appendChild(script);
+}
+
+/**
+ * Loads the domain-specific funding HTML into a target container.
+ *
+ * @param {Object|null} domainPreferences - Optional domain preferences object.
+ * @param {string} fundingContainerId - The ID of the container that receives funding HTML.
+ * @returns {Promise<void>}
+ */
+const loadDomainFunding = async (domainPreferences = null, fundingContainerId = 'funding') => {
+    try {
+        const fundingContainer = document.getElementById(fundingContainerId);
+        if (!fundingContainer) {
+            return;
+        }
+
+        const prefs = domainPreferences || await getDomainPreferences();
+        if (!prefs || !prefs.domain_label) {
+            logErrorInConsole('Missing domain_label in domain preferences while loading funding include.');
+            return;
+        }
+
+        const fundingResponse = await fetch(`/include/by_domain/${prefs.domain_label}/funding.html`);
+        if (!fundingResponse.ok) {
+            logErrorInConsole(`Failed to load funding include for domain ${prefs.domain_label}.`);
+            return;
+        }
+
+        fundingContainer.innerHTML = await fundingResponse.text();
+    } catch (error) {
+        logErrorInConsole('Unexpected error loading domain funding include.', error);
+    }
 }
 
 /**
@@ -1268,6 +1429,20 @@ const apiCallsMixin = {
         return data;
     },
     /**
+     * Fetches coordinate information for the passed gene symbol from the assembly on the HiGlass server
+     *
+     * @param {string} geneSymbol - The gene symbol to search for. Single-gene only
+     * @param {string} assembly - The genome assembly to use for the search.
+     * @returns {Promise<any>} - The fetched gene coords.
+     */
+    async fetchHiglassGeneCoords(geneSymbol, assembly) {
+        const urlParams = new URLSearchParams();
+        urlParams.append('assembly', assembly);
+
+        const {data} = await axios.get(`/api/higlass/genes/${geneSymbol}?${urlParams.toString()}`);
+        return data;
+    },
+    /**
      * Fetches info on all the organisms in the database
      * @returns {Promise<any>} - A promise that resolves to the list of organisms
      */
@@ -1685,4 +1860,5 @@ export {
     closeModal,
     insertVersionedCSS,
     insertVersionedJS,
+    loadDomainFunding,
 };

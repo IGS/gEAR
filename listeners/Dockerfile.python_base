@@ -1,0 +1,48 @@
+FROM ubuntu:jammy AS builder
+
+# NOTE: Call in context of the gEAR root directory
+
+ARG PYTHON_MAJOR_VERSION=3.14
+ARG PYTHON_FULL_VERSION=${PYTHON_MAJOR_VERSION}.4
+
+# Install runtime system libraries that compiled Python extension packages
+# (lxml, h5py, tables, pybigwig, etc.) link against. These mirror the -dev
+# packages installed in docker/Dockerfile.python's builder stage, since the
+# copied /opt/Python tree only contains Python itself and pip packages, not
+# the underlying system shared libraries.
+RUN apt -qq update \
+  && DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
+  libxml2 \
+  libxslt1.1 \
+  zlib1g \
+  libbz2-1.0 \
+  liblzma5 \
+  libpng16-16 \
+  libtiff5 \
+  libjpeg8 \
+  libblosc1 \
+  libhdf5-103 \
+  libblas3 \
+  liblapack3 \
+  libcairo2 \
+  libwebp7 \
+  ca-certificates \
+  && apt -qq clean autoclean \
+  && apt -qq autoremove -y \
+  && rm -rf /var/lib/apt/lists/*
+
+
+# Reuse the already-compiled Python binary/lib tree from gear-python-base,
+# but start a fresh image so unneeded pip packages never get baked into a layer.
+COPY --from=adkinsrs/gear-python-base:latest /opt/Python-${PYTHON_FULL_VERSION} /opt/Python-${PYTHON_FULL_VERSION}
+
+RUN mkdir -p /opt/bin \
+  && ln -s /opt/Python-${PYTHON_FULL_VERSION}/bin/python3 /opt/bin/python3 \
+  && ln -s /opt/Python-${PYTHON_FULL_VERSION}/lib/libpython${PYTHON_MAJOR_VERSION}.so.1.0 /usr/lib/
+
+RUN echo "/opt/Python-${PYTHON_FULL_VERSION}/lib" > /etc/ld.so.conf.d/python314.conf \
+    && ldconfig
+
+COPY listeners/requirements.txt /tmp/requirements.txt
+RUN /opt/bin/python3 -m pip install --no-cache-dir -r /tmp/requirements.txt --prefer-binary \
+  && rm -rf ~/.cache/pip /tmp/requirements.txt

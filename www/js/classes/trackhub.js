@@ -635,7 +635,7 @@ export class TrackContainer {
             if (offset < 0 && offset > closest.offset) {
                 retval = { offset, element: child };
             }
-            return val
+            return retval
         }, { offset: Number.NEGATIVE_INFINITY }).element;
     };
 
@@ -726,6 +726,11 @@ export class TrackContainer {
         const templateClone = template.content.cloneNode(true);
 
         const collapsibleContent = replaceTemplatePlaceholders(templateClone, trackId);
+
+        // Sync track object with the template's default form values (type "bigWig", color swatch),
+        // since the Track constructor has no way to know these HTML defaults.
+        track.tracktype = collapsibleContent.querySelector('.js-track-type select').value.trim();
+        track.color = Track.convertColorToRGB(collapsibleContent.querySelector('.js-track-color').value.trim());
 
         // Add event listener for removing the track
         collapsibleContent.querySelector('.remove-track-btn').addEventListener('click', () => {
@@ -832,9 +837,13 @@ export class TrackContainer {
 
         // Capture file selections without uploading
         collapsibleContent.querySelector('.js-track-file').addEventListener('change', (e) => {
+            const fileNameElt = e.target.closest('.file-label')?.querySelector('.file-name');
+
             if (e.target.files.length > 0) {
                 this.trackFilesMap.set(trackId, e.target.files[0]);
-                collapsibleContent.querySelector('.js-track-file').nextElementSibling.textContent = e.target.files[0].name;
+                if (fileNameElt) {
+                    fileNameElt.textContent = e.target.files[0].name;
+                }
 
                 // If a file is selected, clear the URL field for this track
                 this.tracks[trackId].url = "";
@@ -846,6 +855,9 @@ export class TrackContainer {
 
             } else {
                 this.trackFilesMap.delete(trackId);
+                if (fileNameElt) {
+                    fileNameElt.textContent = "";
+                }
             }
 
             if (this.onTrackDataChanged) {

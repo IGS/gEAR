@@ -30,6 +30,25 @@ def _remove_dir(dir_to_remove: str) -> None:
     if os.path.isdir(dir_to_remove):
         subprocess.run(["rm", "-rf", dir_to_remove], check=True)
 
+def _select_pyramid_level(img, max_dim: int = 4000):
+    """
+    Picks the smallest available pyramid level whose largest dimension is
+    still >= max_dim, avoiding loading higher resolution than needed.
+    Falls back to the smallest level available if all are below max_dim.
+
+    Useful for downsampling large images to a manageable size for processing, while still retaining sufficient detail.
+    """
+    levels = list(sd.get_pyramid_levels(img))
+    if not levels:
+        raise ValueError("No pyramid levels found for this image.")
+
+    best = levels[0]
+    for level in levels:
+        if max(level.sizes.get('y', 0), level.sizes.get('x', 0)) < max_dim:
+            break
+        best = level
+    return best
+
 class SpatialHandler(ABC):
     """
     Abstract base class for handling spatial transcriptomics data, providing a unified interface for managing and processing spatial and annotated data objects.
@@ -331,7 +350,7 @@ class SpatialHandler(ABC):
         self.adata = adata
         return self
 
-    def extract_img(self) -> np.ndarray:
+    def extract_img(self) -> tuple[dict[str, np.ndarray], tuple]:
         """
         Extracts an image from the spatial data object and returns it as a NumPy array in (y, x, c) format.
 
@@ -340,24 +359,29 @@ class SpatialHandler(ABC):
         to a NumPy array and its axes are rearranged from (c, y, x) to (y, x, c).
 
         Returns:
-            np.ndarray: The extracted image as a NumPy array in (y, x, c) format.
+            tuple: A tuple containing:
+                dict[str, np.ndarray]: The extracted image as a NumPy array in (y, x, c) format.
+                tuple: The original height and width of the image.
 
         Raises:
             Exception: If `self.img_name` is not specified.
         """
-
         if not self.img_name:
             raise Exception("No image name specified for conversion to 2D array.")
 
         img = self.sdata.images[self.img_name]
+        orig_height, orig_width = None, None
         if isinstance(img, xarray.DataTree):
-            img = sd.get_pyramid_levels(img, n=0)
+            full_res = sd.get_pyramid_levels(img, n=0)
+            orig_height, orig_width = full_res.sizes.get('y'), full_res.sizes.get('x')
+            img = _select_pyramid_level(img, max_dim=4000)
+        else:
+            orig_height, orig_width = img.sizes.get('y'), img.sizes.get('x')
 
-        # Convert xarray DataArray to numpy array
         img = img.to_numpy()
+        # change dims from (c, y, x) to (y, x, c)
+        return {"composite": np.moveaxis(img, 0, -1)}, (orig_height, orig_width)
 
-        # Currently the image is in (c, y, x) format, and needs to be converted to (y, x, c) format
-        return np.moveaxis(img, 0, -1)
 
     def merge_centroids_with_obs(self) -> "SpatialHandler":
         """
@@ -1344,7 +1368,7 @@ class VisiumHDHandler(SpatialHandler):
         # make barcode as index
         clustering = clustering.set_index('Barcode')
         sdata.tables[self.table_name].obs['clusters'] = clustering['Cluster'].astype('category')
-        if sdata.tables[self.NORMALIZED_TABLE_NAME].obs['clusters'].isna().all():
+        if sdata.tables[self.table_name].obs['clusters'].isna().all():
             raise Exception("All cluster values are missing in clusters.csv file in tarball.")
 
         # To get the adata equivalent, look at sdata.tables["table"]
@@ -1414,6 +1438,33 @@ class XeniumHandler(SpatialHandler):
     def img_name(self) -> str | None:
         """Returns the image name associated with this handler."""
         return "morphology_focus"
+
+    def extract_img(self) -> tuple[dict[str, np.ndarray], tuple]:
+        """
+        Xenium images carry multiple independently-meaningful stain channels
+        (e.g. DAPI, PolyT) -- split them apart rather than keep them as one
+        composite, since (unlike RGB) they don't need to be combined to be
+        individually useful.
+        """
+        if not self.img_name:
+            raise Exception("No image name specified for conversion to 2D array.")
+
+        orig_height, orig_width = None, None
+        img = self.sdata.images[self.img_name]
+        if isinstance(img, xarray.DataTree):
+            full_res = sd.get_pyramid_levels(img, n=0)
+            orig_height, orig_width = full_res.sizes.get('y'), full_res.sizes.get('x')
+            # Get a downsized version of the image for processing
+            img = _select_pyramid_level(img, max_dim=4000)
+        else:
+            orig_height, orig_width = img.sizes.get('y'), img.sizes.get('x')
+
+        channel_dim = img.dims[0]
+        # Extract names of the various staining channels.  Can also just be "0" if no channel names are present.
+        channel_names = [str(c) for c in img.coords[channel_dim].to_numpy()]
+
+        arr = img.to_numpy()  # (c, y, x)
+        return {name: arr[i] for i, name in enumerate(channel_names)}, (orig_height, orig_width)  # each already (y, x)
 
     def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
         """

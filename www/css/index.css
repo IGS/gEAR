@@ -34,16 +34,73 @@ div#search-tabs-c {
     background-color: rgb(240,240,240);
     border-radius: 5px;
 }
+
+/* Tab header styling */
+div.tabs ul.tabs-content {
+    display: flex;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    background-color: rgb(240, 240, 240);
+    border-bottom: 2px solid rgb(200, 200, 200);
+}
+
+div.tabs ul.tabs-content li {
+    display: block;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    position: relative;
+    flex: 0 1 auto;
+}
+
+div.tabs ul.tabs-content li a {
+    display: block;
+    padding: 1rem 1.5rem;
+    text-align: center;
+    color: rgb(100, 100, 100);
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 3px solid transparent;
+}
+
+div.tabs ul.tabs-content li a:hover {
+    color: #544a8e;
+    background-color: rgba(84, 74, 142, 0.05);
+}
+
+div.tabs ul.tabs-content li.is-active a {
+    color: #362e5c;
+    font-weight: 700;
+    border-bottom-color: #544a8e;
+}
+
+/* Vertical separator between tabs (except after last) */
+div.tabs ul.tabs-content li:not(:last-child) a::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 60%;
+    width: 1px;
+    background-color: rgb(200, 200, 200);
+}
+
 div.single-multi-choice-card .card-header {
     background-color: white;
     color: black;
     border-bottom: 1px solid rgb(200, 200, 200);
 }
-div.tabs-content li {
+/* Tab content styling - hide all content tabs except active */
+div.tabs-content > ul > li {
     display: none;
     list-style: none;
 }
-div.tabs-content li.is-active {
+div.tabs-content > ul > li.is-active {
     display: block;
 }
 input#genes-manually-entered {

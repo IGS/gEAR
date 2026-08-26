@@ -1,5 +1,7 @@
 FROM python:3.14-slim
 
+# NOTE: Call in context of the gEAR root directory
+
 # For pybigwig dependency
 # TODO: Have specific requirements files for each listener
 ENV PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
