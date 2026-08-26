@@ -1241,7 +1241,7 @@ class VisiumHDHandler(SpatialHandler):
         # make barcode as index
         clustering = clustering.set_index('Barcode')
         sdata.tables[self.table_name].obs['clusters'] = clustering['Cluster'].astype('category')
-        if sdata.tables[self.NORMALIZED_TABLE_NAME].obs['clusters'].isna().all():
+        if sdata.tables[self.table_name].obs['clusters'].isna().all():
             raise Exception("All cluster values are missing in clusters.csv file in tarball.")
 
         # To get the adata equivalent, look at sdata.tables["table"]
