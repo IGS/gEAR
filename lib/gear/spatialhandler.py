@@ -1633,4 +1633,4 @@ SPATIALTYPE2CLASS = {
     "xenium": XeniumHandler
 }
 
-ORG_ID_REQ_TYPES = ["curio", "geomx"]
+ORG_ID_REQ_TYPES = ["cosmx", "curio", "geomx"]
