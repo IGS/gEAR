@@ -12,7 +12,7 @@ import pandas as pd
 import spatialdata as sd
 import spatialdata_io as sdio
 import xarray
-from gear.utils import update_adata_with_ensembl_ids
+from gear.utils import update_var_with_ensembl_ids
 from spatialdata.transformations import (
     Scale,
     Sequence,
@@ -596,7 +596,10 @@ class SpatialHandler(ABC):
         Returns:
             SpatialHandler: The instance with the updated, subsetted `sdata`.
         """
-        subset_elements = [self.NORMALIZED_TABLE_NAME, self.region_name, self.img_name]
+        subset_elements = [self.NORMALIZED_TABLE_NAME, self.region_name]
+        if self.has_images:
+            subset_elements.append(self.img_name)
+
         self.sdata = self.sdata.subset(subset_elements, filter_tables=True)
         return self
 
@@ -682,7 +685,7 @@ class CosMxHandler(SpatialHandler):
 
     @property
     def has_images(self) -> bool:
-        """Whether this handler has associated images (always False for CosMx)."""
+        """Whether this handler has associated images."""
         return True
 
     @property
@@ -693,22 +696,80 @@ class CosMxHandler(SpatialHandler):
     @property
     def region_id(self) -> str:
         """Returns the region ID used for spot data."""
-        return "cell_ID"
+        return "cell_ID"    # per-FOV instance key; not globally unique alone (see obs index)
 
     @property
     def region_name(self) -> str:
         """Returns the name of the region used for spot data."""
-        return "fov_labels"
+        return "fov_labels" # this is the region_key COLUMN, not an element name -- don't index sdata[self.region_name]
 
     @property
     def platform(self) -> str:
         """Returns the platform name for this handler."""
-        return "coxmx"
+        return "cosmx"
 
     @property
     def img_name(self) -> str | None:
-        """Returns the image name associated with this handler (always None for CosMx)."""
+        """Returns the image name associated with this handler."""
+        # No single image element for CosMx (lots of per-FOV tiles).
+        # Kept as None so base scale_and_translate_sdata() no-ops for this platform;
+        # subset_sdata() and extract_img() are overridden below to handle the
+        # per-FOV image collection directly.
         return None
+
+    def subset_sdata(self) -> "SpatialHandler":
+        """
+        Subsets the spatial data (`sdata`) to include only the normalized table, region name
+        and all available images and labels, updating the instance's `sdata` attribute.
+        """
+        keep = [self.NORMALIZED_TABLE_NAME, *self.sdata.images.keys(), *self.sdata.labels.keys()]
+        self.sdata = self.sdata.subset(keep, filter_tables=True)
+        return self
+
+    def extract_img(self) -> tuple[dict[str, np.ndarray], tuple]:
+        """
+        Extracts the composite image from the spatial data object and returns it as a NumPy array in (y, x, c) format.
+
+        The method retrieves all available images from `self.sdata.images`, rasterizes them to a common coordinate system,
+        and combines them into a single composite image. The resulting image is converted from an xarray
+        DataArray to a NumPy array and its axes are rearranged from (c, y, x) to (y, x, c).
+        """
+        image_names = list(self.sdata.images.keys())
+        if not image_names:
+            raise Exception("No FOV images found for conversion to 2D array.")
+
+        img_sdata = self.sdata.subset(image_names)
+        extent = sd.get_extent(img_sdata, coordinate_system=self.coordinate_system)
+
+        orig_width = int(extent["x"][1] - extent["x"][0])
+        orig_height = int(extent["y"][1] - extent["y"][0])
+
+        MAX_DIM = 4000
+        target_width = min(orig_width, MAX_DIM)
+
+        rasterized = sd.rasterize(
+            img_sdata,
+            axes=("x", "y"),
+            min_coordinate=[extent["x"][0], extent["y"][0]],
+            max_coordinate=[extent["x"][1], extent["y"][1]],
+            target_coordinate_system=self.coordinate_system,
+            target_unit_to_pixels=None,
+            target_width=target_width,
+            target_height=None,
+            target_depth=None,
+        )
+
+        arr = rasterized.to_numpy()  # (c, y, x)
+        return {"composite": np.moveaxis(arr, 0, -1)}, (orig_height, orig_width)
+
+    def convert_sdata_to_adata(self, table_name=None) -> "SpatialHandler":
+        """
+        Converts the internal spatial data object (`sdata`) to an AnnData object and assigns it to `self.adata`.
+
+        This explicitly passes `include_images=False` to avoid including the potentially many FOV images in the AnnData conversion,
+        which can be unnecessary, slow and memory-intensive.
+        """
+        return super().convert_sdata_to_adata(include_images=False, table_name=table_name)
 
     def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
         """
@@ -778,22 +839,11 @@ class CosMxHandler(SpatialHandler):
         metadata_csv_path = "{}/metadata_file.csv".format(extract_dir)
         if os.path.exists(metadata_csv_path):
             metadata_df = pd.read_csv(metadata_csv_path)
+            if "RNA_Analysis_Neighborhood.Analysis.1_1_assignments" not in metadata_df.columns:
+                raise Exception("RNA_Analysis_Neighborhood.Analysis.1_1_assignments column not found in metadata_file.csv file in tarball.")
             if "cell_id" in metadata_df.columns:
                 metadata_df = metadata_df.rename(columns={"cell_id": "orig_cell_id"})
                 metadata_df.to_csv(metadata_csv_path, index=False)
-
-        # If clustering file does not exist, raise an exception
-        # TODO: Figure out how to implement this
-        # Barcode needs to be a combination of the following values <cell_ID>_<fov>
-        clustering_csv_path = "{}/clusters.csv".format(extract_dir)
-        if not os.path.exists(clustering_csv_path):
-            raise Exception("clusters.csv file not found in tarball.")
-
-        # If clustering file does not have "Barcode" and "Cluster" columns, raise an exception
-        #with open(clustering_csv_path, 'r') as f:
-        #    first_line = f.readline()
-        #    if "Barcode" not in first_line or "Cluster" not in first_line:
-        #        raise Exception("clusters.csv file does not have 'Barcode' and 'Cluster' columns in clusters.csv file in tarball.")
 
         try:
             sdata = sdio.cosmx(extract_dir
@@ -803,28 +853,31 @@ class CosMxHandler(SpatialHandler):
         except Exception:
             raise
 
-        # add clustering information to the vis_sdata.table.obs dataframe
-        #clustering = pd.read_csv(clustering_csv_path)
-        # make barcode as index
-        #clustering = clustering.set_index('Barcode')
-        #sdata.tables[self.NORMALIZED_TABLE_NAME].obs['clusters'] = clustering['Cluster'].astype('category')
+        tbl = sdata.tables[self.NORMALIZED_TABLE_NAME]
+
+        # add clustering information to the sdata.table.obs dataframe
+        tbl.obs['clusters'] = tbl.obs['RNA_Analysis_Neighborhood.Analysis.1_1_assignments'].astype('category')
         # If all clusters are missing, raise an exception
-        #if sdata.tables[self.NORMALIZED_TABLE_NAME].obs['clusters'].isna().all():
-        #    raise Exception("All cluster values are missing in clusters.csv file in tarball.")
+        if tbl.obs['clusters'].isna().all():
+            raise Exception("All cluster values are missing in clusters.csv file in tarball.")
+
+        # Add the global coordinates to the obs dataframe as spatial1 and spatial2, so that they can be used for plotting in scanpy
+        if "global" not in tbl.obsm:
+            raise Exception("Expected obsm['global'] from sdio.cosmx() output; check spatialdata-io version behavior.")
+        global_xy = tbl.obsm["global"]
+        tbl.obs["spatial1"] = global_xy[:, 0]
+        tbl.obs["spatial2"] = global_xy[:, 1]
 
         # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
-        sdata.tables[self.NORMALIZED_TABLE_NAME].var_names_make_unique()
+        tbl.var_names_make_unique()
 
         # currently gene symbols are the index, need to move them to a column
-        sdata.tables[self.NORMALIZED_TABLE_NAME].var["gene_symbol"] = sdata.tables[self.NORMALIZED_TABLE_NAME].var.index
+        tbl.var["gene_symbol"] = tbl.var.index
 
         # Add ensemble IDs to the adata.var
-        sdata.tables[self.NORMALIZED_TABLE_NAME] = update_adata_with_ensembl_ids(sdata.tables[self.NORMALIZED_TABLE_NAME], organism_id, "UNMAPPED_")
+        tbl.var = update_var_with_ensembl_ids(tbl.var, organism_id, "UNMAPPED_")
 
-        # Rename the "CenterX_global_px" column to "spatial1" and the "CenterY_global_px" column to "spatial2" in the observation table
-        sdata.tables[self.NORMALIZED_TABLE_NAME].obs = sdata.tables[self.NORMALIZED_TABLE_NAME].obs.rename(
-            columns={"CenterX_global_px": "spatial1", "CenterY_global_px": "spatial2"}
-            )
+        sdata.tables[self.NORMALIZED_TABLE_NAME] = tbl
 
         self.sdata = sdata
         self.standardize_sdata()
@@ -933,7 +986,7 @@ class CurioHandler(SpatialHandler):
         adata = ad.read_h5ad(h5ad_file)
 
         # Add ensemble IDs to the adata.var
-        adata = update_adata_with_ensembl_ids(adata, organism_id, "UNMAPPED_")
+        adata.var = update_var_with_ensembl_ids(adata.var, organism_id, "UNMAPPED_")
 
         # Create mapping dict.
         # Original index name (ensembl_id) was created in add_ensembl_id_to_h5ad_missing_release.py
@@ -1116,7 +1169,7 @@ class GeoMxHandler(SpatialHandler):
         adata.obs.columns = adata.obs.columns.str.replace(r' ', '_')
 
         # Add ensemble IDs to the adata.var
-        adata = update_adata_with_ensembl_ids(adata, organism_id, "UNMAPPED_")
+        adata.var = update_var_with_ensembl_ids(adata.var, organism_id, "UNMAPPED_")
 
         # Convert to SpatialData object
         sdata = from_legacy_anndata(adata)
@@ -1219,7 +1272,7 @@ class VisiumHandler(SpatialHandler):
         except Exception:
             raise
 
-        # add clustering information to the vis_sdata.table.obs dataframe
+        # add clustering information to the sdata.table.obs dataframe
         clustering = pd.read_csv(clustering_csv_path)
         # make barcode as index
         clustering = clustering.set_index('Barcode')
@@ -1363,7 +1416,7 @@ class VisiumHDHandler(SpatialHandler):
         except Exception:
             raise
 
-        # add clustering information to the vis_sdata.table.obs dataframe
+        # add clustering information to the sdata.table.obs dataframe
         clustering = pd.read_csv(clustering_csv_path)
         # make barcode as index
         clustering = clustering.set_index('Barcode')
@@ -1542,7 +1595,7 @@ class XeniumHandler(SpatialHandler):
         #    table_name="table", region="cell_labels", region_key="region", instance_key="cell_labels"
         #)
 
-        # add clustering information to the vis_sdata.table.obs dataframe
+        # add clustering information to the sdata.table.obs dataframe
         clustering = pd.read_csv(clustering_csv_path)
         # make barcode as index
         clustering = clustering.set_index('Barcode')

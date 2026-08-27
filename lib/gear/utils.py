@@ -303,8 +303,18 @@ def update_var_with_ensembl_ids(
            AND ensembl_release = %s
     """
 
-    # Drop duplicates
-    var_df = var_df[~var_df.index.duplicated(keep='first')]
+    # We want to ensure that the var_df does not contain duplicate gene symbols, as this would lead to ambiguity in mapping.
+    # Not only that, dropping duplicates would cause a mismatch with the shape of Anndata.X
+    if var_df.index.duplicated().any():
+        raise ValueError(
+            "var_df has duplicate gene symbols; drop duplicates (and the matching "
+            "X columns) before calling update_var_with_ensembl_ids."
+        )
+
+    # Preserve the caller's original row order through the split/concat below,
+    # since AnnData.var assignment is positional and must match X's column order.
+    var_df = var_df.copy()
+    var_df["_orig_order"] = range(len(var_df))
     orig_gene_column = "index"
 
     best_release = None
@@ -367,8 +377,9 @@ def update_var_with_ensembl_ids(
     )
     unmapped_var.index.name = "ensembl_id"
 
-    # Combine
+    # Combine and restore order
     result = pd.concat([ensembl_id_var, unmapped_var], axis=0)
+    result = result.sort_values("_orig_order").drop(columns="_orig_order")
 
     return result
 
