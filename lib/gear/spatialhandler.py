@@ -1624,7 +1624,7 @@ class XeniumHandler(SpatialHandler):
 ### Helper constants
 
 SPATIALTYPE2CLASS = {
-    #"cosmx": CosMxHandler,
+    "cosmx": CosMxHandler,
     "curio": CurioHandler,
     "geomx": GeoMxHandler,
     "visium": VisiumHandler,
