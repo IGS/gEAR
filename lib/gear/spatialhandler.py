@@ -675,12 +675,14 @@ class CosMxHandler(SpatialHandler):
     Factory class for CosMx dataset uploads and conversions.
 
     Standardized names for different files:
-    * `<dataset_id>_`'exprMat_file.csv'`: Counts matrix.
-    * `<dataset_id>_`'metadata_file.csv'`: Metadata file.
-    * `<dataset_id>_`'fov_positions_file.csv'`: Field of view file.
-    * (Optional) `<dataset_id>_`'tx_file.csv'`: Transcripts file
+    * 'exprMat_file.csv': Counts matrix.
+    * 'metadata_file.csv': Metadata file.
+    * 'fov_positions_file.csv': Field of view file.
+    * (Optional) 'tx_file.csv': Transcripts file
     * 'CellComposite': Directory containing the images.
     * 'CellLabels': Directory containing the labels.
+
+    For the files, a dataset id prefix is optional and will be stripped.
     """
 
     @property
@@ -811,10 +813,10 @@ class CosMxHandler(SpatialHandler):
                     transcripts_present = True
 
                 # For the exprMat_file.csv, fov_positions_file.csv, and metadata_file.csv files, replace the dataset_id prefix with "spatialdata" to standardize downstream usage
-                if any(entry.name.endswith(suffix) for suffix in ["exprMat_file.csv", "fov_positions_file.csv", "metadata_file.csv"]):
-                    new_name = entry.name.split("_", 1)[-1]  # Remove the dataset_id prefix
-                    new_name = "spatialdata_" + new_name    # Add the standard prefix
-                    entry.name = new_name
+                for suffix in ["exprMat_file.csv", "fov_positions_file.csv", "metadata_file.csv", "tx_file.csv"]:
+                    if entry.name.endswith(suffix):
+                        entry.name = f"spatialdata_{suffix}"
+                        break
 
                 # For the CellComposite or CellLabels directories, strip off the dataset_id prefix to standardize downstream usage
                 if any(entry.name.startswith(prefix) for prefix in ["CellComposite", "CellLabels"]):
