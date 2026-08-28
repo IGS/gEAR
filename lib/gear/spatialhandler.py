@@ -147,6 +147,39 @@ class SpatialHandler(ABC):
         """
         self._sdata = sdata
 
+    def _resolve_coordinate_system(self, candidates: list[str]) -> str:
+        """
+        Given coordinate system names in order of preference, return the first one
+        that actually exists on self.sdata.
+
+        spatialdata-io has changed, across releases, how it names the coordinate
+        system produced for a given dataset_id: older versions used a fixed name
+        (e.g. "global", "downscaled_hires"), while newer versions prefix that name
+        with the dataset_id (e.g. "spatialdata_global", "spatialdata_downscaled_hires").
+        Resolving dynamically here -- instead of hardcoding a single name -- lets a
+        single handler read both older, already-written Zarr stores and newly
+        processed uploads without caring which spatialdata-io version produced them.
+
+        Args:
+            candidates: Coordinate system names to try, in priority order.
+
+        Returns:
+            str: The first candidate name found in self.sdata.coordinate_systems.
+
+        Raises:
+            KeyError: If none of the candidates are present, listing what actually
+                is, so the mismatch is easy to diagnose against a fresh spatialdata-io
+                release.
+        """
+        available = set(self.sdata.coordinate_systems)
+        for candidate in candidates:
+            if candidate in available:
+                return candidate
+        raise KeyError(
+            f"None of the candidate coordinate systems {candidates} were found. "
+            f"Available coordinate systems: {sorted(available)}"
+        )
+
     @property
     @abstractmethod
     def has_images(self) -> bool:
@@ -692,8 +725,15 @@ class CosMxHandler(SpatialHandler):
 
     @property
     def coordinate_system(self) -> str:
-        """Returns the coordinate system used by CosMx datasets."""
-        return "global" # may also be "spatial"
+        """
+        Returns the coordinate system used by CosMx datasets.
+
+        We pass dataset_id="spatialdata" into sdio.cosmx(), which some spatialdata-io
+        releases use to prefix the default coordinate system name (e.g.
+        "spatialdata" instead of "global"). We try the prefixed name first and fall
+        back to "global" so both naming conventions are supported.
+        """
+        return self._resolve_coordinate_system(["spatialdata", "global"])  # may also be "spatial"
 
     @property
     def region_id(self) -> str:
@@ -1211,8 +1251,16 @@ class VisiumHandler(SpatialHandler):
 
     @property
     def coordinate_system(self) -> str:
-        """Returns the coordinate system used by Visium datasets."""
-        return "downscaled_hires"
+        """
+        Returns the coordinate system used by Visium datasets.
+
+        Newer spatialdata-io releases prefix this coordinate system with the
+        dataset_id ("spatialdata_downscaled_hires") instead of the older, fixed
+        name ("downscaled_hires"). We try the new name first and fall back to the
+        old one so both existing and newly written Zarr stores can be read.
+        """
+        return self._resolve_coordinate_system(["spatialdata_downscaled_hires", "downscaled_hires"])
+
 
     @property
     def region_id(self) -> str:
@@ -1253,6 +1301,11 @@ class VisiumHandler(SpatialHandler):
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
                 if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
+
+                # Move clusters.csv to the root of the extract_dir if it is in a subdirectory
+                if entry.name.endswith("clusters.csv"):
+                    entry.name = "clusters.csv"
+
                 # Extract file into tmp dir
                 filepath = "{0}/{1}".format(extract_dir, entry.name)
                 tf.extract(entry, path=extract_dir)
@@ -1326,8 +1379,16 @@ class VisiumHDHandler(SpatialHandler):
 
     @property
     def coordinate_system(self) -> str:
-        """Returns the coordinate system used by Visium HD datasets."""
-        return "downscaled_hires"
+        """
+        Returns the coordinate system used by Visium HD datasets.
+
+        Newer spatialdata-io releases prefix this coordinate system with the
+        dataset_id ("spatialdata_downscaled_hires") instead of the older, fixed
+        name ("downscaled_hires"). We try the new name first and fall back to the
+        old one so both existing and newly written Zarr stores can be read.
+        """
+        return self._resolve_coordinate_system(["spatialdata_downscaled_hires", "downscaled_hires"])
+
 
     @property
     def region_id(self) -> str:
@@ -1375,6 +1436,10 @@ class VisiumHDHandler(SpatialHandler):
                 # IF directory has "square_" but not "square_008um", skip
                 if "square_" in entry.name and "square_008um" not in entry.name:
                     continue
+
+                # Move clusters.csv to the root of the extract_dir if it is in a subdirectory
+                if entry.name.endswith("clusters.csv"):
+                    entry.name = "clusters.csv"
 
                 # Extract file into tmp dir
                 filepath = "{0}/{1}".format(extract_dir, entry.name)
@@ -1549,9 +1614,6 @@ class XeniumHandler(SpatialHandler):
                 # Skip any BSD tar artifacts, like files that start with ._ or .DS_Store
                 if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
-                # Extract file into tmp dir
-                filepath = "{0}/{1}".format(extract_dir, entry.name)
-                tf.extract(entry, path=extract_dir)
 
                 if entry.name == "cells.zarr.zip":
                     include_raster_labels = True
@@ -1561,6 +1623,14 @@ class XeniumHandler(SpatialHandler):
                     nucleus_boundaries_present = True
                 if entry.name == "transcripts.parquet":
                     transcripts_present = True
+
+                # Move clusters.csv to the root of the extract_dir if it is in a subdirectory
+                if entry.name.endswith("clusters.csv"):
+                    entry.name = "clusters.csv"
+
+                # Extract file into tmp dir
+                filepath = "{0}/{1}".format(extract_dir, entry.name)
+                tf.extract(entry, path=extract_dir)
 
         # If clustering file does not exist, raise an exception
         clustering_csv_path = "{}/clusters.csv".format(extract_dir)
