@@ -1,6 +1,15 @@
 networks:
   gear:
 
+x-consumer-defaults: &consumer-defaults
+  depends_on:
+    queue:
+      condition: service_healthy
+  networks:
+    - gear
+  pull_policy: always
+  restart: on-failure
+
 services:
   db:
     environment:
@@ -77,16 +86,10 @@ services:
 
   # TrackHub (Gosling Upload) RabbitMQ Consumer
   gosling_upload_consumer:
-    depends_on:
-      queue:
-        condition: service_healthy
+    <<: *consumer-defaults
     environment:
       - ENVIRONMENT=development # Set environment variable for development
     image: adkinsrs/gear_gosling_upload_consumer:latest
-    networks:
-      - gear
-    pull_policy: always
-    restart: on-failure
     volumes:
       - ../listeners:/gEAR/listeners
       - ../lib:/gEAR/lib
@@ -95,18 +98,22 @@ services:
   # AnnData object Upload RabbitMQ Consumer
   # i.e. h5ad, mex, tar
   anndata_upload_consumer:
-    depends_on:
-      queue:
-        condition: service_healthy
+    <<: *consumer-defaults
     image: adkinsrs/gear_anndata_upload_consumer:latest
-    networks:
-      - gear
-    pull_policy: always
-    restart: on-failure
     volumes:
       - ../listeners:/gEAR/listeners
       - ../lib:/gEAR/lib
       - ../data:/gEAR/data
+      - ../www/uploads/files:/gEAR/www/uploads/files
+
+  # Spatial dataset Upload RabbitMQ Consumer
+  # i.e. Visium, VisiumHD, Curio, GeoMx, CosMx, Xenium -> Zarr store
+  spatial_upload_consumer:
+    <<: *consumer-defaults
+    image: adkinsrs/gear_spatial_upload_consumer:latest
+    volumes:
+      - ../listeners:/gEAR/listeners
+      - ../lib:/gEAR/lib
       - ../www/uploads/files:/gEAR/www/uploads/files
 
 volumes:

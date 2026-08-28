@@ -30,7 +30,8 @@ group "default" {
     "web",
     "panel",
     "gosling_upload_consumer",
-    "anndata_upload_consumer"
+    "anndata_upload_consumer",
+    "spatial_upload_consumer"
   ]
 }
 
@@ -96,6 +97,13 @@ target "anndata_upload_consumer" {
     context    = ".."
     dockerfile = "listeners/Dockerfile.anndata_upload"
     tags       = ["${REGISTRY}/gear_anndata_upload_consumer:${TAG}", "${REGISTRY}/gear_anndata_upload_consumer:${DATE}"]
+}
+
+target "spatial_upload_consumer" {
+    inherits = ["_common"]
+    context    = ".."
+    dockerfile = "listeners/Dockerfile.spatial_upload"
+    tags       = ["${REGISTRY}/gear_spatial_upload_consumer:${TAG}", "${REGISTRY}/gear_spatial_upload_consumer:${DATE}"]
 }
 
 # NOTE: Not currently implemented, so it is not in the groupings.
