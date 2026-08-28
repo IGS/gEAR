@@ -39,6 +39,7 @@ user_upload_base = gear_root / 'www' / 'uploads' / 'files'
 
 def _on_request(channel, method_frame, properties, body) -> None:
     """Callback to handle new spatial upload job message."""
+    from gear.anndata_processor import write_status  # noqa: E402
     from gear.spatial_processor import process_spatial_synchronously  # noqa: E402
 
     delivery_tag = method_frame.delivery_tag
@@ -78,6 +79,29 @@ def _on_request(channel, method_frame, properties, body) -> None:
                 raise FileNotFoundError(f"Could not find staging area for {share_uid}")
 
             status_file = staging_area / "status.json"
+
+            # A redelivered message means this exact job was already delivered once and
+            # never acked/nacked - almost always because the previous worker died mid-job
+            # (e.g. a hard OOM-kill). Reprocessing would just repeat the same crash forever,
+            # so fail it cleanly here instead of retrying.
+            if method_frame.redelivered:
+                message = (
+                    "A previous attempt to process this dataset was interrupted unexpectedly "
+                    "(the worker did not finish cleanly, most likely because it ran out of "
+                    "available memory). Please contact the gEAR team to resolve this issue "
+                    f"(share ID: {share_uid})."
+                )
+                print(
+                    f"{pid} - Job {job_id} was redelivered; failing without retry: {message}",
+                    flush=True,
+                    file=fh,
+                )
+                write_status(
+                    status_file,
+                    {"job_id": job_id, "status": "error", "message": message, "progress": 0},
+                )
+                channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
+                return
 
             result = process_spatial_synchronously(
                 job_id=job_id,
@@ -162,6 +186,14 @@ class Consumer:
 
 def main() -> None:
     """Start the spatial processing consumer."""
+    from gear.utils import set_memory_limit_from_cgroup
+
+    # Spatial processing (spatialdata_io readers) can spike memory well above what a
+    # clean Python exception would normally warn about. Self-impose a ceiling below the
+    # container's actual cgroup limit so approaching it raises a catchable MemoryError
+    # instead of the kernel OOM-killer sending an uncatchable SIGKILL.
+    set_memory_limit_from_cgroup()
+
     host = servercfg["dataset_uploader"]["queue_host"]
     consumer = Consumer(host=host)
     consumer.run()

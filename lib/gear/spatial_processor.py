@@ -101,6 +101,18 @@ def process_spatial_synchronously(
 
         try:
             action()
+        except MemoryError:
+            # A bare MemoryError's str() is typically empty/unhelpful on its own -
+            # give a specific, actionable message instead of falling through to the
+            # generic branch below.
+            status["status"] = "error"
+            status["message"] = (
+                f"This dataset needed more memory than is available on this server to "
+                f"complete '{error_label}'. Please contact the gEAR team to resolve this "
+                f"issue (share ID: {share_uid})."
+            )
+            write_status(status_file, status)
+            return {"success": 0, "message": status["message"]}
         except Exception as e:
             status["status"] = "error"
             status["message"] = f"Error {error_label}: {e}"
