@@ -1389,7 +1389,6 @@ class VisiumHDHandler(SpatialHandler):
         """
         return self._resolve_coordinate_system(["spatialdata_downscaled_hires", "downscaled_hires"])
 
-
     @property
     def region_id(self) -> str:
         """Returns the region ID used for spot data."""
