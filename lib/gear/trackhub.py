@@ -649,9 +649,16 @@ class TrackHubProcessor:
         self.higlass_config = higlass_config or {}
         self.hub_url = hub_url
         if not self.hub_url:
-            # Server misconfiguration (hub_url comes from server config, not user input) —
-            # raised before any status tracking is possible, so this surfaces in logs, not the UI.
-            raise ValueError("Hub URL base must be provided for TrackHubProcessor")
+            # Server misconfiguration (hub_url comes from server config, not user input). Some
+            # callers already guard against this before constructing this class, but not all do —
+            # write the error status here too so the job never gets stuck silently mid-"processing"
+            # from the user's point of view.
+            message = (
+                "Internal error: no hub URL was configured for this upload job. Please contact "
+                f"the gEAR team to resolve this issue (share ID: {self.share_uid})."
+            )
+            write_status(self.status_file, self.job_id, "error", 0, 0, 0, message)
+            raise ValueError(message)
 
         self.staging_area.mkdir(parents=True, exist_ok=True)
 
