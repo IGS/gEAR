@@ -255,7 +255,12 @@ class SpatialHandler(ABC):
     @abstractmethod
     def process_file(self, filepath: str) -> "SpatialHandler":
         """
-        Reads and processes a spatial data file from the given filepath.
+        Reads and processes a spatial data file from the given filepath, building
+        the raw platform-specific SpatialData object and assigning it to self.sdata.
+
+        This does NOT run standardization (subsetting, coordinate scaling,
+        centroid merging, QC/embeddings) — call self.standardize_sdata() (or the
+        underlying methods individually) afterward if a standardized object is needed.
 
         Args:
             filepath (str): The path to the spatial data file to be read.
@@ -546,47 +551,19 @@ class SpatialHandler(ABC):
         """
         Normalize and preprocess the spatial dataset in self.sdata.tables["table"].
 
-        This method performs an in-place spatial and single-cell style preprocessing pipeline on the
-        SpatialHandler's SpatialData (self.sdata). It executes the following high-level steps in order:
+        Convenience wrapper that runs the full standardization pipeline in order:
+        subset the SpatialData (self.subset_sdata()), scale/translate coordinates
+        (self.scale_and_translate_sdata()), merge polygon centroids into observations
+        (self.merge_centroids_with_obs()), then compute QC metrics and embeddings
+        (self.compute_qc_and_embeddings()). Each step is skipped if its output is
+        already present (see compute_qc_and_embeddings and the guard below).
 
-        1. Subset the SpatialData
-            - Calls self.subset_sdata() to apply any configured subsetting filters to the spatial object.
-
-        2. Scale and translate coordinates
-            - Calls self.scale_and_translate_sdata() to convert/adjust coordinate systems so that spatial
-            annotations align with image space as required.
-
-        3. Merge polygon centroids into observations
-            - Calls self.merge_centroids_with_obs() to compute centroids from per-observation polygon shapes
-            and merge those coordinates into the observation table.
-
-        4. Single-cell preprocessing on the AnnData table
-            - Loads the AnnData stored at self.sdata.tables["table"] and runs a Scanpy workflow:
-                - sc.pp.normalize_total on the AnnData (inplace)
-                - sc.pp.log1p
-                - adata.var_names_make_unique()
-                - sc.pp.highly_variable_genes(adata, n_top_genes=2000)
-                - sc.pp.pca(adata)
-                - sc.pp.neighbors(adata)
-                - sc.tl.umap(adata)
-            - The processed AnnData replaces the original in self.sdata.tables["table"].
+        Callers that want individual progress reporting between these steps (e.g.
+        job status updates during an upload) should call the underlying methods
+        directly instead of this wrapper.
 
         Returns:
             SpatialHandler: Returns self to allow method chaining.
-
-        Side effects:
-            - Modifies self.sdata in-place, including self.sdata.tables["table"] (AnnData) and any spatial
-                coordinate fields produced by the called helper methods.
-            - Requires that self.sdata.tables["table"] exists and is a valid AnnData object.
-            - Requires the scanpy library to be available; an ImportError will occur if scanpy is not installed.
-
-        Notes:
-            - The number of highly variable genes is fixed to 2000 in this method. Adjustments require
-            changing the implementation.
-            - This method assumes that polygon shapes for observations are available so centroids can be
-            computed and merged into observation metadata.
-            - Intended for workflows that combine image-based spatial annotations with single-cell-style
-            expression preprocessing.
         """
         obs = self.sdata.tables["table"].obs
 
@@ -598,7 +575,23 @@ class SpatialHandler(ABC):
             # Each observation has an associated polygon "shape" in the image space, and we can get the centroid of that shape
             self.merge_centroids_with_obs()
 
-        # Run the single-cell workbench steps on the spatial_obj.tables["table"] (AnnData object) using default parameters
+        self.compute_qc_and_embeddings()
+        return self
+
+    def compute_qc_and_embeddings(self) -> "SpatialHandler":
+        """
+        Run single-cell QC and embedding steps on self.sdata.tables["table"] (AnnData object).
+
+        Runs a Scanpy workflow: normalize_total, log1p, var_names_make_unique,
+        calculate_qc_metrics, highly_variable_genes (top 2000), PCA, neighbors, UMAP.
+        The processed AnnData replaces the original in self.sdata.tables["table"].
+
+        No-ops if "X_umap" is already present in obsm, so it's safe to call more
+        than once (e.g. when re-processing an already-standardized dataset).
+
+        Returns:
+            SpatialHandler: Returns self to allow method chaining.
+        """
         adata = self.sdata.tables["table"]
 
         if "X_umap" in adata.obsm.keys():
@@ -922,7 +915,6 @@ class CosMxHandler(SpatialHandler):
         sdata.tables[self.NORMALIZED_TABLE_NAME] = tbl
 
         self.sdata = sdata
-        self.standardize_sdata()
         self.originalFile = filepath
         return self
 
@@ -1057,7 +1049,6 @@ class CurioHandler(SpatialHandler):
         sdata.tables[self.NORMALIZED_TABLE_NAME].obs = sdata.tables[self.NORMALIZED_TABLE_NAME].obs.rename(columns={"cluster": "clusters"})
 
         self.sdata = sdata
-        self.standardize_sdata()
 
         # table name should already be "table" for Visium
 
@@ -1223,7 +1214,6 @@ class GeoMxHandler(SpatialHandler):
         sdata.shapes["locations"].index = sdata.tables[self.NORMALIZED_TABLE_NAME].obs[self.region_id]
 
         self.sdata = sdata
-        self.standardize_sdata()
         self.originalFile = filepath
         return self
 
@@ -1343,7 +1333,6 @@ class VisiumHandler(SpatialHandler):
         sdata.tables[self.NORMALIZED_TABLE_NAME].var = sdata.tables[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids")
 
         self.sdata = sdata
-        self.standardize_sdata()
         self.originalFile = filepath
         return self
 
@@ -1504,7 +1493,6 @@ class VisiumHDHandler(SpatialHandler):
         sdata.tables[self.NORMALIZED_TABLE_NAME] = sdata.tables[self.table_name]
 
         self.sdata = sdata
-        self.standardize_sdata()
         self.originalFile = filepath
         return self
 
@@ -1685,7 +1673,6 @@ class XeniumHandler(SpatialHandler):
         sdata.tables[self.NORMALIZED_TABLE_NAME].var = sdata.tables[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids")
 
         self.sdata = sdata
-        self.standardize_sdata()
         self.originalFile = filepath
         return self
 

@@ -45,43 +45,70 @@ def process_spatial_synchronously(
     sample_taxid = metadata.get("sample_taxid", None)
     organism_id = geardb.get_organism_id_by_taxon_id(sample_taxid)
     filepath = staging_area / f"{share_uid}.tar.gz"
+    output_path = staging_area / f"{share_uid}.zarr"
 
     spatial_obj = SPATIALTYPE2CLASS[spatial_format]()
 
-    total_steps = 3 if perform_primary_analysis else 2
-    step_counter = 1
-
-    try:
-        spatial_obj.process_file(filepath.as_posix(), extract_dir=staging_area, organism_id=organism_id)
-    except Exception as e:
-        status["status"] = "error"
-        status["message"] = f"Error in uploading spatial file: {e}"
-        write_status(status_file, status)
-        return {"success": 0, "message": status["message"]}
-
-    status["progress"] = int((step_counter / total_steps) * 100)
-    write_status(status_file, status)
-
-    output_path = staging_area / f"{share_uid}.zarr"
-    # Remove existing Zarr store if present; a safeguard in case a prior attempt
-    # failed after the store was partially written.
-    if output_path.exists():
-        shutil.rmtree(output_path)
-
-    status["message"] = "Writing Zarr store"
-    write_status(status_file, status)
-
-    try:
+    def _write_zarr():
+        # Remove existing Zarr store if present; a safeguard in case a prior
+        # attempt failed after the store was partially written.
+        if output_path.exists():
+            shutil.rmtree(output_path)
         spatial_obj.write_to_zarr(filepath=output_path)
-    except Exception as e:
-        status["status"] = "error"
-        status["message"] = f"Error writing Zarr store: {e}"
-        write_status(status_file, status)
-        return {"success": 0, "message": status["message"]}
 
-    step_counter += 1
-    status["progress"] = int((step_counter / total_steps) * 100)
+    # Each SpatialData-modifying stage of the pipeline gets its own status update,
+    # rather than one opaque "processing" step covering everything from archive
+    # extraction through embeddings. (message, error_label, action)
+    steps = [
+        (
+            "Reading and parsing spatial data archive...",
+            "reading spatial data archive",
+            lambda: spatial_obj.process_file(filepath.as_posix(), extract_dir=staging_area, organism_id=organism_id),
+        ),
+        (
+            "Subsetting spatial data...",
+            "subsetting spatial data",
+            spatial_obj.subset_sdata,
+        ),
+        (
+            "Scaling and aligning spatial coordinates...",
+            "scaling/aligning spatial coordinates",
+            spatial_obj.scale_and_translate_sdata,
+        ),
+        (
+            "Merging spatial coordinates into observations...",
+            "merging spatial coordinates into observations",
+            spatial_obj.merge_centroids_with_obs,
+        ),
+        (
+            "Computing QC metrics and embeddings...",
+            "computing QC metrics and embeddings",
+            spatial_obj.compute_qc_and_embeddings,
+        ),
+        (
+            "Writing Zarr store...",
+            "writing Zarr store",
+            _write_zarr,
+        ),
+    ]
+
+    total_steps = len(steps) + (1 if perform_primary_analysis else 0)
+
+    for step_index, (message, error_label, action) in enumerate(steps, start=1):
+        status["message"] = message
+        status["progress"] = int(((step_index - 1) / total_steps) * 100)
+        write_status(status_file, status)
+
+        try:
+            action()
+        except Exception as e:
+            status["status"] = "error"
+            status["message"] = f"Error {error_label}: {e}"
+            write_status(status_file, status)
+            return {"success": 0, "message": status["message"]}
+
     status["status"] = "complete"
+    status["progress"] = 100
     status["message"] = "Dataset processed successfully."
     write_status(status_file, status)
 
