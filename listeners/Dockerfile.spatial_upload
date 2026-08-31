@@ -1,0 +1,57 @@
+FROM ubuntu:jammy
+
+ARG PYTHON_MAJOR_VERSION=3.14
+ARG PYTHON_FULL_VERSION=${PYTHON_MAJOR_VERSION}.4
+
+# NOTE: Call in context of the gEAR root directory
+
+WORKDIR /gEAR
+
+# Install runtime system libraries that spatialdata's compiled dependencies
+# (tifffile/imagecodecs, h5py, zarr) link against.
+RUN apt -qq update \
+  && DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
+  ca-certificates \
+  libxml2 \
+  libxslt1.1 \
+  zlib1g \
+  libbz2-1.0 \
+  liblzma5 \
+  libpng16-16 \
+  libtiff5 \
+  libjpeg8 \
+  libblosc1 \
+  libhdf5-103 \
+  libblas3 \
+  liblapack3 \
+  libcairo2 \
+  libwebp7 \
+  && apt -qq clean autoclean \
+  && apt -qq autoremove -y \
+  && rm -rf /var/lib/apt/lists/*
+
+# Copy compiled Python from the shared listener base stage
+COPY --from=adkinsrs/gear-listener-python-base:latest /opt/Python-${PYTHON_FULL_VERSION} /opt/Python-${PYTHON_FULL_VERSION}
+
+RUN mkdir -p /opt/bin \
+  && ln -s /opt/Python-${PYTHON_FULL_VERSION}/bin/python3 /opt/bin/python3 \
+  && ln -s /opt/Python-${PYTHON_FULL_VERSION}/lib/libpython${PYTHON_MAJOR_VERSION}.so.1.0 /usr/lib/
+
+RUN echo "/opt/Python-${PYTHON_FULL_VERSION}/lib" > /etc/ld.so.conf.d/python314.conf \
+    && ldconfig
+
+# Install lib/gear as editable package
+COPY lib/gear ./lib/gear
+COPY lib/setup.py ./lib/
+
+# Copy consumer script
+RUN mkdir -p listeners
+COPY listeners/spatial_upload_consumer.py ./listeners/
+
+# Ensure log directory exists
+RUN mkdir -p /var/log/gEAR_queue
+
+# Copy gear.ini
+COPY gear.ini ./gear.ini
+
+CMD ["/opt/bin/python3", "listeners/spatial_upload_consumer.py"]

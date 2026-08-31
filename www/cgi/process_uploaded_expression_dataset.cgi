@@ -28,6 +28,7 @@ _config.read(gear_root / 'gear.ini')
 
 import geardb
 from gear.anndata_processor import process_anndata_synchronously, write_status
+from gear.spatial_processor import process_spatial_synchronously
 from gear.spatialhandler import SPATIALTYPE2CLASS
 
 user_upload_file_base = '../uploads/files'
@@ -125,13 +126,32 @@ def main() -> tuple:
         result['message'] = f"Error reading metadata: {str(e)}"
         return result, 500
 
-    # Queue the job (skips spatial format)
     if dataset_format == 'spatial':
         if spatial_format is None:
             result['message'] = 'Spatial format is required for spatial datasets.'
             return result, 400
-        process_spatial(job_id, dataset_upload_dir, share_uid, spatial_format, metadata["perform_primary_analysis"])
-        return result, 200
+
+        try:
+            queue_spatial_job(job_id, share_uid, spatial_format, metadata["perform_primary_analysis"])
+            result["success"] = True
+            result["message"] = "Dataset upload processing job queued"
+            return result, 202  # Accepted
+        except QueueDisabledError:
+            result_sync = process_spatial_synchronously(
+                job_id=job_id,
+                share_uid=share_uid,
+                staging_area=dataset_upload_dir,
+                status_file=status_file,
+                spatial_format=spatial_format,
+                perform_primary_analysis=metadata["perform_primary_analysis"],
+            )
+            result["success"] = result_sync["success"]
+            result["message"] = result_sync["message"]
+            return result, 200 if result["success"] else 500
+        except Exception as e:
+            result["message"] = f"Error processing spatial dataset: {str(e)}"
+            print(f"SpatialUpload error: {str(e)}", file=sys.stderr)
+            return result, 500
 
     # Queue the job
     try:
@@ -161,82 +181,43 @@ def main() -> tuple:
         print(f"AnndataUpload error: {str(e)}", file=sys.stderr)
         return result, 500
 
-def process_spatial(job_id, upload_dir: Path, share_uid: str, spatial_format: str, perform_primary_analysis: bool) -> None:
-    """
-    Processes a spatial transcriptomics dataset uploaded to a specified directory.
+def queue_spatial_job(job_id: str, share_uid: str, spatial_format: str, perform_primary_analysis: bool) -> None:
+    """Queue spatial dataset processing job to RabbitMQ."""
 
-    This function handles the reading and conversion of spatial data files using a handler
-    class determined by the spatial_format. It expects a metadata.json file in the upload
-    directory to extract the sample's taxonomic ID, which is then used to retrieve the
-    organism ID. The function reads the spatial data archive, processes it, and writes the
-    output in Zarr format. Status updates and errors are logged using the write_status function.
+    if not _config.getboolean('dataset_uploader', 'queue_enabled', fallback=False):
+        print("Queue is disabled in configuration. Cannot queue spatial job. Falling back to synchronous processing.", file=sys.stderr)
+        raise QueueDisabledError()
 
-    Args:
-        upload_dir (str): The directory where the uploaded files are located.
-        spatial_format (str | None): The format of the spatial data, used to select the appropriate handler.
-
-    Raises:
-        Writes error status if the metadata file is missing or if reading/converting the spatial file fails.
-    """
-
-    status = {
-        "job_id": job_id,
-        "status": "processing",
-        "message": "Initializing dataset processing.",
-        "progress": 0,
-    }
-    status_file = upload_dir / 'status.json'
-    write_status(status_file, status)
-
-    if spatial_format is None:
-        write_status(upload_dir, 'error', "Spatial format not specified.")
-        return
-
-    spatial_obj = SPATIALTYPE2CLASS[spatial_format]()   # instantiate the appropriate handler class
-    metadata_file = upload_dir / 'metadata.json'
-    if not metadata_file.is_file():
-        status["status"] = "error"
-        status["message"] = "No metadata JSON file found."
-        write_status(status_file, status)
-        return
-
-    # get organism_id by converting sample_taxid(needed for some but not all spatial handlers)
-    with open(metadata_file, 'r') as f:
-        metadata = json.load(f)
-
-    sample_taxid = metadata.get("sample_taxid", None)
-    organism_id=geardb.get_organism_id_by_taxon_id(sample_taxid)
-    filepath = upload_dir / f"{share_uid}.tar.gz"
+    import gearqueue
+    host = _config["dataset_uploader"]["queue_host"]
 
     try:
-        spatial_obj.process_file(filepath.as_posix(), extract_dir=upload_dir, organism_id=organism_id)
+        connection = gearqueue.Connection(
+            host=host, publisher_or_consumer="publisher"
+        )
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        status["status"] = "error"
-        status["message"] = f"Error in uploading spatial file: {e}"
-        write_status(status_file, status)
-        return
+        print(f"Error connecting to RabbitMQ: {e}", file=sys.stderr)
+        raise Exception(f"Error connecting to RabbitMQ: {e}")
 
-    output_filename = f"{share_uid}.zarr"
-    output_path = upload_dir / output_filename
-    # Remove existing Zarr store if it exists
-    # This is a safeguard; it shouldn't exist at this point, unless there was a failure post-writing
-    if output_path.exists():
-        import shutil
-        shutil.rmtree(output_path)
+    with connection:
+        connection.open_channel()
 
-    total_steps = 3 if perform_primary_analysis else 2
-    step_counter = 1
-    status["progress"] = int((step_counter / total_steps) * 100)
-    write_status(status_file, status)
+        payload = {
+            "job_id": job_id,
+            "share_uid": share_uid,
+            "spatial_format": spatial_format,
+            "perform_primary_analysis": perform_primary_analysis,
+        }
 
-    write_status(upload_dir, 'processing', 'Writing Zarr store')
-    spatial_obj.write_to_zarr(filepath=output_path)
-
-    step_counter += 1
-    status["progress"] = int((step_counter / total_steps) * 100)
-    write_status(status_file, status)
+        try:
+            connection.publish(
+                queue_name="spatial_upload_jobs",
+                message=payload,  # method dumps JSON
+            )
+        except Exception as e:
+            print(f"Error publishing message to RabbitMQ: {e}", file=sys.stderr)
+            raise
+    return
 
 def queue_anndata_job(job_id: str, share_uid: str, dataset_uid: str, dataset_format: str, perform_primary_analysis: bool) -> None:
     """Queue anndata processing job to RabbitMQ."""

@@ -174,7 +174,12 @@ class AnndataProcessor:
                         dataset_format,
                     )
                 except PrimaryAnalysisProcessingError as e:
-                    raise ProcessingError(f"Primary analysis failed: {str(e)}")
+                    raise ProcessingError(
+                        f"Primary analysis (clustering and dimensionality reduction) failed: {e}. "
+                        "This can happen if the dataset has very few cells/genes or other data quality "
+                        "issues. If the dataset looks correct to you, please contact the gEAR team for "
+                        f"help and reference share ID {self.share_uid}."
+                    )
 
             self._update_progress(100, "Dataset processed successfully.")
             return {"success": 1, "message": "Dataset processed successfully."}
@@ -185,8 +190,13 @@ class AnndataProcessor:
         except Exception as e:
             import traceback
             traceback.print_exc()
-            self._update_status("error", f"Unexpected error: {str(e)}")
-            return {"success": 0, "message": f"Unexpected error: {str(e)}"}
+            message = (
+                "An unexpected internal error occurred while processing this dataset. "
+                "Please contact the gEAR team to resolve this issue (share ID: "
+                f"{self.share_uid}). (Technical details: {e})"
+            )
+            self._update_status("error", message)
+            return {"success": 0, "message": message}
         finally:
             gc.collect()
 
@@ -201,7 +211,13 @@ class AnndataProcessor:
         elif dataset_format == "excel":
             return self._process_excel()
         else:
-            raise ProcessingError(f"Unsupported dataset format: {dataset_format}")
+            # The uploader should have already rejected unsupported formats before
+            # queuing this job, so reaching here points to an internal routing bug.
+            raise ProcessingError(
+                f"Internal error: received an unrecognized dataset format ('{dataset_format}') for "
+                f"processing. Please contact the gEAR team to resolve this issue (share ID: "
+                f"{self.share_uid})."
+            )
 
     def _process_h5ad(self) -> Path:
         """Process .h5ad file with backed mode for memory efficiency."""
@@ -210,7 +226,14 @@ class AnndataProcessor:
         filepath = self.staging_area / f"{self.share_uid}.h5ad"
 
         # Read in backed mode to avoid loading full X matrix into memory
-        adata = anndata.read_h5ad(filepath, backed='r')
+        try:
+            adata = anndata.read_h5ad(filepath, backed='r')
+        except Exception as e:
+            raise ProcessingError(
+                f"Could not read the uploaded H5AD file: {e}. Please verify the file is a valid, "
+                "uncorrupted AnnData/H5AD file (for example, by confirming it opens with "
+                "scanpy.read_h5ad() or anndata.read_h5ad() locally) and re-upload it."
+            )
 
         self._update_progress(15, "Sanitizing observation metadata...")
 
@@ -228,8 +251,16 @@ class AnndataProcessor:
         # Write directly from the backed object so anndata streams X from the
         # source file in chunks rather than loading the full matrix into memory
         h5ad_temp = self.staging_area / f"{self.share_uid}.new.h5ad"
-        adata.write(h5ad_temp, compression='gzip')
-        adata.file.close()
+        try:
+            adata.write(h5ad_temp, compression='gzip')
+        except Exception as e:
+            raise ProcessingError(
+                f"Failed to write the processed H5AD file: {e}. This is an internal issue, not "
+                f"something wrong with your data — please contact the gEAR team for help and "
+                f"reference share ID {self.share_uid}."
+            )
+        finally:
+            adata.file.close()
 
         filepath.unlink()
         h5ad_temp.rename(filepath)
@@ -250,7 +281,11 @@ class AnndataProcessor:
             if filename.exists():
                 compression_format = 'zip'
             else:
-                raise ProcessingError("No tarball or zip file found for MEX/3-tab dataset.")
+                raise ProcessingError(
+                    "The uploaded archive for this dataset could not be found on the server. "
+                    "This is usually a transient upload issue — please try re-uploading the dataset. "
+                    f"If it keeps happening, contact the gEAR team and reference share ID {self.share_uid}."
+                )
 
         files_extracted = []
 
@@ -277,7 +312,10 @@ class AnndataProcessor:
                         else:
                             files_extracted.append(entry.name)
             except tarfile.ReadError:
-                raise ProcessingError("Bad tarball file. Couldn't extract the tarball.")
+                raise ProcessingError(
+                    "The uploaded .tar.gz file could not be read — it may be corrupted or not a "
+                    "valid tar archive. Please verify the file and try re-uploading it."
+                )
 
         if compression_format == 'zip':
             try:
@@ -302,13 +340,22 @@ class AnndataProcessor:
                         else:
                             files_extracted.append(entry.filename)
             except zipfile.BadZipFile:
-                raise ProcessingError("Bad zip file. Couldn't extract the zip file.")
+                raise ProcessingError(
+                    "The uploaded .zip file could not be read — it may be corrupted or not a "
+                    "valid zip archive. Please verify the file and try re-uploading it."
+                )
 
         # Determine the dataset type
         dataset_type = package_content_type(files_extracted)
 
         if dataset_type is None:
-            raise ProcessingError("Unsupported dataset format. Couldn't tell type from file names within the archive.")
+            raise ProcessingError(
+                "Could not determine the dataset format from the files in your archive. For a "
+                "3-tab dataset, it must contain expression.tab, genes.tab, and observations.tab "
+                "(or the NeMO-style DataMTX.tab/ROWmeta.tab/COLmeta.tab equivalents). For a MEX "
+                "dataset, it must contain matrix.mtx, barcodes.tsv, and genes.tsv. Please check "
+                "your archive contains one of these complete file sets and re-upload it."
+            )
 
         # Call the appropriate function
         if dataset_type == 'threetab':
@@ -316,8 +363,12 @@ class AnndataProcessor:
         elif dataset_type == 'mex':
             return self._process_mex()
 
-        # If no valid dataset type is found, raise an error
-        raise ProcessingError("Failed to process MEX/3-tab dataset. No valid dataset type identified.")
+        # Unreachable: package_content_type() only ever returns 'threetab', 'mex', or None
+        # (handled above), so getting here indicates an internal logic error.
+        raise ProcessingError(
+            f"Internal error: detected dataset type '{dataset_type}' has no matching processor. "
+            f"Please contact the gEAR team for help and reference share ID {self.share_uid}."
+        )
 
 
     def _process_threetab(self) -> Path:
@@ -371,11 +422,20 @@ class AnndataProcessor:
                 var = pd.read_table(filepath, sep='\t', index_col=0, header=0)
 
         if obs is None:
-            raise ProcessingError("No observations file found (expected observations.tab or COLmeta.tab).")
+            raise ProcessingError(
+                "No observations file found in your archive (expected observations.tab or "
+                "COLmeta.tab). Please include this file and re-upload."
+            )
         if var is None:
-            raise ProcessingError("No genes file found (expected genes.tab or ROWmeta.tab).")
+            raise ProcessingError(
+                "No genes file found in your archive (expected genes.tab or ROWmeta.tab). "
+                "Please include this file and re-upload."
+            )
         if expression_matrix_path is None:
-            raise ProcessingError("No expression file found (expected expression.tab or DataMTX.tab).")
+            raise ProcessingError(
+                "No expression matrix file found in your archive (expected expression.tab or "
+                "DataMTX.tab). Please include this file and re-upload."
+            )
 
         return expression_matrix_path, obs, var
 
@@ -383,7 +443,10 @@ class AnndataProcessor:
         import gear.seuratuploader as SeuratUploader
 
         if self.share_uid is None:
-            raise ProcessingError("Share UID is required for Seurat processing.")
+            raise ProcessingError(
+                f"Internal error: no share ID was provided for this upload job. Please contact "
+                f"the gEAR team to resolve this issue (job ID: {self.job_id})."
+            )
 
         # Take in an RDS file, convert to anndata, update the obs metadata based on reductions,
         # convert gene symbols to ensemble IDs, and write to an updated h5ad file.
@@ -395,25 +458,41 @@ class AnndataProcessor:
         try:
             adata_filepath = SeuratUploader.seurat_to_anndata(str(seurat_filepath), self.share_uid, str(self.staging_area))
         except Exception as e:
-            raise ProcessingError(f"Failed to convert RDS to h5ad: {str(e)}")
+            raise ProcessingError(
+                f"Could not convert the uploaded RDS file to H5AD: {e}. Please verify this is a "
+                "valid Seurat object saved with saveRDS() (from a supported Seurat version), or "
+                f"contact the gEAR team for help and reference share ID {self.share_uid} if you believe "
+                "the file is valid."
+            )
 
         self._update_progress(15, "Reading converted h5ad file...")
         try:
             adata = anndata.read_h5ad(adata_filepath)
         except Exception as e:
-            raise ProcessingError(f"Failed to read converted h5ad file: {str(e)}")
+            raise ProcessingError(
+                f"Internal error: could not read the H5AD file produced from your RDS conversion: "
+                f"{e}. Please contact the gEAR team to resolve this issue (share ID: "
+                f"{self.share_uid})."
+            )
 
         # Update obs metadata based on reductions
         self._update_progress(25, "Updating metadata from reductions...")
         try:
             adata = SeuratUploader.reduction_to_metadata(adata)
         except Exception as e:
-            raise ProcessingError("Failed to update reductions to AnnData object")
+            raise ProcessingError(
+                f"Could not read the dimensionality-reduction embeddings (e.g. PCA/UMAP) from "
+                f"your Seurat object: {e}. Please verify the object has valid reductions stored, "
+                f"or contact the gEAR team for help and reference share ID {self.share_uid}."
+            )
 
         # Convert gene symbols to ensemble IDs
         metadata_file = self.staging_area / 'metadata.json'
         if not metadata_file.is_file():
-            raise ProcessingError("No metadata JSON file found for Seurat processing.")
+            raise ProcessingError(
+                f"Internal error: no metadata file was found for this upload job. Please contact "
+                f"the gEAR team for help and reference share ID {self.share_uid}."
+            )
         # get organism_id by converting sample_taxid(needed for some but not all spatial handlers)
         with open(metadata_file, 'r') as f:
             metadata = json.load(f)
@@ -425,7 +504,11 @@ class AnndataProcessor:
             if adata is None:
                 raise ProcessingError("genes_to_ensembl Anndata conversion returned None")
         except Exception as e:
-            raise ProcessingError(f'Failed to convert genes to Ensembl: {str(e)}')
+            raise ProcessingError(
+                f"Could not map gene symbols to Ensembl IDs: {e}. Please verify the correct "
+                f"organism/species was selected for this dataset upload. If it was correct, "
+                f"contact the gEAR team for help and reference share ID {self.share_uid}."
+            )
 
         self._update_progress(50, "Writing final H5AD file...")
         if adata.X is None:
@@ -440,7 +523,10 @@ class AnndataProcessor:
             Path(adata_filepath).unlink()
             h5ad_path.rename(self.staging_area / f"{self.share_uid}.h5ad")
         except Exception as e:
-            raise ProcessingError(f"Failed to write h5ad or during cleanup: {str(e)}")
+            raise ProcessingError(
+                f"Internal error while writing the final H5AD file: {e}. Please contact the "
+                f"gEAR team to resolve this issue (share ID: {self.share_uid})."
+            )
 
         self._update_progress(65, "Seurat processing complete.")
         return h5ad_path
@@ -450,12 +536,22 @@ class AnndataProcessor:
         self._update_progress(5, "Reading Excel file...")
 
         filepath = self.staging_area / f"{self.share_uid}.xlsx"
-        exp_df = pd.read_excel(filepath, sheet_name='expression', index_col=0).transpose()
+
+        try:
+            exp_df = pd.read_excel(filepath, sheet_name='expression', index_col=0).transpose()
+        except ValueError:
+            raise ProcessingError(
+                "No 'expression' sheet found in your Excel file. Please add a sheet named "
+                "'expression' containing the expression matrix and re-upload."
+            )
 
         try:
             X = exp_df.to_numpy()[:, 0:].astype(float)
         except ValueError:
-            raise ProcessingError("Encountered unexpected value type. Expected float type in expression matrix.")
+            raise ProcessingError(
+                "The 'expression' sheet contains values that aren't numbers. Please ensure every "
+                "cell in the expression matrix (aside from row/column headers) is numeric."
+            )
 
         number_obs_from_exp, number_genes_from_exp = X.shape
 
@@ -464,19 +560,25 @@ class AnndataProcessor:
         try:
             obs_df = pd.read_excel(filepath, sheet_name='observations', index_col='observations')
         except ValueError:
-            raise ProcessingError("No observations sheet found. Expected spreadsheet sheet named 'observations'.")
+            raise ProcessingError(
+                "No 'observations' sheet found in your Excel file. Please add a sheet named "
+                "'observations' with an 'observations' index column and re-upload."
+            )
 
         # Validate observations
         number_obs = len(obs_df)
         if number_obs != number_obs_from_exp:
             raise ProcessingError(
-                f"Observations sheet error. Row count ({number_obs}) must match "
-                f"expression sheet row count ({number_obs_from_exp})."
+                f"The 'observations' sheet has {number_obs} row(s), but the 'expression' sheet has "
+                f"{number_obs_from_exp} observation row(s). Please make sure both sheets describe "
+                "the same set of observations and re-upload."
             )
 
         if not obs_df.index.equals(exp_df.index):
             raise ProcessingError(
-                "Observations sheet error. Index names and order must match expression sheet rows."
+                "The 'observations' sheet's index doesn't match the 'expression' sheet's "
+                "observation names/order. Please make sure both sheets list observations with "
+                "identical names in the same order, then re-upload."
             )
 
         self._update_progress(35, "Reading genes sheet...")
@@ -485,11 +587,18 @@ class AnndataProcessor:
 
         # Validate gene_symbol column
         if 'gene_symbol' not in genes_df.columns:
-            raise ProcessingError("Failed to find gene_symbol column in genes tab.")
+            raise ProcessingError(
+                "No 'gene_symbol' column found in the genes sheet. Please add a 'gene_symbol' "
+                "column listing a gene symbol for each gene and re-upload."
+            )
 
         digit_count = genes_df['gene_symbol'].str.isnumeric().sum()
         if digit_count > 0:
-            raise ProcessingError(f"{digit_count} gene symbols are numbers, not gene symbols.")
+            raise ProcessingError(
+                f"{digit_count} value(s) in the 'gene_symbol' column are numbers rather than gene "
+                "symbols (e.g. a numeric gene ID instead of a name like 'Actb'). Please provide "
+                "valid gene symbols and re-upload."
+            )
 
         categorize_observation_columns(obs_df)
 
@@ -497,12 +606,17 @@ class AnndataProcessor:
         number_genes = len(genes_df)
         if number_genes != number_genes_from_exp:
             raise ProcessingError(
-                f"Genes sheet error. Row count ({number_genes}) must match "
-                f"expression sheet row count ({number_genes_from_exp})."
+                f"The genes sheet has {number_genes} row(s), but the 'expression' sheet has "
+                f"{number_genes_from_exp} gene column(s). Please make sure both sheets describe "
+                "the same set of genes and re-upload."
             )
 
         if not genes_df.index.equals(exp_df.columns):
-            raise ProcessingError("Genes sheet error. Index names and order must match expression sheet columns.")
+            raise ProcessingError(
+                "The genes sheet's index doesn't match the 'expression' sheet's gene names/order. "
+                "Please make sure both sheets list genes with identical names in the same order, "
+                "then re-upload."
+            )
 
         self._update_progress(50, "Creating AnnData object...")
 
@@ -532,14 +646,22 @@ class AnndataProcessor:
                     usecols=[0, 1]
                 )
                 genes_df = genes_df.drop(genes_df.columns[0], axis=1)
-            except Exception as err:
-                raise ProcessingError(f"No 'genes' sheet found. {str(err)}")
+            except Exception:
+                raise ProcessingError(
+                    "No 'genes' sheet found in your Excel file, and a gene list could not be "
+                    "derived from the 'expression' sheet either. Please add a sheet named 'genes' "
+                    "(with at least a 'gene_symbol' column) and re-upload."
+                )
 
         return genes_df
 
     def _process_mex(self) -> Path:
         """Process MEX format (matrix.mtx, barcodes.tsv, genes.tsv)."""
-        raise NotImplementedError("MEX format processing not yet implemented.")
+        raise ProcessingError(
+            f"MEX-format datasets are not yet supported by the uploader. Please convert your data "
+            f"to a supported format (H5AD, 3-tab, or Excel) and re-upload, or contact the gEAR "
+            f"team if you need MEX support and reference share ID {self.share_uid}."
+        )
 
     def _read_expression_matrix_chunks(
         self, filepath: Path, chunk_size: int, total_rows: int
@@ -547,22 +669,21 @@ class AnndataProcessor:
         """Read expression matrix in chunks with progress updates."""
         total_chunks = (total_rows + chunk_size - 1) // chunk_size
 
-        # Try reading without cleanup first
-        expression_matrix = self._read_chunks_with_cleanup(
-            filepath, chunk_size, total_rows, total_chunks, cleanup=False
+        last_error: Exception | None = None
+        for cleanup in (False, True):
+            try:
+                expression_matrix = self._read_chunks_with_cleanup(
+                    filepath, chunk_size, total_rows, total_chunks, cleanup=cleanup
+                )
+                return sparse.csr_matrix(sparse.vstack(expression_matrix))
+            except Exception as e:
+                last_error = e
+
+        raise ProcessingError(
+            f"Could not parse the expression matrix file: {last_error}. Please verify it is a "
+            "tab-delimited file with numeric values (aside from row/column headers) and "
+            f"{total_rows} data row(s) matching the genes/observations sheets, then re-upload."
         )
-
-        if expression_matrix:
-            return sparse.csr_matrix(sparse.vstack(expression_matrix))
-
-        # Retry with data cleanup if first attempt fails
-        expression_matrix = self._read_chunks_with_cleanup(
-            filepath, chunk_size, total_rows, total_chunks, cleanup=True
-        )
-        if expression_matrix:
-            return sparse.csr_matrix(sparse.vstack(expression_matrix))
-
-        raise ProcessingError("Failed to read expression matrix in chunks, even after cleanup.")
 
     def _read_chunks_with_cleanup(
         self,
@@ -583,29 +704,29 @@ class AnndataProcessor:
             cleanup: Whether to apply data cleanup (whitespace, type conversion)
 
         Returns:
-            List of sparse matrices, empty list if reading fails
+            List of sparse matrices.
+
+        Raises:
+            Whatever exception pandas/scipy raise while parsing a chunk — the caller
+            (_read_expression_matrix_chunks) is responsible for retrying and reporting.
         """
         expression_matrix = []
         rows_read = 0
         reader = pd.read_csv(filepath, sep='\t', index_col=0, chunksize=chunk_size)
 
-        try:
-            for chunk_idx, chunk in enumerate(reader, 1):
-                if cleanup:
-                    chunk = clean_chunk(chunk)
+        for chunk_idx, chunk in enumerate(reader, 1):
+            if cleanup:
+                chunk = clean_chunk(chunk)
 
-                rows_read += len(chunk)
-                pct = int((rows_read / total_rows) * 100)
-                self._update_progress(
-                    25 + round(pct * 0.4),
-                    f"Processing chunk {chunk_idx}/{total_chunks}"
-                )
-                expression_matrix.append(sparse.csr_matrix(chunk.values))
+            rows_read += len(chunk)
+            pct = int((rows_read / total_rows) * 100)
+            self._update_progress(
+                25 + round(pct * 0.4),
+                f"Processing chunk {chunk_idx}/{total_chunks}"
+            )
+            expression_matrix.append(sparse.csr_matrix(chunk.values))
 
-            return expression_matrix
-
-        except Exception:
-            return []
+        return expression_matrix
 
     def _update_var_with_ensembl_ids(self, var_df: pd.DataFrame) -> pd.DataFrame:
         """Update var dataframe with Ensembl IDs, falling back to MyGene for genes the local DB misses."""
@@ -617,7 +738,11 @@ class AnndataProcessor:
         organism_id = geardb.get_organism_id_by_taxon_id(sample_taxid)
 
         if not organism_id:
-            raise ProcessingError("Could not determine organism ID from sample taxonomic ID.")
+            raise ProcessingError(
+                "Could not determine the organism for this dataset from the sample taxonomic ID "
+                "in its metadata. Please verify the correct organism/species was selected for "
+                "this dataset upload, then re-upload."
+            )
 
         id_prefix = "UNMAPPED_"
         var_df = update_var_with_ensembl_ids(var_df, organism_id, id_prefix)
