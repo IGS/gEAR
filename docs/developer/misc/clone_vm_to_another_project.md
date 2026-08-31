@@ -8,6 +8,11 @@ To clone a VM across GCP projects, the best practice for a "golden VM" pattern i
 
 Creating a Custom Image captures the boot disk state and allows you to spin up multiple identical instances across projects.
 
+### Common values
+
+SOURCE_ZONE=us-east1-b
+MACHINE_TYPE=c4-highmem-8
+
 ### 1. Stop the Source Instance
 
 To ensure data consistency on the boot disk:
@@ -31,7 +36,9 @@ gcloud compute images create golden-vm-image \
 
 ```
 
-### 3. Share the Image with the Target Project / User
+### 3. Share the Image with the Target Project / User (SKIP if you have these roles)
+
+THIS ONLY WORKS IF YOU HAVE ADMIN RIGHTS TO GRANT ROLES - you may have to request this from @jorvis or @vfelix
 
 Grant the **Compute Image User** role (`roles/compute.imageUser`) on the source project to either your account or the Compute Engine service account of the target project:
 
@@ -57,7 +64,7 @@ Reference the image in the source project using its full resource path (`project
 gcloud compute instances create cloned-vm-instance \
     --project=TARGET_PROJECT_ID \
     --zone=TARGET_ZONE \
-    --machine-type=e2-standard-2 \
+    --machine-type=MACHINE_TYPE \
     --image=projects/SOURCE_PROJECT_ID/global/images/golden-vm-image
 
 ```
