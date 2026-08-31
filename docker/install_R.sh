@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -e  # Exit on error
 
 Rmaj=R-4
 Rver="${Rmaj}.5.2"
@@ -23,6 +23,6 @@ make install || exit 1
 
 # Run Rscript
 cd ${current_dir}
-Rscript --vanilla install_bioc.R || exit 1
+Rscript --vanilla install_packages.R || exit 1
 
 # done

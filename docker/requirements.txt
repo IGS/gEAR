@@ -23,13 +23,12 @@ leidenalg==0.10.2
 legacy-cgi==2.6.4   # To handle legacy CGI scripts (cgi was removed in Python 3.13)
 llvmlite==0.47.0
 matplotlib==3.10.7
-mod-wsgi==5.0.2
+mod-wsgi==6.0.6
 more_itertools==11.0.2
 mygene==3.2.2
 mysql-connector-python==8.0.28
 numba==0.65.0
 numpy==2.4.0
-opencv-python==4.5.5.64
 openpyxl==3.1.5
 pandas==2.3.3   # Anndata does not support pandas 3.x.x yet
 panel==1.9.3
@@ -50,3 +49,4 @@ spatialdata_io==0.7.1
 shadows==0.1a2
 tables==3.11.1
 watchfiles==1.1.1
+zarrs==0.2.3

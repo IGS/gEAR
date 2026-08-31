@@ -21,10 +21,23 @@ import pyBigWig
 import requests
 from Bio import bgzf
 
-VALID_TYPES = ["bigWig", "bigBed", "hic", "vcfTabix"]
+VALID_TYPES = ["bigWig", "bigInteract", "bigBed", "hic", "vcfTabix"]
 VALID_CONTAINER_TYPES = ["multiWig"]
 
+
+class TrackHubProcessingError(Exception):
+    """
+    Raised for track hub problems the user can act on themselves (e.g. a malformed
+    hub/track definition, an unreachable or invalid data file). The message is shown
+    to the user as-is, so it should be human-readable and actionable.
+
+    Any other exception raised during processing is treated as an internal error and
+    reported generically, asking the user to contact the gEAR team.
+    """
+    pass
+
 # These are the fields that we will use for Gosling, though other fields will be preserved for compatibility with the UCSC Genome Browser.
+# These are valid UCSC fields and will not include custom fields for Gosling (marked with "gos_").
 HUB_FIELDS = ["hub", "shortLabel", "longLabel", "email", "useOneFile", "genome", "genomesFile"]
 TRACK_FIELDS = ["track", "name", "type", "bigDataUrl", "shortLabel", "longLabel", "visibility", "color", "autoScale", "container", "parent"]
 
@@ -158,9 +171,17 @@ def _normalize_track_dict(track: dict, resolve_urls: bool = False, trackdb_url: 
         if key in track:
             normalized[key] = track[key]
 
+    # Copy Gosling fields
+    for key in track:
+        if key.startswith("gos_"):
+            normalized[key] = track[key]
+
     if "track" not in normalized:
         print(f"WARNING: Track stanza is missing 'track' field. Skipping track: {track}", file=sys.stderr)
-        raise ValueError("Track stanza is missing required 'track' field")
+        raise TrackHubProcessingError(
+            f"One of the track stanzas in your hub is missing the required 'track' field: {track}. "
+            "Please add a track name and try again."
+        )
 
     # Normalize color format to rgb()
     if "color" in normalized and not normalized["color"].startswith("rgb("):
@@ -215,12 +236,15 @@ def _parse_track_stanzas(lines, resolve_urls: bool = False, trackdb_url: str = "
     for line in lines:
         line = line.strip()
 
-        # Skip empty lines and finalize current track if present
-        if not line:
-            if current_track:
-                track_list.append(_normalize_track_dict(current_track, resolve_urls, trackdb_url))
-                current_track = {}
+        # Ignore blank lines and comments
+        if not line or line.startswith("#"):
             continue
+
+        # Add any Gosling-specific fields to the current track.
+        if line.startswith("gos_"):
+            if current_track:
+                current_track[line.split(" ", 1)[0]] = line.split(" ", 1)[1]
+                continue
 
         # Start of new track stanza
         if line.startswith("track "):
@@ -350,12 +374,16 @@ def download_large_file(url: str, destination: Path) -> None:
         actual_size = destination.stat().st_size
         if expected_size > 0 and actual_size != expected_size:
             destination.unlink()
-            raise Exception(
-                f"Downloaded file size mismatch: expected {expected_size} bytes, "
-                f"got {actual_size} bytes"
+            raise TrackHubProcessingError(
+                f"The file downloaded from {url} was incomplete (expected {expected_size} bytes, "
+                f"got {actual_size} bytes). Please verify the URL serves the complete file "
+                "reliably and try again."
             )
     except requests.exceptions.RequestException as e:
-        raise Exception(f"Error downloading from {url}: {e}") from e
+        raise TrackHubProcessingError(
+            f"Could not download the file from {url}: {e}. Please verify this URL is correct, "
+            "publicly accessible, and reliable, then try again."
+        ) from e
 
 
 def bigbed_to_bed(bigbed_path: Path, outdir_path: Path) -> str:
@@ -368,9 +396,11 @@ def bigbed_to_bed(bigbed_path: Path, outdir_path: Path) -> str:
     try:
         bb = pyBigWig.open(bigbed_path.as_posix())
         if not bb.isBigBed():
-            print(f"{bigbed_path} is not a bigBed file.", file=sys.stderr)
             bb.close()
-            raise
+            raise TrackHubProcessingError(
+                f"{bigbed_path.name} does not appear to be a valid BigBed file, even though it "
+                "was uploaded as one. Please verify the file format and try again."
+            )
 
         with open(bed_path, 'w') as bed_out:
             for chrom, start, end, rest in bb.intervals():
@@ -397,7 +427,13 @@ def bigbed_to_bed(bigbed_path: Path, outdir_path: Path) -> str:
 
 
 def hic_to_mcool(hic_path: Path, outdir_path: Path) -> bool:
-    """Convert a .hic file to a .mcool file using the hic2cool tool."""
+    """
+    Convert a .hic file to a .mcool file using the hic2cool tool.
+
+    Raises:
+        TrackHubProcessingError: if the conversion fails, with the underlying reason
+            (rather than silently returning False and losing that detail).
+    """
     mcool_path = outdir_path / hic_path.with_suffix('.mcool').name
     # TODO: verify this conversion is complete.
     if mcool_path.is_file():
@@ -413,7 +449,10 @@ def hic_to_mcool(hic_path: Path, outdir_path: Path) -> bool:
         return True
     except Exception as e:
         print(f"Error converting {hic_path} to mcool: {e}", file=sys.stderr)
-        return False
+        raise TrackHubProcessingError(
+            f"Could not convert {hic_path.name} from HIC to MCool: {e}. Please verify the "
+            "uploaded file is a valid, uncorrupted .hic file and try again."
+        )
 
 def ingest_mcool_into_higlass(mcool_path: Path, config: dict, assembly: str) -> str:
     """Ingest a .mcool file into HiGlass and return the URL."""
@@ -513,28 +552,41 @@ def _create_tabix_indexed_file(bgzipped_path: Path, file_type: str = "bed") -> N
     subprocess.run(shlex.split(tabix_cmd), check=True)
 
 
-def validate_hub_contents(hub_json: dict, track_stanzas: list) -> bool:
-    """Validate hub and track configurations."""
+def validate_hub_contents(hub_json: dict, track_stanzas: list) -> None:
+    """
+    Validate hub and track configurations.
+
+    Raises:
+        TrackHubProcessingError: with a specific, human-readable reason if validation
+            fails. Returns None (no exception) if everything is valid.
+    """
     required_hub_fields = ["hub", "shortLabel", "longLabel", "email", "useOneFile", "genome"]
     for field in required_hub_fields:
         if field not in hub_json:
-            print(f"Missing required field '{field}' in hub.txt content.", file=sys.stderr)
-            return False
+            raise TrackHubProcessingError(
+                f"Your hub is missing the required '{field}' field. Please add it and try again."
+            )
 
     for track in track_stanzas:
         required_track_fields = ["track", "type", "shortLabel", "longLabel", "visibility"]
         exclusive_track_fields = ["bigDataUrl", "container"]
         for field in required_track_fields:
             if field not in track:
-                print(f"Missing required field '{field}' in track stanza.", file=sys.stderr)
-                return False
+                raise TrackHubProcessingError(
+                    f"One of your tracks is missing the required '{field}' field: {track}. "
+                    "Please add it and try again."
+                )
         # Must have one of the exclusive fields (bigDataUrl for data tracks, container for container tracks)
         if not any(field in track for field in exclusive_track_fields):
-            print(f"Track '{track['track']}' must have either 'bigDataUrl' or 'container' field.", file=sys.stderr)
-            return False
+            raise TrackHubProcessingError(
+                f"Track '{track['track']}' must have either a 'bigDataUrl' (for a data track) or "
+                "a 'container' field (for a grouping track). Please add one and try again."
+            )
         if track["type"] not in VALID_TYPES:
-            print(f"Invalid track type '{track['type']}'.", file=sys.stderr)
-            return False
+            raise TrackHubProcessingError(
+                f"Track '{track['track']}' has an unsupported type '{track['type']}'. Supported "
+                f"types are: {', '.join(VALID_TYPES)}. Please correct the track type and try again."
+            )
 
         # Currently we only support container type "multiwig", which is for grouping bigWig tracks.
         if "container" in track:
@@ -543,8 +595,11 @@ def validate_hub_contents(hub_json: dict, track_stanzas: list) -> bool:
                 track.pop("container")
             else:
                 if track["container"] not in VALID_CONTAINER_TYPES:
-                    print(f"Invalid container type '{track['container']}' in track '{track['track']}'.", file=sys.stderr)
-                    return False
+                    raise TrackHubProcessingError(
+                        f"Track '{track['track']}' has an unsupported container type "
+                        f"'{track['container']}'. Supported container types are: "
+                        f"{', '.join(VALID_CONTAINER_TYPES)}. Please correct it and try again."
+                    )
 
         # If "parent" is in track, ensure the referenced parent track exists and is a container
         if "parent" in track:
@@ -555,18 +610,24 @@ def validate_hub_contents(hub_json: dict, track_stanzas: list) -> bool:
             else:
                 parent_track = next((t for t in track_stanzas if t.get("track") == parent_name), None)
                 if not parent_track:
-                    print(f"Track '{track['track']}' references non-existent parent '{parent_name}'.", file=sys.stderr)
-                    return False
+                    raise TrackHubProcessingError(
+                        f"Track '{track['track']}' references a parent track '{parent_name}' that "
+                        "doesn't exist in this hub. Please check the 'parent' field and try again."
+                    )
                 if "container" not in parent_track or parent_track["container"] not in VALID_CONTAINER_TYPES:
-                    print(f"Track '{track['track']}' references parent '{parent_name}' which is not a valid container.", file=sys.stderr)
-                    return False
+                    raise TrackHubProcessingError(
+                        f"Track '{track['track']}' references parent '{parent_name}', but that "
+                        "track isn't a valid container track. Please check the 'parent' field and "
+                        "try again."
+                    )
 
         # if human assembly, disallow VCF and HIC types for privacy reasons
         if hub_json.get("genome", "").lower() in ["hg19", "hg38"] and track["type"] in ["vcfTabix", "hic"]:
-            print(f"Track type '{track['type']}' is not allowed for human assemblies due to privacy concerns.", file=sys.stderr)
-            return False
-
-    return True
+            raise TrackHubProcessingError(
+                f"Track '{track['track']}' has type '{track['type']}', which is not allowed for "
+                "human genome assemblies due to privacy/data-sharing restrictions. Please remove "
+                "this track or use a non-human assembly."
+            )
 
 
 class TrackHubProcessor:
@@ -588,7 +649,16 @@ class TrackHubProcessor:
         self.higlass_config = higlass_config or {}
         self.hub_url = hub_url
         if not self.hub_url:
-            raise ValueError("Hub URL base must be provided for TrackHubProcessor")
+            # Server misconfiguration (hub_url comes from server config, not user input). Some
+            # callers already guard against this before constructing this class, but not all do —
+            # write the error status here too so the job never gets stuck silently mid-"processing"
+            # from the user's point of view.
+            message = (
+                "Internal error: no hub URL was configured for this upload job. Please contact "
+                f"the gEAR team to resolve this issue (share ID: {self.share_uid})."
+            )
+            write_status(self.status_file, self.job_id, "error", 0, 0, 0, message)
+            raise ValueError(message)
 
         self.staging_area.mkdir(parents=True, exist_ok=True)
 
@@ -646,9 +716,8 @@ class TrackHubProcessor:
             hub_json["genome"] = assembly
             hub_json.pop("genomesFile", None)
 
-            # Validate
-            if not validate_hub_contents(hub_json, track_stanzas):
-                raise ValueError("Hub contents failed validation")
+            # Validate (raises TrackHubProcessingError with a specific reason if invalid)
+            validate_hub_contents(hub_json, track_stanzas)
 
             # Write hub.txt as a standard hub file (without trackDb.txt) for processing.
             # Add an extra newline before and after the "genome" tag.
@@ -705,7 +774,11 @@ class TrackHubProcessor:
                         response = requests.head(big_data_url, timeout=10)
                         response.raise_for_status()
                     except requests.RequestException as e:
-                        raise Exception(f"Cannot reach {big_data_url}: {e}")
+                        raise TrackHubProcessingError(
+                            f"Could not reach the URL for track '{track_name}' ({big_data_url}): "
+                            f"{e}. Please verify the URL is correct and publicly accessible, "
+                            "then try again."
+                        )
 
                     # Download
                     dest_path = self.staging_area / Path(big_data_url).name
@@ -715,15 +788,20 @@ class TrackHubProcessor:
                     # File was already saved to staging area during request handling
                     dest_path = self.staging_area / uploaded_file_name
                     if not dest_path.is_file() and not dry_run:
-                        raise ValueError(
-                            f"Uploaded file for track '{track_name}' not found in staging area: {dest_path}"
+                        raise TrackHubProcessingError(
+                            f"The uploaded file for track '{track_name}' could not be found on the "
+                            "server. This is usually a transient upload issue — please try "
+                            "re-uploading your hub. If it keeps happening, contact the gEAR team "
+                            f"and reference share ID {self.share_uid}."
                         )
                     # File is already in place, no need to save again
 
                     track.pop("uploadedFileName", None)
                 else:
-                    raise ValueError(
-                        f"No bigDataUrl or uploadedFileName specified for track '{track_name}'"
+                    raise TrackHubProcessingError(
+                        f"Track '{track_name}' has no data file — it's missing both a 'bigDataUrl' "
+                        "and an uploaded file. Please provide a data URL or upload a file for this "
+                        "track and try again."
                     )
 
 
@@ -746,8 +824,14 @@ class TrackHubProcessor:
                         try:
                             bed_path = bigbed_to_bed(dest_path, self.staging_area)
                             track["gos_url"] = bed_path
+                        except TrackHubProcessingError:
+                            raise
                         except Exception as e:
-                            raise Exception(f"Failed to convert {track_name} from bigBed to BED: {e}")
+                            raise TrackHubProcessingError(
+                                f"Could not convert track '{track_name}' from BigBed to BED: {e}. "
+                                "Please verify the uploaded file is a valid, uncorrupted BigBed "
+                                "file and try again."
+                            )
 
                 elif track["type"] == "hic":
                     track_statuses[track_name] = "converting"
@@ -760,8 +844,7 @@ class TrackHubProcessor:
                         track_statuses,
                     )
                     if not dry_run:
-                        if not hic_to_mcool(dest_path, self.staging_area):
-                            raise Exception(f"Failed to convert {track_name} from HIC to MCool")
+                        hic_to_mcool(dest_path, self.staging_area)
 
                         track_statuses[track_name] = "ingesting"
                         self.update_status(
@@ -831,7 +914,7 @@ class TrackHubProcessor:
 
             return {"success": True, "message": "Track hub processed successfully"}
 
-        except Exception as e:
+        except TrackHubProcessingError as e:
             print(f"Error processing track hub ID {self.job_id}: {e}", file=sys.stderr)
 
             # Clean up ingested tilesets on failure
@@ -843,12 +926,27 @@ class TrackHubProcessor:
                 for tileset_uid in ingested_tilesets:
                     delete_higlass_tileset(tileset_uid, self.higlass_config)
 
-            self.update_status(
-                "error",
-                0,
-                0,
-                total_tracks,
-                f"Error: {e}",
-                track_statuses,
+            message = str(e)
+            self.update_status("error", 0, 0, total_tracks, message, track_statuses)
+            return {"success": False, "message": message}
+
+        except Exception as e:
+            traceback.print_exc()
+            print(f"Error processing track hub ID {self.job_id}: {e}", file=sys.stderr)
+
+            # Clean up ingested tilesets on failure
+            if ingested_tilesets and self.higlass_config:
+                print(
+                    f"Cleaning up {len(ingested_tilesets)} ingested tileset(s)...",
+                    file=sys.stderr,
+                )
+                for tileset_uid in ingested_tilesets:
+                    delete_higlass_tileset(tileset_uid, self.higlass_config)
+
+            message = (
+                "An unexpected internal error occurred while processing this track hub. Please "
+                f"contact the gEAR team to resolve this issue (share ID: {self.share_uid}). "
+                f"(Technical details: {e})"
             )
-            return {"success": False, "message": str(e)}
+            self.update_status("error", 0, 0, total_tracks, message, track_statuses)
+            return {"success": False, "message": message}

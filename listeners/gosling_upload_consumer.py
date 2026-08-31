@@ -8,6 +8,7 @@ import gc
 import json
 import os
 import sys
+import time
 import traceback
 from pathlib import Path
 
@@ -16,6 +17,7 @@ gear_root = Path(__file__).resolve().parents[1]
 gear_lib = gear_root / "lib"
 sys.path.insert(0, str(gear_lib))
 
+import gearqueue  # noqa: F401
 from gear.serverconfig import ServerConfig  # noqa: I001
 
 servercfg = ServerConfig().parse()
@@ -110,10 +112,29 @@ class Consumer:
     def __init__(self, host: str) -> None:
         self._reconnect_delay = 0
         self.host = host
+        self._consumer = self._new_connection()
 
-        import gearqueue  # noqa: F401
 
-        self._consumer = gearqueue.AsyncConnection(
+    def run(self) -> None:
+        """Run the consumer with automatic reconnection."""
+        while True:
+            try:
+                self._consumer.run()
+            except KeyboardInterrupt:
+                self._consumer.stop()
+                break
+            except Exception as exc:
+                print(f"{pid} - Consumer loop error: {exc}", flush=True)
+                traceback.print_exc()
+                self._consumer.should_reconnect = True
+
+            if not getattr(self._consumer, "should_reconnect", False):
+                break
+            self._maybe_reconnect()
+
+    def _new_connection(self) -> "gearqueue.AsyncConnection":
+        """Create a new AsyncConnection instance."""
+        return gearqueue.AsyncConnection(
             host=self.host,
             publisher_or_consumer="consumer",
             queue_name=queue_name,
@@ -123,20 +144,8 @@ class Consumer:
             purge_queue=False,
         )
 
-    def run(self) -> None:
-        while True:
-            try:
-                self._consumer.run()
-            except KeyboardInterrupt:
-                self._consumer.stop()
-                break
-            self._maybe_reconnect()
-
     def _maybe_reconnect(self) -> None:
-        import time
-
-        import gearqueue  # noqa: F401
-
+        """Attempt reconnection with exponential backoff."""
         if self._consumer.should_reconnect:
             self._consumer.stop()
             reconnect_delay = self._get_reconnect_delay()
@@ -145,16 +154,10 @@ class Consumer:
                 flush=True,
             )
             time.sleep(reconnect_delay)
-            self._consumer = gearqueue.AsyncConnection(
-                host=self.host,
-                publisher_or_consumer="consumer",
-                queue_name=queue_name,
-                on_message_callback=_on_request,
-                pid=pid,
-                logfile=logfile,
-            )
+            self._consumer = self._new_connection()
 
     def _get_reconnect_delay(self) -> int:
+        """Calculate reconnect delay with exponential backoff."""
         if self._consumer.was_consuming:
             self._reconnect_delay = 0
         else:

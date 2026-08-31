@@ -1,0 +1,6 @@
+[Unit]
+Description=H5AD (Anndata) RabbitMQ Consumer Workers
+Wants=anndata-upload-consumer@1.service anndata-upload-consumer@2.service anndata-upload-consumer@3.service
+
+[Install]
+WantedBy=multi-user.target

@@ -1,6 +1,15 @@
 networks:
   gear:
 
+x-consumer-defaults: &consumer-defaults
+  depends_on:
+    queue:
+      condition: service_healthy
+  networks:
+    - gear
+  pull_policy: always
+  restart: on-failure
+
 services:
   db:
     environment:
@@ -18,7 +27,6 @@ services:
       - db:/var/lib/mysql:rw
 
   web:
-    # build: .  # uncomment out if umgear:main does not exist
     depends_on:
       - db
     environment:
@@ -28,11 +36,18 @@ services:
       - gear
     ports:
       - "8080:80"
+    pull_policy: always
     restart: on-failure
     volumes:
       - ..:/opt/gEAR/
 
   queue:
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
     image: rabbitmq:4.1
     networks:
       - gear
@@ -41,9 +56,6 @@ services:
     restart: always
 
   panel:
-    build:
-      context: ../services/spatial
-      dockerfile: Dockerfile
     environment:
       - BOKEH_RESOURCES=cdn # Pull Bokeh library from CDN
     image: adkinsrs/spatial_panel_app:latest
@@ -51,6 +63,7 @@ services:
       - gear
     ports:
       - "5006:5006" # host:container
+    pull_policy: always
     restart: always
     volumes:
       - <spatial_panel_cache_path>:/gEAR/www/cache/spatial_panel
@@ -59,14 +72,13 @@ services:
 
   # ProjectR RabbitMQ Consumer
   #projectr_consumer:
-  #  build:
-  #    context: ..
-  #   dockerfile: listeners/Dockerfile.projectr
   #  depends_on:
-  #    - queue
+  #     queue:
+  #      condition: service_healthy
   #  image: adkinsrs/gear_projectr_consumer:latest
   #  networks:
   #    - gear
+  #  pull_policy: always
   #  restart: on-failure
   #  volumes:
   #    - ../listeners:/gEAR/listeners
@@ -74,17 +86,31 @@ services:
 
   # TrackHub (Gosling Upload) RabbitMQ Consumer
   gosling_upload_consumer:
-    build:
-      context: ..
-      dockerfile: listeners/Dockerfile.gosling_upload
-    depends_on:
-      - queue
+    <<: *consumer-defaults
     environment:
       - ENVIRONMENT=development # Set environment variable for development
     image: adkinsrs/gear_gosling_upload_consumer:latest
-    networks:
-      - gear
-    restart: on-failure
+    volumes:
+      - ../listeners:/gEAR/listeners
+      - ../lib:/gEAR/lib
+      - ../www/uploads/files:/gEAR/www/uploads/files
+
+  # AnnData object Upload RabbitMQ Consumer
+  # i.e. h5ad, mex, tar
+  anndata_upload_consumer:
+    <<: *consumer-defaults
+    image: adkinsrs/gear_anndata_upload_consumer:latest
+    volumes:
+      - ../listeners:/gEAR/listeners
+      - ../lib:/gEAR/lib
+      - ../data:/gEAR/data
+      - ../www/uploads/files:/gEAR/www/uploads/files
+
+  # Spatial dataset Upload RabbitMQ Consumer
+  # i.e. Visium, VisiumHD, Curio, GeoMx, CosMx, Xenium -> Zarr store
+  spatial_upload_consumer:
+    <<: *consumer-defaults
+    image: adkinsrs/gear_spatial_upload_consumer:latest
     volumes:
       - ../listeners:/gEAR/listeners
       - ../lib:/gEAR/lib

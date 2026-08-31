@@ -90,7 +90,7 @@ def main():
         result['message'] = 'Dataset file saved successfully.'
 
         status = {
-            "process_id": None,
+            "job_id": None,
             "status": "uploaded",
             "message": "The dataset has been uploaded and is pending processing",
             "progress": 0

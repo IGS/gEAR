@@ -133,15 +133,15 @@ def _adjust_colorscale(
 
                 # Hex codes are based on Matplotlib values -> https://i.stack.imgur.com/nCk6u.jpg
                 plotting_args["color_continuous_scale"] = [
-                    [0.0, "#9a0eea"],
-                    [0.12, "#0343df"],
-                    [0.25, "#380282"],
-                    [0.38, "#00035b"],
-                    [0.5, "#000000"],
-                    [0.62, "#840000"],
-                    [0.75, "#e50000)"],
-                    [0.88, "#f97306"],
-                    [1.0, "#ffff14"],
+                    [0.0, "rgb(154, 14, 234)"],
+                    [0.12, "rgb(3, 67, 223)"],
+                    [0.25, "rgb(56, 2, 130)"],
+                    [0.38, "rgb(0, 3, 91)"],
+                    [0.5, "rgb(0, 0, 0)"],
+                    [0.62, "rgb(132, 0, 0)"],
+                    [0.75, "rgb(229, 0, 0)"],
+                    [0.88, "rgb(249, 115, 6)"],
+                    [1.0, "rgb(255, 255, 20)"],
                 ]
 
             elif palette == "bublrd":

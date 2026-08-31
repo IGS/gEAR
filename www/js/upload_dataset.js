@@ -136,7 +136,9 @@ const checkTrackhubStatus = async() => {
         createToast('Track hub processed successfully!', 'is-success');
         document.getElementById('dataset-processing-submit').disabled = false
     } else if (status === 'error') {
-        createToast(`Processing failed: ${message}`, 'is-danger');
+        createToast("Track hub processing failed", 'is-danger');
+        document.getElementById('step-process-dataset-status-message').textContent = statusMessage;
+
     }
 
     return status;
@@ -913,7 +915,9 @@ const processDataset = async () => {
             // Nothing really to do here since status checking happens elsewhere
         }
     } catch (error) {
-        console.error('Error processing dataset:', error);
+        // axios throws on non-2xx status codes
+        const message = error.response?.data?.message ?? 'Unknown error occurred';
+        console.error(`Error ${error.response?.status}: ${message}`);
         createToast('Error processing dataset');
     }
 }

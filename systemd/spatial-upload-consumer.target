@@ -1,0 +1,6 @@
+[Unit]
+Description=Spatial Dataset Upload RabbitMQ Consumer Workers
+Wants=spatial-upload-consumer@1.service spatial-upload-consumer@2.service spatial-upload-consumer@3.service
+
+[Install]
+WantedBy=multi-user.target

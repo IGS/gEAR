@@ -4,12 +4,74 @@
 # but were moved to a common location to be shared across multiple scripts.
 
 import functools
+import os
 import sys
 import typing
 
 if typing.TYPE_CHECKING:
     import pandas as pd
     from anndata import AnnData
+
+def set_memory_limit_from_cgroup(fraction: float = 0.9) -> None:
+    """
+    Self-impose a process memory ceiling based on the container's cgroup memory limit,
+    so that approaching the real limit raises a catchable MemoryError instead of the
+    kernel OOM-killer sending an uncatchable SIGKILL (exit code 137).
+
+    Reads the cgroup v2 limit first (/sys/fs/cgroup/memory.max), falling back to
+    cgroup v1 (/sys/fs/cgroup/memory/memory.limit_in_bytes). If no bounded limit is
+    found (unbounded, or the files aren't present), this is a no-op and processes
+    remain subject to the OS OOM-killer as before.
+
+    This is best-effort defensive setup: any failure here is caught and logged
+    rather than raised, so it can never prevent a caller from starting up.
+
+    Parameters
+    ----------
+    fraction : float, optional (default: 0.9)
+        Fraction of the detected cgroup memory limit to set as the RLIMIT_AS ceiling.
+    """
+    import resource
+
+    # Cgroup v1 reports an implausibly large number (close to 2**63, platform max)
+    # to mean "no limit" rather than a sentinel string like v2's "max".
+    UNBOUNDED_V1_THRESHOLD = 2**62
+
+    limit_bytes = None
+
+    try:
+        cgroup_v2_path = "/sys/fs/cgroup/memory.max"
+        cgroup_v1_path = "/sys/fs/cgroup/memory/memory.limit_in_bytes"
+
+        if os.path.exists(cgroup_v2_path):
+            with open(cgroup_v2_path) as f:
+                value = f.read().strip()
+            if value != "max":
+                limit_bytes = int(value)
+        elif os.path.exists(cgroup_v1_path):
+            with open(cgroup_v1_path) as f:
+                value = int(f.read().strip())
+            if value < UNBOUNDED_V1_THRESHOLD:
+                limit_bytes = value
+
+        if limit_bytes is None:
+            print(
+                "set_memory_limit_from_cgroup: no bounded cgroup memory limit found; "
+                "not setting a self-imposed RLIMIT_AS ceiling.",
+                file=sys.stderr,
+            )
+            return
+
+        target = int(limit_bytes * fraction)
+        resource.setrlimit(resource.RLIMIT_AS, (target, target))
+        print(
+            f"set_memory_limit_from_cgroup: cgroup limit is {limit_bytes} bytes; "
+            f"set RLIMIT_AS to {target} bytes ({fraction:.0%}).",
+            file=sys.stderr,
+        )
+    except Exception as e:
+        print(f"set_memory_limit_from_cgroup: failed to set memory limit: {e}", file=sys.stderr)
+
 
 def catch_memory_error() -> typing.Callable:
     """
@@ -303,8 +365,18 @@ def update_var_with_ensembl_ids(
            AND ensembl_release = %s
     """
 
-    # Drop duplicates
-    var_df = var_df[~var_df.index.duplicated(keep='first')]
+    # We want to ensure that the var_df does not contain duplicate gene symbols, as this would lead to ambiguity in mapping.
+    # Not only that, dropping duplicates would cause a mismatch with the shape of Anndata.X
+    if var_df.index.duplicated().any():
+        raise ValueError(
+            "var_df has duplicate gene symbols; drop duplicates (and the matching "
+            "X columns) before calling update_var_with_ensembl_ids."
+        )
+
+    # Preserve the caller's original row order through the split/concat below,
+    # since AnnData.var assignment is positional and must match X's column order.
+    var_df = var_df.copy()
+    var_df["_orig_order"] = range(len(var_df))
     orig_gene_column = "index"
 
     best_release = None
@@ -367,7 +439,73 @@ def update_var_with_ensembl_ids(
     )
     unmapped_var.index.name = "ensembl_id"
 
-    # Combine
+    # Combine and restore order
     result = pd.concat([ensembl_id_var, unmapped_var], axis=0)
+    result = result.sort_values("_orig_order").drop(columns="_orig_order")
 
     return result
+
+def map_gene_symbols_via_mygene(
+    gene_symbols: list, taxid: int, verbose: bool = False
+) -> dict:
+    """
+    Query MyGene.info for Ensembl gene IDs matching the given gene symbols.
+
+    Intended as a fallback for genes the local `gene` table can't resolve
+    (e.g. older Ensembl releases). Best-effort: symbols MyGene can't resolve,
+    or any request failure after retries, should be handled by the caller.
+
+    Parameters
+    ----------
+    gene_symbols : list
+        Gene symbols to look up.
+    taxid : int
+        NCBI taxonomy ID for the organism.
+    verbose : bool, optional (default: False)
+        Print progress information.
+
+    Returns
+    -------
+    dict
+        Mapping of gene_symbol -> ensembl_id for symbols MyGene resolved.
+        Unresolved symbols are omitted.
+    """
+    import time
+
+    import mygene
+
+    if not gene_symbols:
+        return {}
+
+    max_retries = 5
+    base_delay = 2  # seconds
+
+    mg_genes = None
+    for attempt in range(max_retries):
+        try:
+            mg = mygene.MyGeneInfo()
+            mg_genes = mg.querymany(gene_symbols, scopes="symbol", fields="ensembl.gene", species=str(taxid))
+            break
+        except Exception as e:
+            is_server_error = "500" in str(e) or "internal server error" in str(e).lower()
+            if is_server_error and attempt < max_retries - 1:
+                delay = base_delay ** (attempt + 1)
+                if verbose:
+                    print(
+                        f"MyGene API returned a 500 error (attempt {attempt + 1}/{max_retries}). "
+                        f"Retrying in {delay}s..."
+                    )
+                time.sleep(delay)
+            else:
+                if verbose:
+                    print(f"Error occurred while querying MyGene: {e}")
+                raise
+
+    mapping = {}
+    for mg_gene in mg_genes or []:
+        if "ensembl" not in mg_gene:
+            continue
+        ensembl = mg_gene["ensembl"]
+        mapping[mg_gene["query"]] = ensembl[0]["gene"] if isinstance(ensembl, list) else ensembl["gene"]
+
+    return mapping

@@ -760,6 +760,7 @@
                           <div class="select is-fullwidth">
                             <select name="spatial-platform" id="select-spatial-platform">
                               <option value="">Select one</option>
+                              <option value="cosmx" disabled>CosMx SMI (COMING SOON)</option>
                               <option value="curio">Curio Seeker</option>
                               <option value="geomx">GeoMx DSP</option>
                               <option value="visium">10x Genomics Visium</option>
@@ -947,6 +948,7 @@ Currently Gosling only supports single-organism tracks">
                                 <option value="hg19">Human (hg19)</option>
                                 <option value="hg38">Human (hg38)</option>
                                 <option value="mm10">Mouse (mm10)</option>
+                                <option value="mm39">Mouse (mm39)</option>
                                 <option value="galGal6" disabled>Chicken (COMING SOON)</option>
                                 <option value="rn6">Rat</option>
                                 <option value="danRer10">Zebrafish</option>
@@ -1215,6 +1217,22 @@ Currently Gosling only supports single-organism tracks">
             </footer>
         </div>
     </div>
+
+    <template id="cosmx-spatial-reqs">
+      A tar.gz file containing the following files with these standarized names:
+      <ul>
+        <li>(Required) exprMat_file.csv</li>
+        <li>(Required) metadata_file.csv</li>
+        <li>(Required) fov_positions_file.csv</li>
+        <li>(Required) 'CellComposite' directory</li>
+        <li>(Required) 'CellLabels' directory</li>
+        <li>tx_file.csv</li>
+      </ul>
+      <br />
+      The filenames for the csv files can have an optional dataset id prefix.
+      <br /><br />
+      Gene IDs present in input must associate with an annotation from the source type indicated in the metadata upload.
+    </template>
 
     <template id="curio-spatial-reqs">
       A tar.gz file containing the following files with these standarized names:

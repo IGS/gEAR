@@ -1,15 +1,15 @@
 import argparse
 import os
 import sys
+import traceback
 
-import mygene
 import pandas as pd
 import rpy2.rinterface_lib.callbacks as r_cbs
 import rpy2.robjects as ro
 import rpy2.robjects.packages as rpackages
 import scanpy
+from gear.utils import map_gene_symbols_via_mygene
 from rpy2.robjects.packages import importr
-import time
 
 
 def silent_handler(s:str) -> None:
@@ -24,6 +24,7 @@ def argument_parser():
     args = vars(parser.parse_args())
     return args
 
+# TODO: Recently switched to the pak installer for the docker image, should consider switching this too
 def r_package_installer() -> None:
     utils = rpackages.importr('utils')
     # Install BiocManager if not installed
@@ -36,6 +37,9 @@ def r_package_installer() -> None:
         utils.install_packages('reticulate')
     if not rpackages.isinstalled('Seurat'):
         utils.install_packages('Seurat')
+    if not rpackages.isinstalled('Signac'):
+        ro.r("setRepositories(ind = 1:3)") # needed to automatically install Bioconductor dependencies
+        utils.install_packages('Signac')
     if not rpackages.isinstalled('anndataR'):
         BiocManager.install('anndataR')
     if not rpackages.isinstalled('rhdf5'):
@@ -50,12 +54,12 @@ def r_package_importer(package_name:str):
     Output:
         The R package that was imported or if there's an error the message will be returned
     """
-    importErrorMessage = ""
     try:
         pkg = importr(package_name)
         return pkg
     except Exception:
-        importErrorMessage += f"{package_name} not installed or can not be imported"
+        importErrorMessage = f"{package_name} not installed or can not be imported"
+        traceback.print_exc()
         raise ImportError(importErrorMessage)
 
 
@@ -74,9 +78,13 @@ def seurat_to_anndata(file_path: str, share_name: str, output_dir: str = "."):
     r_cbs.consolewrite_warnerror = silent_handler
     # Import required R packages
     base = rpackages.importr('base')
-    r_package_importer('Seurat')
-    r_package_importer('rhdf5')
-    r_package_importer('anndataR')
+    try:
+        r_package_importer('Seurat')
+        r_package_importer('rhdf5')
+        r_package_importer('anndataR')
+        r_package_importer('Signac')    # For some extra stuff Carlo adds in
+    except ImportError:
+        raise
     # Use R's readRDS to load the object.
     # The result is an R object within the Python environment.
     try:
@@ -109,40 +117,11 @@ def genes_to_ensembl(adata, taxid=None):
         return None
 
     genes = adata.var.index.tolist()
-    max_retries = 5
-    base_delay = 2  # seconds
-
-    for attempt in range(max_retries):
-        try:
-            mg = mygene.MyGeneInfo()
-            mg_genes = mg.querymany(genes, scopes="symbol", fields="ensembl.gene", species=f"{taxid}")
-            break  # success — exit retry loop
-        except Exception as e:
-            is_server_error = "500" in str(e) or "Internal Server Error" in str(e).lower()
-            if is_server_error and attempt < max_retries - 1:
-                delay = base_delay ** (attempt + 1)  # 2, 4, 8, 16, 32 seconds
-                print(
-                    f"MyGene API returned a 500 error (attempt {attempt + 1}/{max_retries}). "
-                    f"Retrying in {delay}s...",
-                )
-                time.sleep(delay)
-            else:
-                # Non-500 error, or all retries exhausted
-                print(f"Error occurred while querying MyGene: {e}")
-                raise
-
-    ensembl_mapping_dict = {}
-    for mg_gene in mg_genes:
-        gene_name = mg_gene['query']
-        if 'ensembl' in mg_gene.keys():
-            if isinstance(mg_gene['ensembl'], list):
-                ensembl_mapping_dict[gene_name] = mg_gene['ensembl'][0]['gene']
-            else:
-                ensembl_mapping_dict[gene_name] = mg_gene['ensembl']['gene']
+    ensembl_mapping_dict = map_gene_symbols_via_mygene(genes, taxid, verbose=True)
 
     count = 0
     for gene in genes:
-        if gene not in ensembl_mapping_dict.keys():
+        if gene not in ensembl_mapping_dict:
             ensembl_mapping_dict[gene] = f"Fake{count}"
             count += 1
 

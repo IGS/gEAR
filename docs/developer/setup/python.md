@@ -126,7 +126,7 @@ I cannot add comments to the bash code without breaking the command.  So consult
     hic2cool==0.8.3 \
     httpcore==1.0.9 \
     httpx==0.28.1 \
-    hvplot==0.12.2
+    hvplot==0.12.2 \
     jupyterlab==4.0.5 \
     jupyter==1.0.0 \
     kaleido==0.2.1 \
@@ -134,13 +134,12 @@ I cannot add comments to the bash code without breaking the command.  So consult
     legacy-cgi==2.6.4 \
     llvmlite==0.47.0 \
     matplotlib==3.10.7 \
-    mod-wsgi==5.0.2 \
+    mod-wsgi==6.0.6 \
     more_itertools==11.0.2 \
     mygene==3.2.2 \
     mysql-connector-python==8.0.28 \
     numba==0.65.0 \
     numpy==2.4.0 \
-    opencv-python==4.5.5.64 \
     openpyxl==3.1.5 \
     pandas==2.3.3 \
     panel==1.9.3 \
@@ -161,9 +160,9 @@ I cannot add comments to the bash code without breaking the command.  So consult
     spatialpandas==0.5.0 \
     shadows==0.1a2 \
     tables==3.11.1 \
-    watchfiles==1.1.1
+    watchfiles==1.1.1 \
+    zarrs==0.2.3
     ./pip3 install git+https://github.com/adkinsrs/diffxpy.git@ffd828c280882ca98adc6e42c934625fab0011f6
-
 ```
 
 Do not forget to change out the old Python version in various files (i.e. systemd files, apache, etc.)
