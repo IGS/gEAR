@@ -23,6 +23,8 @@ from flask_restful import Resource, inputs, reqparse
 from gear.analysis import SpatialAnalysis, get_analysis
 from gear.orthology import get_ortholog_file, map_dataframe_genes
 from gear.utils import catch_memory_error
+import google.auth.transport.requests
+import google.oauth2.id_token
 from more_itertools import sliced
 from werkzeug.utils import secure_filename
 
@@ -96,6 +98,20 @@ parser.add_argument("analysis", type=str, required=False)  # not used at the mom
 run_projectr_parser = parser.copy()
 run_projectr_parser.add_argument("projection_id", type=str, required=False)
 
+def get_auth_headers(audience: str) -> dict:
+    """Generates a GCP OIDC Bearer token header in production, skips locally."""
+    if not this.servercfg.getboolean("projectR_service", "auth_enabled", fallback=False):
+        return {}
+
+    try:
+        # On a GCP Compute Engine VM, this queries the local metadata server for an ID Token.
+        # It also works locally if 'gcloud auth application-default login' is executed.
+        auth_req = google.auth.transport.requests.Request()
+        token = google.oauth2.id_token.fetch_id_token(auth_req, audience)
+        return {"Authorization": f"Bearer {token}"}
+    except Exception as e:
+        print(f"WARNING: Could not fetch GCP IAM token: {e}", file=sys.stderr)
+        return {}
 
 def build_projection_csv_path(dir_id: str, file_id: str, scope: str) -> Path:
     """Build the path to the csv file for a given projection. Returns a Path object."""
@@ -371,7 +387,15 @@ async def fetch_one(client: RetryClient, payload: dict) -> dict:
 
     audience = this.servercfg["projectR_service"]["hostname"]
     endpoint = "{}/".format(audience)
-    headers = {"content_type": "application/json"}
+
+    # Fetch GCP IAM Authorization header
+    auth_headers = get_auth_headers(audience)
+
+    # Combine with application headers
+    headers = {
+        "Content-Type": "application/json",
+        **auth_headers
+    }
 
     # https://docs.aiohttp.org/en/stable/client_reference.html
     # (semaphore) https://stackoverflow.com/questions/40836800/python-asyncio-semaphore-in-async-await-function

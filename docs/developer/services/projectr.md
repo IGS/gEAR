@@ -30,8 +30,8 @@ Navigate to https://console.cloud.google.com/run?enableapi=true&_ga=2.240046915.
 2. For "CPU Allocation and Pricing", leave as "CPU is only allocated during request processing".
 3. For "Autoscaling", leave as is.
 4. For Ingress, leave as "Allow all traffic"
-5. For Authentication, select "Allow unauthorized invocations". Since the gEAR API is part of a public codebase, we do not want to expose authentication credentials, so it is necessary to set it up so anything can call this service.  This should only be the projectR API call though, in reality.
-  a. Currently this can only be changed if the person setting up the service has permissions to change IAM policy.
+5. For Authentication, leave as "Require authentication". The gEAR VMs have Google Auth support with IAM credentials baked in, so code should work
+  a. There is a "projectr-service-staging" endpoint that has reduced capacity that is set up for public authentication. This can be used by local (Docker) setups.
 6. Click "Container, Connections, Security" dropdown.  Each of those are their own separate tab
 7. Change memory to 16Gb.  Unfortunately this means we need to set 4 CPUs as well. Most projectR runs should never hit 16Gb due to chunking the file, but it's possible.
 8. Set the request timeout to 1200 seconds. The longest request I've seen so far was about 17-18 minutes, but that is more the rarity than the norm.  Most should only take a 1-3 minutes.
