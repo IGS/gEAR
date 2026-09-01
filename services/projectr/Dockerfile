@@ -1,3 +1,4 @@
+# check=skip=JSONArgsRecommended
 
 # Stage 1: Install R packages (using Bioconductor base image)
 FROM bioconductor/bioconductor_docker:3.21-r-4.5.2 AS r-builder
@@ -25,7 +26,11 @@ RUN pip3 wheel --no-cache-dir --no-deps --wheel-dir /tmp/wheels rpy2==3.6.7
 
 
 # Stage 2: Final image
+# Need to not use slim as we need the shell
 FROM python:3.14-slim
+
+# Allow statements and log messages to immediately appear in the logs
+ENV PYTHONUNBUFFERED=True
 
 # Copy compiled R from r-builder stage
 COPY --from=r-builder /usr/local/lib/R /usr/local/lib/R
@@ -56,4 +61,4 @@ COPY . ./
 
 # SAdkins - "2 * CPU + 1" formula to set Gunicorn workers and threads together
 # https://medium.com/building-the-system/gunicorn-3-means-of-concurrency-efbb547674b7
-CMD ["exec", "gunicorn", "--bind", ":%{PORT:-8080}", "--workers", "3", "--threads", "3", "--timeout", "0", "main:app"]
+CMD exec gunicorn --bind :${PORT:-8080} --workers 3 --threads 3 --timeout 0 main:app

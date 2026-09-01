@@ -115,7 +115,8 @@ target "projectr_consumer" {
 }
 
 target "projectr_cloud_run" {
-    inherits = ["_common"]
+    platforms = ["linux/amd64"] # Only push unix image, as Google Cloud Run can only use linux/amd64 images.
+    output    = ["type=registry"]
     context = "../services/projectr"
     dockerfile = "Dockerfile"
     tags = ["us-east1-docker.pkg.dev/gear-154704/cloud-run-source-deploy/projectr_service:${TAG}",
