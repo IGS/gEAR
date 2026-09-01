@@ -1,5 +1,5 @@
 Flask==3.1.3
 gunicorn>=22.0.0
-#rpy2==3.6.7   # built in r-builder
-pandas==2.3.3   # Anndata does not support pandas 3.x.x yet
+pandas==2.3.3
+rpy2==3.6.7
 google-cloud-logging

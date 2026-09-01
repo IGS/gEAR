@@ -80,7 +80,7 @@ ENV LD_LIBRARY_PATH="/usr/local/lib/R/lib:/opt/Python-${PYTHON_FULL_VERSION}/lib
 ENV R_HOME="/usr/local/lib/R"
 ENV PATH="/opt/Python-${PYTHON_FULL_VERSION}/bin:/usr/local/lib/R/bin:${PATH}"
 
-# Force GCC 11 to use a newer C standard to understand R 4.5.2 headers
+# Force GCC 11 to use a newer C standard to understand R 4.x headers
 ENV CFLAGS="-std=gnu2x"
 
 # Install rpy2 now that R has installed
