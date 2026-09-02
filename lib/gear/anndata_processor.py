@@ -181,8 +181,11 @@ class AnndataProcessor:
                         f"help and reference share ID {self.share_uid}."
                     )
 
-            self._update_progress(100, "Dataset processed successfully.")
-            return {"success": 1, "message": "Dataset processed successfully."}
+            message =  "Dataset processed successfully."
+
+            self._update_progress(100, message)
+            self._update_status("complete", message)
+            return {"success": 1, "message": message}
 
         except ProcessingError as e:
             self._update_status("error", str(e))
