@@ -386,7 +386,6 @@ async def fetch_one(client: RetryClient, payload: dict) -> dict:
     # endpoint = 'https://my-cloud-run-service.run.app/my/awesome/url'
 
     audience = this.servercfg["projectR_service"]["hostname"]
-    endpoint = "{}/".format(audience)
 
     # Fetch GCP IAM Authorization header
     auth_headers = get_auth_headers(audience)
@@ -405,7 +404,7 @@ async def fetch_one(client: RetryClient, payload: dict) -> dict:
     try:
         timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
         async with client.post(
-            url=endpoint, json=payload, headers=headers, timeout=timeout
+            url=audience, json=payload, headers=headers, timeout=timeout
         ) as response:
             return await response.json()
     except aiohttp.ClientResponseError as cre:
