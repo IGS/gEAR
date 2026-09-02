@@ -8,7 +8,7 @@ Rver="${Rmaj}.5.3"
 current_dir=$(pwd)
 
 # Download R source file
-curl -s -L -f -o /tmp/${Rver}.tar.gz  https://cran.r-project.org/src/base/${Rmaj}/${Rver}.tar.gz || exit 1
+curl -s -L -f -o /tmp/${Rver}.tar.gz  https://cloud.r-project.org/src/base/${Rmaj}/${Rver}.tar.gz || exit 1
 
 # Verify the file was downloaded and is valid
 tar -tzf /tmp/${Rver}.tar.gz > /dev/null || exit 1

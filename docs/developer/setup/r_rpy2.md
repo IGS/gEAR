@@ -39,7 +39,7 @@ Run this to install R, Bioconductor, and projectR:
 from the gEAR root:
 
 ```bash
-cd ./services/projectr/
+cd ./docker/
 # Install R and packages
 sudo sh ./install_R.sh
 
