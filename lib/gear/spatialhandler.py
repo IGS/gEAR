@@ -20,11 +20,18 @@ from spatialdata.transformations import (
     Translation,
     set_transformation,
 )
+from spatialdata_io._constants._constants import CosmxKeys, CurioKeys, VisiumHDKeys, XeniumKeys
 from spatialdata_io.experimental import from_legacy_anndata, to_legacy_anndata
 
 if typing.TYPE_CHECKING:
     from anndata import AnnData
     from spatialdata import SpatialData
+
+# The dataset_id we pass into every spatialdata-io reader call that accepts one
+# (and the matching prefix tarball-extraction renames files to beforehand) - a
+# single source of truth so the two can never drift out of sync with each other
+# (they must match exactly, since the reader looks for files named with this prefix).
+STANDARD_DATASET_ID = "spatialdata"
 
 def _remove_dir(dir_to_remove: str) -> None:
     """Remove a directory safely using subprocess (no shell)."""
@@ -722,23 +729,23 @@ class CosMxHandler(SpatialHandler):
         """
         Returns the coordinate system used by CosMx datasets.
 
-        We pass dataset_id="spatialdata" into read_cosmx() (our chunked fork of
-        spatialdata_io's cosmx() reader), which some spatialdata-io releases use to
-        prefix the default coordinate system name (e.g. "spatialdata" instead of
+        We pass dataset_id=STANDARD_DATASET_ID into read_cosmx() (our chunked fork
+        of spatialdata_io's cosmx() reader), which some spatialdata-io releases use
+        to prefix the default coordinate system name (e.g. "spatialdata" instead of
         "global"). We try the prefixed name first and fall back to "global" so both
         naming conventions are supported.
         """
-        return self._resolve_coordinate_system(["spatialdata", "global"])  # may also be "spatial"
+        return self._resolve_coordinate_system([STANDARD_DATASET_ID, "global"])  # may also be "spatial"
 
     @property
     def region_id(self) -> str:
         """Returns the region ID used for spot data."""
-        return "cell_ID"    # per-FOV instance key; not globally unique alone (see obs index)
+        return CosmxKeys.INSTANCE_KEY  # per-FOV instance key; not globally unique alone (see obs index)
 
     @property
     def region_name(self) -> str:
         """Returns the name of the region used for spot data."""
-        return "fov_labels" # this is the region_key COLUMN, not an element name -- don't index sdata[self.region_name]
+        return CosmxKeys.REGION_KEY  # this is the region_key COLUMN, not an element name -- don't index sdata[self.region_name]
 
     @property
     def platform(self) -> str:
@@ -909,13 +916,14 @@ class CosMxHandler(SpatialHandler):
                     entry.name = entry.name[:-3]    # Adjust file name
 
                 # ? We could include this to use the "points" for future additions, but not including it saves space in the output Zarr
-                if entry.name.endswith("tx_file.csv"):
+                if entry.name.endswith(CosmxKeys.TRANSCRIPTS_SUFFIX):
                     transcripts_present = True
 
-                # For the exprMat_file.csv, fov_positions_file.csv, and metadata_file.csv files, replace the dataset_id prefix with "spatialdata" to standardize downstream usage
-                for suffix in ["exprMat_file.csv", "fov_positions_file.csv", "metadata_file.csv", "tx_file.csv"]:
+                # For the exprMat_file.csv, fov_positions_file.csv, and metadata_file.csv files, replace the dataset_id prefix
+                # with STANDARD_DATASET_ID to standardize downstream usage (must match the dataset_id passed to read_cosmx() below)
+                for suffix in [CosmxKeys.COUNTS_SUFFIX, CosmxKeys.FOV_SUFFIX, CosmxKeys.METADATA_SUFFIX, CosmxKeys.TRANSCRIPTS_SUFFIX]:
                     if entry.name.endswith(suffix):
-                        entry.name = f"spatialdata_{suffix}"
+                        entry.name = f"{STANDARD_DATASET_ID}_{suffix}"
                         break
 
                 # For files inside a CellComposite or CellLabels directory,
@@ -943,8 +951,8 @@ class CosMxHandler(SpatialHandler):
             raise Exception("Organism ID not found in dataset metadata or provided as an argument.")
 
         # In the metadata_file.csv file, rename the "cell_id" column if it exists, as it is redundant with the "cell_ID" column
-        # NOTE: the extraction loop above renames this file to "spatialdata_metadata_file.csv" - must match that name here.
-        metadata_csv_path = "{}/spatialdata_metadata_file.csv".format(extract_dir)
+        # NOTE: the extraction loop above renames this file to "{STANDARD_DATASET_ID}_metadata_file.csv" - must match that name here.
+        metadata_csv_path = "{}/{}_{}".format(extract_dir, STANDARD_DATASET_ID, CosmxKeys.METADATA_SUFFIX)
         if os.path.exists(metadata_csv_path):
             metadata_df = pd.read_csv(metadata_csv_path)
             if "RNA_Analysis_Neighborhood.Analysis.1_1_assignments" not in metadata_df.columns:
@@ -959,7 +967,7 @@ class CosMxHandler(SpatialHandler):
             # read_cosmx() is our chunked fork of that reader (see gear/cosmx_reader.py) - same
             # interface, but bounds peak memory to one chunk of the counts file at a time.
             sdata = read_cosmx(extract_dir
-                                    , dataset_id="spatialdata"   # Provide a name to standarize downstream usage
+                                    , dataset_id=STANDARD_DATASET_ID   # Must match the rename prefix used during extraction above
                                     , transcripts=transcripts_present
                                     )
         except Exception:
@@ -973,12 +981,10 @@ class CosMxHandler(SpatialHandler):
         if tbl.obs['clusters'].isna().all():
             raise Exception("All cluster values are missing in clusters.csv file in tarball.")
 
-        # Add the global coordinates to the obs dataframe as spatial1 and spatial2, so that they can be used for plotting in scanpy
+        # Sanity check that read_cosmx() still produces obsm["global"] (relied on
+        # elsewhere for per-FOV transforms).
         if "global" not in tbl.obsm:
             raise Exception("Expected obsm['global'] from read_cosmx() output; check gear/cosmx_reader.py against the spatialdata-io version it was forked from.")
-        global_xy = tbl.obsm["global"]
-        tbl.obs["spatial1"] = global_xy[:, 0]
-        tbl.obs["spatial2"] = global_xy[:, 1]
 
         # The Space Ranger h5 matrix has the gene names as the index, need to move them to a column and set the index to the ensembl id
         tbl.var_names_make_unique()
@@ -1024,12 +1030,12 @@ class CurioHandler(SpatialHandler):
     @property
     def region_id(self) -> str:
         """Returns the region ID used for spot data."""
-        return "instance_id"
+        return CurioKeys.INSTANCE_KEY
 
     @property
     def region_name(self) -> str:
         """Returns the name of the region used for spot data."""
-        return "cells"
+        return CurioKeys.REGION
 
     @property
     def platform(self) -> str:
@@ -1326,18 +1332,21 @@ class VisiumHandler(SpatialHandler):
         name ("downscaled_hires"). We try the new name first and fall back to the
         old one so both existing and newly written Zarr stores can be read.
         """
-        return self._resolve_coordinate_system(["spatialdata_downscaled_hires", "downscaled_hires"])
+        return self._resolve_coordinate_system([f"{STANDARD_DATASET_ID}_downscaled_hires", "downscaled_hires"])
 
 
     @property
     def region_id(self) -> str:
         """Returns the region ID used for spot data."""
+        # "spot_id" is an internal literal in spatialdata_io's visium() reader
+        # (visium.py, TableModel.parse(..., instance_key="spot_id")) - not exposed
+        # via VisiumKeys, so there's no importable constant for this one.
         return "spot_id"
 
     @property
     def region_name(self) -> str:
         """Returns the name of the region used for spot data."""
-        return "spatialdata"
+        return STANDARD_DATASET_ID
 
     @property
     def platform(self) -> str:
@@ -1347,7 +1356,7 @@ class VisiumHandler(SpatialHandler):
     @property
     def img_name(self) -> str | None:
         """Returns the image name associated with this handler."""
-        return "spatialdata_hires_image"
+        return f"{STANDARD_DATASET_ID}_hires_image"
 
     def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
 
@@ -1390,7 +1399,7 @@ class VisiumHandler(SpatialHandler):
                 raise Exception("clusters.csv file does not have 'Barcode' and 'Cluster' columns in clusters.csv file in tarball.")
 
         try:
-            sdata = sdio.visium(path=extract_dir, dataset_id="spatialdata")    # Provide a name to standarize downstream usage
+            sdata = sdio.visium(path=extract_dir, dataset_id=STANDARD_DATASET_ID)
         except Exception:
             raise
 
@@ -1436,7 +1445,7 @@ class VisiumHDHandler(SpatialHandler):
 
     """
 
-    table_name = "square_008um"
+    table_name = VisiumHDKeys.DEFAULT_BIN  # "square_008um"
 
     @property
     def has_images(self) -> bool:
@@ -1453,17 +1462,17 @@ class VisiumHDHandler(SpatialHandler):
         name ("downscaled_hires"). We try the new name first and fall back to the
         old one so both existing and newly written Zarr stores can be read.
         """
-        return self._resolve_coordinate_system(["spatialdata_downscaled_hires", "downscaled_hires"])
+        return self._resolve_coordinate_system([f"{STANDARD_DATASET_ID}_downscaled_hires", "downscaled_hires"])
 
     @property
     def region_id(self) -> str:
         """Returns the region ID used for spot data."""
-        return "location_id"
+        return VisiumHDKeys.INSTANCE_KEY
 
     @property
     def region_name(self) -> str:
         """Returns the name of the region used for spot data."""
-        return "spatialdata_square_008um"
+        return f"{STANDARD_DATASET_ID}_{VisiumHDKeys.DEFAULT_BIN}"
 
     @property
     def platform(self) -> str:
@@ -1473,7 +1482,7 @@ class VisiumHDHandler(SpatialHandler):
     @property
     def img_name(self) -> str | None:
         """Returns the image name associated with this handler."""
-        return "spatialdata_hires_image"
+        return f"{STANDARD_DATASET_ID}_hires_image"
 
     def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
         """
@@ -1498,8 +1507,8 @@ class VisiumHDHandler(SpatialHandler):
                 if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
 
-                # IF directory has "square_" but not "square_008um", skip
-                if "square_" in entry.name and "square_008um" not in entry.name:
+                # IF directory has "square_" but not our target bin size, skip
+                if VisiumHDKeys.BIN_PREFIX in entry.name and self.table_name not in entry.name:
                     continue
 
                 # Move clusters.csv to the root of the extract_dir if it is in a subdirectory
@@ -1511,11 +1520,10 @@ class VisiumHDHandler(SpatialHandler):
                 tf.extract(entry, path=extract_dir)
 
 
-        binned_outputs_dir = "{}/binned_outputs".format(extract_dir)
-        absolute_path = os.path.abspath(binned_outputs_dir)
+        binned_outputs_dir = "{}/{}".format(extract_dir, VisiumHDKeys.BINNED_OUTPUTS)
 
-        if not os.path.exists("{}/feature_slice.h5".format(binned_outputs_dir)):
-            raise Exception("feature_slice.h5 file not found in /binned_outputs directory in tarball.")
+        if not os.path.exists("{}/{}".format(binned_outputs_dir, VisiumHDKeys.FEATURE_SLICE_FILE)):
+            raise Exception(f"{VisiumHDKeys.FEATURE_SLICE_FILE} file not found in /{VisiumHDKeys.BINNED_OUTPUTS} directory in tarball.")
 
         # If clustering file does not exist, raise an exception
         clustering_csv_path = "{}/clusters.csv".format(extract_dir)
@@ -1530,15 +1538,17 @@ class VisiumHDHandler(SpatialHandler):
 
         # https://github.com/scverse/spatialdata-io/issues/212
 
-        # Create a symlink for feature_slice.h5 within "visium_dataset_path" to include a "spatialdata_" prefix
+        # Create a symlink for feature_slice.h5 within "visium_dataset_path" to include the STANDARD_DATASET_ID prefix
         # This is a workaround for the current implementation of the visium_hd function
+        feature_slice_path = "{}/{}".format(binned_outputs_dir, VisiumHDKeys.FEATURE_SLICE_FILE)
+        prefixed_feature_slice_path = "{}/{}_{}".format(binned_outputs_dir, STANDARD_DATASET_ID, VisiumHDKeys.FEATURE_SLICE_FILE)
 
-        if not os.path.exists("{}/spatialdata_feature_slice.h5".format(binned_outputs_dir)):
-            os.symlink("{}/feature_slice.h5".format(absolute_path), "{}/spatialdata_feature_slice.h5".format(binned_outputs_dir))
+        if not os.path.exists(prefixed_feature_slice_path):
+            os.symlink(os.path.abspath(feature_slice_path), prefixed_feature_slice_path)
 
         try:
             sdata = sdio.visium_hd(binned_outputs_dir
-                                , dataset_id="spatialdata"   # Provide a name to standarize downstream usage
+                                , dataset_id=STANDARD_DATASET_ID
                                 , bin_size=8
                                 , filtered_counts_file=True
                                 , load_all_images=False  # CytAssist image is not helpful for us.
@@ -1606,11 +1616,14 @@ class XeniumHandler(SpatialHandler):
     @property
     def region_id(self) -> str:
         """Returns the region ID used for spot data."""
-        return "cell_id"
+        return XeniumKeys.CELL_ID
 
     @property
     def region_name(self) -> str:
         """Returns the name of the region used for spot data."""
+        # xenium.py sets specs["region"] = "cell_circles" if cells_as_circles else
+        # "cell_labels" - not exposed as a constant, and tied to the
+        # cells_as_circles=True we pass in process_file() below.
         return "cell_circles"
 
     @property
