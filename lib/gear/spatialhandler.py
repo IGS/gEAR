@@ -808,6 +808,71 @@ class CosMxHandler(SpatialHandler):
         """
         return super().convert_sdata_to_adata(include_images=False, table_name=table_name)
 
+    def merge_centroids_with_obs(self) -> "SpatialHandler":
+        """
+        Merges per-FOV label centroids into the observation table.
+
+        CosMx has one Labels element per FOV (e.g. "1_labels", "2_labels", ...) rather
+        than a single region element, and region_id ("cell_ID") is only unique within
+        a FOV, not globally. The base class implementation assumes a single region
+        element and a single global merge on region_id, so it doesn't apply here -
+        `self.sdata[self.region_name]` would fail since "fov_labels" is the region_key
+        COLUMN name (its values are the per-FOV element names), not an element itself.
+
+        Instead, extract centroids per-FOV label element, merge each against just that
+        FOV's rows (where region_id is actually unique), then concatenate.
+
+        Obs rows are matched to each FOV's label element by FOV *number*, normalized
+        the same way fovs_counts is in cosmx_reader.py (str(int(x))), rather than by
+        exact string equality against the derived "fov_labels" region_key column -
+        that column's exact text depends on how the raw "fov" metadata CSV column
+        happened to get parsed (e.g. int vs. float vs. string), which is a fragile
+        thing to rely on for matching against label element names.
+        """
+        table_obs = self.sdata.tables[self.NORMALIZED_TABLE_NAME].obs
+        if hasattr(table_obs, "compute"):
+            table_obs = table_obs.compute()
+
+        fov_numeric = table_obs["fov"].astype(float).astype(int).astype(str)
+
+        merged_frames = []
+        unmatched_labels = []
+        label_names = list(self.sdata.labels.keys())
+        for label_name in label_names:
+            fov_str = label_name.rsplit("_labels", 1)[0]
+            fov_obs = table_obs[fov_numeric == fov_str]
+            if fov_obs.empty:
+                unmatched_labels.append(label_name)
+                continue
+
+            centroids_df = sd.get_centroids(self.sdata[label_name], coordinate_system=self.coordinate_system)
+            if centroids_df is None:
+                continue
+            if hasattr(centroids_df, "compute"):
+                centroids_df = centroids_df.compute()
+            centroids_df = centroids_df.rename(columns={"x": "spatial1", "y": "spatial2"})
+
+            # sd.get_centroids() on a Labels element returns the raw per-label centroid
+            # coordinates with an *unnamed* index - it has no concept of "cell_ID". For
+            # CosMx those label values ARE the per-FOV cell_ID (that's how the label
+            # raster was constructed), so name the index to make it joinable below.
+            centroids_df.index = centroids_df.index.astype(np.int64)
+            centroids_df.index.name = self.region_id
+
+            merged_frames.append(fov_obs.merge(centroids_df, on=self.region_id, how="inner"))
+
+        if not merged_frames:
+            raise ValueError(
+                f"Could not extract spatial observation locations for any FOV. "
+                f"{len(label_names)} label element(s) found in sdata.labels; "
+                f"{len(unmatched_labels)} had no matching obs rows by FOV number "
+                f"(e.g. {unmatched_labels[:5]}). Obs FOV values (normalized): "
+                f"{sorted(fov_numeric.unique().tolist())[:10]}."
+            )
+
+        self.sdata.tables[self.NORMALIZED_TABLE_NAME].obs = pd.concat(merged_frames)
+        return self
+
     def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
         """
         Reads and processes a Xenium spatial data tarball from the given filepath.
@@ -853,10 +918,15 @@ class CosMxHandler(SpatialHandler):
                         entry.name = f"spatialdata_{suffix}"
                         break
 
-                # For the CellComposite or CellLabels directories, strip off the dataset_id prefix to standardize downstream usage
-                if any(entry.name.startswith(prefix) for prefix in ["CellComposite", "CellLabels"]):
-                    new_name = entry.name.split("_", 1)[-1]  # Remove the dataset_id prefix
-                    entry.name = new_name
+                # For files inside a CellComposite or CellLabels directory,
+                # ensure file is still inside that directory post-extraction
+                path_parts = entry.name.split("/", 1)
+                if len(path_parts) == 2:
+                    dirname, rest = path_parts
+                    for standard_name in ["CellComposite", "CellLabels"]:
+                        if standard_name in dirname:
+                            entry.name = f"{standard_name}/{rest}"
+                            break
 
                 # Extract file into tmp dir
                 filepath = "{0}/{1}".format(extract_dir, entry.name)
