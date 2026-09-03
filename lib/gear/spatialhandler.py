@@ -12,6 +12,7 @@ import pandas as pd
 import spatialdata as sd
 import spatialdata_io as sdio
 import xarray
+from gear.cosmx_reader import read_cosmx
 from gear.utils import update_var_with_ensembl_ids
 from spatialdata.transformations import (
     Scale,
@@ -721,10 +722,11 @@ class CosMxHandler(SpatialHandler):
         """
         Returns the coordinate system used by CosMx datasets.
 
-        We pass dataset_id="spatialdata" into sdio.cosmx(), which some spatialdata-io
-        releases use to prefix the default coordinate system name (e.g.
-        "spatialdata" instead of "global"). We try the prefixed name first and fall
-        back to "global" so both naming conventions are supported.
+        We pass dataset_id="spatialdata" into read_cosmx() (our chunked fork of
+        spatialdata_io's cosmx() reader), which some spatialdata-io releases use to
+        prefix the default coordinate system name (e.g. "spatialdata" instead of
+        "global"). We try the prefixed name first and fall back to "global" so both
+        naming conventions are supported.
         """
         return self._resolve_coordinate_system(["spatialdata", "global"])  # may also be "spatial"
 
@@ -871,7 +873,8 @@ class CosMxHandler(SpatialHandler):
             raise Exception("Organism ID not found in dataset metadata or provided as an argument.")
 
         # In the metadata_file.csv file, rename the "cell_id" column if it exists, as it is redundant with the "cell_ID" column
-        metadata_csv_path = "{}/metadata_file.csv".format(extract_dir)
+        # NOTE: the extraction loop above renames this file to "spatialdata_metadata_file.csv" - must match that name here.
+        metadata_csv_path = "{}/spatialdata_metadata_file.csv".format(extract_dir)
         if os.path.exists(metadata_csv_path):
             metadata_df = pd.read_csv(metadata_csv_path)
             if "RNA_Analysis_Neighborhood.Analysis.1_1_assignments" not in metadata_df.columns:
@@ -881,7 +884,11 @@ class CosMxHandler(SpatialHandler):
                 metadata_df.to_csv(metadata_csv_path, index=False)
 
         try:
-            sdata = sdio.cosmx(extract_dir
+            # The upstream spatialdata_io cosmx() reader loads the whole counts matrix as a
+            # dense DataFrame before sparsifying it, which reliably OOMs on real CosMx datasets.
+            # read_cosmx() is our chunked fork of that reader (see gear/cosmx_reader.py) - same
+            # interface, but bounds peak memory to one chunk of the counts file at a time.
+            sdata = read_cosmx(extract_dir
                                     , dataset_id="spatialdata"   # Provide a name to standarize downstream usage
                                     , transcripts=transcripts_present
                                     )
@@ -898,7 +905,7 @@ class CosMxHandler(SpatialHandler):
 
         # Add the global coordinates to the obs dataframe as spatial1 and spatial2, so that they can be used for plotting in scanpy
         if "global" not in tbl.obsm:
-            raise Exception("Expected obsm['global'] from sdio.cosmx() output; check spatialdata-io version behavior.")
+            raise Exception("Expected obsm['global'] from read_cosmx() output; check gear/cosmx_reader.py against the spatialdata-io version it was forked from.")
         global_xy = tbl.obsm["global"]
         tbl.obs["spatial1"] = global_xy[:, 0]
         tbl.obs["spatial2"] = global_xy[:, 1]
