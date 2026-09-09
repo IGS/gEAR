@@ -782,29 +782,41 @@ class CosMxHandler(SpatialHandler):
         if not image_names:
             raise Exception("No FOV images found for conversion to 2D array.")
 
-        img_sdata = self.sdata.subset(image_names)
-        extent = sd.get_extent(img_sdata, coordinate_system=self.coordinate_system)
-
+        extent, scale = self._get_global_extent_and_scale()
         orig_width = int(extent["x"][1] - extent["x"][0])
         orig_height = int(extent["y"][1] - extent["y"][0])
+        target_width = round(orig_width * scale)
+        target_height = round(orig_height * scale)
 
-        MAX_DIM = 4000
-        target_width = min(orig_width, MAX_DIM)
+        composite = None  # allocated lazily once we know channel count
+        for name in image_names:
+            tile_extent = sd.get_extent(self.sdata[name], coordinate_system=self.coordinate_system)
 
-        rasterized = sd.rasterize(
-            img_sdata,
-            axes=("x", "y"),
-            min_coordinate=[extent["x"][0], extent["y"][0]],
-            max_coordinate=[extent["x"][1], extent["y"][1]],
-            target_coordinate_system=self.coordinate_system,
-            target_unit_to_pixels=None,
-            target_width=target_width,
-            target_height=None,
-            target_depth=None,
-        )
+            # Rasterize local tile to the same scale as the full canvas, so we can composite them together
+            # Trying to rasterize to the full canvas size is way too slow
+            tile = sd.rasterize(
+                self.sdata[name],
+                axes=("x", "y"),
+                min_coordinate=[tile_extent["x"][0], tile_extent["y"][0]],
+                max_coordinate=[tile_extent["x"][1], tile_extent["y"][1]],
+                target_coordinate_system=self.coordinate_system,
+                target_unit_to_pixels=scale,   # same scale as the full canvas, per-tile-sized output
+                target_height=None,
+                target_depth=None,
+            ).to_numpy()  # (c, h_tile, w_tile)
 
-        arr = rasterized.to_numpy()  # (c, y, x)
-        return {"composite": np.moveaxis(arr, 0, -1)}, (orig_height, orig_width)
+            if composite is None:
+                composite = np.zeros((tile.shape[0], target_height, target_width), dtype=tile.dtype)
+
+            # Add the tile into the correct position in the composite canvas, based on its extent
+            x0 = round((tile_extent["x"][0] - extent["x"][0]) * scale)
+            y0 = round((extent["y"][1] - tile_extent["y"][1]) * scale)  # y needs to flip to match the Datashader rendering in Panel
+            h, w = tile.shape[1], tile.shape[2]
+            # clip in case rounding pushes a tile's far edge past the canvas boundary
+            h = min(h, composite.shape[1] - y0)
+            w = min(w, composite.shape[2] - x0)
+            composite[:, y0:y0 + h, x0:x0 + w] = tile[:, :h, :w]
+        return {"composite": np.moveaxis(composite, 0, -1)}, (target_height, target_width)
 
     def convert_sdata_to_adata(self, table_name=None) -> "SpatialHandler":
         """
@@ -814,6 +826,23 @@ class CosMxHandler(SpatialHandler):
         which can be unnecessary, slow and memory-intensive.
         """
         return super().convert_sdata_to_adata(include_images=False, table_name=table_name)
+
+    def _get_global_extent_and_scale(self, MAX_DIM: int = 4000):
+        """
+        Get both the global extent coordinates as well as the scaling factor needed
+        based on a dimension size
+
+        Args:
+            MAX_DIM (int, optional): Dimension length. Defaults to 4000.
+
+        Returns:
+            tuple: A tuple containing the global extent coordinates and the scaling factor.
+        """
+        img_sdata = self.sdata.subset(list(self.sdata.images.keys()))
+        extent = sd.get_extent(img_sdata, coordinate_system=self.coordinate_system)
+        orig_width = extent["x"][1] - extent["x"][0]
+        scale = min(MAX_DIM / orig_width, 1)
+        return extent, scale
 
     def merge_centroids_with_obs(self) -> "SpatialHandler":
         """
@@ -841,6 +870,7 @@ class CosMxHandler(SpatialHandler):
             table_obs = table_obs.compute()
 
         fov_numeric = table_obs["fov"].astype(float).astype(int).astype(str)
+        extent, scale = self._get_global_extent_and_scale()
 
         merged_frames = []
         unmatched_labels = []
@@ -858,6 +888,13 @@ class CosMxHandler(SpatialHandler):
             if hasattr(centroids_df, "compute"):
                 centroids_df = centroids_df.compute()
             centroids_df = centroids_df.rename(columns={"x": "spatial1", "y": "spatial2"})
+
+            # The y-axis needs to be adjusted by a tile offset so the spatial2 coords are added based on tile position order on the canvas
+            tile_extent = sd.get_extent(self.sdata[label_name], coordinate_system=self.coordinate_system)
+            tile_y0 = (extent["y"][1] - tile_extent["y"][1]) * scale  # same block offset as extract_img's y0
+
+            centroids_df["spatial1"] = (centroids_df["spatial1"] - extent["x"][0]) * scale
+            centroids_df["spatial2"] = tile_y0 + (centroids_df["spatial2"] - tile_extent["y"][0]) * scale
 
             # sd.get_centroids() on a Labels element returns the raw per-label centroid
             # coordinates with an *unnamed* index - it has no concept of "cell_ID". For
