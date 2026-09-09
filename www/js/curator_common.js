@@ -73,6 +73,10 @@ let levels = {};    // categorical columns as keys + groups as values
 const getLevels = () => levels;
 const setLevels = (newLevels) => { levels = newLevels; }
 
+let colorLevels = {};   // categorical columns as keys + color swatches as values
+const getColorLevels = () => colorLevels;
+const setColorLevels = (newColorLevels) => { colorLevels = newColorLevels; }
+
 let organismId = null;
 const getOrganismId = () => organismId;
 
@@ -1312,7 +1316,8 @@ const renderColorPicker = (seriesName) => {
     colorsContainer.append(seriesNameElt);
 
     // Otherwise d3 category10 colors
-    const swatchColors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"];
+    const defaultSwatch = ["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"];
+    const swatchColors = colorLevels.hasOwnProperty(`${seriesName}_colors`) ? colorLevels[`${seriesName}_colors`] : defaultSwatch;
 
     let counter = 0;
     for (const group of levels[seriesName]) {
@@ -1993,6 +1998,7 @@ const curatorCommon = {
     renderOrderSortableSeries,
     setCatColumns,
     setLevels,
+    setColorLevels,
     registerChooseGenes,
     setIsMultigene,
     setPlotEltValueFromConfig,

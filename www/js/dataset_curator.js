@@ -1092,12 +1092,15 @@ const setupPlotlyOptions = async (datasetId) => {
     }
     // Filter out values we don't want of "levels", like "colors"
     allColumns = allColumns.filter((col) => !col.includes("_colors"));
+    const colorLevels = {}
     for (const key in levels) {
         if (key.includes("_colors")) {
+            colorLevels[key] = levels[key];
             delete levels[key];
         }
     }
     curatorCommon.setLevels(levels);
+    curatorCommon.setColorLevels(colorLevels);
 
     if (!allColumns.length) {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
@@ -1343,7 +1346,7 @@ const setupPlotlyOptions = async (datasetId) => {
 const setupScanpyOptions = async (datasetId) => {
     const analysisId = curatorCommon.getAnalysisId();
     const plotType = curatorCommon.getSelect2Value(curatorCommon.getPlotTypeSelect());
-    let levels
+    let levels;
     try {
         ({ obs_columns: allColumns, obs_levels: levels } = await curatorCommon.curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
     } catch (error) {
@@ -1353,12 +1356,15 @@ const setupScanpyOptions = async (datasetId) => {
 
     // Filter out values we don't want of "levels", like "colors"
     allColumns = allColumns.filter((col) => !col.includes("_colors"));
+    const colorLevels = {}
     for (const key in levels) {
         if (key.includes("_colors")) {
+            colorLevels[key] = levels[key];
             delete levels[key];
         }
     }
     curatorCommon.setLevels(levels);
+    curatorCommon.setColorLevels(colorLevels);
 
     if (!allColumns.length) {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");

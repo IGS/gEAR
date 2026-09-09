@@ -234,7 +234,6 @@ class GenesAsAxisHandler extends curatorCommon.PlotHandler {
 
     async setupPlotSpecificEvents(datasetId) {
         const catColumns = await getCategoryColumns(datasetId);
-        curatorCommon.setCatColumns(catColumns);
 
         if (!catColumns.length) {
             document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
@@ -708,7 +707,6 @@ class GenesAsDataHandler extends curatorCommon.PlotHandler {
     async setupPlotSpecificEvents(datasetId) {
 
         const catColumns = await getCategoryColumns(datasetId);
-        curatorCommon.setCatColumns(catColumns);
 
         if (!catColumns.length) {
             document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
@@ -1340,14 +1338,23 @@ const getCategoryColumns = async (datasetId) => {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
         return;
     }
+
     // Filter out values we don't want of "levels", like "colors"
+    allColumns = allColumns.filter((col) => !col.includes("_colors"));
+    const colorLevels = {}
     for (const key in levels) {
         if (key.includes("_colors")) {
+            colorLevels[key] = levels[key];
             delete levels[key];
         }
     }
     curatorCommon.setLevels(levels);
-    return Object.keys(levels);
+    curatorCommon.setColorLevels(colorLevels);
+
+    curatorCommon.setCatColumns(Object.keys(levels));
+
+
+    return curatorCommon.getCatColumns()
 };
 
 // Invert a log function
@@ -1468,34 +1475,15 @@ const saveWeightedGeneCart = () => {
  * @returns {Promise<void>} A promise that resolves when the setup is complete.
  */
 const setupScanpyOptions = async (datasetId) => {
-    const analysisId = curatorCommon.getAnalysisId();
     const plotType = curatorCommon.getSelect2Value(curatorCommon.getPlotTypeSelect());
-    let levels;
-    try {
-        ({ obs_columns: allColumns, obs_levels: levels } = await curatorCommon.curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
-    } catch (error) {
-        document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
-        return;
-    }
+    const catColumns = await getCategoryColumns(datasetId);
 
-    // Filter out values we don't want of "levels", like "colors"
-    allColumns = allColumns.filter((col) => !col.includes("_colors"));
-    for (const key in levels) {
-        if (key.includes("_colors")) {
-            delete levels[key];
-        }
-    }
-
-    curatorCommon.setLevels(levels);
 
     if (!allColumns.length) {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
         createToast("No metadata columns found in dataset. Cannot create a plot. Please choose another analysis or choose another dataset.");
         return;
     }
-
-    curatorCommon.setCatColumns(Object.keys(levels));
-    const catColumns = curatorCommon.getCatColumns();
 
     let xDefaultOption = null;
     let yDefaultOption = null;
