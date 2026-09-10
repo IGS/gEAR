@@ -77,6 +77,19 @@ let colorLevels = {};   // categorical columns as keys + color swatches as value
 const getColorLevels = () => colorLevels;
 const setColorLevels = (newColorLevels) => { colorLevels = newColorLevels; }
 
+let truncatedLevels = {};   // categorical columns too high-cardinality to have levels tracked: col name -> category count
+const getTruncatedLevels = () => truncatedLevels;
+const setTruncatedLevels = (newTruncatedLevels) => { truncatedLevels = newTruncatedLevels; }
+
+// Appends a suffix when colName is categorical but too high-cardinality to customize (color/order/filter)
+const decorateTruncatedCatLabel = (colName, label = colName) => {
+    const truncated = getTruncatedLevels();
+    if (Object.prototype.hasOwnProperty.call(truncated, colName)) {
+        return `${label} (${truncated[colName].length} categories, not customizable)`;
+    }
+    return label;
+}
+
 let organismId = null;
 const getOrganismId = () => organismId;
 
@@ -394,8 +407,8 @@ const curatorApiCallsMixin = {
      */
     async fetchH5adInfo(datasetId, analysisId) {
         try {
-            const {obs_columns, obs_levels} = await super.fetchH5adInfo(datasetId, analysisId);
-            return { obs_columns, obs_levels };
+            const {obs_columns, obs_levels, obs_levels_truncated} = await super.fetchH5adInfo(datasetId, analysisId);
+            return { obs_columns, obs_levels, obs_levels_truncated };
         } catch (error) {
             logErrorInConsole(error);
             const msg = "Could not fetch H5AD observation data for this dataset. Please contact the gEAR team."
@@ -1310,6 +1323,16 @@ const renderColorPicker = (seriesName) => {
         return;
     }
 
+    if (!levels[seriesName]) {
+        // Categorical but too many unique values to build a color picker for
+        const msg = document.createElement("p");
+        msg.classList.add("has-text-grey");
+        msg.textContent = "This series has too many categories to customize colors.";
+        colorsContainer.append(msg);
+        colorsSection.classList.remove("is-hidden");
+        return;
+    }
+
     const seriesNameElt = document.createElement("p");
     seriesNameElt.classList.add("has-text-weight-bold", "is-underlined");
     seriesNameElt.textContent = seriesName;
@@ -1401,6 +1424,9 @@ const renderOrderSortableSeries = (series) => {
 
     // If continouous series, cannot sort.
     if (!catColumns.includes(series)) return;
+
+    // Categorical but too many unique values to have a level list to sort
+    if (!levels[series]) return;
 
     // Start with a fresh template
     const orderElt = document.getElementById(`${series}-order`);
@@ -1970,12 +1996,14 @@ registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
 // Barrel export: group all exports under a single object for easier import
 const curatorCommon = {
     curatorApiCallsMixin,
+    decorateTruncatedCatLabel,
     disableCheckboxLabel,
     getAnalysisId,
     getCatColumns,
     getFacetWidget,
     getLevels,
     getOrganismId,
+    getTruncatedLevels,
     getPlotConfigValueFromClassName,
     getPlotOrderFromSortable,
     getPlotStyle,
@@ -1999,6 +2027,7 @@ const curatorCommon = {
     setCatColumns,
     setLevels,
     setColorLevels,
+    setTruncatedLevels,
     registerChooseGenes,
     setIsMultigene,
     setPlotEltValueFromConfig,

@@ -68,6 +68,7 @@ class GenesAsAxisHandler extends curatorCommon.PlotHandler {
                 const order = config["sort_order"][series];
                 const levels = curatorCommon.getLevels();
                 // sort "levels" series by order
+                if (!levels[series]) continue;   // too many categories to have a level list to sort
                 levels[series].sort((a, b) => order.indexOf(a) - order.indexOf(b));
                 curatorCommon.renderOrderSortableSeries(series);
             }
@@ -507,15 +508,15 @@ class GenesAsDataHandler extends curatorCommon.PlotHandler {
             classElt.value = compareSeries;
         }
 
-        const levels = curatorCommon.getLevels();
         // populate group options
-        updateGroupOptions("js-dash-reference", levels[compareSeries]);
+        const groupValues = getGroupValuesForSeries(compareSeries);
+        updateGroupOptions("js-dash-reference", groupValues);
         for (const classElt of document.getElementsByClassName("js-dash-reference")) {
             classElt.value = refGroup;
         }
 
         if (this.plotType === "volcano") {
-            updateGroupOptions("js-dash-query", levels[compareSeries]);
+            updateGroupOptions("js-dash-query", groupValues);
             const queryCondition = config["query_condition"];
             const queryGroup = queryCondition.split(this.compareSeparator)[1];
             for (const classElt of document.getElementsByClassName("js-dash-query")) {
@@ -525,8 +526,8 @@ class GenesAsDataHandler extends curatorCommon.PlotHandler {
 
         }
         if (this.plotType === "quadrant") {
-            updateGroupOptions("js-dash-compare1", levels[compareSeries]);
-            updateGroupOptions("js-dash-compare2", levels[compareSeries]);
+            updateGroupOptions("js-dash-compare1", groupValues);
+            updateGroupOptions("js-dash-compare2", groupValues);
 
             const compare1Condition = config["compare1_condition"];
             const compare1Group = compare1Condition.split(this.compareSeparator)[1];
@@ -716,18 +717,32 @@ class GenesAsDataHandler extends curatorCommon.PlotHandler {
 
         updateSeriesOptions("js-dash-compare", catColumns);
 
-        const levels = curatorCommon.getLevels();
         // When compare series changes, update the compare groups
         for (const classElt of document.getElementsByClassName("js-dash-compare")) {
             classElt.addEventListener("change", async (event) => {
                 const compareSeries = event.target.value;
-                updateGroupOptions("js-dash-reference", levels[compareSeries]);
+                const groupValues = getGroupValuesForSeries(compareSeries);
+                if (!groupValues) {
+                    for (const cls of ["js-dash-reference", "js-dash-compare1", "js-dash-compare2", "js-dash-query"]) {
+                        for (const elt of document.getElementsByClassName(cls)) {
+                            elt.replaceChildren();
+                            elt.disabled = true;
+                        }
+                    }
+                    return;
+                }
+                for (const cls of ["js-dash-reference", "js-dash-compare1", "js-dash-compare2", "js-dash-query"]) {
+                    for (const elt of document.getElementsByClassName(cls)) {
+                        elt.disabled = false;
+                    }
+                }
+                updateGroupOptions("js-dash-reference", groupValues);
                 if (this.plotType === "quadrant") {
-                    updateGroupOptions("js-dash-compare1", levels[compareSeries]);
-                    updateGroupOptions("js-dash-compare2", levels[compareSeries]);
+                    updateGroupOptions("js-dash-compare1", groupValues);
+                    updateGroupOptions("js-dash-compare2", groupValues);
                 }
                 if (this.plotType === "volcano") {
-                    updateGroupOptions("js-dash-query", levels[compareSeries]);
+                    updateGroupOptions("js-dash-query", groupValues);
                 }
             });
         }
@@ -740,7 +755,9 @@ class GenesAsDataHandler extends curatorCommon.PlotHandler {
                 const uniqueGroups = [...new Set(compareGroups)].filter(x => x);
                 // Get all unselected groups
                 const series = document.querySelector(".js-dash-compare").value;
-                const unselectedGroups = levels[series].filter((group) => !uniqueGroups.includes(group));
+                const seriesGroups = getGroupValuesForSeries(series);
+                if (!seriesGroups) return;
+                const unselectedGroups = seriesGroups.filter((group) => !uniqueGroups.includes(group));
 
                 for (const innerClassElt of document.getElementsByClassName("js-compare-groups")) {
                     // enable all unselected groups
@@ -809,6 +826,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
                 const order = config["order"][series];
                 const levels = curatorCommon.getLevels();
                 // sort "levels" series by order
+                if (!levels[series]) continue;   // too many categories to have a level list to sort
                 levels[series].sort((a, b) => order.indexOf(a) - order.indexOf(b));
                 curatorCommon.renderOrderSortableSeries(series);
             }
@@ -1331,9 +1349,9 @@ const fetchMgTsneImage = async (datasetId, analysis, plotType, plotConfig) => {
 
 const getCategoryColumns = async (datasetId) => {
     const analysisId = curatorCommon.getAnalysisId();
-    let levels;
+    let levels, truncatedLevels;
     try {
-        ({ obs_columns: allColumns, obs_levels: levels } = await curatorCommon.curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
+        ({ obs_columns: allColumns, obs_levels: levels, obs_levels_truncated: truncatedLevels = {} } = await curatorCommon.curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
     } catch (error) {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
         return;
@@ -1348,10 +1366,17 @@ const getCategoryColumns = async (datasetId) => {
             delete levels[key];
         }
     }
+    for (const key in truncatedLevels) {
+        if (key.includes("_colors")) {
+            colorLevels[key] = truncatedLevels[key];
+            delete truncatedLevels[key];
+        }
+    }
     curatorCommon.setLevels(levels);
     curatorCommon.setColorLevels(colorLevels);
+    curatorCommon.setTruncatedLevels(truncatedLevels);
 
-    curatorCommon.setCatColumns(Object.keys(levels));
+    curatorCommon.setCatColumns([...Object.keys(levels), ...Object.keys(truncatedLevels)]);
 
 
     return curatorCommon.getCatColumns()
@@ -1733,13 +1758,18 @@ const updateSeriesOptions = (classSelector, seriesArray) => {
         for (const group of seriesArray.sort()) {
 
             const option = document.createElement("option");
-            option.textContent = group;
+            option.textContent = curatorCommon.decorateTruncatedCatLabel(group);
             option.value = group;
             elt.append(option);
         }
     }
 };
 
+
+// For a given series, get its group values whether "levels-manageable" or high-cardinality
+// (truncated). Used for plain compare/reference select dropdowns, which have no color/order
+// UI and so can still show all values for a truncated column.
+const getGroupValuesForSeries = (series) => curatorCommon.getLevels()[series] || curatorCommon.getTruncatedLevels()[series];
 
 // For a given categorical series (e.g. "celltype"), update the "group" options
 const updateGroupOptions = (classSelector, groupsArray) => {
