@@ -234,7 +234,14 @@ class GenesAsAxisHandler extends curatorCommon.PlotHandler {
     }
 
     async setupPlotSpecificEvents(datasetId) {
-        const catColumns = await getCategoryColumns(datasetId);
+        const analysisId = curatorCommon.getAnalysisId();
+        let catColumns;
+        try {
+            ({ allColumns, catColumns } = await curatorCommon.classifyH5adColumns(datasetId, analysisId));
+        } catch (error) {
+            document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
+            return;
+        }
 
         if (!catColumns.length) {
             document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
@@ -706,8 +713,14 @@ class GenesAsDataHandler extends curatorCommon.PlotHandler {
     }
 
     async setupPlotSpecificEvents(datasetId) {
-
-        const catColumns = await getCategoryColumns(datasetId);
+        const analysisId = curatorCommon.getAnalysisId();
+        let catColumns;
+        try {
+            ({ allColumns, catColumns } = await curatorCommon.classifyH5adColumns(datasetId, analysisId));
+        } catch (error) {
+            document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
+            return;
+        }
 
         if (!catColumns.length) {
             document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
@@ -1347,41 +1360,6 @@ const fetchMgTsneImage = async (datasetId, analysis, plotType, plotConfig) => {
     }
 };
 
-const getCategoryColumns = async (datasetId) => {
-    const analysisId = curatorCommon.getAnalysisId();
-    let levels, truncatedLevels;
-    try {
-        ({ obs_columns: allColumns, obs_levels: levels, obs_levels_truncated: truncatedLevels = {} } = await curatorCommon.curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
-    } catch (error) {
-        document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
-        return;
-    }
-
-    // Filter out values we don't want of "levels", like "colors"
-    allColumns = allColumns.filter((col) => !col.includes("_colors"));
-    const colorLevels = {}
-    for (const key in levels) {
-        if (key.includes("_colors")) {
-            colorLevels[key] = levels[key];
-            delete levels[key];
-        }
-    }
-    for (const key in truncatedLevels) {
-        if (key.includes("_colors")) {
-            colorLevels[key] = truncatedLevels[key];
-            delete truncatedLevels[key];
-        }
-    }
-    curatorCommon.setLevels(levels);
-    curatorCommon.setColorLevels(colorLevels);
-    curatorCommon.setTruncatedLevels(truncatedLevels);
-
-    curatorCommon.setCatColumns([...Object.keys(levels), ...Object.keys(truncatedLevels)]);
-
-
-    return curatorCommon.getCatColumns()
-};
-
 // Invert a log function
 const invertLogFunction = (value, base = 10) => {
     return base ** value;
@@ -1501,8 +1479,14 @@ const saveWeightedGeneCart = () => {
  */
 const setupScanpyOptions = async (datasetId) => {
     const plotType = curatorCommon.getSelect2Value(curatorCommon.getPlotTypeSelect());
-    const catColumns = await getCategoryColumns(datasetId);
-
+    const analysisId = curatorCommon.getAnalysisId();
+    let catColumns;
+    try {
+        ({ allColumns, catColumns } = await curatorCommon.classifyH5adColumns(datasetId, analysisId));
+    } catch (error) {
+        document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
+        return;
+    }
 
     if (!allColumns.length) {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");

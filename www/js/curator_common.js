@@ -486,6 +486,45 @@ const curatorApiCallsMixin = {
 }
 Object.setPrototypeOf(curatorApiCallsMixin, apiCallsMixin);
 
+/**
+ * Fetches h5ad obs columns/levels for a dataset+analysis and classifies them into
+ * categorical vs. continuous columns, updating the shared levels/colorLevels/
+ * truncatedLevels/catColumns module state.
+ *
+ * Note: errors from fetchH5adInfo are intentionally not caught here -- callers keep
+ * their own try/catch since error-handling UI differs slightly per caller.
+ *
+ * @param {string} datasetId - The ID of the dataset.
+ * @param {string} analysisId - The ID of the analysis.
+ * @returns {Promise<{allColumns: string[], catColumns: string[]}>} All non-color obs
+ *   columns, and the subset of those that are categorical.
+ */
+const classifyH5adColumns = async (datasetId, analysisId) => {
+    let { obs_columns: allColumns, obs_levels: newLevels, obs_levels_truncated: newTruncatedLevels = {} } = await curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId);
+
+    // Filter out values we don't want of "levels", like "colors"
+    allColumns = allColumns.filter((col) => !col.includes("_colors"));
+    const colorLevels = {};
+    for (const key in newLevels) {
+        if (key.includes("_colors")) {
+            colorLevels[key] = newLevels[key];
+            delete newLevels[key];
+        }
+    }
+    for (const key in newTruncatedLevels) {
+        if (key.includes("_colors")) {
+            colorLevels[key] = newTruncatedLevels[key];
+            delete newTruncatedLevels[key];
+        }
+    }
+    setLevels(newLevels);
+    setColorLevels(colorLevels);
+    setTruncatedLevels(newTruncatedLevels);
+    setCatColumns([...Object.keys(newLevels), ...Object.keys(newTruncatedLevels)]);
+
+    return { allColumns, catColumns: getCatColumns() };
+};
+
 
 /**
  * Represents a dataset tree.
@@ -1995,6 +2034,7 @@ registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
 
 // Barrel export: group all exports under a single object for easier import
 const curatorCommon = {
+    classifyH5adColumns,
     curatorApiCallsMixin,
     decorateTruncatedCatLabel,
     disableCheckboxLabel,

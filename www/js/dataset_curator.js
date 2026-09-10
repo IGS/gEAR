@@ -1089,41 +1089,20 @@ const fetchTsneImage = async (datasetId, analysis, plotType, plotConfig) => {
 const setupPlotlyOptions = async (datasetId) => {
     const analysisId = curatorCommon.getAnalysisId();
     const plotType = curatorCommon.getSelect2Value(curatorCommon.getPlotTypeSelect());
-    let levels, truncatedLevels;
+    let catColumns;
     try {
-        ({ obs_columns: allColumns, obs_levels: levels, obs_levels_truncated: truncatedLevels = {} } = await curatorCommon.curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
+        ({ allColumns, catColumns } = await curatorCommon.classifyH5adColumns(datasetId, analysisId));
     } catch (error) {
         console.error(error)
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
         return;
     }
-    // Filter out values we don't want of "levels", like "colors"
-    allColumns = allColumns.filter((col) => !col.includes("_colors"));
-    const colorLevels = {}
-    for (const key in levels) {
-        if (key.includes("_colors")) {
-            colorLevels[key] = levels[key];
-            delete levels[key];
-        }
-    }
-    for (const key in truncatedLevels) {
-        if (key.includes("_colors")) {
-            colorLevels[key] = truncatedLevels[key];
-            delete truncatedLevels[key];
-        }
-    }
-    curatorCommon.setLevels(levels);
-    curatorCommon.setColorLevels(colorLevels);
-    curatorCommon.setTruncatedLevels(truncatedLevels);
 
     if (!allColumns.length) {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
         createToast("No metadata columns found in dataset. Cannot create a plot. Please choose another analysis or choose another dataset.");
         return;
     }
-
-    curatorCommon.setCatColumns([...Object.keys(levels), ...Object.keys(truncatedLevels)]);
-    const catColumns = curatorCommon.getCatColumns();
 
     const difference = (arr1, arr2) => arr1.filter(x => !arr2.includes(x));
     const continuousColumns = difference(allColumns, catColumns);
@@ -1360,41 +1339,19 @@ const setupPlotlyOptions = async (datasetId) => {
 const setupScanpyOptions = async (datasetId) => {
     const analysisId = curatorCommon.getAnalysisId();
     const plotType = curatorCommon.getSelect2Value(curatorCommon.getPlotTypeSelect());
-    let levels, truncatedLevels;
+    let catColumns;
     try {
-        ({ obs_columns: allColumns, obs_levels: levels, obs_levels_truncated: truncatedLevels = {} } = await curatorCommon.curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
+        ({ allColumns, catColumns } = await curatorCommon.classifyH5adColumns(datasetId, analysisId));
     } catch (error) {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
         return;
     }
-
-    // Filter out values we don't want of "levels", like "colors"
-    allColumns = allColumns.filter((col) => !col.includes("_colors"));
-    const colorLevels = {}
-    for (const key in levels) {
-        if (key.includes("_colors")) {
-            colorLevels[key] = levels[key];
-            delete levels[key];
-        }
-    }
-    for (const key in truncatedLevels) {
-        if (key.includes("_colors")) {
-            colorLevels[key] = truncatedLevels[key];
-            delete truncatedLevels[key];
-        }
-    }
-    curatorCommon.setLevels(levels);
-    curatorCommon.setColorLevels(colorLevels);
-    curatorCommon.setTruncatedLevels(truncatedLevels);
 
     if (!allColumns.length) {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
         createToast("No metadata columns found in dataset. Cannot create a plot. Please choose another analysis or choose another dataset.");
         return;
     }
-
-    curatorCommon.setCatColumns([...Object.keys(levels), ...Object.keys(truncatedLevels)]);
-    const catColumns = curatorCommon.getCatColumns();
 
     let xDefaultOption = null;
     let yDefaultOption = null;
