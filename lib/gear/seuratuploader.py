@@ -94,8 +94,17 @@ def seurat_to_anndata(file_path: str, share_name: str, output_dir: str = "."):
         print("ERROR (readRDS): Perhaps the file is not a valid RDS file (from saveRDS), or the path is incorrect.", file=sys.stderr)
         raise ValueError("Error reading RDS file")
     ro.globalenv['seurat_obj'] = r_seurat_obj
-    # Using anndataR write out a converted h5ad
-    ro.r('adata <- as_AnnData(seurat_obj)')
+
+    # Discover the reductions present on this object (e.g. "pca", "umap", "tsne")
+    reduction_names = list(ro.r('Reductions(seurat_obj)'))
+
+    # Build obsm_mapping using each reduction's exact name as both key and value
+    obsm_mapping = ro.ListVector({name: name for name in reduction_names})
+    ro.globalenv['obsm_mapping'] = obsm_mapping
+
+    # Using anndataR write out a converted h5ad, passing along the reduction mapping
+    ro.r('adata <- as_AnnData(seurat_obj, obsm_mapping = obsm_mapping)')
+
     output_path = os.path.join(output_dir, f'tmp_{share_name}.h5ad')
     try:
         ro.r(f'write_h5ad(adata, "{output_path}")')
@@ -104,7 +113,6 @@ def seurat_to_anndata(file_path: str, share_name: str, output_dir: str = "."):
     except Exception:
         print(f"h5ad name already exists {output_path}", file=sys.stderr)
         raise ValueError("Error writing h5ad file to output path")
-
 
 def openh5ad(h5ad_name):
     """Just open the supplied h5ad file"""
