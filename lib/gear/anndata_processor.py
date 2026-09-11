@@ -513,7 +513,7 @@ class AnndataProcessor:
                 f"contact the gEAR team for help and reference share ID {self.share_uid}."
             )
 
-        self._update_progress(50, "Writing final H5AD file...")
+        self._update_progress(50, "Writing initial H5AD file...")
         if adata.X is None:
             # TODO: This is currently not an option in the UI, but was suggested to be one by @jorvis
             adata = SeuratUploader.layer_to_X(adata, layer_name='data')
@@ -527,7 +527,7 @@ class AnndataProcessor:
             h5ad_path.rename(self.staging_area / f"{self.share_uid}.h5ad")
         except Exception as e:
             raise ProcessingError(
-                f"Internal error while writing the final H5AD file: {e}. Please contact the "
+                f"Internal error while writing the initial H5AD file: {e}. Please contact the "
                 f"gEAR team to resolve this issue (share ID: {self.share_uid})."
             )
 
