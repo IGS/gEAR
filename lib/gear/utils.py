@@ -479,33 +479,44 @@ def map_gene_symbols_via_mygene(
 
     max_retries = 5
     base_delay = 2  # seconds
+    batch_size = 1000  # cap request/response size to bound memory use
 
-    mg_genes = None
-    for attempt in range(max_retries):
-        try:
-            mg = mygene.MyGeneInfo()
-            mg_genes = mg.querymany(gene_symbols, scopes="symbol", fields="ensembl.gene", species=str(taxid))
-            break
-        except Exception as e:
-            is_server_error = "500" in str(e) or "internal server error" in str(e).lower()
-            if is_server_error and attempt < max_retries - 1:
-                delay = base_delay ** (attempt + 1)
-                if verbose:
-                    print(
-                        f"MyGene API returned a 500 error (attempt {attempt + 1}/{max_retries}). "
-                        f"Retrying in {delay}s..."
-                    )
-                time.sleep(delay)
-            else:
-                if verbose:
-                    print(f"Error occurred while querying MyGene: {e}")
-                raise
+    transient_error_markers = (
+        "500", "internal server error",
+        "502", "bad gateway",
+        "503", "service unavailable",
+        "504", "gateway timeout",
+    )
 
+    mg = mygene.MyGeneInfo()
     mapping = {}
-    for mg_gene in mg_genes or []:
-        if "ensembl" not in mg_gene:
-            continue
-        ensembl = mg_gene["ensembl"]
-        mapping[mg_gene["query"]] = ensembl[0]["gene"] if isinstance(ensembl, list) else ensembl["gene"]
+    for start in range(0, len(gene_symbols), batch_size):
+        batch = gene_symbols[start:start + batch_size]
+
+        mg_genes = None
+        for attempt in range(max_retries):
+            try:
+                mg_genes = mg.querymany(batch, scopes="symbol", fields="ensembl.gene", species=str(taxid))
+                break
+            except Exception as e:
+                is_transient = any(marker in str(e).lower() for marker in transient_error_markers)
+                if is_transient and attempt < max_retries - 1:
+                    delay = base_delay ** (attempt + 1)
+                    if verbose:
+                        print(
+                            f"MyGene API request failed (attempt {attempt + 1}/{max_retries}): {e}. "
+                            f"Retrying in {delay}s..."
+                        )
+                    time.sleep(delay)
+                else:
+                    if verbose:
+                        print(f"Error occurred while querying MyGene: {e}")
+                    raise
+
+        for mg_gene in mg_genes or []:
+            if "ensembl" not in mg_gene:
+                continue
+            ensembl = mg_gene["ensembl"]
+            mapping[mg_gene["query"]] = ensembl[0]["gene"] if isinstance(ensembl, list) else ensembl["gene"]
 
     return mapping
