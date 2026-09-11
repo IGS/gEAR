@@ -121,6 +121,7 @@ I cannot add comments to the bash code without breaking the command.  So consult
     Flask==3.1.3 \
     Flask-RESTful==0.3.9 \
     google-analytics-data==0.21.0 \
+    google-auth
     gosling==0.3.0 \
     h11==0.16.0 \
     hic2cool==0.8.3 \

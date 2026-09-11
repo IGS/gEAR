@@ -98,7 +98,7 @@ def main():
 
             if os.path.isfile(tarball_data_file):
                 result['uploads'][-1]['status'] = 'datafile uploaded'
-            result['uploads'][-1]['load_step'] = 'process-dataset'
+                result['uploads'][-1]['load_step'] = 'process-dataset'
 
             # Determine status based on the JSON file
             processing_status_json_file = os.path.join(share_dir, 'status.json')

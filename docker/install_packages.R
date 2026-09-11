@@ -4,7 +4,7 @@ options(warn = 2) # Treat warnings as errors (i.e. missing Ubuntu modules)
 
 # Tell pak to prefer binary packages
 # NOTE: Unset pkg.sysreqs if on server, as apt update will fail otherwise
-options(pkg.sysreqs = TRUE)
+options(pkg.sysreqs = FALSE)
 options(repos = c(CRAN = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"))
 #options(Ncpus = 1)
 
@@ -12,6 +12,9 @@ Sys.setenv(PKG_INCLUDE_LINKINGTO = "TRUE")  # Set this environment variable to a
 
 install.packages("pak", ask=FALSE, repos="https://cloud.r-project.org/")
 library(pak)
+
+# Clean pak cache to avoid issues with corrupted packages
+pak::cache_clean()
 
 # Install in smaller batches to avoid memory/subprocess issues
 packages_list <- list(c(
@@ -24,8 +27,8 @@ packages_list <- list(c(
         , 'Seurat'
         , 'bioc::rhdf5'
         , 'bioc::anndataR'
-        , 'bioc::biomaRt'
-        , "CHuanSite/SJD"
+        , 'Huber-group-EMBL/remart'
+        , "SJDgroup/SJD"
         )
 )
 

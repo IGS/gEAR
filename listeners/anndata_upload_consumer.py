@@ -165,6 +165,16 @@ class Consumer:
 
 def main() -> None:
     """Start the anndata processing consumer."""
+
+    from gear.utils import set_memory_limit_from_cgroup
+
+    # Sometimes processing can spike memory well above what a
+    # clean Python exception would normally warn about. Self-impose a ceiling below the
+    # container's actual cgroup limit so approaching it raises a catchable MemoryError
+    # instead of the kernel OOM-killer sending an uncatchable SIGKILL.
+    set_memory_limit_from_cgroup()
+
+
     host = servercfg["dataset_uploader"]["queue_host"]
     consumer = Consumer(host=host)
     consumer.run()

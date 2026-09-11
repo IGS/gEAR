@@ -113,3 +113,15 @@ target "projectr_consumer" {
     dockerfile = "listeners/Dockerfile.projectr"
     tags       = ["${REGISTRY}/gear_projectr_consumer:${TAG}", "${REGISTRY}/gear_projectr_consumer:${DATE}"]
 }
+
+target "projectr_cloud_run" {
+    platforms = ["linux/amd64"] # Only push unix image, as Google Cloud Run can only use linux/amd64 images.
+    output    = ["type=registry"]
+    context = "../services/projectr"
+    dockerfile = "Dockerfile"
+    tags = ["us-east1-docker.pkg.dev/gear-154704/cloud-run-source-deploy/projectr_service:${TAG}",
+    "us-east1-docker.pkg.dev/nemo-analytics/cloud-run-source-deploy/projectr_service:${TAG}",
+    "us-east1-docker.pkg.dev/inflammation-gear/cloud-run-source-deploy/projectr_service:${TAG}"
+    ]
+
+}
