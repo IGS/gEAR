@@ -24,6 +24,8 @@ sys.path.insert(0, str(gear_lib))
 import gearqueue
 from gear.serverconfig import ServerConfig  # noqa: I001
 
+from gear.anndata_processor import AnndataProcessor  # noqa: E402
+
 servercfg = ServerConfig().parse()
 
 queue_name = "anndata_upload_jobs"
@@ -36,7 +38,6 @@ user_upload_base = gear_root / 'www' / 'uploads' / 'files'
 
 def _on_request(channel, method_frame, properties, body) -> None:
     """Callback to handle new anndata upload job message."""
-    from gear.anndata_processor import AnndataProcessor  # noqa: E402
 
     delivery_tag = method_frame.delivery_tag
     deserialized_body = json.loads(body)

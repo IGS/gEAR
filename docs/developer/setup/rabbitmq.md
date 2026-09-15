@@ -37,6 +37,45 @@ Occasionally you may need to purge a queue, so that zombie jobs will not run and
 
 In most cases, the executing code is located in the callback function.  If this code is changed, the consumer daemon must be re-deployed.
 
+## Preventing runaway memory
+
+The projectR consumer can be memory-intensive on some dataset/pattern combinations, and
+`projectr_callback` already refuses to run two instances of the *exact same* projection at once
+(it locks on a `.lock` file next to the output CSV). If a client resubmits a job while the
+original run is still in progress (for example, clearing a stale-looking job status file and
+retrying), the resubmit now detects the lock and returns a "running" status instead of starting a
+duplicate worker.
+
+As extra insurance against any worker consuming excessive memory (from this or any other cause),
+add a per-VM memory cap via a systemd drop-in, sized to the VM's RAM and worker count (e.g. for a
+61 GB VM running 3 `projectr-consumer@N` workers):
+
+```bash
+sudo mkdir -p /etc/systemd/system/projectr-consumer@.service.d
+sudo tee /etc/systemd/system/projectr-consumer@.service.d/memory.conf <<'EOF'
+[Service]
+MemoryAccounting=true
+MemoryHigh=14G
+MemoryMax=18G
+EOF
+sudo systemctl daemon-reload
+sudo systemctl restart projectr-consumer.target
+```
+
+This lets a runaway worker get OOM-killed within its own cgroup (and restart, per
+`systemd/projectr-consumer@.service`'s `StartLimitIntervalSec`/`StartLimitBurst`/`Restart=`
+settings) instead of taking down the whole VM.
+
+It's also worth setting an explicit `consumer_timeout` in `/etc/rabbitmq/rabbitmq.conf` (RabbitMQ
+defaults to 30 minutes) if any projectR jobs are expected to legitimately run longer than that —
+otherwise the broker will close the channel and requeue the message to another worker while the
+first is still running, which is exactly the kind of duplicate-processing scenario described
+above:
+
+```
+consumer_timeout = 43200000
+```
+
 ## Troubleshooting
 
 ### (406, "PRECONDITION_FAILED - inequivalent arg 'durable' for queue 'projectr' in vhost '/': received 'false' but current is 'true'")

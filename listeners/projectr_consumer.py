@@ -20,6 +20,12 @@ import gearqueue
 from gear.serverconfig import ServerConfig
 servercfg = ServerConfig().parse()
 
+# TODO: Move code into "lib" and import. Figure out how to cleanly import geardb.
+www_path = str(Path(__file__).resolve().parents[1].joinpath("www"))
+sys.path.append(www_path)
+
+from api.resources.projectr import projectr_callback  # type: ignore # noqa: E402
+
 queue_name = "projectr"
 os.makedirs("/var/log/gEAR_queue", exist_ok=True)
 logfile = "/var/log/gEAR_queue/{}.log".format(queue_name)
@@ -31,12 +37,6 @@ pid = os.getpid()
 
 def _on_request(channel, method_frame, properties, body):
     """Callback to handle new message. Also replies to original publisher queue."""
-
-    # TODO: Move code into "lib" and import. Figure out how to cleanly import geardb.
-    www_path = str(Path(__file__).resolve().parents[1].joinpath("www"))
-    sys.path.append(www_path)
-
-    from api.resources.projectr import projectr_callback  # type: ignore
 
     delivery_tag = method_frame.delivery_tag
     deserialized_body = json.loads(body)
@@ -71,10 +71,32 @@ def _on_request(channel, method_frame, properties, body):
                 zscore,
                 full_output,
             )
-            channel.basic_ack(delivery_tag=delivery_tag)
+            if channel.is_open:
+                channel.basic_ack(delivery_tag=delivery_tag)
+            else:
+                # Broker likely closed the channel (e.g. ack deadline exceeded) and already
+                # requeued/redelivered this message elsewhere. Acking here would raise and
+                # escape this except block unhandled, so just log and move on.
+                print(
+                    "{} - Channel already closed, could not ack delivery {}".format(
+                        pid, delivery_tag
+                    ),
+                    flush=True,
+                    file=fh,
+                )
         except Exception as e:
             print("{} - Caught error '{}'".format(pid, str(e)), flush=True, file=fh)
-            channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
+            try:
+                if channel.is_open:
+                    channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
+            except Exception as nack_err:
+                print(
+                    "{} - Could not nack delivery {}: '{}'".format(
+                        pid, delivery_tag, str(nack_err)
+                    ),
+                    flush=True,
+                    file=fh,
+                )
         finally:
             gc.collect()
 

@@ -421,7 +421,7 @@ class AsyncConnection(Connection):
         print(f"{self.pid} - Sending a Basic.Cancel RPC command to RabbitMQ", flush=True, file=self.log_fh)
 
         def cb(_unused_frame):
-            self._on_cancelok(_unused_frame)
+            self.on_cancelok(_unused_frame, self._consumer_tag)
 
         try:
             self._consumer_tag and self.channel.basic_cancel(self._consumer_tag, cb)
