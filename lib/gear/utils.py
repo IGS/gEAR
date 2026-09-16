@@ -8,8 +8,9 @@ import os
 import sys
 import typing
 
+import pandas as pd
+
 if typing.TYPE_CHECKING:
-    import pandas as pd
     from anndata import AnnData
 
 def set_memory_limit_from_cgroup(fraction: float = 0.9) -> None:
@@ -148,7 +149,6 @@ def update_adata_with_ensembl_ids(
 
     import anndata as ad
     import geardb
-    import pandas as pd
 
     (_, n_genes) = adata.shape
     ensembl_releases = [84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94]
@@ -326,8 +326,8 @@ def update_adata_with_ensembl_ids(
     return adata
 
 def update_var_with_ensembl_ids(
-    var_df: "pd.DataFrame", organism: int, id_prefix: str, verbose: bool = False
-) -> "pd.DataFrame":
+    var_df: pd.DataFrame, organism: int, id_prefix: str, verbose: bool = False
+) -> pd.DataFrame:
     """
     Updates gene identifiers in a var dataframe to Ensembl IDs.
 
@@ -351,7 +351,6 @@ def update_var_with_ensembl_ids(
         Updated var dataframe with Ensembl IDs as index.
     """
     import geardb
-    import pandas as pd
 
     ensembl_releases = [84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94]
 
@@ -520,3 +519,104 @@ def map_gene_symbols_via_mygene(
             mapping[mg_gene["query"]] = ensembl[0]["gene"] if isinstance(ensembl, list) else ensembl["gene"]
 
     return mapping
+
+def flag_ambiguous_obs_columns(obs: pd.DataFrame, max_unique: int = 30) -> dict:
+    """
+    Identify obs columns whose current dtype looks questionable: numeric,
+    but with few enough unique values that they're plausibly mislabeled
+    categorical data (e.g. replicate numbers, slide numbers stored as
+    ints/floats).
+
+    Used by the uploader's "review column types" step so a user can
+    explicitly confirm or override how such columns should be treated,
+    rather than guessing via a fixed cardinality threshold at display/plot
+    time. Note this runs on the obs table *after* categorize_observation_columns()
+    has already applied its fixed name-based rules (see anndata_processor.py),
+    so it also gives the user a chance to override those hardcoded calls
+    (e.g. 'replicate') if they disagree, not just catch columns the fixed
+    list misses.
+
+    Parameters
+    ----------
+    obs : pd.DataFrame
+        The obs dataframe to inspect.
+    max_unique : int, optional (default: 30)
+        Columns with more unique values than this are assumed to be
+        genuinely continuous and are not flagged.
+
+    Returns
+    -------
+    dict
+        Keyed by column name, e.g.:
+            {
+              "replicate": {
+                  "current_dtype": "int64",
+                  "n_unique": 3,
+                  "sample_values": [1, 2, 3],
+                  "suggested_type": "categorical",
+              }
+            }
+        Columns that are already categorical/string, or numeric with more
+        than `max_unique` unique values, are omitted entirely -- there's
+        nothing worth asking the user about for those.
+    """
+
+    max_sample_values = 8
+    questionable = {}
+
+    for col in obs.columns:
+        series = obs[col]
+
+        if isinstance(series.dtype, pd.CategoricalDtype) or series.dtype == object:
+            continue
+        if not pd.api.types.is_numeric_dtype(series):
+            continue
+
+        n_unique = int(series.nunique(dropna=True))
+        if n_unique == 0 or n_unique > max_unique:
+            continue
+
+        sample_values = sorted(series.dropna().unique().tolist())[:max_sample_values]
+        questionable[col] = {
+            "current_dtype": str(series.dtype),
+            "n_unique": n_unique,
+            "sample_values": sample_values,
+            # Default guess to pre-select in the review UI -- never applied
+            # on its own, the user always makes the final call.
+            "suggested_type": "categorical" if n_unique <= 10 else "continuous",
+        }
+
+    return questionable
+
+
+def apply_obs_dtype_choices(obs: pd.DataFrame, choices: dict) -> pd.DataFrame:
+    """
+    Apply user-chosen dtypes to obs columns flagged by flag_ambiguous_obs_columns.
+
+    Parameters
+    ----------
+    obs : pd.DataFrame
+        The obs dataframe to update.
+    choices : dict
+        Mapping of {column_name: "categorical" | "continuous"}.
+
+    Returns
+    -------
+    pd.DataFrame
+        The same obs dataframe, with the requested columns retyped in
+        place. Columns named in `choices` that aren't present in `obs`
+        are silently skipped (the file may have changed shape since the
+        columns were flagged).
+    """
+
+    for col, kind in choices.items():
+        if col not in obs.columns:
+            continue
+        if kind == "categorical":
+            obs[col] = obs[col].astype(str).astype("category")
+        elif kind == "continuous":
+            obs[col] = pd.to_numeric(obs[col], errors="coerce")
+        else:
+            raise ValueError(f"Unknown dtype choice '{kind}' for column '{col}'")
+
+    return obs

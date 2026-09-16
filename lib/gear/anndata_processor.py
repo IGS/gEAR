@@ -20,6 +20,7 @@ from gear.primary_analysis import (
     add_primary_analysis_to_dataset,
 )
 from gear.utils import (
+    flag_ambiguous_obs_columns,
     map_gene_symbols_via_mygene,
     update_var_with_ensembl_ids,
 )
@@ -180,6 +181,9 @@ class AnndataProcessor:
                         "issues. If the dataset looks correct to you, please contact the gEAR team for "
                         f"help and reference share ID {self.share_uid}."
                     )
+
+            self._update_progress(90, "Checking observation column types...")
+            self._flag_questionable_obs_columns(h5ad_path)
 
             message =  "Dataset processed successfully."
 
@@ -765,6 +769,33 @@ class AnndataProcessor:
                 var_df.index = pd.Index(new_index, name=var_df.index.name)
 
         return var_df
+
+    def _flag_questionable_obs_columns(self, h5ad_path: Path) -> None:
+        """
+        Scan the final obs table for numeric columns that look like they may
+        actually be categorical (e.g. replicate/slide numbers), and record
+        them in metadata.json for the uploader's "review column types" step.
+
+        Opens the file in backed mode -- obs is small regardless of dataset
+        size, and X is never loaded or touched.
+        """
+        adata = anndata.read_h5ad(h5ad_path, backed='r')
+        try:
+            questionable = flag_ambiguous_obs_columns(adata.obs)
+        finally:
+            adata.file.close()
+
+        metadata_file = self.staging_area / 'metadata.json'
+        with open(metadata_file, 'r') as f:
+            metadata = json.load(f)
+
+        metadata['questionable_obs_columns'] = questionable
+        # Nothing flagged -- nothing for the user to review, so the uploader
+        # can skip straight past that step.
+        metadata['obs_dtype_reviewed'] = not bool(questionable)
+
+        with open(metadata_file, 'w') as f:
+            json.dump(metadata, f, indent=4)
 
     def _update_progress(self, progress: int, message: str) -> None:
         """Update progress and write status file."""
