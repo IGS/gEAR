@@ -602,6 +602,9 @@ class SpatialHandler(ABC):
         """
         adata = self.sdata.tables["table"]
 
+        # Ensure Ensembl IDs are not duplicated, which will throw errors downstream
+        adata.var_names_make_unique()
+
         if "X_umap" in adata.obsm.keys():
             return self
 
@@ -609,7 +612,6 @@ class SpatialHandler(ABC):
 
         sc.pp.normalize_total(adata, inplace=True)
         sc.pp.log1p(adata)
-        adata.var_names_make_unique()
 
         # Add qc-metrics (so we can filter on them later if desired)
         sc.pp.calculate_qc_metrics(adata, log1p=False, percent_top=None, inplace=True)

@@ -67,6 +67,9 @@ def add_primary_analysis_to_dataset(dataset_id, share_id, staging_dir, dataset_f
 
     adata = adapter.get_adata(**kwargs)
 
+    # Ensure Ensembl IDs are not duplicated, which will throw errors downstream
+    adata.var_names_make_unique()
+
     # Create some initial composition plots
     create_composition_plots(adata, staging_dir, dataset_format == "spatial")
 
