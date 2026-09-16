@@ -30,36 +30,6 @@ const optionalMetadataFields = ['metadata-contact-institute', 'metadata-platform
 ];
 
 /* --- Functions and Classes --- */
-/**
- * Sends a POST request to add a primary analysis to the current dataset upload.
- * Displays a success toast if the operation is successful, or a warning toast if not.
- *
- * @async
- * @function addPrimaryAnalysisToDataset
- * @returns {Promise<void>} Resolves when the operation is complete and the toast is shown.
- */
-const addPrimaryAnalysisToDataset = async () => {
-    const {data} = await axios.post('./cgi/add_primary_analysis_to_dataset_upload.cgi', convertToFormData({
-        share_uid: shareUid,
-        dataset_format: datasetFormat,
-        session_id: getCurrentUser()?.session_id,
-    }));
-
-    document.getElementById('finalize-migrating-primary-analysis-li').classList.remove("is-hidden");
-    if (data.success) {
-        createToast('Primary analysis added successfully','is-success');
-
-        // If dataset was not single-cell or spatial, then we cannot have a primary analysis
-        if (!data.perform_primary_analysis) {
-            performPrimaryAnalysis = false;
-            document.getElementById('finalize-migrating-primary-analysis-li').classList.add("is-hidden");
-        }
-    } else {
-        // This is non-fatal, so just show a warning toast
-        createToast('Error adding primary analysis to uploaded dataset');
-        processingStatus = "error";
-    }
-}
 
 /**
  * Checks the current processing status of the dataset by making an asynchronous request
