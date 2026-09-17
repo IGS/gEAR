@@ -1006,7 +1006,7 @@ const guid = (uidLength) => {
         return `${s4()}${s4()}-${s4()}-${s4()}-${s4()}-${s4()}${s4()}${s4()}`;
     }
     if (uidLength == 'short') {
-        return s4();
+        return `${s4()}${s4()}`;
     }
 };  
 
