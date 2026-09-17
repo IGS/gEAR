@@ -11,7 +11,6 @@ import pandas as pd
 import spatialdata as sd
 import spatialdata_io as sdio
 import xarray
-from gear.cosmx_reader import read_cosmx
 from gear.utils import update_var_with_ensembl_ids
 from spatialdata.transformations import (
     Scale,
@@ -1024,6 +1023,8 @@ class CosMxHandler(SpatialHandler):
             if "cell_id" in metadata_df.columns:
                 metadata_df = metadata_df.rename(columns={"cell_id": "orig_cell_id"})
                 metadata_df.to_csv(metadata_csv_path, index=False)
+
+        from gear.cosmx_reader import read_cosmx
 
         try:
             # The upstream spatialdata_io cosmx() reader loads the whole counts matrix as a
