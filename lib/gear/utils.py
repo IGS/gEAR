@@ -561,7 +561,7 @@ def flag_ambiguous_obs_columns(obs: pd.DataFrame, max_unique: int = 30) -> dict:
         nothing worth asking the user about for those.
     """
 
-    max_sample_values = 8
+    max_sample_values = 6
     questionable = {}
 
     for col in obs.columns:
@@ -624,9 +624,15 @@ def apply_obs_dtype_choices(obs: pd.DataFrame, choices: dict) -> pd.DataFrame:
 def sanitize_obs_for_h5ad(obs_df: pd.DataFrame) -> pd.DataFrame:
     """Sanitize observation dataframe for downstream storage."""
     for col in obs_df.columns:
+        # Convert object columns to categorical, filling NaNs with empty strings first
         if obs_df[col].dtype == 'object':
             obs_df[col] = obs_df[col].fillna('').astype(str)
             obs_df[col] = pd.Categorical(obs_df[col])
+
+        # If all numeric float values are actually integers (all end in .0), convert to int type
+        elif pd.api.types.is_float_dtype(obs_df[col]):
+            if (obs_df[col].dropna() % 1 == 0).all():
+                obs_df[col] = obs_df[col].astype('Int64')  # Use nullable integer type
     return obs_df
 
 def categorize_standard_obs_columns(obs_df: pd.DataFrame) -> None:

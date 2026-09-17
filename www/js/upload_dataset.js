@@ -503,7 +503,7 @@ const includeHtml = async (url) => {
  * and triggers dataset processing status checks when appropriate.
  *
  * @param {string} step - The label of the step to navigate to. Must be one of:
- *   'enter-metadata', 'upload-dataset', 'process-dataset', 'finalize-dataset', 'curate-dataset'.
+ *   'enter-metadata', 'upload-dataset', 'process-dataset', 'post-process-dataset', 'finalize-dataset', 'curate-dataset'.
  */
 const stepTo = (step) => {
     // TODO: switch to using the stepper-fxns.js functions (and unify the two stepper implementations)
@@ -543,6 +543,11 @@ const stepTo = (step) => {
         }
     }
 
+    // Render the post-processing options if we're on that step, as if the person had clicked "submit".
+    if (step === "post-process-dataset") {
+        renderPostProcessingOptions();
+    }
+
     // Some steps require polling for status, so set that up if we're on one of those steps
     let pollingFn = null;
     if (step === 'process-dataset') {
@@ -572,7 +577,7 @@ const stepTo = (step) => {
         item.classList.add('is-hidden');
     });
 
-    document.getElementById('step-' + step + '-c').classList.remove('is-hidden');
+    document.getElementById(`step-${step}-c`).classList.remove('is-hidden');
 
     // Scroll to the top of the page
     window.scrollTo(0, 0);
@@ -904,7 +909,6 @@ const renderPostProcessingOptions = async() => {
         stepTo("finalize-dataset");
         return;
     }
-    stepTo('post-process-dataset');
 }
 
 const renderAmbiguousObsColumns = async () => {
@@ -925,9 +929,10 @@ const renderAmbiguousObsColumns = async () => {
         }
 
         // If the dataset has already been reviewed or has nothing questionable, we can skip this step
-        doSomething = data?.reviewed;
+        doSomething = !data?.reviewed;
 
-        if (data?.reviewed) {
+        if (!doSomething) {
+            document.getElementById("ambiguous-cols-dtypes-c").classList.add("is-hidden");
             return doSomething;
         }
 
@@ -956,15 +961,15 @@ const renderAmbiguousObsColumns = async () => {
 
         for (const [colName, colInfo] of Object.entries(ambiguousColumns)) {
             const colDiv = document.createElement('div');
-            colDiv.className = 'box mb-4';
+            colDiv.className = 'box mb-4 column is-4';
             colDiv.innerHTML = `
-                <h5 class="title is-5">Column: ${colName}</h3>
+                <h5 class="subtitle is-5">Column: ${colName}</h5>
                 <p>Current data type: ${colInfo.current_dtype}</p>
                 <p>Number of unique values: ${colInfo.n_unique}</p>
                 <p>Sample values: ${colInfo.sample_values.join(', ')}</p>
-                <p>Suggested data type: ${colInfo.suggested_type}</p>
+                <br>
+                <p class=mb-2><strong>Suggested data type:</strong> ${colInfo.suggested_type}</p>
                 <div class="field">
-                    <label class="label">Select data type for this column:</label>
                     <div class="control">
                         <div class="select">
                             <select name="ambiguous-col-${colName}">
@@ -1360,7 +1365,7 @@ document.getElementById('new-submission-toggle').addEventListener('click', (even
 
 document.getElementById('dataset-processing-submit').addEventListener('click', (event) => {
     event.preventDefault();
-    renderPostProcessingOptions();
+    stepTo('post-process-dataset');
 });
 
 document.getElementById('dataset-post-processing-submit').addEventListener('click', (event) => {
