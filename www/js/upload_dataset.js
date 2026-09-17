@@ -509,7 +509,7 @@ const stepTo = (step) => {
     // TODO: switch to using the stepper-fxns.js functions (and unify the two stepper implementations)
 
     const stepLabels = ['enter-metadata', 'upload-dataset', 'build-trackhub', 'process-dataset',
-        'finalize-dataset', 'curate-dataset'
+        'post-process-dataset', 'finalize-dataset', 'curate-dataset'
     ];
     let stepReached = false;
 
@@ -892,6 +892,147 @@ const processDataset = async () => {
     }
 }
 
+// Catch-all for any post-processing steps that need to be done before finalizing the dataset.
+const renderPostProcessingOptions = async() => {
+
+    const doSomethingObs = await renderAmbiguousObsColumns();
+
+    // doSomething should be true if any "doSomething" substeps are true
+    const doSomething = [doSomethingObs].some(Boolean);
+
+    if (!doSomething) {
+        stepTo("finalize-dataset");
+        return;
+    }
+    stepTo('post-process-dataset');
+}
+
+const renderAmbiguousObsColumns = async () => {
+    let doSomething;
+    const formData = new FormData();
+    formData.append('share_uid', shareUid);
+    formData.append('session_id', getCurrentUser()?.session_id);
+
+    try {
+        const response = await fetch('./cgi/get_ambiguous_obs_columns.cgi', {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await response.json();
+
+        if (!data?.success) {
+            throw new Error(data?.message || 'Unknown error');
+        }
+
+        // If the dataset has already been reviewed or has nothing questionable, we can skip this step
+        doSomething = data?.reviewed;
+
+        if (data?.reviewed) {
+            return doSomething;
+        }
+
+        // Render the ambiguous columns for user review
+        const ambiguousColumns = data?.questionable_columns;
+        if (!ambiguousColumns) {
+            throw new Error('No ambiguous columns found');
+        }
+
+        /* Example key
+                Keyed by column name, e.g.:
+            {
+              "replicate": {
+                  "current_dtype": "int64",
+                  "n_unique": 3,
+                  "sample_values": [1, 2, 3],
+                  "suggested_type": "categorical",
+              }
+            }
+        */
+
+        document.getElementById("ambiguous-cols-dtypes-c").classList.remove("is-hidden");
+
+        const reviewContainer = document.getElementById('ambiguous-cols-review-c');
+        reviewContainer.innerHTML = '';
+
+        for (const [colName, colInfo] of Object.entries(ambiguousColumns)) {
+            const colDiv = document.createElement('div');
+            colDiv.className = 'box mb-4';
+            colDiv.innerHTML = `
+                <h5 class="title is-5">Column: ${colName}</h3>
+                <p>Current data type: ${colInfo.current_dtype}</p>
+                <p>Number of unique values: ${colInfo.n_unique}</p>
+                <p>Sample values: ${colInfo.sample_values.join(', ')}</p>
+                <p>Suggested data type: ${colInfo.suggested_type}</p>
+                <div class="field">
+                    <label class="label">Select data type for this column:</label>
+                    <div class="control">
+                        <div class="select">
+                            <select name="ambiguous-col-${colName}">
+                                <option value="categorical" ${colInfo.suggested_type === 'categorical' ? 'selected' : ''}>Categorical</option>
+                                <option value="continuous" ${colInfo.suggested_type === 'continuous' ? 'selected' : ''}>Continuous</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            `;
+            reviewContainer.appendChild(colDiv);
+        }
+
+        return doSomething;
+
+    } catch (error) {
+        // axios throws on non-2xx status codes
+        const message = error.response?.data?.message ?? 'Unknown error occurred';
+        console.error(`Error ${error.response?.status}: ${message}`);
+        createToast('Error processing dataset');
+    }
+}
+
+const applyPostProcessingOptions = async () => {
+
+    // For all post-processing steps, run in parallel, then step to "finalize-dataset"
+    const stepsToApply = []
+    if (!document.getElementById('ambiguous-cols-review-c').classList.contains('is-hidden')) {
+        stepsToApply.push(applyAmbiguousObsColumns());
+    }
+    await Promise.all(stepsToApply);
+    stepTo('finalize-dataset');
+}
+
+const applyAmbiguousObsColumns = async () => {
+
+    // Get the user-selected choices for each ambiguous column
+    const choices = {};
+    const reviewContainer = document.getElementById('ambiguous-cols-review-c');
+    for (const select of reviewContainer.querySelectorAll('select')) {
+        const colName = select.name.replace('ambiguous-col-', '');
+        choices[colName] = select.value;
+    }
+
+    const formData = new FormData();
+    formData.append('share_uid', shareUid);
+    formData.append('choices', choices)
+    formData.append('session_id', getCurrentUser()?.session_id);
+
+    try {
+        const response = await fetch('./cgi/apply_obs_dtype_choices.cgi', {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await response.json();
+
+        if (!data?.success) {
+            throw new Error(data?.message || 'Unknown error');
+        }
+
+    } catch (error) {
+        // axios throws on non-2xx status codes
+        const message = error.response?.data?.message ?? 'Unknown error occurred';
+        console.error(`Error ${error.response?.status}: ${message}`);
+        createToast('Error processing dataset');
+    }
+}
+
 const stageTrackHub = async (hubContainer, trackContainer) => {
     const hubValidation = hubContainer.validateHub();
     const trackValidation = trackContainer.validateTracks();
@@ -1219,8 +1360,12 @@ document.getElementById('new-submission-toggle').addEventListener('click', (even
 
 document.getElementById('dataset-processing-submit').addEventListener('click', (event) => {
     event.preventDefault();
+    renderPostProcessingOptions();
+});
 
-    stepTo('finalize-dataset');
+document.getElementById('dataset-post-processing-submit').addEventListener('click', (event) => {
+    event.preventDefault();
+    applyPostProcessingOptions();
 });
 
 document.getElementById('dataset-curate-submit').addEventListener('click', (event) => {
