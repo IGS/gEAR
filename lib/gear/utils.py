@@ -620,3 +620,22 @@ def apply_obs_dtype_choices(obs: pd.DataFrame, choices: dict) -> pd.DataFrame:
             raise ValueError(f"Unknown dtype choice '{kind}' for column '{col}'")
 
     return obs
+
+def sanitize_obs_for_h5ad(obs_df: pd.DataFrame) -> pd.DataFrame:
+    """Sanitize observation dataframe for downstream storage."""
+    for col in obs_df.columns:
+        if obs_df[col].dtype == 'object':
+            obs_df[col] = obs_df[col].fillna('').astype(str)
+            obs_df[col] = pd.Categorical(obs_df[col])
+    return obs_df
+
+def categorize_standard_obs_columns(obs_df: pd.DataFrame) -> None:
+    """Categorize and convert specific observation columns."""
+    for str_type in ['cell_type', 'condition', 'replicate', 'time_point', 'time_unit']:
+        if str_type in obs_df.columns:
+            obs_df[str_type] = pd.Categorical(obs_df[str_type])
+
+    for num_type in ['time_point_order']:
+        if num_type in obs_df.columns:
+            obs_df[num_type] = pd.to_numeric(obs_df[num_type])
+

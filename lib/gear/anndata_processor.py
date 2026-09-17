@@ -20,8 +20,10 @@ from gear.primary_analysis import (
     add_primary_analysis_to_dataset,
 )
 from gear.utils import (
+    categorize_standard_obs_columns,
     flag_ambiguous_obs_columns,
     map_gene_symbols_via_mygene,
+    sanitize_obs_for_h5ad,
     update_var_with_ensembl_ids,
 )
 from scipy import sparse
@@ -59,23 +61,6 @@ def clean_chunk(chunk: pd.DataFrame) -> pd.DataFrame:
     )
     chunk = chunk.apply(pd.to_numeric, errors='coerce').fillna(0)
     return chunk
-
-def sanitize_obs_for_h5ad(obs_df: pd.DataFrame) -> pd.DataFrame:
-    """Sanitize observation dataframe for H5AD storage."""
-    for col in obs_df.columns:
-        if obs_df[col].dtype == 'object':
-            obs_df[col] = obs_df[col].fillna('').astype(str)
-    return obs_df
-
-def categorize_observation_columns(obs: pd.DataFrame) -> None:
-    """Categorize and convert specific observation columns."""
-    for str_type in ['cell_type', 'condition', 'time_point', 'time_unit']:
-        if str_type in obs.columns:
-            obs[str_type] = pd.Categorical(obs[str_type])
-
-    for num_type in ['replicate', 'time_point_order']:
-        if num_type in obs.columns:
-            obs[num_type] = pd.to_numeric(obs[num_type])
 
 
 def package_content_type(filenames: list[str]) -> str | None:
@@ -246,7 +231,7 @@ class AnndataProcessor:
 
         # obs/var are metadata only (small); safe to mutate in place on the backed object
         obs = adata.obs
-        categorize_observation_columns(obs)
+        categorize_standard_obs_columns(obs)
         adata.obs = sanitize_obs_for_h5ad(obs)
 
         if "gene_symbol" not in adata.var.columns:
@@ -386,7 +371,7 @@ class AnndataProcessor:
         expression_matrix_path, obs, var = self._extract_threetab_files()
 
         self._update_progress(15, "Categorizing observations...")
-        categorize_observation_columns(obs)
+        categorize_standard_obs_columns(obs)
 
         self._update_progress(25, "Processing expression matrix in chunks...")
 
@@ -491,6 +476,17 @@ class AnndataProcessor:
                 f"Could not read the dimensionality-reduction embeddings (e.g. PCA/UMAP) from "
                 f"your Seurat object: {e}. Please verify the object has valid reductions stored, "
                 f"or contact the gEAR team for help and reference share ID {self.share_uid}."
+            )
+
+        self._update_progress(30, "Sanitize observation data...")
+        try:
+            categorize_standard_obs_columns(adata.obs)
+            adata.obs = sanitize_obs_for_h5ad(adata.obs)
+        except Exception as e:
+            raise ProcessingError(
+                f"Could not sanitize the observation metadata from your Seurat object: {e}. "
+                f"Please verify the object has valid obs data, or contact the gEAR team for help "
+                f"and reference share ID {self.share_uid}."
             )
 
         # Convert gene symbols to ensemble IDs
@@ -607,7 +603,7 @@ class AnndataProcessor:
                 "valid gene symbols and re-upload."
             )
 
-        categorize_observation_columns(obs_df)
+        categorize_standard_obs_columns(obs_df)
 
         # Validate gene count
         number_genes = len(genes_df)

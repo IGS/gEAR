@@ -13,7 +13,11 @@ from pathlib import Path
 import geardb
 from gear.anndata_processor import write_status
 from gear.spatialhandler import SPATIALTYPE2CLASS
-from gear.utils import flag_ambiguous_obs_columns
+from gear.utils import (
+    categorize_standard_obs_columns,
+    flag_ambiguous_obs_columns,
+    sanitize_obs_for_h5ad,
+)
 
 
 def process_spatial_synchronously(
@@ -61,6 +65,11 @@ def process_spatial_synchronously(
         """
 
         adata = spatial_obj.sdata.tables["table"]
+
+        # Standarize some columns before proceeding to the ambiguous ones.
+        categorize_standard_obs_columns(adata.obs)
+        adata.obs = sanitize_obs_for_h5ad(adata.obs)
+
         questionable = flag_ambiguous_obs_columns(adata.obs)
 
         metadata_file = staging_area / 'metadata.json'
