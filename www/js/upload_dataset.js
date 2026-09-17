@@ -167,7 +167,7 @@ const deleteUploadInProgress = async (shareUid, datasetId) => {
     if (data.success) {
         loadUploadsInProgress();
     } else {
-        createToast('Error deleting upload in progress', data.message, 'is-warning');
+        createToast(`Error deleting upload in progress: ${data.message}`, 'is-warning');
     }
 }
 
