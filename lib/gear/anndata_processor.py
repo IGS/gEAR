@@ -182,8 +182,8 @@ class AnndataProcessor:
                         f"help and reference share ID {self.share_uid}."
                     )
 
-            self._update_progress(90, "Checking observation column types...")
-            self._flag_questionable_obs_columns(h5ad_path)
+            self._update_progress(90, "Flagging ambiguous observation types...")
+            self._flag_ambiguous_obs_columns(h5ad_path)
 
             message =  "Dataset processed successfully."
 
@@ -770,7 +770,7 @@ class AnndataProcessor:
 
         return var_df
 
-    def _flag_questionable_obs_columns(self, h5ad_path: Path) -> None:
+    def _flag_ambiguous_obs_columns(self, h5ad_path: Path) -> None:
         """
         Scan the final obs table for numeric columns that look like they may
         actually be categorical (e.g. replicate/slide numbers), and record

@@ -48,9 +48,9 @@ def main():
     print('Content-Type: application/json\n\n')
 
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    share_uid = form.getvalue('share_uid')
-    choices_raw = form.getvalue('choices')
+    session_id = form.getfirst('session_id')
+    share_uid = form.getfirst('share_uid')
+    choices_raw = form.getfirst('choices')
 
     result = {'success': 0, 'message': ''}
 
