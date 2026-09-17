@@ -602,6 +602,13 @@ def projectr_callback(
         write_projection_status(JOB_STATUS_FILE, status)
         return status
 
+    if loading_df.empty:
+        remove_lock_file(lock_fh, lockfile)
+        status["status"] = "failed"
+        status["error"] = "The gene list file is empty."
+        write_projection_status(JOB_STATUS_FILE, status)
+        return status
+
     # Assumes first column is unique identifiers. Standardize on a common index name
     loading_df = loading_df.rename(columns={loading_df.columns[0]: "dataRowNames"})
 
