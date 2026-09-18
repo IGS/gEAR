@@ -253,6 +253,8 @@ const populateMetadataFormFromFile = async () => {
                 break;
             }
         }
+        // Fire the change listener so spatial gets auto-checked/enabled same as a manual selection
+        datasetTypeSelect.dispatchEvent(new Event('change'));
 
         document.getElementById('metadata-upload-status-message').textContent = "Form populated with uploaded metadata";
         button.disabled = false;
@@ -1288,6 +1290,46 @@ const adjustUIForGosling = () => {
 }
 
 /**
+ * Selects a dataset format, mirroring the UI/state changes of clicking its format-selector button.
+ * Used so other controls (metadata dataset type, spatial platform select) can drive the same
+ * selection without requiring a direct click on a (possibly disabled) button.
+ */
+const selectDatasetFormat = (format) => {
+    // Reset each as selectable
+    for (const element of document.getElementsByClassName('format-selector')) {
+        if (element.disabled) {
+            continue;
+        }
+        // set the classList on this button to only be 'mdi' and 'mdi-cancel'
+        const icon = element.querySelector('span.icon i');
+        icon.classList.remove(...icon.classList);
+        icon.classList.add('mdi', 'mdi-checkbox-blank-outline');
+        element.querySelector('span.format-status').textContent = 'Choose';
+    }
+
+    // Now set things for the one actually clicked
+    const btn = document.querySelector(`.format-selector[data-format="${format}"]`);
+    if (!btn) {
+        return;
+    }
+    btn.querySelector('span.icon i').classList.remove('mdi', 'mdi-checkbox-blank-outline');
+    btn.querySelector('span.icon i').classList.add('mdi', 'mdi-checkbox-outline');
+    btn.querySelector('span.format-status').textContent = 'Selected';
+    datasetFormat = format;
+
+    // If the format is "special", update the text in the finalize step.
+    const migrateH5adSpan = document.getElementById("finalize-migrating-h5ad-text");
+    migrateH5adSpan.textContent = 'Migrating H5AD file';
+    if (datasetFormat === 'spatial') {
+        migrateH5adSpan.textContent = 'Migrating Zarr store';
+    } else if (datasetFormat == 'gosling') {
+        migrateH5adSpan.textContent = 'Migrating track hub and files';
+    }
+
+    adjustUIForGosling();
+}
+
+/**
  * Initializes the upload dataset page by:
  * - Checking if the user is logged in and displaying the appropriate UI elements.
  * - Loading uploads in progress for logged-in users.
@@ -1324,36 +1366,7 @@ await initPage();
 const formatSelectorElts = document.getElementsByClassName('format-selector');
 for (const btn of formatSelectorElts) {
     btn.addEventListener('click', (event) => {
-        // Reset each as selectable
-        for (const element of formatSelectorElts) {
-            if (element.disabled) {
-                continue;
-            }
-            // set the classList on this button to only be 'mdi' and 'mdi-cancel'
-            const icon = element.querySelector('span.icon i');
-            icon.classList.remove(...icon.classList);
-            icon.classList.add('mdi', 'mdi-checkbox-blank-outline');
-
-            element.querySelector('span.format-status').textContent = 'Choose';
-        };
-
-        // Now set things for the one actually clicked
-        btn.querySelector('span.icon i').classList.remove('mdi', 'mdi-checkbox-blank-outline');
-        btn.querySelector('span.icon i').classList.add('mdi', 'mdi-checkbox-outline');
-        btn.querySelector('span.format-status').textContent = 'Selected';
-        datasetFormat = btn.dataset.format;
-
-        // If the format is "special", update the text in the finalize step.
-        const migrateH5adSpan = document.getElementById("finalize-migrating-h5ad-text");
-        migrateH5adSpan.textContent = 'Migrating H5AD file';
-        if (datasetFormat === 'spatial') {
-            migrateH5adSpan.textContent = 'Migrating Zarr store';
-        } else if (datasetFormat == 'gosling') {
-            migrateH5adSpan.textContent = 'Migrating track hub and files';
-        }
-
-        adjustUIForGosling();
-
+        selectDatasetFormat(btn.dataset.format);
     });
 };
 
@@ -1589,6 +1602,14 @@ document.getElementById('metadata-geo-lookup').addEventListener('click', (event)
     const getData = getGeoData();
 });
 
+document.getElementsByName('metadata-dataset-type')[0].addEventListener('change', (e) => {
+    document.getElementById("btn-spatial-format-selector").disabled = true;
+    if (e.target.value === 'spatial') {
+        document.getElementById("btn-spatial-format-selector").disabled = false;
+        selectDatasetFormat('spatial');
+    }
+});
+
 document.getElementById('select-spatial-platform').addEventListener('change', (e) => {
     const platform = e.target.value;
     const reqsSpan = document.getElementById('spatial-requirements');
@@ -1596,9 +1617,12 @@ document.getElementById('select-spatial-platform').addEventListener('change', (e
     if (platform === '') {
         reqsSpan.classList.add('is-hidden');
         document.getElementById("btn-spatial-format-selector").disabled = true;
-    } else {
-        reqsSpan.classList.remove('is-hidden');
-        document.getElementById("btn-spatial-format-selector").disabled = false;
+        return;
+    }
+    reqsSpan.classList.remove('is-hidden');
+    document.getElementById("btn-spatial-format-selector").disabled = false;
+    if (datasetFormat !== 'spatial') {
+        selectDatasetFormat('spatial');
     }
 });
 
