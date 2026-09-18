@@ -1016,7 +1016,8 @@ const applyAmbiguousObsColumns = async () => {
 
     const formData = new FormData();
     formData.append('share_uid', shareUid);
-    formData.append('choices', choices)
+    const choicesJson = JSON.stringify(choices);
+    formData.append('choices', choicesJson);
     formData.append('session_id', getCurrentUser()?.session_id);
 
     try {
