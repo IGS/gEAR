@@ -14,9 +14,8 @@ import geardb
 from gear.anndata_processor import write_status
 from gear.spatialhandler import SPATIALTYPE2CLASS
 from gear.utils import (
-    categorize_standard_obs_columns,
     flag_ambiguous_obs_columns,
-    sanitize_obs_for_h5ad,
+    standardize_and_sanitize_obs,
 )
 
 
@@ -54,7 +53,7 @@ def process_spatial_synchronously(
 
     spatial_obj = SPATIALTYPE2CLASS[spatial_format]()
 
-    def _flag_ambiguous_obs_columns() -> None:
+    def _sanitize_and_flag_obs_columns() -> None:
         """
         Scan the final obs table for numeric columns that look like they may
         actually be categorical (e.g. replicate/slide numbers), and record
@@ -67,8 +66,7 @@ def process_spatial_synchronously(
         adata = spatial_obj.sdata.tables["table"]
 
         # Standarize some columns before proceeding to the ambiguous ones.
-        categorize_standard_obs_columns(adata.obs)
-        adata.obs = sanitize_obs_for_h5ad(adata.obs)
+        adata.obs = standardize_and_sanitize_obs(adata.obs)
 
         questionable = flag_ambiguous_obs_columns(adata.obs)
 
@@ -123,7 +121,7 @@ def process_spatial_synchronously(
         (
             "Flagging ambiguous observation types...",
             "flagging ambiguous observation types",
-            _flag_ambiguous_obs_columns,
+            _sanitize_and_flag_obs_columns,
         ),
         (
             "Writing Zarr store...",
