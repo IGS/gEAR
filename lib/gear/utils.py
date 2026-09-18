@@ -573,7 +573,10 @@ def flag_ambiguous_obs_columns(obs: pd.DataFrame, max_unique: int = 30) -> dict:
             continue
 
         n_unique = int(series.nunique(dropna=True))
-        if n_unique == 0 or n_unique > max_unique:
+        has_many_uniques = n_unique == 0 or n_unique > max_unique
+
+        # If the column name doesn't contain "cluster" and it has many unique values, we skip it.
+        if "cluster" not in col and has_many_uniques:
             continue
 
         sample_values = sorted(series.dropna().unique().tolist())[:max_sample_values]
