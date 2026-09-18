@@ -13,6 +13,10 @@ from pathlib import Path
 import geardb
 from gear.anndata_processor import write_status
 from gear.spatialhandler import SPATIALTYPE2CLASS
+from gear.utils import (
+    flag_ambiguous_obs_columns,
+    standardize_and_sanitize_obs,
+)
 
 
 def process_spatial_synchronously(
@@ -49,6 +53,35 @@ def process_spatial_synchronously(
 
     spatial_obj = SPATIALTYPE2CLASS[spatial_format]()
 
+    def _sanitize_and_flag_obs_columns() -> None:
+        """
+        Scan the final obs table for numeric columns that look like they may
+        actually be categorical (e.g. replicate/slide numbers), and record
+        them in metadata.json for the uploader's "review column types" step.
+
+        Opens the file in backed mode -- obs is small regardless of dataset
+        size, and X is never loaded or touched.
+        """
+
+        adata = spatial_obj.sdata.tables["table"]
+
+        # Standarize some columns before proceeding to the ambiguous ones.
+        adata.obs = standardize_and_sanitize_obs(adata.obs)
+
+        questionable = flag_ambiguous_obs_columns(adata.obs)
+
+        metadata_file = staging_area / 'metadata.json'
+        with open(metadata_file, 'r') as f:
+            metadata = json.load(f)
+
+        metadata['questionable_obs_columns'] = questionable
+        # Nothing flagged -- nothing for the user to review, so the uploader
+        # can skip straight past that step.
+        metadata['obs_dtype_reviewed'] = not bool(questionable)
+
+        with open(metadata_file, 'w') as f:
+            json.dump(metadata, f, indent=4)
+
     def _write_zarr():
         # Remove existing Zarr store if present; a safeguard in case a prior
         # attempt failed after the store was partially written.
@@ -84,6 +117,11 @@ def process_spatial_synchronously(
             "Computing QC metrics and embeddings...",
             "computing QC metrics and embeddings",
             spatial_obj.compute_qc_and_embeddings,
+        ),
+        (
+            "Flagging ambiguous observation types...",
+            "flagging ambiguous observation types",
+            _sanitize_and_flag_obs_columns,
         ),
         (
             "Writing Zarr store...",
@@ -125,3 +163,4 @@ def process_spatial_synchronously(
     write_status(status_file, status)
 
     return {"success": 1, "message": status["message"]}
+

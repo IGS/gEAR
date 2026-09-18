@@ -79,11 +79,15 @@ sudo cp *service /etc/systemd/system/
 
 echo "**IMPORTANT**: For the *service files, correct the <gEAR_path> to point to the gEAR root on this server"
 
-# Start the services
-cd /etc/systemd/system
+# Reload systemd
+sudo systemctl daemon-reload
 
-sudo systemctl enable projectr-consumer.target gosling-upload-consumer.target
-sudo systemctl start projectr-consumer.target gosling-upload-consumer.target
+# Enable services to start on boot
+sudo systemctl enable projectr-consumer.target gosling-upload-consumer.target anndata-upload-consumer.target spatial-upload-consumer.target
+
+# Enable and start the group of consumers at once
+sudo systemctl enable gear-consumers.target
+sudo systemctl start gear-consumers.target
 
 sudo systemctl enable spatial-panel.service
 sudo systemctl start spatial-panel.service

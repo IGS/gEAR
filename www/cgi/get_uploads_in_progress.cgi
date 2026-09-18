@@ -132,7 +132,15 @@ def main():
 
                     elif processing_status == 'complete':
                         result['uploads'][-1]['status'] = 'processed'
-                        result['uploads'][-1]['load_step'] = 'finalize-dataset'
+
+                        step_to = "finalize-dataset"
+
+                        # If post-processing stuff needs to be done, go here
+                        if not metadata.get("obs_dtype_reviewed", False):
+                            questionable_obs_columns = metadata.get("questionable_obs_columns", {})
+                            if questionable_obs_columns:
+                                step_to = "post-process-dataset"
+                        result['uploads'][-1]['load_step'] = step_to
 
     result['success'] = 1
     print(json.dumps(result))

@@ -159,6 +159,13 @@
                         <p class="is-size-7">Your dataset is processed and checked on the server.</p>
                       </div>
                     </li>
+                    <li id='step-post-process-dataset' class="steps-segment">
+                      <span class="steps-marker"><span class="icon"><i class="mdi"></i></span></span>
+                      <div class="steps-content">
+                        <p class="step-label is-size-5">Dataset post-processing</p>
+                        <p class="is-size-7">Resolve ambiguities in the dataset.</p>
+                      </div>
+                    </li>
                     <li id='step-finalize-dataset' class="steps-segment">
                       <span class="steps-marker"><span class="icon"><i class="mdi"></i></span></span>
                       <div class="steps-content">
@@ -1040,6 +1047,36 @@ Currently Gosling only supports single-organism tracks">
                   <div class="field">
                     <div class="control">
                       <button class="button is-primary" id="dataset-processing-submit" disabled>Continue</button>
+                    </div>
+                  </div>
+                </div>
+                <div id="step-post-process-dataset-c" class="step-c is-hidden">
+                  <h1>Step - Dataset Post-Processing</h1>
+                  <p>
+                    Your dataset has been converted into a format that can be used by the gEAR platform. This step is optional, but asks questions that may clear up various issues, such as ambiguous data types.
+                  </p>
+                  <hr />
+
+                  <!--
+                  <div id="no-post-processing-c" class="field is-hidden">
+                    <p>
+                      No post-processing is required for this dataset. Click Continue to finalize submission.
+                    </p>
+                  </div>-->
+
+                  <div id="ambiguous-cols-dtypes-c" class="is-hidden">
+                    <h3>Resolve ambiguous column data types</h1>
+                    <p>
+                      The following columns have ambiguous data types and need to be resolved as "continuous" or "categorical" data.
+                    </p>
+                    <div id="ambiguous-cols-review-c" class="field columns is-multiline">
+                      <!-- Select dropdowns are rendered here -->
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <div class="control">
+                      <button class="button is-primary" id="dataset-post-processing-submit">Continue</button>
                     </div>
                   </div>
                 </div>

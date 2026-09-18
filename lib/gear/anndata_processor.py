@@ -20,7 +20,9 @@ from gear.primary_analysis import (
     add_primary_analysis_to_dataset,
 )
 from gear.utils import (
+    flag_ambiguous_obs_columns,
     map_gene_symbols_via_mygene,
+    standardize_and_sanitize_obs,
     update_var_with_ensembl_ids,
 )
 from scipy import sparse
@@ -58,23 +60,6 @@ def clean_chunk(chunk: pd.DataFrame) -> pd.DataFrame:
     )
     chunk = chunk.apply(pd.to_numeric, errors='coerce').fillna(0)
     return chunk
-
-def sanitize_obs_for_h5ad(obs_df: pd.DataFrame) -> pd.DataFrame:
-    """Sanitize observation dataframe for H5AD storage."""
-    for col in obs_df.columns:
-        if obs_df[col].dtype == 'object':
-            obs_df[col] = obs_df[col].fillna('').astype(str)
-    return obs_df
-
-def categorize_observation_columns(obs: pd.DataFrame) -> None:
-    """Categorize and convert specific observation columns."""
-    for str_type in ['cell_type', 'condition', 'time_point', 'time_unit']:
-        if str_type in obs.columns:
-            obs[str_type] = pd.Categorical(obs[str_type])
-
-    for num_type in ['replicate', 'time_point_order']:
-        if num_type in obs.columns:
-            obs[num_type] = pd.to_numeric(obs[num_type])
 
 
 def package_content_type(filenames: list[str]) -> str | None:
@@ -162,7 +147,7 @@ class AnndataProcessor:
             Result dictionary with 'success' and 'message' keys
         """
         try:
-            h5ad_path = self._process_by_format(dataset_format)
+            self._process_by_format(dataset_format)
 
             if perform_primary_analysis:
                 self._update_progress(66, "Performing primary analysis...")
@@ -238,12 +223,10 @@ class AnndataProcessor:
                 "scanpy.read_h5ad() or anndata.read_h5ad() locally) and re-upload it."
             )
 
-        self._update_progress(15, "Sanitizing observation metadata...")
+        self._update_progress(15, "Standardizing and flagging observation metadata...")
 
         # obs/var are metadata only (small); safe to mutate in place on the backed object
-        obs = adata.obs
-        categorize_observation_columns(obs)
-        adata.obs = sanitize_obs_for_h5ad(obs)
+        self._sanitize_and_flag_obs_columns(adata)
 
         if "gene_symbol" not in adata.var.columns:
             self._update_progress(25, "Mapping gene symbols via Ensembl...")
@@ -381,9 +364,6 @@ class AnndataProcessor:
         # Extract/find the three required files
         expression_matrix_path, obs, var = self._extract_threetab_files()
 
-        self._update_progress(15, "Categorizing observations...")
-        categorize_observation_columns(obs)
-
         self._update_progress(25, "Processing expression matrix in chunks...")
 
         # Process expression matrix in chunks
@@ -395,7 +375,9 @@ class AnndataProcessor:
         # Create AnnData object
         adata = anndata.AnnData(X=expression_matrix, obs=var, var=obs)
         adata = adata.transpose()
-        adata.obs = sanitize_obs_for_h5ad(adata.obs)    # type: ignore
+
+        self._update_progress(40, "Standardizing and flagging observation metadata...")
+        self._sanitize_and_flag_obs_columns(adata)
 
         self._update_progress(50, "Writing H5AD file...")
 
@@ -487,6 +469,16 @@ class AnndataProcessor:
                 f"Could not read the dimensionality-reduction embeddings (e.g. PCA/UMAP) from "
                 f"your Seurat object: {e}. Please verify the object has valid reductions stored, "
                 f"or contact the gEAR team for help and reference share ID {self.share_uid}."
+            )
+
+        self._update_progress(30, "Standardizing and flagging observation metadata...")
+        try:
+            self._sanitize_and_flag_obs_columns(adata)
+        except Exception as e:
+            raise ProcessingError(
+                f"Could not sanitize the observation metadata from your Seurat object: {e}. "
+                f"Please verify the object has valid obs data, or contact the gEAR team for help "
+                f"and reference share ID {self.share_uid}."
             )
 
         # Convert gene symbols to ensemble IDs
@@ -603,8 +595,6 @@ class AnndataProcessor:
                 "valid gene symbols and re-upload."
             )
 
-        categorize_observation_columns(obs_df)
-
         # Validate gene count
         number_genes = len(genes_df)
         if number_genes != number_genes_from_exp:
@@ -624,7 +614,9 @@ class AnndataProcessor:
         self._update_progress(50, "Creating AnnData object...")
 
         adata = anndata.AnnData(X=X, obs=obs_df, var=genes_df)
-        adata.obs = sanitize_obs_for_h5ad(adata.obs)    # type: ignore
+
+        self._update_progress(55, "Standardizing and flagging observation metadata...")
+        self._sanitize_and_flag_obs_columns(adata)
 
         self._update_progress(60, "Writing H5AD file...")
 
@@ -765,6 +757,30 @@ class AnndataProcessor:
                 var_df.index = pd.Index(new_index, name=var_df.index.name)
 
         return var_df
+
+    def _sanitize_and_flag_obs_columns(self, adata: anndata.AnnData) -> None:
+        """
+        Standardize/sanitize the obs table, then scan it for numeric columns
+        that look like they may actually be categorical (e.g. replicate/slide
+        numbers), and record them in metadata.json for the uploader's "review
+        column types" step. Operates on the in-memory AnnData object, right
+        before it's written, so the H5AD never needs to be reopened from disk
+        for this.
+        """
+        adata.obs = standardize_and_sanitize_obs(adata.obs)
+        questionable = flag_ambiguous_obs_columns(adata.obs)
+
+        metadata_file = self.staging_area / 'metadata.json'
+        with open(metadata_file, 'r') as f:
+            metadata = json.load(f)
+
+        metadata['questionable_obs_columns'] = questionable
+        # Nothing flagged -- nothing for the user to review, so the uploader
+        # can skip straight past that step.
+        metadata['obs_dtype_reviewed'] = not bool(questionable)
+
+        with open(metadata_file, 'w') as f:
+            json.dump(metadata, f, indent=4)
 
     def _update_progress(self, progress: int, message: str) -> None:
         """Update progress and write status file."""
