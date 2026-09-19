@@ -128,9 +128,18 @@ def build_projection_csv_path(dir_id: str, file_id: str, scope: str) -> Path:
 
 def build_projection_json_path(dir_id: str, scope: str) -> Path:
     """Build the path to the projections json for a given dataset or genecart directory. Returns a Path object."""
-    return Path(PROJECTIONS_BASE_DIR).joinpath(
-        "by_{}".format(scope), dir_id, PROJECTIONS_JSON_BASENAME
-    )
+    base_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_{}".format(scope)).resolve()
+    safe_dir_id = secure_filename(dir_id)
+    if not safe_dir_id or safe_dir_id != dir_id:
+        raise ValueError("Invalid directory identifier")
+
+    candidate = base_dir.joinpath(safe_dir_id, PROJECTIONS_JSON_BASENAME).resolve()
+    try:
+        candidate.relative_to(base_dir)
+    except ValueError:
+        raise ValueError("Invalid directory path")
+
+    return candidate
 
 
 def get_existing_projection_result(
