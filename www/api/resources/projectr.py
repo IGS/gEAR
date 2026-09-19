@@ -115,14 +115,29 @@ def get_auth_headers(audience: str) -> dict:
 
 def build_projection_csv_path(dir_id: str, file_id: str, scope: str) -> Path:
     """Build the path to the csv file for a given projection. Returns a Path object."""
-    if scope == "pval":
+    safe_dir_id = secure_filename(dir_id)
+    safe_file_id = secure_filename(file_id)
+    safe_scope = secure_filename(scope)
+
+    # Reject unsafe path components (path traversal, separators, absolute paths, etc).
+    if (
+        not safe_dir_id
+        or not safe_file_id
+        or not safe_scope
+        or safe_dir_id != dir_id
+        or safe_file_id != file_id
+        or safe_scope != scope
+    ):
+        abort(400, "Invalid projection path parameters.")
+
+    if safe_scope == "pval":
         # pval files are extra output for the standard "dataset" projections
         return Path(PROJECTIONS_BASE_DIR).joinpath(
-            "by_dataset", dir_id, "{}_pval.csv".format(file_id)
+            "by_dataset", safe_dir_id, "{}_pval.csv".format(safe_file_id)
         )
 
     return Path(PROJECTIONS_BASE_DIR).joinpath(
-        "by_{}".format(scope), dir_id, "{}.csv".format(file_id)
+        "by_{}".format(safe_scope), safe_dir_id, "{}.csv".format(safe_file_id)
     )
 
 
