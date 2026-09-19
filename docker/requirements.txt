@@ -19,7 +19,6 @@ httpcore==1.0.9
 httpx==0.28.1
 jupyterlab==4.0.5
 jupyter==1.0.0
-kaleido==0.2.1
 leidenalg==0.10.2
 legacy-cgi==2.6.4   # To handle legacy CGI scripts (cgi was removed in Python 3.13)
 llvmlite==0.47.0

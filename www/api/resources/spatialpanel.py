@@ -1,4 +1,3 @@
-
 import datetime
 import json
 import os
@@ -12,6 +11,12 @@ import geardb
 import numpy as np
 import pandas as pd
 import spatialdata as sd
+import zarr
+import anndata as ad
+try:
+    from anndata.io import read_elem
+except ImportError:
+    from anndata.experimental import read_elem
 from bokeh.embed import server_document
 from flask import request
 from flask_restful import Resource
@@ -48,16 +53,65 @@ COOL_DATASETS = [
     "a9ceb45a-7ec7-42ff-a108-b432417dfdf3"
 ]
 
-def prep_sdata(dataset_id: str) -> "SpatialHandler":
+def get_platform_for_dataset(zarr_path: Path) -> str:
     """
-    Prepare and return a SpatialHandler for the given dataset.
+    Return just the platform string for a spatial dataset, without loading
+    the whole SpatialData store (images, points, shapes) or even the
+    table's obs/var/X -- only the small `uns` element of the table's
+    AnnData group.
 
-    This function locates a .zarr dataset under the module-level SPATIAL_PATH using
-    the provided dataset_id, reads it with sd.read_zarr, extracts the platform
-    identifier from sdata.tables["table"].uns["platform"], validates that the
-    platform is supported by the SPATIALTYPE2CLASS mapping, instantiates the
-    appropriate SpatialHandler subclass, attaches the loaded sdata to it and
-    returns the handler.
+    Parameters
+    ----------
+    zarr_path : Path
+        Path to the dataset's .zarr store.
+
+    Returns
+    -------
+    str
+        The platform string (e.g. "xenium").
+
+    Raises
+    ------
+    ValueError
+        If no platform information is found at tables/table/uns/platform.
+    """
+    table_path = zarr_path / "tables" / "table"
+    store = zarr.open(str(table_path), mode="r")
+    try:
+        uns = read_elem(store["uns"])
+        return uns["platform"]
+    except KeyError:
+        raise ValueError("No platform information found in the dataset")
+
+
+def get_table_adata(spatial_obj: "SpatialHandler") -> "AnnData":
+    """
+    Load just the table's AnnData directly from spatial_obj.zarr_path,
+    without constructing the full SpatialData object -- images, points,
+    and shapes are never touched.
+
+    Note this still loads the table's X/obs/var fully into memory (plain
+    anndata.read_zarr has no lazy/backed mode the way read_h5ad does);
+    it only avoids the SpatialData-wrapper construction overhead, not the
+    cost of the expression matrix itself.
+
+    Requires spatial_obj.zarr_path to have been set (e.g. by prep_sdata()).
+    """
+    table_path = spatial_obj.zarr_path / "tables" / "table"
+    return ad.read_zarr(table_path)
+
+
+def initialize_spatial_handler(dataset_id: str) -> "SpatialHandler":
+    """
+    Instantiate the correct SpatialHandler subclass for a dataset, without
+    loading any of its actual data yet (images/points/shapes/table). Only
+    the platform string is read (from the table's `uns`) to pick the class.
+
+    The returned handler's `.sdata` is intentionally left unset -- callers
+    that need the real SpatialData object (e.g. to extract images) or just
+    the table (e.g. for gene/observation data) should load one of those
+    explicitly, only if and when they actually need it. `.zarr_path` is
+    set on the handler so callers can do so without recomputing the path.
 
     Parameters
     ----------
@@ -69,35 +123,23 @@ def prep_sdata(dataset_id: str) -> "SpatialHandler":
     -------
     SpatialHandler
         An instance of the handler class corresponding to the dataset platform,
-        with its `sdata` attribute set to the loaded dataset.
+        with `.zarr_path` set and `.sdata` intentionally left unloaded.
 
     Raises
     ------
     ValueError
         - If the dataset zarr path does not exist.
         - If the dataset does not contain platform information at
-          sdata.tables["table"].uns["platform"].
+          tables/table/uns/platform.
         - If the platform value is not present in the SPATIALTYPE2CLASS mapping.
         In the case of an unsupported platform, the function will print an error
         and the set of supported types to stderr before raising.
-
-    Notes
-    -----
-    - This function depends on the module-level names: SPATIAL_PATH, sd,
-      SPATIALTYPE2CLASS, and sys.
-    - The handler class returned is constructed via SPATIALTYPE2CLASS[platform](),
-      and the loaded sdata is assigned to its `sdata` attribute prior to return.
     """
     zarr_path = SPATIAL_PATH / f"{dataset_id}.zarr"
     if not zarr_path.exists():
         raise ValueError(f"Dataset {dataset_id} not found")
 
-    sdata = sd.read_zarr(zarr_path)
-
-    try:
-        platform = sdata.tables["table"].uns["platform"]
-    except KeyError:
-        raise ValueError("No platform information found in the dataset")
+    platform = get_platform_for_dataset(zarr_path)
 
     # Ensure the spatial data type is supported
     if platform not in SPATIALTYPE2CLASS.keys():
@@ -109,7 +151,7 @@ def prep_sdata(dataset_id: str) -> "SpatialHandler":
 
     # Use uploader class to determine correct helper functions
     spatial_obj: "SpatialHandler" = SPATIALTYPE2CLASS[platform]()
-    spatial_obj.sdata = sdata
+    spatial_obj.zarr_path = zarr_path
     return spatial_obj
 
 def normalize_image_array(arr: np.ndarray|None) -> np.ndarray:
@@ -401,17 +443,21 @@ class SpatialPanel(Resource):
         message = ""
 
         found_img = False
+        sdata_loaded_this_request = False
         error_log_path = DATASET_DIR / "image_extraction_error.log"
         try:
-            spatial_obj = prep_sdata(dataset_id)
+            spatial_obj = initialize_spatial_handler(dataset_id)
             if spatial_obj.has_images:
                 existing = list(DATASET_DIR.glob("spatial_img*.npy"))
                 if existing:
                     message += "Using cached spatial image. "
                     found_img = True
                 else:
-                    # Create cached image for each channel if they do not exist
+                    # Images aren't cached yet -- this is the one case that
+                    # actually needs the full SpatialData object.
                     try:
+                        spatial_obj.sdata = sd.read_zarr(spatial_obj.zarr_path)
+                        sdata_loaded_this_request = True
                         channels, (orig_h, orig_w) = spatial_obj.extract_img()
                         if len(channels) == 1:
                             only_key = next(iter(channels))
@@ -441,7 +487,8 @@ class SpatialPanel(Resource):
             if csv_path.is_file():
                 response["message"] += "Using cached file."
             else:
-                adata = spatial_obj.sdata.tables["table"]
+                adata = spatial_obj.sdata.tables["table"] if sdata_loaded_this_request \
+                    else get_table_adata(spatial_obj)
 
                 # Modify the adata object to use the projection ID if it exists
                 if projection_id:
@@ -465,4 +512,3 @@ class SpatialPanel(Resource):
             response["message"] += f" Error generating viewer script: {e}"
 
         return response
-

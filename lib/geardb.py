@@ -2541,11 +2541,15 @@ class Dataset:
             return "{0}x{1}".format(self.gene_count, self.obs_count)
         elif self.dtype == "spatial":
             zarr_file_path = self.get_file_path(session_id=session_id)
+            table_path = "{0}/tables/table".format(zarr_file_path)
 
-            import spatialdata as sd
+            import anndata
+            try:
+                adata = anndata.read_zarr(table_path)
+            except FileNotFoundError:
+                raise FileNotFoundError(f"No 'table' found in SpatialData tables at {table_path}")
 
-            sdata = sd.read_zarr(zarr_file_path)
-            (n_obs, n_vars) = sdata.tables["table"].shape
+            (n_obs, n_vars) = adata.shape
 
             if tuple_only:
                 return (n_obs, n_vars)

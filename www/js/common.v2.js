@@ -990,13 +990,25 @@ const resetSteps = (event) => {
  * @returns {string} The generated unique identifier.
  */
 const guid = (uidLength) => {
+    // Use the crypto API to generate a UUID if it's available, otherwise fallback to a custom implementation
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        if (uidLength == 'long') {
+            return crypto.randomUUID();
+        }
+        if (uidLength == 'short') {
+            return crypto.randomUUID().split('-')[0];
+        }
+    }
+
+    // Fallback implementation
+    const s4 = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
     if (uidLength == 'long') {
-        return crypto.randomUUID();
+        return `${s4()}${s4()}-${s4()}-${s4()}-${s4()}-${s4()}${s4()}${s4()}`;
     }
     if (uidLength == 'short') {
-        return crypto.randomUUID().split('-')[0];
+        return `${s4()}${s4()}`;
     }
-}
+};  
 
 for (const jsStep of jsSteps) {
     // Add "capture=true" to trigger parent before children events

@@ -1,6 +1,5 @@
 import os
 import subprocess
-import sys
 import tarfile
 import typing
 from abc import ABC, abstractmethod
@@ -12,15 +11,18 @@ import pandas as pd
 import spatialdata as sd
 import spatialdata_io as sdio
 import xarray
-from gear.cosmx_reader import read_cosmx
 from gear.utils import update_var_with_ensembl_ids
 from spatialdata.transformations import (
     Scale,
-    Sequence,
     Translation,
     set_transformation,
 )
-from spatialdata_io._constants._constants import CosmxKeys, CurioKeys, VisiumHDKeys, XeniumKeys
+from spatialdata_io._constants._constants import (
+    CosmxKeys,
+    CurioKeys,
+    VisiumHDKeys,
+    XeniumKeys,
+)
 from spatialdata_io.experimental import from_legacy_anndata, to_legacy_anndata
 
 if typing.TYPE_CHECKING:
@@ -99,7 +101,7 @@ class SpatialHandler(ABC):
     def __init__(self):
         self._adata = None
         self._sdata = None
-        self.originalFile = None
+        self._zarr_path = None
 
     @property
     def normalized_table_name(self):
@@ -154,6 +156,28 @@ class SpatialHandler(ABC):
             sdata (SpatialData): The SpatialData instance to assign to the handler.
         """
         self._sdata = sdata
+
+    @property
+    def zarr_path(self) -> Path:
+        """
+        Returns the path to the Zarr file associated with this instance.
+
+        Returns:
+            Path: The path to the Zarr file.
+        """
+        if self._zarr_path is None:
+            raise Exception("No Zarr path set for this instance.")
+        return self._zarr_path
+
+    @zarr_path.setter
+    def zarr_path(self, zarr_path: Path) -> None:
+        """
+        Sets the path to the Zarr file for the instance.
+
+        Parameters:
+            zarr_path (Path): The path to the Zarr file to be assigned to the instance.
+        """
+        self._zarr_path = zarr_path
 
     def _resolve_coordinate_system(self, candidates: list[str]) -> str:
         """
@@ -602,6 +626,9 @@ class SpatialHandler(ABC):
         """
         adata = self.sdata.tables["table"]
 
+        # Ensure Ensembl IDs are not duplicated, which will throw errors downstream
+        adata.var_names_make_unique()
+
         if "X_umap" in adata.obsm.keys():
             return self
 
@@ -609,7 +636,6 @@ class SpatialHandler(ABC):
 
         sc.pp.normalize_total(adata, inplace=True)
         sc.pp.log1p(adata)
-        adata.var_names_make_unique()
 
         # Add qc-metrics (so we can filter on them later if desired)
         sc.pp.calculate_qc_metrics(adata, log1p=False, percent_top=None, inplace=True)
@@ -998,6 +1024,8 @@ class CosMxHandler(SpatialHandler):
                 metadata_df = metadata_df.rename(columns={"cell_id": "orig_cell_id"})
                 metadata_df.to_csv(metadata_csv_path, index=False)
 
+        from gear.cosmx_reader import read_cosmx
+
         try:
             # The upstream spatialdata_io cosmx() reader loads the whole counts matrix as a
             # dense DataFrame before sparsifying it, which reliably OOMs on real CosMx datasets.
@@ -1035,7 +1063,6 @@ class CosMxHandler(SpatialHandler):
         sdata.tables[self.NORMALIZED_TABLE_NAME] = tbl
 
         self.sdata = sdata
-        self.originalFile = filepath
         return self
 
 class CurioHandler(SpatialHandler):
@@ -1172,7 +1199,6 @@ class CurioHandler(SpatialHandler):
 
         # table name should already be "table" for Visium
 
-        self.originalFile = filepath
         return self
 
 class GeoMxHandler(SpatialHandler):
@@ -1334,7 +1360,6 @@ class GeoMxHandler(SpatialHandler):
         sdata.shapes["locations"].index = sdata.tables[self.NORMALIZED_TABLE_NAME].obs[self.region_id]
 
         self.sdata = sdata
-        self.originalFile = filepath
         return self
 
 class VisiumHandler(SpatialHandler):
@@ -1456,7 +1481,6 @@ class VisiumHandler(SpatialHandler):
         sdata.tables[self.NORMALIZED_TABLE_NAME].var = sdata.tables[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids")
 
         self.sdata = sdata
-        self.originalFile = filepath
         return self
 
 class VisiumHDHandler(SpatialHandler):
@@ -1617,7 +1641,6 @@ class VisiumHDHandler(SpatialHandler):
         sdata.tables[self.NORMALIZED_TABLE_NAME] = sdata.tables[self.table_name]
 
         self.sdata = sdata
-        self.originalFile = filepath
         return self
 
 class XeniumHandler(SpatialHandler):
@@ -1800,7 +1823,6 @@ class XeniumHandler(SpatialHandler):
         sdata.tables[self.NORMALIZED_TABLE_NAME].var = sdata.tables[self.NORMALIZED_TABLE_NAME].var.set_index("gene_ids")
 
         self.sdata = sdata
-        self.originalFile = filepath
         return self
 
 

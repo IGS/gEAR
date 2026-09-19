@@ -2,6 +2,11 @@
 Description="ProjectR Consumer for RabbitMQ - #%i"
 Documentation=https://github.com/IGS/gEAR/blob/main/docs/setup.rabbitmq.md
 After=rabbitmq-server.service
+# Guard against a tight crash/restart loop (e.g. a worker repeatedly getting
+# OOM-killed and immediately re-consuming a requeued job). See docs/developer/setup/rabbitmq.md
+# "Preventing runaway memory" for adding a per-VM MemoryMax= override.
+StartLimitIntervalSec=300
+StartLimitBurst=5
 
 [Service]
 Type=simple

@@ -20,6 +20,9 @@ sys.path.insert(0, str(gear_lib))
 import gearqueue  # noqa: F401
 from gear.serverconfig import ServerConfig  # noqa: I001
 
+from gear.trackhub import TrackHubProcessor  # noqa: E402
+
+
 servercfg = ServerConfig().parse()
 
 queue_name = "trackhub_copy_jobs"
@@ -31,7 +34,6 @@ user_upload_base = gear_root / 'www' / 'uploads' / 'files'
 
 def _on_request(channel, method_frame, properties, body):
     """Callback to handle new trackhub job message."""
-    from gear.trackhub import TrackHubProcessor  # noqa: E402
 
     delivery_tag = method_frame.delivery_tag
     deserialized_body = json.loads(body)
