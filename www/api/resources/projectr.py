@@ -1226,6 +1226,9 @@ class ProjectR(Resource):
         dataset_projection_csv = build_projection_csv_path(
             dataset_id, projection_id, "dataset"
         )
+        resolved_dataset_projection_csv = dataset_projection_csv.resolve()
+        if not resolved_dataset_projection_csv.is_relative_to(Path(PROJECTIONS_BASE_DIR).resolve()):
+            abort(403, description="Invalid dataset path")
         dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
 
         run_projectr = True
@@ -1324,7 +1327,7 @@ class ProjectR(Resource):
         # job status file (above) and resubmitted while the original run was still in progress.
         # Without this, a resubmit would spin up a second worker that reloads and densifies the
         # whole dataset a second time before it ever discovers the conflict.
-        lockfile = str(dataset_projection_csv) + ".lock"
+        lockfile = str(resolved_dataset_projection_csv) + ".lock"
         if Path(lockfile).is_file():
             print(
                 "INFO: A run for projection {} is already in progress (lock file present). Not starting a duplicate.".format(
