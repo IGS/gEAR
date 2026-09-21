@@ -39,32 +39,42 @@ In most cases, the executing code is located in the callback function.  If this 
 
 ## Preventing runaway memory
 
-The projectR consumer can be memory-intensive on some dataset/pattern combinations, and
-`projectr_callback` already refuses to run two instances of the *exact same* projection at once
-(it locks on a `.lock` file next to the output CSV). If a client resubmits a job while the
-original run is still in progress (for example, clearing a stale-looking job status file and
-retrying), the resubmit now detects the lock and returns a "running" status instead of starting a
-duplicate worker.
+Both the projectR consumer and the anndata (H5AD/Seurat) upload consumer can be memory-intensive
+on some inputs, so each guards against a duplicate/OOM-prone run of the same job:
 
-As extra insurance against any worker consuming excessive memory (from this or any other cause),
-add a per-VM memory cap via a systemd drop-in, sized to the VM's RAM and worker count (e.g. for a
-61 GB VM running 3 `projectr-consumer@N` workers):
+- The projectR consumer already refuses to run two instances of the *exact same* projection at
+  once (`projectr_callback` locks on a `.lock` file next to the output CSV). If a client resubmits
+  a job while the original run is still in progress (for example, clearing a stale-looking job
+  status file and retrying), the resubmit now detects the lock and returns a "running" status
+  instead of starting a duplicate worker.
+- The anndata upload consumer (`listeners/anndata_upload_consumer.py`) self-imposes an `RLIMIT_AS`
+  ceiling at process start (`set_memory_limit_from_cgroup()`, `lib/gear/utils.py`), sized to a
+  fraction of the container/VM's cgroup memory limit, so an approaching OOM raises a catchable
+  `MemoryError` instead of an uncatchable kernel `SIGKILL`. `process_uploaded_expression_dataset.cgi`
+  sets the same guard for its synchronous fallback path (used when the queue is disabled or
+  unreachable), since that runs the same processing inside an Apache CGI worker instead.
+
+As extra insurance against any worker consuming excessive memory (from these or any other cause),
+add a per-VM memory cap via a systemd drop-in for each consumer family, sized to the VM's RAM and
+worker count (e.g. for a 61 GB VM running 3 workers of each):
 
 ```bash
-sudo mkdir -p /etc/systemd/system/projectr-consumer@.service.d
-sudo tee /etc/systemd/system/projectr-consumer@.service.d/memory.conf <<'EOF'
+for unit in projectr-consumer anndata-upload-consumer; do
+  sudo mkdir -p "/etc/systemd/system/${unit}@.service.d"
+  sudo tee "/etc/systemd/system/${unit}@.service.d/memory.conf" <<'EOF'
 [Service]
 MemoryAccounting=true
 MemoryHigh=14G
 MemoryMax=18G
 EOF
+done
 sudo systemctl daemon-reload
-sudo systemctl restart projectr-consumer.target
+sudo systemctl restart projectr-consumer.target anndata-upload-consumer.target
 ```
 
-This lets a runaway worker get OOM-killed within its own cgroup (and restart, per
-`systemd/projectr-consumer@.service`'s `StartLimitIntervalSec`/`StartLimitBurst`/`Restart=`
-settings) instead of taking down the whole VM.
+This lets a runaway worker get OOM-killed within its own cgroup (and restart, per each
+`systemd/<unit>@.service`'s `StartLimitIntervalSec`/`StartLimitBurst`/`Restart=` settings) instead
+of taking down the whole VM.
 
 It's also worth setting an explicit `consumer_timeout` in `/etc/rabbitmq/rabbitmq.conf` (RabbitMQ
 defaults to 30 minutes) if any projectR jobs are expected to legitimately run longer than that —

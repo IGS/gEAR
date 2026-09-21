@@ -815,6 +815,8 @@ const buildTrackhub = async () => {
  * @returns {Promise<void>} Resolves when the upload process is complete.
  */
 const uploadDataset = () => {
+    const datasetFile = document.getElementById('dataset-file-input').files[0];
+
     const formData = new FormData();
     formData.append('share_uid', shareUid);
     formData.append('session_id', getCurrentUser()?.session_id);
@@ -822,7 +824,10 @@ const uploadDataset = () => {
     if (spatialFormat) {
         formData.append('spatial_format', spatialFormat);
     }
-    formData.append('dataset_file', document.getElementById('dataset-file-input').files[0]);
+    // Lets the server confirm the whole file arrived (a dropped connection can otherwise
+    // leave a silently-truncated file on the server with no error surfaced).
+    formData.append('expected_size', datasetFile.size);
+    formData.append('dataset_file', datasetFile);
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', './cgi/store_expression_dataset.cgi', true);

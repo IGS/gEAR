@@ -687,6 +687,10 @@ class ZarrAdapter:
     """
 
     def __init__(self, zarr_path: Path):
+        resolved = Path(zarr_path).resolve()
+        allowed_base = (root_dir / "www").resolve()
+        if not resolved.is_relative_to(allowed_base):
+            raise ValueError(f"Zarr path '{zarr_path}' is outside the allowed datasets directory.")
         self.zarr_path = zarr_path
 
     def get_sdata(self) -> "SpatialData":

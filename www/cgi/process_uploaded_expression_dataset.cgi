@@ -30,6 +30,15 @@ import geardb
 from gear.anndata_processor import process_anndata_synchronously, write_status
 from gear.spatial_processor import process_spatial_synchronously
 from gear.spatialhandler import SPATIALTYPE2CLASS
+from gear.utils import set_memory_limit_from_cgroup
+from werkzeug.utils import secure_filename
+
+# The RabbitMQ consumer path (listeners/anndata_upload_consumer.py) self-imposes this same
+# ceiling so an approaching OOM raises a catchable MemoryError instead of an uncatchable
+# kernel SIGKILL. Set it here too, since the synchronous fallback below (used when the queue
+# is disabled or unreachable) runs the same memory-intensive processing inside this CGI/Apache
+# worker instead, with no equivalent guard otherwise.
+set_memory_limit_from_cgroup()
 
 user_upload_file_base = '../uploads/files'
 
@@ -55,6 +64,9 @@ def main() -> tuple:
     if session_id is None:
         result['message'] = 'Session ID is required.'
         return result, 400
+
+    share_uid = secure_filename(share_uid)
+    session_id = secure_filename(session_id)
 
     if dataset_format is None:
         result['message'] = 'Dataset format is required.'

@@ -281,7 +281,9 @@ def create_new_uuid(*args) -> uuid.UUID:
     """
 
     uuid_str = "-".join(map(str, args))
-    md5 = hashlib.md5()
+    # Not used for security purposes -- just a deterministic ID for caching/dedup,
+    # so the digest must stay stable to match IDs already written to disk.
+    md5 = hashlib.md5(usedforsecurity=False)
     md5.update(uuid_str.encode("utf-8"))
     return uuid.UUID(md5.hexdigest())
 

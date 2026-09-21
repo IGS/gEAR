@@ -8,6 +8,7 @@ in formats: H5AD, 3-tab, Excel, MEX.
 import gc
 import json
 import os
+import sys
 import tarfile
 import zipfile
 from pathlib import Path
@@ -26,6 +27,10 @@ from gear.utils import (
     update_var_with_ensembl_ids,
 )
 from scipy import sparse
+
+_this_dir = Path(__file__).resolve().parent
+_root_dir = _this_dir.parents[1]
+UPLOADS_BASE_DIR = _root_dir / "www" / "uploads" / "files"
 
 
 def write_status(status_file, status):
@@ -119,9 +124,13 @@ class AnndataProcessor:
             status_file: Path to status.json for progress updates
             dataset_uid: Dataset UID for primary analysis
         """
+        resolved_staging_area = Path(staging_area).resolve()
+        if not resolved_staging_area.is_relative_to(UPLOADS_BASE_DIR.resolve()):
+            raise ProcessingError(f"Invalid staging area path: {staging_area}")
+
         self.job_id = job_id
         self.share_uid = share_uid
-        self.staging_area = staging_area
+        self.staging_area = resolved_staging_area
         self.status_file = status_file
         self.dataset_uid = dataset_uid
         self.status = {
@@ -459,6 +468,18 @@ class AnndataProcessor:
                 f"{e}. Please contact the gEAR team to resolve this issue (share ID: "
                 f"{self.share_uid})."
             )
+
+        # Record the resulting shape so a wildly-off conversion (e.g. from a truncated/corrupted
+        # upload) is visible in status.json/logs immediately, rather than only discoverable by
+        # manually inspecting the output file after the job reports "complete".
+        print(
+            f"INFO: Converted RDS for share ID {self.share_uid} to AnnData with shape "
+            f"{adata.shape[0]} obs x {adata.shape[1]} vars.",
+            file=sys.stderr,
+        )
+        self._update_progress(
+            20, f"Converted to {adata.shape[0]} observations x {adata.shape[1]} variables..."
+        )
 
         # Update obs metadata based on reductions
         self._update_progress(25, "Updating metadata from reductions...")

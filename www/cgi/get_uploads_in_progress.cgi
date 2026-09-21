@@ -23,13 +23,14 @@ import sys
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
+from werkzeug.utils import secure_filename
 
 
 def main():
     print('Content-Type: application/json\n\n')
 
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
+    session_id = form.getfirst('session_id')
 
     result = {'success':0, 'uploads':[], 'message':''}
 
@@ -38,6 +39,7 @@ def main():
         print(json.dumps(result))
         return
 
+    session_id = secure_filename(session_id)
     user_upload_file_base = "../uploads/files/{0}".format(session_id)
 
     # If this directory doesn't exist, there are no uploads in progress
