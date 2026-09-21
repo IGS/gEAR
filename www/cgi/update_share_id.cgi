@@ -173,7 +173,7 @@ def main():
                         continue
 
                     #! This will not work if not owner or if permissions are not set correctly
-                    os.rename(filename, new_filename)
+                    os.rename(filename, resolved_new_filename)
                     # if the old file still exists, log it
                     if os.path.exists(filename):
                         print("Could not rename " + filename + " to " + new_filename + " for some reason... skipping", file=sys.stderr)
@@ -209,7 +209,7 @@ def main():
                     continue
 
                 try:
-                    os.rename(dirname, new_dir)
+                    os.rename(dirname, resolved_new_dir)
                 except FileNotFoundError:
                     # If the new_dir already exists, we can't rename the directory
                     # The "by_genecart" directory is not exactly used, so not overly worried.
