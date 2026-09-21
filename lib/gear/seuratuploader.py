@@ -102,17 +102,18 @@ def seurat_to_anndata(file_path: str, share_name: str, output_dir: str = "."):
     obsm_mapping = ro.ListVector({name: name for name in reduction_names})
     ro.globalenv['obsm_mapping'] = obsm_mapping
 
-    # Using anndataR write out a converted h5ad, passing along the reduction mapping
-    ro.r('adata <- as_AnnData(seurat_obj, obsm_mapping = obsm_mapping)')
-
     output_path = os.path.join(output_dir, f'tmp_{share_name}.h5ad')
-    try:
-        ro.r(f'write_h5ad(adata, "{output_path}")')
-        return output_path
+    
+    # Using anndataR write out a converted h5ad, passing along the reduction mapping
+    ro.r(f'adata <- as_AnnData(seurat_obj, obsm_mapping = obsm_mapping, output_class = "HDF5AnnData",file="{output_path}")')
+    return output_path
+    #try:
+    #    ro.r(f'write_h5ad(adata, "{output_path}")')
+    #    return output_path
     # In cases where the write fails we will assume the h5ad already exists
-    except Exception:
-        print(f"h5ad name already exists {output_path}", file=sys.stderr)
-        raise ValueError("Error writing h5ad file to output path")
+    #except Exception:
+    #    print(f"h5ad name already exists {output_path}", file=sys.stderr)
+    #    raise ValueError("Error writing h5ad file to output path")
 
 def openh5ad(h5ad_name):
     """Just open the supplied h5ad file"""
