@@ -15,12 +15,13 @@ from pathlib import Path
 lib_path = Path(__file__).resolve().parents[2] / 'lib'
 sys.path.append(str(lib_path))
 import geardb
+from werkzeug.utils import secure_filename
 
 def main():
     print('Content-Type: application/json\n\n')
     form = cgi.FieldStorage()
-    session_id = form.getfirst('session_id')
-    share_uid = form.getfirst('share_uid')
+    session_id = secure_filename(form.getfirst('session_id', ''))
+    share_uid = secure_filename(form.getfirst('share_uid', ''))
     dataset_format = form.getfirst('dataset_format')
     spatial_format = form.getfirst('spatial_format')  # may be None
 

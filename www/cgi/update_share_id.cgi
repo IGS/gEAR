@@ -12,6 +12,16 @@ from pathlib import Path
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from werkzeug.utils import secure_filename
+
+def is_safe_id(value: str) -> bool:
+    """
+    Custom share_ids can be user-chosen and vary in length, so we can't enforce a
+    fixed format. Instead reject anything secure_filename() would alter -- this
+    closes off path-injection via new_share_id, which is used unsanitized in
+    filename.replace()/os.rename() below for gene carts.
+    """
+    return bool(value) and secure_filename(value) == value
 
 abs_path_www = Path(__file__).resolve().parents[1] # web-root dir
 CARTS_BASE_DIR = abs_path_www.joinpath("carts")
@@ -43,6 +53,12 @@ def main():
 
     if new_share_id is None:
         error = "Invalid new_share_id."
+        result['error'] = error
+        print(json.dumps(result))
+        return
+
+    if not is_safe_id(share_id) or not is_safe_id(new_share_id):
+        error = "share_id and new_share_id must not contain path separators or unsafe characters."
         result['error'] = error
         print(json.dumps(result))
         return

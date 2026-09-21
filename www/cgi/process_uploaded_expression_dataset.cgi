@@ -30,6 +30,7 @@ import geardb
 from gear.anndata_processor import process_anndata_synchronously, write_status
 from gear.spatial_processor import process_spatial_synchronously
 from gear.spatialhandler import SPATIALTYPE2CLASS
+from werkzeug.utils import secure_filename
 
 user_upload_file_base = '../uploads/files'
 
@@ -55,6 +56,9 @@ def main() -> tuple:
     if session_id is None:
         result['message'] = 'Session ID is required.'
         return result, 400
+
+    share_uid = secure_filename(share_uid)
+    session_id = secure_filename(session_id)
 
     if dataset_format is None:
         result['message'] = 'Dataset format is required.'

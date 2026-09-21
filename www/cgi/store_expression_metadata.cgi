@@ -14,17 +14,23 @@ import os, sys
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from werkzeug.utils import secure_filename
 
 def main():
     print('Content-Type: application/json\n\n')
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    share_uid = form.getvalue('share_uid')
+    session_id = form.getfirst('session_id')
+    share_uid = form.getfirst('share_uid')
 
     # make sure session_id is alphanumeric
     mod_session_id = session_id.replace('-', '')
     if not mod_session_id.isalnum():
         print(json.dumps({'success': 0, 'error': 'Invalid session_id'}))
+        return
+
+    share_uid = secure_filename(share_uid or '')
+    if not share_uid:
+        print(json.dumps({'success': 0, 'error': 'Invalid share_uid'}))
         return
 
     user_upload_file_base = "../uploads/files/{0}".format(session_id)

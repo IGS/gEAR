@@ -40,6 +40,7 @@ sys.path.append(str(lib_path))
 import geardb
 from gear.analysis import H5adAdapter, ZarrAdapter
 from gear.utils import apply_obs_dtype_choices
+from werkzeug.utils import secure_filename
 
 user_upload_file_base = '../uploads/files'
 
@@ -48,8 +49,8 @@ def main():
     print('Content-Type: application/json\n\n')
 
     form = cgi.FieldStorage()
-    session_id = form.getfirst('session_id')
-    share_uid = form.getfirst('share_uid')
+    session_id = secure_filename(form.getfirst('session_id', ''))
+    share_uid = secure_filename(form.getfirst('share_uid', ''))
     choices_raw = form.getfirst('choices')
 
     result = {'success': 0, 'message': ''}
@@ -72,7 +73,13 @@ def main():
         print(json.dumps(result))
         return
 
-    dataset_dir = Path(user_upload_file_base) / session_id / share_uid
+    dataset_dir = (Path(user_upload_file_base) / session_id / share_uid).resolve()
+    uploads_base = Path(user_upload_file_base).resolve()
+    if not dataset_dir.is_relative_to(uploads_base):
+        result['message'] = 'Invalid session_id or share_uid.'
+        print(json.dumps(result))
+        return
+
     metadata_file = dataset_dir / 'metadata.json'
 
     if not metadata_file.is_file():

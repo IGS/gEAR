@@ -6,7 +6,6 @@ or H5AD file.
 '''
 
 import cgi
-import html
 import io
 import sys
 import zipfile
@@ -15,14 +14,15 @@ from pathlib import Path
 lib_path = Path(__file__).resolve().parents[2].joinpath('lib')
 sys.path.append(str(lib_path))
 import geardb
+from werkzeug.utils import secure_filename
 
 PROJECTION_DATASET_DIR = (Path(__file__).resolve().parent.parent / 'projections' / 'by_dataset').resolve()
 
 def main():
     form = cgi.FieldStorage()
-    dataset_id = html.escape(form.getvalue('dataset_id', ""))
-    share_id = html.escape(form.getvalue("share_id", ""))
-    projection_id = html.escape(form.getvalue('projection_id', ""))
+    dataset_id = secure_filename(form.getfirst('dataset_id', ""))
+    share_id = secure_filename(form.getfirst("share_id", ""))
+    projection_id = secure_filename(form.getfirst('projection_id', ""))
 
     if not dataset_id and not share_id:
         raise ValueError("Either dataset ID or share ID must be provided")
@@ -41,8 +41,11 @@ def main():
             raise FileNotFoundError(f"Dataset not found for the provided dataset ID {dataset_id}")
         share_id = dataset.share_id
 
-    coeff_path = PROJECTION_DATASET_DIR / dataset_id / f"{projection_id}.csv"
-    pval_path = PROJECTION_DATASET_DIR / dataset_id / f"{projection_id}_pval.csv"
+    coeff_path = (PROJECTION_DATASET_DIR / dataset_id / f"{projection_id}.csv").resolve()
+    pval_path = (PROJECTION_DATASET_DIR / dataset_id / f"{projection_id}_pval.csv").resolve()
+
+    if not coeff_path.is_relative_to(PROJECTION_DATASET_DIR) or not pval_path.is_relative_to(PROJECTION_DATASET_DIR):
+        raise ValueError("Invalid dataset ID or projection ID.")
 
     zip_buffer = io.BytesIO()
 
