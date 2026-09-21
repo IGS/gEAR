@@ -24,6 +24,16 @@ NOTE: Extra apt install commands are present in the R setup and in the python se
 
 Reboot if there are kernel updates (or just to be safe if you don't know.)
 
+### If VM has Hyperdisks
+
+Doing a git checkout with the Hyperdisk mounted may overwrite the symlinked "datasets" and "uploads" directories.
+
+To fix:
+
+`ln -s  /mnt/disks/datastore/datasets /var/www/datasets`
+`ln -s  /mnt/disks/datastore/uploads /var/www/uploads`
+
+
 ### MYSQL
 
 `sudo apt install mysql-server`
