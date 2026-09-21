@@ -8,6 +8,7 @@ in formats: H5AD, 3-tab, Excel, MEX.
 import gc
 import json
 import os
+import sys
 import tarfile
 import zipfile
 from pathlib import Path
@@ -467,6 +468,18 @@ class AnndataProcessor:
                 f"{e}. Please contact the gEAR team to resolve this issue (share ID: "
                 f"{self.share_uid})."
             )
+
+        # Record the resulting shape so a wildly-off conversion (e.g. from a truncated/corrupted
+        # upload) is visible in status.json/logs immediately, rather than only discoverable by
+        # manually inspecting the output file after the job reports "complete".
+        print(
+            f"INFO: Converted RDS for share ID {self.share_uid} to AnnData with shape "
+            f"{adata.shape[0]} obs x {adata.shape[1]} vars.",
+            file=sys.stderr,
+        )
+        self._update_progress(
+            20, f"Converted to {adata.shape[0]} observations x {adata.shape[1]} variables..."
+        )
 
         # Update obs metadata based on reductions
         self._update_progress(25, "Updating metadata from reductions...")

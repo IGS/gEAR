@@ -9,6 +9,7 @@ Writes a file at: ../uploads/files/<session_id>/<share_uid>/<share_uid>.<ext>
 
 import cgi
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -24,6 +25,10 @@ def main():
     share_uid = secure_filename(form.getfirst('share_uid', ''))
     dataset_format = form.getfirst('dataset_format')
     spatial_format = form.getfirst('spatial_format')  # may be None
+    # Sent by the browser from File.size, so we can confirm the whole file actually arrived.
+    # A dropped/truncated connection can otherwise leave a silently-truncated file on disk with
+    # no error surfaced anywhere in the pipeline.
+    expected_size = form.getfirst('expected_size')
 
     if not share_uid: # should never happen
         error_msg = f"Unexpected missing share_uid in store_expression_dataset.cgi. session_id={session_id!r}"
@@ -94,8 +99,25 @@ def main():
 
 
     try:
+        # Stream rather than read-then-write -- form['dataset_file'].file is already a real,
+        # disk-backed file object at this point (cgi.FieldStorage spools uploads to a temp file),
+        # so this avoids needlessly buffering a multi-GB upload in memory a second time.
         with open(dataset_filename, 'wb') as f:
-            f.write(form['dataset_file'].file.read())
+            shutil.copyfileobj(form['dataset_file'].file, f)
+
+        # Confirm the whole file actually arrived. cgi.FieldStorage's multipart parser silently
+        # tolerates a dropped/truncated connection (no exception raised), so without this check a
+        # partial upload would be reported as a success and processed as if it were complete.
+        actual_size = dataset_filename.stat().st_size
+        if expected_size is not None and str(actual_size) != str(expected_size):
+            dataset_filename.unlink(missing_ok=True)
+            result["success"] = 0
+            result['message'] = (
+                'Upload appears to be incomplete (expected {} bytes, received {}). '
+                'This can happen if the connection was interrupted. Please try uploading again.'
+            ).format(expected_size, actual_size)
+            return result
+
         result['success'] = 1
         result['message'] = 'Dataset file saved successfully.'
 
