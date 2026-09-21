@@ -115,22 +115,46 @@ def get_auth_headers(audience: str) -> dict:
 
 def build_projection_csv_path(dir_id: str, file_id: str, scope: str) -> Path:
     """Build the path to the csv file for a given projection. Returns a Path object."""
-    if scope == "pval":
+    safe_dir_id = secure_filename(dir_id)
+    safe_file_id = secure_filename(file_id)
+    safe_scope = secure_filename(scope)
+
+    # Reject unsafe path components (path traversal, separators, absolute paths, etc).
+    if (
+        not safe_dir_id
+        or not safe_file_id
+        or not safe_scope
+        or safe_dir_id != dir_id
+        or safe_file_id != file_id
+        or safe_scope != scope
+    ):
+        abort(400, "Invalid projection path parameters.")
+
+    if safe_scope == "pval":
         # pval files are extra output for the standard "dataset" projections
         return Path(PROJECTIONS_BASE_DIR).joinpath(
-            "by_dataset", dir_id, "{}_pval.csv".format(file_id)
+            "by_dataset", safe_dir_id, "{}_pval.csv".format(safe_file_id)
         )
 
     return Path(PROJECTIONS_BASE_DIR).joinpath(
-        "by_{}".format(scope), dir_id, "{}.csv".format(file_id)
+        "by_{}".format(safe_scope), safe_dir_id, "{}.csv".format(safe_file_id)
     )
 
 
 def build_projection_json_path(dir_id: str, scope: str) -> Path:
     """Build the path to the projections json for a given dataset or genecart directory. Returns a Path object."""
-    return Path(PROJECTIONS_BASE_DIR).joinpath(
-        "by_{}".format(scope), dir_id, PROJECTIONS_JSON_BASENAME
-    )
+    base_dir = Path(PROJECTIONS_BASE_DIR).joinpath("by_{}".format(scope)).resolve()
+    safe_dir_id = secure_filename(dir_id)
+    if not safe_dir_id or safe_dir_id != dir_id:
+        raise ValueError("Invalid directory identifier")
+
+    candidate = base_dir.joinpath(safe_dir_id, PROJECTIONS_JSON_BASENAME).resolve()
+    try:
+        candidate.relative_to(base_dir)
+    except ValueError:
+        raise ValueError("Invalid directory path")
+
+    return candidate
 
 
 def get_existing_projection_result(
@@ -1202,6 +1226,9 @@ class ProjectR(Resource):
         dataset_projection_csv = build_projection_csv_path(
             dataset_id, projection_id, "dataset"
         )
+        resolved_dataset_projection_csv = dataset_projection_csv.resolve()
+        if not resolved_dataset_projection_csv.is_relative_to(Path(PROJECTIONS_BASE_DIR).resolve()):
+            abort(403, description="Invalid dataset path")
         dataset_projection_json_file = build_projection_json_path(dataset_id, "dataset")
 
         run_projectr = True
@@ -1300,7 +1327,7 @@ class ProjectR(Resource):
         # job status file (above) and resubmitted while the original run was still in progress.
         # Without this, a resubmit would spin up a second worker that reloads and densifies the
         # whole dataset a second time before it ever discovers the conflict.
-        lockfile = str(dataset_projection_csv) + ".lock"
+        lockfile = str(resolved_dataset_projection_csv) + ".lock"
         if Path(lockfile).is_file():
             print(
                 "INFO: A run for projection {} is already in progress (lock file present). Not starting a duplicate.".format(
