@@ -27,6 +27,10 @@ from gear.utils import (
 )
 from scipy import sparse
 
+_this_dir = Path(__file__).resolve().parent
+_root_dir = _this_dir.parents[1]
+UPLOADS_BASE_DIR = _root_dir / "www" / "uploads" / "files"
+
 
 def write_status(status_file, status):
     """Write status dictionary to JSON file."""
@@ -119,9 +123,13 @@ class AnndataProcessor:
             status_file: Path to status.json for progress updates
             dataset_uid: Dataset UID for primary analysis
         """
+        resolved_staging_area = Path(staging_area).resolve()
+        if not resolved_staging_area.is_relative_to(UPLOADS_BASE_DIR.resolve()):
+            raise ProcessingError(f"Invalid staging area path: {staging_area}")
+
         self.job_id = job_id
         self.share_uid = share_uid
-        self.staging_area = staging_area
+        self.staging_area = resolved_staging_area
         self.status_file = status_file
         self.dataset_uid = dataset_uid
         self.status = {
