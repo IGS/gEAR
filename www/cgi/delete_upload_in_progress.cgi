@@ -8,11 +8,12 @@ import cgi
 import json
 import os, sys
 import shutil
-import re
+from pathlib import Path
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from werkzeug.utils import secure_filename
 
 share_uid = None
 dataset_id = None
@@ -36,31 +37,29 @@ def main():
         print(json.dumps(result))
         return
 
-    # Make sure the final directory looks like a share_uid (8 alphanumeric characters)
-    if not re.match(r'^[a-zA-Z0-9]{8}$', share_uid or ''):
+    safe_share_uid = secure_filename(share_uid or '')
+    safe_session_id = secure_filename(session_id or '')
+    if not safe_share_uid or safe_share_uid != share_uid:
         result['message'] = 'Invalid share_uid: ' + str(share_uid)
         print(json.dumps(result))
         return
-
-    # session_id is expected to be an existing, server-issued session identifier;
-    # enforce a safe filesystem-component format before it's used in a path.
-    if not re.match(r'^[a-zA-Z0-9-]+$', session_id or ''):
+    if not safe_session_id or safe_session_id != session_id:
         result['message'] = 'Invalid session_id.'
         print(json.dumps(result))
         return
 
-    user_upload_file_path = os.path.abspath(os.path.join(user_upload_file_base, session_id, share_uid))
-    uploads_base = os.path.abspath(user_upload_file_base)
+    uploads_base = Path(user_upload_file_base).resolve()
+    user_upload_file_path = (uploads_base / safe_session_id / safe_share_uid).resolve()
 
     # Defense in depth: confirm the resolved path is still contained within the
     # uploads base directory before performing a recursive delete.
-    if os.path.commonpath([user_upload_file_path, uploads_base]) != uploads_base:
+    if not user_upload_file_path.is_relative_to(uploads_base):
         result['message'] = 'Invalid upload path.'
         print(json.dumps(result))
         return
 
-    if not os.path.exists(user_upload_file_path):
-        result['message'] = 'Upload directory not found: ' + user_upload_file_path
+    if not user_upload_file_path.exists():
+        result['message'] = 'Upload directory not found: ' + str(user_upload_file_path)
         print(json.dumps(result))
         return
 

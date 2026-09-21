@@ -39,13 +39,22 @@ def main():
     if filename.endswith('.tar.gz'):
         file_extension = 'tar.gz'
     else:
-        file_extension = filename.split('.')[-1]
+        file_extension = secure_filename(filename.split('.')[-1])
+
+    if not file_extension:
+        result['message'] = 'Invalid dataset file name.'
+        return result
 
     # This should already have been created when the metadata was stored
     user_upload_file_base = "../uploads/files/{0}".format(session_id)
 
-    dataset_filename = Path(user_upload_file_base) / share_uid / f"{share_uid}.{file_extension}"
+    dataset_filename = (Path(user_upload_file_base) / share_uid / f"{share_uid}.{file_extension}").resolve()
     status_file = Path(user_upload_file_base) / share_uid / 'status.json'
+
+    uploads_base = Path(user_upload_file_base).resolve()
+    if not dataset_filename.is_relative_to(uploads_base):
+        result['message'] = 'Invalid dataset file name.'
+        return result
 
     if not user:
         result['message'] = 'Only logged in users can upload datasets.'

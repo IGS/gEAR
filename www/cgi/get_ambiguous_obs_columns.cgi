@@ -21,6 +21,7 @@ from pathlib import Path
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from werkzeug.utils import secure_filename
 
 user_upload_file_base = '../uploads/files'
 
@@ -29,8 +30,8 @@ def main():
     print('Content-Type: application/json\n\n')
 
     form = cgi.FieldStorage()
-    session_id = form.getfirst('session_id')
-    share_uid = form.getfirst('share_uid')
+    session_id = secure_filename(form.getfirst('session_id', ''))
+    share_uid = secure_filename(form.getfirst('share_uid', ''))
 
     result = {'success': 0, 'message': '', 'questionable_columns': {}, 'reviewed': False}
 
@@ -45,7 +46,13 @@ def main():
         print(json.dumps(result))
         return
 
-    metadata_file = Path(user_upload_file_base) / session_id / share_uid / 'metadata.json'
+    uploads_base = Path(user_upload_file_base).resolve()
+    metadata_file = (uploads_base / session_id / share_uid / 'metadata.json').resolve()
+    if not metadata_file.is_relative_to(uploads_base):
+        result['message'] = 'Invalid session_id or share_uid.'
+        print(json.dumps(result))
+        return
+
     if not metadata_file.is_file():
         result['message'] = 'No metadata JSON file found for this dataset.'
         print(json.dumps(result))

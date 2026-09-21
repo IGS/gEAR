@@ -163,6 +163,15 @@ def main():
                 if filename.endswith(".h5ad") or filename.endswith(".tab"):
                     # Replace old_id with new_id in the filename
                     new_filename = filename.replace(share_id, new_share_id)
+
+                    # Defense in depth: new_share_id was already validated by is_safe_id(),
+                    # but confirm the resulting path still resolves inside CARTS_BASE_DIR
+                    # before renaming.
+                    resolved_new_filename = (CARTS_BASE_DIR / new_filename).resolve()
+                    if not resolved_new_filename.is_relative_to(CARTS_BASE_DIR.resolve()):
+                        print("Refusing to rename " + filename + " to " + new_filename + ": resolves outside carts directory", file=sys.stderr)
+                        continue
+
                     #! This will not work if not owner or if permissions are not set correctly
                     os.rename(filename, new_filename)
                     # if the old file still exists, log it
@@ -191,6 +200,14 @@ def main():
                 if share_id not in dirname:
                     continue
                 new_dir = dirname.replace(share_id, new_share_id)
+
+                # Defense in depth: confirm the resulting path still resolves inside
+                # BY_GENECART_DIR before renaming.
+                resolved_new_dir = (BY_GENECART_DIR / new_dir).resolve()
+                if not resolved_new_dir.is_relative_to(BY_GENECART_DIR.resolve()):
+                    print("Refusing to rename " + dirname + " to " + new_dir + ": resolves outside genecart projections directory", file=sys.stderr)
+                    continue
+
                 try:
                     os.rename(dirname, new_dir)
                 except FileNotFoundError:
