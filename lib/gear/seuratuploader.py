@@ -137,6 +137,7 @@ def genes_to_ensembl(adata, taxid=None):
     adata.var = pd.DataFrame(
         index=list(ensembl_mapping_dict.values()), data={"gene_symbol": list(ensembl_mapping_dict.keys())}
     )
+    adata.var_names_make_unique()
     return adata
 
 
