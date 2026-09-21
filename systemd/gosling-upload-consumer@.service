@@ -7,6 +7,12 @@ After=rabbitmq-server.service
 Type=simple
 Environment=APACHE_STARTED_BY_SYSTEMD=true
 ExecStart=/opt/bin/python3 <gear_root>/listeners/gosling_upload_consumer.py
+# Joins the aggregate memory budget shared across all gEAR consumer families -- see
+# systemd/gear-consumers.slice and docs/developer/setup/rabbitmq.md "Preventing runaway memory".
+# NOTE: unlike the other consumer families, this one has no StartLimit*/MemoryMax hardening of
+# its own yet -- out of scope for now (nothing has indicated a problem here), but worth adding
+# for consistency if that changes.
+Slice=gear-consumers.slice
 KillMode=mixed
 PrivateTmp=true
 Restart=always

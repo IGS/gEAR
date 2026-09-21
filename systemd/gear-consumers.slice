@@ -1,0 +1,18 @@
+[Unit]
+Description=Aggregate resource limits for gEAR RabbitMQ consumer workers
+
+# Individual consumer services (projectr-consumer@, anndata-upload-consumer@,
+# spatial-upload-consumer@, gosling-upload-consumer@) each have their own
+# MemoryHigh/MemoryMax as a per-worker backstop, sized for that family's own
+# typical job. Those don't know about each other, so nothing stops every family
+# from being busy at once and collectively exceeding the VM's actual RAM.
+#
+# This slice adds an aggregate ceiling across all of them combined -- join a
+# service to it with `Slice=gear-consumers.slice` in its [Service] section. See
+# docs/developer/setup/rabbitmq.md "Preventing runaway memory" for sizing guidance
+# and the reasoning behind having both a per-service AND a slice-level limit.
+
+[Slice]
+MemoryAccounting=true
+MemoryHigh=44G
+MemoryMax=48G

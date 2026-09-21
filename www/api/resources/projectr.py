@@ -1,5 +1,4 @@
 import asyncio
-import fcntl
 import functools
 import gc
 import hashlib
@@ -8,10 +7,8 @@ import sys
 import traceback
 import uuid
 from io import StringIO
-from os import getpid
 from pathlib import Path
 from time import sleep
-from typing import TextIO
 
 import aiohttp
 import geardb
@@ -22,7 +19,7 @@ from flask import abort, request
 from flask_restful import Resource, inputs, reqparse
 from gear.analysis import SpatialAnalysis, get_analysis
 from gear.orthology import get_ortholog_file, map_dataframe_genes
-from gear.utils import catch_memory_error
+from gear.utils import catch_memory_error, release_lock_file, try_acquire_lock_file
 import google.auth.transport.requests
 import google.oauth2.id_token
 from more_itertools import sliced
@@ -198,25 +195,6 @@ def get_existing_projection_result(
                 )
             break
     return result
-
-
-def create_lock_file(filepath: str) -> TextIO:
-    """Create an exclusive lock file for the given filepath.  Return the file descriptor."""
-    fd = open(filepath, "w+")
-    fd.write("{}\n".format(getpid()))
-    fcntl.flock(fd, fcntl.LOCK_EX)
-    return fd
-
-
-def remove_lock_file(fd: TextIO, filepath: str) -> None:
-    """Release the lock file."""
-    # fcntl.flock(fd, fcntl.LOCK_UN)
-    fd.close()
-    try:
-        Path(filepath).unlink()
-    except FileNotFoundError:
-        # This is fine, as the lock file may have been removed by another process
-        pass
 
 
 def write_to_json(projections_dict: dict, projection_json_file: Path) -> None:
@@ -530,56 +508,54 @@ def projectr_callback(
         write_projection_status(JOB_STATUS_FILE, status)
         return status
 
-    # Check for a lock on this exact projection BEFORE doing any expensive work (loading the
-    # dataset, densifying it, etc). dataset_id/genecart_id/projection_id/algorithm/zscore are all
-    # we need to build the lock path, so this can happen up front.
+    # Try to acquire the lock for this exact projection BEFORE doing any expensive work (loading
+    # the dataset, densifying it, etc). dataset_id/genecart_id/projection_id are all we need to
+    # build the lock path, so this can happen up front. try_acquire_lock_file is non-blocking: if
+    # a live worker already holds it, we get None back immediately and explicitly wait (bounded)
+    # to steal its result, rather than silently blocking here until it's released. The lock is
+    # kernel-released automatically if the holding process dies, so there is no separate "stale
+    # lock" case to detect -- a fresh acquire attempt on an abandoned lock file just succeeds.
     dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
     lockfile = str(dataset_projection_csv) + ".lock"
 
-    if Path(lockfile).exists():
+    try:
+        lock_fh = try_acquire_lock_file(lockfile)
+        # NOTE: Will not trigger if process crashes or is forcibly killed off.
+    except IOError:
+        # This should ideally never be encountered - a genuine I/O error creating the lock file
+        # (e.g. permissions, disk full), as opposed to the lock simply being held by another run.
+        message = "Could not create lock file for this projectR run."
+        status["status"] = "failed"
+        status["error"] = message
+        write_projection_status(JOB_STATUS_FILE, status)
+        return status
+
+    if lock_fh is None:
         print(
-            "INFO: Found lockfile for another current projectR run of {}.  Going to wait for that run to finish and steal its output.".format(
+            "INFO: Found an in-progress projectR run of {}. Going to wait for that run to finish and steal its output.".format(
                 projection_id
             ),
             file=sys.stderr,
         )
-        try:
-            # Test to see if the exclusive lock has expired
-            lock_fh = create_lock_file(lockfile)
-            print("INFO: Lock for {} seems to be stale. Removing it.".format(projection_id), file=sys.stderr)
-            remove_lock_file(lock_fh, lockfile)
-        except Exception:
-            print("INFO: Lock for {} seems to be valid.".format(projection_id), file=sys.stderr)
-            # If lock belongs to a valid run, wait (with a bound) for the lock to be removed,
-            # then return the info the other run recorded, instead of running everything again.
-            LOCK_WAIT_TIMEOUT_SECONDS = 1800  # 30 minutes
-            waited_seconds = 0
-            while Path(lockfile).exists():
-                if waited_seconds >= LOCK_WAIT_TIMEOUT_SECONDS:
-                    message = "Timed out waiting for an in-progress projectR run of this configuration to finish."
-                    print(message, file=sys.stderr)
-                    status["status"] = "failed"
-                    status["error"] = message
-                    write_projection_status(JOB_STATUS_FILE, status)
-                    return status
-                sleep(1)
-                waited_seconds += 1
+        # Wait (with a bound) for the lock to be released, then return the info the other run
+        # recorded, instead of running everything again.
+        LOCK_WAIT_TIMEOUT_SECONDS = 1800  # 30 minutes
+        waited_seconds = 0
+        while Path(lockfile).exists():
+            if waited_seconds >= LOCK_WAIT_TIMEOUT_SECONDS:
+                message = "Timed out waiting for an in-progress projectR run of this configuration to finish."
+                print(message, file=sys.stderr)
+                status["status"] = "failed"
+                status["error"] = message
+                write_projection_status(JOB_STATUS_FILE, status)
+                return status
+            sleep(1)
+            waited_seconds += 1
 
-            status["status"] = "complete"
-            status["result"] = get_existing_projection_result(
-                dataset_id, genecart_id, algorithm, zscore, projection_id
-            )
-            write_projection_status(JOB_STATUS_FILE, status)
-            return status
-
-    try:
-        lock_fh = create_lock_file(lockfile)
-        # NOTE: Will not trigger if process crashes or is forcibly killed off.
-    except IOError:
-        # This should ideally never be encountered as the previous code should handle existing locked files
-        message = "Could not create lock file for this projectR run."
-        status["status"] = "failed"
-        status["error"] = message
+        status["status"] = "complete"
+        status["result"] = get_existing_projection_result(
+            dataset_id, genecart_id, algorithm, zscore, projection_id
+        )
         write_projection_status(JOB_STATUS_FILE, status)
         return status
 
@@ -597,7 +573,7 @@ def projectr_callback(
     # Unweighted carts get a "1" weight for each gene
     genecart = geardb.get_gene_cart_by_share_id(genecart_id)
     if not genecart:
-        remove_lock_file(lock_fh, lockfile)
+        release_lock_file(lock_fh, lockfile)
         status["status"] = "failed"
         status["error"] = "Could not find gene list in database."
         write_projection_status(JOB_STATUS_FILE, status)
@@ -606,7 +582,7 @@ def projectr_callback(
     genecart.get_gene_counts()
 
     if not genecart.num_genes:
-        remove_lock_file(lock_fh, lockfile)
+        release_lock_file(lock_fh, lockfile)
         status["status"] = "failed"
         status["error"] = "No genes found within this gene list."
         write_projection_status(JOB_STATUS_FILE, status)
@@ -622,14 +598,14 @@ def projectr_callback(
         )
     except Exception as e:
         traceback.print_exc(file=sys.stderr)
-        remove_lock_file(lock_fh, lockfile)
+        release_lock_file(lock_fh, lockfile)
         status["status"] = "failed"
         status["error"] = str(e)
         write_projection_status(JOB_STATUS_FILE, status)
         return status
 
     if loading_df.empty:
-        remove_lock_file(lock_fh, lockfile)
+        release_lock_file(lock_fh, lockfile)
         status["status"] = "failed"
         status["error"] = "The gene list file is empty."
         write_projection_status(JOB_STATUS_FILE, status)
@@ -678,7 +654,7 @@ def projectr_callback(
             loading_df = map_dataframe_genes(loading_df, ortholog_file)
     except Exception as e:
         traceback.print_exc(file=sys.stderr)
-        remove_lock_file(lock_fh, lockfile)
+        release_lock_file(lock_fh, lockfile)
         status["status"] = "failed"
         status["success"] = -1
         status["error"] = str(e)
@@ -699,7 +675,7 @@ def projectr_callback(
         ana = get_analysis(None, dataset_id, session_id, is_spatial)
     except Exception as e:
         traceback.print_exc(file=sys.stderr)
-        remove_lock_file(lock_fh, lockfile)
+        release_lock_file(lock_fh, lockfile)
         status["status"] = "failed"
         status["error"] = "Analysis for this dataset is unavailable."
         write_projection_status(JOB_STATUS_FILE, status)
@@ -712,7 +688,7 @@ def projectr_callback(
             adata = ana.get_adata(**args)
     except Exception:
         traceback.print_exc(file=sys.stderr)
-        remove_lock_file(lock_fh, lockfile)
+        release_lock_file(lock_fh, lockfile)
         status["status"] = "failed"
         status["error"] = "Could not create dataset object using analysis."
         write_projection_status(JOB_STATUS_FILE, status)
@@ -745,7 +721,7 @@ def projectr_callback(
         message = "No common genes between the target dataset ({} genes) and the pattern ({} genes).".format(
             num_target_genes, num_loading_genes
         )
-        remove_lock_file(lock_fh, lockfile)
+        release_lock_file(lock_fh, lockfile)
         status["status"] = "failed"
         status["error"] = message
         status["result"] =  {
@@ -838,7 +814,7 @@ def projectr_callback(
             )
             print("INFO: All fetch tasks have completed", file=sys.stderr)
         except asyncio.TimeoutError:
-            remove_lock_file(lock_fh, lockfile)
+            release_lock_file(lock_fh, lockfile)
             status["status"] = "failed"
             status["error"] = "Timeout while waiting for projectR to complete."
             status["result"] = {
@@ -851,7 +827,7 @@ def projectr_callback(
         except Exception as e:
             print(str(e), file=sys.stderr)
             # Raises as soon as one "gather" task has an exception
-            remove_lock_file(lock_fh, lockfile)
+            release_lock_file(lock_fh, lockfile)
             status["status"] = "failed"
             status["error"] = "Something went wrong with the projection-creating step."
             status["result"] = {
@@ -882,7 +858,7 @@ def projectr_callback(
         if len(projection_patterns_df.index) != len(obs_index_list):
             message = "Not all chunked sample rows were returned by projectR. Saved partial results to disk. Refresh to try again."
             print(message, file=sys.stderr)
-            remove_lock_file(lock_fh, lockfile)
+            release_lock_file(lock_fh, lockfile)
             status["status"] = "failed"
             status["error"] = message
             status["result"] = {
@@ -963,7 +939,7 @@ def projectr_callback(
                 raise ValueError("Algorithm {} is not supported".format(algorithm))
         except Exception as e:
             # clear lock file
-            remove_lock_file(lock_fh, lockfile)
+            release_lock_file(lock_fh, lockfile)
             print(str(e), file=sys.stderr)
             status["status"] = "failed"
             status["error"] = "Something went wrong with the projection-creating step."
@@ -991,7 +967,7 @@ def projectr_callback(
     # This could be due to an R code error or something in post-processing
     if projection_patterns_df.isna().to_numpy().any():
         message = "There are NaN values in the projection patterns.  Cannot proceed."
-        remove_lock_file(lock_fh, lockfile)
+        release_lock_file(lock_fh, lockfile)
         status["status"] = "failed"
         status["error"] = message
         status["result"] = {
@@ -1083,7 +1059,7 @@ def projectr_callback(
 
     # Remove file lock
     print("INFO: Removing lock file for {}".format(projection_id), file=sys.stderr)
-    remove_lock_file(lock_fh, lockfile)
+    release_lock_file(lock_fh, lockfile)
 
     status["status"] = "complete"
     status["result"] = {

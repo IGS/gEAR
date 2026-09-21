@@ -3,10 +3,12 @@
 # Some of these originally started out as code from individual scripts, such as the "bin" directory,
 # but were moved to a common location to be shared across multiple scripts.
 
+import fcntl
 import functools
 import os
 import sys
 import typing
+from pathlib import Path
 
 import pandas as pd
 
@@ -72,6 +74,40 @@ def set_memory_limit_from_cgroup(fraction: float = 0.9) -> None:
         )
     except Exception as e:
         print(f"set_memory_limit_from_cgroup: failed to set memory limit: {e}", file=sys.stderr)
+
+
+def try_acquire_lock_file(filepath: "str | Path") -> typing.Optional[typing.TextIO]:
+    """
+    Attempt to acquire an exclusive, non-blocking lock at the given path.
+
+    Returns the open file handle on success (caller is responsible for eventually passing it to
+    release_lock_file()), or None if another live process already holds it. This never blocks
+    waiting for the lock, so it's safe to call from a single-threaded event-loop callback (e.g. a
+    pika/RabbitMQ consumer's on_message callback) without stalling the loop.
+
+    The lock is released automatically by the kernel if the holding process dies for any reason
+    (including an OOM-kill), so this can't be left permanently stuck the way a plain marker file
+    (checked with a bare `Path.exists()`) could.
+    """
+    fd = open(filepath, "w+")
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        fd.close()
+        return None
+    fd.write(f"{os.getpid()}\n")
+    fd.flush()
+    return fd
+
+
+def release_lock_file(fd: typing.TextIO, filepath: "str | Path") -> None:
+    """Release a lock acquired via try_acquire_lock_file() and remove the lock file."""
+    fd.close()
+    try:
+        Path(filepath).unlink()
+    except FileNotFoundError:
+        # This is fine, as the lock file may have been removed by another process
+        pass
 
 
 def catch_memory_error() -> typing.Callable:
