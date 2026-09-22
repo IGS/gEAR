@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 import traceback
+from typing import Callable, Optional
 
 import pandas as pd
 import rpy2.rinterface_lib.callbacks as r_cbs
@@ -63,15 +64,32 @@ def r_package_importer(package_name:str):
         raise ImportError(importErrorMessage)
 
 
-def seurat_to_anndata(file_path: str, share_name: str, output_dir: str = "."):
+def seurat_to_anndata(
+    file_path: str,
+    share_name: str,
+    output_dir: str = ".",
+    progress_callback: Optional[Callable[[int, str], None]] = None,
+):
     """
     file_path: path to rds or rdata file
     share_name: final h5ad string name to be expected (without h5ad)
     output_dir: directory to write the temporary h5ad file into
+    progress_callback: optional (progress: int, message: str) callback invoked before each of
+        the three slow/memory-heavy R steps below (readRDS, as_AnnData, write_h5ad). Without
+        this, a caller has no visibility into which of those a long-running conversion is
+        currently in -- the whole function otherwise reports nothing until it returns.
 
     return:
         absolute path to tmp h5ad, or False on failure
     """
+
+    def _report(pct: int, msg: str) -> None:
+        # Always print to stderr (timestamped by journald under systemd) even without a
+        # callback, so this is visible in the consumer's own logs either way.
+        print(f"INFO: {msg}", file=sys.stderr, flush=True)
+        if progress_callback is not None:
+            progress_callback(pct, msg)
+
     # Suppress R console output and ensure required packages are loaded,
     # since this function may be called as a module in cgi script (not via main()).
     r_cbs.consolewrite_print = silent_handler
@@ -87,6 +105,7 @@ def seurat_to_anndata(file_path: str, share_name: str, output_dir: str = "."):
         raise
     # Use R's readRDS to load the object.
     # The result is an R object within the Python environment.
+    _report(6, "Reading Seurat/RDS object into R (large files can take a while)...")
     try:
         r_seurat_obj = base.readRDS(file_path)
     except Exception as e:
@@ -103,9 +122,11 @@ def seurat_to_anndata(file_path: str, share_name: str, output_dir: str = "."):
     ro.globalenv['obsm_mapping'] = obsm_mapping
 
     # Using anndataR write out a converted h5ad, passing along the reduction mapping
+    _report(10, "Converting Seurat object to AnnData (this can take a while for large datasets)...")
     ro.r('adata <- as_AnnData(seurat_obj, obsm_mapping = obsm_mapping)')
 
     output_path = os.path.join(output_dir, f'tmp_{share_name}.h5ad')
+    _report(14, "Writing intermediate H5AD file...")
     try:
         ro.r(f'write_h5ad(adata, "{output_path}")')
         return output_path

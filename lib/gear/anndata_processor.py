@@ -450,7 +450,12 @@ class AnndataProcessor:
         # seurat to anndata uses rpy2 to convert the RDS to anndata
         # filepath name has "tmp_" appended in front
         try:
-            adata_filepath = SeuratUploader.seurat_to_anndata(str(seurat_filepath), self.share_uid, str(self.staging_area))
+            adata_filepath = SeuratUploader.seurat_to_anndata(
+                str(seurat_filepath),
+                self.share_uid,
+                str(self.staging_area),
+                progress_callback=self._update_progress,
+            )
         except Exception as e:
             raise ProcessingError(
                 f"Could not convert the uploaded RDS file to H5AD: {e}. Please verify this is a "
