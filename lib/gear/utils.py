@@ -8,12 +8,26 @@ import functools
 import os
 import sys
 import typing
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
 
 if typing.TYPE_CHECKING:
     from anndata import AnnData
+
+
+def log_line(fh: typing.TextIO, message: str) -> None:
+    """
+    Write a timestamped line to a RabbitMQ consumer log filehandle (e.g. the per-queue files
+    under /var/log/gEAR_queue/). Plain print() to these files has no timestamp of its own -
+    unlike stdout/stderr, which journald timestamps automatically for a systemd service - so
+    without this, correlating events across workers/log lines (e.g. when a duplicate delivery
+    landed relative to the original) requires cross-referencing against something else.
+    """
+    timestamp = datetime.now().isoformat(sep=" ", timespec="milliseconds")
+    print(f"{timestamp} - {message}", flush=True, file=fh)
+
 
 def set_memory_limit_from_cgroup(fraction: float = 0.9) -> None:
     """

@@ -25,7 +25,7 @@ import gearqueue
 from gear.serverconfig import ServerConfig  # noqa: I001
 
 from gear.anndata_processor import AnndataProcessor  # noqa: E402
-from gear.utils import release_lock_file, try_acquire_lock_file  # noqa: E402
+from gear.utils import log_line, release_lock_file, try_acquire_lock_file  # noqa: E402
 
 servercfg = ServerConfig().parse()
 
@@ -50,18 +50,10 @@ def _on_request(channel, method_frame, properties, body) -> None:
     perform_primary_analysis = deserialized_body.get("perform_primary_analysis", False)
 
     with open(logfile, "a") as fh:
-        print(
-            f"{pid} - [x] Received request for anndata job {job_id}",
-            flush=True,
-            file=fh,
-        )
+        log_line(fh, f"{pid} - [x] Received request for anndata job {job_id}")
 
         if not user_upload_base.is_dir():
-            print(
-                f"{pid} - ERROR: User upload base directory {user_upload_base} does not exist",
-                flush=True,
-                file=fh,
-            )
+            log_line(fh, f"{pid} - ERROR: User upload base directory {user_upload_base} does not exist")
             channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
             return
 
@@ -88,11 +80,10 @@ def _on_request(channel, method_frame, properties, body) -> None:
             lockfile = staging_area / ".job.lock"
             lock_fh = try_acquire_lock_file(lockfile)
             if lock_fh is None:
-                print(
+                log_line(
+                    fh,
                     f"{pid} - Job {job_id} for share {share_uid} is already being processed by "
                     "another worker (lock held); acking duplicate delivery without reprocessing.",
-                    flush=True,
-                    file=fh,
                 )
                 channel.basic_ack(delivery_tag=delivery_tag)
                 return
@@ -113,30 +104,22 @@ def _on_request(channel, method_frame, properties, body) -> None:
                 perform_primary_analysis=perform_primary_analysis,
             )
 
-            print(f"{pid} - Job {job_id}: {result['message']}", flush=True, file=fh)
+            log_line(fh, f"{pid} - Job {job_id}: {result['message']}")
             if channel.is_open:
                 channel.basic_ack(delivery_tag=delivery_tag)
             else:
                 # Broker likely closed the channel (e.g. ack deadline exceeded) and already
                 # redelivered this message elsewhere. Acking here would raise and escape this
                 # except block unhandled, so just log and move on.
-                print(
-                    f"{pid} - Channel already closed, could not ack delivery {delivery_tag}",
-                    flush=True,
-                    file=fh,
-                )
+                log_line(fh, f"{pid} - Channel already closed, could not ack delivery {delivery_tag}")
         except Exception as e:
             traceback.print_exc()
-            print(f"{pid} - Caught error '{str(e)}'", flush=True, file=fh)
+            log_line(fh, f"{pid} - Caught error '{str(e)}'")
             try:
                 if channel.is_open:
                     channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
             except Exception as nack_err:
-                print(
-                    f"{pid} - Could not nack delivery {delivery_tag}: '{str(nack_err)}'",
-                    flush=True,
-                    file=fh,
-                )
+                log_line(fh, f"{pid} - Could not nack delivery {delivery_tag}: '{str(nack_err)}'")
         finally:
             if lock_fh is not None:
                 release_lock_file(lock_fh, lockfile)

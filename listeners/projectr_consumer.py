@@ -18,6 +18,7 @@ sys.path.insert(0, str(gear_lib))
 
 import gearqueue
 from gear.serverconfig import ServerConfig
+from gear.utils import log_line
 servercfg = ServerConfig().parse()
 
 # TODO: Move code into "lib" and import. Figure out how to cleanly import geardb.
@@ -50,12 +51,11 @@ def _on_request(channel, method_frame, properties, body):
     full_output = deserialized_body["full_output"]
 
     with open(logfile, "a") as fh:
-        print(
+        log_line(
+            fh,
             "{} - [x] - Received request for dataset {} and genecart {}".format(
                 pid, dataset_id, genecart_id
             ),
-            flush=True,
-            file=fh,
         )
 
         try:
@@ -77,25 +77,23 @@ def _on_request(channel, method_frame, properties, body):
                 # Broker likely closed the channel (e.g. ack deadline exceeded) and already
                 # requeued/redelivered this message elsewhere. Acking here would raise and
                 # escape this except block unhandled, so just log and move on.
-                print(
+                log_line(
+                    fh,
                     "{} - Channel already closed, could not ack delivery {}".format(
                         pid, delivery_tag
                     ),
-                    flush=True,
-                    file=fh,
                 )
         except Exception as e:
-            print("{} - Caught error '{}'".format(pid, str(e)), flush=True, file=fh)
+            log_line(fh, "{} - Caught error '{}'".format(pid, str(e)))
             try:
                 if channel.is_open:
                     channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
             except Exception as nack_err:
-                print(
+                log_line(
+                    fh,
                     "{} - Could not nack delivery {}: '{}'".format(
                         pid, delivery_tag, str(nack_err)
                     ),
-                    flush=True,
-                    file=fh,
                 )
         finally:
             gc.collect()

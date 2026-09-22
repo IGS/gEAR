@@ -21,6 +21,7 @@ import gearqueue  # noqa: F401
 from gear.serverconfig import ServerConfig  # noqa: I001
 
 from gear.trackhub import TrackHubProcessor  # noqa: E402
+from gear.utils import log_line  # noqa: E402
 
 
 servercfg = ServerConfig().parse()
@@ -47,19 +48,15 @@ def _on_request(channel, method_frame, properties, body):
     dry_run = deserialized_body.get("dry_run", False)
 
     with open(logfile, "a") as fh:
-        print(
-            f"{pid} - [x] - Received request for trackhub job {job_id}",
-            flush=True,
-            file=fh,
-        )
+        log_line(fh, f"{pid} - [x] - Received request for trackhub job {job_id}")
 
         if not user_upload_base.is_dir():
-            print(f"{pid} - ERROR: User upload base directory {user_upload_base} does not exist", flush=True, file=fh)
+            log_line(fh, f"{pid} - ERROR: User upload base directory {user_upload_base} does not exist")
             channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
             return
 
         if not hub_url:
-            print(f"{pid} - ERROR: Hub URL base not configured. Cannot process track hub.", flush=True, file=fh)
+            log_line(fh, f"{pid} - ERROR: Hub URL base not configured. Cannot process track hub.")
             channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
             return
 
@@ -97,12 +94,12 @@ def _on_request(channel, method_frame, properties, body):
             )
 
             result = processor.process(hub_json, assembly, track_stanzas, dry_run)
-            print(f"{pid} - Job {job_id}: {result['message']}", flush=True, file=fh)
+            log_line(fh, f"{pid} - Job {job_id}: {result['message']}")
             channel.basic_ack(delivery_tag=delivery_tag)
 
         except Exception as e:
             traceback.print_exc()
-            print(f"{pid} - Caught error '{str(e)}'", flush=True, file=fh)
+            log_line(fh, f"{pid} - Caught error '{str(e)}'")
             channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
         finally:
             gc.collect()
