@@ -1,6 +1,12 @@
 [Unit]
 Description=H5AD (Anndata) RabbitMQ Consumer Workers
-Wants=anndata-upload-consumer@1.service anndata-upload-consumer@2.service anndata-upload-consumer@3.service
+# Kept below projectr-consumer's worker count deliberately: Seurat/RDS conversion is far more
+# memory-hungry per job than a projectR chunk (~22GB+ observed for a 3GB input), so running this
+# family at the same worker count risks combined memory use the VM doesn't have. Before raising
+# this further, confirm real per-job peak memory leaves enough headroom for N workers plus
+# everything else running on the same VM (see docs/developer/setup/rabbitmq.md "Preventing
+# runaway memory").
+Wants=anndata-upload-consumer@1.service anndata-upload-consumer@2.service
 
 [Install]
 WantedBy=multi-user.target

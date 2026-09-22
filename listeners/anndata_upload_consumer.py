@@ -25,6 +25,7 @@ import gearqueue
 from gear.serverconfig import ServerConfig  # noqa: I001
 
 from gear.anndata_processor import AnndataProcessor  # noqa: E402
+from gear.utils import release_lock_file, try_acquire_lock_file  # noqa: E402
 
 servercfg = ServerConfig().parse()
 
@@ -64,6 +65,8 @@ def _on_request(channel, method_frame, properties, body) -> None:
             channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
             return
 
+        lock_fh = None
+        lockfile = None
         try:
             # Infer staging_area from share_uid directory structure
             staging_area = None
@@ -75,6 +78,24 @@ def _on_request(channel, method_frame, properties, body) -> None:
 
             if not staging_area:
                 raise FileNotFoundError(f"Could not find staging area for {share_uid}")
+
+            # Seurat/anndata conversion can legitimately run long enough to exceed RabbitMQ's
+            # ack deadline, which causes the broker to redeliver this same job to another worker
+            # while this one is still processing it. Guard against that duplicate run: if another
+            # live process already holds the lock, just ack-and-drop this delivery rather than
+            # starting a second full conversion on top of it. Non-blocking, so it never stalls
+            # this ioloop thread waiting on the lock.
+            lockfile = staging_area / ".job.lock"
+            lock_fh = try_acquire_lock_file(lockfile)
+            if lock_fh is None:
+                print(
+                    f"{pid} - Job {job_id} for share {share_uid} is already being processed by "
+                    "another worker (lock held); acking duplicate delivery without reprocessing.",
+                    flush=True,
+                    file=fh,
+                )
+                channel.basic_ack(delivery_tag=delivery_tag)
+                return
 
             status_file = staging_area / "status.json"
 
@@ -93,12 +114,32 @@ def _on_request(channel, method_frame, properties, body) -> None:
             )
 
             print(f"{pid} - Job {job_id}: {result['message']}", flush=True, file=fh)
-            channel.basic_ack(delivery_tag=delivery_tag)
+            if channel.is_open:
+                channel.basic_ack(delivery_tag=delivery_tag)
+            else:
+                # Broker likely closed the channel (e.g. ack deadline exceeded) and already
+                # redelivered this message elsewhere. Acking here would raise and escape this
+                # except block unhandled, so just log and move on.
+                print(
+                    f"{pid} - Channel already closed, could not ack delivery {delivery_tag}",
+                    flush=True,
+                    file=fh,
+                )
         except Exception as e:
             traceback.print_exc()
             print(f"{pid} - Caught error '{str(e)}'", flush=True, file=fh)
-            channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
+            try:
+                if channel.is_open:
+                    channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
+            except Exception as nack_err:
+                print(
+                    f"{pid} - Could not nack delivery {delivery_tag}: '{str(nack_err)}'",
+                    flush=True,
+                    file=fh,
+                )
         finally:
+            if lock_fh is not None:
+                release_lock_file(lock_fh, lockfile)
             gc.collect()
 
 
