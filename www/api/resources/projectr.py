@@ -510,11 +510,8 @@ def projectr_callback(
 
     # Try to acquire the lock for this exact projection BEFORE doing any expensive work (loading
     # the dataset, densifying it, etc). dataset_id/genecart_id/projection_id are all we need to
-    # build the lock path, so this can happen up front. try_acquire_lock_file is non-blocking: if
-    # a live worker already holds it, we get None back immediately and explicitly wait (bounded)
-    # to steal its result, rather than silently blocking here until it's released. The lock is
-    # kernel-released automatically if the holding process dies, so there is no separate "stale
-    # lock" case to detect -- a fresh acquire attempt on an abandoned lock file just succeeds.
+    # build the lock path, so this can happen up front.  It is non-blocking meaning we find out
+    # immediately if another worker is already running this exact projection, and we can wait for it to finish
     dataset_projection_csv = build_projection_csv_path(dataset_id, projection_id, "dataset")
     lockfile = str(dataset_projection_csv) + ".lock"
 
@@ -530,6 +527,8 @@ def projectr_callback(
         write_projection_status(JOB_STATUS_FILE, status)
         return status
 
+    # If a new lock fh was not made, it means another worker is running this exact projection.
+    # Wait for it to finish and steal its output, rather than running everything again.
     if lock_fh is None:
         print(
             "INFO: Found an in-progress projectR run of {}. Going to wait for that run to finish and steal its output.".format(
@@ -765,9 +764,6 @@ def projectr_callback(
 
     if dedup_copy.exists():
         dedup_copy.unlink()
-
-    # NOTE: The lock for this projection was already acquired at the top of this function,
-    # before any of the expensive dataset loading above, so there is nothing more to do here.
 
     # Chunk size needs to adjusted by how many genes are present, so that the payload always stays under the body size limit
     chunk_size = calculate_chunk_size(len(target_df.index), len(target_df.columns))
