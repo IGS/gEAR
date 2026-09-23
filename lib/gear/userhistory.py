@@ -97,7 +97,7 @@ class UserHistory:
                 if 'gene_symbol' not in kwargs:
                     raise Exception("ERROR: If recording a gene_search category, 'gene_symbol' must be passed")
 
-                gene_string = re.sub("[\, ]+", ",", kwargs['gene_symbol'])
+                gene_string = re.sub("[, ]+", ",", kwargs['gene_symbol'])
 
                 url += "&g={0}".format(gene_string)
 
@@ -118,7 +118,7 @@ class UserHistory:
                 if 'gene_symbol' not in kwargs:
                     raise Exception("ERROR: If recording a multigene_search category, 'gene_symbol' must be passed")
 
-                gene_string = re.sub("[\, ]+", ",", kwargs['gene_symbol'])
+                gene_string = re.sub("[, ]+", ",", kwargs['gene_symbol'])
 
                 url += "&g={0}&multi=1&gsem=1".format(gene_string)
 

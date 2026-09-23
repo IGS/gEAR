@@ -1,14 +1,26 @@
-
+import datetime
+import json
+import os
 import sys
+import traceback
 import typing
 from pathlib import Path
 
 import colorcet as cc
+import geardb
 import numpy as np
 import pandas as pd
 import spatialdata as sd
+import zarr
+import anndata as ad
+try:
+    from anndata.io import read_elem
+except ImportError:
+    from anndata.experimental import read_elem
+from bokeh.embed import server_document
 from flask import request
 from flask_restful import Resource
+from werkzeug.utils import secure_filename
 
 from .common import create_projection_adata
 
@@ -41,16 +53,65 @@ COOL_DATASETS = [
     "a9ceb45a-7ec7-42ff-a108-b432417dfdf3"
 ]
 
-def prep_sdata(dataset_id: str) -> "SpatialHandler":
+def get_platform_for_dataset(zarr_path: Path) -> str:
     """
-    Prepare and return a SpatialHandler for the given dataset.
+    Return just the platform string for a spatial dataset, without loading
+    the whole SpatialData store (images, points, shapes) or even the
+    table's obs/var/X -- only the small `uns` element of the table's
+    AnnData group.
 
-    This function locates a .zarr dataset under the module-level SPATIAL_PATH using
-    the provided dataset_id, reads it with sd.read_zarr, extracts the platform
-    identifier from sdata.tables["table"].uns["platform"], validates that the
-    platform is supported by the SPATIALTYPE2CLASS mapping, instantiates the
-    appropriate SpatialHandler subclass, attaches the loaded sdata to it and
-    returns the handler.
+    Parameters
+    ----------
+    zarr_path : Path
+        Path to the dataset's .zarr store.
+
+    Returns
+    -------
+    str
+        The platform string (e.g. "xenium").
+
+    Raises
+    ------
+    ValueError
+        If no platform information is found at tables/table/uns/platform.
+    """
+    table_path = zarr_path / "tables" / "table"
+    store = zarr.open(str(table_path), mode="r")
+    try:
+        uns = read_elem(store["uns"])
+        return uns["platform"]
+    except KeyError:
+        raise ValueError("No platform information found in the dataset")
+
+
+def get_table_adata(spatial_obj: "SpatialHandler") -> "AnnData":
+    """
+    Load just the table's AnnData directly from spatial_obj.zarr_path,
+    without constructing the full SpatialData object -- images, points,
+    and shapes are never touched.
+
+    Note this still loads the table's X/obs/var fully into memory (plain
+    anndata.read_zarr has no lazy/backed mode the way read_h5ad does);
+    it only avoids the SpatialData-wrapper construction overhead, not the
+    cost of the expression matrix itself.
+
+    Requires spatial_obj.zarr_path to have been set (e.g. by prep_sdata()).
+    """
+    table_path = spatial_obj.zarr_path / "tables" / "table"
+    return ad.read_zarr(table_path)
+
+
+def initialize_spatial_handler(dataset_id: str) -> "SpatialHandler":
+    """
+    Instantiate the correct SpatialHandler subclass for a dataset, without
+    loading any of its actual data yet (images/points/shapes/table). Only
+    the platform string is read (from the table's `uns`) to pick the class.
+
+    The returned handler's `.sdata` is intentionally left unset -- callers
+    that need the real SpatialData object (e.g. to extract images) or just
+    the table (e.g. for gene/observation data) should load one of those
+    explicitly, only if and when they actually need it. `.zarr_path` is
+    set on the handler so callers can do so without recomputing the path.
 
     Parameters
     ----------
@@ -62,35 +123,23 @@ def prep_sdata(dataset_id: str) -> "SpatialHandler":
     -------
     SpatialHandler
         An instance of the handler class corresponding to the dataset platform,
-        with its `sdata` attribute set to the loaded dataset.
+        with `.zarr_path` set and `.sdata` intentionally left unloaded.
 
     Raises
     ------
     ValueError
         - If the dataset zarr path does not exist.
         - If the dataset does not contain platform information at
-          sdata.tables["table"].uns["platform"].
+          tables/table/uns/platform.
         - If the platform value is not present in the SPATIALTYPE2CLASS mapping.
         In the case of an unsupported platform, the function will print an error
         and the set of supported types to stderr before raising.
-
-    Notes
-    -----
-    - This function depends on the module-level names: SPATIAL_PATH, sd,
-      SPATIALTYPE2CLASS, and sys.
-    - The handler class returned is constructed via SPATIALTYPE2CLASS[platform](),
-      and the loaded sdata is assigned to its `sdata` attribute prior to return.
     """
     zarr_path = SPATIAL_PATH / f"{dataset_id}.zarr"
     if not zarr_path.exists():
         raise ValueError(f"Dataset {dataset_id} not found")
 
-    sdata = sd.read_zarr(zarr_path)
-
-    try:
-        platform = sdata.tables["table"].uns["platform"]
-    except KeyError:
-        raise ValueError("No platform information found in the dataset")
+    platform = get_platform_for_dataset(zarr_path)
 
     # Ensure the spatial data type is supported
     if platform not in SPATIALTYPE2CLASS.keys():
@@ -102,51 +151,46 @@ def prep_sdata(dataset_id: str) -> "SpatialHandler":
 
     # Use uploader class to determine correct helper functions
     spatial_obj: "SpatialHandler" = SPATIALTYPE2CLASS[platform]()
-    spatial_obj.sdata = sdata
+    spatial_obj.zarr_path = zarr_path
     return spatial_obj
 
-def generate_spatial_image_df(spatial_obj: "SpatialHandler") -> np.ndarray | None:
+def normalize_image_array(arr: np.ndarray|None) -> np.ndarray:
     """
-    Generate a NumPy array representation of the spatial image for a given SpatialHandler.
+    This function takes a NumPy array (which may be of any numeric type) and normalizes
+    its values to the range [0, 255], converting it to uint8 format.
 
-    This function attempts to extract an image from the provided spatial handler by
-    calling its extract_img() method. Some spatial datasets do not include image
-    data or may raise errors during extraction/conversion; such errors are caught,
-    an error message is printed to sys.stderr, and the function returns None.
+    Occasionally when viewing the raw image channel values, outliers can skew the color mapping.
+    To mitigate this, the function clips the values to the 1st and 99th percentiles before normalization.
 
     Parameters
     ----------
-    spatial_obj : SpatialHandler
-        An object that implements an extract_img() method which returns a NumPy array
-        representation of the spatial image.
+    arr : np.ndarray
+        Input image array of any numeric type.
 
     Returns
     -------
-    np.ndarray | None
-        A NumPy array containing the image data if extraction succeeds, otherwise
-        None when no image is available or an error occurred during extraction.
-
-    Notes
-    -----
-    - Errors raised by spatial_obj.extract_img() are handled internally; they will
-      not be propagated to the caller. Instead, a message describing the failure
-      is written to sys.stderr.
-    - This function is intended for non-fatal retrieval of optional image data.
-
-    Examples
-    --------
-    >>> arr = generate_spatial_image_df(spatial_obj)
-    >>> if arr is not None:
-    ...     # process the NumPy array
-    ...     pass
+    np.ndarray
+        Normalized image array in uint8 format, with shape (H, W, 3) for RGB images.
+        If the input is grayscale, it will be converted to RGB by repeating the
+        single channel across the three RGB channels.
     """
+    if arr is None:
+        raise ValueError("Image array is None")
 
-    try:
-        return spatial_obj.extract_img()
-    except Exception as e:
-        # This is not a fatal error. Some spatial datasets do not have images
-        print(f"No image found or error converting image to dataframe: {e}", file=sys.stderr)
-    return None
+    if arr.dtype != np.uint8:
+        img = arr.astype(np.float32)
+        p_low, p_high = np.percentile(img, [1, 99])
+        img = np.clip(img, p_low, p_high)
+        arr = (255 * (img - p_low) / (p_high - p_low + 1e-8)).astype(np.uint8)
+
+    if arr is None:
+        raise ValueError("Image array is None after normalization")
+
+    if arr.ndim == 2:
+        arr = arr[..., np.newaxis]
+    if arr.shape[-1] == 1:
+        arr = np.repeat(arr, 3, axis=-1)
+    return arr
 
 def create_gene_df(adata: "AnnData", gene_symbol: str) -> pd.DataFrame:
     """
@@ -249,25 +293,23 @@ def create_gene_df(adata: "AnnData", gene_symbol: str) -> pd.DataFrame:
 
     return dataframe
 
-def map_colors(dataframe: pd.DataFrame, spatial_img: np.ndarray | None, is_cool_dataset: bool) -> pd.DataFrame:
+def map_colors(dataframe: pd.DataFrame, found_img: bool, is_cool_dataset: bool) -> pd.DataFrame:
     # Assuming df is your DataFrame and it has a column "clusters"
-    unique_clusters = dataframe["clusters"].unique()
+    unique_clusters = dataframe["clusters"].cat.categories
     sorted_clusters = sort_clusters(unique_clusters)
-
-    unique_clusters = sorted_clusters
 
     if "colors" in dataframe:
         color_map = {
             cluster: dataframe[dataframe["clusters"] == cluster][
                 "colors"
             ].to_numpy()[0]
-            for cluster in unique_clusters
+            for cluster in sorted_clusters
         }
     else:
         # Some glasbey_bw_colors may not show well on a dark background so use "light" colors if images are not present
         # Prepending b_ to the name will return a list of RGB colors (though glasbey_light seems to already do this)
         swatch_color = (
-            cc.b_glasbey_bw if spatial_img is not None else cc.glasbey_light
+            cc.b_glasbey_bw if found_img else cc.glasbey_light
         )
 
         if is_cool_dataset:
@@ -275,7 +317,7 @@ def map_colors(dataframe: pd.DataFrame, spatial_img: np.ndarray | None, is_cool_
 
         color_map = {
             cluster: swatch_color[i % len(swatch_color)]
-            for i, cluster in enumerate(unique_clusters)
+            for i, cluster in enumerate(sorted_clusters)
         }
         # Map the colors to the clusters
         dataframe["colors"] = dataframe["clusters"].map(color_map)
@@ -303,6 +345,40 @@ def normalize_searched_gene(gene_set, chosen_gene) -> str | None:
             raise
     return None
 
+def get_viewer_script(is_zoomed, config={}) -> str:
+    """Get the script tag to embed the Panel viewer app, with the appropriate server URL and arguments.
+
+    Parameters
+    ----------
+    is_zoomed : bool
+        Whether to use the zoomed-in version of the Panel app or the standard version.
+    config : dict, optional
+        A dictionary of arguments to pass to the Panel server. Default is an empty dict.
+
+    Returns
+    -------
+    str
+        A string containing the <script> tag to embed the Panel viewer app, with the appropriate server URL and arguments.
+
+    """
+
+    domain_url = geardb._read_domain_url()
+
+    if os.environ.get("ENVIRONMENT", "production").lower() == "development":
+        domain_url = "http://localhost:8080"
+
+    panel_server_last = "panel_app_expanded" if is_zoomed else "panel_app"
+    panel_server_url = f'{domain_url}/panel/ws/{panel_server_last}'
+
+    # Pass necessary URL arguments to the Panel server
+    script_tag = server_document(
+        url=panel_server_url,
+        arguments=config
+    )
+
+    # Return this string directly to your frontend framework
+    return script_tag
+
 class SpatialPanel(Resource):
     """Resource for prepping spatial data to use in Holoviz Panel app.
 
@@ -315,15 +391,44 @@ class SpatialPanel(Resource):
         req = request.get_json()
         if req is None:
             return {
-                "filename": None,
+                "script": None,
                 "success": 0,
                 "message": "No JSON body provided in the request.",
             }
         gene_symbol = req.get('gene_symbol', None)  # gene symbol or projection pattern
         projection_id = req.get('projection_id', None)
+        is_zoomed = req.get('is_zoomed', False)
+        min_genes = req.get('min_genes', 0)
+        min_genes = int(min_genes) if min_genes is not None else 0
+        expression_min_clip = req.get('expression_min_clip', None)
+        nosave = req.get('disable_save', True)  # Disable save button for saving displays
+
+        x_range_start = req.get('x_range_start', None)
+        x_range_end = req.get('x_range_end', None)
+        y_range_start = req.get('y_range_start', None)
+        y_range_end = req.get('y_range_end', None)
+
+        config = {
+            "dataset_id": dataset_id,
+            "gene_symbol": gene_symbol,
+            "projection_id": projection_id,
+            "expression_min_clip": expression_min_clip,
+            "nosave": nosave
+        }
+
+        # All 4 values must be provided to set the initial view range, otherwise ignore them
+        if x_range_start is not None \
+            and x_range_end is not None \
+            and y_range_start is not None \
+            and y_range_end is not None:
+            config["x_range_start"] = x_range_start
+            config["x_range_end"] = x_range_end
+            config["y_range_start"] = y_range_start
+            config["y_range_end"] = y_range_end
+
 
         response = {
-            "filename": None,
+            "script": None,
             "success": 0,
             "message": "",
         }
@@ -335,43 +440,75 @@ class SpatialPanel(Resource):
         if projection_id:
             filename_to_check = f"{projection_id}_{gene_symbol}.csv"
 
-        # If csv is cached, return it
-        csv_path = DATASET_DIR / filename_to_check
-        if csv_path.is_file():
-            response["filename"] = str(csv_path.name)
-            response["message"] = "Using cached file."
-            response["success"] = 1
+        message = ""
+
+        found_img = False
+        sdata_loaded_this_request = False
+        error_log_path = DATASET_DIR / "image_extraction_error.log"
+        try:
+            spatial_obj = initialize_spatial_handler(dataset_id)
+            if spatial_obj.has_images:
+                existing = list(DATASET_DIR.glob("spatial_img*.npy"))
+                if existing:
+                    message += "Using cached spatial image. "
+                    found_img = True
+                else:
+                    # Images aren't cached yet -- this is the one case that
+                    # actually needs the full SpatialData object.
+                    try:
+                        spatial_obj.sdata = sd.read_zarr(spatial_obj.zarr_path)
+                        sdata_loaded_this_request = True
+                        channels, (orig_h, orig_w) = spatial_obj.extract_img()
+                        if len(channels) == 1:
+                            only_key = next(iter(channels))
+                            channels = {"default": channels[only_key]}
+                        for channel_name, arr in channels.items():
+                            arr = normalize_image_array(arr)
+                            np.save(DATASET_DIR / f"spatial_img_{secure_filename(channel_name)}.npy", arr)
+                        with open(DATASET_DIR / "spatial_props.json", "w") as f:
+                            json.dump({"height": orig_h, "width": orig_w}, f)
+                        found_img = True
+                        if error_log_path.is_file():
+                            error_log_path.unlink()
+                    except Exception:
+                        with open(error_log_path, "w") as f:
+                            f.write(f"Image extraction failed at {datetime.datetime.now().isoformat()}\n\n")
+                            f.write(traceback.format_exc())
+                        print(f"Image extraction failed for {dataset_id}, see {error_log_path}", file=sys.stderr)
+            else:
+                message += "Dataset spatial type does not support image generation. "
+        except Exception as e:
+            response["message"] = f"Error preparing data image: {e}"
             return response
 
-
         try:
-            spatial_obj = prep_sdata(dataset_id)
+            # If csv is cached, return it
+            csv_path = DATASET_DIR / filename_to_check
+            if csv_path.is_file():
+                response["message"] += "Using cached file."
+            else:
+                adata = spatial_obj.sdata.tables["table"] if sdata_loaded_this_request \
+                    else get_table_adata(spatial_obj)
 
-            # Generate spatial image if not already cached
-            spatial_img = None
-            spatial_img_path = DATASET_DIR / "spatial_img.npy"
-            if not spatial_img_path.is_file():
-                spatial_img = generate_spatial_image_df(spatial_obj)
+                # Modify the adata object to use the projection ID if it exists
+                if projection_id:
+                    adata = create_projection_adata(adata, dataset_id, projection_id)
 
-                if spatial_img is not None:
-                    spatial_img_path = DATASET_DIR / "spatial_img.npy"
-                    np.save(spatial_img_path, spatial_img)
+                gene_df = create_gene_df(adata, gene_symbol)
+                gene_df = map_colors(gene_df, found_img, dataset_id in COOL_DATASETS)
 
-            adata = spatial_obj.sdata.tables["table"]
+                gene_df.to_csv(csv_path, index=False)
 
-            # Modify the adata object to use the projection ID if it exists
-            if projection_id:
-                adata = create_projection_adata(adata, dataset_id, projection_id)
-
-            gene_df = create_gene_df(adata, gene_symbol)
-            gene_df = map_colors(gene_df, spatial_img, dataset_id in COOL_DATASETS)
-
-            gene_df.to_csv(csv_path, index=False)
-
-            response["success"] = 1
-            response["filename"] = str(csv_path.name)
-
+            config["filename"] = str(csv_path.name)
         except Exception as e:
-            response["message"] = f"Error preparing data: {e}"
-        return response
+            response["message"] = f"Error preparing data markers: {e}"
+            return response
 
+        # Generate the script to load the Panel app with the prepared data
+        try:
+            response["script"]  = get_viewer_script(is_zoomed, config)
+            response["success"] = 1
+        except Exception as e:
+            response["message"] += f" Error generating viewer script: {e}"
+
+        return response

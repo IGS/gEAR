@@ -75,6 +75,7 @@ class PlotlyHandler extends curatorCommon.PlotHandler {
                 const order = config["order"][series];
                 // sort "levels" series by order
                 const levels = curatorCommon.getLevels();
+                if (!levels[series]) continue;   // too many categories to have a level list to sort
                 levels[series].sort((a, b) => order.indexOf(a) - order.indexOf(b));
                 curatorCommon.renderOrderSortableSeries(series);
             }
@@ -308,6 +309,8 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
         , "js-tsne-flip-y": "flip_y"
         , "js-tsne-colorize-legend-by": "colorize_legend_by"
         , "js-tsne-plot-by-series": "plot_by_group"
+        , "js-tsne-hide-group-nonmembers": "hide_group_nonmembers"
+        , "js-tsne-enforce-equal-aspect": "enforce_equal_aspect"
         , "js-tsne-max-columns": "max_columns"
         , "js-tsne-skip-gene-plot": "skip_gene_plot"
         , "js-tsne-horizontal-legend": "horizontal_legend"
@@ -339,6 +342,8 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
             for (const series in config["order"]) {
                 const order = config["order"][series];
                 // sort "levels" series by order
+                const levels = curatorCommon.getLevels();
+                if (!levels[series]) continue;   // too many categories to have a level list to sort
                 levels[series].sort((a, b) => order.indexOf(a) - order.indexOf(b));
                 curatorCommon.renderOrderSortableSeries(series);
             }
@@ -353,6 +358,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
 
         // Restoring some disabled/checked elements in UI
         const plotBySeries = document.getElementsByClassName("js-tsne-plot-by-series");
+        const hideGroupNonmembers = document.getElementsByClassName("js-tsne-hide-group-nonmembers");
         const maxColumns = document.getElementsByClassName('js-tsne-max-columns');
         const skipGenePlot = document.getElementsByClassName("js-tsne-skip-gene-plot");
         const horizontalLegend = document.getElementsByClassName("js-tsne-horizontal-legend");
@@ -361,7 +367,7 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
 
         if (config["colorize_legend_by"]) {
             const series = config["colorize_legend_by"];
-            for (const targetElt of [...plotBySeries, ...horizontalLegend]) {
+            for (const targetElt of [...plotBySeries, ...hideGroupNonmembers, ...horizontalLegend]) {
                 targetElt.disabled = true;
                 if (catColumns.includes(series)) {
                     targetElt.disabled = false;
@@ -403,8 +409,14 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
                 targetElt.checked = false;
                 curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
             }
-            for (const targetElt of [...maxColumns]) {
+            for (const targetElt of [...maxColumns, ...hideGroupNonmembers]) {
                 targetElt.disabled = false;
+            }
+        } else {
+            for (const targetElt of [...hideGroupNonmembers]) {
+                targetElt.disabled = true;
+                targetElt.checked = false;
+                curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
             }
         }
 
@@ -543,11 +555,13 @@ class ScanpyHandler extends curatorCommon.PlotHandler {
             this.plotConfig["max_columns"] = null;
             this.plotConfig["skip_gene_plot"] = false;
             this.plotConfig["horizontal_legend"] = false;
+            this.plotConfig["hide_group_nonmembers"] = false;
         }
 
         // if no plot-by-group is selected, ensure max columns is not passed to the scanpy code
         if (!(document.getElementById("plot-by-group-series-post").value)) {
             this.plotConfig["max_columns"] = null;
+            this.plotConfig["hide_group_nonmembers"] = false;
         }
 
         // If override marker size is not checked, ensure it does not get passed to the scanpy code
@@ -739,6 +753,10 @@ const addOvercrowdedSeriesWarning = (plotContainer) => {
     const overcrowdedSeries = [...plotlyReqSeries].filter((series) => {
         const seriesValue = series.value;
         const levels = curatorCommon.getLevels();
+        const truncatedLevels = curatorCommon.getTruncatedLevels();
+        if (truncatedLevels.hasOwnProperty(seriesValue)) {
+            return true;   // by definition >50 categories, over the 20-group threshold
+        }
         if (!levels[seriesValue]) {
             return false;
         }
@@ -1071,31 +1089,20 @@ const fetchTsneImage = async (datasetId, analysis, plotType, plotConfig) => {
 const setupPlotlyOptions = async (datasetId) => {
     const analysisId = curatorCommon.getAnalysisId();
     const plotType = curatorCommon.getSelect2Value(curatorCommon.getPlotTypeSelect());
-    let levels;
+    let catColumns;
     try {
-        ({ obs_columns: allColumns, obs_levels: levels } = await curatorCommon.curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
+        ({ allColumns, catColumns } = await curatorCommon.classifyH5adColumns(datasetId, analysisId));
     } catch (error) {
         console.error(error)
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
         return;
     }
-    // Filter out values we don't want of "levels", like "colors"
-    allColumns = allColumns.filter((col) => !col.includes("_colors"));
-    for (const key in levels) {
-        if (key.includes("_colors")) {
-            delete levels[key];
-        }
-    }
-    curatorCommon.setLevels(levels);
 
     if (!allColumns.length) {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
         createToast("No metadata columns found in dataset. Cannot create a plot. Please choose another analysis or choose another dataset.");
         return;
     }
-
-    curatorCommon.setCatColumns(Object.keys(levels));
-    const catColumns = curatorCommon.getCatColumns();
 
     const difference = (arr1, arr2) => arr1.filter(x => !arr2.includes(x));
     const continuousColumns = difference(allColumns, catColumns);
@@ -1332,31 +1339,19 @@ const setupPlotlyOptions = async (datasetId) => {
 const setupScanpyOptions = async (datasetId) => {
     const analysisId = curatorCommon.getAnalysisId();
     const plotType = curatorCommon.getSelect2Value(curatorCommon.getPlotTypeSelect());
-    let levels
+    let catColumns;
     try {
-        ({ obs_columns: allColumns, obs_levels: levels } = await curatorCommon.curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId));
+        ({ allColumns, catColumns } = await curatorCommon.classifyH5adColumns(datasetId, analysisId));
     } catch (error) {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
         return;
     }
-
-    // Filter out values we don't want of "levels", like "colors"
-    allColumns = allColumns.filter((col) => !col.includes("_colors"));
-    for (const key in levels) {
-        if (key.includes("_colors")) {
-            delete levels[key];
-        }
-    }
-    curatorCommon.setLevels(levels);
 
     if (!allColumns.length) {
         document.getElementById("plot-options-s-failed").classList.remove("is-hidden");
         createToast("No metadata columns found in dataset. Cannot create a plot. Please choose another analysis or choose another dataset.");
         return;
     }
-
-    curatorCommon.setCatColumns(Object.keys(levels));
-    const catColumns = curatorCommon.getCatColumns();
 
     let xDefaultOption = null;
     let yDefaultOption = null;
@@ -1384,6 +1379,7 @@ const setupScanpyOptions = async (datasetId) => {
 
     const colorizeLegendBy = document.getElementsByClassName("js-tsne-colorize-legend-by");
     const plotBySeries = document.getElementsByClassName("js-tsne-plot-by-series");
+    const hideGroupNonmembers = document.getElementsByClassName("js-tsne-hide-group-nonmembers");
     const maxColumns = document.getElementsByClassName('js-tsne-max-columns');
     const skipGenePlot = document.getElementsByClassName("js-tsne-skip-gene-plot");
     const horizontalLegend = document.getElementsByClassName("js-tsne-horizontal-legend");
@@ -1402,7 +1398,7 @@ const setupScanpyOptions = async (datasetId) => {
             }
 
             // The "max columns" parameter should only be disabled if the colorized legend is continuous
-            for (const targetElt of [...maxColumns]) {
+            for (const targetElt of [...maxColumns, ...hideGroupNonmembers]) {
                 targetElt.disabled = catColumns.includes(event.target.value) ? false : true;
                 curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
             }
@@ -1433,7 +1429,7 @@ const setupScanpyOptions = async (datasetId) => {
                 curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
             }
             // Must be allowed to specify max columns if series value selected
-            for (const targetElt of [...maxColumns]) {
+            for (const targetElt of [...maxColumns, ...hideGroupNonmembers]) {
                 targetElt.disabled = event.target.value ? false : true;
                 curatorCommon.disableCheckboxLabel(targetElt, targetElt.disabled);
             }
@@ -1641,6 +1637,7 @@ const updateSeriesOptions = (classSelector, seriesArray, addExpression, defaultO
             }
             option.value = group;
             if (curatorCommon.getCatColumns().includes(group)) {
+                option.textContent = curatorCommon.decorateTruncatedCatLabel(group, option.textContent);
                 catOptgroup.append(option);
             } else {
                 contOptgroup.append(option);

@@ -30,36 +30,6 @@ const optionalMetadataFields = ['metadata-contact-institute', 'metadata-platform
 ];
 
 /* --- Functions and Classes --- */
-/**
- * Sends a POST request to add a primary analysis to the current dataset upload.
- * Displays a success toast if the operation is successful, or a warning toast if not.
- *
- * @async
- * @function addPrimaryAnalysisToDataset
- * @returns {Promise<void>} Resolves when the operation is complete and the toast is shown.
- */
-const addPrimaryAnalysisToDataset = async () => {
-    const {data} = await axios.post('./cgi/add_primary_analysis_to_dataset_upload.cgi', convertToFormData({
-        share_uid: shareUid,
-        dataset_format: datasetFormat,
-        session_id: getCurrentUser()?.session_id,
-    }));
-
-    document.getElementById('finalize-migrating-primary-analysis-li').classList.remove("is-hidden");
-    if (data.success) {
-        createToast('Primary analysis added successfully','is-success');
-
-        // If dataset was not single-cell or spatial, then we cannot have a primary analysis
-        if (!data.perform_primary_analysis) {
-            performPrimaryAnalysis = false;
-            document.getElementById('finalize-migrating-primary-analysis-li').classList.add("is-hidden");
-        }
-    } else {
-        // This is non-fatal, so just show a warning toast
-        createToast('Error adding primary analysis to uploaded dataset');
-        processingStatus = "error";
-    }
-}
 
 /**
  * Checks the current processing status of the dataset by making an asynchronous request
@@ -82,15 +52,16 @@ const checkDatasetProcessingStatus = async () => {
     );
 
     processingStatus = data.status;
+    const message = data.message;
     document.getElementById('step-process-dataset-status').textContent = processingStatus.charAt(0).toUpperCase() + processingStatus.slice(1);
-    document.getElementById('step-process-dataset-status-message').textContent = data.message;
+    document.getElementById('step-process-dataset-status-message').textContent = message;
     document.getElementById('dataset-processing-progress').value = data.progress;
 
     // Only enable next button when both dataset processing AND primary analysis are complete
     if (processingStatus === 'complete') {
         document.getElementById('dataset-processing-submit').disabled = false;
     } else if (processingStatus === 'error') {
-        document.getElementById('step-process-dataset-status-message').textContent = "Error during processing";
+        document.getElementById('step-process-dataset-status-message').textContent = `Error during processing: ${message}`;
     }
 }
 
@@ -135,7 +106,9 @@ const checkTrackhubStatus = async() => {
         createToast('Track hub processed successfully!', 'is-success');
         document.getElementById('dataset-processing-submit').disabled = false
     } else if (status === 'error') {
-        createToast(`Processing failed: ${message}`, 'is-danger');
+        createToast("Track hub processing failed", 'is-danger');
+        document.getElementById('step-process-dataset-status-message').textContent = statusMessage;
+
     }
 
     return status;
@@ -164,7 +137,7 @@ const deleteUploadInProgress = async (shareUid, datasetId) => {
     if (data.success) {
         loadUploadsInProgress();
     } else {
-        createToast('Error deleting upload in progress', data.message, 'is-warning');
+        createToast(`Error deleting upload in progress: ${data.message}`, 'is-warning');
     }
 }
 
@@ -280,6 +253,8 @@ const populateMetadataFormFromFile = async () => {
                 break;
             }
         }
+        // Fire the change listener so spatial gets auto-checked/enabled same as a manual selection
+        datasetTypeSelect.dispatchEvent(new Event('change'));
 
         document.getElementById('metadata-upload-status-message').textContent = "Form populated with uploaded metadata";
         button.disabled = false;
@@ -530,13 +505,13 @@ const includeHtml = async (url) => {
  * and triggers dataset processing status checks when appropriate.
  *
  * @param {string} step - The label of the step to navigate to. Must be one of:
- *   'enter-metadata', 'upload-dataset', 'process-dataset', 'finalize-dataset', 'curate-dataset'.
+ *   'enter-metadata', 'upload-dataset', 'process-dataset', 'post-process-dataset', 'finalize-dataset', 'curate-dataset'.
  */
 const stepTo = (step) => {
     // TODO: switch to using the stepper-fxns.js functions (and unify the two stepper implementations)
 
     const stepLabels = ['enter-metadata', 'upload-dataset', 'build-trackhub', 'process-dataset',
-        'finalize-dataset', 'curate-dataset'
+        'post-process-dataset', 'finalize-dataset', 'curate-dataset'
     ];
     let stepReached = false;
 
@@ -570,6 +545,11 @@ const stepTo = (step) => {
         }
     }
 
+    // Render the post-processing options if we're on that step, as if the person had clicked "submit".
+    if (step === "post-process-dataset") {
+        renderPostProcessingOptions();
+    }
+
     // Some steps require polling for status, so set that up if we're on one of those steps
     let pollingFn = null;
     if (step === 'process-dataset') {
@@ -599,7 +579,7 @@ const stepTo = (step) => {
         item.classList.add('is-hidden');
     });
 
-    document.getElementById('step-' + step + '-c').classList.remove('is-hidden');
+    document.getElementById(`step-${step}-c`).classList.remove('is-hidden');
 
     // Scroll to the top of the page
     window.scrollTo(0, 0);
@@ -835,6 +815,8 @@ const buildTrackhub = async () => {
  * @returns {Promise<void>} Resolves when the upload process is complete.
  */
 const uploadDataset = () => {
+    const datasetFile = document.getElementById('dataset-file-input').files[0];
+
     const formData = new FormData();
     formData.append('share_uid', shareUid);
     formData.append('session_id', getCurrentUser()?.session_id);
@@ -842,7 +824,10 @@ const uploadDataset = () => {
     if (spatialFormat) {
         formData.append('spatial_format', spatialFormat);
     }
-    formData.append('dataset_file', document.getElementById('dataset-file-input').files[0]);
+    // Lets the server confirm the whole file arrived (a dropped connection can otherwise
+    // leave a silently-truncated file on the server with no error surfaced).
+    formData.append('expected_size', datasetFile.size);
+    formData.append('dataset_file', datasetFile);
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', './cgi/store_expression_dataset.cgi', true);
@@ -912,7 +897,151 @@ const processDataset = async () => {
             // Nothing really to do here since status checking happens elsewhere
         }
     } catch (error) {
-        console.error('Error processing dataset:', error);
+        // axios throws on non-2xx status codes
+        const message = error.response?.data?.message ?? 'Unknown error occurred';
+        console.error(`Error ${error.response?.status}: ${message}`);
+        createToast('Error processing dataset');
+    }
+}
+
+// Catch-all for any post-processing steps that need to be done before finalizing the dataset.
+const renderPostProcessingOptions = async() => {
+
+    const doSomethingObs = await renderAmbiguousObsColumns();
+
+    // doSomething should be true if any "doSomething" substeps are true
+    const doSomething = [doSomethingObs].some(Boolean);
+
+    if (!doSomething) {
+        stepTo("finalize-dataset");
+        return;
+    }
+}
+
+const renderAmbiguousObsColumns = async () => {
+    let doSomething;
+    const formData = new FormData();
+    formData.append('share_uid', shareUid);
+    formData.append('session_id', getCurrentUser()?.session_id);
+
+    try {
+        const response = await fetch('./cgi/get_ambiguous_obs_columns.cgi', {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await response.json();
+
+        if (!data?.success) {
+            throw new Error(data?.message || 'Unknown error');
+        }
+
+        // If the dataset has already been reviewed or has nothing questionable, we can skip this step
+        doSomething = !data?.reviewed;
+
+        if (!doSomething) {
+            document.getElementById("ambiguous-cols-dtypes-c").classList.add("is-hidden");
+            return doSomething;
+        }
+
+        // Render the ambiguous columns for user review
+        const ambiguousColumns = data?.questionable_columns;
+        if (!ambiguousColumns) {
+            throw new Error('No ambiguous columns found');
+        }
+
+        /* Example key
+                Keyed by column name, e.g.:
+            {
+              "replicate": {
+                  "current_dtype": "int64",
+                  "n_unique": 3,
+                  "sample_values": [1, 2, 3],
+                  "suggested_type": "categorical",
+              }
+            }
+        */
+
+        document.getElementById("ambiguous-cols-dtypes-c").classList.remove("is-hidden");
+
+        const reviewContainer = document.getElementById('ambiguous-cols-review-c');
+        reviewContainer.innerHTML = '';
+
+        for (const [colName, colInfo] of Object.entries(ambiguousColumns)) {
+            const colDiv = document.createElement('div');
+            colDiv.className = 'box mb-4 column is-4';
+            colDiv.innerHTML = `
+                <h5 class="subtitle is-5">Column: ${colName}</h5>
+                <p>Current data type: ${colInfo.current_dtype}</p>
+                <p>Number of unique values: ${colInfo.n_unique}</p>
+                <p>Sample values: ${colInfo.sample_values.join(', ')}</p>
+                <br>
+                <p class=mb-2><strong>Suggested data type:</strong> ${colInfo.suggested_type}</p>
+                <div class="field">
+                    <div class="control">
+                        <div class="select">
+                            <select name="ambiguous-col-${colName}">
+                                <option value="categorical" ${colInfo.suggested_type === 'categorical' ? 'selected' : ''}>Categorical</option>
+                                <option value="continuous" ${colInfo.suggested_type === 'continuous' ? 'selected' : ''}>Continuous</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            `;
+            reviewContainer.appendChild(colDiv);
+        }
+
+        return doSomething;
+
+    } catch (error) {
+        // axios throws on non-2xx status codes
+        const message = error.response?.data?.message ?? 'Unknown error occurred';
+        console.error(`Error ${error.response?.status}: ${message}`);
+        createToast('Error processing dataset');
+    }
+}
+
+const applyPostProcessingOptions = async () => {
+
+    // For all post-processing steps, run in parallel, then step to "finalize-dataset"
+    const stepsToApply = []
+    if (!document.getElementById('ambiguous-cols-review-c').classList.contains('is-hidden')) {
+        stepsToApply.push(applyAmbiguousObsColumns());
+    }
+    await Promise.all(stepsToApply);
+    stepTo('finalize-dataset');
+}
+
+const applyAmbiguousObsColumns = async () => {
+
+    // Get the user-selected choices for each ambiguous column
+    const choices = {};
+    const reviewContainer = document.getElementById('ambiguous-cols-review-c');
+    for (const select of reviewContainer.querySelectorAll('select')) {
+        const colName = select.name.replace('ambiguous-col-', '');
+        choices[colName] = select.value;
+    }
+
+    const formData = new FormData();
+    formData.append('share_uid', shareUid);
+    const choicesJson = JSON.stringify(choices);
+    formData.append('choices', choicesJson);
+    formData.append('session_id', getCurrentUser()?.session_id);
+
+    try {
+        const response = await fetch('./cgi/apply_obs_dtype_choices.cgi', {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await response.json();
+
+        if (!data?.success) {
+            throw new Error(data?.message || 'Unknown error');
+        }
+
+    } catch (error) {
+        // axios throws on non-2xx status codes
+        const message = error.response?.data?.message ?? 'Unknown error occurred';
+        console.error(`Error ${error.response?.status}: ${message}`);
         createToast('Error processing dataset');
     }
 }
@@ -922,14 +1051,14 @@ const stageTrackHub = async (hubContainer, trackContainer) => {
     const trackValidation = trackContainer.validateTracks();
 
     if (hubValidation.errors.length > 0) {
-        createToast("Validation issues with hub metadata. Please correct and submit again");
+        createToast("Validation issues with hub metadata. Please correct the fields marked with * and submit again");
         // log errors
         console.warn("Hub validation errors:", hubValidation.errors);
         return;
     }
 
     if (trackValidation.errors.length > 0) {
-        createToast("Validation issues with one or more tracks. Please correct.");
+        createToast("Validation issues with one or more tracks. Please correct the fields marked with * and submit again.");
         // log errors
         console.warn("Track validation errors:", trackValidation.errors);
         return;
@@ -1166,6 +1295,46 @@ const adjustUIForGosling = () => {
 }
 
 /**
+ * Selects a dataset format, mirroring the UI/state changes of clicking its format-selector button.
+ * Used so other controls (metadata dataset type, spatial platform select) can drive the same
+ * selection without requiring a direct click on a (possibly disabled) button.
+ */
+const selectDatasetFormat = (format) => {
+    // Reset each as selectable
+    for (const element of document.getElementsByClassName('format-selector')) {
+        if (element.disabled) {
+            continue;
+        }
+        // set the classList on this button to only be 'mdi' and 'mdi-cancel'
+        const icon = element.querySelector('span.icon i');
+        icon.classList.remove(...icon.classList);
+        icon.classList.add('mdi', 'mdi-checkbox-blank-outline');
+        element.querySelector('span.format-status').textContent = 'Choose';
+    }
+
+    // Now set things for the one actually clicked
+    const btn = document.querySelector(`.format-selector[data-format="${format}"]`);
+    if (!btn) {
+        return;
+    }
+    btn.querySelector('span.icon i').classList.remove('mdi', 'mdi-checkbox-blank-outline');
+    btn.querySelector('span.icon i').classList.add('mdi', 'mdi-checkbox-outline');
+    btn.querySelector('span.format-status').textContent = 'Selected';
+    datasetFormat = format;
+
+    // If the format is "special", update the text in the finalize step.
+    const migrateH5adSpan = document.getElementById("finalize-migrating-h5ad-text");
+    migrateH5adSpan.textContent = 'Migrating H5AD file';
+    if (datasetFormat === 'spatial') {
+        migrateH5adSpan.textContent = 'Migrating Zarr store';
+    } else if (datasetFormat == 'gosling') {
+        migrateH5adSpan.textContent = 'Migrating track hub and files';
+    }
+
+    adjustUIForGosling();
+}
+
+/**
  * Initializes the upload dataset page by:
  * - Checking if the user is logged in and displaying the appropriate UI elements.
  * - Loading uploads in progress for logged-in users.
@@ -1202,36 +1371,7 @@ await initPage();
 const formatSelectorElts = document.getElementsByClassName('format-selector');
 for (const btn of formatSelectorElts) {
     btn.addEventListener('click', (event) => {
-        // Reset each as selectable
-        for (const element of formatSelectorElts) {
-            if (element.disabled) {
-                continue;
-            }
-            // set the classList on this button to only be 'mdi' and 'mdi-cancel'
-            const icon = element.querySelector('span.icon i');
-            icon.classList.remove(...icon.classList);
-            icon.classList.add('mdi', 'mdi-checkbox-blank-outline');
-
-            element.querySelector('span.format-status').textContent = 'Choose';
-        };
-
-        // Now set things for the one actually clicked
-        btn.querySelector('span.icon i').classList.remove('mdi', 'mdi-checkbox-blank-outline');
-        btn.querySelector('span.icon i').classList.add('mdi', 'mdi-checkbox-outline');
-        btn.querySelector('span.format-status').textContent = 'Selected';
-        datasetFormat = btn.dataset.format;
-
-        // If the format is "special", update the text in the finalize step.
-        const migrateH5adSpan = document.getElementById("finalize-migrating-h5ad-text");
-        migrateH5adSpan.textContent = 'Migrating H5AD file';
-        if (datasetFormat === 'spatial') {
-            migrateH5adSpan.textContent = 'Migrating Zarr store';
-        } else if (datasetFormat == 'gosling') {
-            migrateH5adSpan.textContent = 'Migrating track hub and files';
-        }
-
-        adjustUIForGosling();
-
+        selectDatasetFormat(btn.dataset.format);
     });
 };
 
@@ -1244,8 +1384,12 @@ document.getElementById('new-submission-toggle').addEventListener('click', (even
 
 document.getElementById('dataset-processing-submit').addEventListener('click', (event) => {
     event.preventDefault();
+    stepTo('post-process-dataset');
+});
 
-    stepTo('finalize-dataset');
+document.getElementById('dataset-post-processing-submit').addEventListener('click', (event) => {
+    event.preventDefault();
+    applyPostProcessingOptions();
 });
 
 document.getElementById('dataset-curate-submit').addEventListener('click', (event) => {
@@ -1463,6 +1607,14 @@ document.getElementById('metadata-geo-lookup').addEventListener('click', (event)
     const getData = getGeoData();
 });
 
+document.getElementsByName('metadata-dataset-type')[0].addEventListener('change', (e) => {
+    document.getElementById("btn-spatial-format-selector").disabled = true;
+    if (e.target.value === 'spatial') {
+        document.getElementById("btn-spatial-format-selector").disabled = false;
+        selectDatasetFormat('spatial');
+    }
+});
+
 document.getElementById('select-spatial-platform').addEventListener('change', (e) => {
     const platform = e.target.value;
     const reqsSpan = document.getElementById('spatial-requirements');
@@ -1470,9 +1622,12 @@ document.getElementById('select-spatial-platform').addEventListener('change', (e
     if (platform === '') {
         reqsSpan.classList.add('is-hidden');
         document.getElementById("btn-spatial-format-selector").disabled = true;
-    } else {
-        reqsSpan.classList.remove('is-hidden');
-        document.getElementById("btn-spatial-format-selector").disabled = false;
+        return;
+    }
+    reqsSpan.classList.remove('is-hidden');
+    document.getElementById("btn-spatial-format-selector").disabled = false;
+    if (datasetFormat !== 'spatial') {
+        selectDatasetFormat('spatial');
     }
 });
 

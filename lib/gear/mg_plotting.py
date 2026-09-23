@@ -127,6 +127,7 @@ def create_dot_plot(df:pd.DataFrame, groupby_filters:list, is_log10:bool=False, 
     )
 
     create_floating_dot_legend(fig)
+    return fig
 
     # Truncate faceted column axis labels so annotation can fit
     axis_label_mapping = {}  # Aggregated mapping of truncated -> full label names
@@ -218,16 +219,19 @@ def create_floating_dot_legend(fig: go.Figure):
 
 ### Heatmap fxns
 
-def add_clusterbars(fig: go.Figure, obs_columns, all_categories: list, bar_start_pos: float, flip_axes: bool=False, pivot_cols=None, cluster_obs=False):
+def add_clusterbars(fig: go.Figure, obs_columns, all_categories: list, bar_start_pos: float, flip_axes: bool=False, pivot_cols=None, cluster_obs=False, obs_index_col=None):
     curr_bar_pos = bar_start_pos
     curr_legend_pos = 1.2
 
-    # Replicate the same obs
-    if cluster_obs:
-        obs_groups = obs_columns.map(lambda x: ";".join(str(i) for i in x)).tolist()
+    # Replicate the same obs positions used for the main heatmap trace, so this
+    # clusterbar aligns with it on the shared coordinate axis.
+    if obs_index_col:
+        # Per-observation heatmap: main trace plots by integer position, not category string.
+        x = list(range(len(obs_columns)))
+    elif cluster_obs:
+        x = obs_columns.map(lambda x: ";".join(str(i) for i in x)).tolist()
     else:
-        obs_groups = build_multicategory_obs_labels(obs_columns)
-    x = obs_groups
+        x = build_multicategory_obs_labels(obs_columns)
 
     for i, field in enumerate(all_categories):
 
@@ -432,6 +436,7 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
                     cluster_genes:bool=False, flip_axes:bool=False, center_around_zero:bool=False,
                     distance_metric:str="euclidean", colorscale:str|None="cividis", reverse_colorscale:bool=False,
                     title:str|None=None, hide_obs_labels:bool=False, hide_gene_labels:bool=False,
+                    obs_index_col:str|None=None,
                     ) -> go.Figure:
 
     # df is long form
@@ -453,10 +458,15 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
     df["value"] = values
 
     pivot_cols = df.index.name
-    id_vars = set(groupby_filters + clusterbar_fields)
+    pivot_col_fields = groupby_filters + clusterbar_fields
+    if obs_index_col:
+        # Keeps individual observations from being averaged together when the
+        # groupby/clusterbar fields alone do not uniquely identify a sample (i.e. non-matrixplot heatmaps).
+        pivot_col_fields = pivot_col_fields + [obs_index_col]
+    id_vars = set(pivot_col_fields)
     if len(id_vars):
         # Sets destroy order, so this preserves it.
-        pivot_cols = list(dict.fromkeys(groupby_filters + clusterbar_fields))
+        pivot_cols = list(dict.fromkeys(pivot_col_fields))
 
     # df is now wide form
     # index is gene_symbol
@@ -531,7 +541,10 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
     gene_symbol_codes = [i for i, gene in enumerate(pivot_df.index)]
 
     # Get the observation groups from the pivot table columns.  This will be used for the axis labels and hover info.
-    if cluster_obs:
+    if obs_index_col:
+        # Non-matrixplot (per-observation) heatmaps: use the raw observation name only.
+        obs_groups = pivot_df.columns.get_level_values(obs_index_col).astype(str).tolist()
+    elif cluster_obs:
         # Convert the multiindex column tuples into a string
         obs_groups = pivot_df.columns.map(lambda x: ";".join(str(i) for i in x)).tolist()
     else:
@@ -540,9 +553,30 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
     # Now that pivot_df has been sorted, we need to grab values again.
     values_2d = pivot_df.to_numpy()
 
-    x = gene_symbol_codes if flip_axes else obs_groups
-    y = obs_groups if flip_axes else gene_symbol_codes
+    # For per-observation heatmaps, the obs axis carries one entry per observation (not per
+    # group), so plot it by integer position (like genes) rather than as a category/multicategory
+    # axis, and rely on explicit tickvals/ticktext (below) for the labels. A string-valued "linear"
+    # tickmode axis (used for the grouped/matrixplot case) does not reliably position that many points.
+    obs_codes = list(range(len(pivot_df.columns)))
+    obs_axis_values = obs_codes if obs_index_col else obs_groups
+
+    x = gene_symbol_codes if flip_axes else obs_axis_values
+    y = obs_axis_values if flip_axes else gene_symbol_codes
     z = values_2d.T if flip_axes else values_2d
+
+    # The obs axis is plotted as opaque integer codes above (obs_codes), so the default hover
+    # (which just echoes the trace's x/y value) would show that raw code instead of the
+    # observation's real name. Surface it via customdata instead.
+    obs_hover_customdata = None
+    obs_hovertemplate = None
+    if obs_index_col:
+        per_gene_obs_labels = [obs_groups for _ in gene_symbol_codes]  # genes x obs
+        if flip_axes:
+            obs_hover_customdata = list(map(list, zip(*per_gene_obs_labels)))  # obs x genes
+            obs_hovertemplate = "x: %{x}<br>y: %{customdata}<br>z: %{z}"
+        else:
+            obs_hover_customdata = per_gene_obs_labels
+            obs_hovertemplate = "x: %{customdata}<br>y: %{y}<br>z: %{z}"
 
     # If colorscale is empty string
     if not colorscale:
@@ -563,6 +597,8 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
         x=x,
         y=y,
         z=z,
+        customdata=obs_hover_customdata,
+        hovertemplate=obs_hovertemplate,
         # Using your side-aligned colorbar title trick
         colorbar=dict(
             title=dict(
@@ -621,7 +657,7 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
 
     # Add clusterbars if they are needed.
     if clusterbar_fields:
-        add_clusterbars(fig, pivot_df.columns, clusterbar_fields, bars_start, flip_axes, pivot_cols, cluster_obs)
+        add_clusterbars(fig, pivot_df.columns, clusterbar_fields, bars_start, flip_axes, pivot_cols, cluster_obs, obs_index_col)
 
 
     x_visible = True
@@ -652,6 +688,36 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
         title={"text": title_text, "x": 0.5, "xref": "paper", "y": 0.9}
     )
 
+    # Per-observation heatmaps need explicit tickvals/ticktext on the obs axis, since its values
+    # are integer positions (obs_codes), not self-labeling category strings.
+    # With hundreds/thousands of observations, labeling every single one is both unreadable and,
+    # with automargin on, expensive enough in the browser to make the plot hang while it lays out
+    # text metrics for every tick. So the axis is left tickless when hidden, and thinned to a
+    # legible/cheap number of ticks otherwise; the underlying data positions (obs_codes) are
+    # unaffected either way.
+    MAX_OBS_TICKS = 100
+    obs_axis_visible = y_visible if flip_axes else x_visible
+    if obs_index_col:
+        if obs_axis_visible and obs_codes:
+            step = max(1, len(obs_codes) // MAX_OBS_TICKS)
+            obs_tickvals = obs_codes[::step]
+            obs_ticktext = obs_groups[::step]
+        else:
+            obs_tickvals = []
+            obs_ticktext = []
+        obs_axis_layout = dict(
+            tickmode="array",
+            tickvals=obs_tickvals,
+            ticktext=obs_ticktext,
+            automargin=bool(obs_tickvals),
+        )
+    else:
+        obs_axis_layout = dict(
+            tickmode="linear",
+            dtick=1,    # force tick for each category
+            automargin=True,
+        )
+
     # Set up layout
     if flip_axes:
         fig.update_layout(
@@ -662,19 +728,13 @@ def create_heatmap(df:pd.DataFrame, groupby_filters:list=[], clusterbar_fields:l
                 automargin=True
             ),
             yaxis=dict(
-                tickmode="linear",
-                dtick=1,    # force tick for each category
-                automargin=True,
+                **obs_axis_layout,
                 side="right"    # So dendrogram doesn't overlap with labels
             )
         )
     else:
         fig.update_layout(
-            xaxis=dict(
-                tickmode="linear",
-                dtick=1,    # force tick for each category
-                automargin=True
-            ),
+            xaxis=obs_axis_layout,
             yaxis=dict(
                 tickmode="array",
                 tickvals=row_tickvals,
@@ -1146,6 +1206,8 @@ def create_violin_plot(df: pd.DataFrame, groupby_filters:list, is_log10: bool=Fa
         title=y_title
     )
 
+    return fig
+
     # Truncate faceted column axis labels so annotation can fit
     axis_label_mapping = {}  # Aggregated mapping of truncated -> full label names
     if not non_interactive and len(groupby_filters) == 1:
@@ -1185,7 +1247,7 @@ def update_stacked_violin_annotations(fig, primary_groups, color_map):
         # Am attempting to do this based on the assumption that row facet titles will never have yanchor of bottom
         # (or y-pos of 1) or have certain text shared with the axes titles
         lambda a: a.update(
-            font=dict(color=color_map[a.text])
+            font=dict(color=color_map.get(a.text, "black"))
             , textangle=0
             , x=0
             , xanchor="right"
@@ -1540,6 +1602,8 @@ def _truncate_ticktext(group_list: list[str]) -> tuple[list[str] | None, dict[st
     truncated_counts: dict[str, int] = {}  # Track how many times a truncated label has been seen
 
     for val in group_list:
+        # Ensure val is a string for length checking and mapping.
+        val = str(val)
         if len(val) > MAX_LEN_ALLOWED:
             base_truncated = "{}...".format(val[0:TRUNCATION_LEN])
 

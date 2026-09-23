@@ -7,17 +7,14 @@ Module centered around adding a primary analysis to a dataset.  This includes:
 
 import json
 import shutil
-import typing
 from pathlib import Path
 
+import numpy as np
 import scanpy as sc
+from anndata import AnnData
+from scipy.sparse import csr_matrix, issparse
 
 from .analysis import H5adAdapter, ZarrAdapter
-
-if typing.TYPE_CHECKING:
-    # This allows type-checkers to resolve types without importing the actual modules at runtime.
-    # To avoid having runtime errors, enclose the typing in quotes (AKA forward-reference)
-    from anndata import AnnData
 
 gear_root_path = Path(__file__).resolve().parents[2]
 
@@ -69,6 +66,9 @@ def add_primary_analysis_to_dataset(dataset_id, share_id, staging_dir, dataset_f
         kwargs["backed"] = True
 
     adata = adapter.get_adata(**kwargs)
+
+    # Ensure Ensembl IDs are not duplicated, which will throw errors downstream
+    adata.var_names_make_unique()
 
     # Create some initial composition plots
     create_composition_plots(adata, staging_dir, dataset_format == "spatial")
@@ -158,20 +158,35 @@ def create_composition_plots(adata: "AnnData", dataset_path: str, is_spatial: bo
     violin_image_path = str(dataset_path).replace(extension, '.prelim_violin.png')
     scatter_image_path = str(dataset_path).replace(extension, '.prelim_n_genes.png')
 
-    # Cannot run filter_cells and filter_genes in backed mode
-    adata_mem = adata.to_memory()
+    # sc.pp.filter_cells/filter_genes refuse backed AnnData, so this used to call
+    # adata.to_memory() first -- which for a backed dataset means loading the entire
+    # matrix into RAM just for two throwaway QC plots. Compute the same per-cell stats
+    # via chunked_X instead, which reads X in row batches and works in backed mode.
+    min_genes = 3
+    n_genes = np.zeros(adata.n_obs, dtype=np.int64)
+    n_counts = np.zeros(adata.n_obs, dtype=np.float64)
 
-    sc.pp.filter_cells(adata_mem, min_genes=3)  # this adds adata.obs.n_genes
-    sc.pp.filter_genes(adata_mem, min_cells=300)    # this adds adata.obs.n_cells though we do not use it
-    sc.pp.calculate_qc_metrics(adata_mem, percent_top=None, inplace=True) # This will get total_counts
+    for chunk, start, stop in adata.chunked_X():
+        if issparse(chunk):
+            n_genes[start:stop] = chunk.getnnz(axis=1)
+            n_counts[start:stop] = np.asarray(chunk.sum(axis=1)).ravel()
+        else:
+            chunk = np.asarray(chunk)
+            n_genes[start:stop] = (chunk != 0).sum(axis=1)
+            n_counts[start:stop] = chunk.sum(axis=1)
 
-    # rename total_counts to n_counts for consistency with the rest of the codebase
-    adata_mem.obs['n_counts'] = adata_mem.obs['total_counts']
+    keep = n_genes >= min_genes
+    qc_obs = adata.obs.iloc[keep.nonzero()[0]][[]].copy()
+    qc_obs['n_genes'] = n_genes[keep]
+    qc_obs['n_counts'] = n_counts[keep]
 
-    sc.pl.violin(adata_mem, ['n_genes', 'n_counts'],
+    # Zero-column shell AnnData: sc.pl.violin/scatter only read .obs for these keys
+    qc_adata = AnnData(X=csr_matrix((int(keep.sum()), 0)), obs=qc_obs)
+
+    sc.pl.violin(qc_adata, ['n_genes', 'n_counts'],
                     jitter=0.4, multi_panel=True, save="_prelim_violin.png")
 
-    sc.pl.scatter(adata_mem, x='n_counts', y='n_genes', save="_prelim_n_genes.png")
+    sc.pl.scatter(qc_adata, x='n_counts', y='n_genes', save="_prelim_n_genes.png")
 
     # move files written to tmp
     shutil.move("/tmp/violin_prelim_violin.png", violin_image_path)

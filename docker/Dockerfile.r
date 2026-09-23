@@ -22,26 +22,26 @@ RUN apt -qq update \
   libharfbuzz-dev \
   libfribidi-dev \
   libfreetype6-dev \
+  libglpk-dev \
   libpng-dev \
   libtiff5-dev \
   libjpeg-dev \
   libwebp-dev \
   libgit2-dev \
   libuv1-dev \
+  pandoc \
   ca-certificates \
   tzdata \
   git \
   unzip \
+  libgfortran5 \
+  libhdf5-dev \
   && apt -qq clean autoclean \
   && apt -qq autoremove -y \
   && rm -rf /var/lib/apt/lists/*
 
 # 2. Install Bioconductor
 WORKDIR /opt/gEAR/docker
-COPY ./install_bioc.sh ./install_bioc.R ./
-RUN chmod +x install_bioc.sh \
-  && ./install_bioc.sh
-
-# 3. Install other packages
-COPY ./install_packages.R ./
-RUN Rscript --vanilla install_packages.R || exit 1
+COPY ./install_R.sh ./install_packages.R ./
+RUN chmod +x install_R.sh \
+  && ./install_R.sh

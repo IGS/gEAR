@@ -3,35 +3,62 @@
 # This script is used to update the share id (permalink)
 # of either a layout, genecart, or dataset.
 
-import cgi, json
+import cgi
+import json
 import os
 import sys
+from pathlib import Path
+
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+from werkzeug.utils import secure_filename
 
-from pathlib import Path
+def is_safe_id(value: str) -> bool:
+    """
+    Custom share_ids can be user-chosen and vary in length, so we can't enforce a
+    fixed format. Instead reject anything secure_filename() would alter -- this
+    closes off path-injection via new_share_id, which is used unsanitized in
+    filename.replace()/os.rename() below for gene carts.
+    """
+    return bool(value) and secure_filename(value) == value
+
 abs_path_www = Path(__file__).resolve().parents[1] # web-root dir
 CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 BY_DATASET_DIR = abs_path_www.joinpath("projections", "by_dataset")
 BY_GENECART_DIR = abs_path_www.joinpath("projections", "by_genecart")
 
-
 def main():
-    cnx = geardb.Connection()
     print('Content-Type: application/json\n\n')
 
-    cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    share_id = form.getvalue('share_id')
-    new_share_id = form.getvalue('new_share_id')
-    scope = form.getvalue('scope') # 'dataset', 'layout', 'genecart'
+    session_id = form.getfirst('session_id')
+    share_id = form.getfirst('share_id')
+    new_share_id = form.getfirst('new_share_id')
+    scope = form.getfirst('scope') # 'dataset', 'layout', 'genecart'
     result = { 'error':"", 'success': 0 }
 
     user = geardb.get_user_from_session_id(session_id)
     if user is None:
         error = "Invalid session_id. User not found"
+        result['error'] = error
+        print(json.dumps(result))
+        return
+
+    if share_id is None:
+        error = "Invalid share_id."
+        result['error'] = error
+        print(json.dumps(result))
+        return
+
+    if new_share_id is None:
+        error = "Invalid new_share_id."
+        result['error'] = error
+        print(json.dumps(result))
+        return
+
+    if not is_safe_id(share_id) or not is_safe_id(new_share_id):
+        error = "share_id and new_share_id must not contain path separators or unsafe characters."
         result['error'] = error
         print(json.dumps(result))
         return
@@ -49,6 +76,12 @@ def main():
             return
 
         dataset = geardb.get_dataset_by_id(dataset_id)
+
+        if dataset is None:
+            error = "Dataset not found."
+            result['error'] = error
+            print(json.dumps(result))
+            return
 
         # Verify this user owns the dataset
         if dataset.owner_id != user.id:
@@ -125,13 +158,22 @@ def main():
             os.chdir(str(CARTS_BASE_DIR))
 
             for filename in os.listdir("."):
-                if not share_id in filename:
+                if share_id not in filename:
                     continue
                 if filename.endswith(".h5ad") or filename.endswith(".tab"):
                     # Replace old_id with new_id in the filename
                     new_filename = filename.replace(share_id, new_share_id)
+
+                    # Defense in depth: new_share_id was already validated by is_safe_id(),
+                    # but confirm the resulting path still resolves inside CARTS_BASE_DIR
+                    # before renaming.
+                    resolved_new_filename = (CARTS_BASE_DIR / new_filename).resolve()
+                    if not resolved_new_filename.is_relative_to(CARTS_BASE_DIR.resolve()):
+                        print("Refusing to rename " + filename + " to " + new_filename + ": resolves outside carts directory", file=sys.stderr)
+                        continue
+
                     #! This will not work if not owner or if permissions are not set correctly
-                    os.rename(filename, new_filename)
+                    os.rename(filename, resolved_new_filename)
                     # if the old file still exists, log it
                     if os.path.exists(filename):
                         print("Could not rename " + filename + " to " + new_filename + " for some reason... skipping", file=sys.stderr)
@@ -155,12 +197,20 @@ def main():
         os.chdir(str(BY_GENECART_DIR))
         for root, dirs, files in os.walk("."):
             for dirname in dirs:
-                if not share_id in dirname:
+                if share_id not in dirname:
                     continue
                 new_dir = dirname.replace(share_id, new_share_id)
+
+                # Defense in depth: confirm the resulting path still resolves inside
+                # BY_GENECART_DIR before renaming.
+                resolved_new_dir = (BY_GENECART_DIR / new_dir).resolve()
+                if not resolved_new_dir.is_relative_to(BY_GENECART_DIR.resolve()):
+                    print("Refusing to rename " + dirname + " to " + new_dir + ": resolves outside genecart projections directory", file=sys.stderr)
+                    continue
+
                 try:
-                    os.rename(dirname, new_dir)
-                except:
+                    os.rename(dirname, resolved_new_dir)
+                except FileNotFoundError:
                     # If the new_dir already exists, we can't rename the directory
                     # The "by_genecart" directory is not exactly used, so not overly worried.
                     # But projections.json may need to be merged and files moved.

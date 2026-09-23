@@ -68,23 +68,6 @@
                 </div>
                 <div id="algorithm-c" class="field">
                   <label class="label">Select algorithm
-                    <!--<span id="algo-tooltip" class="icon has-tooltip-right has-tooltip-arrow" data-tooltip="
-Explanation of algorithms:
-
-PCA: Projects patterns using principal component analysis.  This method will produce both positive and negative weights for each sample in the dataset,
-indicating whether the pattern is positively or negatively associated with the sample.
-
-NMF: Projects patterns using non-negative matrix factorization.  This method will produce only positive weights for each sample in the dataset,
-indicating the strength of association between the pattern and the sample.
-
-Fixed NMF: Estimates the embeddings for samples in a new dataset when given a weighted pattern input based on an existing NMF decomposition of another dataset projection.
-
-Binary Gene Count: Projects patterns by counting the number of genes in the pattern that are expressed in each sample.
-This method is simple and interpretable, but may not capture complex relationships between genes and samples.
-
-                      "><i class="mdi mdi-information-slab-circle"></i>
-                    </span>-->
-
                   </label>
                   <div class="control">
                     <div class="select is-small">
@@ -95,6 +78,7 @@ This method is simple and interpretable, but may not capture complex relationshi
                         <option value="binary" disabled>Binary Gene Count</option>
                       </select>
                     </div>
+                    <button id="algo-explainer" class="button is-clickable is-small is-text has-text-primary" role="button" data-target="algo-explainer-modal">Which to select?</button>
                   </div>
                 </div>
                 <div id="zscore-c" class="field">
@@ -187,11 +171,79 @@ This method is simple and interpretable, but may not capture complex relationshi
 
         </section> <!-- end #main-c -->
       </div>
-      <footer>
-        <div>
-          <!-- content here TO BE inserted via common.js -->
+
+    <div class="modal" id="algo-explainer-modal">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Explanation of Algorithms</p>
+                <button class="delete" aria-label="close"></button>
+            </header>
+            <section class="modal-card-body">
+              <div class="content mb-5">
+                  <p class="has-text-grey-dark">
+                      All of these algorithms explore the strength or expression of a known pattern/signal derived from a starting dataset in a new dataset. Depending on how that signal was calculated from the original starting dataset determines how you want to estimate its strength or expression in the new dataset. <strong>It is important not to compare levels of patterns or signals of this kind across datasets</strong> unless it is explicitly known that the measurement methods and data processing are identical across datasets.
+                  </p>
+              </div>
+
+              <div class="tabs is-boxed" id="algo-explainer-modal-tabs">
+                  <ul>
+                      <li class="is-active" data-tab="tab-pca"><a>PCA</a></li>
+                      <li data-tab="tab-nmf-ls"><a>Least-squares NMF</a></li>
+                      <li data-tab="tab-nmf-fixed"><a>Fixed Weights NMF</a></li>
+                      <li data-tab="tab-binary"><a>Binary Gene Count</a></li>
+                  </ul>
+              </div>
+
+              <div id="algo-explainer-modal-content" class="content">
+
+                  <div id="tab-pca" class="tab-pane">
+                      <p>
+                          The principle component analysis (PCA) method calculates the expression level of each pattern (PC) in each sample or cell of the new dataset using gene loadings from the existing principal component analysis that has been run previously on the original starting dataset.
+                      </p>
+                      <p>
+                          Because PCA involves both positive and negative gene loadings, this method may produce positive and/or negative values for samples in the new dataset because each sample's projected pattern value (e.g, for PC1) is the sum of all gene loadings for that pattern multiplied by all gene expression values in that sample (using dot product calculation in Python).
+                      </p>
+                  </div>
+
+                  <div id="tab-nmf-ls" class="tab-pane is-hidden">
+                      <p>
+                          The least-squares non-negative matrix factorization (NMF) method calculates the expression level of each pattern (sample dimension defined in an NMF analysis) in each sample or cell of the new dataset using gene loadings from the existing non-negative matrix factorization that has been run previously on the original starting dataset.
+                      </p>
+                      <p>
+                          Although NMF includes no negative gene loadings, this method may still produce positive and/or negative values for samples in the new dataset, which is calculated by estimating the sample values in the new dataset using their expression values along with the gene loadings from the corresponding genes in original NMF analysis. This is done using linear estimation methods in <a target="_blank" rel="noopener" href="https://pubmed.ncbi.nlm.nih.gov/32167521/">projectR</a>.
+                      </p>
+                  </div>
+
+                  <div id="tab-nmf-fixed" class="tab-pane is-hidden">
+                      <p>
+                          The fixed weights non-negative matrix factorization (NMF) method calculates the expression level of each pattern (sample dimension defined in an NMF analysis) in each sample or cell of the new dataset using gene loadings from the existing non-negative matrix factorization that has been run previously on the original starting dataset.
+                      </p>
+                      <p>
+                          As in the NMF method, although NMF includes no negative gene loadings, this method may still produce positive and/or negative values for samples in the new dataset. The difference between the "Fixed NMF" and "NMF" methods is that "Fixed NMF" re-runs the NMF procedure in order using "Fixed" gene loadings from the original analysis to estimate the sample values in the new dataset. This is done using using <a target="_blank" rel="noopener" href="https://www.biorxiv.org/content/10.1101/2022.11.07.515489v2">SJD</a>.
+                      </p>
+                  </div>
+
+                  <div id="tab-binary" class="tab-pane is-hidden">
+                      <p>
+                          Calculates the expression level of each pattern by counting the number of genes in the pattern that are expressed at non-zero levels in each new sample.
+                      </p>
+                      <p>
+                          <strong>Note:</strong> This algorithm should only be used in single-cell data. This method is simple and interpretable, but may not capture complex continuous signals.
+                      </p>
+                  </div>
+
+              </div>
+          </section>
+            <footer class="modal-card-foot">
+                <button class="button">Close</button>
+            </footer>
         </div>
-      </footer>
+    </div>
+
+      <footer>
+        <div id="funding"></div>
+</footer>
 
       <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
       <script src="js/vendor/js.cookie.js"></script>
@@ -201,8 +253,10 @@ This method is simple and interpretable, but may not capture complex relationshi
 
 
       <script type="module">
-        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS, loadDomainFunding } from './js/common.v2.js';
         const prefs = await getDomainPreferences();
+
+        await loadDomainFunding(prefs);
 
         // Load any local JS with cache-busting version parameter
         insertVersionedJS('js/projection.js', prefs.cache_version);

@@ -159,6 +159,13 @@
                         <p class="is-size-7">Your dataset is processed and checked on the server.</p>
                       </div>
                     </li>
+                    <li id='step-post-process-dataset' class="steps-segment">
+                      <span class="steps-marker"><span class="icon"><i class="mdi"></i></span></span>
+                      <div class="steps-content">
+                        <p class="step-label is-size-5">Dataset post-processing</p>
+                        <p class="is-size-7">Resolve ambiguities in the dataset.</p>
+                      </div>
+                    </li>
                     <li id='step-finalize-dataset' class="steps-segment">
                       <span class="steps-marker"><span class="icon"><i class="mdi"></i></span></span>
                       <div class="steps-content">
@@ -666,9 +673,9 @@
                       </div>
                     </div>
                     <div class="column format-column is-3 is-flex">
-                      <!-- Rdata/Seurat -->
+                      <!-- RDS/Seurat -->
                       <div class="box format-selection-box">
-                        <h3>Rdata / Seurat</h3>
+                        <h3>RDS / Seurat</h3>
                         <p class="format-description">
                           This is a binary format used by the Seurat package in R. If you've already been
                           working with your dataset in R, including clustering and other analyses, this is
@@ -682,21 +689,21 @@
                         <ul class="format-documentation-links">
                           <li>
                             <span class="icon-text"><span class="icon"><i class="mdi mdi-open-in-new"></i></span>
-                              <span><a href="https://bioinformatics.ccr.cancer.gov/docs/getting-started-with-scrna-seq/IntroToR_Seurat/" target="_blank">Rdata info</a></span>
+                              <span><a href="https://bioinformatics.ccr.cancer.gov/docs/getting-started-with-scrna-seq/IntroToR_Seurat/" target="_blank">RDS info</a></span>
                             </span>
                           </li>
                           <li>
                             <span class="icon-text"><span class="icon"><i class="mdi mdi-download"></i></span>
-                              <span>Rdata example</span>
+                              <span>RDS example</span>
                             </span>
                           </li>
                         </ul>
                         <div class="control">
-                          <button data-format="rdata" class="button is-primary is-fullwidth format-selector" disabled>
+                          <button data-format="rds" class="button is-primary is-fullwidth format-selector">
                             <span class="icon">
-                              <i class="mdi mdi-cancel"></i>
+                              <i class="mdi mdi-checkbox-blank-outline"></i>
                             </span>
-                            <span class="format-status">Not yet available</span>
+                            <span class="format-status">Choose</span>
                           </button>
                         </div>
                       </div>
@@ -760,6 +767,7 @@
                           <div class="select is-fullwidth">
                             <select name="spatial-platform" id="select-spatial-platform">
                               <option value="">Select one</option>
+                              <option value="cosmx">CosMx SMI</option>
                               <option value="curio">Curio Seeker</option>
                               <option value="geomx">GeoMx DSP</option>
                               <option value="visium">10x Genomics Visium</option>
@@ -947,6 +955,7 @@ Currently Gosling only supports single-organism tracks">
                                 <option value="hg19">Human (hg19)</option>
                                 <option value="hg38">Human (hg38)</option>
                                 <option value="mm10">Mouse (mm10)</option>
+                                <option value="mm39">Mouse (mm39)</option>
                                 <option value="galGal6" disabled>Chicken (COMING SOON)</option>
                                 <option value="rn6">Rat</option>
                                 <option value="danRer10">Zebrafish</option>
@@ -1038,6 +1047,36 @@ Currently Gosling only supports single-organism tracks">
                   <div class="field">
                     <div class="control">
                       <button class="button is-primary" id="dataset-processing-submit" disabled>Continue</button>
+                    </div>
+                  </div>
+                </div>
+                <div id="step-post-process-dataset-c" class="step-c is-hidden">
+                  <h1>Step - Dataset Post-Processing</h1>
+                  <p>
+                    Your dataset has been converted into a format that can be used by the gEAR platform. This step is optional, but asks questions that may clear up various issues, such as ambiguous data types.
+                  </p>
+                  <hr />
+
+                  <!--
+                  <div id="no-post-processing-c" class="field is-hidden">
+                    <p>
+                      No post-processing is required for this dataset. Click Continue to finalize submission.
+                    </p>
+                  </div>-->
+
+                  <div id="ambiguous-cols-dtypes-c" class="is-hidden">
+                    <h3>Resolve ambiguous column data types</h1>
+                    <p>
+                      The following columns have ambiguous data types and need to be resolved as "continuous" or "categorical" data.
+                    </p>
+                    <div id="ambiguous-cols-review-c" class="field columns is-multiline">
+                      <!-- Select dropdowns are rendered here -->
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <div class="control">
+                      <button class="button is-primary" id="dataset-post-processing-submit">Continue</button>
                     </div>
                   </div>
                 </div>
@@ -1195,10 +1234,8 @@ Currently Gosling only supports single-organism tracks">
         </section> <!-- end #main-c -->
       </div>
       <footer>
-        <div>
-          <!-- content here TO BE inserted via common.js -->
-        </div>
-      </footer>
+        <div id="funding"></div>
+</footer>
 
     <div id="spatial-reqs-modal" class="modal">
         <div class="modal-background"></div>
@@ -1217,6 +1254,22 @@ Currently Gosling only supports single-organism tracks">
             </footer>
         </div>
     </div>
+
+    <template id="cosmx-spatial-reqs">
+      A tar.gz file containing the following files with these standarized names:
+      <ul>
+        <li>(Required) exprMat_file.csv</li>
+        <li>(Required) metadata_file.csv</li>
+        <li>(Required) fov_positions_file.csv</li>
+        <li>(Required) 'CellComposite' directory</li>
+        <li>(Required) 'CellLabels' directory</li>
+        <li>tx_file.csv</li>
+      </ul>
+      <br />
+      The filenames for the csv files can have an optional dataset id prefix.
+      <br /><br />
+      Gene IDs present in input must associate with an annotation from the source type indicated in the metadata upload.
+    </template>
 
     <template id="curio-spatial-reqs">
       A tar.gz file containing the following files with these standarized names:
@@ -1321,8 +1374,10 @@ Currently Gosling only supports single-organism tracks">
 
       <!-- Page-specific CSS/JS loading here -->
       <script type="module">
-        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+        import { getDomainPreferences, insertVersionedCSS, insertVersionedJS, loadDomainFunding } from './js/common.v2.js';
         const prefs = await getDomainPreferences();
+
+        await loadDomainFunding(prefs);
 
         // Load any local JS with cache-busting version parameter
         insertVersionedJS('js/upload_dataset.js', prefs.cache_version);

@@ -1,5 +1,6 @@
 import configparser
 import json
+import os
 import sys
 from pathlib import Path
 from uuid import uuid4
@@ -195,7 +196,10 @@ class TrackHubCopy(Resource):
         with open(metadata_file, 'w') as f:
             json.dump(metadata, f, indent=4)
 
-        domain_url = geardb._read_domain_url()
+        if os.getenv("ENVIRONMENT", "production").lower() == "development":
+            domain_url = "http://localhost:8080"
+        else:
+            domain_url = geardb._read_domain_url()
         if not domain_url:
             result["message"] = "Domain URL not configured. Cannot process track hub."
             return result, 500

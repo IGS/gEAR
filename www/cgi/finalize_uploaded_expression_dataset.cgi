@@ -34,6 +34,7 @@ result = {
 
 import cgi
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -59,17 +60,25 @@ def main() -> dict:
     print('Content-Type: application/json\n\n', flush=True)
 
     form = cgi.FieldStorage()
-    share_uid = form.getvalue('share_uid')
-    session_id = form.getvalue('session_id')
-    dataset_id = form.getvalue('dataset_uid')
-    dataset_format = form.getvalue('dataset_format')
-    dataset_visibility = form.getvalue('dataset_visibility')
+    share_uid = form.getfirst('share_uid')
+    session_id = form.getfirst('session_id')
+    dataset_id = form.getfirst('dataset_uid')
+    dataset_format = form.getfirst('dataset_format')
+    dataset_visibility = form.getfirst('dataset_visibility')
+
+    if session_id is None:
+        result['message'] = 'No session ID provided.'
+        return result
+
+    if dataset_id is None:
+        result['message'] = 'No dataset ID provided.'
+        return result
 
     if dataset_format in ["null", None]:
         result['message'] = 'No dataset format provided.'
         return result
 
-    perform_analysis_migration = form.getvalue("perform_analysis_migration", 0)
+    perform_analysis_migration = form.getfirst("perform_analysis_migration", 0)
     # if string, convert to int
     if isinstance(perform_analysis_migration, str):
         perform_analysis_migration = int(perform_analysis_migration)
@@ -146,7 +155,11 @@ def main() -> dict:
             return result
 
         # Get domain URL of this server, so we can ensure this is about to be read locally and for the UCSC exporting
-        domain_url = geardb._read_domain_url()
+        if os.getenv("ENVIRONMENT", "production").lower() == "development":
+            domain_url = "http://localhost:8080"
+        else:
+            domain_url = geardb._read_domain_url()
+
         hub_url = f"{domain_url}/tracks/{dataset_id}/hub.txt"
         config = {
             "hubUrl": hub_url,
@@ -185,6 +198,17 @@ def main() -> dict:
         if not zarr_file.is_dir():
             result['message'] = 'Zarr store not found: {}'.format(zarr_file)
             return result
+
+        config = {
+            "min_genes": 0,
+            "selection_x1": None,
+            "selection_y1": None,
+            "selection_x2": None,
+            "selection_y2": None,
+            "gene_symbol": "Pou4f3" # Just need a filler, really
+        }
+
+        geardb.add_spatial_panel_curation(dataset_id, user, config)
 
         try:
             shutil.move(zarr_file, dataset_final_dir / f'{dataset_id}.zarr')
@@ -230,6 +254,18 @@ def main() -> dict:
             result['userdata_migrated'] = 1
         except Exception as e:
             result['message'] = 'Error migrating Excel file: {}'.format(str(e))
+            return result
+
+    elif dataset_format == 'rds':
+        # migrate the RDS file
+        rds_file = dataset_upload_dir / f'{share_uid}.rds'
+        rds_dest = dataset_final_dir / f'{dataset_id}.rds'
+
+        try:
+            shutil.move(rds_file, rds_dest)
+            result['userdata_migrated'] = 1
+        except Exception as e:
+            result['message'] = 'Error migrating RDS file: {}'.format(str(e))
             return result
 
     elif dataset_format == "spatial":

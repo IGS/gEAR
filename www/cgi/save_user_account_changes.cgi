@@ -23,14 +23,14 @@ def main():
 
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    help_id = form.getvalue('help_id')
-    session_id = form.getvalue('session_id')
-    new_password = form.getvalue('new_password')
-    email = form.getvalue('email')
-    institution = form.getvalue('institution')
-    colorblind_mode = form.getvalue('colorblind_mode', False)  # string true/false
-    updates_wanted = form.getvalue('want_updates', False)  # string true/false
-    scope = form.getvalue('scope') # 'password'
+    help_id = form.getfirst('help_id')
+    session_id = form.getfirst('session_id')
+    new_password = form.getfirst('new_password')
+    email = form.getfirst('email')
+    institution = form.getfirst('institution')
+    colorblind_mode = form.getfirst('colorblind_mode', False)  # string true/false
+    updates_wanted = form.getfirst('want_updates', False)  # string true/false
+    scope = form.getfirst('scope') # 'password'
     result = {}
 
     if not session_id:
@@ -43,12 +43,29 @@ def main():
         exit()
 
     user = geardb.get_user_from_session_id(session_id=session_id)
+    if user is None:
+        result = { 'error':[], 'success': 0 }
+
+        error = "Invalid session id provided, so cannot find user."
+        result['error'] = error
+
+        print(json.dumps(result))
+        exit()
     user_id = user.id
 
     # Password is being changed
     if scope == 'password':
+        if new_password is None:
+            result = { 'error':[], 'success': 0 }
+
+            error = "No new password provided."
+            result['error'] = error
+
+            print(json.dumps(result))
+            exit()
+
         # Generate encoded password
-        encoded_pass = hashlib.md5(new_password.encode('utf-8')).hexdigest()
+        encoded_pass = hashlib.sha3_256(new_password.encode('utf-8')).hexdigest()
 
         # Save new password
         save_new_password(cursor, help_id, encoded_pass)
@@ -92,7 +109,8 @@ def main():
         if new_password:
             mid_query_settings.append(" pass = %s")
             # Generate encoded password
-            encoded_pass = hashlib.md5(new_password.encode('utf-8')).hexdigest()
+            encoded_pass = hashlib.sha3_256(new_password.encode('utf-8')).hexdigest()
+
             field_values.append(encoded_pass)
 
         # Build the "SET" values query

@@ -16,6 +16,8 @@ from gear.trackhub import (
     parse_tracks_from_trackdb,
 )
 
+from .common import ANNOTATION_BEDDB_UID, HIGLASS_URL
+
 """
 NOTE: The "gos" documentation kind of sucks, and requires some trial and error to figure out where things go.
 Generally you can make a data class type (i.e. BedData) and add that as a property to a gos.Track
@@ -52,7 +54,7 @@ ASSEMBLY_TO_CHROMSIZES_FILE = {
     "hg19": "hg19.chromInfo.txt",
     "hg38": "hg38.chromInfo.txt",
     "mm10": "mm10.chromInfo.txt",
-    # "mm39": "mm39.chromInfo.txt",
+    "mm39": "mm39.chromInfo.txt",
     "rn6": "rn6.chromInfo.txt",  # rat
     # "calJac3": "calJac3.chromInfo.txt", # marmoset
 }
@@ -74,6 +76,7 @@ def _resolve_track_url(track: dict, use_gosling: bool = True) -> str | None:
     Returns:
         str or None: The resolved URL, or None if URL cannot be determined.
     """
+
     # Gosling context: prefer gos_url if available
     if use_gosling and track.get("gos_url"):
         return track["gos_url"]
@@ -93,15 +96,18 @@ def _validate_hub_url(hub_url: str) -> None:
     """
     try:
         domain_url = geardb._read_domain_url()
+
         if not domain_url:
             raise ValueError("Domain URL not configured. Cannot process track hub.")
 
         # Build allowed domains list from configuration
+        parsed_domain_url = urlparse(domain_url)
+        domain_url = parsed_domain_url.hostname
         allowed_domains = [domain_url]
-
 
         # Allow internal Docker service name in development only
         if os.getenv("ENVIRONMENT", "production").lower() == "development":
+            allowed_domains.extend("umgear.org")    # A lot of testable data is on the main gEAR server
             allowed_domains.extend(["web", "localhost", "127.0.0.1"])
 
         parsed = urlparse(hub_url)
@@ -153,7 +159,7 @@ def _fetch_tracks_from_hub(hub_url: str, assembly: str) -> list[dict]:
     # Addresses https://github.com/IGS/gEAR/security/code-scanning/344
     try:
         _validate_hub_url(hub_url)
-    except ValueError as e:
+    except ValueError:
         raise
 
     # Fix for Docker
@@ -169,36 +175,38 @@ def _fetch_tracks_from_hub(hub_url: str, assembly: str) -> list[dict]:
     hub_txt = hub_response.text
     hub_json, tracks = parse_hub_from_file(hub_txt)
 
+    if hub_json.get("useOneFile", "") == "on":
+        return tracks
+
     # Traditional mode: parse genomes.txt and trackDb.txt
-    if not hub_json.get("useOneFile", "") == "on":
-        base_url = hub_url.rsplit("/", 1)[0]
+    base_url = hub_url.rsplit("/", 1)[0]
 
-        genomes_file_name = hub_json.get("genomesFile", "genomes.txt")
-        genomes_url = f"{base_url}/{genomes_file_name}"
+    genomes_file_name = hub_json.get("genomesFile", "genomes.txt")
+    genomes_url = f"{base_url}/{genomes_file_name}"
 
-        try:
-            genomes_response = requests.get(genomes_url)
-            genomes_response.raise_for_status()
-        except requests.RequestException as e:
-            raise ValueError(
-                f"Failed to retrieve genomes.txt from {genomes_url}: {str(e)}"
-            ) from e
+    try:
+        genomes_response = requests.get(genomes_url)
+        genomes_response.raise_for_status()
+    except requests.RequestException as e:
+        raise ValueError(
+            f"Failed to retrieve genomes.txt from {genomes_url}: {str(e)}"
+        ) from e
 
-        trackdb_path = fetch_trackdb_path(genomes_response.text, assembly)
-        trackdb_url = f"{base_url}/{trackdb_path}"
+    trackdb_path = fetch_trackdb_path(genomes_response.text, assembly)
+    trackdb_url = f"{base_url}/{trackdb_path}"
 
-        try:
-            trackdb_response = requests.get(trackdb_url)
-            trackdb_response.raise_for_status()
-        except requests.RequestException as e:
-            raise ValueError(
-                f"Failed to retrieve trackDb from {trackdb_url}: {str(e)}"
-            ) from e
+    try:
+        trackdb_response = requests.get(trackdb_url)
+        trackdb_response.raise_for_status()
+    except requests.RequestException as e:
+        raise ValueError(
+            f"Failed to retrieve trackDb from {trackdb_url}: {str(e)}"
+        ) from e
 
-        tracks = parse_tracks_from_trackdb(trackdb_response.text, trackdb_url)
-
-    return tracks
-
+    try:
+        return parse_tracks_from_trackdb(trackdb_response.text, trackdb_url)
+    except ValueError as e:
+        raise ValueError(f"Failed to parse trackDb from {trackdb_url}: {str(e)}") from e
 
 def build_assembly_array(assembly) -> list:
     """
@@ -304,21 +312,7 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     - The view includes text, rule, and rect tracks for gene names, gene regions, and exon regions, respectively.
     """
 
-    # These files will be based on Ensembl's annotation naming structure, but sorted in chromosome order.
-    # I am adding a 2nd column of 1's to allow us to use the files in a "genomic" track.
-
-    ANNOTATION_BEDDB_UID = {
-        "danRer10": "YwOpmCgUSqKdJSGtGXWeJw", # zebrafish
-        #"galGal6": "galGal6.annotation.beddb", # chicken - could not get to load
-        "hg19": "XXcPeaTRSiy8_yxNwjtzEQ",
-        "hg38": "GhiCXRRHTH2u-24jRq0HRQ",
-        "mm10": "VNbLgNO3T8uAcp_5vRFqdQ",
-        # "mm39": "mm39.annotation.beddb",
-        "rn6": "C6Tw-g54Rl602PqE62qTHw", # rat
-        # "calJac3": "calJac3.annotation.beddb", # marmoset
-    }
-
-    ANNOTATION_CONDENSED_HEIGHT = EXPANDED_HEIGHT # Always taller for annotations
+    ANNOTATION_CONDENSED_HEIGHT = 60 # Always taller for annotations
     #ANNOTATION_EXPANDED_HEIGHT = ANNOTATION_CONDENSED_HEIGHT * 2
     ANNOTATION_EXPANDED_HEIGHT = ANNOTATION_CONDENSED_HEIGHT
 
@@ -328,7 +322,7 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
             f"Assembly {assembly} is not supported or does not have a BEDdb UID."
         )
 
-    beddb_url = f"https://higlass.umgear.org/api/v1/tileset_info/?d={beddb_uid}"
+    beddb_url = f"{HIGLASS_URL}/tileset_info/?d={beddb_uid}"
 
     # chrom, start, end, name, score, strand, exon_start, exon_end
     beddb_data = gos.beddb(
@@ -347,8 +341,9 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
         ]
     )
 
-    #MINUS_ROW_POSITION = 50 if zoom else 35
-    MINUS_ROW_POSITION = 25
+    # Making these position and padding values precise, so the text from the first row
+    # does not overlap with the 2nd row while keeping track height as slim as possible
+    MINUS_ROW_POSITION = 51
 
     # These are shared amongst the genes and exons track
     condensed_row = gos.Row(field="strand", type="nominal", domain=["+", "-"], range=[0, MINUS_ROW_POSITION])  # type:ignore
@@ -382,6 +377,7 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
     gene_track = base_track.transform_filter(field="type", oneOf=["gene"])
 
     """
+    # Instead of splitting by strand, displace on potential overlaps, though this isn't working right
     if zoom:
         gene_track = (
             gene_track
@@ -401,6 +397,7 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
 
     text_track = gene_track.mark_text().encode(
         text=gos.Text(field="name", type="nominal"),  # type: ignore
+        size=gos.Size(value=10),  # type: ignore
         style=gos.Style(dy=-10),  # type: ignore
     )
 
@@ -423,6 +420,7 @@ def build_bed_annotation_tracks(assembly, zoom=False, title="left"):
         )
 
     """
+    # Instead of splitting by strand, displace on potential overlaps, though this isn't working right
     if zoom:
         exon_track = exon_track.transform_displace(
                 method="pile",
@@ -564,13 +562,13 @@ def build_genome_wide_view(
     return genome_wide_view
 
 
-def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, position_str="NA"):
+def build_gosling_tracks(rendered_tracks: list, track_descriptors: list, zoom:bool=False, prefix:str="", position_str:str="NA"):
     """
     Builds and configures Gosling tracks based on the provided track specifications.
 
     Args:
-        parent_tracks_dict (dict): A dictionary with keys "left" and optionally "right", each mapping to a list of track objects.
-        tracks (list): A list of dictionaries, each representing a track specification. Each track dict should contain at least:
+        rendered_tracks (list): A list of track objects.
+        track_descriptors (list): A list of dictionaries, each representing a track specification. Each track dict should contain at least:
             - "type" (str): The type of the track (e.g., "bam", "bigWig", "bed", "vcf").
             - "bigDataUrl" (str): The URL to the data file for the track.
             - Optional: "color" (str), and other track-specific attributes.
@@ -578,8 +576,8 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, position_str="N
 
     Returns:
         tuple:
-            - parent_view_left: The Gosling  view for the left panel.
-            - parent_view_right: The Gosling  view for the right panel if zoom is True, otherwise None.
+            - parent_view: The Gosling  view for the panel.
+            - hic_found: A boolean flag indicating whether any HiC tracks were found (used for downstream layout decisions).
 
     Notes:
         - Unsupported track types or tracks missing "bigDataUrl" are skipped with a warning.
@@ -593,74 +591,121 @@ def build_gosling_tracks(parent_tracks_dict, tracks, zoom=False, position_str="N
         "bigBed": BedSpec,
         "vcfTabix": VcfSpec,
         "hic": HiCSpec,
+        "bigInteract": BigInteractSpec,
     }
 
-    kwargs = {}
     hic_found = False
 
+    multiwig_groups = {}
+
     # Build each individual track based on its type
-    for track in tracks:
-        track_type = track.get("type", "")
+    for group_track in track_descriptors:
+        container = group_track.get("container", None)
+        if container and container == "multiWig":
+            multiwig_groups[group_track["track"]] = {
+                "visibility": group_track.get("visibility", "dense"),
+                "tracks": [],
+                "index": len(rendered_tracks)
+            }
+            rendered_tracks.append(None)  # reserve this exact position for later
+            continue
+
+        # Process multiWig view after all the individual views
+        parent = group_track.get("parent", None)
+        if parent and parent in multiwig_groups and group_track.get("type", "") == "bigWig":
+            multiwig_groups[parent]["tracks"].append(group_track)
+            continue
+
+        track_type = group_track.get("type", "")
         spec_builder_class = TRACK_TYPE_2_SPEC.get(track_type, None)
-        if not spec_builder_class:
+
+        if spec_builder_class is None:
             print(
-                f"WARNING: Unsupported track type '{track_type}' for track '{track.get('shortLabel', '')}'; skipping.",
+                f"WARNING: Unsupported track type '{track_type}' for track '{group_track.get('shortLabel', '')}'; skipping.",
                 file=sys.stderr,
             )
             continue
 
         # Resolve URL for Gosling context
-        data_url = _resolve_track_url(track, use_gosling=True)
+        data_url = _resolve_track_url(group_track, use_gosling=True)
         if not data_url:
             print(
-                f"WARNING: Could not resolve URL for track '{track.get('shortLabel', '')}'; skipping.",
+                f"WARNING: Could not resolve URL for track '{group_track.get('shortLabel', '')}'; skipping.",
                 file=sys.stderr,
             )
             continue
 
         # Get other attributes to pass to the class
-        color = track.get("color", "orange")  # Default color if not specified
+        color = group_track.get("color", "orange")  # Default color if not specified
 
         # Title should be based on shortLabel, longLabel, bigDataUrl (in that order)
-        title = track.get("shortLabel", track.get("longLabel", "bigDataUrl"))
+        title = group_track.get("shortLabel", group_track.get("longLabel", "bigDataUrl"))
 
-        visibility = track.get("visibility", "dense")  # Dense, full, hide
+        visibility = group_track.get("visibility", "dense")  # Dense, full, hide
+
+        ident = group_track.get("track") or title.replace(" ", "_").lower()  # Use track ID if available, otherwise a sanitized version of the title
+
+        # add any "gos_*" properties to kwargs
+        kwargs = {}
+        for key, value in group_track.items():
+            if key.startswith("gos_"):
+                kwargs[key] = value
 
         try:
             spec_builder = spec_builder_class(
-                data_url=data_url, color=color, zoom=zoom, title=title, position_str=position_str, visibility=visibility
+                data_url=data_url, color=color, zoom=zoom, title=title, ident=ident, visibility=visibility, **kwargs
             )
-            left_track = spec_builder.add_track(**kwargs)
 
-            # Skip if track validation failed (add_track returns None)
-            if left_track is None:
-                continue
-
-            parent_tracks_dict["left"].append(left_track)
-
+            # If our datatype is HiC, do two things:
+            # 1) Build the view using the HiC track and assign that as the "rendeed track
+            # 2) Set a flag that can be passed downstream to add padding to the zoomed region, since HiC tracks need more context to be interpretable.
             if spec_builder_class == HiCSpec:
+                hic_view_obj = HiCViewSpec(
+                    title=title, zoom=zoom, ident=ident, visibility=visibility
+                )
+                hic_view = hic_view_obj.render(hic_obj=spec_builder, prefix=prefix, position_str=position_str)
+                if hic_view is not None:
+                    rendered_track = hic_view
                 hic_found = True
-
-            if zoom:
-                right_track = spec_builder.add_track(**kwargs)
-                if right_track is not None:
-                    right_track.id = f"right-track-{Path(data_url).stem}"
-                    parent_tracks_dict["right"].append(right_track)
+            else:
+                rendered_track = spec_builder.render(prefix=prefix)
+            # Skip if track validation failed (render returns None)
+            if rendered_track is None:
+                continue
+            rendered_tracks.append(rendered_track)
         except Exception as e:
             print(f"ERROR building track '{title}': {e}", file=sys.stderr)
             continue
 
-    parent_view_left = gos.stack(*parent_tracks_dict["left"]).properties(
-        id="left-view", linkingId="zoom-to-panel-a", spacing=0,
+    # Build multiWig views after all the individual tracks have been built
+    for parent_id, group_tracks in multiwig_groups.items():
+        if not group_tracks:
+            continue
+        multiwig_view_obj = MultiWigSpec(title=parent_id, ident=parent_id, zoom=zoom, visibility=group_tracks["visibility"])
+        for group_track in group_tracks["tracks"]:
+            track_obj = BigWigSpec(
+                data_url = _resolve_track_url(group_track, use_gosling=True),
+                color=group_track.get("color", "orange"),
+                ident=group_track.get("track") or group_track.get("shortLabel", "").replace(" ", "_").lower(),
+                zoom=zoom
+            )
+            multiwig_view_obj.add_member(track_obj)
+
+        multiwig_view = multiwig_view_obj.render(prefix=prefix)
+        rendered_tracks[group_tracks["index"]] = multiwig_view if multiwig_view is not None else None
+
+    # filter out Nones in the tracks
+    rendered_tracks = [track for track in rendered_tracks if track is not None]
+
+    link_id = "zoom-to-panel-a"
+    if prefix == "right-":
+        link_id = "zoom-to-panel-b"
+
+    parent_view = gos.stack(*rendered_tracks).properties(
+        id=f"{prefix}view", linkingId=link_id, spacing=0,
     )
 
-    parent_view_right = None
-    if zoom:
-        parent_view_right = gos.stack(*parent_tracks_dict["right"]).properties(
-            id="right-view", linkingId="zoom-to-panel-b", spacing=0
-        )
-
-    return parent_view_left, parent_view_right, hic_found
+    return parent_view, hic_found
 
 
 def build_region_view(parent_view_left, parent_view_right=None):
@@ -689,45 +734,34 @@ def build_region_view(parent_view_left, parent_view_right=None):
 
     return region_view
 
-def get_gene_info(gene_symbol, dataset_id, assembly):
+def get_gene_info(gene_symbol, assembly):
     """
-    Fetches gene coordinate information for a given gene symbol from the geardb database.
-
-    Args:
-        gene_symbol (str): The gene symbol to look up.
-        dataset_id (str or int): The identifier for the dataset to query.
-        assembly (str): The genome assembly name (e.g., 'hg38', 'mm10').
+    Fetches gene coordinate information for a given gene symbol from the assembly stored in HiGlass
 
     Returns:
-        tuple:
-            - position_str (str): The genomic position in the format '{assembly}.chr:start-end', suitable for UCSC Genome Browser.
-            - gene_symbol (str): The canonical gene symbol as stored in the database.
-
-    Notes:
-        - If the gene symbol is not found in the dataset, returns ("NA", "NA").
-        - Chromosome names are normalized to UCSC-style (e.g., 'chr1', 'chrX', 'chrM').
+        tuple: A tuple containing (position_str, gene_symbol) where position_str is in the
+            format 'assembly.chromosome:start-end' and gene_symbol is the official gene name.
     """
-    # Fetch gene coordinates from geardb
-    gene_info = geardb.get_gene_by_gene_symbol(gene_symbol, dataset_id)
-    if not gene_info:
+
+    try:
+        response = requests.get(f"http://127.0.0.1/api/higlass/genes/{gene_symbol}", params={"assembly": assembly})
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"Failed to retrieve gene information for {gene_symbol}", file=sys.stderr)
+        return ("NA", "NA")
+
+    gene_info = response.json()
+    if gene_info is None:
         print(
-            f"WARNING: Gene symbol '{gene_symbol}' not found in dataset {dataset_id}; cannot zoom track.",
+            f"WARNING: Gene symbol '{gene_symbol}' not found in assembly {assembly}; cannot zoom track.",
             file=sys.stderr,
         )
         return ("NA", "NA")
 
-    chrom = gene_info.molecule or "unknown"
-
-    # if chrom is a number, convert it to a string with "chr" prefix
-    if chrom.isdigit() or chrom in ["X", "Y"]:
-        chrom = f"chr{chrom}"
-    # if chrom is MT, convert to "chrM"
-    if chrom == "MT":
-        chrom = "chrM"
-
-    start = gene_info.start
-    end = gene_info.stop
-    gene_symbol = gene_info.gene_symbol # To use correct naming later
+    chrom = gene_info["chr"]
+    start = gene_info["txStart"]
+    end = gene_info["txEnd"]
+    gene_symbol = gene_info["geneName"] # To use correct naming later
 
     left_position = f"{chrom}:{start}-{end}"
     position_str = f"{assembly}.{left_position}"  # This is the format if we want to export position to UCSC Genome Browser
@@ -782,15 +816,21 @@ def zoom_view_to_domain(view, position_str, hic_found=False):
     )
     return view
 
+class Component(ABC):
+    """Base class for anything that can be rendered in a Gosling layout."""
+    @abstractmethod
+    def render(self):
+        pass
+
 class TrackSpec(ABC):
-    def __init__(self, data_url, color="steelblue", zoom=False, title="", position_str="NA", visibility="full"):
+    def __init__(self, data_url, color="steelblue", zoom=False, title="", ident="", visibility="full", **kwargs):
         self.data_url = data_url
         self.color = color  # Passed as RGB string
         self.zoom = zoom
         self.width = EXPANDED_WIDTH if zoom else CONDENSED_WIDTH
         self.height = EXPANDED_HEIGHT if zoom else CONDENSED_HEIGHT
         self.title = title
-        self.position_str = position_str
+        self.ident = ident or title
         self.visibility = visibility
         self.track = None
 
@@ -799,9 +839,20 @@ class TrackSpec(ABC):
         elif self.visibility == "full":
             self.height *= 1.5
 
+        if kwargs:
+            for key, value in kwargs.items():
+                setattr(self, key, value)
+
     @abstractmethod
-    def add_track(self, **kwargs):
+    def get_encoding(self, width, height, prefix="", is_child=False):
+        """Returns a track with specific dimensions applied by the parent."""
         pass
+
+    def render(self, prefix=""):
+        """Standalone render using default dimensions."""
+        if self.visibility == "hide":
+            return None
+        return self.get_encoding(self.width, self.height, prefix=prefix, is_child=False)
 
     def validate_track_url(self, url: str, expected_extensions: list[str]) -> None:
         """
@@ -830,13 +881,19 @@ class TrackSpec(ABC):
 
     @staticmethod
     def _validate_url_extension(url: str, valid_extensions: list[str]) -> None:
-        """Validate URL ends with one of the valid extensions."""
-        if not any(url.endswith(ext) for ext in valid_extensions):
+        """Validate URL ends with one of the valid extensions (case-insensitive)."""
+        normalized_url = url.lower()
+        normalized_extensions = [ext.lower() for ext in valid_extensions]
+
+        if not any(normalized_url.endswith(ext) for ext in normalized_extensions):
             extensions_str = ", ".join(valid_extensions)
             raise ValueError(f"Invalid URL: must end with {extensions_str}")
 
 class BamSpec(TrackSpec):
-    def add_track(self, **kwargs):
+    def __init__(self, *args, **kwargs):
+        raise NotImplementedError("BAM tracks are currently not supported due to performance issues. Please use BigWig or BigBed formats instead.")
+
+    def get_encoding(self, width, height, prefix="", is_child=False):
         url = self.data_url
         color = self.color
 
@@ -852,10 +909,6 @@ class BamSpec(TrackSpec):
         track = (
             gos.Track(
                 data=bamData,  # pyright: ignore[reportArgumentType]
-                width=self.width,
-                height=self.height,
-                title=self.title,  # Use the file name as the title
-                id=f"left-track-{self.title}",  # Use the file name without extension as the ID
             )
             .mark_bar()
             .encode(
@@ -863,13 +916,23 @@ class BamSpec(TrackSpec):
                 xe=gos.X(field="end", type="genomic"),  # pyright: ignore[reportArgumentType]
                 y=gos.Y(field="coverage", type="quantitative", axis="right"),  # pyright: ignore[reportArgumentType]
                 color=gos.Color(value=color),
+            ).properties(
+                width=width,
+                id=f"{prefix}track-{self.ident}",   # Use the file name without extension as the ID
             )
         )
+
+        if not is_child:
+            track = track.properties(
+                height=height,
+                title=self.title
+                )
+
         return track
 
 
 class BedSpec(TrackSpec):
-    def add_track(self, **kwargs):
+    def get_encoding(self, width, height, prefix="", is_child=False):
         url = self.data_url
         color = self.color
 
@@ -885,10 +948,6 @@ class BedSpec(TrackSpec):
         track = (
             gos.Track(
                 data=bed_data,  # pyright: ignore[reportArgumentType]
-                width=self.width,
-                height=self.height,
-                title=self.title,  # Use the file name as the title
-                id=f"left-track-{self.title}",  # Use the file name without extension as the ID
             )
             .mark_rect()
             .encode(
@@ -896,14 +955,22 @@ class BedSpec(TrackSpec):
                 xe=gos.X(field="end", type="genomic"),  # pyright: ignore[reportArgumentType]
                 size=gos.Size(value=10),
                 color=gos.Color(value=color),
+            ).properties(
+                width=width,
+                id=f"{prefix}track-{self.ident}",  # Use the file name without extension as the ID
             )
         )
+
+        if not is_child:
+            track = track.properties(
+                height=height,
+                title=self.title
+                )
+
         return track
 
-
 class BigWigSpec(TrackSpec):
-
-    def add_track(self, **kwargs):
+    def get_encoding(self, width, height, prefix="", is_child=False):
         url = self.data_url
         color = self.color
 
@@ -916,35 +983,87 @@ class BigWigSpec(TrackSpec):
         # TODO: figure out appropriate binsize when zooming out: Default is 256. It looks blocky briefly
         bigwig_data = gos.bigwig(url=url)
 
-        y_kwargs = {}
-        y_field="value"
-
         track = (
             gos.Track(
                 data=bigwig_data,  # pyright: ignore[reportArgumentType]
-                width=self.width,
-                height=self.height,
-                title=self.title,  # Use the file name as the title
-                id=f"left-track-{self.title}",  # Use the file name without extension as the ID
             )
-            .mark_bar()
+            .mark_area()
             .encode(
-                x=gos.X(field="start", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
-                xe=gos.X(field="end", type="genomic"),  # pyright: ignore[reportArgumentType]
-                y=gos.Y(field=y_field, type="quantitative", axis="right", aggregate="count", **y_kwargs),  # pyright: ignore[reportArgumentType]
                 color=gos.Color(value=color),
                 # Tooltip only works when hovering over the peak
                 tooltip=[
                     gos.Tooltip(field="position", type="genomic", alt="Position"),  # type: ignore
                     gos.Tooltip(field="value", type="quantitative", alt="Peak value", format=".2"),  # type: ignore
-
                 ],
+                x=gos.X(field="start", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
+                xe=gos.X(field="end", type="genomic"),  # pyright: ignore[reportArgumentType]
+                y=gos.Y(field="value", type="quantitative", axis="right", aggregate="count"),  # pyright: ignore[reportArgumentType]
+            )
+            .properties(
+                width=width,
+                id=f"{prefix}track-{self.ident}",  # Use the file name without extension as the ID
             )
         )
+
+        # If this track has a parent view, the encoding will be determined by the parent.
+        if not is_child:
+            track = track.properties(
+                height=height,
+                title=self.title,
+            )
+
+        return track
+
+class BigInteractSpec(TrackSpec):
+    # This is based on STAR splice-junction output, which is a tab-delimited file with the following columns:
+    # chr, start, end, strand, intron_motif, annotated, unique_reads, multi_reads, max_overhang
+    def get_encoding(self, width, height, prefix="", is_child=False):
+        url = self.data_url
+        color = self.color
+
+        flip = False
+        if hasattr(self, 'gos_flip'):
+            flip = True if self.gos_flip.lower() in ["true", "yes", "1"] else False
+
+        biginteract_data = gos.beddb(
+            url=url,
+            genomicFields=[
+                {"index": 1, "name": "start"},
+                {"index": 2, "name": "end"}
+            ],
+            valueFields=[
+                {"index": 0, "name": "chr", "type": "nominal"},
+                {"index": 3, "name": "strand", "type": "nominal"},
+            ],
+        )
+
+        track = (
+            gos.Track(
+                data=biginteract_data,  # pyright: ignore[reportArgumentType]
+            )
+            .mark_withinLink()
+            .encode(
+                x=gos.X(field="start", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
+                xe=gos.X(field="end", type="genomic"),  # pyright: ignore[reportArgumentType]
+                y=gos.Y(flip=flip),
+                stroke=gos.Stroke(value=color),
+                strokeWidth=gos.StrokeWidth(value=1)
+            ).properties(
+                width=width,
+                id=f"{prefix}track-{self.ident}",  # Use the file name without extension as the ID
+            )
+        )
+
+        if not is_child:
+            track = track.properties(
+                height=height,
+                title=self.title,
+            )
+
         return track
 
 class VcfSpec(TrackSpec):
-    def add_track(self, **kwargs):
+    def get_encoding(self, width, height, prefix="", is_child=False):
         url = self.data_url
         color = self.color
 
@@ -960,25 +1079,30 @@ class VcfSpec(TrackSpec):
         track = (
             gos.Track(
                 data=vcf_data,  # pyright: ignore[reportArgumentType]
-                width=self.width,
-                height=self.height,
-                title=self.title,  # Use the file name as the title
-                id=f"left-track-{self.title}",  # Use the file name without extension as the ID
+
             )
             .mark_point()
             .encode(
                 x=gos.X(field="position", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
                 y=gos.Y(field="value", type="quantitative", axis="right"),  # pyright: ignore[reportArgumentType]
                 color=gos.Color(value=color),
+            ).properties(
+                width=width,
+                id=f"{prefix}track-{self.ident}",  # Use the file name without extension as the ID
             )
         )
+
+        if not is_child:
+            track = track.properties(
+                height=height,
+                title=self.title)
+
         return track
 
 class HiCSpec(TrackSpec):
-    def add_track(self, **kwargs):
+    def get_encoding(self, width, height, prefix="", is_child=False):
         url = self.data_url
         #color = self.color  # colorscale instead of single color
-        position_str = self.position_str
 
         """Accepted HiGlass color ranges (others will not work)
             viridis: interpolateViridis,
@@ -1003,9 +1127,6 @@ class HiCSpec(TrackSpec):
         hic_track = (
             gos.Track(
                 data=hic_data,  # pyright: ignore[reportArgumentType]
-                width=self.width,
-                height=self.width,  # looks best as square aspect ratio
-                title=self.title,  # Use the file name as the title
             )
             .mark_bar()
             .encode(
@@ -1015,20 +1136,21 @@ class HiCSpec(TrackSpec):
                 ye=gos.Ye(field="ye", type="genomic", axis="none"),  # pyright: ignore[reportArgumentType]
                 color=gos.Color(field="value", type="quantitative", range="bupu", legend=True),  # pyright: ignore[reportArgumentType]
                 style=gos.Style(matrixExtent="full"), # pyright: ignore[reportArgumentType]
+            ).properties(
+                width=width,
+                id=f"{prefix}track-{self.ident}",  # Use the file name without extension as the ID
             )
         )
-        if position_str == "NA":
-            return hic_track
 
-        annotation_track = self.add_annotation_track(position_str)
+        if not is_child:
+            hic_track = hic_track.properties(
+                height=height,
+                title=self.title
+                )
 
-        view = gos.overlay(hic_track, annotation_track, width=self.width, height=self.width, id=f"left-track-{self.title}",  # Use the file name without extension as the ID
-)
-        return view
-
+        return hic_track
 
     def add_annotation_track(self, position_str):
-
         _, chrom, start, end = parse_position_str(position_str)
 
         json_data = gos.json(
@@ -1068,6 +1190,84 @@ class HiCSpec(TrackSpec):
 class AssemblySpec:
     pass
 
+
+class ViewSpec(ABC):
+    def __init__(self, title="", zoom=False, ident="", visibility="full"):
+        self.title = title
+        self.ident = ident or title
+        self.zoom = zoom
+        self.visibility = visibility
+        self.width = EXPANDED_WIDTH if zoom else CONDENSED_WIDTH
+        self.height = EXPANDED_HEIGHT if zoom else CONDENSED_HEIGHT
+
+        if self.visibility == "hide":
+            self.height = 0
+        elif self.visibility == "full":
+            self.height *= 1.5
+
+        self.members = [] # List of TrackSpec objects
+
+    def add_member(self, track: TrackSpec):
+        self.members.append(track)
+
+    def clear_members(self):
+        self.members = []
+
+    @abstractmethod
+    def render(self):
+        """Returns the final gosling view (overlay/stack)"""
+        pass
+
+class HiCViewSpec(ViewSpec):
+    def render(self, hic_obj: HiCSpec,  prefix="", position_str="NA"):
+        if self.visibility == "hide":
+            return None
+
+        if hic_obj is None:
+            raise ValueError("HiCViewSpec requires a hic_obj to render.")
+
+        # Use "width" as "height" to maintain square aspect ratio
+        hic_track = hic_obj.get_encoding(width=self.width, height=self.width, is_child=True)
+
+        if position_str == "NA":
+            return hic_track
+
+        annotation_track = hic_obj.add_annotation_track(position_str)
+        view = gos.overlay(hic_track, annotation_track, width=self.width, height=self.width, id=f"{prefix}view-{self.ident}")
+
+        return view
+
+class MultiWigSpec(ViewSpec):
+    """
+    MultiWig is a UCSC Genome Browser container format that holds a collection of BigWig tracks.
+    They will be displayed in an overlay format instead of a stack, so that they can be easily compared to each other.
+    """
+
+    def render(self, prefix=""):
+        if self.visibility == "hide":
+            return None
+
+        # Each child 'encodes' itself, but the MultiWig controls the container properties
+        rendered_members = [
+            m.get_encoding(width=self.width, height=self.height, prefix=prefix, is_child=True)
+            for m in self.members
+        ]
+
+        # for the second track onwards, hide the y-axis
+        for i in range(1, len(rendered_members)):
+            if rendered_members[i] is not None:  # Check if the track was successfully rendered
+                rendered_members[i] = rendered_members[i].properties(
+                    y=gos.Y(field="value", type="quantitative", axis="none", aggregate="count")  # pyright: ignore[reportArgumentType]
+                )
+
+        # We wrap them in the overlay
+        return gos.overlay(*rendered_members).properties(
+            title=self.title,
+            width=self.width,
+            height=self.height,
+            opacity=gos.Opacity(value=0.5), # Better for multi-way overlays,
+            id=f"{prefix}view-{self.ident}"
+        )
 
 #####################
 
@@ -1121,7 +1321,7 @@ class GoslingSpec(Resource):
             return response, 400
 
         # Let's get the coordinates of the gene_symbol.
-        (position_str, new_gene_symbol) = get_gene_info(gene_symbol, dataset_id, assembly)
+        (position_str, new_gene_symbol) = get_gene_info(gene_symbol, assembly)
 
         if new_gene_symbol != "NA":
             gene_symbol = new_gene_symbol
@@ -1131,14 +1331,17 @@ class GoslingSpec(Resource):
         # build left and right track
         # Insert into gos_tracks["left"] at index 0 (and gos_tracks["right"] if zoom)
         gos_tracks["left"].append(build_bed_annotation_tracks(assembly, zoom, "left"))
+        (parent_view_left, hic_found) = build_gosling_tracks(
+            gos_tracks["left"], tracks, zoom=zoom, prefix="left-", position_str=position_str
+        )
+        parent_view_right = None
         if zoom:
             gos_tracks["right"].append(
                 build_bed_annotation_tracks(assembly, zoom, "right")
             )
-
-        (parent_view_left, parent_view_right, hic_found) = build_gosling_tracks(
-            gos_tracks, tracks, zoom=zoom, position_str=position_str
-        )
+            (parent_view_right, _) = build_gosling_tracks(
+                gos_tracks["right"], tracks, zoom=zoom, prefix="right-", position_str=position_str
+            )
 
         # Start building the Gosling spec
         region_view = build_region_view(parent_view_left, parent_view_right)

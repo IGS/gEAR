@@ -15,18 +15,22 @@ Data structure returned:
 
 """
 
-import cgi, json
-import os, sys
+import cgi
+import json
+import os
+import subprocess
+import sys
 
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
+from werkzeug.utils import secure_filename
 
 
 def main():
     print('Content-Type: application/json\n\n')
 
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
+    session_id = form.getfirst('session_id')
 
     result = {'success':0, 'uploads':[], 'message':''}
 
@@ -35,6 +39,7 @@ def main():
         print(json.dumps(result))
         return
 
+    session_id = secure_filename(session_id)
     user_upload_file_base = "../uploads/files/{0}".format(session_id)
 
     # If this directory doesn't exist, there are no uploads in progress
@@ -95,7 +100,7 @@ def main():
 
             if os.path.isfile(tarball_data_file):
                 result['uploads'][-1]['status'] = 'datafile uploaded'
-            result['uploads'][-1]['load_step'] = 'process-dataset'
+                result['uploads'][-1]['load_step'] = 'process-dataset'
 
             # Determine status based on the JSON file
             processing_status_json_file = os.path.join(share_dir, 'status.json')
@@ -109,17 +114,35 @@ def main():
                         result['uploads'][-1]['status'] = 'processing'
                         result['uploads'][-1]['load_step'] = 'process-dataset'
 
-                        # Check if the process is still running
-                        process_id = status_json.get('process_id', -1)
+                        # Check job IDs
+                        job_id = status_json.get('job_id', -1)
+                        if job_id == -1:
+                            # Check if the process is still running
+                            # Legacy implementation
+                            process_id = status_json.get('process_id', -1)
 
-                        if process_id > 0:
-                            # TODO: check that the process is the correct name too
-                            if os.system(f'ps -p {process_id} > /dev/null') != 0:
+                            if process_id == -1:
                                 result['uploads'][-1]['status'] = 'error'
+
+                            sp_result = subprocess.run(
+                                ['ps', '-p', str(process_id)],
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL
+                            )
+                            if sp_result.returncode != 0:
+                                    result['uploads'][-1]['status'] = 'error'
 
                     elif processing_status == 'complete':
                         result['uploads'][-1]['status'] = 'processed'
-                        result['uploads'][-1]['load_step'] = 'finalize-dataset'
+
+                        step_to = "finalize-dataset"
+
+                        # If post-processing stuff needs to be done, go here
+                        if not metadata.get("obs_dtype_reviewed", False):
+                            questionable_obs_columns = metadata.get("questionable_obs_columns", {})
+                            if questionable_obs_columns:
+                                step_to = "post-process-dataset"
+                        result['uploads'][-1]['load_step'] = step_to
 
     result['success'] = 1
     print(json.dumps(result))

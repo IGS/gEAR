@@ -70,18 +70,25 @@ class H5ad(Resource):
         # get a map of all levels for each column
 
         levels = {}
+        truncated_levels = {}  # categorical col -> full category list, when the column
+                                # has more than 50 unique values. Still categorical and
+                                # still usable (e.g. to populate a plain select), just
+                                # not "levels-manageable" (no color/order/filter UI)
         for col in columns:
             try:
-                levels[col] = adata.obs[col].cat.categories.tolist()
+                categories = adata.obs[col].cat.categories.tolist()
 
                 # if there is missing data, add that as a level
-                if adata.obs[col].isnull().sum() > 0 and "NA" not in levels[col]:
-                    levels[col].append("NA")
+                if adata.obs[col].isnull().sum() > 0 and "NA" not in categories:
+                    categories.append("NA")
 
-                # Drop level if it has more than 50 unique values (i.e. barcodes)
-                # Most likely people won't want to filter/sort/plot with them
-                if len(levels[col]) > 50:
-                    del levels[col]
+                # Move level list to "truncated" if it has more than 50 unique values
+                # (i.e. barcodes). Most likely people won't want to filter/sort/plot
+                # with them, but the column is still categorical
+                if len(categories) > 50:
+                    truncated_levels[col] = categories
+                else:
+                    levels[col] = categories
 
             except Exception as e:
                 pass
@@ -93,5 +100,6 @@ class H5ad(Resource):
             "num_obs": adata.n_obs,
             "obs_columns": columns,
             "obs_levels": levels,
+            "obs_levels_truncated": truncated_levels,
             "has_replicates": has_replicates
         }

@@ -25,6 +25,16 @@ Result Storage (Database, File System)
 
 ## Available Consumers
 
+### Anndata Upload Consume
+
+Facilitates uploading of various file formats into Anndata (H5AD) format.
+
+- **Listener**: `listeners/anndata_upload_consumer.py`
+- **Queue**: `anndata_upload_jobs`
+- **Service Template**: `systemd/anndata-upload-consumer@.service`
+- **Service Group**: `systemd/anndata-upload-consumer.target`
+
+
 ### Gosling Upload Consume
 
 Facilitates uploading of track files for the epigenome uploader.
@@ -33,6 +43,15 @@ Facilitates uploading of track files for the epigenome uploader.
 - **Queue**: `trackhub_copy_jobs`
 - **Service Template**: `systemd/gosling-upload-consumer@.service`
 - **Service Group**: `systemd/gosling-upload-consumer.target`
+
+### Spatial Dataset Upload Consumer
+
+Facilitates uploading of spatial transcriptomics datasets (Visium, VisiumHD, Curio, GeoMx, CosMx, Xenium), converting them to a SpatialData object and writing the result as a Zarr store. Kept separate from the Anndata Upload Consumer since spatial uploads produce a different output format (Zarr, not H5AD) and depend on the spatialdata/spatialdata_io stack.
+
+- **Listener**: `listeners/spatial_upload_consumer.py`
+- **Queue**: `spatial_upload_jobs`
+- **Service Template**: `systemd/spatial-upload-consumer@.service`
+- **Service Group**: `systemd/spatial-upload-consumer.target`
 
 ### ProjectR Consumer
 
@@ -50,6 +69,15 @@ More consumers can be added following the same pattern:
 - Analysis pipeline consumer
 - Dataset processing consumer
 - Export generation consumer
+
+### Consumer Group Target
+
+`systemd/gear-consumers.target` groups every consumer's `.target` together, so all of them can be started/stopped/enabled with one command instead of one per consumer.
+
+- **Service Group**: `systemd/gear-consumers.target`
+- **Wants**: `anndata-upload-consumer.target`, `gosling-upload-consumer.target`, `spatial-upload-consumer.target`, `projectr-consumer.target`
+
+Add new consumers to this file's `Wants=` line as they're created.
 
 ## Setup
 
@@ -95,19 +123,29 @@ sudo cp projectr-consumer@.service /etc/systemd/system/
 sudo cp projectr-consumer.target /etc/systemd/system/
 sudo cp gosling-upload-consumer@.service /etc/systemd/system
 sudo cp gosling-upload-consumer.target /etc/systemd/system
+sudo cp anndata-upload-consumer@.service /etc/systemd/system
+sudo cp anndata-upload-consumer.target /etc/systemd/system
+sudo cp spatial-upload-consumer@.service /etc/systemd/system
+sudo cp spatial-upload-consumer.target /etc/systemd/system
+sudo cp gear-consumers.target /etc/systemd/system
+
+### At this point you may need to edit the paths in the .service files, as the ones in the repository are generic
 
 # Reload systemd
 sudo systemctl daemon-reload
 
-# Enable services to start on boot
-sudo systemctl enable projectr-consumer.target gosling-upload-consumer.target
+# Enable services to start on boot (individually...)
+sudo systemctl enable projectr-consumer.target gosling-upload-consumer.target anndata-upload-consumer.target spatial-upload-consumer.target
+
+# ...or all at once via the group target
+sudo systemctl enable gear-consumers.target
 ```
 
 ## Starting Services
 
 ### Using Service Target (Recommended)
 
-Start all consumers in the group:
+Start all consumers in one group:
 
 ```bash
 # Start all ProjectR consumers
@@ -115,6 +153,17 @@ sudo systemctl start projectr-consumer.target gosling-upload-consumer.target
 
 # Check status
 sudo systemctl status projectr-consumer.target gosling-upload-consumer.target
+```
+
+### Starting Every Consumer Group at Once
+
+`gear-consumers.target` wants every individual consumer's `.target`, so one command brings up all consumer groups:
+
+```bash
+sudo systemctl start gear-consumers.target
+
+# Check status of everything it started
+sudo systemctl status gear-consumers.target
 ```
 
 ### Individual Workers
@@ -243,6 +292,23 @@ WantedBy=multi-user.target
 - Start/stop all workers with one command
 - Manage workers as a group
 - Ensure dependencies are met
+
+### Grouping Targets Together
+
+A target's `Wants=` can list other targets, not just services — so one target can manage a group of consumer groups.
+
+**Example**: `gear-consumers.target`
+
+```ini
+[Unit]
+Description=All Upload/Job RabbitMQ Consumer Workers
+Wants=anndata-upload-consumer.target gosling-upload-consumer.target spatial-upload-consumer.target projectr-consumer.target
+
+[Install]
+WantedBy=multi-user.target
+```
+
+`systemctl start gear-consumers.target` starts every listed target, which in turn starts each of their `@1`/`@2`/`@3` worker instances.
 
 ## Writing Custom Consumers
 

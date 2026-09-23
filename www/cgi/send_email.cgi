@@ -125,7 +125,6 @@ def main():
         try:
             # http://stackoverflow.com/a/17596848/2900840
             s = smtplib.SMTP('smtp.gmail.com:587')
-            #s.set_debuglevel(1)
             s.ehlo()
             s.starttls()
             s.login(sender, password)
@@ -133,6 +132,8 @@ def main():
             s.sendmail(sender, email, msg.as_string())
             s.quit()
         except Exception as e:
+            s.set_debuglevel(1)
+            print(f"Detailed SMTP Error: {e}")
             result['error'] = "E-mail delivery failed. Please try again later or contact us."
             result['success'] = 0
     else:

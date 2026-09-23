@@ -10,7 +10,7 @@ import scipy.sparse
 from flask import request
 from flask_restful import Resource
 from gear.mg_plotting import PlotError
-from gear.utils import catch_memory_error
+from gear.utils.resource_limits import catch_memory_error
 from plotly.utils import PlotlyJSONEncoder
 
 from .common import (
@@ -512,6 +512,12 @@ class MGPlotlyData(Resource):
                 subsample_limit = min(subsample_limit, CLUSTER_LIMIT)
             df = df.sample(subsample_limit, random_state=1)
 
+            # Preserve per-observation identity through the melt/pivot below so that
+            # individual samples sharing the same groupby/clusterbar values are not
+            # averaged together (that aggregation should only happen for matrixplots).
+            obs_id_col = "__obs_id__"
+            df[obs_id_col] = df.index.astype(str)
+
             groupby_filters = []
             if primary_col:
                 groupby_filters.append(primary_col)
@@ -539,10 +545,11 @@ class MGPlotlyData(Resource):
 
             id_vars = groupby_filters + clusterbar_fields
             id_vars = list(set(id_vars))
+            melt_id_vars = list(set(id_vars + [obs_id_col]))
 
             # 1) Flatten to long-form
             # 2) Create a gene symbol column by mapping to the Ensembl IDs
-            df = df.melt(id_vars=id_vars)
+            df = df.melt(id_vars=melt_id_vars)
 
             # Add "gene_symbol" as a column, make it categorical to ensure the sort order is preserved when melted
             df["gene_symbol"] = df[var_index].map(ensm_to_gene).astype('category')
@@ -560,6 +567,7 @@ class MGPlotlyData(Resource):
                         'success': -1,
                         'message': "A primary grouping is required for matrixplots. Please update this curation"
                     }
+                df = df.drop(columns=[obs_id_col])
                 groupby = ["gene_symbol"]
                 groupby.extend(groupby_filters)
                 grouped = df.groupby(groupby, observed=True)
@@ -590,6 +598,7 @@ class MGPlotlyData(Resource):
                     , title
                     , hide_obs_labels
                     , hide_gene_labels
+                    , None if matrixplot else obs_id_col
                     )
             except PlotError as pe:
                 return {

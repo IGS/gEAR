@@ -687,6 +687,10 @@ class ZarrAdapter:
     """
 
     def __init__(self, zarr_path: Path):
+        resolved = Path(zarr_path).resolve()
+        allowed_base = (root_dir / "www").resolve()
+        if not resolved.is_relative_to(allowed_base):
+            raise ValueError(f"Zarr path '{zarr_path}' is outside the allowed datasets directory.")
         self.zarr_path = zarr_path
 
     def get_sdata(self) -> "SpatialData":
@@ -709,24 +713,19 @@ class ZarrAdapter:
         """
         Return the primary AnnData object for this analysis.
 
-        This method obtains the SData container via self.get_sdata(), then extracts
-        and returns the AnnData object stored under the "table" key of sdata.tables.
+        This method opens the Zarr file at the specified path
+        and retrieves the AnnData object stored in the "table" key of the SpatialData's tables.
 
         Returns:
             AnnData: The AnnData instance found at sdata.tables["table"].
 
         Raises:
-            AttributeError: If self.get_sdata() is not available or does not return an object
-                with a tables attribute.
-            KeyError: If the "table" key is not present in sdata.tables.
-            TypeError: If the value stored at sdata.tables["table"] is not an AnnData-like object.
+            FileNotFoundError: If the "table" key is not found in the SpatialData's tables at the specified Zarr path.
         """
-        sdata = self.get_sdata()
 
-        # Create AnnData object
-        try:
-            return sdata.tables["table"]
-        except KeyError:
-            raise KeyError("No 'table' found in SpatialData tables")
-        except Exception as e:
-            raise e
+        table_path = self.zarr_path / "tables" / "table"
+        import anndata
+
+        if not table_path.exists():
+            raise FileNotFoundError(f"No 'table' found in SpatialData tables at {table_path}")
+        return anndata.read_zarr(table_path)

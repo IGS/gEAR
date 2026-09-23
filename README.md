@@ -4,22 +4,24 @@
 
 Other things to include:
 
-  - **Technology stack**: The gEAR software is a LAMP stack utilizing Python and MySQL, H5AD for large expression matrix storage, D3 and Plot.ly for data visualization and has embedded [Gosling](https://gosling-lang.github.io/) support to display epigenetic data.
-  - **Status**:  This project has been in production for several years, though is in constant development so bugs certainly exist.
-  - **Production / Demo instances**
-	  - [UMgEAR](https://umgear.org) - Portal for hearing research
-	  - [NeMO Analytics](nemoanalytics.org) - Portal for brain research
+- **Technology stack**: The gEAR software is a LAMP stack utilizing Python and MySQL, H5AD for large expression matrix storage, Plotly and Scanpy for data visualization and has embedded [Gosling](https://gosling-lang.github.io/) support to display epigenetic data.
+- **Status**:  This project has been in production for several years, though is in constant development so bugs certainly exist.
+- **Production / Demo instances**
+  - [UMgEAR](https://umgear.org) - Portal for hearing research
+  - [NeMO Analytics](nemoanalytics.org) - Portal for brain research
+  - [SENgEAR](https://senescence.umgear.org) - Portal for senescent cell research
+  - [Cancer gEAR](https://cancer.umgear.org) - Portal for cancer research
 
 **Screenshot**: Example of home page after searching for a gene:
 
- ![](https://github.com/IGS/gEAR/blob/269f8f971301c15b69c50f3d11ad3441b2d24c78/docs/gear_overview.png)
-
+ ![Overview of gEAR](https://github.com/IGS/gEAR/blob/269f8f971301c15b69c50f3d11ad3441b2d24c78/docs/gear_overview.png)
 
 ## Installation
 
 Setting up your own portal is admittedly a bit of work.  There are a lot of components to the portal and running on a server with at least 16 cores and 100GB+ of RAM is recommended.  The process is documented in the [Developer Documentation](docs/developer/README.md).
 
 For detailed setup instructions, see:
+
 - [Server Setup Guide](docs/developer/setup/README.md) - Complete installation guide
 
 ## Usage
@@ -61,19 +63,15 @@ This repository was hosted private for many years and we have just recently tran
 
 There are a few ways to get help with a gEAR Portal.
 
- - Check the provided [documentation](https://umgear.org/manual.html).
- - Use the contact form at the top of any existing portal.  [Here](https://umgear.org/contact.html), for example.
- - Submit a ticket on the [issue tracker](https://github.com/IGS/gEAR/issues)
-
+- Check the provided [documentation](https://github.com/IGS/gEAR/wiki).
+- Submit a ticket on the [issue tracker](https://github.com/IGS/gEAR/issues)
 
 ## Getting involved
 
 If you'd like to contribute to the gEAR in any form (documentation, bug fixes, new features, etc.) just fork the project and create a pull request. Within the project, we follow this [branching model](https://nvie.com/posts/a-successful-git-branching-model/).
 
-
-----
-
 ## Open source licensing info
+
 The gEAR is distributed under the GNU AFFERO GENERAL PUBLIC LICENSE V3   For more info, see the [LICENSE](LICENSE) document.
 
 [![DOI](https://zenodo.org/badge/289995740.svg)](https://zenodo.org/badge/latestdoi/289995740)

@@ -9,26 +9,30 @@ NOTE: Extra apt install commands are present in the R setup and in the python se
 ```bash
     sudo apt update
     sudo apt upgrade
-    sudo apt install build-essential \  # installs gcc, g++, make
+    sudo apt install build-essential \
         curl \
+        git \
         rsync \
-        vim \   # Shaun Adkins was here
+        vim \
         unzip \
         wget \
         ca-certificates \
-        fonts-roboto \    # Matplotlib font
+        fonts-roboto \
         fontconfig
     sudo fc-cache -f -v    # cache the fonts
 ```
 
 Reboot if there are kernel updates (or just to be safe if you don't know.)
 
-```bash
-    cd && mkdir git
-    sudo apt install git
-    cd git
-    git clone https://github.com/IGS/gEAR.git
-```
+### If VM has Hyperdisks
+
+Doing a git checkout with the Hyperdisk mounted may overwrite the symlinked "datasets" and "uploads" directories.
+
+To fix:
+
+`ln -s  /mnt/disks/datastore/datasets /var/www/datasets`
+`ln -s  /mnt/disks/datastore/uploads /var/www/uploads`
+
 
 ### MYSQL
 
@@ -85,11 +89,15 @@ sudo cp *service /etc/systemd/system/
 
 echo "**IMPORTANT**: For the *service files, correct the <gEAR_path> to point to the gEAR root on this server"
 
-# Start the services
-cd /etc/systemd/system
+# Reload systemd
+sudo systemctl daemon-reload
 
-sudo systemctl enable projectr-consumer.target gosling-upload-consumer.target
-sudo systemctl start projectr-consumer.target gosling-upload-consumer.target
+# Enable services to start on boot
+sudo systemctl enable projectr-consumer.target gosling-upload-consumer.target anndata-upload-consumer.target spatial-upload-consumer.target
+
+# Enable and start the group of consumers at once
+sudo systemctl enable gear-consumers.target
+sudo systemctl start gear-consumers.target
 
 sudo systemctl enable spatial-panel.service
 sudo systemctl start spatial-panel.service

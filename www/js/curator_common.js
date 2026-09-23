@@ -73,6 +73,23 @@ let levels = {};    // categorical columns as keys + groups as values
 const getLevels = () => levels;
 const setLevels = (newLevels) => { levels = newLevels; }
 
+let colorLevels = {};   // categorical columns as keys + color swatches as values
+const getColorLevels = () => colorLevels;
+const setColorLevels = (newColorLevels) => { colorLevels = newColorLevels; }
+
+let truncatedLevels = {};   // categorical columns too high-cardinality to have levels tracked: col name -> category count
+const getTruncatedLevels = () => truncatedLevels;
+const setTruncatedLevels = (newTruncatedLevels) => { truncatedLevels = newTruncatedLevels; }
+
+// Appends a suffix when colName is categorical but too high-cardinality to customize (color/order/filter)
+const decorateTruncatedCatLabel = (colName, label = colName) => {
+    const truncated = getTruncatedLevels();
+    if (Object.prototype.hasOwnProperty.call(truncated, colName)) {
+        return `${label} (${truncated[colName].length} categories, not customizable)`;
+    }
+    return label;
+}
+
 let organismId = null;
 const getOrganismId = () => organismId;
 
@@ -390,8 +407,8 @@ const curatorApiCallsMixin = {
      */
     async fetchH5adInfo(datasetId, analysisId) {
         try {
-            const {obs_columns, obs_levels} = await super.fetchH5adInfo(datasetId, analysisId);
-            return { obs_columns, obs_levels };
+            const {obs_columns, obs_levels, obs_levels_truncated} = await super.fetchH5adInfo(datasetId, analysisId);
+            return { obs_columns, obs_levels, obs_levels_truncated };
         } catch (error) {
             logErrorInConsole(error);
             const msg = "Could not fetch H5AD observation data for this dataset. Please contact the gEAR team."
@@ -468,6 +485,45 @@ const curatorApiCallsMixin = {
 
 }
 Object.setPrototypeOf(curatorApiCallsMixin, apiCallsMixin);
+
+/**
+ * Fetches h5ad obs columns/levels for a dataset+analysis and classifies them into
+ * categorical vs. continuous columns, updating the shared levels/colorLevels/
+ * truncatedLevels/catColumns module state.
+ *
+ * Note: errors from fetchH5adInfo are intentionally not caught here -- callers keep
+ * their own try/catch since error-handling UI differs slightly per caller.
+ *
+ * @param {string} datasetId - The ID of the dataset.
+ * @param {string} analysisId - The ID of the analysis.
+ * @returns {Promise<{allColumns: string[], catColumns: string[]}>} All non-color obs
+ *   columns, and the subset of those that are categorical.
+ */
+const classifyH5adColumns = async (datasetId, analysisId) => {
+    let { obs_columns: allColumns, obs_levels: newLevels, obs_levels_truncated: newTruncatedLevels = {} } = await curatorApiCallsMixin.fetchH5adInfo(datasetId, analysisId);
+
+    // Filter out values we don't want of "levels", like "colors"
+    allColumns = allColumns.filter((col) => !col.includes("_colors"));
+    const colorLevels = {};
+    for (const key in newLevels) {
+        if (key.includes("_colors")) {
+            colorLevels[key] = newLevels[key];
+            delete newLevels[key];
+        }
+    }
+    for (const key in newTruncatedLevels) {
+        if (key.includes("_colors")) {
+            colorLevels[key] = newTruncatedLevels[key];
+            delete newTruncatedLevels[key];
+        }
+    }
+    setLevels(newLevels);
+    setColorLevels(colorLevels);
+    setTruncatedLevels(newTruncatedLevels);
+    setCatColumns([...Object.keys(newLevels), ...Object.keys(newTruncatedLevels)]);
+
+    return { allColumns, catColumns: getCatColumns() };
+};
 
 
 /**
@@ -1306,13 +1362,24 @@ const renderColorPicker = (seriesName) => {
         return;
     }
 
+    if (!levels[seriesName]) {
+        // Categorical but too many unique values to build a color picker for
+        const msg = document.createElement("p");
+        msg.classList.add("has-text-grey");
+        msg.textContent = "This series has too many categories to customize colors.";
+        colorsContainer.append(msg);
+        colorsSection.classList.remove("is-hidden");
+        return;
+    }
+
     const seriesNameElt = document.createElement("p");
     seriesNameElt.classList.add("has-text-weight-bold", "is-underlined");
     seriesNameElt.textContent = seriesName;
     colorsContainer.append(seriesNameElt);
 
     // Otherwise d3 category10 colors
-    const swatchColors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"];
+    const defaultSwatch = ["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"];
+    const swatchColors = colorLevels.hasOwnProperty(`${seriesName}_colors`) ? colorLevels[`${seriesName}_colors`] : defaultSwatch;
 
     let counter = 0;
     for (const group of levels[seriesName]) {
@@ -1396,6 +1463,9 @@ const renderOrderSortableSeries = (series) => {
 
     // If continouous series, cannot sort.
     if (!catColumns.includes(series)) return;
+
+    // Categorical but too many unique values to have a level list to sort
+    if (!levels[series]) return;
 
     // Start with a fresh template
     const orderElt = document.getElementById(`${series}-order`);
@@ -1964,13 +2034,16 @@ registerPageSpecificLoginUIUpdates(handlePageSpecificLoginUIUpdates);
 
 // Barrel export: group all exports under a single object for easier import
 const curatorCommon = {
+    classifyH5adColumns,
     curatorApiCallsMixin,
+    decorateTruncatedCatLabel,
     disableCheckboxLabel,
     getAnalysisId,
     getCatColumns,
     getFacetWidget,
     getLevels,
     getOrganismId,
+    getTruncatedLevels,
     getPlotConfigValueFromClassName,
     getPlotOrderFromSortable,
     getPlotStyle,
@@ -1993,6 +2066,8 @@ const curatorCommon = {
     renderOrderSortableSeries,
     setCatColumns,
     setLevels,
+    setColorLevels,
+    setTruncatedLevels,
     registerChooseGenes,
     setIsMultigene,
     setPlotEltValueFromConfig,

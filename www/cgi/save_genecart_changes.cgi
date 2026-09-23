@@ -36,17 +36,45 @@ def main():
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    gc_id = form.getvalue('gc_id')
-    visibility = int(form.getvalue('visibility'))
-    organism_id = form.getvalue('organism_id')
-    label = form.getvalue('title')
-    ldesc = form.getvalue('ldesc')
+    session_id = form.getfirst('session_id')
+    gc_id = form.getfirst('gc_id')
+    visibility = form.getfirst('visibility')
+    visibility = int(visibility or 0)
+    organism_id = form.getfirst('organism_id')
+    label = form.getfirst('title')
+    ldesc = form.getfirst('ldesc')
+
+    result = {}
+
+
+    if session_id is None:
+        error = "Not able to change gene cart's information. No session id provided."
+        result['error'] = error
+        result['success'] = 0
+
+        print(json.dumps(result))
+        return
 
     user = geardb.get_user_from_session_id(session_id)
+    if user is None:
+        error = "Not able to change gene cart's information. Invalid session id provided."
+        result['error'] = error
+        result['success'] = 0
+
+        print(json.dumps(result))
+        return
+
     gc = geardb.get_gene_cart_by_id(gc_id)
 
-    print("visibility:{0} gc.is_public:{1}".format(visibility, gc.is_public), file=sys.stderr)
+    if gc is None:
+        error = "Not able to change gene cart's information. Invalid gene cart id provided."
+        result['error'] = error
+        result['success'] = 0
+
+        print(json.dumps(result))
+        return
+
+    #print("visibility:{0} gc.is_public:{1}".format(visibility, gc.is_public), file=sys.stderr)
 
     if user.id == gc.user_id:
         # see what has changed and execute updates to the DB
@@ -68,8 +96,6 @@ def main():
         print(json.dumps(result))
 
     else:
-        result = { 'error':[] }
-
         error = "Not able to change gene cart's information. You do not own this cart."
         result['error'] = error
         result['success'] = 0

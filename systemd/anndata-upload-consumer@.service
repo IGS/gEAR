@@ -1,0 +1,24 @@
+[Unit]
+Description= H5AD (Anndata) RabbitMQ Consumer - #%i"
+Documentation=https://github.com/IGS/gEAR/blob/main/docs/setup.rabbitmq.md
+After=rabbitmq-server.service
+# Guard against a tight crash/restart loop (e.g. a worker repeatedly getting OOM-killed).
+# See docs/developer/setup/rabbitmq.md "Preventing runaway memory" for adding a per-VM
+# MemoryMax= override.
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+Environment=APACHE_STARTED_BY_SYSTEMD=true
+ExecStart=/opt/bin/python3 <gear_root>/listeners/anndata_upload_consumer.py
+# Joins the aggregate memory budget shared across all gEAR consumer families -- see
+# systemd/gear-consumers.slice and docs/developer/setup/rabbitmq.md "Preventing runaway memory".
+Slice=gear-consumers.slice
+KillMode=mixed
+PrivateTmp=true
+Restart=always
+RestartSec=2s
+
+[Install]
+WantedBy=multi-user.target

@@ -48,29 +48,34 @@ JSONEncoder.default = _default  # type: ignore
 def _read_site_domain_config():
     """Convert site domain preferences into a dictionary."""
     this_dir = os.path.dirname(os.path.abspath(__file__))
-    with open("{0}/../www/site_domain_prefs.json".format(this_dir)) as json_file:
-        return json.loads(json_file.read())
+    try:
+        with open("{0}/../www/site_domain_prefs.json".format(this_dir)) as json_file:
+            return json.loads(json_file.read())
+    except FileNotFoundError:
+        # Not every deployment (e.g. RabbitMQ consumer containers) mounts the full
+        # www/ tree, so this file may not be present. Fall back to empty prefs.
+        return {}
 
 
 def _read_domain_url():
     json_conf = _read_site_domain_config()
     # Can build a longer URL off of this one
-    return json_conf["domain_url"]
+    return json_conf.get("domain_url")
 
 
 def _read_domain_label():
     json_conf = _read_site_domain_config()
-    return json_conf["domain_label"]
+    return json_conf.get("domain_label")
 
 
 def _read_domain_links_out():
     json_conf = _read_site_domain_config()
-    return json_conf["links_out"]
+    return json_conf.get("links_out")
 
 
 def _read_domain_short_label():
     json_conf = _read_site_domain_config()
-    return json_conf["domain_short_display_label"]
+    return json_conf.get("domain_short_display_label")
 
 
 # For those functional differences we have depending on the site domain
@@ -1126,6 +1131,42 @@ def get_gene_by_gene_symbol(gene_symbol, dataset_id) -> "Gene | None":
     conn.close()
 
     return gene
+
+def add_spatial_panel_curation(dataset_id: str, user: "User", config: dict) -> None:
+    """
+    Adds a spatial_panel display curation for the specified dataset and user.
+    """
+
+    if not user or not user.id:
+        raise ValueError("Valid user with an ID must be provided to add a default spatial curation.")
+
+    # add file to both dataset and dataset_epiviz
+    cnx = Connection()
+    cursor = cnx.get_cursor()
+
+    #  insert into dataset_display
+    dataset_display_sql = """
+        INSERT INTO dataset_display (dataset_id, user_id, label, plot_type, plotly_config)
+        VALUES (%s, %s, %s, %s, %s)
+    """
+
+    # Insert dataset_spatial info to database
+    cursor.execute(dataset_display_sql, (dataset_id, user.id, "Spatial curation", "spatial_panel", json.dumps(config)))
+    cnx.commit()
+
+    #  set preference
+    dataset_preference_sql = """
+        INSERT INTO dataset_preference (user_id, dataset_id, display_id)
+        VALUES (%s, %s, %s)
+    """
+
+    # Insert dataset_epiviz info to database
+    cursor.execute(dataset_preference_sql, (user.id, dataset_id, cursor.lastrowid,))
+    cnx.commit()
+
+    # close connection
+    cursor.close()
+    cnx.close()
 
 def add_gosling_display_curation(dataset_id: str, user: "User", config: dict) -> None:
     """
@@ -2596,11 +2637,15 @@ class Dataset:
             return "{0}x{1}".format(self.gene_count, self.obs_count)
         elif self.dtype == "spatial":
             zarr_file_path = self.get_file_path(session_id=session_id)
+            table_path = "{0}/tables/table".format(zarr_file_path)
 
-            import spatialdata as sd
+            import anndata
+            try:
+                adata = anndata.read_zarr(table_path)
+            except FileNotFoundError:
+                raise FileNotFoundError(f"No 'table' found in SpatialData tables at {table_path}")
 
-            sdata = sd.read_zarr(zarr_file_path)
-            (n_obs, n_vars) = sdata.tables["table"].shape
+            (n_obs, n_vars) = adata.shape
 
             if tuple_only:
                 return (n_obs, n_vars)

@@ -522,6 +522,10 @@
 
   <!--#include virtual="/include/curator_common.html" -->
 
+  <footer>
+        <div id="funding"></div>
+</footer>
+
   <!-- fancy select elements -->
   <script src="https://cdn.jsdelivr.net/npm/nice-select2@2.1.0/dist/js/nice-select2.min.js"></script>
 
@@ -540,8 +544,10 @@
 
   <!-- Page-specific CSS/JS loading here -->
   <script type="module">
-    import { getDomainPreferences, insertVersionedCSS, insertVersionedJS } from './js/common.v2.js';
+    import { getDomainPreferences, insertVersionedCSS, insertVersionedJS, loadDomainFunding } from './js/common.v2.js';
     const prefs = await getDomainPreferences();
+
+    await loadDomainFunding(prefs);
 
     // Load any local JS with cache-busting version parameter
     insertVersionedJS('js/multigene_curator.js', prefs.cache_version);

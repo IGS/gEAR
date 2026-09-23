@@ -1,6 +1,6 @@
 'use strict';
 
-import { apiCallsMixin, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, rebindUrlParam, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
+import { apiCallsMixin, createToast, disableAndHideElement, enableAndShowElement, getCurrentUser, getUrlParameter, initCommonUI, logErrorInConsole, openModal, rebindUrlParam, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
 import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js";
 import { fetchPatternsData, getFlatPatternCartData, getSelectedPattern, populatePatternWeights, registerEventListeners as registerPatternEventListeners, selectPatternWeights, setSelectedPattern } from "../include/pattern-collection-selector/pattern-collection-selector.js";
 import { TileGrid } from "./classes/tilegrid.js";
@@ -341,6 +341,30 @@ const selectPatternWeightResult = async (label) => {
 };
 
 /**
+ * Sets up the algorithm explainer modal tabs, allowing users to switch between different algorithm explanations.
+ * This function adds click event listeners to each tab, enabling the display of the corresponding content pane when a tab is clicked.
+ * It also ensures that only one tab and its associated content pane are active at any given time.
+ * @returns {void}
+ */
+
+const setupAlgoExplainerModalTabs = () => {
+    const tabs = document.querySelectorAll('#algo-explainer-modal .tabs li');
+    const panes = document.querySelectorAll('#algo-explainer-modal .tab-pane');
+
+    for (const tab of tabs) {
+        tab.addEventListener('click', () => {
+            // Remove active status from tabs and hide all panes
+            tabs.forEach(item => item.classList.remove('is-active'));
+            panes.forEach(pane => pane.classList.add('is-hidden'));
+            // Activate clicked tab and target pane
+            tab.classList.add('is-active');
+            const targetId = tab.dataset.tab;
+            document.getElementById(targetId).classList.remove('is-hidden');
+        });
+    };
+}
+
+/**
  * Sets up the tile grid for a given shareId and type.
  *
  * @param {string} shareId - The shareId to set up the tile grid for.
@@ -437,6 +461,8 @@ const validateProjectionSearchForm = () => {
  * @returns {Promise<void>} - A promise that resolves when the UI updates are completed.
  */
 const handlePageSpecificLoginUIUpdates = async (event) => {
+
+    setupAlgoExplainerModalTabs();
 
     // Set the page header title
     document.getElementById('page-header-label').textContent = 'Projection Search';
@@ -600,4 +626,12 @@ document.getElementById('svg-scoring-method').addEventListener('change', (event)
         }
     }
 
+});
+
+// Show modal of upload requirements if clicked
+document.getElementById("algo-explainer").addEventListener("click", (e) => {
+    e.preventDefault();
+    const modalId = e.target.dataset.target;
+    const modalElt = document.getElementById(modalId);
+    openModal(modalElt);
 });

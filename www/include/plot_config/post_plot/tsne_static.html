@@ -20,6 +20,12 @@
     <input class="js-tsne-flip-y" id="flip-y-post" type="checkbox">
 </label>
 
+<p class="is-flex is-justify-content-space-between pr-3 mb-1">
+    <span class="has-text-weight-medium">Enforce equal aspect ratio</span>
+    <input class="js-tsne-enforce-equal-aspect" id="enforce-equal-aspect-post" type="checkbox">
+</p>
+<p class="help">Make the axes square, ensuring equal scaling on both axes for all subplots.</p>
+
 <p class="is-flex is-justify-content-space-between pr-3">
     <span class="has-text-weight-medium">Colorize samples by</span>
     <span class="select is-small">
@@ -34,6 +40,13 @@
     </span>
 </p>
 <p class="help">Split samples into category groups, then create plots per group.</p>
+
+<p class="is-flex is-justify-content-space-between pr-3 mb-1">
+    <span class="has-text-weight-medium">Hide group non-members</span>
+    <input class="js-tsne-hide-group-nonmembers" id="hide-group-nonmembers-post" type="checkbox" disabled>
+</p>
+<p class="help">For each category group, hide data points that are not members of that group.</p>
+
 
 <p class="is-flex is-justify-content-space-between pr-3 mb-1">
     <span class="has-text-weight-medium">Number of subplot columns</span>
@@ -72,12 +85,12 @@
     <input class="js-tsne-reverse-palette" id="reverse-palette-post" type="checkbox">
 </label>
 <label class="content is-flex is-justify-content-space-between pr-3 mb-1 checkbox">
-    <span class="has-text-weight-medium">Check to make non-expression values gray</span>
+    <span class="has-text-weight-medium">Make non-expression values gray</span>
     <input class="js-tsne-make-zero-gray" id="make-zero-gray-post" type="checkbox" checked>
 </label>
 <p class="help">Expression values that have a value of zero will be gray instead of the minimum colorscale color.</p>
 <label class="content is-flex is-justify-content-space-between pr-3 checkbox">
-    <span class="has-text-weight-medium">Check to bring highest and lowest values to front of plot</span>
+    <span class="has-text-weight-medium">Bring highest and lowest values to front of plot</span>
     <input class="js-tsne-two-way-palette" id="two-way-palette-post" type="checkbox">
 </label>
 <label class="content is-flex is-justify-content-space-between pr-3 mb-1 checkbox">

@@ -8,6 +8,7 @@ import gc
 import json
 import os
 import sys
+import time
 import traceback
 from pathlib import Path
 
@@ -16,7 +17,12 @@ gear_root = Path(__file__).resolve().parents[1]
 gear_lib = gear_root / "lib"
 sys.path.insert(0, str(gear_lib))
 
+import gearqueue  # noqa: F401
 from gear.serverconfig import ServerConfig  # noqa: I001
+
+from gear.trackhub import TrackHubProcessor  # noqa: E402
+from gear.utils.job_coordination import log_line  # noqa: E402
+
 
 servercfg = ServerConfig().parse()
 
@@ -29,7 +35,6 @@ user_upload_base = gear_root / 'www' / 'uploads' / 'files'
 
 def _on_request(channel, method_frame, properties, body):
     """Callback to handle new trackhub job message."""
-    from gear.trackhub import TrackHubProcessor  # noqa: E402
 
     delivery_tag = method_frame.delivery_tag
     deserialized_body = json.loads(body)
@@ -43,19 +48,15 @@ def _on_request(channel, method_frame, properties, body):
     dry_run = deserialized_body.get("dry_run", False)
 
     with open(logfile, "a") as fh:
-        print(
-            f"{pid} - [x] - Received request for trackhub job {job_id}",
-            flush=True,
-            file=fh,
-        )
+        log_line(fh, f"{pid} - [x] - Received request for trackhub job {job_id}")
 
         if not user_upload_base.is_dir():
-            print(f"{pid} - ERROR: User upload base directory {user_upload_base} does not exist", flush=True, file=fh)
+            log_line(fh, f"{pid} - ERROR: User upload base directory {user_upload_base} does not exist")
             channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
             return
 
         if not hub_url:
-            print(f"{pid} - ERROR: Hub URL base not configured. Cannot process track hub.", flush=True, file=fh)
+            log_line(fh, f"{pid} - ERROR: Hub URL base not configured. Cannot process track hub.")
             channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
             return
 
@@ -93,12 +94,12 @@ def _on_request(channel, method_frame, properties, body):
             )
 
             result = processor.process(hub_json, assembly, track_stanzas, dry_run)
-            print(f"{pid} - Job {job_id}: {result['message']}", flush=True, file=fh)
+            log_line(fh, f"{pid} - Job {job_id}: {result['message']}")
             channel.basic_ack(delivery_tag=delivery_tag)
 
         except Exception as e:
             traceback.print_exc()
-            print(f"{pid} - Caught error '{str(e)}'", flush=True, file=fh)
+            log_line(fh, f"{pid} - Caught error '{str(e)}'")
             channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
         finally:
             gc.collect()
@@ -110,10 +111,29 @@ class Consumer:
     def __init__(self, host: str) -> None:
         self._reconnect_delay = 0
         self.host = host
+        self._consumer = self._new_connection()
 
-        import gearqueue  # noqa: F401
 
-        self._consumer = gearqueue.AsyncConnection(
+    def run(self) -> None:
+        """Run the consumer with automatic reconnection."""
+        while True:
+            try:
+                self._consumer.run()
+            except KeyboardInterrupt:
+                self._consumer.stop()
+                break
+            except Exception as exc:
+                print(f"{pid} - Consumer loop error: {exc}", flush=True)
+                traceback.print_exc()
+                self._consumer.should_reconnect = True
+
+            if not getattr(self._consumer, "should_reconnect", False):
+                break
+            self._maybe_reconnect()
+
+    def _new_connection(self) -> "gearqueue.AsyncConnection":
+        """Create a new AsyncConnection instance."""
+        return gearqueue.AsyncConnection(
             host=self.host,
             publisher_or_consumer="consumer",
             queue_name=queue_name,
@@ -123,20 +143,8 @@ class Consumer:
             purge_queue=False,
         )
 
-    def run(self) -> None:
-        while True:
-            try:
-                self._consumer.run()
-            except KeyboardInterrupt:
-                self._consumer.stop()
-                break
-            self._maybe_reconnect()
-
     def _maybe_reconnect(self) -> None:
-        import time
-
-        import gearqueue  # noqa: F401
-
+        """Attempt reconnection with exponential backoff."""
         if self._consumer.should_reconnect:
             self._consumer.stop()
             reconnect_delay = self._get_reconnect_delay()
@@ -145,16 +153,10 @@ class Consumer:
                 flush=True,
             )
             time.sleep(reconnect_delay)
-            self._consumer = gearqueue.AsyncConnection(
-                host=self.host,
-                publisher_or_consumer="consumer",
-                queue_name=queue_name,
-                on_message_callback=_on_request,
-                pid=pid,
-                logfile=logfile,
-            )
+            self._consumer = self._new_connection()
 
     def _get_reconnect_delay(self) -> int:
+        """Calculate reconnect delay with exponential backoff."""
         if self._consumer.was_consuming:
             self._reconnect_delay = 0
         else:

@@ -74,8 +74,7 @@ ul#gene-result-list li:last-child {
     border-bottom: 1px solid #e9eef1;
 }
 ul#gene-result-list li.is-selected {
-    /* TODO: Make this a variable */
-    background-color: #483285;
+    background-color: var(--gear-bg-primary);
     color: white;
 }
 ul#go-terms {
@@ -109,6 +108,7 @@ ul#go-terms li {
     display: flex;
     flex-direction: column;
     overflow: visible;
+    min-width: 0; /* allow flex items to shrink below the content's natural width */
 }
 
 #result-panel-grid .js-tile {
@@ -122,6 +122,10 @@ ul#go-terms li {
 
 .js-tile .card-image {
     align-content: center;
+
+    /* Useful for spatial plots that use a min_width to ensure they do not bleed out of the container */
+    overflow-x: auto;
+    overflow-y: auto;
 }
 
 /* tSNE plots */
@@ -134,19 +138,6 @@ ul#go-terms li {
     margin: auto;
     display: block; /* Removes the baseline gap at the bottom */
     object-fit: contain;
-}
-
-/* spatial embeds */
-#result-panel-grid .js-tile .card-image iframe {
-    width: 100%;
-    height: 100%;
-    margin: auto;
-}
-
-#zoomed-panel-grid .js-tile .card-image iframe {
-    width: 100%;
-    height: 1750px;  /* Enough room for the Panel app to be fully displayed without scrolling */
-    margin: auto;
 }
 
 /* This is the main svg image */

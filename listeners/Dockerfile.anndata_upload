@@ -1,0 +1,95 @@
+FROM ubuntu:jammy
+
+ARG PYTHON_MAJOR_VERSION=3.14
+ARG PYTHON_FULL_VERSION=${PYTHON_MAJOR_VERSION}.4
+
+# NOTE: Call in context of the gEAR root directory
+
+# For pybigwig dependency
+ENV PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
+
+WORKDIR /gEAR
+
+ENV LLVM_CONFIG=/usr/bin/llvm-config-14
+
+# Install system dependencies (Ubuntu jammy - matches gear-r-base OS)
+RUN apt -qq update \
+  && DEBIAN_FRONTEND="noninteractive" apt -qq install -y --no-install-recommends \
+  ca-certificates \
+  build-essential \
+  curl \
+  zlib1g-dev \
+  libbz2-dev \
+  liblzma-dev \
+  libdeflate-dev \
+  libglpk-dev \
+  libhdf5-dev \
+  libtirpc-dev \
+  libicu-dev \
+  libffi-dev \
+  libpcre2-dev \
+  libssl3 \
+  libsqlite3-dev \
+  libgfortran5 \
+  libuv1 \
+  pandoc \
+  libgl1 \
+  libice6 \
+  libsm6 \
+  libx11-6 \
+  libxext6 \
+  libxcb1 \
+  libglib2.0-0 \
+  libpng16-16 \
+  libnspr4 \
+  libnss3 \
+  && apt -qq clean autoclean \
+  && apt -qq autoremove -y \
+  && rm -rf /var/lib/apt/lists/*
+
+# Copy compiled Python from builder stage (same source as main Dockerfile)
+COPY --from=adkinsrs/gear-listener-python-base:latest /opt/Python-${PYTHON_FULL_VERSION} /opt/Python-${PYTHON_FULL_VERSION}
+
+# Copy compiled R from r-builder stage
+COPY --from=adkinsrs/gear-r-base:latest /usr/local/lib/R /usr/local/lib/R
+COPY --from=adkinsrs/gear-r-base:latest /usr/local/bin/R /usr/local/bin/R
+COPY --from=adkinsrs/gear-r-base:latest /usr/local/bin/Rscript /usr/local/bin/Rscript
+
+RUN ldconfig
+
+# Link Python and shared library
+RUN mkdir -p /opt/bin \
+  && ln -s /opt/Python-${PYTHON_FULL_VERSION}/bin/python3 /opt/bin/python3 \
+  && ln -s /opt/Python-${PYTHON_FULL_VERSION}/lib/libpython${PYTHON_MAJOR_VERSION}.so.1.0 /usr/lib/
+
+# Tell the system linker about the new Python libs
+RUN echo "/opt/Python-${PYTHON_FULL_VERSION}/lib" > /etc/ld.so.conf.d/python314.conf \
+    && ldconfig
+
+# LD_LIBRARY_PATH needs R library path for rpy2 compatibility and Python library path too
+ENV LD_LIBRARY_PATH="/usr/local/lib/R/lib:/opt/Python-${PYTHON_FULL_VERSION}/lib"
+ENV R_HOME="/usr/local/lib/R"
+ENV PATH="/opt/Python-${PYTHON_FULL_VERSION}/bin:/usr/local/lib/R/bin:${PATH}"
+
+# Force GCC 11 to use a newer C standard to understand R 4.5.2 headers
+ENV CFLAGS="-std=gnu2x"
+
+# Install rpy2 now that R has installed
+RUN /opt/bin/python3 -m pip install rpy2==3.6.7
+
+# Install lib/gear as editable package
+COPY lib/gear ./lib/gear
+COPY lib/setup.py ./lib/
+#RUN /opt/bin/python3 -m pip install -e ./lib/
+
+# Copy consumer script
+RUN mkdir -p listeners
+COPY listeners/anndata_upload_consumer.py ./listeners/
+
+# Ensure log directory exists
+RUN mkdir -p /var/log/gEAR_queue
+
+# Copy gear.ini
+COPY gear.ini ./gear.ini
+
+CMD ["/opt/bin/python3", "listeners/anndata_upload_consumer.py"]

@@ -8,18 +8,28 @@ import gc
 import json
 import os
 import sys
+import time
+import traceback
 from pathlib import Path
 
 gear_root = Path(__file__).resolve().parents[1]
 gear_lib = gear_root / "lib"
 sys.path.insert(0, str(gear_lib))
 
+import gearqueue
 from gear.serverconfig import ServerConfig
+from gear.utils.job_coordination import log_line
 servercfg = ServerConfig().parse()
+
+# TODO: Move code into "lib" and import. Figure out how to cleanly import geardb.
+www_path = str(Path(__file__).resolve().parents[1].joinpath("www"))
+sys.path.append(www_path)
+
+from api.resources.projectr import projectr_callback  # type: ignore # noqa: E402
 
 queue_name = "projectr"
 os.makedirs("/var/log/gEAR_queue", exist_ok=True)
-stream = "/var/log/gEAR_queue/{}.log".format(queue_name)
+logfile = "/var/log/gEAR_queue/{}.log".format(queue_name)
 pid = os.getpid()
 
 # Structure influenced by https://pika.readthedocs.io/en/stable/examples/direct_reply_to.html?direct-reply-to-example
@@ -28,12 +38,6 @@ pid = os.getpid()
 
 def _on_request(channel, method_frame, properties, body):
     """Callback to handle new message. Also replies to original publisher queue."""
-
-    # TODO: Move code into "lib" and import. Figure out how to cleanly import geardb.
-    www_path = str(Path(__file__).resolve().parents[1].joinpath("www"))
-    sys.path.append(www_path)
-
-    from api.resources.projectr import projectr_callback  # type: ignore
 
     delivery_tag = method_frame.delivery_tag
     deserialized_body = json.loads(body)
@@ -46,13 +50,12 @@ def _on_request(channel, method_frame, properties, body):
     zscore = deserialized_body["zscore"]
     full_output = deserialized_body["full_output"]
 
-    with open(stream, "a") as fh:
-        print(
+    with open(logfile, "a") as fh:
+        log_line(
+            fh,
             "{} - [x] - Received request for dataset {} and genecart {}".format(
                 pid, dataset_id, genecart_id
             ),
-            flush=True,
-            file=fh,
         )
 
         try:
@@ -68,10 +71,30 @@ def _on_request(channel, method_frame, properties, body):
                 zscore,
                 full_output,
             )
-            channel.basic_ack(delivery_tag=delivery_tag)
+            if channel.is_open:
+                channel.basic_ack(delivery_tag=delivery_tag)
+            else:
+                # Broker likely closed the channel (e.g. ack deadline exceeded) and already
+                # requeued/redelivered this message elsewhere. Acking here would raise and
+                # escape this except block unhandled, so just log and move on.
+                log_line(
+                    fh,
+                    "{} - Channel already closed, could not ack delivery {}".format(
+                        pid, delivery_tag
+                    ),
+                )
         except Exception as e:
-            print("{} - Caught error '{}'".format(pid, str(e)), flush=True, file=fh)
-            channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
+            log_line(fh, "{} - Caught error '{}'".format(pid, str(e)))
+            try:
+                if channel.is_open:
+                    channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
+            except Exception as nack_err:
+                log_line(
+                    fh,
+                    "{} - Could not nack delivery {}: '{}'".format(
+                        pid, delivery_tag, str(nack_err)
+                    ),
+                )
         finally:
             gc.collect()
 
@@ -88,20 +111,10 @@ class Consumer:
         self._reconnect_delay = 0
         self.host = host
 
-        import gearqueue
-
         # This differences from the example implementation
         # I connect the channel here, instead of the example's "connect" method.
         # I also decouple "start_consuming" out of the callback stack
-        self._consumer = gearqueue.AsyncConnection(
-            host=self.host,
-            publisher_or_consumer="consumer",
-            queue_name=queue_name,
-            on_message_callback=_on_request,
-            pid=pid,
-            logfile=stream,
-            purge_queue=True,  # Purge the queue before starting
-        )
+        self._consumer = self._new_connection()
 
     def run(self) -> None:
         while True:
@@ -111,26 +124,35 @@ class Consumer:
             except KeyboardInterrupt:
                 self._consumer.stop()
                 break
+            except Exception as exc:
+                print(f"{pid} - Consumer loop error: {exc}", flush=True)
+                traceback.print_exc()
+                self._consumer.should_reconnect = True
+
+            if not getattr(self._consumer, "should_reconnect", False):
+                break
             self._maybe_reconnect()
 
+    def _new_connection(self) -> "gearqueue.AsyncConnection":
+        """Create a new AsyncConnection instance."""
+        return gearqueue.AsyncConnection(
+            host=self.host,
+            publisher_or_consumer="consumer",
+            queue_name=queue_name,
+            on_message_callback=_on_request,
+            pid=pid,
+            logfile=logfile,
+            purge_queue=False,
+        )
+
     def _maybe_reconnect(self) -> None:
-        import time
-
-        import gearqueue
-
         if self._consumer.should_reconnect:
             self._consumer.stop()
             reconnect_delay = self._get_reconnect_delay()
             print("{} - Reconnecting after {} seconds".format(pid, reconnect_delay))
             time.sleep(reconnect_delay)
-            self._consumer = gearqueue.AsyncConnection(
-                host=self.host,
-                publisher_or_consumer="consumer",
-                queue_name=queue_name,
-                on_message_callback=_on_request,
-                pid=pid,
-                logfile=stream,
-            )
+            self._consumer = self._new_connection()
+
 
     def _get_reconnect_delay(self) -> int:
         if self._consumer.was_consuming:

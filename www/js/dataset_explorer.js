@@ -1,8 +1,7 @@
 "use strict";
 
-import { apiCallsMixin, closeModal, copyToClipboard, createToast, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
+import { apiCallsMixin, closeModal, copyToClipboard, createToast, escapeHtml, getCurrentUser, getRootUrl, disableAndHideElement, enableAndShowElement, getUrlParameter, initCommonUI, logErrorInConsole, openModal, registerPageSpecificLoginUIUpdates } from "./common.v2.js";
 import { datasetCollectionState, fetchDatasetCollections, registerEventListeners as registerDatasetCollectionEventListeners, setActiveDCCategory, selectDatasetCollection } from "../include/dataset-collection-selector/dataset-collection-selector.js";
-
 
 /* Imported variables
 let datasetCollectionState.data; // from dataset-collection-selector
@@ -502,8 +501,8 @@ class ResultItem {
                 e.currentTarget.classList.add("is-loading");
                 try {
                     // download the h5ad
-                    const datasetId = this.datasetId;
-                    const url = `./cgi/download_source_file.cgi?type=h5ad&share_id=${this.shareId}`;
+                    const safeShareId = encodeURIComponent(String(this.shareId || ""));
+	                const url = `./cgi/download_source_file.cgi?type=h5ad&share_id=${safeShareId}`;
                     const a = document.createElement('a');
                     a.href = url;
                     a.click();
@@ -891,7 +890,7 @@ class ResultItem {
                             </a>
                         </div>
                         <div class='control'>
-                            <input id='dataset-link-name' class='input' type='text' placeholder='permalink' value=${this.shareId}>
+                            <input id='dataset-link-name' class='input' type='text' placeholder='permalink' value=${escapeHtml(this.shareId)}>
                         </div>
                     </div>
                     <div class='field is-grouped' style='width:250px'>
@@ -1915,7 +1914,7 @@ const createRenameCollectionPermalinkPopover = () => {
                         </a>
                     </div>
                     <div class='control'>
-                        <input id='collection-link-name' class='input' type='text' placeholder='permalink' value=${datasetCollectionState.selectedShareId}>
+                        <input id='collection-link-name' class='input' type='text' placeholder='permalink'>
                     </div>
                 </div>
                 <div class='field is-grouped' style='width:250px'>
@@ -1932,6 +1931,11 @@ const createRenameCollectionPermalinkPopover = () => {
 
         // append element to DOM to get its dimensions
         document.body.appendChild(popoverContent);
+
+        const collectionLinkNameInput = document.getElementById('collection-link-name');
+        if (collectionLinkNameInput) {
+            collectionLinkNameInput.value = datasetCollectionState.selectedShareId || "";
+        }
 
         const arrowElement = document.getElementById('arrow');
 
