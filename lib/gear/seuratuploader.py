@@ -1,3 +1,10 @@
+"""
+seuratuploader.py - Convert Seurat RDS objects into gEAR-ready H5AD files.
+
+Uses rpy2 to load a Seurat object in R, convert it to AnnData, map gene symbols
+to Ensembl IDs, and copy reduction coordinates into obs. Can be run as a script.
+"""
+
 import argparse
 import os
 import sys
@@ -14,10 +21,19 @@ from rpy2.robjects.packages import importr
 
 
 def silent_handler(s:str) -> None:
+    """
+    Discard R console output (used as an rpy2 console write callback).
+    """
     # way to bypass the R stderr output
     pass
 
 def argument_parser():
+    """
+    Parse command-line arguments.
+
+    Returns:
+        dict: Parsed arguments with keys 'rds', 'share_id', and 'tax_id'.
+    """
     parser = argparse.ArgumentParser(usage="%(prog)s -r [RDS Object] -s [Share ID]",add_help=True)
     parser.add_argument('-r', '--rds', required=True, type=str)
     parser.add_argument('-s', '--share-id', required=True, type=str)
@@ -27,6 +43,9 @@ def argument_parser():
 
 # TODO: Recently switched to the pak installer for the docker image, should consider switching this too
 def r_package_installer() -> None:
+    """
+    Install the R packages needed for Seurat conversion if they are not already installed.
+    """
     utils = rpackages.importr('utils')
     # Install BiocManager if not installed
     if not rpackages.isinstalled('BiocManager'):
@@ -146,6 +165,19 @@ def openh5ad(h5ad_name):
 
 
 def genes_to_ensembl(adata, taxid=None):
+    """
+    Replace the AnnData var index of gene symbols with Ensembl IDs via MyGene.
+
+    Unmapped genes get placeholder IDs ("Fake0", "Fake1", ...). Original symbols
+    are kept in a "gene_symbol" var column.
+
+    Args:
+        adata (AnnData): AnnData object whose var index holds gene symbols.
+        taxid (str | None): NCBI taxonomy ID of the organism.
+
+    Returns:
+        AnnData | None: The updated AnnData, or None if taxid is not given.
+    """
     if taxid is None:
         return None
 
@@ -165,6 +197,12 @@ def genes_to_ensembl(adata, taxid=None):
 
 
 def reduction_to_metadata(adata):
+    """
+    Copy the first two components of each obsm reduction into obs columns (e.g. "umap_1", "umap_2").
+
+    Raises:
+        ValueError: If the reductions cannot be processed.
+    """
     # Discussion with Carlo and Brian resulted in us determining we would like to
     # take the first 2 values of each reduction
     # PCA in the future, and potentially other reductions may need more
@@ -180,12 +218,18 @@ def reduction_to_metadata(adata):
 
 
 def layer_to_X(adata, layer_name):
+    """
+    Set the AnnData X matrix from the named layer and return the AnnData.
+    """
     # Possibility for Seurat -> Anndata conversion doesn not create the X matrix.
     # Use adata.layers['data'] as X
     adata.X = adata.layers[layer_name]
     return adata
 
 def main():
+    """
+    Convert an RDS file to a gEAR-formatted H5AD file named after the share ID.
+    """
     arguments = argument_parser()
     # Args
     rds_path = arguments['rds']

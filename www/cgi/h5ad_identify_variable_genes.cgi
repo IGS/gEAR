@@ -1,7 +1,11 @@
 #!/opt/bin/python3
 
 """
+h5ad_identify_variable_genes.cgi - Normalize, log-transform and flag highly variable genes for an analysis.
 
+Input: analysis_id, analysis_type, dataset_id, session_id, norm_counts_per_cell, flavor, n_top_genes, min_mean,
+       max_mean, min_dispersion, regress_out, scale_unit_variance, save_dataset (0/1).
+Output: JSON {success, n_obs, n_genes, top_genes}; writes highly-variable-genes PNG.
 """
 
 import cgi

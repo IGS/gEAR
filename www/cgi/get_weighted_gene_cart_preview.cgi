@@ -1,7 +1,10 @@
 #!/opt/bin/python3
 
 """
+get_weighted_gene_cart_preview.cgi - Summarize a weighted gene cart's H5AD file.
 
+Input: share_id (gene cart share ID).
+Output: JSON {success, num_genes, weights: [weight labels], preview_json} or {success: -1, message}.
 """
 
 import cgi

@@ -1,7 +1,11 @@
 #!/opt/bin/python3
 
 """
+save_layout_arrangement.cgi - Save the grid arrangement of displays in a layout (dataset collection).
 
+Input: session_id (required; must own the layout), layout_share_id,
+       layout_arrangement (JSON {single: [...], multi: [...]} with display_id, grid_width, grid_height, start_col, start_row).
+Output: JSON {success, error?}.
 """
 
 import cgi
@@ -74,6 +78,9 @@ def main():
     print(json.dumps(result))
 
 def check_layout_ownership(cursor, current_user_id, layout_id):
+    """
+    Return True if the user owns the given layout.
+    """
     qry = """
        SELECT l.id, l.user_id
        FROM layout l

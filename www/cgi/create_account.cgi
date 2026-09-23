@@ -101,6 +101,9 @@ def main():
 
 
 def user_already_exists(user_email, curs):
+    """
+    Check whether a user account with the given email already exists.
+    """
     is_found = False
 
     qry = "SELECT id FROM guser WHERE email = %s"

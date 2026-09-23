@@ -1,5 +1,13 @@
 #!/opt/bin/python3
 
+"""
+get_dataset_displays.cgi - List saved displays for a dataset.
+
+Input: dataset_id, session_id (optional; enables the user's own displays).
+Output: JSON {user: [displays], owner: [displays]}; owner displays are only filled when
+        the current user is not the dataset owner.
+"""
+
 import cgi, json
 import os, sys
 

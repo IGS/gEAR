@@ -23,10 +23,16 @@ import geardb
 pubmed_cache = {}
 
 def _now():
+    """
+    Return the current UTC datetime.
+    """
     return datetime.now(timezone.utc)
 
 
 def add_to_cache(pubmed_id, data):
+    """
+    Store citation data in the in-memory cache, evicting the oldest entry past 1000.
+    """
     pubmed_cache[pubmed_id] = {
         "data": data,
         "timestamp": _now(),
@@ -42,6 +48,9 @@ def add_to_cache(pubmed_id, data):
 
 
 def get_from_cache(pubmed_id):
+    """
+    Return cached citation data for a PubMed ID, or None if not cached.
+    """
     cached = pubmed_cache.get(pubmed_id)
     if cached is not None:
         return cached["data"]
@@ -53,6 +62,9 @@ last_api_call_time = None
 
 
 def throttle_api_calls():
+    """
+    Sleep as needed so PubMed API calls are at least 0.4 seconds apart.
+    """
     global last_api_call_time
     now = _now()
     if last_api_call_time is not None:
@@ -64,6 +76,9 @@ def throttle_api_calls():
 
 
 def print_json(obj, status=None):
+    """
+    Print a JSON response with an optional HTTP Status header.
+    """
     if status:
         print(f"Status: {status}")
     print("Content-Type: application/json; charset=utf-8")

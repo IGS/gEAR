@@ -149,6 +149,9 @@ def main():
 
 
 def get_help_id(cursor, email):
+    """
+    Return the help_id for the user with the given email, or None.
+    """
     help_id = None
 
     qry = "SELECT help_id FROM guser WHERE email = %s"

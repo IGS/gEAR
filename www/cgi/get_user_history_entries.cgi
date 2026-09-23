@@ -1,7 +1,10 @@
 #!/opt/bin/python3
 
 """
+get_user_history_entries.cgi - Return the user's most recent activity history entries.
 
+Input: session_id, num_entries (default 5).
+Output: JSON list of history entries (empty list if no valid session).
 """
 
 import cgi

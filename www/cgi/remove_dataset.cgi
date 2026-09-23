@@ -68,6 +68,9 @@ def main():
 
 
 def check_dataset_ownership(cursor, current_user_id, dataset_id):
+    """
+    Return True if the user owns the given dataset.
+    """
     qry = """
        SELECT d.id, d.owner_id
        FROM dataset d
@@ -86,6 +89,9 @@ def check_dataset_ownership(cursor, current_user_id, dataset_id):
     return user_owns_dataset
 
 def remove_from_layout_displays(cursor, dataset_id):
+    """
+    Delete layout_displays rows that reference any display of the dataset.
+    """
     # Make unamibiguous by specifying the table to delete from
     qry = """
         DELETE layout_displays FROM layout_displays
@@ -95,6 +101,9 @@ def remove_from_layout_displays(cursor, dataset_id):
     cursor.execute(qry, (dataset_id,))
 
 def remove_from_dataset_shares(cursor, dataset_id):
+    """
+    Delete all dataset_shares rows for the dataset.
+    """
     qry = """
         DELETE FROM dataset_shares
         WHERE dataset_id = %s
@@ -102,6 +111,9 @@ def remove_from_dataset_shares(cursor, dataset_id):
     cursor.execute(qry, (dataset_id,))
 
 def remove_from_dataset(cursor, dataset_id):
+    """
+    Mark the dataset for removal (soft delete).
+    """
     qry = """
         UPDATE dataset
            SET marked_for_removal = 1
@@ -110,6 +122,9 @@ def remove_from_dataset(cursor, dataset_id):
     cursor.execute(qry, (dataset_id,))
 
 def get_user_id_from_session_id(cursor, session_id):
+    """
+    Return the user ID for a session ID, or None if not found.
+    """
     qry = ( "SELECT user_id FROM user_session WHERE session_id = %s" )
     cursor.execute(qry, (session_id, ) )
     user_id = None

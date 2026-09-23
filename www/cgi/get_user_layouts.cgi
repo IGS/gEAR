@@ -62,6 +62,11 @@ sys.path.append(lib_path)
 import geardb
 
 def remove_shared_layouts(result):
+    """
+    Drop shared layouts that already appear in another layout category.
+
+    Mutates result['shared_layouts'] in place.
+    """
     # Collect all share_ids from user, domain, group, and public layouts
     share_ids_to_remove = set()
     for layout_type in ['user', 'domain', 'group', 'public']:

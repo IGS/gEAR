@@ -95,6 +95,9 @@ def main():
 
 
 def check_dataset_ownership(cursor, current_user_id, dataset_id):
+    """
+    Return True if the user owns the given dataset.
+    """
     qry = """
        SELECT d.id, d.owner_id
        FROM dataset d

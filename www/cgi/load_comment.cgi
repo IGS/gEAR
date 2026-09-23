@@ -100,6 +100,9 @@ def main():
 
 
 def get_user_id_from_session_id(cursor, session_id):
+    """
+    Return the user ID for a session ID, or None if not found.
+    """
     qry = ( "SELECT user_id FROM user_session WHERE session_id = %s" )
     cursor.execute(qry, (session_id, ) )
     user_id = None

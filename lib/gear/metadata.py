@@ -1,3 +1,10 @@
+"""
+metadata.py - Dataset metadata reading, validation, and persistence.
+
+Reads dataset metadata (e.g. from the metadata spreadsheet template), optionally
+enriches it with GEO data, validates it, and saves it to MySQL or JSON.
+"""
+
 import json
 import sys
 from io import StringIO

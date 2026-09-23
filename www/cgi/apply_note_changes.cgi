@@ -78,6 +78,9 @@ def main():
     print(json.dumps(result))
 
 def remove_note(cursor, note_id):
+    """
+    Delete a note from the database by ID.
+    """
     qry = """
         DELETE FROM note
         WHERE id = %s
@@ -85,6 +88,13 @@ def remove_note(cursor, note_id):
     cursor.execute(qry, (note_id,))
 
 def check_note_ownership(cursor, note_id, current_user_id):
+    """
+    Check whether a note belongs to the given user.
+
+    Returns:
+        True if the note's user_id matches current_user_id, False otherwise
+        (None if the note does not exist).
+    """
     qry = """
         SELECT user_id
         FROM note
@@ -98,6 +108,9 @@ def check_note_ownership(cursor, note_id, current_user_id):
             return False
 
 def save_changes(cursor, note_id, title, ldesc, is_public):
+    """
+    Update the title, description, and visibility of an existing note.
+    """
     qry = """
        UPDATE note
        SET title = %s, ldesc = %s, is_public = %s, date_last_changed = NOW()
@@ -106,6 +119,9 @@ def save_changes(cursor, note_id, title, ldesc, is_public):
     cursor.execute(qry, (title, ldesc, is_public, note_id,))
 
 def add_new_note(cursor, title, ldesc, current_user_id, dataset_id, is_public):
+    """
+    Insert a new note for a dataset owned by the given user.
+    """
     qry = """
        INSERT INTO note (title, ldesc, user_id, dataset_id, is_public, date_added, date_last_changed)
        VALUES (%s, %s, %s, %s, %s, NOW(), NOW() )
@@ -114,6 +130,12 @@ def add_new_note(cursor, title, ldesc, current_user_id, dataset_id, is_public):
 
 
 def get_user_id_from_session_id(cursor, session_id):
+    """
+    Look up the user ID associated with a session ID.
+
+    Returns:
+        The user ID, or None if the session is not found.
+    """
     qry = ( "SELECT user_id FROM user_session WHERE session_id = %s" )
     cursor.execute(qry, (session_id, ) )
     user_id = None

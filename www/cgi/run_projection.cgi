@@ -1,5 +1,12 @@
 #!/opt/bin/python3
 
+"""
+run_projection.cgi - Unfinished stub for running a pattern projection between datasets.
+
+Input: projection_source, set_of_patterns, source_dataset_id, target_dataset_id.
+Output: JSON {success, error?}. Not functional as written (references an undefined dataset_id).
+"""
+
 import cgi, json
 import sys
 import os

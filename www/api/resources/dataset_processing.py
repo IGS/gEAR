@@ -1,3 +1,10 @@
+"""
+dataset_processing.py - Report the processing status of a dataset upload.
+
+Serves /import/dataset/<share_uid>/status in www/api/api.py for expression,
+spatial, and track hub (Gosling) uploads.
+"""
+
 import json
 import os
 import subprocess

@@ -1,3 +1,10 @@
+"""
+plotting.py - Plotly figure generation for single-gene expression displays.
+
+Builds bar, box, violin, scatter, line and related Plotly Express plots from expression
+dataframes and applies common layout, trace and color settings.
+"""
+
 import sys
 from itertools import cycle, product
 
@@ -944,5 +951,8 @@ def plotly_color_map(names: list[str]) -> dict:
 
 
 def rgb_to_hex(r: str, g: str, b: str) -> str:
+    """
+    Convert red, green and blue components (0-255) to a "#rrggbb" hex color string.
+    """
     hex = "#{:02x}{:02x}{:02x}".format(int(r), int(g), int(b))
     return hex

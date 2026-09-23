@@ -140,6 +140,13 @@ def main():
     print(json.dumps(result, default=lambda o: o.__dict__))
 
 def filter_any_previous(ids, new_carts):
+    """
+    Return carts whose IDs are not already in ids, adding them to ids.
+
+    Args:
+        ids: Set of cart IDs already assigned to a category (mutated in place).
+        new_carts: Candidate carts for the current category.
+    """
     carts = []
 
     for cart in new_carts:

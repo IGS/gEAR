@@ -1,5 +1,13 @@
 #!/opt/bin/python3
 
+"""
+get_event_registration_list.cgi - Report event registration status for the user.
+
+Input: session_id (required), min_event_id, max_event_id.
+Output: JSON {event_id: {attendees, max_attendees, waitlist_size, user_attending,
+        user_waitlisted}}, or {} if no valid session.
+"""
+
 import cgi, json
 import os, sys
 
@@ -55,6 +63,12 @@ def main():
     cnx.close()
     
 def get_event_info(cursor, min_event_id, max_event_id):
+    """
+    Return base info for events with IDs in the given range.
+
+    Returns:
+        Dict keyed by event ID with attendee counters initialized to 0.
+    """
     qry = "SELECT id, label, max_attendees, waitlist_size FROM event WHERE id BETWEEN %s AND %s"
     events = dict()
 

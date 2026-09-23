@@ -1,5 +1,12 @@
 #!/opt/bin/python3
 
+"""
+save_default_display.cgi - Set the user's default display for a dataset (single- or multi-gene).
+
+Input: session_id (required), dataset_id, display_id, is_multigene (0/1).
+Output: JSON {success}. Owner-saved defaults also get a '<dataset>.<single|multi>.default.png' symlink.
+"""
+
 import cgi, json
 import os, sys
 

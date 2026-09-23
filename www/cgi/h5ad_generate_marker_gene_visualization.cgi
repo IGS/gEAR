@@ -1,7 +1,10 @@
 #!/opt/bin/python3
 
 """
+h5ad_generate_marker_gene_visualization.cgi - Plot a dotplot and stacked violin for chosen marker genes.
 
+Input: analysis_id, analysis_type, dataset_id, session_id, marker_genes (JSON list of gene symbols).
+Output: JSON {success}; writes dotplot/stacked-violin 'goi.png' images next to the analysis file.
 """
 
 import cgi

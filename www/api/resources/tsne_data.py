@@ -1,3 +1,10 @@
+"""
+tsne_data.py - Render static embedding (tSNE/UMAP/PCA) plots of gene expression.
+
+Serves /plot/<dataset_id>/tsne (single gene) and /plot/<dataset_id>/mg_tsne
+(multigene) in www/api/api.py.
+"""
+
 import base64
 import io
 import os
@@ -1180,7 +1187,16 @@ def generate_tsne_figure(
 
 
 class MGTSNEData(Resource):
+    """
+    Flask-RESTful resource for multigene embedding plots.
+    """
     def post(self, dataset_id):
+        """
+        Return a base64-encoded embedding plot for multiple genes.
+
+        Main request params: gene_symbols, analysis, projection_id, plot_type,
+        x_axis, y_axis, colorize_legend_by, obs_filters, plus styling options.
+        """
         session_id = request.cookies.get("gear_session_id", "")
         args = multi_gene_parser.parse_args()
 
@@ -1224,7 +1240,16 @@ class MGTSNEData(Resource):
 
 
 class TSNEData(Resource):
+    """
+    Flask-RESTful resource for single-gene embedding plots.
+    """
     def post(self, dataset_id):
+        """
+        Return a base64-encoded embedding plot for one gene.
+
+        Main request params: gene_symbol, analysis, projection_id, plot_type, x_axis,
+        y_axis, colorize_legend_by, plot_by_group, obs_filters, plus styling options.
+        """
         session_id = request.cookies.get("gear_session_id", "")
         args = single_gene_parser.parse_args()
         gene_symbol = args.get("gene_symbol", None)

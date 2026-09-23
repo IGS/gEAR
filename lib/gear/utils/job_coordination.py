@@ -1,5 +1,9 @@
 # job_coordination.py - RabbitMQ consumer job-lock/retry/logging helpers.
 
+"""
+job_coordination.py - RabbitMQ consumer job-lock, retry, and logging helpers.
+"""
+
 import fcntl
 import os
 import typing

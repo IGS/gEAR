@@ -1,5 +1,14 @@
 #!/opt/bin/python3
 
+"""
+get_dataset_comparison.cgi - Compare expression between two conditions of a dataset.
+
+Input: dataset_id, compare_key, condition_x, condition_y, obs_filters (JSON dict of lists),
+       fold_change_cutoff, std_dev_num_cutoff, log_transformation ("2"/"10"), statistical_test.
+Output: JSON {success, x, y, values, fold_changes, gene_ids, symbols, pvals_adj,
+        fold_change_std_dev, compare_key, condition_x, condition_y} or {success: 0, error}.
+"""
+
 import cgi
 import json
 import math
@@ -264,6 +273,11 @@ def main():
     print(json.dumps(result))
 
 def fold_change(x, y):
+    """
+    Compute the fold change between two values (larger over smaller).
+
+    If the smaller value is zero, the larger value is returned instead.
+    """
     if x >= y:
         if y == 0:
             return x
@@ -273,6 +287,12 @@ def fold_change(x, y):
     return y / x
 
 def get_log(val, base):
+    """
+    Return the log of a value in the given base.
+
+    Returns:
+        0 if val is 0, None if the log is undefined (negative val), else the log.
+    """
     if val == 0:
         return 0
     try:
@@ -286,6 +306,9 @@ def intersection(lst1, lst2):
     return list(set(lst1) & set(lst2))
 
 def return_error_response(msg):
+    """
+    Print a JSON error response with the given message and exit.
+    """
     result = dict()
     result['success'] = 0
     result['error'] = msg

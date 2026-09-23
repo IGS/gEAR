@@ -1,5 +1,12 @@
 #!/opt/bin/python3
 
+"""
+get_dataset_info.cgi - Return metadata for a single dataset.
+
+Input: dataset_id, include_shape (optional; include matrix dimensions).
+Output: JSON-serialized Dataset object (as printed by geardb.Dataset).
+"""
+
 import cgi, json
 import os, sys
 

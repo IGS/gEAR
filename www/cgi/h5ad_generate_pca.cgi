@@ -1,7 +1,10 @@
 #!/opt/bin/python3
 
 """
+h5ad_generate_pca.cgi - Compute (optionally) and plot PCA plus the variance-ratio chart for an analysis.
 
+Input: analysis_id, analysis_type, dataset_id, session_id, compute_pca ('true'), genes_to_color (comma-separated, optional).
+Output: JSON {success, missing_gene}; writes PCA and variance-ratio PNGs.
 """
 
 import cgi

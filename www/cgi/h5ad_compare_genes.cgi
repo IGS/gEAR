@@ -1,7 +1,12 @@
 #!/opt/bin/python3
 
 """
+h5ad_compare_genes.cgi - Compare marker genes between a query cluster and a reference cluster (or all others).
 
+Input: analysis_id, analysis_type, dataset_id, session_id, query_cluster, reference_cluster
+       ('all-reference-clusters' allowed), n_genes, method, corr_method, group_labels (JSON list, optional).
+Output: JSON {success, cluster_label, table_json_f, table_json_r, error?}; writes ranked/violin
+        comparison PNGs next to the analysis file.
 """
 
 import cgi

@@ -104,6 +104,9 @@ def main():
 
 
 def validate_layout_share_id(cursor, share_id):
+    """
+    Return True if a layout with this share ID exists.
+    """
     qry = ( "SELECT share_id FROM layout WHERE share_id = %s" )
     cursor.execute(qry, (share_id,))
 
@@ -114,6 +117,9 @@ def validate_layout_share_id(cursor, share_id):
             return False
 
 def validate_share_id(cursor, share_id):
+    """
+    Return True if a dataset with this share ID exists.
+    """
     qry = ( "SELECT share_id FROM dataset WHERE share_id = %s" )
     cursor.execute(qry, (share_id,))
 
@@ -124,6 +130,9 @@ def validate_share_id(cursor, share_id):
             return False
 
 def check_dataset_shares(cursor, share_id, current_user_id):
+    """
+    Return True if the dataset with this share ID has been shared with the user.
+    """
     qry = """
         SELECT d.share_id
         FROM dataset d
@@ -139,6 +148,9 @@ def check_dataset_shares(cursor, share_id, current_user_id):
             return False
 
 def check_dataset_ownership(cursor, current_user_id, dataset_id):
+    """
+    Return True if the user owns the given dataset.
+    """
     qry = """
        SELECT d.id, d.owner_id
        FROM dataset d

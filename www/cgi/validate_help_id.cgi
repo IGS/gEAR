@@ -48,6 +48,9 @@ def main():
 
 
 def validate_help_id(cursor, help_id):
+    """
+    Return the user_name for a help_id, or None if the help_id is invalid.
+    """
     name = None
 
     qry = """

@@ -52,6 +52,9 @@ def main():
     cnx.close()
 
 def get_current_count(cursor, event_id):
+    """
+    Return the number of registrations for an event.
+    """
     qry = """
           SELECT COUNT(er.id)
             FROM event_registration er
@@ -63,6 +66,9 @@ def get_current_count(cursor, event_id):
         return row[0]
 
 def get_event_info(cursor, event_id):
+    """
+    Return a dict of event capacity info (max_attendees, waitlist_size) with zeroed counters.
+    """
     qry = "SELECT label, max_attendees, waitlist_size FROM event WHERE id = %s"
     cursor.execute(qry, (event_id,))
 

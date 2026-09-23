@@ -1,5 +1,9 @@
 # resource_limits.py - Process memory-limit management.
 
+"""
+resource_limits.py - Process memory-limit management.
+"""
+
 import functools
 import os
 import sys

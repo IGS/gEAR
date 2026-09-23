@@ -512,6 +512,19 @@ def ingest_mcool_into_higlass(mcool_path: Path, config: dict, assembly: str) -> 
         raise
 
 def check_higlass_url(config, file_uuid) -> str:
+    """
+    Verify that a file was ingested into HiGlass despite an ingestion timeout.
+
+    Args:
+        config (dict): HiGlass config with hostname and admin credentials.
+        file_uuid (str): Tileset UID to check.
+
+    Returns:
+        str: The tileset_info URL if the tileset exists.
+
+    Raises:
+        Exception: If the tileset cannot be verified.
+    """
     try:
         auth = (config['higlass_admin_user'], config['higlass_admin_pass'])
         check_url = f"{config['higlass_hostname']}/api/v1/tileset_info/?d={file_uuid}"
@@ -671,6 +684,9 @@ class TrackHubProcessor:
         message: str = "",
         track_statuses: Optional[dict] = None,
     ) -> None:
+        """
+        Write the current job status to this processor's status file.
+        """
         write_status(
             self.status_file,
             self.job_id,

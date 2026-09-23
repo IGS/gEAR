@@ -1,7 +1,10 @@
 #!/opt/bin/python3
 
 """
+h5ad_find_marker_genes.cgi - Rank marker genes per cluster (scanpy rank_genes_groups) for an analysis.
 
+Input: analysis_id, analysis_type, dataset_id, session_id, n_genes, compute_marker_genes ('true' to recompute and plot).
+Output: JSON {success, table: {columns, rows}, group_labels: [{group_label, num_cells, genes}], cluster_label}.
 """
 
 import cgi

@@ -1,5 +1,12 @@
 #!/opt/bin/python3
 
+"""
+save_user_default_organism.cgi - Save the user's default organism preference.
+
+Input: session_id (required), default_org_id.
+Output: JSON {success}.
+"""
+
 import cgi, json
 import os, sys
 

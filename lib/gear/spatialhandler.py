@@ -1,3 +1,10 @@
+"""
+spatialhandler.py - Platform-specific handlers for spatial transcriptomics uploads.
+
+Defines the SpatialHandler base class and subclasses (CosMx, Curio, GeoMx, Visium,
+Visium HD, Xenium) that read uploaded files into SpatialData objects.
+"""
+
 import os
 import subprocess
 import tarfile
@@ -1421,6 +1428,20 @@ class VisiumHandler(SpatialHandler):
         return f"{STANDARD_DATASET_ID}_hires_image"
 
     def process_file(self, filepath: str, **kwargs) -> "SpatialHandler":
+        """
+        Reads and processes a Visium spatial data tarball from the given filepath.
+        Extracts the files, loads the Space Ranger output and clusters.csv, sets Ensembl IDs as the var index, and loads into a SpatialData object.
+
+        Args:
+            filepath (str): Path to a .tar or .tar.gz file.
+            **kwargs: Optional "extract_dir" base directory for extraction (default "/tmp/").
+
+        Returns:
+            SpatialHandler: This handler, with self.sdata populated.
+
+        Raises:
+            Exception: If the file is not a tarball or clusters.csv is missing or lacks "Barcode"/"Cluster" columns.
+        """
 
         extract_dir = kwargs.get("extract_dir", '/tmp/')
         extract_dir = os.path.join(extract_dir, 'files')

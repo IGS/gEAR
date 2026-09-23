@@ -1,3 +1,9 @@
+"""
+panel_app.py - Panel app entry point for the condensed spatial viewer.
+
+Serves CondensedSpatialViewer when session arguments are passed, otherwise "OK".
+"""
+
 import logging
 
 import panel as pn

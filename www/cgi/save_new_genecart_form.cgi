@@ -23,6 +23,9 @@ abs_path_www = Path(__file__).resolve().parents[1] # web-root dir
 CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 
 def exit_with_error(msg):
+    """
+    Print a 500 JSON error response with the message and exit.
+    """
     print("Status: 500 Internal Server Error")
     print("Content-Type: application/json\n")
     print(json.dumps({"message": msg}))

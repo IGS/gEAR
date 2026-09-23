@@ -1,5 +1,12 @@
 #!/opt/bin/python3
 
+"""
+delete_dataset_display.cgi - Delete a saved dataset display owned by the user.
+
+Input: id (display ID), session_id (required; must match the display owner).
+Output: JSON {success: true/false}. A missing display is treated as success.
+"""
+
 import cgi, json
 import os, sys
 

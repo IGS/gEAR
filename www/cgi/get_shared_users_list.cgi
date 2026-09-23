@@ -49,6 +49,9 @@ def main():
 
 
 def check_dataset_ownership(cursor, current_user_id, dataset_id):
+    """
+    Check whether the current user owns the given dataset.
+    """
     qry = """
        SELECT d.id, d.owner_id
        FROM dataset d
@@ -66,6 +69,12 @@ def check_dataset_ownership(cursor, current_user_id, dataset_id):
     return user_owns_dataset
 
 def get_shared_dataset_list(cursor, dataset_id):
+    """
+    Return the list of users a dataset has been shared with.
+
+    Returns:
+        List of dicts with dataset_id, user_id, user_name, and is_allowed.
+    """
     qry = """
         SELECT s.dataset_id, s.user_id, g.user_name, s.is_allowed
         FROM dataset_shares s

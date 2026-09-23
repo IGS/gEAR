@@ -1,7 +1,11 @@
 #!/opt/bin/python3
 
 """
+h5ad_generate_tsne.cgi - Compute neighbors/tSNE/UMAP for an analysis and render the requested plots.
 
+Input: analysis_id, analysis_type, dataset_id, session_id, n_pcs, n_neighbors, random_state, genes_to_color,
+       use_scaled, compute_neighbors, compute_tsne, compute_umap, plot_tsne, plot_umap (0/1 flags).
+Output: JSON {success, missing_gene}; writes tSNE/UMAP PNGs.
 """
 
 import cgi

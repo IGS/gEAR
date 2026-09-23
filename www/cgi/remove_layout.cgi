@@ -58,6 +58,9 @@ def main():
 
 
 def check_layout_ownership(cursor, current_user_id, layout_id):
+    """
+    Return True if the user owns the given layout.
+    """
     qry = """
        SELECT l.id, l.user_id
        FROM layout l

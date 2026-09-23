@@ -1,3 +1,9 @@
+"""
+aggregations.py - Count observations per category for a dataset's categorical columns.
+
+Serves /h5ad/<dataset_id>/aggregations in www/api/api.py.
+"""
+
 import typing
 
 import geardb
@@ -43,6 +49,12 @@ class Aggregations(Resource):
     """
 
     def post(self, dataset_id: str) -> dict:
+        """
+        Return per-category observation counts for each categorical obs column.
+
+        Request body keys: analysis_id (optional) and filters (dict of column name to
+        list of selected values).
+        """
         session_id = request.cookies.get("gear_session_id", "")
         args = parser.parse_args()
         analysis_id = args.get("analysis_id", None)

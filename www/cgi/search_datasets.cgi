@@ -317,6 +317,9 @@ def main():
         )
 
 def get_shared_dataset_id_string(user, cursor):
+    """
+    Return dataset IDs shared with the user as a quoted, comma-separated SQL list string.
+    """
     qry = "SELECT dataset_id FROM dataset_shares WHERE is_allowed = 1 AND user_id = %s"
     cursor.execute(qry, [user.id,])
 

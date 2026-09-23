@@ -1,5 +1,12 @@
 #!/opt/bin/python3
 
+"""
+get_h5ad_obs_columns.cgi - List the observation (obs) columns of a dataset's H5AD file.
+
+Input: dataset_id.
+Output: JSON {success, obs_columns: [names, excluding 'replicate']} or {success: 0, error}.
+"""
+
 import cgi
 import json
 import os

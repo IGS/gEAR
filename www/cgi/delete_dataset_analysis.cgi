@@ -1,7 +1,10 @@
 #!/opt/bin/python3
 
 """
+delete_dataset_analysis.cgi - Delete a user's stored (non-primary) analysis directory.
 
+Input: analysis_id, analysis_type, dataset_id, session_id (required; must own the analysis).
+Output: JSON {success: 1} or {success: 0, error}.
 """
 
 import cgi, json

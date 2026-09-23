@@ -3,6 +3,13 @@
 # This script is used to update the share id (permalink)
 # of either a layout, genecart, or dataset.
 
+"""
+update_share_id.cgi - Change the share ID (permalink) of a dataset, layout, or gene cart owned by the user.
+
+Input: session_id (required), share_id, new_share_id, scope ('dataset', 'layout', 'genecart').
+Output: JSON {success, error}. Gene carts also get cart files and projection paths renamed.
+"""
+
 import cgi
 import json
 import os

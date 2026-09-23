@@ -1,3 +1,10 @@
+"""
+track_hub.py - Import uploaded UCSC track hub tracks as a Gosling dataset.
+
+Serves /import/trackhub/<share_uid>/copy in www/api/api.py. Jobs are queued to
+RabbitMQ when enabled, otherwise processed synchronously.
+"""
+
 import configparser
 import json
 import os
@@ -87,7 +94,19 @@ def queue_trackhub_job(job_id: str, share_uid: str, hub_json: dict, assembly: st
 
 
 class TrackHubCopy(Resource):
+    """
+    Flask-RESTful resource that stages and processes an uploaded track hub.
+    """
     def post(self, share_uid):
+        """
+        Save uploaded track files and queue (or run) track hub processing.
+
+        Form keys: hub_json, assembly, tracks (JSON list of track stanzas), dry_run,
+        plus "<track_id>[file]" uploads.
+
+        Returns:
+            tuple: (dict with "success", "message", and "job_id", HTTP status).
+        """
         req_form = request.form
         if req_form is None:
             return {"success": False, "message": "Invalid JSON body"}, 400

@@ -60,6 +60,9 @@ def main():
 
 
 def update_dataset_shares(cursor, dataset_id, user_id, to_share):
+    """
+    Set is_allowed on the dataset_shares row for a dataset/user pair.
+    """
     qry = """
         UPDATE dataset_shares s
         SET s.is_allowed = %s
@@ -68,6 +71,9 @@ def update_dataset_shares(cursor, dataset_id, user_id, to_share):
     cursor.execute(qry, (to_share, dataset_id, user_id,))
 
 def get_shared_dataset_list(cursor, dataset_id, user_id):
+    """
+    Return dataset_shares rows (with user_name) for a dataset/user pair.
+    """
     qry = """
         SELECT s.dataset_id, s.user_id, g.user_name, s.is_allowed
         FROM dataset_shares s
@@ -87,6 +93,9 @@ def get_shared_dataset_list(cursor, dataset_id, user_id):
     return shared_with_list
 
 def check_dataset_ownership(cursor, current_user_id, dataset_id):
+    """
+    Return True if the user owns the given dataset.
+    """
     qry = """
        SELECT d.id, d.owner_id
        FROM dataset d

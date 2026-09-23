@@ -1,3 +1,9 @@
+"""
+available_analysis_tools.py - Report which gEAR analysis tools support a dataset's type.
+
+Serves /h5ad/<share_uid>/availableAnalysisTools in www/api/api.py.
+"""
+
 import geardb
 from flask_restful import Resource
 
@@ -53,6 +59,9 @@ class AvailableAnalysisTools(Resource):
         The available analysis tools for the specified dataset
     """
     def get(self, share_uid):
+        """
+        Return a dict of tool name to boolean availability based on the dataset's dtype.
+        """
         dtype = geardb.get_dtype_by_share_id(share_uid)
         if not dtype:
             return {

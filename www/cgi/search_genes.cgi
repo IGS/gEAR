@@ -94,6 +94,9 @@ def main():
             )
 
 def get_mirna_family_gene_ids(cursor):
+    """
+    Return a dict mapping miRNA family IDs to 'stem-loop' or 'mature'.
+    """
     cached_mirna_ids = {}
 
     qry_stemloop = '''

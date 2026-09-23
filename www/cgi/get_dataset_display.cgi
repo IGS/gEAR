@@ -1,5 +1,12 @@
 #!/opt/bin/python3
 
+"""
+get_dataset_display.cgi - Fetch a single dataset display by its ID.
+
+Input: display_id.
+Output: JSON of the display record (plot type, label, plotly_config, etc.) or null.
+"""
+
 import cgi, json
 import os, sys
 

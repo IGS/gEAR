@@ -1,7 +1,11 @@
 #!/opt/bin/python3
 
 """
+h5ad_qc_by_mito.cgi - QC cells by mitochondrial gene content and optionally filter them.
 
+Input: analysis_id, analysis_type, dataset_id, session_id, genes_prefix (e.g. 'mt-'), filter_mito_perc,
+       filter_mito_count, save_dataset (0/1).
+Output: JSON {success, n_obs?, n_genes?}; writes violin/scatter QC PNGs.
 """
 
 import cgi, json

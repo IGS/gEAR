@@ -1,5 +1,13 @@
 #!/opt/bin/python3
 
+"""
+save_dataset_display.cgi - Create or update a saved dataset display and regenerate its static preview PNG.
+
+Input: id (display_id; omit to insert new), session_id (required), dataset_id, label, plot_type,
+       plotly_config (JSON string), is_local.
+Output: JSON {display_id, success}; writes img/dataset_previews/<dataset_id>.<display_id>.png.
+"""
+
 import cgi
 import json
 import os

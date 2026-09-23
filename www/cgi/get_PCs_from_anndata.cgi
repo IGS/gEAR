@@ -89,12 +89,18 @@ def main():
     print(json.dumps(result))
 
 def make_pc_columns(num_pcs):
+    """
+    Build principal component column labels (PC1..PCn).
+    """
     columns = []
     for i in range(num_pcs):
         columns.append("PC" + str(i + 1))
     return columns
 
 def return_error_response(msg):
+    """
+    Print a JSON error response with the given message.
+    """
     result = dict()
     result['success'] = 0
     result['message'] = msg

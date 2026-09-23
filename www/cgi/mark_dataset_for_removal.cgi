@@ -62,6 +62,9 @@ def main():
 
 
 def check_dataset_ownership(cursor, current_user_id, dataset_id):
+    """
+    Return True if the user owns the given dataset.
+    """
     qry = """
        SELECT d.id, d.owner_id
        FROM dataset d
@@ -80,6 +83,9 @@ def check_dataset_ownership(cursor, current_user_id, dataset_id):
     return user_owns_dataset
 
 def mark_for_removal(cursor, dataset_id):
+    """
+    Flag a dataset as marked_for_removal in the database.
+    """
     qry = """
         UPDATE dataset
         SET marked_for_removal = '1'

@@ -1,3 +1,9 @@
+"""
+plotly_data.py - Generate single-gene Plotly charts for a dataset.
+
+Serves /plot/<dataset_id> and /plot/<dataset_id>/plotly in www/api/api.py.
+"""
+
 import base64
 import copy
 import json
@@ -46,6 +52,16 @@ class PlotlyData(Resource):
     """
 
     def post(self, dataset_id):
+        """
+        Build a single-gene Plotly figure (bar, violin, scatter, line, etc.).
+
+        Main request body keys: gene_symbol, plot_type, x_axis, y_axis, color_name,
+        colors, order, obs_filters, analysis, projection_id, return_image.
+
+        Returns:
+            dict: "success", "message", "plot_json" (or a base64 "image" when
+            return_image is set), and the plot options that were used.
+        """
         session_id = request.cookies.get('gear_session_id')
         req = request.get_json()
         if not req:

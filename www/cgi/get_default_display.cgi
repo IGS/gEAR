@@ -1,5 +1,13 @@
 #!/opt/bin/python3
 
+"""
+get_default_display.cgi - Get the default display ID for a dataset.
+
+Input: dataset_id, session_id (optional), is_multigene (0/1).
+Output: JSON {default_display_id}; falls back to the dataset owner's default when the
+        user has none set.
+"""
+
 import cgi, json
 import os, sys
 

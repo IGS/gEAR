@@ -16,6 +16,9 @@ from gear.analysis import Analysis
 from werkzeug.utils import secure_filename
 
 def download_file(file_path, file_name):
+    """
+    Stream a file to stdout as an attachment download in 8KB chunks.
+    """
     print("Content-type: application/octet-stream")
     print(f"Content-Disposition: attachment; filename={file_name}")
     print()
@@ -30,6 +33,12 @@ def download_file(file_path, file_name):
             sys.stdout.buffer.flush()
 
 def to_file(content, prefix='', suffix=''):
+    """
+    Write string content to a named temporary file.
+
+    Returns:
+        Path to the temporary file (caller is responsible for deleting it).
+    """
     import tempfile
     temp = tempfile.NamedTemporaryFile(delete=False, prefix=prefix, suffix=suffix, mode='w')
     temp.write(content)

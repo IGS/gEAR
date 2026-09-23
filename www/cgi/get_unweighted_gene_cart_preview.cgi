@@ -1,7 +1,10 @@
 #!/opt/bin/python3
 
 """
+get_unweighted_gene_cart_preview.cgi - Preview the genes in an unweighted gene cart.
 
+Input: share_id (gene cart share ID).
+Output: JSON {success, gene_info: {ensembl_id: {gene_symbol, product}}} or {success: 0, message}.
 """
 
 import cgi

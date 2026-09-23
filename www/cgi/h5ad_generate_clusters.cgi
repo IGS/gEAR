@@ -1,7 +1,11 @@
 #!/opt/bin/python3
 
 """
+h5ad_generate_clusters.cgi - Run Leiden (fallback Louvain) clustering and optionally rename/merge/drop clusters.
 
+Input: analysis_id, analysis_type, dataset_id, session_id, resolution, compute_clusters ('true'),
+       cluster_info (JSON list of {old_label, new_label, keep}), plot_tsne, plot_umap (0/1).
+Output: JSON {success, group_labels: [{group_label, num_cells, genes}]}; writes clustering PNGs.
 """
 
 import cgi

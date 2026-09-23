@@ -1,3 +1,10 @@
+"""
+analysis.py - Analysis objects and path helpers for gEAR datasets.
+
+Defines Analysis and SpatialAnalysis, which locate and load the stored data for primary,
+public, user-saved and user-unsaved analyses, plus AnalysisCollection for grouping them.
+"""
+
 import json
 import sys
 import typing
@@ -280,6 +287,9 @@ class Analysis:
 
     @property
     def dataset_path(self) -> Path:
+        """
+        Path to this analysis's H5AD file within its base directory.
+        """
         return self.base_path / f"{self.dataset_id}.h5ad"
 
     def discover_vetting(self, current_user_id: int | None = None):
@@ -411,6 +421,9 @@ class Analysis:
 
     @property
     def marker_gene_json_path(self):
+        """
+        Path (as a string) to this analysis's marker gene table JSON file.
+        """
         return f"{self.base_path}/{self.dataset_id}.marker_gene_table.json"
 
     def _parent_path_by_type(self, atype=None) -> Path:
@@ -454,6 +467,9 @@ class Analysis:
 
     @property
     def primary_path(self) -> Path:
+        """
+        Directory where primary dataset files are stored.
+        """
         return root_dir / "www" / "datasets"
 
     @property
@@ -499,12 +515,27 @@ class SpatialAnalysis(Analysis):
 
     @property
     def dataset_path(self) -> Path:
+        """
+        Path to the dataset file: the .zarr store for primary analyses, otherwise the H5AD file.
+        """
         if self.type == "primary":
             return self.primary_path / f"{self.dataset_id}.zarr"
         else:
             return self.base_path / f"{self.dataset_id}.h5ad"
 
     def determine_platform(self, sdata):
+        """
+        Return the spatial platform name stored in the SpatialData table's uns metadata.
+
+        Args:
+            sdata (SpatialData): Spatial data object with a "table" entry.
+
+        Returns:
+            str: The platform name from ``sdata.tables["table"].uns["platform"]``.
+
+        Raises:
+            ValueError: If no platform information is present.
+        """
         try:
             platform = sdata.tables["table"].uns["platform"]
             return platform
@@ -512,6 +543,9 @@ class SpatialAnalysis(Analysis):
             raise ValueError("No platform information found in the dataset")
 
     def discover_type(self) -> str | None:
+        """
+        Discover the analysis type (see Analysis.discover_type) and set the matching adapter.
+        """
         super().discover_type()
         # This is a good time to set the adapter too
         self.set_adapter()
@@ -557,6 +591,9 @@ class SpatialAnalysis(Analysis):
 
     @property
     def primary_path(self) -> Path:
+        """
+        Directory where primary spatial dataset files are stored.
+        """
         return root_dir / "www" / "datasets" / "spatial"
 
     def set_adapter(self) -> None:
@@ -577,6 +614,9 @@ class SpatialAnalysis(Analysis):
             self.adapter_cls = H5adAdapter
 
 class AnalysisCollection:
+    """
+    Container grouping analyses into public, user-saved and user-unsaved lists.
+    """
     def __init__(self, public=None, user_saved=None, user_unsaved=None):
         self.public = [] if public is None else public
         self.user_saved = [] if user_saved is None else user_saved

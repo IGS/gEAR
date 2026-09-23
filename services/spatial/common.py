@@ -1,3 +1,10 @@
+"""
+common.py - Shared plotting and data helpers for the spatial Panel apps.
+
+Used by panel_common.py to build Datashader/HoloViews spatial, UMAP, and
+violin plots from the CSV and image caches in www/cache/spatial_panel.
+"""
+
 import json
 from pathlib import Path
 import sys
@@ -27,6 +34,9 @@ DEFAULT_PLOT_HEIGHT = 300
 ### Functions
 
 def autohide_toolbar(plot, element):
+    """
+    HoloViews hook that hides the Bokeh toolbar until the plot is hovered.
+    """
     plot.state.toolbar.autohide = True
 
 def fix_colorbar_hook(plot, element):
@@ -428,6 +438,9 @@ def create_datashader_agg(df, x: str, y: str, width:int=DEFAULT_PLOT_WIDTH, heig
     return agg
 
 def create_clusters_df(agg):
+    """
+    Return a dataframe of pixel coordinates and cluster codes present in a Datashader aggregate.
+    """
     agg_df = agg.to_dataframe(name="clusters_cat_codes")
     agg_df = agg_df[agg_df["clusters_cat_codes"]]
     # The columns we want are in the multi-index, so we need to make them into a dataframe
@@ -435,6 +448,9 @@ def create_clusters_df(agg):
     return final_df
 
 def create_expression_df(agg):
+    """
+    Return a dataframe of pixel coordinates and max expression, dropping empty pixels.
+    """
     agg_df = agg.to_dataframe(name="raw_value")
     # Drop missing values
     agg_df = agg_df.dropna()
