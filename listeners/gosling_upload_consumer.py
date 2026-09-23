@@ -21,7 +21,7 @@ import gearqueue  # noqa: F401
 from gear.serverconfig import ServerConfig  # noqa: I001
 
 from gear.trackhub import TrackHubProcessor  # noqa: E402
-from gear.utils import log_line  # noqa: E402
+from gear.utils.job_coordination import log_line  # noqa: E402
 
 
 servercfg = ServerConfig().parse()

@@ -11,7 +11,7 @@ import pandas as pd
 import spatialdata as sd
 import spatialdata_io as sdio
 import xarray
-from gear.utils import update_var_with_ensembl_ids
+from gear.utils.gene_mapping import update_var_with_ensembl_ids
 from spatialdata.transformations import (
     Scale,
     Translation,

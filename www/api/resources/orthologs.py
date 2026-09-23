@@ -9,7 +9,7 @@ from gear.orthology import (
     map_multiple_genes,
     map_single_gene,
 )
-from gear.utils import catch_memory_error
+from gear.utils.resource_limits import catch_memory_error
 
 from .common import get_adata_shadow, get_spatial_adata
 

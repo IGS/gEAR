@@ -20,11 +20,13 @@ from gear.primary_analysis import (
     PrimaryAnalysisProcessingError,
     add_primary_analysis_to_dataset,
 )
-from gear.utils import (
-    flag_ambiguous_obs_columns,
+from gear.utils.gene_mapping import (
     map_gene_symbols_via_mygene,
-    standardize_and_sanitize_obs,
     update_var_with_ensembl_ids,
+)
+from gear.utils.obs import (
+    flag_ambiguous_obs_columns,
+    standardize_and_sanitize_obs,
 )
 from scipy import sparse
 

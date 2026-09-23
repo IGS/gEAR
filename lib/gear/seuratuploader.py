@@ -9,7 +9,7 @@ import rpy2.rinterface_lib.callbacks as r_cbs
 import rpy2.robjects as ro
 import rpy2.robjects.packages as rpackages
 import scanpy
-from gear.utils import map_gene_symbols_via_mygene
+from gear.utils.gene_mapping import map_gene_symbols_via_mygene
 from rpy2.robjects.packages import importr
 
 

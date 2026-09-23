@@ -10,7 +10,7 @@ import scipy.sparse
 from flask import request
 from flask_restful import Resource
 from gear.mg_plotting import PlotError
-from gear.utils import catch_memory_error
+from gear.utils.resource_limits import catch_memory_error
 from plotly.utils import PlotlyJSONEncoder
 
 from .common import (

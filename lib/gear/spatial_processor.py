@@ -13,7 +13,7 @@ from pathlib import Path
 import geardb
 from gear.anndata_processor import write_status
 from gear.spatialhandler import SPATIALTYPE2CLASS
-from gear.utils import (
+from gear.utils.obs import (
     flag_ambiguous_obs_columns,
     standardize_and_sanitize_obs,
 )

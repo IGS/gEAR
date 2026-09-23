@@ -19,7 +19,8 @@ from flask import abort, request
 from flask_restful import Resource, inputs, reqparse
 from gear.analysis import SpatialAnalysis, get_analysis
 from gear.orthology import get_ortholog_file, map_dataframe_genes
-from gear.utils import catch_memory_error, release_lock_file, try_acquire_lock_file
+from gear.utils.job_coordination import release_lock_file, try_acquire_lock_file
+from gear.utils.resource_limits import catch_memory_error
 import google.auth.transport.requests
 import google.oauth2.id_token
 from more_itertools import sliced
