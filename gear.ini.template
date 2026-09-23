@@ -1,6 +1,6 @@
 [database]
 user = gear
-password = gearadmin
+password = [pass]
 host = localhost
 name = gear_portal
 
