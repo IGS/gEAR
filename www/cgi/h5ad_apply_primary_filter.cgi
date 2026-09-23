@@ -36,10 +36,10 @@ sc.settings.verbosity = 0
 
 def main():
     form = cgi.FieldStorage()
-    analysis_id = form.getvalue('analysis_id')
-    analysis_type = form.getvalue('analysis_type')
-    dataset_id = form.getvalue('dataset_id')
-    session_id = form.getvalue('session_id')
+    analysis_id = form.getfirst('analysis_id')
+    analysis_type = form.getfirst('analysis_type')
+    dataset_id = form.getfirst('dataset_id')
+    session_id = form.getfirst('session_id')
     result = {'success': 0, 'n_obs': None, 'n_genes': None}
 
     ds = geardb.get_dataset_by_id(dataset_id)
@@ -81,10 +81,10 @@ def main():
         print(json.dumps(result))
         return
 
-    filter_cells_lt_n_genes = form.getvalue('filter_cells_lt_n_genes')
-    filter_cells_gt_n_genes = form.getvalue('filter_cells_gt_n_genes')
-    filter_genes_lt_n_cells = form.getvalue('filter_genes_lt_n_cells')
-    filter_genes_gt_n_cells = form.getvalue('filter_genes_gt_n_cells')
+    filter_cells_lt_n_genes = form.getfirst('filter_cells_lt_n_genes')
+    filter_cells_gt_n_genes = form.getfirst('filter_cells_gt_n_genes')
+    filter_genes_lt_n_cells = form.getfirst('filter_genes_lt_n_cells')
+    filter_genes_gt_n_cells = form.getfirst('filter_genes_gt_n_cells')
 
     # This step should only be performed on the original dataset.
     # However the filtering will be saved in a temp directory to avoid overwriting the original dataset.

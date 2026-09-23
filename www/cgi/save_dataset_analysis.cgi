@@ -18,13 +18,13 @@ from gear.analysis import Analysis, SpatialAnalysis
 
 def main() -> dict:
     form = cgi.FieldStorage()
-    analysis_id = form.getvalue('analysis_id')
-    analysis_type = form.getvalue('analysis_type')
-    analysis_vetting = form.getvalue('analysis_vetting')
-    dataset_id = form.getvalue('dataset_id')
-    session_id = form.getvalue('session_id')
-    state = form.getvalue('state')
-    label = form.getvalue('label')
+    analysis_id = form.getfirst('analysis_id')
+    analysis_type = form.getfirst('analysis_type')
+    analysis_vetting = form.getfirst('analysis_vetting')
+    dataset_id = form.getfirst('dataset_id')
+    session_id = form.getfirst('session_id')
+    state = form.getfirst('state')
+    label = form.getfirst('label')
     user = geardb.get_user_from_session_id(session_id)
 
     result = {'success': 0, 'error': ""}

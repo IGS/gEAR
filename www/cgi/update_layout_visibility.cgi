@@ -18,8 +18,8 @@ def main():
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    share_id = form.getvalue('layout_share_id')
-    visibility = form.getvalue('visibility')    # 1 for public, 0 for private
+    share_id = form.getfirst('layout_share_id')
+    visibility = form.getfirst('visibility')    # 1 for public, 0 for private
 
     # convert JS string boolean to Python boolean
     if visibility == 'true':

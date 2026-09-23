@@ -14,8 +14,8 @@ CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 
 def main():
     form = cgi.FieldStorage()
-    source_id = form.getvalue('source_id')  # Root of the file name (minus extension)
-    pattern_id = form.getvalue('pattern_id')
+    source_id = form.getfirst('source_id')  # Root of the file name (minus extension)
+    pattern_id = form.getfirst('pattern_id')
 
     print('Content-Type: application/json\n\n')
 

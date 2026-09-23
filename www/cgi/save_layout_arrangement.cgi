@@ -24,9 +24,9 @@ def main():
 
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    layout_share_id = form.getvalue('layout_share_id')
-    layout_arrangement_json = form.getvalue('layout_arrangement')
+    session_id = form.getfirst('session_id')
+    layout_share_id = form.getfirst('layout_share_id')
+    layout_arrangement_json = form.getfirst('layout_arrangement')
 
     user = geardb.get_user_from_session_id(session_id)
 

@@ -19,7 +19,7 @@ def main():
     print('Content-Type: application/json\n\n')
 
     form = cgi.FieldStorage()
-    geo_id = form.getvalue('geo_id')
+    geo_id = form.getfirst('geo_id')
     
     result = { 'success': 0, 'message': '', 'data': {} }
 

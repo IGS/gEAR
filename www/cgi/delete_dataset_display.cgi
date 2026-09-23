@@ -19,8 +19,8 @@ def main():
     sys.stdout = open(os.devnull, 'w')
 
     form = cgi.FieldStorage()
-    display_id = form.getvalue('id')
-    session_id = form.getvalue('session_id')
+    display_id = form.getfirst('id')
+    session_id = form.getfirst('session_id')
 
     # Exit if no display_id or session_id
     if not display_id or not session_id:

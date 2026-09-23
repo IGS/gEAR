@@ -23,8 +23,8 @@ def main():
     
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    layout_share_id = form.getvalue('layout_share_id')
+    session_id = form.getfirst('session_id')
+    layout_share_id = form.getfirst('layout_share_id')
 
     current_user_id = get_user_id_from_session_id(cursor, session_id)
     layout_id = get_layout_id_from_share_id(cursor, layout_share_id)

@@ -35,10 +35,10 @@ def normalize_marker_genes(gene_list, chosen_genes):
 
 def main():
     form = cgi.FieldStorage()
-    analysis_id = form.getvalue('analysis_id')
-    analysis_type = form.getvalue('analysis_type')
-    dataset_id = form.getvalue('dataset_id')
-    session_id = form.getvalue('session_id')
+    analysis_id = form.getfirst('analysis_id')
+    analysis_type = form.getfirst('analysis_type')
+    dataset_id = form.getfirst('dataset_id')
+    session_id = form.getfirst('session_id')
     result = {"success": 0}
 
     ds = geardb.get_dataset_by_id(dataset_id)
@@ -68,7 +68,7 @@ def main():
         print(json.dumps(result))
         return
 
-    marker_genes = json.loads(form.getvalue('marker_genes'))
+    marker_genes = json.loads(form.getfirst('marker_genes'))
 
     # client may send empty string when generating marker
     # gene visualizations more than once

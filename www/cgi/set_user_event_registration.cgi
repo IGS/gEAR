@@ -14,9 +14,9 @@ import geardb
 
 def main():
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    event_id = form.getvalue('event_id')
-    registration_status = int(form.getvalue('registration_status'))
+    session_id = form.getfirst('session_id')
+    event_id = form.getfirst('event_id')
+    registration_status = int(form.getfirst('registration_status'))
     user = geardb.get_user_from_session_id(session_id) if session_id else None
 
     print('Content-Type: application/json\n\n')

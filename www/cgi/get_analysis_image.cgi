@@ -18,10 +18,10 @@ from gear.analysis import get_analysis
 
 def main():
     form = cgi.FieldStorage()
-    analysis_id = form.getvalue('analysis_id')
-    analysis_type = form.getvalue('analysis_type')
-    dataset_id = form.getvalue('dataset_id')
-    session_id = form.getvalue('session_id')
+    analysis_id = form.getfirst('analysis_id')
+    analysis_type = form.getfirst('analysis_type')
+    dataset_id = form.getfirst('dataset_id')
+    session_id = form.getfirst('session_id')
     result = {"success": 0}
 
     ds = geardb.get_dataset_by_id(dataset_id)
@@ -55,7 +55,7 @@ def main():
 
     # this has to be what the scanpy library calls it, since we don't seem to be able to
     #  control it: scanpy GitHub ticket #73
-    analysis_name = form.getvalue('analysis_name')
+    analysis_name = form.getfirst('analysis_name')
 
     data_file_path = ana.dataset_path
     ana_directory = os.path.normpath(os.path.dirname(data_file_path))

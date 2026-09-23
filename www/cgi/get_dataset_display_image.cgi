@@ -19,8 +19,8 @@ def main():
     sys.stdout = open(os.devnull, 'w')
 
     form = cgi.FieldStorage()
-    dataset_id = form.getvalue("dataset_id")
-    display_id = form.getvalue('display_id')
+    dataset_id = form.getfirst("dataset_id")
+    display_id = form.getfirst('display_id')
 
     image_preview_url = os.path.join(WEB_IMAGE_ROOT, "{}.{}.png".format(dataset_id, display_id))
 

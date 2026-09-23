@@ -19,9 +19,9 @@ def main():
 
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    share_id = form.getvalue('share_id')
-    scope = form.getvalue('scope') #'permalink', 'profile', or 'dataset'
+    session_id = form.getfirst('session_id')
+    share_id = form.getfirst('share_id')
+    scope = form.getfirst('scope') #'permalink', 'profile', or 'dataset'
     result = {}
 
     user = geardb.get_user_from_session_id(session_id)

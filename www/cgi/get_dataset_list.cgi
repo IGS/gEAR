@@ -45,18 +45,18 @@ def main():
 
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    scope = form.getvalue('scope')
-    search_terms = form.getvalue('search_terms')
+    session_id = form.getfirst('session_id')
+    scope = form.getfirst('scope')
+    search_terms = form.getfirst('search_terms')
 
     # temporarily dealing with https://github.com/jorvis/gEAR/issues/350
     if search_terms is not None:
         search_terms = search_terms.translate(str.maketrans('','','+-/@'))
 
-    permalink_id = form.getvalue('permalink_share_id')  # dataset permalink
-    only_types_str = form.getvalue('only_types')
-    sort_order = form.getvalue('order')
-    default_domain_label = form.getvalue('default_domain')
+    permalink_id = form.getfirst('permalink_share_id')  # dataset permalink
+    only_types_str = form.getfirst('only_types')
+    sort_order = form.getfirst('order')
+    default_domain_label = form.getfirst('default_domain')
 
     only_types = None
 
@@ -80,8 +80,8 @@ def main():
         print(json.dumps(result))
         return
 
-    if form.getvalue(("layout_share_id")) is not None:
-        layout_share_id = form.getvalue('layout_share_id')
+    if form.getfirst(("layout_share_id")) is not None:
+        layout_share_id = form.getfirst('layout_share_id')
         layouts = geardb.LayoutCollection().get_by_share_id(layout_share_id)
         if len(layouts) > 2:
             raise Exception("More than one layout found with share ID {0}".format(layout_share_id))

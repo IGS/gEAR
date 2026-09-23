@@ -35,18 +35,18 @@ sc.settings.verbosity = 0
 
 def main():
     form = cgi.FieldStorage()
-    analysis_id = form.getvalue('analysis_id')
-    analysis_type = form.getvalue('analysis_type')
-    dataset_id = form.getvalue('dataset_id')
-    session_id = form.getvalue('session_id')
-    query_cluster = form.getvalue('query_cluster')
-    reference_cluster = form.getvalue('reference_cluster')
-    n_genes = int(form.getvalue('n_genes'))
-    method = form.getvalue('method')
-    corr_method = form.getvalue('corr_method')
+    analysis_id = form.getfirst('analysis_id')
+    analysis_type = form.getfirst('analysis_type')
+    dataset_id = form.getfirst('dataset_id')
+    session_id = form.getfirst('session_id')
+    query_cluster = form.getfirst('query_cluster')
+    reference_cluster = form.getfirst('reference_cluster')
+    n_genes = int(form.getfirst('n_genes'))
+    method = form.getfirst('method')
+    corr_method = form.getfirst('corr_method')
 
-    if form.getvalue('group_labels'):
-        group_labels = json.loads(form.getvalue('group_labels'))
+    if form.getfirst('group_labels'):
+        group_labels = json.loads(form.getfirst('group_labels'))
     else:
         group_labels = None
 

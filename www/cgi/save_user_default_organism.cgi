@@ -17,8 +17,8 @@ import mysql.connector
 
 def main():
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    default_org_id = form.getvalue('default_org_id')
+    session_id = form.getfirst('session_id')
+    default_org_id = form.getfirst('default_org_id')
 
     user = geardb.get_user_from_session_id(session_id=session_id)
 

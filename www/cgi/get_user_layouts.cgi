@@ -84,10 +84,10 @@ def main():
     print('Content-Type: application/json\n\n')
 
     form = cgi.FieldStorage()
-    no_domain = form.getvalue('no_domain', 0)
-    session_id = form.getvalue('session_id')
-    layout_share_id = form.getvalue('layout_share_id')
-    include_members = form.getvalue('include_members', 1)
+    no_domain = form.getfirst('no_domain', 0)
+    session_id = form.getfirst('session_id')
+    layout_share_id = form.getfirst('layout_share_id')
+    include_members = form.getfirst('include_members', 1)
     user = geardb.get_user_from_session_id(session_id)
 
     if no_domain:

@@ -21,10 +21,10 @@ def main():
     print('Content-Type: application/json\n\n')
     form = cgi.FieldStorage()
 
-    num_entries = form.getvalue('num_entries', 5)
+    num_entries = form.getfirst('num_entries', 5)
 
     ## add the user
-    user = geardb.get_user_from_session_id(form.getvalue('session_id'))
+    user = geardb.get_user_from_session_id(form.getfirst('session_id'))
     entries = list()
 
     if user is not None:

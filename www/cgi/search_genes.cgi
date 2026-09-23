@@ -19,18 +19,18 @@ MAX_GENE_SEARCH_LIMIT = 100000
 def main():
     form = cgi.FieldStorage()
 
-    user_session_id = form.getvalue('session_id')
+    user_session_id = form.getfirst('session_id')
 
     #print("DEBUG: User session ID: {0}".format(user_session_id), file=sys.stderr)
 
     ## can search for more than one gene symbol, separated by spaces
-    search_gene_symbol = form.getvalue('search_gene_symbol')
+    search_gene_symbol = form.getfirst('search_gene_symbol')
 
     # Turn any commas into spaces
     search_gene_symbol = search_gene_symbol.replace(',', ' ')
 
-    exact_match = form.getvalue('exact_match')
-    is_multi = form.getvalue('is_multi')
+    exact_match = form.getfirst('exact_match')
+    is_multi = form.getfirst('is_multi')
 
     # Get list of gene_ids found in miRNA_family table
     # TODO: refactor these to be on gene name rather than int (if they are)
@@ -69,7 +69,7 @@ def main():
 
     # log the search if user info is available
     user = geardb.get_user_from_session_id(user_session_id)
-    layout_share_id = form.getvalue('layout_share_id')
+    layout_share_id = form.getfirst('layout_share_id')
 
     #print("DEBUG: layout_share_id: {0}".format(layout_share_id), file=sys.stderr)
 

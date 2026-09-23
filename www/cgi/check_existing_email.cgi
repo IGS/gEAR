@@ -25,7 +25,7 @@ def main():
 
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    email_address = form.getvalue('email')
+    email_address = form.getfirst('email')
 
     # remove all whitespace from the email
     email_address = ''.join(email_address.split())

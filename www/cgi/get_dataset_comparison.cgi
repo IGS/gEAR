@@ -35,18 +35,18 @@ sc.settings.verbosity = 0
 
 def main():
     form = cgi.FieldStorage()
-    dataset_id = form.getvalue('dataset_id')
-    filters = form.getvalue('obs_filters', "")    # Dict of lists
+    dataset_id = form.getfirst('dataset_id')
+    filters = form.getfirst('obs_filters', "")    # Dict of lists
 
-    compare_key = form.getvalue('compare_key')
-    x_compare = form.getvalue('condition_x')    # list of conditions
-    y_compare = form.getvalue('condition_y')
-    std_dev_num_cutoff = form.getvalue('std_dev_num_cutoff')
+    compare_key = form.getfirst('compare_key')
+    x_compare = form.getfirst('condition_x')    # list of conditions
+    y_compare = form.getfirst('condition_y')
+    std_dev_num_cutoff = form.getfirst('std_dev_num_cutoff')
     std_dev_num_cutoff = float(std_dev_num_cutoff) if std_dev_num_cutoff else None
-    fold_change_cutoff = form.getvalue('fold_change_cutoff')
+    fold_change_cutoff = form.getfirst('fold_change_cutoff')
     fold_change_cutoff = float(fold_change_cutoff) if fold_change_cutoff else None
-    log_transformation = form.getvalue('log_transformation')
-    statistical_test = form.getvalue('statistical_test')
+    log_transformation = form.getfirst('log_transformation')
+    statistical_test = form.getfirst('statistical_test')
 
     ds = geardb.get_dataset_by_id(dataset_id)
     if not ds:

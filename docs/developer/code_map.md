@@ -112,7 +112,7 @@ Three representative scripts:
 
 Conventions:
 - **Library path.** About 85 CGIs use `sys.path.append(os.path.abspath(os.path.join('..', '..', 'lib')))`. This depends on Apache running CGIs with `www/cgi` as the working directory. About 14 newer scripts use `Path(__file__).resolve().parents[2] / 'lib'` instead.
-- **Parameters.** Almost every script (97) reads form or query parameters with `cgi.FieldStorage()` and `form.getvalue(...)`. Very few read a JSON body from stdin.
+- **Parameters.** Almost every script (97) reads form or query parameters with `cgi.FieldStorage()` and `form.getfirst(...)`, which always returns a single string (unlike `getvalue()`, which returns a list if a parameter is repeated). Very few read a JSON body from stdin.
 - **Session.** No CGI reads cookies. The browser stores the session ID in the `gear_session_id` cookie, and `apiCallsMixin` in `common.v2.js` sends it as a `session_id` form field. CGIs resolve it with `geardb.get_user_from_session_id(session_id)` (45 scripts) or `geardb.get_user_id_from_session_id` (7 scripts). A result of `None` means the user is not logged in.
 - **Output.** Scripts print `Content-Type: application/json` followed by blank lines, then `json.dumps(result)`. Errors usually come back as HTTP 200 with an `error` or `success: 0` field in the JSON body. Only a handful of scripts (6) set a non-200 `Status:` header.
 
@@ -135,8 +135,8 @@ def main():
     print('Content-Type: application/json\n\n')
 
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    layout_share_id = form.getvalue('layout_share_id')
+    session_id = form.getfirst('session_id')
+    layout_share_id = form.getfirst('layout_share_id')
 
     user = geardb.get_user_from_session_id(session_id)
     if user is None:

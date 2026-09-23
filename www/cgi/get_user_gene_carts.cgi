@@ -65,11 +65,11 @@ def main():
     print('Content-Type: application/json\n\n')
 
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    share_id = form.getvalue('share_id')
-    filter_cart_type = form.getvalue('cart_type', None)
-    group_by_type = form.getvalue("group_by_type", False)
-    include_members = form.getvalue("include_members", 1)
+    session_id = form.getfirst('session_id')
+    share_id = form.getfirst('share_id')
+    filter_cart_type = form.getfirst('cart_type', None)
+    group_by_type = form.getfirst("group_by_type", False)
+    include_members = form.getfirst("include_members", 1)
     current_user = geardb.get_user_from_session_id(session_id)
 
     result = { 'domain_carts':[], 'group_carts':[], 'public_carts':[],

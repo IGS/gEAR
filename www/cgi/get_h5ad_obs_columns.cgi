@@ -30,7 +30,7 @@ def main():
     result = { 'success': 0 }
 
     form = cgi.FieldStorage()
-    dataset_id = form.getvalue('dataset_id')
+    dataset_id = form.getfirst('dataset_id')
     ds = geardb.Dataset(id=dataset_id, has_h5ad=1)
     h5_path = ds.get_file_path()
 

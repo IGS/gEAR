@@ -21,7 +21,7 @@ def main():
     print('Content-Type: application/json\n\n')
 
     form = cgi.FieldStorage()
-    share_id = form.getvalue('share_id')
+    share_id = form.getfirst('share_id')
     valid_chars = "%s%s" % (string.ascii_letters, string.digits)
     share_id = ''.join(c for c in share_id if c in valid_chars)
 

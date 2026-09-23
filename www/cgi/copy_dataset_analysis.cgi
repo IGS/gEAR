@@ -37,12 +37,12 @@ from gear.analysis import get_analysis, Analysis
 
 def main():
     form = cgi.FieldStorage()
-    source_analysis_id = form.getvalue('source_analysis_id')
-    dest_analysis_id = form.getvalue('dest_analysis_id')
-    source_analysis_type = form.getvalue('source_analysis_type')
-    dest_analysis_type = form.getvalue('dest_analysis_type')
-    dataset_id = form.getvalue('dataset_id')
-    session_id = form.getvalue('session_id')
+    source_analysis_id = form.getfirst('source_analysis_id')
+    dest_analysis_id = form.getfirst('dest_analysis_id')
+    source_analysis_type = form.getfirst('source_analysis_type')
+    dest_analysis_type = form.getfirst('dest_analysis_type')
+    dataset_id = form.getfirst('dataset_id')
+    session_id = form.getfirst('session_id')
 
     result = {"success": 0, "error": ""}
 

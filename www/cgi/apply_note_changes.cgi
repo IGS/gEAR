@@ -28,13 +28,13 @@ def main():
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    title = form.getvalue('title')
-    ldesc = form.getvalue('ldesc')
-    dataset_id = form.getvalue('dataset_id') # 'None' if scope='edit'
-    is_public = form.getvalue('access_level')
-    scope = form.getvalue('scope') # 'new', 'edit', or 'remove'
-    note_id = form.getvalue('note_id') #if scope = 'edit', this is contains the note_id
+    session_id = form.getfirst('session_id')
+    title = form.getfirst('title')
+    ldesc = form.getfirst('ldesc')
+    dataset_id = form.getfirst('dataset_id') # 'None' if scope='edit'
+    is_public = form.getfirst('access_level')
+    scope = form.getfirst('scope') # 'new', 'edit', or 'remove'
+    note_id = form.getfirst('note_id') #if scope = 'edit', this is contains the note_id
 
     current_user_id = get_user_id_from_session_id(cursor, session_id)
 

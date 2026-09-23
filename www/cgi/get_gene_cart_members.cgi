@@ -25,9 +25,9 @@ def main():
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
+    session_id = form.getfirst('session_id')
     user = geardb.get_user_from_session_id(session_id)
-    gene_cart_share_id = form.getvalue('share_id')
+    gene_cart_share_id = form.getfirst('share_id')
     result = { 'gene_symbols':[], 'success': 0 }
 
     if not gene_cart_share_id:

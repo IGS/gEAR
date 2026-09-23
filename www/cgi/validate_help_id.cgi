@@ -20,7 +20,7 @@ def main():
 
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    help_id = form.getvalue('help_id')
+    help_id = form.getfirst('help_id')
     print(help_id, file=sys.stderr)
     result = {}
 

@@ -19,8 +19,8 @@ def main():
     sys.stdout = open(os.devnull, 'w')
 
     form = cgi.FieldStorage()
-    dataset_id = form.getvalue('dataset_id')
-    include_shape = form.getvalue('include_shape')
+    dataset_id = form.getfirst('dataset_id')
+    include_shape = form.getfirst('include_shape')
 
     ds = geardb.get_dataset_by_id(d_id=dataset_id, include_shape=include_shape)
 

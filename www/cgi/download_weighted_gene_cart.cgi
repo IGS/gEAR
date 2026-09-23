@@ -22,7 +22,7 @@ CARTS_BASE_DIR = abs_path_www.joinpath("carts")
 def main():
 
     form = cgi.FieldStorage()
-    share_id = form.getvalue('share_id')
+    share_id = form.getfirst('share_id')
     share_id = secure_filename(share_id)
 
     if not share_id:

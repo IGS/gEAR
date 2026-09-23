@@ -46,10 +46,10 @@ def normalize_genes_to_color(gene_list, chosen_genes):
 
 def main():
     form = cgi.FieldStorage()
-    analysis_id = form.getvalue('analysis_id')
-    analysis_type = form.getvalue('analysis_type')
-    dataset_id = form.getvalue('dataset_id')
-    session_id = form.getvalue('session_id')
+    analysis_id = form.getfirst('analysis_id')
+    analysis_type = form.getfirst('analysis_type')
+    dataset_id = form.getfirst('dataset_id')
+    session_id = form.getfirst('session_id')
 
     result = {"success": 0}
 
@@ -80,8 +80,8 @@ def main():
         print(json.dumps(result))
         return
 
-    genes_to_color = form.getvalue('genes_to_color')
-    compute_pca = form.getvalue('compute_pca')
+    genes_to_color = form.getfirst('genes_to_color')
+    compute_pca = form.getfirst('compute_pca')
 
     if genes_to_color:
         genes_to_color = genes_to_color.rstrip().replace(' ', '')

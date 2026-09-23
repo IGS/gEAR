@@ -19,7 +19,7 @@ def main():
     sys.stdout = open(os.devnull, 'w')
 
     form = cgi.FieldStorage()
-    display_id = form.getvalue('display_id')
+    display_id = form.getfirst('display_id')
 
     display = geardb.get_display_by_id(display_id=display_id)
 

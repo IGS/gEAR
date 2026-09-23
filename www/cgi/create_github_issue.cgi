@@ -35,14 +35,14 @@ def main():
     result = {'error': [], 'success': 0 }
 
     form = cgi.FieldStorage()
-    firstname = form.getvalue('submitter_firstname')
-    lastname = form.getvalue('submitter_lastname')
-    email = form.getvalue('submitter_email')
-    title = form.getvalue('comment_title')
-    comment = form.getvalue('comment')
-    tag = form.getvalue('comment_tag')
-    screenshot = form.getvalue('screenshot', None)
-    private = form.getvalue('private_check')
+    firstname = form.getfirst('submitter_firstname')
+    lastname = form.getfirst('submitter_lastname')
+    email = form.getfirst('submitter_email')
+    title = form.getfirst('comment_title')
+    comment = form.getfirst('comment')
+    tag = form.getfirst('comment_tag')
+    screenshot = form.getfirst('screenshot', None)
+    private = form.getfirst('private_check')
 
     if not tag:
         tag = ''

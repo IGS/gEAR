@@ -44,13 +44,13 @@ def main():
     result = { 'success': 0 }
 
     form = cgi.FieldStorage()
-    dataset_id = form.getvalue('dataset_id')
-    gene_symbol = form.getvalue('gene_symbol')
-    session_id = form.getvalue('session_id')
-    group_by = form.getvalue('group_by')
+    dataset_id = form.getfirst('dataset_id')
+    gene_symbol = form.getfirst('gene_symbol')
+    session_id = form.getfirst('session_id')
+    group_by = form.getfirst('group_by')
     if group_by:
         group_by = json.loads(group_by)
-    colors = form.getvalue('colors')
+    colors = form.getfirst('colors')
 
     if colors:
         colors = json.loads(colors)

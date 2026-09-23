@@ -20,8 +20,8 @@ def main():
     sys.stdout = open(os.devnull, 'w')
 
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    dataset_id = form.getvalue('dataset_id')
+    session_id = form.getfirst('session_id')
+    dataset_id = form.getfirst('dataset_id')
 
     user = geardb.get_user_from_session_id(session_id=session_id)
 

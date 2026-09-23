@@ -22,10 +22,10 @@ def main():
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    dataset_id = form.getvalue('dataset_id')
+    session_id = form.getfirst('session_id')
+    dataset_id = form.getfirst('dataset_id')
     print(form)
-    to_share = int(form.getvalue('to_share'))   # 1 = share, 0 = unshare
+    to_share = int(form.getfirst('to_share'))   # 1 = share, 0 = unshare
 
     user = geardb.get_user_from_session_id(session_id=session_id)
     user_id = user.id

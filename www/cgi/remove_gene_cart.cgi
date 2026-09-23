@@ -31,8 +31,8 @@ def main():
     cnx = geardb.Connection()
     cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    share_id = form.getvalue('share_id')
+    session_id = form.getfirst('session_id')
+    share_id = form.getfirst('share_id')
 
     current_user_id = get_user_id_from_session_id(cursor, session_id)
 

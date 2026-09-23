@@ -17,9 +17,9 @@ import geardb
 
 def main():
     form = cgi.FieldStorage()
-    session_id = form.getvalue('session_id')
-    min_event_id = form.getvalue('min_event_id')
-    max_event_id = form.getvalue('max_event_id')
+    session_id = form.getfirst('session_id')
+    min_event_id = form.getfirst('min_event_id')
+    max_event_id = form.getfirst('max_event_id')
     user = geardb.get_user_from_session_id(session_id) if session_id else None
 
     print('Content-Type: application/json\n\n')
