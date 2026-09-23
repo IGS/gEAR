@@ -2,6 +2,7 @@
     "domain_label": "gear",
     "domain_short_display_label": "gEAR",
     "domain_tagline": "gene Expression Analysis Resource",
+    "default_demo_gene": "Sox2",
     "citations": [
         {
             "lines": [
