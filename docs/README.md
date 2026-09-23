@@ -4,7 +4,7 @@ Welcome to the gEAR documentation. This index will help you find the right docum
 
 ## For End Users
 
-**gEAR User Documentation** → [GitHub Wiki](https://github.com/IGS/gEAR/wiki) or visit any gEAR portal's [manual page](https://umgear.org/manual.html)
+**gEAR User Documentation** → [GitHub Wiki](https://github.com/IGS/gEAR/wiki) (source in [`wiki/`](wiki/gEARWiki.md)). Video guides are on each portal's home page (My Workspace).
 
 Topics covered:
 
@@ -121,7 +121,7 @@ Docs that used to live directly in `docs/` (and component READMEs such as `docke
 
 ### "I'm a gEAR user looking for help"
 
-→ Visit the [GitHub Wiki](https://github.com/IGS/gEAR/wiki) or [UMgEAR manual](https://umgear.org/manual.html)
+→ Visit the [GitHub Wiki](https://github.com/IGS/gEAR/wiki) or the video guides on the [UMgEAR home page](https://umgear.org)
 
 ## Contributing to Documentation
 

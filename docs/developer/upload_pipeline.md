@@ -123,7 +123,7 @@ Older uploads may carry a `process_id` instead of a `job_id`. Both status endpoi
 
 | Module | Role in the pipeline |
 | --- | --- |
-| `lib/gear/anndata_processor.py` | `AnndataProcessor.process()` dispatches on `dataset_format`. **`h5ad`:** reads in backed mode, sanitizes `obs`, maps Ensembl IDs if `var` has no `gene_symbol`, and rewrites with gzip. **`mex_3tab`:** extracts `<share_uid>.tar.gz` or `.zip`, then uses `package_content_type()` to detect 3-tab (`expression.tab`/`genes.tab`/`observations.tab`, or the NeMO names `DataMTX.tab`/`ROWmeta.tab`/`COLmeta.tab`) or MEX (`matrix.mtx`/`barcodes.tsv`/`genes.tsv`). **`excel`:** reads sheets `expression`, `observations` and `genes`. **`rds`:** hands off to `seuratuploader`. When `perform_primary_analysis` is set, it then calls `gear.primary_analysis.add_primary_analysis_to_dataset()`, which writes `S/analysis_pipeline.json` and the preliminary QC plots. `_sanitize_and_flag_obs_columns()` stores `questionable_obs_columns` and `obs_dtype_reviewed` in `metadata.json`. Output is `S/<share_uid>.h5ad`. |
+| `lib/gear/anndata_processor.py` | `AnndataProcessor.process()` dispatches on `dataset_format`. **`h5ad`:** reads in backed mode, sanitizes `obs`, maps Ensembl IDs if `var` has no `gene_symbol`, and rewrites with gzip. **`mex_3tab`:** extracts `<share_uid>.tar.gz` or `.zip`, then uses `package_content_type()` to detect 3-tab (`expression.tab`/`genes.tab`/`observations.tab`, or the NeMO names `DataMTX.tab`/`ROWmeta.tab`/`COLmeta.tab`) or MEX (`matrix.mtx`/`barcodes.tsv`/`genes.tsv`, or the gzipped Cell Ranger v3+ set `matrix.mtx.gz`/`barcodes.tsv.gz`/`features.tsv.gz`, optionally inside a folder), which `_process_mex()` reads with `scanpy.read_10x_mtx()`, keeping Ensembl IDs as the `var` index and renaming `gene_symbols` to `gene_symbol`. **`excel`:** reads sheets `expression`, `observations` and `genes`. **`rds`:** hands off to `seuratuploader`. When `perform_primary_analysis` is set, it then calls `gear.primary_analysis.add_primary_analysis_to_dataset()`, which writes `S/analysis_pipeline.json` and the preliminary QC plots. `_sanitize_and_flag_obs_columns()` stores `questionable_obs_columns` and `obs_dtype_reviewed` in `metadata.json`. Output is `S/<share_uid>.h5ad`. |
 | `lib/gear/seuratuploader.py` | `seurat_to_anndata()` uses rpy2 to load a Seurat RDS in R and convert it to AnnData. Helpers: `genes_to_ensembl()`, `reduction_to_metadata()` (copies reduction coordinates into `obs`), `layer_to_X()`. Can also run as a script. |
 | `lib/gear/spatialhandler.py` | `SpatialHandler` base class plus `CosMxHandler`, `CurioHandler`, `GeoMxHandler`, `VisiumHandler`, `VisiumHDHandler` and `XeniumHandler`, which read a platform `.tar.gz` into a SpatialData object. `SPATIALTYPE2CLASS` maps the keys `cosmx`, `curio`, `geomx`, `visium`, `visium_hd`/`visiumhd` and `xenium`. `ORG_ID_REQ_TYPES` (`cosmx`, `curio`, `geomx`) need an organism ID. |
 | `lib/gear/spatial_processor.py` | `process_spatial_synchronously()` is used by both the consumer and the CGI fallback. Its steps are `process_file` (extract and parse), `subset_sdata`, `scale_and_translate_sdata`, `merge_centroids_with_obs`, `compute_qc_and_embeddings`, obs sanitize/flag, and `write_to_zarr`. Output is `S/<share_uid>.zarr`. `MemoryError` produces a specific error message. |
@@ -133,13 +133,13 @@ Older uploads may carry a `process_id` instead of a `job_id`. Both status endpoi
 | `lib/gear/utils/obs.py` | `standardize_and_sanitize_obs()`, `flag_ambiguous_obs_columns()` (numeric columns with 30 or fewer unique values), `apply_obs_dtype_choices()`, `sanitize_obs_for_h5ad()` and `categorize_standard_obs_columns()`. |
 | `lib/gear/metadata.py` | `Metadata` parses the Excel/JSON metadata and writes the MySQL `dataset` row at finalize. |
 
-Supported inputs, as enforced by `store_expression_dataset.cgi` and the processors:
+Supported inputs, as enforced by `store_expression_dataset.cgi` and the processors. The store CGI lowercases the file extension when it saves `<share_uid>.<ext>`, so later steps can find the file whatever case the user's file name used:
 
 | `dataset_format` | Upload file | Notes |
 | --- | --- | --- |
 | `h5ad` | `.h5ad` | |
-| `mex_3tab` | `.tar.gz` or `.zip` | 3-tab and the NeMO 3-tab names work. MEX content is detected, but `_process_mex()` raises "not yet supported". |
-| `excel` | `.xlsx` / `.xls` | Needs sheets `expression`, `observations` and `genes`. |
+| `mex_3tab` | `.tar.gz` or `.zip` | 3-tab (including the NeMO 3-tab names) or MEX (legacy uncompressed or gzipped v3+ files). The original archive is kept as `<dataset_id>.tar.gz` or `<dataset_id>.zip`. |
+| `excel` | `.xlsx` | Needs sheets `expression`, `observations` and `genes`. Legacy `.xls` files are rejected with a message asking the user to re-save as `.xlsx` (the `.xls` reader, `xlrd`, is not installed). |
 | `rds` | `.rds` (any case) | Seurat object, converted through rpy2. |
 | `spatial` | `.tar.gz` | The platform goes in `spatial_format`: `cosmx`, `curio`, `geomx`, `visium`, `visiumhd` or `xenium` (the UI list). |
 | `gosling` | track hub URL or `hub.txt`, plus track files | Goes through `TrackHubCopy`, not `store_expression_dataset.cgi`. |
@@ -181,7 +181,7 @@ Paths are relative to the gEAR root.
 | `www/uploads/files/<session_id>/<share_uid>/` | Staging: `metadata.json`, `status.json`, `<share_uid>.<ext>` (upload), `<share_uid>.h5ad` or `<share_uid>.zarr` (processed), `analysis_pipeline.json`, prelim QC PNGs, `.job.lock`, `.attempt_count`, Gosling `hub.txt` and track files | Uploader CGIs, `TrackHubCopy`, the processors, `DatasetProcessingStatus` |
 | `/tmp/<dataset_id>.xlsx` | Metadata spreadsheet being parsed (temporary) | `upload_expression_metadata.cgi` |
 | `www/datasets/<dataset_id>.h5ad` | Finalized non-spatial dataset (primary analysis) | finalize CGI; `geardb.Dataset.get_file_path()`, `gear.analysis` |
-| `www/datasets/<dataset_id>.tar.gz` / `.xlsx` / `.rds` | Original user upload, kept for download (`mex_3tab`, `excel`, `rds`) | finalize CGI; `Dataset.get_tarball_path()` |
+| `www/datasets/<dataset_id>.tar.gz` / `.zip` / `.xlsx` / `.rds` | Original user upload, kept for download (`mex_3tab`, `excel`, `rds`) | finalize CGI; `Dataset.get_tarball_path()`; `download_source_file.cgi` also serves a `.zip` archive when there is no `.tar.gz` |
 | `www/datasets/<dataset_id>.pipeline.json`, `.prelim_violin.png`, `.prelim_n_genes.png` | Primary-analysis pipeline JSON and preliminary QC plots | finalize CGI (when `perform_analysis_migration=1`) |
 | `www/datasets/spatial/<dataset_id>.zarr` | Finalized SpatialData Zarr store | finalize CGI; `Dataset.get_file_path()`, `spatialpanel.SPATIAL_PATH`, `Analysis.primary_path` |
 | `www/datasets/spatial/<dataset_id>.tar.gz` | Original spatial archive | finalize CGI; `Dataset.get_tarball_path()` |
@@ -200,7 +200,6 @@ Related `gear.ini` keys (see [configuration](./configuration.md)):
 
 - `[dataset_uploader] queue_enabled` / `queue_host`
 - `[higlass] hostname` / `admin_user` / `admin_pass`
-- `[content] spatial_dataset_location`
 - `[folders]`, which holds only cart/profile folder master IDs, not filesystem paths
 
 ---

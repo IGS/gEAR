@@ -63,7 +63,7 @@ Mocha uses its default spec (`./test/*.{js,cjs,mjs}`, non-recursive), so `tests/
 3. `npm run dev` in the background with `PORT=8080`
 4. `npm test` with `BROWSER=<matrix value>`
 
-Known gaps: `tests/package.json` defines no `dev` script, so step 3 fails silently (its output is discarded) and, because `LOCAL` is not set, the tests run against `https://devel.umgear.org`. The workflow notes a TODO to pass user/password secrets.
+The CI suite was never fully built out; filling it in is planned future work. Known gaps: `tests/package.json` defines no `dev` script, so step 3 fails silently (its output is discarded) and, because `LOCAL` is not set, the tests run against `https://devel.umgear.org`. The workflow notes a TODO to pass user/password secrets.
 
 Other workflows in `.github/workflows/` are not test suites: `codeql.yml` (CodeQL scan of Actions, JavaScript and Python; CGIs are renamed to `.py` first), `version-js.yml` and `strip-versioning.yml` (cache-busting query strings; see [cache busting guide](./misc/cache_busting_guide.md)).
 

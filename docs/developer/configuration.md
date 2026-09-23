@@ -86,7 +86,6 @@ MySQL/MariaDB connection. See [MySQL setup](./setup/mysql.md).
 | Key | Meaning | Example | Read by |
 |---|---|---|---|
 | `default_layout_share_id` | Share ID of the layout (dataset collection) shown to anonymous users and to users with no saved layout | `[default_layout_share_id]` | `www/cgi/get_session_info.v2.cgi` (via `geardb.servercfg`), `www/cgi/get_users_layout_members.cgi` |
-| `spatial_dataset_location` | Meant to be the directory that spatial datasets are read from | *(empty)* | **No code reads it.** Spatial paths are built in code (see [spatial](./services/spatial.md)) |
 
 ### `[test]`
 
@@ -184,7 +183,6 @@ Checked by grepping tracked code under `lib/`, `www/`, `listeners/`, `services/`
 
 | Key | Status |
 |---|---|
-| `[content] spatial_dataset_location` | Not read anywhere |
 | `[nemoarchive_import] importer_id`, `gcp_project_id`, `credentials_json`, `queue_enabled`, `queue_host` | Not read anywhere (whole section unused) |
 | `[folders]` (all 10 keys) | Read only by `FolderCollection.get_root_folders()`, which only `get_tree_by_folder_ids()` calls, and nothing calls that |
 
@@ -220,7 +218,7 @@ This file has one key, `cache_version` (a timestamp such as `2026.09.03.212437`)
 
 - **Writer:** the git pre-commit hook `.githooks/pre-commit`, registered as a local hook in `.pre-commit-config.yaml`. On each commit that stages other files, it rewrites the value with `date +"%Y.%m.%d.%H%M%S"`.
 - **Reader:** `getDomainPreferences()` in `www/js/common.v2.js`. Pages pass `prefs.cache_version` to `insertVersionedCSS()` / `insertVersionedJS()`, which add `?v=<version>` to asset URLs.
-- `bin/audit_cache_busting.py` is out of date. It still looks for `cache_version` in `site_domain_prefs.json`.
+- `bin/audit_cache_busting.py` also reads it, to report the current version.
 
 See the [Cache busting guide](./misc/cache_busting_guide.md) for details.
 

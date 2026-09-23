@@ -51,7 +51,7 @@ Nearly every page in `www/` ends with an inline module like this one from `www/d
 
 When adding a new page, copy this block and replace the page-specific file names. Vendor libraries and CDN assets are loaded with ordinary `<script>`/`<link>` tags and are not versioned. `common.v2.js` itself is imported without a version string.
 
-Pages that currently do not use the helpers: `contact.html`, `manual.html`.
+Pages that currently do not use the helpers: the legacy `contact.html`.
 
 ## Git Hook
 
@@ -82,4 +82,4 @@ git commit -m "Test cache version bump"
 
 ## Auditing
 
-`bin/audit_cache_busting.py` scans `www/**/*.html` for local CSS/JS references without `?v=`. It predates the current implementation: it reads `cache_version` from `site_domain_prefs.json` (reported as `UNKNOWN`) and looks for a `versionedAsset(` call, so its "compliant" verdicts are unreliable. Its list of unversioned `<link>`/`<script>` tags is still useful as a starting point.
+`bin/audit_cache_busting.py` scans `www/**/*.html` for local CSS/JS references without `?v=`. It reads the current version from `www/cache_version.json` and counts a page as compliant if it calls `insertVersionedJS()` or `insertVersionedCSS()`. Partials under `www/include/` are loaded into pages rather than served directly, so they show up in the "needs attention" list even though they don't need their own versioning.

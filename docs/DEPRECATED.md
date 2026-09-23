@@ -34,3 +34,4 @@ Documentation that used to live directly in `docs/` or in component directories 
 - `docs/projectR_scratch_notes.md` - superseded by [developer/services/projectr.md](developer/services/projectr.md)
 - `docs/epiviz_notes-old.md`, `docs/epiviz-tracks.json`, `docs/developer/setup/epiviz.md` - Epiviz was removed and replaced by Gosling
 - `docs/REORGANIZATION_SUMMARY.md` - one-off summary of the documentation reorganization
+- `www/manual.html` (with `www/js/manual.js`, `www/css/manual.css` and `www/include/manual/`) - legacy v1 user manual page, replaced by the [wiki](wiki/gEARWiki.md) and the video guides on the home page

@@ -683,7 +683,7 @@ Scans `www/**/*.html` for local CSS/JS references that lack a `?v=` cache-bustin
 ./bin/audit_cache_busting.py
 ```
 
-**Status**: Partly outdated. It reads `cache_version` from `site_domain_prefs.json` (now in `www/cache_version.json`) and looks for a `versionedAsset()` helper that no longer exists (current helpers are `insertVersionedCSS`/`insertVersionedJS`). See the [cache busting guide](../../developer/misc/cache_busting_guide.md).
+Reads the current version from `www/cache_version.json` and treats pages that call `insertVersionedJS()`/`insertVersionedCSS()` as compliant. See the [cache busting guide](../../developer/misc/cache_busting_guide.md).
 
 ---
 

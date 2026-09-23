@@ -147,8 +147,6 @@ Two extra controls may appear above the plots:
 
 <img width="500" alt="Dataset panel menu opened from the three-dot button" src="Screenshots/ViewDataSetInfo.png">
 
-<a name="profiles"></a>
-
 ### Dataset Collections
 
 Dataset collections are gEAR's way of collecting together datasets around a similar topic. The gEAR team maintains a number of curated dataset collections but any user can create their own dataset collection of datasets to explore.
@@ -328,8 +326,6 @@ To run a projection:
 Each dataset panel then shows the pattern score in place of gene expression, using the dataset's normal displays. Use "Select pattern" to switch between patterns; the strongest positive and negative contributing genes are listed, and "View all genes with weights" (or "View list of genes" for unweighted lists) shows the full list. "Download Projection" in the panel menu saves the projection output for downloadable datasets. Projections are saved, so running the same pattern on the same dataset again is fast. Epigenome datasets cannot be used for projection.
 
 You can also start from a single dataset or gene list with the "View in projection tool" button in the Dataset Explorer or Gene List Manager.
-
-<a name="gene-carts"></a>
 
 ### Gene lists
 

@@ -26,7 +26,7 @@ For detailed setup instructions, see:
 
 ## Usage
 
-To learn how to use the software you can go to any existing portal and click the documentation link at the top, which will take you to a page like [this one](https://umgear.org/manual.html).  It has walk-through slides and YouTube videos for most topics.
+To learn how to use the software, see the user documentation in the [gEAR wiki](https://github.com/IGS/gEAR/wiki) (source in [docs/wiki](docs/wiki/gEARWiki.md)), which is also linked from the Help item in every portal's navigation panel. Video guides for the main tools are on the portal's home page (My Workspace).
 
 ## Developer Documentation
 

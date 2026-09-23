@@ -41,7 +41,7 @@ gEAR is a LAMP-stack portal with the following key components:
 ### Frontend Components
 
 - **JavaScript**: ES modules in `www/js/`
-  - `common.v2.js` holds shared page code (login, site preferences, plugins, cache-busting helpers) and is imported by every top-level page except `contact.html` and `manual.html`. The `.v2` suffix is historical; only `common.v2.js`, `classes/genecart.v2.js` and `classes/user.v2.js` (plus `css/common.v2.css`) carry it, and other current files do not.
+  - `common.v2.js` holds shared page code (login, site preferences, plugins, cache-busting helpers) and is imported by every top-level page except the legacy `contact.html`. The `.v2` suffix is historical; only `common.v2.js`, `classes/genecart.v2.js` and `classes/user.v2.js` (plus `css/common.v2.css`) carry it, and other current files do not.
   - jQuery-based code is legacy (being phased out)
 - **D3.js & Snap.svg**: SVG-based data visualization
 - **Plot.ly**: Interactive plots

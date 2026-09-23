@@ -225,10 +225,9 @@ The v2 UI uses Bulma CSS and ES modules. Each page is assembled with Apache serv
 | `user_profile.html` | `js/user_profile.js` | `common.v2.js` | Account settings |
 | `create_account.html` | `js/create_account.js` | `common.v2.js` | Account registration |
 | `forgot_password.html` | `js/forgot_password.js` | `common.v2.js` | Password recovery |
-| `dominoSignal.html` | inline module only | `common.v2.js`, `classes/tree.js`, pattern-collection selector | Cell-cell communication page (linked from `primary_nav.html`). Currently untracked in git, so treat it as work in progress |
+| `dominoSignal.html` | inline module only | `common.v2.js`, `classes/tree.js`, pattern-collection selector | Early prototype of a cell-cell communication page (linked from `primary_nav.html`). Not committed to git; the cell-cell communication feature is being developed separately |
 | `new_page_template.html` | `js/index.js` (placeholder) | `common.v2.js` | Boilerplate for starting a new v2 page |
 | `contact.html` | `js/common.js`, `js/classes/user.js`, `js/comment.js` | none (jQuery / Bootstrap 4) | **Legacy v1** contact form. Submits through `cgi/create_github_issue.cgi` (and uses `get_tag_list.cgi`). `cgi/process_contact.py` is not referenced |
-| `manual.html` | `js/common.js`, `js/classes/user.js`, `js/manual.js` | none (jQuery / Bootstrap 4) | **Legacy v1** manual page |
 
 Other HTML lives under `www/landing/<name>/index.html` (per-project landing pages with their own `index.js`), `www/workshop/index.html` and `www/plugins/`.
 
@@ -271,7 +270,7 @@ Other HTML lives under `www/landing/<name>/index.html` (per-project landing page
 | `trackhub.js` | `Hub`, `HubContainer`, `Track` and `TrackContainer` for the track hub upload UI |
 | `tree.js` | `Tree` base class with `ProjectionSourceTree`, `GeneCartTree`, `ProfileTree` and `DatasetTree` (built on wunderbaum) |
 | `user.v2.js` | `User` model used by `common.v2.js` |
-| `user.js` | **Legacy v1** `User`. Loaded only by `contact.html` and `manual.html` |
+| `user.js` | **Legacy v1** `User`. Loaded only by `contact.html` |
 
 ### `www/js/helpers/`
 
@@ -293,7 +292,7 @@ Other HTML lives under `www/landing/<name>/index.html` (per-project landing page
 | `trackhub/hub.html`, `trackhub/track.html` | Runtime `includeHtml()` in `upload_dataset.js` | Track hub form templates |
 | `by_domain/<domain>/` (`funding.html`, `footer.html`, `site_label_bar.html`, `page_title_root.html`, `index_highlighted_dataset.html`) | `loadDomainFunding()` (v2). jQuery `.load()` in `common.js` (v1) | Per-site branding for the gear, nemo, sengear, gcid, inflammation, cancergear and node-cmtrf domains |
 | `navigation_bar.html` | jQuery `.load()` in legacy `common.js` | **Legacy v1** navbar |
-| `create_account.html`, `manual/*.html` | No current references found | Probably legacy v1 fragments |
+| `create_account.html` | No current references found | Probably a legacy v1 fragment |
 
 ### `www/plugins/`
 
@@ -317,13 +316,12 @@ See [webpage dependencies](./misc/webpage_dependencies.md) for more.
 
 | File | Status |
 |------|--------|
-| `www/js/common.js` | v1 shared script (jQuery). Loaded by `contact.html` and `manual.html` only |
-| `www/js/classes/user.js`, `www/js/classes/genecart.js` | v1 classes. `user.js` is used only by the two legacy pages. `genecart.js` is unused |
+| `www/js/common.js` | v1 shared script (jQuery). Loaded by `contact.html` only. Its User Guide link opens the GitHub wiki |
+| `www/js/classes/user.js`, `www/js/classes/genecart.js` | v1 classes. `user.js` is used only by `contact.html`. `genecart.js` is unused |
 | `www/js/comment.js` | v1 comment/contact form logic, used by `contact.html` |
-| `www/js/manual.js`, `www/manual.html` | v1 manual page |
 | `www/contact.html` | v1 page, but **still linked from v2** (`include/header_bar.html`, `create_account.html` and the `include/by_domain/*/footer.html` files) |
 | `www/js/demo_timecourse.js`, `www/js/workshop.js` | Not referenced by any page (unused) |
-| `www/include/navigation_bar.html`, `www/include/create_account.html`, `www/include/manual/` | v1 partials (see the partials table) |
+| `www/include/navigation_bar.html`, `www/include/create_account.html` | v1 partials (see the partials table) |
 
 No v2 page loads `common.js`, `user.js` or `genecart.js`.
 
