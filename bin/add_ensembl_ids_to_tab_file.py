@@ -1,7 +1,14 @@
 #!/opt/bin/python3
 
 """
+add_ensembl_ids_to_tab_file.py - Add an Ensembl_ID column to a tab-delimited file keyed on gene symbols.
 
+The first column of the input must be a gene symbol. Symbols are looked up in the gEAR gene
+table for the given organism and Ensembl release, and the matching Ensembl ID is written as a
+new first column. Rows whose symbol is not found are skipped, or written to the -u file if one
+is given.
+
+Usage: add_ensembl_ids_to_tab_file.py -i in.tab -o out.tab -org <organism_id> -er <ensembl_release> [-u unmapped.tab]
 """
 
 import argparse

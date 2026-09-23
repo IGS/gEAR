@@ -327,9 +327,11 @@ Loads gene synonym mappings.
 
 #### `load_komp_repository_data.py`
 
-Loads data from KOMP (Knockout Mouse Project) repository.
+Loads gene synonyms and external links (MGI, IGTC, IMSR, BioGPS, GEO) scraped from the KOMP (Knockout Mouse Project) repository, from the `komp_repository_data.p` pickle written by `fetch_komp_repository_data.py`.
 
-**Use case**: Integrating KOMP knockout data
+**Use case**: Adding KOMP synonyms to `gene_symbol` and links to `gene_urls`
+
+**Status**: Possibly legacy. Added in 2020 and unchanged since; the `gene_urls` table it writes is not in `create_schema.sql` and nothing on the website reads it.
 
 #### `load_mgi_mirna_aliases.py` / `load_mirna_fam_data.py`
 
@@ -976,22 +978,23 @@ Gets email list of users (for announcements).
 
 #### `fetch_komp_repository_data.py`
 
-Fetches data from KOMP repository.
+Scrapes gene synonyms and links from the KOMP repository website into `komp_repository_data.p` for `load_komp_repository_data.py`.
 
-**Use case**: Updating KOMP integration
+**Use case**: Refreshing the KOMP data
+
+**Status**: Possibly legacy (see `load_komp_repository_data.py`)
 
 #### `query_geo.py`
 
-Queries GEO (Gene Expression Omnibus) database.
-
-**Use case**: Finding datasets to import
+Unfinished stub: holds two example GEO / Entrez search URLs and exits without doing anything. (GEO metadata lookup in the uploader is done by `www/cgi/get_metadata_from_geo.cgi`.)
 
 #### `get_shield_pages.py` / `process_shield_pages.py`
 
-Downloads and processes pages from SHIELD database.
+`get_shield_pages.py` downloads gene pages from the SHIELD inner ear database; `process_shield_pages.py` parses them and prints SQL that sets `gene.shield_facs_chart_url` to each gene's FACS chart image (`shield_urls_update.sql` is a saved run).
 
-**Use case**: Integrating SHIELD gene expression data
-**Status**: May be deprecated
+**Use case**: Linking SHIELD FACS charts to genes
+
+**Status**: Possibly legacy. Added in 2020 and unchanged since; the `shield_facs_chart_url` column is not in `create_schema.sql` and nothing on the website reads it.
 
 ### Utilities
 
@@ -1122,7 +1125,9 @@ These scripts may no longer be needed (verify before removal):
 
 - `convert_layout_member_datasets_to_displays.py` - Migration script
 - `load_old_gcid_gene_symbols.py` - Legacy system migration
-- `get_shield_pages.py` / `process_shield_pages.py` - SHIELD integration may be deprecated
+- `get_shield_pages.py` / `process_shield_pages.py` - SHIELD integration; the column they fill is not in the schema or read by the site
+- `fetch_komp_repository_data.py` / `load_komp_repository_data.py` - KOMP integration; the `gene_urls` table is not in the schema or read by the site
+- `query_geo.py` - unfinished stub
 - `fix_x.py` / `fix_array_x_axis.py` - Specific data fixes
 - Any script referencing "old" or "legacy" in name
 
