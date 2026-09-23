@@ -130,6 +130,8 @@ def seurat_to_anndata(
             'adata <- as_AnnData(seurat_obj, obsm_mapping = obsm_mapping, '
             f'output_class = "HDF5AnnData", file = "{output_path}", mode = "w")'
         )
+        # Close to release lock on file.
+        ro.r('adata$close()')
     except Exception as e:
         print(f"Error converting Seurat object to AnnData: {e}", file=sys.stderr)
         raise ValueError("Error converting Seurat object to AnnData")
