@@ -2799,7 +2799,9 @@ class DatasetCollection:
                 dataset.access = "access_level"
                 dataset.user_name = row[10]
 
-                if os.path.exists(dataset.get_tarball_path()):
+                tarball_path = dataset.get_tarball_path()
+                # MEX/3-tab archives uploaded as zip files are stored with a .zip extension
+                if os.path.exists(tarball_path) or os.path.exists(tarball_path.removesuffix(".tar.gz") + ".zip"):
                     dataset.has_tarball = 1
                 else:
                     dataset.has_tarball = 0

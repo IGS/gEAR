@@ -101,7 +101,7 @@ class DatasetProcessingStatus(Resource):
 
             current_status = status_data.get('status', '')
 
-            if current_status in 'complete':
+            if current_status == 'complete':
                 status_data['progress'] = 100
             elif current_status == 'processing' and dataset_format not in ["gosling"]:
                 # ? Remove the "gosling" check

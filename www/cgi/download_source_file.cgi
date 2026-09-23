@@ -100,8 +100,13 @@ def main():
                 print(str(e), file=sys.stderr)
                 h5ad_path = ""
 
+        # MEX/3-tab archives uploaded as zip files are stored with a .zip extension instead
+        zip_path = tarball_path.removesuffix(".tar.gz") + ".zip"
+
         if dtype == 'tarball' and os.path.isfile(tarball_path):
             download_file(tarball_path, f"{share_id}.tar.gz")
+        elif dtype == 'tarball' and os.path.isfile(zip_path):
+            download_file(zip_path, f"{share_id}.zip")
         elif dtype == 'h5ad' and os.path.isfile(h5ad_path):
             download_file(h5ad_path, f"{share_id}.h5ad")
         else:

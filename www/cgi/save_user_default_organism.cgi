@@ -13,6 +13,7 @@ import os, sys
 lib_path = os.path.abspath(os.path.join('..', '..', 'lib'))
 sys.path.append(lib_path)
 import geardb
+import mysql.connector
 
 def main():
     form = cgi.FieldStorage()
@@ -20,6 +21,12 @@ def main():
     default_org_id = form.getvalue('default_org_id')
 
     user = geardb.get_user_from_session_id(session_id=session_id)
+
+    if user is None:
+        print('Content-Type: application/json\n\n')
+        print(json.dumps(dict(success=False, error="User not logged in")))
+        return
+
     user_id = user.id
 
     cnx = geardb.Connection()

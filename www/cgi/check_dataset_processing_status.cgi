@@ -9,7 +9,7 @@ making sure that process is in fact still running.
 Structure returned:
 
 {
-    "job_id": 1234,
+    "job_id": "<uuid>",
     "status": "processing",
     "message": "Processing the dataset.  This may take a while.",
     "progress": 0
@@ -26,8 +26,6 @@ from pathlib import Path
 
 
 def main():
-    print('Content-Type: application/json\n\n')
-
     form = cgi.FieldStorage()
     session_id = form.getfirst('session_id')
     share_uid = form.getfirst('share_uid')
@@ -39,7 +37,6 @@ def main():
             "message": "No session_id provided.",
             "progress": 0
         }
-        print(json.dumps(status))
         return status
 
     if share_uid is None:
@@ -49,7 +46,6 @@ def main():
             "message": "No share_uid provided.",
             "progress": 0
         }
-        print(json.dumps(status))
         return status
 
     user_upload_file_root = Path(__file__).resolve().parents[1] / 'uploads' / 'files'
@@ -64,7 +60,6 @@ def main():
             "progress": 0
         }
         print(f"ERROR: Failed to find status file: {status_file}", file=sys.stderr)
-        print(json.dumps(status))
         return status
 
     with open(status_file, 'r') as f:
@@ -72,13 +67,14 @@ def main():
 
     state = status.get('status', '')
 
-    if state in 'complete':
+    if state == 'complete':
         status['progress'] = 100
         return status
 
     if state == 'processing':
+        # Queued jobs have a UUID job_id; the consumer tracks those, so nothing to check here
         job_id = status.get("job_id", -1)
-        if job_id > 0:
+        if job_id not in (None, "", -1):
             pass
 
         else:
@@ -106,4 +102,5 @@ def main():
 
 if __name__ == '__main__':
     result = main()
+    print('Content-Type: application/json\n\n')
     print(json.dumps(result))

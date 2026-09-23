@@ -16,6 +16,7 @@ from pathlib import Path
 import anndata
 import geardb
 import pandas as pd
+import scanpy as sc
 from gear.primary_analysis import (
     PrimaryAnalysisProcessingError,
     add_primary_analysis_to_dataset,
@@ -77,6 +78,7 @@ def package_content_type(filenames: list[str]) -> str | None:
         matrix.mtx
         barcodes.tsv
         genes.tsv
+        (or matrix.mtx.gz, barcodes.tsv.gz, features.tsv.gz)
 
         threetab:
         expression.tab
@@ -93,7 +95,12 @@ def package_content_type(filenames: list[str]) -> str | None:
         if 'expression.tab' in filenames and 'genes.tab' in filenames and 'observations.tab' in filenames:
             return 'threetab'
 
-        if 'matrix.mtx' in filenames and 'barcodes.tsv' in filenames and 'genes.tsv' in filenames:
+        # MEX files may sit inside a folder in the archive (e.g. filtered_feature_bc_matrix/),
+        #  and may be the legacy uncompressed set or the gzipped Cell Ranger v3+ set
+        basenames = {Path(f).name for f in filenames}
+        if {'matrix.mtx', 'barcodes.tsv', 'genes.tsv'} <= basenames:
+            return 'mex'
+        if {'matrix.mtx.gz', 'barcodes.tsv.gz', 'features.tsv.gz'} <= basenames:
             return 'mex'
 
         if 'DataMTX.tab' in filenames and 'COLmeta.tab' in filenames and 'ROWmeta.tab' in filenames:
@@ -679,12 +686,39 @@ class AnndataProcessor:
         return genes_df
 
     def _process_mex(self) -> Path:
-        """Process MEX format (matrix.mtx, barcodes.tsv, genes.tsv)."""
-        raise ProcessingError(
-            f"MEX-format datasets are not yet supported by the uploader. Please convert your data "
-            f"to a supported format (H5AD, 3-tab, or Excel) and re-upload, or contact the gEAR "
-            f"team if you need MEX support and reference share ID {self.share_uid}."
-        )
+        """Process MEX format (matrix.mtx, barcodes.tsv, genes.tsv or the gzipped v3 equivalents)."""
+        self._update_progress(5, "Reading MEX files...")
+
+        # The files may be inside a folder within the archive
+        matrix_files = sorted(self.staging_area.rglob("matrix.mtx*"))
+        if not matrix_files:
+            raise ProcessingError(
+                "No matrix.mtx file found in your archive. Please include it and re-upload."
+            )
+        mex_dir = matrix_files[0].parent
+
+        try:
+            adata = sc.read_10x_mtx(mex_dir, var_names="gene_ids", cache=False)
+        except Exception as e:
+            raise ProcessingError(
+                f"Could not read the MEX files in your archive: {e}. Please check that matrix.mtx, "
+                "barcodes.tsv and genes.tsv (or matrix.mtx.gz, barcodes.tsv.gz and features.tsv.gz) "
+                "are valid Cell Ranger output files and re-upload."
+            )
+
+        # gEAR expects Ensembl IDs as the var index and a 'gene_symbol' column
+        adata.var = adata.var.rename(columns={"gene_symbols": "gene_symbol"})
+
+        self._update_progress(40, "Standardizing and flagging observation metadata...")
+        self._sanitize_and_flag_obs_columns(adata)
+
+        self._update_progress(50, "Writing H5AD file...")
+
+        h5ad_path = self.staging_area / f"{self.share_uid}.h5ad"
+        adata.write(h5ad_path, compression='gzip')
+
+        self._update_progress(65, "MEX processing complete.")
+        return h5ad_path
 
     def _read_expression_matrix_chunks(
         self, filepath: Path, chunk_size: int, total_rows: int
