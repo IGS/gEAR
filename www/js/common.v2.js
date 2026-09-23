@@ -1867,6 +1867,7 @@ export {
     commonDateTime,
     copyToClipboard,
     convertToFormData,
+    doLogin,
     trigger,
     openModal,
     closeModal,
