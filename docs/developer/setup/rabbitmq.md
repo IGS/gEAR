@@ -49,11 +49,11 @@ on some inputs, so each guards against a duplicate/OOM-prone run of the same job
   of starting a duplicate worker.
 - The anndata upload consumer (`listeners/anndata_upload_consumer.py`) does the same for a
   duplicate/redelivered *queue message*: it acquires a non-blocking lock
-  (`gear.utils.try_acquire_lock_file`) on a `.job.lock` file in the job's staging directory before
+  (`gear.utils.job_coordination.try_acquire_lock_file`) on a `.job.lock` file in the job's staging directory before
   processing, and if another worker already holds it, just acks and drops the duplicate delivery
   instead of starting a second conversion.
 - The anndata upload consumer also self-imposes an `RLIMIT_AS` ceiling at process start
-  (`set_memory_limit_from_cgroup()`, `lib/gear/utils.py`), sized to a fraction of the
+  (`set_memory_limit_from_cgroup()`, `lib/gear/utils/resource_limits.py`), sized to a fraction of the
   container/VM's cgroup memory limit, so an approaching OOM raises a catchable `MemoryError`
   instead of an uncatchable kernel `SIGKILL`. `process_uploaded_expression_dataset.cgi` sets the
   same guard for its synchronous fallback path (used when the queue is disabled or unreachable),

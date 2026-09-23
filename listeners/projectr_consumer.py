@@ -18,7 +18,7 @@ sys.path.insert(0, str(gear_lib))
 
 import gearqueue
 from gear.serverconfig import ServerConfig
-from gear.utils import log_line
+from gear.utils.job_coordination import log_line
 servercfg = ServerConfig().parse()
 
 # TODO: Move code into "lib" and import. Figure out how to cleanly import geardb.

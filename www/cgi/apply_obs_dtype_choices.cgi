@@ -39,7 +39,7 @@ lib_path = gear_root / 'lib'
 sys.path.append(str(lib_path))
 import geardb
 from gear.analysis import H5adAdapter, ZarrAdapter
-from gear.utils import apply_obs_dtype_choices
+from gear.utils.obs import apply_obs_dtype_choices
 from werkzeug.utils import secure_filename
 
 user_upload_file_base = '../uploads/files'
