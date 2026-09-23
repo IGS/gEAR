@@ -82,10 +82,9 @@ def main():
             return result
 
     if dataset_format == "rds":
-        if not filename.endswith('rds'):
-            result['message'] = 'Invalid file extension for RDS format. Expected .rds'
+        if not filename.lower().endswith('rds'):
+            result['message'] = 'Invalid file extension for RDS format. Expected .rds, .Rds, or .RDS'
             return result
-        # TODO: Ensure this is a valid RDS object by examining the file
 
     if dataset_format == 'spatial':
         if not filename.endswith('tar.gz'):
