@@ -75,9 +75,7 @@ def seurat_to_anndata(
     share_name: final h5ad string name to be expected (without h5ad)
     output_dir: directory to write the temporary h5ad file into
     progress_callback: optional (progress: int, message: str) callback invoked before each of
-        the three slow/memory-heavy R steps below (readRDS, as_AnnData, write_h5ad). Without
-        this, a caller has no visibility into which of those a long-running conversion is
-        currently in -- the whole function otherwise reports nothing until it returns.
+        the three R steps to log progress, which is relayed to the user
 
     return:
         absolute path to tmp h5ad, or False on failure
@@ -121,19 +119,23 @@ def seurat_to_anndata(
     obsm_mapping = ro.ListVector({name: name for name in reduction_names})
     ro.globalenv['obsm_mapping'] = obsm_mapping
 
-    # Using anndataR write out a converted h5ad, passing along the reduction mapping
-    _report(10, "Converting Seurat object to AnnData (this can take a while for large datasets)...")
-    ro.r('adata <- as_AnnData(seurat_obj, obsm_mapping = obsm_mapping)')
-
+    # Convert directly to a file-backed HDF5AnnData object (output_class = "HDF5AnnData")
+    # instead of anndataR's default InMemoryAnnData. This streams the conversion straight to
+    # the target .h5ad file rather than first building a second full in-memory representation
+    # of the already-loaded R Seurat object, then a third copy when using write_h5ad()
     output_path = os.path.join(output_dir, f'tmp_{share_name}.h5ad')
-    _report(14, "Writing intermediate H5AD file...")
+    _report(10, "Converting Seurat object to AnnData (this can take a while for large datasets)...")
     try:
-        ro.r(f'write_h5ad(adata, "{output_path}")')
-        return output_path
-    # In cases where the write fails we will assume the h5ad already exists
-    except Exception:
-        print(f"h5ad name already exists {output_path}", file=sys.stderr)
-        raise ValueError("Error writing h5ad file to output path")
+        ro.r(
+            'adata <- as_AnnData(seurat_obj, obsm_mapping = obsm_mapping, '
+            f'output_class = "HDF5AnnData", file = "{output_path}", mode = "w")'
+        )
+    except Exception as e:
+        print(f"Error converting Seurat object to AnnData: {e}", file=sys.stderr)
+        raise ValueError("Error converting Seurat object to AnnData")
+
+    _report(14, "Finished writing H5AD file.")
+    return output_path
 
 def openh5ad(h5ad_name):
     """Just open the supplied h5ad file"""
