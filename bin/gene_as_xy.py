@@ -1,5 +1,15 @@
 #!/opt/bin/python
 
+"""
+gene_as_xy.py - Prototype: scatter plot of one gene's expression against another's.
+
+Plots each cell with the first gene on the x axis and the second on the y axis, colored
+by cell type, with a linear regression line per cell type, and saves a PNG. Written for
+one dataset (the Kelley P1 cochlea dataset) on a single gEAR instance: the dataset path,
+gene symbols, cell types, colors and output path are all hard-coded. Run it from bin/
+after editing those values.
+"""
+
 import anndata
 import numpy as np
 

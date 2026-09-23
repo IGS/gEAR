@@ -1102,7 +1102,7 @@ Generates gcloud commands to download profile datasets.
 
 #### `gene_as_xy.py`
 
-Exploratory script that plots the expression of one gene against another (with per-cell-type linear regression lines) for a single dataset.
+Prototype script that plots the expression of one gene against another (with per-cell-type linear regression lines). Written for one dataset (the Kelley P1 cochlea dataset) on a single gEAR instance.
 
 **Use case**: Ad hoc gene-vs-gene scatter plots
 

@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
 
+"""
+convert_STAR_sj_tab_into_biginteract.py - Convert a STAR SJ.out.tab splice-junction file to bigInteract.
+
+Writes a bigInteract file for viewing splice junctions in the UCSC Genome Browser or a
+gEAR epigenome (Gosling) display. Junctions with no uniquely mapped reads are dropped.
+Requires the UCSC bedToBigBed utility. Remove any chromosomes from the STAR file that
+are not in the chrom-sizes file first.
+
+Usage: convert_STAR_sj_tab_into_biginteract.py --star_file SJ.out.tab --chromsizes_file genome.chrom.sizes
+           --output_file out.bb --bedtobigbed_path /path/to/bedToBigBed
+"""
+
 import argparse
 import os
 import subprocess
 import tempfile
 import pandas as pd
-
-"""
-This script converts STAR SJ.out.tab files into bigInteract format for visualization in the UCSC Genome Browser.
-
-The "star_file" must be removed of chromosome entries where the chromosome is not in the chrom-sizes file
-"""
 
 def star_to_interact(star_file, output_dir):
     # STAR columns: chrom, start, end, strand, motif, annot, unique_reads, multi_reads, max_overhang
