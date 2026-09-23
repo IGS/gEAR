@@ -38,6 +38,13 @@ $gear-state-success: #E2FFBD;
 $gear-state-error: #FFCDBD;
 $gear-state-disabled: #D1D1D1;
 
+// Export these to CSS variables
+:root {
+    --gear-bg-primary: #{$gear-bg-primary};
+    --gear-bg-secondary: #{$gear-bg-secondary};
+    --gear-bg-tertiary: #{$gear-bg-tertiary};
+}
+
 // Update some of Bulma's global variables
 $family-sans-serif: "Inter", sans-serif;
 $primary: $gear-bg-primary;
