@@ -415,7 +415,6 @@ Legacy endpoints in `www/cgi/`, served directly by Apache at `/cgi/<name>`. Most
 | `download_projection.cgi` | Download projection coefficient/p-value CSVs as a zip | dataset_id or share_id, projection_id |
 | `get_pattern_element_list.cgi` | List pattern labels (and top weighted genes) for a pattern gene cart | source_id, scope |
 | `get_pattern_weighted_genes.cgi` | Return all genes and weights for one pattern of a weighted gene cart | source_id, pattern_id |
-| `run_projection.cgi` | Unfinished stub for running a pattern projection | projection_source, set_of_patterns, source_dataset_id, target_dataset_id |
 
 ### Misc
 
