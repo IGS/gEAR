@@ -6,6 +6,12 @@ this returns the status of the dataset processing.  It does
 a bit extra, pulling the process ID from the JSON file and
 making sure that process is in fact still running.
 
+The upload page uses the API route /api/import/dataset/<share_uid>/status instead.
+This CGI is kept for checking a status by hand, since session_id is passed as a
+parameter rather than a cookie:
+
+    curl "https://<host>/cgi/check_dataset_processing_status.cgi?session_id=...&share_uid=..."
+
 Structure returned:
 
 {
@@ -50,7 +56,17 @@ def main():
 
     user_upload_file_root = Path(__file__).resolve().parents[1] / 'uploads' / 'files'
     user_upload_file_base = user_upload_file_root / session_id / share_uid
-    status_file = user_upload_file_base / 'status.json'
+    status_file = (user_upload_file_base / 'status.json').resolve()
+
+    # Keep crafted session_id/share_uid values (e.g. "../..") from reading outside the uploads area
+    if not status_file.is_relative_to(user_upload_file_root):
+        status = {
+            "job_id": -1,
+            "status": "error",
+            "message": "Invalid session_id or share_uid.",
+            "progress": 0
+        }
+        return status
 
     if not status_file.is_file():
         status = {
