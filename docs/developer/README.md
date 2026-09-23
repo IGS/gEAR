@@ -5,9 +5,25 @@ Welcome to the gEAR developer documentation. This guide is intended for develope
 ## Quick Links
 
 - [Setup Guides](./setup/README.md) - Server installation and configuration
-- [Services](./services/README.md) - Microservices documentation (ProjectR, Spatial Panel)
+- [Services](./services/README.md) - Microservices documentation (ProjectR, Spatial Panel, RabbitMQ consumers, plugins)
 - [Architecture Overview](#architecture-overview)
 - [Development Workflow](#development-workflow)
+
+### Reference
+
+- [API Reference](./api_reference.md) - Flask API endpoints
+- [Configuration](./configuration.md) - `gear.ini` sections and keys
+- [Testing](./testing.md) - Mocha/Playwright and pytest/SeleniumBase suites
+- [Upload Pipeline](./upload_pipeline.md) - Dataset upload flow
+- [Code Map](./code_map.md) - Where things live in the codebase
+- [Database Schema](./database_schema.md) - MySQL tables
+
+### Miscellaneous
+
+- [Cache Busting Guide](./misc/cache_busting_guide.md)
+- [Webpage Dependencies](./misc/webpage_dependencies.md)
+- [Release Test Plan](./misc/release_test_plan.md)
+- [Utility Scripts (`bin/`)](../misc/scripts/README.md)
 
 ## Architecture Overview
 
@@ -25,7 +41,7 @@ gEAR is a LAMP-stack portal with the following key components:
 ### Frontend Components
 
 - **JavaScript**: ES modules in `www/js/`
-  - Files with `.v2` suffix are newer UI code
+  - `common.v2.js` holds shared page code (login, site preferences, plugins, cache-busting helpers) and is imported by every top-level page except `contact.html` and `manual.html`. The `.v2` suffix is historical; only `common.v2.js`, `classes/genecart.v2.js` and `classes/user.v2.js` (plus `css/common.v2.css`) carry it, and other current files do not.
   - jQuery-based code is legacy (being phased out)
 - **D3.js & Snap.svg**: SVG-based data visualization
 - **Plot.ly**: Interactive plots
@@ -78,10 +94,7 @@ We follow the [nvie.com git branching model](https://nvie.com/posts/a-successful
 
 4. **Install Git Hooks (Pre-commit)**
 
-   This project uses [pre-commit](https://pre-commit.com/) to manage git hooks. These hooks automatically:
-   - Bump the cache version in `www/cache_version.json` on commits with code changes
-   - Check code formatting and linting with Ruff
-   - Fix common issues like trailing whitespace and file endings
+   This project uses [pre-commit](https://pre-commit.com/) to manage git hooks. `.pre-commit-config.yaml` currently defines one hook, `cache-version-bump`, which bumps the cache version in `www/cache_version.json` on commits with other staged changes. (Standard hooks such as trailing-whitespace are present but commented out; Ruff is not run by pre-commit.)
 
    **Setup:**
    ```bash
@@ -95,19 +108,22 @@ We follow the [nvie.com git branching model](https://nvie.com/posts/a-successful
    pre-commit run --all-files
    ```
 
-   After this, the hooks will run automatically on every `git commit`. See the [cache busting guide](./cache_busting_guide.md) for details on how the cache version bump works.
+   After this, the hooks will run automatically on every `git commit`. See the [cache busting guide](./misc/cache_busting_guide.md) for details on how the cache version bump works.
 
 ### Testing
 
-- **UI Tests**: Automated tests using Mocha, Chai, and Playwright
+- **UI Tests (Mocha + Playwright)**: `tests/test/*.test.js`, assertions via `expect` from `playwright/test`
 
   ```bash
   cd tests
   npm test
   ```
 
-- **API Tests**: Planned (not yet implemented)
-- Front-end tests mock API responses for speed and CI compatibility
+- **pytest + SeleniumBase**: End-to-end UI tests in `tests/test_*.py` that run against a live site (run from `tests/`: `pytest test_front_page.py`, add `--data=localhost` for Docker)
+- **API Tests**: No dedicated suite yet
+- Mocha front-end tests mock API responses for speed and CI compatibility
+
+See [testing.md](./testing.md) and [tests/README.md](../../tests/README.md).
 
 ### Code Style Guidelines
 
@@ -138,7 +154,7 @@ We follow the [nvie.com git branching model](https://nvie.com/posts/a-successful
 
 ```
 gEAR/
-├── bin/                    # Utility scripts (see ../misc/scripts/README.md)
+├── bin/                    # Utility scripts (see docs/misc/scripts/README.md)
 ├── docs/                   # Documentation
 │   ├── analyst/            # Analyst documentation
 │   ├── developer/          # Developer documentation (you are here)
@@ -178,11 +194,11 @@ gEAR/
 
 ### Running Services Locally
 
-See [setup/services.md](./setup/services.md) for details on:
+See [services/README.md](./services/README.md) for details on:
 
-- Starting systemd services
-- Running ProjectR locally vs Cloud Run
-- Running spatial panel dashboard
+- Starting systemd services ([RabbitMQ consumers](./services/rabbitmq_consumers.md), [systemd](./setup/systemd.md))
+- Running ProjectR locally vs Cloud Run ([projectr.md](./services/projectr.md))
+- Running the spatial panel dashboard ([spatial.md](./services/spatial.md))
 
 ### Debugging
 
@@ -199,13 +215,16 @@ See [setup/services.md](./setup/services.md) for details on:
 
 ### Configuration
 
-Main configuration file: `gear.ini`
+Main configuration file: `gear.ini` (copy from `gear.ini.template`; see [configuration.md](./configuration.md))
 
 Key sections:
 
 - `[database]`: MySQL connection
-- `[projectr_service]`: ProjectR endpoint configuration
-- `[rabbitmq]`: Message broker settings
+- `[projectR_service]`: ProjectR endpoint, Cloud Run toggle, and its RabbitMQ `queue_enabled` / `queue_host`
+- `[dataset_uploader]`: RabbitMQ `queue_enabled` / `queue_host` for the upload consumers
+- `[nemoarchive_import]`: NeMO Archive importer settings (also has queue settings)
+
+There is no separate `[rabbitmq]` section.
 
 ## Resources
 

@@ -1,6 +1,6 @@
 [Unit]
 Description="Spatial Dataset Upload RabbitMQ Consumer - #%i"
-Documentation=https://github.com/IGS/gEAR/blob/main/docs/setup.rabbitmq.md
+Documentation=https://github.com/IGS/gEAR/blob/main/docs/developer/services/rabbitmq_consumers.md
 After=rabbitmq-server.service
 # Guard against a tight crash/restart loop (e.g. a worker repeatedly getting OOM-killed).
 # See docs/developer/setup/rabbitmq.md "Preventing runaway memory" for adding a per-VM

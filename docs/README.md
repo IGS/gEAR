@@ -41,7 +41,17 @@ Comprehensive guide covering:
   - Docker development environment
   - Systemd services
 
-- **[Utility Scripts](misc/scripts/README.md)** - Documentation for 105+ scripts in `/bin`
+- **Reference**
+  - [API Reference](developer/api_reference.md) - Flask API endpoints
+  - [Configuration](developer/configuration.md) - `gear.ini` sections and keys
+  - [Testing](developer/testing.md) - Test suites and how to run them
+  - [Upload Pipeline](developer/upload_pipeline.md) - Dataset upload flow
+  - [Code Map](developer/code_map.md) - Where things live in the codebase
+  - [Database Schema](developer/database_schema.md) - MySQL tables
+
+- **[Developer Misc](developer/misc/)** - [Cache busting](developer/misc/cache_busting_guide.md), [release test plan](developer/misc/release_test_plan.md), HiGlass file uploads, VM cloning, webpage load-order notes
+
+- **[Utility Scripts](misc/scripts/README.md)** - Documentation for the 121 scripts in `/bin`
   - Data conversion and format scripts
   - H5AD manipulation tools
   - Database loading utilities
@@ -53,6 +63,7 @@ Comprehensive guide covering:
   - ProjectR service (matrix projection)
   - Spatial panel service (spatial transcriptomics)
   - RabbitMQ consumers (background workers)
+  - Plugins
 
 ## Documentation Organization
 
@@ -63,33 +74,28 @@ docs/
 │   └── README.md                  # Main analyst guide
 ├── developer/                     # Developer documentation
 │   ├── README.md                  # Main developer guide
+│   ├── api_reference.md           # Reference docs (API, config, testing,
+│   ├── configuration.md           #   upload pipeline, code map, DB schema)
+│   ├── testing.md
+│   ├── upload_pipeline.md
+│   ├── code_map.md
+│   ├── database_schema.md
+│   ├── misc/                      # Cache busting, release test plan, HiGlass, etc.
 │   ├── setup/                     # Server setup guides
-│   └── services/                  # Microservices documentation
+│   └── services/                  # Microservices and plugins documentation
 ├── misc/                          # Miscellaneous documentation
 │   ├── scripts/                   # Bin scripts documentation
 │   └── README.md                  # Main guide
 ├── wiki/                          # End-user wiki
 ├── posters/                       # Historical presentations (DO NOT MODIFY)
 ├── ui-v2-design/                  # UI v2 prototypes (DO NOT MODIFY)
-├── DEPRECATED.md                  # List of superseded files
-└── [various .md files]            # Legacy/specialized docs
+├── DEPRECATED.md                  # Where moved/removed docs went
+└── *.pdf, *.png, *.docx           # Design system, overview images, H5AD format spec
 ```
 
-## Legacy Documentation
+## Moved and Removed Documentation
 
-Some files in the main `docs/` directory have been superseded by the new developer documentation structure. See [`DEPRECATED.md`](DEPRECATED.md) for details on which files have been moved or are obsolete.
-
-**Note**: These files are under review for integration into the new structure. Use with caution as some may be outdated.
-
-## Component-Specific Documentation
-
-Some directories have their own documentation files with notes specific to that component:
-
-- `docker/docker_notes.md` - Docker setup notes (now at `developer/setup/docker.md`)
-- `systemd/README.md` - Systemd service information (now at `developer/setup/systemd.md`)
-- `services/projectr/README.md` - ProjectR service (now at `developer/services/projectr.md`)
-
-These original files are kept for reference but now include notices pointing to the consolidated documentation.
+Docs that used to live directly in `docs/` (and component READMEs such as `docker/docker_notes.md`, `systemd/README.md`, `services/projectr/README.md`) have been moved into the structure above or removed. See [`DEPRECATED.md`](DEPRECATED.md) for the mapping.
 
 ## Finding What You Need
 
@@ -153,5 +159,5 @@ When adding or updating documentation:
 
 ---
 
-**Last Updated**: October 2025
+**Last Updated**: September 2026
 **Maintainer**: @adkinsrs maintains infrastructure documentation

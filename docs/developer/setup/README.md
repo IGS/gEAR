@@ -53,7 +53,7 @@ For a new server installation:
 
 ## Configuration Files
 
-- `gear.ini.template` - Main configuration template
+- `gear.ini.template` - Main configuration template (see [configuration.md](../configuration.md))
 - `docker/gear.ini.docker.template` - Docker-specific configuration
 - `create_schema.sql` - Database schema
 
@@ -69,6 +69,7 @@ www/
 ├── carts/              # Gene lists
 ├── projections/        # ProjectR results
 ├── uploads/files/      # Upload staging area
+├── cache/spatial_panel/   # Spatial Panel CSV/image cache
 └── img/dataset_previews/  # Dataset preview images
 ```
 
@@ -89,13 +90,13 @@ www/
 ### Python import errors
 
 - Activate virtual environment if using one
-- Install missing packages: `pip install -r requirements.txt`
+- Install missing packages: `pip install -r docker/requirements.txt` (plus `services/spatial/requirements.txt`, `services/projectr/requirements.txt` and `listeners/requirements.txt` for those components; see [python.md](./python.md))
 - Check Python path in wsgi configuration
 
 ### RabbitMQ connection issues
 
 - Verify RabbitMQ is running: `systemctl status rabbitmq-server`
-- Check credentials and virtual host in `gear.ini`
+- Check `queue_host` (and `queue_enabled`) in the `[dataset_uploader]`, `[projectR_service]` and `[nemoarchive_import]` sections of `gear.ini`
 - Review RabbitMQ logs: `/var/log/rabbitmq/`
 
 ## Migration from Existing Instance
@@ -114,13 +115,13 @@ $HOME/git/gEAR/www/analyses
 1. Export database from old instance:
 
    ```bash
-   mysqldump -u root -p gear_db > gear_backup.sql
+   mysqldump -u root -p gear_portal > gear_backup.sql
    ```
 
 2. Import on new instance:
 
    ```bash
-   mysql -u root -p gear_db < gear_backup.sql
+   mysql -u root -p gear_portal < gear_backup.sql
    ```
 
 ## Docker Alternative
@@ -147,13 +148,16 @@ cd /path/to/gEAR
 git pull origin devel
 # Restart services (if needed)
 sudo systemctl restart apache2
-sudo systemctl restart projectr-consumer.target gosling-upload-consumer.target
+sudo systemctl restart 'projectr-consumer@*' 'anndata-upload-consumer@*' \
+    'spatial-upload-consumer@*' 'gosling-upload-consumer@*'
 sudo systemctl restart spatial-panel.service
 ```
 
-Apache2 - If API code was updated
-ProjectR consumers - If projectR code in `/services/projectr` was updated
-Spatial Panel daemon - If code in `/services/spatial` was updated
+- Apache2 - if API/CGI code in `www/` or `lib/` was updated
+- RabbitMQ consumers - if code in `listeners/`, `lib/`, or the API code they import (e.g. `www/api/resources/projectr.py`) was updated
+- Spatial Panel daemon - if code in `services/spatial/` was updated
+
+The database name (`gear_portal` in `gear.ini.template`) is whatever `[database] name` is set to in your `gear.ini`.
 
 ## Getting Help
 

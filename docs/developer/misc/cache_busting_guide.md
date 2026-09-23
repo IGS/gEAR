@@ -1,83 +1,85 @@
 # Cache Busting Implementation Guide
 
 ## Overview
-This system automatically prevents browser caching issues by appending a version number to CSS and JavaScript asset URLs. The version is automatically updated on every git commit.
+
+gEAR prevents stale browser caches by appending a version query string (`?v=<cache_version>`) to page-specific CSS and JavaScript URLs. The version is bumped automatically on every git commit.
 
 ## How It Works
 
-1. **Version Storage**: The cache version is stored in `www/site_domain_prefs.json` as `cache_version`
-2. **Auto-Bump**: A git pre-commit hook automatically updates the version timestamp whenever you commit (only when there are code changes, not for cache_version-only commits)
-3. **Dynamic Loading**: JavaScript can append this version to asset URLs to force cache refresh
+1. **Version storage**: The version lives in `www/cache_version.json`:
 
-## Usage Examples
+   ```json
+   {
+       "cache_version": "2026.09.03.212437"
+   }
+   ```
 
-### Option 1: Dynamic JS Loading (Recommended for JS modules)
+2. **Auto-bump**: A pre-commit hook (`.githooks/pre-commit`) replaces the value with a timestamp whenever other files are staged.
+3. **Loading**: `getDomainPreferences()` in `www/js/common.v2.js` fetches `/site_domain_prefs.json` and `/cache_version.json` and merges the version into the returned object as `prefs.cache_version`. Pages then load their assets with `insertVersionedCSS()` / `insertVersionedJS()`.
 
-For pages that use ES modules, you can dynamically load and version assets:
+## Helpers in `www/js/common.v2.js`
 
-```javascript
-import { getDomainPreferences, versionedAsset } from './js/common.v2.js';
+| Function | Behavior |
+| --- | --- |
+| `getDomainPreferences()` | Returns site preferences with `cache_version` merged in |
+| `insertVersionedCSS(href, cacheVersion)` | Appends `<link rel="stylesheet" href="<href>?v=<cacheVersion>">` to `<head>` |
+| `insertVersionedJS(href, cacheVersion)` | Appends `<script type="module" src="<href>?v=<cacheVersion>">` to `<body>` |
 
-// Load site preferences first
-const prefs = await getDomainPreferences();
+`insertVersionedJS` always creates a module script.
 
-// Dynamically load a CSS file with versioning
-const link = document.createElement('link');
-link.rel = 'stylesheet';
-link.href = versionedAsset('css/my-styles.css');
-document.head.appendChild(link);
+## Usage
 
-// Dynamically load a JS file with versioning
-const script = document.createElement('script');
-script.src = versionedAsset('js/my-script.js');
-document.body.appendChild(script);
-```
+Nearly every page in `www/` ends with an inline module like this one from `www/dataset_curator.html`:
 
-### Option 2: Template Variable (Recommended for HTML)
-
-If you're using a template engine (Jinja2, Mako, etc.) in your Python backend:
-
-**In your Python view/controller:**
-```python
-import json
-
-def load_cache_version():
-    with open('www/site_domain_prefs.json') as f:
-        prefs = json.load(f)
-        return prefs.get('cache_version', '1.0.0')
-
-# Pass to template
-return render_template('index.html', cache_version=load_cache_version())
-```
-
-**In your HTML template:**
 ```html
-<link rel="stylesheet" href="css/common.v2.css?v={{ cache_version }}" />
-<script type="module" src="js/index.js?v={{ cache_version }}"></script>
+<!-- Page-specific CSS/JS loading here -->
+<script type="module">
+  import { getDomainPreferences, insertVersionedCSS, insertVersionedJS, loadDomainFunding } from './js/common.v2.js';
+  const prefs = await getDomainPreferences();
+
+  await loadDomainFunding(prefs);
+
+  // Load any local JS with cache-busting version parameter
+  insertVersionedJS('js/dataset_curator.js', prefs.cache_version);
+
+  // Now load page-specific CSS
+  insertVersionedCSS('css/common.v2.css', prefs.cache_version);
+  insertVersionedCSS('css/curator_common.css', prefs.cache_version);
+  insertVersionedCSS('css/dataset_curator.css', prefs.cache_version);
+</script>
 ```
 
-### Option 3: Inline JavaScript (For static HTML)
+When adding a new page, copy this block and replace the page-specific file names. Vendor libraries and CDN assets are loaded with ordinary `<script>`/`<link>` tags and are not versioned. `common.v2.js` itself is imported without a version string.
 
+Pages that currently do not use the helpers: `contact.html`, `manual.html`.
 
 ## Git Hook
 
-The pre-commit hook (defined in `.githooks/pre-commit`) automatically:
-- Generates a new timestamp-based version (e.g., `2026.02.10.141530`)
-- Updates `www/site_domain_prefs.json`
-- Stages the updated file in your commit
-- **Smart mode**: Skips the update if `site_domain_prefs.json` is the only staged change, preventing infinite loops
+The hook is registered with the [pre-commit](https://pre-commit.com/) framework in `.pre-commit-config.yaml` (hook id `cache-version-bump`, entry `.githooks/pre-commit`). Install it once per clone:
 
-The hook is managed through the [pre-commit](https://pre-commit.com/) framework. See [Developer Documentation](./developer/README.md#setting-up-a-development-environment) for setup instructions.
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+On each commit the hook:
+
+- Generates a timestamp version (`%Y.%m.%d.%H%M%S`, e.g. `2026.02.10.141530`)
+- Updates `www/cache_version.json` and stages it
+- Skips the bump if `cache_version.json` is the only staged file (prevents loops)
+- Skips the bump if `cache_version.json` has unstaged edits
+
+See [Developer Documentation](../README.md#setting-up-a-development-environment) for general setup.
 
 ### Testing the Hook
 
 ```bash
-# Make a change and commit
 echo "test" >> test.txt
 git add test.txt
 git commit -m "Test cache version bump"
-# You should see: ✓ Bumped cache_version: 1.0.0 → 2026.02.10.141530
-
-# On the follow-up commit of just the cache_version change, you'll see:
-# ℹ Skipping cache_version bump (only cache_version changed)
+# ✓ Bumped cache_version: 2026.02.10.141530 → 2026.02.10.141812
 ```
+
+## Auditing
+
+`bin/audit_cache_busting.py` scans `www/**/*.html` for local CSS/JS references without `?v=`. It predates the current implementation: it reads `cache_version` from `site_domain_prefs.json` (reported as `UNKNOWN`) and looks for a `versionedAsset(` call, so its "compliant" verdicts are unreliable. Its list of unversioned `<link>`/`<script>` tags is still useful as a starting point.

@@ -6,27 +6,50 @@ Generally testing progresses in a few phases.
 
 ## UI Testing
 
+There are two UI test suites in this directory:
+
+- **Mocha + Playwright** (JavaScript, `tests/test/*.test.js`) - described below. Most API calls are mocked.
+- **pytest + SeleniumBase** (Python, `tests/test_*.py`) - runs against a live site. See the [testing guide](../docs/developer/testing.md) for details.
+
+The older `run_tests` / `test_commands.json` runner and the `accounts__*.py`, `datasets__*.py`, `gene_cart_manager__*.py` and `index__*.py` modules are legacy.
+
 ### How to set up packages
 
-Ensure npm is installed, and make sure you are in the `<gear_root>/tests` directory
+Ensure npm is installed, and make sure you are in the `<gear_root>/tests` directory. Dependencies are already declared in `tests/package.json` (`mocha`, `@playwright/test`), so just run:
 
 ```bash
-npm install --save-dev mocha chai playwright
+npm install
+npx playwright install   # download browser binaries
 ```
 
-In the created package.json file, add within the outermost braces (you can append CLI options, like "--timeout" to the test alias as well):
+`npm test` runs `mocha`, which uses the Mocha default spec `./test/*.{js,cjs,mjs}` (non-recursive, so `tests/test/e2e/` is not included). Assertions use `expect` from `playwright/test`; Chai is not used. Shared helpers and API mocks are in `tests/test/helpers.js`.
 
-```json
-"scripts": {
-  "test": "mocha"
-}
+Environment variables read by `helpers.js`:
+
+| Variable | Effect |
+| --- | --- |
+| `LOCAL=true` | Test against `http://localhost:8080` (Docker) instead of `https://devel.umgear.org` |
+| `BROWSER=<name>` | Run only one of `chromium`, `webkit`, `firefox`, `iPhone`, `pixel` |
+| `DEBUG=true` | Extra debug output |
+
+```bash
+npm test
+LOCAL=true BROWSER=chromium npx mocha test/dataset_curator.test.js --timeout 30000
+```
+
+### Python (SeleniumBase) tests
+
+```bash
+pip install pytest seleniumbase
+pytest test_front_page.py              # against https://umgear.org
+pytest test_front_page.py --data=localhost   # against http://localhost:8080
 ```
 
 ### About the UI testing packages
 
-Mocha (https://mochajs.org/) is a widely-used testing framework that has a minimal setup, allows for organization of tests, and is flexible to let you choose your own libraries to extend its functionality. Mocha has interfaces for both Behavior-driven development (BDD) and Test-driven development (TDD).
+[Mocha](https://mochajs.org/) is a widely-used testing framework that has a minimal setup, allows for organization of tests, and is flexible to let you choose your own libraries to extend its functionality. Mocha has interfaces for both Behavior-driven development (BDD) and Test-driven development (TDD).
 
-Playwright (https://playwright.dev/) is a framework used for automated end-to-end testing. You can use it to interact and test on page selectors. It also provides headless browser testing by default and works with multiple browser types, including mobile ones.
+[Playwright](https://playwright.dev/) is a framework used for automated end-to-end testing. You can use it to interact and test on page selectors. It also provides headless browser testing by default and works with multiple browser types, including mobile ones.
 
 ### Strategies for UI testing
 
@@ -199,7 +222,7 @@ When testing the front-end, it is important to test in the same way a user would
 
 ## API Testing
 
-TODO
+There is no dedicated API test suite yet. The SeleniumBase tests exercise the API indirectly through the UI.
 
 ### Strategies for API testing
 

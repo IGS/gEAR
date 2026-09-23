@@ -17,7 +17,7 @@ Matrix projection service for dimensionality reduction and analysis.
 Dashboard service for spatial transcriptomics data visualization.
 
 - **Location**: `services/spatial/`
-- **Deployment**: Docker container (Panel app)
+- **Deployment**: systemd (`spatial-panel.service`) or Docker container (Panel app)
 - **Purpose**: Interactive visualization of spatial datasets
 
 ### [RabbitMQ Consumers](./rabbitmq_consumers.md)
@@ -25,8 +25,8 @@ Dashboard service for spatial transcriptomics data visualization.
 Background workers that process async jobs from message queue.
 
 - **Location**: `listeners/`
-- **Deployment**: Systemd services
-- **Purpose**: Process ProjectR, analysis, and other long-running tasks
+- **Deployment**: Systemd services (or Docker Compose services in development)
+- **Purpose**: Process H5AD uploads, spatial uploads, Gosling track uploads, and ProjectR jobs
 
 ### [How to create Plugins](./plugins.md)
 
@@ -47,24 +47,27 @@ gEAR API (Flask)
     |
     └──> RabbitMQ
          └──> Consumer Workers (systemd)
-              ├── ProjectR consumer
-              └── Gosling upload consumer
+              ├── AnnData upload consumer   (anndata_upload_jobs)
+              ├── Spatial upload consumer   (spatial_upload_jobs)
+              ├── Gosling upload consumer   (trackhub_copy_jobs)
+              └── ProjectR consumer         (projectr)
 ```
 
-## Configuration for projectR
+## Configuration
 
-All services are configured via `gear.ini`:
+Services are configured via `gear.ini` (see `gear.ini.template`). ProjectR:
 
 ```ini
 [projectR_service]
-hostname = https://staging---projectr-service-7822838784.us-east1.run.app
+hostname = [cloud_run_service_url]
 ;; 0 - disable, 1 - enable
 cloud_run_enabled = 1
 ;; 0 - disable RabbitMQ, 1 - enable. Disabling could lead to potential server crashes if many jobs are run simultaneously
 queue_enabled = 0
 queue_host = localhost
-
 ```
+
+The upload consumers read `queue_enabled` / `queue_host` from `[dataset_uploader]`. The Spatial Panel service has no `gear.ini` section; see [spatial.md](./spatial.md#configuration).
 
 ## Deployment Options
 
@@ -102,16 +105,16 @@ queue_host = localhost
 ### Setting Up Local RabbitMQ Consumers
 
 1. Install RabbitMQ (see [rabbitmq_consumers.md](./rabbitmq_consumers.md))
-2. Install R and packages (see `docs/developer/setup/r_rpy2.md`)
-3. Start consumer services:
+2. Install R and packages for ProjectR (see [../setup/r_rpy2.md](../setup/r_rpy2.md))
+3. Install the unit files, including `gear-consumers.slice`, then start all consumer groups:
 
    ```bash
-   sudo systemctl start projectr-consumer.target gosling-upload-consumer.target
+   sudo systemctl start gear-consumers.target
    ```
 
 ### Setting Up Spatial Panel
 
-1. Build spatial panel image (see [spatial.md](./spatial.md))
+1. Install `systemd/spatial-panel.service` or use the `panel` compose service (see [spatial.md](./spatial.md))
 2. Start service:
 
    ```bash
@@ -180,17 +183,17 @@ sudo systemctl start projectr-consumer.target
 
 - **Jobs not processing**: Check systemd service status
 - **Consumer crashes**: Check logs via journalctl
-- **Connection errors**: Verify RabbitMQ is running and credentials in gear.ini
+- **Connection errors**: Verify RabbitMQ is running and `queue_host` in gear.ini
 
 ### Spatial Panel Issues
 
 - **Panel not loading**: Check systemd service logs
 - **Port conflicts**: Verify port 5006 is available
-- **Zarr data errors**: Verify spatial dataset paths
+- **Zarr data errors**: Verify `www/datasets/spatial/<dataset_id>.zarr` exists; clear `www/cache/spatial_panel/<dataset_id>/`
 
 ## Development
 
-For local development, a Docker Compose stack is used and recommended.  See [the Docker setup documentation](./docker.md) for more information.
+For local development, a Docker Compose stack is used and recommended.  See [the Docker setup documentation](../setup/docker.md) for more information.
 
 ## Service-Specific Documentation
 
@@ -200,6 +203,6 @@ For local development, a Docker Compose stack is used and recommended.  See [the
 
 ## Additional Resources
 
-- Systemd service templates: `systemd/`
+- Systemd service templates: `systemd/` (see [../setup/systemd.md](../setup/systemd.md))
 - Docker configurations: `docker/`
-- Setup guides: `docs/developer/setup/`
+- Setup guides: [../setup/](../setup/README.md)
