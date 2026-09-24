@@ -11,7 +11,8 @@ Welcome to the gEAR developer documentation. This guide is intended for develope
 
 ### Reference
 
-- [API Reference](./api_reference.md) - Flask API endpoints
+- [API Reference](./api_reference.md) - Flask API endpoints and CGI catalog
+- [OpenAPI spec](./openapi.yaml) - machine-readable description of the REST API and CGI scripts
 - [Configuration](./configuration.md) - `gear.ini` sections and keys
 - [Testing](./testing.md) - Mocha/Playwright and pytest/SeleniumBase suites
 - [Upload Pipeline](./upload_pipeline.md) - Dataset upload flow

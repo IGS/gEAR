@@ -4,6 +4,8 @@ This page documents the Flask REST API that serves plot data, h5ad metadata, pro
 
 For the wider codebase layout see [code_map.md](./code_map.md). Configuration keys referenced here are described in [configuration.md](./configuration.md).
 
+A machine-readable OpenAPI 3.0.3 description of every REST route and CGI script, with parameters and response shapes, is in [openapi.yaml](./openapi.yaml). It can be viewed with any OpenAPI tool (for example Swagger Editor or Redoc).
+
 ## Deployment
 
 ### Application object
@@ -96,7 +98,7 @@ All helpers normalize the `analysis` argument with `gear.analysis.normalize_anal
 
 ### PlotlyData: `POST /plot/<dataset_id>` and `/plot/<dataset_id>/plotly`
 
-Builds a single-gene Plotly figure with `gear.plotting`. Supported `plot_type` values include `bar`, `violin`, `scatter`, `line` and `contour`. `tsne_dynamic` and `tsne/umap_dynamic` are aliases for `scatter`.
+Builds a single-gene Plotly figure with `gear.plotting`. Supported `plot_type` values include `bar`, `violin`, `box`, `strip`, `scatter`, `scattergl`, `line` and `contour`. `tsne_dynamic` and `tsne/umap_dynamic` are aliases for `scatter`.
 
 JSON body keys:
 
@@ -105,7 +107,7 @@ JSON body keys:
 | `gene_symbol` | Required. |
 | `plot_type` | See above. |
 | `analysis` | Analysis dict or ID. Omit to use the primary dataset. |
-| `x_axis`, `y_axis` (default `raw_value`), `z_axis` | Obs columns. `z_axis` is required for `contour`. |
+| `x_axis`, `y_axis` (default `raw_value`), `z_axis` | Obs columns. For `contour`, `z_axis` defaults to `raw_value`. |
 | `point_label`, `color_name`, `colors`, `color_palette`, `reverse_palette`, `colorblind_mode` | Color settings. |
 | `facet_row`, `facet_col`, `order`, `size_by_group`, `marker_size` (default 3), `jitter` | Layout settings. |
 | `x_min`, `x_max`, `y_min`, `y_max`, `x_title`, `y_title`, `vlines` | Axis settings. |

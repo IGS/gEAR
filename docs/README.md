@@ -42,7 +42,8 @@ Comprehensive guide covering:
   - Systemd services
 
 - **Reference**
-  - [API Reference](developer/api_reference.md) - Flask API endpoints
+  - [API Reference](developer/api_reference.md) - Flask API endpoints and CGI catalog
+  - [OpenAPI spec](developer/openapi.yaml) - machine-readable description of the REST API and CGI scripts
   - [Configuration](developer/configuration.md) - `gear.ini` sections and keys
   - [Testing](developer/testing.md) - Test suites and how to run them
   - [Upload Pipeline](developer/upload_pipeline.md) - Dataset upload flow
