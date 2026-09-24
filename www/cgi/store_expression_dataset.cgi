@@ -45,7 +45,7 @@ def main():
     #  by a fixed name regardless of how the user's file was named (e.g. .RDS, .XLSX)
     lower_filename = filename.lower()
 
-    if lower_filename.endswith('.tar.gz'):
+    if lower_filename.endswith('.tar.gz') or lower_filename.endswith('.tgz'):
         file_extension = 'tar.gz'
     else:
         file_extension = secure_filename(lower_filename.split('.')[-1])
@@ -71,8 +71,8 @@ def main():
 
     # formats can be h5ad, rdata, excel, or mex_3tab
     if dataset_format == 'mex_3tab':
-        if file_extension not in ('tar.gz', 'zip'):
-            result['message'] = 'Invalid file extension for MEX 3-tab format. Expected .tar.gz or .zip'
+        if file_extension not in ('tar.gz', 'tar', 'zip'):
+            result['message'] = 'Invalid file extension for MEX 3-tab format. Expected .tar, .tar.gz or .zip'
             return result
 
     if dataset_format == 'excel':

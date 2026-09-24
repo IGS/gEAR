@@ -83,7 +83,7 @@ def main():
                 raise FileNotFoundError(f"Dataset not found for the provided dataset ID {dataset_id}")
             share_id = dataset.share_id
 
-        tarball_path = dataset.get_tarball_path()
+        archive_path = dataset.get_source_archive_path()
         h5ad_path = dataset.get_file_path()
 
         # if analysis ID is passed, retrieve the h5ad file for the analysis to download
@@ -100,13 +100,10 @@ def main():
                 print(str(e), file=sys.stderr)
                 h5ad_path = ""
 
-        # MEX/3-tab archives uploaded as zip files are stored with a .zip extension instead
-        zip_path = tarball_path.removesuffix(".tar.gz") + ".zip"
-
-        if dtype == 'tarball' and os.path.isfile(tarball_path):
-            download_file(tarball_path, f"{share_id}.tar.gz")
-        elif dtype == 'tarball' and os.path.isfile(zip_path):
-            download_file(zip_path, f"{share_id}.zip")
+        if dtype == 'tarball' and archive_path:
+            # Keep the archive's own extension (.tar.gz, .tar or .zip) in the download name
+            archive_extension = ".tar.gz" if archive_path.endswith(".tar.gz") else os.path.splitext(archive_path)[1]
+            download_file(archive_path, f"{share_id}{archive_extension}")
         elif dtype == 'h5ad' and os.path.isfile(h5ad_path):
             download_file(h5ad_path, f"{share_id}.h5ad")
         else:

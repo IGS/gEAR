@@ -273,29 +273,31 @@ class AnndataProcessor:
         return filepath
 
     def _process_mex_3tab(self) -> Path:
-        # Extract the file
-        compression_format = None
-        filename = self.staging_area / f"{self.share_uid}.tar.gz"
+        """Extract an uploaded MEX or 3-tab archive (.tar, .tar.gz or .zip) and process its contents."""
+        # store_expression_dataset.cgi saves the upload as <share_uid>.<extension>
+        filename = None
+        for extension in ("tar.gz", "tar", "zip"):
+            candidate = self.staging_area / f"{self.share_uid}.{extension}"
+            if candidate.exists():
+                filename = candidate
+                break
 
-        if filename.exists():
-            compression_format = 'tarball'
-        else:
-            filename = self.staging_area / f"{self.share_uid}.zip"
+        if filename is None:
+            raise ProcessingError(
+                "The uploaded archive for this dataset could not be found on the server. "
+                "This is usually a transient upload issue — please try re-uploading the dataset. "
+                f"If it keeps happening, contact the gEAR team and reference share ID {self.share_uid}."
+            )
 
-            if filename.exists():
-                compression_format = 'zip'
-            else:
-                raise ProcessingError(
-                    "The uploaded archive for this dataset could not be found on the server. "
-                    "This is usually a transient upload issue — please try re-uploading the dataset. "
-                    f"If it keeps happening, contact the gEAR team and reference share ID {self.share_uid}."
-                )
+        compression_format = 'zip' if filename.suffix == '.zip' else 'tarball'
 
         files_extracted = []
 
         if compression_format == 'tarball':
             try:
-                with tarfile.open(filename) as tf:
+                # "r:*" detects compression from the file contents, so both plain and gzipped
+                #  tarballs open regardless of the extension the user gave them
+                with tarfile.open(filename, "r:*") as tf:
                     for entry in tf:
                         tf.extract(entry, path=self.staging_area)
 
@@ -317,8 +319,8 @@ class AnndataProcessor:
                             files_extracted.append(entry.name)
             except tarfile.ReadError:
                 raise ProcessingError(
-                    "The uploaded .tar.gz file could not be read — it may be corrupted or not a "
-                    "valid tar archive. Please verify the file and try re-uploading it."
+                    "The uploaded tar archive could not be read — it may be corrupted or not a "
+                    "valid .tar or .tar.gz file. Please verify the file and try re-uploading it."
                 )
 
         if compression_format == 'zip':

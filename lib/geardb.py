@@ -2457,6 +2457,21 @@ class Dataset:
 
         return h5ad_file_path
 
+    def get_source_archive_path(self):
+        """
+        Returns the path of the dataset's original uploaded archive if one exists, else None.
+
+        MEX/3-tab archives are kept with the extension they were uploaded with (.tar.gz, .tar
+        or .zip), so this checks each of those next to get_tarball_path().
+        """
+        base_path = self.get_tarball_path().removesuffix(".tar.gz")
+
+        for extension in (".tar.gz", ".tar", ".zip"):
+            if os.path.exists(base_path + extension):
+                return base_path + extension
+
+        return None
+
     def get_tarball_path(self):
         """
         This returns where the path of where a dataset's tarball SHOULD be, it doesn't check that
@@ -2799,9 +2814,7 @@ class DatasetCollection:
                 dataset.access = "access_level"
                 dataset.user_name = row[10]
 
-                tarball_path = dataset.get_tarball_path()
-                # MEX/3-tab archives uploaded as zip files are stored with a .zip extension
-                if os.path.exists(tarball_path) or os.path.exists(tarball_path.removesuffix(".tar.gz") + ".zip"):
+                if dataset.get_source_archive_path():
                     dataset.has_tarball = 1
                 else:
                     dataset.has_tarball = 0

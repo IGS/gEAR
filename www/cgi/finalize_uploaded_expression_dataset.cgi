@@ -232,13 +232,12 @@ def main() -> dict:
 
 
     if dataset_format == 'mex_3tab':
-        # migrate the archive, which may have been uploaded as a tarball or a zip file
-        tarball_file = dataset_upload_dir / f'{share_uid}.tar.gz'
-        tarball_dest = dataset_final_dir / f'{dataset_id}.tar.gz'
-
-        if not tarball_file.exists():
-            tarball_file = dataset_upload_dir / f'{share_uid}.zip'
-            tarball_dest = dataset_final_dir / f'{dataset_id}.zip'
+        # migrate the archive, which may have been uploaded as a .tar.gz, .tar or .zip file
+        for extension in ('tar.gz', 'tar', 'zip'):
+            tarball_file = dataset_upload_dir / f'{share_uid}.{extension}'
+            tarball_dest = dataset_final_dir / f'{dataset_id}.{extension}'
+            if tarball_file.exists():
+                break
 
         #print(f"DEBUG: Attempting to do: mv {tarball_file} {tarball_dest}", file=sys.stderr)
         try:
