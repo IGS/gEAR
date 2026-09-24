@@ -273,7 +273,8 @@ def get_colorblind_scale(n_colors: int) -> list[str]:
         list[str]: A list of hex color codes as strings.
     """
     cividis = plt.get_cmap("viridis")
-    colors = [cividis(i / (n_colors - 1)) for i in range(n_colors)]
+    # max() keeps a single category from dividing by zero
+    colors = [cividis(i / max(n_colors - 1, 1)) for i in range(n_colors)]
     # convert to hex since I ran into some issues using rpg colors
     return [mcolors.rgb2hex(color) for color in colors]
 
@@ -925,11 +926,10 @@ def generate_tsne_figure(
         color_category = is_categorical(selected.obs[colorize_by])
         if color_category:
             color_idx_name = f"{colorize_by}_colors"
-            # colors provided by user through UI
-            if colors is not None and len(colors) > 2:
-                selected.uns[color_idx_name] = [
-                    colors[idx] for idx in selected.obs[colorize_by].cat.categories
-                ]
+            categories = selected.obs[colorize_by].cat.categories
+            # colors provided by user through UI (used only when every category has one)
+            if colors and all(category in colors for category in categories):
+                selected.uns[color_idx_name] = [colors[category] for category in categories]
             # color column provided by user in adata.obs
             elif color_idx_name in selected.obs:
                 grouped = selected.obs.groupby(
