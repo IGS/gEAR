@@ -147,3 +147,29 @@ def test_process_spatial_missing_metadata(tmp_path):
     )
     assert result["success"] == 0
     assert "No metadata JSON file found" in result["message"]
+
+
+def test_cosmx_decompresses_gzipped_members(tmp_path, extract_dir):
+    import gzip
+
+    counts = b"fov,cell_ID,GeneA\n1,1,3\n"
+    labels = b"fake tif bytes"
+    path = tmp_path / "upload.tar.gz"
+    path.write_bytes(tar_bytes({
+        "RUN42_exprMat_file.csv.gz": gzip.compress(counts),
+        "RUN42-CellLabels/CellLabels_F001.tif.gz": gzip.compress(labels),
+        "notes.txt": b"plain member\n",
+    }, gzipped=True))
+
+    handler = SPATIALTYPE2CLASS["cosmx"]()
+    with pytest.raises(Exception) as excinfo:
+        handler.process_file(str(path), extract_dir=str(extract_dir), organism_id=1)
+    # Fails later for lack of the other CosMx files, not while extracting
+    assert not isinstance(excinfo.value, (tarfile.ReadError, UploadCancelledError)), excinfo.value
+
+    files = extract_dir / "files"
+    # The run's prefix is replaced by STANDARD_DATASET_ID ("spatialdata")
+    assert (files / "spatialdata_exprMat_file.csv").read_bytes() == counts
+    assert (files / "CellLabels" / "CellLabels_F001.tif").read_bytes() == labels
+    assert (files / "notes.txt").is_file()
+    assert not list(files.rglob("*.gz"))

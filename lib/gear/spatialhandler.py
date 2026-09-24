@@ -5,7 +5,9 @@ Defines the SpatialHandler base class and subclasses (CosMx, Curio, GeoMx, Visiu
 Visium HD, Xenium) that read uploaded files into SpatialData objects.
 """
 
+import gzip
 import os
+import shutil
 import subprocess
 import tarfile
 import typing
@@ -47,6 +49,19 @@ def _remove_dir(dir_to_remove: str) -> None:
     """Remove a directory safely using subprocess (no shell)."""
     if os.path.isdir(dir_to_remove):
         subprocess.run(["rm", "-rf", dir_to_remove], check=True)
+
+def _gunzip_member(tf: tarfile.TarFile, entry: tarfile.TarInfo, extract_dir: str) -> None:
+    """Decompress a gzipped tar member into extract_dir under entry.name (already stripped of .gz)."""
+    root = os.path.realpath(extract_dir)
+    target = os.path.realpath(os.path.join(root, entry.name))
+    if os.path.commonpath([root, target]) != root:
+        raise Exception(f"Refusing to extract {entry.name} outside the upload directory.")
+    entry_io = tf.extractfile(entry)
+    if entry_io is None:
+        raise Exception(f"Error occurred while extracting file: {entry.name}")
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    with entry_io, gzip.open(entry_io) as gz_in, open(target, "wb") as out_f:
+        shutil.copyfileobj(gz_in, out_f)
 
 def _select_pyramid_level(img, max_dim: int = 4000):
     """
@@ -978,15 +993,10 @@ class CosMxHandler(SpatialHandler):
                 if ".DS_Store" in entry.name or "._" in entry.name:
                     continue
 
-                # IF file is gzipped, gunzip it
-                if entry.name.endswith(".gz"):
-                    entry_io = tf.extractfile(entry)
-                    if entry_io is None:
-                        raise Exception("Error occurred while extracting file: ", entry.name)
-                    with entry_io as f:
-                        with open(os.path.join(extract_dir, entry.name[:-3]), "wb") as out_f:
-                            out_f.write(f.read())
-                    entry.name = entry.name[:-3]    # Adjust file name
+                # Gzipped members (e.g. exprMat_file.csv.gz) are decompressed below, under the name without .gz
+                is_gzipped = entry.isfile() and entry.name.endswith(".gz")
+                if is_gzipped:
+                    entry.name = entry.name[:-3]
 
                 # ? We could include this to use the "points" for future additions, but not including it saves space in the output Zarr
                 if entry.name.endswith(CosmxKeys.TRANSCRIPTS_SUFFIX):
@@ -1009,8 +1019,11 @@ class CosMxHandler(SpatialHandler):
                             entry.name = f"{standard_name}/{rest}"
                             break
 
+                if is_gzipped:
+                    _gunzip_member(tf, entry, extract_dir)
+                    continue
+
                 # Extract file into tmp dir
-                filepath = "{0}/{1}".format(extract_dir, entry.name)
                 tf.extract(entry, path=extract_dir)
 
         # Try to get organism id directly or through dataset metadata
