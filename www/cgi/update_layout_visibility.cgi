@@ -2,6 +2,9 @@
 
 """
 Updates the visibility of the layout (dataset collection), set between private and public.
+
+Input: session_id (required; must own the layout), layout_share_id, visibility ('true' for public).
+Output: JSON {success, error}.
 """
 
 import cgi, json
@@ -15,11 +18,28 @@ def main():
     print('Content-Type: application/json\n\n')
     result = {'error': '', 'success': 0 }
 
-    cnx = geardb.Connection()
-    cursor = cnx.get_cursor()
     form = cgi.FieldStorage()
+    session_id = form.getfirst('session_id')
     share_id = form.getfirst('layout_share_id')
-    visibility = form.getfirst('visibility')    # 1 for public, 0 for private
+    visibility = form.getfirst('visibility')    # 'true' for public, anything else for private
+
+    user = geardb.get_user_from_session_id(session_id)
+    if user is None:
+        result['error'] = "You must be logged in to change a dataset collection's visibility."
+        print(json.dumps(result))
+        return
+
+    layout = geardb.get_layout_by_share_id(share_id)
+    if not layout:
+        result['error'] = "Dataset collection not found."
+        print(json.dumps(result))
+        return
+
+    # Only the owner may change a collection's visibility
+    if layout.user_id != user.id:
+        result['error'] = "You can only change the visibility of dataset collections you own."
+        print(json.dumps(result))
+        return
 
     # convert JS string boolean to Python boolean
     if visibility == 'true':
@@ -27,23 +47,23 @@ def main():
     else:
         int_visibility = 0
 
+    cnx = geardb.Connection()
+    cursor = cnx.get_cursor()
+
     # update the visibility of the layout
-    query = "UPDATE layout SET is_public = %s WHERE share_id = %s"
+    query = "UPDATE layout SET is_public = %s WHERE id = %s"
 
     try:
-        cursor.execute(query, (int_visibility, share_id))
+        cursor.execute(query, (int_visibility, layout.id))
+        cnx.commit()
+        result['success'] = 1
     except Exception as e:
         result['error'] = 'Error: {}'.format(e)
-        print(json.dumps(result))
+    finally:
         cursor.close()
         cnx.close()
 
-    result['success'] = 1
     print(json.dumps(result))
-
-    cnx.commit()
-    cursor.close()
-    cnx.close()
 
 
 

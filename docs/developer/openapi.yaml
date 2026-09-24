@@ -6488,8 +6488,8 @@ paths:
       tags:
       - Collections (layouts)
       summary: Set a layout public or private
-      description: Sets `layout.is_public` for the share ID. Quirk - it reads no session_id and does no ownership
-        check, and it reports success 1 even if no row matched (a DB error prints two JSON objects).
+      description: Sets `layout.is_public` for the share ID. Requires a logged-in user who owns the layout; otherwise,
+        or if the layout is not found, returns success 0 with an `error` message (HTTP 200).
       requestBody:
         required: true
         content:
@@ -6497,8 +6497,12 @@ paths:
             schema:
               type: object
               required:
+              - session_id
               - layout_share_id
               properties:
+                session_id:
+                  type: string
+                  description: Session of the layout owner.
                 layout_share_id:
                   type: string
                 visibility:
